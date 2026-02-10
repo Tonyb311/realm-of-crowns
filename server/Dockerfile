@@ -53,7 +53,7 @@ COPY --from=builder /app/server/dist/ ./server/dist/
 COPY --from=builder /app/client/dist/ ./client/dist/
 
 # Copy tsconfig for tsconfig-paths runtime resolution
-COPY server/tsconfig.build.json ./server/tsconfig.json
+COPY server/tsconfig.production.json ./server/tsconfig.json
 
 # Copy seeds for db:seed support in container
 COPY database/seeds/ ./database/seeds/
@@ -62,5 +62,4 @@ ENV NODE_ENV=production
 EXPOSE 4000
 
 WORKDIR /app/server
-ENV TS_NODE_PROJECT=tsconfig.json
 CMD ["node", "-r", "tsconfig-paths/register", "dist/index.js"]
