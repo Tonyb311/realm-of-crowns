@@ -15,11 +15,13 @@ export function authGuard(req: AuthenticatedRequest, res: Response, next: NextFu
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
       userId: string;
       username: string;
+      role: string;
     };
 
     req.user = {
       userId: decoded.userId,
       username: decoded.username,
+      role: decoded.role || 'player',
     };
 
     next();

@@ -10,7 +10,7 @@ export function initEventBroadcaster(io: Server) {
   ioInstance = io;
 }
 
-function getIO(): Server {
+export function getIO(): Server {
   if (!ioInstance) {
     throw new Error('Socket.io not initialized. Call initEventBroadcaster first.');
   }

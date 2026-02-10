@@ -17,6 +17,7 @@ import {
   Menu,
   X,
   LogOut,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -43,22 +44,23 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 export default function Navigation() {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, isAdmin, logout } = useAuth();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   if (!isAuthenticated) return null;
 
-  // Don't show nav on login/register/character creation
+  // Don't show nav on login/register/character creation/admin pages
   const hiddenPaths = ['/login', '/register', '/create-character'];
   if (hiddenPaths.includes(location.pathname)) return null;
+  if (location.pathname.startsWith('/admin')) return null;
 
   return (
     <>
       {/* Desktop bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-dark-600/95 border-t border-dark-50 backdrop-blur-sm hidden md:block">
         <div className="max-w-screen-2xl mx-auto px-4 flex items-center justify-center h-12 gap-1">
-          {NAV_ITEMS.map((item) => {
+          {[...NAV_ITEMS, ...(isAdmin ? [{ path: '/admin', label: 'Admin', icon: ShieldCheck }] : [])].map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             return (
@@ -114,7 +116,7 @@ export default function Navigation() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto py-2">
-              {NAV_ITEMS.map((item) => {
+              {[...NAV_ITEMS, ...(isAdmin ? [{ path: '/admin', label: 'Admin', icon: ShieldCheck }] : [])].map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
                 return (

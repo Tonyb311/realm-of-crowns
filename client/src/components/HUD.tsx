@@ -10,6 +10,7 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import Tooltip from './ui/Tooltip';
@@ -65,6 +66,7 @@ function StatBar({
 
 export default function HUD() {
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
   const [muted, setMutedState] = useState(getMuted());
   const [vol, setVol] = useState(getStoredVolume());
 
@@ -84,6 +86,7 @@ export default function HUD() {
   }, [vol]);
 
   if (!isAuthenticated || !character) return null;
+  if (location.pathname.startsWith('/admin')) return null;
 
   const xpForNextLevel = character.level * 100;
   const xpPct = xpForNextLevel > 0

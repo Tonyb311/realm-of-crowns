@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ui/ProtectedRoute';
+import { AdminRoute } from './components/ui/AdminRoute';
 import LoadingScreen from './components/LoadingScreen';
 import api from './services/api';
 // Global components (always loaded)
@@ -37,6 +38,15 @@ const ProfessionsPage = React.lazy(() => import('./pages/ProfessionsPage'));
 const HousingPage = React.lazy(() => import('./pages/HousingPage'));
 const TradePage = React.lazy(() => import('./pages/TradePage'));
 const DiplomacyPage = React.lazy(() => import('./pages/DiplomacyPage'));
+
+// Admin pages
+const AdminLayout = React.lazy(() => import('./components/admin/AdminLayout'));
+const AdminDashboardPage = React.lazy(() => import('./pages/admin/AdminDashboardPage'));
+const AdminUsersPage = React.lazy(() => import('./pages/admin/AdminUsersPage'));
+const AdminCharactersPage = React.lazy(() => import('./pages/admin/AdminCharactersPage'));
+const AdminWorldPage = React.lazy(() => import('./pages/admin/AdminWorldPage'));
+const AdminEconomyPage = React.lazy(() => import('./pages/admin/AdminEconomyPage'));
+const AdminToolsPage = React.lazy(() => import('./pages/admin/AdminToolsPage'));
 
 function App() {
   return (
@@ -214,6 +224,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="users" element={<AdminUsersPage />} />
+            <Route path="characters" element={<AdminCharactersPage />} />
+            <Route path="world" element={<AdminWorldPage />} />
+            <Route path="economy" element={<AdminEconomyPage />} />
+            <Route path="tools" element={<AdminToolsPage />} />
+          </Route>
         </Routes>
         </Suspense>
       </div>

@@ -24,9 +24,9 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
-function generateToken(userId: string, username: string): string {
+function generateToken(userId: string, username: string, role: string): string {
   const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
-  return jwt.sign({ userId, username }, process.env.JWT_SECRET!, {
+  return jwt.sign({ userId, username, role }, process.env.JWT_SECRET!, {
     expiresIn: expiresIn as string & jwt.SignOptions['expiresIn'],
   });
 }
@@ -57,7 +57,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
       },
     });
 
-    const token = generateToken(user.id, user.username);
+    const token = generateToken(user.id, user.username, user.role);
 
     return res.status(201).json({
       token,
@@ -65,6 +65,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
         id: user.id,
         email: user.email,
         username: user.username,
+        role: user.role,
       },
     });
   } catch (error) {
@@ -90,7 +91,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const token = generateToken(user.id, user.username);
+    const token = generateToken(user.id, user.username, user.role);
 
     return res.json({
       token,
@@ -98,6 +99,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
         id: user.id,
         email: user.email,
         username: user.username,
+        role: user.role,
       },
     });
   } catch (error) {
@@ -115,6 +117,7 @@ router.get('/me', authGuard, async (req: AuthenticatedRequest, res: Response) =>
         id: true,
         email: true,
         username: true,
+        role: true,
         createdAt: true,
       },
     });
