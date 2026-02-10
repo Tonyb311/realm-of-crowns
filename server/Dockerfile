@@ -1,5 +1,7 @@
 FROM node:20-alpine AS builder
 
+RUN apk add --no-cache openssl
+
 WORKDIR /app
 
 # Copy workspace config and lockfile
@@ -29,6 +31,8 @@ RUN cd client && npx vite build
 # --- Production stage ---
 FROM node:20-alpine
 
+RUN apk add --no-cache openssl
+
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -48,10 +52,15 @@ COPY --from=builder /app/shared/dist/ ./shared/dist/
 COPY --from=builder /app/server/dist/ ./server/dist/
 COPY --from=builder /app/client/dist/ ./client/dist/
 
+# Copy tsconfig for tsconfig-paths runtime resolution
+COPY server/tsconfig.build.json ./server/tsconfig.json
+
 # Copy seeds for db:seed support in container
 COPY database/seeds/ ./database/seeds/
 
 ENV NODE_ENV=production
 EXPOSE 4000
 
-CMD ["node", "server/dist/index.js"]
+WORKDIR /app/server
+ENV TS_NODE_PROJECT=tsconfig.json
+CMD ["node", "-r", "tsconfig-paths/register", "dist/index.js"]
