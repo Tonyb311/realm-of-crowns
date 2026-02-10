@@ -1,7 +1,14 @@
 # Realm of Crowns — Races, Regions & Territories
 ## "The World and Its Peoples"
 
-> Updated 2026-02-08 to reflect all 20 implemented races and 68 seeded towns.
+> Updated 2026-02-10 to reflect all 20 implemented races and 68 seeded towns.
+>
+> **Note on race names**: The code uses lore-specific names for several races that
+> differ from their original D&D-inspired design-doc names. The mapping is:
+> Halfling = **Harthfolk**, Tiefling = **Nethkin**, Dragonborn = **Drakonid**,
+> Drow = **Nightborne (Dark Elves)**, Firbolg = **Mosskin**, Warforged = **Forgeborn**,
+> Genasi = **Elementari**. See `shared/src/data/races/` for canonical code identifiers.
+> This document uses both names for clarity.
 
 ---
 
@@ -85,10 +92,10 @@ All 21 regions and 68 towns are seeded in `database/seeds/world.ts` with biome t
 | Verdant Heartlands | Human | Plains | 1-50 | Kingshold, Millhaven, Bridgewater, Ironford, Whitefield |
 | Silverwood Forest | Elf | Forest | 1-50 | Aelindra, Moonhaven, Thornwatch, Willowmere, Eldergrove |
 | Ironvault Mountains | Dwarf | Mountain | 1-50 | Kazad-Vorn, Deepvein, Hammerfall, Gemhollow, Alehearth |
-| The Crossroads | Halfling | Hills | 1-50 | Hearthshire, Greenhollow, Peddler's Rest, Bramblewood, Riverside |
+| The Crossroads | Harthfolk (Halfling) | Hills | 1-50 | Hearthshire, Greenhollow, Peddler's Rest, Bramblewood, Riverside |
 | Ashenfang Wastes | Orc | Badlands | 1-50 | Grakthar, Bonepile, Ironfist Hold, Thornback Camp, Ashen Market |
-| Shadowmere Marshes | Tiefling | Swamp | 1-50 | Nethermire, Boghollow, Mistwatch, Cinderkeep, Whispering Docks |
-| Frozen Reaches | Dragonborn | Tundra | 1-50 | Drakenspire, Frostfang, Emberpeak, Scalehaven, Wyrmrest |
+| Shadowmere Marshes | Nethkin (Tiefling) | Swamp | 1-50 | Nethermire, Boghollow, Mistwatch, Cinderkeep, Whispering Docks |
+| Frozen Reaches | Drakonid (Dragonborn) | Tundra | 1-50 | Drakenspire, Frostfang, Emberpeak, Scalehaven, Wyrmrest |
 | The Suncoast | Neutral (Free Cities) | Coastal | 1-50 | Porto Sole, Coral Bay, Sandrift, Libertad, Beacon's End |
 
 ### Common Race Territories (6) -- 2-3 towns each
@@ -107,10 +114,10 @@ All 21 regions and 68 towns are seeded in `database/seeds/world.ts` with biome t
 | Territory | Race | Biome | Level Range | Towns |
 |-----------|------|-------|-------------|-------|
 | Skypeak Plateaus | Goliath | Mountain | 10-50 | Skyhold, Windbreak |
-| Vel'Naris Underdark | Drow | Underground | 10-50 | Vel'Naris, Gloom Market |
-| Mistwood Glens | Firbolg | Forest | 10-50 | Misthaven, Rootholme |
-| The Foundry | Warforged | Mountain | 10-50 | The Foundry |
-| The Confluence | Genasi | Volcanic | 10-50 | The Confluence, Emberheart |
+| Vel'Naris Underdark | Nightborne (Drow) | Underground | 10-50 | Vel'Naris, Gloom Market |
+| Mistwood Glens | Mosskin (Firbolg) | Forest | 10-50 | Misthaven, Rootholme |
+| The Foundry | Forgeborn (Warforged) | Mountain | 10-50 | The Foundry |
+| The Confluence | Elementari (Genasi) | Volcanic | 10-50 | The Confluence, Emberheart |
 | Ashenmoor | Revenant | Swamp | 15-50 | Ashenmoor |
 | Everywhere | Changeling | -- | -- | (Nomadic -- start anywhere) |
 
@@ -145,15 +152,15 @@ Key: A=Allied, F=Friendly, N=Neutral, D=Distrustful, H=Hostile, BF=Blood Feud
 
 **Core Race Relations (7x7)**
 
-| Race | Humans | Elves | Dwarves | Halflings | Orcs | Tieflings | Dragonborn |
-|------|--------|-------|---------|-----------|------|-----------|------------|
+| Race | Humans | Elves | Dwarves | Harthfolk | Orcs | Nethkin | Drakonid |
+|------|--------|-------|---------|-----------|------|--------|----------|
 | **Humans** | -- | Friendly | Friendly | Allied | Hostile | Distrustful | Neutral |
 | **Elves** | Friendly | -- | Neutral | Friendly | Hostile | Distrustful | Neutral |
 | **Dwarves** | Friendly | Neutral | -- | Friendly | **Blood Feud** | Distrustful | Neutral |
-| **Halflings** | Allied | Friendly | Friendly | -- | Neutral | Neutral | Neutral |
+| **Harthfolk** | Allied | Friendly | Friendly | -- | Neutral | Neutral | Neutral |
 | **Orcs** | Hostile | Hostile | **Blood Feud** | Neutral | -- | Neutral | Wary |
-| **Tieflings** | Distrustful | Distrustful | Distrustful | Neutral | Neutral | -- | Neutral |
-| **Dragonborn** | Neutral | Neutral | Neutral | Neutral | Wary | Neutral | -- |
+| **Nethkin** | Distrustful | Distrustful | Distrustful | Neutral | Neutral | -- | Neutral |
+| **Drakonid** | Neutral | Neutral | Neutral | Neutral | Wary | Neutral | -- |
 
 The full 20x20 matrix is documented in `docs/RACES.md`.
 
@@ -170,13 +177,13 @@ The full 20x20 matrix is documented in `docs/RACES.md`.
 
 ### Relationship Alliances
 
-- **Outcasts stick together**: Tieflings, Drow, Revenants, Changelings are Friendly with each other
-- **Nature allies**: Elves, Firbolgs, Faefolk, Beastfolk tend Allied/Friendly
-- **Craft allies**: Dwarves, Gnomes, Warforged share crafter respect
+- **Outcasts stick together**: Nethkin, Nightborne, Revenants, Changelings are Friendly with each other
+- **Nature allies**: Elves, Mosskin, Faefolk, Beastfolk tend Allied/Friendly
+- **Craft allies**: Dwarves, Gnomes, Forgeborn share crafter respect
 - **Everyone distrusts Changelings**: shapeshifters make people nervous
 - **Everyone is uncomfortable around Revenants**: the undying are unsettling
-- **Halflings are Neutral-to-Friendly with nearly everyone**: traders, not fighters
-- **Dragonborn and Genasi respect each other**: elemental kinship
+- **Harthfolk are Neutral-to-Friendly with nearly everyone**: traders, not fighters
+- **Drakonid and Elementari respect each other**: elemental kinship
 
 Players CAN change racial relations through diplomacy, treaties, and sustained effort.
 
@@ -211,10 +218,10 @@ This creates a meaningful choice: stay home for bonuses, or move where your skil
 | **Verdant Heartlands** (Human) | Grain, Cotton, Livestock | Herbs, Softwood | Ore, Gems, Exotic Materials |
 | **Silverwood** (Elf) | Exotic Wood, Herbs, Arcane Reagents | Softwood, Leather | Ore, Stone, Grain |
 | **Ironvault Mountains** (Dwarf) | All Ores, Gems, Stone, Coal | Limited Grain (mushroom farms) | Wood, Herbs, Fish, Livestock |
-| **Crossroads** (Halfling) | Grain, Herbs, Vegetables | Fish (rivers), Softwood | Ore, Exotic Materials |
+| **Crossroads** (Harthfolk) | Grain, Herbs, Vegetables | Fish (rivers), Softwood | Ore, Exotic Materials |
 | **Ashenfang Wastes** (Orc) | Leather, Bone, Obsidian, War Beasts | Limited Iron, Stone | Wood, Grain, Herbs, Fish |
-| **Shadowmere Marshes** (Tiefling) | Rare Herbs, Reagents, Mushrooms | Fish, Some Wood | Ore, Grain, Livestock |
-| **Frozen Reaches** (Dragonborn) | Mithril, Adamantine, Exotic Furs | Fish (coastal), Stone | Wood, Grain, Most Herbs |
+| **Shadowmere Marshes** (Nethkin) | Rare Herbs, Reagents, Mushrooms | Fish, Some Wood | Ore, Grain, Livestock |
+| **Frozen Reaches** (Drakonid) | Mithril, Adamantine, Exotic Furs | Fish (coastal), Stone | Wood, Grain, Most Herbs |
 | **Suncoast** (Free Cities) | Fish, Salt, Sand/Glass, Gems (limited) | Trade goods (everything passes through) | Ore, Wood, Livestock |
 
 This table IS the economy. Every race needs what another race has. **Trade is survival.**
@@ -226,15 +233,15 @@ This table IS the economy. Every race needs what another race has. **Trade is su
 | Zone | Race | Exclusive Resources |
 |------|------|-------------------|
 | Deep Ocean | Merfolk | Deep Sea Iron, Abyssal Pearl, Living Coral, Sea Silk |
-| Underdark | Drow | Darksteel Ore, Spider Silk, Shadow Crystal |
+| Underdark | Nightborne (Drow) | Darksteel Ore, Spider Silk, Shadow Crystal |
 | Feywild (Lvl 40) | Faefolk | Moonpetal, Dreamweave Silk, Starlight Dust, Fey Iron |
 | Sky Peaks | Goliath | Sky Iron, Cloud Crystal, Giant Eagle Feather |
-| Deepwood Groves | Firbolg | Heartwood, Living Bark, Elder Sap, Spirit Moss |
-| Foundry Core | Warforged | Arcane Conduit, Soul Crystal, Living Metal |
-| Elemental Rifts (x4) | Genasi | Pure Element Essences, Elemental Cores |
+| Deepwood Groves | Mosskin (Firbolg) | Heartwood, Living Bark, Elder Sap, Spirit Moss |
+| Foundry Core | Forgeborn (Warforged) | Arcane Conduit, Soul Crystal, Living Metal |
+| Elemental Rifts (x4) | Elementari (Genasi) | Pure Element Essences, Elemental Cores |
 | Ashenmoor Deadlands | Revenant | Death Blossom, Soul Dust, Grave Iron |
 | Deep Thornwilds | Beastfolk | Spirit Beast Hide, Primal Bone, Thornwood |
-| Dragon Lairs | Dragonborn | Dragon Scale, Dragon Bone, Dragon Blood |
+| Dragon Lairs | Drakonid (Dragonborn) | Dragon Scale, Dragon Bone, Dragon Blood |
 | Deep Mines | Dwarf | Mithril, Adamantine (deep veins) |
 
 Every exotic race has access to something no one else can easily get -- this is their economic leverage and reason to be valued despite being rare and sometimes distrusted.

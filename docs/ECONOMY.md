@@ -1,11 +1,13 @@
 # Realm of Crowns — Economy & Profession System Design
 ## "Everything Connects to Everything"
 
-> Updated 2026-02-08. This document describes the **design** for the economy system.
+> Updated 2026-02-10. This document describes the economy system design.
 > The marketplace, taxes, and basic item/gold systems are implemented in Phase 1.
-> Professions, resources, recipes, and crafting chains are **Phase 2A** (Prompts 09-14)
-> and have not yet been built. The `shared/src/data/professions/`, `resources/`, and
-> `recipes/` directories currently contain only `.gitkeep` placeholder files.
+> Profession definitions are fully implemented in `shared/src/data/professions/` with
+> complete TypeScript data for all 29 professions (7 gathering + 15 crafting + 7 service),
+> including tier unlock descriptions, primary stats, related professions, and town affinities.
+> Resources, recipes, and crafting chain mechanics are **Phase 2A** (Prompts 09-14)
+> and have not yet been built as interactive gameplay systems.
 
 ---
 

@@ -1,9 +1,22 @@
 # Realm of Crowns — Complete Race Compendium
 ## All Playable Races of Aethermere (Expanded Edition)
 
-> Updated 2026-02-08. All 20 races are **fully implemented** in `shared/src/data/races/`
+> Updated 2026-02-10. All 20 races are **fully implemented** in `shared/src/data/races/`
 > with TypeScript definitions (stats, abilities, profession bonuses, sub-races, exclusive zones).
 > See `shared/src/types/race.ts` for interfaces and `shared/src/data/races/index.ts` for the registry.
+>
+> **Important: Code vs. Design-Doc Names**
+> Several races use lore-specific names in the codebase that differ from their original
+> D&D-inspired design-doc names. The canonical mapping is:
+> - Halfling = **Harthfolk** (`shared/src/data/races/core/harthfolk.ts`)
+> - Tiefling = **Nethkin** (`shared/src/data/races/core/nethkin.ts`)
+> - Dragonborn = **Drakonid** (`shared/src/data/races/core/drakonid.ts`)
+> - Drow = **Dark Elves / Nightborne** (`shared/src/data/races/exotic/nightborne.ts`)
+> - Firbolg = **Mosskin** (`shared/src/data/races/exotic/mosskin.ts`)
+> - Warforged = **Forgeborn** (`shared/src/data/races/exotic/forgeborn.ts`)
+> - Genasi = **Elementari** (`shared/src/data/races/exotic/elementari.ts`)
+>
+> This document uses both names for reference. The code files are authoritative.
 
 ---
 
@@ -140,7 +153,7 @@ eternal foes are the Orcs of Ashenfang.
 ### Racial Abilities
 | Level | Ability | Type | Effect |
 |-------|---------|------|--------|
-| 1 | Darkvision | Passive | Access deep mine nodes others can't reach |
+| 1 | Deepsight | Passive | Access deep mine nodes others can't reach |
 | 5 | Dwarven Resilience | Passive | Poison resistance, +3 poison saving throws |
 | 10 | Master Forger | Passive | +3 to Blacksmith/Armorer quality rolls |
 | 15 | Stonecunning | Passive | +25% mining yield, +10% gem discovery |
@@ -165,7 +178,7 @@ eternal foes are the Orcs of Ashenfang.
 
 ---
 
-## 🏕️ HALFLINGS — The Wanderers
+## 🏕️ HARTHFOLK (Halflings) — The Wanderers
 **Homeland:** The Crossroads (5 towns)
 **Government:** Town Councils (direct democracy)
 **Population Rank:** #3 — Spread everywhere, concentrated at Crossroads
@@ -258,7 +271,7 @@ powerful primal magic. Eternal enemies of the Dwarves.
 
 ---
 
-## 😈 TIEFLINGS — The Outcasts
+## 😈 NETHKIN (Tieflings) — The Outcasts
 **Homeland:** Shadowmere Marshes (5 towns)
 **Government:** Shadow Council (ruled by secrets and influence)
 **Population Rank:** #7 (Core) — Small, distrusted, tight-knit
@@ -304,7 +317,7 @@ secrets are currency.
 
 ---
 
-## 🐉 DRAGONBORN — The Ancient Blood
+## 🐉 DRAKONID (Dragonborn) — The Ancient Blood
 **Homeland:** The Frozen Reaches (5 towns)
 **Government:** Clan Elders + Dragon Oracle
 **Population Rank:** #8 (Core) — Rarest of the core races
@@ -740,7 +753,7 @@ gold or politics — they compete for glory.
 
 ---
 
-## 🕷️ DARK ELVES (Drow) — The Underdark Exiles
+## 🕷️ NIGHTBORNE / Dark Elves (Drow) — The Underdark Exiles
 **Homeland:** Vel'Naris (deep underground city beneath Shadowmere)
 **Territory:** 2 underground settlements
 **Government:** Matriarchal Houses (noble houses led by powerful matriarchs compete for dominance)
@@ -796,7 +809,7 @@ command enormous prices.
 
 ---
 
-## 🌿 FIRBOLGS — The Gentle Giants
+## 🌿 MOSSKIN (Firbolgs) — The Gentle Giants
 **Homeland:** The Mistwood Glens (hidden valleys deep within Silverwood's heart)
 **Territory:** 2 hidden settlements
 **Government:** Circle of Druids (nature's will guides all decisions)
@@ -845,7 +858,7 @@ knowledge surpasses even the Elves'.
 
 ---
 
-## ⚙️ WARFORGED — The Constructed
+## ⚙️ FORGEBORN (Warforged) — The Constructed
 **Homeland:** The Foundry (an ancient abandoned construct facility in no-man's land)
 **Territory:** 1 settlement (The Foundry itself)
 **Government:** Logic Collective (decisions made by consensus algorithm)
@@ -890,11 +903,14 @@ of deep tension.
 - Best as: **Smelters, Miners, Blacksmiths, Armorers, Masons, any physical crafting**
 
 ### Special Mechanic: No Food/Rest Required
-Warforged don't need to eat food (saving gold!) or rest at inns. However, 
-they DO need periodic maintenance using Repair Kits (crafted by Blacksmiths 
-using metal + arcane components). Without maintenance, they slowly degrade 
-(-1% stats per day unmaintained). This creates a unique dependency on 
-Blacksmiths and Enchanters.
+Forgeborn don't need to eat food (saving gold!) or rest at inns. However,
+they DO need periodic maintenance using **Maintenance Kits** (crafted by **Smelters**
+using metal + arcane components). Without maintenance, they slowly degrade
+(-1% stats per day unmaintained). This creates a unique dependency on
+Smelters and Enchanters.
+
+**Code note:** The `forgeborn.ts` data file specifies `sustenance.type = 'maintenance_kit'`
+with `craftedBy = 'SMELTER'` and `professionRestriction = ['healer']` (cannot be a Healer).
 
 ### Homeland Towns
 | Town | Type | Specialty |
@@ -903,7 +919,7 @@ Blacksmiths and Enchanters.
 
 ---
 
-## 🔥 GENASI — The Elemental Touched
+## 🔥 ELEMENTARI (Genasi) — The Elemental Touched
 **Homeland:** The Confluence (where elemental planes leak into the mortal world)
 **Territory:** 2 settlements at elemental rifts
 **Government:** Elemental Balance Council (one representative per element)

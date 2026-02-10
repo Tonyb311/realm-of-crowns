@@ -1,6 +1,6 @@
 # Political System
 
-> Auto-generated from implementation code. Last updated: 2026-02-08.
+> Updated from implementation code. Last updated: 2026-02-10.
 
 ## Overview
 
@@ -14,8 +14,12 @@ Realm of Crowns features a full political simulation with **democratic elections
 
 ### Election Types
 
-- **Mayor Elections**: Automatically created for any town that lacks a current mayor.
-- Elections are town-scoped; each town holds independent elections.
+| Type | Scope | Description |
+|------|-------|-------------|
+| `MAYOR` | Town | Automatically created for any town that lacks a current mayor |
+| `RULER` | Kingdom | Kingdom-level ruler elections |
+
+Elections are town-scoped for mayors and kingdom-scoped for rulers. Each entity holds independent elections.
 
 ### Election Phases
 
@@ -30,7 +34,7 @@ Phase transitions are managed by a **cron job** that runs every 5 minutes (`elec
 ### Nomination Rules
 
 - Must be a **resident** of the town (residency check).
-- **Term limits**: Maximum 3 consecutive terms as mayor of the same town.
+- **Term limits**: Maximum **3 consecutive terms** as mayor of the same town (`MAX_CONSECUTIVE_TERMS = 3`).
 - One nomination per character per election.
 
 ### Voting Rules
@@ -49,20 +53,31 @@ When the VOTING phase expires:
 
 ### Impeachment
 
-- **Initiation**: `POST /elections/impeach` - Any town resident can start an impeachment vote against the current mayor.
+- **Initiation**: `POST /elections/impeach` -- Any town resident can start an impeachment vote against the current mayor.
 - **Duration**: 48 hours.
 - **Resolution**: If a majority of voters support removal, the mayor is removed from office and a new election is automatically created.
 - Processed by the election lifecycle cron job.
 
-### Endpoints
+### Psion Perks in Elections
+
+The Psion class has specialization-specific perks that affect election endpoints:
+
+| Psion Spec | Perk Name | Effect |
+|------------|-----------|--------|
+| **Seer** | Election Oracle | When viewing candidates, Seers receive projected vote count data |
+| **Telepath** | Mind Reader | When viewing candidates, Telepaths see a "sincerity score" on each candidate's platform |
+
+These perks are implemented in `server/src/services/psion-perks.ts` and checked via `getPsionSpec()`.
+
+### Election Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/elections/nominate` | Nominate self as candidate |
 | `POST` | `/elections/vote` | Cast a vote |
-| `GET` | `/elections/current/:townId` | Get current/active elections for a town |
-| `GET` | `/elections/results/:electionId` | Get election results with vote counts |
-| `GET` | `/elections/candidates/:electionId` | List candidates |
+| `GET` | `/elections/current` | Get current/active election for the character's town |
+| `GET` | `/elections/results` | Get election results with vote counts (query params) |
+| `GET` | `/elections/candidates/:electionId` | List candidates for an election |
 | `POST` | `/elections/impeach` | Initiate impeachment |
 | `POST` | `/elections/impeach/vote` | Vote on an active impeachment |
 
@@ -89,14 +104,14 @@ Mayors and rulers can propose laws that affect their town or kingdom.
 ### Law Voting
 
 - **Who votes**: Council members + the ruler/mayor.
-- **Threshold**: A law is **auto-activated** when it receives 3+ votes with a simple majority.
-- Laws that don't reach the threshold remain in a pending state.
+- **Threshold**: A law is **auto-activated** when it receives **3+ votes** with a simple majority.
+- Laws that do not reach the threshold remain in a pending state.
 
 ### Tax System
 
-- **Set Tax Rate**: `POST /governance/tax-rate`
+- **Set Tax Rate**: `POST /governance/set-tax`
   - Only the **mayor** can set the town's tax rate.
-  - Range: **0% to 25%** (hard cap).
+  - Range: **0% to 25%** (hard cap enforced server-side).
 - **Effective Tax Rate** (from `law-effects.ts`):
   - Base rate from TownPolicy + modifiers from active tax laws.
   - Final rate clamped to **0-50%** (laws can push it above the 25% direct cap).
@@ -116,9 +131,11 @@ Mayors and rulers can propose laws that affect their town or kingdom.
 | `sheriff` | Mayor | Law enforcement for the town |
 | `council` | Ruler or Mayor | Advisory council members who vote on laws |
 
+- Endpoint: `POST /governance/appoint`
+
 ### Treasury Management
 
-- Endpoint: `POST /governance/treasury/allocate`
+- Endpoint: `POST /governance/allocate-treasury`
 - Mayor can allocate treasury funds to: **buildings**, **military**, **infrastructure**, **events**.
 - Spending is deducted from the town treasury balance.
 
@@ -126,8 +143,8 @@ Mayors and rulers can propose laws that affect their town or kingdom.
 
 | Action | Endpoint | Description |
 |--------|----------|-------------|
-| Declare War | `POST /governance/war/declare` | Ruler declares war on another kingdom |
-| Propose Peace | `POST /governance/peace/propose` | Ruler proposes a peace treaty |
+| Declare War | `POST /governance/declare-war` | Ruler declares war on another kingdom |
+| Propose Peace | `POST /governance/propose-peace` | Ruler proposes a peace treaty |
 
 - **War Status**: Checked via `getWarStatus()` and `getActiveWarsForKingdom()` in `law-effects.ts`.
 - **Trade Impact**: Active wars trigger trade embargoes between the warring kingdoms (`getTradeRestrictions()`).
@@ -148,14 +165,16 @@ Mayors and rulers can propose laws that affect their town or kingdom.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/governance/laws/propose` | Propose a new law |
-| `POST` | `/governance/laws/vote` | Vote on a proposed law |
-| `POST` | `/governance/tax-rate` | Set town tax rate (mayor only) |
-| `POST` | `/governance/appoint` | Appoint an official |
-| `POST` | `/governance/treasury/allocate` | Allocate treasury funds |
-| `POST` | `/governance/war/declare` | Declare war |
-| `POST` | `/governance/peace/propose` | Propose peace |
+| `POST` | `/governance/propose-law` | Propose a new law |
+| `POST` | `/governance/vote-law` | Vote on a proposed law |
+| `POST` | `/governance/set-tax` | Set town tax rate (mayor only, 0-25%) |
+| `POST` | `/governance/appoint` | Appoint an official (sheriff or council) |
+| `POST` | `/governance/allocate-treasury` | Allocate treasury funds |
+| `POST` | `/governance/declare-war` | Declare war |
+| `POST` | `/governance/propose-peace` | Propose peace |
 | `GET` | `/governance/kingdom/:kingdomId` | Get kingdom info |
+| `GET` | `/governance/laws` | List laws (with query param filters) |
+| `GET` | `/governance/town-info/:townId` | Get town governance info |
 
 ---
 
