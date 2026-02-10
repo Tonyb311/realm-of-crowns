@@ -1,0 +1,69 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: roc-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: roc_user
+      POSTGRES_PASSWORD: roc_password
+      POSTGRES_DB: realm_of_crowns
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U roc_user -d realm_of_crowns"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: roc-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: roc-server
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://roc_user:roc_password@postgres:5432/realm_of_crowns
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: change-this-to-a-random-secret-in-production
+      JWT_EXPIRES_IN: 7d
+      PORT: "4000"
+      NODE_ENV: production
+      CLIENT_URL: http://localhost
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    container_name: roc-client
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+
+volumes:
+  postgres_data:
+  redis_data:

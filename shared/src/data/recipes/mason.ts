@@ -1,0 +1,51 @@
+import { RecipeDefinition } from './types';
+
+export const MASON_RECIPES: RecipeDefinition[] = [
+  {
+    recipeId: 'cut-stone',
+    name: 'Cut Stone',
+    professionRequired: 'MASON',
+    levelRequired: 1,
+    inputs: [{ itemName: 'Raw Stone', quantity: 3 }],
+    outputs: [{ itemName: 'Cut Stone', quantity: 2 }],
+    craftTime: 25,
+    xpReward: 10,
+    tier: 1,
+  },
+  {
+    recipeId: 'fire-bricks',
+    name: 'Fire Bricks',
+    professionRequired: 'MASON',
+    levelRequired: 10,
+    inputs: [
+      { itemName: 'Raw Stone', quantity: 5 },
+      { itemName: 'Coal', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Bricks', quantity: 4 }],
+    craftTime: 35,
+    xpReward: 15,
+    tier: 1,
+  },
+  {
+    recipeId: 'polish-marble',
+    name: 'Polish Marble',
+    professionRequired: 'MASON',
+    levelRequired: 30,
+    inputs: [{ itemName: 'Marble', quantity: 3 }],
+    outputs: [{ itemName: 'Polished Marble', quantity: 1 }],
+    craftTime: 60,
+    xpReward: 35,
+    tier: 3,
+  },
+  {
+    recipeId: 'cut-sandstone',
+    name: 'Cut Sandstone',
+    professionRequired: 'MASON',
+    levelRequired: 5,
+    inputs: [{ itemName: 'Sandstone', quantity: 3 }],
+    outputs: [{ itemName: 'Cut Sandstone', quantity: 2 }],
+    craftTime: 20,
+    xpReward: 10,
+    tier: 1,
+  },
+];

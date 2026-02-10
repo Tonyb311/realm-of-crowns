@@ -1,0 +1,23 @@
+{
+  "name": "@realm-of-crowns/database",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "migrate": "prisma migrate dev",
+    "generate": "prisma generate",
+    "seed": "tsx seeds/index.ts",
+    "studio": "prisma studio",
+    "reset": "prisma migrate reset"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.15.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.15.0",
+    "tsx": "^4.15.0",
+    "typescript": "^5.4.0"
+  },
+  "prisma": {
+    "seed": "tsx seeds/index.ts"
+  }
+}

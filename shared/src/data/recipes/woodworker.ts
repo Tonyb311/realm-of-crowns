@@ -1,0 +1,48 @@
+import { RecipeDefinition } from './types';
+
+export const WOODWORKER_RECIPES: RecipeDefinition[] = [
+  {
+    recipeId: 'mill-softwood',
+    name: 'Mill Softwood Planks',
+    professionRequired: 'WOODWORKER',
+    levelRequired: 1,
+    inputs: [{ itemName: 'Softwood', quantity: 2 }],
+    outputs: [{ itemName: 'Softwood Planks', quantity: 4 }],
+    craftTime: 15,
+    xpReward: 8,
+    tier: 1,
+  },
+  {
+    recipeId: 'mill-hardwood',
+    name: 'Mill Hardwood Planks',
+    professionRequired: 'WOODWORKER',
+    levelRequired: 10,
+    inputs: [{ itemName: 'Hardwood', quantity: 2 }],
+    outputs: [{ itemName: 'Hardwood Planks', quantity: 3 }],
+    craftTime: 25,
+    xpReward: 15,
+    tier: 1,
+  },
+  {
+    recipeId: 'shape-beams',
+    name: 'Shape Beams',
+    professionRequired: 'WOODWORKER',
+    levelRequired: 15,
+    inputs: [{ itemName: 'Hardwood', quantity: 3 }],
+    outputs: [{ itemName: 'Beams', quantity: 2 }],
+    craftTime: 35,
+    xpReward: 20,
+    tier: 2,
+  },
+  {
+    recipeId: 'mill-exotic',
+    name: 'Mill Exotic Planks',
+    professionRequired: 'WOODWORKER',
+    levelRequired: 40,
+    inputs: [{ itemName: 'Exotic Wood', quantity: 2 }],
+    outputs: [{ itemName: 'Exotic Planks', quantity: 2 }],
+    craftTime: 60,
+    xpReward: 45,
+    tier: 3,
+  },
+];

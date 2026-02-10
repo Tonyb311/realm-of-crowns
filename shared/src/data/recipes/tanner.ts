@@ -1,0 +1,75 @@
+import { RecipeDefinition } from './types';
+
+export const TANNER_RECIPES: RecipeDefinition[] = [
+  {
+    recipeId: 'tan-soft-leather',
+    name: 'Tan Soft Leather',
+    professionRequired: 'TANNER',
+    levelRequired: 1,
+    inputs: [
+      { itemName: 'Raw Leather', quantity: 2 },
+      { itemName: 'Bark', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Soft Leather', quantity: 1 }],
+    craftTime: 20,
+    xpReward: 10,
+    tier: 1,
+  },
+  {
+    recipeId: 'tan-hard-leather',
+    name: 'Tan Hard Leather',
+    professionRequired: 'TANNER',
+    levelRequired: 15,
+    inputs: [
+      { itemName: 'Raw Leather', quantity: 3 },
+      { itemName: 'Bark', quantity: 2 },
+      { itemName: 'Salt', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Hard Leather', quantity: 1 }],
+    craftTime: 40,
+    xpReward: 20,
+    tier: 2,
+  },
+  {
+    recipeId: 'tan-fur-leather',
+    name: 'Tan Fur Leather',
+    professionRequired: 'TANNER',
+    levelRequired: 10,
+    inputs: [
+      { itemName: 'Pelts', quantity: 2 },
+      { itemName: 'Bark', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Fur Leather', quantity: 1 }],
+    craftTime: 30,
+    xpReward: 15,
+    tier: 1,
+  },
+  {
+    recipeId: 'tan-exotic-leather',
+    name: 'Tan Exotic Leather',
+    professionRequired: 'TANNER',
+    levelRequired: 50,
+    inputs: [
+      { itemName: 'Exotic Hide', quantity: 2 },
+      { itemName: 'Rare Herbs', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Exotic Leather', quantity: 1 }],
+    craftTime: 75,
+    xpReward: 55,
+    tier: 4,
+  },
+  {
+    recipeId: 'tan-dragonscale',
+    name: 'Tan Dragonscale Leather',
+    professionRequired: 'TANNER',
+    levelRequired: 80,
+    inputs: [
+      { itemName: 'Dragon Hide', quantity: 1 },
+      { itemName: 'Arcane Reagents', quantity: 3 },
+    ],
+    outputs: [{ itemName: 'Dragonscale Leather', quantity: 1 }],
+    craftTime: 120,
+    xpReward: 120,
+    tier: 5,
+  },
+];

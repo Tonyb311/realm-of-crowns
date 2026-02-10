@@ -1,0 +1,48 @@
+import { RecipeDefinition } from './types';
+
+export const TAILOR_RECIPES: RecipeDefinition[] = [
+  {
+    recipeId: 'spin-cloth',
+    name: 'Spin Cloth',
+    professionRequired: 'TAILOR',
+    levelRequired: 1,
+    inputs: [{ itemName: 'Cotton', quantity: 3 }],
+    outputs: [{ itemName: 'Cloth', quantity: 2 }],
+    craftTime: 20,
+    xpReward: 10,
+    tier: 1,
+  },
+  {
+    recipeId: 'weave-linen',
+    name: 'Weave Linen',
+    professionRequired: 'TAILOR',
+    levelRequired: 5,
+    inputs: [{ itemName: 'Flax', quantity: 3 }],
+    outputs: [{ itemName: 'Linen', quantity: 2 }],
+    craftTime: 25,
+    xpReward: 12,
+    tier: 1,
+  },
+  {
+    recipeId: 'weave-wool',
+    name: 'Weave Wool',
+    professionRequired: 'TAILOR',
+    levelRequired: 10,
+    inputs: [{ itemName: 'Wool', quantity: 2 }],
+    outputs: [{ itemName: 'Woven Wool', quantity: 1 }],
+    craftTime: 30,
+    xpReward: 15,
+    tier: 1,
+  },
+  {
+    recipeId: 'weave-silk',
+    name: 'Weave Silk',
+    professionRequired: 'TAILOR',
+    levelRequired: 40,
+    inputs: [{ itemName: 'Silk Thread', quantity: 3 }],
+    outputs: [{ itemName: 'Silk Cloth', quantity: 1 }],
+    craftTime: 60,
+    xpReward: 45,
+    tier: 3,
+  },
+];

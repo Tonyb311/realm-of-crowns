@@ -1,0 +1,24 @@
+# Development overrides: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Only starts postgres and redis -- run the app locally with `npm run dev`
+# for hot-reload. Use this alongside the root docker-compose.yml.
+
+services:
+  # Override server to not build/run (use local dev server instead)
+  server:
+    profiles:
+      - full  # Only starts if you explicitly pass --profile full
+
+  # Override client to not build/run (use local vite dev server instead)
+  client:
+    profiles:
+      - full  # Only starts if you explicitly pass --profile full
+
+  # Postgres and redis start normally from docker-compose.yml
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
