@@ -252,15 +252,16 @@ router.get('/recipes', authGuard, async (req: AuthenticatedRequest, res: Respons
     for (const recipe of recipes) {
       const ingredients = recipe.ingredients as Array<{ itemTemplateId: string; quantity: number }>;
       for (const ing of ingredients) {
-        allTemplateIds.add(ing.itemTemplateId);
+        if (ing.itemTemplateId) allTemplateIds.add(ing.itemTemplateId);
       }
-      allTemplateIds.add(recipe.result);
+      if (recipe.result) allTemplateIds.add(recipe.result);
     }
 
-    const templates = await prisma.itemTemplate.findMany({
-      where: { id: { in: [...allTemplateIds] } },
+    const templateIdArray = [...allTemplateIds].filter(Boolean);
+    const templates = templateIdArray.length > 0 ? await prisma.itemTemplate.findMany({
+      where: { id: { in: templateIdArray } },
       select: { id: true, name: true, type: true, rarity: true },
-    });
+    }) : [];
     const templateMap = new Map(templates.map(t => [t.id, t]));
 
     let result = recipes.map(recipe => {
