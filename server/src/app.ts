@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
 import router from './routes';
 
 export const app = express();
@@ -48,7 +49,18 @@ app.get('/api', (_req, res) => {
 // API routes
 app.use('/api', router);
 
-// 404 handler
+// Serve client static files in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../../client/dist')));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
+      return next();
+    }
+    res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
+  });
+}
+
+// 404 handler for API routes
 app.use((_req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
