@@ -61,5 +61,8 @@ COPY database/seeds/ ./database/seeds/
 ENV NODE_ENV=production
 EXPOSE 4000
 
+RUN addgroup --system app && adduser --system --ingroup app app
+USER app
+
 WORKDIR /app/server
 CMD ["node", "-r", "tsconfig-paths/register", "dist/index.js"]

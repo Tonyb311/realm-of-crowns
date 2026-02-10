@@ -3,6 +3,10 @@ import { prisma } from '../lib/prisma';
 
 const MAX_CONTENT_LENGTH = 2000;
 
+function sanitizeText(text: string): string {
+  return text.replace(/<[^>]*>/g, '').trim();
+}
+
 interface ChatSendPayload {
   channelType: string;
   content: string;
@@ -98,11 +102,14 @@ export function registerChatHandlers(io: Server, socket: Socket) {
         }
       }
 
+      // Sanitize content before saving
+      const sanitizedContent = sanitizeText(content);
+
       // Save to database
       const message = await prisma.message.create({
         data: {
           channelType: channelType as any,
-          content,
+          content: sanitizedContent,
           senderId: character.id,
           recipientId: channelType === 'WHISPER' ? recipientId : null,
           guildId: channelType === 'GUILD' ? guildId : null,
@@ -168,14 +175,16 @@ export function registerChatHandlers(io: Server, socket: Socket) {
   // Set character identity on socket
   socket.on('chat:identify', async (data: { characterId: string }) => {
     if (data.characterId) {
-      const character = await prisma.character.findUnique({
-        where: { id: data.characterId },
+      const character = await prisma.character.findFirst({
+        where: { id: data.characterId, userId: socket.data.userId },
         select: { id: true, name: true },
       });
-      if (character) {
-        socket.data.characterId = character.id;
-        socket.data.characterName = character.name;
+      if (!character) {
+        socket.emit('error', { message: 'Character not found or not owned by you' });
+        return;
       }
+      socket.data.characterId = character.id;
+      socket.data.characterName = character.name;
     }
   });
 }

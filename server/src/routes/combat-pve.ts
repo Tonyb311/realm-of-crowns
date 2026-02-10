@@ -16,7 +16,6 @@ import type {
   CombatState,
   CombatAction,
   WeaponInfo,
-  SpellInfo,
   ItemInfo,
 } from '@shared/types/combat';
 import { getModifier } from '@shared/types/combat';
@@ -76,31 +75,7 @@ const combatActionSchema = z.object({
     resourceId: z.string().optional(),
     spellSlotLevel: z.number().int().min(1).max(9).optional(),
   }),
-  // Contextual data the client sends alongside the action
-  weapon: z.object({
-    id: z.string(),
-    name: z.string(),
-    diceCount: z.number().int().min(1),
-    diceSides: z.number().int().min(1),
-    damageModifierStat: z.enum(['str', 'dex']),
-    attackModifierStat: z.enum(['str', 'dex']),
-    bonusDamage: z.number().int(),
-    bonusAttack: z.number().int(),
-  }).optional(),
-  spell: z.object({
-    id: z.string(),
-    name: z.string(),
-    level: z.number().int().min(1),
-    castingStat: z.enum(['int', 'wis', 'cha']),
-    type: z.enum(['damage', 'heal', 'status', 'damage_status']),
-    diceCount: z.number().int().min(1),
-    diceSides: z.number().int().min(1),
-    modifier: z.number().int(),
-    statusEffect: z.string().optional(),
-    statusDuration: z.number().int().optional(),
-    requiresSave: z.boolean(),
-    saveType: z.enum(['str', 'dex', 'con', 'int', 'wis', 'cha']).optional(),
-  }).optional(),
+  // P0 #3 FIX: weapon and spell removed from client input — looked up server-side from equipped items.
   item: z.object({
     id: z.string(),
     name: z.string(),
@@ -158,6 +133,42 @@ function buildMonsterWeapon(monsterStats: Record<string, unknown>): WeaponInfo {
     attackModifierStat: 'str',
     bonusDamage: damage.bonus,
     bonusAttack: (monsterStats.attack as number) ?? 0,
+  };
+}
+
+// ---- P0 #3: Server-side weapon lookup ----
+
+const UNARMED_WEAPON: WeaponInfo = {
+  id: 'unarmed',
+  name: 'Unarmed Strike',
+  diceCount: 1,
+  diceSides: 4,
+  damageModifierStat: 'str',
+  attackModifierStat: 'str',
+  bonusDamage: 0,
+  bonusAttack: 0,
+};
+
+async function getEquippedWeapon(characterId: string): Promise<WeaponInfo> {
+  const equip = await prisma.characterEquipment.findUnique({
+    where: { characterId_slot: { characterId, slot: 'MAIN_HAND' } },
+    include: { item: { include: { template: true } } },
+  });
+
+  if (!equip || equip.item.template.type !== 'WEAPON') {
+    return UNARMED_WEAPON;
+  }
+
+  const stats = equip.item.template.stats as Record<string, unknown>;
+  return {
+    id: equip.item.id,
+    name: equip.item.template.name,
+    diceCount: (typeof stats.diceCount === 'number') ? stats.diceCount : 1,
+    diceSides: (typeof stats.diceSides === 'number') ? stats.diceSides : 4,
+    damageModifierStat: stats.damageModifierStat === 'dex' ? 'dex' : 'str',
+    attackModifierStat: stats.attackModifierStat === 'dex' ? 'dex' : 'str',
+    bonusDamage: (typeof stats.bonusDamage === 'number') ? stats.bonusDamage : 0,
+    bonusAttack: (typeof stats.bonusAttack === 'number') ? stats.bonusAttack : 0,
   };
 }
 
@@ -316,7 +327,7 @@ router.post('/start', authGuard, validate(startPveSchema), async (req: Authentic
 // POST /api/combat/pve/action
 router.post('/action', authGuard, validate(combatActionSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { sessionId, action, weapon, spell, item } = req.body;
+    const { sessionId, action, item } = req.body;
 
     const state = await getCombatState(sessionId);
     if (!state) {
@@ -378,11 +389,14 @@ router.post('/action', authGuard, validate(combatActionSchema), async (req: Auth
       spellSlotLevel: action.spellSlotLevel,
     };
 
+    // P0 #3 FIX: Look up weapon from DB instead of trusting client
+    const equippedWeapon = await getEquippedWeapon(character.id);
+
     const currentState = (await getCombatState(sessionId))!;
     const newState = resolveTurn(
       currentState,
       combatAction,
-      { weapon, spell, item }
+      { weapon: equippedWeapon, item }
     );
 
     await setCombatState(sessionId, newState);
@@ -516,85 +530,112 @@ function resolveMonsterTurn(state: CombatState): CombatState {
 // ---- Combat Completion ----
 
 async function finishCombat(sessionId: string, state: CombatState, playerId: string): Promise<void> {
-  // Update session status in DB
-  await prisma.combatSession.update({
-    where: { id: sessionId },
-    data: {
-      status: 'completed',
-      endedAt: new Date(),
-      log: state.log as object[],
-    },
-  });
-
   const playerCombatant = state.combatants.find((c) => c.id === playerId);
 
-  if (playerCombatant && !playerCombatant.isAlive) {
-    // Player died — apply death penalties
-    const character = await prisma.character.findUnique({ where: { id: playerId } });
-    if (character) {
-      const penalty = calculateDeathPenalty(
-        playerId,
-        character.level,
-        character.gold,
-        character.currentTownId ?? '',
-      );
+  await prisma.$transaction(async (tx) => {
+    // Update session status in DB
+    await tx.combatSession.update({
+      where: { id: sessionId },
+      data: {
+        status: 'completed',
+        endedAt: new Date(),
+        log: state.log as object[],
+      },
+    });
 
-      await prisma.character.update({
-        where: { id: playerId },
-        data: {
-          health: character.maxHealth, // respawn at full HP
-          gold: Math.max(0, character.gold - penalty.goldLost),
-          xp: Math.max(0, character.xp - penalty.xpLost),
-        },
-      });
+    if (playerCombatant && !playerCombatant.isAlive) {
+      // Player died — apply death penalties
+      const character = await tx.character.findUnique({ where: { id: playerId } });
+      if (character) {
+        const penalty = calculateDeathPenalty(
+          playerId,
+          character.level,
+          character.gold,
+          character.currentTownId ?? '',
+        );
 
-      // Damage equipment durability
-      const equipment = await prisma.characterEquipment.findMany({
-        where: { characterId: playerId },
-        include: { item: true },
-      });
-      for (const equip of equipment) {
-        await prisma.item.update({
-          where: { id: equip.itemId },
+        await tx.character.update({
+          where: { id: playerId },
           data: {
-            currentDurability: Math.max(0, equip.item.currentDurability - penalty.durabilityDamage),
+            health: character.maxHealth, // respawn at full HP
+            gold: Math.max(0, character.gold - penalty.goldLost),
+            xp: Math.max(0, character.xp - penalty.xpLost),
           },
         });
-      }
 
-      // Grant survive XP (consolation prize for engaging in combat)
-      await prisma.character.update({
-        where: { id: playerId },
-        data: { xp: { increment: ACTION_XP.PVE_SURVIVE } },
-      });
+        // Damage equipment durability
+        const equipment = await tx.characterEquipment.findMany({
+          where: { characterId: playerId },
+          include: { item: true },
+        });
+        for (const equip of equipment) {
+          await tx.item.update({
+            where: { id: equip.itemId },
+            data: {
+              currentDurability: Math.max(0, equip.item.currentDurability - penalty.durabilityDamage),
+            },
+          });
+        }
+
+        // Grant survive XP (consolation prize for engaging in combat)
+        await tx.character.update({
+          where: { id: playerId },
+          data: { xp: { increment: ACTION_XP.PVE_SURVIVE } },
+        });
+      }
+    } else {
+      // Player won — award XP and loot
+      const monsterCombatant = state.combatants.find((c) => c.entityType === 'monster');
+      if (monsterCombatant) {
+        const monsterId = monsterCombatant.id.replace('monster-', '');
+        const monster = await tx.monster.findUnique({ where: { id: monsterId } });
+
+        if (monster) {
+          const xpReward = ACTION_XP.PVE_WIN_PER_MONSTER_LEVEL * monster.level;
+          const lootTable = monster.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number }[];
+
+          let totalGold = 0;
+          for (const entry of lootTable) {
+            if (Math.random() <= entry.dropChance) {
+              totalGold += entry.gold * (Math.floor(Math.random() * (entry.maxQty - entry.minQty + 1)) + entry.minQty);
+            }
+          }
+
+          await tx.character.update({
+            where: { id: playerId },
+            data: {
+              xp: { increment: xpReward },
+              gold: { increment: totalGold },
+              health: playerCombatant?.currentHp ?? 0,
+            },
+          });
+        }
+      }
     }
-  } else {
-    // Player won — award XP and loot
+
+    // Update participant HP
+    for (const c of state.combatants) {
+      if (c.entityType === 'character') {
+        const participant = await tx.combatParticipant.findFirst({
+          where: { sessionId, characterId: c.id },
+        });
+        if (participant) {
+          await tx.combatParticipant.update({
+            where: { id: participant.id },
+            data: { currentHp: c.currentHp },
+          });
+        }
+      }
+    }
+  });
+
+  // Post-transaction side effects (not DB writes, safe outside transaction)
+  if (playerCombatant && playerCombatant.isAlive) {
     const monsterCombatant = state.combatants.find((c) => c.entityType === 'monster');
     if (monsterCombatant) {
       const monsterId = monsterCombatant.id.replace('monster-', '');
       const monster = await prisma.monster.findUnique({ where: { id: monsterId } });
-
       if (monster) {
-        const xpReward = ACTION_XP.PVE_WIN_PER_MONSTER_LEVEL * monster.level;
-        const lootTable = monster.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number }[];
-
-        let totalGold = 0;
-        for (const entry of lootTable) {
-          if (Math.random() <= entry.dropChance) {
-            totalGold += entry.gold * (Math.floor(Math.random() * (entry.maxQty - entry.minQty + 1)) + entry.minQty);
-          }
-        }
-
-        await prisma.character.update({
-          where: { id: playerId },
-          data: {
-            xp: { increment: xpReward },
-            gold: { increment: totalGold },
-            health: playerCombatant?.currentHp ?? 0,
-          },
-        });
-
         // Trigger quest progress for KILL objectives
         onMonsterKill(playerId, monster.name, 1);
 
@@ -610,21 +651,6 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
           },
         });
         await checkAchievements(playerId, 'combat_pve', { wins: pveWins });
-      }
-    }
-  }
-
-  // Update participant HP
-  for (const c of state.combatants) {
-    if (c.entityType === 'character') {
-      const participant = await prisma.combatParticipant.findFirst({
-        where: { sessionId, characterId: c.id },
-      });
-      if (participant) {
-        await prisma.combatParticipant.update({
-          where: { id: participant.id },
-          data: { currentHp: c.currentHp },
-        });
       }
     }
   }

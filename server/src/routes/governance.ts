@@ -147,13 +147,38 @@ router.post('/vote-law', authGuard, validate(voteLawSchema), async (req: Authent
       return res.status(403).json({ error: 'Only council members and the ruler can vote on laws' });
     }
 
+    // Check for existing vote (prevent vote stuffing)
+    const existingVote = await prisma.lawVote.findUnique({
+      where: { lawId_characterId: { lawId, characterId: character.id } },
+    });
+
+    if (existingVote) {
+      return res.status(400).json({ error: 'You have already voted on this law' });
+    }
+
+    // Record the vote
+    await prisma.lawVote.create({
+      data: {
+        lawId,
+        characterId: character.id,
+        vote: vote === 'for' ? 'FOR' : 'AGAINST',
+      },
+    });
+
+    // Recalculate vote counts from LawVote records
+    const votesFor = await prisma.lawVote.count({
+      where: { lawId, vote: 'FOR' },
+    });
+    const votesAgainst = await prisma.lawVote.count({
+      where: { lawId, vote: 'AGAINST' },
+    });
+
     const updatedLaw = await prisma.law.update({
       where: { id: lawId },
       data: {
         status: 'voting',
-        ...(vote === 'for'
-          ? { votesFor: { increment: 1 } }
-          : { votesAgainst: { increment: 1 } }),
+        votesFor,
+        votesAgainst,
       },
     });
 
@@ -203,6 +228,13 @@ router.post('/set-tax', authGuard, validate(setTaxSchema), async (req: Authentic
     }
 
     const policy = await prisma.townPolicy.upsert({
+      where: { townId },
+      update: { taxRate },
+      create: { townId, taxRate },
+    });
+
+    // P1 #35: Sync tax rate to TownTreasury so all readers see consistent value
+    await prisma.townTreasury.upsert({
       where: { townId },
       update: { taxRate },
       create: { townId, taxRate },

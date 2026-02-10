@@ -51,6 +51,28 @@ router.get('/', authGuard, async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
+// --- PATCH /api/notifications/read-all ---
+// NOTE: Must be registered BEFORE /:id/read so Express doesn't match "read-all" as :id
+
+router.patch('/read-all', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = await getCharacter(req.user!.userId);
+    if (!character) {
+      return res.status(404).json({ error: 'No character found' });
+    }
+
+    const result = await prisma.notification.updateMany({
+      where: { characterId: character.id, read: false },
+      data: { read: true },
+    });
+
+    return res.json({ updated: result.count });
+  } catch (error) {
+    console.error('Mark all notifications read error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // --- PATCH /api/notifications/:id/read ---
 
 router.patch('/:id/read', authGuard, async (req: AuthenticatedRequest, res: Response) => {
@@ -80,27 +102,6 @@ router.patch('/:id/read', authGuard, async (req: AuthenticatedRequest, res: Resp
     return res.json({ notification: updated });
   } catch (error) {
     console.error('Mark notification read error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// --- PATCH /api/notifications/read-all ---
-
-router.patch('/read-all', authGuard, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
-
-    const result = await prisma.notification.updateMany({
-      where: { characterId: character.id, read: false },
-      data: { read: true },
-    });
-
-    return res.json({ updated: result.count });
-  } catch (error) {
-    console.error('Mark all notifications read error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

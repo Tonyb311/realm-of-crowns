@@ -4,15 +4,15 @@ services:
     container_name: roc-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: roc_user
-      POSTGRES_PASSWORD: roc_password
-      POSTGRES_DB: realm_of_crowns
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U roc_user -d realm_of_crowns"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -37,14 +37,15 @@ services:
       dockerfile: server/Dockerfile
     container_name: roc-server
     restart: unless-stopped
+    env_file: .env
     environment:
-      DATABASE_URL: postgresql://roc_user:roc_password@postgres:5432/realm_of_crowns
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379
-      JWT_SECRET: change-this-to-a-random-secret-in-production
-      JWT_EXPIRES_IN: 7d
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       PORT: "4000"
       NODE_ENV: production
-      CLIENT_URL: http://localhost
+      CLIENT_URL: ${CLIENT_URL:-http://localhost}
     ports:
       - "4000:4000"
     depends_on:

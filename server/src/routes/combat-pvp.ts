@@ -13,7 +13,6 @@ import type {
   CombatAction,
   CombatState,
   WeaponInfo,
-  SpellInfo,
   ItemInfo,
   CharacterStats,
 } from '@shared/types/combat';
@@ -85,34 +84,7 @@ const actionSchema = z.object({
     resourceId: z.string().optional(),
     spellSlotLevel: z.number().int().min(1).max(5).optional(),
   }),
-  weapon: z
-    .object({
-      id: z.string(),
-      name: z.string(),
-      diceCount: z.number().int().min(1),
-      diceSides: z.number().int().min(1),
-      damageModifierStat: z.enum(['str', 'dex']),
-      attackModifierStat: z.enum(['str', 'dex']),
-      bonusDamage: z.number().int(),
-      bonusAttack: z.number().int(),
-    })
-    .optional(),
-  spell: z
-    .object({
-      id: z.string(),
-      name: z.string(),
-      level: z.number().int().min(1),
-      castingStat: z.enum(['int', 'wis', 'cha']),
-      type: z.enum(['damage', 'heal', 'status', 'damage_status']),
-      diceCount: z.number().int().min(1),
-      diceSides: z.number().int().min(1),
-      modifier: z.number().int(),
-      statusEffect: z.string().optional(),
-      statusDuration: z.number().int().optional(),
-      requiresSave: z.boolean(),
-      saveType: z.enum(['str', 'dex', 'con', 'int', 'wis', 'cha']).optional(),
-    })
-    .optional(),
+  // P0 #3 FIX: weapon and spell removed from client input — looked up server-side from equipped items.
   item: z
     .object({
       id: z.string(),
@@ -126,6 +98,42 @@ const actionSchema = z.object({
     })
     .optional(),
 });
+
+// ---- P0 #3: Server-side weapon lookup ----
+
+const UNARMED_WEAPON: WeaponInfo = {
+  id: 'unarmed',
+  name: 'Unarmed Strike',
+  diceCount: 1,
+  diceSides: 4,
+  damageModifierStat: 'str',
+  attackModifierStat: 'str',
+  bonusDamage: 0,
+  bonusAttack: 0,
+};
+
+async function getEquippedWeapon(characterId: string): Promise<WeaponInfo> {
+  const equip = await prisma.characterEquipment.findUnique({
+    where: { characterId_slot: { characterId, slot: 'MAIN_HAND' } },
+    include: { item: { include: { template: true } } },
+  });
+
+  if (!equip || equip.item.template.type !== 'WEAPON') {
+    return UNARMED_WEAPON;
+  }
+
+  const stats = equip.item.template.stats as Record<string, unknown>;
+  return {
+    id: equip.item.id,
+    name: equip.item.template.name,
+    diceCount: (typeof stats.diceCount === 'number') ? stats.diceCount : 1,
+    diceSides: (typeof stats.diceSides === 'number') ? stats.diceSides : 4,
+    damageModifierStat: stats.damageModifierStat === 'dex' ? 'dex' : 'str',
+    attackModifierStat: stats.attackModifierStat === 'dex' ? 'dex' : 'str',
+    bonusDamage: (typeof stats.bonusDamage === 'number') ? stats.bonusDamage : 0,
+    bonusAttack: (typeof stats.bonusAttack === 'number') ? stats.bonusAttack : 0,
+  };
+}
 
 // ---- Helpers ----
 
@@ -477,7 +485,7 @@ router.post(
   validate(actionSchema),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { sessionId, action, weapon, spell, item } = req.body;
+      const { sessionId, action, item } = req.body;
       const character = await getCharacterForUser(req.user!.userId);
 
       if (!character) {
@@ -533,10 +541,12 @@ router.post(
         spellSlotLevel: action.spellSlotLevel,
       };
 
+      // P0 #3 FIX: Look up weapon from DB instead of trusting client
+      const equippedWeapon = await getEquippedWeapon(character.id);
+
       // Resolve the turn
       combatState = resolveTurn(combatState, combatAction, {
-        weapon: weapon as WeaponInfo | undefined,
-        spell: spell as SpellInfo | undefined,
+        weapon: equippedWeapon,
         item: item as ItemInfo | undefined,
       });
 
@@ -943,31 +953,46 @@ async function finalizePvpMatch(
   await deletePvpCombatState(sessionId);
 }
 
-// ---- Spar cooldown tracking (in-memory) ----
+// ---- Spar cooldown tracking (Redis with in-memory fallback) ----
+// P1 #18 FIX: Moved spar cooldowns from in-memory Map to Redis SET with TTL
 
-const sparCooldowns = new Map<string, number>();
-const SPAR_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+const SPAR_COOLDOWN_SECONDS = 5 * 60; // 5 minutes
 const SPAR_MAX_LEVEL_DIFF = 10;
+
+// In-memory fallback for when Redis is unavailable
+const sparCooldownsFallback = new Map<string, number>();
 
 function getSparCooldownKey(id1: string, id2: string): string {
   const sorted = [id1, id2].sort();
-  return `${sorted[0]}:${sorted[1]}`;
+  return `spar:cooldown:${sorted[0]}:${sorted[1]}`;
 }
 
-function isOnSparCooldown(id1: string, id2: string): boolean {
+async function isOnSparCooldown(id1: string, id2: string): Promise<boolean> {
   const key = getSparCooldownKey(id1, id2);
-  const expiry = sparCooldowns.get(key);
+  if (redis) {
+    try {
+      const exists = await redis.exists(key);
+      return exists === 1;
+    } catch { /* fall through to local */ }
+  }
+  const expiry = sparCooldownsFallback.get(key);
   if (!expiry) return false;
   if (Date.now() > expiry) {
-    sparCooldowns.delete(key);
+    sparCooldownsFallback.delete(key);
     return false;
   }
   return true;
 }
 
-function setSparCooldown(id1: string, id2: string): void {
+async function setSparCooldown(id1: string, id2: string): Promise<void> {
   const key = getSparCooldownKey(id1, id2);
-  sparCooldowns.set(key, Date.now() + SPAR_COOLDOWN_MS);
+  if (redis) {
+    try {
+      await redis.set(key, '1', 'EX', SPAR_COOLDOWN_SECONDS);
+      return;
+    } catch { /* fall through to local */ }
+  }
+  sparCooldownsFallback.set(key, Date.now() + SPAR_COOLDOWN_SECONDS * 1000);
 }
 
 // ---- Spar Zod Schemas ----
@@ -1035,7 +1060,7 @@ router.post(
       }
 
       // Spar cooldown check
-      if (isOnSparCooldown(challenger.id, target.id)) {
+      if (await isOnSparCooldown(challenger.id, target.id)) {
         return res.status(400).json({
           error: 'Must wait 5 minutes before sparring with this player again',
         });
@@ -1278,7 +1303,7 @@ router.post(
   validate(sparActionSchema),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { sessionId, action, weapon, spell, item } = req.body;
+      const { sessionId, action, item } = req.body;
       const character = await getCharacterForUser(req.user!.userId);
 
       if (!character) {
@@ -1331,10 +1356,12 @@ router.post(
         spellSlotLevel: action.spellSlotLevel,
       };
 
+      // P0 #3 FIX: Look up weapon from DB instead of trusting client
+      const equippedWeapon = await getEquippedWeapon(character.id);
+
       // Resolve the turn
       combatState = resolveTurn(combatState, combatAction, {
-        weapon: weapon as WeaponInfo | undefined,
-        spell: spell as SpellInfo | undefined,
+        weapon: equippedWeapon,
         item: item as ItemInfo | undefined,
       });
 
@@ -1562,7 +1589,7 @@ async function finalizeSparMatch(
   ]);
 
   // Set 5-minute cooldown between these two players
-  setSparCooldown(winner.id, loser.id);
+  await setSparCooldown(winner.id, loser.id);
 
   // Notify both participants (NO XP, NO achievements, NO leaderboard)
   emitCombatResult([winner.id, loser.id], {

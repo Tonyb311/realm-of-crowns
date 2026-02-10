@@ -2,6 +2,8 @@ import 'dotenv/config';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { app } from './app';
+import { redis } from './lib/redis';
+import { prisma } from './lib/prisma';
 import { startElectionLifecycle } from './jobs/election-lifecycle';
 import { startTaxCollectionJob } from './jobs/tax-collection';
 import { startLawExpirationJob } from './jobs/law-expiration';
@@ -61,6 +63,12 @@ io.on('connection', (socket) => {
   });
 });
 
+// P0 #13: Validate required secrets at startup
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'CHANGE_ME_IN_PRODUCTION') {
+  console.error('FATAL: JWT_SECRET is missing or set to placeholder. Set a cryptographically random value.');
+  process.exit(1);
+}
+
 httpServer.listen(PORT, () => {
   console.log(`
   ⚔️  ═══════════════════════════════════════ ⚔️
@@ -86,6 +94,29 @@ httpServer.listen(PORT, () => {
   // DEPRECATED: Forgeborn maintenance now handled by daily tick in food-system.ts
   // startForgebornMaintenanceJob();
 });
+
+// P0 #11: Graceful shutdown handlers
+const gracefulShutdown = async (signal: string) => {
+  console.log(`Received ${signal}. Starting graceful shutdown...`);
+  const timeout = setTimeout(() => {
+    console.error('Shutdown timed out. Force exiting.');
+    process.exit(1);
+  }, 10000);
+  try {
+    httpServer.close();
+    io.close();
+    if (redis) await redis.quit();
+    await prisma.$disconnect();
+    clearTimeout(timeout);
+    console.log('Graceful shutdown complete.');
+    process.exit(0);
+  } catch (err) {
+    console.error('Error during shutdown:', err);
+    process.exit(1);
+  }
+};
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Helper to emit governance events from route handlers
 export function emitGovernanceEvent(

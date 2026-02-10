@@ -608,14 +608,19 @@ router.post('/collect', authGuard, async (req: AuthenticatedRequest, res: Respon
       return res.status(500).json({ error: 'Result item template not found' });
     }
 
-    // Transaction: mark complete, create item, add to inventory
+    // Transaction: atomically mark collected, create item, add to inventory
+    // P0 #5 FIX: Use updateMany with status guard to prevent double-collect race condition
     const xpGain = Math.floor(activeCraft.recipe.xpReward * ACTION_XP.WORK_CRAFT_MULTIPLIER);
 
     const craftedItem = await prisma.$transaction(async (tx) => {
-      await tx.craftingAction.update({
-        where: { id: activeCraft.id },
-        data: { status: 'COMPLETED', quality },
+      const updated = await tx.craftingAction.updateMany({
+        where: { id: activeCraft.id, status: 'COMPLETED' },
+        data: { status: 'COLLECTED', quality },
       });
+
+      if (updated.count === 0) {
+        throw new Error('ALREADY_COLLECTED');
+      }
 
       const item = await tx.item.create({
         data: {
@@ -658,9 +663,9 @@ router.post('/collect', authGuard, async (req: AuthenticatedRequest, res: Respon
 
     await checkLevelUp(character.id);
 
-    // Check crafting achievements
+    // Check crafting achievements (count both COMPLETED and COLLECTED statuses)
     const itemsCrafted = await prisma.craftingAction.count({
-      where: { characterId: character.id, status: 'COMPLETED' },
+      where: { characterId: character.id, status: { in: ['COMPLETED', 'COLLECTED'] } },
     });
     await checkAchievements(character.id, 'crafting', {
       itemsCrafted,
@@ -695,7 +700,11 @@ router.post('/collect', authGuard, async (req: AuthenticatedRequest, res: Respon
       },
       remainingInQueue,
     });
-  } catch (error) {
+  } catch (error: any) {
+    // P0 #5 FIX: Return 409 if already collected (race condition guard)
+    if (error?.message === 'ALREADY_COLLECTED') {
+      return res.status(409).json({ error: 'Crafting action already collected' });
+    }
     console.error('Collect crafting error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

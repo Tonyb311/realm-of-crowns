@@ -21,44 +21,33 @@ export function startTaxCollectionJob() {
 }
 
 async function collectTaxes() {
-  // Get all town treasuries
+  // P0 #6 FIX: Marketplace tax is collected at purchase time in market.ts. Do not double-collect here.
+  // This cron job now only updates lastCollectedAt timestamps so the treasury tracking stays current.
+  // If future non-marketplace tax types are added (e.g. property tax, income tax), collect them here.
+
   const treasuries = await prisma.townTreasury.findMany();
 
   for (const treasury of treasuries) {
-    // Find transactions in this town since last collection
-    const transactions = await prisma.tradeTransaction.findMany({
+    // Check if there were any transactions since last collection (for timestamp tracking)
+    const transactionCount = await prisma.tradeTransaction.count({
       where: {
         townId: treasury.townId,
         timestamp: { gt: treasury.lastCollectedAt },
       },
     });
 
-    if (transactions.length === 0) continue;
+    if (transactionCount === 0) continue;
 
-    // Calculate tax owed on each transaction
-    const policy = await prisma.townPolicy.findUnique({
-      where: { townId: treasury.townId },
-    });
-    const taxRate = policy?.taxRate ?? treasury.taxRate;
-
-    let totalTax = 0;
-    for (const tx of transactions) {
-      totalTax += Math.floor(tx.price * tx.quantity * taxRate);
-    }
-
-    if (totalTax <= 0) continue;
-
-    // Update treasury balance and last collected timestamp
+    // Update lastCollectedAt only — tax was already deposited at purchase time in market.ts
     await prisma.townTreasury.update({
       where: { id: treasury.id },
       data: {
-        balance: { increment: totalTax },
         lastCollectedAt: new Date(),
       },
     });
 
     console.log(
-      `[TaxCollection] Collected ${totalTax} gold from ${transactions.length} transactions in town ${treasury.townId}`
+      `[TaxCollection] Updated timestamp for town ${treasury.townId} (${transactionCount} transactions already taxed at purchase)`
     );
   }
 }

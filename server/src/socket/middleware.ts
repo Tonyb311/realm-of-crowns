@@ -44,7 +44,7 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 30;
 
 export function socketRateLimitMiddleware(socket: Socket, next: (err?: Error) => void) {
-  const key = socket.id;
+  const key = socket.data.userId || socket.id;
   const now = Date.now();
 
   let entry = rateLimitMap.get(key);

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { redis } from '../lib/redis';
+import { AuthenticatedRequest } from '../types/express';
 
 /**
  * Cache middleware factory.
@@ -10,7 +11,7 @@ export function cache(ttlSeconds: number) {
   return async (req: Request, res: Response, next: NextFunction) => {
     if (!redis) return next();
 
-    const key = `cache:${req.originalUrl}`;
+    const key = `cache:${(req as AuthenticatedRequest).user?.userId || 'anon'}:${req.originalUrl}`;
 
     try {
       const cached = await redis.get(key);

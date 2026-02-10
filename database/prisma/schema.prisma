@@ -223,6 +223,7 @@ enum ActionStatus {
   PENDING
   IN_PROGRESS
   COMPLETED
+  COLLECTED
   FAILED
   CANCELLED
 }
@@ -481,6 +482,7 @@ model Character {
   loansGiven            Loan[]                @relation("LoanBanker")
   loansTaken            Loan[]                @relation("LoanBorrower")
   serviceReputations    ServiceReputation[]
+  lawVotes              LawVote[]
 
   @@index([userId])
   @@index([currentTownId])
@@ -517,6 +519,7 @@ model Inventory {
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   item        Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
+  @@unique([characterId, itemId])
   @@index([characterId])
   @@map("inventories")
 }
@@ -1207,10 +1210,23 @@ model Law {
 
   kingdom     Kingdom   @relation(fields: [kingdomId], references: [id], onDelete: Cascade)
   enactedBy   Character @relation(fields: [enactedById], references: [id])
+  lawVotes    LawVote[]
 
   @@index([kingdomId])
   @@index([status])
   @@map("laws")
+}
+
+model LawVote {
+  id          String    @id @default(uuid())
+  lawId       String    @map("law_id")
+  characterId String    @map("character_id")
+  vote        String    // 'FOR' or 'AGAINST'
+  createdAt   DateTime  @default(now()) @map("created_at")
+  law         Law       @relation(fields: [lawId], references: [id])
+  character   Character @relation(fields: [characterId], references: [id])
+  @@unique([lawId, characterId])
+  @@map("law_votes")
 }
 
 model Kingdom {

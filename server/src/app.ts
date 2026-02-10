@@ -7,6 +7,9 @@ import router from './routes';
 
 export const app = express();
 
+// P1 #34: Trust proxy for correct client IP behind reverse proxy (needed for rate limiting)
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(helmet());
 app.use(cors({
