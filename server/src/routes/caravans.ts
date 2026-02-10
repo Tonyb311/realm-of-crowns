@@ -58,7 +58,7 @@ const resolveAmbushSchema = z.object({
 // ---------------------------------------------------------------------------
 
 async function getCharacter(userId: string) {
-  return prisma.character.findFirst({ where: { userId } });
+  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
 }
 
 async function getMerchantLevel(characterId: string): Promise<number> {
@@ -604,6 +604,11 @@ router.post('/:caravanId/collect', authGuard, async (req: AuthenticatedRequest, 
 
     if (!caravan.arrivesAt || caravan.arrivesAt > new Date()) {
       return res.status(400).json({ error: 'Caravan has not arrived yet' });
+    }
+
+    // P1 #32 FIX: Verify character is in the destination town before collecting
+    if (character.currentTownId !== caravan.toTownId) {
+      return res.status(400).json({ error: 'You must be in the destination town to collect goods' });
     }
 
     const { cargo, meta } = parseMeta(caravan);

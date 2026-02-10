@@ -16,13 +16,14 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor — handle auth errors
+// P1 #23: 401 interceptor clears token and lets React Router redirect naturally
+// instead of window.location.href which destroys all in-memory state.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('roc_token');
-      window.location.href = '/login';
+      window.dispatchEvent(new Event('roc:auth-expired'));
     }
     return Promise.reject(error);
   }

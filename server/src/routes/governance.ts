@@ -57,7 +57,7 @@ const proposePeaceSchema = z.object({
 // --- Helpers ---
 
 async function getCharacter(userId: string) {
-  return prisma.character.findFirst({ where: { userId } });
+  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
 }
 
 // POST /propose-law
@@ -291,6 +291,8 @@ router.get('/town-info/:townId', authGuard, async (req: AuthenticatedRequest, re
       include: {
         mayor: { select: { id: true, name: true, level: true } },
         treasury: true,
+        // P1 #25: Include region to derive kingdomId
+        region: { select: { kingdomId: true } },
         townPolicy: {
           include: {
             sheriff: { select: { id: true, name: true, level: true } },
@@ -315,6 +317,8 @@ router.get('/town-info/:townId', authGuard, async (req: AuthenticatedRequest, re
         population: town.population,
         treasury: town.treasury?.balance ?? 0,
         taxRate: town.treasury?.taxRate ?? 0.10,
+        // P1 #25: Provide kingdomId from region so client doesn't hardcode it
+        kingdomId: town.region?.kingdomId ?? null,
         mayor: town.mayor,
         policy: town.townPolicy,
         council: town.councilMembers.map(cm => ({

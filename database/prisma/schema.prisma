@@ -375,114 +375,114 @@ model User {
 }
 
 model Character {
-  id                    String                  @id @default(uuid())
-  userId                String                  @map("user_id")
-  name                  String
-  race                  Race
-  raceTier              RaceTier                @default(CORE) @map("race_tier")
-  dragonBloodline       DragonBloodline?        @map("dragon_bloodline")
-  beastClan             BeastClan?              @map("beast_clan")
-  elementalType         ElementalType?          @map("elemental_type")
-  subRace               Json?                   @map("sub_race")
-  unlockedAbilities     Json                    @default("[]") @map("unlocked_abilities")
-  currentAppearanceRace Race?                   @map("current_appearance_race")
-  class                 String?
-  specialization        String?
-  level                 Int                     @default(1)
-  xp                    Int                     @default(0)
-  unspentStatPoints     Int                     @default(0) @map("unspent_stat_points")
-  unspentSkillPoints    Int                     @default(0) @map("unspent_skill_points")
-  title                 String?
-  stats                 Json                    @default("{}")
-  currentTownId         String?                 @map("current_town_id")
-  health                Int                     @default(100)
-  maxHealth             Int                     @default(100) @map("max_health")
-  mana                  Int                     @default(50)
-  maxMana               Int                     @default(50) @map("max_mana")
-  gold                  Int                     @default(0)
+  id                     String           @id @default(uuid())
+  userId                 String           @map("user_id")
+  name                   String
+  race                   Race
+  raceTier               RaceTier         @default(CORE) @map("race_tier")
+  dragonBloodline        DragonBloodline? @map("dragon_bloodline")
+  beastClan              BeastClan?       @map("beast_clan")
+  elementalType          ElementalType?   @map("elemental_type")
+  subRace                Json?            @map("sub_race")
+  unlockedAbilities      Json             @default("[]") @map("unlocked_abilities")
+  currentAppearanceRace  Race?            @map("current_appearance_race")
+  class                  String?
+  specialization         String?
+  level                  Int              @default(1)
+  xp                     Int              @default(0)
+  unspentStatPoints      Int              @default(0) @map("unspent_stat_points")
+  unspentSkillPoints     Int              @default(0) @map("unspent_skill_points")
+  title                  String?
+  stats                  Json             @default("{}")
+  currentTownId          String?          @map("current_town_id")
+  health                 Int              @default(100)
+  maxHealth              Int              @default(100) @map("max_health")
+  mana                   Int              @default(50)
+  maxMana                Int              @default(50) @map("max_mana")
+  gold                   Int              @default(0)
   // Combat presets
-  retreatHpThreshold    Int                     @default(25) @map("retreat_hp_threshold")
-  retreatOppositionRatio Float                  @default(3.0) @map("retreat_opposition_ratio")
-  retreatRoundLimit     Int?                    @map("retreat_round_limit")
-  neverRetreat          Boolean                 @default(false) @map("never_retreat")
-  combatStance          CombatStance            @default(BALANCED) @map("combat_stance")
-  abilityPriorityQueue  Json?                   @map("ability_priority_queue")
-  itemUsageRules        Json?                   @map("item_usage_rules")
-  pvpLootBehavior       String                  @default("GOLD_ONLY") @map("pvp_loot_behavior")
+  retreatHpThreshold     Int              @default(25) @map("retreat_hp_threshold")
+  retreatOppositionRatio Float            @default(3.0) @map("retreat_opposition_ratio")
+  retreatRoundLimit      Int?             @map("retreat_round_limit")
+  neverRetreat           Boolean          @default(false) @map("never_retreat")
+  combatStance           CombatStance     @default(BALANCED) @map("combat_stance")
+  abilityPriorityQueue   Json?            @map("ability_priority_queue")
+  itemUsageRules         Json?            @map("item_usage_rules")
+  pvpLootBehavior        String           @default("GOLD_ONLY") @map("pvp_loot_behavior")
 
   // Food & hunger
-  hungerState           HungerState             @default(FED) @map("hunger_state")
-  daysSinceLastMeal     Int                     @default(0) @map("days_since_last_meal")
-  foodPriority          FoodPriority            @default(EXPIRING_FIRST) @map("food_priority")
-  preferredFoodId       String?                 @map("preferred_food_id")
-  wellRested            Boolean                 @default(false) @map("well_rested")
-  soulFadeStage         Int                     @default(0) @map("soul_fade_stage")
-  structuralDecayStage  Int                     @default(0) @map("structural_decay_stage")
+  hungerState          HungerState  @default(FED) @map("hunger_state")
+  daysSinceLastMeal    Int          @default(0) @map("days_since_last_meal")
+  foodPriority         FoodPriority @default(EXPIRING_FIRST) @map("food_priority")
+  preferredFoodId      String?      @map("preferred_food_id")
+  wellRested           Boolean      @default(false) @map("well_rested")
+  soulFadeStage        Int          @default(0) @map("soul_fade_stage")
+  structuralDecayStage Int          @default(0) @map("structural_decay_stage")
 
   // Node-based position
-  currentNodeId         String?                 @map("current_node_id")
+  currentNodeId String? @map("current_node_id")
 
-  createdAt             DateTime                @default(now()) @map("created_at")
-  updatedAt             DateTime                @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  user                  User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  currentTown           Town?                   @relation("CharacterCurrentTown", fields: [currentTownId], references: [id])
-  preferredFood         Item?                   @relation("CharacterPreferredFood", fields: [preferredFoodId], references: [id], onDelete: SetNull)
-  currentNode           Node?                   @relation(fields: [currentNodeId], references: [id], onDelete: SetNull)
+  user          User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentTown   Town? @relation("CharacterCurrentTown", fields: [currentTownId], references: [id])
+  preferredFood Item? @relation("CharacterPreferredFood", fields: [preferredFoodId], references: [id], onDelete: SetNull)
+  currentNode   Node? @relation(fields: [currentNodeId], references: [id], onDelete: SetNull)
 
-  equipment             CharacterEquipment[]
-  inventory             Inventory[]
-  professions           PlayerProfession[]
-  professionXp          ProfessionXP[]
-  travelActions         TravelAction[]
-  craftingActions        CraftingAction[]
-  gatheringActions      GatheringAction[]
-  buildings             Building[]
-  marketListings        MarketListing[]
-  purchaseTransactions  TradeTransaction[]      @relation("Buyer")
-  saleTransactions      TradeTransaction[]      @relation("Seller")
-  caravans              Caravan[]
-  electionVotes         ElectionVote[]
-  guildMemberships      GuildMember[]
-  questProgress         QuestProgress[]
-  combatParticipations  CombatParticipant[]
-  sentMessages          Message[]               @relation("MessageSender")
-  receivedMessages      Message[]               @relation("MessageRecipient")
-  notifications         Notification[]
-  racialCooldowns       RacialAbilityCooldown[]
-  changelingDisguise    ChangelingDisguise?
-  forgebornMaintenance  ForgebornMaintenance?
-  appearances           CharacterAppearance[]
-  playerAchievements    PlayerAchievement[]
-  characterAbilities    CharacterAbility[]
-  craftedItems          Item[]                  @relation("ItemCrafter")
-  ownedItems            Item[]                  @relation("ItemOwner")
-  mayorOfTowns          Town[]                  @relation("TownMayor")
-  ruledKingdom          Kingdom?                @relation("KingdomRuler")
-  ledGuild              Guild?                  @relation("GuildLeader")
-  wonElections          Election[]              @relation("ElectionWinner")
-  electionCandidacies   ElectionCandidate[]
-  impeachmentsAgainst   Impeachment[]           @relation("ImpeachmentTarget")
-  impeachmentVotes      ImpeachmentVote[]
-  diplomacyInitiated    DiplomacyEvent[]        @relation("DiplomacyInitiator")
-  diplomacyReceived     DiplomacyEvent[]        @relation("DiplomacyTarget")
-  treatiesProposed      Treaty[]                @relation("TreatyProposedBy")
-  enactedLaws           Law[]
-  councilMemberships    CouncilMember[]         @relation("CouncilCharacter")
-  appointedCouncilMembers CouncilMember[]       @relation("CouncilAppointer")
-  sheriffOfTowns        TownPolicy[]            @relation("TownSheriff")
-  friendRequestsSent    Friend[]                @relation("FriendRequester")
-  friendRequestsReceived Friend[]               @relation("FriendRecipient")
-  petitionsCreated      Petition[]              @relation("PetitionCreator")
-  petitionSignatures    PetitionSignature[]     @relation("PetitionSigner")
-  dailyActions          DailyAction[]
-  dailyReports          DailyReport[]
-  servicesProvided      ServiceAction[]       @relation("ServiceProvider")
-  servicesReceived      ServiceAction[]       @relation("ServiceClient")
-  loansGiven            Loan[]                @relation("LoanBanker")
-  loansTaken            Loan[]                @relation("LoanBorrower")
-  serviceReputations    ServiceReputation[]
-  lawVotes              LawVote[]
+  equipment               CharacterEquipment[]
+  inventory               Inventory[]
+  professions             PlayerProfession[]
+  professionXp            ProfessionXP[]
+  travelActions           TravelAction[]
+  craftingActions         CraftingAction[]
+  gatheringActions        GatheringAction[]
+  buildings               Building[]
+  marketListings          MarketListing[]
+  purchaseTransactions    TradeTransaction[]      @relation("Buyer")
+  saleTransactions        TradeTransaction[]      @relation("Seller")
+  caravans                Caravan[]
+  electionVotes           ElectionVote[]
+  guildMemberships        GuildMember[]
+  questProgress           QuestProgress[]
+  combatParticipations    CombatParticipant[]
+  sentMessages            Message[]               @relation("MessageSender")
+  receivedMessages        Message[]               @relation("MessageRecipient")
+  notifications           Notification[]
+  racialCooldowns         RacialAbilityCooldown[]
+  changelingDisguise      ChangelingDisguise?
+  forgebornMaintenance    ForgebornMaintenance?
+  appearances             CharacterAppearance[]
+  playerAchievements      PlayerAchievement[]
+  characterAbilities      CharacterAbility[]
+  craftedItems            Item[]                  @relation("ItemCrafter")
+  ownedItems              Item[]                  @relation("ItemOwner")
+  mayorOfTowns            Town[]                  @relation("TownMayor")
+  ruledKingdom            Kingdom?                @relation("KingdomRuler")
+  ledGuild                Guild?                  @relation("GuildLeader")
+  wonElections            Election[]              @relation("ElectionWinner")
+  electionCandidacies     ElectionCandidate[]
+  impeachmentsAgainst     Impeachment[]           @relation("ImpeachmentTarget")
+  impeachmentVotes        ImpeachmentVote[]
+  diplomacyInitiated      DiplomacyEvent[]        @relation("DiplomacyInitiator")
+  diplomacyReceived       DiplomacyEvent[]        @relation("DiplomacyTarget")
+  treatiesProposed        Treaty[]                @relation("TreatyProposedBy")
+  enactedLaws             Law[]
+  councilMemberships      CouncilMember[]         @relation("CouncilCharacter")
+  appointedCouncilMembers CouncilMember[]         @relation("CouncilAppointer")
+  sheriffOfTowns          TownPolicy[]            @relation("TownSheriff")
+  friendRequestsSent      Friend[]                @relation("FriendRequester")
+  friendRequestsReceived  Friend[]                @relation("FriendRecipient")
+  petitionsCreated        Petition[]              @relation("PetitionCreator")
+  petitionSignatures      PetitionSignature[]     @relation("PetitionSigner")
+  dailyActions            DailyAction[]
+  dailyReports            DailyReport[]
+  servicesProvided        ServiceAction[]         @relation("ServiceProvider")
+  servicesReceived        ServiceAction[]         @relation("ServiceClient")
+  loansGiven              Loan[]                  @relation("LoanBanker")
+  loansTaken              Loan[]                  @relation("LoanBorrower")
+  serviceReputations      ServiceReputation[]
+  lawVotes                LawVote[]
 
   @@index([userId])
   @@index([currentTownId])
@@ -499,8 +499,8 @@ model CharacterEquipment {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  item        Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  item      Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@unique([characterId, slot])
   @@index([characterId])
@@ -508,16 +508,16 @@ model CharacterEquipment {
 }
 
 model Inventory {
-  id          String    @id @default(uuid())
-  characterId String    @map("character_id")
-  itemId      String    @map("item_id")
-  quantity    Int       @default(1)
+  id           String   @id @default(uuid())
+  characterId  String   @map("character_id")
+  itemId       String   @map("item_id")
+  quantity     Int      @default(1)
   slotPosition Int?     @map("slot_position")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  item        Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  item      Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@unique([characterId, itemId])
   @@index([characterId])
@@ -543,7 +543,7 @@ model PlayerProfession {
   createdAt      DateTime       @default(now()) @map("created_at")
   updatedAt      DateTime       @updatedAt @map("updated_at")
 
-  character      Character      @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@unique([characterId, professionType])
   @@index([characterId])
@@ -559,7 +559,7 @@ model ProfessionXP {
   source         String
   timestamp      DateTime       @default(now())
 
-  character      Character      @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@index([characterId, professionType])
   @@map("profession_xp")
@@ -568,61 +568,64 @@ model ProfessionXP {
 // ---- World Geography ----
 
 model Region {
-  id            String         @id @default(uuid())
-  name          String         @unique
-  description   String?
-  biome         BiomeType
-  levelMin      Int            @default(1) @map("level_min")
-  levelMax      Int            @default(50) @map("level_max")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  biome       BiomeType
+  levelMin    Int       @default(1) @map("level_min")
+  levelMax    Int       @default(50) @map("level_max")
+  kingdomId   String?   @map("kingdom_id") // P1 #16 / MAJOR-01: links region to governing kingdom
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  towns         Town[]
+  kingdom        Kingdom?        @relation("KingdomRegions", fields: [kingdomId], references: [id], onDelete: SetNull)
+  towns          Town[]
   exclusiveZones ExclusiveZone[]
-  quests        Quest[]
-  monsters      Monster[]
-  bordersA      RegionBorder[] @relation("RegionBorderA")
-  bordersB      RegionBorder[] @relation("RegionBorderB")
-  nodes         Node[]
+  quests         Quest[]
+  monsters       Monster[]
+  bordersA       RegionBorder[]  @relation("RegionBorderA")
+  bordersB       RegionBorder[]  @relation("RegionBorderB")
+  nodes          Node[]
 
+  @@index([kingdomId])
   @@map("regions")
 }
 
 model Town {
-  id           String        @id @default(uuid())
-  name         String        @unique
-  regionId     String        @map("region_id")
-  population   Int           @default(0)
-  biome        BiomeType
-  description  String?
-  mayorId      String?       @map("mayor_id")
-  features     Json          @default("[]")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+  id          String    @id @default(uuid())
+  name        String    @unique
+  regionId    String    @map("region_id")
+  population  Int       @default(0)
+  biome       BiomeType
+  description String?
+  mayorId     String?   @map("mayor_id")
+  features    Json      @default("[]")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  region       Region        @relation(fields: [regionId], references: [id])
-  mayor        Character?    @relation("TownMayor", fields: [mayorId], references: [id], onDelete: SetNull)
+  region Region     @relation(fields: [regionId], references: [id])
+  mayor  Character? @relation("TownMayor", fields: [mayorId], references: [id], onDelete: SetNull)
 
-  characters   Character[]   @relation("CharacterCurrentTown")
-  resources    TownResource[]
-  routesFrom   TravelRoute[] @relation("RouteFrom")
-  routesTo     TravelRoute[] @relation("RouteTo")
-  buildings    Building[]
-  marketListings MarketListing[]
+  characters        Character[]        @relation("CharacterCurrentTown")
+  resources         TownResource[]
+  routesFrom        TravelRoute[]      @relation("RouteFrom")
+  routesTo          TravelRoute[]      @relation("RouteTo")
+  buildings         Building[]
+  marketListings    MarketListing[]
   tradeTransactions TradeTransaction[]
-  priceHistories PriceHistory[]
-  caravansFrom Caravan[]     @relation("CaravanFrom")
-  caravansTo   Caravan[]     @relation("CaravanTo")
-  elections    Election[]
-  impeachments Impeachment[]  @relation("TownImpeachments")
-  treasury     TownTreasury?
-  gatheringActions GatheringAction[]
-  combatSessions CombatSession[]
-  messages     Message[]     @relation("TownMessages")
-  townPolicy   TownPolicy?
-  councilMembers CouncilMember[] @relation("TownCouncil")
-  npcs           Npc[]
-  gateNode       Node?          @relation("TownGateNode")
+  priceHistories    PriceHistory[]
+  caravansFrom      Caravan[]          @relation("CaravanFrom")
+  caravansTo        Caravan[]          @relation("CaravanTo")
+  elections         Election[]
+  impeachments      Impeachment[]      @relation("TownImpeachments")
+  treasury          TownTreasury?
+  gatheringActions  GatheringAction[]
+  combatSessions    CombatSession[]
+  messages          Message[]          @relation("TownMessages")
+  townPolicy        TownPolicy?
+  councilMembers    CouncilMember[]    @relation("TownCouncil")
+  npcs              Npc[]
+  gateNode          Node?              @relation("TownGateNode")
 
   @@index([regionId])
   @@index([mayorId])
@@ -638,7 +641,7 @@ model TownResource {
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  town         Town         @relation(fields: [townId], references: [id], onDelete: Cascade)
+  town Town @relation(fields: [townId], references: [id], onDelete: Cascade)
 
   @@unique([townId, resourceType])
   @@index([townId])
@@ -646,19 +649,19 @@ model TownResource {
 }
 
 model TravelRoute {
-  id          String       @id @default(uuid())
-  fromTownId  String       @map("from_town_id")
-  toTownId    String       @map("to_town_id")
+  id          String   @id @default(uuid())
+  fromTownId  String   @map("from_town_id")
+  toTownId    String   @map("to_town_id")
   distance    Int
-  dangerLevel Int          @default(1) @map("danger_level")
+  dangerLevel Int      @default(1) @map("danger_level")
   terrain     String
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  fromTown    Town         @relation("RouteFrom", fields: [fromTownId], references: [id], onDelete: Cascade)
-  toTown      Town         @relation("RouteTo", fields: [toTownId], references: [id], onDelete: Cascade)
+  fromTown      Town           @relation("RouteFrom", fields: [fromTownId], references: [id], onDelete: Cascade)
+  toTown        Town           @relation("RouteTo", fields: [toTownId], references: [id], onDelete: Cascade)
   travelActions TravelAction[]
-  nodes       Node[]
+  nodes         Node[]
 
   @@unique([fromTownId, toTownId])
   @@index([fromTownId])
@@ -678,10 +681,10 @@ model TravelAction {
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
-  character   Character    @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  route       TravelRoute  @relation(fields: [routeId], references: [id], onDelete: Cascade)
-  fromNode    Node?        @relation("TravelFromNode", fields: [fromNodeId], references: [id], onDelete: SetNull)
-  toNode      Node?        @relation("TravelToNode", fields: [toNodeId], references: [id], onDelete: SetNull)
+  character Character   @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  route     TravelRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  fromNode  Node?       @relation("TravelFromNode", fields: [fromNodeId], references: [id], onDelete: SetNull)
+  toNode    Node?       @relation("TravelToNode", fields: [toNodeId], references: [id], onDelete: SetNull)
 
   @@index([characterId])
   @@index([status])
@@ -689,14 +692,14 @@ model TravelAction {
 }
 
 model RegionBorder {
-  id        String  @id @default(uuid())
-  regionId1 String  @map("region_id_1")
-  regionId2 String  @map("region_id_2")
-  type      String  @default("land")
+  id        String   @id @default(uuid())
+  regionId1 String   @map("region_id_1")
+  regionId2 String   @map("region_id_2")
+  type      String   @default("land")
   createdAt DateTime @default(now()) @map("created_at")
 
-  region1   Region  @relation("RegionBorderA", fields: [regionId1], references: [id], onDelete: Cascade)
-  region2   Region  @relation("RegionBorderB", fields: [regionId2], references: [id], onDelete: Cascade)
+  region1 Region @relation("RegionBorderA", fields: [regionId1], references: [id], onDelete: Cascade)
+  region2 Region @relation("RegionBorderB", fields: [regionId2], references: [id], onDelete: Cascade)
 
   @@unique([regionId1, regionId2])
   @@map("region_borders")
@@ -705,13 +708,13 @@ model RegionBorder {
 // ---- Racial Relations & Diplomacy ----
 
 model RacialRelation {
-  id       String         @id @default(uuid())
-  race1    Race
-  race2    Race
-  status   RelationStatus @default(NEUTRAL)
-  modifier Int            @default(0)
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
+  id        String         @id @default(uuid())
+  race1     Race
+  race2     Race
+  status    RelationStatus @default(NEUTRAL)
+  modifier  Int            @default(0)
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
 
   @@unique([race1, race2])
   @@map("racial_relations")
@@ -726,8 +729,8 @@ model DiplomacyEvent {
   timestamp   DateTime            @default(now())
   createdAt   DateTime            @default(now()) @map("created_at")
 
-  initiator   Character           @relation("DiplomacyInitiator", fields: [initiatorId], references: [id])
-  target      Character           @relation("DiplomacyTarget", fields: [targetId], references: [id])
+  initiator Character @relation("DiplomacyInitiator", fields: [initiatorId], references: [id])
+  target    Character @relation("DiplomacyTarget", fields: [targetId], references: [id])
 
   @@index([initiatorId])
   @@index([targetId])
@@ -747,8 +750,8 @@ model War {
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
 
-  attackerKingdom   Kingdom   @relation("WarAttacker", fields: [attackerKingdomId], references: [id])
-  defenderKingdom   Kingdom   @relation("WarDefender", fields: [defenderKingdomId], references: [id])
+  attackerKingdom Kingdom @relation("WarAttacker", fields: [attackerKingdomId], references: [id])
+  defenderKingdom Kingdom @relation("WarDefender", fields: [defenderKingdomId], references: [id])
 
   @@index([attackerKingdomId])
   @@index([defenderKingdomId])
@@ -770,23 +773,23 @@ enum TreatyStatus {
 }
 
 model Treaty {
-  id             String       @id @default(uuid())
-  type           TreatyType
-  proposerKingdomId String    @map("proposer_kingdom_id")
-  receiverKingdomId String    @map("receiver_kingdom_id")
-  proposedById   String       @map("proposed_by_id")
-  status         TreatyStatus @default(PENDING)
-  goldCost       Int          @default(0) @map("gold_cost")
-  requiredDays   Int          @default(0) @map("required_days")
-  startsAt       DateTime?    @map("starts_at")
-  expiresAt      DateTime?    @map("expires_at")
-  metadata       Json         @default("{}")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
+  id                String       @id @default(uuid())
+  type              TreatyType
+  proposerKingdomId String       @map("proposer_kingdom_id")
+  receiverKingdomId String       @map("receiver_kingdom_id")
+  proposedById      String       @map("proposed_by_id")
+  status            TreatyStatus @default(PENDING)
+  goldCost          Int          @default(0) @map("gold_cost")
+  requiredDays      Int          @default(0) @map("required_days")
+  startsAt          DateTime?    @map("starts_at")
+  expiresAt         DateTime?    @map("expires_at")
+  metadata          Json         @default("{}")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
 
-  proposerKingdom Kingdom    @relation("TreatyProposer", fields: [proposerKingdomId], references: [id])
-  receiverKingdom Kingdom    @relation("TreatyReceiver", fields: [receiverKingdomId], references: [id])
-  proposedBy     Character   @relation("TreatyProposedBy", fields: [proposedById], references: [id])
+  proposerKingdom Kingdom   @relation("TreatyProposer", fields: [proposerKingdomId], references: [id])
+  receiverKingdom Kingdom   @relation("TreatyReceiver", fields: [receiverKingdomId], references: [id])
+  proposedBy      Character @relation("TreatyProposedBy", fields: [proposedById], references: [id])
 
   @@index([proposerKingdomId])
   @@index([receiverKingdomId])
@@ -810,7 +813,7 @@ model ExclusiveZone {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
-  region             Region   @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  region Region @relation(fields: [regionId], references: [id], onDelete: Cascade)
 
   @@index([regionId])
   @@map("exclusive_zones")
@@ -837,26 +840,26 @@ model Resource {
 }
 
 model ItemTemplate {
-  id                 String         @id @default(uuid())
+  id                 String          @id @default(uuid())
   name               String
   type               ItemType
-  rarity             ItemRarity     @default(COMMON)
+  rarity             ItemRarity      @default(COMMON)
   description        String?
-  stats              Json           @default("{}")
-  durability         Int            @default(100)
-  requirements       Json           @default("{}")
+  stats              Json            @default("{}")
+  durability         Int             @default(100)
+  requirements       Json            @default("{}")
   professionRequired ProfessionType? @map("profession_required")
-  levelRequired      Int            @default(1) @map("level_required")
-  shelfLifeDays      Int?           @map("shelf_life_days")
-  isFood             Boolean        @default(false) @map("is_food")
-  foodBuff           Json?          @map("food_buff")
-  isPerishable       Boolean        @default(false) @map("is_perishable")
-  isBeverage         Boolean        @default(false) @map("is_beverage")
-  createdAt          DateTime       @default(now()) @map("created_at")
-  updatedAt          DateTime       @updatedAt @map("updated_at")
+  levelRequired      Int             @default(1) @map("level_required")
+  shelfLifeDays      Int?            @map("shelf_life_days")
+  isFood             Boolean         @default(false) @map("is_food")
+  foodBuff           Json?           @map("food_buff")
+  isPerishable       Boolean         @default(false) @map("is_perishable")
+  isBeverage         Boolean         @default(false) @map("is_beverage")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
 
-  items              Item[]
-  priceHistories     PriceHistory[]
+  items          Item[]
+  priceHistories PriceHistory[]
 
   @@index([type])
   @@index([rarity])
@@ -864,26 +867,26 @@ model ItemTemplate {
 }
 
 model Item {
-  id               String      @id @default(uuid())
-  templateId       String      @map("template_id")
-  ownerId          String?     @map("owner_id")
+  id                String     @id @default(uuid())
+  templateId        String     @map("template_id")
+  ownerId           String?    @map("owner_id")
   currentDurability Int        @default(100) @map("current_durability")
-  quality          ItemRarity  @default(COMMON)
-  craftedById      String?     @map("crafted_by_id")
-  enchantments     Json        @default("[]")
-  daysRemaining    Int?        @map("days_remaining")
-  createdAt        DateTime    @default(now()) @map("created_at")
-  updatedAt        DateTime    @updatedAt @map("updated_at")
+  quality           ItemRarity @default(COMMON)
+  craftedById       String?    @map("crafted_by_id")
+  enchantments      Json       @default("[]")
+  daysRemaining     Int?       @map("days_remaining")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
 
-  template         ItemTemplate @relation(fields: [templateId], references: [id])
-  owner            Character?   @relation("ItemOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  craftedBy        Character?   @relation("ItemCrafter", fields: [craftedById], references: [id], onDelete: SetNull)
+  template  ItemTemplate @relation(fields: [templateId], references: [id])
+  owner     Character?   @relation("ItemOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  craftedBy Character?   @relation("ItemCrafter", fields: [craftedById], references: [id], onDelete: SetNull)
 
-  equipment        CharacterEquipment[]
-  inventory        Inventory[]
-  marketListings   MarketListing[]
-  tradeTransactions TradeTransaction[]
-  preferredByCharacters Character[] @relation("CharacterPreferredFood")
+  equipment             CharacterEquipment[]
+  inventory             Inventory[]
+  marketListings        MarketListing[]
+  tradeTransactions     TradeTransaction[]
+  preferredByCharacters Character[]          @relation("CharacterPreferredFood")
 
   @@index([templateId])
   @@index([ownerId])
@@ -922,8 +925,8 @@ model CraftingAction {
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
-  character   Character    @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  recipe      Recipe       @relation(fields: [recipeId], references: [id])
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  recipe    Recipe    @relation(fields: [recipeId], references: [id])
 
   @@index([characterId])
   @@index([status])
@@ -941,9 +944,9 @@ model GatheringAction {
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
-  character   Character    @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  resource    Resource     @relation(fields: [resourceId], references: [id])
-  town        Town         @relation(fields: [townId], references: [id])
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  resource  Resource  @relation(fields: [resourceId], references: [id])
+  town      Town      @relation(fields: [townId], references: [id])
 
   @@index([characterId])
   @@index([status])
@@ -963,8 +966,8 @@ model Building {
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
 
-  owner     Character    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  town      Town         @relation(fields: [townId], references: [id], onDelete: Cascade)
+  owner Character @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  town  Town      @relation(fields: [townId], references: [id], onDelete: Cascade)
 
   constructions BuildingConstruction[]
 
@@ -983,7 +986,7 @@ model BuildingConstruction {
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
 
-  building      Building     @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
 
   @@index([buildingId])
   @@index([status])
@@ -1004,9 +1007,9 @@ model MarketListing {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  seller    Character @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  item      Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  town      Town      @relation(fields: [townId], references: [id])
+  seller Character @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  item   Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  town   Town      @relation(fields: [townId], references: [id])
 
   @@index([sellerId])
   @@index([townId])
@@ -1016,39 +1019,41 @@ model MarketListing {
 }
 
 model TradeTransaction {
-  id        String    @id @default(uuid())
-  buyerId   String    @map("buyer_id")
-  sellerId  String    @map("seller_id")
-  itemId    String    @map("item_id")
+  id        String   @id @default(uuid())
+  buyerId   String   @map("buyer_id")
+  sellerId  String   @map("seller_id")
+  itemId    String   @map("item_id")
   price     Int
-  quantity  Int       @default(1)
-  townId    String    @map("town_id")
-  timestamp DateTime  @default(now())
-  createdAt DateTime  @default(now()) @map("created_at")
+  quantity  Int      @default(1)
+  townId    String   @map("town_id")
+  timestamp DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
 
-  buyer     Character @relation("Buyer", fields: [buyerId], references: [id])
-  seller    Character @relation("Seller", fields: [sellerId], references: [id])
-  item      Item      @relation(fields: [itemId], references: [id])
-  town      Town      @relation(fields: [townId], references: [id])
+  buyer  Character @relation("Buyer", fields: [buyerId], references: [id])
+  seller Character @relation("Seller", fields: [sellerId], references: [id])
+  item   Item      @relation(fields: [itemId], references: [id])
+  town   Town      @relation(fields: [townId], references: [id])
 
   @@index([buyerId])
   @@index([sellerId])
   @@index([townId])
   @@index([timestamp])
+  @@index([buyerId, createdAt]) // MAJOR-06: trade history lookups per buyer
+  @@index([sellerId, createdAt]) // MAJOR-06: trade history lookups per seller
   @@map("trade_transactions")
 }
 
 model PriceHistory {
-  id             String       @id @default(uuid())
-  itemTemplateId String       @map("item_template_id")
-  townId         String       @map("town_id")
-  avgPrice       Float        @map("avg_price")
-  volume         Int          @default(0)
-  date           DateTime     @db.Date
-  createdAt      DateTime     @default(now()) @map("created_at")
+  id             String   @id @default(uuid())
+  itemTemplateId String   @map("item_template_id")
+  townId         String   @map("town_id")
+  avgPrice       Float    @map("avg_price")
+  volume         Int      @default(0)
+  date           DateTime @db.Date
+  createdAt      DateTime @default(now()) @map("created_at")
 
-  itemTemplate   ItemTemplate @relation(fields: [itemTemplateId], references: [id])
-  town           Town         @relation(fields: [townId], references: [id])
+  itemTemplate ItemTemplate @relation(fields: [itemTemplateId], references: [id])
+  town         Town         @relation(fields: [townId], references: [id])
 
   @@unique([itemTemplateId, townId, date])
   @@index([itemTemplateId])
@@ -1068,9 +1073,9 @@ model Caravan {
   createdAt  DateTime     @default(now()) @map("created_at")
   updatedAt  DateTime     @updatedAt @map("updated_at")
 
-  owner      Character    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  fromTown   Town         @relation("CaravanFrom", fields: [fromTownId], references: [id])
-  toTown     Town         @relation("CaravanTo", fields: [toTownId], references: [id])
+  owner    Character @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  fromTown Town      @relation("CaravanFrom", fields: [fromTownId], references: [id])
+  toTown   Town      @relation("CaravanTo", fields: [toTownId], references: [id])
 
   @@index([ownerId])
   @@index([status])
@@ -1093,9 +1098,9 @@ model Election {
   createdAt  DateTime      @default(now()) @map("created_at")
   updatedAt  DateTime      @updatedAt @map("updated_at")
 
-  town       Town          @relation(fields: [townId], references: [id], onDelete: Cascade)
-  kingdom    Kingdom?      @relation("KingdomElections", fields: [kingdomId], references: [id], onDelete: SetNull)
-  winner     Character?    @relation("ElectionWinner", fields: [winnerId], references: [id], onDelete: SetNull)
+  town       Town                @relation(fields: [townId], references: [id], onDelete: Cascade)
+  kingdom    Kingdom?            @relation("KingdomElections", fields: [kingdomId], references: [id], onDelete: SetNull)
+  winner     Character?          @relation("ElectionWinner", fields: [winnerId], references: [id], onDelete: SetNull)
   votes      ElectionVote[]
   candidates ElectionCandidate[]
 
@@ -1106,14 +1111,14 @@ model Election {
 }
 
 model ElectionVote {
-  id          String    @id @default(uuid())
-  electionId  String    @map("election_id")
-  voterId     String    @map("voter_id")
-  candidateId String    @map("candidate_id")
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id          String   @id @default(uuid())
+  electionId  String   @map("election_id")
+  voterId     String   @map("voter_id")
+  candidateId String   @map("candidate_id")
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  election    Election  @relation(fields: [electionId], references: [id], onDelete: Cascade)
-  voter       Character @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  election Election  @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  voter    Character @relation(fields: [voterId], references: [id], onDelete: Cascade)
 
   @@unique([electionId, voterId])
   @@index([electionId])
@@ -1121,15 +1126,15 @@ model ElectionVote {
 }
 
 model ElectionCandidate {
-  id          String    @id @default(uuid())
-  electionId  String    @map("election_id")
-  characterId String    @map("character_id")
-  platform    String    @default("")
-  nominatedAt DateTime  @default(now()) @map("nominated_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id          String   @id @default(uuid())
+  electionId  String   @map("election_id")
+  characterId String   @map("character_id")
+  platform    String   @default("")
+  nominatedAt DateTime @default(now()) @map("nominated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  election    Election  @relation(fields: [electionId], references: [id], onDelete: Cascade)
-  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  election  Election  @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@unique([electionId, characterId])
   @@index([electionId])
@@ -1138,22 +1143,22 @@ model ElectionCandidate {
 }
 
 model Impeachment {
-  id         String            @id @default(uuid())
-  targetId   String            @map("target_id")
-  townId     String?           @map("town_id")
-  kingdomId  String?           @map("kingdom_id")
-  votesFor   Int               @default(0) @map("votes_for")
-  votesAgainst Int             @default(0) @map("votes_against")
-  status     ImpeachmentStatus @default(ACTIVE)
-  startedAt  DateTime          @default(now()) @map("started_at")
-  endsAt     DateTime          @map("ends_at")
-  createdAt  DateTime          @default(now()) @map("created_at")
-  updatedAt  DateTime          @updatedAt @map("updated_at")
+  id           String            @id @default(uuid())
+  targetId     String            @map("target_id")
+  townId       String?           @map("town_id")
+  kingdomId    String?           @map("kingdom_id")
+  votesFor     Int               @default(0) @map("votes_for")
+  votesAgainst Int               @default(0) @map("votes_against")
+  status       ImpeachmentStatus @default(ACTIVE)
+  startedAt    DateTime          @default(now()) @map("started_at")
+  endsAt       DateTime          @map("ends_at")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
 
-  target     Character         @relation("ImpeachmentTarget", fields: [targetId], references: [id], onDelete: Cascade)
-  town       Town?             @relation("TownImpeachments", fields: [townId], references: [id], onDelete: SetNull)
-  kingdom    Kingdom?          @relation("KingdomImpeachments", fields: [kingdomId], references: [id], onDelete: SetNull)
-  votes      ImpeachmentVote[]
+  target  Character         @relation("ImpeachmentTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  town    Town?             @relation("TownImpeachments", fields: [townId], references: [id], onDelete: SetNull)
+  kingdom Kingdom?          @relation("KingdomImpeachments", fields: [kingdomId], references: [id], onDelete: SetNull)
+  votes   ImpeachmentVote[]
 
   @@index([targetId])
   @@index([townId])
@@ -1163,14 +1168,14 @@ model Impeachment {
 }
 
 model ImpeachmentVote {
-  id             String      @id @default(uuid())
-  impeachmentId  String      @map("impeachment_id")
-  voterId        String      @map("voter_id")
-  support        Boolean
-  createdAt      DateTime    @default(now()) @map("created_at")
+  id            String   @id @default(uuid())
+  impeachmentId String   @map("impeachment_id")
+  voterId       String   @map("voter_id")
+  support       Boolean
+  createdAt     DateTime @default(now()) @map("created_at")
 
-  impeachment    Impeachment @relation(fields: [impeachmentId], references: [id], onDelete: Cascade)
-  voter          Character   @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  impeachment Impeachment @relation(fields: [impeachmentId], references: [id], onDelete: Cascade)
+  voter       Character   @relation(fields: [voterId], references: [id], onDelete: Cascade)
 
   @@unique([impeachmentId, voterId])
   @@index([impeachmentId])
@@ -1186,7 +1191,7 @@ model TownTreasury {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  town            Town     @relation(fields: [townId], references: [id], onDelete: Cascade)
+  town Town @relation(fields: [townId], references: [id], onDelete: Cascade)
 
   @@map("town_treasuries")
 }
@@ -1208,9 +1213,9 @@ model Law {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  kingdom     Kingdom   @relation(fields: [kingdomId], references: [id], onDelete: Cascade)
-  enactedBy   Character @relation(fields: [enactedById], references: [id])
-  lawVotes    LawVote[]
+  kingdom   Kingdom   @relation(fields: [kingdomId], references: [id], onDelete: Cascade)
+  enactedBy Character @relation(fields: [enactedById], references: [id])
+  lawVotes  LawVote[]
 
   @@index([kingdomId])
   @@index([status])
@@ -1221,33 +1226,35 @@ model LawVote {
   id          String    @id @default(uuid())
   lawId       String    @map("law_id")
   characterId String    @map("character_id")
-  vote        String    // 'FOR' or 'AGAINST'
+  vote        String // 'FOR' or 'AGAINST'
   createdAt   DateTime  @default(now()) @map("created_at")
   law         Law       @relation(fields: [lawId], references: [id])
   character   Character @relation(fields: [characterId], references: [id])
+
   @@unique([lawId, characterId])
   @@map("law_votes")
 }
 
 model Kingdom {
-  id             String    @id @default(uuid())
-  name           String    @unique
-  rulerId        String?   @unique @map("ruler_id")
-  capitalTownId  String?   @unique @map("capital_town_id")
-  treasury       Int       @default(0)
-  laws           Json      @default("[]")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  id            String   @id @default(uuid())
+  name          String   @unique
+  rulerId       String?  @unique @map("ruler_id")
+  capitalTownId String?  @unique @map("capital_town_id")
+  treasury      Int      @default(0)
+  laws          Json     @default("[]")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-  ruler          Character? @relation("KingdomRuler", fields: [rulerId], references: [id], onDelete: SetNull)
-  elections      Election[]    @relation("KingdomElections")
-  impeachments   Impeachment[] @relation("KingdomImpeachments")
-  lawRecords     Law[]
-  warsAttacking  War[]     @relation("WarAttacker")
-  warsDefending  War[]     @relation("WarDefender")
-  councilMembers CouncilMember[] @relation("KingdomCouncil")
-  treatiesProposed Treaty[]  @relation("TreatyProposer")
-  treatiesReceived Treaty[]  @relation("TreatyReceiver")
+  ruler            Character?      @relation("KingdomRuler", fields: [rulerId], references: [id], onDelete: SetNull)
+  regions          Region[]        @relation("KingdomRegions") // P1 #16 / MAJOR-01: territories belonging to this kingdom
+  elections        Election[]      @relation("KingdomElections")
+  impeachments     Impeachment[]   @relation("KingdomImpeachments")
+  lawRecords       Law[]
+  warsAttacking    War[]           @relation("WarAttacker")
+  warsDefending    War[]           @relation("WarDefender")
+  councilMembers   CouncilMember[] @relation("KingdomCouncil")
+  treatiesProposed Treaty[]        @relation("TreatyProposer")
+  treatiesReceived Treaty[]        @relation("TreatyReceiver")
 
   @@map("kingdoms")
 }
@@ -1255,34 +1262,34 @@ model Kingdom {
 // ---- Guilds ----
 
 model Guild {
-  id          String        @id @default(uuid())
-  name        String        @unique
-  tag         String        @unique
-  leaderId    String?       @unique @map("leader_id")
-  level       Int           @default(1)
-  treasury    Int           @default(0)
+  id          String   @id @default(uuid())
+  name        String   @unique
+  tag         String   @unique
+  leaderId    String?  @unique @map("leader_id")
+  level       Int      @default(1)
+  treasury    Int      @default(0)
   description String?
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  leader      Character?    @relation("GuildLeader", fields: [leaderId], references: [id], onDelete: SetNull)
-  members     GuildMember[]
-  messages    Message[]     @relation("GuildMessages")
+  leader   Character?    @relation("GuildLeader", fields: [leaderId], references: [id], onDelete: SetNull)
+  members  GuildMember[]
+  messages Message[]     @relation("GuildMessages")
 
   @@map("guilds")
 }
 
 model GuildMember {
-  id          String    @id @default(uuid())
-  guildId     String    @map("guild_id")
-  characterId String    @map("character_id")
-  rank        String    @default("member")
-  joinedAt    DateTime  @default(now()) @map("joined_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id          String   @id @default(uuid())
+  guildId     String   @map("guild_id")
+  characterId String   @map("character_id")
+  rank        String   @default("member")
+  joinedAt    DateTime @default(now()) @map("joined_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  guild       Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  guild     Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@unique([guildId, characterId])
   @@index([guildId])
@@ -1309,7 +1316,7 @@ model Npc {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  town      Town     @relation(fields: [townId], references: [id], onDelete: Cascade)
+  town Town @relation(fields: [townId], references: [id], onDelete: Cascade)
 
   @@index([townId])
   @@index([role])
@@ -1333,10 +1340,10 @@ model Quest {
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
 
-  region              Region?   @relation(fields: [regionId], references: [id], onDelete: SetNull)
-  prerequisiteQuest   Quest?    @relation("QuestPrerequisite", fields: [prerequisiteQuestId], references: [id], onDelete: SetNull)
-  dependentQuests     Quest[]   @relation("QuestPrerequisite")
-  progress            QuestProgress[]
+  region            Region?         @relation(fields: [regionId], references: [id], onDelete: SetNull)
+  prerequisiteQuest Quest?          @relation("QuestPrerequisite", fields: [prerequisiteQuestId], references: [id], onDelete: SetNull)
+  dependentQuests   Quest[]         @relation("QuestPrerequisite")
+  progress          QuestProgress[]
 
   @@index([type])
   @@index([regionId])
@@ -1355,8 +1362,8 @@ model QuestProgress {
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
-  character   Character    @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  quest       Quest        @relation(fields: [questId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  quest     Quest     @relation(fields: [questId], references: [id], onDelete: Cascade)
 
   @@unique([characterId, questId])
   @@index([characterId])
@@ -1368,21 +1375,21 @@ model QuestProgress {
 // ---- Combat ----
 
 model CombatSession {
-  id             String             @id @default(uuid())
+  id             String     @id @default(uuid())
   type           CombatType
-  status         String             @default("active")
-  locationTownId String?            @map("location_town_id")
-  startedAt      DateTime           @default(now()) @map("started_at")
-  endedAt        DateTime?          @map("ended_at")
-  log            Json               @default("[]")
-  attackerParams Json?              @map("attacker_params")
-  defenderParams Json?              @map("defender_params")
-  createdAt      DateTime           @default(now()) @map("created_at")
-  updatedAt      DateTime           @updatedAt @map("updated_at")
+  status         String     @default("active")
+  locationTownId String?    @map("location_town_id")
+  startedAt      DateTime   @default(now()) @map("started_at")
+  endedAt        DateTime?  @map("ended_at")
+  log            Json       @default("[]")
+  attackerParams Json?      @map("attacker_params")
+  defenderParams Json?      @map("defender_params")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
 
-  locationTown   Town?              @relation(fields: [locationTownId], references: [id], onDelete: SetNull)
-  combatLogs     CombatLog[]
-  participants   CombatParticipant[]
+  locationTown Town?               @relation(fields: [locationTownId], references: [id], onDelete: SetNull)
+  combatLogs   CombatLog[]
+  participants CombatParticipant[]
 
   @@index([status])
   @@index([locationTownId])
@@ -1390,33 +1397,34 @@ model CombatSession {
 }
 
 model CombatLog {
-  id        String        @id @default(uuid())
-  sessionId String        @map("session_id")
+  id        String   @id @default(uuid())
+  sessionId String   @map("session_id")
   round     Int
-  actorId   String        @map("actor_id")
+  actorId   String   @map("actor_id")
   action    String
-  result    Json          @default("{}")
-  createdAt DateTime      @default(now()) @map("created_at")
+  result    Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  session   CombatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session CombatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId])
   @@index([sessionId, round])
+  @@index([actorId]) // MAJOR-06: index for combat history lookups per character
   @@map("combat_logs")
 }
 
 model CombatParticipant {
-  id          String        @id @default(uuid())
-  sessionId   String        @map("session_id")
-  characterId String        @map("character_id")
-  team        Int           @default(0)
-  initiative  Int           @default(0)
-  currentHp   Int           @default(100) @map("current_hp")
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
+  id          String   @id @default(uuid())
+  sessionId   String   @map("session_id")
+  characterId String   @map("character_id")
+  team        Int      @default(0)
+  initiative  Int      @default(0)
+  currentHp   Int      @default(100) @map("current_hp")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  session     CombatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  character   Character     @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  session   CombatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  character Character     @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, characterId])
   @@index([sessionId])
@@ -1435,7 +1443,7 @@ model Monster {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  region    Region?   @relation(fields: [regionId], references: [id], onDelete: SetNull)
+  region Region? @relation(fields: [regionId], references: [id], onDelete: SetNull)
 
   @@index([regionId])
   @@index([level])
@@ -1445,21 +1453,21 @@ model Monster {
 // ---- Communication ----
 
 model Message {
-  id           String         @id @default(uuid())
-  channelType  MessageChannel @map("channel_type")
-  content      String
-  senderId     String         @map("sender_id")
-  recipientId  String?        @map("recipient_id")
-  guildId      String?        @map("guild_id")
-  townId       String?        @map("town_id")
-  isRead       Boolean        @default(false) @map("is_read")
-  timestamp    DateTime       @default(now())
-  createdAt    DateTime       @default(now()) @map("created_at")
+  id          String         @id @default(uuid())
+  channelType MessageChannel @map("channel_type")
+  content     String
+  senderId    String         @map("sender_id")
+  recipientId String?        @map("recipient_id")
+  guildId     String?        @map("guild_id")
+  townId      String?        @map("town_id")
+  isRead      Boolean        @default(false) @map("is_read")
+  timestamp   DateTime       @default(now())
+  createdAt   DateTime       @default(now()) @map("created_at")
 
-  sender       Character      @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
-  recipient    Character?     @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: SetNull)
-  guild        Guild?         @relation("GuildMessages", fields: [guildId], references: [id], onDelete: SetNull)
-  town         Town?          @relation("TownMessages", fields: [townId], references: [id], onDelete: SetNull)
+  sender    Character  @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient Character? @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: SetNull)
+  guild     Guild?     @relation("GuildMessages", fields: [guildId], references: [id], onDelete: SetNull)
+  town      Town?      @relation("TownMessages", fields: [townId], references: [id], onDelete: SetNull)
 
   @@index([senderId])
   @@index([recipientId])
@@ -1470,36 +1478,37 @@ model Message {
 }
 
 model Notification {
-  id          String    @id @default(uuid())
-  characterId String    @map("character_id")
+  id          String   @id @default(uuid())
+  characterId String   @map("character_id")
   type        String
   title       String
   message     String
-  read        Boolean   @default(false)
-  data        Json      @default("{}")
-  timestamp   DateTime  @default(now())
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  read        Boolean  @default(false)
+  data        Json     @default("{}")
+  timestamp   DateTime @default(now())
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@index([characterId])
   @@index([characterId, read])
+  @@index([characterId, read, createdAt]) // MAJOR-06: efficient "unread notifications, newest first" queries
   @@map("notifications")
 }
 
 // ---- Race-Specific Mechanics ----
 
 model RacialAbilityCooldown {
-  id          String    @id @default(uuid())
-  characterId String    @map("character_id")
-  abilityName String    @map("ability_name")
-  lastUsed    DateTime  @map("last_used")
+  id           String   @id @default(uuid())
+  characterId  String   @map("character_id")
+  abilityName  String   @map("ability_name")
+  lastUsed     DateTime @map("last_used")
   cooldownEnds DateTime @map("cooldown_ends")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@unique([characterId, abilityName])
   @@index([characterId])
@@ -1507,43 +1516,43 @@ model RacialAbilityCooldown {
 }
 
 model ChangelingDisguise {
-  id           String    @id @default(uuid())
-  characterId  String    @unique @map("character_id")
-  disguisedAs  String?   @map("disguised_as")
-  disguiseRace Race?     @map("disguise_race")
-  startedAt    DateTime  @default(now()) @map("started_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  characterId  String   @unique @map("character_id")
+  disguisedAs  String?  @map("disguised_as")
+  disguiseRace Race?    @map("disguise_race")
+  startedAt    DateTime @default(now()) @map("started_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@map("changeling_disguises")
 }
 
 model ForgebornMaintenance {
-  id              String    @id @default(uuid())
-  characterId     String    @unique @map("character_id")
-  lastMaintenance DateTime  @map("last_maintenance")
-  condition       Int       @default(100)
-  nextRequired    DateTime  @map("next_required")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id              String   @id @default(uuid())
+  characterId     String   @unique @map("character_id")
+  lastMaintenance DateTime @map("last_maintenance")
+  condition       Int      @default(100)
+  nextRequired    DateTime @map("next_required")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@map("forgeborn_maintenance")
 }
 
 model CharacterAppearance {
-  id            String    @id @default(uuid())
-  characterId   String    @map("character_id")
-  apparentRace  Race      @map("apparent_race")
-  apparentName  String?   @map("apparent_name")
-  features      Json      @default("{}")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  characterId  String   @map("character_id")
+  apparentRace Race     @map("apparent_race")
+  apparentName String?  @map("apparent_name")
+  features     Json     @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@index([characterId])
   @@map("character_appearances")
@@ -1552,28 +1561,28 @@ model CharacterAppearance {
 // ---- Achievements ----
 
 model Achievement {
-  id          String              @id @default(uuid())
-  name        String              @unique
+  id          String   @id @default(uuid())
+  name        String   @unique
   description String?
-  criteria    Json                @default("{}")
-  reward      Json                @default("{}")
-  createdAt   DateTime            @default(now()) @map("created_at")
-  updatedAt   DateTime            @updatedAt @map("updated_at")
+  criteria    Json     @default("{}")
+  reward      Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  players     PlayerAchievement[]
+  players PlayerAchievement[]
 
   @@map("achievements")
 }
 
 model PlayerAchievement {
-  id            String      @id @default(uuid())
-  characterId   String      @map("character_id")
-  achievementId String      @map("achievement_id")
-  unlockedAt    DateTime    @default(now()) @map("unlocked_at")
-  createdAt     DateTime    @default(now()) @map("created_at")
+  id            String   @id @default(uuid())
+  characterId   String   @map("character_id")
+  achievementId String   @map("achievement_id")
+  unlockedAt    DateTime @default(now()) @map("unlocked_at")
+  createdAt     DateTime @default(now()) @map("created_at")
 
-  character     Character   @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  character   Character   @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
 
   @@unique([characterId, achievementId])
   @@index([characterId])
@@ -1583,20 +1592,20 @@ model PlayerAchievement {
 // ---- Governance ----
 
 model CouncilMember {
-  id            String    @id @default(uuid())
-  kingdomId     String?   @map("kingdom_id")
-  townId        String?   @map("town_id")
-  characterId   String    @map("character_id")
+  id            String   @id @default(uuid())
+  kingdomId     String?  @map("kingdom_id")
+  townId        String?  @map("town_id")
+  characterId   String   @map("character_id")
   role          String
-  appointedAt   DateTime  @default(now()) @map("appointed_at")
-  appointedById String    @map("appointed_by_id")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  appointedAt   DateTime @default(now()) @map("appointed_at")
+  appointedById String   @map("appointed_by_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-  kingdom       Kingdom?  @relation("KingdomCouncil", fields: [kingdomId], references: [id], onDelete: Cascade)
-  town          Town?     @relation("TownCouncil", fields: [townId], references: [id], onDelete: Cascade)
-  character     Character @relation("CouncilCharacter", fields: [characterId], references: [id], onDelete: Cascade)
-  appointedBy   Character @relation("CouncilAppointer", fields: [appointedById], references: [id])
+  kingdom     Kingdom?  @relation("KingdomCouncil", fields: [kingdomId], references: [id], onDelete: Cascade)
+  town        Town?     @relation("TownCouncil", fields: [townId], references: [id], onDelete: Cascade)
+  character   Character @relation("CouncilCharacter", fields: [characterId], references: [id], onDelete: Cascade)
+  appointedBy Character @relation("CouncilAppointer", fields: [appointedById], references: [id])
 
   @@index([kingdomId])
   @@index([townId])
@@ -1605,17 +1614,17 @@ model CouncilMember {
 }
 
 model TownPolicy {
-  id              String    @id @default(uuid())
-  townId          String    @unique @map("town_id")
-  taxRate         Float     @default(0.10) @map("tax_rate")
-  tradePolicy     Json      @default("{}") @map("trade_policy")
-  buildingPermits Boolean   @default(true) @map("building_permits")
-  sheriffId       String?   @map("sheriff_id")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id              String   @id @default(uuid())
+  townId          String   @unique @map("town_id")
+  taxRate         Float    @default(0.10) @map("tax_rate")
+  tradePolicy     Json     @default("{}") @map("trade_policy")
+  buildingPermits Boolean  @default(true) @map("building_permits")
+  sheriffId       String?  @map("sheriff_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  town            Town      @relation(fields: [townId], references: [id], onDelete: Cascade)
-  sheriff         Character? @relation("TownSheriff", fields: [sheriffId], references: [id], onDelete: SetNull)
+  town    Town       @relation(fields: [townId], references: [id], onDelete: Cascade)
+  sheriff Character? @relation("TownSheriff", fields: [sheriffId], references: [id], onDelete: SetNull)
 
   @@map("town_policies")
 }
@@ -1630,8 +1639,8 @@ model Friend {
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
-  requester   Character    @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
-  recipient   Character    @relation("FriendRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  requester Character @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  recipient Character @relation("FriendRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
 
   @@unique([requesterId, recipientId])
   @@index([requesterId])
@@ -1645,23 +1654,23 @@ model Friend {
 // ---- Abilities & Skill Trees ----
 
 model Ability {
-  id                    String              @id @default(uuid())
-  name                  String              @unique
+  id                    String   @id @default(uuid())
+  name                  String   @unique
   description           String?
   class                 String
   specialization        String
-  tier                  Int                 @default(1)
-  effects               Json                @default("{}")
-  cooldown              Int                 @default(0)
-  manaCost              Int                 @default(0) @map("mana_cost")
-  prerequisiteAbilityId String?             @map("prerequisite_ability_id")
-  levelRequired         Int                 @default(1) @map("level_required")
-  createdAt             DateTime            @default(now()) @map("created_at")
-  updatedAt             DateTime            @updatedAt @map("updated_at")
+  tier                  Int      @default(1)
+  effects               Json     @default("{}")
+  cooldown              Int      @default(0)
+  manaCost              Int      @default(0) @map("mana_cost")
+  prerequisiteAbilityId String?  @map("prerequisite_ability_id")
+  levelRequired         Int      @default(1) @map("level_required")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
 
-  prerequisite          Ability?            @relation("AbilityPrereq", fields: [prerequisiteAbilityId], references: [id])
-  dependents            Ability[]           @relation("AbilityPrereq")
-  characterAbilities    CharacterAbility[]
+  prerequisite       Ability?           @relation("AbilityPrereq", fields: [prerequisiteAbilityId], references: [id])
+  dependents         Ability[]          @relation("AbilityPrereq")
+  characterAbilities CharacterAbility[]
 
   @@index([class])
   @@index([class, specialization])
@@ -1669,14 +1678,14 @@ model Ability {
 }
 
 model CharacterAbility {
-  id          String    @id @default(uuid())
-  characterId String    @map("character_id")
-  abilityId   String    @map("ability_id")
-  unlockedAt  DateTime  @default(now()) @map("unlocked_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id          String   @id @default(uuid())
+  characterId String   @map("character_id")
+  abilityId   String   @map("ability_id")
+  unlockedAt  DateTime @default(now()) @map("unlocked_at")
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  ability     Ability   @relation(fields: [abilityId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  ability   Ability   @relation(fields: [abilityId], references: [id], onDelete: Cascade)
 
   @@unique([characterId, abilityId])
   @@index([characterId])
@@ -1706,20 +1715,20 @@ model WorldEvent {
 }
 
 model Petition {
-  id               String         @id @default(uuid())
-  creatorId        String         @map("creator_id")
-  petitionType     String         @map("petition_type")
-  title            String
-  description      String
-  targetData       Json           @default("{}") @map("target_data")
-  status           PetitionStatus @default(ACTIVE)
-  signatureGoal    Int            @default(10) @map("signature_goal")
-  expiresAt        DateTime       @map("expires_at")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
+  id            String         @id @default(uuid())
+  creatorId     String         @map("creator_id")
+  petitionType  String         @map("petition_type")
+  title         String
+  description   String
+  targetData    Json           @default("{}") @map("target_data")
+  status        PetitionStatus @default(ACTIVE)
+  signatureGoal Int            @default(10) @map("signature_goal")
+  expiresAt     DateTime       @map("expires_at")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
 
-  creator          Character      @relation("PetitionCreator", fields: [creatorId], references: [id], onDelete: Cascade)
-  signatures       PetitionSignature[]
+  creator    Character           @relation("PetitionCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  signatures PetitionSignature[]
 
   @@index([creatorId])
   @@index([status])
@@ -1733,8 +1742,8 @@ model PetitionSignature {
   characterId String   @map("character_id")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  petition    Petition  @relation(fields: [petitionId], references: [id], onDelete: Cascade)
-  character   Character @relation("PetitionSigner", fields: [characterId], references: [id], onDelete: Cascade)
+  petition  Petition  @relation(fields: [petitionId], references: [id], onDelete: Cascade)
+  character Character @relation("PetitionSigner", fields: [characterId], references: [id], onDelete: Cascade)
 
   @@unique([petitionId, characterId])
   @@index([petitionId])
@@ -1745,18 +1754,18 @@ model PetitionSignature {
 // ---- Nodes (tick-based travel graph) ----
 
 model Node {
-  id              String           @id @default(uuid())
+  id              String   @id @default(uuid())
   name            String
-  routeId         String?          @map("route_id")
+  routeId         String?  @map("route_id")
   position        Int
   type            NodeType
-  regionId        String?          @map("region_id")
-  dangerLevel     Float            @default(0.1) @map("danger_level")
-  description     String           @default("")
-  townId          String?          @unique @map("town_id")
-  encounterChance Float            @default(0.1) @map("encounter_chance")
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
+  regionId        String?  @map("region_id")
+  dangerLevel     Float    @default(0.1) @map("danger_level")
+  description     String   @default("")
+  townId          String?  @unique @map("town_id")
+  encounterChance Float    @default(0.1) @map("encounter_chance")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   route           TravelRoute?     @relation(fields: [routeId], references: [id], onDelete: SetNull)
   region          Region?          @relation(fields: [regionId], references: [id], onDelete: SetNull)
@@ -1779,8 +1788,8 @@ model NodeConnection {
   toNodeId      String  @map("to_node_id")
   bidirectional Boolean @default(true)
 
-  fromNode      Node    @relation("NodeConnectionFrom", fields: [fromNodeId], references: [id], onDelete: Cascade)
-  toNode        Node    @relation("NodeConnectionTo", fields: [toNodeId], references: [id], onDelete: Cascade)
+  fromNode Node @relation("NodeConnectionFrom", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNode   Node @relation("NodeConnectionTo", fields: [toNodeId], references: [id], onDelete: Cascade)
 
   @@unique([fromNodeId, toNodeId])
   @@index([fromNodeId])
@@ -1791,18 +1800,18 @@ model NodeConnection {
 // ---- Daily Tick System ----
 
 model DailyAction {
-  id           String           @id @default(uuid())
-  characterId  String           @map("character_id")
-  tickDate     DateTime         @map("tick_date")
-  actionType   DailyActionType  @map("action_type")
-  actionTarget Json             @map("action_target")
-  combatParams Json?            @map("combat_params")
+  id           String            @id @default(uuid())
+  characterId  String            @map("character_id")
+  tickDate     DateTime          @map("tick_date")
+  actionType   DailyActionType   @map("action_type")
+  actionTarget Json              @map("action_target")
+  combatParams Json?             @map("combat_params")
   status       DailyActionStatus @default(LOCKED_IN)
   result       Json?
-  createdAt    DateTime         @default(now()) @map("created_at")
-  updatedAt    DateTime         @updatedAt @map("updated_at")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
 
-  character    Character        @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@unique([characterId, tickDate])
   @@index([characterId])
@@ -1825,7 +1834,7 @@ model DailyReport {
   worldEvents   Json?    @map("world_events")
   createdAt     DateTime @default(now()) @map("created_at")
 
-  character     Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@unique([characterId, tickDate])
   @@index([characterId])
@@ -1838,9 +1847,9 @@ model DailyReport {
 model ServiceAction {
   id             String         @id @default(uuid())
   providerId     String         @map("provider_id")
-  provider       Character      @relation("ServiceProvider", fields: [providerId], references: [id])
+  provider       Character      @relation("ServiceProvider", fields: [providerId], references: [id], onDelete: Cascade) // MAJOR-08: cascade on character delete
   clientId       String?        @map("client_id")
-  client         Character?     @relation("ServiceClient", fields: [clientId], references: [id])
+  client         Character?     @relation("ServiceClient", fields: [clientId], references: [id], onDelete: SetNull) // MAJOR-08: nullify on client delete
   professionType ProfessionType @map("profession_type")
   actionType     String         @map("action_type")
   price          Int            @default(0)
@@ -1857,9 +1866,9 @@ model ServiceAction {
 model Loan {
   id           String     @id @default(uuid())
   bankerId     String     @map("banker_id")
-  banker       Character  @relation("LoanBanker", fields: [bankerId], references: [id])
+  banker       Character  @relation("LoanBanker", fields: [bankerId], references: [id], onDelete: Cascade) // MAJOR-08: cascade on character delete
   borrowerId   String     @map("borrower_id")
-  borrower     Character  @relation("LoanBorrower", fields: [borrowerId], references: [id])
+  borrower     Character  @relation("LoanBorrower", fields: [borrowerId], references: [id], onDelete: Cascade) // MAJOR-08: cascade on character delete
   principal    Int
   interestRate Float      @map("interest_rate")
   totalOwed    Int        @map("total_owed")
@@ -1878,7 +1887,7 @@ model Loan {
 model ServiceReputation {
   id             String         @id @default(uuid())
   characterId    String         @map("character_id")
-  character      Character      @relation(fields: [characterId], references: [id])
+  character      Character      @relation(fields: [characterId], references: [id], onDelete: Cascade) // MAJOR-09: cascade on character delete
   professionType ProfessionType @map("profession_type")
   reputation     Int            @default(0)
   lastActiveDay  Int            @map("last_active_day")

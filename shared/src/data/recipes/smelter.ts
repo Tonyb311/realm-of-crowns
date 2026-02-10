@@ -116,7 +116,7 @@ export const SMELTER_RECIPES: RecipeDefinition[] = [
     name: 'Forge Nails',
     professionRequired: 'SMELTER',
     levelRequired: 5,
-    inputs: [{ itemName: 'Iron Ingot', quantity: 1 }],
+    inputs: [{ itemName: 'Copper Ingot', quantity: 1 }], // P1 #14a: Changed from Iron Ingot (L10) to Copper Ingot (L1) so Nails are craftable at Smelter L5
     outputs: [{ itemName: 'Nails', quantity: 50 }],
     craftTime: 15,
     xpReward: 8,

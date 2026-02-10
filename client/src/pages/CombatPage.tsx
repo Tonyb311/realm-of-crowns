@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { SkeletonCard } from '../components/ui/LoadingSkeleton';
+import PlayerSearch from '../components/PlayerSearch';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -745,6 +746,7 @@ function PvpLeaderboard({ entries, isLoading }: { entries: LeaderboardEntry[]; i
 // ---------------------------------------------------------------------------
 // PvP Challenge Modal
 // ---------------------------------------------------------------------------
+// MAJ-20: Replaced raw UUID input with PlayerSearch component
 function ChallengeModal({
   onClose,
   onChallenge,
@@ -757,6 +759,7 @@ function ChallengeModal({
   error?: string;
 }) {
   const [targetId, setTargetId] = useState('');
+  const [targetName, setTargetName] = useState('');
   const [wager, setWager] = useState('');
 
   return (
@@ -771,14 +774,26 @@ function ChallengeModal({
 
         <div className="space-y-4">
           <div>
-            <label className="text-parchment-500 text-xs mb-1 block">Character ID</label>
-            <input
-              type="text"
-              value={targetId}
-              onChange={(e) => setTargetId(e.target.value)}
-              placeholder="Enter target character ID"
-              className="w-full px-3 py-2 bg-dark-500 border border-dark-50 rounded text-parchment-200 text-sm placeholder:text-parchment-500/50 focus:border-primary-400/50 focus:outline-none"
-            />
+            <label className="text-parchment-500 text-xs mb-1 block">Search Player</label>
+            {targetName ? (
+              <div className="flex items-center justify-between px-3 py-2 bg-dark-500 border border-dark-50 rounded text-parchment-200 text-sm">
+                <span>{targetName}</span>
+                <button
+                  onClick={() => { setTargetId(''); setTargetName(''); }}
+                  className="text-parchment-500 hover:text-parchment-200"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <PlayerSearch
+                placeholder="Search by name..."
+                onSelect={(character) => {
+                  setTargetId(character.id);
+                  setTargetName(character.name);
+                }}
+              />
+            )}
           </div>
           <div>
             <label className="text-parchment-500 text-xs mb-1 block">Wager (optional)</label>

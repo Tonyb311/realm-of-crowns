@@ -156,9 +156,32 @@ export interface SocialEvents {
 // ---------------------------------------------------------------------------
 let socket: Socket | null = null;
 
+// MAJ-15 / P2 #46: Track connection status for UI indicator
+type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting';
+let connectionStatus: ConnectionStatus = 'disconnected';
+const statusListeners: Set<(status: ConnectionStatus) => void> = new Set();
+
+export function getConnectionStatus(): ConnectionStatus {
+  return connectionStatus;
+}
+
+function setConnectionStatus(status: ConnectionStatus) {
+  connectionStatus = status;
+  statusListeners.forEach((fn) => fn(status));
+}
+
+export function onConnectionStatusChange(listener: (status: ConnectionStatus) => void): () => void {
+  statusListeners.add(listener);
+  return () => { statusListeners.delete(listener); };
+}
+
 export function getSocket(): Socket | null {
   return socket;
 }
+
+// Rooms to rejoin on reconnect
+let lastTownId: string | null = null;
+let lastKingdomId: string | null = null;
 
 export function connectSocket(): Socket {
   if (socket?.connected) return socket;
@@ -168,14 +191,32 @@ export function connectSocket(): Socket {
   socket = io(window.location.origin, {
     auth: { token },
     transports: ['websocket', 'polling'],
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 10000,
   });
 
   socket.on('connect', () => {
     console.log('[Socket] Connected:', socket?.id);
+    setConnectionStatus('connected');
+    // MAJ-15: Auto-rejoin rooms after reconnect
+    if (lastTownId) socket?.emit('join:town', lastTownId);
+    if (lastKingdomId) socket?.emit('join:kingdom', lastKingdomId);
   });
 
   socket.on('disconnect', (reason) => {
     console.log('[Socket] Disconnected:', reason);
+    setConnectionStatus('disconnected');
+  });
+
+  socket.io.on('reconnect_attempt', () => {
+    setConnectionStatus('reconnecting');
+  });
+
+  socket.on('connect_error', (err) => {
+    console.error('[Socket] Connection error:', err.message);
+    setConnectionStatus('disconnected');
   });
 
   return socket;
@@ -190,14 +231,15 @@ export function disconnectSocket(): void {
 
 export function joinRooms(townId: string | null, kingdomId: string | null): void {
   if (!socket) return;
-  if (townId) socket.emit('join:town', townId);
-  if (kingdomId) socket.emit('join:kingdom', kingdomId);
+  // MAJ-15: Track rooms for auto-rejoin on reconnect
+  if (townId) { lastTownId = townId; socket.emit('join:town', townId); }
+  if (kingdomId) { lastKingdomId = kingdomId; socket.emit('join:kingdom', kingdomId); }
 }
 
 export function leaveRooms(townId: string | null, kingdomId: string | null): void {
   if (!socket) return;
-  if (townId) socket.emit('leave:town', townId);
-  if (kingdomId) socket.emit('leave:kingdom', kingdomId);
+  if (townId) { socket.emit('leave:town', townId); lastTownId = null; }
+  if (kingdomId) { socket.emit('leave:kingdom', kingdomId); lastKingdomId = null; }
 }
 
 export function joinGuildRoom(guildId: string): void {

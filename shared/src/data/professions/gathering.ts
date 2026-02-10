@@ -28,11 +28,11 @@ export const RANCHER: ProfessionDefinition = {
   primaryStat: 'CON',
   relatedProfessions: ['TANNER', 'COOK', 'TAILOR', 'STABLE_MASTER'],
   inputResources: ['Grain', 'Water', 'Hay'],
-  outputProducts: ['Cattle', 'Sheep', 'Pigs', 'Chickens', 'Horses', 'Wool', 'Milk', 'Eggs'],
+  outputProducts: ['Beef', 'Sheep', 'Pork', 'Chicken', 'Horses', 'Wool', 'Milk', 'Eggs'], // Major-ECON-07: Renamed Cattle->Beef, Pigs->Pork, Chickens->Chicken to match resource names
   townTypeAffinity: ['plains', 'hills'],
   tierUnlocks: {
-    APPRENTICE: ['Chickens', 'Pigs', 'Milk', 'Eggs'],
-    JOURNEYMAN: ['Cattle', 'Sheep', 'Wool'],
+    APPRENTICE: ['Chicken', 'Pork', 'Milk', 'Eggs'], // Major-ECON-07: Match resource names
+    JOURNEYMAN: ['Beef', 'Sheep', 'Wool'], // Major-ECON-07: Match resource names
     CRAFTSMAN: ['Horses', 'Selective breeding'],
     EXPERT: ['War Horse stock', 'Exotic livestock'],
     MASTER: ['Prize breeding lines', 'Rare pelts'],

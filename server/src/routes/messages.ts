@@ -24,7 +24,7 @@ const sendMessageSchema = z.object({
 // --- Helpers ---
 
 async function getCharacter(userId: string) {
-  return prisma.character.findFirst({ where: { userId } });
+  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
 }
 
 function parsePagination(query: Record<string, unknown>) {

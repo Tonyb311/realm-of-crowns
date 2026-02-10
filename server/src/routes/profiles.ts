@@ -60,7 +60,7 @@ router.get('/:id/profile', authGuard, async (req: AuthenticatedRequest, res: Res
     const guild = character.guildMemberships[0]?.guild ?? null;
 
     // Psion Telepath: Surface Read — show emotional state tag
-    const viewingCharacter = await prisma.character.findFirst({ where: { userId: req.user!.userId } });
+    const viewingCharacter = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
     let psionInsight: { emotionalState?: string } | undefined;
     if (viewingCharacter && viewingCharacter.id !== character.id) {
       const { isPsion, specialization } = await getPsionSpec(viewingCharacter.id);

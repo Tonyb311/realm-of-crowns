@@ -20,6 +20,11 @@ import { seedArmorRecipes } from './armor-recipes';
 import { seedDiplomacy } from './diplomacy';
 import { seedNodes } from './nodes';
 import { seedFoodItems } from './food-items';
+import { seedKingdoms } from './kingdoms';
+import { seedAbilities } from './abilities';
+import { seedAchievements } from './achievements';
+import { seedWeaponRecipes } from './weapon-recipes';
+import { seedAccessoryRecipes } from './accessory-recipes';
 
 const prisma = new PrismaClient();
 
@@ -29,6 +34,9 @@ async function main() {
 
   // World geography: regions, towns, routes, resources
   await seedWorld(prisma);
+
+  // Kingdoms: links regions and towns to governing kingdoms (P1 #16 / MAJOR-01/04)
+  await seedKingdoms(prisma);
 
   // Resources: base gathering resources
   await seedResources(prisma);
@@ -62,6 +70,18 @@ async function main() {
 
   // Food & beverage item templates (32 items: raw, prepared, preserved, quality, fine, beverages)
   await seedFoodItems(prisma);
+
+  // Weapon recipes: blacksmith and fletcher weapon item templates + recipes (MINOR-07)
+  await seedWeaponRecipes(prisma);
+
+  // Accessory recipes: accessories, enchantments, housing, mount gear (MINOR-07)
+  await seedAccessoryRecipes(prisma);
+
+  // Class abilities: 7 classes x 3 specs = 21 skill trees (P1 #17 / MAJOR-05)
+  await seedAbilities(prisma);
+
+  // Achievements: combat, crafting, social, exploration, economy (P1 #17 / MAJOR-05)
+  await seedAchievements(prisma);
 
   console.log('');
   console.log('✅ Database seeded successfully!');

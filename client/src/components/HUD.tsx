@@ -15,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import Tooltip from './ui/Tooltip';
 import { getMuted, setMuted, getStoredVolume, setVolume } from '../services/sounds';
+import { getConnectionStatus, onConnectionStatusChange } from '../services/socket';
 
 interface CharacterHUD {
   id: string;
@@ -69,6 +70,12 @@ export default function HUD() {
   const location = useLocation();
   const [muted, setMutedState] = useState(getMuted());
   const [vol, setVol] = useState(getStoredVolume());
+  // MAJ-15: Socket connection status indicator
+  const [socketStatus, setSocketStatus] = useState(getConnectionStatus());
+
+  useEffect(() => {
+    return onConnectionStatusChange(setSocketStatus);
+  }, []);
 
   const { data: character } = useQuery<CharacterHUD>({
     queryKey: ['character', 'me'],
@@ -179,6 +186,15 @@ export default function HUD() {
               <MapPin className="w-3 h-3" />
               <span className="truncate max-w-[100px]">{character.currentTownName}</span>
             </Link>
+          </Tooltip>
+        )}
+
+        {/* MAJ-15: Connection status indicator */}
+        {socketStatus !== 'connected' && (
+          <Tooltip content={socketStatus === 'reconnecting' ? 'Reconnecting...' : 'Disconnected'}>
+            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+              socketStatus === 'reconnecting' ? 'bg-amber-400 animate-pulse' : 'bg-red-500'
+            }`} />
           </Tooltip>
         )}
 

@@ -50,6 +50,7 @@ const negotiatePeaceSchema = z.object({
 async function getCharacterForUser(userId: string) {
   return prisma.character.findFirst({
     where: { userId },
+    orderBy: { createdAt: 'asc' },
   });
 }
 
@@ -334,7 +335,18 @@ router.post('/respond-treaty/:proposalId', authGuard, validate(respondTreatySche
     const now = new Date();
     const expiresAt = treaty.type === 'ALLIANCE' ? null : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days for non-alliance
 
+    // Major-B03 FIX: Check treasury balance inside the transaction to prevent
+    // accepting a treaty when the proposer kingdom can no longer afford the cost.
     await prisma.$transaction(async (tx) => {
+      // Re-read proposer kingdom treasury inside tx for consistency
+      const proposer = await tx.kingdom.findUnique({
+        where: { id: treaty.proposerKingdomId },
+        select: { treasury: true },
+      });
+      if (!proposer || proposer.treasury < treaty.goldCost) {
+        throw new Error('INSUFFICIENT_TREASURY');
+      }
+
       // Deduct gold from proposer kingdom
       await tx.kingdom.update({
         where: { id: treaty.proposerKingdomId },
@@ -350,7 +362,17 @@ router.post('/respond-treaty/:proposalId', authGuard, validate(respondTreatySche
           expiresAt,
         },
       });
+    }).catch((err) => {
+      if (err.message === 'INSUFFICIENT_TREASURY') {
+        return res.status(400).json({
+          error: `Proposer kingdom no longer has sufficient treasury (need ${treaty.goldCost}g)`,
+        });
+      }
+      throw err;
     });
+
+    // If res was already sent by the catch above, stop here
+    if (res.headersSent) return;
 
     const proposerRace = treaty.proposerKingdom.ruler?.race;
     const receiverRace = treaty.receiverKingdom.ruler?.race;

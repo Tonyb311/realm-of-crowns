@@ -153,6 +153,8 @@ export interface Combatant {
   lastAction?: CombatAction | null;
   /** Psion: Character class for ability resolution */
   characterClass?: string | null;
+  /** P2 #52: True if the combatant successfully fled from combat */
+  hasFled?: boolean;
 }
 
 // ---- Turn Resolution Results ----

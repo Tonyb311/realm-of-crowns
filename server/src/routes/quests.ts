@@ -11,7 +11,7 @@ const router = Router();
 // ---- Helpers ----
 
 async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId } });
+  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
 }
 
 // ---- Zod Schemas ----
@@ -363,10 +363,13 @@ router.post('/progress', authGuard, validate(progressSchema), async (req: Authen
       return res.status(400).json({ error: 'Invalid objective index' });
     }
 
+    // Major-QUEST-01 FIX: Cap progress increment to 1 per request to prevent cheating
+    const safeAmount = Math.min(amount, 1);
+
     const progress = (questProgress.progress as Record<string, number>) || {};
     const objective = objectives[objectiveIndex];
     const current = progress[String(objectiveIndex)] || 0;
-    progress[String(objectiveIndex)] = Math.min(current + amount, objective.quantity);
+    progress[String(objectiveIndex)] = Math.min(current + safeAmount, objective.quantity);
 
     await prisma.questProgress.update({
       where: { id: questProgress.id },
@@ -434,6 +437,37 @@ router.post('/complete', authGuard, validate(completeQuestSchema), async (req: A
         },
       });
 
+      // P2 #51 FIX: Grant item rewards if present
+      if (rewards.items && rewards.items.length > 0) {
+        for (const itemTemplateName of rewards.items) {
+          const template = await tx.itemTemplate.findFirst({
+            where: { name: itemTemplateName },
+          });
+          if (template) {
+            const item = await tx.item.create({
+              data: {
+                templateId: template.id,
+                ownerId: character.id,
+                currentDurability: template.durability ?? 100,
+              },
+            });
+            const existingInv = await tx.inventory.findFirst({
+              where: { characterId: character.id, itemId: item.id },
+            });
+            if (existingInv) {
+              await tx.inventory.update({
+                where: { id: existingInv.id },
+                data: { quantity: { increment: 1 } },
+              });
+            } else {
+              await tx.inventory.create({
+                data: { characterId: character.id, itemId: item.id, quantity: 1 },
+              });
+            }
+          }
+        }
+      }
+
       // Mark quest as completed
       await tx.questProgress.update({
         where: { id: questProgress.id },
@@ -453,6 +487,7 @@ router.post('/complete', authGuard, validate(completeQuestSchema), async (req: A
       rewards: {
         xp: rewards.xp,
         gold: rewards.gold,
+        items: rewards.items ?? [],
       },
     });
   } catch (error) {

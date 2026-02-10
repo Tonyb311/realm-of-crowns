@@ -24,7 +24,10 @@ export function startElectionLifecycle(io: Server) {
 
 /**
  * Auto-create MAYOR elections for towns that don't have an active election.
+ * P1 #33 FIX: Only create elections for towns with at least MIN_ELECTION_POPULATION residents.
  */
+const MIN_ELECTION_POPULATION = 3;
+
 async function autoCreateElections(io: Server) {
   // Find towns without an active (non-COMPLETED) election
   const townsWithActiveElection = await prisma.election.findMany({
@@ -37,11 +40,24 @@ async function autoCreateElections(io: Server) {
 
   const townIdsWithElection = new Set(townsWithActiveElection.map((e) => e.townId));
 
+  // P1 #33 FIX: Count actual residents (characters with currentTownId) per town
   const allTowns = await prisma.town.findMany({
-    select: { id: true, name: true },
+    select: { id: true, name: true, mayorId: true },
   });
 
-  const townsNeedingElection = allTowns.filter((t) => !townIdsWithElection.has(t.id));
+  const townsNeedingElection: { id: string; name: string }[] = [];
+  for (const town of allTowns) {
+    if (townIdsWithElection.has(town.id)) continue;
+    if (town.mayorId) continue; // Town already has a mayor, no election needed
+
+    // P1 #33 FIX: Skip towns with fewer than MIN_ELECTION_POPULATION residents
+    const residentCount = await prisma.character.count({
+      where: { currentTownId: town.id },
+    });
+    if (residentCount < MIN_ELECTION_POPULATION) continue;
+
+    townsNeedingElection.push(town);
+  }
 
   for (const town of townsNeedingElection) {
     // Determine the next term number
@@ -270,7 +286,16 @@ async function resolveExpiredImpeachments(io: Server) {
   });
 
   for (const impeachment of expired) {
-    const passed = impeachment.votesFor > impeachment.votesAgainst;
+    // Major-POLI-02 FIX: Require majority of eligible voters, not just plurality of votes cast
+    let totalEligible = 0;
+    if (impeachment.townId) {
+      totalEligible = await prisma.character.count({
+        where: { currentTownId: impeachment.townId },
+      });
+    }
+    const passed = totalEligible > 0
+      ? impeachment.votesFor > totalEligible / 2
+      : impeachment.votesFor > impeachment.votesAgainst;
     const newStatus = passed ? 'PASSED' : 'FAILED';
 
     await prisma.impeachment.update({

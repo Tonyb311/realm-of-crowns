@@ -11,6 +11,7 @@ const router = Router();
 async function getCharacterForUser(userId: string) {
   return prisma.character.findFirst({
     where: { userId },
+    orderBy: { createdAt: 'asc' },
     include: {
       inventory: {
         include: {

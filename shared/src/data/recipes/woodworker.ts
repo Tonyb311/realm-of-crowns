@@ -35,6 +35,34 @@ export const WOODWORKER_RECIPES: RecipeDefinition[] = [
     tier: 2,
   },
   {
+    recipeId: 'make-barrel',
+    name: 'Make Barrel',
+    professionRequired: 'WOODWORKER',
+    levelRequired: 10,
+    inputs: [
+      { itemName: 'Softwood Planks', quantity: 4 },
+      { itemName: 'Nails', quantity: 10 },
+    ],
+    outputs: [{ itemName: 'Barrel', quantity: 1 }],
+    craftTime: 30,
+    xpReward: 15,
+    tier: 1,
+  }, // Major-PROF-01: Added Barrel recipe — needed by Brewers
+  {
+    recipeId: 'make-furniture',
+    name: 'Make Furniture',
+    professionRequired: 'WOODWORKER',
+    levelRequired: 15,
+    inputs: [
+      { itemName: 'Hardwood Planks', quantity: 4 },
+      { itemName: 'Nails', quantity: 15 },
+    ],
+    outputs: [{ itemName: 'Furniture', quantity: 1 }],
+    craftTime: 45,
+    xpReward: 20,
+    tier: 2,
+  }, // Major-PROF-01: Added Furniture recipe — listed in Woodworker outputs but had no recipe
+  {
     recipeId: 'mill-exotic',
     name: 'Mill Exotic Planks',
     professionRequired: 'WOODWORKER',

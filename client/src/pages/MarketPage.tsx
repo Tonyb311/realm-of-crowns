@@ -106,7 +106,6 @@ const RARITY_ORDER: Rarity[] = ['POOR', 'COMMON', 'FINE', 'SUPERIOR', 'MASTERWOR
 
 const ITEM_TYPES = ['All', 'Weapon', 'Armor', 'Consumable', 'Material', 'Accessory', 'Tool', 'Misc'];
 
-const TAX_RATE = 0.1;
 const PAGE_SIZE = 12;
 
 // ---------------------------------------------------------------------------
@@ -256,6 +255,20 @@ export default function MarketPage() {
   // ---------------------------------------------------------------------------
   // Queries
   // ---------------------------------------------------------------------------
+  // P1 #24: Fetch actual tax rate from the player's current town
+  const { data: charData } = useQuery<{ currentTownId: string | null }>({
+    queryKey: ['character', 'me'],
+    queryFn: async () => (await api.get('/characters/me')).data,
+  });
+
+  const { data: townData } = useQuery<{ town: { taxRate?: number } }>({
+    queryKey: ['town', charData?.currentTownId],
+    queryFn: async () => (await api.get(`/towns/${charData!.currentTownId}`)).data,
+    enabled: !!charData?.currentTownId,
+  });
+
+  const taxRate = townData?.town?.taxRate ?? 0.10;
+
   const { data: wallet } = useQuery<WalletResponse>({
     queryKey: ['wallet'],
     queryFn: async () => (await api.get('/characters/me/wallet')).data,
@@ -374,7 +387,7 @@ export default function MarketPage() {
   const listPriceNum = parseFloat(listPrice) || 0;
   const listQtyNum = parseInt(listQty, 10) || 0;
   const listTotal = listPriceNum * listQtyNum;
-  const listTax = Math.ceil(listTotal * TAX_RATE);
+  const listTax = Math.ceil(listTotal * taxRate);
 
   // ---------------------------------------------------------------------------
   // Tab config
@@ -833,13 +846,13 @@ export default function MarketPage() {
                 <GoldAmount amount={buyConfirm.price} className="text-parchment-200" />
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-parchment-500">Tax (10%)</span>
-                <GoldAmount amount={Math.ceil(buyConfirm.price * TAX_RATE)} className="text-parchment-200" />
+                <span className="text-parchment-500">Tax ({Math.round(taxRate * 100)}%)</span>
+                <GoldAmount amount={Math.ceil(buyConfirm.price * taxRate)} className="text-parchment-200" />
               </div>
               <div className="border-t border-dark-50 pt-2 flex justify-between text-sm font-semibold">
                 <span className="text-parchment-300">Total</span>
                 <GoldAmount
-                  amount={buyConfirm.price + Math.ceil(buyConfirm.price * TAX_RATE)}
+                  amount={buyConfirm.price + Math.ceil(buyConfirm.price * taxRate)}
                   className="text-primary-400"
                 />
               </div>
@@ -847,7 +860,7 @@ export default function MarketPage() {
                 <span className="text-parchment-500">Your Gold</span>
                 <GoldAmount amount={gold} className="text-parchment-200" />
               </div>
-              {gold < buyConfirm.price + Math.ceil(buyConfirm.price * TAX_RATE) && (
+              {gold < buyConfirm.price + Math.ceil(buyConfirm.price * taxRate) && (
                 <p className="text-blood-light text-xs">You do not have enough gold for this purchase.</p>
               )}
             </div>
@@ -860,7 +873,7 @@ export default function MarketPage() {
               </button>
               <button
                 onClick={() => buyMutation.mutate(buyConfirm.id)}
-                disabled={buyMutation.isPending || gold < buyConfirm.price + Math.ceil(buyConfirm.price * TAX_RATE)}
+                disabled={buyMutation.isPending || gold < buyConfirm.price + Math.ceil(buyConfirm.price * taxRate)}
                 className="flex-1 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {buyMutation.isPending ? 'Buying...' : 'Confirm'}

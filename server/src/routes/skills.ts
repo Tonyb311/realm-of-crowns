@@ -11,7 +11,7 @@ const router = Router();
 // ---- Helpers ----
 
 async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId } });
+  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
 }
 
 // ---- Zod Schemas ----

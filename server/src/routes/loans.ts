@@ -22,7 +22,7 @@ const TIER_LOAN_LIMITS: Record<string, number> = {
 router.post('/issue', authGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { borrowerId, principal, interestRate, termDays } = req.body;
-    const banker = await prisma.character.findFirst({ where: { userId: req.user!.userId } });
+    const banker = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
     if (!banker) return res.status(404).json({ error: 'No character found' });
 
     // Validate banker has BANKER profession at JOURNEYMAN+
@@ -112,7 +112,7 @@ router.post('/issue', authGuard, async (req: AuthenticatedRequest, res: Response
 router.post('/repay', authGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { loanId, amount } = req.body;
-    const character = await prisma.character.findFirst({ where: { userId: req.user!.userId } });
+    const character = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
     if (!character) return res.status(404).json({ error: 'No character found' });
 
     if (!loanId || !amount || amount <= 0) {
@@ -177,7 +177,7 @@ router.post('/repay', authGuard, async (req: AuthenticatedRequest, res: Response
 
 router.get('/mine', authGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await prisma.character.findFirst({ where: { userId: req.user!.userId } });
+    const character = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
     if (!character) return res.status(404).json({ error: 'No character found' });
 
     const [loansGiven, loansTaken] = await Promise.all([
@@ -204,7 +204,7 @@ router.get('/mine', authGuard, async (req: AuthenticatedRequest, res: Response) 
 
 router.get('/:id', authGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await prisma.character.findFirst({ where: { userId: req.user!.userId } });
+    const character = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
     if (!character) return res.status(404).json({ error: 'No character found' });
 
     const loan = await prisma.loan.findUnique({

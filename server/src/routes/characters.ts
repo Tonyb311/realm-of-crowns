@@ -77,7 +77,7 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
     const charClass = characterClass as CharacterClass;
 
     // One character per user
-    const existing = await prisma.character.findFirst({ where: { userId } });
+    const existing = await prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
     if (existing) {
       return res.status(409).json({ error: 'You already have a character' });
     }
@@ -311,7 +311,7 @@ router.post('/allocate-stats', authGuard, validate(allocateStatsSchema), async (
     const { str, dex, con, int: intStat, wis, cha } = req.body;
     const userId = req.user!.userId;
 
-    const character = await prisma.character.findFirst({ where: { userId } });
+    const character = await prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
     if (!character) {
       return res.status(404).json({ error: 'No character found' });
     }

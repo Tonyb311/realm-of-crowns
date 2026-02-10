@@ -1,9 +1,10 @@
 import React, { Suspense } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ui/ProtectedRoute';
 import { AdminRoute } from './components/ui/AdminRoute';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import LoadingScreen from './components/LoadingScreen';
 import api from './services/api';
 // Global components (always loaded)
@@ -59,6 +60,7 @@ function App() {
       <HUD />
       <Navigation />
       <div className="min-h-screen bg-dark-500 pb-14 md:pb-12">
+        <ErrorBoundary>
         <Suspense fallback={<LoadingScreen />}>
         <Routes>
           <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
@@ -232,8 +234,11 @@ function App() {
             <Route path="economy" element={<AdminEconomyPage />} />
             <Route path="tools" element={<AdminToolsPage />} />
           </Route>
+          {/* MAJ-18: 404 catch-all route */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
         </Suspense>
+        </ErrorBoundary>
       </div>
     </AuthProvider>
   );
@@ -301,6 +306,24 @@ function HomePage() {
       <div className="mt-16 text-parchment-500 text-sm">
         <p>20 Races - 28 Professions - 68 Towns - Your Story</p>
       </div>
+    </div>
+  );
+}
+
+// MAJ-18: 404 catch-all page
+function NotFoundPage() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen p-8">
+      <h1 className="text-6xl font-display text-primary-400 mb-4">404</h1>
+      <p className="text-xl text-parchment-300 mb-8 text-center max-w-lg">
+        This page does not exist. Perhaps the road was lost, or the map was wrong.
+      </p>
+      <Link
+        to="/"
+        className="px-8 py-3 bg-primary-400 text-dark-500 font-display text-lg rounded hover:bg-primary-300 transition-colors"
+      >
+        Return Home
+      </Link>
     </div>
   );
 }

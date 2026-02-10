@@ -68,7 +68,7 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 1,
     inputs: [
       { itemName: 'Copper Ingot', quantity: 2 },
-      { itemName: 'Hardwood Planks', quantity: 1 },
+      { itemName: 'Softwood Planks', quantity: 1 }, // Major-ECON-04: Changed from Hardwood Planks (Woodworker L10) to Softwood Planks (L1)
     ],
     outputs: [{ itemName: 'Copper Mace', quantity: 1 }],
     craftTime: 20,
@@ -93,7 +93,7 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 1,
     inputs: [
       { itemName: 'Copper Ingot', quantity: 2 },
-      { itemName: 'Hardwood Planks', quantity: 1 },
+      { itemName: 'Softwood Planks', quantity: 1 }, // Major-ECON-04: Changed from Hardwood Planks (Woodworker L10) to Softwood Planks (L1)
     ],
     outputs: [{ itemName: 'Copper Axe', quantity: 1 }],
     craftTime: 20,
@@ -118,7 +118,7 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 1,
     inputs: [
       { itemName: 'Copper Ingot', quantity: 1 },
-      { itemName: 'Hardwood Planks', quantity: 2 },
+      { itemName: 'Softwood Planks', quantity: 2 }, // Major-ECON-04: Changed from Hardwood Planks (Woodworker L10) to Softwood Planks (L1)
     ],
     outputs: [{ itemName: 'Copper Spear', quantity: 1 }],
     craftTime: 20,

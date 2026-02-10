@@ -43,7 +43,7 @@ export function emitPlayerLeaveTown(townId: string, data: {
 export function emitCombatResult(characterIds: string[], data: {
   sessionId: string;
   type: string;
-  result: 'victory' | 'defeat' | 'draw';
+  result: 'victory' | 'defeat' | 'draw' | 'fled';
   summary: string;
 }) {
   for (const charId of characterIds) {

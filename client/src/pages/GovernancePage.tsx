@@ -30,6 +30,7 @@ interface TownInfo {
   population: number;
   treasury: number;
   taxRate: number;
+  kingdomId: string | null; // P1 #25: actual kingdomId from region
   mayor: { id: string; name: string; level: number } | null;
   policy: {
     taxRate?: number;
@@ -126,13 +127,16 @@ export default function GovernancePage() {
     enabled: !!townId,
   });
 
+  const town = townData?.town;
+  // P1 #25: Use actual kingdomId from town data instead of hardcoded 'default'
+  const kingdomId = town?.kingdomId ?? null;
+
   const { data: lawsData, isLoading: lawsLoading } = useQuery<{ laws: Law[] }>({
-    queryKey: ['governance', 'laws'],
-    queryFn: async () => (await api.get('/governance/laws', { params: { kingdomId: 'default' } })).data,
-    enabled: activeTab === 'laws',
+    queryKey: ['governance', 'laws', kingdomId],
+    queryFn: async () => (await api.get('/governance/laws', { params: { kingdomId } })).data,
+    enabled: activeTab === 'laws' && !!kingdomId,
   });
 
-  const town = townData?.town;
   const laws = lawsData?.laws ?? [];
   const isMayor = town?.mayor?.id === character?.id;
 
@@ -307,11 +311,20 @@ export default function GovernancePage() {
                   <h2 className="text-xl font-display text-parchment-200">Laws & Proposals</h2>
                   <button
                     onClick={() => setShowLawModal(true)}
-                    className="px-5 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors"
+                    disabled={!kingdomId}
+                    className="px-5 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Propose Law
                   </button>
                 </div>
+
+                {/* P1 #25: Fallback when no kingdom is associated */}
+                {!kingdomId && !lawsLoading && (
+                  <div className="text-center py-20">
+                    <ScrollText className="w-12 h-12 text-parchment-500/30 mx-auto mb-4" />
+                    <p className="text-parchment-500">This town is not yet part of a kingdom. Laws require a governing kingdom.</p>
+                  </div>
+                )}
 
                 {lawsLoading ? (
                   <div className="flex justify-center py-20">
@@ -692,7 +705,7 @@ export default function GovernancePage() {
                 Cancel
               </button>
               <button
-                onClick={() => proposeLawMutation.mutate({ kingdomId: 'default', title: lawTitle, description: lawDescription || undefined, lawType })}
+                onClick={() => kingdomId && proposeLawMutation.mutate({ kingdomId, title: lawTitle, description: lawDescription || undefined, lawType })}
                 disabled={proposeLawMutation.isPending || !lawTitle.trim()}
                 className="flex-1 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >

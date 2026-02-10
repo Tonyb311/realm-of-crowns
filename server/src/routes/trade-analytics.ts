@@ -10,7 +10,7 @@ const router = Router();
 // --- Helpers ---
 
 async function getCharacter(userId: string) {
-  return prisma.character.findFirst({ where: { userId } });
+  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
 }
 
 // GET /api/trade/prices/:itemTemplateId

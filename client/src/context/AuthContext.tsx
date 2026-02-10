@@ -46,6 +46,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
   }, [token]);
 
+  // P1 #23: Listen for auth-expired events from the API interceptor
+  // so React Router can redirect naturally instead of full page reload.
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      setToken(null);
+      setUser(null);
+    };
+    window.addEventListener('roc:auth-expired', handleAuthExpired);
+    return () => window.removeEventListener('roc:auth-expired', handleAuthExpired);
+  }, []);
+
   const login = useCallback(async (email: string, password: string) => {
     const res = await api.post('/auth/login', { email, password });
     const { token: newToken, user: newUser } = res.data;

@@ -36,6 +36,7 @@ interface Town {
   resources: string[];
   buildings: string[];
   characters: TownCharacter[];
+  taxRate?: number; // P1 #24: actual tax rate from server
 }
 
 interface TownCharacter {
@@ -366,7 +367,8 @@ export default function TownPage() {
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-parchment-500">Tax Rate</dt>
-                  <dd className="text-parchment-200">10%</dd>
+                  {/* P1 #24: Use actual server tax rate instead of hardcoded 10% */}
+                  <dd className="text-parchment-200">{Math.round((town.taxRate ?? 0.10) * 100)}%</dd>
                 </div>
               </dl>
             </div>

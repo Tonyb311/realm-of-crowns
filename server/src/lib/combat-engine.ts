@@ -800,11 +800,11 @@ export function resolveFlee(
     success: check.success,
   };
 
-  // If flee succeeds, remove the combatant from combat
+  // P2 #52 FIX: If flee succeeds, mark as fled instead of dead to avoid death penalties
   let combatants = state.combatants;
   if (check.success) {
     combatants = combatants.map((c) =>
-      c.id === actorId ? { ...c, isAlive: false } : c
+      c.id === actorId ? { ...c, isAlive: false, hasFled: true } : c
     );
   }
 

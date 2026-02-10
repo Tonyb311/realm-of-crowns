@@ -38,7 +38,7 @@ const halfElfChosenProfessionSchema = z.object({
 // =========================================================================
 
 async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId } });
+  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
 }
 
 // =========================================================================

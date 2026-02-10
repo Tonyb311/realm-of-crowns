@@ -180,11 +180,9 @@ export default function ChatPanel() {
       payload.guildId = character.guildId;
     }
 
-    // Send via socket for real-time
+    // MAJ-13: Send via socket only — server persists on receipt.
+    // Removed duplicate REST call that caused double messages.
     socket?.emit('chat:send', payload);
-
-    // Also persist via REST
-    api.post('/messages/send', payload).catch(() => {});
 
     setInputValue('');
     inputRef.current?.focus();

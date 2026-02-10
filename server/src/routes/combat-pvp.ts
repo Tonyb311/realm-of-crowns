@@ -138,7 +138,7 @@ async function getEquippedWeapon(characterId: string): Promise<WeaponInfo> {
 // ---- Helpers ----
 
 async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId } });
+  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
 }
 
 async function isInActiveCombat(characterId: string): Promise<boolean> {
@@ -797,68 +797,65 @@ router.get(
   authGuard,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      // Get all completed PvP sessions
-      const completedSessions = await prisma.combatSession.findMany({
+      const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
+      const skip = (page - 1) * limit;
+
+      // P1 #21 FIX: Use aggregation query instead of loading all sessions into memory.
+      // Count wins per character by counting completed PvP sessions where they survived (HP > 0).
+      const winCounts = await prisma.combatParticipant.groupBy({
+        by: ['characterId'],
         where: {
-          type: { in: ['DUEL', 'ARENA'] },
-          status: 'completed',
-        },
-        include: {
-          participants: {
-            include: {
-              character: {
-                select: { id: true, name: true, level: true },
-              },
-            },
+          session: {
+            type: { in: ['DUEL', 'ARENA'] },
+            status: 'completed',
           },
+          currentHp: { gt: 0 },
         },
+        _count: { characterId: true },
+        orderBy: { _count: { characterId: 'desc' } },
+        skip,
+        take: limit,
       });
 
-      // Tally wins and losses per character
-      const stats = new Map<
-        string,
-        { id: string; name: string; level: number; wins: number; losses: number }
-      >();
+      // Count total matches per character (for win rate calculation)
+      const totalCounts = await prisma.combatParticipant.groupBy({
+        by: ['characterId'],
+        where: {
+          characterId: { in: winCounts.map((w) => w.characterId) },
+          session: {
+            type: { in: ['DUEL', 'ARENA'] },
+            status: 'completed',
+          },
+        },
+        _count: { characterId: true },
+      });
+      const totalMap = new Map(totalCounts.map((t) => [t.characterId, t._count.characterId]));
 
-      for (const session of completedSessions) {
-        const sessionLog = session.log as { winnerId?: string } | null;
-        const winnerId = sessionLog?.winnerId;
+      // Fetch character names for the leaderboard entries
+      const characters = await prisma.character.findMany({
+        where: { id: { in: winCounts.map((w) => w.characterId) } },
+        select: { id: true, name: true, level: true },
+      });
+      const charMap = new Map(characters.map((c) => [c.id, c]));
 
-        for (const participant of session.participants) {
-          const charId = participant.characterId;
-          if (!stats.has(charId)) {
-            stats.set(charId, {
-              id: charId,
-              name: participant.character.name,
-              level: participant.character.level,
-              wins: 0,
-              losses: 0,
-            });
-          }
-          const entry = stats.get(charId)!;
-          if (winnerId === charId) {
-            entry.wins++;
-          } else if (winnerId) {
-            entry.losses++;
-          }
-        }
-      }
+      const leaderboard = winCounts.map((entry) => {
+        const char = charMap.get(entry.characterId);
+        const wins = entry._count.characterId;
+        const totalMatches = totalMap.get(entry.characterId) ?? wins;
+        const losses = totalMatches - wins;
+        return {
+          id: entry.characterId,
+          name: char?.name ?? 'Unknown',
+          level: char?.level ?? 0,
+          wins,
+          losses,
+          totalMatches,
+          winRate: totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0,
+        };
+      });
 
-      const leaderboard = [...stats.values()]
-        .map((entry) => ({
-          ...entry,
-          totalMatches: entry.wins + entry.losses,
-          winRate:
-            entry.wins + entry.losses > 0
-              ? Math.round((entry.wins / (entry.wins + entry.losses)) * 100)
-              : 0,
-        }))
-        .sort((a, b) => {
-          if (b.wins !== a.wins) return b.wins - a.wins;
-          return a.losses - b.losses;
-        });
-
-      return res.json({ leaderboard });
+      return res.json({ leaderboard, page, limit });
     } catch (error) {
       console.error('PvP leaderboard error:', error);
       return res.status(500).json({ error: 'Internal server error' });

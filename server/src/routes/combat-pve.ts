@@ -25,7 +25,7 @@ import { onMonsterKill } from '../services/quest-triggers';
 import { checkLevelUp } from '../services/progression';
 import { checkAchievements } from '../services/achievements';
 import { redis } from '../lib/redis';
-import { ACTION_XP } from '@shared/data/progression';
+import { ACTION_XP, DEATH_PENALTY } from '@shared/data/progression';
 
 const router = Router();
 
@@ -341,8 +341,10 @@ router.post('/action', authGuard, validate(combatActionSchema), async (req: Auth
     const currentActorId = state.turnOrder[state.turnIndex];
 
     // Verify it is the player's turn (they can only submit actions for their own character)
+    // Major-B12 FIX: Add orderBy for deterministic result
     const character = await prisma.character.findFirst({
       where: { userId: req.user!.userId },
+      orderBy: { createdAt: 'asc' },
     });
     if (!character) {
       return res.status(404).json({ error: 'Character not found' });
@@ -543,8 +545,22 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
       },
     });
 
-    if (playerCombatant && !playerCombatant.isAlive) {
-      // Player died — apply death penalties
+    if (playerCombatant && !playerCombatant.isAlive && playerCombatant.hasFled) {
+      // P2 #52 FIX: Player fled — apply minor penalty instead of full death penalties
+      const character = await tx.character.findUnique({ where: { id: playerId } });
+      if (character) {
+        // Minor flee penalty: small XP loss (half of death penalty), no gold loss, no durability damage
+        const minorXpLoss = Math.floor(character.level * (DEATH_PENALTY.XP_LOSS_PER_LEVEL / 2));
+        await tx.character.update({
+          where: { id: playerId },
+          data: {
+            health: Math.max(1, Math.floor(character.maxHealth * 0.5)), // flee at half HP
+            xp: Math.max(0, character.xp - minorXpLoss),
+          },
+        });
+      }
+    } else if (playerCombatant && !playerCombatant.isAlive) {
+      // Player died — apply full death penalties
       const character = await tx.character.findUnique({ where: { id: playerId } });
       if (character) {
         const penalty = calculateDeathPenalty(
@@ -657,11 +673,12 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
 
   // Emit combat result to the player
   const playerWon = playerCombatant?.isAlive ?? false;
+  const playerFled = playerCombatant?.hasFled ?? false;
   emitCombatResult([playerId], {
     sessionId,
     type: 'PVE',
-    result: playerWon ? 'victory' : 'defeat',
-    summary: playerWon ? 'You won the battle!' : 'You were defeated.',
+    result: playerWon ? 'victory' : playerFled ? 'fled' : 'defeat',
+    summary: playerWon ? 'You won the battle!' : playerFled ? 'You fled from combat.' : 'You were defeated.',
   });
 
   // Clean up combat state

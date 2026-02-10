@@ -35,6 +35,31 @@ export const TAILOR_RECIPES: RecipeDefinition[] = [
     tier: 1,
   },
   {
+    recipeId: 'spin-silk-thread',
+    name: 'Spin Silk Thread',
+    professionRequired: 'TAILOR',
+    levelRequired: 25,
+    inputs: [
+      { itemName: 'Wool', quantity: 2 },
+      { itemName: 'Flowers', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Silk Thread', quantity: 2 }],
+    craftTime: 40,
+    xpReward: 25,
+    tier: 2,
+  }, // P1 #14b: Added Silk Thread recipe — previously no source existed, blocking Silk Cloth
+  {
+    recipeId: 'make-cloth-padding',
+    name: 'Make Cloth Padding',
+    professionRequired: 'TAILOR',
+    levelRequired: 3,
+    inputs: [{ itemName: 'Cloth', quantity: 2 }],
+    outputs: [{ itemName: 'Cloth Padding', quantity: 1 }],
+    craftTime: 15,
+    xpReward: 8,
+    tier: 1,
+  }, // Major-ECON-06: Added Cloth Padding recipe — needed by Armorer for plate armor
+  {
     recipeId: 'weave-silk',
     name: 'Weave Silk',
     professionRequired: 'TAILOR',

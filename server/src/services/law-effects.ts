@@ -159,33 +159,62 @@ export async function isLawActive(lawId: string): Promise<boolean> {
 }
 
 /**
+ * Helper: resolve a character's kingdom via town -> region -> kingdom chain.
+ * P1 #15 FIX: Uses Region.kingdomId if available (added by seed-data-fixer),
+ * falls back to matching Kingdom.capitalTownId against the character's region.
+ */
+async function getCharacterKingdomId(characterId: string): Promise<string | null> {
+  const character = await prisma.character.findUnique({
+    where: { id: characterId },
+    select: { currentTownId: true },
+  });
+  if (!character?.currentTownId) return null;
+
+  const town = await prisma.town.findUnique({
+    where: { id: character.currentTownId },
+    select: { regionId: true, region: { select: { id: true } } },
+  });
+  if (!town) return null;
+
+  // Try Region.kingdomId if the field exists (optional chaining for forward-compat)
+  const region = await prisma.region.findUnique({
+    where: { id: town.regionId },
+  }) as { id: string; kingdomId?: string | null } | null;
+  if (region?.kingdomId) return region.kingdomId;
+
+  // Fallback: find kingdom whose capitalTownId is in the same region
+  const regionTowns = await prisma.town.findMany({
+    where: { regionId: town.regionId },
+    select: { id: true },
+  });
+  const regionTownIds = regionTowns.map(t => t.id);
+
+  const kingdom = await prisma.kingdom.findFirst({
+    where: { capitalTownId: { in: regionTownIds } },
+    select: { id: true },
+  });
+
+  return kingdom?.id ?? null;
+}
+
+/**
  * Helper: check if two characters' kingdoms are at war.
  * Returns the war record if at war, null otherwise.
+ * P1 #15 FIX: Now resolves kingdom via town -> region -> kingdom chain
+ * instead of only checking ruler relationship.
  */
 async function getWarBetweenCharacters(
   characterId1: string,
   characterId2: string
 ): Promise<{ id: string; attackerKingdomId: string; defenderKingdomId: string } | null> {
-  // Find kingdoms these characters might belong to (via ruler relationship)
-  const kingdoms = await prisma.kingdom.findMany({
-    where: {
-      rulerId: { in: [characterId1, characterId2] },
-    },
-    select: { id: true, rulerId: true },
-  });
+  const [kingdomId1, kingdomId2] = await Promise.all([
+    getCharacterKingdomId(characterId1),
+    getCharacterKingdomId(characterId2),
+  ]);
 
-  if (kingdoms.length < 2) {
-    // Characters aren't rulers of different kingdoms -- check town mayors
-    // For a broader approach, get the kingdoms that own the towns these characters are in
-    // Since there's no direct town->kingdom FK, we skip this deeper check for now
-    return null;
-  }
+  if (!kingdomId1 || !kingdomId2 || kingdomId1 === kingdomId2) return null;
 
-  const k1 = kingdoms.find(k => k.rulerId === characterId1);
-  const k2 = kingdoms.find(k => k.rulerId === characterId2);
-  if (!k1 || !k2) return null;
-
-  const warStatus = await getWarStatus(k1.id, k2.id);
+  const warStatus = await getWarStatus(kingdomId1, kingdomId2);
   return warStatus.atWar ? warStatus.war! : null;
 }
 

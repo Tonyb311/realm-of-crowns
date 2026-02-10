@@ -123,7 +123,7 @@ router.post('/perform', authGuard, requireDailyAction('SERVICE'), async (req: Au
 
 router.get('/reputation', authGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await prisma.character.findFirst({ where: { userId: req.user!.userId } });
+    const character = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
     if (!character) return res.status(404).json({ error: 'No character found' });
 
     const reputations = await prisma.serviceReputation.findMany({
@@ -142,7 +142,7 @@ router.get('/reputation', authGuard, async (req: AuthenticatedRequest, res: Resp
 
 router.get('/available', authGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await prisma.character.findFirst({ where: { userId: req.user!.userId } });
+    const character = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
     if (!character) return res.status(404).json({ error: 'No character found' });
 
     const providers = await prisma.playerProfession.findMany({

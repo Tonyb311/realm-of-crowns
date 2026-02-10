@@ -25,7 +25,7 @@ const REPAIR_PROFESSION_MAP: Partial<Record<ItemType, ProfessionType[]>> = {
 const REPAIR_GOLD_PER_POINT = 2;
 
 async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId } });
+  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
 }
 
 // -------------------------------------------------------------------------

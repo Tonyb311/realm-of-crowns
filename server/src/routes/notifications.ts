@@ -6,7 +6,7 @@ import { AuthenticatedRequest } from '../types/express';
 const router = Router();
 
 async function getCharacter(userId: string) {
-  return prisma.character.findFirst({ where: { userId } });
+  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
 }
 
 // --- GET /api/notifications ---

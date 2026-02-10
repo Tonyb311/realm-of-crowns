@@ -21,19 +21,26 @@ const router = Router();
 // Category limits
 // ---------------------------------------------------------------------------
 
-const MAX_ACTIVE_PROFESSIONS = 3;
+const BASE_MAX_PROFESSIONS = 3;
+// P1 #27: Humans get a 4th profession slot at level 15
+const HUMAN_BONUS_PROFESSION_LEVEL = 15;
 const CATEGORY_LIMITS: Record<ProfessionCategory, number> = {
   GATHERING: 2,
   CRAFTING: 2,
   SERVICE: 1,
 };
 
+function getMaxProfessions(race: Race, level: number): number {
+  if (race === 'HUMAN' && level >= HUMAN_BONUS_PROFESSION_LEVEL) return 4;
+  return BASE_MAX_PROFESSIONS;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId } });
+  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
 }
 
 function raceEnumToRegistryKey(race: Race): string {
@@ -101,9 +108,10 @@ router.post('/learn', authGuard, validate(professionTypeSchema), async (req: Aut
         where: { characterId: character.id, isActive: true },
       });
 
-      if (activeProfessions.length >= MAX_ACTIVE_PROFESSIONS) {
+      const maxProf = getMaxProfessions(character.race, character.level);
+      if (activeProfessions.length >= maxProf) {
         return res.status(400).json({
-          error: `Cannot have more than ${MAX_ACTIVE_PROFESSIONS} active professions. Abandon one first.`,
+          error: `Cannot have more than ${maxProf} active professions. Abandon one first.`,
         });
       }
 
@@ -144,9 +152,10 @@ router.post('/learn', authGuard, validate(professionTypeSchema), async (req: Aut
       where: { characterId: character.id, isActive: true },
     });
 
-    if (activeProfessions.length >= MAX_ACTIVE_PROFESSIONS) {
+    const maxProf = getMaxProfessions(character.race, character.level);
+    if (activeProfessions.length >= maxProf) {
       return res.status(400).json({
-        error: `Cannot have more than ${MAX_ACTIVE_PROFESSIONS} active professions. Abandon one first.`,
+        error: `Cannot have more than ${maxProf} active professions. Abandon one first.`,
       });
     }
 
@@ -401,6 +410,9 @@ router.get('/available', authGuard, async (req: AuthenticatedRequest, res: Respo
       }
     }
 
+    // P1 #27: Race-aware profession cap
+    const maxProf = getMaxProfessions(character.race, character.level);
+
     const professions = ALL_PROFESSIONS.map((def) => {
       const existing = profMap.get(def.type as ProfessionType);
 
@@ -411,9 +423,9 @@ router.get('/available', authGuard, async (req: AuthenticatedRequest, res: Respo
         status = 'learned';
       } else if (existing && !existing.isActive) {
         // Previously learned but abandoned — can reactivate if limits allow
-        if (activeCount >= MAX_ACTIVE_PROFESSIONS) {
+        if (activeCount >= maxProf) {
           status = 'locked';
-          lockReason = `Maximum ${MAX_ACTIVE_PROFESSIONS} active professions reached`;
+          lockReason = `Maximum ${maxProf} active professions reached`;
         } else if (categoryCounts[def.category] >= CATEGORY_LIMITS[def.category]) {
           status = 'locked';
           lockReason = `Maximum ${CATEGORY_LIMITS[def.category]} ${def.category.toLowerCase()} professions reached`;
@@ -422,9 +434,9 @@ router.get('/available', authGuard, async (req: AuthenticatedRequest, res: Respo
         }
       } else {
         // Never learned
-        if (activeCount >= MAX_ACTIVE_PROFESSIONS) {
+        if (activeCount >= maxProf) {
           status = 'locked';
-          lockReason = `Maximum ${MAX_ACTIVE_PROFESSIONS} active professions reached`;
+          lockReason = `Maximum ${maxProf} active professions reached`;
         } else if (categoryCounts[def.category] >= CATEGORY_LIMITS[def.category]) {
           status = 'locked';
           lockReason = `Maximum ${CATEGORY_LIMITS[def.category]} ${def.category.toLowerCase()} professions reached`;
@@ -459,7 +471,7 @@ router.get('/available', authGuard, async (req: AuthenticatedRequest, res: Respo
     return res.json({
       professions,
       limits: {
-        maxActive: MAX_ACTIVE_PROFESSIONS,
+        maxActive: maxProf,
         currentActive: activeCount,
         categories: {
           GATHERING: { max: CATEGORY_LIMITS.GATHERING, current: categoryCounts.GATHERING },

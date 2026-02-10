@@ -98,6 +98,18 @@ export const ANIMAL_PRODUCTS: ResourceDefinition[] = [
     professionRequired: 'RANCHER',
   },
   {
+    id: 'exotic_hide',
+    name: 'Exotic Hide',
+    type: 'HIDE',
+    rarity: 'RARE',
+    description: 'Thick, unusual hides from exotic creatures. Requires expert tanning to process into Exotic Leather.',
+    baseGatherTime: 70,
+    baseYield: 1,
+    biomes: ['FOREST', 'SWAMP', 'BADLANDS'],
+    tier: 3,
+    professionRequired: 'HUNTER',
+  }, // P1 #14c: Added Exotic Hide — Tanner tan-exotic recipe requires it but no source existed
+  {
     id: 'wild_game_meat',
     name: 'Wild Game Meat',
     type: 'ANIMAL_PRODUCT',

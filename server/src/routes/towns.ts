@@ -11,6 +11,8 @@ router.get('/:id', cache(120), async (req, res) => {
       where: { id: req.params.id },
       include: {
         region: { select: { id: true, name: true, biome: true } },
+        // P1 #24: Include treasury so clients can display actual tax rate
+        treasury: { select: { taxRate: true } },
         resources: {
           select: {
             id: true,
@@ -43,7 +45,8 @@ router.get('/:id', cache(120), async (req, res) => {
       return res.status(404).json({ error: 'Town not found' });
     }
 
-    return res.json({ town });
+    // P1 #24: Include taxRate at top level for easy client access
+    return res.json({ town: { ...town, taxRate: town.treasury?.taxRate ?? 0.10 } });
   } catch (error) {
     console.error('Get town error:', error);
     return res.status(500).json({ error: 'Internal server error' });
