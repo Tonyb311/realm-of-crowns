@@ -65,6 +65,7 @@ function makeCharacter(overrides: Record<string, unknown> = {}) {
     level: 5,
     gold: 500,
     currentTownId: 'town-001',
+    travelStatus: 'idle',
     ...overrides,
   };
 }

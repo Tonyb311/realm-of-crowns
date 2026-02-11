@@ -72,6 +72,7 @@ const mockCharacter = {
   level: 10,
   gold: 5000,
   currentTownId: TOWN_ID,
+  travelStatus: 'idle',
 };
 
 describe('Buildings API', () => {

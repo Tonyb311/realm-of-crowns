@@ -96,6 +96,7 @@ const mockCharacter = {
   level: 5,
   gold: 1000,
   currentTownId: 'town-001',
+  travelStatus: 'idle',
 };
 
 describe('Market API', () => {

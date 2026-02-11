@@ -1,875 +1,1607 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Plus,
+  Minus,
+  Compass,
+  Eye,
+  EyeOff,
+  X,
+  MapPin,
+  Shield,
+  Users,
+  ChevronRight,
+  Info,
+} from 'lucide-react';
 import api from '../services/api';
-import TownMarker from '../components/map/TownMarker';
-import RegionOverlay from '../components/map/RegionOverlay';
-import ExclusiveZoneOverlay, { type ExclusiveZoneData } from '../components/map/ExclusiveZoneOverlay';
-import MapTooltip from '../components/map/MapTooltip';
-import MiniMap from '../components/map/MiniMap';
-import TownInfoPanel from '../components/map/TownInfoPanel';
+import TravelStartModal from '../components/travel/TravelStartModal';
 
-// ---------------------------------------------------------------------------
-// Types — assumed API shape from GET /api/world/map
-// ---------------------------------------------------------------------------
-interface Town {
+// ===========================================================================
+// Types
+// ===========================================================================
+
+interface MapTown {
   id: string;
   name: string;
+  type?: 'capital' | 'city' | 'town' | 'village' | 'outpost';
   regionId: string;
   regionName: string;
-  x: number;
-  y: number;
+  mapX: number;
+  mapY: number;
   population: number;
   biome: string;
-  description: string;
-  specialty: string;
-  notableFeature: string;
-  resources: string[];
+  description?: string;
+  isPlayerHere?: boolean;
 }
 
-interface Route {
+interface RouteNode {
+  id: string;
+  nodeIndex: number;
+  name: string;
+  description?: string;
+  terrain: string;
+  dangerLevel: number;
+  specialType: string | null;
+  mapX: number;
+  mapY: number;
+}
+
+interface MapRoute {
   id: string;
   fromTownId: string;
   toTownId: string;
-  distance: number;
+  name?: string;
+  difficulty?: string;
+  terrain?: string;
+  nodeCount?: number;
   dangerLevel: number;
+  nodes?: RouteNode[];
 }
 
-interface Region {
+interface MapRegion {
   id: string;
   name: string;
   biome: string;
-  raceName: string;
+  color?: string;
 }
 
-interface WorldMapData {
-  regions: Region[];
-  towns: Town[];
-  routes: Route[];
+interface PlayerPosition {
+  type: 'town' | 'traveling' | null;
+  townId?: string;
+  routeId?: string;
+  nodeIndex?: number;
+  direction?: string;
 }
 
-interface PlayerLocation {
-  currentTownId: string;
-  travelingTo?: string;
-  travelProgress?: number; // 0-1
+interface Traveler {
+  characterId: string;
+  characterName: string;
+  routeId: string;
+  nodeIndex: number;
 }
 
-// ---------------------------------------------------------------------------
-// Region color mapping
-// ---------------------------------------------------------------------------
-const REGION_COLORS: Record<string, { fill: string; stroke: string; glow: string; label: string }> = {
-  verdant_heartlands:  { fill: '#C9A461', stroke: '#B8913A', glow: '#C9A46140', label: 'Verdant Heartlands' },
-  silverwood_forest:   { fill: '#4A8C3F', stroke: '#2D5A27', glow: '#4A8C3F40', label: 'Silverwood Forest' },
-  ironvault_mountains: { fill: '#9CA3AF', stroke: '#6B7280', glow: '#9CA3AF40', label: 'Ironvault Mountains' },
-  crossroads:          { fill: '#D4A574', stroke: '#A67C52', glow: '#D4A57440', label: 'The Crossroads' },
-  ashenfang_wastes:    { fill: '#EA580C', stroke: '#C2410C', glow: '#EA580C40', label: 'Ashenfang Wastes' },
-  shadowmere_marshes:  { fill: '#A855F7', stroke: '#7C3AED', glow: '#A855F740', label: 'Shadowmere Marshes' },
-  frozen_reaches:      { fill: '#67E8F9', stroke: '#22D3EE', glow: '#67E8F940', label: 'Frozen Reaches' },
-  suncoast:            { fill: '#06B6D4', stroke: '#0891B2', glow: '#06B6D440', label: 'The Suncoast' },
-  twilight_march:      { fill: '#A3E635', stroke: '#84CC16', glow: '#A3E63540', label: 'Twilight March' },
-  scarred_frontier:    { fill: '#F97316', stroke: '#EA580C', glow: '#F9731640', label: 'Scarred Frontier' },
-  cogsworth_warrens:   { fill: '#FBBF24', stroke: '#D97706', glow: '#FBBF2440', label: 'Cogsworth Warrens' },
-  pelagic_depths:      { fill: '#3B82F6', stroke: '#2563EB', glow: '#3B82F640', label: 'Pelagic Depths' },
-  thornwilds:          { fill: '#65A30D', stroke: '#4D7C0F', glow: '#65A30D40', label: 'Thornwilds' },
-  glimmerveil:         { fill: '#E879F9', stroke: '#C026D3', glow: '#E879F940', label: 'Glimmerveil' },
-  skypeak_plateaus:    { fill: '#D1D5DB', stroke: '#9CA3AF', glow: '#D1D5DB40', label: 'Skypeak Plateaus' },
-  vel_naris_underdark: { fill: '#7C3AED', stroke: '#6D28D9', glow: '#7C3AED40', label: "Vel'Naris Underdark" },
-  mistwood_glens:      { fill: '#34D399', stroke: '#059669', glow: '#34D39940', label: 'Mistwood Glens' },
-  the_foundry:         { fill: '#78716C', stroke: '#57534E', glow: '#78716C40', label: 'The Foundry' },
-  the_confluence:      { fill: '#FB923C', stroke: '#F97316', glow: '#FB923C40', label: 'The Confluence' },
-  ashenmoor:           { fill: '#6B7280', stroke: '#4B5563', glow: '#6B728040', label: 'Ashenmoor' },
+interface MapData {
+  towns: MapTown[];
+  routes: MapRoute[];
+  regions: MapRegion[];
+  playerPosition?: PlayerPosition;
+  travelers?: Traveler[];
+}
+
+// ===========================================================================
+// Constants
+// ===========================================================================
+
+const MAP_W = 1000;
+const MAP_H = 900;
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 5;
+const ZOOM_STEP = 0.2;
+
+// Region color palette keyed by region ID
+const REGION_COLORS: Record<string, string> = {
+  verdant_heartlands: '#C9A461',
+  silverwood_forest: '#4A8C3F',
+  ironvault_mountains: '#9CA3AF',
+  crossroads: '#D4A574',
+  ashenfang_wastes: '#EA580C',
+  shadowmere_marshes: '#A855F7',
+  frozen_reaches: '#67E8F9',
+  suncoast: '#06B6D4',
+  twilight_march: '#A3E635',
+  scarred_frontier: '#F97316',
+  cogsworth_warrens: '#FBBF24',
+  pelagic_depths: '#3B82F6',
+  thornwilds: '#65A30D',
+  glimmerveil: '#E879F9',
+  skypeak_plateaus: '#D1D5DB',
+  vel_naris_underdark: '#7C3AED',
+  mistwood_glens: '#34D399',
+  the_foundry: '#78716C',
+  the_confluence: '#FB923C',
+  ashenmoor: '#6B7280',
 };
 
-function getRegionColor(regionId: string) {
-  return REGION_COLORS[regionId] ?? { fill: '#9CA3AF', stroke: '#6B7280', glow: '#9CA3AF40', label: regionId };
+function getRegionColor(regionId: string): string {
+  return REGION_COLORS[regionId] ?? '#9CA3AF';
 }
 
-// ---------------------------------------------------------------------------
-// Relation-based border colors
-// ---------------------------------------------------------------------------
-const RELATION_BORDER_COLORS: Record<string, string> = {
-  Allied:      '#22C55E', // Green
-  Friendly:    '#3B82F6', // Blue
-  Neutral:     '#9CA3AF', // Grey
-  Distrustful: '#EAB308', // Yellow
-  Hostile:     '#F97316', // Orange
-  'Blood Feud':'#EF4444', // Red
+// Terrain colors for travel nodes
+const TERRAIN_COLORS: Record<string, string> = {
+  plains: '#c4a265',
+  forest: '#4a7c59',
+  mountain: '#8b7355',
+  underground: '#483d8b',
+  swamp: '#556b2f',
+  tundra: '#6b8fa3',
+  coastal: '#4682b4',
+  desert: '#cd853f',
+  volcanic: '#8b4513',
+  fey: '#9b7dcf',
+  badlands: '#8b4513',
+  underwater: '#4682b4',
 };
 
-// ---------------------------------------------------------------------------
-// Fallback data — used when the API is not yet available
-// ---------------------------------------------------------------------------
-function buildFallbackData(): WorldMapData {
-  // Positions are on a 1000x900 coordinate space
-  const towns: Town[] = [
-    // Frozen Reaches (top)
-    { id: 'drakenspire', name: 'Drakenspire', regionId: 'frozen_reaches', regionName: 'Frozen Reaches', x: 500, y: 60, population: 3200, biome: 'Tundra/Volcanic', description: 'Mountain peak capital of the Drakonid clans', specialty: 'Military, Religion', notableFeature: 'Dragon Temple, Elder Council', resources: ['Mithril', 'Adamantine', 'Exotic Furs'] },
-    { id: 'frostfang', name: 'Frostfang', regionId: 'frozen_reaches', regionName: 'Frozen Reaches', x: 410, y: 40, population: 1800, biome: 'Tundra', description: 'A harsh tundra settlement known for mammoth hunts', specialty: 'Hunting, Leatherwork', notableFeature: 'Mammoth hunts, exotic furs', resources: ['Exotic Furs', 'Bone', 'Leather'] },
-    { id: 'emberpeak', name: 'Emberpeak', regionId: 'frozen_reaches', regionName: 'Frozen Reaches', x: 590, y: 45, population: 2100, biome: 'Volcanic', description: 'Built beside an active volcano, home to dragonfire forges', specialty: 'Mining, Smelting', notableFeature: 'Volcanic forges, rare ores', resources: ['Mithril', 'Adamantine', 'Obsidian'] },
-    { id: 'scalehaven', name: 'Scalehaven', regionId: 'frozen_reaches', regionName: 'Frozen Reaches', x: 440, y: 95, population: 1500, biome: 'Coastal Tundra', description: 'Northern trade port on frozen shores', specialty: 'Fishing, Trade', notableFeature: 'Northern trade port, whaling', resources: ['Fish', 'Exotic Furs', 'Trade Goods'] },
-    { id: 'wyrmrest', name: 'Wyrmrest', regionId: 'frozen_reaches', regionName: 'Frozen Reaches', x: 560, y: 100, population: 900, biome: 'Ancient Ruins', description: 'Dragon burial grounds steeped in ancient magic', specialty: 'Magic, Lore', notableFeature: 'Dragon burial grounds, ancient artifacts', resources: ['Arcane Reagents', 'Dragon Bone'] },
-
-    // Ironvault Mountains (left-center)
-    { id: 'kazad_vorn', name: 'Kazad-Vorn', regionId: 'ironvault_mountains', regionName: 'Ironvault Mountains', x: 160, y: 230, population: 8500, biome: 'Underground', description: 'The great underground capital of the Dwarven kingdoms', specialty: 'Smithing, Politics', notableFeature: "The Great Forge, Thane's Hall", resources: ['Iron Ore', 'Coal', 'Gems'] },
-    { id: 'deepvein', name: 'Deepvein', regionId: 'ironvault_mountains', regionName: 'Ironvault Mountains', x: 100, y: 190, population: 3200, biome: 'Deep Underground', description: 'The deepest mine in Aethermere with mithril veins', specialty: 'Mining, Smelting', notableFeature: 'Deepest mine, mithril veins', resources: ['Mithril', 'Iron Ore', 'Coal'] },
-    { id: 'hammerfall', name: 'Hammerfall', regionId: 'ironvault_mountains', regionName: 'Ironvault Mountains', x: 195, y: 305, population: 4100, biome: 'Mountain Pass', description: 'Border fortress guarding against Orc raids', specialty: 'Military, Armoring', notableFeature: 'Border fortress against Orc raids', resources: ['Iron Ore', 'Stone', 'Coal'] },
-    { id: 'gemhollow', name: 'Gemhollow', regionId: 'ironvault_mountains', regionName: 'Ironvault Mountains', x: 115, y: 270, population: 2600, biome: 'Cavern', description: 'Crystal caverns filled with rare gem deposits', specialty: 'Jeweling, Gems', notableFeature: 'Crystal caverns, rare gem deposits', resources: ['Gems', 'Stone', 'Crystal'] },
-    { id: 'alehearth', name: 'Alehearth', regionId: 'ironvault_mountains', regionName: 'Ironvault Mountains', x: 210, y: 185, population: 2900, biome: 'Mountain Valley', description: 'Famous for Dwarven ales and as a trade hub', specialty: 'Brewing, Trade', notableFeature: 'Famous Dwarven ales, trade hub', resources: ['Grain', 'Hops', 'Trade Goods'] },
-
-    // Verdant Heartlands (center)
-    { id: 'kingshold', name: 'Kingshold', regionId: 'verdant_heartlands', regionName: 'Verdant Heartlands', x: 500, y: 230, population: 15000, biome: 'Plains/Hills', description: 'The grand capital of the Human kingdoms, political center of Aethermere', specialty: 'Politics, Trade', notableFeature: 'Royal Palace, Grand Market, Arena', resources: ['Grain', 'Cotton', 'Livestock'] },
-    { id: 'millhaven', name: 'Millhaven', regionId: 'verdant_heartlands', regionName: 'Verdant Heartlands', x: 440, y: 195, population: 6200, biome: 'Plains', description: 'Breadbasket of the realm with the largest granary', specialty: 'Farming, Ranching', notableFeature: 'Largest granary in Aethermere', resources: ['Grain', 'Livestock', 'Cotton'] },
-    { id: 'bridgewater', name: 'Bridgewater', regionId: 'verdant_heartlands', regionName: 'Verdant Heartlands', x: 540, y: 280, population: 7800, biome: 'River', description: 'Trade crossroads where three major routes converge', specialty: 'Trade, Fishing', notableFeature: 'Crossroads of 3 trade routes', resources: ['Fish', 'Trade Goods', 'Grain'] },
-    { id: 'ironford', name: 'Ironford', regionId: 'verdant_heartlands', regionName: 'Verdant Heartlands', x: 440, y: 275, population: 5100, biome: 'Hills', description: 'Military town with weapon forges and an academy', specialty: 'Mining, Smithing', notableFeature: 'Military academy, weapon forges', resources: ['Iron Ore', 'Coal', 'Grain'] },
-    { id: 'whitefield', name: 'Whitefield', regionId: 'verdant_heartlands', regionName: 'Verdant Heartlands', x: 560, y: 195, population: 4800, biome: 'Plains', description: 'Famous for its tailors and cloth markets', specialty: 'Cotton, Textiles', notableFeature: 'Famous tailors, cloth market', resources: ['Cotton', 'Grain', 'Livestock'] },
-
-    // Shadowmere Marshes (right-center)
-    { id: 'nethermire', name: 'Nethermire', regionId: 'shadowmere_marshes', regionName: 'Shadowmere Marshes', x: 830, y: 230, population: 4500, biome: 'Swamp', description: 'Hidden capital of the Nethkin Shadow Council', specialty: 'Alchemy, Politics', notableFeature: 'Shadow Council chambers, hidden markets', resources: ['Rare Herbs', 'Reagents', 'Mushrooms'] },
-    { id: 'boghollow', name: 'Boghollow', regionId: 'shadowmere_marshes', regionName: 'Shadowmere Marshes', x: 870, y: 190, population: 2100, biome: 'Deep Swamp', description: 'Deep in the marshes where the rarest herbs grow', specialty: 'Herbalism, Alchemy', notableFeature: 'Rare herb spawns, mushroom caves', resources: ['Rare Herbs', 'Mushrooms', 'Reagents'] },
-    { id: 'mistwatch', name: 'Mistwatch', regionId: 'shadowmere_marshes', regionName: 'Shadowmere Marshes', x: 790, y: 280, population: 3200, biome: 'Marsh Edge', description: 'Hub of the Nethkin intelligence network', specialty: 'Trade, Espionage', notableFeature: 'Intelligence network hub, spy guild', resources: ['Reagents', 'Trade Goods'] },
-    { id: 'cinderkeep', name: 'Cinderkeep', regionId: 'shadowmere_marshes', regionName: 'Shadowmere Marshes', x: 880, y: 270, population: 1800, biome: 'Volcanic Swamp', description: 'Built over hot springs with an arcane forge', specialty: 'Enchanting, Smelting', notableFeature: 'Hot springs, arcane forge', resources: ['Reagents', 'Arcane Reagents', 'Coal'] },
-    { id: 'whispering_docks', name: 'Whispering Docks', regionId: 'shadowmere_marshes', regionName: 'Shadowmere Marshes', x: 850, y: 315, population: 2800, biome: 'Coastal Swamp', description: 'Black market port for smuggling and contraband', specialty: 'Fishing, Smuggling', notableFeature: 'Black market port, contraband trade', resources: ['Fish', 'Trade Goods', 'Contraband'] },
-
-    // Crossroads (center-below)
-    { id: 'hearthshire', name: 'Hearthshire', regionId: 'crossroads', regionName: 'The Crossroads', x: 500, y: 400, population: 9200, biome: 'Rolling Hills', description: 'Capital of the Harthfolk lands and banking center', specialty: 'Trade, Banking', notableFeature: 'The Grand Exchange, Harthfolk Bank', resources: ['Grain', 'Herbs', 'Vegetables'] },
-    { id: 'greenhollow', name: 'Greenhollow', regionId: 'crossroads', regionName: 'The Crossroads', x: 440, y: 370, population: 4100, biome: 'Farmland', description: 'Best farmland in the Crossroads with a cooking academy', specialty: 'Farming, Cooking', notableFeature: 'Best farmland, cooking academy', resources: ['Grain', 'Vegetables', 'Herbs'] },
-    { id: 'peddlers_rest', name: "Peddler's Rest", regionId: 'crossroads', regionName: 'The Crossroads', x: 555, y: 375, population: 5600, biome: 'Trade Hub', description: 'Where every trade route in Aethermere converges', specialty: 'Caravans, Merchant', notableFeature: 'Every trade route passes through here', resources: ['Trade Goods', 'Grain'] },
-    { id: 'bramblewood', name: 'Bramblewood', regionId: 'crossroads', regionName: 'The Crossroads', x: 450, y: 430, population: 2800, biome: 'Forest Edge', description: 'Hidden distilleries and herb gardens in the underbrush', specialty: 'Herbalism, Brewing', notableFeature: 'Hidden distilleries, herb gardens', resources: ['Herbs', 'Grain', 'Softwood'] },
-    { id: 'riverside', name: 'Riverside', regionId: 'crossroads', regionName: 'The Crossroads', x: 555, y: 430, population: 3400, biome: 'River Town', description: 'Famous for its inns and tournament fishing', specialty: 'Fishing, Inns', notableFeature: 'Famous inns, tournament fishing', resources: ['Fish', 'Herbs', 'Grain'] },
-
-    // Ashenfang Wastes (bottom-left)
-    { id: 'grakthar', name: 'Grakthar', regionId: 'ashenfang_wastes', regionName: 'Ashenfang Wastes', x: 160, y: 570, population: 7200, biome: 'Badlands', description: 'The fortress capital where the Warchief rules', specialty: 'Military, Politics', notableFeature: "Warchief's Arena, War Council", resources: ['Leather', 'Bone', 'War Beasts'] },
-    { id: 'bonepile', name: 'Bonepile', regionId: 'ashenfang_wastes', regionName: 'Ashenfang Wastes', x: 100, y: 540, population: 3100, biome: 'Badlands', description: 'Massive hunting grounds and tanneries', specialty: 'Hunting, Tanning', notableFeature: 'Massive hunting grounds, tanneries', resources: ['Leather', 'Bone', 'Hides'] },
-    { id: 'ironfist_hold', name: 'Ironfist Hold', regionId: 'ashenfang_wastes', regionName: 'Ashenfang Wastes', x: 120, y: 620, population: 2400, biome: 'Volcanic Edge', description: 'Volcanic forges and obsidian deposits', specialty: 'Mining, Smelting', notableFeature: 'Volcanic forges, obsidian deposits', resources: ['Obsidian', 'Iron Ore', 'Coal'] },
-    { id: 'thornback_camp', name: 'Thornback Camp', regionId: 'ashenfang_wastes', regionName: 'Ashenfang Wastes', x: 215, y: 530, population: 2800, biome: 'Plains Edge', description: 'War beast breeding grounds near the border', specialty: 'Ranching, Raiding', notableFeature: 'War beast breeding, border raids', resources: ['War Beasts', 'Leather', 'Bone'] },
-    { id: 'ashen_market', name: 'Ashen Market', regionId: 'ashenfang_wastes', regionName: 'Ashenfang Wastes', x: 205, y: 615, population: 3600, biome: 'Trade Post', description: 'Where Orcs trade with outsiders', specialty: 'Mercenary, Trade', notableFeature: 'Where Orcs trade with outsiders', resources: ['Trade Goods', 'Leather', 'Bone'] },
-
-    // Suncoast (bottom-center)
-    { id: 'porto_sole', name: 'Porto Sole', regionId: 'suncoast', regionName: 'The Suncoast', x: 500, y: 590, population: 12000, biome: 'Coastal', description: 'The grand free city, economic engine of Aethermere', specialty: 'Trade, Everything', notableFeature: "The Grand Bazaar, Adventurer's Guild HQ", resources: ['Fish', 'Salt', 'Trade Goods'] },
-    { id: 'coral_bay', name: 'Coral Bay', regionId: 'suncoast', regionName: 'The Suncoast', x: 440, y: 560, population: 5400, biome: 'Coastal', description: 'Premier fishing town and future shipbuilding hub', specialty: 'Fishing, Shipbuilding', notableFeature: 'Best fishing, future naval content', resources: ['Fish', 'Salt', 'Coral'] },
-    { id: 'sandrift', name: 'Sandrift', regionId: 'suncoast', regionName: 'The Suncoast', x: 555, y: 555, population: 3900, biome: 'Desert Edge', description: 'Gateway to the desert with exotic goods', specialty: 'Gems, Glass, Exotic Goods', notableFeature: 'Desert expeditions, sand glass', resources: ['Gems', 'Sand', 'Glass'] },
-    { id: 'libertad', name: 'Libertad', regionId: 'suncoast', regionName: 'The Suncoast', x: 460, y: 620, population: 8100, biome: 'Port', description: 'Anything goes in this port city of entertainment', specialty: 'Trade, Entertainment', notableFeature: 'Arena, casinos, black market', resources: ['Trade Goods', 'Contraband'] },
-    { id: 'beacons_end', name: "Beacon's End", regionId: 'suncoast', regionName: 'The Suncoast', x: 545, y: 625, population: 2800, biome: 'Lighthouse', description: 'Home of cartographers and navigators', specialty: 'Navigation, Cartography', notableFeature: 'Scribe headquarters, world maps', resources: ['Trade Goods', 'Parchment'] },
-
-    // Silverwood Forest (bottom-right)
-    { id: 'aelindra', name: 'Aelindra', regionId: 'silverwood_forest', regionName: 'Silverwood Forest', x: 830, y: 570, population: 6800, biome: 'Ancient Forest', description: 'Treetop capital of the Elven people', specialty: 'Magic, Enchanting', notableFeature: 'The Great Library, Enchanting Spire', resources: ['Exotic Wood', 'Arcane Reagents', 'Herbs'] },
-    { id: 'moonhaven', name: 'Moonhaven', regionId: 'silverwood_forest', regionName: 'Silverwood Forest', x: 880, y: 535, population: 2400, biome: 'Deep Forest', description: 'Moonlit glades where the rarest herbs bloom', specialty: 'Herbalism, Alchemy', notableFeature: 'Moonlit glades, rare herb spawns', resources: ['Herbs', 'Rare Herbs', 'Reagents'] },
-    { id: 'thornwatch', name: 'Thornwatch', regionId: 'silverwood_forest', regionName: 'Silverwood Forest', x: 780, y: 540, population: 3100, biome: 'Forest Edge', description: 'Ranger outpost guarding the forest border', specialty: 'Archery, Fletcher', notableFeature: 'Ranger outpost, bow crafting masters', resources: ['Exotic Wood', 'Feathers', 'Leather'] },
-    { id: 'willowmere', name: 'Willowmere', regionId: 'silverwood_forest', regionName: 'Silverwood Forest', x: 870, y: 610, population: 2100, biome: 'Lakeside', description: 'Crystal-clear lake surrounded by ancient willows', specialty: 'Fishing, Scribing', notableFeature: 'Crystal-clear lake, paper mills', resources: ['Fish', 'Softwood', 'Parchment'] },
-    { id: 'eldergrove', name: 'Eldergrove', regionId: 'silverwood_forest', regionName: 'Silverwood Forest', x: 790, y: 615, population: 1800, biome: 'Sacred Grove', description: 'Temple of the Old Gods and healer sanctuary', specialty: 'Religion, Healing', notableFeature: 'Temple of the Old Gods, healer sanctuary', resources: ['Herbs', 'Arcane Reagents'] },
-
-    // Common Race Territories
-    // Twilight March (Half-Elf)
-    { id: 'dawnmere', name: 'Dawnmere', regionId: 'twilight_march', regionName: 'Twilight March', x: 720, y: 370, population: 3400, biome: 'Forest Edge', description: 'Half-Elf settlement at the edge of civilization', specialty: 'Trade, Diplomacy', notableFeature: 'Cultural bridge between races', resources: ['Herbs', 'Softwood', 'Grain'] },
-    { id: 'twinvale', name: 'Twinvale', regionId: 'twilight_march', regionName: 'Twilight March', x: 760, y: 400, population: 2100, biome: 'Valley', description: 'Twin valley settlement of mixed heritage', specialty: 'Herbalism, Art', notableFeature: 'Artisan quarter', resources: ['Herbs', 'Exotic Wood'] },
-    { id: 'harmony_point', name: 'Harmony Point', regionId: 'twilight_march', regionName: 'Twilight March', x: 740, y: 440, population: 2800, biome: 'Lakeside', description: 'Where Human and Elf cultures truly blend', specialty: 'Enchanting, Music', notableFeature: 'Festival grounds', resources: ['Arcane Reagents', 'Herbs'] },
-
-    // Scarred Frontier (Half-Orc)
-    { id: 'scarwatch', name: 'Scarwatch', regionId: 'scarred_frontier', regionName: 'Scarred Frontier', x: 280, y: 430, population: 3800, biome: 'Borderlands', description: 'Fortified town on the disputed frontier', specialty: 'Military, Trade', notableFeature: 'Border fortress', resources: ['Leather', 'Iron Ore', 'Grain'] },
-    { id: 'tuskbridge', name: 'Tuskbridge', regionId: 'scarred_frontier', regionName: 'Scarred Frontier', x: 310, y: 470, population: 2400, biome: 'River Crossing', description: 'Bridge town connecting Orc and Human lands', specialty: 'Trade, Mercenary', notableFeature: 'Great bridge', resources: ['Trade Goods', 'Leather'] },
-    { id: 'proving_grounds', name: 'Proving Grounds', regionId: 'scarred_frontier', regionName: 'Scarred Frontier', x: 260, y: 500, population: 1900, biome: 'Badlands Edge', description: 'Where Half-Orcs prove their worth', specialty: 'Combat Training', notableFeature: 'Tournament arena', resources: ['Leather', 'Bone', 'Iron Ore'] },
-
-    // Cogsworth Warrens (Gnome)
-    { id: 'cogsworth', name: 'Cogsworth', regionId: 'cogsworth_warrens', regionName: 'Cogsworth Warrens', x: 260, y: 175, population: 4200, biome: 'Underground/Hill', description: 'Gnomish city of inventions and clockwork', specialty: 'Engineering, Tinkering', notableFeature: 'The Grand Clocktower', resources: ['Gears', 'Gems', 'Iron Ore'] },
-    { id: 'sparkhollow', name: 'Sparkhollow', regionId: 'cogsworth_warrens', regionName: 'Cogsworth Warrens', x: 290, y: 210, population: 2100, biome: 'Cavern', description: 'Experimental workshops and alchemical labs', specialty: 'Alchemy, Engineering', notableFeature: 'Spark labs', resources: ['Reagents', 'Gems', 'Iron Ore'] },
-    { id: 'fumblewick', name: 'Fumblewick', regionId: 'cogsworth_warrens', regionName: 'Cogsworth Warrens', x: 305, y: 160, population: 1500, biome: 'Hillside', description: 'Eccentric gnomish village of failed and brilliant inventions', specialty: 'Scribe, Research', notableFeature: 'Library of Failures', resources: ['Parchment', 'Gems'] },
-
-    // Pelagic Depths (Merfolk)
-    { id: 'coralspire', name: 'Coralspire', regionId: 'pelagic_depths', regionName: 'Pelagic Depths', x: 410, y: 680, population: 5100, biome: 'Underwater', description: 'Grand underwater city of living coral', specialty: 'Deep Sea Resources', notableFeature: 'Coral palace', resources: ['Deep Sea Iron', 'Abyssal Pearl', 'Living Coral'] },
-    { id: 'shallows_end', name: 'Shallows End', regionId: 'pelagic_depths', regionName: 'Pelagic Depths', x: 470, y: 700, population: 2800, biome: 'Shallow Sea', description: 'Trading post between land and sea folk', specialty: 'Trade, Fishing', notableFeature: 'Surface trade docks', resources: ['Fish', 'Sea Silk', 'Coral'] },
-    { id: 'abyssal_reach', name: 'Abyssal Reach', regionId: 'pelagic_depths', regionName: 'Pelagic Depths', x: 350, y: 710, population: 1200, biome: 'Deep Ocean', description: 'The deepest settlement, near ocean trenches', specialty: 'Mining, Exploration', notableFeature: 'Deep sea vents', resources: ['Deep Sea Iron', 'Abyssal Pearl'] },
-
-    // Thornwilds (Beastfolk)
-    { id: 'thornden', name: 'Thornden', regionId: 'thornwilds', regionName: 'Thornwilds', x: 720, y: 500, population: 3200, biome: 'Dense Forest', description: 'Central settlement of the Beastfolk clans', specialty: 'Hunting, Tanning', notableFeature: 'Clan council ring', resources: ['Spirit Beast Hide', 'Primal Bone', 'Thornwood'] },
-    { id: 'clawridge', name: 'Clawridge', regionId: 'thornwilds', regionName: 'Thornwilds', x: 750, y: 530, population: 1800, biome: 'Rocky Forest', description: 'Mountain-forest town of predator clans', specialty: 'Combat, Leatherwork', notableFeature: 'Predator dens', resources: ['Leather', 'Bone', 'Thornwood'] },
-    { id: 'windrun', name: 'Windrun', regionId: 'thornwilds', regionName: 'Thornwilds', x: 700, y: 540, population: 1500, biome: 'Open Canopy', description: 'Swift-footed clan settlement in open glades', specialty: 'Scouting, Herbalism', notableFeature: 'Racing grounds', resources: ['Herbs', 'Softwood', 'Leather'] },
-
-    // Glimmerveil (Faefolk)
-    { id: 'glimmerheart', name: 'Glimmerheart', regionId: 'glimmerveil', regionName: 'Glimmerveil', x: 920, y: 440, population: 2800, biome: 'Feywild Crossing', description: 'Where the mortal world meets the Feywild', specialty: 'Enchanting, Art', notableFeature: 'Feywild gate', resources: ['Moonpetal', 'Dreamweave Silk', 'Starlight Dust'] },
-    { id: 'dewdrop_hollow', name: 'Dewdrop Hollow', regionId: 'glimmerveil', regionName: 'Glimmerveil', x: 940, y: 480, population: 1600, biome: 'Enchanted Grove', description: 'Perpetually dew-kissed hollow of magical gardens', specialty: 'Herbalism, Alchemy', notableFeature: 'Living garden', resources: ['Moonpetal', 'Herbs', 'Reagents'] },
-    { id: 'moonpetal_grove', name: 'Moonpetal Grove', regionId: 'glimmerveil', regionName: 'Glimmerveil', x: 930, y: 520, population: 1100, biome: 'Sacred Grove', description: 'Sacred grove where fey magic is strongest', specialty: 'Magic, Religion', notableFeature: 'Moonpetal fields', resources: ['Moonpetal', 'Fey Iron', 'Starlight Dust'] },
-
-    // Exotic Race Settlements
-    { id: 'skyhold', name: 'Skyhold', regionId: 'skypeak_plateaus', regionName: 'Skypeak Plateaus', x: 80, y: 120, population: 1800, biome: 'Mountain Peak', description: 'Goliath fortress above the clouds', specialty: 'Mining, Combat', notableFeature: 'Sky forges', resources: ['Sky Iron', 'Cloud Crystal', 'Giant Eagle Feather'] },
-    { id: 'windbreak', name: 'Windbreak', regionId: 'skypeak_plateaus', regionName: 'Skypeak Plateaus', x: 60, y: 160, population: 900, biome: 'High Plateau', description: 'Windswept plateau settlement', specialty: 'Hunting, Herding', notableFeature: 'Eagle eyries', resources: ['Sky Iron', 'Leather', 'Giant Eagle Feather'] },
-
-    { id: 'vel_naris', name: "Vel'Naris", regionId: 'vel_naris_underdark', regionName: "Vel'Naris Underdark", x: 850, y: 375, population: 4200, biome: 'Underdark', description: 'The dark elven city beneath the earth', specialty: 'Enchanting, Espionage', notableFeature: 'Spider silk weavers', resources: ['Darksteel Ore', 'Spider Silk', 'Shadow Crystal'] },
-    { id: 'gloom_market', name: 'Gloom Market', regionId: 'vel_naris_underdark', regionName: "Vel'Naris Underdark", x: 890, y: 410, population: 2100, biome: 'Underground', description: 'Black market of the Underdark', specialty: 'Trade, Alchemy', notableFeature: 'Underground bazaar', resources: ['Shadow Crystal', 'Reagents', 'Contraband'] },
-
-    { id: 'misthaven', name: 'Misthaven', regionId: 'mistwood_glens', regionName: 'Mistwood Glens', x: 680, y: 620, population: 1500, biome: 'Misty Forest', description: 'Hidden Mosskin village shrouded in mist', specialty: 'Herbalism, Healing', notableFeature: 'Healing springs', resources: ['Heartwood', 'Living Bark', 'Elder Sap'] },
-    { id: 'rootholme', name: 'Rootholme', regionId: 'mistwood_glens', regionName: 'Mistwood Glens', x: 660, y: 660, population: 900, biome: 'Ancient Grove', description: 'Settlement grown from living trees', specialty: 'Woodworking, Nature Magic', notableFeature: 'Living tree homes', resources: ['Heartwood', 'Spirit Moss', 'Elder Sap'] },
-
-    { id: 'the_foundry', name: 'The Foundry', regionId: 'the_foundry', regionName: 'The Foundry', x: 330, y: 260, population: 2800, biome: 'Industrial', description: 'The mechanical city where Forgeborn were born', specialty: 'Engineering, Smithing', notableFeature: 'The Creation Engine', resources: ['Arcane Conduit', 'Soul Crystal', 'Living Metal'] },
-
-    { id: 'the_confluence', name: 'The Confluence', regionId: 'the_confluence', regionName: 'The Confluence', x: 360, y: 530, population: 2200, biome: 'Elemental Nexus', description: 'Where all four elements converge', specialty: 'Magic, Mining', notableFeature: 'Elemental rifts', resources: ['Pure Element Essences', 'Elemental Cores'] },
-    { id: 'emberheart', name: 'Emberheart', regionId: 'the_confluence', regionName: 'The Confluence', x: 330, y: 570, population: 1400, biome: 'Volcanic Springs', description: 'Fire-dominant elemental settlement', specialty: 'Smelting, Enchanting', notableFeature: 'Fire rift forge', resources: ['Elemental Cores', 'Obsidian'] },
-
-    { id: 'ashenmoor', name: 'Ashenmoor', regionId: 'ashenmoor', regionName: 'Ashenmoor', x: 310, y: 620, population: 1100, biome: 'Deadlands', description: 'The haunted settlement of the Revenants', specialty: 'Alchemy, Necromancy', notableFeature: 'Death gardens', resources: ['Death Blossom', 'Soul Dust', 'Grave Iron'] },
-  ];
-
-  const routes: Route[] = [
-    // Frozen Reaches internal
-    { id: 'r1', fromTownId: 'drakenspire', toTownId: 'frostfang', distance: 45, dangerLevel: 2 },
-    { id: 'r2', fromTownId: 'drakenspire', toTownId: 'emberpeak', distance: 35, dangerLevel: 2 },
-    { id: 'r3', fromTownId: 'drakenspire', toTownId: 'scalehaven', distance: 50, dangerLevel: 1 },
-    { id: 'r4', fromTownId: 'drakenspire', toTownId: 'wyrmrest', distance: 60, dangerLevel: 3 },
-    { id: 'r5', fromTownId: 'scalehaven', toTownId: 'frostfang', distance: 40, dangerLevel: 1 },
-    // Ironvault internal
-    { id: 'r10', fromTownId: 'kazad_vorn', toTownId: 'deepvein', distance: 30, dangerLevel: 2 },
-    { id: 'r11', fromTownId: 'kazad_vorn', toTownId: 'alehearth', distance: 25, dangerLevel: 1 },
-    { id: 'r12', fromTownId: 'kazad_vorn', toTownId: 'gemhollow', distance: 20, dangerLevel: 1 },
-    { id: 'r13', fromTownId: 'kazad_vorn', toTownId: 'hammerfall', distance: 40, dangerLevel: 2 },
-    { id: 'r14', fromTownId: 'gemhollow', toTownId: 'deepvein', distance: 25, dangerLevel: 2 },
-    // Heartlands internal
-    { id: 'r20', fromTownId: 'kingshold', toTownId: 'millhaven', distance: 20, dangerLevel: 0 },
-    { id: 'r21', fromTownId: 'kingshold', toTownId: 'bridgewater', distance: 25, dangerLevel: 0 },
-    { id: 'r22', fromTownId: 'kingshold', toTownId: 'whitefield', distance: 20, dangerLevel: 0 },
-    { id: 'r23', fromTownId: 'kingshold', toTownId: 'ironford', distance: 30, dangerLevel: 1 },
-    { id: 'r24', fromTownId: 'millhaven', toTownId: 'ironford', distance: 25, dangerLevel: 0 },
-    { id: 'r25', fromTownId: 'bridgewater', toTownId: 'whitefield', distance: 15, dangerLevel: 0 },
-    // Shadowmere internal
-    { id: 'r30', fromTownId: 'nethermire', toTownId: 'boghollow', distance: 35, dangerLevel: 3 },
-    { id: 'r31', fromTownId: 'nethermire', toTownId: 'mistwatch', distance: 25, dangerLevel: 2 },
-    { id: 'r32', fromTownId: 'nethermire', toTownId: 'cinderkeep', distance: 30, dangerLevel: 2 },
-    { id: 'r33', fromTownId: 'mistwatch', toTownId: 'whispering_docks', distance: 35, dangerLevel: 2 },
-    { id: 'r34', fromTownId: 'cinderkeep', toTownId: 'whispering_docks', distance: 30, dangerLevel: 2 },
-    // Crossroads internal
-    { id: 'r40', fromTownId: 'hearthshire', toTownId: 'greenhollow', distance: 15, dangerLevel: 0 },
-    { id: 'r41', fromTownId: 'hearthshire', toTownId: 'peddlers_rest', distance: 15, dangerLevel: 0 },
-    { id: 'r42', fromTownId: 'hearthshire', toTownId: 'bramblewood', distance: 20, dangerLevel: 0 },
-    { id: 'r43', fromTownId: 'hearthshire', toTownId: 'riverside', distance: 20, dangerLevel: 0 },
-    { id: 'r44', fromTownId: 'greenhollow', toTownId: 'bramblewood', distance: 15, dangerLevel: 0 },
-    // Ashenfang internal
-    { id: 'r50', fromTownId: 'grakthar', toTownId: 'bonepile', distance: 30, dangerLevel: 3 },
-    { id: 'r51', fromTownId: 'grakthar', toTownId: 'thornback_camp', distance: 25, dangerLevel: 2 },
-    { id: 'r52', fromTownId: 'grakthar', toTownId: 'ironfist_hold', distance: 35, dangerLevel: 3 },
-    { id: 'r53', fromTownId: 'grakthar', toTownId: 'ashen_market', distance: 30, dangerLevel: 2 },
-    { id: 'r54', fromTownId: 'ironfist_hold', toTownId: 'ashen_market', distance: 25, dangerLevel: 2 },
-    // Suncoast internal
-    { id: 'r60', fromTownId: 'porto_sole', toTownId: 'coral_bay', distance: 20, dangerLevel: 0 },
-    { id: 'r61', fromTownId: 'porto_sole', toTownId: 'sandrift', distance: 25, dangerLevel: 1 },
-    { id: 'r62', fromTownId: 'porto_sole', toTownId: 'libertad', distance: 20, dangerLevel: 1 },
-    { id: 'r63', fromTownId: 'porto_sole', toTownId: 'beacons_end', distance: 25, dangerLevel: 0 },
-    { id: 'r64', fromTownId: 'libertad', toTownId: 'beacons_end', distance: 15, dangerLevel: 1 },
-    // Silverwood internal
-    { id: 'r70', fromTownId: 'aelindra', toTownId: 'moonhaven', distance: 30, dangerLevel: 1 },
-    { id: 'r71', fromTownId: 'aelindra', toTownId: 'thornwatch', distance: 25, dangerLevel: 1 },
-    { id: 'r72', fromTownId: 'aelindra', toTownId: 'willowmere', distance: 20, dangerLevel: 0 },
-    { id: 'r73', fromTownId: 'aelindra', toTownId: 'eldergrove', distance: 25, dangerLevel: 0 },
-    { id: 'r74', fromTownId: 'moonhaven', toTownId: 'thornwatch', distance: 30, dangerLevel: 1 },
-    // Inter-region routes
-    { id: 'r100', fromTownId: 'drakenspire', toTownId: 'kingshold', distance: 120, dangerLevel: 3 },
-    { id: 'r101', fromTownId: 'scalehaven', toTownId: 'alehearth', distance: 100, dangerLevel: 2 },
-    { id: 'r102', fromTownId: 'alehearth', toTownId: 'millhaven', distance: 80, dangerLevel: 1 },
-    { id: 'r103', fromTownId: 'whitefield', toTownId: 'nethermire', distance: 90, dangerLevel: 3 },
-    { id: 'r104', fromTownId: 'bridgewater', toTownId: 'hearthshire', distance: 60, dangerLevel: 0 },
-    { id: 'r105', fromTownId: 'ironford', toTownId: 'hammerfall', distance: 70, dangerLevel: 2 },
-    { id: 'r106', fromTownId: 'hearthshire', toTownId: 'porto_sole', distance: 80, dangerLevel: 1 },
-    { id: 'r107', fromTownId: 'riverside', toTownId: 'coral_bay', distance: 60, dangerLevel: 1 },
-    { id: 'r108', fromTownId: 'hammerfall', toTownId: 'scarwatch', distance: 60, dangerLevel: 4 },
-    { id: 'r109', fromTownId: 'scarwatch', toTownId: 'grakthar', distance: 80, dangerLevel: 4 },
-    { id: 'r110', fromTownId: 'thornwatch', toTownId: 'thornden', distance: 40, dangerLevel: 2 },
-    { id: 'r111', fromTownId: 'mistwatch', toTownId: 'vel_naris', distance: 50, dangerLevel: 3 },
-    { id: 'r112', fromTownId: 'aelindra', toTownId: 'harmony_point', distance: 60, dangerLevel: 1 },
-    { id: 'r113', fromTownId: 'dawnmere', toTownId: 'bridgewater', distance: 70, dangerLevel: 1 },
-    { id: 'r114', fromTownId: 'cogsworth', toTownId: 'alehearth', distance: 30, dangerLevel: 1 },
-    { id: 'r115', fromTownId: 'the_foundry', toTownId: 'cogsworth', distance: 40, dangerLevel: 1 },
-    { id: 'r116', fromTownId: 'the_confluence', toTownId: 'coral_bay', distance: 50, dangerLevel: 2 },
-    { id: 'r117', fromTownId: 'ashenmoor', toTownId: 'ashen_market', distance: 40, dangerLevel: 3 },
-    { id: 'r118', fromTownId: 'porto_sole', toTownId: 'coralspire', distance: 45, dangerLevel: 2 },
-    { id: 'r119', fromTownId: 'misthaven', toTownId: 'eldergrove', distance: 35, dangerLevel: 1 },
-    { id: 'r120', fromTownId: 'glimmerheart', toTownId: 'nethermire', distance: 70, dangerLevel: 3 },
-    { id: 'r121', fromTownId: 'skyhold', toTownId: 'deepvein', distance: 50, dangerLevel: 3 },
-    { id: 'r122', fromTownId: 'tuskbridge', toTownId: 'greenhollow', distance: 55, dangerLevel: 2 },
-    { id: 'r123', fromTownId: 'thornden', toTownId: 'misthaven', distance: 45, dangerLevel: 2 },
-    { id: 'r124', fromTownId: 'emberheart', toTownId: 'the_confluence', distance: 20, dangerLevel: 2 },
-    { id: 'r125', fromTownId: 'peddlers_rest', toTownId: 'sandrift', distance: 55, dangerLevel: 1 },
-  ];
-
-  const regions: Region[] = [
-    { id: 'frozen_reaches', name: 'Frozen Reaches', biome: 'Tundra/Volcanic', raceName: 'Drakonid' },
-    { id: 'ironvault_mountains', name: 'Ironvault Mountains', biome: 'Mountains/Underground', raceName: 'Dwarf' },
-    { id: 'verdant_heartlands', name: 'Verdant Heartlands', biome: 'Plains/Hills', raceName: 'Human' },
-    { id: 'shadowmere_marshes', name: 'Shadowmere Marshes', biome: 'Swamps/Bogs', raceName: 'Nethkin' },
-    { id: 'crossroads', name: 'The Crossroads', biome: 'Rolling Hills', raceName: 'Harthfolk' },
-    { id: 'ashenfang_wastes', name: 'Ashenfang Wastes', biome: 'Badlands/Volcanic', raceName: 'Orc' },
-    { id: 'suncoast', name: 'The Suncoast', biome: 'Coastal', raceName: 'Free Cities' },
-    { id: 'silverwood_forest', name: 'Silverwood Forest', biome: 'Ancient Forest', raceName: 'Elf' },
-    { id: 'twilight_march', name: 'Twilight March', biome: 'Forest Edge', raceName: 'Half-Elf' },
-    { id: 'scarred_frontier', name: 'Scarred Frontier', biome: 'Borderlands', raceName: 'Half-Orc' },
-    { id: 'cogsworth_warrens', name: 'Cogsworth Warrens', biome: 'Underground/Hill', raceName: 'Gnome' },
-    { id: 'pelagic_depths', name: 'Pelagic Depths', biome: 'Underwater', raceName: 'Merfolk' },
-    { id: 'thornwilds', name: 'Thornwilds', biome: 'Dense Forest', raceName: 'Beastfolk' },
-    { id: 'glimmerveil', name: 'Glimmerveil', biome: 'Feywild Crossing', raceName: 'Faefolk' },
-    { id: 'skypeak_plateaus', name: 'Skypeak Plateaus', biome: 'Mountain Peak', raceName: 'Goliath' },
-    { id: 'vel_naris_underdark', name: "Vel'Naris Underdark", biome: 'Underdark', raceName: 'Nightborne' },
-    { id: 'mistwood_glens', name: 'Mistwood Glens', biome: 'Misty Forest', raceName: 'Mosskin' },
-    { id: 'the_foundry', name: 'The Foundry', biome: 'Industrial', raceName: 'Forgeborn' },
-    { id: 'the_confluence', name: 'The Confluence', biome: 'Elemental Nexus', raceName: 'Elementari' },
-    { id: 'ashenmoor', name: 'Ashenmoor', biome: 'Deadlands', raceName: 'Revenant' },
-  ];
-
-  return { regions, towns, routes };
+function getTerrainColor(terrain: string): string {
+  const key = terrain?.toLowerCase() ?? '';
+  return TERRAIN_COLORS[key] ?? '#888888';
 }
 
-// ---------------------------------------------------------------------------
-// SVG dimensions
-// ---------------------------------------------------------------------------
-const MAP_WIDTH = 1000;
-const MAP_HEIGHT = 760;
+// Route line styles by difficulty
+function getRouteStyle(difficulty?: string, dangerLevel?: number): {
+  stroke: string;
+  strokeWidth: number;
+  dashArray: string;
+} {
+  const dl = dangerLevel ?? 0;
+  const diff = difficulty?.toLowerCase() ?? '';
 
-// ---------------------------------------------------------------------------
-// Zoom level thresholds
-// ---------------------------------------------------------------------------
-function getZoomLevel(viewBoxW: number): 'continent' | 'region' | 'town' {
-  if (viewBoxW <= 450) return 'town';
-  if (viewBoxW <= 750) return 'region';
-  return 'continent';
+  if (diff === 'deadly' || dl >= 8) {
+    return { stroke: '#a22', strokeWidth: 1, dashArray: '2 3' };
+  }
+  if (diff === 'dangerous' || dl >= 5) {
+    return { stroke: '#c44', strokeWidth: 1.5, dashArray: '5 3' };
+  }
+  if (diff === 'moderate' || dl >= 3) {
+    return { stroke: '#888', strokeWidth: 1.5, dashArray: 'none' };
+  }
+  // Safe
+  return { stroke: '#666', strokeWidth: 2, dashArray: 'none' };
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+// Town size by type
+function getTownSize(type?: string): number {
+  switch (type) {
+    case 'capital': return 12;
+    case 'city': return 10;
+    case 'town': return 8;
+    case 'village': return 6;
+    case 'outpost': return 5;
+    default: return 8;
+  }
+}
+
+// Infer town type from population if not provided
+function inferTownType(pop: number): 'capital' | 'city' | 'town' | 'village' | 'outpost' {
+  if (pop >= 10000) return 'capital';
+  if (pop >= 5000) return 'city';
+  if (pop >= 2000) return 'town';
+  if (pop >= 1000) return 'village';
+  return 'outpost';
+}
+
+// ===========================================================================
+// Fallback coordinate data (used when API doesn't provide mapX/mapY)
+// ===========================================================================
+
+const FALLBACK_COORDS: Record<string, { x: number; y: number }> = {
+  // Frozen Reaches
+  drakenspire: { x: 500, y: 60 }, frostfang: { x: 410, y: 40 }, emberpeak: { x: 590, y: 45 },
+  scalehaven: { x: 440, y: 95 }, wyrmrest: { x: 560, y: 100 },
+  // Ironvault Mountains
+  kazad_vorn: { x: 160, y: 230 }, deepvein: { x: 100, y: 190 }, hammerfall: { x: 195, y: 305 },
+  gemhollow: { x: 115, y: 270 }, alehearth: { x: 210, y: 185 },
+  // Verdant Heartlands
+  kingshold: { x: 500, y: 230 }, millhaven: { x: 440, y: 195 }, bridgewater: { x: 540, y: 280 },
+  ironford: { x: 440, y: 275 }, whitefield: { x: 560, y: 195 },
+  // Shadowmere Marshes
+  nethermire: { x: 830, y: 230 }, boghollow: { x: 870, y: 190 }, mistwatch: { x: 790, y: 280 },
+  cinderkeep: { x: 880, y: 270 }, whispering_docks: { x: 850, y: 315 },
+  // Crossroads
+  hearthshire: { x: 500, y: 400 }, greenhollow: { x: 440, y: 370 }, peddlers_rest: { x: 555, y: 375 },
+  bramblewood: { x: 450, y: 430 }, riverside: { x: 555, y: 430 },
+  // Ashenfang Wastes
+  grakthar: { x: 160, y: 570 }, bonepile: { x: 100, y: 540 }, ironfist_hold: { x: 120, y: 620 },
+  thornback_camp: { x: 215, y: 530 }, ashen_market: { x: 205, y: 615 },
+  // Suncoast
+  porto_sole: { x: 500, y: 590 }, coral_bay: { x: 440, y: 560 }, sandrift: { x: 555, y: 555 },
+  libertad: { x: 460, y: 620 }, beacons_end: { x: 545, y: 625 },
+  // Silverwood Forest
+  aelindra: { x: 830, y: 570 }, moonhaven: { x: 880, y: 535 }, thornwatch: { x: 780, y: 540 },
+  willowmere: { x: 870, y: 610 }, eldergrove: { x: 790, y: 615 },
+  // Twilight March
+  dawnmere: { x: 720, y: 370 }, twinvale: { x: 760, y: 400 }, harmony_point: { x: 740, y: 440 },
+  // Scarred Frontier
+  scarwatch: { x: 280, y: 430 }, tuskbridge: { x: 310, y: 470 }, proving_grounds: { x: 260, y: 500 },
+  // Cogsworth Warrens
+  cogsworth: { x: 260, y: 175 }, sparkhollow: { x: 290, y: 210 }, fumblewick: { x: 305, y: 160 },
+  // Pelagic Depths
+  coralspire: { x: 410, y: 680 }, shallows_end: { x: 470, y: 700 }, abyssal_reach: { x: 350, y: 710 },
+  // Thornwilds
+  thornden: { x: 720, y: 500 }, clawridge: { x: 750, y: 530 }, windrun: { x: 700, y: 540 },
+  // Glimmerveil
+  glimmerheart: { x: 920, y: 440 }, dewdrop_hollow: { x: 940, y: 480 }, moonpetal_grove: { x: 930, y: 520 },
+  // Exotic
+  skyhold: { x: 80, y: 120 }, windbreak: { x: 60, y: 160 },
+  vel_naris: { x: 850, y: 375 }, gloom_market: { x: 890, y: 410 },
+  misthaven: { x: 680, y: 620 }, rootholme: { x: 660, y: 660 },
+  the_foundry: { x: 330, y: 260 },
+  the_confluence: { x: 360, y: 530 }, emberheart: { x: 330, y: 570 },
+  ashenmoor: { x: 310, y: 620 },
+};
+
+// ===========================================================================
+// Hook: useMapData
+// ===========================================================================
+
+function useMapData() {
+  return useQuery<MapData>({
+    queryKey: ['world-map'],
+    queryFn: async () => {
+      const { data } = await api.get('/world/map');
+
+      // Normalize towns: ensure mapX/mapY exist using fallback coordinates
+      const towns: MapTown[] = (data.towns ?? []).map((t: any) => {
+        const fallback = FALLBACK_COORDS[t.id];
+        const type = t.type ?? inferTownType(t.population ?? 0);
+        return {
+          id: t.id,
+          name: t.name,
+          type,
+          regionId: t.regionId,
+          regionName: t.regionName ?? t.region?.name ?? '',
+          mapX: t.mapX ?? t.x ?? fallback?.x ?? 500,
+          mapY: t.mapY ?? t.y ?? fallback?.y ?? 450,
+          population: t.population ?? 0,
+          biome: t.biome ?? '',
+          description: t.description ?? '',
+          isPlayerHere: t.isPlayerHere ?? false,
+        };
+      });
+
+      const routes: MapRoute[] = (data.routes ?? []).map((r: any) => ({
+        id: r.id,
+        fromTownId: r.fromTownId,
+        toTownId: r.toTownId,
+        name: r.name ?? '',
+        difficulty: r.difficulty ?? 'safe',
+        terrain: r.terrain ?? 'mixed',
+        nodeCount: r.nodeCount ?? 0,
+        dangerLevel: r.dangerLevel ?? 0,
+        nodes: (r.nodes ?? []).map((n: any) => ({
+          id: n.id,
+          nodeIndex: n.nodeIndex,
+          name: n.name ?? '',
+          description: n.description ?? '',
+          terrain: n.terrain ?? 'plains',
+          dangerLevel: n.dangerLevel ?? 0,
+          specialType: n.specialType ?? null,
+          mapX: n.mapX ?? 0,
+          mapY: n.mapY ?? 0,
+        })),
+      }));
+
+      const regions: MapRegion[] = (data.regions ?? []).map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        biome: r.biome ?? '',
+        color: r.color ?? getRegionColor(r.id),
+      }));
+
+      return {
+        towns,
+        routes,
+        regions,
+        playerPosition: data.playerPosition ?? null,
+        travelers: data.travelers ?? [],
+      };
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+}
+
+// ===========================================================================
+// Hook: usePlayerLocation
+// ===========================================================================
+
+function usePlayerLocation() {
+  return useQuery<{ currentTownId: string | null; travelStatus: string }>({
+    queryKey: ['player-location'],
+    queryFn: async () => {
+      try {
+        const { data } = await api.get('/characters/me');
+        return {
+          currentTownId: data?.currentTownId ?? null,
+          travelStatus: data?.travelStatus ?? 'idle',
+        };
+      } catch {
+        return { currentTownId: null, travelStatus: 'idle' };
+      }
+    },
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+// ===========================================================================
+// Viewport culling helpers
+// ===========================================================================
+
+interface ViewBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+function isInViewport(px: number, py: number, vb: ViewBox, margin: number = 100): boolean {
+  return (
+    px >= vb.x - margin &&
+    px <= vb.x + vb.w + margin &&
+    py >= vb.y - margin &&
+    py <= vb.y + vb.h + margin
+  );
+}
+
+// ===========================================================================
+// Sub-component: TownNode
+// ===========================================================================
+
+interface TownNodeProps {
+  town: MapTown;
+  isPlayerHere: boolean;
+  isSelected: boolean;
+  zoom: number;
+  onClick: () => void;
+  onHoverStart: () => void;
+  onHoverEnd: () => void;
+}
+
+function TownNode({ town, isPlayerHere, isSelected, zoom, onClick, onHoverStart, onHoverEnd }: TownNodeProps) {
+  const size = getTownSize(town.type);
+  const color = getRegionColor(town.regionId);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const hitSize = isMobile ? size + 4 : size + 2;
+
+  // Capital: star/diamond shape
+  const isCapital = town.type === 'capital';
+  const isOutpost = town.type === 'outpost';
+
+  // Font size scales inversely with zoom at high levels so labels don't get huge
+  const labelSize = Math.max(6, Math.min(10, 9 / Math.max(zoom, 1)));
+
+  return (
+    <g
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      onMouseEnter={onHoverStart}
+      onMouseLeave={onHoverEnd}
+      style={{ cursor: 'pointer' }}
+    >
+      {/* Player glow ring */}
+      {isPlayerHere && (
+        <>
+          <circle cx={town.mapX} cy={town.mapY} r={size + 6} fill="none" stroke="#fbbf24" strokeWidth={2} opacity={0.6}>
+            <animate attributeName="r" values={`${size + 4};${size + 8};${size + 4}`} dur="2s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.4;0.8;0.4" dur="2s" repeatCount="indefinite" />
+          </circle>
+          <circle cx={town.mapX} cy={town.mapY} r={size + 3} fill="none" stroke="#fbbf24" strokeWidth={1} opacity={0.3} />
+        </>
+      )}
+
+      {/* Selection ring */}
+      {isSelected && !isPlayerHere && (
+        <circle cx={town.mapX} cy={town.mapY} r={size + 4} fill="none" stroke="#fbbf24" strokeWidth={1.5} opacity={0.7} />
+      )}
+
+      {/* Invisible hit area */}
+      <circle cx={town.mapX} cy={town.mapY} r={hitSize} fill="transparent" />
+
+      {/* Town shape */}
+      {isCapital ? (
+        // Diamond for capitals
+        <g>
+          <polygon
+            points={`${town.mapX},${town.mapY - size} ${town.mapX + size},${town.mapY} ${town.mapX},${town.mapY + size} ${town.mapX - size},${town.mapY}`}
+            fill={color}
+            stroke="#fbbf24"
+            strokeWidth={1.5}
+            filter={isPlayerHere ? 'url(#playerGlow)' : undefined}
+          />
+        </g>
+      ) : isOutpost ? (
+        // Small diamond for outposts
+        <polygon
+          points={`${town.mapX},${town.mapY - size} ${town.mapX + size},${town.mapY} ${town.mapX},${town.mapY + size} ${town.mapX - size},${town.mapY}`}
+          fill={color}
+          stroke={color}
+          strokeWidth={0.5}
+          opacity={0.8}
+        />
+      ) : (
+        // Circle for city/town/village
+        <circle
+          cx={town.mapX}
+          cy={town.mapY}
+          r={size}
+          fill={color}
+          stroke={town.type === 'village' ? 'none' : '#1a1a2e'}
+          strokeWidth={town.type === 'village' ? 0 : 1}
+          opacity={town.type === 'village' ? 0.75 : 1}
+          filter={isPlayerHere ? 'url(#playerGlow)' : undefined}
+        />
+      )}
+
+      {/* Town name label - always visible */}
+      <text
+        x={town.mapX}
+        y={town.mapY + size + labelSize + 2}
+        textAnchor="middle"
+        fill="#E8E0D0"
+        fontSize={labelSize}
+        fontFamily="Crimson Text, Georgia, serif"
+        style={{ pointerEvents: 'none', userSelect: 'none' }}
+      >
+        {town.name}
+      </text>
+
+      {/* "You Are Here" label for player */}
+      {isPlayerHere && (
+        <text
+          x={town.mapX}
+          y={town.mapY - size - 6}
+          textAnchor="middle"
+          fill="#fbbf24"
+          fontSize={Math.max(6, 8 / Math.max(zoom, 1))}
+          fontFamily="MedievalSharp, serif"
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
+        >
+          You Are Here
+        </text>
+      )}
+    </g>
+  );
+}
+
+// ===========================================================================
+// Sub-component: TravelNode
+// ===========================================================================
+
+interface TravelNodeProps {
+  node: RouteNode;
+  isPlayerHere: boolean;
+  zoom: number;
+  onHoverStart: (node: RouteNode, e: React.MouseEvent) => void;
+  onHoverEnd: () => void;
+}
+
+function TravelNodeDot({ node, isPlayerHere, zoom, onHoverStart, onHoverEnd }: TravelNodeProps) {
+  const color = getTerrainColor(node.terrain);
+  const showLabel = zoom > 3;
+
+  return (
+    <g
+      onMouseEnter={(e) => onHoverStart(node, e)}
+      onMouseLeave={onHoverEnd}
+      style={{ cursor: 'pointer' }}
+    >
+      {isPlayerHere && (
+        <circle cx={node.mapX} cy={node.mapY} r={7} fill="none" stroke="#fbbf24" strokeWidth={1.5} opacity={0.7}>
+          <animate attributeName="r" values="5;9;5" dur="1.5s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.5;0.9;0.5" dur="1.5s" repeatCount="indefinite" />
+        </circle>
+      )}
+      <circle
+        cx={node.mapX}
+        cy={node.mapY}
+        r={isPlayerHere ? 5 : 4}
+        fill={isPlayerHere ? '#fbbf24' : color}
+        stroke={isPlayerHere ? '#fbbf24' : 'none'}
+        strokeWidth={isPlayerHere ? 1 : 0}
+        opacity={isPlayerHere ? 1 : 0.7}
+      />
+      {node.specialType && (
+        <circle
+          cx={node.mapX}
+          cy={node.mapY - 6}
+          r={2}
+          fill="#fbbf24"
+          opacity={0.8}
+        />
+      )}
+      {showLabel && (
+        <text
+          x={node.mapX}
+          y={node.mapY + 10}
+          textAnchor="middle"
+          fill="#A89A80"
+          fontSize={5}
+          fontFamily="Crimson Text, Georgia, serif"
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
+        >
+          {node.name}
+        </text>
+      )}
+    </g>
+  );
+}
+
+// ===========================================================================
+// Sub-component: RouteLines
+// ===========================================================================
+
+interface RouteLinesProps {
+  route: MapRoute;
+  fromPos: { x: number; y: number };
+  toPos: { x: number; y: number };
+  isActive: boolean;
+  isHighlighted: boolean;
+  zoom: number;
+  onClick: () => void;
+  onHoverStart: () => void;
+  onHoverEnd: () => void;
+}
+
+function RouteLine({ route, fromPos, toPos, isActive, isHighlighted, zoom, onClick, onHoverStart, onHoverEnd }: RouteLinesProps) {
+  const style = getRouteStyle(route.difficulty, route.dangerLevel);
+  const hasNodes = route.nodes && route.nodes.length > 0;
+
+  // Build path from nodes if available, else straight line
+  let pathD: string;
+  if (hasNodes) {
+    const sorted = [...route.nodes!].sort((a, b) => a.nodeIndex - b.nodeIndex);
+    const points = [fromPos, ...sorted.map(n => ({ x: n.mapX, y: n.mapY })), toPos];
+    pathD = `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
+  } else {
+    pathD = `M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}`;
+  }
+
+  const activeStroke = '#fbbf24';
+  const highlightStroke = '#C9A461';
+
+  return (
+    <g>
+      {/* Invisible wide hit area for route clicking */}
+      <path
+        d={pathD}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={14}
+        onClick={(e) => { e.stopPropagation(); onClick(); }}
+        onMouseEnter={onHoverStart}
+        onMouseLeave={onHoverEnd}
+        style={{ cursor: 'pointer' }}
+      />
+      {/* Active glow */}
+      {isActive && (
+        <path
+          d={pathD}
+          fill="none"
+          stroke={activeStroke}
+          strokeWidth={style.strokeWidth + 3}
+          opacity={0.25}
+          strokeLinecap="round"
+          style={{ pointerEvents: 'none' }}
+        />
+      )}
+      {/* Visible route line */}
+      <path
+        d={pathD}
+        fill="none"
+        stroke={isActive ? activeStroke : isHighlighted ? highlightStroke : style.stroke}
+        strokeWidth={isActive ? style.strokeWidth + 1 : isHighlighted ? style.strokeWidth + 0.5 : style.strokeWidth}
+        strokeDasharray={isActive ? 'none' : style.dashArray}
+        opacity={isActive ? 0.9 : isHighlighted ? 0.8 : 0.45}
+        strokeLinecap="round"
+        style={{ pointerEvents: 'none' }}
+      />
+    </g>
+  );
+}
+
+// ===========================================================================
+// Sub-component: MiniMap
+// ===========================================================================
+
+interface MiniMapProps {
+  towns: MapTown[];
+  playerTownId: string | null;
+  viewBox: ViewBox;
+  onClick: (x: number, y: number) => void;
+}
+
+function MiniMap({ towns, playerTownId, viewBox, onClick }: MiniMapProps) {
+  const miniW = 160;
+  const miniH = 144; // same aspect ratio as 1000x900
+  const scaleX = miniW / MAP_W;
+  const scaleY = miniH / MAP_H;
+
+  const handleClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mx = ((e.clientX - rect.left) / rect.width) * MAP_W;
+    const my = ((e.clientY - rect.top) / rect.height) * MAP_H;
+    onClick(mx, my);
+  }, [onClick]);
+
+  return (
+    <div className="absolute top-4 right-4 bg-dark-500/90 border border-dark-50 rounded-lg overflow-hidden shadow-lg hidden md:block">
+      <svg
+        width={miniW}
+        height={miniH}
+        viewBox={`0 0 ${MAP_W} ${MAP_H}`}
+        onClick={handleClick}
+        style={{ cursor: 'crosshair', display: 'block' }}
+      >
+        <rect x={0} y={0} width={MAP_W} height={MAP_H} fill="#0E0E1A" />
+        {towns.map(t => (
+          <circle
+            key={t.id}
+            cx={t.mapX}
+            cy={t.mapY}
+            r={t.id === playerTownId ? 12 : 6}
+            fill={t.id === playerTownId ? '#fbbf24' : getRegionColor(t.regionId)}
+            opacity={t.id === playerTownId ? 1 : 0.6}
+          />
+        ))}
+        {/* Viewport rect */}
+        <rect
+          x={viewBox.x}
+          y={viewBox.y}
+          width={viewBox.w}
+          height={viewBox.h}
+          fill="none"
+          stroke="#fbbf24"
+          strokeWidth={8}
+          opacity={0.5}
+          rx={4}
+        />
+      </svg>
+    </div>
+  );
+}
+
+// ===========================================================================
+// Sub-component: TownInfoPanel (desktop sidebar / mobile bottom sheet)
+// ===========================================================================
+
+interface TownInfoPanelProps {
+  town: MapTown;
+  isPlayerHere: boolean;
+  isTraveling: boolean;
+  connectedRoutes: MapRoute[];
+  townLookup: Map<string, MapTown>;
+  onClose: () => void;
+  onTravel: (townId: string) => void;
+  onSelectTown: (town: MapTown) => void;
+}
+
+function TownInfoPanel({
+  town, isPlayerHere, isTraveling, connectedRoutes, townLookup, onClose, onTravel, onSelectTown,
+}: TownInfoPanelProps) {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const typeBadgeColor = {
+    capital: 'text-amber-400 bg-amber-400/10 border-amber-400/30',
+    city: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
+    town: 'text-parchment-300 bg-parchment-300/10 border-parchment-300/30',
+    village: 'text-green-400 bg-green-400/10 border-green-400/30',
+    outpost: 'text-orange-400 bg-orange-400/10 border-orange-400/30',
+  }[town.type ?? 'town'] ?? 'text-parchment-300 bg-parchment-300/10 border-parchment-300/30';
+
+  const difficultyLabel = (dl: number) => {
+    if (dl <= 1) return { text: 'Safe', cls: 'text-green-400' };
+    if (dl <= 3) return { text: 'Moderate', cls: 'text-yellow-400' };
+    if (dl <= 6) return { text: 'Dangerous', cls: 'text-orange-400' };
+    return { text: 'Deadly', cls: 'text-red-400' };
+  };
+
+  const content = (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-dark-50">
+        <div className="flex items-center gap-2 min-w-0">
+          <MapPin className="w-4 h-4 text-primary-400 shrink-0" />
+          <h2 className="font-display text-primary-400 text-lg truncate">{town.name}</h2>
+        </div>
+        <button onClick={onClose} className="text-parchment-500 hover:text-parchment-200 transition-colors shrink-0">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        {/* Badges */}
+        <div className="flex flex-wrap gap-2">
+          <span className={`text-[10px] px-2 py-0.5 rounded border capitalize ${typeBadgeColor}`}>
+            {town.type ?? 'town'}
+          </span>
+          <span className="text-[10px] px-2 py-0.5 rounded border text-parchment-400 bg-dark-300/50 border-dark-50">
+            {town.regionName}
+          </span>
+          {isPlayerHere && (
+            <span className="text-[10px] px-2 py-0.5 rounded border text-amber-400 bg-amber-400/10 border-amber-400/30">
+              Current Location
+            </span>
+          )}
+        </div>
+
+        {/* Population */}
+        <div className="flex items-center gap-2 text-sm">
+          <Users className="w-3.5 h-3.5 text-parchment-500" />
+          <span className="text-parchment-300">Population: {town.population.toLocaleString()}</span>
+        </div>
+
+        {/* Biome */}
+        <div className="flex items-center gap-2 text-sm">
+          <Info className="w-3.5 h-3.5 text-parchment-500" />
+          <span className="text-parchment-300">Biome: {town.biome}</span>
+        </div>
+
+        {/* Description */}
+        {town.description && (
+          <p className="text-parchment-400 text-sm leading-relaxed">{town.description}</p>
+        )}
+
+        {/* Connected routes */}
+        {connectedRoutes.length > 0 && (
+          <div>
+            <h3 className="text-parchment-200 text-xs font-display uppercase tracking-wider mb-2">Connected Routes</h3>
+            <div className="space-y-2">
+              {connectedRoutes.map(route => {
+                const otherTownId = route.fromTownId === town.id ? route.toTownId : route.fromTownId;
+                const otherTown = townLookup.get(otherTownId);
+                const dl = difficultyLabel(route.dangerLevel);
+                return (
+                  <button
+                    key={route.id}
+                    onClick={() => otherTown && onSelectTown(otherTown)}
+                    className="w-full flex items-center justify-between px-3 py-2 bg-dark-400 hover:bg-dark-300 border border-dark-50 rounded transition-colors text-left"
+                  >
+                    <div className="min-w-0">
+                      <span className="text-parchment-200 text-xs block truncate">{otherTown?.name ?? otherTownId}</span>
+                      {route.name && (
+                        <span className="text-parchment-500 text-[10px] block truncate">{route.name}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`text-[10px] ${dl.cls}`}>{dl.text}</span>
+                      <ChevronRight className="w-3 h-3 text-parchment-500" />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Travel button */}
+      {!isPlayerHere && (
+        <div className="px-5 py-4 border-t border-dark-50">
+          <button
+            onClick={() => onTravel(town.id)}
+            disabled={isTraveling}
+            className="w-full py-3 rounded-lg font-display text-sm bg-primary-500/20 hover:bg-primary-500/30 text-primary-400 border border-primary-500/30 hover:border-primary-400/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <Compass className="w-4 h-4" />
+            Travel Here
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  // Desktop: side panel
+  if (!isMobile) {
+    return (
+      <motion.div
+        initial={{ x: 320, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: 320, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        className="w-80 bg-dark-500 border-l border-dark-50 flex flex-col h-full shrink-0"
+      >
+        {content}
+      </motion.div>
+    );
+  }
+
+  // Mobile: bottom sheet
+  return (
+    <motion.div
+      initial={{ y: '100%' }}
+      animate={{ y: 0 }}
+      exit={{ y: '100%' }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      className="absolute bottom-0 left-0 right-0 bg-dark-500 border-t border-dark-50 rounded-t-xl max-h-[60vh] flex flex-col z-30"
+    >
+      {/* Drag handle */}
+      <div className="flex justify-center py-2">
+        <div className="w-10 h-1 bg-dark-50 rounded-full" />
+      </div>
+      {content}
+    </motion.div>
+  );
+}
+
+// ===========================================================================
+// Sub-component: NodeTooltip
+// ===========================================================================
+
+interface NodeTooltipProps {
+  node: RouteNode;
+  x: number;
+  y: number;
+}
+
+function NodeTooltip({ node, x, y }: NodeTooltipProps) {
+  return (
+    <div
+      className="fixed z-50 pointer-events-none bg-dark-400 border border-dark-50 rounded-lg px-3 py-2 shadow-xl"
+      style={{ left: x + 12, top: y - 8 }}
+    >
+      <p className="font-display text-primary-400 text-xs">{node.name}</p>
+      {node.description && <p className="text-parchment-500 text-[10px] mt-0.5">{node.description}</p>}
+      <div className="flex items-center gap-3 mt-1">
+        <span className="text-parchment-400 text-[10px] capitalize">{node.terrain}</span>
+        <span className={`text-[10px] ${node.dangerLevel <= 2 ? 'text-green-400' : node.dangerLevel <= 5 ? 'text-yellow-400' : 'text-red-400'}`}>
+          Danger: {node.dangerLevel}
+        </span>
+      </div>
+      {node.specialType && (
+        <span className="text-amber-400 text-[10px] block mt-0.5">{node.specialType}</span>
+      )}
+    </div>
+  );
+}
+
+// ===========================================================================
+// Sub-component: RouteInfoTooltip (in SVG)
+// ===========================================================================
+
+interface RouteTooltipSVGProps {
+  route: MapRoute;
+  midX: number;
+  midY: number;
+}
+
+function RouteTooltipSVG({ route, midX, midY }: RouteTooltipSVGProps) {
+  const dl = route.dangerLevel ?? 0;
+  const label = dl <= 1 ? 'Safe' : dl <= 3 ? 'Moderate' : dl <= 6 ? 'Dangerous' : 'Deadly';
+  const color = dl <= 1 ? '#4ade80' : dl <= 3 ? '#facc15' : dl <= 6 ? '#fb923c' : '#ef4444';
+
+  return (
+    <g style={{ pointerEvents: 'none' }}>
+      <rect
+        x={midX - 55}
+        y={midY - 26}
+        width={110}
+        height={36}
+        rx={4}
+        fill="#252538"
+        stroke="#C9A461"
+        strokeWidth={0.5}
+        opacity={0.95}
+      />
+      <text x={midX} y={midY - 10} textAnchor="middle" fill="#E8E0D0" fontSize={9} fontFamily="Crimson Text, serif">
+        {route.name || `${route.nodeCount ?? '?'} nodes`}
+      </text>
+      <text x={midX} y={midY + 3} textAnchor="middle" fill={color} fontSize={8} fontFamily="Crimson Text, serif">
+        {label} (Danger {dl})
+      </text>
+    </g>
+  );
+}
+
+// ===========================================================================
+// Main Component
+// ===========================================================================
+
 export default function WorldMapPage() {
-  const navigate = useNavigate();
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const [mapData, setMapData] = useState<WorldMapData | null>(null);
-  const [playerLocation, setPlayerLocation] = useState<PlayerLocation | null>(null);
-  const [selectedTown, setSelectedTown] = useState<Town | null>(null);
-  const [hoveredRoute, setHoveredRoute] = useState<Route | null>(null);
-  const [hoveredTown, setHoveredTown] = useState<Town | null>(null);
-  const [exclusiveZones, setExclusiveZones] = useState<ExclusiveZoneData[]>([]);
-  const [selectedZone, setSelectedZone] = useState<ExclusiveZoneData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [characterId, setCharacterId] = useState<string | undefined>(undefined);
-  const [showLegend, setShowLegend] = useState(false);
+  // Data
+  const { data: mapData, isLoading, error: loadError } = useMapData();
+  const { data: playerLoc } = usePlayerLocation();
 
-  // Pan & zoom state
-  const [viewBox, setViewBox] = useState({ x: 0, y: 0, w: MAP_WIDTH, h: MAP_HEIGHT });
+  // UI state
+  const [viewBox, setViewBox] = useState<ViewBox>({ x: 0, y: 0, w: MAP_W, h: MAP_H });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [selectedTown, setSelectedTown] = useState<MapTown | null>(null);
+  const [hoveredRoute, setHoveredRoute] = useState<MapRoute | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<{ node: RouteNode; screenX: number; screenY: number } | null>(null);
+  const [showTravelers, setShowTravelers] = useState(true);
+  const [travelModalOpen, setTravelModalOpen] = useState(false);
+  const [travelDestination, setTravelDestination] = useState<string | undefined>();
 
-  const zoomLevel = getZoomLevel(viewBox.w);
+  // Computed zoom level (1 = default; >1 = zoomed in)
+  const zoom = useMemo(() => MAP_W / viewBox.w, [viewBox.w]);
 
-  // Fetch map data
-  useEffect(() => {
-    let cancelled = false;
+  // LOD thresholds
+  const showTravelNodes = zoom >= 1.5;
+  const showFullDetail = zoom >= 3;
 
-    async function fetchMapData() {
-      try {
-        const [mapRes, locRes, zonesRes, charRes] = await Promise.allSettled([
-          api.get('/world/map'),
-          api.get('/characters/me/location'),
-          api.get('/zones/exclusive'),
-          api.get('/characters/me'),
-        ]);
-
-        if (cancelled) return;
-
-        if (mapRes.status === 'fulfilled') {
-          setMapData(mapRes.value.data);
-        } else {
-          setMapData(buildFallbackData());
-        }
-
-        if (locRes.status === 'fulfilled') {
-          setPlayerLocation(locRes.value.data);
-        }
-
-        if (charRes.status === 'fulfilled') {
-          setCharacterId(charRes.value.data?.id);
-        }
-
-        // Build exclusive zone overlays
-        if (zonesRes.status === 'fulfilled' && charRes.status === 'fulfilled') {
-          const playerId = charRes.value.data?.playerId;
-          const zones = zonesRes.value.data as Array<{
-            id: string; name: string; regionId: string; raceName: string;
-            x: number; y: number; radius?: number;
-            requirements?: string; resources?: string[];
-          }>;
-
-          // Check access for each zone in parallel
-          const accessChecks = await Promise.allSettled(
-            zones.map(z => api.get(`/zones/${z.id}/access`, { params: { playerId } }))
-          );
-
-          const enriched: ExclusiveZoneData[] = zones.map((z, i) => ({
-            ...z,
-            hasAccess: accessChecks[i].status === 'fulfilled'
-              ? (accessChecks[i] as PromiseFulfilledResult<any>).value.data.hasAccess
-              : false,
-          }));
-
-          setExclusiveZones(enriched);
-        }
-      } catch {
-        if (!cancelled) {
-          setMapData(buildFallbackData());
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    fetchMapData();
-    return () => { cancelled = true; };
-  }, []);
-
-  // Build town lookup
-  const townMap = useMemo(() => {
-    if (!mapData) return new Map<string, Town>();
-    const m = new Map<string, Town>();
+  // Town lookup
+  const townLookup = useMemo(() => {
+    if (!mapData) return new Map<string, MapTown>();
+    const m = new Map<string, MapTown>();
     for (const t of mapData.towns) m.set(t.id, t);
     return m;
   }, [mapData]);
 
-  // Build region lookup
-  const regionMap = useMemo(() => {
-    if (!mapData) return new Map<string, Region>();
-    const m = new Map<string, Region>();
-    for (const r of mapData.regions) m.set(r.id, r);
-    return m;
-  }, [mapData]);
+  // Player town ID — from mapData if available, else from character query
+  const playerTownId = useMemo(() => {
+    if (mapData?.playerPosition?.townId) return mapData.playerPosition.townId;
+    // Check isPlayerHere flag on towns
+    const hereTown = mapData?.towns.find(t => t.isPlayerHere);
+    if (hereTown) return hereTown.id;
+    return playerLoc?.currentTownId ?? null;
+  }, [mapData, playerLoc]);
 
-  // Group towns by region
-  const regionTowns = useMemo(() => {
-    if (!mapData) return new Map<string, Town[]>();
-    const m = new Map<string, Town[]>();
-    for (const t of mapData.towns) {
-      const arr = m.get(t.regionId) ?? [];
-      arr.push(t);
-      m.set(t.regionId, arr);
+  const isTraveling = useMemo(() => {
+    if (mapData?.playerPosition?.type === 'traveling') return true;
+    return playerLoc?.travelStatus === 'traveling';
+  }, [mapData, playerLoc]);
+
+  // Routes connected to selected town
+  const connectedRoutes = useMemo(() => {
+    if (!selectedTown || !mapData) return [];
+    return mapData.routes.filter(r => r.fromTownId === selectedTown.id || r.toTownId === selectedTown.id);
+  }, [selectedTown, mapData]);
+
+  // Traveler clusters — group by position
+  const travelerClusters = useMemo(() => {
+    if (!mapData?.travelers?.length) return [];
+    const groups = new Map<string, { x: number; y: number; travelers: Traveler[] }>();
+    for (const t of mapData.travelers) {
+      const route = mapData.routes.find(r => r.id === t.routeId);
+      if (!route?.nodes?.length) continue;
+      const node = route.nodes.find(n => n.nodeIndex === t.nodeIndex);
+      if (!node) continue;
+      const key = `${node.mapX}-${node.mapY}`;
+      const group = groups.get(key) ?? { x: node.mapX, y: node.mapY, travelers: [] };
+      group.travelers.push(t);
+      groups.set(key, group);
     }
-    return m;
+    return Array.from(groups.values());
   }, [mapData]);
 
-  // Mouse handlers for pan
-  const handleMouseDown = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+  // ===========================================================================
+  // Pan & Zoom handlers
+  // ===========================================================================
+
+  const clampViewBox = useCallback((vb: ViewBox): ViewBox => {
+    const minW = MAP_W / MAX_ZOOM;
+    const maxW = MAP_W / MIN_ZOOM;
+    const w = Math.max(minW, Math.min(maxW, vb.w));
+    const h = w * (MAP_H / MAP_W);
+    // Allow panning with some margin
+    const margin = w * 0.3;
+    const x = Math.max(-margin, Math.min(MAP_W - w + margin, vb.x));
+    const y = Math.max(-margin, Math.min(MAP_H - h + margin, vb.y));
+    return { x, y, w, h };
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
     setIsPanning(true);
     setPanStart({ x: e.clientX, y: e.clientY });
   }, []);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isPanning || !svgRef.current) return;
-    const svg = svgRef.current;
-    const rect = svg.getBoundingClientRect();
+    const rect = svgRef.current.getBoundingClientRect();
     const scaleX = viewBox.w / rect.width;
     const scaleY = viewBox.h / rect.height;
     const dx = (e.clientX - panStart.x) * scaleX;
     const dy = (e.clientY - panStart.y) * scaleY;
-    setViewBox(prev => ({ ...prev, x: prev.x - dx, y: prev.y - dy }));
+    setViewBox(prev => clampViewBox({ ...prev, x: prev.x - dx, y: prev.y - dy }));
     setPanStart({ x: e.clientX, y: e.clientY });
-  }, [isPanning, panStart, viewBox.w, viewBox.h]);
+  }, [isPanning, panStart, viewBox.w, viewBox.h, clampViewBox]);
 
   const handleMouseUp = useCallback(() => {
     setIsPanning(false);
   }, []);
 
+  // Wheel zoom — centers on cursor position
   const handleWheel = useCallback((e: React.WheelEvent<SVGSVGElement>) => {
     e.preventDefault();
-    const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    const rect = svg.getBoundingClientRect();
+    // Mouse position in SVG coordinate space
+    const mouseXRatio = (e.clientX - rect.left) / rect.width;
+    const mouseYRatio = (e.clientY - rect.top) / rect.height;
+    const mouseSvgX = viewBox.x + mouseXRatio * viewBox.w;
+    const mouseSvgY = viewBox.y + mouseYRatio * viewBox.h;
+
+    const factor = e.deltaY > 0 ? 1.12 : 0.89;
+
     setViewBox(prev => {
-      const newW = Math.max(300, Math.min(MAP_WIDTH * 2, prev.w * zoomFactor));
-      const newH = Math.max(228, Math.min(MAP_HEIGHT * 2, prev.h * zoomFactor));
+      const newW = prev.w * factor;
+      const newH = newW * (MAP_H / MAP_W);
+      // Keep the mouse position stable
+      const newX = mouseSvgX - mouseXRatio * newW;
+      const newY = mouseSvgY - mouseYRatio * newH;
+      return clampViewBox({ x: newX, y: newY, w: newW, h: newH });
+    });
+  }, [viewBox, clampViewBox]);
+
+  // Touch handlers for mobile pinch/pan
+  const touchRef = useRef<{ dist: number; mid: { x: number; y: number }; vb: ViewBox } | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[1].clientX - e.touches[0].clientX;
+      const dy = e.touches[1].clientY - e.touches[0].clientY;
+      touchRef.current = {
+        dist: Math.sqrt(dx * dx + dy * dy),
+        mid: {
+          x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+          y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+        },
+        vb: { ...viewBox },
+      };
+    } else if (e.touches.length === 1) {
+      setIsPanning(true);
+      setPanStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+    }
+  }, [viewBox]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && touchRef.current && svgRef.current) {
+      const dx = e.touches[1].clientX - e.touches[0].clientX;
+      const dy = e.touches[1].clientY - e.touches[0].clientY;
+      const newDist = Math.sqrt(dx * dx + dy * dy);
+      const scale = touchRef.current.dist / newDist;
+      const newW = touchRef.current.vb.w * scale;
+      const newH = newW * (MAP_H / MAP_W);
+      const newMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const newMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const rect = svgRef.current.getBoundingClientRect();
+      const panDx = ((newMidX - touchRef.current.mid.x) / rect.width) * newW;
+      const panDy = ((newMidY - touchRef.current.mid.y) / rect.height) * newH;
+      setViewBox(clampViewBox({
+        x: touchRef.current.vb.x + (touchRef.current.vb.w - newW) / 2 - panDx,
+        y: touchRef.current.vb.y + (touchRef.current.vb.h - newH) / 2 - panDy,
+        w: newW,
+        h: newH,
+      }));
+    } else if (e.touches.length === 1 && isPanning && svgRef.current) {
+      const rect = svgRef.current.getBoundingClientRect();
+      const scaleX = viewBox.w / rect.width;
+      const scaleY = viewBox.h / rect.height;
+      const dx = (e.touches[0].clientX - panStart.x) * scaleX;
+      const dy = (e.touches[0].clientY - panStart.y) * scaleY;
+      setViewBox(prev => clampViewBox({ ...prev, x: prev.x - dx, y: prev.y - dy }));
+      setPanStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+    }
+  }, [isPanning, panStart, viewBox, clampViewBox]);
+
+  const handleTouchEnd = useCallback(() => {
+    setIsPanning(false);
+    touchRef.current = null;
+  }, []);
+
+  // Keyboard handlers
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const PAN_STEP = viewBox.w * 0.1;
+      switch (e.key) {
+        case 'ArrowLeft':
+          setViewBox(prev => clampViewBox({ ...prev, x: prev.x - PAN_STEP }));
+          break;
+        case 'ArrowRight':
+          setViewBox(prev => clampViewBox({ ...prev, x: prev.x + PAN_STEP }));
+          break;
+        case 'ArrowUp':
+          setViewBox(prev => clampViewBox({ ...prev, y: prev.y - PAN_STEP }));
+          break;
+        case 'ArrowDown':
+          setViewBox(prev => clampViewBox({ ...prev, y: prev.y + PAN_STEP }));
+          break;
+        case '+':
+        case '=': {
+          setViewBox(prev => {
+            const cx = prev.x + prev.w / 2;
+            const cy = prev.y + prev.h / 2;
+            const nw = prev.w * 0.85;
+            const nh = nw * (MAP_H / MAP_W);
+            return clampViewBox({ x: cx - nw / 2, y: cy - nh / 2, w: nw, h: nh });
+          });
+          break;
+        }
+        case '-':
+        case '_': {
+          setViewBox(prev => {
+            const cx = prev.x + prev.w / 2;
+            const cy = prev.y + prev.h / 2;
+            const nw = prev.w * 1.18;
+            const nh = nw * (MAP_H / MAP_W);
+            return clampViewBox({ x: cx - nw / 2, y: cy - nh / 2, w: nw, h: nh });
+          });
+          break;
+        }
+        case 'Escape':
+          setSelectedTown(null);
+          setHoveredRoute(null);
+          break;
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewBox.w, clampViewBox]);
+
+  // ===========================================================================
+  // Actions
+  // ===========================================================================
+
+  const zoomIn = useCallback(() => {
+    setViewBox(prev => {
       const cx = prev.x + prev.w / 2;
       const cy = prev.y + prev.h / 2;
-      return { x: cx - newW / 2, y: cy - newH / 2, w: newW, h: newH };
+      const nw = prev.w * 0.8;
+      const nh = nw * (MAP_H / MAP_W);
+      return clampViewBox({ x: cx - nw / 2, y: cy - nh / 2, w: nw, h: nh });
     });
-  }, []);
+  }, [clampViewBox]);
 
-  const resetView = useCallback(() => {
-    setViewBox({ x: 0, y: 0, w: MAP_WIDTH, h: MAP_HEIGHT });
-  }, []);
+  const zoomOut = useCallback(() => {
+    setViewBox(prev => {
+      const cx = prev.x + prev.w / 2;
+      const cy = prev.y + prev.h / 2;
+      const nw = prev.w * 1.25;
+      const nh = nw * (MAP_H / MAP_W);
+      return clampViewBox({ x: cx - nw / 2, y: cy - nh / 2, w: nw, h: nh });
+    });
+  }, [clampViewBox]);
 
-  // Center on player location
   const centerOnPlayer = useCallback(() => {
-    if (!playerLocation) return;
-    const town = townMap.get(playerLocation.currentTownId);
+    if (!playerTownId) return;
+    const town = townLookup.get(playerTownId);
     if (!town) return;
-    const w = 500;
-    const h = 380;
-    setViewBox({ x: town.x - w / 2, y: town.y - h / 2, w, h });
-  }, [playerLocation, townMap]);
+    const w = 400;
+    const h = w * (MAP_H / MAP_W);
+    setViewBox(clampViewBox({ x: town.mapX - w / 2, y: town.mapY - h / 2, w, h }));
+  }, [playerTownId, townLookup, clampViewBox]);
 
-  // MiniMap click handler
   const handleMiniMapClick = useCallback((mx: number, my: number) => {
-    setViewBox(prev => ({
-      ...prev,
-      x: mx - prev.w / 2,
-      y: my - prev.h / 2,
-    }));
+    setViewBox(prev => clampViewBox({ ...prev, x: mx - prev.w / 2, y: my - prev.h / 2 }));
+  }, [clampViewBox]);
+
+  const handleTravelClick = useCallback((townId: string) => {
+    setTravelDestination(townId);
+    setTravelModalOpen(true);
   }, []);
 
-  // Travel handler
-  const handleTravel = useCallback(async (townId: string) => {
-    try {
-      await api.post('/characters/me/travel', { destinationTownId: townId });
-      setPlayerLocation({ currentTownId: townId, travelingTo: townId, travelProgress: 0 });
-      setSelectedTown(null);
-    } catch (err: any) {
-      setError(err.response?.data?.error ?? 'Failed to start travel');
-    }
+  const handleTravelNodeHover = useCallback((node: RouteNode, e: React.MouseEvent) => {
+    setHoveredNode({ node, screenX: e.clientX, screenY: e.clientY });
   }, []);
 
-  // Render travel progress dot
-  const renderTravelProgress = useCallback(() => {
-    if (!playerLocation?.travelingTo || !playerLocation.travelProgress || !mapData) return null;
-    const fromTown = townMap.get(playerLocation.currentTownId);
-    const toTown = townMap.get(playerLocation.travelingTo);
-    if (!fromTown || !toTown) return null;
+  // ===========================================================================
+  // Render
+  // ===========================================================================
 
-    const progress = playerLocation.travelProgress;
-    const cx = fromTown.x + (toTown.x - fromTown.x) * progress;
-    const cy = fromTown.y + (toTown.y - fromTown.y) * progress;
-
-    return (
-      <g>
-        <circle cx={cx} cy={cy} r={6} fill="#C9A461" opacity={0.8}>
-          <animate attributeName="r" values="4;7;4" dur="1.5s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.6;1;0.6" dur="1.5s" repeatCount="indefinite" />
-        </circle>
-        <circle cx={cx} cy={cy} r={3} fill="#F5EBCB" />
-      </g>
-    );
-  }, [playerLocation, mapData, townMap]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-dark-500">
-        <div className="text-primary-400 font-display text-2xl animate-pulse">
-          Charting the realm...
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-primary-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-primary-400 font-display text-2xl animate-pulse">
+            Charting the realm...
+          </p>
         </div>
       </div>
     );
   }
 
-  if (!mapData) {
+  if (loadError || !mapData) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-dark-500">
-        <div className="text-red-400 font-display text-xl">Failed to load map data</div>
+        <div className="text-center">
+          <Shield className="w-12 h-12 text-parchment-500/30 mx-auto mb-4" />
+          <p className="text-parchment-300 font-display text-xl mb-2">No map data available</p>
+          <p className="text-parchment-500 text-sm">The cartographers are still at work.</p>
+        </div>
       </div>
     );
+  }
+
+  // Build lists of visible elements (viewport culling)
+  const visibleTowns = mapData.towns.filter(t => isInViewport(t.mapX, t.mapY, viewBox));
+
+  const visibleRoutes = mapData.routes.filter(r => {
+    const from = townLookup.get(r.fromTownId);
+    const to = townLookup.get(r.toTownId);
+    if (!from || !to) return false;
+    // Route is visible if either endpoint is in viewport
+    return isInViewport(from.mapX, from.mapY, viewBox, 200) || isInViewport(to.mapX, to.mapY, viewBox, 200);
+  });
+
+  // Collect visible travel nodes from visible routes
+  const visibleTravelNodes: { node: RouteNode; routeId: string }[] = [];
+  if (showTravelNodes) {
+    for (const route of visibleRoutes) {
+      if (!route.nodes) continue;
+      for (const node of route.nodes) {
+        if (isInViewport(node.mapX, node.mapY, viewBox)) {
+          visibleTravelNodes.push({ node, routeId: route.id });
+        }
+      }
+    }
+  }
+
+  // Determine active route (player is on it)
+  const activeRouteId = mapData.playerPosition?.routeId ?? null;
+  const playerNodeIndex = mapData.playerPosition?.nodeIndex ?? null;
+
+  // Region labels (shown at low zoom)
+  const regionCenters = new Map<string, { x: number; y: number; name: string }>();
+  if (zoom < 2) {
+    const regionTowns = new Map<string, MapTown[]>();
+    for (const t of mapData.towns) {
+      const arr = regionTowns.get(t.regionId) ?? [];
+      arr.push(t);
+      regionTowns.set(t.regionId, arr);
+    }
+    for (const [regionId, towns] of regionTowns) {
+      if (towns.length < 2) continue;
+      const cx = towns.reduce((s, t) => s + t.mapX, 0) / towns.length;
+      const cy = towns.reduce((s, t) => s + t.mapY, 0) / towns.length;
+      const region = mapData.regions.find(r => r.id === regionId);
+      if (region) {
+        regionCenters.set(regionId, { x: cx, y: cy, name: region.name });
+      }
+    }
   }
 
   return (
-    <div className="min-h-screen bg-dark-500 flex flex-col pt-12">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-3 bg-dark-400 border-b border-dark-50">
-        <button
-          onClick={() => navigate('/')}
-          className="text-parchment-300 hover:text-primary-400 transition-colors font-display text-sm"
-        >
-          &larr; Back to Home
-        </button>
-        <h1 className="text-2xl font-display text-primary-400">World of Aethermere</h1>
-        <div className="flex items-center gap-3">
-          {playerLocation && (
-            <button
-              onClick={centerOnPlayer}
-              className="text-parchment-300 hover:text-primary-400 transition-colors font-display text-sm"
-            >
-              Find Me
-            </button>
-          )}
-          <button
-            onClick={resetView}
-            className="text-parchment-300 hover:text-primary-400 transition-colors font-display text-sm"
-          >
-            Reset View
-          </button>
-        </div>
-      </div>
-
-      {error && (
-        <div className="mx-6 mt-2 p-3 bg-red-900/30 border border-red-500/50 rounded text-red-300 text-sm">
-          {error}
-          <button onClick={() => setError('')} className="ml-4 text-red-400 hover:text-red-300">Dismiss</button>
-        </div>
-      )}
-
+    <div className="min-h-screen bg-dark-500 flex flex-col">
       {/* Map + Panel layout */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         {/* SVG Map */}
-        <div className="flex-1 relative">
+        <div className="flex-1 relative overflow-hidden" style={{ touchAction: 'none' }}>
           <svg
             ref={svgRef}
             viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`}
-            className="w-full h-full cursor-grab active:cursor-grabbing"
+            className={`w-full h-full ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
             onWheel={handleWheel}
-            style={{ background: '#0E0E1A' }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onClick={() => {
+              // Clicking background deselects
+              if (!isPanning) {
+                setSelectedTown(null);
+                setHoveredRoute(null);
+              }
+            }}
+            preserveAspectRatio="xMidYMid meet"
           >
+            {/* --- SVG Defs --- */}
             <defs>
-              <radialGradient id="bgGrad" cx="50%" cy="50%" r="60%">
-                <stop offset="0%" stopColor="#1A1A2E" />
+              <radialGradient id="mapBgGrad" cx="50%" cy="50%" r="65%">
+                <stop offset="0%" stopColor="#1a1a2e" />
                 <stop offset="100%" stopColor="#080810" />
               </radialGradient>
 
-              <filter id="playerGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <filter id="playerGlow" x="-80%" y="-80%" width="260%" height="260%">
                 <feGaussianBlur stdDeviation="3" result="blur" />
+                <feFlood floodColor="#fbbf24" floodOpacity="0.4" />
+                <feComposite in2="blur" operator="in" />
                 <feMerge>
-                  <feMergeNode in="blur" />
+                  <feMergeNode />
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
 
-              <filter id="hoverGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <filter id="activeRouteGlow" x="-20%" y="-20%" width="140%" height="140%">
                 <feGaussianBlur stdDeviation="2" result="blur" />
+                <feFlood floodColor="#fbbf24" floodOpacity="0.3" />
+                <feComposite in2="blur" operator="in" />
                 <feMerge>
-                  <feMergeNode in="blur" />
+                  <feMergeNode />
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
             </defs>
 
-            {/* Background */}
-            <rect x="-200" y="-200" width={MAP_WIDTH + 400} height={MAP_HEIGHT + 400} fill="url(#bgGrad)" />
+            {/* === Layer 1: Background === */}
+            <rect
+              x={-200}
+              y={-200}
+              width={MAP_W + 400}
+              height={MAP_H + 400}
+              fill="url(#mapBgGrad)"
+            />
 
-            {/* Region overlays with race emblems and relation borders */}
-            {mapData.regions.map(region => {
-              const towns = regionTowns.get(region.id);
-              if (!towns || towns.length < 2) return null;
-              const color = getRegionColor(region.id);
-              // Default to neutral border; API could provide relation data
-              const borderColor = RELATION_BORDER_COLORS.Neutral;
+            {/* === Layer 2: Region boundaries (subtle) === */}
+            {zoom < 2 && Array.from(regionCenters.entries()).map(([regionId, center]) => {
+              const color = getRegionColor(regionId);
               return (
-                <RegionOverlay
-                  key={region.id}
-                  regionId={region.id}
-                  raceName={region.raceName}
-                  towns={towns}
-                  color={color}
-                  borderColor={borderColor}
-                />
-              );
-            })}
-
-            {/* Exclusive zone overlays */}
-            {exclusiveZones.map(zone => {
-              const color = getRegionColor(zone.regionId);
-              return (
-                <ExclusiveZoneOverlay
-                  key={zone.id}
-                  zone={zone}
-                  color={color}
-                  isSelected={selectedZone?.id === zone.id}
-                  onSelect={() => setSelectedZone(selectedZone?.id === zone.id ? null : zone)}
-                />
-              );
-            })}
-
-            {/* Routes */}
-            {mapData.routes.map(route => {
-              const from = townMap.get(route.fromTownId);
-              const to = townMap.get(route.toTownId);
-              if (!from || !to) return null;
-
-              const isHovered = hoveredRoute?.id === route.id;
-              const dangerColor = route.dangerLevel >= 4 ? '#8B0000' : route.dangerLevel >= 3 ? '#B8913A' : '#4A4A6E';
-
-              return (
-                <g key={route.id}>
-                  <line
-                    x1={from.x} y1={from.y}
-                    x2={to.x} y2={to.y}
-                    stroke={isHovered ? '#C9A461' : dangerColor}
-                    strokeWidth={isHovered ? 2 : 1}
-                    strokeDasharray={isHovered ? 'none' : '4 3'}
-                    opacity={isHovered ? 0.9 : 0.4}
-                    onMouseEnter={() => setHoveredRoute(route)}
-                    onMouseLeave={() => setHoveredRoute(null)}
-                    style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
-                    strokeLinecap="round"
+                <g key={`region-${regionId}`}>
+                  <circle
+                    cx={center.x}
+                    cy={center.y}
+                    r={80}
+                    fill={color}
+                    opacity={0.04}
+                    style={{ pointerEvents: 'none' }}
                   />
-                  <line
-                    x1={from.x} y1={from.y}
-                    x2={to.x} y2={to.y}
-                    stroke="transparent"
-                    strokeWidth={12}
-                    onMouseEnter={() => setHoveredRoute(route)}
-                    onMouseLeave={() => setHoveredRoute(null)}
-                    style={{ cursor: 'pointer' }}
-                  />
+                  <text
+                    x={center.x}
+                    y={center.y}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill={color}
+                    fontSize={14}
+                    fontFamily="MedievalSharp, serif"
+                    opacity={0.3}
+                    style={{ pointerEvents: 'none', userSelect: 'none' }}
+                  >
+                    {center.name}
+                  </text>
                 </g>
               );
             })}
 
-            {/* Route distance tooltip */}
+            {/* === Layer 3: Route lines === */}
+            {visibleRoutes.map(route => {
+              const from = townLookup.get(route.fromTownId);
+              const to = townLookup.get(route.toTownId);
+              if (!from || !to) return null;
+
+              const isActive = route.id === activeRouteId;
+              const isHighlighted = hoveredRoute?.id === route.id;
+
+              return (
+                <RouteLine
+                  key={route.id}
+                  route={route}
+                  fromPos={{ x: from.mapX, y: from.mapY }}
+                  toPos={{ x: to.mapX, y: to.mapY }}
+                  isActive={isActive}
+                  isHighlighted={isHighlighted}
+                  zoom={zoom}
+                  onClick={() => setHoveredRoute(hoveredRoute?.id === route.id ? null : route)}
+                  onHoverStart={() => setHoveredRoute(route)}
+                  onHoverEnd={() => setHoveredRoute(null)}
+                />
+              );
+            })}
+
+            {/* === Layer 4: Travel nodes === */}
+            {showTravelNodes && visibleTravelNodes.map(({ node, routeId }) => {
+              const isPlayerNode =
+                activeRouteId === routeId &&
+                playerNodeIndex === node.nodeIndex &&
+                mapData.playerPosition?.type === 'traveling';
+              return (
+                <TravelNodeDot
+                  key={node.id}
+                  node={node}
+                  isPlayerHere={isPlayerNode}
+                  zoom={zoom}
+                  onHoverStart={handleTravelNodeHover}
+                  onHoverEnd={() => setHoveredNode(null)}
+                />
+              );
+            })}
+
+            {/* === Layer 5: Town nodes === */}
+            {visibleTowns.map(town => (
+              <TownNode
+                key={town.id}
+                town={town}
+                isPlayerHere={town.id === playerTownId}
+                isSelected={selectedTown?.id === town.id}
+                zoom={zoom}
+                onClick={() => setSelectedTown(selectedTown?.id === town.id ? null : town)}
+                onHoverStart={() => {}}
+                onHoverEnd={() => {}}
+              />
+            ))}
+
+            {/* === Layer 6: Travelers === */}
+            {showTravelers && showTravelNodes && travelerClusters.map((cluster, i) => (
+              <g key={`travelers-${i}`}>
+                <circle
+                  cx={cluster.x}
+                  cy={cluster.y}
+                  r={5}
+                  fill="#3B82F6"
+                  opacity={0.7}
+                  stroke="#1e40af"
+                  strokeWidth={0.5}
+                />
+                {cluster.travelers.length > 1 && (
+                  <text
+                    x={cluster.x}
+                    y={cluster.y + 1}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill="white"
+                    fontSize={5}
+                    fontWeight="bold"
+                    style={{ pointerEvents: 'none', userSelect: 'none' }}
+                  >
+                    {cluster.travelers.length}
+                  </text>
+                )}
+              </g>
+            ))}
+
+            {/* === Route hover tooltip (SVG) === */}
             {hoveredRoute && (() => {
-              const from = townMap.get(hoveredRoute.fromTownId);
-              const to = townMap.get(hoveredRoute.toTownId);
+              const from = townLookup.get(hoveredRoute.fromTownId);
+              const to = townLookup.get(hoveredRoute.toTownId);
               if (!from || !to) return null;
-              const mx = (from.x + to.x) / 2;
-              const my = (from.y + to.y) / 2;
-              const dangerLabel = ['Safe', 'Low', 'Moderate', 'Dangerous', 'Deadly', 'Suicidal'][hoveredRoute.dangerLevel] ?? 'Unknown';
-              return (
-                <g>
-                  <rect
-                    x={mx - 50} y={my - 24}
-                    width={100} height={32}
-                    rx={4}
-                    fill="#252538" stroke="#C9A461" strokeWidth={0.5} opacity={0.95}
-                  />
-                  <text x={mx} y={my - 10} textAnchor="middle" fill="#E8E0D0" fontSize={9} fontFamily="Crimson Text, serif">
-                    {hoveredRoute.distance} leagues
-                  </text>
-                  <text x={mx} y={my + 2} textAnchor="middle" fill={hoveredRoute.dangerLevel >= 3 ? '#B22222' : '#A89A80'} fontSize={8} fontFamily="Crimson Text, serif">
-                    {dangerLabel}
-                  </text>
-                </g>
-              );
+              const midX = (from.mapX + to.mapX) / 2;
+              const midY = (from.mapY + to.mapY) / 2;
+              return <RouteTooltipSVG route={hoveredRoute} midX={midX} midY={midY} />;
             })()}
-
-            {/* Town markers */}
-            {mapData.towns.map(town => {
-              const color = getRegionColor(town.regionId);
-              return (
-                <TownMarker
-                  key={town.id}
-                  town={town}
-                  color={color}
-                  isSelected={selectedTown?.id === town.id}
-                  isPlayerHere={playerLocation?.currentTownId === town.id}
-                  isHovered={hoveredTown?.id === town.id}
-                  onSelect={() => { setSelectedTown(town); setSelectedZone(null); }}
-                  onHoverStart={() => setHoveredTown(town)}
-                  onHoverEnd={() => setHoveredTown(null)}
-                />
-              );
-            })}
-
-            {/* Travel progress */}
-            {renderTravelProgress()}
           </svg>
 
-          {/* Hover tooltip (HTML overlay) */}
-          {hoveredTown && !selectedTown && (
-            <MapTooltip x={hoveredTown.x} y={hoveredTown.y} svgRef={svgRef}>
-              <div>
-                <p className="font-display text-primary-400 text-sm">{hoveredTown.name}</p>
-                <p className="text-parchment-500 text-[10px]">
-                  Pop: {hoveredTown.population.toLocaleString()} | {hoveredTown.specialty}
-                </p>
-                <p className="text-parchment-500 text-[10px]">{hoveredTown.regionName}</p>
-              </div>
-            </MapTooltip>
-          )}
-
-          {/* Exclusive zone tooltip */}
-          {selectedZone && !selectedTown && (
-            <MapTooltip x={selectedZone.x} y={selectedZone.y} svgRef={svgRef}>
-              <div>
-                <p className="font-display text-primary-400 text-sm">{selectedZone.name}</p>
-                <p className="text-parchment-500 text-[10px]">
-                  {selectedZone.raceName} Exclusive Zone
-                </p>
-                <p className={`text-[10px] ${selectedZone.hasAccess ? 'text-green-400' : 'text-red-400'}`}>
-                  {selectedZone.hasAccess ? 'Access Granted' : 'Locked'}
-                </p>
-                {selectedZone.requirements && (
-                  <p className="text-parchment-500 text-[10px] mt-1">{selectedZone.requirements}</p>
-                )}
-                {selectedZone.resources && selectedZone.resources.length > 0 && (
-                  <p className="text-parchment-400 text-[10px] mt-0.5">
-                    Resources: {selectedZone.resources.join(', ')}
-                  </p>
-                )}
-              </div>
-            </MapTooltip>
-          )}
-
-          {/* Zoom level indicator */}
-          <div className="absolute top-4 left-4 bg-dark-400/90 border border-dark-50 rounded px-2 py-1">
-            <span className="text-parchment-500 text-[10px] uppercase tracking-wider">
-              {zoomLevel === 'continent' ? 'Continent View' : zoomLevel === 'region' ? 'Region View' : 'Town View'}
-            </span>
-          </div>
-
-          {/* Legend overlay */}
-          <div className="absolute bottom-4 left-4 bg-dark-400/90 border border-dark-50 rounded-lg p-3">
+          {/* === UI Overlay: Zoom controls === */}
+          <div className="absolute bottom-4 right-4 flex flex-col gap-1.5 z-10">
             <button
-              onClick={() => setShowLegend(!showLegend)}
-              className="font-display text-primary-400 text-xs mb-1 w-full text-left"
+              onClick={zoomIn}
+              className="w-9 h-9 bg-dark-400/90 border border-dark-50 rounded-lg text-parchment-300 hover:text-primary-400 hover:border-primary-400/50 transition-colors flex items-center justify-center"
+              title="Zoom in (+)"
             >
-              Regions {showLegend ? '[-]' : '[+]'}
+              <Plus className="w-4 h-4" />
             </button>
-            {showLegend && (
-              <div className="space-y-1 max-h-48 overflow-y-auto mt-1">
-                {Object.entries(REGION_COLORS).map(([id, color]) => (
-                  <div key={id} className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full inline-block shrink-0" style={{ backgroundColor: color.fill }} />
-                    <span className="text-parchment-300 text-[10px]">{color.label}</span>
-                  </div>
-                ))}
-                <div className="border-t border-dark-50 pt-1 mt-1">
-                  <p className="text-parchment-500 text-[9px] uppercase tracking-wider mb-1">Border Relations</p>
-                  {Object.entries(RELATION_BORDER_COLORS).map(([label, hex]) => (
-                    <div key={label} className="flex items-center gap-2">
-                      <span className="w-3 h-1 rounded-full inline-block shrink-0" style={{ backgroundColor: hex }} />
-                      <span className="text-parchment-300 text-[10px]">{label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <button
+              onClick={zoomOut}
+              className="w-9 h-9 bg-dark-400/90 border border-dark-50 rounded-lg text-parchment-300 hover:text-primary-400 hover:border-primary-400/50 transition-colors flex items-center justify-center"
+              title="Zoom out (-)"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+            <div className="w-9 h-px bg-dark-50 my-0.5" />
+            <button
+              onClick={centerOnPlayer}
+              className="w-9 h-9 bg-dark-400/90 border border-dark-50 rounded-lg text-parchment-300 hover:text-primary-400 hover:border-primary-400/50 transition-colors flex items-center justify-center"
+              title="Center on me"
+            >
+              <Compass className="w-4 h-4" />
+            </button>
+            {mapData.travelers && mapData.travelers.length > 0 && (
+              <button
+                onClick={() => setShowTravelers(prev => !prev)}
+                className={`w-9 h-9 bg-dark-400/90 border rounded-lg transition-colors flex items-center justify-center ${
+                  showTravelers ? 'border-blue-400/50 text-blue-400' : 'border-dark-50 text-parchment-500'
+                }`}
+                title={showTravelers ? 'Hide travelers' : 'Show travelers'}
+              >
+                {showTravelers ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              </button>
             )}
           </div>
 
-          {/* Zoom controls */}
-          <div className="absolute bottom-4 right-4 flex flex-col gap-1">
-            <button
-              onClick={() => setViewBox(prev => {
-                const nw = Math.max(300, prev.w * 0.8);
-                const nh = Math.max(228, prev.h * 0.8);
-                return { x: prev.x + (prev.w - nw) / 2, y: prev.y + (prev.h - nh) / 2, w: nw, h: nh };
-              })}
-              className="w-8 h-8 bg-dark-400/90 border border-dark-50 rounded text-parchment-300 hover:text-primary-400 hover:border-primary-400/50 transition-colors flex items-center justify-center text-lg"
-            >
-              +
-            </button>
-            <button
-              onClick={() => setViewBox(prev => {
-                const nw = Math.min(MAP_WIDTH * 2, prev.w * 1.2);
-                const nh = Math.min(MAP_HEIGHT * 2, prev.h * 1.2);
-                return { x: prev.x + (prev.w - nw) / 2, y: prev.y + (prev.h - nh) / 2, w: nw, h: nh };
-              })}
-              className="w-8 h-8 bg-dark-400/90 border border-dark-50 rounded text-parchment-300 hover:text-primary-400 hover:border-primary-400/50 transition-colors flex items-center justify-center text-lg"
-            >
-              -
-            </button>
+          {/* === UI Overlay: Zoom level + LOD indicator === */}
+          <div className="absolute top-4 left-4 bg-dark-400/90 border border-dark-50 rounded-lg px-3 py-1.5 z-10">
+            <span className="text-parchment-500 text-[10px] uppercase tracking-wider">
+              {zoom < 1.5 ? 'Continent View' : zoom < 3 ? 'Region View' : 'Detail View'}
+            </span>
+            <span className="text-parchment-500/50 text-[9px] ml-2">
+              {zoom.toFixed(1)}x
+            </span>
           </div>
 
-          {/* Mini-map */}
+          {/* === UI Overlay: Title === */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+            <h1 className="font-display text-primary-400 text-xl md:text-2xl drop-shadow-lg whitespace-nowrap">
+              World of Aethermere
+            </h1>
+          </div>
+
+          {/* === UI Overlay: MiniMap === */}
           <MiniMap
             towns={mapData.towns}
-            playerTownId={playerLocation?.currentTownId ?? null}
+            playerTownId={playerTownId}
             viewBox={viewBox}
-            mapWidth={MAP_WIDTH}
-            mapHeight={MAP_HEIGHT}
-            getColor={getRegionColor}
-            onClickMiniMap={handleMiniMapClick}
+            onClick={handleMiniMapClick}
           />
+
+          {/* === UI Overlay: Legend (bottom-left) === */}
+          <RegionLegend regions={mapData.regions} />
+
+          {/* === HTML Overlay: Travel node tooltip === */}
+          {hoveredNode && (
+            <NodeTooltip
+              node={hoveredNode.node}
+              x={hoveredNode.screenX}
+              y={hoveredNode.screenY}
+            />
+          )}
         </div>
 
-        {/* Info Panel (sidebar) */}
-        {selectedTown && (
-          <TownInfoPanel
-            town={selectedTown}
-            routes={mapData.routes}
-            townMap={townMap}
-            regionColor={getRegionColor(selectedTown.regionId)}
-            isPlayerHere={playerLocation?.currentTownId === selectedTown.id}
-            characterId={characterId}
-            onClose={() => setSelectedTown(null)}
-            onSelectTown={setSelectedTown}
-            onTravel={handleTravel}
-          />
-        )}
+        {/* === Town Info Panel === */}
+        <AnimatePresence>
+          {selectedTown && (
+            <TownInfoPanel
+              key={selectedTown.id}
+              town={selectedTown}
+              isPlayerHere={selectedTown.id === playerTownId}
+              isTraveling={isTraveling}
+              connectedRoutes={connectedRoutes}
+              townLookup={townLookup}
+              onClose={() => setSelectedTown(null)}
+              onTravel={handleTravelClick}
+              onSelectTown={setSelectedTown}
+            />
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* === Travel Modal === */}
+      <TravelStartModal
+        isOpen={travelModalOpen}
+        onClose={() => { setTravelModalOpen(false); setTravelDestination(undefined); }}
+        destinationTownId={travelDestination}
+      />
+    </div>
+  );
+}
+
+// ===========================================================================
+// Sub-component: RegionLegend (collapsible)
+// ===========================================================================
+
+function RegionLegend({ regions }: { regions: MapRegion[] }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="absolute bottom-4 left-4 z-10">
+      <div className="bg-dark-400/90 border border-dark-50 rounded-lg overflow-hidden">
+        <button
+          onClick={() => setOpen(prev => !prev)}
+          className="flex items-center gap-2 px-3 py-2 w-full text-left"
+        >
+          <MapPin className="w-3 h-3 text-primary-400" />
+          <span className="font-display text-primary-400 text-xs">Regions</span>
+          <span className="text-parchment-500 text-[10px] ml-auto">{open ? '[-]' : '[+]'}</span>
+        </button>
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="overflow-hidden"
+            >
+              <div className="px-3 pb-2 space-y-1 max-h-48 overflow-y-auto">
+                {regions.map(r => (
+                  <div key={r.id} className="flex items-center gap-2">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: getRegionColor(r.id) }}
+                    />
+                    <span className="text-parchment-300 text-[10px]">{r.name}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

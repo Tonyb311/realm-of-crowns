@@ -86,6 +86,7 @@ const mockCharacter = {
   maxMana: 50,
   xp: 200,
   currentTownId: 'town-001',
+  travelStatus: 'idle',
   currentTown: { id: 'town-001', name: 'TestTown', regionId: 'region-001' },
   stats: { str: 14, dex: 12, con: 10, int: 10, wis: 10, cha: 10 },
 };

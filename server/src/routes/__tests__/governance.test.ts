@@ -66,6 +66,7 @@ const mockCharacter = {
   level: 20,
   gold: 1000,
   currentTownId: 'town-001',
+  travelStatus: 'idle',
 };
 
 const mockKingdom = {

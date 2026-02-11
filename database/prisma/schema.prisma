@@ -617,6 +617,8 @@ model Town {
   description String?
   mayorId      String?   @map("mayor_id")
   features     Json      @default("[]")
+  mapX         Float?    @map("map_x")
+  mapY         Float?    @map("map_y")
   isReleased   Boolean   @default(false) @map("is_released")
   releasedAt   DateTime? @map("released_at")
   releaseOrder Int?      @map("release_order")
@@ -1769,6 +1771,8 @@ model TravelNode {
   terrain     String
   dangerLevel Int      @default(3) @map("danger_level") // 1-10
   specialType String?  @map("special_type") // crossroads, bridge, ruins, camp, shrine, cave, ford, watchtower
+  offsetX     Float    @default(0) @map("offset_x") // curve offset from straight line interpolation
+  offsetY     Float    @default(0) @map("offset_y")
   createdAt   DateTime @default(now()) @map("created_at")
 
   route TravelRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
