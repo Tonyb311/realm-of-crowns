@@ -1,5 +1,7 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma';
+import { logger } from '../lib/logger';
+import { cronJobExecutions } from '../lib/metrics';
 import { BuildingType } from '@prisma/client';
 import { emitBuildingTaxDue, emitBuildingDelinquent, emitBuildingSeized } from '../socket/events';
 
@@ -41,15 +43,17 @@ const BASE_TAX_RATES: Record<BuildingType, number> = {
 export function startPropertyTaxJob() {
   // Run daily at midnight
   cron.schedule('0 0 * * *', async () => {
-    console.log('[PropertyTax] Running daily property tax collection...');
+    logger.debug({ job: 'propertyTax' }, 'cron job started');
     try {
       await collectPropertyTaxes();
-    } catch (error) {
-      console.error('[PropertyTax] Error:', error);
+      cronJobExecutions.inc({ job: 'propertyTax', result: 'success' });
+    } catch (error: any) {
+      cronJobExecutions.inc({ job: 'propertyTax', result: 'failure' });
+      logger.error({ job: 'propertyTax', err: error.message }, 'cron job failed');
     }
   });
 
-  console.log('[PropertyTax] Cron job registered (daily at midnight)');
+  logger.info('PropertyTax cron registered (daily at midnight)');
 }
 
 async function collectPropertyTaxes() {

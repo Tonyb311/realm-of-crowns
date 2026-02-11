@@ -400,7 +400,7 @@ export async function applyWartimeModifiers(
 
   // Check for active wars
   const activeWars = await prisma.war.findMany({
-    where: { status: 'active' },
+    where: { status: 'ACTIVE' },
     include: {
       attackerKingdom: { select: { id: true, capitalTownId: true } },
       defenderKingdom: { select: { id: true, capitalTownId: true } },

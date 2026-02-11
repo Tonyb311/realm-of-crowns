@@ -1,6 +1,8 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma';
 import { emitBuildingConstructed } from '../socket/events';
+import { logger } from '../lib/logger';
+import { cronJobExecutions } from '../lib/metrics';
 
 /**
  * Construction completion notification cron job.
@@ -15,12 +17,14 @@ export function startConstructionCompleteJob() {
   cron.schedule('*/5 * * * *', async () => {
     try {
       await notifyCompletedConstructions();
-    } catch (error) {
-      console.error('[ConstructionComplete] Error:', error);
+      cronJobExecutions.inc({ job: 'constructionComplete', result: 'success' });
+    } catch (error: any) {
+      cronJobExecutions.inc({ job: 'constructionComplete', result: 'failure' });
+      logger.error({ job: 'constructionComplete', err: error.message }, 'cron job failed');
     }
   });
 
-  console.log('[ConstructionComplete] Cron job registered (every 5 minutes)');
+  logger.info('ConstructionComplete cron registered (every 5 minutes)');
 }
 
 async function notifyCompletedConstructions() {

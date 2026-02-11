@@ -28,7 +28,7 @@ Professions have **levels 1–100** and fall into two categories:
 | Profession | What They Produce | Where They Work |
 |-----------|-------------------|-----------------|
 | **Farmer** | Wheat, Vegetables, Corn, Hops, Cotton, Flax, Apples, Grapes | Farms (plains towns) |
-| **Rancher/Herder** | Cattle, Sheep, Pigs, Chickens, Horses, Wool, Milk, Eggs | Ranches (plains/hill towns) |
+| **Rancher** | Beef, Sheep, Pork, Chicken, Horses, Wool, Milk, Eggs | Ranches (plains/hill towns) |
 | **Fisherman** | Common Fish, Rare Fish, Shellfish, Pearls, Seaweed | Docks (coastal towns) |
 | **Lumberjack** | Softwood, Hardwood, Exotic Wood, Bark, Sap, Resin | Forests (forest towns) |
 | **Miner** | Copper Ore, Iron Ore, Silver Ore, Gold Ore, Gemstones, Coal, Stone | Mines (mountain towns) |
@@ -407,7 +407,7 @@ THIS is the kind of gameplay loop that keeps players coming back daily.
 | Copper Sword | 3 Copper Ingots + 1 Softwood + 1 Soft Leather | 1 hr | 3 |
 | Copper Axe | 4 Copper Ingots + 2 Softwood | 1 hr | 5 |
 | Copper Mace | 3 Copper Ingots + 1 Softwood | 45 min | 4 |
-| Iron Nails (x50) | 1 Iron Ingot | 15 min | 7 |
+| Nails (x50) | 1 Copper Ingot | 15 min | 5 |
 | Horseshoes | 2 Iron Ingots | 30 min | 8 |
 
 ### Journeyman (Lvl 11–25)

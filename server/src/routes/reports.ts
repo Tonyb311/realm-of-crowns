@@ -1,25 +1,19 @@
 import { Router, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { getLatestReport, getReportHistory } from '../services/daily-report';
 
 const router = Router();
 
-async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
-
 // ---------------------------------------------------------------------------
 // GET /api/reports/latest
 // ---------------------------------------------------------------------------
 
-router.get('/latest', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/latest', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const report = await getLatestReport(character.id);
 
@@ -38,12 +32,9 @@ router.get('/latest', authGuard, async (req: AuthenticatedRequest, res: Response
 // GET /api/reports/history
 // ---------------------------------------------------------------------------
 
-router.get('/history', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/history', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 7, 1), 30);
     const reports = await getReportHistory(character.id, limit);
@@ -59,12 +50,9 @@ router.get('/history', authGuard, async (req: AuthenticatedRequest, res: Respons
 // GET /api/reports/:tickDate
 // ---------------------------------------------------------------------------
 
-router.get('/:tickDate', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:tickDate', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const { tickDate } = req.params;
 

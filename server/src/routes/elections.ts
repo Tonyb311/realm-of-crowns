@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { getPsionSpec, calculateSincerityScore, getElectionProjection } from '../services/psion-perks';
 
@@ -36,19 +37,11 @@ const impeachVoteSchema = z.object({
 
 // --- Helpers ---
 
-async function getCharacter(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
-
 // POST /api/elections/nominate
-router.post('/nominate', authGuard, validate(nominateSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/nominate', authGuard, characterGuard, validate(nominateSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { electionId, platform } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const election = await prisma.election.findUnique({
       where: { id: electionId },
@@ -120,14 +113,10 @@ router.post('/nominate', authGuard, validate(nominateSchema), async (req: Authen
 });
 
 // POST /api/elections/vote
-router.post('/vote', authGuard, validate(voteSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/vote', authGuard, characterGuard, validate(voteSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { electionId, candidateId } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const election = await prisma.election.findUnique({
       where: { id: electionId },
@@ -185,13 +174,9 @@ router.post('/vote', authGuard, validate(voteSchema), async (req: AuthenticatedR
 });
 
 // GET /api/elections/current
-router.get('/current', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/current', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const where: any = {
       phase: { not: 'COMPLETED' },
@@ -300,13 +285,9 @@ router.get('/current', authGuard, async (req: AuthenticatedRequest, res: Respons
 });
 
 // GET /api/elections/results
-router.get('/results', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/results', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const townId = (req.query.townId as string) || character.currentTownId;
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string, 10) || 10));
@@ -376,7 +357,7 @@ router.get('/results', authGuard, async (req: AuthenticatedRequest, res: Respons
 });
 
 // GET /api/elections/candidates/:electionId
-router.get('/candidates/:electionId', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/candidates/:electionId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { electionId } = req.params;
 
@@ -418,9 +399,9 @@ router.get('/candidates/:electionId', authGuard, async (req: AuthenticatedReques
     }));
 
     // Psion Telepath: Mind Reader — add sincerity score to each candidate
-    const character = await getCharacter(req.user!.userId);
+    const character = req.character!;
     let enrichedCandidates: typeof baseCandidates = baseCandidates;
-    if (character) {
+    {
       const { isPsion, specialization } = await getPsionSpec(character.id);
       if (isPsion && specialization === 'telepath') {
         enrichedCandidates = await Promise.all(
@@ -446,14 +427,10 @@ router.get('/candidates/:electionId', authGuard, async (req: AuthenticatedReques
 });
 
 // POST /api/elections/impeach
-router.post('/impeach', authGuard, validate(impeachSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/impeach', authGuard, characterGuard, validate(impeachSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { targetId, townId, kingdomId } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     if (!townId && !kingdomId) {
       return res.status(400).json({ error: 'Either townId or kingdomId is required' });
@@ -545,14 +522,10 @@ router.post('/impeach', authGuard, validate(impeachSchema), async (req: Authenti
 });
 
 // POST /api/elections/impeach/vote
-router.post('/impeach/vote', authGuard, validate(impeachVoteSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/impeach/vote', authGuard, characterGuard, validate(impeachVoteSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { impeachmentId, support } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const impeachment = await prisma.impeachment.findUnique({
       where: { id: impeachmentId },

@@ -12,10 +12,11 @@ import {
   Gem,
   Coins,
   X,
-  Loader2,
   ChevronRight,
 } from 'lucide-react';
 import api from '../services/api';
+import { RARITY_COLORS, getRarityStyle } from '../constants';
+import { InventorySkeleton } from '../components/ui/LoadingSkeleton';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -60,22 +61,6 @@ interface CharacterData {
   gold: number;
   inventory: InventoryItem[];
   equipment: EquipmentSlots;
-}
-
-// ---------------------------------------------------------------------------
-// Rarity colors
-// ---------------------------------------------------------------------------
-const RARITY_COLORS: Record<string, { border: string; text: string; bg: string }> = {
-  POOR:       { border: 'border-gray-500',   text: 'text-gray-400',   bg: 'bg-gray-500/10' },
-  COMMON:     { border: 'border-parchment-300', text: 'text-parchment-300', bg: 'bg-parchment-300/10' },
-  FINE:       { border: 'border-green-500',  text: 'text-green-400',  bg: 'bg-green-500/10' },
-  SUPERIOR:   { border: 'border-blue-500',   text: 'text-blue-400',   bg: 'bg-blue-500/10' },
-  MASTERWORK: { border: 'border-purple-500', text: 'text-purple-400', bg: 'bg-purple-500/10' },
-  LEGENDARY:  { border: 'border-amber-400',  text: 'text-amber-400',  bg: 'bg-amber-400/10' },
-};
-
-function getRarityStyle(rarity: string) {
-  return RARITY_COLORS[rarity] ?? RARITY_COLORS.COMMON;
 }
 
 // ---------------------------------------------------------------------------
@@ -159,11 +144,7 @@ export default function InventoryPage() {
   // Loading / Error states
   // -------------------------------------------------------------------------
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 text-primary-400 animate-spin" />
-      </div>
-    );
+    return <InventorySkeleton />;
   }
 
   if (error || !character) {

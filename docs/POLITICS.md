@@ -188,3 +188,14 @@ Mayors and rulers can propose laws that affect their town or kingdom.
 | Tax Collection | Every hour | Collects marketplace transaction taxes per town, deposits to treasury |
 
 Both jobs are registered as cron tasks on server startup.
+
+---
+
+## Implementation Notes (P0/P1 Fixes)
+
+- **Vote Deduplication**: The `LawVote` model (`@@unique([lawId, characterId])`) prevents duplicate law votes at the database level. The `/vote-law` endpoint checks for existing votes before creating a `LawVote` record, then recalculates `votesFor`/`votesAgainst` from `LawVote.count()` instead of blindly incrementing counters.
+- **Election Population Threshold**: Elections are only created for towns with `MIN_ELECTION_POPULATION = 3` or more characters, preventing election lifecycle churn in empty towns.
+- **Impeachment Majority**: Impeachment requires a majority of eligible voters in the town, not just more yes than no votes.
+- **Treaty Gold Validation**: Treasury balance checks for treaty gold payments are performed inside the database transaction to prevent race conditions.
+- **Tax Rate Sync**: The `set-tax` endpoint upserts both `TownPolicy.taxRate` AND `TownTreasury.taxRate` so all read paths return a consistent value.
+- **Double Tax Prevention**: Marketplace tax is collected at purchase time in `market.ts`. The hourly `tax-collection.ts` cron only updates `lastCollectedAt` timestamps -- it does not re-calculate or re-deposit tax.

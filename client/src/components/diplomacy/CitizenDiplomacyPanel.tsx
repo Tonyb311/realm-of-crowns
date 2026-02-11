@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import { TOAST_STYLE } from '../../constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,12 +96,6 @@ function formatRaceName(race: string): string {
 function formatActionType(t: string): string {
   return t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
-
-const TOAST_STYLE = {
-  background: '#1a1a2e',
-  color: '#e8d5b7',
-  border: '1px solid #3a3a4e',
-};
 
 // ---------------------------------------------------------------------------
 // Component

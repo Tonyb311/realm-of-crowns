@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -6,14 +5,15 @@ import {
   Crown,
   Shield,
   Users,
-  CircleDollarSign,
   ScrollText,
-  Clock,
   Loader2,
   Vote,
   Gavel,
 } from 'lucide-react';
 import api from '../services/api';
+import GoldAmount from '../components/shared/GoldAmount';
+import CountdownTimer from '../components/shared/CountdownTimer';
+import { TownHallSkeleton, SkeletonCard } from '../components/ui/LoadingSkeleton';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -68,42 +68,6 @@ interface Election {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-function GoldAmount({ amount, className = '' }: { amount: number; className?: string }) {
-  return (
-    <span className={`inline-flex items-center gap-1 ${className}`}>
-      <CircleDollarSign className="w-3.5 h-3.5 text-primary-400 flex-shrink-0" />
-      <span>{amount.toLocaleString()}</span>
-    </span>
-  );
-}
-
-function CountdownTimer({ endDate }: { endDate: string }) {
-  const [now, setNow] = useState(Date.now());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const end = new Date(endDate).getTime();
-  const diff = Math.max(0, end - now);
-
-  if (diff <= 0) {
-    return <span className="text-parchment-500 text-xs">Ended</span>;
-  }
-
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-  return (
-    <span className="text-primary-400 text-xs font-display flex items-center gap-1">
-      <Clock className="w-3 h-3" />
-      {hours}h {minutes}m {seconds}s remaining
-    </span>
-  );
-}
-
 const PHASE_COLORS: Record<string, string> = {
   NOMINATIONS: 'bg-blue-400/10 text-blue-400 border-blue-400/30',
   VOTING: 'bg-green-400/10 text-green-400 border-green-400/30',
@@ -139,11 +103,7 @@ export default function TownHallPage() {
   // Loading
   // -------------------------------------------------------------------------
   if (charLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 text-primary-400 animate-spin" />
-      </div>
-    );
+    return <TownHallSkeleton />;
   }
 
   if (!character || !townId) {
@@ -210,8 +170,15 @@ export default function TownHallPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {townLoading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 text-primary-400 animate-spin" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="space-y-6">
+              <SkeletonCard />
+              <SkeletonCard />
+            </div>
+            <div className="lg:col-span-2 space-y-6">
+              <SkeletonCard />
+              <SkeletonCard />
+            </div>
           </div>
         ) : !town ? (
           <div className="text-center py-20">

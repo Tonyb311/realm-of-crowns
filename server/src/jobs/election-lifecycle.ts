@@ -1,5 +1,7 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma';
+import { logger } from '../lib/logger';
+import { cronJobExecutions } from '../lib/metrics';
 import type { Server } from 'socket.io';
 
 const NOMINATION_DURATION_HOURS = 24;
@@ -8,18 +10,20 @@ const VOTING_DURATION_HOURS = 48;
 export function startElectionLifecycle(io: Server) {
   // Run every 5 minutes
   cron.schedule('*/5 * * * *', async () => {
-    console.log('[ElectionLifecycle] Running election lifecycle check...');
+    logger.debug({ job: 'electionLifecycle' }, 'cron job started');
     try {
       await autoCreateElections(io);
       await transitionNominationsToVoting(io);
       await transitionVotingToCompleted(io);
       await resolveExpiredImpeachments(io);
-    } catch (error) {
-      console.error('[ElectionLifecycle] Error in lifecycle job:', error);
+      cronJobExecutions.inc({ job: 'electionLifecycle', result: 'success' });
+    } catch (error: any) {
+      cronJobExecutions.inc({ job: 'electionLifecycle', result: 'failure' });
+      logger.error({ job: 'electionLifecycle', err: error.message }, 'cron job failed');
     }
   });
 
-  console.log('[ElectionLifecycle] Cron job registered (every 5 minutes)');
+  logger.info('ElectionLifecycle cron registered (every 5 minutes)');
 }
 
 /**
@@ -77,7 +81,7 @@ async function autoCreateElections(io: Server) {
       data: {
         townId: town.id,
         type: 'MAYOR',
-        status: 'active',
+        status: 'ACTIVE',
         phase: 'NOMINATIONS',
         termNumber,
         startDate: now,
@@ -124,7 +128,7 @@ async function transitionNominationsToVoting(io: Server) {
     if (election.candidates.length === 0) {
       await prisma.election.update({
         where: { id: election.id },
-        data: { phase: 'COMPLETED', status: 'completed' },
+        data: { phase: 'COMPLETED', status: 'COMPLETED' },
       });
 
       console.log(`[ElectionLifecycle] Election ${election.id} completed with no candidates`);
@@ -223,7 +227,7 @@ async function transitionVotingToCompleted(io: Server) {
       where: { id: election.id },
       data: {
         phase: 'COMPLETED',
-        status: 'completed',
+        status: 'COMPLETED',
         winnerId,
       },
     });

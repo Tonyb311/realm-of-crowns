@@ -778,9 +778,11 @@ for a place in the light.
 ### Racial Abilities
 | Level | Ability | Type | Effect |
 |-------|---------|------|--------|
-| 1 | Superior Darkvision | Passive | See perfectly in darkness, access Underdark zones |
+| 1 | Superior Deepsight | Passive | See perfectly in darkness, access Underdark zones |
 | 5 | Sunlight Sensitivity | Passive (PENALTY) | -2 to attack rolls and perception in direct sunlight |
-| 5 | Drow Magic | Active (8hr CD) | Cast Darkness spell: 15ft radius, non-magical light extinguished |
+| 5 | Nightborne Magic | Active (8hr CD) | Cast Darkness spell: 15ft radius, non-magical light extinguished |
+
+> **Note:** Nightborne is the only race with 7 abilities (two at level 5), bringing the total racial abilities to 121 instead of 120.
 | 10 | Poison Mastery | Passive | +25% poison damage, poisons you craft are 30% more potent |
 | 15 | Web Walker | Passive | Move through spider webs freely, access spider-silk harvesting nodes |
 | 25 | Shadow Step | Active (1/combat) | Teleport up to 30ft between shadows, next attack has advantage |

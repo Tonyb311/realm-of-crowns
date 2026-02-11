@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { prisma } from '../lib/prisma';
 import { redis } from '../lib/redis';
+import { logger } from '../lib/logger';
 import type { AuthenticatedSocket } from './middleware';
 
 // ---------------------------------------------------------------------------
@@ -28,14 +29,14 @@ async function addPresenceRedis(entry: PresenceEntry): Promise<void> {
   if (!redis) return;
   try {
     await redis.hset(PRESENCE_KEY, entry.characterId, JSON.stringify(entry));
-  } catch { /* ignore */ }
+  } catch (err: any) { logger.warn({ err: err.message }, 'presence Redis error'); }
 }
 
 async function removePresenceRedis(characterId: string): Promise<void> {
   if (!redis) return;
   try {
     await redis.hdel(PRESENCE_KEY, characterId);
-  } catch { /* ignore */ }
+  } catch (err: any) { logger.warn({ err: err.message }, 'presence Redis error'); }
 }
 
 async function updatePresenceFieldRedis(characterId: string, field: string, value: string | null): Promise<void> {
@@ -47,7 +48,7 @@ async function updatePresenceFieldRedis(characterId: string, field: string, valu
       entry[field] = value;
       await redis.hset(PRESENCE_KEY, characterId, JSON.stringify(entry));
     }
-  } catch { /* ignore */ }
+  } catch (err: any) { logger.warn({ err: err.message }, 'presence Redis error'); }
 }
 
 // ---------------------------------------------------------------------------

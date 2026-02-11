@@ -1,5 +1,6 @@
 import { Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
+import { logger } from '../lib/logger';
 
 export interface AuthenticatedSocket extends Socket {
   data: {
@@ -17,6 +18,7 @@ export function socketAuthMiddleware(socket: Socket, next: (err?: Error) => void
   const token = socket.handshake.auth?.token;
 
   if (!token) {
+    logger.warn({ socketId: socket.id }, 'socket auth failed: no token provided');
     return next(new Error('Authentication required'));
   }
 
@@ -30,6 +32,7 @@ export function socketAuthMiddleware(socket: Socket, next: (err?: Error) => void
     socket.data.username = decoded.username;
     next();
   } catch {
+    logger.warn({ socketId: socket.id }, 'socket auth failed: invalid or expired token');
     return next(new Error('Invalid or expired token'));
   }
 }

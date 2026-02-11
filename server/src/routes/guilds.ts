@@ -3,8 +3,9 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { io } from '../index';
+import { emitGuildEvent } from '../socket/events';
 import { cache } from '../middleware/cache';
 import { invalidateCache } from '../lib/redis';
 
@@ -51,10 +52,6 @@ const transferSchema = z.object({
 
 // --- Helpers ---
 
-async function getCharacter(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
-
 async function getMembership(guildId: string, characterId: string) {
   return prisma.guildMember.findUnique({
     where: { guildId_characterId: { guildId, characterId } },
@@ -66,14 +63,10 @@ function hasRank(memberRank: string, requiredRank: string): boolean {
 }
 
 // POST /api/guilds - Create guild
-router.post('/', authGuard, validate(createGuildSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/', authGuard, characterGuard, validate(createGuildSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { name, tag, description } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     if (character.gold < GUILD_CREATION_COST) {
       return res.status(400).json({ error: `Insufficient gold. Need ${GUILD_CREATION_COST}, have ${character.gold}` });
@@ -179,7 +172,7 @@ router.get('/', authGuard, cache(60), async (req: AuthenticatedRequest, res: Res
 });
 
 // GET /api/guilds/:id - Get guild details
-router.get('/:id', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const guild = await prisma.guild.findUnique({
       where: { id: req.params.id },
@@ -225,10 +218,9 @@ router.get('/:id', authGuard, async (req: AuthenticatedRequest, res: Response) =
 });
 
 // PATCH /api/guilds/:id - Update guild info (leader/officer only)
-router.patch('/:id', authGuard, validate(updateGuildSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.patch('/:id', authGuard, characterGuard, validate(updateGuildSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const membership = await getMembership(req.params.id, character.id);
     if (!membership || !hasRank(membership.rank, 'officer')) {
@@ -263,10 +255,9 @@ router.patch('/:id', authGuard, validate(updateGuildSchema), async (req: Authent
 });
 
 // DELETE /api/guilds/:id - Disband guild (leader only)
-router.delete('/:id', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:id', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const guild = await prisma.guild.findUnique({ where: { id: req.params.id } });
     if (!guild) return res.status(404).json({ error: 'Guild not found' });
@@ -292,7 +283,7 @@ router.delete('/:id', authGuard, async (req: AuthenticatedRequest, res: Response
     });
 
     // Emit dissolution event
-    io.to(`guild:${guild.id}`).emit('guild:dissolved', { guildId: guild.id, guildName: guild.name });
+    emitGuildEvent(`guild:${guild.id}`, 'guild:dissolved', { guildId: guild.id, guildName: guild.name });
 
     return res.json({ message: 'Guild disbanded successfully' });
   } catch (error) {
@@ -302,10 +293,9 @@ router.delete('/:id', authGuard, async (req: AuthenticatedRequest, res: Response
 });
 
 // POST /api/guilds/:id/invite - Invite player to guild (officer+ only)
-router.post('/:id/invite', authGuard, validate(memberActionSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/invite', authGuard, characterGuard, validate(memberActionSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const membership = await getMembership(req.params.id, character.id);
     if (!membership || !hasRank(membership.rank, 'officer')) {
@@ -334,7 +324,7 @@ router.post('/:id/invite', authGuard, validate(memberActionSchema), async (req: 
     });
 
     // Emit join event
-    io.to(`guild:${req.params.id}`).emit('guild:member-joined', {
+    emitGuildEvent(`guild:${req.params.id}`, 'guild:member-joined', {
       guildId: req.params.id,
       character: newMember.character,
     });
@@ -347,10 +337,9 @@ router.post('/:id/invite', authGuard, validate(memberActionSchema), async (req: 
 });
 
 // POST /api/guilds/:id/join - Join guild (open join)
-router.post('/:id/join', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/join', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const guild = await prisma.guild.findUnique({ where: { id: req.params.id } });
     if (!guild) return res.status(404).json({ error: 'Guild not found' });
@@ -369,7 +358,7 @@ router.post('/:id/join', authGuard, async (req: AuthenticatedRequest, res: Respo
       },
     });
 
-    io.to(`guild:${req.params.id}`).emit('guild:member-joined', {
+    emitGuildEvent(`guild:${req.params.id}`, 'guild:member-joined', {
       guildId: req.params.id,
       character: newMember.character,
     });
@@ -382,10 +371,9 @@ router.post('/:id/join', authGuard, async (req: AuthenticatedRequest, res: Respo
 });
 
 // POST /api/guilds/:id/kick - Kick member (officer+ only, can't kick leader)
-router.post('/:id/kick', authGuard, validate(memberActionSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/kick', authGuard, characterGuard, validate(memberActionSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const membership = await getMembership(req.params.id, character.id);
     if (!membership || !hasRank(membership.rank, 'officer')) {
@@ -407,7 +395,7 @@ router.post('/:id/kick', authGuard, validate(memberActionSchema), async (req: Au
 
     await prisma.guildMember.delete({ where: { id: targetMembership.id } });
 
-    io.to(`guild:${req.params.id}`).emit('guild:member-left', {
+    emitGuildEvent(`guild:${req.params.id}`, 'guild:member-left', {
       guildId: req.params.id,
       characterId,
     });
@@ -420,10 +408,9 @@ router.post('/:id/kick', authGuard, validate(memberActionSchema), async (req: Au
 });
 
 // POST /api/guilds/:id/leave - Leave guild
-router.post('/:id/leave', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/leave', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const membership = await getMembership(req.params.id, character.id);
     if (!membership) return res.status(404).json({ error: 'You are not a member of this guild' });
@@ -434,7 +421,7 @@ router.post('/:id/leave', authGuard, async (req: AuthenticatedRequest, res: Resp
 
     await prisma.guildMember.delete({ where: { id: membership.id } });
 
-    io.to(`guild:${req.params.id}`).emit('guild:member-left', {
+    emitGuildEvent(`guild:${req.params.id}`, 'guild:member-left', {
       guildId: req.params.id,
       characterId: character.id,
     });
@@ -447,10 +434,9 @@ router.post('/:id/leave', authGuard, async (req: AuthenticatedRequest, res: Resp
 });
 
 // POST /api/guilds/:id/promote - Change member rank (leader only)
-router.post('/:id/promote', authGuard, validate(promoteSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/promote', authGuard, characterGuard, validate(promoteSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const membership = await getMembership(req.params.id, character.id);
     if (!membership || membership.rank !== 'leader') {
@@ -481,10 +467,9 @@ router.post('/:id/promote', authGuard, validate(promoteSchema), async (req: Auth
 });
 
 // POST /api/guilds/:id/donate - Donate gold to guild treasury
-router.post('/:id/donate', authGuard, validate(donateSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/donate', authGuard, characterGuard, validate(donateSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const membership = await getMembership(req.params.id, character.id);
     if (!membership) return res.status(404).json({ error: 'You are not a member of this guild' });
@@ -518,7 +503,7 @@ router.post('/:id/donate', authGuard, validate(donateSchema), async (req: Authen
 });
 
 // GET /api/guilds/:id/quests - List guild quests (placeholder)
-router.get('/:id/quests', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id/quests', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const guild = await prisma.guild.findUnique({ where: { id: req.params.id } });
     if (!guild) return res.status(404).json({ error: 'Guild not found' });
@@ -531,10 +516,9 @@ router.get('/:id/quests', authGuard, async (req: AuthenticatedRequest, res: Resp
 });
 
 // POST /api/guilds/:id/transfer - Transfer leadership
-router.post('/:id/transfer', authGuard, validate(transferSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/transfer', authGuard, characterGuard, validate(transferSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const guild = await prisma.guild.findUnique({ where: { id: req.params.id } });
     if (!guild) return res.status(404).json({ error: 'Guild not found' });

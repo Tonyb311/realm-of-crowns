@@ -1,9 +1,13 @@
 import 'dotenv/config';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import { createAdapter } from '@socket.io/redis-adapter';
+import Redis from 'ioredis';
 import { app } from './app';
 import { redis } from './lib/redis';
 import { prisma } from './lib/prisma';
+import { logger } from './lib/logger';
+import { activeWsConnections, socketEventCounter } from './lib/metrics';
 import { startElectionLifecycle } from './jobs/election-lifecycle';
 import { startTaxCollectionJob } from './jobs/tax-collection';
 import { startLawExpirationJob } from './jobs/law-expiration';
@@ -30,7 +34,22 @@ const io = new Server(httpServer, {
     origin: process.env.CLIENT_URL || 'http://localhost:3000',
     methods: ['GET', 'POST'],
   },
+  maxHttpBufferSize: 64 * 1024, // 64KB — limit payload size
+  pingInterval: 25000,
+  pingTimeout: 20000,
 });
+
+// P2 #49: Socket.io Redis adapter for horizontal scaling
+if (process.env.REDIS_URL) {
+  try {
+    const pubClient = new Redis(process.env.REDIS_URL);
+    const subClient = pubClient.duplicate();
+    io.adapter(createAdapter(pubClient, subClient));
+    logger.info('Socket.io Redis adapter configured');
+  } catch (err: any) {
+    logger.warn({ err: err.message }, 'Failed to configure Socket.io Redis adapter, falling back to in-memory');
+  }
+}
 
 // Socket.io authentication middleware — verifies JWT before connection
 io.use(socketAuthMiddleware);
@@ -43,7 +62,9 @@ setupPresence(io);
 
 // Legacy + guild room handlers and chat (runs after presence has already set up rooms)
 io.on('connection', (socket) => {
-  console.log(`Player connected: ${socket.id} (user: ${socket.data.userId})`);
+  logger.info({ socketId: socket.id, userId: socket.data.userId }, 'player connected');
+  activeWsConnections.inc();
+  socketEventCounter.inc({ event: 'connection' });
 
   // Join/leave guild rooms for real-time guild events
   socket.on('join:guild', (guildId: string) => {
@@ -58,26 +79,21 @@ io.on('connection', (socket) => {
   registerChatHandlers(io, socket);
 
   socket.on('disconnect', () => {
-    console.log(`Player disconnected: ${socket.id}`);
+    logger.info({ socketId: socket.id }, 'player disconnected');
+    activeWsConnections.dec();
+    socketEventCounter.inc({ event: 'disconnect' });
     cleanupRateLimit(socket.id);
   });
 });
 
 // P0 #13: Validate required secrets at startup
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'CHANGE_ME_IN_PRODUCTION') {
-  console.error('FATAL: JWT_SECRET is missing or set to placeholder. Set a cryptographically random value.');
+  logger.fatal('FATAL: JWT_SECRET is missing or set to placeholder. Set a cryptographically random value.');
   process.exit(1);
 }
 
 httpServer.listen(PORT, () => {
-  console.log(`
-  ⚔️  ═══════════════════════════════════════ ⚔️
-  ║                                           ║
-  ║        REALM OF CROWNS SERVER              ║
-  ║        Running on port ${PORT}                ║
-  ║                                           ║
-  ⚔️  ═══════════════════════════════════════ ⚔️
-  `);
+  logger.info({ port: PORT }, 'Realm of Crowns server started');
 
   // Start background jobs
   startElectionLifecycle(io);
@@ -93,13 +109,15 @@ httpServer.listen(PORT, () => {
   startSeerPremonitionJob();
   // DEPRECATED: Forgeborn maintenance now handled by daily tick in food-system.ts
   // startForgebornMaintenanceJob();
+
+  logger.info('All background jobs started');
 });
 
 // P0 #11: Graceful shutdown handlers
 const gracefulShutdown = async (signal: string) => {
-  console.log(`Received ${signal}. Starting graceful shutdown...`);
+  logger.info({ signal }, 'received shutdown signal, starting graceful shutdown');
   const timeout = setTimeout(() => {
-    console.error('Shutdown timed out. Force exiting.');
+    logger.error('shutdown timed out, force exiting');
     process.exit(1);
   }, 10000);
   try {
@@ -108,23 +126,13 @@ const gracefulShutdown = async (signal: string) => {
     if (redis) await redis.quit();
     await prisma.$disconnect();
     clearTimeout(timeout);
-    console.log('Graceful shutdown complete.');
+    logger.info('graceful shutdown complete');
     process.exit(0);
-  } catch (err) {
-    console.error('Error during shutdown:', err);
+  } catch (err: any) {
+    logger.error({ err: err.message }, 'error during shutdown');
     process.exit(1);
   }
 };
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Helper to emit governance events from route handlers
-export function emitGovernanceEvent(
-  event: 'governance:law-passed' | 'governance:war-declared' | 'governance:peace-proposed' | 'governance:tax-changed',
-  room: string,
-  data: Record<string, unknown>
-) {
-  io.to(room).emit(event, data);
-}
-
-export { io };

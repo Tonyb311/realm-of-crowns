@@ -190,7 +190,7 @@ Create a new character for the authenticated user. One character per user.
 | `name` | string | Yes | 3-20 chars, alphanumeric + spaces (`/^[a-zA-Z0-9 ]+$/`) |
 | `race` | string | Yes | Valid race enum (HUMAN, ELF, DWARF, HALFLING, ORC, TIEFLING, DRAGONBORN, HALF_ELF, HALF_ORC, GNOME, MERFOLK, BEASTFOLK, FAEFOLK, GOLIATH, DROW, FIRBOLG, WARFORGED, GENASI, REVENANT, CHANGELING) |
 | `subRace` | string | No | Required for DRAGONBORN (draconic ancestry), BEASTFOLK (beast clan), GENASI (elemental type). Invalid for other races |
-| `characterClass` | string | Yes | `warrior`, `mage`, `rogue`, `cleric`, `ranger`, or `bard` |
+| `characterClass` | string | Yes | `warrior`, `mage`, `rogue`, `cleric`, `ranger`, `bard`, or `psion` |
 | `startingTownId` | string | Yes | Valid town ID |
 
 **Success Response (201):**
@@ -1305,7 +1305,7 @@ Collect a completed crafting result. A quality roll determines item quality (Poo
 
 ### PvE Combat
 
-#### POST /api/combat/pve/start
+#### POST /api/combat-pve/start
 
 Start a PvE combat encounter. A random monster near the character's level is selected from the current region.
 
@@ -1370,7 +1370,7 @@ Start a PvE combat encounter. A random monster near the character's level is sel
 
 ---
 
-#### POST /api/combat/pve/action
+#### POST /api/combat-pve/action
 
 Submit a combat action. If it is the monster's turn, the monster acts automatically first. Combat ends when one side is eliminated.
 
@@ -1466,7 +1466,7 @@ Submit a combat action. If it is the monster's turn, the monster acts automatica
 
 ---
 
-#### GET /api/combat/pve/state
+#### GET /api/combat-pve/state
 
 Get current PvE combat state. Falls back to DB records for completed sessions.
 
@@ -1493,7 +1493,7 @@ Same format as the `combat` object in action response.
 
 ### PvP Combat
 
-#### POST /api/combat/pvp/challenge
+#### POST /api/combat-pvp/challenge
 
 Challenge another player to a duel. Both players must be in the same town. Level difference cannot exceed 5.
 
@@ -1530,7 +1530,7 @@ Challenge another player to a duel. Both players must be in the same town. Level
 
 ---
 
-#### POST /api/combat/pvp/accept
+#### POST /api/combat-pvp/accept
 
 Accept a pending PvP challenge. Initiates combat with rolled initiative.
 
@@ -1571,7 +1571,7 @@ Accept a pending PvP challenge. Initiates combat with rolled initiative.
 
 ---
 
-#### POST /api/combat/pvp/decline
+#### POST /api/combat-pvp/decline
 
 Decline a pending PvP challenge.
 
@@ -1601,7 +1601,7 @@ Decline a pending PvP challenge.
 
 ---
 
-#### POST /api/combat/pvp/action
+#### POST /api/combat-pvp/action
 
 Submit a PvP combat action. Same action/weapon/spell/item schema as PvE.
 
@@ -1648,7 +1648,7 @@ When combat ends, `result` is included:
 
 ---
 
-#### GET /api/combat/pvp/state
+#### GET /api/combat-pvp/state
 
 Get current PvP combat state for the authenticated player.
 
@@ -1685,7 +1685,7 @@ Get current PvP combat state for the authenticated player.
 
 ---
 
-#### GET /api/combat/pvp/challenges
+#### GET /api/combat-pvp/challenges
 
 List pending PvP challenges involving the authenticated player.
 
@@ -1710,7 +1710,7 @@ List pending PvP challenges involving the authenticated player.
 
 ---
 
-#### GET /api/combat/pvp/leaderboard
+#### GET /api/combat-pvp/leaderboard
 
 Get the PvP leaderboard showing win/loss records.
 

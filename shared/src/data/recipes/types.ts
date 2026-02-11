@@ -2,6 +2,9 @@
  * Recipe type definitions for Realm of Crowns
  */
 
+import type { ItemName } from '../items/item-names';
+export { ITEMS, type ItemName } from '../items/item-names';
+
 export type ProcessingProfession =
   | 'SMELTER'
   | 'TANNER'
@@ -24,12 +27,12 @@ export type CraftingProfession =
   | 'STABLE_MASTER';
 
 export interface RecipeInput {
-  itemName: string;
+  itemName: ItemName;
   quantity: number;
 }
 
 export interface RecipeOutput {
-  itemName: string;
+  itemName: ItemName;
   quantity: number;
 }
 

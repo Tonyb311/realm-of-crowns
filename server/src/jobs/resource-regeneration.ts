@@ -1,5 +1,7 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma';
+import { logger } from '../lib/logger';
+import { cronJobExecutions } from '../lib/metrics';
 
 /**
  * Resource regeneration cron job.
@@ -9,15 +11,17 @@ import { prisma } from '../lib/prisma';
 export function startResourceRegenerationJob() {
   // Run every 30 minutes
   cron.schedule('*/30 * * * *', async () => {
-    console.log('[ResourceRegeneration] Running resource regeneration...');
+    logger.debug({ job: 'resourceRegeneration' }, 'cron job started');
     try {
       await regenerateResources();
-    } catch (error) {
-      console.error('[ResourceRegeneration] Error:', error);
+      cronJobExecutions.inc({ job: 'resourceRegeneration', result: 'success' });
+    } catch (error: any) {
+      cronJobExecutions.inc({ job: 'resourceRegeneration', result: 'failure' });
+      logger.error({ job: 'resourceRegeneration', err: error.message }, 'cron job failed');
     }
   });
 
-  console.log('[ResourceRegeneration] Cron job registered (every 30 minutes)');
+  logger.info('ResourceRegeneration cron registered (every 30 minutes)');
 }
 
 async function regenerateResources() {

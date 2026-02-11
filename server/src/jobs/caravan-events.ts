@@ -1,5 +1,7 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma';
+import { logger } from '../lib/logger';
+import { cronJobExecutions } from '../lib/metrics';
 import { emitNotification } from '../socket/events';
 import {
   AMBUSH_CHANCE_PER_DANGER,
@@ -44,12 +46,14 @@ export function startCaravanEventsJob() {
   cron.schedule('*/5 * * * *', async () => {
     try {
       await processCaravanEvents();
-    } catch (error) {
-      console.error('[CaravanEvents] Error:', error);
+      cronJobExecutions.inc({ job: 'caravanEvents', result: 'success' });
+    } catch (error: any) {
+      cronJobExecutions.inc({ job: 'caravanEvents', result: 'failure' });
+      logger.error({ job: 'caravanEvents', err: error.message }, 'cron job failed');
     }
   });
 
-  console.log('[CaravanEvents] Cron job registered (every 5 minutes)');
+  logger.info('CaravanEvents cron registered (every 5 minutes)');
 }
 
 async function processCaravanEvents() {

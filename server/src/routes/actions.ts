@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import {
   lockInAction,
@@ -17,10 +18,6 @@ import { emitActionLockedIn, emitActionCancelled } from '../socket/events';
 
 const router = Router();
 
-async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
-
 // ---------------------------------------------------------------------------
 // POST /api/actions/lock-in
 // ---------------------------------------------------------------------------
@@ -31,12 +28,9 @@ const lockInSchema = z.object({
   combatParams: combatParamsSchema.optional(),
 });
 
-router.post('/lock-in', authGuard, validate(lockInSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/lock-in', authGuard, characterGuard, validate(lockInSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const { actionType, actionTarget, combatParams } = req.body;
 
@@ -68,12 +62,9 @@ router.post('/lock-in', authGuard, validate(lockInSchema), async (req: Authentic
 // GET /api/actions/current
 // ---------------------------------------------------------------------------
 
-router.get('/current', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/current', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const action = await getLockedAction(character.id);
 
@@ -92,12 +83,9 @@ router.get('/current', authGuard, async (req: AuthenticatedRequest, res: Respons
 // DELETE /api/actions/current
 // ---------------------------------------------------------------------------
 
-router.delete('/current', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/current', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     await cancelAction(character.id);
 
@@ -114,12 +102,9 @@ router.delete('/current', authGuard, async (req: AuthenticatedRequest, res: Resp
 // GET /api/actions/available
 // ---------------------------------------------------------------------------
 
-router.get('/available', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/available', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const result = await getAvailableActions(character.id);
     return res.json(result);
@@ -144,12 +129,9 @@ const updateCombatParamsSchema = z.object({
   pvpLootBehavior: z.string().optional(),
 });
 
-router.put('/combat-params', authGuard, validate(updateCombatParamsSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.put('/combat-params', authGuard, characterGuard, validate(updateCombatParamsSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const params = validateCombatParams(req.body);
 
@@ -178,12 +160,9 @@ router.put('/combat-params', authGuard, validate(updateCombatParamsSchema), asyn
 // GET /api/actions/combat-params
 // ---------------------------------------------------------------------------
 
-router.get('/combat-params', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/combat-params', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const data = await prisma.character.findUnique({
       where: { id: character.id },

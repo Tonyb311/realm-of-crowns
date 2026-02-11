@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import { TOAST_STYLE } from '../../constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -77,12 +78,6 @@ const PVP_LOOT_OPTIONS = [
   { value: 'TAKE_ITEMS', label: 'Items only' },
   { value: 'TAKE_NOTHING', label: 'Take nothing' },
 ];
-
-const TOAST_STYLE = {
-  background: '#1a1a2e',
-  color: '#e8d5b7',
-  border: '1px solid #c9a84c',
-};
 
 // ---------------------------------------------------------------------------
 // Component

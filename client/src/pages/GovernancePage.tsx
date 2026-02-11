@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import api from '../services/api';
+import GoldAmount from '../components/shared/GoldAmount';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -64,15 +65,6 @@ type Tab = 'laws' | 'treasury' | 'officials' | 'war';
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-function GoldAmount({ amount, className = '' }: { amount: number; className?: string }) {
-  return (
-    <span className={`inline-flex items-center gap-1 ${className}`}>
-      <CircleDollarSign className="w-3.5 h-3.5 text-primary-400 flex-shrink-0" />
-      <span>{amount.toLocaleString()}</span>
-    </span>
-  );
-}
-
 const STATUS_COLORS: Record<string, string> = {
   proposed: 'bg-blue-400/10 text-blue-400 border-blue-400/30',
   voting: 'bg-amber-400/10 text-amber-400 border-amber-400/30',
@@ -349,7 +341,7 @@ export default function GovernancePage() {
                               <span className="text-parchment-500 text-[10px] capitalize">{law.lawType}</span>
                             </div>
                           </div>
-                          {(law.status === 'proposed' || law.status === 'voting') && (
+                          {(law.status === 'PROPOSED' || law.status === 'VOTING') && (
                             <div className="flex gap-2">
                               <button
                                 onClick={() => voteLawMutation.mutate({ lawId: law.id, vote: 'for' })}

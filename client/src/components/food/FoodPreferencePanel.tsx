@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import { TOAST_STYLE } from '../../constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,12 +47,6 @@ const PRIORITY_OPTIONS: { value: FoodPriority; label: string; description: strin
     description: 'Only eat food from a specific category',
   },
 ];
-
-const TOAST_STYLE = {
-  background: '#1a1a2e',
-  color: '#e8d5b7',
-  border: '1px solid #c9a84c',
-};
 
 // ---------------------------------------------------------------------------
 // Component

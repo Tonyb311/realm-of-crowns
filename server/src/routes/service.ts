@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { requireDailyAction } from '../middleware/daily-action';
 import { AuthenticatedRequest } from '../types/express';
 import { getGameDay, getTodayTickDate } from '../lib/game-day';
@@ -121,7 +122,7 @@ router.post('/perform', authGuard, requireDailyAction('SERVICE'), async (req: Au
 // GET /reputation — Get character's service reputation
 // ---------------------------------------------------------------------------
 
-router.get('/reputation', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/reputation', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
     if (!character) return res.status(404).json({ error: 'No character found' });
@@ -140,7 +141,7 @@ router.get('/reputation', authGuard, async (req: AuthenticatedRequest, res: Resp
 // GET /available — List service providers in the character's current town
 // ---------------------------------------------------------------------------
 
-router.get('/available', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/available', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
     if (!character) return res.status(404).json({ error: 'No character found' });

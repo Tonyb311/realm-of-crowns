@@ -21,7 +21,7 @@ export async function getEffectiveTaxRate(townId: string): Promise<number> {
   // For now, look for active tax laws whose effects reference this town or apply kingdom-wide.
   const activeTaxLaws = await prisma.law.findMany({
     where: {
-      status: 'active',
+      status: 'ACTIVE',
       lawType: 'tax',
       OR: [
         { expiresAt: null },
@@ -75,7 +75,7 @@ export async function getTradeRestrictions(
   // Check for active trade embargo laws
   const embargoLaws = await prisma.law.findMany({
     where: {
-      status: 'active',
+      status: 'ACTIVE',
       lawType: 'trade',
       OR: [
         { expiresAt: null },
@@ -125,7 +125,7 @@ export async function getWarStatus(
 ): Promise<{ atWar: boolean; war?: { id: string; attackerKingdomId: string; defenderKingdomId: string } }> {
   const war = await prisma.war.findFirst({
     where: {
-      status: 'active',
+      status: 'ACTIVE',
       OR: [
         { attackerKingdomId: kingdomId1, defenderKingdomId: kingdomId2 },
         { attackerKingdomId: kingdomId2, defenderKingdomId: kingdomId1 },
@@ -153,7 +153,7 @@ export async function getWarStatus(
 export async function isLawActive(lawId: string): Promise<boolean> {
   const law = await prisma.law.findUnique({ where: { id: lawId } });
   if (!law) return false;
-  if (law.status !== 'active') return false;
+  if (law.status !== 'ACTIVE') return false;
   if (law.expiresAt && law.expiresAt <= new Date()) return false;
   return true;
 }
@@ -224,7 +224,7 @@ async function getWarBetweenCharacters(
 export async function getActiveWarsForKingdom(kingdomId: string) {
   return prisma.war.findMany({
     where: {
-      status: 'active',
+      status: 'ACTIVE',
       OR: [
         { attackerKingdomId: kingdomId },
         { defenderKingdomId: kingdomId },

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import {
   createCombatState,
@@ -137,15 +138,11 @@ async function getEquippedWeapon(characterId: string): Promise<WeaponInfo> {
 
 // ---- Helpers ----
 
-async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
-
 async function isInActiveCombat(characterId: string): Promise<boolean> {
   const active = await prisma.combatParticipant.findFirst({
     where: {
       characterId,
-      session: { status: { in: ['active', 'pending'] } },
+      session: { status: { in: ['ACTIVE', 'PENDING'] } },
     },
   });
   return !!active;
@@ -194,11 +191,7 @@ router.post(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { targetCharacterId, wager } = req.body;
-      const challenger = await getCharacterForUser(req.user!.userId);
-
-      if (!challenger) {
-        return res.status(404).json({ error: 'No character found' });
-      }
+      const challenger = req.character!;
 
       if (challenger.id === targetCharacterId) {
         return res.status(400).json({ error: 'Cannot challenge yourself' });
@@ -273,7 +266,7 @@ router.post(
       const session = await prisma.combatSession.create({
         data: {
           type: 'DUEL',
-          status: 'pending',
+          status: 'PENDING',
           locationTownId: challenger.currentTownId,
           log: { challengerId: challenger.id, targetId: target.id, wager: wagerAmount },
         },
@@ -313,11 +306,7 @@ router.post(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { sessionId } = req.body;
-      const character = await getCharacterForUser(req.user!.userId);
-
-      if (!character) {
-        return res.status(404).json({ error: 'No character found' });
-      }
+      const character = req.character!;
 
       const session = await prisma.combatSession.findUnique({
         where: { id: sessionId },
@@ -334,7 +323,7 @@ router.post(
         return res.status(404).json({ error: 'Combat session not found' });
       }
 
-      if (session.status !== 'pending') {
+      if (session.status !== 'PENDING') {
         return res.status(400).json({ error: 'Challenge is no longer pending' });
       }
 
@@ -354,7 +343,7 @@ router.post(
           // Cancel the challenge if challenger can no longer afford it
           await prisma.combatSession.update({
             where: { id: sessionId },
-            data: { status: 'cancelled' },
+            data: { status: 'CANCELLED' },
           });
           return res.status(400).json({ error: 'Challenger no longer has enough gold for the wager' });
         }
@@ -394,7 +383,7 @@ router.post(
       await prisma.$transaction([
         prisma.combatSession.update({
           where: { id: sessionId },
-          data: { status: 'active', startedAt: new Date() },
+          data: { status: 'ACTIVE', startedAt: new Date() },
         }),
         ...combatState.combatants.map((c) =>
           prisma.combatParticipant.updateMany({
@@ -409,7 +398,7 @@ router.post(
       return res.json({
         session: {
           id: sessionId,
-          status: 'active',
+          status: 'ACTIVE',
           round: combatState.round,
           currentTurn: currentTurnId,
           turnOrder: combatState.turnOrder,
@@ -441,11 +430,7 @@ router.post(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { sessionId } = req.body;
-      const character = await getCharacterForUser(req.user!.userId);
-
-      if (!character) {
-        return res.status(404).json({ error: 'No character found' });
-      }
+      const character = req.character!;
 
       const session = await prisma.combatSession.findUnique({
         where: { id: sessionId },
@@ -455,7 +440,7 @@ router.post(
         return res.status(404).json({ error: 'Combat session not found' });
       }
 
-      if (session.status !== 'pending') {
+      if (session.status !== 'PENDING') {
         return res.status(400).json({ error: 'Challenge is no longer pending' });
       }
 
@@ -466,10 +451,10 @@ router.post(
 
       await prisma.combatSession.update({
         where: { id: sessionId },
-        data: { status: 'cancelled', endedAt: new Date() },
+        data: { status: 'CANCELLED', endedAt: new Date() },
       });
 
-      return res.json({ session: { id: sessionId, status: 'cancelled' } });
+      return res.json({ session: { id: sessionId, status: 'CANCELLED' } });
     } catch (error) {
       console.error('PvP decline error:', error);
       return res.status(500).json({ error: 'Internal server error' });
@@ -486,11 +471,7 @@ router.post(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { sessionId, action, item } = req.body;
-      const character = await getCharacterForUser(req.user!.userId);
-
-      if (!character) {
-        return res.status(404).json({ error: 'No character found' });
-      }
+      const character = req.character!;
 
       // Get or restore combat state
       let combatState = await getPvpCombatState(sessionId);
@@ -504,7 +485,7 @@ router.post(
           },
         });
 
-        if (!session || session.status !== 'active') {
+        if (!session || session.status !== 'ACTIVE') {
           return res.status(404).json({ error: 'No active combat session found' });
         }
 
@@ -528,7 +509,7 @@ router.post(
       }
 
       // Verify combat is active
-      if (combatState.status !== 'active') {
+      if (combatState.status !== 'ACTIVE') {
         return res.status(400).json({ error: 'Combat has already ended' });
       }
 
@@ -575,7 +556,7 @@ router.post(
       );
 
       // Check for combat end
-      if (combatState.status === 'completed') {
+      if (combatState.status === 'COMPLETED') {
         await finalizePvpMatch(sessionId, combatState);
       }
 
@@ -585,7 +566,7 @@ router.post(
           status: combatState.status,
           round: combatState.round,
           currentTurn:
-            combatState.status === 'active'
+            combatState.status === 'ACTIVE'
               ? combatState.turnOrder[combatState.turnIndex]
               : null,
           combatants: combatState.combatants.map((c) => ({
@@ -604,7 +585,7 @@ router.post(
         turnResult: lastLog,
       };
 
-      if (combatState.status === 'completed') {
+      if (combatState.status === 'COMPLETED') {
         const winningTeam = combatState.winningTeam;
         const winner = combatState.combatants.find(
           (c) => c.team === winningTeam && c.isAlive
@@ -633,10 +614,7 @@ router.get(
   authGuard,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const character = await getCharacterForUser(req.user!.userId);
-      if (!character) {
-        return res.status(404).json({ error: 'No character found' });
-      }
+      const character = req.character!;
 
       const sessionId = req.query.sessionId as string | undefined;
 
@@ -646,7 +624,7 @@ router.get(
           characterId: character.id,
           session: {
             type: { in: ['DUEL', 'ARENA', 'PVP'] },
-            status: 'active',
+            status: 'ACTIVE',
             ...(sessionId ? { id: sessionId } : {}),
           },
         },
@@ -727,16 +705,13 @@ router.get(
   authGuard,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const character = await getCharacterForUser(req.user!.userId);
-      if (!character) {
-        return res.status(404).json({ error: 'No character found' });
-      }
+      const character = req.character!;
 
       // Find all pending DUEL sessions where this player is a participant
       const participations = await prisma.combatParticipant.findMany({
         where: {
           characterId: character.id,
-          session: { type: 'DUEL', status: 'pending' },
+          session: { type: 'DUEL', status: 'PENDING' },
         },
         include: {
           session: {
@@ -808,7 +783,7 @@ router.get(
         where: {
           session: {
             type: { in: ['DUEL', 'ARENA'] },
-            status: 'completed',
+            status: 'COMPLETED',
           },
           currentHp: { gt: 0 },
         },
@@ -825,7 +800,7 @@ router.get(
           characterId: { in: winCounts.map((w) => w.characterId) },
           session: {
             type: { in: ['DUEL', 'ARENA'] },
-            status: 'completed',
+            status: 'COMPLETED',
           },
         },
         _count: { characterId: true },
@@ -901,7 +876,7 @@ async function finalizePvpMatch(
     prisma.combatSession.update({
       where: { id: sessionId },
       data: {
-        status: 'completed',
+        status: 'COMPLETED',
         endedAt: new Date(),
         log: sessionLog as any,
       },
@@ -932,7 +907,7 @@ async function finalizePvpMatch(
   const pvpWins = await prisma.combatParticipant.count({
     where: {
       characterId: winner.id,
-      session: { type: { in: ['DUEL', 'ARENA', 'PVP'] }, status: 'completed' },
+      session: { type: { in: ['DUEL', 'ARENA', 'PVP'] }, status: 'COMPLETED' },
       currentHp: { gt: 0 },
     },
   });
@@ -1013,11 +988,7 @@ router.post(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { targetCharacterId } = req.body;
-      const challenger = await getCharacterForUser(req.user!.userId);
-
-      if (!challenger) {
-        return res.status(404).json({ error: 'No character found' });
-      }
+      const challenger = req.character!;
 
       if (challenger.id === targetCharacterId) {
         return res.status(400).json({ error: 'Cannot spar yourself' });
@@ -1067,7 +1038,7 @@ router.post(
       const session = await prisma.combatSession.create({
         data: {
           type: 'SPAR',
-          status: 'pending',
+          status: 'PENDING',
           locationTownId: challenger.currentTownId,
           log: {
             challengerId: challenger.id,
@@ -1126,11 +1097,7 @@ router.post(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { sessionId } = req.body;
-      const character = await getCharacterForUser(req.user!.userId);
-
-      if (!character) {
-        return res.status(404).json({ error: 'No character found' });
-      }
+      const character = req.character!;
 
       const session = await prisma.combatSession.findUnique({
         where: { id: sessionId },
@@ -1149,7 +1116,7 @@ router.post(
         return res.status(400).json({ error: 'Session is not a spar' });
       }
 
-      if (session.status !== 'pending') {
+      if (session.status !== 'PENDING') {
         return res.status(400).json({ error: 'Spar challenge is no longer pending' });
       }
 
@@ -1189,7 +1156,7 @@ router.post(
       await prisma.$transaction([
         prisma.combatSession.update({
           where: { id: sessionId },
-          data: { status: 'active', startedAt: new Date() },
+          data: { status: 'ACTIVE', startedAt: new Date() },
         }),
         ...combatState.combatants.map((c) =>
           prisma.combatParticipant.updateMany({
@@ -1212,7 +1179,7 @@ router.post(
       return res.json({
         session: {
           id: sessionId,
-          status: 'active',
+          status: 'ACTIVE',
           type: 'SPAR',
           round: combatState.round,
           currentTurn: currentTurnId,
@@ -1244,11 +1211,7 @@ router.post(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { sessionId } = req.body;
-      const character = await getCharacterForUser(req.user!.userId);
-
-      if (!character) {
-        return res.status(404).json({ error: 'No character found' });
-      }
+      const character = req.character!;
 
       const session = await prisma.combatSession.findUnique({
         where: { id: sessionId },
@@ -1262,7 +1225,7 @@ router.post(
         return res.status(400).json({ error: 'Session is not a spar' });
       }
 
-      if (session.status !== 'pending') {
+      if (session.status !== 'PENDING') {
         return res.status(400).json({ error: 'Spar challenge is no longer pending' });
       }
 
@@ -1273,7 +1236,7 @@ router.post(
 
       await prisma.combatSession.update({
         where: { id: sessionId },
-        data: { status: 'cancelled', endedAt: new Date() },
+        data: { status: 'CANCELLED', endedAt: new Date() },
       });
 
       // Notify challenger
@@ -1284,7 +1247,7 @@ router.post(
         summary: `${character.name} declined your spar challenge.`,
       });
 
-      return res.json({ session: { id: sessionId, status: 'cancelled' } });
+      return res.json({ session: { id: sessionId, status: 'CANCELLED' } });
     } catch (error) {
       console.error('PvP spar-decline error:', error);
       return res.status(500).json({ error: 'Internal server error' });
@@ -1301,11 +1264,7 @@ router.post(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { sessionId, action, item } = req.body;
-      const character = await getCharacterForUser(req.user!.userId);
-
-      if (!character) {
-        return res.status(404).json({ error: 'No character found' });
-      }
+      const character = req.character!;
 
       // Get or restore combat state
       let combatState = await getPvpCombatState(sessionId);
@@ -1318,7 +1277,7 @@ router.post(
           },
         });
 
-        if (!session || session.status !== 'active' || session.type !== 'SPAR') {
+        if (!session || session.status !== 'ACTIVE' || session.type !== 'SPAR') {
           return res.status(404).json({ error: 'No active spar session found' });
         }
 
@@ -1340,7 +1299,7 @@ router.post(
         return res.status(400).json({ error: 'It is not your turn' });
       }
 
-      if (combatState.status !== 'active') {
+      if (combatState.status !== 'ACTIVE') {
         return res.status(400).json({ error: 'Combat has already ended' });
       }
 
@@ -1387,7 +1346,7 @@ router.post(
       );
 
       // Check for combat end — use spar finalization (zero stakes)
-      if (combatState.status === 'completed') {
+      if (combatState.status === 'COMPLETED') {
         await finalizeSparMatch(sessionId, combatState);
       }
 
@@ -1398,7 +1357,7 @@ router.post(
           status: combatState.status,
           round: combatState.round,
           currentTurn:
-            combatState.status === 'active'
+            combatState.status === 'ACTIVE'
               ? combatState.turnOrder[combatState.turnIndex]
               : null,
           combatants: combatState.combatants.map((c) => ({
@@ -1417,7 +1376,7 @@ router.post(
         turnResult: lastLog,
       };
 
-      if (combatState.status === 'completed') {
+      if (combatState.status === 'COMPLETED') {
         const winningTeam = combatState.winningTeam;
         const winner = combatState.combatants.find(
           (c) => c.team === winningTeam && c.isAlive
@@ -1447,10 +1406,7 @@ router.get(
   authGuard,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const character = await getCharacterForUser(req.user!.userId);
-      if (!character) {
-        return res.status(404).json({ error: 'No character found' });
-      }
+      const character = req.character!;
 
       // Find the player's active SPAR session
       const participant = await prisma.combatParticipant.findFirst({
@@ -1458,7 +1414,7 @@ router.get(
           characterId: character.id,
           session: {
             type: 'SPAR',
-            status: 'active',
+            status: 'ACTIVE',
           },
         },
         include: {
@@ -1562,7 +1518,7 @@ async function finalizeSparMatch(
     prisma.combatSession.update({
       where: { id: sessionId },
       data: {
-        status: 'completed',
+        status: 'COMPLETED',
         endedAt: new Date(),
         log: { ...sessionLog, winnerId: winner.id } as any,
       },

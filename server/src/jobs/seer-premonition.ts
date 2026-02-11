@@ -5,11 +5,13 @@
 
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma';
+import { logger } from '../lib/logger';
+import { cronJobExecutions } from '../lib/metrics';
 import { generateSeerPremonition } from '../services/psion-perks';
 
 export function startSeerPremonitionJob() {
   cron.schedule('0 6 * * *', async () => {
-    console.log('[Cron] Seer Premonition: generating daily visions...');
+    logger.debug({ job: 'seerPremonition' }, 'cron job started');
 
     try {
       const seers = await prisma.character.findMany({
@@ -35,9 +37,11 @@ export function startSeerPremonitionJob() {
         }
       }
 
-      console.log(`[Cron] Seer Premonition: sent ${sent} visions to ${seers.length} Seers`);
-    } catch (error) {
-      console.error('[Cron] Seer Premonition error:', error);
+      cronJobExecutions.inc({ job: 'seerPremonition', result: 'success' });
+      logger.info({ job: 'seerPremonition', sent, total: seers.length }, 'seer premonitions sent');
+    } catch (error: any) {
+      cronJobExecutions.inc({ job: 'seerPremonition', result: 'failure' });
+      logger.error({ job: 'seerPremonition', err: error.message }, 'cron job failed');
     }
   });
 }

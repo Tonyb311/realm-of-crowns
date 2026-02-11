@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { Race, RelationStatus, Prisma } from '@prisma/client';
 import {
@@ -46,13 +47,6 @@ const negotiatePeaceSchema = z.object({
 // =========================================================================
 // Helpers
 // =========================================================================
-
-async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({
-    where: { userId },
-    orderBy: { createdAt: 'asc' },
-  });
-}
 
 async function getRulerKingdom(characterId: string) {
   return prisma.kingdom.findFirst({
@@ -175,11 +169,10 @@ router.get('/relations/:race1/:race2', async (req: Request, res: Response) => {
 // =========================================================================
 // POST /api/diplomacy/propose-treaty — propose a treaty (kingdom ruler only)
 // =========================================================================
-router.post('/propose-treaty', authGuard, validate(proposeTreatySchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/propose-treaty', authGuard, characterGuard, validate(proposeTreatySchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { targetKingdomId, type } = req.body as { targetKingdomId: string; type: TreatyType };
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const myKingdom = await getRulerKingdom(character.id);
     if (!myKingdom) return res.status(403).json({ error: 'You must be a kingdom ruler to propose treaties' });
@@ -297,12 +290,11 @@ router.post('/propose-treaty', authGuard, validate(proposeTreatySchema), async (
 // =========================================================================
 // POST /api/diplomacy/respond-treaty/:proposalId — accept or reject
 // =========================================================================
-router.post('/respond-treaty/:proposalId', authGuard, validate(respondTreatySchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/respond-treaty/:proposalId', authGuard, characterGuard, validate(respondTreatySchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { proposalId } = req.params;
     const { accept } = req.body as { accept: boolean };
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const treaty = await prisma.treaty.findUnique({
       where: { id: proposalId },
@@ -405,11 +397,10 @@ router.post('/respond-treaty/:proposalId', authGuard, validate(respondTreatySche
 // =========================================================================
 // POST /api/diplomacy/declare-war — declare war (unilateral)
 // =========================================================================
-router.post('/declare-war', authGuard, validate(declareWarSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/declare-war', authGuard, characterGuard, validate(declareWarSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { targetKingdomId, reason } = req.body as { targetKingdomId: string; reason: string };
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const myKingdom = await getRulerKingdom(character.id);
     if (!myKingdom) return res.status(403).json({ error: 'You must be a kingdom ruler to declare war' });
@@ -427,7 +418,7 @@ router.post('/declare-war', authGuard, validate(declareWarSchema), async (req: A
     // Check for existing active war
     const existingWar = await prisma.war.findFirst({
       where: {
-        status: 'active',
+        status: 'ACTIVE',
         OR: [
           { attackerKingdomId: myKingdom.id, defenderKingdomId: targetKingdomId },
           { attackerKingdomId: targetKingdomId, defenderKingdomId: myKingdom.id },
@@ -451,7 +442,7 @@ router.post('/declare-war', authGuard, validate(declareWarSchema), async (req: A
           attackerKingdomId: myKingdom.id,
           defenderKingdomId: targetKingdomId,
           reason,
-          status: 'active',
+          status: 'ACTIVE',
         },
       });
 
@@ -494,7 +485,7 @@ router.post('/declare-war', authGuard, validate(declareWarSchema), async (req: A
         attackerKingdom: myKingdom.name,
         defenderKingdom: targetKingdom.name,
         reason,
-        status: 'active',
+        status: 'ACTIVE',
         relationChange: newRelationStatus
           ? { newStatus: newRelationStatus }
           : null,
@@ -509,11 +500,10 @@ router.post('/declare-war', authGuard, validate(declareWarSchema), async (req: A
 // =========================================================================
 // POST /api/diplomacy/break-treaty/:treatyId — cancel an active treaty
 // =========================================================================
-router.post('/break-treaty/:treatyId', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/break-treaty/:treatyId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { treatyId } = req.params;
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const treaty = await prisma.treaty.findUnique({
       where: { id: treatyId },
@@ -620,7 +610,7 @@ router.get('/treaties', async (req: Request, res: Response) => {
     let enrichedTreaties: (typeof baseTreaties[number] & { psionInsight?: unknown })[] = baseTreaties;
     const authReq = req as AuthenticatedRequest;
     if (authReq.user?.userId) {
-      const character = await getCharacterForUser(authReq.user.userId);
+      const character = await prisma.character.findFirst({ where: { userId: authReq.user.userId }, orderBy: { createdAt: 'asc' } });
       if (character) {
         const { isPsion, specialization } = await getPsionSpec(character.id);
         if (isPsion && specialization === 'telepath') {
@@ -650,12 +640,9 @@ router.get('/treaties', async (req: Request, res: Response) => {
 // =========================================================================
 // GET /api/diplomacy/tension/:kingdomId1/:kingdomId2 — Seer War Forecast
 // =========================================================================
-router.get('/tension/:kingdomId1/:kingdomId2', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/tension/:kingdomId1/:kingdomId2', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const { isPsion, specialization } = await getPsionSpec(character.id);
     if (!isPsion || specialization !== 'seer') {
@@ -691,7 +678,7 @@ router.get('/tension/:kingdomId1/:kingdomId2', authGuard, async (req: Authentica
 router.get('/wars', async (_req: Request, res: Response) => {
   try {
     const wars = await prisma.war.findMany({
-      where: { status: 'active' },
+      where: { status: 'ACTIVE' },
       include: {
         attackerKingdom: { select: { id: true, name: true } },
         defenderKingdom: { select: { id: true, name: true } },
@@ -773,12 +760,11 @@ router.get('/wars/:id', async (req: Request, res: Response) => {
 // =========================================================================
 // POST /api/diplomacy/wars/:id/negotiate-peace — peace negotiation
 // =========================================================================
-router.post('/wars/:id/negotiate-peace', authGuard, validate(negotiatePeaceSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/wars/:id/negotiate-peace', authGuard, characterGuard, validate(negotiatePeaceSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { terms } = req.body as { terms?: string };
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const war = await prisma.war.findUnique({
       where: { id },
@@ -789,7 +775,7 @@ router.post('/wars/:id/negotiate-peace', authGuard, validate(negotiatePeaceSchem
     });
 
     if (!war) return res.status(404).json({ error: 'War not found' });
-    if (war.status !== 'active') {
+    if (war.status !== 'ACTIVE') {
       return res.status(400).json({ error: `War is already ${war.status}` });
     }
 
@@ -804,7 +790,7 @@ router.post('/wars/:id/negotiate-peace', authGuard, validate(negotiatePeaceSchem
     await prisma.war.update({
       where: { id: war.id },
       data: {
-        status: 'ended',
+        status: 'ENDED',
         endedAt: new Date(),
       },
     });
@@ -812,7 +798,7 @@ router.post('/wars/:id/negotiate-peace', authGuard, validate(negotiatePeaceSchem
     return res.json({
       peace: {
         warId: war.id,
-        status: 'ended',
+        status: 'ENDED',
         terms: terms ?? 'Unconditional peace',
         attackerKingdom: war.attackerKingdom.name,
         defenderKingdom: war.defenderKingdom.name,

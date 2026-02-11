@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { getGameDay } from '../lib/game-day';
 import { isSameAccount } from '../lib/alt-guard';
@@ -19,7 +20,7 @@ const TIER_LOAN_LIMITS: Record<string, number> = {
 // POST /issue — Banker issues a loan
 // ---------------------------------------------------------------------------
 
-router.post('/issue', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/issue', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { borrowerId, principal, interestRate, termDays } = req.body;
     const banker = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
@@ -109,7 +110,7 @@ router.post('/issue', authGuard, async (req: AuthenticatedRequest, res: Response
 // POST /repay — Borrower repays a loan
 // ---------------------------------------------------------------------------
 
-router.post('/repay', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/repay', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { loanId, amount } = req.body;
     const character = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
@@ -175,7 +176,7 @@ router.post('/repay', authGuard, async (req: AuthenticatedRequest, res: Response
 // GET /mine — List loans for character (as banker or borrower)
 // ---------------------------------------------------------------------------
 
-router.get('/mine', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
     if (!character) return res.status(404).json({ error: 'No character found' });
@@ -202,7 +203,7 @@ router.get('/mine', authGuard, async (req: AuthenticatedRequest, res: Response) 
 // GET /:id — Loan details
 // ---------------------------------------------------------------------------
 
-router.get('/:id', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
     if (!character) return res.status(404).json({ error: 'No character found' });

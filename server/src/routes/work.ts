@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { ProfessionType, ResourceType, Race } from '@prisma/client';
 import { getRace } from '@shared/data/races';
@@ -99,10 +100,6 @@ function getRacialXpBonus(race: Race, professionType: ProfessionType): number {
   return bonus?.xpBonus ?? 0;
 }
 
-async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
-
 /**
  * Look up the tool equipped in the MAIN_HAND slot. Returns null if no tool
  * is equipped or if the equipped tool doesn't match the given profession.
@@ -130,15 +127,11 @@ async function getEquippedTool(characterId: string, professionType: ProfessionTy
 }
 
 // POST /api/work/start
-router.post('/start', authGuard, validate(startWorkSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/start', authGuard, characterGuard, validate(startWorkSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { professionType, resourceId } = req.body;
     const profEnum = professionType as ProfessionType;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     if (!character.currentTownId) {
       return res.status(400).json({ error: 'Character is not in a town' });
@@ -280,13 +273,9 @@ router.post('/start', authGuard, validate(startWorkSchema), async (req: Authenti
 });
 
 // GET /api/work/status
-router.get('/status', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/status', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const activeGathering = await prisma.gatheringAction.findFirst({
       where: {
@@ -333,13 +322,9 @@ router.get('/status', authGuard, async (req: AuthenticatedRequest, res: Response
 });
 
 // POST /api/work/collect
-router.post('/collect', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/collect', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const activeGathering = await prisma.gatheringAction.findFirst({
       where: {
@@ -614,13 +599,9 @@ router.post('/collect', authGuard, async (req: AuthenticatedRequest, res: Respon
 });
 
 // POST /api/work/cancel
-router.post('/cancel', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/cancel', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const activeGathering = await prisma.gatheringAction.findFirst({
       where: {
@@ -727,13 +708,9 @@ router.post('/cancel', authGuard, async (req: AuthenticatedRequest, res: Respons
 });
 
 // GET /api/work/professions
-router.get('/professions', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/professions', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const professions = await prisma.playerProfession.findMany({
       where: { characterId: character.id },

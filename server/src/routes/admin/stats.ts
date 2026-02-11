@@ -35,8 +35,8 @@ router.get('/dashboard', async (_req: AuthenticatedRequest, res: Response) => {
       prisma.character.groupBy({ by: ['race'], _count: { race: true } }),
       prisma.character.groupBy({ by: ['class'], _count: { class: true } }),
       prisma.tradeTransaction.count({ where: { timestamp: { gte: oneDayAgo } } }),
-      prisma.war.count({ where: { status: 'active' } }),
-      prisma.election.count({ where: { status: 'active' } }),
+      prisma.war.count({ where: { status: 'ACTIVE' } }),
+      prisma.election.count({ where: { status: 'ACTIVE' } }),
     ]);
 
     return res.json({

@@ -1,4 +1,5 @@
 import Redis from 'ioredis';
+import { logger } from './logger';
 
 let redis: Redis | null = null;
 
@@ -12,18 +13,18 @@ if (process.env.REDIS_URL) {
   });
 
   redis.on('connect', () => {
-    console.log('[Redis] Connected');
+    logger.info('Redis connected');
   });
 
   redis.on('error', (err) => {
-    console.error('[Redis] Connection error:', err.message);
+    logger.error({ err: err.message }, 'Redis connection error');
   });
 
   redis.on('reconnecting', () => {
-    console.log('[Redis] Reconnecting...');
+    logger.info('Redis reconnecting');
   });
 } else {
-  console.log('[Redis] REDIS_URL not set — running without Redis');
+  logger.info('REDIS_URL not set — running without Redis');
 }
 
 export { redis };
@@ -40,6 +41,6 @@ export async function invalidateCache(pattern: string): Promise<void> {
       }
     } while (cursor !== '0');
   } catch (err) {
-    console.error('[Redis] Cache invalidation error:', err);
+    logger.error({ err }, 'Redis cache invalidation error');
   }
 }

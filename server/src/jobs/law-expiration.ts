@@ -1,5 +1,7 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma';
+import { logger } from '../lib/logger';
+import { cronJobExecutions } from '../lib/metrics';
 
 /**
  * Law expiration cron job.
@@ -9,15 +11,17 @@ import { prisma } from '../lib/prisma';
 export function startLawExpirationJob() {
   // Run every 15 minutes
   cron.schedule('*/15 * * * *', async () => {
-    console.log('[LawExpiration] Checking for expired laws...');
+    logger.debug({ job: 'lawExpiration' }, 'cron job started');
     try {
       await expireLaws();
-    } catch (error) {
-      console.error('[LawExpiration] Error:', error);
+      cronJobExecutions.inc({ job: 'lawExpiration', result: 'success' });
+    } catch (error: any) {
+      cronJobExecutions.inc({ job: 'lawExpiration', result: 'failure' });
+      logger.error({ job: 'lawExpiration', err: error.message }, 'cron job failed');
     }
   });
 
-  console.log('[LawExpiration] Cron job registered (every 15 minutes)');
+  logger.info('LawExpiration cron registered (every 15 minutes)');
 }
 
 async function expireLaws() {
@@ -25,11 +29,11 @@ async function expireLaws() {
 
   const result = await prisma.law.updateMany({
     where: {
-      status: 'active',
+      status: 'ACTIVE',
       expiresAt: { lte: now },
     },
     data: {
-      status: 'expired',
+      status: 'EXPIRED',
     },
   });
 

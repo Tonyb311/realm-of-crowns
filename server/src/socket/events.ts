@@ -349,3 +349,21 @@ export function emitTickComplete(data: {
 }) {
   getIO().emit('tick:complete', data);
 }
+
+// Governance events (moved from index.ts to break circular import)
+export function emitGovernanceEvent(
+  event: 'governance:law-passed' | 'governance:war-declared' | 'governance:peace-proposed' | 'governance:tax-changed',
+  room: string,
+  data: Record<string, unknown>
+) {
+  getIO().to(room).emit(event, data);
+}
+
+// Guild events (moved from inline io usage to break circular import)
+export function emitGuildEvent(
+  room: string,
+  event: string,
+  data: Record<string, unknown>
+) {
+  getIO().to(room).emit(event, data);
+}

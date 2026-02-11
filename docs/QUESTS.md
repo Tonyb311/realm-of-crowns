@@ -98,11 +98,11 @@ When all objectives for a quest are met, a **notification** is emitted to the pl
 | Class | Specializations |
 |-------|----------------|
 | Warrior | berserker, guardian, warlord |
-| Mage | evoker, enchanter, necromancer |
-| Rogue | assassin, trickster, shadow |
-| Cleric | healer, crusader, oracle |
-| Ranger | beastmaster, marksman, warden |
-| Bard | minstrel, wardrummer, lorekeeper |
+| Mage | elementalist, enchanter, necromancer |
+| Rogue | assassin, thief, swashbuckler |
+| Cleric | healer, paladin, inquisitor |
+| Ranger | beastmaster, sharpshooter, tracker |
+| Bard | diplomat, battlechanter, lorekeeper |
 | **Psion** | **telepath, seer, nomad** |
 
 **7 classes, 21 total specializations** (3 per class). Defined in `shared/src/data/skills/index.ts`.

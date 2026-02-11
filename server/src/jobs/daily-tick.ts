@@ -44,6 +44,7 @@ import type { HungerState, ProfessionType, ResourceType, BuildingType } from '@p
 // ---------------------------------------------------------------------------
 
 const BATCH_SIZE = 50;
+const CURSOR_PAGE_SIZE = 200;
 const ABUNDANCE_DEPLETION_PER_GATHER = 2;
 const MIN_ABUNDANCE_TO_GATHER = 10;
 const BARE_HANDS_YIELD_PENALTY = 0.25;
@@ -165,13 +166,28 @@ export async function processDailyTick(): Promise<void> {
     const spoilageResult = await processSpoilage();
     console.log(`[DailyTick]   Spoiled ${spoilageResult.spoiledCount} perishable items`);
 
-    // Per-character auto-consumption in batches
-    const allCharacters = await prisma.character.findMany({
-      select: { id: true, race: true },
-    });
+    // Per-character auto-consumption with cursor-based pagination
+    let charCursor: string | undefined;
+    let hasMoreChars = true;
 
-    for (let i = 0; i < allCharacters.length; i += BATCH_SIZE) {
-      const batch = allCharacters.slice(i, i + BATCH_SIZE);
+    while (hasMoreChars) {
+      const charPage = await prisma.character.findMany({
+        select: { id: true, race: true },
+        take: CURSOR_PAGE_SIZE,
+        orderBy: { id: 'asc' },
+        ...(charCursor ? { skip: 1, cursor: { id: charCursor } } : {}),
+      });
+
+      if (charPage.length < CURSOR_PAGE_SIZE) {
+        hasMoreChars = false;
+      }
+      if (charPage.length > 0) {
+        charCursor = charPage[charPage.length - 1].id;
+      }
+
+      // Process this page in sub-batches
+      for (let i = 0; i < charPage.length; i += BATCH_SIZE) {
+        const batch = charPage.slice(i, i + BATCH_SIZE);
       await Promise.all(batch.map(async (char) => {
         try {
           if (char.race === 'REVENANT') {
@@ -259,6 +275,7 @@ export async function processDailyTick(): Promise<void> {
           console.error(`[DailyTick] Step 1 error for character ${char.id}:`, err);
         }
       }));
+      }
     }
   });
 
@@ -523,22 +540,22 @@ export async function processDailyTick(): Promise<void> {
     // Check proposed laws: tally votes and activate or reject
     const now = new Date();
     const proposedLaws = await prisma.law.findMany({
-      where: { status: 'proposed', expiresAt: { lte: now } },
+      where: { status: 'PROPOSED', expiresAt: { lte: now } },
     });
 
     for (const law of proposedLaws) {
       const passed = law.votesFor > law.votesAgainst;
       await prisma.law.update({
         where: { id: law.id },
-        data: { status: passed ? 'active' : 'rejected' },
+        data: { status: passed ? 'ACTIVE' : 'REJECTED' },
       });
       console.log(`[DailyTick]   Law "${law.title}" ${passed ? 'PASSED' : 'REJECTED'} (${law.votesFor}-${law.votesAgainst})`);
     }
 
     // Expire active laws past their expiresAt
     const expired = await prisma.law.updateMany({
-      where: { status: 'active', expiresAt: { lte: now } },
-      data: { status: 'expired' },
+      where: { status: 'ACTIVE', expiresAt: { lte: now } },
+      data: { status: 'EXPIRED' },
     });
     if (expired.count > 0) {
       console.log(`[DailyTick]   Expired ${expired.count} law(s)`);
@@ -669,42 +686,58 @@ export async function processDailyTick(): Promise<void> {
     });
     const activeIds = new Set(allActive.map(a => a.characterId));
 
-    const allAlive = await prisma.character.findMany({
-      select: { id: true, maxHealth: true, health: true, hungerState: true },
-    });
+    // Cursor-based pagination for rest/heal processing
+    let restCursor: string | undefined;
+    let hasMoreRest = true;
 
-    for (const char of allAlive) {
-      const isResting = restingIds.has(char.id) || !activeIds.has(char.id);
-      if (!isResting) continue;
+    while (hasMoreRest) {
+      const restPage = await prisma.character.findMany({
+        select: { id: true, maxHealth: true, health: true, hungerState: true },
+        take: CURSOR_PAGE_SIZE,
+        orderBy: { id: 'asc' },
+        ...(restCursor ? { skip: 1, cursor: { id: restCursor } } : {}),
+      });
 
-      const hungerState = hungerStates.get(char.id) ?? char.hungerState ?? 'HUNGRY';
+      if (restPage.length < CURSOR_PAGE_SIZE) {
+        hasMoreRest = false;
+      }
+      if (restPage.length > 0) {
+        restCursor = restPage[restPage.length - 1].id;
+      }
 
-      if (hungerState === 'FED') {
-        // Heal 15% max HP, set wellRested
-        const healAmount = Math.floor(char.maxHealth * 0.15);
-        const newHealth = Math.min(char.maxHealth, char.health + healAmount);
+      for (const char of restPage) {
+        const isResting = restingIds.has(char.id) || !activeIds.has(char.id);
+        if (!isResting) continue;
 
-        await prisma.character.update({
-          where: { id: char.id },
-          data: {
-            health: newHealth,
-            wellRested: true,
-          },
-        });
+        const hungerState = hungerStates.get(char.id) ?? char.hungerState ?? 'HUNGRY';
 
-        const results = getResults(char.id);
-        results.action = results.action ?? { type: 'REST' };
-        results.notifications.push(`Rested well and recovered ${healAmount} HP.`);
-      } else {
-        // No recovery when not fed
-        await prisma.character.update({
-          where: { id: char.id },
-          data: { wellRested: false },
-        });
+        if (hungerState === 'FED') {
+          // Heal 15% max HP, set wellRested
+          const healAmount = Math.floor(char.maxHealth * 0.15);
+          const newHealth = Math.min(char.maxHealth, char.health + healAmount);
 
-        const results = getResults(char.id);
-        results.action = results.action ?? { type: 'REST' };
-        results.notifications.push('Too hungry to recover. Find food!');
+          await prisma.character.update({
+            where: { id: char.id },
+            data: {
+              health: newHealth,
+              wellRested: true,
+            },
+          });
+
+          const results = getResults(char.id);
+          results.action = results.action ?? { type: 'REST' };
+          results.notifications.push(`Rested well and recovered ${healAmount} HP.`);
+        } else {
+          // No recovery when not fed
+          await prisma.character.update({
+            where: { id: char.id },
+            data: { wellRested: false },
+          });
+
+          const results = getResults(char.id);
+          results.action = results.action ?? { type: 'REST' };
+          results.notifications.push('Too hungry to recover. Find food!');
+        }
       }
     }
   });
@@ -1488,48 +1521,62 @@ async function collectPropertyTaxes(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function degradeBuildings(): Promise<void> {
-  const buildings = await prisma.building.findMany({
-    where: { level: { gte: 1 } },
-    include: {
-      owner: { select: { id: true } },
-      town: { select: { name: true } },
-    },
-  });
-
   let degradedCount = 0;
+  let bldgCursor: string | undefined;
+  let hasMoreBldg = true;
 
-  for (const building of buildings) {
-    const storageData = building.storage as Record<string, unknown>;
-    const currentCondition = (storageData.condition as number) ?? 100;
-    const newCondition = Math.max(0, currentCondition - 1); // 1 per day
+  while (hasMoreBldg) {
+    const buildings = await prisma.building.findMany({
+      where: { level: { gte: 1 } },
+      include: {
+        owner: { select: { id: true } },
+        town: { select: { name: true } },
+      },
+      take: CURSOR_PAGE_SIZE,
+      orderBy: { id: 'asc' },
+      ...(bldgCursor ? { skip: 1, cursor: { id: bldgCursor } } : {}),
+    });
 
-    if (newCondition !== currentCondition) {
-      await prisma.building.update({
-        where: { id: building.id },
-        data: { storage: { ...storageData, condition: newCondition } },
-      });
-      degradedCount++;
+    if (buildings.length < CURSOR_PAGE_SIZE) {
+      hasMoreBldg = false;
+    }
+    if (buildings.length > 0) {
+      bldgCursor = buildings[buildings.length - 1].id;
+    }
 
-      if (newCondition <= LOW_CONDITION_THRESHOLD && newCondition > 0) {
-        emitBuildingConditionLow(building.ownerId, {
-          buildingId: building.id,
-          buildingName: building.name,
-          buildingType: building.type,
-          townName: building.town.name,
-          condition: newCondition,
-          isFunctional: newCondition >= NONFUNCTIONAL_THRESHOLD,
-          isCondemned: false,
+    for (const building of buildings) {
+      const storageData = building.storage as Record<string, unknown>;
+      const currentCondition = (storageData.condition as number) ?? 100;
+      const newCondition = Math.max(0, currentCondition - 1); // 1 per day
+
+      if (newCondition !== currentCondition) {
+        await prisma.building.update({
+          where: { id: building.id },
+          data: { storage: { ...storageData, condition: newCondition } },
         });
-      } else if (newCondition <= 0) {
-        emitBuildingConditionLow(building.ownerId, {
-          buildingId: building.id,
-          buildingName: building.name,
-          buildingType: building.type,
-          townName: building.town.name,
-          condition: 0,
-          isFunctional: false,
-          isCondemned: true,
-        });
+        degradedCount++;
+
+        if (newCondition <= LOW_CONDITION_THRESHOLD && newCondition > 0) {
+          emitBuildingConditionLow(building.ownerId, {
+            buildingId: building.id,
+            buildingName: building.name,
+            buildingType: building.type,
+            townName: building.town.name,
+            condition: newCondition,
+            isFunctional: newCondition >= NONFUNCTIONAL_THRESHOLD,
+            isCondemned: false,
+          });
+        } else if (newCondition <= 0) {
+          emitBuildingConditionLow(building.ownerId, {
+            buildingId: building.id,
+            buildingName: building.name,
+            buildingType: building.type,
+            townName: building.town.name,
+            condition: 0,
+            isFunctional: false,
+            isCondemned: true,
+          });
+        }
       }
     }
   }
@@ -1570,7 +1617,7 @@ async function processElections(): Promise<void> {
       data: {
         townId: town.id,
         type: 'MAYOR',
-        status: 'active',
+        status: 'ACTIVE',
         phase: 'NOMINATIONS',
         termNumber,
         startDate: now,
@@ -1600,7 +1647,7 @@ async function processElections(): Promise<void> {
       if (election.candidates.length === 0) {
         await prisma.election.update({
           where: { id: election.id },
-          data: { phase: 'COMPLETED', status: 'completed' },
+          data: { phase: 'COMPLETED', status: 'COMPLETED' },
         });
         console.log(`[DailyTick]   Election ${election.id} completed with no candidates`);
         continue;
@@ -1657,7 +1704,7 @@ async function processElections(): Promise<void> {
 
       await prisma.election.update({
         where: { id: election.id },
-        data: { phase: 'COMPLETED', status: 'completed', winnerId },
+        data: { phase: 'COMPLETED', status: 'COMPLETED', winnerId },
       });
 
       if (winnerId) {

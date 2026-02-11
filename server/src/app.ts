@@ -4,11 +4,21 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import router from './routes';
+import { prisma } from './lib/prisma';
+import { redis } from './lib/redis';
+import { logger } from './lib/logger';
+import { getMetrics, getMetricsContentType } from './lib/metrics';
+import { requestIdMiddleware } from './middleware/request-id';
+import { requestLoggerMiddleware } from './middleware/request-logger';
+import { metricsMiddleware } from './middleware/metrics';
 
 export const app = express();
 
 // P1 #34: Trust proxy for correct client IP behind reverse proxy (needed for rate limiting)
 app.set('trust proxy', 1);
+
+// Correlation ID — must be first so all downstream middleware/handlers have access
+app.use(requestIdMiddleware);
 
 // Middleware
 app.use(helmet());
@@ -19,6 +29,10 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// HTTP request logging and metrics (after body parsing, before routes)
+app.use(requestLoggerMiddleware);
+app.use(metricsMiddleware);
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -28,14 +42,64 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Health check
-app.get('/api/health', (_req, res) => {
-  res.json({
-    status: 'ok',
-    game: 'Realm of Crowns',
-    version: '0.1.0',
+// P2 #43: Deep health check — verifies DB and Redis connectivity
+app.get('/api/health', async (_req, res) => {
+  const checks: Record<string, boolean> = { db: false, redis: false };
+  const details: Record<string, string> = {};
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    checks.db = true;
+  } catch (err: any) {
+    details.db = err.message;
+  }
+
+  try {
+    if (redis) {
+      await redis.ping();
+      checks.redis = true;
+    } else {
+      details.redis = 'REDIS_URL not configured';
+    }
+  } catch (err: any) {
+    details.redis = err.message;
+  }
+
+  // P3 #64: Check daily tick freshness
+  let dailyTickStale = false;
+  try {
+    if (redis) {
+      const lastTick = await redis.get('dailyTick:lastSuccess');
+      if (lastTick) {
+        const hoursSince = (Date.now() - parseInt(lastTick, 10)) / (1000 * 60 * 60);
+        if (hoursSince > 25) {
+          dailyTickStale = true;
+          details.dailyTick = `Last success ${Math.round(hoursSince)}h ago`;
+        }
+      }
+    }
+  } catch { /* non-critical */ }
+
+  const healthy = checks.db && checks.redis;
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? 'ok' : 'degraded',
+    checks,
+    ...(Object.keys(details).length > 0 && { details }),
+    ...(dailyTickStale && { warnings: ['Daily tick has not run in over 25 hours'] }),
+    uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   });
+});
+
+// P3 #63: Prometheus metrics endpoint (not behind rate limiter)
+app.get('/metrics', async (_req, res) => {
+  try {
+    const metrics = await getMetrics();
+    res.set('Content-Type', getMetricsContentType());
+    res.end(metrics);
+  } catch (err) {
+    res.status(500).end();
+  }
 });
 
 // Route placeholder — routes will be added by feature prompts
@@ -70,7 +134,7 @@ app.use((_req, res) => {
 
 // Error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('Server error:', err.message);
+  logger.error({ err: err.message }, 'unhandled server error');
   res.status(500).json({
     error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
   });

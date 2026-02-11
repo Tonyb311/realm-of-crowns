@@ -1,5 +1,7 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma';
+import { logger } from '../lib/logger';
+import { cronJobExecutions } from '../lib/metrics';
 
 /**
  * Tax collection cron job.
@@ -9,15 +11,17 @@ import { prisma } from '../lib/prisma';
 export function startTaxCollectionJob() {
   // Run every hour at minute 0
   cron.schedule('0 * * * *', async () => {
-    console.log('[TaxCollection] Running hourly tax collection...');
+    logger.debug({ job: 'taxCollection' }, 'cron job started');
     try {
       await collectTaxes();
-    } catch (error) {
-      console.error('[TaxCollection] Error:', error);
+      cronJobExecutions.inc({ job: 'taxCollection', result: 'success' });
+    } catch (error: any) {
+      cronJobExecutions.inc({ job: 'taxCollection', result: 'failure' });
+      logger.error({ job: 'taxCollection', err: error.message }, 'cron job failed');
     }
   });
 
-  console.log('[TaxCollection] Cron job registered (every hour)');
+  logger.info('TaxCollection cron registered (every hour)');
 }
 
 async function collectTaxes() {

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { getPsionSpec } from '../services/psion-perks';
 
@@ -20,12 +21,6 @@ const sendMessageSchema = z.object({
   guildId: z.string().optional(),
   townId: z.string().optional(),
 });
-
-// --- Helpers ---
-
-async function getCharacter(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
 
 function parsePagination(query: Record<string, unknown>) {
   const page = Math.max(1, parseInt(query.page as string, 10) || 1);
@@ -49,14 +44,10 @@ const messageSelect = {
 };
 
 // POST /api/messages/send
-router.post('/send', authGuard, validate(sendMessageSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/send', authGuard, characterGuard, validate(sendMessageSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { channelType, content, recipientId, guildId, townId } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     // Channel-specific validation
     let farWhisper = false;
@@ -130,12 +121,9 @@ router.post('/send', authGuard, validate(sendMessageSchema), async (req: Authent
 });
 
 // GET /api/messages/inbox
-router.get('/inbox', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/inbox', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const { page, limit, skip } = parsePagination(req.query);
 
@@ -175,12 +163,9 @@ router.get('/inbox', authGuard, async (req: AuthenticatedRequest, res: Response)
 });
 
 // GET /api/messages/conversation/:characterId
-router.get('/conversation/:characterId', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/conversation/:characterId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const { characterId: otherId } = req.params;
     const { page, limit, skip } = parsePagination(req.query);
@@ -215,12 +200,9 @@ router.get('/conversation/:characterId', authGuard, async (req: AuthenticatedReq
 });
 
 // GET /api/messages/channel/:channelType
-router.get('/channel/:channelType', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/channel/:channelType', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const { channelType } = req.params;
     const validChannels = ['GLOBAL', 'TOWN', 'GUILD', 'PARTY', 'TRADE', 'SYSTEM'];
@@ -276,12 +258,9 @@ router.get('/channel/:channelType', authGuard, async (req: AuthenticatedRequest,
 });
 
 // PATCH /api/messages/:id/read
-router.patch('/:id/read', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.patch('/:id/read', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const message = await prisma.message.findUnique({ where: { id: req.params.id } });
     if (!message) {
@@ -306,12 +285,9 @@ router.patch('/:id/read', authGuard, async (req: AuthenticatedRequest, res: Resp
 });
 
 // DELETE /api/messages/:id
-router.delete('/:id', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:id', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const message = await prisma.message.findUnique({ where: { id: req.params.id } });
     if (!message) {

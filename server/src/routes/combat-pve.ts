@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { Prisma } from '@prisma/client';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
@@ -192,7 +193,7 @@ router.post('/start', authGuard, validate(startPveSchema), async (req: Authentic
     const existing = await prisma.combatParticipant.findFirst({
       where: {
         characterId: character.id,
-        session: { status: 'active' },
+        session: { status: 'ACTIVE' },
       },
     });
     if (existing) {
@@ -229,7 +230,7 @@ router.post('/start', authGuard, validate(startPveSchema), async (req: Authentic
     const session = await prisma.combatSession.create({
       data: {
         type: 'PVE',
-        status: 'active',
+        status: 'ACTIVE',
         locationTownId: character.currentTown.id,
         log: [],
       },
@@ -334,7 +335,7 @@ router.post('/action', authGuard, validate(combatActionSchema), async (req: Auth
       return res.status(404).json({ error: 'Combat session not found or has ended' });
     }
 
-    if (state.status !== 'active') {
+    if (state.status !== 'ACTIVE') {
       return res.status(400).json({ error: 'Combat has already ended' });
     }
 
@@ -370,7 +371,7 @@ router.post('/action', authGuard, validate(combatActionSchema), async (req: Auth
       }
 
       // Check if combat ended after monster turn
-      if (monsterState.status === 'completed') {
+      if (monsterState.status === 'COMPLETED') {
         await finishCombat(sessionId, monsterState, character.id);
         return res.json({ combat: formatCombatResponse(monsterState) });
       }
@@ -419,7 +420,7 @@ router.post('/action', authGuard, validate(combatActionSchema), async (req: Auth
 
     // If the next turn belongs to a monster, auto-resolve it immediately
     let finalState = newState;
-    if (finalState.status === 'active') {
+    if (finalState.status === 'ACTIVE') {
       const nextActorId = finalState.turnOrder[finalState.turnIndex];
       const isMonsterTurn = nextActorId.startsWith('monster-');
       if (isMonsterTurn) {
@@ -442,7 +443,7 @@ router.post('/action', authGuard, validate(combatActionSchema), async (req: Auth
     }
 
     // Check if combat ended
-    if (finalState.status === 'completed') {
+    if (finalState.status === 'COMPLETED') {
       await finishCombat(sessionId, finalState, character.id);
     }
 
@@ -539,7 +540,7 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
     await tx.combatSession.update({
       where: { id: sessionId },
       data: {
-        status: 'completed',
+        status: 'COMPLETED',
         endedAt: new Date(),
         log: state.log as object[],
       },
@@ -579,18 +580,19 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
           },
         });
 
-        // Damage equipment durability
+        // Damage equipment durability (batch update instead of N+1 loop)
         const equipment = await tx.characterEquipment.findMany({
           where: { characterId: playerId },
-          include: { item: true },
+          select: { itemId: true },
         });
-        for (const equip of equipment) {
-          await tx.item.update({
-            where: { id: equip.itemId },
-            data: {
-              currentDurability: Math.max(0, equip.item.currentDurability - penalty.durabilityDamage),
-            },
-          });
+        if (equipment.length > 0) {
+          const itemIds = equipment.map(e => e.itemId);
+          // Use raw SQL for atomic GREATEST(0, durability - damage) in a single query
+          await tx.$executeRaw`
+            UPDATE "Item"
+            SET "currentDurability" = GREATEST(0, "currentDurability" - ${penalty.durabilityDamage})
+            WHERE "id" IN (${Prisma.join(itemIds)})
+          `;
         }
 
         // Grant survive XP (consolation prize for engaging in combat)
@@ -662,7 +664,7 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
         const pveWins = await prisma.combatParticipant.count({
           where: {
             characterId: playerId,
-            session: { type: 'PVE', status: 'completed' },
+            session: { type: 'PVE', status: 'COMPLETED' },
             currentHp: { gt: 0 },
           },
         });
@@ -693,7 +695,7 @@ function formatCombatResponse(state: CombatState) {
     status: state.status,
     type: state.type,
     round: state.round,
-    currentTurn: state.status === 'active' ? state.turnOrder[state.turnIndex] : null,
+    currentTurn: state.status === 'ACTIVE' ? state.turnOrder[state.turnIndex] : null,
     winningTeam: state.winningTeam,
     combatants: state.combatants.map((c) => ({
       id: c.id,

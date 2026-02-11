@@ -3,97 +3,34 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Swords,
-  Shield,
-  Sparkles,
-  Package,
   Loader2,
-  Heart,
-  Droplets,
   Dices,
   Trophy,
   Skull,
   X,
-  Crown,
-  ChevronRight,
   AlertCircle,
-  Footprints,
   Users,
-  Scroll,
 } from 'lucide-react';
 import api from '../services/api';
+import { getSocket } from '../services/socket';
 import { SkeletonCard } from '../components/ui/LoadingSkeleton';
 import PlayerSearch from '../components/PlayerSearch';
+import CombatLog from '../components/combat/CombatLog';
+import type { CombatLogEntry } from '../components/combat/CombatLog';
+import CombatantCard from '../components/combat/CombatantCard';
+import type { Combatant } from '../components/combat/CombatantCard';
+import CombatActions from '../components/combat/CombatActions';
+import type { CombatSpell, CombatItem } from '../components/combat/CombatActions';
+import LootPanel from '../components/combat/LootPanel';
+import type { CombatResult } from '../components/combat/LootPanel';
+import InitiativeBar from '../components/combat/CombatHeader';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-interface Combatant {
-  entityId: string;
-  name: string;
-  type: 'player' | 'enemy' | 'ally';
-  hp: number;
-  maxHp: number;
-  mp: number;
-  maxMp: number;
-  initiative: number;
-  statusEffects: StatusEffect[];
-  portrait?: string;
-  level?: number;
-}
-
-interface StatusEffect {
-  id: string;
-  name: string;
-  icon?: string;
-  duration: number;
-}
-
-interface CombatLogEntry {
-  id: string;
-  actor: string;
-  actorType: 'player' | 'enemy' | 'system';
-  action: string;
-  roll?: number;
-  damage?: number;
-  healing?: number;
-  message: string;
-  timestamp: string;
-}
-
-interface CombatSpell {
-  id: string;
-  name: string;
-  mpCost: number;
-  description: string;
-  type: 'damage' | 'heal' | 'buff' | 'debuff';
-}
-
-interface CombatItem {
-  id: string;
-  name: string;
-  quantity: number;
-  type: string;
-  description: string;
-}
-
-interface LootItem {
-  name: string;
-  quantity: number;
-  rarity: string;
-}
-
-interface CombatResult {
-  outcome: 'victory' | 'defeat' | 'fled';
-  xpGained?: number;
-  goldGained?: number;
-  goldLost?: number;
-  xpLost?: number;
-  loot?: LootItem[];
-}
-
 interface CombatState {
   sessionId: string;
-  status: 'active' | 'finished';
+  status: 'ACTIVE' | 'COMPLETED' | 'finished';
   combatType: 'pve' | 'pvp';
   currentTurnEntityId: string;
   round: number;
@@ -122,26 +59,7 @@ interface LeaderboardEntry {
   rating: number;
 }
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-const RARITY_COLORS: Record<string, string> = {
-  POOR: 'text-gray-400',
-  COMMON: 'text-parchment-200',
-  FINE: 'text-green-400',
-  SUPERIOR: 'text-blue-400',
-  MASTERWORK: 'text-purple-400',
-  LEGENDARY: 'text-amber-400',
-};
-
-const LOG_COLORS: Record<string, string> = {
-  player: 'text-primary-400',
-  enemy: 'text-red-400',
-  system: 'text-parchment-500',
-};
-
 type Tab = 'battle' | 'pvp' | 'leaderboard';
-type ActionSubmenu = null | 'spells' | 'items';
 
 // ---------------------------------------------------------------------------
 // Dice Roll Display Component
@@ -208,408 +126,6 @@ function FloatingDamage({ amount, type, id }: { amount: number; type: 'damage' |
     >
       {type === 'damage' ? `-${amount}` : `+${amount}`}
     </span>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// HP / MP Bar
-// ---------------------------------------------------------------------------
-function StatBar({ current, max, color, label }: { current: number; max: number; color: 'red' | 'blue'; label: string }) {
-  const pct = max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 0;
-  const gradient = color === 'red'
-    ? 'from-red-700 to-red-500'
-    : 'from-blue-700 to-blue-500';
-
-  return (
-    <div>
-      <div className="flex justify-between text-[10px] mb-0.5">
-        <span className="text-parchment-500">{label}</span>
-        <span className="text-parchment-400">{current}/{max}</span>
-      </div>
-      <div className="h-3 bg-dark-500 rounded-full overflow-hidden border border-dark-50">
-        <div
-          className={`h-full rounded-full bg-gradient-to-r ${gradient} transition-all duration-500`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Combatant Portrait Card
-// ---------------------------------------------------------------------------
-function CombatantCard({ combatant, isActive, side }: { combatant: Combatant; isActive: boolean; side: 'left' | 'right' }) {
-  const borderColor = isActive ? 'border-primary-400' : combatant.type === 'enemy' ? 'border-red-900/50' : 'border-dark-50';
-
-  return (
-    <div className={`bg-dark-300 border-2 ${borderColor} rounded-lg p-4 transition-all ${isActive ? 'ring-1 ring-primary-400/30' : ''}`}>
-      {isActive && (
-        <div className="flex items-center gap-1 mb-2">
-          <ChevronRight className="w-3 h-3 text-primary-400 animate-pulse" />
-          <span className="text-[10px] text-primary-400 font-display uppercase tracking-wider">Current Turn</span>
-        </div>
-      )}
-      <div className={`flex items-center gap-3 ${side === 'right' ? 'flex-row-reverse text-right' : ''}`}>
-        <div className={`w-14 h-14 rounded-lg border-2 flex items-center justify-center flex-shrink-0
-          ${combatant.type === 'enemy' ? 'border-red-900/50 bg-red-900/10' : 'border-primary-400/30 bg-primary-400/10'}`}
-        >
-          {combatant.type === 'enemy' ? (
-            <Skull className="w-7 h-7 text-red-400" />
-          ) : (
-            <Crown className="w-7 h-7 text-primary-400" />
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className={`font-display text-sm truncate ${combatant.type === 'enemy' ? 'text-red-400' : 'text-parchment-200'}`}>
-            {combatant.name}
-          </h3>
-          {combatant.level && (
-            <p className="text-[10px] text-parchment-500">Lv. {combatant.level}</p>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-3 space-y-1.5">
-        <StatBar current={combatant.hp} max={combatant.maxHp} color="red" label="HP" />
-        <StatBar current={combatant.mp} max={combatant.maxMp} color="blue" label="MP" />
-      </div>
-
-      {combatant.statusEffects.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {combatant.statusEffects.map((effect) => (
-            <span
-              key={effect.id}
-              className="text-[9px] bg-dark-500 border border-dark-50 rounded px-1.5 py-0.5 text-parchment-400"
-              title={`${effect.name} (${effect.duration} turns)`}
-            >
-              {effect.name}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Combat Log Panel
-// ---------------------------------------------------------------------------
-function CombatLog({ entries }: { entries: CombatLogEntry[] }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [entries.length]);
-
-  return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg flex flex-col h-full">
-      <div className="px-4 py-2 border-b border-dark-50 flex items-center gap-2">
-        <Scroll className="w-4 h-4 text-parchment-500" />
-        <h3 className="font-display text-xs text-parchment-400 uppercase tracking-wider">Combat Log</h3>
-      </div>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-1.5 max-h-[400px] scrollbar-thin">
-        {entries.length === 0 ? (
-          <p className="text-parchment-500/50 text-xs text-center py-4">Combat begins...</p>
-        ) : (
-          entries.map((entry) => (
-            <div key={entry.id} className="text-xs leading-relaxed">
-              <span className={`font-semibold ${LOG_COLORS[entry.actorType] ?? 'text-parchment-500'}`}>
-                {entry.actor}
-              </span>
-              <span className="text-parchment-400"> {entry.message}</span>
-              {entry.roll && (
-                <span className={`ml-1 ${entry.roll === 20 ? 'text-primary-400 font-bold' : entry.roll === 1 ? 'text-red-400 font-bold' : 'text-parchment-500'}`}>
-                  [d20: {entry.roll}]
-                </span>
-              )}
-              {entry.damage && (
-                <span className="text-red-400 ml-1">-{entry.damage} HP</span>
-              )}
-              {entry.healing && (
-                <span className="text-green-400 ml-1">+{entry.healing} HP</span>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Initiative Order Bar
-// ---------------------------------------------------------------------------
-function InitiativeBar({ combatants, currentTurnId }: { combatants: Combatant[]; currentTurnId: string }) {
-  const sorted = [...combatants].sort((a, b) => b.initiative - a.initiative);
-
-  return (
-    <div className="flex items-center gap-2 bg-dark-300 border border-dark-50 rounded-lg px-4 py-2">
-      <span className="text-[10px] text-parchment-500 font-display uppercase tracking-wider mr-2">Initiative</span>
-      {sorted.map((c) => {
-        const isActive = c.entityId === currentTurnId;
-        return (
-          <div
-            key={c.entityId}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded border text-xs transition-all
-              ${isActive
-                ? 'border-primary-400 bg-primary-400/10 text-primary-400'
-                : c.type === 'enemy'
-                  ? 'border-red-900/30 text-red-400/70'
-                  : 'border-dark-50 text-parchment-400'
-              }`}
-            title={`${c.name}: Initiative ${c.initiative}`}
-          >
-            {c.type === 'enemy' ? (
-              <Skull className="w-3 h-3" />
-            ) : (
-              <Crown className="w-3 h-3" />
-            )}
-            <span className="truncate max-w-[60px]">{c.name}</span>
-            {isActive && <ChevronRight className="w-3 h-3 animate-pulse" />}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Action Menu
-// ---------------------------------------------------------------------------
-interface ActionMenuProps {
-  isPlayerTurn: boolean;
-  combatType: 'pve' | 'pvp';
-  spells: CombatSpell[];
-  items: CombatItem[];
-  playerMp: number;
-  onAction: (action: string, opts?: { spellId?: string; itemId?: string }) => void;
-  isPending: boolean;
-}
-
-function ActionMenu({ isPlayerTurn, combatType, spells, items, playerMp, onAction, isPending }: ActionMenuProps) {
-  const [submenu, setSubmenu] = useState<ActionSubmenu>(null);
-
-  const disabled = !isPlayerTurn || isPending;
-
-  return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg p-4">
-      {!isPlayerTurn && (
-        <div className="text-center py-2 mb-3">
-          <Loader2 className="w-4 h-4 text-parchment-500 animate-spin mx-auto mb-1" />
-          <p className="text-parchment-500 text-xs">Waiting for opponent...</p>
-        </div>
-      )}
-
-      <div className="flex flex-wrap gap-2">
-        {/* Attack */}
-        <button
-          onClick={() => { setSubmenu(null); onAction('attack'); }}
-          disabled={disabled}
-          className="flex items-center gap-2 px-4 py-2.5 bg-red-900/30 border border-red-500/40 text-red-400 font-display text-sm rounded
-            hover:bg-red-900/50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          <Swords className="w-4 h-4" />
-          Attack
-        </button>
-
-        {/* Spells */}
-        <div className="relative">
-          <button
-            onClick={() => setSubmenu(submenu === 'spells' ? null : 'spells')}
-            disabled={disabled}
-            className={`flex items-center gap-2 px-4 py-2.5 border font-display text-sm rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed
-              ${submenu === 'spells'
-                ? 'bg-blue-900/30 border-blue-400/50 text-blue-400'
-                : 'bg-blue-900/20 border-blue-500/30 text-blue-400 hover:bg-blue-900/40'}`}
-          >
-            <Sparkles className="w-4 h-4" />
-            Spells
-          </button>
-
-          {submenu === 'spells' && (
-            <div className="absolute bottom-full left-0 mb-2 w-56 bg-dark-400 border border-dark-50 rounded-lg shadow-xl z-10">
-              <div className="p-2 max-h-48 overflow-y-auto">
-                {spells.length === 0 ? (
-                  <p className="text-parchment-500 text-xs p-2">No spells available.</p>
-                ) : (
-                  spells.map((spell) => {
-                    const canCast = playerMp >= spell.mpCost;
-                    return (
-                      <button
-                        key={spell.id}
-                        onClick={() => { onAction('cast_spell', { spellId: spell.id }); setSubmenu(null); }}
-                        disabled={!canCast || isPending}
-                        className="w-full text-left px-3 py-2 rounded text-xs hover:bg-dark-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        <div className="flex justify-between items-baseline">
-                          <span className="text-parchment-200 font-semibold">{spell.name}</span>
-                          <span className={`${canCast ? 'text-blue-400' : 'text-red-400'}`}>
-                            {spell.mpCost} MP
-                          </span>
-                        </div>
-                        <p className="text-parchment-500 mt-0.5">{spell.description}</p>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Items */}
-        <div className="relative">
-          <button
-            onClick={() => setSubmenu(submenu === 'items' ? null : 'items')}
-            disabled={disabled}
-            className={`flex items-center gap-2 px-4 py-2.5 border font-display text-sm rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed
-              ${submenu === 'items'
-                ? 'bg-green-900/30 border-green-400/50 text-green-400'
-                : 'bg-green-900/20 border-green-500/30 text-green-400 hover:bg-green-900/40'}`}
-          >
-            <Package className="w-4 h-4" />
-            Items
-          </button>
-
-          {submenu === 'items' && (
-            <div className="absolute bottom-full left-0 mb-2 w-56 bg-dark-400 border border-dark-50 rounded-lg shadow-xl z-10">
-              <div className="p-2 max-h-48 overflow-y-auto">
-                {items.length === 0 ? (
-                  <p className="text-parchment-500 text-xs p-2">No usable items.</p>
-                ) : (
-                  items.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => { onAction('use_item', { itemId: item.id }); setSubmenu(null); }}
-                      disabled={isPending}
-                      className="w-full text-left px-3 py-2 rounded text-xs hover:bg-dark-300 transition-colors disabled:opacity-40"
-                    >
-                      <div className="flex justify-between items-baseline">
-                        <span className="text-parchment-200 font-semibold">{item.name}</span>
-                        <span className="text-parchment-500">x{item.quantity}</span>
-                      </div>
-                      <p className="text-parchment-500 mt-0.5">{item.description}</p>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Defend */}
-        <button
-          onClick={() => { setSubmenu(null); onAction('defend'); }}
-          disabled={disabled}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary-400/10 border border-primary-400/30 text-primary-400 font-display text-sm rounded
-            hover:bg-primary-400/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          <Shield className="w-4 h-4" />
-          Defend
-        </button>
-
-        {/* Flee (PvE only) */}
-        {combatType === 'pve' && (
-          <button
-            onClick={() => { setSubmenu(null); onAction('flee'); }}
-            disabled={disabled}
-            className="flex items-center gap-2 px-4 py-2.5 bg-dark-400 border border-parchment-500/30 text-parchment-400 font-display text-sm rounded
-              hover:bg-dark-300 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <Footprints className="w-4 h-4" />
-            Flee
-          </button>
-        )}
-
-        {isPending && <Loader2 className="w-5 h-5 text-primary-400 animate-spin self-center ml-2" />}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Victory / Defeat Screen
-// ---------------------------------------------------------------------------
-function CombatResultScreen({ result, onReturn }: { result: CombatResult; onReturn: () => void }) {
-  const isVictory = result.outcome === 'victory';
-  const isFled = result.outcome === 'fled';
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-      <div className={`bg-dark-400 rounded-lg p-8 max-w-md w-full mx-4 border-2 text-center
-        ${isVictory ? 'border-primary-400 shadow-lg shadow-primary-400/20' : isFled ? 'border-parchment-500/50' : 'border-red-500 shadow-lg shadow-red-500/20'}`}
-      >
-        {isVictory ? (
-          <>
-            <Trophy className="w-16 h-16 text-primary-400 mx-auto mb-4" />
-            <h2 className="text-3xl font-display text-primary-400 mb-2">VICTORY!</h2>
-          </>
-        ) : isFled ? (
-          <>
-            <Footprints className="w-16 h-16 text-parchment-500 mx-auto mb-4" />
-            <h2 className="text-3xl font-display text-parchment-400 mb-2">ESCAPED</h2>
-          </>
-        ) : (
-          <>
-            <Skull className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-3xl font-display text-red-400 mb-2">DEFEATED</h2>
-          </>
-        )}
-
-        <div className="mt-6 space-y-3">
-          {result.xpGained != null && result.xpGained > 0 && (
-            <div className="flex justify-between text-sm bg-dark-500 rounded px-4 py-2">
-              <span className="text-parchment-500">XP Gained</span>
-              <span className="text-green-400 font-display">+{result.xpGained}</span>
-            </div>
-          )}
-          {result.goldGained != null && result.goldGained > 0 && (
-            <div className="flex justify-between text-sm bg-dark-500 rounded px-4 py-2">
-              <span className="text-parchment-500">Gold Earned</span>
-              <span className="text-primary-400 font-display">+{result.goldGained}</span>
-            </div>
-          )}
-          {result.xpLost != null && result.xpLost > 0 && (
-            <div className="flex justify-between text-sm bg-dark-500 rounded px-4 py-2">
-              <span className="text-parchment-500">XP Lost</span>
-              <span className="text-red-400 font-display">-{result.xpLost}</span>
-            </div>
-          )}
-          {result.goldLost != null && result.goldLost > 0 && (
-            <div className="flex justify-between text-sm bg-dark-500 rounded px-4 py-2">
-              <span className="text-parchment-500">Gold Lost</span>
-              <span className="text-red-400 font-display">-{result.goldLost}</span>
-            </div>
-          )}
-          {result.loot && result.loot.length > 0 && (
-            <div className="bg-dark-500 rounded px-4 py-3">
-              <p className="text-[10px] text-parchment-500 uppercase tracking-wider mb-2">Loot</p>
-              <div className="space-y-1">
-                {result.loot.map((item, i) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span className={RARITY_COLORS[item.rarity] ?? 'text-parchment-200'}>{item.name}</span>
-                    <span className="text-parchment-500">x{item.quantity}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <button
-          onClick={onReturn}
-          className={`mt-8 w-full py-3 font-display text-base rounded transition-colors
-            ${isVictory
-              ? 'bg-primary-400 text-dark-500 hover:bg-primary-300'
-              : 'bg-dark-300 text-parchment-300 border border-parchment-500/30 hover:bg-dark-200'}`}
-        >
-          Return to Town
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -746,7 +262,6 @@ function PvpLeaderboard({ entries, isLoading }: { entries: LeaderboardEntry[]; i
 // ---------------------------------------------------------------------------
 // PvP Challenge Modal
 // ---------------------------------------------------------------------------
-// MAJ-20: Replaced raw UUID input with PlayerSearch component
 function ChallengeModal({
   onClose,
   onChallenge,
@@ -851,12 +366,27 @@ export default function CombatPage() {
   const hideDice = useCallback(() => setShowDice(false), []);
 
   // -------------------------------------------------------------------------
+  // Socket-based combat state refresh
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handleCombatResult = () => {
+      queryClient.invalidateQueries({ queryKey: ['combat'] });
+    };
+
+    socket.on('combat:result', handleCombatResult);
+    return () => { socket.off('combat:result', handleCombatResult); };
+  }, [queryClient]);
+
+  // -------------------------------------------------------------------------
   // PvE Queries & Mutations
   // -------------------------------------------------------------------------
   const { data: pveState, isLoading: pveLoading } = useQuery<CombatState>({
     queryKey: ['combat', 'pve', 'state'],
     queryFn: async () => (await api.get('/combat/pve/state')).data,
-    refetchInterval: 3000,
+    refetchInterval: 5000,
     enabled: activeTab === 'battle',
   });
 
@@ -876,14 +406,14 @@ export default function CombatPage() {
   const { data: pvpState } = useQuery<CombatState>({
     queryKey: ['combat', 'pvp', 'state'],
     queryFn: async () => (await api.get('/combat/pvp/state')).data,
-    refetchInterval: 3000,
+    refetchInterval: 5000,
     enabled: activeTab === 'battle',
   });
 
   const { data: challenges, isLoading: challengesLoading } = useQuery<PvpChallenge[]>({
     queryKey: ['combat', 'pvp', 'challenges'],
     queryFn: async () => (await api.get('/combat/pvp/challenges')).data,
-    refetchInterval: 10000,
+    refetchInterval: 15000,
     enabled: activeTab === 'pvp',
   });
 
@@ -936,16 +466,16 @@ export default function CombatPage() {
   // Determine active combat state
   // -------------------------------------------------------------------------
   const activeCombat: CombatState | null =
-    (pvpState?.status === 'active' ? pvpState : null) ??
-    (pveState?.status === 'active' ? pveState : null) ??
-    (pveState?.status === 'finished' ? pveState : null) ??
-    (pvpState?.status === 'finished' ? pvpState : null) ??
+    (pvpState?.status === 'ACTIVE' ? pvpState : null) ??
+    (pveState?.status === 'ACTIVE' ? pveState : null) ??
+    (pveState?.status === 'COMPLETED' ? pveState : null) ??
+    (pvpState?.status === 'COMPLETED' ? pvpState : null) ??
     null;
 
   const player = activeCombat?.combatants.find((c) => c.type === 'player') ?? null;
   const enemies = activeCombat?.combatants.filter((c) => c.type === 'enemy') ?? [];
   const isPlayerTurn = activeCombat ? activeCombat.currentTurnEntityId === player?.entityId : false;
-  const isActive = activeCombat?.status === 'active';
+  const isActive = activeCombat?.status === 'ACTIVE';
 
   // -------------------------------------------------------------------------
   // Show dice roll and floating damage on new log entries
@@ -1011,8 +541,8 @@ export default function CombatPage() {
       <DiceRollDisplay roll={diceRoll} visible={showDice} onDone={hideDice} />
 
       {/* Result Screen */}
-      {activeCombat?.status === 'finished' && activeCombat.result && (
-        <CombatResultScreen
+      {activeCombat?.status === 'COMPLETED' && activeCombat.result && (
+        <LootPanel
           result={activeCombat.result}
           onReturn={() => navigate('/town')}
         />
@@ -1034,7 +564,7 @@ export default function CombatPage() {
               <div>
                 <h1 className="text-3xl font-display text-primary-400">Combat</h1>
                 <p className="text-parchment-500 text-sm">
-                  {activeCombat?.status === 'active'
+                  {activeCombat?.status === 'ACTIVE'
                     ? `Round ${activeCombat.round} - ${activeCombat.combatType === 'pvp' ? 'PvP' : 'PvE'}`
                     : 'Ready for battle'}
                 </p>
@@ -1091,9 +621,7 @@ export default function CombatPage() {
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
 
-        {/* ================================================================= */}
-        {/* TAB: Battle                                                       */}
-        {/* ================================================================= */}
+        {/* TAB: Battle */}
         {activeTab === 'battle' && (
           <div>
             {pveLoading ? (
@@ -1186,7 +714,7 @@ export default function CombatPage() {
 
                     {/* Action menu */}
                     {isActive && (
-                      <ActionMenu
+                      <CombatActions
                         isPlayerTurn={isPlayerTurn}
                         combatType={activeCombat.combatType}
                         spells={activeCombat.availableSpells}
@@ -1216,9 +744,7 @@ export default function CombatPage() {
           </div>
         )}
 
-        {/* ================================================================= */}
-        {/* TAB: PvP Challenges                                               */}
-        {/* ================================================================= */}
+        {/* TAB: PvP Challenges */}
         {activeTab === 'pvp' && (
           <div>
             <div className="flex items-center justify-between mb-6">
@@ -1242,9 +768,7 @@ export default function CombatPage() {
           </div>
         )}
 
-        {/* ================================================================= */}
-        {/* TAB: Leaderboard                                                  */}
-        {/* ================================================================= */}
+        {/* TAB: Leaderboard */}
         {activeTab === 'leaderboard' && (
           <div>
             <h2 className="text-xl font-display text-parchment-200 mb-6">PvP Rankings</h2>

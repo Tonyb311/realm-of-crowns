@@ -3,16 +3,11 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { ABILITIES_BY_CLASS, SPECIALIZATIONS, ALL_ABILITIES } from '@shared/data/skills';
 
 const router = Router();
-
-// ---- Helpers ----
-
-async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
 
 // ---- Zod Schemas ----
 
@@ -27,13 +22,9 @@ const unlockAbilitySchema = z.object({
 // ---- GET /api/skills/tree ----
 // Get skill tree for the character's class, showing which abilities are unlocked
 
-router.get('/tree', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/tree', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     if (!character.class) {
       return res.status(400).json({ error: 'Character has no class assigned' });
@@ -87,14 +78,10 @@ router.get('/tree', authGuard, async (req: AuthenticatedRequest, res: Response) 
 // ---- POST /api/skills/specialize ----
 // Choose a specialization (requires level 10, can only be done once)
 
-router.post('/specialize', authGuard, validate(specializeSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/specialize', authGuard, characterGuard, validate(specializeSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { specialization } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     if (!character.class) {
       return res.status(400).json({ error: 'Character has no class assigned' });
@@ -134,14 +121,10 @@ router.post('/specialize', authGuard, validate(specializeSchema), async (req: Au
 // ---- POST /api/skills/unlock ----
 // Unlock an ability (validates class, spec, prereqs, skill points, level)
 
-router.post('/unlock', authGuard, validate(unlockAbilitySchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/unlock', authGuard, characterGuard, validate(unlockAbilitySchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { abilityId } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     if (!character.class) {
       return res.status(400).json({ error: 'Character has no class assigned' });
@@ -254,13 +237,9 @@ router.post('/unlock', authGuard, validate(unlockAbilitySchema), async (req: Aut
 // ---- GET /api/skills/abilities ----
 // Get character's unlocked abilities (for combat integration)
 
-router.get('/abilities', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/abilities', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const characterAbilities = await prisma.characterAbility.findMany({
       where: { characterId: character.id },

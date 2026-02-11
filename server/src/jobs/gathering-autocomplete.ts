@@ -1,4 +1,4 @@
-import cron from 'node-cron';
+import { logger } from '../lib/logger';
 
 /**
  * Gathering auto-complete notification cron job.
@@ -11,5 +11,5 @@ import cron from 'node-cron';
  */
 export function startGatheringAutocompleteJob() {
   // No-op: gathering completion is now handled by the daily tick processor.
-  console.log('[GatheringAutocomplete] Skipped — gathering is now resolved by the daily tick processor.');
+  logger.info('GatheringAutocomplete skipped — handled by daily tick');
 }

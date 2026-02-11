@@ -1,5 +1,7 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma';
+import { logger } from '../lib/logger';
+import { cronJobExecutions } from '../lib/metrics';
 import { generateStateReport } from '../services/herald';
 import { emitStateReport } from '../socket/events';
 
@@ -10,7 +12,7 @@ import { emitStateReport } from '../socket/events';
 export function startStateOfAethermereJob() {
   // Run on the 1st of every month at midnight
   cron.schedule('0 0 1 * *', async () => {
-    console.log('[StateOfAethermere] Generating monthly report...');
+    logger.info({ job: 'stateOfAethermere' }, 'cron job started');
     try {
       const report = await compileReport();
       const event = await generateStateReport(report);
@@ -22,13 +24,15 @@ export function startStateOfAethermereJob() {
         createdAt: event.createdAt.toISOString(),
       });
 
-      console.log('[StateOfAethermere] Monthly report broadcast complete');
-    } catch (error) {
-      console.error('[StateOfAethermere] Error generating report:', error);
+      cronJobExecutions.inc({ job: 'stateOfAethermere', result: 'success' });
+      logger.info({ job: 'stateOfAethermere' }, 'monthly report broadcast complete');
+    } catch (error: any) {
+      cronJobExecutions.inc({ job: 'stateOfAethermere', result: 'failure' });
+      logger.error({ job: 'stateOfAethermere', err: error.message }, 'cron job failed');
     }
   });
 
-  console.log('[StateOfAethermere] Cron job registered (1st of each month)');
+  logger.info('StateOfAethermere cron registered (1st of each month)');
 }
 
 async function compileReport(): Promise<string> {
@@ -37,7 +41,7 @@ async function compileReport(): Promise<string> {
 
   // Active wars
   const activeWars = await prisma.war.findMany({
-    where: { status: 'active' },
+    where: { status: 'ACTIVE' },
     include: {
       attackerKingdom: { select: { name: true } },
       defenderKingdom: { select: { name: true } },

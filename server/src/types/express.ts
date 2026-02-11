@@ -1,4 +1,5 @@
 import { Request } from 'express';
+import { Character } from '@prisma/client';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -6,4 +7,5 @@ export interface AuthenticatedRequest extends Request {
     username: string;
     role: string;
   };
+  character?: Character;
 }

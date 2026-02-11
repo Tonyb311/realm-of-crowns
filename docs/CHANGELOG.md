@@ -619,6 +619,94 @@ All development phases for Realm of Crowns, documenting what was built in each p
 
 ---
 
+## P0 Fix Pass (2026-02-10) -- COMPLETE
+
+13 security and data integrity fixes:
+
+**Security (5):**
+- Rotated leaked credentials to placeholders
+- Removed hardcoded secrets from docker-compose.yml (uses env_file)
+- Docker non-root user in Dockerfile
+- JWT_SECRET validation at startup (exits on missing/placeholder)
+- XSS sanitization on chat messages (sanitizeText strips HTML)
+
+**Combat & Economy (3):**
+- Server-side weapon validation (getEquippedWeapon from DB, no client-sent stats)
+- Crafting collect race condition fix (atomic updateMany with COLLECTED status)
+- Double taxation fix (tax collected at purchase, cron only tracks timestamps)
+
+**Data Integrity (3):**
+- PvE combat resolution wrapped in prisma.$transaction
+- Inventory unique constraint @@unique([characterId, itemId])
+- LawVote model with @@unique([lawId, characterId]) for vote deduplication
+
+**Infrastructure (2):**
+- Per-user cache keys (cache:{userId}:{url})
+- Chat character ownership verification on chat:identify
+- Graceful shutdown handlers (SIGTERM/SIGINT, 10s timeout)
+- Trust proxy for rate limiter behind reverse proxy
+- Socket rate limiter keyed by userId instead of socket.id
+- Notification route ordering fix (/read-all before /:id/read)
+
+---
+
+## P1 Fix Pass (2026-02-10) -- COMPLETE
+
+### Crafting Chain Fixes (7)
+- Nails recipe input: Iron Ingot -> Copper Ingot (Smelter L5 can now craft)
+- Added spin-silk-thread recipe (Tailor L25): 2 Wool + 1 Flowers -> 2 Silk Thread
+- Added Exotic Hide resource (Hunter tier 3, FOREST/SWAMP/BADLANDS biomes)
+- Copper weapons: Hardwood Planks -> Softwood Planks (all L1 materials)
+- Added Cloth Padding recipe (Tailor L3): 2 Cloth -> 1 Cloth Padding
+- Rancher outputs renamed: Cattle->Beef, Pigs->Pork, Chickens->Chicken
+- Added Woodworker recipes: Barrel (L10), Furniture (L15)
+
+### Frontend Fixes (8)
+- Error boundaries wrapping Routes in App.tsx
+- 401 interceptor uses roc:auth-expired event (no page reload)
+- Dynamic tax rates from server (replaces hardcoded 10%)
+- GovernancePage derives kingdomId from town->region->kingdom
+- Socket reconnection with status indicator and room rejoin
+- 404 catch-all route with NotFoundPage
+- ChatPanel socket-only (removed duplicate REST call)
+- PvP challenge uses PlayerSearch component (replaces UUID input)
+
+### Backend Logic Fixes (7)
+- Human 4th profession slot: getMaxProfessions() returns 4 for HUMAN L15+
+- PvP leaderboard: groupBy aggregation + pagination (replaces unbounded findMany)
+- Caravan collect validates character is in destination town
+- Quest progress capped to 1 per request
+- Quest item rewards now granted on completion
+- Flee action: FLED status with minor penalty (not full death)
+- getCharacterForUser orderBy createdAt asc across 30+ files
+
+### Database & Seed Fixes (6)
+- Kingdom seed data: 8 kingdoms with region assignments
+- Kingdom-region FK (Region.kingdomId)
+- Abilities and achievements wired into seed pipeline
+- 4 performance indexes (CombatLog, Notification, TradeTransaction x2)
+- Cascade delete fixes on Loan, ServiceAction, ServiceReputation
+- Spar cooldowns moved to Redis with TTL
+
+---
+
+## P2/P3 Fix Pass (2026-02-10) -- IN PROGRESS
+
+### Documentation Sync
+- Updated GAME_GUIDE.md: added Psion class (7th class), fixed region count (21 territories)
+- Updated API_REFERENCE.md: added psion to character class validation, fixed combat endpoint paths
+- Updated ARCHITECTURE.md: version 0.3.0 reflecting Phase 2B + fix passes, corrected middleware/lib counts
+- Complete CODE_INVENTORY.md rebuild: accurate counts for all files, services, pages, components
+- Fixed specialization names in QUESTS.md (10 incorrect names corrected)
+- Updated CLAUDE.md: 7 classes, 29 professions, correct middleware/lib counts, combat Redis key, P0/P1 summary
+- Updated COMBAT.md: correct Redis key pattern, weapon validation, transaction wrapper, flee action
+- Updated ECONOMY.md: Rancher output names, Nails recipe fix, profession count
+- Updated RACES.md: Nightborne ability names (Superior Deepsight, Nightborne Magic), 7-ability note
+- Updated POLITICS.md: implementation notes for LawVote, election threshold, impeachment, treaty gold, tax sync
+- Updated _gameplay-section.md: 7 classes, 68 towns (not 69)
+
+---
+
 ## Summary
 
 | Metric | Count |
@@ -627,14 +715,19 @@ All development phases for Realm of Crowns, documenting what was built in each p
 | Server route files | 41 |
 | Server service modules | 31 |
 | Cron jobs | 17 |
-| Client pages | 24 |
-| Client component directories | 30+ |
-| Shared data files | 50+ |
+| Server middleware | 6 |
+| Server libraries | 5 |
+| Client pages | 30 (24 root + 6 admin) |
+| Client components | 83 across 18 subdirectories |
+| Client hooks | 7 |
+| Shared data files | 80+ |
 | Integration test suites | 8 |
+| Database migrations | 15 |
+| Database seed files | 18 |
 | Playable races | 20 (7 core, 6 common, 7 exotic) |
 | Sub-race options | 17 (7 ancestries + 6 clans + 4 elements) |
-| Racial abilities | 120 (6 per race) |
-| Professions | 28 (7 gathering + 15 crafting + 6 service) |
+| Racial abilities | 121 (6 per race, Nightborne has 7) |
+| Professions | 29 (7 gathering + 15 crafting + 7 service) |
 | Towns | 68 across 21 territories |
 | Exclusive resource zones | 11 |
 | Recipe files | 15 |

@@ -386,7 +386,7 @@ Fire, Water, Earth, Air -- each provides element-specific crafting bonuses, comb
 
 ## A.7 Classes & Specializations
 
-There are **6 classes**, each with **3 specializations** (chosen at level 10, permanent). Each specialization has **6 abilities** unlocked through a skill tree using skill points. **108 total abilities** across all classes.
+There are **7 classes** (Warrior, Mage, Rogue, Cleric, Ranger, Bard, Psion), each with **3 specializations** (chosen at level 10, permanent). Each specialization has **6 abilities** unlocked through a skill tree using skill points. **126 total abilities** across all classes.
 
 ### Warrior
 > Melee powerhouse. Choose between raw damage, tanking, or group support.
@@ -536,7 +536,7 @@ The world of Aethermere contains **21 regions** organized by race tier affinity:
 
 ## B.2 Towns
 
-The world contains **69 towns** spread across all 21 regions. Each town has:
+The world contains **68 towns** spread across all 21 regions. Each town has:
 
 - **Population**: Affects marketplace activity and available NPCs
 - **Biome**: Determines which resources can be gathered nearby
@@ -594,7 +594,7 @@ Travel between towns follows established routes with real-time duration:
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `database/seeds/world.ts` | ~1200 | All 21 regions, 69 towns, and route definitions |
+| `database/seeds/world.ts` | ~1200 | All 21 regions, 68 towns, and route definitions |
 | `server/src/routes/travel.ts` | 365 | Travel initiation, status, arrival, border checks |
 | `server/src/routes/world.ts` | 132 | Map data, region listings, game time |
 | `server/src/routes/towns.ts` | 113 | Town details, buildings, characters in town |

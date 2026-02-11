@@ -46,7 +46,7 @@ router.get('/', authGuard, async (req: AuthenticatedRequest, res: Response) => {
 router.get('/war-bulletin', authGuard, async (_req: AuthenticatedRequest, res: Response) => {
   try {
     const activeWars = await prisma.war.findMany({
-      where: { status: 'active' },
+      where: { status: 'ACTIVE' },
       include: {
         attackerKingdom: { select: { id: true, name: true } },
         defenderKingdom: { select: { id: true, name: true } },

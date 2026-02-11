@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { qualityRoll } from '@shared/utils/dice';
 import { getProficiencyBonus, getModifier } from '@shared/utils/bounded-accuracy';
@@ -103,10 +104,6 @@ function tierIndex(tier: ProfessionTier): number {
 
 function getLevelRequired(tier: ProfessionTier): number {
   return TIER_LEVEL_REQUIRED[tier];
-}
-
-async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
 }
 
 /**
@@ -215,13 +212,9 @@ async function consumeIngredients(
 // =========================================================================
 // GET /api/crafting/recipes
 // =========================================================================
-router.get('/recipes', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/recipes', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const { profession, tier, level } = req.query;
 
@@ -329,14 +322,10 @@ router.get('/recipes', authGuard, async (req: AuthenticatedRequest, res: Respons
 // =========================================================================
 // POST /api/crafting/start  (single craft — kept for backward compat)
 // =========================================================================
-router.post('/start', authGuard, validate(startCraftSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/start', authGuard, characterGuard, validate(startCraftSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { recipeId } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     // Load the recipe
     const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } });
@@ -478,13 +467,9 @@ router.post('/start', authGuard, validate(startCraftSchema), async (req: Authent
 // =========================================================================
 // GET /api/crafting/status
 // =========================================================================
-router.get('/status', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/status', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const activeCraft = await prisma.craftingAction.findFirst({
       where: { characterId: character.id, status: 'IN_PROGRESS' },
@@ -516,13 +501,9 @@ router.get('/status', authGuard, async (req: AuthenticatedRequest, res: Response
 // =========================================================================
 // POST /api/crafting/collect — collects the FIRST completed action in queue
 // =========================================================================
-router.post('/collect', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/collect', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     // Find the earliest completed crafting action (status COMPLETED, ready to collect)
     // In the daily-tick model, the tick processor sets status to COMPLETED.
@@ -713,14 +694,10 @@ router.post('/collect', authGuard, async (req: AuthenticatedRequest, res: Respon
 // =========================================================================
 // POST /api/crafting/queue — batch craft { recipeId, count: 1-10 }
 // =========================================================================
-router.post('/queue', authGuard, validate(queueCraftSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/queue', authGuard, characterGuard, validate(queueCraftSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { recipeId, count } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } });
     if (!recipe) {
@@ -882,13 +859,9 @@ router.post('/queue', authGuard, validate(queueCraftSchema), async (req: Authent
 // =========================================================================
 // GET /api/crafting/queue — returns all IN_PROGRESS crafting actions
 // =========================================================================
-router.get('/queue', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/queue', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const actions = await prisma.craftingAction.findMany({
       where: {

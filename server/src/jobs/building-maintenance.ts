@@ -1,5 +1,7 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma';
+import { logger } from '../lib/logger';
+import { cronJobExecutions } from '../lib/metrics';
 import { emitBuildingConditionLow, emitBuildingDamaged } from '../socket/events';
 
 /**
@@ -19,15 +21,17 @@ const NONFUNCTIONAL_THRESHOLD = 25;
 export function startBuildingMaintenanceJob() {
   // Run every Monday at 03:00 AM
   cron.schedule('0 3 * * 1', async () => {
-    console.log('[BuildingMaintenance] Running weekly building degradation...');
+    logger.debug({ job: 'buildingMaintenance' }, 'cron job started');
     try {
       await degradeBuildings();
-    } catch (error) {
-      console.error('[BuildingMaintenance] Error:', error);
+      cronJobExecutions.inc({ job: 'buildingMaintenance', result: 'success' });
+    } catch (error: any) {
+      cronJobExecutions.inc({ job: 'buildingMaintenance', result: 'failure' });
+      logger.error({ job: 'buildingMaintenance', err: error.message }, 'cron job failed');
     }
   });
 
-  console.log('[BuildingMaintenance] Cron job registered (weekly on Monday 03:00)');
+  logger.info('BuildingMaintenance cron registered (weekly on Monday 03:00)');
 }
 
 async function degradeBuildings() {

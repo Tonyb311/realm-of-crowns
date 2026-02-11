@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { isOnline } from '../socket/presence';
 import { getPsionSpec, calculateEmotionalState } from '../services/psion-perks';
@@ -9,7 +10,7 @@ const router = Router();
 
 // --- GET /api/characters/:id/profile ---
 
-router.get('/:id/profile', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id/profile', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = await prisma.character.findUnique({
       where: { id: req.params.id },
@@ -42,7 +43,7 @@ router.get('/:id/profile', authGuard, async (req: AuthenticatedRequest, res: Res
       prisma.combatSession.count({
         where: {
           type: { in: ['DUEL', 'ARENA'] },
-          status: 'completed',
+          status: 'COMPLETED',
           participants: { some: { characterId: character.id } },
           log: { path: ['winnerId'], equals: character.id },
         },
@@ -50,7 +51,7 @@ router.get('/:id/profile', authGuard, async (req: AuthenticatedRequest, res: Res
       prisma.combatSession.count({
         where: {
           type: { in: ['DUEL', 'ARENA'] },
-          status: 'completed',
+          status: 'COMPLETED',
           participants: { some: { characterId: character.id } },
           NOT: { log: { path: ['winnerId'], equals: character.id } },
         },
@@ -101,7 +102,7 @@ router.get('/:id/profile', authGuard, async (req: AuthenticatedRequest, res: Res
 
 // --- GET /api/characters/search ---
 
-router.get('/search', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/search', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const q = (req.query.q as string || '').trim();
     const limit = Math.min(20, Math.max(1, parseInt(req.query.limit as string, 10) || 10));

@@ -3,17 +3,12 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { isOnline } from '../socket/presence';
 import { emitFriendRequest, emitFriendAccepted, emitNotification } from '../socket/events';
 
 const router = Router();
-
-// --- Helpers ---
-
-async function getCharacter(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
 
 // --- Schemas ---
 
@@ -23,14 +18,10 @@ const requestSchema = z.object({
 
 // --- POST /api/friends/request ---
 
-router.post('/request', authGuard, validate(requestSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/request', authGuard, characterGuard, validate(requestSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { characterId: targetId } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     if (character.id === targetId) {
       return res.status(400).json({ error: 'Cannot send a friend request to yourself' });
@@ -115,12 +106,9 @@ router.post('/request', authGuard, validate(requestSchema), async (req: Authenti
 
 // --- POST /api/friends/:id/accept ---
 
-router.post('/:id/accept', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/accept', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const friendship = await prisma.friend.findUnique({
       where: { id: req.params.id },
@@ -185,12 +173,9 @@ router.post('/:id/accept', authGuard, async (req: AuthenticatedRequest, res: Res
 
 // --- POST /api/friends/:id/decline ---
 
-router.post('/:id/decline', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/decline', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const friendship = await prisma.friend.findUnique({
       where: { id: req.params.id },
@@ -222,12 +207,9 @@ router.post('/:id/decline', authGuard, async (req: AuthenticatedRequest, res: Re
 
 // --- DELETE /api/friends/:id ---
 
-router.delete('/:id', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:id', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const friendship = await prisma.friend.findUnique({
       where: { id: req.params.id },
@@ -253,12 +235,9 @@ router.delete('/:id', authGuard, async (req: AuthenticatedRequest, res: Response
 
 // --- GET /api/friends ---
 
-router.get('/', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const friendships = await prisma.friend.findMany({
       where: {
@@ -297,12 +276,9 @@ router.get('/', authGuard, async (req: AuthenticatedRequest, res: Response) => {
 
 // --- GET /api/friends/requests ---
 
-router.get('/requests', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/requests', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const incoming = await prisma.friend.findMany({
       where: { recipientId: character.id, status: 'PENDING' },

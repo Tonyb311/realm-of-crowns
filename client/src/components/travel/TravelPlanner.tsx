@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import { TOAST_STYLE } from '../../constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,12 +50,6 @@ interface Position {
   onNode: boolean;
   node: { id: string; townId: string | null } | null;
 }
-
-const TOAST_STYLE = {
-  background: '#1a1a2e',
-  color: '#e8d5b7',
-  border: '1px solid #c9a84c',
-};
 
 // ---------------------------------------------------------------------------
 // Component

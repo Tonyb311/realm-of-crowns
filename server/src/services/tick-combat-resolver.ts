@@ -234,7 +234,7 @@ export function resolveTickCombat(
   const fled: { id: string; name: string; team: number }[] = [];
 
   // Combat loop
-  while (state.status === 'active' && state.round <= MAX_ROUNDS) {
+  while (state.status === 'ACTIVE' && state.round <= MAX_ROUNDS) {
     const actorId = state.turnOrder[state.turnIndex];
     const actor = state.combatants.find(c => c.id === actorId);
 
@@ -277,8 +277,8 @@ export function resolveTickCombat(
     }
 
     // Safety: force end after MAX_ROUNDS
-    if (state.round > MAX_ROUNDS && state.status === 'active') {
-      state = { ...state, status: 'completed', winningTeam: null };
+    if (state.round > MAX_ROUNDS && state.status === 'ACTIVE') {
+      state = { ...state, status: 'COMPLETED', winningTeam: null };
     }
   }
 

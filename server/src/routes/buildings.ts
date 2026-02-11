@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { BuildingType } from '@prisma/client';
 import {
@@ -54,12 +55,6 @@ const storageWithdrawSchema = z.object({
 const setRentPriceSchema = z.object({
   pricePerUse: z.number().int().min(0),
 });
-
-// ── Helpers ──────────────────────────────────────────────────
-
-async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
 
 /**
  * Workshop building types (used for rental features).
@@ -120,14 +115,10 @@ function getConditionEffects(condition: number): { effectTier: string; effective
 // =========================================================================
 // POST /api/buildings/request-permit
 // =========================================================================
-router.post('/request-permit', authGuard, validate(requestPermitSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/request-permit', authGuard, characterGuard, validate(requestPermitSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { townId, buildingType, name } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     // Check town exists
     const town = await prisma.town.findUnique({
@@ -216,14 +207,10 @@ router.post('/request-permit', authGuard, validate(requestPermitSchema), async (
 // =========================================================================
 // POST /api/buildings/deposit-materials
 // =========================================================================
-router.post('/deposit-materials', authGuard, validate(depositMaterialsSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/deposit-materials', authGuard, characterGuard, validate(depositMaterialsSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId, materials } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     // Load building + active construction
     const building = await prisma.building.findUnique({
@@ -261,9 +248,13 @@ router.post('/deposit-materials', authGuard, validate(depositMaterialsSchema), a
     }));
     const currentDeposited = (construction.materialsUsed ?? {}) as Record<string, number>;
 
-    // Build player inventory map by item name
+    // Build player inventory map by item name (only fetch materials being deposited)
+    const materialNames = materials.map((m: { itemName: string }) => m.itemName);
     const inventory = await prisma.inventory.findMany({
-      where: { characterId: character.id },
+      where: {
+        characterId: character.id,
+        item: { template: { name: { in: materialNames } } },
+      },
       include: { item: { include: { template: true } } },
     });
 
@@ -356,14 +347,10 @@ router.post('/deposit-materials', authGuard, validate(depositMaterialsSchema), a
 // POST /api/buildings/start-construction
 // Daily action candidate: add requireDailyAction('CONSTRUCT') middleware when daily action tracking is enabled
 // =========================================================================
-router.post('/start-construction', authGuard, validate(buildingIdSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/start-construction', authGuard, characterGuard, validate(buildingIdSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const building = await prisma.building.findUnique({
       where: { id: buildingId },
@@ -450,17 +437,14 @@ router.post('/start-construction', authGuard, validate(buildingIdSchema), async 
 // =========================================================================
 // GET /api/buildings/construction-status?buildingId=xxx
 // =========================================================================
-router.get('/construction-status', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/construction-status', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.query;
     if (!buildingId || typeof buildingId !== 'string') {
       return res.status(400).json({ error: 'buildingId query parameter is required' });
     }
 
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const building = await prisma.building.findUnique({
       where: { id: buildingId },
@@ -531,14 +515,10 @@ router.get('/construction-status', authGuard, async (req: AuthenticatedRequest, 
 // =========================================================================
 // POST /api/buildings/complete-construction
 // =========================================================================
-router.post('/complete-construction', authGuard, validate(buildingIdSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/complete-construction', authGuard, characterGuard, validate(buildingIdSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const building = await prisma.building.findUnique({
       where: { id: buildingId },
@@ -606,14 +586,10 @@ router.post('/complete-construction', authGuard, validate(buildingIdSchema), asy
 // =========================================================================
 // POST /api/buildings/upgrade
 // =========================================================================
-router.post('/upgrade', authGuard, validate(buildingIdSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/upgrade', authGuard, characterGuard, validate(buildingIdSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const building = await prisma.building.findUnique({
       where: { id: buildingId },
@@ -680,13 +656,9 @@ router.post('/upgrade', authGuard, validate(buildingIdSchema), async (req: Authe
 // =========================================================================
 // GET /api/buildings/mine — all my buildings across towns
 // =========================================================================
-router.get('/mine', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const buildings = await prisma.building.findMany({
       where: { ownerId: character.id },
@@ -833,15 +805,11 @@ router.get('/:buildingId', authGuard, async (req: AuthenticatedRequest, res: Res
 // =========================================================================
 // POST /api/buildings/:buildingId/storage/deposit
 // =========================================================================
-router.post('/:buildingId/storage/deposit', authGuard, validate(storageDepositSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:buildingId/storage/deposit', authGuard, characterGuard, validate(storageDepositSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.params;
     const { itemId, quantity } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const building = await prisma.building.findUnique({ where: { id: buildingId } });
 
@@ -929,15 +897,11 @@ router.post('/:buildingId/storage/deposit', authGuard, validate(storageDepositSc
 // =========================================================================
 // POST /api/buildings/:buildingId/storage/withdraw
 // =========================================================================
-router.post('/:buildingId/storage/withdraw', authGuard, validate(storageWithdrawSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:buildingId/storage/withdraw', authGuard, characterGuard, validate(storageWithdrawSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.params;
     const { itemId, quantity } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const building = await prisma.building.findUnique({ where: { id: buildingId } });
 
@@ -1013,14 +977,10 @@ router.post('/:buildingId/storage/withdraw', authGuard, validate(storageWithdraw
 // =========================================================================
 // GET /api/buildings/:buildingId/storage — list stored items
 // =========================================================================
-router.get('/:buildingId/storage', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:buildingId/storage', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.params;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const building = await prisma.building.findUnique({ where: { id: buildingId } });
 
@@ -1057,15 +1017,11 @@ router.get('/:buildingId/storage', authGuard, async (req: AuthenticatedRequest, 
 // =========================================================================
 // POST /api/buildings/:buildingId/rent/set-price — set workshop rental price
 // =========================================================================
-router.post('/:buildingId/rent/set-price', authGuard, validate(setRentPriceSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:buildingId/rent/set-price', authGuard, characterGuard, validate(setRentPriceSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.params;
     const { pricePerUse } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const building = await prisma.building.findUnique({ where: { id: buildingId } });
 
@@ -1108,14 +1064,10 @@ router.post('/:buildingId/rent/set-price', authGuard, validate(setRentPriceSchem
 // =========================================================================
 // POST /api/buildings/:buildingId/rent/use — pay to use a workshop
 // =========================================================================
-router.post('/:buildingId/rent/use', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:buildingId/rent/use', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.params;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const building = await prisma.building.findUnique({
       where: { id: buildingId },
@@ -1281,14 +1233,10 @@ router.get('/:buildingId/rent', authGuard, async (req: AuthenticatedRequest, res
 // =========================================================================
 // POST /api/buildings/:buildingId/repair — repair building condition
 // =========================================================================
-router.post('/:buildingId/repair', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:buildingId/repair', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.params;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const building = await prisma.building.findUnique({ where: { id: buildingId } });
 
@@ -1357,14 +1305,10 @@ router.post('/:buildingId/repair', authGuard, async (req: AuthenticatedRequest, 
 // =========================================================================
 // GET /api/buildings/:buildingId/rent/income — rental income history
 // =========================================================================
-router.get('/:buildingId/rent/income', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:buildingId/rent/income', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.params;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const building = await prisma.building.findUnique({ where: { id: buildingId } });
 
@@ -1407,14 +1351,10 @@ router.get('/:buildingId/rent/income', authGuard, async (req: AuthenticatedReque
 // =========================================================================
 // GET /api/buildings/town/:townId/economics — mayor economic reports
 // =========================================================================
-router.get('/town/:townId/economics', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/town/:townId/economics', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { townId } = req.params;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     // Check if user is the mayor
     const town = await prisma.town.findUnique({

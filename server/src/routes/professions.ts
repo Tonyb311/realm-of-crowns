@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { ProfessionType, Race } from '@prisma/client';
 import {
@@ -39,10 +40,6 @@ function getMaxProfessions(race: Race, level: number): number {
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
-
 function raceEnumToRegistryKey(race: Race): string {
   return race.toLowerCase();
 }
@@ -71,15 +68,11 @@ const professionTypeSchema = z.object({
 // POST /api/professions/learn — Explicitly learn a new profession
 // ---------------------------------------------------------------------------
 
-router.post('/learn', authGuard, validate(professionTypeSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/learn', authGuard, characterGuard, validate(professionTypeSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { professionType } = req.body;
     const profEnum = professionType as ProfessionType;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     // Look up static definition
     const profDef = getProfessionByType(profEnum);
@@ -203,15 +196,11 @@ router.post('/learn', authGuard, validate(professionTypeSchema), async (req: Aut
 // POST /api/professions/abandon — Abandon a profession (preserves progress)
 // ---------------------------------------------------------------------------
 
-router.post('/abandon', authGuard, validate(professionTypeSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/abandon', authGuard, characterGuard, validate(professionTypeSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { professionType } = req.body;
     const profEnum = professionType as ProfessionType;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const profession = await prisma.playerProfession.findUnique({
       where: {
@@ -267,13 +256,9 @@ router.post('/abandon', authGuard, validate(professionTypeSchema), async (req: A
 // GET /api/professions/mine — Get all my active professions with full details
 // ---------------------------------------------------------------------------
 
-router.get('/mine', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const professions = await prisma.playerProfession.findMany({
       where: { characterId: character.id, isActive: true },
@@ -315,7 +300,7 @@ router.get('/mine', authGuard, async (req: AuthenticatedRequest, res: Response) 
 // GET /api/professions/info/:type — Get profession details (static data)
 // ---------------------------------------------------------------------------
 
-router.get('/info/:type', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/info/:type', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { type } = req.params;
     const profEnum = type as ProfessionType;
@@ -326,12 +311,12 @@ router.get('/info/:type', authGuard, async (req: AuthenticatedRequest, res: Resp
     }
 
     // Get character for racial bonuses
-    const character = await getCharacterForUser(req.user!.userId);
-    const racialBonus = character ? getRacialBonuses(character.race, profEnum) : null;
+    const character = req.character!;
+    const racialBonus = getRacialBonuses(character.race, profEnum);
 
     // Check if character has this profession
     let playerProgress = null;
-    if (character) {
+    {
       const prof = await prisma.playerProfession.findUnique({
         where: {
           characterId_professionType: {
@@ -384,13 +369,9 @@ router.get('/info/:type', authGuard, async (req: AuthenticatedRequest, res: Resp
 // GET /api/professions/available — List all professions with learn status
 // ---------------------------------------------------------------------------
 
-router.get('/available', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/available', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     // Get all player professions (active and inactive)
     const playerProfessions = await prisma.playerProfession.findMany({

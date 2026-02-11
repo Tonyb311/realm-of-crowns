@@ -11,9 +11,9 @@ import {
   UserPlus,
   MessageSquare,
   ArrowLeft,
-  Loader2,
 } from 'lucide-react';
 import api from '../services/api';
+import { ProfileSkeleton } from '../components/ui/LoadingSkeleton';
 
 interface CharacterProfile {
   id: string;
@@ -73,11 +73,7 @@ export default function ProfilePage() {
   const isOwnProfile = myChar?.id === characterId;
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 text-primary-400 animate-spin" />
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   if (error || !profile) {

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { Prisma } from '@prisma/client';
 import { getEffectiveTaxRate, getTradeRestrictions } from '../services/law-effects';
@@ -35,19 +36,11 @@ const cancelSchema = z.object({
 
 // --- Helpers ---
 
-async function getCharacter(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
-
 // POST /api/market/list
-router.post('/list', authGuard, validate(listSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/list', authGuard, characterGuard, validate(listSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { itemId, price, quantity } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     if (!character.currentTownId) {
       return res.status(400).json({ error: 'You must be in a town to list items' });
@@ -103,11 +96,7 @@ router.post('/list', authGuard, validate(listSchema), async (req: AuthenticatedR
 // GET /api/market/browse
 router.get('/browse', authGuard, cache(30), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const townId = (req.query.townId as string) || character.currentTownId;
     if (!townId) {
@@ -246,14 +235,10 @@ router.get('/browse', authGuard, cache(30), async (req: AuthenticatedRequest, re
 });
 
 // POST /api/market/buy
-router.post('/buy', authGuard, validate(buySchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { listingId, quantity } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const listing = await prisma.marketListing.findUnique({
       where: { id: listingId },
@@ -440,14 +425,10 @@ router.post('/buy', authGuard, validate(buySchema), async (req: AuthenticatedReq
 });
 
 // POST /api/market/cancel
-router.post('/cancel', authGuard, validate(cancelSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/cancel', authGuard, characterGuard, validate(cancelSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { listingId } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const listing = await prisma.marketListing.findUnique({
       where: { id: listingId },
@@ -493,13 +474,9 @@ router.post('/cancel', authGuard, validate(cancelSchema), async (req: Authentica
 });
 
 // GET /api/market/my-listings
-router.get('/my-listings', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/my-listings', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const listings = await prisma.marketListing.findMany({
       where: { sellerId: character.id },
@@ -569,13 +546,12 @@ const TIER_RANK: Record<string, number> = {
 };
 
 // GET /api/market/remote-browse
-router.get('/remote-browse', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/remote-browse', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { townId } = req.query;
     if (!townId) return res.status(400).json({ error: 'townId required' });
 
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     // Must have price visibility
     if (!(await hasGlobalPriceVisibility(character.id))) {
@@ -596,13 +572,12 @@ router.get('/remote-browse', authGuard, async (req: AuthenticatedRequest, res: R
 });
 
 // POST /api/market/remote-buy
-router.post('/remote-buy', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/remote-buy', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { listingId } = req.body;
     if (!listingId) return res.status(400).json({ error: 'listingId required' });
 
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const merchantTier = await getMerchantTier(character.id);
     if (!merchantTier || (TIER_RANK[merchantTier] || 0) < 3) {
@@ -643,13 +618,12 @@ router.post('/remote-buy', authGuard, async (req: AuthenticatedRequest, res: Res
 });
 
 // POST /api/market/remote-instant-buy
-router.post('/remote-instant-buy', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/remote-instant-buy', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { listingId } = req.body;
     if (!listingId) return res.status(400).json({ error: 'listingId required' });
 
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const merchantTier = await getMerchantTier(character.id);
     if (!merchantTier || (TIER_RANK[merchantTier] || 0) < 5) {
@@ -688,13 +662,12 @@ router.post('/remote-instant-buy', authGuard, async (req: AuthenticatedRequest, 
 });
 
 // GET /api/market/prices-global
-router.get('/prices-global', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/prices-global', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { itemTemplateId } = req.query;
     if (!itemTemplateId) return res.status(400).json({ error: 'itemTemplateId required' });
 
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     if (!(await hasGlobalPriceVisibility(character.id))) {
       return res.status(403).json({ error: 'No global price visibility' });
@@ -733,7 +706,7 @@ router.get('/prices-global', authGuard, async (req: AuthenticatedRequest, res: R
 });
 
 // GET /api/market/history
-router.get('/history', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/history', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const itemTemplateId = req.query.itemTemplateId as string | undefined;
     const townId = req.query.townId as string | undefined;

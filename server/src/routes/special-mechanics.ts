@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { Race } from '@prisma/client';
 
@@ -14,14 +15,6 @@ import * as faefolkService from '../services/faefolk-service';
 import * as revenantService from '../services/revenant-service';
 
 const router = Router();
-
-// =========================================================================
-// Helpers
-// =========================================================================
-
-async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
 
 // =========================================================================
 // Zod Schemas
@@ -41,10 +34,9 @@ const forgebornMaintainSchema = z.object({
 // =========================================================================
 
 // GET /api/special-mechanics/changeling/status
-router.get('/changeling/status', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/changeling/status', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
     if (character.race !== 'CHANGELING') return res.status(400).json({ error: 'Not a Changeling' });
 
     const [appearance, canFool, veilAccess] = await Promise.all([
@@ -66,10 +58,9 @@ router.get('/changeling/status', authGuard, async (req: AuthenticatedRequest, re
 });
 
 // POST /api/special-mechanics/changeling/shift
-router.post('/changeling/shift', authGuard, validate(changelingShiftSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/changeling/shift', authGuard, characterGuard, validate(changelingShiftSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
     if (character.race !== 'CHANGELING') return res.status(400).json({ error: 'Not a Changeling' });
 
     const { targetRace, targetName } = req.body;
@@ -83,10 +74,9 @@ router.post('/changeling/shift', authGuard, validate(changelingShiftSchema), asy
 });
 
 // POST /api/special-mechanics/changeling/revert
-router.post('/changeling/revert', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/changeling/revert', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
     if (character.race !== 'CHANGELING') return res.status(400).json({ error: 'Not a Changeling' });
 
     const result = await changelingService.revertToTrueForm(character.id);
@@ -102,10 +92,9 @@ router.post('/changeling/revert', authGuard, async (req: AuthenticatedRequest, r
 // =========================================================================
 
 // GET /api/special-mechanics/forgeborn/status
-router.get('/forgeborn/status', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/forgeborn/status', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
     if (character.race !== 'FORGEBORN') return res.status(400).json({ error: 'Not a Forgeborn' });
 
     const [status, queueBonus] = await Promise.all([
@@ -124,10 +113,9 @@ router.get('/forgeborn/status', authGuard, async (req: AuthenticatedRequest, res
 });
 
 // POST /api/special-mechanics/forgeborn/maintain
-router.post('/forgeborn/maintain', authGuard, validate(forgebornMaintainSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/forgeborn/maintain', authGuard, characterGuard, validate(forgebornMaintainSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
     if (character.race !== 'FORGEBORN') return res.status(400).json({ error: 'Not a Forgeborn' });
 
     const { repairKitItemId } = req.body;
@@ -141,10 +129,9 @@ router.post('/forgeborn/maintain', authGuard, validate(forgebornMaintainSchema),
 });
 
 // POST /api/special-mechanics/forgeborn/self-repair
-router.post('/forgeborn/self-repair', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/forgeborn/self-repair', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
     if (character.race !== 'FORGEBORN') return res.status(400).json({ error: 'Not a Forgeborn' });
 
     const result = await forgebornService.applySelfRepair(character.id);
@@ -160,10 +147,9 @@ router.post('/forgeborn/self-repair', authGuard, async (req: AuthenticatedReques
 // =========================================================================
 
 // GET /api/special-mechanics/merfolk/status
-router.get('/merfolk/status', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/merfolk/status', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
     if (character.race !== 'MERFOLK') return res.status(400).json({ error: 'Not a Merfolk' });
 
     const [inWater, underwaterAccess, swimmingBuff] = await Promise.all([
@@ -204,10 +190,9 @@ router.get('/merfolk/status', authGuard, async (req: AuthenticatedRequest, res: 
 // =========================================================================
 
 // GET /api/special-mechanics/nightborne/status
-router.get('/nightborne/status', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/nightborne/status', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
     if (character.race !== 'NIGHTBORNE') return res.status(400).json({ error: 'Not a Nightborne' });
 
     const envStatus = await nightborneService.getEnvironmentStatus(character.id);
@@ -227,10 +212,9 @@ router.get('/nightborne/status', authGuard, async (req: AuthenticatedRequest, re
 // =========================================================================
 
 // GET /api/special-mechanics/faefolk/status
-router.get('/faefolk/status', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/faefolk/status', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
     if (character.race !== 'FAEFOLK') return res.status(400).json({ error: 'Not a Faefolk' });
 
     const [flight, overloaded, combatBonus] = await Promise.all([
@@ -255,10 +239,9 @@ router.get('/faefolk/status', authGuard, async (req: AuthenticatedRequest, res: 
 // =========================================================================
 
 // GET /api/special-mechanics/revenant/status
-router.get('/revenant/status', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/revenant/status', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
     if (character.race !== 'REVENANT') return res.status(400).json({ error: 'Not a Revenant' });
 
     const [penalties, respawn] = await Promise.all([

@@ -1646,7 +1646,7 @@ export function resolveTurn(
 
     current = { ...current, log: [...current.log, logEntry] };
     current = checkCombatEnd(current);
-    if (current.status === 'active') {
+    if (current.status === 'ACTIVE') {
       current = advanceTurn(current);
     }
     return current;
@@ -1819,7 +1819,7 @@ export function resolveTurn(
   current = checkCombatEnd(current);
 
   // Advance to next turn
-  if (current.status === 'active') {
+  if (current.status === 'ACTIVE') {
     current = advanceTurn(current);
   }
 
@@ -1885,7 +1885,7 @@ function checkCombatEnd(state: CombatState): CombatState {
     const winningTeam = aliveTeams.size === 1 ? [...aliveTeams][0] : null;
     return {
       ...state,
-      status: 'completed',
+      status: 'COMPLETED',
       winningTeam,
     };
   }
@@ -1926,7 +1926,7 @@ export function createCombatState(
   const state: CombatState = {
     sessionId,
     type,
-    status: 'active',
+    status: 'ACTIVE',
     round: 0,
     turnIndex: 0,
     combatants,

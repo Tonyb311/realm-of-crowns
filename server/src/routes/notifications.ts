@@ -1,22 +1,16 @@
 import { Router, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 
 const router = Router();
 
-async function getCharacter(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
-
 // --- GET /api/notifications ---
 
-router.get('/', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const unreadOnly = req.query.unreadOnly === 'true';
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
@@ -54,12 +48,9 @@ router.get('/', authGuard, async (req: AuthenticatedRequest, res: Response) => {
 // --- PATCH /api/notifications/read-all ---
 // NOTE: Must be registered BEFORE /:id/read so Express doesn't match "read-all" as :id
 
-router.patch('/read-all', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.patch('/read-all', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const result = await prisma.notification.updateMany({
       where: { characterId: character.id, read: false },
@@ -75,12 +66,9 @@ router.patch('/read-all', authGuard, async (req: AuthenticatedRequest, res: Resp
 
 // --- PATCH /api/notifications/:id/read ---
 
-router.patch('/:id/read', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.patch('/:id/read', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const notification = await prisma.notification.findUnique({
       where: { id: req.params.id },
@@ -108,12 +96,9 @@ router.patch('/:id/read', authGuard, async (req: AuthenticatedRequest, res: Resp
 
 // --- DELETE /api/notifications/:id ---
 
-router.delete('/:id', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:id', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const notification = await prisma.notification.findUnique({
       where: { id: req.params.id },

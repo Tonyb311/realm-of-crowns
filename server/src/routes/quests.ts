@@ -3,16 +3,13 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { cache } from '../middleware/cache';
 
 const router = Router();
 
 // ---- Helpers ----
-
-async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
 
 // ---- Zod Schemas ----
 
@@ -39,10 +36,7 @@ const abandonQuestSchema = z.object({
 // GET /api/quests/available — List available quests for the character
 router.get('/available', authGuard, cache(60), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     // Get the character's completed and active quest IDs
     const existingProgress = await prisma.questProgress.findMany({
@@ -140,12 +134,9 @@ router.get('/available', authGuard, cache(60), async (req: AuthenticatedRequest,
 });
 
 // GET /api/quests/active — List character's active quests with progress
-router.get('/active', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/active', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const activeQuests = await prisma.questProgress.findMany({
       where: {
@@ -180,12 +171,9 @@ router.get('/active', authGuard, async (req: AuthenticatedRequest, res: Response
 });
 
 // GET /api/quests/completed — List character's completed quests
-router.get('/completed', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/completed', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const completedQuests = await prisma.questProgress.findMany({
       where: {
@@ -214,13 +202,10 @@ router.get('/completed', authGuard, async (req: AuthenticatedRequest, res: Respo
 });
 
 // POST /api/quests/accept — Accept a quest
-router.post('/accept', authGuard, validate(acceptQuestSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/accept', authGuard, characterGuard, validate(acceptQuestSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { questId } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const quest = await prisma.quest.findUnique({ where: { id: questId } });
     if (!quest) {
@@ -337,13 +322,10 @@ router.post('/accept', authGuard, validate(acceptQuestSchema), async (req: Authe
 });
 
 // POST /api/quests/progress — Manually report progress on an objective
-router.post('/progress', authGuard, validate(progressSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/progress', authGuard, characterGuard, validate(progressSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { questId, objectiveIndex, amount } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const questProgress = await prisma.questProgress.findFirst({
       where: {
@@ -390,13 +372,10 @@ router.post('/progress', authGuard, validate(progressSchema), async (req: Authen
 });
 
 // POST /api/quests/complete — Complete a quest and claim rewards
-router.post('/complete', authGuard, validate(completeQuestSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/complete', authGuard, characterGuard, validate(completeQuestSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { questId } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const questProgress = await prisma.questProgress.findFirst({
       where: {
@@ -497,13 +476,10 @@ router.post('/complete', authGuard, validate(completeQuestSchema), async (req: A
 });
 
 // POST /api/quests/abandon — Abandon an active quest
-router.post('/abandon', authGuard, validate(abandonQuestSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/abandon', authGuard, characterGuard, validate(abandonQuestSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { questId } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const questProgress = await prisma.questProgress.findFirst({
       where: {
@@ -527,14 +503,11 @@ router.post('/abandon', authGuard, validate(abandonQuestSchema), async (req: Aut
 });
 
 // GET /api/quests/npcs/:townId — List NPCs in a town with their available quests
-router.get('/npcs/:townId', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/npcs/:townId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { townId } = req.params;
 
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const npcs = await prisma.npc.findMany({
       where: { townId },

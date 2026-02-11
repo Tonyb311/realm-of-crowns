@@ -1,6 +1,6 @@
 # Realm of Crowns -- Technical Architecture Document
 
-> Version 0.2.0 | Last updated: 2026-02-10 | Reflects Phase 1 completion (Prompts 00-08)
+> Version 0.3.0 | Last updated: 2026-02-10 | Reflects Phase 2B completion (Prompts 00-18) + P0/P1/P2/P3 fix passes
 
 This document describes the technical architecture of Realm of Crowns, a browser-based fantasy MMORPG built as an npm workspaces monorepo. It is derived from reading the actual codebase, not design aspirations.
 
@@ -352,7 +352,7 @@ All routes are mounted under `/api` via `server/src/routes/index.ts`. The router
 | `/friends` | `friends.ts` | Friend requests, accept/decline, block |
 | `/notifications` | `notifications.ts` | Notification CRUD, mark-read |
 | `/quests` | `quests.ts` | Quest journal, progress, completion, NPC quest givers |
-| `/skills` | `skills.ts` | Skill trees (6 classes, 18 specializations), ability unlocks |
+| `/skills` | `skills.ts` | Skill trees (7 classes, 21 specializations), ability unlocks |
 | `/professions` | `professions.ts` | Profession management, XP tracking, tier progression |
 | `/tools` | `tools.ts` | Tool crafting and equipping |
 | `/equipment` | `equipment.ts` | Equipment slots (11), equip/unequip |
@@ -385,6 +385,8 @@ Located in `server/src/middleware/`:
 | `validate(schema)` | `validate.ts` | Factory -> `(req, res, next)` | Takes a Zod schema. Parses `req.body`. Returns 400 with structured error details (`[{ field, message }]`) on validation failure. |
 | `cache(ttlSeconds)` | `cache.ts` | Factory -> `async (req, res, next)` | Redis-backed response cache. Key: `cache:{req.originalUrl}`. Intercepts `res.json()` to cache successful (2xx) responses. Sets `X-Cache: HIT/MISS` and `Cache-Control` headers. No-ops if Redis is unavailable. |
 | `requireDailyAction(type)` | `daily-action.ts` | Factory -> `async (req, res, next)` | Enforces one-major-action-per-day. Looks up existing `DailyAction` for today's tick date. Returns 429 with `{ error, actionType, resetsAt }` if already used. Attaches `req.character` and `req.dailyActionType`. |
+| `requireAdmin` | `admin.ts` | `async (req, res, next)` | Verifies the authenticated user has the `ADMIN` role. Returns 403 if not. Used on all admin routes. |
+| `characterGuard` | `character-guard.ts` | `async (req, res, next)` | Loads the authenticated user's character and attaches it to `req.character`. Returns 404 if no character exists. Centralizes character lookup across routes. |
 
 ### Service Layer
 
@@ -410,7 +412,7 @@ Located in `server/src/services/` -- **31 service modules** containing business 
 
 **Racial mechanics (6):**
 - `racial-bonus-calculator.ts` -- Composite racial bonus calculations
-- `racial-combat-abilities.ts` -- 120 racial abilities across 20 races (passive modifiers, active abilities, death prevention, melee reflect, etc.)
+- `racial-combat-abilities.ts` -- 121 racial abilities across 20 races (passive modifiers, active abilities, death prevention, melee reflect, etc.; Nightborne has 7 abilities)
 - `racial-passive-tracker.ts` -- Persistent passive effect tracking
 - `racial-profession-bonuses.ts` -- `getRacialGatheringBonus()`, `getRacialCraftQualityBonus()`, `getRacialMaterialReduction()`
 - `racial-special-profession-mechanics.ts` -- Race-specific profession interactions
@@ -668,7 +670,7 @@ shared/src/
                              Genasi elements), racial relations matrix
     recipes/              -- Recipe definitions
     resources/            -- Resource type data, biome mappings
-    skills/               -- Skill tree data: 6 classes, 18 specializations
+    skills/               -- Skill tree data: 7 classes, 21 specializations
     tools/                -- Tool definitions
     world/                -- Region, town, route, biome definitions
   utils/

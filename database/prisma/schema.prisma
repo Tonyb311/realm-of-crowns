@@ -353,6 +353,33 @@ enum LoanStatus {
   GARNISHED
 }
 
+enum WarStatus {
+  ACTIVE
+  PEACE_PROPOSED
+  ENDED
+}
+
+enum ElectionStatus {
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+}
+
+enum LawStatus {
+  PROPOSED
+  VOTING
+  ACTIVE
+  REJECTED
+  EXPIRED
+}
+
+enum CombatSessionStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
 // ============================================================
 // MODELS
 // ============================================================
@@ -742,7 +769,7 @@ model War {
   attackerKingdomId String    @map("attacker_kingdom_id")
   defenderKingdomId String    @map("defender_kingdom_id")
   reason            String?
-  status            String    @default("active")
+  status            WarStatus @default(ACTIVE)
   attackerScore     Int       @default(0) @map("attacker_score")
   defenderScore     Int       @default(0) @map("defender_score")
   startedAt         DateTime  @default(now()) @map("started_at")
@@ -1085,18 +1112,18 @@ model Caravan {
 // ---- Politics ----
 
 model Election {
-  id         String        @id @default(uuid())
-  townId     String        @map("town_id")
-  kingdomId  String?       @map("kingdom_id")
+  id         String         @id @default(uuid())
+  townId     String         @map("town_id")
+  kingdomId  String?        @map("kingdom_id")
   type       ElectionType
-  status     String        @default("scheduled")
-  phase      ElectionPhase @default(NOMINATIONS)
-  termNumber Int           @default(1) @map("term_number")
-  startDate  DateTime      @map("start_date")
-  endDate    DateTime      @map("end_date")
-  winnerId   String?       @map("winner_id")
-  createdAt  DateTime      @default(now()) @map("created_at")
-  updatedAt  DateTime      @updatedAt @map("updated_at")
+  status     ElectionStatus @default(SCHEDULED)
+  phase      ElectionPhase  @default(NOMINATIONS)
+  termNumber Int            @default(1) @map("term_number")
+  startDate  DateTime       @map("start_date")
+  endDate    DateTime       @map("end_date")
+  winnerId   String?        @map("winner_id")
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
 
   town       Town                @relation(fields: [townId], references: [id], onDelete: Cascade)
   kingdom    Kingdom?            @relation("KingdomElections", fields: [kingdomId], references: [id], onDelete: SetNull)
@@ -1204,7 +1231,7 @@ model Law {
   effects      Json      @default("{}")
   enactedById  String    @map("enacted_by_id")
   enactedAt    DateTime  @default(now()) @map("enacted_at")
-  status       String    @default("proposed")
+  status       LawStatus @default(PROPOSED)
   votesFor     Int       @default(0) @map("votes_for")
   votesAgainst Int       @default(0) @map("votes_against")
   proposedAt   DateTime  @default(now()) @map("proposed_at")
@@ -1375,17 +1402,17 @@ model QuestProgress {
 // ---- Combat ----
 
 model CombatSession {
-  id             String     @id @default(uuid())
+  id             String              @id @default(uuid())
   type           CombatType
-  status         String     @default("active")
-  locationTownId String?    @map("location_town_id")
-  startedAt      DateTime   @default(now()) @map("started_at")
-  endedAt        DateTime?  @map("ended_at")
-  log            Json       @default("[]")
-  attackerParams Json?      @map("attacker_params")
-  defenderParams Json?      @map("defender_params")
-  createdAt      DateTime   @default(now()) @map("created_at")
-  updatedAt      DateTime   @updatedAt @map("updated_at")
+  status         CombatSessionStatus @default(ACTIVE)
+  locationTownId String?             @map("location_town_id")
+  startedAt      DateTime            @default(now()) @map("started_at")
+  endedAt        DateTime?           @map("ended_at")
+  log            Json                @default("[]")
+  attackerParams Json?               @map("attacker_params")
+  defenderParams Json?               @map("defender_params")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
 
   locationTown Town?               @relation(fields: [locationTownId], references: [id], onDelete: SetNull)
   combatLogs   CombatLog[]

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { ProfessionType, ItemType } from '@prisma/client';
 import { calculateItemStats } from '../services/item-stats';
@@ -24,21 +25,13 @@ const REPAIR_PROFESSION_MAP: Partial<Record<ItemType, ProfessionType[]>> = {
 // Gold cost per durability point to repair
 const REPAIR_GOLD_PER_POINT = 2;
 
-async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
-
 // -------------------------------------------------------------------------
 // POST /api/items/repair — Repair an item
 // -------------------------------------------------------------------------
-router.post('/repair', authGuard, validate(repairSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/repair', authGuard, characterGuard, validate(repairSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { itemId } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     // Find the item
     const item = await prisma.item.findUnique({
@@ -118,14 +111,10 @@ router.post('/repair', authGuard, validate(repairSchema), async (req: Authentica
 // -------------------------------------------------------------------------
 // GET /api/items/details/:itemId — Full item with calculated stats
 // -------------------------------------------------------------------------
-router.get('/details/:itemId', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/details/:itemId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { itemId } = req.params;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const item = await prisma.item.findUnique({
       where: { id: itemId },
@@ -178,14 +167,10 @@ router.get('/details/:itemId', authGuard, async (req: AuthenticatedRequest, res:
 // -------------------------------------------------------------------------
 // GET /api/items/compare?equipped=id1&candidate=id2 — Side-by-side comparison
 // -------------------------------------------------------------------------
-router.get('/compare', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/compare', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { equipped: equippedId, candidate: candidateId } = req.query;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     if (!equippedId || !candidateId || typeof equippedId !== 'string' || typeof candidateId !== 'string') {
       return res.status(400).json({ error: 'Both equipped and candidate item IDs are required' });

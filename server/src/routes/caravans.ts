@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { addProfessionXP } from '../services/profession-xp';
 import { emitNotification } from '../socket/events';
@@ -56,10 +57,6 @@ const resolveAmbushSchema = z.object({
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-async function getCharacter(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
 
 async function getMerchantLevel(characterId: string): Promise<number> {
   const prof = await prisma.playerProfession.findUnique({
@@ -117,13 +114,12 @@ function serializeCargo(items: CargoItem[], meta: CaravanMeta): object {
 // POST /api/caravans/create
 // ---------------------------------------------------------------------------
 
-router.post('/create', authGuard, validate(createSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/create', authGuard, characterGuard, validate(createSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { fromTownId, toTownId, caravanType } = req.body as {
       fromTownId: string; toTownId: string; caravanType: CaravanType;
     };
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     if (character.currentTownId !== fromTownId) {
       return res.status(400).json({ error: 'You must be in the departure town' });
@@ -198,12 +194,11 @@ router.post('/create', authGuard, validate(createSchema), async (req: Authentica
 // POST /api/caravans/:caravanId/load
 // ---------------------------------------------------------------------------
 
-router.post('/:caravanId/load', authGuard, validate(loadSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:caravanId/load', authGuard, characterGuard, validate(loadSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { caravanId } = req.params;
     const { itemId, quantity } = req.body as { itemId: string; quantity: number };
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const caravan = await prisma.caravan.findUnique({ where: { id: caravanId } });
     if (!caravan) return res.status(404).json({ error: 'Caravan not found' });
@@ -261,12 +256,11 @@ router.post('/:caravanId/load', authGuard, validate(loadSchema), async (req: Aut
 // POST /api/caravans/:caravanId/unload
 // ---------------------------------------------------------------------------
 
-router.post('/:caravanId/unload', authGuard, validate(unloadSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:caravanId/unload', authGuard, characterGuard, validate(unloadSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { caravanId } = req.params;
     const { itemId, quantity } = req.body as { itemId: string; quantity: number };
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const caravan = await prisma.caravan.findUnique({ where: { id: caravanId } });
     if (!caravan) return res.status(404).json({ error: 'Caravan not found' });
@@ -307,12 +301,11 @@ router.post('/:caravanId/unload', authGuard, validate(unloadSchema), async (req:
 // POST /api/caravans/:caravanId/hire-escort
 // ---------------------------------------------------------------------------
 
-router.post('/:caravanId/hire-escort', authGuard, validate(hireEscortSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:caravanId/hire-escort', authGuard, characterGuard, validate(hireEscortSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { caravanId } = req.params;
     const { escortType } = req.body as { escortType: EscortType };
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const caravan = await prisma.caravan.findUnique({ where: { id: caravanId } });
     if (!caravan) return res.status(404).json({ error: 'Caravan not found' });
@@ -346,12 +339,11 @@ router.post('/:caravanId/hire-escort', authGuard, validate(hireEscortSchema), as
 // POST /api/caravans/:caravanId/insure
 // ---------------------------------------------------------------------------
 
-router.post('/:caravanId/insure', authGuard, validate(insureSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:caravanId/insure', authGuard, characterGuard, validate(insureSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { caravanId } = req.params;
     const { coverage } = req.body as { coverage: InsuranceCoverage };
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const caravan = await prisma.caravan.findUnique({ where: { id: caravanId } });
     if (!caravan) return res.status(404).json({ error: 'Caravan not found' });
@@ -392,11 +384,10 @@ router.post('/:caravanId/insure', authGuard, validate(insureSchema), async (req:
 // POST /api/caravans/:caravanId/depart
 // ---------------------------------------------------------------------------
 
-router.post('/:caravanId/depart', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:caravanId/depart', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { caravanId } = req.params;
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const caravan = await prisma.caravan.findUnique({
       where: { id: caravanId },
@@ -474,10 +465,9 @@ router.post('/:caravanId/depart', authGuard, async (req: AuthenticatedRequest, r
 // GET /api/caravans/mine
 // ---------------------------------------------------------------------------
 
-router.get('/mine', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const caravans = await prisma.caravan.findMany({
       where: { ownerId: character.id },
@@ -526,11 +516,10 @@ router.get('/mine', authGuard, async (req: AuthenticatedRequest, res: Response) 
 // GET /api/caravans/:caravanId
 // ---------------------------------------------------------------------------
 
-router.get('/:caravanId', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:caravanId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { caravanId } = req.params;
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const caravan = await prisma.caravan.findUnique({
       where: { id: caravanId },
@@ -588,11 +577,10 @@ router.get('/:caravanId', authGuard, async (req: AuthenticatedRequest, res: Resp
 // POST /api/caravans/:caravanId/collect
 // ---------------------------------------------------------------------------
 
-router.post('/:caravanId/collect', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:caravanId/collect', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { caravanId } = req.params;
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const caravan = await prisma.caravan.findUnique({
       where: { id: caravanId },
@@ -614,29 +602,22 @@ router.post('/:caravanId/collect', authGuard, async (req: AuthenticatedRequest, 
     const { cargo, meta } = parseMeta(caravan);
     const cargoValue = totalCargoValue(cargo);
 
-    // Deposit all cargo items into player inventory at destination
-    await prisma.$transaction(async (tx) => {
-      for (const item of cargo) {
-        const existingInv = await tx.inventory.findFirst({
-          where: { characterId: character.id, itemId: item.itemId },
-        });
-        if (existingInv) {
-          await tx.inventory.update({
-            where: { id: existingInv.id },
-            data: { quantity: { increment: item.quantity } },
-          });
-        } else {
-          await tx.inventory.create({
-            data: { characterId: character.id, itemId: item.itemId, quantity: item.quantity },
-          });
-        }
-      }
-
-      await tx.caravan.update({
+    // Deposit all cargo items into player inventory at destination (batch upserts)
+    await prisma.$transaction([
+      ...cargo.map((item: { itemId: string; quantity: number }) =>
+        prisma.inventory.upsert({
+          where: {
+            characterId_itemId: { characterId: character.id, itemId: item.itemId },
+          },
+          update: { quantity: { increment: item.quantity } },
+          create: { characterId: character.id, itemId: item.itemId, quantity: item.quantity },
+        })
+      ),
+      prisma.caravan.update({
         where: { id: caravanId },
         data: { status: 'COMPLETED' },
-      });
-    });
+      }),
+    ]);
 
     // Get route distance for XP calculation
     const route = await prisma.travelRoute.findFirst({
@@ -683,12 +664,11 @@ router.post('/:caravanId/collect', authGuard, async (req: AuthenticatedRequest, 
 // POST /api/caravans/:caravanId/resolve-ambush
 // ---------------------------------------------------------------------------
 
-router.post('/:caravanId/resolve-ambush', authGuard, validate(resolveAmbushSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:caravanId/resolve-ambush', authGuard, characterGuard, validate(resolveAmbushSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { caravanId } = req.params;
     const { choice } = req.body as { choice: AmbushChoice };
-    const character = await getCharacter(req.user!.userId);
-    if (!character) return res.status(404).json({ error: 'No character found' });
+    const character = req.character!;
 
     const caravan = await prisma.caravan.findUnique({
       where: { id: caravanId },

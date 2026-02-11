@@ -2,7 +2,7 @@
 
 ## Game Overview
 Browser-based fantasy MMORPG. Renaissance Kingdoms meets D&D.
-20 playable races, 28 professions, 68 towns, player-driven everything.
+20 playable races, 29 professions, 68 towns, player-driven everything.
 All systems implemented across Phase 1 (core), Phase 2A (economy), and Phase 2B (races).
 
 ## Tech Stack
@@ -37,7 +37,7 @@ All systems implemented across Phase 1 (core), Phase 2A (economy), and Phase 2B 
 - `docs/CODE_INVENTORY.md` -- Complete audit of every file, endpoint, component, model
 - `docs/CHANGELOG.md` -- What was built in each development phase
 - `docs/RACES.md` -- Complete 20-race compendium (stats, abilities, towns, relations)
-- `docs/ECONOMY.md` -- Economy system (28 professions, crafting chains, marketplace)
+- `docs/ECONOMY.md` -- Economy system (29 professions, crafting chains, marketplace)
 - `docs/WORLD_MAP.md` -- All 21 regions, 68 towns, geography, biomes, level ranges
 - `docs/COMBAT.md` -- Combat system (PvE, PvP duels, damage, rewards, death penalties)
 - `docs/POLITICS.md` -- Political system (elections, governance, laws, taxes, diplomacy)
@@ -148,7 +148,7 @@ All services in `server/src/services/`:
 - `quest-triggers.ts` -- Automatic quest progress from game events
 - `race-environment.ts` -- Biome-based racial bonuses
 - `racial-bonus-calculator.ts` -- Combined racial bonus computation
-- `racial-combat-abilities.ts` -- 120 racial abilities in combat engine
+- `racial-combat-abilities.ts` -- 121 racial abilities in combat engine (Nightborne has 7)
 - `racial-passive-tracker.ts` -- Always-on racial passive effects
 - `racial-profession-bonuses.ts` -- Race-specific profession speed/quality/yield/XP
 - `racial-special-profession-mechanics.ts` -- Human 4th slot, Gnome efficiency, Warforged overclock
@@ -252,11 +252,13 @@ All static game data in `shared/src/data/`:
 
 **Never hardcode game values in server or client -- always reference shared data.**
 
-## Server Middleware (4 files)
+## Server Middleware (6 files)
 - `auth.ts` -- JWT token verification, attaches user to request
-- `cache.ts` -- Redis caching middleware with configurable TTL
+- `cache.ts` -- Redis caching middleware with per-user keys
 - `validate.ts` -- Generic Zod schema validation middleware
 - `daily-action.ts` -- Daily action tracking/limiting middleware
+- `admin.ts` -- Admin role verification middleware
+- `character-guard.ts` -- Character lookup, attaches req.character
 
 ## Socket.io System (4 files in server/src/socket/)
 - `chat-handlers.ts` -- Chat message handling across all channel types
@@ -264,10 +266,12 @@ All static game data in `shared/src/data/`:
 - `presence.ts` -- Online status tracking, who is in each town
 - `middleware.ts` -- JWT authentication on socket connections
 
-## Server Libraries (server/src/lib/)
+## Server Libraries (5 files in server/src/lib/)
 - `prisma.ts` -- Prisma client singleton
-- `redis.ts` -- Redis client singleton
-- `socket.ts` -- Socket.io server instance
+- `redis.ts` -- Redis client singleton with SCAN-based cache invalidation
+- `combat-engine.ts` -- Pure-function turn-based combat engine (d20 system)
+- `game-day.ts` -- Game day utilities (epoch, tick times, day numbers)
+- `alt-guard.ts` -- Multi-character abuse prevention
 
 ## Integration Tests (8 suites in server/src/__tests__/)
 - `auth.test.ts` -- Registration, login, JWT validation
@@ -379,10 +383,14 @@ Herbalist -> Miner/Woodworker -> Smelter -> Alchemist
 ## Combat System
 - Turn-based, D&D-style with initiative rolls (d20 + DEX)
 - Attack rolls: d20 + modifiers vs target AC
-- 120 racial abilities across 20 races (6 per race, unlock at levels 1/5/10/15/25/40)
+- Server-side weapon validation (damage from equipped weapon DB lookup, not client)
+- PvE combat wrapped in database transaction for atomicity
+- Redis key pattern: `combat:pve:{sessionId}` (NOT `combat:{characterId}`)
+- 121 racial abilities across 20 races (6 per race, Nightborne has 7; unlock at levels 1/5/10/15/25/40)
 - PvE encounters, dungeons with bosses, PvP duels, arena, kingdom wars
 - Status effects: poisoned, stunned, blessed, burning, frozen, etc.
 - Death penalties: gold loss, XP loss, equipment durability damage
+- Flee action: FLED status with minor penalty (half XP loss, 50% HP, no gold/durability loss)
 - Revenant reduced death penalty (halved)
 
 ## Political System
@@ -414,6 +422,9 @@ Database schema -> `/database/prisma/schema.prisma`
 - Phase 2A (Prompts 09-14): Economy & professions expansion -- **COMPLETE**
 - Phase 2B (Prompts 15-18): 20 races & world expansion -- **COMPLETE**
 - Documentation Pass: Full docs, game guide, API reference -- **COMPLETE**
+- P0 Fix Pass: 13 security/data-integrity fixes -- **COMPLETE**
+- P1 Fix Pass: Crafting chain fixes, frontend fixes, backend logic fixes -- **COMPLETE**
+- P2/P3 Fix Pass: Docs sync, schema enums, typed recipes, observability -- **IN PROGRESS**
 - Phase 3 (Prompts 19+): Future features (mounts, religion, naval, seasons) -- Not started
 
 ## Completion Summary
@@ -450,13 +461,21 @@ All 19 prompts (00-18) across 3 phases are complete. Implemented systems:
 - Trade analytics (cross-town prices, profitability calculator, supply/demand)
 
 **Phase 2B -- Race Expansion:**
-- Full 20-race data with stat modifiers, traits, 120 abilities, profession bonuses
+- Full 20-race data with stat modifiers, traits, 121 abilities, profession bonuses
 - Sub-race systems (7 ancestries, 6 clans, 4 elements)
 - 68-town world map with 21 regions, travel routes, border mechanics
 - 11 exclusive resource zones with access requirements
 - Regional mechanics (racial majority, border tariffs, environmental effects)
 - 20x20 racial diplomacy matrix (190 pairings) with treaty/war system
 - Herald announcements, State of Aethermere reports, citizen petitions
-- All 120 racial combat abilities integrated into combat engine
+- All 121 racial combat abilities integrated into combat engine (Nightborne has 7)
 - All racial profession bonuses integrated into gathering/crafting
 - Special exotic race mechanics (Changeling shapeshifting, Warforged maintenance, Merfolk amphibious, Drow sunlight, Faefolk flight, Revenant reduced death)
+
+**P0/P1 Fix Passes:**
+- All 13 P0 security/integrity fixes applied (credential rotation, combat weapon validation, crafting race condition, double taxation, vote stuffing, cache per-user keys, graceful shutdown, Docker non-root, JWT validation)
+- Crafting chain fixes (Nails copper, Silk Thread recipe, Exotic Hide resource, Cloth Padding, Copper weapons softwood, Woodworker barrel/furniture, Rancher names)
+- Frontend fixes (error boundaries, 401 interceptor, dynamic tax rates, kingdom ID resolution, socket reconnection, 404 catch-all, PvP player search)
+- Backend fixes (Human 4th profession, PvP leaderboard pagination, caravan location check, quest progress validation, quest item rewards, flee penalty, getCharacter ordering)
+- Database: LawVote model, inventory unique constraint, kingdom-region relation, 8 kingdom seeds, 4 performance indexes, cascade delete fixes
+- Human 4th profession slot implemented (`getMaxProfessions()` returns 4 for HUMAN level 15+)

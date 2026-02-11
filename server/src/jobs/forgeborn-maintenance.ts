@@ -5,9 +5,11 @@
  * Safe to delete after migration is verified.
  */
 
+import { logger } from '../lib/logger';
+
 /**
  * @deprecated No-op stub. Maintenance is now handled by daily tick.
  */
 export function startForgebornMaintenanceJob() {
-  console.log('[ForgebornMaintenance] DEPRECATED — maintenance handled by daily tick. Skipping cron registration.');
+  logger.info('ForgebornMaintenance DEPRECATED — handled by daily tick, skipping');
 }

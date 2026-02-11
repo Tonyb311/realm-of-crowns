@@ -4,13 +4,13 @@ import {
   Crown,
   Swords,
   ScrollText,
-  CircleDollarSign,
   Users,
-  Loader2,
   Shield,
   Landmark,
 } from 'lucide-react';
 import api from '../services/api';
+import GoldAmount from '../components/shared/GoldAmount';
+import { KingdomSkeleton } from '../components/ui/LoadingSkeleton';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -48,15 +48,6 @@ interface KingdomInfo {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-function GoldAmount({ amount, className = '' }: { amount: number; className?: string }) {
-  return (
-    <span className={`inline-flex items-center gap-1 ${className}`}>
-      <CircleDollarSign className="w-3.5 h-3.5 text-primary-400 flex-shrink-0" />
-      <span>{amount.toLocaleString()}</span>
-    </span>
-  );
-}
-
 const LAW_TYPE_COLORS: Record<string, string> = {
   tax: 'text-amber-400',
   trade: 'text-green-400',
@@ -86,11 +77,7 @@ export default function KingdomPage() {
   // Loading
   // -------------------------------------------------------------------------
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 text-primary-400 animate-spin" />
-      </div>
-    );
+    return <KingdomSkeleton />;
   }
 
   if (error || !kingdom) {

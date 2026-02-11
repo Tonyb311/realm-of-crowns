@@ -3,8 +3,9 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { emitGovernanceEvent } from '../index';
+import { emitGovernanceEvent } from '../socket/events';
 
 const router = Router();
 
@@ -56,19 +57,11 @@ const proposePeaceSchema = z.object({
 
 // --- Helpers ---
 
-async function getCharacter(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
-
 // POST /propose-law
-router.post('/propose-law', authGuard, validate(proposeLawSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/propose-law', authGuard, characterGuard, validate(proposeLawSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { kingdomId, title, description, effects, lawType, expiresAt } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     // Check if character is ruler of this kingdom or mayor of a town in it
     const kingdom = await prisma.kingdom.findUnique({
@@ -95,7 +88,7 @@ router.post('/propose-law', authGuard, validate(proposeLawSchema), async (req: A
         description,
         effects: effects ?? {},
         enactedById: character.id,
-        status: 'proposed',
+        status: 'PROPOSED',
         lawType: lawType ?? 'general',
         expiresAt: expiresAt ? new Date(expiresAt) : null,
       },
@@ -109,14 +102,10 @@ router.post('/propose-law', authGuard, validate(proposeLawSchema), async (req: A
 });
 
 // POST /vote-law
-router.post('/vote-law', authGuard, validate(voteLawSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/vote-law', authGuard, characterGuard, validate(voteLawSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { lawId, vote } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const law = await prisma.law.findUnique({
       where: { id: lawId },
@@ -126,7 +115,7 @@ router.post('/vote-law', authGuard, validate(voteLawSchema), async (req: Authent
       return res.status(404).json({ error: 'Law not found' });
     }
 
-    if (law.status !== 'proposed' && law.status !== 'voting') {
+    if (law.status !== 'PROPOSED' && law.status !== 'VOTING') {
       return res.status(400).json({ error: 'Law is not open for voting' });
     }
 
@@ -176,7 +165,7 @@ router.post('/vote-law', authGuard, validate(voteLawSchema), async (req: Authent
     const updatedLaw = await prisma.law.update({
       where: { id: lawId },
       data: {
-        status: 'voting',
+        status: 'VOTING',
         votesFor,
         votesAgainst,
       },
@@ -187,7 +176,7 @@ router.post('/vote-law', authGuard, validate(voteLawSchema), async (req: Authent
     if (totalVotes >= 3 && updatedLaw.votesFor > updatedLaw.votesAgainst) {
       await prisma.law.update({
         where: { id: lawId },
-        data: { status: 'active', enactedAt: new Date() },
+        data: { status: 'ACTIVE', enactedAt: new Date() },
       });
 
       emitGovernanceEvent('governance:law-passed', `kingdom:${law.kingdomId}`, {
@@ -206,14 +195,10 @@ router.post('/vote-law', authGuard, validate(voteLawSchema), async (req: Authent
 });
 
 // POST /set-tax
-router.post('/set-tax', authGuard, validate(setTaxSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/set-tax', authGuard, characterGuard, validate(setTaxSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { townId, taxRate } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const town = await prisma.town.findUnique({
       where: { id: townId },
@@ -254,10 +239,10 @@ router.post('/set-tax', authGuard, validate(setTaxSchema), async (req: Authentic
 });
 
 // GET /laws
-router.get('/laws', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/laws', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const kingdomId = req.query.kingdomId as string | undefined;
-    const status = req.query.status as string | undefined;
+    const status = req.query.status as 'PROPOSED' | 'VOTING' | 'ACTIVE' | 'REJECTED' | 'EXPIRED' | undefined;
 
     if (!kingdomId) {
       return res.status(400).json({ error: 'kingdomId is required' });
@@ -282,7 +267,7 @@ router.get('/laws', authGuard, async (req: AuthenticatedRequest, res: Response) 
 });
 
 // GET /town-info/:townId
-router.get('/town-info/:townId', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/town-info/:townId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { townId } = req.params;
 
@@ -336,14 +321,10 @@ router.get('/town-info/:townId', authGuard, async (req: AuthenticatedRequest, re
 });
 
 // POST /appoint
-router.post('/appoint', authGuard, validate(appointSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/appoint', authGuard, characterGuard, validate(appointSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { characterId, role, townId, kingdomId } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     if (!townId && !kingdomId) {
       return res.status(400).json({ error: 'Either townId or kingdomId is required' });
@@ -406,14 +387,10 @@ router.post('/appoint', authGuard, validate(appointSchema), async (req: Authenti
 });
 
 // POST /allocate-treasury
-router.post('/allocate-treasury', authGuard, validate(allocateTreasurySchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/allocate-treasury', authGuard, characterGuard, validate(allocateTreasurySchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { townId, kingdomId, amount, purpose, details } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     if (!townId && !kingdomId) {
       return res.status(400).json({ error: 'Either townId or kingdomId is required' });
@@ -479,14 +456,10 @@ router.post('/allocate-treasury', authGuard, validate(allocateTreasurySchema), a
 });
 
 // POST /declare-war
-router.post('/declare-war', authGuard, validate(declareWarSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/declare-war', authGuard, characterGuard, validate(declareWarSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { targetKingdomId, reason } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const attackerKingdom = await prisma.kingdom.findFirst({
       where: { rulerId: character.id },
@@ -511,7 +484,7 @@ router.post('/declare-war', authGuard, validate(declareWarSchema), async (req: A
     // Check for existing active war between these kingdoms
     const existingWar = await prisma.war.findFirst({
       where: {
-        status: 'active',
+        status: 'ACTIVE',
         OR: [
           { attackerKingdomId: attackerKingdom.id, defenderKingdomId: targetKingdomId },
           { attackerKingdomId: targetKingdomId, defenderKingdomId: attackerKingdom.id },
@@ -527,7 +500,7 @@ router.post('/declare-war', authGuard, validate(declareWarSchema), async (req: A
       data: {
         attackerKingdomId: attackerKingdom.id,
         defenderKingdomId: targetKingdomId,
-        status: 'active',
+        status: 'ACTIVE',
       },
       include: {
         attackerKingdom: { select: { id: true, name: true } },
@@ -556,14 +529,10 @@ router.post('/declare-war', authGuard, validate(declareWarSchema), async (req: A
 });
 
 // POST /propose-peace
-router.post('/propose-peace', authGuard, validate(proposePeaceSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/propose-peace', authGuard, characterGuard, validate(proposePeaceSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { warId, terms } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const war = await prisma.war.findUnique({
       where: { id: warId },
@@ -577,7 +546,7 @@ router.post('/propose-peace', authGuard, validate(proposePeaceSchema), async (re
       return res.status(404).json({ error: 'War not found' });
     }
 
-    if (war.status !== 'active') {
+    if (war.status !== 'ACTIVE') {
       return res.status(400).json({ error: 'War is not active' });
     }
 
@@ -593,7 +562,7 @@ router.post('/propose-peace', authGuard, validate(proposePeaceSchema), async (re
     const updatedWar = await prisma.war.update({
       where: { id: warId },
       data: {
-        status: 'peace_proposed',
+        status: 'PEACE_PROPOSED',
       },
       include: {
         attackerKingdom: { select: { id: true, name: true } },
@@ -624,7 +593,7 @@ router.post('/propose-peace', authGuard, validate(proposePeaceSchema), async (re
 });
 
 // GET /kingdom/:kingdomId
-router.get('/kingdom/:kingdomId', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/kingdom/:kingdomId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { kingdomId } = req.params;
 
@@ -633,20 +602,20 @@ router.get('/kingdom/:kingdomId', authGuard, async (req: AuthenticatedRequest, r
       include: {
         ruler: { select: { id: true, name: true, level: true } },
         lawRecords: {
-          where: { status: 'active' },
+          where: { status: 'ACTIVE' },
           include: {
             enactedBy: { select: { id: true, name: true } },
           },
           orderBy: { enactedAt: 'desc' },
         },
         warsAttacking: {
-          where: { status: 'active' },
+          where: { status: 'ACTIVE' },
           include: {
             defenderKingdom: { select: { id: true, name: true } },
           },
         },
         warsDefending: {
-          where: { status: 'active' },
+          where: { status: 'ACTIVE' },
           include: {
             attackerKingdom: { select: { id: true, name: true } },
           },

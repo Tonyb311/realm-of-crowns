@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { checkBorderCrossing } from '../services/border-crossing';
 import {
@@ -60,19 +61,12 @@ const updatePresetsSchema = z.object({
 
 // ---- Helpers ----
 
-async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
-
 // ---- Routes ----
 
 // GET /api/travel/position — Character's current position (town or node)
-router.get('/position', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/position', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     // Read currentNodeId via raw query (field being added by schema teammate)
     const nodeResult = await prisma.$queryRaw<{ currentNodeId: string | null }[]>`
@@ -115,12 +109,9 @@ router.get('/position', authGuard, async (req: AuthenticatedRequest, res: Respon
 });
 
 // GET /api/travel/nodes — Nodes connected to current position
-router.get('/nodes', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/nodes', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     // Determine current node
     const nodeResult = await prisma.$queryRaw<{ currentNodeId: string | null }[]>`
@@ -165,7 +156,7 @@ router.get('/nodes', authGuard, async (req: AuthenticatedRequest, res: Response)
 });
 
 // GET /api/travel/nodes/:nodeId — Node details with occupants
-router.get('/nodes/:nodeId', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/nodes/:nodeId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { nodeId } = req.params;
 
@@ -216,7 +207,7 @@ router.get('/nodes/:nodeId', authGuard, async (req: AuthenticatedRequest, res: R
 });
 
 // GET /api/travel/routes/:fromTownId/:toTownId — Full path with distance and dangers
-router.get('/routes/:fromTownId/:toTownId', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/routes/:fromTownId/:toTownId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { fromTownId, toTownId } = req.params;
 
@@ -246,9 +237,9 @@ router.get('/routes/:fromTownId/:toTownId', authGuard, async (req: Authenticated
     const totalEncounterRisk = route.path.reduce((sum, n) => sum + n.encounterChance, 0);
 
     // Psion Nomad: Dimensional Trade — show adjusted travel estimate
-    const character = await getCharacterForUser(req.user!.userId);
+    const character = req.character!;
     let psionInsight: { adjustedDistance?: number; nomadSpeedBonus?: boolean; warPenaltyBypassed?: boolean } | undefined;
-    if (character) {
+    {
       const { isPsion, specialization } = await getPsionSpec(character.id);
       if (isPsion && specialization === 'nomad') {
         psionInsight = {
@@ -288,12 +279,9 @@ router.get('/routes/:fromTownId/:toTownId', authGuard, async (req: Authenticated
 });
 
 // GET /api/travel/node-map — Regional node/connection data for map rendering
-router.get('/node-map', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/node-map', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     // Determine the character's current region
     let regionId: string | null = null;
@@ -381,7 +369,7 @@ router.get('/node-map', authGuard, async (req: AuthenticatedRequest, res: Respon
 });
 
 // POST /api/travel/border-check — Check border crossing requirements (KEPT from old system)
-router.post('/border-check', authGuard, validate(borderCheckSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/border-check', authGuard, characterGuard, validate(borderCheckSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { characterId, fromTownId, toTownId } = req.body;
     const result = await checkBorderCrossing(characterId, fromTownId, toTownId);
@@ -393,12 +381,9 @@ router.post('/border-check', authGuard, validate(borderCheckSchema), async (req:
 });
 
 // GET /api/travel/combat-presets — Get character's combat presets
-router.get('/combat-presets', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/combat-presets', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const presets = await getCombatPresets(character.id);
     return res.json({ presets });
@@ -409,12 +394,9 @@ router.get('/combat-presets', authGuard, async (req: AuthenticatedRequest, res: 
 });
 
 // PUT /api/travel/combat-presets — Update character's combat presets
-router.put('/combat-presets', authGuard, validate(updatePresetsSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.put('/combat-presets', authGuard, characterGuard, validate(updatePresetsSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const presets = req.body;
 

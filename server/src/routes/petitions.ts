@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { emitNotification } from '../socket/events';
 
@@ -26,21 +27,11 @@ const createPetitionSchema = z.object({
   signatureGoal: z.number().int().min(3).max(100).optional(),
 });
 
-// --- Helpers ---
-
-async function getCharacter(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
-
 // POST /api/petitions — create a petition
-router.post('/', authGuard, validate(createPetitionSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/', authGuard, characterGuard, validate(createPetitionSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { petitionType, title, description, targetData, signatureGoal } = req.body;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     // Check for existing active petition by same creator of same type
     const existing = await prisma.petition.findFirst({
@@ -103,14 +94,10 @@ router.post('/', authGuard, validate(createPetitionSchema), async (req: Authenti
 });
 
 // POST /api/petitions/:id/sign — sign a petition
-router.post('/:id/sign', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/sign', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const character = await getCharacter(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const petition = await prisma.petition.findUnique({
       where: { id },

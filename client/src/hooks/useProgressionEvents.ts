@@ -2,12 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { getSocket } from '../services/socket';
-
-const TOAST_STYLE = {
-  background: '#1a1a2e',
-  color: '#e8d5b7',
-  border: '1px solid #c9a84c',
-};
+import { TOAST_STYLE } from '../constants';
 
 export interface LevelUpPayload {
   characterId: string;

@@ -31,7 +31,7 @@
 - [Part 9: Exotic Race Deep Dives](#part-9-exotic-race-deep-dives)
 - [Part 10: Tips and Strategies](#part-10-tips-and-strategies)
 - [Appendix A: Base Stat Table (All 20 Races)](#appendix-a-base-stat-table-all-20-races)
-- [Appendix B: All Racial Abilities (120)](#appendix-b-all-racial-abilities-120)
+- [Appendix B: All Racial Abilities (121)](#appendix-b-all-racial-abilities-121)
 - [Appendix C: Profession Reference](#appendix-c-profession-reference)
 - [Appendix D: All 68 Towns](#appendix-d-all-68-towns)
 - [Appendix E: Exclusive Resource Zones](#appendix-e-exclusive-resource-zones)
@@ -46,7 +46,7 @@
 
 ## What is Realm of Crowns?
 
-Realm of Crowns is a persistent multiplayer RPG set in the continent of Aethermere -- a land of warring kingdoms, ancient magic, and boundless opportunity. You will create a character, choose a race and class, explore a world of 68 towns across 10 distinct regions, fight monsters and other players, craft legendary equipment, climb the political ladder, and build your legacy.
+Realm of Crowns is a persistent multiplayer RPG set in the continent of Aethermere -- a land of warring kingdoms, ancient magic, and boundless opportunity. You will create a character, choose a race and class, explore a world of 68 towns across 21 territories, fight monsters and other players, craft legendary equipment, climb the political ladder, and build your legacy.
 
 This is not a game where you simply grind levels and move on. Aethermere is a living world. Mayors are elected by players. Laws are passed by vote. Wars between kingdoms are declared by rulers and fought by citizens. Prices on the marketplace shift with supply and demand. The sword your Dwarven blacksmith forges today might end up in the hands of an Orc warrior tomorrow, bought through a Halfling merchant's stall.
 
@@ -56,7 +56,7 @@ When you first enter Aethermere, you will:
 
 1. **Choose a Race** -- One of 20 playable races across three tiers (Core, Common, Exotic). Your race determines your starting stats, homeland, racial abilities, and profession bonuses. Choose carefully; this cannot be changed.
 
-2. **Choose a Class** -- One of 6 classes (Warrior, Mage, Rogue, Cleric, Ranger, Bard). At level 10, you will pick a specialization within your class, unlocking a unique skill tree of 6 abilities.
+2. **Choose a Class** -- One of 7 classes (Warrior, Mage, Rogue, Cleric, Ranger, Bard, Psion). At level 10, you will pick a specialization within your class, unlocking a unique skill tree of 6 abilities.
 
 3. **Arrive in Your Homeland** -- You begin in one of your race's starting towns. From here, the world opens up. Talk to the town elder. Pick up your first quest. Swing a sword at a rat. The journey begins.
 
@@ -852,6 +852,54 @@ The scholar. Lorekeepers gain more XP than any other specialization and can use 
 | 3 | 22 | Arcane Insight | 15 | 6 | Halve cooldown of next ability used |
 | 4 | 30 | Tome of Secrets | 30 | 8 | Use a random powerful ability from any class |
 | 5 | 40 | Omniscient | 0 | -- | Passive: +25% XP from ALL sources |
+
+### Psion
+
+The mind warrior. Psions wield psychic energy to damage, control, and manipulate the battlefield. Their power scales with Intelligence, and their abilities bypass conventional defenses.
+
+**Best Stats:** INT, WIS
+**Best Races:** Elf, Gnome, Changeling, Genasi, Drow
+
+**Specializations:**
+
+#### Telepath (Psychic Damage / Mind Control)
+
+The dominator. Telepaths crush minds with raw psychic force and can seize control of enemy actions.
+
+| Tier | Level | Ability | Mana | CD | Effect |
+|------|-------|---------|------|----|--------|
+| 1 | 1 | Mind Spike | 8 | 0 | 2d6 psychic + weaken 2 rounds |
+| 2 | 5 | Thought Shield | 0 | -- | Passive: psychic resistance, +2 mental saves |
+| 3 | 12 | Psychic Crush | 18 | 1 | 3d8 psychic + stun 1 round (WIS save: half) |
+| 4 | 18 | Dominate | 25 | 1 | Control target 1 round (WIS save: weakened 2 rounds) |
+| 5 | 28 | Mind Shatter | 30 | 1 | AoE 3d6 psychic + weaken 2 rounds |
+| 6 | 40 | Absolute Dominion | 40 | 1 | Total control 2 rounds (save: stun + 2d10 psychic) |
+
+#### Seer (Precognition / Buffs)
+
+The oracle. Seers glimpse the future, gaining unparalleled defensive awareness and reaction speed.
+
+| Tier | Level | Ability | Mana | CD | Effect |
+|------|-------|---------|------|----|--------|
+| 1 | 1 | Foresight | 6 | 0 | +2 AC, +2 saves for 3 rounds |
+| 2 | 5 | Danger Sense | 0 | -- | Passive: cannot be surprised, +2 initiative |
+| 3 | 12 | Precognitive Dodge | 12 | 1 | Negate one attack (1/combat) |
+| 4 | 18 | Third Eye | 0 | -- | Passive: see invisible/disguises, immune blinded |
+| 5 | 28 | Temporal Echo | 28 | 1 | Repeat last action as free action |
+| 6 | 40 | Prescient Mastery | 35 | 1 | Enemies disadvantage, you advantage, +4 saves, 3 rounds |
+
+#### Nomad (Teleportation / Spatial)
+
+The dimension walker. Nomads teleport across the battlefield, repositioning allies and displacing enemies.
+
+| Tier | Level | Ability | Mana | CD | Effect |
+|------|-------|---------|------|----|--------|
+| 1 | 1 | Blink Strike | 6 | 0 | Teleport + attack with +2 hit, INT damage bonus |
+| 2 | 5 | Phase Step | 0 | -- | Passive: +3 AC vs opportunity attacks, free disengage |
+| 3 | 12 | Dimensional Pocket | 15 | 1 | Phase out 1 round (untargetable), advantage on return |
+| 4 | 18 | Translocation | 22 | 1 | Swap positions; enemy loses action or ally +2 AC |
+| 5 | 28 | Rift Walk | 28 | 1 | AoE 2d8 psychic + slow 2 rounds |
+| 6 | 40 | Banishment | 40 | 1 | Banish 3 rounds; 4d6 + stun on return (save: 2d6 + slow) |
 
 ---
 
@@ -2341,7 +2389,7 @@ A: Mostly yes. Professions can be leveled entirely through gathering and craftin
 
 ---
 
-# Appendix B: All Racial Abilities (120)
+# Appendix B: All Racial Abilities (121)
 
 ## Core Races (42 abilities)
 

@@ -290,7 +290,7 @@ export interface DeathPenalty {
 export interface CombatState {
   sessionId: string;
   type: 'PVE' | 'PVP' | 'DUEL' | 'ARENA' | 'WAR';
-  status: 'active' | 'completed';
+  status: 'ACTIVE' | 'COMPLETED';
   round: number;
   turnIndex: number;
   combatants: Combatant[];

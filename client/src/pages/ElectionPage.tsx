@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Vote,
-  Clock,
   Loader2,
   Users,
   Trophy,
@@ -14,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import api from '../services/api';
+import CountdownTimer from '../components/shared/CountdownTimer';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -83,34 +83,6 @@ type Tab = 'current' | 'history' | 'impeachment';
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-function CountdownTimer({ endDate }: { endDate: string }) {
-  const [now, setNow] = useState(Date.now());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const end = new Date(endDate).getTime();
-  const diff = Math.max(0, end - now);
-
-  if (diff <= 0) {
-    return <span className="text-parchment-500 text-xs">Ended</span>;
-  }
-
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-  return (
-    <span className="text-primary-400 text-xs font-display flex items-center gap-1">
-      <Clock className="w-3 h-3" />
-      {days > 0 && `${days}d `}{hours}h {minutes}m {seconds}s
-    </span>
-  );
-}
-
 const PHASE_COLORS: Record<string, string> = {
   NOMINATIONS: 'bg-blue-400/10 text-blue-400 border-blue-400/30',
   VOTING: 'bg-green-400/10 text-green-400 border-green-400/30',

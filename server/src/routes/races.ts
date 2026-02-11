@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { getRace, getRacesByTier } from '@shared/data/races';
 import { Race, ProfessionType } from '@prisma/client';
@@ -32,14 +33,6 @@ const changelingShiftSchema = z.object({
 const halfElfChosenProfessionSchema = z.object({
   profession: z.nativeEnum(ProfessionType),
 });
-
-// =========================================================================
-// Helper
-// =========================================================================
-
-async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
 
 // =========================================================================
 // GET /api/races — list all 20 races grouped by tier
@@ -104,14 +97,10 @@ router.get('/relations/matrix', async (req: Request, res: Response) => {
 // =========================================================================
 // POST /api/races/abilities/racial/use — use a racial ability with cooldown
 // =========================================================================
-router.post('/abilities/racial/use', authGuard, validate(useRacialAbilitySchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/abilities/racial/use', authGuard, characterGuard, validate(useRacialAbilitySchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { abilityName } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const raceKey = character.race.toLowerCase();
     const raceDef = getRace(raceKey);
@@ -201,14 +190,10 @@ router.post('/abilities/racial/use', authGuard, validate(useRacialAbilitySchema)
 // =========================================================================
 // POST /api/races/changeling/shift — change Changeling appearance
 // =========================================================================
-router.post('/changeling/shift', authGuard, validate(changelingShiftSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/changeling/shift', authGuard, characterGuard, validate(changelingShiftSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { disguisedAs, disguiseRace } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     if (character.race !== 'CHANGELING') {
       return res.status(400).json({ error: 'Only Changelings can shapeshift' });
@@ -251,13 +236,9 @@ router.post('/changeling/shift', authGuard, validate(changelingShiftSchema), asy
 // =========================================================================
 // GET /api/races/changeling/trueform — get Changeling's true form
 // =========================================================================
-router.get('/changeling/trueform', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/changeling/trueform', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     if (character.race !== 'CHANGELING') {
       return res.status(400).json({ error: 'Only Changelings have a true form' });
@@ -286,13 +267,9 @@ router.get('/changeling/trueform', authGuard, async (req: AuthenticatedRequest, 
 // =========================================================================
 // GET /api/races/forgeborn/maintenance — Forgeborn maintenance status
 // =========================================================================
-router.get('/forgeborn/maintenance', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/forgeborn/maintenance', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     if (character.race !== 'FORGEBORN') {
       return res.status(400).json({ error: 'Only Forgeborn require maintenance' });
@@ -334,13 +311,9 @@ router.get('/forgeborn/maintenance', authGuard, async (req: AuthenticatedRequest
 // =========================================================================
 // GET /api/races/merfolk/underwater-nodes — list underwater resource nodes
 // =========================================================================
-router.get('/merfolk/underwater-nodes', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/merfolk/underwater-nodes', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     if (character.race !== 'MERFOLK') {
       return res.status(400).json({ error: 'Only Merfolk can access underwater nodes' });
@@ -396,14 +369,10 @@ router.get('/profession-bonuses/:race', (req: Request, res: Response) => {
 // =========================================================================
 // POST /api/races/half-elf-chosen-profession — set Half-Elf's chosen profession
 // =========================================================================
-router.post('/half-elf-chosen-profession', authGuard, validate(halfElfChosenProfessionSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/half-elf-chosen-profession', authGuard, characterGuard, validate(halfElfChosenProfessionSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { profession } = req.body;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const result = await applyHalfElfChosenProfession(character.id, profession);
 
@@ -425,13 +394,9 @@ router.post('/half-elf-chosen-profession', authGuard, validate(halfElfChosenProf
 // =========================================================================
 // POST /api/races/gnome-eureka — trigger Gnome Eureka Moment
 // =========================================================================
-router.post('/gnome-eureka', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/gnome-eureka', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const result = await applyGnomeEurekaMoment(character.id);
 
@@ -453,13 +418,9 @@ router.post('/gnome-eureka', authGuard, async (req: AuthenticatedRequest, res: R
 // =========================================================================
 // POST /api/races/forgeborn-overclock — trigger Forgeborn Overclock
 // =========================================================================
-router.post('/forgeborn-overclock', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/forgeborn-overclock', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const result = await applyForgebornOverclock(character.id);
 
@@ -481,21 +442,17 @@ router.post('/forgeborn-overclock', authGuard, async (req: AuthenticatedRequest,
 // =========================================================================
 // GET /api/races/bonuses/calculate — calculate racial bonuses for character
 // =========================================================================
-router.get('/bonuses/calculate', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/bonuses/calculate', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await prisma.character.findFirst({
-      where: { userId: req.user!.userId },
-      include: { currentTown: true },
-    });
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const { profession } = req.query;
     const professionType = typeof profession === 'string' ? profession : null;
-    const currentTown = character.currentTown?.name ?? null;
-    const currentBiome = character.currentTown?.biome ?? null;
+    const town = character.currentTownId
+      ? await prisma.town.findUnique({ where: { id: character.currentTownId }, select: { name: true, biome: true } })
+      : null;
+    const currentTown = town?.name ?? null;
+    const currentBiome = town?.biome ?? null;
 
     const subRace = character.subRace as { id: string; name: string; element?: string; [key: string]: unknown } | null;
     const raceKey = character.race.toLowerCase();

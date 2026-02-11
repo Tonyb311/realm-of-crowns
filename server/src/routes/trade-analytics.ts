@@ -1,17 +1,12 @@
 import { Router, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { cache } from '../middleware/cache';
 import { addProfessionXP } from '../services/profession-xp';
 
 const router = Router();
-
-// --- Helpers ---
-
-async function getCharacter(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
 
 // GET /api/trade/prices/:itemTemplateId
 // Current average price for an item across all towns
@@ -418,7 +413,7 @@ router.get('/profitability', authGuard, async (req: AuthenticatedRequest, res: R
 
 // GET /api/trade/town/:townId/dashboard
 // Town economic summary
-router.get('/town/:townId/dashboard', authGuard, cache(60), async (req: AuthenticatedRequest, res: Response) => {
+router.get('/town/:townId/dashboard', authGuard, characterGuard, cache(60), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { townId } = req.params;
 
@@ -522,8 +517,8 @@ router.get('/town/:townId/dashboard', authGuard, cache(60), async (req: Authenti
     const estimatedTaxRevenue = Math.floor(totalRevenue * taxRate);
 
     // Determine character is mayor for extra info
-    const character = await getCharacter(req.user!.userId);
-    const isMayor = character && town.mayorId === character.id;
+    const character = req.character!;
+    const isMayor = town.mayorId === character.id;
 
     return res.json({
       town: { id: town.id, name: town.name },

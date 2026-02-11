@@ -9,6 +9,9 @@ import cron from 'node-cron';
 import type { Server } from 'socket.io';
 import { processDailyTick } from './daily-tick';
 import { startForgebornMaintenanceJob } from './forgeborn-maintenance';
+import { logger } from '../lib/logger';
+import { redis } from '../lib/redis';
+import { cronJobExecutions, cronJobDuration } from '../lib/metrics';
 
 // ---------------------------------------------------------------------------
 // Replaced by daily-tick.ts — kept as comments for reference
@@ -29,13 +32,27 @@ export function registerJobs(_io: Server) {
   // Daily Tick — single orchestrated processor (replaces 10 individual jobs)
   // -----------------------------------------------------------------------
   cron.schedule('0 0 * * *', async () => {
+    const jobName = 'dailyTick';
+    const end = cronJobDuration.startTimer({ job: jobName });
+    logger.info({ job: jobName }, 'cron job started');
+
     try {
       await processDailyTick();
-    } catch (error) {
-      console.error('[Jobs] Daily tick failed:', error);
+      end();
+      cronJobExecutions.inc({ job: jobName, result: 'success' });
+      logger.info({ job: jobName }, 'cron job completed successfully');
+
+      // P3 #64: Record last success timestamp for health check freshness
+      if (redis) {
+        await redis.set('dailyTick:lastSuccess', Date.now().toString());
+      }
+    } catch (error: any) {
+      end();
+      cronJobExecutions.inc({ job: jobName, result: 'failure' });
+      logger.error({ job: jobName, err: error.message, stack: error.stack }, 'cron job FAILED');
     }
   });
-  console.log('[Jobs] Daily tick cron registered (daily at 00:00 UTC)');
+  logger.info('Daily tick cron registered (daily at 00:00 UTC)');
 
   // -----------------------------------------------------------------------
   // Forgeborn Maintenance — race-specific, runs independently

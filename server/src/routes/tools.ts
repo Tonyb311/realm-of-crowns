@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { ProfessionType } from '@prisma/client';
 import { TOOL_TYPES, ToolTypeDefinition } from '@shared/data/tools';
@@ -29,22 +30,14 @@ const unequipSchema = z.object({
   }),
 });
 
-async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
-
 // -------------------------------------------------------------------------
 // POST /api/tools/equip — Equip a tool to a profession slot
 // -------------------------------------------------------------------------
-router.post('/equip', authGuard, validate(equipSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { itemId, professionType } = req.body;
     const profEnum = professionType as ProfessionType;
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     // Verify item exists, is owned by character, and is a TOOL
     const item = await prisma.item.findUnique({
@@ -132,13 +125,9 @@ router.post('/equip', authGuard, validate(equipSchema), async (req: Authenticate
 // -------------------------------------------------------------------------
 // POST /api/tools/unequip — Unequip the current tool
 // -------------------------------------------------------------------------
-router.post('/unequip', authGuard, validate(unequipSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/unequip', authGuard, characterGuard, validate(unequipSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const existingEquip = await prisma.characterEquipment.findUnique({
       where: {
@@ -183,13 +172,9 @@ router.post('/unequip', authGuard, validate(unequipSchema), async (req: Authenti
 // -------------------------------------------------------------------------
 // GET /api/tools/equipped — Get currently equipped tools
 // -------------------------------------------------------------------------
-router.get('/equipped', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/equipped', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const equipped = await prisma.characterEquipment.findUnique({
       where: {
@@ -232,13 +217,9 @@ router.get('/equipped', authGuard, async (req: AuthenticatedRequest, res: Respon
 // -------------------------------------------------------------------------
 // GET /api/tools/inventory — List all tools in inventory
 // -------------------------------------------------------------------------
-router.get('/inventory', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/inventory', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const toolItems = await prisma.inventory.findMany({
       where: {

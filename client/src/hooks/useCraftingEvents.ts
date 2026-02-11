@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { getSocket } from '../services/socket';
+import { TOAST_STYLE } from '../constants';
 
 // ---------------------------------------------------------------------------
 // Payload types
@@ -9,15 +10,6 @@ import { getSocket } from '../services/socket';
 interface CraftingReadyPayload {
   recipeName?: string;
 }
-
-// ---------------------------------------------------------------------------
-// Toast styling (matches existing patterns)
-// ---------------------------------------------------------------------------
-const TOAST_STYLE = {
-  background: '#1a1a2e',
-  color: '#e8d5b7',
-  border: '1px solid #3a3a4e',
-};
 
 // ---------------------------------------------------------------------------
 // Hook

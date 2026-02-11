@@ -15,6 +15,7 @@ import {
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import { getSocket } from '../services/socket';
+import { TOAST_STYLE } from '../constants';
 import RelationsMatrix from '../components/diplomacy/RelationsMatrix';
 import WarDashboard from '../components/diplomacy/WarDashboard';
 import RulerDiplomacyPanel from '../components/diplomacy/RulerDiplomacyPanel';
@@ -74,12 +75,6 @@ const TAB_CONFIG: Array<{ id: Tab; label: string; icon: typeof Globe }> = [
 ];
 
 const EVENT_TYPES = ['ALL', 'WAR', 'TREATY', 'ELECTION', 'PETITION', 'HERALD'] as const;
-
-const TOAST_STYLE = {
-  background: '#1a1a2e',
-  color: '#e8d5b7',
-  border: '1px solid #c9a84c',
-};
 
 // ---------------------------------------------------------------------------
 // Component

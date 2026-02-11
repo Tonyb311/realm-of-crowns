@@ -59,7 +59,7 @@ export async function calculateSincerityScore(candidateId: string): Promise<numb
   if (!latestCandidacy || !latestCandidacy.platform) return 50;
 
   const lawVotes = await prisma.law.findMany({
-    where: { enactedById: candidateId, status: 'active' },
+    where: { enactedById: candidateId, status: 'ACTIVE' },
     take: 10,
   });
 
@@ -107,7 +107,7 @@ export async function calculateEmotionalState(
       prisma.combatParticipant.findMany({
         where: {
           characterId: targetCharacterId,
-          session: { endedAt: { gte: since }, status: 'completed' },
+          session: { endedAt: { gte: since }, status: 'COMPLETED' },
         },
         take: 10,
       }),
@@ -168,7 +168,7 @@ export async function assessTreatyCredibility(
         { attackerKingdomId: proposerKingdomId },
         { defenderKingdomId: proposerKingdomId },
       ],
-      status: 'active',
+      status: 'ACTIVE',
     },
   });
 
@@ -368,7 +368,7 @@ export async function calculateTensionIndex(
 
   const activeWars = await prisma.war.count({
     where: {
-      status: 'active',
+      status: 'ACTIVE',
       OR: [
         { attackerKingdomId: { in: [kingdomId1, kingdomId2] } },
         { defenderKingdomId: { in: [kingdomId1, kingdomId2] } },
@@ -455,14 +455,14 @@ export async function generateSeerPremonition(characterId: string): Promise<stri
     premonitions.push('A vision of your caravan flickers through your mind — the road ahead may not be smooth.');
   }
 
-  const activeWars = await prisma.war.findFirst({ where: { status: 'active' } });
+  const activeWars = await prisma.war.findFirst({ where: { status: 'ACTIVE' } });
   if (activeWars) {
     premonitions.push('The threads of fate tremble. Conflict stirs between kingdoms, and its shadow may reach you.');
   }
 
   const expiringLaws = await prisma.law.findFirst({
     where: {
-      status: 'active',
+      status: 'ACTIVE',
       expiresAt: { lte: new Date(Date.now() + 48 * 60 * 60 * 1000), gte: new Date() },
     },
   });

@@ -123,7 +123,7 @@ Status effects are processed at the start of each combatant's turn: DoT/HoT is a
 - Endpoint: `POST /combat-pve/start`
 - A random monster is selected based on the character's **current region** and **level range** (character level +/- 3).
 - The monster's stats scale with its level.
-- Combat state is serialized and stored in Redis (key: `combat:{characterId}`) with a **1-hour TTL**.
+- Combat state is serialized and stored in Redis (key: `combat:pve:{sessionId}`) with a **1-hour TTL**.
 - If Redis is unavailable, state falls back to an in-memory `Map`.
 
 ### Monster AI
@@ -343,7 +343,10 @@ The engine supports four combat types:
 
 ## Technical Notes
 
-- **State Storage**: Redis primary (`combat:{characterId}`, 1-hour TTL), in-memory `Map` fallback.
+- **State Storage**: Redis primary (`combat:pve:{sessionId}`, 1-hour TTL), in-memory `Map` fallback.
+- **Weapon Validation**: Server-side weapon lookup from `CharacterEquipment` (slot `MAIN_HAND`) joined with `Item` and `ItemTemplate`. Client cannot send fabricated weapon stats. Unarmed defaults: `1d4 + 0`.
+- **Transaction Safety**: PvE combat resolution is wrapped in `prisma.$transaction()` -- session status, gold/XP awards, equipment durability, and participant HP are updated atomically.
+- **Flee Action**: Successful flee sets `FLED` status with minor penalty (half XP loss, 50% HP, no gold or durability loss) instead of full death penalties.
 - **Validation**: All endpoints use Zod schemas for input validation.
 - **Auth**: All combat endpoints require JWT authentication via middleware.
 - **Concurrency**: Redis operations are atomic; combat state updates use read-modify-write with checks to prevent stale state.

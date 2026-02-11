@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { EquipSlot, ItemType } from '@prisma/client';
 import { calculateItemStats, calculateEquipmentTotals } from '../services/item-stats';
@@ -26,21 +27,13 @@ const ITEM_TYPE_SLOT_MAP: Record<string, EquipSlot[]> = {
   TOOL: ['MAIN_HAND'],
 };
 
-async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
-
 // -------------------------------------------------------------------------
 // POST /api/equipment/equip — Equip an item to a slot
 // -------------------------------------------------------------------------
-router.post('/equip', authGuard, validate(equipSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { itemId, slot } = req.body as { itemId: string; slot: EquipSlot };
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     // Verify item exists and is owned by character
     const item = await prisma.item.findUnique({
@@ -178,14 +171,10 @@ router.post('/equip', authGuard, validate(equipSchema), async (req: Authenticate
 // -------------------------------------------------------------------------
 // POST /api/equipment/unequip — Unequip an item from a slot
 // -------------------------------------------------------------------------
-router.post('/unequip', authGuard, validate(unequipSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/unequip', authGuard, characterGuard, validate(unequipSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { slot } = req.body as { slot: EquipSlot };
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const equip = await prisma.characterEquipment.findUnique({
       where: {
@@ -239,13 +228,9 @@ router.post('/unequip', authGuard, validate(unequipSchema), async (req: Authenti
 // -------------------------------------------------------------------------
 // GET /api/equipment/equipped — List all equipped items with full stats
 // -------------------------------------------------------------------------
-router.get('/equipped', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/equipped', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const equipped = await prisma.characterEquipment.findMany({
       where: { characterId: character.id },
@@ -285,13 +270,9 @@ router.get('/equipped', authGuard, async (req: AuthenticatedRequest, res: Respon
 // -------------------------------------------------------------------------
 // GET /api/equipment/stats — Aggregate stat bonuses from all equipment
 // -------------------------------------------------------------------------
-router.get('/stats', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/stats', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const totals = await calculateEquipmentTotals(character.id);
 

@@ -3,24 +3,18 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 
 const router = Router();
-
-async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-}
 
 // ---------------------------------------------------------------------------
 // GET /api/food/inventory
 // ---------------------------------------------------------------------------
 
-router.get('/inventory', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/inventory', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const foodItems = await prisma.inventory.findMany({
       where: {
@@ -74,12 +68,9 @@ router.get('/inventory', authGuard, async (req: AuthenticatedRequest, res: Respo
 // GET /api/food/settings
 // ---------------------------------------------------------------------------
 
-router.get('/settings', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/settings', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     return res.json({
       foodPriority: character.foodPriority ?? 'EXPIRING_FIRST',
@@ -100,12 +91,9 @@ const updateFoodSettingsSchema = z.object({
   preferredFoodId: z.string().nullable().optional(),
 });
 
-router.put('/settings', authGuard, validate(updateFoodSettingsSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.put('/settings', authGuard, characterGuard, validate(updateFoodSettingsSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const { foodPriority, preferredFoodId } = req.body;
 
@@ -131,12 +119,9 @@ router.put('/settings', authGuard, validate(updateFoodSettingsSchema), async (re
 // GET /api/food/market-freshness/:townId
 // ---------------------------------------------------------------------------
 
-router.get('/market-freshness/:townId', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/market-freshness/:townId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await getCharacterForUser(req.user!.userId);
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const { townId } = req.params;
 

@@ -129,13 +129,8 @@ export function registerChatHandlers(io: Server, socket: Socket) {
       switch (channelType) {
         case 'WHISPER': {
           chatMessage.recipientId = recipientId;
-          // Send to recipient's sockets
-          const recipientSockets = await io.fetchSockets();
-          for (const s of recipientSockets) {
-            if (s.data.characterId === recipientId) {
-              s.emit('chat:message', chatMessage);
-            }
-          }
+          // Send to recipient via their user room (O(1) instead of O(N) fetchSockets scan)
+          io.to(`user:${recipientId}`).emit('chat:message', chatMessage);
           // Echo back to sender
           socket.emit('chat:message', chatMessage);
           break;

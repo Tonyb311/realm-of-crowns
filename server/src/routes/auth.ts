@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
-import { authGuard } from '../middleware/auth';
+import { authGuard, blacklistToken } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
 
 const router = Router();
@@ -134,8 +134,15 @@ router.get('/me', authGuard, async (req: AuthenticatedRequest, res: Response) =>
 });
 
 // POST /api/auth/logout
-router.post('/logout', (_req, res) => {
-  return res.json({ message: 'Logged out successfully' });
+router.post('/logout', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const token = req.headers.authorization!.split(' ')[1];
+    await blacklistToken(token);
+    return res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 export default router;

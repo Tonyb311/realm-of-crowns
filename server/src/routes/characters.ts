@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
+import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { Race, DragonBloodline, BeastClan, ElementalType } from '@prisma/client';
 import { getRace } from '@shared/data/races';
@@ -185,15 +186,9 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
 });
 
 // GET /api/characters/me
-router.get('/me', authGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await prisma.character.findFirst({
-      where: { userId: req.user!.userId },
-    });
-
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     return res.json({
       character: {
@@ -306,15 +301,12 @@ const allocateStatsSchema = z.object({
   cha: z.number().int().min(0).optional().default(0),
 });
 
-router.post('/allocate-stats', authGuard, validate(allocateStatsSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/allocate-stats', authGuard, characterGuard, validate(allocateStatsSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { str, dex, con, int: intStat, wis, cha } = req.body;
     const userId = req.user!.userId;
 
-    const character = await prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
-    if (!character) {
-      return res.status(404).json({ error: 'No character found' });
-    }
+    const character = req.character!;
 
     const allocations = { str, dex, con, int: intStat, wis, cha } as Record<string, number>;
     const totalStatPoints = str + dex + con + intStat + wis + cha;
