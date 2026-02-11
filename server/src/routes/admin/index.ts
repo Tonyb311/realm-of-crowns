@@ -8,6 +8,7 @@ import economyRouter from './economy';
 import toolsRouter from './tools';
 import errorLogsRouter from './errorLogs';
 import simulationRouter from './simulation';
+import contentReleaseRouter from './contentRelease';
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use('/economy', economyRouter);
 router.use('/tools', toolsRouter);
 router.use('/error-logs', errorLogsRouter);
 router.use('/simulation', simulationRouter);
+router.use('/content-release', contentReleaseRouter);
 
 export default router;

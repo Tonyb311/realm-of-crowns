@@ -626,10 +626,14 @@ model Town {
   population  Int       @default(0)
   biome       BiomeType
   description String?
-  mayorId     String?   @map("mayor_id")
-  features    Json      @default("[]")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  mayorId      String?   @map("mayor_id")
+  features     Json      @default("[]")
+  isReleased   Boolean   @default(false) @map("is_released")
+  releasedAt   DateTime? @map("released_at")
+  releaseOrder Int?      @map("release_order")
+  releaseNotes String?   @map("release_notes")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   region Region     @relation(fields: [regionId], references: [id])
   mayor  Character? @relation("TownMayor", fields: [mayorId], references: [id], onDelete: SetNull)
@@ -1959,4 +1963,25 @@ model ErrorLog {
   @@index([resolved])
   @@index([userId])
   @@map("error_logs")
+}
+
+// ---- Content Release Gating ----
+
+model ContentRelease {
+  id          String    @id @default(uuid())
+  contentType String    @map("content_type")
+  contentId   String    @map("content_id")
+  contentName String    @map("content_name")
+  tier        String?
+  isReleased  Boolean   @default(false) @map("is_released")
+  releasedAt  DateTime? @map("released_at")
+  releaseOrder Int?     @map("release_order")
+  releaseNotes String?  @map("release_notes")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@unique([contentType, contentId])
+  @@index([contentType])
+  @@index([isReleased])
+  @@map("content_releases")
 }

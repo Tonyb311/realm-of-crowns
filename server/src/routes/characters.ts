@@ -11,6 +11,7 @@ import { getStatAllocationCost, STAT_HARD_CAP } from '@shared/utils/bounded-accu
 import { getGameDay, getNextTickTime } from '../lib/game-day';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
+import { isRaceReleased, isTownReleased } from '../lib/content-release';
 
 const router = Router();
 
@@ -92,6 +93,11 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
       return res.status(400).json({ error: `Race data not found for ${race}` });
     }
 
+    // Content gating: check if race is released
+    if (!(await isRaceReleased(registryKey))) {
+      return res.status(400).json({ error: 'This race is not yet available' });
+    }
+
     // Validate sub-race requirements
     let dragonBloodline: DragonBloodline | null = null;
     let beastClan: BeastClan | null = null;
@@ -168,6 +174,11 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
     });
     if (!town) {
       return res.status(400).json({ error: `Town "${startingTownId}" not found` });
+    }
+
+    // Content gating: check if starting town is released
+    if (!(await isTownReleased(town.id))) {
+      return res.status(400).json({ error: 'This starting location is not yet available' });
     }
 
     const character = await prisma.character.create({

@@ -25,6 +25,7 @@ import {
 import { getPsionSpec, NOMAD_TRAVEL_MULTIPLIER } from '../services/psion-perks';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
+import { isTownReleased } from '../lib/content-release';
 
 const router = Router();
 
@@ -228,6 +229,11 @@ router.get('/routes/:fromTownId/:toTownId', authGuard, characterGuard, async (re
 
     if (!fromTown) return res.status(404).json({ error: 'Origin town not found' });
     if (!toTown) return res.status(404).json({ error: 'Destination town not found' });
+
+    // Content gating: reject travel to unreleased destination
+    if (!(await isTownReleased(toTownId))) {
+      return res.status(400).json({ error: 'This destination is not yet available' });
+    }
 
     const route = await getRouteBetweenTowns(fromTownId, toTownId);
 

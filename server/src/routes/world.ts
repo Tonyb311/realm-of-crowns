@@ -15,6 +15,7 @@ router.get('/map', cache(300), async (req, res) => {
         select: { id: true, name: true, biome: true },
       }),
       prisma.town.findMany({
+        where: { isReleased: true },
         select: {
           id: true,
           name: true,
@@ -37,6 +38,16 @@ router.get('/map', cache(300), async (req, res) => {
       }),
     ]);
 
+    // Filter travel routes to only include released towns
+    const releasedTownIds = new Set(towns.map(t => t.id));
+    const filteredRoutes = routes.filter(
+      r => releasedTownIds.has(r.fromTownId) && releasedTownIds.has(r.toTownId),
+    );
+
+    // Filter regions to only those with released towns
+    const regionIdsWithTowns = new Set(towns.map(t => t.regionId));
+    const filteredRegions = regions.filter(r => regionIdsWithTowns.has(r.id));
+
     const townsWithRegionName = towns.map((t) => ({
       id: t.id,
       name: t.name,
@@ -47,7 +58,7 @@ router.get('/map', cache(300), async (req, res) => {
       coordinates: (t.features as any)?.coordinates ?? null,
     }));
 
-    return res.json({ regions, towns: townsWithRegionName, routes });
+    return res.json({ regions: filteredRegions, towns: townsWithRegionName, routes: filteredRoutes });
   } catch (error) {
     if (handlePrismaError(error, res, 'world map', req)) return;
     logRouteError(req, 500, 'World map error', error);

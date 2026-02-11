@@ -9,6 +9,7 @@ import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { getRace, getRacesByTier } from '@shared/data/races';
 import { Race, ProfessionType } from '@prisma/client';
+import { getReleasedRaceKeys } from '../lib/content-release';
 import { calculateRacialBonuses } from '../services/racial-bonus-calculator';
 import { getAllRacialProfessionBonuses } from '../services/racial-profession-bonuses';
 import {
@@ -39,8 +40,10 @@ const halfElfChosenProfessionSchema = z.object({
 // =========================================================================
 // GET /api/races — list all 20 races grouped by tier
 // =========================================================================
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
+    const releasedKeys = await getReleasedRaceKeys();
+
     const mapSummary = (r: ReturnType<typeof getRace> & {}) => ({
       id: r.id,
       name: r.name,
@@ -50,9 +53,12 @@ router.get('/', (req: Request, res: Response) => {
       homelandRegion: r.homelandRegion,
     });
 
-    const core = getRacesByTier('core').map(mapSummary);
-    const common = getRacesByTier('common').map(mapSummary);
-    const exotic = getRacesByTier('exotic').map(mapSummary);
+    const filterReleased = (races: ReturnType<typeof getRacesByTier>) =>
+      races.filter(r => releasedKeys.has(r.id)).map(mapSummary);
+
+    const core = filterReleased(getRacesByTier('core'));
+    const common = filterReleased(getRacesByTier('common'));
+    const exotic = filterReleased(getRacesByTier('exotic'));
 
     return res.json({ races: { core, common, exotic } });
   } catch (error) {

@@ -14,6 +14,7 @@ import { awardCrossTownMerchantXP } from './trade-analytics';
 import { getPsionSpec, calculateSellerUrgency, calculatePriceTrend } from '../services/psion-perks';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
+import { isTownReleased } from '../lib/content-release';
 
 const router = Router();
 
@@ -104,6 +105,11 @@ router.get('/browse', authGuard, cache(30), async (req: AuthenticatedRequest, re
     const townId = (req.query.townId as string) || character.currentTownId;
     if (!townId) {
       return res.status(400).json({ error: 'No town specified and character is not in a town' });
+    }
+
+    // Content gating: reject browsing unreleased town markets
+    if (!(await isTownReleased(townId))) {
+      return res.status(400).json({ error: 'This market is not yet available' });
     }
 
     const type = req.query.type as string | undefined;

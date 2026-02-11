@@ -9,6 +9,7 @@ import {
   Wrench,
   AlertCircle,
   Bot,
+  Layers,
   ArrowLeft,
   Menu,
   X,
@@ -24,6 +25,7 @@ const ADMIN_NAV = [
   { path: '/admin/tools', label: 'Tools', icon: Wrench },
   { path: '/admin/error-logs', label: 'Error Logs', icon: AlertCircle },
   { path: '/admin/simulation', label: 'Simulation', icon: Bot },
+  { path: '/admin/content-release', label: 'Content Release', icon: Layers },
 ];
 
 function isNavActive(itemPath: string, currentPath: string, exact?: boolean): boolean {

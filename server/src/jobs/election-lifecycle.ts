@@ -45,7 +45,9 @@ async function autoCreateElections(io: Server) {
   const townIdsWithElection = new Set(townsWithActiveElection.map((e) => e.townId));
 
   // P1 #33 FIX: Count actual residents (characters with currentTownId) per town
+  // Content gating: only create elections for released towns
   const allTowns = await prisma.town.findMany({
+    where: { isReleased: true },
     select: { id: true, name: true, mayorId: true },
   });
 

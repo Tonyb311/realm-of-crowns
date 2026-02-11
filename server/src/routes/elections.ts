@@ -8,6 +8,7 @@ import { AuthenticatedRequest } from '../types/express';
 import { getPsionSpec, calculateSincerityScore, getElectionProjection } from '../services/psion-perks';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
+import { isTownReleased } from '../lib/content-release';
 
 const router = Router();
 
@@ -56,6 +57,11 @@ router.post('/nominate', authGuard, characterGuard, validate(nominateSchema), as
 
     if (election.phase !== 'NOMINATIONS') {
       return res.status(400).json({ error: 'Election is not in nomination phase' });
+    }
+
+    // Content gating: skip elections for unreleased towns
+    if (election.townId && !(await isTownReleased(election.townId))) {
+      return res.status(400).json({ error: 'Elections in this town are not yet available' });
     }
 
     // Check eligibility based on election type

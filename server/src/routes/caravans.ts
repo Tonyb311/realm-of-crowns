@@ -9,6 +9,7 @@ import { addProfessionXP } from '../services/profession-xp';
 import { emitNotification } from '../socket/events';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
+import { isTownReleased } from '../lib/content-release';
 import {
   CARAVAN_TYPES,
   ESCORT_TYPES,
@@ -129,6 +130,11 @@ router.post('/create', authGuard, characterGuard, validate(createSchema), async 
 
     if (fromTownId === toTownId) {
       return res.status(400).json({ error: 'Origin and destination must differ' });
+    }
+
+    // Content gating: reject caravans to unreleased destinations
+    if (!(await isTownReleased(toTownId))) {
+      return res.status(400).json({ error: 'This destination is not yet available' });
     }
 
     const typeDef = CARAVAN_TYPES[caravanType];
