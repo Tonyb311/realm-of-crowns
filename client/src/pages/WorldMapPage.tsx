@@ -696,47 +696,67 @@ function TownNode({ town, isPlayerHere, isSelected, zoom, labelPlacement, isHove
 }
 
 // ===========================================================================
-// Sub-component: TravelNodeDot
+// Sub-component: WaypointDots — evenly spaced along straight road line
 // ===========================================================================
 
-interface TravelNodeProps {
-  node: RouteNode;
-  isPlayerHere: boolean;
+interface WaypointDotsProps {
+  route: MapRoute;
+  fromPos: { x: number; y: number };
+  toPos: { x: number; y: number };
   zoom: number;
-  fadeOpacity: number;
-  totalNodes: number;
+  activeRouteId: string | null;
+  playerNodeIndex: number | null;
+  isPlayerTraveling: boolean;
   onHoverStart: (node: RouteNode, e: React.MouseEvent, totalNodes: number) => void;
   onHoverEnd: () => void;
 }
 
-function TravelNodeDot({ node, isPlayerHere, zoom, fadeOpacity, totalNodes, onHoverStart, onHoverEnd }: TravelNodeProps) {
-  const s = 1 / zoom; // scale factor for constant screen-pixel sizes
+function WaypointDots({ route, fromPos, toPos, zoom, activeRouteId, playerNodeIndex, isPlayerTraveling, onHoverStart, onHoverEnd }: WaypointDotsProps) {
+  const nodeCount = route.nodes?.length ?? 0;
+  if (nodeCount === 0) return null;
 
-  // Waypoint dots along roads: 3px, road color, opacity 0.6
-  const nodeRadius = (isPlayerHere ? 4 : 3) * s;
-  const nodeOpacity = isPlayerHere ? 1 : 0.6;
+  const s = 1 / zoom;
+  const sortedNodes = [...route.nodes!].sort((a, b) => a.nodeIndex - b.nodeIndex);
+  const hoverEnabled = zoom >= ZOOM_REGIONAL; // hover tooltips at zoom 2-3 only
 
   return (
-    <g
-      onMouseEnter={(e) => onHoverStart(node, e, totalNodes)}
-      onMouseLeave={onHoverEnd}
-      style={{ cursor: 'pointer', opacity: fadeOpacity }}
-      className="travel-node"
-    >
-      {isPlayerHere && (
-        <circle cx={node.mapX} cy={node.mapY} r={6 * s} fill="none" stroke="#fbbf24" strokeWidth={1.5 * s} opacity={0.7}>
-          <animate attributeName="r" values={`${4 * s};${8 * s};${4 * s}`} dur="1.5s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.5;0.9;0.5" dur="1.5s" repeatCount="indefinite" />
-        </circle>
-      )}
-      <circle
-        cx={node.mapX}
-        cy={node.mapY}
-        r={nodeRadius}
-        fill={isPlayerHere ? '#fbbf24' : ROUTE_COLOR}
-        stroke="none"
-        opacity={nodeOpacity}
-      />
+    <g>
+      {sortedNodes.map((node, i) => {
+        // Evenly space dots along the straight line: t = (i+1) / (nodeCount+1)
+        const t = (i + 1) / (nodeCount + 1);
+        const cx = fromPos.x + (toPos.x - fromPos.x) * t;
+        const cy = fromPos.y + (toPos.y - fromPos.y) * t;
+
+        const isPlayerNode =
+          activeRouteId === route.id &&
+          playerNodeIndex === node.nodeIndex &&
+          isPlayerTraveling;
+
+        return (
+          <g
+            key={node.id}
+            onMouseEnter={hoverEnabled ? (e) => onHoverStart(node, e, nodeCount) : undefined}
+            onMouseLeave={hoverEnabled ? onHoverEnd : undefined}
+            style={hoverEnabled ? { cursor: 'pointer' } : undefined}
+          >
+            {isPlayerNode && (
+              <circle cx={cx} cy={cy} r={6 * s} fill="none" stroke="#fbbf24" strokeWidth={1.5 * s} opacity={0.7}>
+                <animate attributeName="r" values={`${4 * s};${8 * s};${4 * s}`} dur="1.5s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.5;0.9;0.5" dur="1.5s" repeatCount="indefinite" />
+              </circle>
+            )}
+            <circle
+              cx={cx}
+              cy={cy}
+              r={(isPlayerNode ? 5 : 4) * s}
+              fill={isPlayerNode ? '#fbbf24' : '#8B7D6B'}
+              stroke={isPlayerNode ? '#fbbf24' : '#B4A078'}
+              strokeWidth={0.8 * s}
+              opacity={isPlayerNode ? 1 : 0.85}
+            />
+          </g>
+        );
+      })}
     </g>
   );
 }
@@ -1101,7 +1121,7 @@ function NodeTooltip({ node, x, y, totalNodes }: NodeTooltipProps) {
         </span>
       </div>
       <div className="flex items-center gap-3 mt-0.5">
-        <span className="text-parchment-500 text-[10px]">Node {node.nodeIndex} of {totalNodes}</span>
+        <span className="text-parchment-500 text-[10px]">Day {node.nodeIndex} of {totalNodes + 1}</span>
         {node.specialType && (
           <span className="text-amber-400 text-[10px]">{node.specialType}</span>
         )}
@@ -1295,14 +1315,6 @@ export default function WorldMapPage() {
     }
     return centroids;
   }, [mapData]);
-
-  // Waypoint dot fade opacity — appear at detail zoom level
-  const travelNodeOpacity = useMemo(() => {
-    if (zoom < ZOOM_DETAIL - 0.5) return 0;
-    if (zoom >= ZOOM_DETAIL) return 1;
-    // Fade in between 3.5 and 4.0
-    return (zoom - (ZOOM_DETAIL - 0.5)) / 0.5;
-  }, [zoom]);
 
   // Region name opacity — subtle watermark, never dominant
   const regionNameOpacity = useMemo(() => {
@@ -1542,24 +1554,7 @@ export default function WorldMapPage() {
     setHoveredNode({ node, screenX: e.clientX, screenY: e.clientY, totalNodes });
   }, []);
 
-  // ===========================================================================
-  // Collect visible travel nodes
-  // ===========================================================================
-
-  const visibleTravelNodes = useMemo(() => {
-    if (travelNodeOpacity <= 0 || !mapData) return [];
-    const nodes: { node: RouteNode; routeId: string; totalNodes: number }[] = [];
-    for (const route of visibleRoutes) {
-      if (!route.nodes) continue;
-      const total = route.nodes.length;
-      for (const node of route.nodes) {
-        if (isInViewport(node.mapX, node.mapY, viewBox)) {
-          nodes.push({ node, routeId: route.id, totalNodes: total });
-        }
-      }
-    }
-    return nodes;
-  }, [mapData, visibleRoutes, viewBox, travelNodeOpacity]);
+  // (Waypoint dots are rendered inline per-route in WaypointDots component)
 
   // ===========================================================================
   // Render
@@ -1726,20 +1721,21 @@ export default function WorldMapPage() {
               );
             })}
 
-            {/* === Layer 4: Travel nodes (fade in at zoom 3.5-4.0) === */}
-            {travelNodeOpacity > 0 && visibleTravelNodes.map(({ node, routeId, totalNodes }) => {
-              const isPlayerNode =
-                activeRouteId === routeId &&
-                playerNodeIndex === node.nodeIndex &&
-                mapData.playerPosition?.type === 'traveling';
+            {/* === Layer 4: Waypoint dots — evenly spaced along each road === */}
+            {visibleRoutes.map(route => {
+              const from = townLookup.get(route.fromTownId);
+              const to = townLookup.get(route.toTownId);
+              if (!from || !to) return null;
               return (
-                <TravelNodeDot
-                  key={node.id}
-                  node={node}
-                  isPlayerHere={isPlayerNode}
+                <WaypointDots
+                  key={`dots-${route.id}`}
+                  route={route}
+                  fromPos={{ x: from.mapX, y: from.mapY }}
+                  toPos={{ x: to.mapX, y: to.mapY }}
                   zoom={zoom}
-                  fadeOpacity={isPlayerNode ? 1 : travelNodeOpacity}
-                  totalNodes={totalNodes}
+                  activeRouteId={activeRouteId}
+                  playerNodeIndex={playerNodeIndex}
+                  isPlayerTraveling={mapData.playerPosition?.type === 'traveling'}
                   onHoverStart={handleTravelNodeHover}
                   onHoverEnd={() => setHoveredNode(null)}
                 />
@@ -1763,10 +1759,10 @@ export default function WorldMapPage() {
             ))}
 
             {/* === Layer 6: Travelers (non-scaling) === */}
-            {showTravelers && travelNodeOpacity > 0 && travelerClusters.map((cluster, i) => {
+            {showTravelers && zoom >= ZOOM_DETAIL && travelerClusters.map((cluster, i) => {
               const ts = 1 / zoom;
               return (
-                <g key={`travelers-${i}`} style={{ opacity: travelNodeOpacity }}>
+                <g key={`travelers-${i}`}>
                   <circle
                     cx={cluster.x}
                     cy={cluster.y}
