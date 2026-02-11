@@ -8,6 +8,7 @@ import {
   Coins,
   Wrench,
   AlertCircle,
+  Bot,
   ArrowLeft,
   Menu,
   X,
@@ -22,6 +23,7 @@ const ADMIN_NAV = [
   { path: '/admin/economy', label: 'Economy', icon: Coins },
   { path: '/admin/tools', label: 'Tools', icon: Wrench },
   { path: '/admin/error-logs', label: 'Error Logs', icon: AlertCircle },
+  { path: '/admin/simulation', label: 'Simulation', icon: Bot },
 ];
 
 function isNavActive(itemPath: string, currentPath: string, exact?: boolean): boolean {

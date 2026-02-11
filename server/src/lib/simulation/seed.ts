@@ -1,0 +1,410 @@
+// ---------------------------------------------------------------------------
+// Bot Account Creation & Cleanup
+// ---------------------------------------------------------------------------
+
+import { prisma } from '../../lib/prisma';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import { Race, DragonBloodline, BeastClan, ElementalType } from '@prisma/client';
+import { getRace } from '@shared/data/races';
+import { BotState, BotProfile, SimulationConfig, DEFAULT_CONFIG, BOT_PROFILES } from './types';
+import { generateCharacterName, generateBotUsername, generateBotEmail, resetNameCounter } from './names';
+import { logger } from '../../lib/logger';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/**
+ * Weighted random selection from a set of items with associated weights.
+ * Returns one of the items, chosen with probability proportional to its weight.
+ */
+function weightedRandom<T>(items: T[], weights: number[]): T {
+  const total = weights.reduce((sum, w) => sum + w, 0);
+  let roll = Math.random() * total;
+  for (let i = 0; i < items.length; i++) {
+    roll -= weights[i];
+    if (roll <= 0) return items[i];
+  }
+  return items[items.length - 1];
+}
+
+/**
+ * Pick from an array where some entries are "favored" (weight 3) and the rest
+ * get weight 1.
+ */
+function pickWeighted<T>(all: T[], favored: T[]): T {
+  const favoredSet = new Set(favored);
+  const weights = all.map((v) => (favoredSet.has(v) ? 3 : 1));
+  return weightedRandom(all, weights);
+}
+
+// ---------------------------------------------------------------------------
+// Profile-based race and class preferences
+// ---------------------------------------------------------------------------
+
+const ALL_RACES = Object.values(Race);
+const ALL_CLASSES = ['warrior', 'mage', 'rogue', 'cleric', 'ranger', 'bard', 'psion'] as const;
+
+const PROFILE_RACE_PREFERENCES: Record<BotProfile, Race[]> = {
+  gatherer: [Race.HUMAN, Race.HARTHFOLK, Race.MOSSKIN, Race.ELF],
+  crafter: [Race.DWARF, Race.GNOME, Race.FORGEBORN],
+  warrior: [Race.ORC, Race.HALF_ORC, Race.GOLIATH, Race.DRAKONID],
+  merchant: [Race.HARTHFOLK, Race.HUMAN, Race.HALF_ELF],
+  politician: [Race.HUMAN, Race.ELF, Race.HALF_ELF],
+  socialite: [],
+  balanced: [],
+  explorer: [],
+};
+
+const PROFILE_CLASS_PREFERENCES: Record<BotProfile, string[]> = {
+  gatherer: ['ranger', 'rogue'],
+  crafter: ['rogue', 'ranger'],
+  warrior: ['warrior', 'ranger'],
+  merchant: ['bard', 'rogue'],
+  politician: ['bard', 'cleric'],
+  socialite: ['bard'],
+  explorer: ['ranger'],
+  balanced: [],
+};
+
+// Race enum -> registry key mapping (lowercase, underscored for half_ races)
+function raceToRegistryKey(race: Race): string {
+  return race.toLowerCase();
+}
+
+// Gold starting amounts by race tier
+const GOLD_BY_TIER: Record<string, number> = {
+  core: 100,
+  common: 75,
+  exotic: 50,
+};
+
+// HP by class
+const CLASS_HP_MAP: Record<string, number> = {
+  warrior: 10,
+  cleric: 8,
+  ranger: 8,
+  rogue: 6,
+  bard: 6,
+  mage: 4,
+  psion: 4,
+};
+
+// MP by class
+const CLASS_MP_MAP: Record<string, number> = {
+  mage: 100,
+  psion: 90,
+  cleric: 80,
+  bard: 60,
+  ranger: 40,
+  warrior: 20,
+  rogue: 20,
+};
+
+// ---------------------------------------------------------------------------
+// seedBots
+// ---------------------------------------------------------------------------
+
+/**
+ * Create bot accounts and characters in the database, returning fully
+ * populated BotState objects ready for the simulation loop.
+ *
+ * Bots are created in batches of 10 to avoid overwhelming the database.
+ */
+export async function seedBots(config: SimulationConfig): Promise<BotState[]> {
+  resetNameCounter();
+
+  const bots: BotState[] = [];
+  const batchSize = 10;
+
+  // Pre-resolve the profile distribution weights
+  const profiles = Object.keys(config.profileDistribution) as BotProfile[];
+  const profileWeights = profiles.map((p) => config.profileDistribution[p] || 1);
+
+  // If distribution is empty, fall back to defaults
+  if (profiles.length === 0) {
+    const defaults = DEFAULT_CONFIG.profileDistribution;
+    for (const p of BOT_PROFILES) {
+      profiles.push(p);
+      profileWeights.push(defaults[p] || 1);
+    }
+  }
+
+  for (let batchStart = 1; batchStart <= config.botCount; batchStart += batchSize) {
+    const batchEnd = Math.min(batchStart + batchSize - 1, config.botCount);
+    const batchIndices = Array.from({ length: batchEnd - batchStart + 1 }, (_, k) => batchStart + k);
+
+    const batchResults = await Promise.all(
+      batchIndices.map((i) => createSingleBot(i, profiles, profileWeights)),
+    );
+
+    bots.push(...batchResults);
+    logger.info({ batch: `${batchStart}-${batchEnd}`, total: config.botCount }, 'Bot batch seeded');
+  }
+
+  logger.info({ count: bots.length }, 'All bots seeded');
+  return bots;
+}
+
+async function createSingleBot(
+  index: number,
+  profiles: BotProfile[],
+  profileWeights: number[],
+): Promise<BotState> {
+  // 1. Assign profile
+  const profile = weightedRandom(profiles, profileWeights);
+
+  // 2. Choose race (profile-influenced)
+  const favoredRaces = PROFILE_RACE_PREFERENCES[profile];
+  const raceEnum: Race = favoredRaces.length > 0
+    ? pickWeighted(ALL_RACES, favoredRaces)
+    : pick(ALL_RACES);
+
+  // 3. Choose class (profile-influenced)
+  const favoredClasses = PROFILE_CLASS_PREFERENCES[profile];
+  const charClass: string = favoredClasses.length > 0
+    ? pickWeighted([...ALL_CLASSES], favoredClasses)
+    : pick([...ALL_CLASSES]);
+
+  // 4. Resolve starting town
+  const registryKey = raceToRegistryKey(raceEnum);
+  const raceDef = getRace(registryKey);
+  let townId: string;
+
+  if (raceDef && raceDef.startingTowns.length > 0) {
+    const townName = pick(raceDef.startingTowns);
+    const town = await prisma.town.findFirst({
+      where: { name: { equals: townName, mode: 'insensitive' } },
+    });
+    townId = town?.id ?? (await getRandomTownId());
+  } else {
+    // CHANGELING or missing race def -- pick any town
+    townId = await getRandomTownId();
+  }
+
+  // 5. Sub-race handling
+  let dragonBloodline: DragonBloodline | null = null;
+  let beastClan: BeastClan | null = null;
+  let elementalType: ElementalType | null = null;
+
+  if (raceEnum === Race.DRAKONID) {
+    dragonBloodline = pick(Object.values(DragonBloodline));
+  } else if (raceEnum === Race.BEASTFOLK) {
+    beastClan = pick(Object.values(BeastClan));
+  } else if (raceEnum === Race.ELEMENTARI) {
+    elementalType = pick(Object.values(ElementalType));
+  }
+
+  // 6. Create User
+  const user = await prisma.user.create({
+    data: {
+      email: generateBotEmail(index),
+      username: generateBotUsername(index),
+      passwordHash: await bcrypt.hash('simbot', 4), // low rounds for speed
+      isTestAccount: true,
+    },
+  });
+
+  // 7. Calculate starting stats
+  const baseStat = 10;
+  const mods = raceDef?.statModifiers ?? { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+  const stats = {
+    str: baseStat + mods.str,
+    dex: baseStat + mods.dex,
+    con: baseStat + mods.con,
+    int: baseStat + mods.int,
+    wis: baseStat + mods.wis,
+    cha: baseStat + mods.cha,
+  };
+
+  const conModifier = Math.floor((stats.con - 10) / 2);
+  const maxHealth = 10 + conModifier + (CLASS_HP_MAP[charClass] || 6);
+  const maxMana = CLASS_MP_MAP[charClass] || 50;
+
+  // Gold by tier
+  const tier = raceDef?.tier ?? 'core';
+  const gold = GOLD_BY_TIER[tier] ?? 100;
+
+  // 8. Create Character
+  const character = await prisma.character.create({
+    data: {
+      userId: user.id,
+      name: generateCharacterName(raceEnum.toString()),
+      race: raceEnum,
+      dragonBloodline,
+      beastClan,
+      elementalType,
+      class: charClass,
+      stats,
+      gold,
+      health: maxHealth,
+      maxHealth,
+      mana: maxMana,
+      maxMana,
+      currentTownId: townId,
+    },
+  });
+
+  // 9. Generate JWT
+  const token = jwt.sign(
+    { userId: user.id, username: user.username, role: 'player' },
+    process.env.JWT_SECRET!,
+    { expiresIn: '7d' },
+  );
+
+  // 10. Return BotState
+  return {
+    userId: user.id,
+    characterId: character.id,
+    username: user.username,
+    characterName: character.name,
+    token,
+    profile,
+    race: raceEnum,
+    class: charClass,
+    currentTownId: townId,
+    gold,
+    level: 1,
+    professions: [],
+    lastActionAt: Date.now(),
+    lastAction: null,
+    actionsCompleted: 0,
+    consecutiveErrors: 0,
+    errorsTotal: 0,
+    isActive: true,
+    pendingGathering: false,
+    pendingCrafting: false,
+    pausedUntil: 0,
+  };
+}
+
+async function getRandomTownId(): Promise<string> {
+  const towns = await prisma.town.findMany({ select: { id: true } });
+  if (towns.length === 0) throw new Error('No towns found in database');
+  return pick(towns).id;
+}
+
+// ---------------------------------------------------------------------------
+// cleanupBots
+// ---------------------------------------------------------------------------
+
+/**
+ * Bulletproof cleanup: removes ALL test accounts and their associated data
+ * without foreign-key violations.
+ */
+export async function cleanupBots(): Promise<{ deletedUsers: number; deletedCharacters: number }> {
+  // 1. Gather test user IDs
+  const testUsers = await prisma.user.findMany({
+    where: { isTestAccount: true },
+    select: { id: true },
+  });
+  const userIds = testUsers.map((u) => u.id);
+
+  if (userIds.length === 0) {
+    logger.info('No test accounts to clean up');
+    return { deletedUsers: 0, deletedCharacters: 0 };
+  }
+
+  // 2. Gather their character IDs
+  const testCharacters = await prisma.character.findMany({
+    where: { userId: { in: userIds } },
+    select: { id: true },
+  });
+  const charIds = testCharacters.map((c) => c.id);
+
+  // 3. Transactional cleanup to avoid FK violations
+  const result = await prisma.$transaction(async (tx) => {
+    // 4. Delete items owned by bot characters
+    if (charIds.length > 0) {
+      await tx.item.deleteMany({ where: { ownerId: { in: charIds } } });
+
+      // 5. Null out craftedById references on items crafted by bots but owned by real players
+      await tx.item.updateMany({
+        where: { craftedById: { in: charIds } },
+        data: { craftedById: null },
+      });
+
+      // 6. Null out guild leaderId
+      await tx.guild.updateMany({
+        where: { leaderId: { in: charIds } },
+        data: { leaderId: null },
+      });
+
+      // 7. Null out town mayorId
+      await tx.town.updateMany({
+        where: { mayorId: { in: charIds } },
+        data: { mayorId: null },
+      });
+
+      // 8. Null out kingdom rulerId
+      await tx.kingdom.updateMany({
+        where: { rulerId: { in: charIds } },
+        data: { rulerId: null },
+      });
+
+      // 9. Delete DailyAction records
+      await tx.dailyAction.deleteMany({
+        where: { characterId: { in: charIds } },
+      });
+    }
+
+    // 10. Delete users (cascades to characters and most other tables)
+    const deleted = await tx.user.deleteMany({
+      where: { isTestAccount: true },
+    });
+
+    return { deletedUsers: deleted.count, deletedCharacters: charIds.length };
+  });
+
+  logger.info(result, 'Bot cleanup complete');
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// getTestPlayerCount
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the number of test accounts currently in the database.
+ */
+export async function getTestPlayerCount(): Promise<number> {
+  return prisma.user.count({ where: { isTestAccount: true } });
+}
+
+// ---------------------------------------------------------------------------
+// Resource Cache
+// ---------------------------------------------------------------------------
+
+let resourceCache: Map<string, { id: string; name: string; type: string }[]> | null = null;
+
+/**
+ * One-time query to build a resource lookup map keyed by resource type.
+ * Call once at simulation startup so gathering actions can resolve resources
+ * without repeated DB queries.
+ */
+export async function initResourceCache(): Promise<void> {
+  const resources = await prisma.resource.findMany({
+    select: { id: true, name: true, type: true },
+  });
+  resourceCache = new Map();
+  for (const r of resources) {
+    const list = resourceCache.get(r.type) || [];
+    list.push({ id: r.id, name: r.name, type: r.type });
+    resourceCache.set(r.type, list);
+  }
+  logger.info({ resourceTypes: resourceCache.size, totalResources: resources.length }, 'Resource cache initialized');
+}
+
+/**
+ * Retrieve cached resources for a given type (e.g. "ORE", "WOOD").
+ * Returns an empty array if the cache has not been initialized or the type
+ * has no entries.
+ */
+export function getResourcesByType(type: string): { id: string; name: string; type: string }[] {
+  return resourceCache?.get(type) || [];
+}

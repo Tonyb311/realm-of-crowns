@@ -7,6 +7,7 @@ import worldRouter from './world';
 import economyRouter from './economy';
 import toolsRouter from './tools';
 import errorLogsRouter from './errorLogs';
+import simulationRouter from './simulation';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/world', worldRouter);
 router.use('/economy', economyRouter);
 router.use('/tools', toolsRouter);
 router.use('/error-logs', errorLogsRouter);
+router.use('/simulation', simulationRouter);
 
 export default router;

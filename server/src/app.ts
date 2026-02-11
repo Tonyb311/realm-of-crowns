@@ -36,12 +36,16 @@ app.use(requestLoggerMiddleware);
 app.use(metricsMiddleware);
 app.use(responseLoggerMiddleware);
 
-// Rate limiting
+// Rate limiting (skip for simulation bots with valid secret)
+function getSimulationSecret(): string {
+  return process.env.SIMULATION_SECRET || (process.env.JWT_SECRET || 'fallback').slice(0, 16);
+}
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.headers['x-simulation-secret'] === getSimulationSecret(),
 });
 app.use('/api/', limiter);
 

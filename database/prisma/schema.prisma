@@ -392,6 +392,7 @@ model User {
   username          String      @unique
   passwordHash      String      @map("password_hash")
   role              String      @default("player")
+  isTestAccount     Boolean     @default(false) @map("is_test_account")
   activeCharacterId String?     @map("active_character_id")
   lastSwitchDay     Int?        @map("last_switch_day")
   createdAt         DateTime    @default(now()) @map("created_at")
