@@ -42,7 +42,7 @@ function getSimulationSecret(): string {
 }
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: 500, // 500 req / 15 min — game pages fire 10-20 API calls each
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => req.headers['x-simulation-secret'] === getSimulationSecret(),
