@@ -130,27 +130,6 @@ function getRegionColor(regionId: string): string {
   return REGION_COLORS[regionId] ?? '#9CA3AF';
 }
 
-// Terrain colors for travel nodes
-const TERRAIN_COLORS: Record<string, string> = {
-  plains: '#c4a265',
-  forest: '#4a7c59',
-  mountain: '#8b7355',
-  underground: '#483d8b',
-  swamp: '#556b2f',
-  tundra: '#6b8fa3',
-  coastal: '#4682b4',
-  desert: '#cd853f',
-  volcanic: '#8b4513',
-  fey: '#9b7dcf',
-  badlands: '#8b4513',
-  underwater: '#4682b4',
-};
-
-function getTerrainColor(terrain: string): string {
-  const key = terrain?.toLowerCase() ?? '';
-  return TERRAIN_COLORS[key] ?? '#888888';
-}
-
 // Town node sizes in screen pixels (non-scaling via 1/zoom)
 function getTownSize(type?: string): number {
   switch (type) {
@@ -208,18 +187,49 @@ function inferTownType(pop: number): 'capital' | 'city' | 'town' | 'village' | '
   return 'outpost';
 }
 
-// Route line opacity hint by difficulty — zoom level 3 only
-// All routes use the SAME muted parchment color; difficulty only shifts opacity slightly
-function getRouteDetailOpacity(dangerLevel?: number): number {
-  const dl = dangerLevel ?? 0;
-  if (dl >= 8) return 0.55; // deadly: slightly darker
-  if (dl >= 5) return 0.45; // dangerous
-  if (dl >= 3) return 0.35; // moderate
-  return 0.3; // safe: lightest
-}
-
 // Single muted route color used everywhere
 const ROUTE_COLOR = '#B4A078'; // parchment-gold muted
+
+// ===========================================================================
+// Catmull-Rom to Bezier curve conversion for smooth roads
+// ===========================================================================
+
+/**
+ * Converts an array of points into a smooth SVG path string using
+ * Catmull-Rom → cubic Bezier conversion. The curve passes through
+ * every control point (unlike plain cubic Bezier which only approximates).
+ */
+function catmullRomToBezier(points: { x: number; y: number }[], tension: number = 0.5): string {
+  if (points.length < 2) return '';
+  if (points.length === 2) {
+    return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
+  }
+
+  let d = `M ${points[0].x} ${points[0].y}`;
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[Math.min(points.length - 1, i + 2)];
+
+    // Tangent vectors at p1 and p2
+    const d1x = (p2.x - p0.x) * tension;
+    const d1y = (p2.y - p0.y) * tension;
+    const d2x = (p3.x - p1.x) * tension;
+    const d2y = (p3.y - p1.y) * tension;
+
+    // Convert to cubic Bezier control points
+    const cp1x = p1.x + d1x / 3;
+    const cp1y = p1.y + d1y / 3;
+    const cp2x = p2.x - d2x / 3;
+    const cp2y = p2.y - d2y / 3;
+
+    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+  }
+
+  return d;
+}
 
 // ===========================================================================
 // Label Collision Avoidance
@@ -735,22 +745,21 @@ interface TravelNodeProps {
   isPlayerHere: boolean;
   zoom: number;
   fadeOpacity: number;
-  onHoverStart: (node: RouteNode, e: React.MouseEvent) => void;
+  totalNodes: number;
+  onHoverStart: (node: RouteNode, e: React.MouseEvent, totalNodes: number) => void;
   onHoverEnd: () => void;
 }
 
-function TravelNodeDot({ node, isPlayerHere, zoom, fadeOpacity, onHoverStart, onHoverEnd }: TravelNodeProps) {
-  const color = getTerrainColor(node.terrain);
+function TravelNodeDot({ node, isPlayerHere, zoom, fadeOpacity, totalNodes, onHoverStart, onHoverEnd }: TravelNodeProps) {
   const s = 1 / zoom; // scale factor for constant screen-pixel sizes
 
-  // Travel nodes are tiny breadcrumbs: 2px screen radius, low opacity
-  // Player node is the only exception — stays visible
-  const nodeRadius = (isPlayerHere ? 4 : 2) * s;
-  const nodeOpacity = isPlayerHere ? 1 : 0.35;
+  // Waypoint dots along roads: 3px, road color, opacity 0.6
+  const nodeRadius = (isPlayerHere ? 4 : 3) * s;
+  const nodeOpacity = isPlayerHere ? 1 : 0.6;
 
   return (
     <g
-      onMouseEnter={(e) => onHoverStart(node, e)}
+      onMouseEnter={(e) => onHoverStart(node, e, totalNodes)}
       onMouseLeave={onHoverEnd}
       style={{ cursor: 'pointer', opacity: fadeOpacity }}
       className="travel-node"
@@ -765,11 +774,10 @@ function TravelNodeDot({ node, isPlayerHere, zoom, fadeOpacity, onHoverStart, on
         cx={node.mapX}
         cy={node.mapY}
         r={nodeRadius}
-        fill={isPlayerHere ? '#fbbf24' : color}
+        fill={isPlayerHere ? '#fbbf24' : ROUTE_COLOR}
         stroke="none"
         opacity={nodeOpacity}
       />
-      {/* Labels are hover-only via HTML NodeTooltip — no permanent SVG text */}
     </g>
   );
 }
@@ -793,12 +801,12 @@ interface RouteLinesProps {
 function RouteLine({ route, fromPos, toPos, isActive, isHighlighted, zoom, onClick, onHoverStart, onHoverEnd }: RouteLinesProps) {
   const hasNodes = route.nodes && route.nodes.length > 0;
 
-  // Build path from nodes if available, else straight line
+  // Build smooth curved path through waypoints (Catmull-Rom spline)
   let pathD: string;
   if (hasNodes) {
     const sorted = [...route.nodes!].sort((a, b) => a.nodeIndex - b.nodeIndex);
     const points = [fromPos, ...sorted.map(n => ({ x: n.mapX, y: n.mapY })), toPos];
-    pathD = `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
+    pathD = catmullRomToBezier(points);
   } else {
     pathD = `M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}`;
   }
@@ -813,9 +821,9 @@ function RouteLine({ route, fromPos, toPos, isActive, isHighlighted, zoom, onCli
           onClick={(e) => { e.stopPropagation(); onClick(); }}
           onMouseEnter={onHoverStart} onMouseLeave={onHoverEnd}
           style={{ cursor: 'pointer' }} />
-        <path d={pathD} fill="none" stroke="#fbbf24" strokeWidth={4 * s} opacity={0.15}
+        <path d={pathD} fill="none" stroke="#D4A843" strokeWidth={4 * s} opacity={0.15}
           strokeLinecap="round" style={{ pointerEvents: 'none' }} />
-        <path d={pathD} fill="none" stroke="#fbbf24" strokeWidth={2 * s} opacity={0.85}
+        <path d={pathD} fill="none" stroke="#D4A843" strokeWidth={2 * s} opacity={0.7}
           strokeLinecap="round" style={{ pointerEvents: 'none' }}
           filter="url(#activeRouteGlow)" />
       </g>
@@ -827,17 +835,17 @@ function RouteLine({ route, fromPos, toPos, isActive, isHighlighted, zoom, onCli
   let routeOpacity: number;
 
   if (zoom < ZOOM_REGIONAL) {
-    // Continental: faint road hints
-    strokeWidth = 1 * s;
-    routeOpacity = isHighlighted ? 0.2 : 0.12;
+    // Continental: visible but subtle
+    strokeWidth = 1.5 * s;
+    routeOpacity = isHighlighted ? 0.6 : 0.25;
   } else if (zoom < ZOOM_DETAIL) {
-    // Regional: subtle road lines
+    // Regional: clear road lines
     strokeWidth = 1.5 * s;
-    routeOpacity = isHighlighted ? 0.3 : 0.18;
+    routeOpacity = isHighlighted ? 0.65 : 0.30;
   } else {
-    // Detail: slightly more visible, opacity hints at difficulty
+    // Detail: clearly readable roads
     strokeWidth = 1.5 * s;
-    routeOpacity = isHighlighted ? 0.5 : getRouteDetailOpacity(route.dangerLevel);
+    routeOpacity = isHighlighted ? 0.7 : 0.35;
   }
 
   return (
@@ -1136,9 +1144,10 @@ interface NodeTooltipProps {
   node: RouteNode;
   x: number;
   y: number;
+  totalNodes: number;
 }
 
-function NodeTooltip({ node, x, y }: NodeTooltipProps) {
+function NodeTooltip({ node, x, y, totalNodes }: NodeTooltipProps) {
   return (
     <div
       className="fixed z-50 pointer-events-none bg-dark-400/95 border border-dark-50 rounded-lg px-3 py-2 shadow-xl"
@@ -1152,9 +1161,12 @@ function NodeTooltip({ node, x, y }: NodeTooltipProps) {
           Danger: {node.dangerLevel}
         </span>
       </div>
-      {node.specialType && (
-        <span className="text-amber-400 text-[10px] block mt-0.5">{node.specialType}</span>
-      )}
+      <div className="flex items-center gap-3 mt-0.5">
+        <span className="text-parchment-500 text-[10px]">Node {node.nodeIndex} of {totalNodes}</span>
+        {node.specialType && (
+          <span className="text-amber-400 text-[10px]">{node.specialType}</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -1220,7 +1232,7 @@ export default function WorldMapPage() {
   const [selectedTown, setSelectedTown] = useState<MapTown | null>(null);
   const [hoveredTownId, setHoveredTownId] = useState<string | null>(null);
   const [hoveredRoute, setHoveredRoute] = useState<MapRoute | null>(null);
-  const [hoveredNode, setHoveredNode] = useState<{ node: RouteNode; screenX: number; screenY: number } | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<{ node: RouteNode; screenX: number; screenY: number; totalNodes: number } | null>(null);
   const [showTravelers, setShowTravelers] = useState(true);
   const [travelModalOpen, setTravelModalOpen] = useState(false);
   const [travelDestination, setTravelDestination] = useState<string | undefined>();
@@ -1284,12 +1296,39 @@ export default function WorldMapPage() {
     );
   }, [mapData, zoom, viewBox]);
 
-  // Visible routes — progressive disclosure by zoom level
+  // Pre-compute route distances and thresholds for distance-based filtering
+  const { routeDistanceMap, shortThreshold, mediumThreshold } = useMemo(() => {
+    if (!mapData) return { routeDistanceMap: new Map<string, number>(), shortThreshold: 0, mediumThreshold: 0 };
+
+    const distances: { id: string; dist: number }[] = [];
+    for (const route of mapData.routes) {
+      const from = townLookup.get(route.fromTownId);
+      const to = townLookup.get(route.toTownId);
+      if (!from || !to) continue;
+      const dx = from.mapX - to.mapX;
+      const dy = from.mapY - to.mapY;
+      distances.push({ id: route.id, dist: Math.sqrt(dx * dx + dy * dy) });
+    }
+
+    const sorted = [...distances].sort((a, b) => a.dist - b.dist);
+    const shortIdx = Math.floor(sorted.length * 0.4);
+    const mediumIdx = Math.floor(sorted.length * 0.7);
+
+    const map = new Map<string, number>();
+    for (const d of distances) map.set(d.id, d.dist);
+
+    return {
+      routeDistanceMap: map,
+      shortThreshold: sorted[shortIdx]?.dist ?? 0,
+      mediumThreshold: sorted[mediumIdx]?.dist ?? Infinity,
+    };
+  }, [mapData, townLookup]);
+
+  // Visible routes — distance-based filtering by zoom level
   const visibleRoutes = useMemo(() => {
     if (!mapData) return [];
 
-    const isMajorType = (type?: string) => type === 'capital' || type === 'city';
-    const isTownOrAbove = (type?: string) => type === 'capital' || type === 'city' || type === 'town';
+    const activeId = mapData.playerPosition?.routeId ?? null;
 
     return mapData.routes.filter(r => {
       const from = townLookup.get(r.fromTownId);
@@ -1300,18 +1339,23 @@ export default function WorldMapPage() {
       const inView = isInViewport(from.mapX, from.mapY, viewBox, 200) || isInViewport(to.mapX, to.mapY, viewBox, 200);
       if (!inView) return false;
 
+      // Active travel route always visible
+      if (r.id === activeId) return true;
+
+      const dist = routeDistanceMap.get(r.id) ?? Infinity;
+
       if (zoom < ZOOM_REGIONAL) {
-        // Continental: only major road network (capital↔capital, capital↔city, city↔city)
-        return isMajorType(from.type) && isMajorType(to.type);
+        // Continental: only shortest routes (bottom 40% by distance)
+        return dist <= shortThreshold;
       }
       if (zoom < ZOOM_DETAIL) {
-        // Regional: routes with at least one city/town endpoint (hide village↔village)
-        return isTownOrAbove(from.type) || isTownOrAbove(to.type);
+        // Regional: short + medium routes (bottom 70% by distance)
+        return dist <= mediumThreshold;
       }
-      // Detail: all routes
+      // Detail: all routes in viewport
       return true;
     });
-  }, [mapData, townLookup, viewBox, zoom]);
+  }, [mapData, townLookup, viewBox, zoom, routeDistanceMap, shortThreshold, mediumThreshold]);
 
   // Compute label layout with collision avoidance
   const labelLayout = useMemo(() => {
@@ -1340,12 +1384,12 @@ export default function WorldMapPage() {
     return centroids;
   }, [mapData]);
 
-  // Travel node fade opacity — only appear deep into detail zoom (4.0-4.5)
+  // Waypoint dot fade opacity — appear at detail zoom level
   const travelNodeOpacity = useMemo(() => {
-    if (zoom < ZOOM_DETAIL) return 0;
-    if (zoom >= ZOOM_DETAIL + 0.5) return 1;
-    // Fade in between 4.0 and 4.5
-    return (zoom - ZOOM_DETAIL) / 0.5;
+    if (zoom < ZOOM_DETAIL - 0.5) return 0;
+    if (zoom >= ZOOM_DETAIL) return 1;
+    // Fade in between 3.5 and 4.0
+    return (zoom - (ZOOM_DETAIL - 0.5)) / 0.5;
   }, [zoom]);
 
   // Region name opacity — subtle watermark, never dominant
@@ -1582,8 +1626,8 @@ export default function WorldMapPage() {
     setTravelModalOpen(true);
   }, []);
 
-  const handleTravelNodeHover = useCallback((node: RouteNode, e: React.MouseEvent) => {
-    setHoveredNode({ node, screenX: e.clientX, screenY: e.clientY });
+  const handleTravelNodeHover = useCallback((node: RouteNode, e: React.MouseEvent, totalNodes: number) => {
+    setHoveredNode({ node, screenX: e.clientX, screenY: e.clientY, totalNodes });
   }, []);
 
   // ===========================================================================
@@ -1592,12 +1636,13 @@ export default function WorldMapPage() {
 
   const visibleTravelNodes = useMemo(() => {
     if (travelNodeOpacity <= 0 || !mapData) return [];
-    const nodes: { node: RouteNode; routeId: string }[] = [];
+    const nodes: { node: RouteNode; routeId: string; totalNodes: number }[] = [];
     for (const route of visibleRoutes) {
       if (!route.nodes) continue;
+      const total = route.nodes.length;
       for (const node of route.nodes) {
         if (isInViewport(node.mapX, node.mapY, viewBox)) {
-          nodes.push({ node, routeId: route.id });
+          nodes.push({ node, routeId: route.id, totalNodes: total });
         }
       }
     }
@@ -1770,7 +1815,7 @@ export default function WorldMapPage() {
             })}
 
             {/* === Layer 4: Travel nodes (fade in at zoom 3.5-4.0) === */}
-            {travelNodeOpacity > 0 && visibleTravelNodes.map(({ node, routeId }) => {
+            {travelNodeOpacity > 0 && visibleTravelNodes.map(({ node, routeId, totalNodes }) => {
               const isPlayerNode =
                 activeRouteId === routeId &&
                 playerNodeIndex === node.nodeIndex &&
@@ -1782,6 +1827,7 @@ export default function WorldMapPage() {
                   isPlayerHere={isPlayerNode}
                   zoom={zoom}
                   fadeOpacity={isPlayerNode ? 1 : travelNodeOpacity}
+                  totalNodes={totalNodes}
                   onHoverStart={handleTravelNodeHover}
                   onHoverEnd={() => setHoveredNode(null)}
                 />
@@ -1918,6 +1964,7 @@ export default function WorldMapPage() {
               node={hoveredNode.node}
               x={hoveredNode.screenX}
               y={hoveredNode.screenY}
+              totalNodes={hoveredNode.totalNodes}
             />
           )}
         </div>
