@@ -45,6 +45,10 @@ router.post('/list', authGuard, characterGuard, validate(listSchema), async (req
     const { itemId, price, quantity } = req.body;
     const character = req.character!;
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     if (!character.currentTownId) {
       return res.status(400).json({ error: 'You must be in a town to list items' });
     }
@@ -250,6 +254,10 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
     const { listingId, quantity } = req.body;
     const character = req.character!;
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     const listing = await prisma.marketListing.findUnique({
       where: { id: listingId },
       include: {
@@ -440,6 +448,10 @@ router.post('/cancel', authGuard, characterGuard, validate(cancelSchema), async 
   try {
     const { listingId } = req.body;
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     const listing = await prisma.marketListing.findUnique({
       where: { id: listingId },

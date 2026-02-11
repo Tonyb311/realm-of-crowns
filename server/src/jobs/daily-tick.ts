@@ -7,7 +7,6 @@
 
 import { prisma } from '../lib/prisma';
 import { processSpoilage, processAutoConsumption, getHungerModifier, processRevenantSustenance, processForgebornMaintenance } from '../services/food-system';
-import { resolveTravel, checkNodeEncounter, checkPvPEncounter } from '../services/travel-resolver';
 import { resolveNodePvE, resolveNodePvP } from '../services/tick-combat-resolver';
 import { createDailyReport, compileReport } from '../services/daily-report';
 import {
@@ -283,136 +282,14 @@ export async function processDailyTick(): Promise<void> {
   // Step 2: Travel Movement
   // -----------------------------------------------------------------------
   await runStep('Travel Movement', 2, async () => {
-    const travelActions = await prisma.dailyAction.findMany({
-      where: {
-        tickDate: { gte: new Date(tickDateStr), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
-        actionType: 'TRAVEL',
-        status: 'LOCKED_IN',
-      },
-      include: { character: { select: { id: true, name: true } } },
-    });
-
-    for (let i = 0; i < travelActions.length; i += BATCH_SIZE) {
-      const batch = travelActions.slice(i, i + BATCH_SIZE);
-      await Promise.all(batch.map(async (action) => {
-        try {
-          const target = action.actionTarget as Record<string, unknown>;
-          const targetNodeId = target.targetNodeId as string;
-          if (!targetNodeId) return;
-
-          const result = await resolveTravel(action.characterId, targetNodeId);
-          const results = getResults(action.characterId);
-          results.action = { ...result, type: 'TRAVEL' };
-
-          if (!result.success) {
-            results.notifications.push(`Travel failed: ${result.error}`);
-          }
-        } catch (err) {
-          console.error(`[DailyTick] Step 2 error for action ${action.id}:`, err);
-          getResults(action.characterId).notifications.push('Travel failed due to an error.');
-        }
-      }));
-    }
+    // Travel now handled by dedicated travel-tick.ts cron job
   });
 
   // -----------------------------------------------------------------------
   // Step 3: Node Encounter Detection & Combat Resolution
   // -----------------------------------------------------------------------
   await runStep('Node Encounters & Combat', 3, async () => {
-    // Find all characters currently on wilderness nodes
-    const charsOnNodes = await prisma.$queryRaw<
-      Array<{ id: string; currentNodeId: string; encounterChance: number; regionId: string; dangerLevel: number }>
-    >`
-      SELECT c.id, c."current_node_id" as "currentNodeId",
-             n."encounter_chance" as "encounterChance",
-             n."region_id" as "regionId",
-             n."danger_level" as "dangerLevel"
-      FROM "characters" c
-      JOIN "nodes" n ON n.id = c."current_node_id"
-      WHERE c."current_node_id" IS NOT NULL
-    `;
-
-    // Group by node for PvP detection
-    const nodeCharMap = new Map<string, typeof charsOnNodes>();
-    for (const char of charsOnNodes) {
-      if (!nodeCharMap.has(char.currentNodeId)) nodeCharMap.set(char.currentNodeId, []);
-      nodeCharMap.get(char.currentNodeId)!.push(char);
-    }
-
-    // Track characters who already fought (skip PvE for them)
-    const alreadyFought = new Set<string>();
-
-    // Process PvP encounters first
-    for (const [nodeId, chars] of nodeCharMap) {
-      if (chars.length < 2) continue;
-
-      for (const char of chars) {
-        if (alreadyFought.has(char.id)) continue;
-
-        try {
-          const pvpResult = await checkPvPEncounter(char.id, nodeId);
-          if (pvpResult.triggered && pvpResult.hostileCharacters.length > 0) {
-            const hostile = pvpResult.hostileCharacters[0];
-            const outcome = await resolveNodePvP(char.id, hostile.id, { dangerLevel: char.dangerLevel });
-
-            alreadyFought.add(char.id);
-            alreadyFought.add(hostile.id);
-
-            const results = getResults(char.id);
-            results.combatLogs.push({
-              type: 'pvp',
-              opponent: hostile.name,
-              winner: outcome.winner,
-              rounds: outcome.rounds,
-            });
-
-            const hostileResults = getResults(hostile.id);
-            hostileResults.combatLogs.push({
-              type: 'pvp',
-              opponent: char.id,
-              winner: outcome.winner,
-              rounds: outcome.rounds,
-            });
-          }
-        } catch (err) {
-          console.error(`[DailyTick] Step 3 PvP error for ${char.id}:`, err);
-        }
-      }
-    }
-
-    // Process PvE encounters for remaining characters
-    for (const char of charsOnNodes) {
-      if (alreadyFought.has(char.id)) continue;
-      if (char.encounterChance <= 0) continue;
-
-      try {
-        const encounter = await checkNodeEncounter(char.id, {
-          encounterChance: char.encounterChance,
-          regionId: char.regionId,
-          dangerLevel: char.dangerLevel,
-        });
-
-        if (encounter.triggered && encounter.monsterId) {
-          const outcome = await resolveNodePvE(char.id, encounter.monsterId, {
-            dangerLevel: char.dangerLevel,
-          });
-
-          const results = getResults(char.id);
-          results.combatLogs.push({
-            type: 'pve',
-            monster: encounter.monsterName,
-            winner: outcome.winner,
-            rounds: outcome.rounds,
-            xpReward: outcome.xpReward,
-            goldReward: outcome.goldReward,
-          });
-          results.xpEarned += outcome.xpReward;
-          results.goldChange += outcome.goldReward;
-        }
-      } catch (err) {
-        console.error(`[DailyTick] Step 3 PvE error for ${char.id}:`, err);
-      }
-    }
+    // Node encounters temporarily disabled — pending new travel system encounter integration
   });
 
   // -----------------------------------------------------------------------

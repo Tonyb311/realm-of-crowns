@@ -122,6 +122,10 @@ router.post('/request-permit', authGuard, characterGuard, validate(requestPermit
     const { townId, buildingType, name } = req.body;
     const character = req.character!;
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     // Check town exists
     const town = await prisma.town.findUnique({
       where: { id: townId },
@@ -214,6 +218,10 @@ router.post('/deposit-materials', authGuard, characterGuard, validate(depositMat
   try {
     const { buildingId, materials } = req.body;
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     // Load building + active construction
     const building = await prisma.building.findUnique({
@@ -355,6 +363,10 @@ router.post('/start-construction', authGuard, characterGuard, validate(buildingI
   try {
     const { buildingId } = req.body;
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     const building = await prisma.building.findUnique({
       where: { id: buildingId },
@@ -526,6 +538,10 @@ router.post('/complete-construction', authGuard, characterGuard, validate(buildi
     const { buildingId } = req.body;
     const character = req.character!;
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     const building = await prisma.building.findUnique({
       where: { id: buildingId },
       include: {
@@ -597,6 +613,10 @@ router.post('/upgrade', authGuard, characterGuard, validate(buildingIdSchema), a
   try {
     const { buildingId } = req.body;
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     const building = await prisma.building.findUnique({
       where: { id: buildingId },
@@ -822,6 +842,10 @@ router.post('/:buildingId/storage/deposit', authGuard, characterGuard, validate(
     const { itemId, quantity } = req.body;
     const character = req.character!;
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     const building = await prisma.building.findUnique({ where: { id: buildingId } });
 
     if (!building) {
@@ -914,6 +938,10 @@ router.post('/:buildingId/storage/withdraw', authGuard, characterGuard, validate
     const { buildingId } = req.params;
     const { itemId, quantity } = req.body;
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     const building = await prisma.building.findUnique({ where: { id: buildingId } });
 
@@ -1037,6 +1065,10 @@ router.post('/:buildingId/rent/set-price', authGuard, characterGuard, validate(s
     const { pricePerUse } = req.body;
     const character = req.character!;
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     const building = await prisma.building.findUnique({ where: { id: buildingId } });
 
     if (!building) {
@@ -1083,6 +1115,10 @@ router.post('/:buildingId/rent/use', authGuard, characterGuard, async (req: Auth
   try {
     const { buildingId } = req.params;
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     const building = await prisma.building.findUnique({
       where: { id: buildingId },
@@ -1254,6 +1290,10 @@ router.post('/:buildingId/repair', authGuard, characterGuard, async (req: Authen
   try {
     const { buildingId } = req.params;
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     const building = await prisma.building.findUnique({ where: { id: buildingId } });
 

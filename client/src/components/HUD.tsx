@@ -8,6 +8,7 @@ import {
   Crown,
   Volume2,
   VolumeX,
+  Compass,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -30,6 +31,15 @@ interface CharacterHUD {
   gold: number;
   currentTownId: string | null;
   currentTownName?: string;
+  status?: string;
+}
+
+interface TravelStatusHUD {
+  traveling: boolean;
+  currentNode: { name: string } | null;
+  dayNumber: number;
+  estimatedDays: number;
+  ticksRemaining: number;
 }
 
 function StatBar({
@@ -82,6 +92,15 @@ export default function HUD() {
     queryFn: async () => (await api.get('/characters/me')).data,
     enabled: isAuthenticated,
     refetchInterval: 15000,
+  });
+
+  const isTraveling = character?.status === 'traveling';
+
+  const { data: travelStatus } = useQuery<TravelStatusHUD>({
+    queryKey: ['travel', 'status'],
+    queryFn: async () => (await api.get('/travel/status')).data,
+    enabled: isAuthenticated && isTraveling,
+    refetchInterval: 30000,
   });
 
   useEffect(() => {
@@ -176,8 +195,8 @@ export default function HUD() {
           </div>
         </Tooltip>
 
-        {/* Location */}
-        {character.currentTownName && (
+        {/* Location (when in town) */}
+        {!isTraveling && character.currentTownName && (
           <Tooltip content="Current location">
             <Link
               to="/map"
@@ -185,6 +204,36 @@ export default function HUD() {
             >
               <MapPin className="w-3 h-3" />
               <span className="truncate max-w-[100px]">{character.currentTownName}</span>
+            </Link>
+          </Tooltip>
+        )}
+
+        {/* Travel status indicator (when traveling) */}
+        {isTraveling && travelStatus?.traveling && (
+          <Tooltip content="Click to view journey">
+            <Link
+              to="/travel"
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded bg-primary-400/10 border border-primary-400/30 text-primary-400 hover:bg-primary-400/15 transition-colors flex-shrink-0"
+            >
+              <Compass className="w-3 h-3 animate-[spin_8s_linear_infinite]" />
+              <span className="text-[10px] font-display truncate max-w-[80px]">
+                {travelStatus.currentNode?.name || 'Traveling'}
+              </span>
+              <span className="text-[9px] text-primary-400/70 tabular-nums">
+                Day {travelStatus.dayNumber}/{travelStatus.estimatedDays}
+              </span>
+            </Link>
+          </Tooltip>
+        )}
+
+        {/* Traveling compact (mobile fallback) */}
+        {isTraveling && (
+          <Tooltip content="Traveling">
+            <Link
+              to="/travel"
+              className="flex sm:hidden items-center gap-1 text-xs text-primary-400 flex-shrink-0"
+            >
+              <Compass className="w-3.5 h-3.5 animate-[spin_8s_linear_infinite]" />
             </Link>
           </Tooltip>
         )}

@@ -353,7 +353,7 @@ export async function cleanupTestData() {
       await prisma.marketListing.deleteMany({ where: { sellerId: { in: createdCharacterIds } } });
       await prisma.gatheringAction.deleteMany({ where: { characterId: { in: createdCharacterIds } } });
       await prisma.craftingAction.deleteMany({ where: { characterId: { in: createdCharacterIds } } });
-      await prisma.travelAction.deleteMany({ where: { characterId: { in: createdCharacterIds } } });
+      await prisma.characterTravelState.deleteMany({ where: { characterId: { in: createdCharacterIds } } });
       await prisma.characterAbility.deleteMany({ where: { characterId: { in: createdCharacterIds } } });
       await prisma.characterEquipment.deleteMany({ where: { characterId: { in: createdCharacterIds } } });
       await prisma.playerProfession.deleteMany({ where: { characterId: { in: createdCharacterIds } } });

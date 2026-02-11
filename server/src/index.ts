@@ -19,6 +19,7 @@ import { startBuildingMaintenanceJob } from './jobs/building-maintenance';
 import { startCaravanEventsJob } from './jobs/caravan-events';
 import { startStateOfAethermereJob } from './jobs/state-of-aethermere';
 import { startSeerPremonitionJob } from './jobs/seer-premonition';
+import { startTravelTickJob } from './jobs/travel-tick';
 // DEPRECATED: Forgeborn maintenance now handled by daily tick in food-system.ts
 // import { startForgebornMaintenanceJob } from './jobs/forgeborn-maintenance';
 import { registerChatHandlers } from './socket/chat-handlers';
@@ -111,6 +112,7 @@ httpServer.listen(PORT, () => {
   startCaravanEventsJob();
   startStateOfAethermereJob();
   startSeerPremonitionJob();
+  startTravelTickJob(io);
   // DEPRECATED: Forgeborn maintenance now handled by daily tick in food-system.ts
   // startForgebornMaintenanceJob();
 

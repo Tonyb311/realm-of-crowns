@@ -76,6 +76,10 @@ router.post('/learn', authGuard, characterGuard, validate(professionTypeSchema),
     const profEnum = professionType as ProfessionType;
     const character = req.character!;
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     // Look up static definition
     const profDef = getProfessionByType(profEnum);
     if (!profDef) {
@@ -204,6 +208,10 @@ router.post('/abandon', authGuard, characterGuard, validate(professionTypeSchema
     const { professionType } = req.body;
     const profEnum = professionType as ProfessionType;
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     const profession = await prisma.playerProfession.findUnique({
       where: {

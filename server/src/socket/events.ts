@@ -36,6 +36,47 @@ export function emitPlayerLeaveTown(townId: string, data: {
   getIO().to(`town:${townId}`).emit('player:leave-town', data);
 }
 
+export function emitTravelTickProcessed(characterId: string, data: {
+  currentNodeId: string;
+  currentNodeName: string;
+  nodesRemaining: number;
+  routeId: string;
+}) {
+  if (!ioInstance) return;
+  ioInstance.to(`user:${characterId}`).emit('travel:tick-processed', data);
+}
+
+export function emitTravelGroupUpdate(routeId: string, data: {
+  groupId: string;
+  memberIds: string[];
+  currentNodeId: string;
+  currentNodeName: string;
+}) {
+  if (!ioInstance) return;
+  for (const memberId of data.memberIds) {
+    ioInstance.to(`user:${memberId}`).emit('travel:group-update', data);
+  }
+}
+
+export function emitTravelPlayerEntered(nodeId: string, data: {
+  characterId: string;
+  characterName: string;
+  nodeName: string;
+}) {
+  if (!ioInstance) return;
+  ioInstance.to(`node:${nodeId}`).emit('travel:player-entered', data);
+}
+
+export function emitTravelPlayerLeft(nodeId: string, data: {
+  characterId: string;
+  characterName: string;
+  nodeName: string;
+  nextNodeId: string;
+}) {
+  if (!ioInstance) return;
+  ioInstance.to(`node:${nodeId}`).emit('travel:player-left', data);
+}
+
 // ---------------------------------------------------------------------------
 // Combat events
 // ---------------------------------------------------------------------------

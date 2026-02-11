@@ -151,10 +151,11 @@ async function isInActiveCombat(characterId: string): Promise<boolean> {
 }
 
 async function isTraveling(characterId: string): Promise<boolean> {
-  const travel = await prisma.travelAction.findFirst({
-    where: { characterId, status: 'IN_PROGRESS' },
+  const char = await prisma.character.findUnique({
+    where: { id: characterId },
+    select: { travelStatus: true },
   });
-  return !!travel;
+  return char?.travelStatus !== 'idle';
 }
 
 async function isCrafting(characterId: string): Promise<boolean> {

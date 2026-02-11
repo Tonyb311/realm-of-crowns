@@ -34,6 +34,10 @@ router.post('/perform', authGuard, requireDailyAction('SERVICE'), async (req: Au
     const character = (req as any).character;
     const gameDay = getGameDay();
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     // Validate SERVICE profession category
     if (!SERVICE_PROFESSIONS.includes(professionType)) {
       return res.status(400).json({ error: 'Not a service profession' });

@@ -1,4 +1,10 @@
 /**
+ * @deprecated This file is superseded by the dedicated travel-tick.ts cron job
+ * and the new TravelRoute/TravelNode model. Do NOT add new logic here.
+ * Kept temporarily for reference during the migration. Will be removed once
+ * the new travel system is fully validated.
+ *
+ * Original description:
  * Node-based travel resolver for tick processing.
  * Replaces the old timer-based travel system with node-graph traversal.
  */

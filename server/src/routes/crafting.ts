@@ -330,6 +330,10 @@ router.post('/start', authGuard, characterGuard, validate(startCraftSchema), asy
     const { recipeId } = req.body;
     const character = req.character!;
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     // Load the recipe
     const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } });
     if (!recipe) {
@@ -371,10 +375,7 @@ router.post('/start', authGuard, characterGuard, validate(startCraftSchema), asy
     }
 
     // Check not traveling
-    const activeTravel = await prisma.travelAction.findFirst({
-      where: { characterId: character.id, status: 'IN_PROGRESS' },
-    });
-    if (activeTravel) {
+    if (character.travelStatus !== 'idle') {
       return res.status(400).json({ error: 'Cannot craft while traveling' });
     }
 
@@ -509,6 +510,10 @@ router.get('/status', authGuard, characterGuard, async (req: AuthenticatedReques
 router.post('/collect', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     // Find the earliest completed crafting action (status COMPLETED, ready to collect)
     // In the daily-tick model, the tick processor sets status to COMPLETED.
@@ -705,6 +710,10 @@ router.post('/queue', authGuard, characterGuard, validate(queueCraftSchema), asy
     const { recipeId, count } = req.body;
     const character = req.character!;
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } });
     if (!recipe) {
       return res.status(404).json({ error: 'Recipe not found' });
@@ -736,10 +745,7 @@ router.post('/queue', authGuard, characterGuard, validate(queueCraftSchema), asy
     }
 
     // Check not traveling
-    const activeTravel = await prisma.travelAction.findFirst({
-      where: { characterId: character.id, status: 'IN_PROGRESS' },
-    });
-    if (activeTravel) {
+    if (character.travelStatus !== 'idle') {
       return res.status(400).json({ error: 'Cannot craft while traveling' });
     }
 

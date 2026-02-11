@@ -39,6 +39,7 @@ const ProfessionsPage = React.lazy(() => import('./pages/ProfessionsPage'));
 const HousingPage = React.lazy(() => import('./pages/HousingPage'));
 const TradePage = React.lazy(() => import('./pages/TradePage'));
 const DiplomacyPage = React.lazy(() => import('./pages/DiplomacyPage'));
+const TravelPage = React.lazy(() => import('./pages/TravelPage'));
 
 // Admin pages
 const AdminLayout = React.lazy(() => import('./components/admin/AdminLayout'));
@@ -226,6 +227,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <DiplomacyPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/travel"
+            element={
+              <ProtectedRoute>
+                <TravelPage />
               </ProtectedRoute>
             }
           />

@@ -124,6 +124,10 @@ router.post('/create', authGuard, characterGuard, validate(createSchema), async 
     };
     const character = req.character!;
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     if (character.currentTownId !== fromTownId) {
       return res.status(400).json({ error: 'You must be in the departure town' });
     }
@@ -402,6 +406,10 @@ router.post('/:caravanId/depart', authGuard, characterGuard, async (req: Authent
     const { caravanId } = req.params;
     const character = req.character!;
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     const caravan = await prisma.caravan.findUnique({
       where: { id: caravanId },
       include: {
@@ -434,8 +442,8 @@ router.post('/:caravanId/depart', authGuard, characterGuard, async (req: Authent
     if (!route) return res.status(400).json({ error: 'Route no longer exists' });
 
     const now = new Date();
-    // Travel time: route.distance * speedMultiplier (in minutes) converted to ms
-    const travelMs = route.distance * typeDef.speedMultiplier * 60 * 1000;
+    // Travel time: nodeCount * 5 (min equivalent) * speedMultiplier converted to ms
+    const travelMs = route.nodeCount * 5 * typeDef.speedMultiplier * 60 * 1000;
     const arrivesAt = new Date(now.getTime() + travelMs);
 
     await prisma.$transaction([
@@ -461,7 +469,7 @@ router.post('/:caravanId/depart', authGuard, characterGuard, async (req: Authent
         status: 'IN_PROGRESS',
         departedAt: now.toISOString(),
         arrivesAt: arrivesAt.toISOString(),
-        travelMinutes: Math.ceil(route.distance * typeDef.speedMultiplier),
+        travelMinutes: Math.ceil(route.nodeCount * 5 * typeDef.speedMultiplier),
         from: caravan.fromTown,
         to: caravan.toTown,
         cost: typeDef.cost,
@@ -645,8 +653,8 @@ router.post('/:caravanId/collect', authGuard, characterGuard, async (req: Authen
       },
     });
 
-    // Award Merchant XP: base XP = (cargoValue / 10) + (distance * 2)
-    const distance = route?.distance ?? 1;
+    // Award Merchant XP: base XP = (cargoValue / 10) + (nodeCount * 2)
+    const distance = route?.nodeCount ?? 1;
     const xpAmount = Math.floor(cargoValue / 10) + distance * 2;
 
     try {

@@ -202,11 +202,11 @@ router.get('/best-routes', authGuard, cache(120), async (req: AuthenticatedReque
       },
     });
 
-    // Build a distance lookup (bidirectional)
+    // Build a distance lookup (bidirectional) — uses nodeCount as distance proxy
     const distanceMap = new Map<string, number>();
     for (const route of routes) {
-      distanceMap.set(`${route.fromTownId}:${route.toTownId}`, route.distance);
-      distanceMap.set(`${route.toTownId}:${route.fromTownId}`, route.distance);
+      distanceMap.set(`${route.fromTownId}:${route.toTownId}`, route.nodeCount);
+      distanceMap.set(`${route.toTownId}:${route.fromTownId}`, route.nodeCount);
     }
 
     // Aggregate prices by item+town (weighted average over the week)
@@ -382,7 +382,7 @@ router.get('/profitability', authGuard, async (req: AuthenticatedRequest, res: R
     const grossRevenue = Math.round(avgSellPrice * quantity);
     const taxRate = sellTownTax?.taxRate ?? 0.10;
     const taxCost = Math.floor(grossRevenue * taxRate);
-    const transportCost = route ? route.distance * 2 * quantity : 0; // 2 gold per distance per unit as estimated caravan cost
+    const transportCost = route ? route.nodeCount * 2 * quantity : 0; // 2 gold per node per unit as estimated caravan cost
     const netRevenue = grossRevenue - taxCost;
     const totalCost = buyCost + transportCost;
     const profit = netRevenue - totalCost;
@@ -400,7 +400,7 @@ router.get('/profitability', authGuard, async (req: AuthenticatedRequest, res: R
       taxRate,
       taxCost,
       transportCost,
-      distance: route?.distance ?? null,
+      distance: route?.nodeCount ?? null,
       totalCost,
       netRevenue,
       profit,
@@ -782,7 +782,7 @@ export async function awardCrossTownMerchantXP(
 
     const baseXP = 15;
     const profitMultiplier = 1 + Math.max(0, profitMargin) / 100;
-    const distanceBonus = route ? 1 + (route.distance / 100) : 1;
+    const distanceBonus = route ? 1 + (route.nodeCount / 20) : 1;
     const totalXP = Math.round(baseXP * profitMultiplier * distanceBonus * quantity);
 
     if (totalXP > 0) {

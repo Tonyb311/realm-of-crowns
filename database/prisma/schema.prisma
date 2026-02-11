@@ -291,18 +291,7 @@ enum MessageChannel {
   SYSTEM
 }
 
-enum NodeType {
-  ROAD
-  WILDERNESS
-  MOUNTAIN_PASS
-  RIVER_CROSSING
-  BORDER_CROSSING
-  FOREST_TRAIL
-  SWAMP_PATH
-  UNDERGROUND_TUNNEL
-  COASTAL_PATH
-  TOWN_GATE
-}
+// NodeType enum removed — replaced by TravelNode.terrain + specialType strings
 
 enum DailyActionType {
   GATHER
@@ -447,8 +436,8 @@ model Character {
   soulFadeStage        Int          @default(0) @map("soul_fade_stage")
   structuralDecayStage Int          @default(0) @map("structural_decay_stage")
 
-  // Node-based position
-  currentNodeId String? @map("current_node_id")
+  // Travel status
+  travelStatus String @default("idle") @map("travel_status") // idle, traveling_solo, traveling_group, arrived
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -456,13 +445,14 @@ model Character {
   user          User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   currentTown   Town? @relation("CharacterCurrentTown", fields: [currentTownId], references: [id])
   preferredFood Item? @relation("CharacterPreferredFood", fields: [preferredFoodId], references: [id], onDelete: SetNull)
-  currentNode   Node? @relation(fields: [currentNodeId], references: [id], onDelete: SetNull)
 
   equipment               CharacterEquipment[]
   inventory               Inventory[]
   professions             PlayerProfession[]
   professionXp            ProfessionXP[]
-  travelActions           TravelAction[]
+  travelState             CharacterTravelState?
+  travelGroupMemberships  TravelGroupMember[]
+  ledTravelGroups         TravelGroup[]           @relation("TravelGroupLeader")
   craftingActions         CraftingAction[]
   gatheringActions        GatheringAction[]
   buildings               Building[]
@@ -514,7 +504,7 @@ model Character {
 
   @@index([userId])
   @@index([currentTownId])
-  @@index([currentNodeId])
+  @@index([travelStatus])
   @@index([race])
   @@map("characters")
 }
@@ -613,7 +603,6 @@ model Region {
   monsters       Monster[]
   bordersA       RegionBorder[]  @relation("RegionBorderA")
   bordersB       RegionBorder[]  @relation("RegionBorderB")
-  nodes          Node[]
 
   @@index([kingdomId])
   @@map("regions")
@@ -657,7 +646,6 @@ model Town {
   townPolicy        TownPolicy?
   councilMembers    CouncilMember[]    @relation("TownCouncil")
   npcs              Npc[]
-  gateNode          Node?              @relation("TownGateNode")
 
   @@index([regionId])
   @@index([mayorId])
@@ -681,47 +669,34 @@ model TownResource {
 }
 
 model TravelRoute {
-  id          String   @id @default(uuid())
-  fromTownId  String   @map("from_town_id")
-  toTownId    String   @map("to_town_id")
-  distance    Int
-  dangerLevel Int      @default(1) @map("danger_level")
-  terrain     String
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(uuid())
+  fromTownId    String   @map("from_town_id")
+  toTownId      String   @map("to_town_id")
+  name          String   @default("")
+  description   String   @default("")
+  nodeCount     Int      @default(3)  @map("node_count")
+  dangerLevel   Int      @default(1)  @map("danger_level")
+  difficulty    String   @default("moderate")
+  terrain       String
+  isReleased    Boolean  @default(false) @map("is_released")
+  bidirectional Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-  fromTown      Town           @relation("RouteFrom", fields: [fromTownId], references: [id], onDelete: Cascade)
-  toTown        Town           @relation("RouteTo", fields: [toTownId], references: [id], onDelete: Cascade)
-  travelActions TravelAction[]
-  nodes         Node[]
+  fromTown             Town                  @relation("RouteFrom", fields: [fromTownId], references: [id], onDelete: Cascade)
+  toTown               Town                  @relation("RouteTo", fields: [toTownId], references: [id], onDelete: Cascade)
+  travelNodes          TravelNode[]
+  characterTravelStates CharacterTravelState[]
+  groupTravelStates    GroupTravelState[]
 
   @@unique([fromTownId, toTownId])
   @@index([fromTownId])
   @@index([toTownId])
+  @@index([isReleased])
   @@map("travel_routes")
 }
 
-model TravelAction {
-  id          String       @id @default(uuid())
-  characterId String       @map("character_id")
-  routeId     String       @map("route_id")
-  status      ActionStatus @default(PENDING)
-  startedAt   DateTime     @default(now()) @map("started_at")
-  fromNodeId  String?      @map("from_node_id")
-  toNodeId    String?      @map("to_node_id")
-  tickDate    DateTime?    @map("tick_date")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
-
-  character Character   @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  route     TravelRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
-  fromNode  Node?       @relation("TravelFromNode", fields: [fromNodeId], references: [id], onDelete: SetNull)
-  toNode    Node?       @relation("TravelToNode", fields: [toNodeId], references: [id], onDelete: SetNull)
-
-  @@index([characterId])
-  @@index([status])
-  @@map("travel_actions")
-}
+// TravelAction removed — replaced by CharacterTravelState / GroupTravelState
 
 model RegionBorder {
   id        String   @id @default(uuid())
@@ -1783,50 +1758,94 @@ model PetitionSignature {
   @@map("petition_signatures")
 }
 
-// ---- Nodes (tick-based travel graph) ----
+// ---- Travel System (tick-based node routes) ----
 
-model Node {
-  id              String   @id @default(uuid())
-  name            String
-  routeId         String?  @map("route_id")
-  position        Int
-  type            NodeType
-  regionId        String?  @map("region_id")
-  dangerLevel     Float    @default(0.1) @map("danger_level")
-  description     String   @default("")
-  townId          String?  @unique @map("town_id")
-  encounterChance Float    @default(0.1) @map("encounter_chance")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+model TravelNode {
+  id          String   @id @default(uuid())
+  routeId     String   @map("route_id")
+  nodeIndex   Int      @map("node_index")
+  name        String
+  description String
+  terrain     String
+  dangerLevel Int      @default(3) @map("danger_level") // 1-10
+  specialType String?  @map("special_type") // crossroads, bridge, ruins, camp, shrine, cave, ford, watchtower
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  route           TravelRoute?     @relation(fields: [routeId], references: [id], onDelete: SetNull)
-  region          Region?          @relation(fields: [regionId], references: [id], onDelete: SetNull)
-  town            Town?            @relation("TownGateNode", fields: [townId], references: [id], onDelete: SetNull)
-  characters      Character[]
-  connectionsFrom NodeConnection[] @relation("NodeConnectionFrom")
-  connectionsTo   NodeConnection[] @relation("NodeConnectionTo")
-  travelFromHere  TravelAction[]   @relation("TravelFromNode")
-  travelToHere    TravelAction[]   @relation("TravelToNode")
+  route TravelRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
 
+  @@unique([routeId, nodeIndex])
   @@index([routeId])
-  @@index([regionId])
-  @@index([type])
-  @@map("nodes")
+  @@map("travel_nodes")
 }
 
-model NodeConnection {
-  id            String  @id @default(uuid())
-  fromNodeId    String  @map("from_node_id")
-  toNodeId      String  @map("to_node_id")
-  bidirectional Boolean @default(true)
+model TravelGroup {
+  id        String   @id @default(uuid())
+  leaderId  String   @map("leader_id")
+  name      String?
+  status    String   @default("forming") // forming, traveling, arrived, disbanded
+  maxSize   Int      @default(5)  @map("max_size")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  fromNode Node @relation("NodeConnectionFrom", fields: [fromNodeId], references: [id], onDelete: Cascade)
-  toNode   Node @relation("NodeConnectionTo", fields: [toNodeId], references: [id], onDelete: Cascade)
+  leader      Character           @relation("TravelGroupLeader", fields: [leaderId], references: [id])
+  members     TravelGroupMember[]
+  travelState GroupTravelState?
 
-  @@unique([fromNodeId, toNodeId])
-  @@index([fromNodeId])
-  @@index([toNodeId])
-  @@map("node_connections")
+  @@index([leaderId])
+  @@index([status])
+  @@map("travel_groups")
+}
+
+model TravelGroupMember {
+  id          String   @id @default(uuid())
+  groupId     String   @map("group_id")
+  characterId String   @map("character_id")
+  role        String   @default("member") // leader, member
+  joinedAt    DateTime @default(now()) @map("joined_at")
+
+  group     TravelGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  character Character   @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, characterId])
+  @@index([characterId])
+  @@map("travel_group_members")
+}
+
+model CharacterTravelState {
+  id               String    @id @default(uuid())
+  characterId      String    @unique @map("character_id")
+  routeId          String    @map("route_id")
+  currentNodeIndex Int       @map("current_node_index") // 0=departed, nodeCount+1=arrived
+  direction        String    @default("forward") // forward, backward
+  speedModifier    Int       @default(1) @map("speed_modifier")
+  startedAt        DateTime  @default(now()) @map("started_at")
+  lastTickAt       DateTime? @map("last_tick_at")
+  status           String    @default("traveling") // traveling, arrived, blocked
+
+  character Character   @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  route     TravelRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([routeId, currentNodeIndex])
+  @@map("character_travel_states")
+}
+
+model GroupTravelState {
+  id               String    @id @default(uuid())
+  groupId          String    @unique @map("group_id")
+  routeId          String    @map("route_id")
+  currentNodeIndex Int       @map("current_node_index")
+  direction        String    @default("forward")
+  speedModifier    Int       @default(1) @map("speed_modifier")
+  startedAt        DateTime  @default(now()) @map("started_at")
+  lastTickAt       DateTime? @map("last_tick_at")
+  status           String    @default("traveling")
+
+  group TravelGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  route TravelRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("group_travel_states")
 }
 
 // ---- Daily Tick System ----

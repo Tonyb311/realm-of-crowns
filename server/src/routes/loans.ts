@@ -28,6 +28,10 @@ router.post('/issue', authGuard, characterGuard, async (req: AuthenticatedReques
     const banker = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
     if (!banker) return res.status(404).json({ error: 'No character found' });
 
+    if (banker.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     // Validate banker has BANKER profession at JOURNEYMAN+
     const bankerProfession = await prisma.playerProfession.findFirst({
       where: { characterId: banker.id, professionType: 'BANKER', isActive: true },
@@ -118,6 +122,10 @@ router.post('/repay', authGuard, characterGuard, async (req: AuthenticatedReques
     const { loanId, amount } = req.body;
     const character = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
     if (!character) return res.status(404).json({ error: 'No character found' });
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     if (!loanId || !amount || amount <= 0) {
       return res.status(400).json({ error: 'loanId and a positive amount are required' });

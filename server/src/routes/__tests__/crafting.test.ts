@@ -20,7 +20,7 @@ jest.mock('../../lib/prisma', () => ({
       updateMany: jest.fn(),
       count: jest.fn(),
     },
-    travelAction: { findFirst: jest.fn() },
+    characterTravelState: { findUnique: jest.fn() },
     inventory: { findMany: jest.fn(), create: jest.fn(), delete: jest.fn(), update: jest.fn() },
     item: { create: jest.fn(), delete: jest.fn() },
     itemTemplate: { findUnique: jest.fn(), findMany: jest.fn() },
@@ -101,6 +101,7 @@ const mockCharacter = {
   level: 5,
   gold: 500,
   currentTownId: 'town-001',
+  travelStatus: 'idle',
   stats: { str: 12, dex: 10, con: 10, int: 14, wis: 10, cha: 10 },
   subRace: null,
   health: 100,
@@ -196,7 +197,7 @@ describe('Crafting API', () => {
       (mockedPrisma.playerProfession.findFirst as jest.Mock).mockResolvedValue(mockProfession);
       // No active craft or travel
       (mockedPrisma.craftingAction.findFirst as jest.Mock).mockResolvedValue(null);
-      (mockedPrisma.travelAction.findFirst as jest.Mock).mockResolvedValue(null);
+      // travelAction removed — travel status checked via character.travelStatus
       // No workshop (apprentice tier doesn't need one)
       (mockedPrisma.building.findFirst as jest.Mock).mockResolvedValue(null);
       // Sufficient inventory

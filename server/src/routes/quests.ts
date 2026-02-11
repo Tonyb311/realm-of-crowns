@@ -212,6 +212,10 @@ router.post('/accept', authGuard, characterGuard, validate(acceptQuestSchema), a
     const { questId } = req.body;
     const character = req.character!;
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     const quest = await prisma.quest.findUnique({ where: { id: questId } });
     if (!quest) {
       return res.status(404).json({ error: 'Quest not found' });

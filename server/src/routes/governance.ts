@@ -65,6 +65,10 @@ router.post('/propose-law', authGuard, characterGuard, validate(proposeLawSchema
     const { kingdomId, title, description, effects, lawType, expiresAt } = req.body;
     const character = req.character!;
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     // Check if character is ruler of this kingdom or mayor of a town in it
     const kingdom = await prisma.kingdom.findUnique({
       where: { id: kingdomId },
@@ -109,6 +113,10 @@ router.post('/vote-law', authGuard, characterGuard, validate(voteLawSchema), asy
   try {
     const { lawId, vote } = req.body;
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     const law = await prisma.law.findUnique({
       where: { id: lawId },
@@ -203,6 +211,10 @@ router.post('/set-tax', authGuard, characterGuard, validate(setTaxSchema), async
   try {
     const { townId, taxRate } = req.body;
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     const town = await prisma.town.findUnique({
       where: { id: townId },
@@ -333,6 +345,10 @@ router.post('/appoint', authGuard, characterGuard, validate(appointSchema), asyn
     const { characterId, role, townId, kingdomId } = req.body;
     const character = req.character!;
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     if (!townId && !kingdomId) {
       return res.status(400).json({ error: 'Either townId or kingdomId is required' });
     }
@@ -399,6 +415,10 @@ router.post('/allocate-treasury', authGuard, characterGuard, validate(allocateTr
   try {
     const { townId, kingdomId, amount, purpose, details } = req.body;
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     if (!townId && !kingdomId) {
       return res.status(400).json({ error: 'Either townId or kingdomId is required' });
@@ -469,6 +489,10 @@ router.post('/declare-war', authGuard, characterGuard, validate(declareWarSchema
   try {
     const { targetKingdomId, reason } = req.body;
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     const attackerKingdom = await prisma.kingdom.findFirst({
       where: { rulerId: character.id },
@@ -543,6 +567,10 @@ router.post('/propose-peace', authGuard, characterGuard, validate(proposePeaceSc
   try {
     const { warId, terms } = req.body;
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     const war = await prisma.war.findUnique({
       where: { id: warId },

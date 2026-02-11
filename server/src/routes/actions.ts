@@ -34,6 +34,10 @@ router.post('/lock-in', authGuard, characterGuard, validate(lockInSchema), async
   try {
     const character = req.character!;
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     const { actionType, actionTarget, combatParams } = req.body;
 
     const result = await lockInAction(

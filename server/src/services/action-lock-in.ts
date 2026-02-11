@@ -34,7 +34,7 @@ async function getCharacterWithLocation(characterId: string) {
       id: true,
       hungerState: true,
       currentTownId: true,
-      currentNodeId: true,
+      travelStatus: true,
       level: true,
     },
   });
@@ -138,7 +138,7 @@ export async function getAvailableActions(characterId: string): Promise<{
   if (!character) throw new Error('Character not found');
 
   const inTown = !!character.currentTownId;
-  const onNode = !!character.currentNodeId;
+  const onNode = character.travelStatus !== 'idle';
 
   const actions: Array<{ type: DailyActionType; available: boolean; reason?: string }> = [
     { type: 'REST', available: true },

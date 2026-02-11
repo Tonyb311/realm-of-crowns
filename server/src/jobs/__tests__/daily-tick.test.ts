@@ -15,7 +15,7 @@ jest.mock('../../lib/prisma', () => ({
     dailyAction: { findMany: jest.fn(), updateMany: jest.fn() },
     gatheringAction: { findMany: jest.fn(), update: jest.fn() },
     craftingAction: { findMany: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
-    travelAction: { findMany: jest.fn(), update: jest.fn() },
+    characterTravelState: { findMany: jest.fn(), deleteMany: jest.fn() },
     item: { create: jest.fn(), update: jest.fn() },
     inventory: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
     itemTemplate: { findUnique: jest.fn() },
@@ -48,7 +48,7 @@ jest.mock('../../lib/prisma', () => ({
         inventory: { create: jest.fn(), update: jest.fn() },
         craftingAction: { update: jest.fn(), updateMany: jest.fn() },
         gatheringAction: { update: jest.fn() },
-        travelAction: { update: jest.fn() },
+        characterTravelState: { deleteMany: jest.fn() },
         townResource: { update: jest.fn() },
       });
       return fn;
@@ -164,7 +164,7 @@ describe('Daily Tick Processor', () => {
     (mockedPrisma.dailyAction.findMany as jest.Mock).mockResolvedValue([]);
     (mockedPrisma.gatheringAction.findMany as jest.Mock).mockResolvedValue([]);
     (mockedPrisma.craftingAction.findMany as jest.Mock).mockResolvedValue([]);
-    (mockedPrisma.travelAction.findMany as jest.Mock).mockResolvedValue([]);
+    // travelAction removed — travel now handled by travel-tick.ts cron
     (mockedPrisma.building.findMany as jest.Mock).mockResolvedValue([]);
     (mockedPrisma.town.findMany as jest.Mock).mockResolvedValue([]);
     (mockedPrisma.townResource.findMany as jest.Mock).mockResolvedValue([]);

@@ -140,10 +140,7 @@ router.post('/start', authGuard, characterGuard, validate(startWorkSchema), asyn
     }
 
     // Check not already traveling
-    const activeTravel = await prisma.travelAction.findFirst({
-      where: { characterId: character.id, status: 'IN_PROGRESS' },
-    });
-    if (activeTravel) {
+    if (character.travelStatus !== 'idle') {
       return res.status(400).json({ error: 'Cannot work while traveling' });
     }
 
@@ -329,6 +326,10 @@ router.get('/status', authGuard, characterGuard, async (req: AuthenticatedReques
 router.post('/collect', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     const activeGathering = await prisma.gatheringAction.findFirst({
       where: {
@@ -607,6 +608,10 @@ router.post('/collect', authGuard, characterGuard, async (req: AuthenticatedRequ
 router.post('/cancel', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     const activeGathering = await prisma.gatheringAction.findFirst({
       where: {

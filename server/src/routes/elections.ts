@@ -46,6 +46,10 @@ router.post('/nominate', authGuard, characterGuard, validate(nominateSchema), as
     const { electionId, platform } = req.body;
     const character = req.character!;
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     const election = await prisma.election.findUnique({
       where: { id: electionId },
       include: { town: true },
@@ -126,6 +130,10 @@ router.post('/vote', authGuard, characterGuard, validate(voteSchema), async (req
   try {
     const { electionId, candidateId } = req.body;
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     const election = await prisma.election.findUnique({
       where: { id: electionId },
@@ -445,6 +453,10 @@ router.post('/impeach', authGuard, characterGuard, validate(impeachSchema), asyn
     const { targetId, townId, kingdomId } = req.body;
     const character = req.character!;
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     if (!townId && !kingdomId) {
       return res.status(400).json({ error: 'Either townId or kingdomId is required' });
     }
@@ -540,6 +552,10 @@ router.post('/impeach/vote', authGuard, characterGuard, validate(impeachVoteSche
   try {
     const { impeachmentId, support } = req.body;
     const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
 
     const impeachment = await prisma.impeachment.findUnique({
       where: { id: impeachmentId },

@@ -187,6 +187,10 @@ router.post('/start', authGuard, validate(startPveSchema), async (req: Authentic
       return res.status(404).json({ error: 'Character not found' });
     }
 
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
     if (!character.currentTown) {
       return res.status(400).json({ error: 'Character is not in a town' });
     }
