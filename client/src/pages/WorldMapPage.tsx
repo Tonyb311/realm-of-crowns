@@ -191,173 +191,6 @@ function inferTownType(pop: number): 'capital' | 'city' | 'town' | 'village' | '
 const ROUTE_COLOR = '#B4A078'; // parchment-gold muted
 
 // ===========================================================================
-// Catmull-Rom to Bezier curve conversion for smooth roads
-// ===========================================================================
-
-/**
- * Converts an array of points into a smooth SVG path string using
- * Catmull-Rom → cubic Bezier conversion. The curve passes through
- * every control point (unlike plain cubic Bezier which only approximates).
- */
-function catmullRomToBezier(points: { x: number; y: number }[], tension: number = 0.5): string {
-  if (points.length < 2) return '';
-  if (points.length === 2) {
-    return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
-  }
-
-  let d = `M ${points[0].x} ${points[0].y}`;
-
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[Math.max(0, i - 1)];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = points[Math.min(points.length - 1, i + 2)];
-
-    // Tangent vectors at p1 and p2
-    const d1x = (p2.x - p0.x) * tension;
-    const d1y = (p2.y - p0.y) * tension;
-    const d2x = (p3.x - p1.x) * tension;
-    const d2y = (p3.y - p1.y) * tension;
-
-    // Convert to cubic Bezier control points
-    const cp1x = p1.x + d1x / 3;
-    const cp1y = p1.y + d1y / 3;
-    const cp2x = p2.x - d2x / 3;
-    const cp2y = p2.y - d2y / 3;
-
-    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
-  }
-
-  return d;
-}
-
-// ===========================================================================
-// Minimum Spanning Tree — clean road network from 90 routes → ~42 edges
-// ===========================================================================
-
-class UnionFind {
-  parent: number[];
-  rank: number[];
-
-  constructor(n: number) {
-    this.parent = Array.from({ length: n }, (_, i) => i);
-    this.rank = new Array(n).fill(0);
-  }
-
-  find(x: number): number {
-    if (this.parent[x] !== x) this.parent[x] = this.find(this.parent[x]);
-    return this.parent[x];
-  }
-
-  union(x: number, y: number): boolean {
-    const px = this.find(x), py = this.find(y);
-    if (px === py) return false;
-    if (this.rank[px] < this.rank[py]) this.parent[px] = py;
-    else if (this.rank[px] > this.rank[py]) this.parent[py] = px;
-    else { this.parent[py] = px; this.rank[px]++; }
-    return true;
-  }
-}
-
-/**
- * Builds a Minimum Spanning Tree from all routes using Kruskal's algorithm,
- * then adds up to 15 gameplay extras (active route, capital↔capital, leaf extras).
- * Returns the subset of routes to render (~42 MST + ≤15 extras = max ~57).
- */
-function buildMSTEdges(
-  towns: MapTown[],
-  routes: MapRoute[],
-  townLookup: Map<string, MapTown>,
-  activeRouteId: string | null,
-): MapRoute[] {
-  if (towns.length === 0 || routes.length === 0) return [];
-
-  const townIndex = new Map(towns.map((t, i) => [t.id, i]));
-
-  // Build weighted edges from routes using Euclidean distance
-  const edges: { route: MapRoute; fi: number; ti: number; distance: number; fromType?: string; toType?: string }[] = [];
-  for (const route of routes) {
-    const from = townLookup.get(route.fromTownId);
-    const to = townLookup.get(route.toTownId);
-    if (!from || !to) continue;
-    const fi = townIndex.get(from.id);
-    const ti = townIndex.get(to.id);
-    if (fi === undefined || ti === undefined) continue;
-    const dx = from.mapX - to.mapX;
-    const dy = from.mapY - to.mapY;
-    edges.push({ route, fi, ti, distance: Math.sqrt(dx * dx + dy * dy), fromType: from.type, toType: to.type });
-  }
-
-  // Sort shortest first for Kruskal's
-  edges.sort((a, b) => a.distance - b.distance);
-
-  // Build MST with Union-Find
-  const uf = new UnionFind(towns.length);
-  const mstIds = new Set<string>();
-
-  for (const edge of edges) {
-    if (uf.union(edge.fi, edge.ti)) {
-      mstIds.add(edge.route.id);
-      if (mstIds.size === towns.length - 1) break;
-    }
-  }
-
-  // --- Gameplay extras (up to 15) ---
-  const MAX_EXTRAS = 15;
-  let extras = 0;
-
-  // 1. Active travel route always visible
-  if (activeRouteId && !mstIds.has(activeRouteId)) {
-    mstIds.add(activeRouteId);
-    extras++;
-  }
-
-  // 2. Capital↔capital and capital↔city trunk roads
-  const isMajor = (t?: string) => t === 'capital' || t === 'city';
-  for (const edge of edges) {
-    if (extras >= MAX_EXTRAS) break;
-    if (mstIds.has(edge.route.id)) continue;
-    if (isMajor(edge.fromType) && isMajor(edge.toType)) {
-      mstIds.add(edge.route.id);
-      extras++;
-    }
-  }
-
-  // 3. One extra short route per leaf node (towns with only 1 MST connection)
-  const connCount = new Map<string, number>();
-  for (const route of routes) {
-    if (!mstIds.has(route.id)) continue;
-    connCount.set(route.fromTownId, (connCount.get(route.fromTownId) ?? 0) + 1);
-    connCount.set(route.toTownId, (connCount.get(route.toTownId) ?? 0) + 1);
-  }
-  for (const edge of edges) {
-    if (extras >= MAX_EXTRAS) break;
-    if (mstIds.has(edge.route.id)) continue;
-    const fc = connCount.get(edge.route.fromTownId) ?? 0;
-    const tc = connCount.get(edge.route.toTownId) ?? 0;
-    if (fc <= 1 || tc <= 1) {
-      mstIds.add(edge.route.id);
-      extras++;
-    }
-  }
-
-  // Warn about isolated towns
-  const connected = new Set<string>();
-  for (const route of routes) {
-    if (!mstIds.has(route.id)) continue;
-    connected.add(route.fromTownId);
-    connected.add(route.toTownId);
-  }
-  for (const town of towns) {
-    if (!connected.has(town.id)) {
-      console.warn(`[MST] Town "${town.name}" (${town.id}) is isolated — no road connects it`);
-    }
-  }
-
-  return routes.filter(r => mstIds.has(r.id));
-}
-
-// ===========================================================================
 // Label Collision Avoidance
 // ===========================================================================
 
@@ -925,31 +758,22 @@ interface RouteLinesProps {
 }
 
 function RouteLine({ route, fromPos, toPos, isActive, isHighlighted, zoom, onClick, onHoverStart, onHoverEnd }: RouteLinesProps) {
-  const hasNodes = route.nodes && route.nodes.length > 0;
-
-  // Build smooth curved path through waypoints (Catmull-Rom spline)
-  let pathD: string;
-  if (hasNodes) {
-    const sorted = [...route.nodes!].sort((a, b) => a.nodeIndex - b.nodeIndex);
-    const points = [fromPos, ...sorted.map(n => ({ x: n.mapX, y: n.mapY })), toPos];
-    pathD = catmullRomToBezier(points);
-  } else {
-    pathD = `M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}`;
-  }
-
   const s = 1 / zoom; // scale factor for constant screen-pixel sizes
 
   // Active travel route: always fully visible with glow
   if (isActive) {
     return (
       <g>
-        <path d={pathD} fill="none" stroke="transparent" strokeWidth={14 * s}
+        <line x1={fromPos.x} y1={fromPos.y} x2={toPos.x} y2={toPos.y}
+          stroke="transparent" strokeWidth={14 * s}
           onClick={(e) => { e.stopPropagation(); onClick(); }}
           onMouseEnter={onHoverStart} onMouseLeave={onHoverEnd}
           style={{ cursor: 'pointer' }} />
-        <path d={pathD} fill="none" stroke="#D4A843" strokeWidth={4 * s} opacity={0.15}
+        <line x1={fromPos.x} y1={fromPos.y} x2={toPos.x} y2={toPos.y}
+          stroke="#D4A843" strokeWidth={4 * s} opacity={0.15}
           strokeLinecap="round" style={{ pointerEvents: 'none' }} />
-        <path d={pathD} fill="none" stroke="#D4A843" strokeWidth={2 * s} opacity={0.7}
+        <line x1={fromPos.x} y1={fromPos.y} x2={toPos.x} y2={toPos.y}
+          stroke="#D4A843" strokeWidth={2 * s} opacity={0.7}
           strokeLinecap="round" style={{ pointerEvents: 'none' }}
           filter="url(#activeRouteGlow)" />
       </g>
@@ -957,39 +781,28 @@ function RouteLine({ route, fromPos, toPos, isActive, isHighlighted, zoom, onCli
   }
 
   // Zoom-dependent route styling — ONE muted color, no dashing, no multi-color
-  let strokeWidth: number;
-  let routeOpacity: number;
-
-  if (zoom < ZOOM_REGIONAL) {
-    // Continental: visible but subtle
-    strokeWidth = 1.5 * s;
-    routeOpacity = isHighlighted ? 0.6 : 0.25;
-  } else if (zoom < ZOOM_DETAIL) {
-    // Regional: clear road lines
-    strokeWidth = 1.5 * s;
-    routeOpacity = isHighlighted ? 0.65 : 0.30;
-  } else {
-    // Detail: clearly readable roads
-    strokeWidth = 1.5 * s;
-    routeOpacity = isHighlighted ? 0.7 : 0.35;
-  }
+  const strokeWidth = 1.5 * s;
+  const routeOpacity = zoom < ZOOM_REGIONAL
+    ? (isHighlighted ? 0.6 : 0.25)
+    : zoom < ZOOM_DETAIL
+      ? (isHighlighted ? 0.65 : 0.30)
+      : (isHighlighted ? 0.7 : 0.35);
 
   return (
     <g>
       {/* Invisible wide hit area */}
-      <path d={pathD} fill="none" stroke="transparent" strokeWidth={14 * s}
+      <line x1={fromPos.x} y1={fromPos.y} x2={toPos.x} y2={toPos.y}
+        stroke="transparent" strokeWidth={14 * s}
         onClick={(e) => { e.stopPropagation(); onClick(); }}
         onMouseEnter={onHoverStart} onMouseLeave={onHoverEnd}
         style={{ cursor: 'pointer' }} />
       {/* Visible route line — single muted parchment color */}
-      <path
-        d={pathD}
-        fill="none"
+      <line
+        x1={fromPos.x} y1={fromPos.y} x2={toPos.x} y2={toPos.y}
         stroke={isHighlighted ? '#D4B880' : ROUTE_COLOR}
         strokeWidth={isHighlighted ? strokeWidth + 0.5 * s : strokeWidth}
         opacity={routeOpacity}
         strokeLinecap="round"
-        strokeLinejoin="round"
         className="route-line"
         style={{ pointerEvents: 'none' }}
       />
@@ -1422,14 +1235,8 @@ export default function WorldMapPage() {
     );
   }, [mapData, zoom, viewBox]);
 
-  // Compute MST road network — runs once on data load, not per render
-  const mstRoutes = useMemo(() => {
-    if (!mapData) return [];
-    const activeId = mapData.playerPosition?.routeId ?? null;
-    return buildMSTEdges(mapData.towns, mapData.routes, townLookup, activeId);
-  }, [mapData, townLookup]);
-
-  // Visible routes — MST edges with LOD filtering by zoom level
+  // Visible routes — LOD filtering by zoom level
+  // Backend now only serves MST routes, so we filter directly from mapData.routes
   const visibleRoutes = useMemo(() => {
     if (!mapData) return [];
 
@@ -1437,7 +1244,7 @@ export default function WorldMapPage() {
     const isMajorType = (type?: string) => type === 'capital' || type === 'city';
     const isTownOrAbove = (type?: string) => type === 'capital' || type === 'city' || type === 'town';
 
-    return mstRoutes.filter(r => {
+    return mapData.routes.filter(r => {
       const from = townLookup.get(r.fromTownId);
       const to = townLookup.get(r.toTownId);
       if (!from || !to) return false;
@@ -1450,17 +1257,17 @@ export default function WorldMapPage() {
       if (r.id === activeId) return true;
 
       if (zoom < ZOOM_REGIONAL) {
-        // Continental: only MST edges where at least one endpoint is capital/city
+        // Continental: only routes where at least one endpoint is capital/city
         return isMajorType(from.type) || isMajorType(to.type);
       }
       if (zoom < ZOOM_DETAIL) {
-        // Regional: MST edges where at least one endpoint is town or above
+        // Regional: routes where at least one endpoint is town or above
         return isTownOrAbove(from.type) || isTownOrAbove(to.type);
       }
-      // Detail: all MST edges in viewport
+      // Detail: all routes in viewport
       return true;
     });
-  }, [mapData, mstRoutes, townLookup, viewBox, zoom]);
+  }, [mapData, townLookup, viewBox, zoom]);
 
   // Compute label layout with collision avoidance
   const labelLayout = useMemo(() => {
