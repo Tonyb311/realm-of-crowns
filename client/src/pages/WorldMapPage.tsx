@@ -264,9 +264,12 @@ function computeLabelLayout(
   const result = new Map<string, LabelPlacement>();
   const placedRects: LabelRect[] = [];
 
+  // Scale factor: all sizes in SVG coords are divided by zoom to stay constant on screen
+  const s = 1 / zoom;
+
   // Also treat town node circles as occupied rects to avoid overlapping nodes
   const nodeRects: LabelRect[] = towns.map(t => {
-    const size = getTownSize(t.type);
+    const size = getTownSize(t.type) * s;
     return {
       x1: t.mapX - size,
       y1: t.mapY - size,
@@ -278,24 +281,26 @@ function computeLabelLayout(
   // Sort by priority descending (capitals first)
   const sorted = [...towns].sort((a, b) => getTownPriority(b.type) - getTownPriority(a.type));
 
-  // Approximate char width in SVG coords at a given font size
-  const charWidth = (fontSize: number) => fontSize * 0.55;
-  const lineHeight = (fontSize: number) => fontSize * 1.3;
+  // Approximate char width in SVG coords at a given font size (already zoom-scaled)
+  const charWidth = (fs: number) => fs * s * 0.55;
+  const lineHeight = (fs: number) => fs * s * 1.3;
 
   // 8 candidate positions: S, N, E, W, SE, SW, NE, NW
   type Offset = { dx: number; dy: number; anchor: 'start' | 'middle' | 'end' };
   const getOffsets = (nodeSize: number, fontSize: number): Offset[] => {
-    const gap = 3; // spacing between node and label
+    const gap = 3 * s;
+    const ns = nodeSize * s; // node size in SVG coords
     const lh = lineHeight(fontSize);
+    const fsSvg = fontSize * s;
     return [
-      { dx: 0, dy: nodeSize + gap + lh * 0.7, anchor: 'middle' },        // S (below)
-      { dx: 0, dy: -(nodeSize + gap), anchor: 'middle' },                 // N (above)
-      { dx: nodeSize + gap, dy: fontSize * 0.35, anchor: 'start' },       // E (right)
-      { dx: -(nodeSize + gap), dy: fontSize * 0.35, anchor: 'end' },      // W (left)
-      { dx: nodeSize + gap, dy: nodeSize + gap + lh * 0.4, anchor: 'start' },   // SE
-      { dx: -(nodeSize + gap), dy: nodeSize + gap + lh * 0.4, anchor: 'end' },  // SW
-      { dx: nodeSize + gap, dy: -(nodeSize * 0.5), anchor: 'start' },     // NE
-      { dx: -(nodeSize + gap), dy: -(nodeSize * 0.5), anchor: 'end' },    // NW
+      { dx: 0, dy: ns + gap + lh * 0.7, anchor: 'middle' },        // S (below)
+      { dx: 0, dy: -(ns + gap), anchor: 'middle' },                 // N (above)
+      { dx: ns + gap, dy: fsSvg * 0.35, anchor: 'start' },          // E (right)
+      { dx: -(ns + gap), dy: fsSvg * 0.35, anchor: 'end' },         // W (left)
+      { dx: ns + gap, dy: ns + gap + lh * 0.4, anchor: 'start' },   // SE
+      { dx: -(ns + gap), dy: ns + gap + lh * 0.4, anchor: 'end' },  // SW
+      { dx: ns + gap, dy: -(ns * 0.5), anchor: 'start' },           // NE
+      { dx: -(ns + gap), dy: -(ns * 0.5), anchor: 'end' },          // NW
     ];
   };
 
@@ -363,7 +368,7 @@ function computeLabelLayout(
       // Mark as hover-only — do not render label normally
       result.set(town.id, {
         x: town.mapX,
-        y: town.mapY + nodeSize + 10,
+        y: town.mapY + nodeSize * s + 10 * s,
         show: false,
         anchor: 'middle' as const,
       });
@@ -569,21 +574,26 @@ interface TownNodeProps {
 }
 
 function TownNode({ town, isPlayerHere, isSelected, zoom, labelPlacement, isHovered, onClick, onHoverStart, onHoverEnd }: TownNodeProps) {
-  const size = getTownSize(town.type);
+  // All sizes divided by zoom to stay constant in screen pixels
+  const s = 1 / zoom;
+  const size = getTownSize(town.type) * s;
   const color = getRegionColor(town.regionId);
   const opacity = getTownOpacity(town.type);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-  const hitSize = isMobile ? size + 6 : size + 4;
+  const hitSize = (isMobile ? getTownSize(town.type) + 8 : getTownSize(town.type) + 6) * s;
 
   const isCapital = town.type === 'capital';
   const isCity = town.type === 'city';
   const isOutpost = town.type === 'outpost';
 
-  const fontSize = getLabelFontSize(town.type);
+  const fontSize = getLabelFontSize(town.type) * s;
   const showLabel = labelPlacement?.show ?? false;
 
   // Hover-only labels: show when hovered or selected
   const showHoverLabel = !showLabel && (isHovered || isSelected);
+
+  // Scaled constants
+  const strokeW = s; // 1px screen stroke
 
   return (
     <g
@@ -596,17 +606,17 @@ function TownNode({ town, isPlayerHere, isSelected, zoom, labelPlacement, isHove
       {/* Player glow ring */}
       {isPlayerHere && (
         <>
-          <circle cx={town.mapX} cy={town.mapY} r={size + 6} fill="none" stroke="#fbbf24" strokeWidth={2} opacity={0.6}>
-            <animate attributeName="r" values={`${size + 4};${size + 8};${size + 4}`} dur="2s" repeatCount="indefinite" />
+          <circle cx={town.mapX} cy={town.mapY} r={size + 6 * s} fill="none" stroke="#fbbf24" strokeWidth={2 * s} opacity={0.6}>
+            <animate attributeName="r" values={`${size + 4 * s};${size + 8 * s};${size + 4 * s}`} dur="2s" repeatCount="indefinite" />
             <animate attributeName="opacity" values="0.4;0.8;0.4" dur="2s" repeatCount="indefinite" />
           </circle>
-          <circle cx={town.mapX} cy={town.mapY} r={size + 3} fill="none" stroke="#fbbf24" strokeWidth={1} opacity={0.3} />
+          <circle cx={town.mapX} cy={town.mapY} r={size + 3 * s} fill="none" stroke="#fbbf24" strokeWidth={strokeW} opacity={0.3} />
         </>
       )}
 
       {/* Selection ring - bright gold */}
       {isSelected && (
-        <circle cx={town.mapX} cy={town.mapY} r={size + 5} fill="none" stroke="#fbbf24" strokeWidth={3} opacity={0.9} />
+        <circle cx={town.mapX} cy={town.mapY} r={size + 5 * s} fill="none" stroke="#fbbf24" strokeWidth={3 * s} opacity={0.9} />
       )}
 
       {/* Invisible hit area */}
@@ -619,7 +629,7 @@ function TownNode({ town, isPlayerHere, isSelected, zoom, labelPlacement, isHove
           points={`${town.mapX},${town.mapY - size} ${town.mapX + size},${town.mapY} ${town.mapX},${town.mapY + size} ${town.mapX - size},${town.mapY}`}
           fill={color}
           stroke="#fbbf24"
-          strokeWidth={2}
+          strokeWidth={2 * s}
           filter="url(#capitalGlow)"
           opacity={opacity}
         />
@@ -639,7 +649,7 @@ function TownNode({ town, isPlayerHere, isSelected, zoom, labelPlacement, isHove
           r={size}
           fill={color}
           stroke="#1a1a2e"
-          strokeWidth={1.5}
+          strokeWidth={1.5 * s}
           opacity={opacity}
           filter={isPlayerHere ? 'url(#playerGlow)' : undefined}
         />
@@ -678,17 +688,17 @@ function TownNode({ town, isPlayerHere, isSelected, zoom, labelPlacement, isHove
         <g className="map-label-hover" style={{ pointerEvents: 'none' }}>
           {/* Background rect for readability */}
           <rect
-            x={town.mapX - (town.name.length * fontSize * 0.275) - 3}
-            y={town.mapY + size + 2}
-            width={town.name.length * fontSize * 0.55 + 6}
-            height={fontSize + 4}
-            rx={2}
+            x={town.mapX - (town.name.length * fontSize * 0.275) - 3 * s}
+            y={town.mapY + size + 2 * s}
+            width={town.name.length * fontSize * 0.55 + 6 * s}
+            height={fontSize + 4 * s}
+            rx={2 * s}
             fill="#1a1a2e"
             opacity={0.85}
           />
           <text
             x={town.mapX}
-            y={town.mapY + size + fontSize + 2}
+            y={town.mapY + size + fontSize + 2 * s}
             textAnchor="middle"
             fill="#fbbf24"
             fontSize={fontSize}
@@ -704,10 +714,10 @@ function TownNode({ town, isPlayerHere, isSelected, zoom, labelPlacement, isHove
       {isPlayerHere && (
         <text
           x={town.mapX}
-          y={town.mapY - size - 8}
+          y={town.mapY - size - 8 * s}
           textAnchor="middle"
           fill="#fbbf24"
-          fontSize={Math.max(6, 8 / Math.max(zoom, 1))}
+          fontSize={10 * s}
           fontFamily="MedievalSharp, serif"
           style={{ pointerEvents: 'none', userSelect: 'none' }}
         >
@@ -733,11 +743,11 @@ interface TravelNodeProps {
 
 function TravelNodeDot({ node, isPlayerHere, zoom, fadeOpacity, onHoverStart, onHoverEnd }: TravelNodeProps) {
   const color = getTerrainColor(node.terrain);
-  const showLabel = zoom > 4.8;
+  const s = 1 / zoom; // scale factor for constant screen-pixel sizes
 
-  // Travel nodes are tiny breadcrumbs: 2px radius, low opacity
+  // Travel nodes are tiny breadcrumbs: 2px screen radius, low opacity
   // Player node is the only exception — stays visible
-  const nodeRadius = isPlayerHere ? 4 : 2;
+  const nodeRadius = (isPlayerHere ? 4 : 2) * s;
   const nodeOpacity = isPlayerHere ? 1 : 0.35;
 
   return (
@@ -748,8 +758,8 @@ function TravelNodeDot({ node, isPlayerHere, zoom, fadeOpacity, onHoverStart, on
       className="travel-node"
     >
       {isPlayerHere && (
-        <circle cx={node.mapX} cy={node.mapY} r={6} fill="none" stroke="#fbbf24" strokeWidth={1.5} opacity={0.7}>
-          <animate attributeName="r" values="4;8;4" dur="1.5s" repeatCount="indefinite" />
+        <circle cx={node.mapX} cy={node.mapY} r={6 * s} fill="none" stroke="#fbbf24" strokeWidth={1.5 * s} opacity={0.7}>
+          <animate attributeName="r" values={`${4 * s};${8 * s};${4 * s}`} dur="1.5s" repeatCount="indefinite" />
           <animate attributeName="opacity" values="0.5;0.9;0.5" dur="1.5s" repeatCount="indefinite" />
         </circle>
       )}
@@ -761,20 +771,7 @@ function TravelNodeDot({ node, isPlayerHere, zoom, fadeOpacity, onHoverStart, on
         stroke="none"
         opacity={nodeOpacity}
       />
-      {showLabel && (
-        <text
-          x={node.mapX}
-          y={node.mapY + 6}
-          textAnchor="middle"
-          fill="#A89A80"
-          fontSize={4}
-          fontFamily="Crimson Text, Georgia, serif"
-          opacity={0.5}
-          style={{ pointerEvents: 'none', userSelect: 'none' }}
-        >
-          {node.name}
-        </text>
-      )}
+      {/* Labels are hover-only via HTML NodeTooltip — no permanent SVG text */}
     </g>
   );
 }
@@ -808,24 +805,26 @@ function RouteLine({ route, fromPos, toPos, isActive, isHighlighted, zoom, onCli
     pathD = `M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}`;
   }
 
+  const s = 1 / zoom; // scale factor for constant screen-pixel sizes
+
   // Active travel route: always fully visible with glow
   if (isActive) {
     return (
       <g>
-        <path d={pathD} fill="none" stroke="transparent" strokeWidth={14}
+        <path d={pathD} fill="none" stroke="transparent" strokeWidth={14 * s}
           onClick={(e) => { e.stopPropagation(); onClick(); }}
           onMouseEnter={onHoverStart} onMouseLeave={onHoverEnd}
           style={{ cursor: 'pointer' }} />
-        <path d={pathD} fill="none" stroke="#fbbf24" strokeWidth={4} opacity={0.15}
+        <path d={pathD} fill="none" stroke="#fbbf24" strokeWidth={4 * s} opacity={0.15}
           strokeLinecap="round" style={{ pointerEvents: 'none' }} />
-        <path d={pathD} fill="none" stroke="#fbbf24" strokeWidth={2} opacity={0.85}
+        <path d={pathD} fill="none" stroke="#fbbf24" strokeWidth={2 * s} opacity={0.85}
           strokeLinecap="round" style={{ pointerEvents: 'none' }}
           filter="url(#activeRouteGlow)" />
       </g>
     );
   }
 
-  // Zoom-dependent route styling
+  // Zoom-dependent route styling (sizes in screen pixels, scaled by s)
   let stroke: string;
   let strokeWidth: number;
   let dashArray: string;
@@ -834,20 +833,20 @@ function RouteLine({ route, fromPos, toPos, isActive, isHighlighted, zoom, onCli
   if (zoom < ZOOM_REGIONAL) {
     // Continental: barely-visible hints
     stroke = '#555';
-    strokeWidth = 1;
+    strokeWidth = 1 * s;
     dashArray = 'none';
     routeOpacity = isHighlighted ? 0.2 : 0.1;
   } else if (zoom < ZOOM_DETAIL) {
     // Regional: thin subtle lines
     stroke = '#666';
-    strokeWidth = 1;
+    strokeWidth = 1.5 * s;
     dashArray = 'none';
     routeOpacity = isHighlighted ? 0.35 : 0.2;
   } else {
     // Detail: difficulty styling, but still thin
     const fullStyle = getRouteStyleFull(route.difficulty, route.dangerLevel);
     stroke = fullStyle.stroke;
-    strokeWidth = fullStyle.strokeWidth;
+    strokeWidth = fullStyle.strokeWidth * s;
     dashArray = fullStyle.dashArray;
     routeOpacity = isHighlighted ? 0.65 : 0.4;
   }
@@ -855,7 +854,7 @@ function RouteLine({ route, fromPos, toPos, isActive, isHighlighted, zoom, onCli
   return (
     <g>
       {/* Invisible wide hit area */}
-      <path d={pathD} fill="none" stroke="transparent" strokeWidth={14}
+      <path d={pathD} fill="none" stroke="transparent" strokeWidth={14 * s}
         onClick={(e) => { e.stopPropagation(); onClick(); }}
         onMouseEnter={onHoverStart} onMouseLeave={onHoverEnd}
         style={{ cursor: 'pointer' }} />
@@ -864,7 +863,7 @@ function RouteLine({ route, fromPos, toPos, isActive, isHighlighted, zoom, onCli
         d={pathD}
         fill="none"
         stroke={isHighlighted ? '#C9A461' : stroke}
-        strokeWidth={isHighlighted ? strokeWidth + 0.5 : strokeWidth}
+        strokeWidth={isHighlighted ? strokeWidth + 0.5 * s : strokeWidth}
         strokeDasharray={dashArray}
         opacity={routeOpacity}
         strokeLinecap="round"
@@ -1179,33 +1178,35 @@ interface RouteTooltipSVGProps {
   route: MapRoute;
   midX: number;
   midY: number;
+  zoom: number;
 }
 
-function RouteTooltipSVG({ route, midX, midY }: RouteTooltipSVGProps) {
+function RouteTooltipSVG({ route, midX, midY, zoom }: RouteTooltipSVGProps) {
   const dl = route.dangerLevel ?? 0;
   const label = dl <= 1 ? 'Safe' : dl <= 3 ? 'Moderate' : dl <= 6 ? 'Dangerous' : 'Deadly';
   const color = dl <= 1 ? '#4ade80' : dl <= 3 ? '#facc15' : dl <= 6 ? '#fb923c' : '#ef4444';
+  const s = 1 / zoom;
 
-  // Offset tooltip 25px above the route midpoint to avoid overlapping nodes
-  const tooltipY = midY - 25;
+  // Offset tooltip above the route midpoint
+  const tooltipY = midY - 25 * s;
 
   return (
     <g style={{ pointerEvents: 'none' }}>
       <rect
-        x={midX - 55}
-        y={tooltipY - 18}
-        width={110}
-        height={36}
-        rx={4}
+        x={midX - 55 * s}
+        y={tooltipY - 18 * s}
+        width={110 * s}
+        height={36 * s}
+        rx={4 * s}
         fill="#252538"
         stroke="#C9A461"
-        strokeWidth={0.5}
+        strokeWidth={0.5 * s}
         opacity={0.97}
       />
-      <text x={midX} y={tooltipY - 2} textAnchor="middle" fill="#E8E0D0" fontSize={9} fontFamily="Crimson Text, serif">
+      <text x={midX} y={tooltipY - 2 * s} textAnchor="middle" fill="#E8E0D0" fontSize={9 * s} fontFamily="Crimson Text, serif">
         {route.name || `${route.nodeCount ?? '?'} nodes`}
       </text>
-      <text x={midX} y={tooltipY + 11} textAnchor="middle" fill={color} fontSize={8} fontFamily="Crimson Text, serif">
+      <text x={midX} y={tooltipY + 11 * s} textAnchor="middle" fill={color} fontSize={8 * s} fontFamily="Crimson Text, serif">
         {label} (Danger {dl})
       </text>
     </g>
@@ -1640,13 +1641,12 @@ export default function WorldMapPage() {
 
   return (
     <div className="min-h-screen bg-dark-500 flex flex-col">
-      {/* Inline style for smooth LOD transitions and hover effects */}
+      {/* Inline style for smooth LOD transitions */}
       <style>{`
-        .town-node { transition: transform 0.15s ease; }
-        .town-node:hover { transform: scale(1.3); transform-origin: center; }
+        .town-node { cursor: pointer; }
         .route-line { transition: opacity 0.3s ease; }
         .travel-node { transition: opacity 0.3s ease; }
-        .region-label { transition: opacity 0.4s ease, font-size 0.4s ease; }
+        .region-label { transition: opacity 0.4s ease; }
         .map-label { transition: opacity 0.3s ease; }
         .map-label-hover { transition: opacity 0.2s ease; }
       `}</style>
@@ -1723,38 +1723,41 @@ export default function WorldMapPage() {
               fill="url(#mapBgGrad)"
             />
 
-            {/* === Layer 2: Region names (zoom-dependent) === */}
-            {regionNameOpacity > 0 && Array.from(regionCentroids.entries()).map(([regionId, center]) => (
-              <g key={`region-${regionId}`} className="region-label">
-                {/* Subtle region background glow */}
-                <circle
-                  cx={center.x}
-                  cy={center.y}
-                  r={80}
-                  fill={center.color}
-                  opacity={0.04}
-                  style={{ pointerEvents: 'none' }}
-                />
-                <text
-                  x={center.x}
-                  y={center.y}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fill={center.color}
-                  fontSize={regionFontSize}
-                  fontFamily="MedievalSharp, serif"
-                  opacity={regionNameOpacity}
-                  letterSpacing={zoom < ZOOM_REGIONAL ? '3px' : '1px'}
-                  style={{
-                    pointerEvents: 'none',
-                    userSelect: 'none',
-                    textTransform: zoom < ZOOM_REGIONAL ? 'uppercase' : 'none',
-                  } as React.CSSProperties}
-                >
-                  {center.name}
-                </text>
-              </g>
-            ))}
+            {/* === Layer 2: Region names (zoom-dependent, non-scaling) === */}
+            {regionNameOpacity > 0 && Array.from(regionCentroids.entries()).map(([regionId, center]) => {
+              const rs = 1 / zoom; // region scale factor
+              return (
+                <g key={`region-${regionId}`} className="region-label">
+                  {/* Subtle region background glow */}
+                  <circle
+                    cx={center.x}
+                    cy={center.y}
+                    r={80 * rs}
+                    fill={center.color}
+                    opacity={0.04}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  <text
+                    x={center.x}
+                    y={center.y}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill={center.color}
+                    fontSize={regionFontSize * rs}
+                    fontFamily="MedievalSharp, serif"
+                    opacity={regionNameOpacity}
+                    letterSpacing={zoom < ZOOM_REGIONAL ? `${3 * rs}px` : `${1 * rs}px`}
+                    style={{
+                      pointerEvents: 'none',
+                      userSelect: 'none',
+                      textTransform: zoom < ZOOM_REGIONAL ? 'uppercase' : 'none',
+                    } as React.CSSProperties}
+                  >
+                    {center.name}
+                  </text>
+                </g>
+              );
+            })}
 
             {/* === Layer 3: Route lines === */}
             {visibleRoutes.map(route => {
@@ -1816,43 +1819,46 @@ export default function WorldMapPage() {
               />
             ))}
 
-            {/* === Layer 6: Travelers === */}
-            {showTravelers && travelNodeOpacity > 0 && travelerClusters.map((cluster, i) => (
-              <g key={`travelers-${i}`} style={{ opacity: travelNodeOpacity }}>
-                <circle
-                  cx={cluster.x}
-                  cy={cluster.y}
-                  r={5}
-                  fill="#3B82F6"
-                  opacity={0.7}
-                  stroke="#1e40af"
-                  strokeWidth={0.5}
-                />
-                {cluster.travelers.length > 1 && (
-                  <text
-                    x={cluster.x}
-                    y={cluster.y + 1}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fill="white"
-                    fontSize={5}
-                    fontWeight="bold"
-                    style={{ pointerEvents: 'none', userSelect: 'none' }}
-                  >
-                    {cluster.travelers.length}
-                  </text>
-                )}
-              </g>
-            ))}
+            {/* === Layer 6: Travelers (non-scaling) === */}
+            {showTravelers && travelNodeOpacity > 0 && travelerClusters.map((cluster, i) => {
+              const ts = 1 / zoom;
+              return (
+                <g key={`travelers-${i}`} style={{ opacity: travelNodeOpacity }}>
+                  <circle
+                    cx={cluster.x}
+                    cy={cluster.y}
+                    r={5 * ts}
+                    fill="#3B82F6"
+                    opacity={0.7}
+                    stroke="#1e40af"
+                    strokeWidth={0.5 * ts}
+                  />
+                  {cluster.travelers.length > 1 && (
+                    <text
+                      x={cluster.x}
+                      y={cluster.y + 1 * ts}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fill="white"
+                      fontSize={5 * ts}
+                      fontWeight="bold"
+                      style={{ pointerEvents: 'none', userSelect: 'none' }}
+                    >
+                      {cluster.travelers.length}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
 
-            {/* === Route hover tooltip (SVG) === */}
+            {/* === Route hover tooltip (SVG, non-scaling) === */}
             {hoveredRoute && (() => {
               const from = townLookup.get(hoveredRoute.fromTownId);
               const to = townLookup.get(hoveredRoute.toTownId);
               if (!from || !to) return null;
               const midX = (from.mapX + to.mapX) / 2;
               const midY = (from.mapY + to.mapY) / 2;
-              return <RouteTooltipSVG route={hoveredRoute} midX={midX} midY={midY} />;
+              return <RouteTooltipSVG route={hoveredRoute} midX={midX} midY={midY} zoom={zoom} />;
             })()}
           </svg>
 
