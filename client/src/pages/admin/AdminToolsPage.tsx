@@ -21,17 +21,17 @@ import ErrorMessage from '../../components/ui/ErrorMessage';
 // Types
 // ---------------------------------------------------------------------------
 interface ServerHealth {
-  status: string;
+  status?: string;
   uptime: number;
-  uptimeFormatted: string;
-  memory: {
+  uptimeFormatted?: string;
+  memory?: {
     rss: number;
     heapTotal: number;
     heapUsed: number;
     external: number;
   };
-  nodeVersion: string;
-  dbStatus: string;
+  nodeVersion?: string;
+  dbStatus?: string;
   redisStatus?: string;
   timestamp: string;
 }
@@ -239,7 +239,7 @@ export default function AdminToolsPage() {
                   <Server className="w-3.5 h-3.5 text-parchment-500" />
                   <span className="text-parchment-500 text-xs">Status</span>
                 </div>
-                <StatusBadge status={health.status} />
+                <StatusBadge status={health.status || 'unknown'} />
               </div>
 
               {/* Uptime */}
@@ -259,7 +259,7 @@ export default function AdminToolsPage() {
                   <Cpu className="w-3.5 h-3.5 text-parchment-500" />
                   <span className="text-parchment-500 text-xs">Node.js</span>
                 </div>
-                <p className="text-parchment-200 text-sm font-display">{health.nodeVersion}</p>
+                <p className="text-parchment-200 text-sm font-display">{health.nodeVersion || 'N/A'}</p>
               </div>
 
               {/* DB Status */}
@@ -268,7 +268,7 @@ export default function AdminToolsPage() {
                   <Database className="w-3.5 h-3.5 text-parchment-500" />
                   <span className="text-parchment-500 text-xs">Database</span>
                 </div>
-                <StatusBadge status={health.dbStatus} />
+                <StatusBadge status={health.dbStatus || 'unknown'} />
               </div>
 
               {/* Memory RSS */}
@@ -278,7 +278,7 @@ export default function AdminToolsPage() {
                   <span className="text-parchment-500 text-xs">Memory (RSS)</span>
                 </div>
                 <p className="text-parchment-200 text-sm font-display">
-                  {formatBytes(health.memory.rss)}
+                  {health.memory?.rss != null ? formatBytes(health.memory.rss) : 'N/A'}
                 </p>
               </div>
 
@@ -289,7 +289,9 @@ export default function AdminToolsPage() {
                   <span className="text-parchment-500 text-xs">Heap Used</span>
                 </div>
                 <p className="text-parchment-200 text-sm font-display">
-                  {formatBytes(health.memory.heapUsed)} / {formatBytes(health.memory.heapTotal)}
+                  {health.memory?.heapUsed != null ? formatBytes(health.memory.heapUsed) : 'N/A'}
+                  {' / '}
+                  {health.memory?.heapTotal != null ? formatBytes(health.memory.heapTotal) : 'N/A'}
                 </p>
               </div>
 

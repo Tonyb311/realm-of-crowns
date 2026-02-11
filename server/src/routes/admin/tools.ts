@@ -98,10 +98,11 @@ router.get('/health', async (req: AuthenticatedRequest, res: Response) => {
     }
 
     return res.json({
+      status: dbConnected ? 'healthy' : 'degraded',
       uptime: process.uptime(),
-      memoryUsage: process.memoryUsage(),
+      memory: process.memoryUsage(),
       nodeVersion: process.version,
-      dbConnected,
+      dbStatus: dbConnected ? 'connected' : 'disconnected',
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
