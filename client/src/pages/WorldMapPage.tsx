@@ -151,15 +151,15 @@ function getTerrainColor(terrain: string): string {
   return TERRAIN_COLORS[key] ?? '#888888';
 }
 
-// Town node sizes by type (visual hierarchy) — dramatically larger than travel nodes
+// Town node sizes in screen pixels (non-scaling via 1/zoom)
 function getTownSize(type?: string): number {
   switch (type) {
-    case 'capital': return 22;
-    case 'city': return 16;
-    case 'town': return 12;
-    case 'village': return 8;
-    case 'outpost': return 6;
-    default: return 12;
+    case 'capital': return 19;
+    case 'city': return 13;
+    case 'town': return 9;
+    case 'village': return 6;
+    case 'outpost': return 4;
+    default: return 9;
   }
 }
 
@@ -175,15 +175,15 @@ function getTownPriority(type?: string): number {
   }
 }
 
-// Label font sizes by type
+// Label font sizes in screen pixels (non-scaling via 1/zoom)
 function getLabelFontSize(type?: string): number {
   switch (type) {
-    case 'capital': return 14;
-    case 'city': return 12;
-    case 'town': return 10;
-    case 'village': return 8;
-    case 'outpost': return 7;
-    default: return 10;
+    case 'capital': return 16;
+    case 'city': return 13;
+    case 'town': return 11;
+    case 'village': return 9;
+    case 'outpost': return 8;
+    default: return 11;
   }
 }
 
@@ -208,27 +208,18 @@ function inferTownType(pop: number): 'capital' | 'city' | 'town' | 'village' | '
   return 'outpost';
 }
 
-// Route line styles by difficulty — full detail (zoom level 3)
-function getRouteStyleFull(difficulty?: string, dangerLevel?: number): {
-  stroke: string;
-  strokeWidth: number;
-  dashArray: string;
-} {
+// Route line opacity hint by difficulty — zoom level 3 only
+// All routes use the SAME muted parchment color; difficulty only shifts opacity slightly
+function getRouteDetailOpacity(dangerLevel?: number): number {
   const dl = dangerLevel ?? 0;
-  const diff = difficulty?.toLowerCase() ?? '';
-
-  if (diff === 'deadly' || dl >= 8) {
-    return { stroke: '#dc2626', strokeWidth: 1.5, dashArray: '2 4' };
-  }
-  if (diff === 'dangerous' || dl >= 5) {
-    return { stroke: '#ea580c', strokeWidth: 1.5, dashArray: '6 3' };
-  }
-  if (diff === 'moderate' || dl >= 3) {
-    return { stroke: '#d97706', strokeWidth: 1.5, dashArray: 'none' };
-  }
-  // Safe
-  return { stroke: '#78716c', strokeWidth: 1.5, dashArray: 'none' };
+  if (dl >= 8) return 0.55; // deadly: slightly darker
+  if (dl >= 5) return 0.45; // dangerous
+  if (dl >= 3) return 0.35; // moderate
+  return 0.3; // safe: lightest
 }
+
+// Single muted route color used everywhere
+const ROUTE_COLOR = '#B4A078'; // parchment-gold muted
 
 // ===========================================================================
 // Label Collision Avoidance
@@ -577,8 +568,14 @@ function TownNode({ town, isPlayerHere, isSelected, zoom, labelPlacement, isHove
   // All sizes divided by zoom to stay constant in screen pixels
   const s = 1 / zoom;
   const size = getTownSize(town.type) * s;
-  const color = getRegionColor(town.regionId);
   const opacity = getTownOpacity(town.type);
+
+  // Node fill colors by type — clear visual hierarchy
+  const color = town.type === 'capital' ? '#D4A843'
+    : town.type === 'city' ? '#C8B898'
+    : town.type === 'town' ? '#9098A0'
+    : town.type === 'village' ? '#707880'
+    : '#585E64';
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const hitSize = (isMobile ? getTownSize(town.type) + 8 : getTownSize(town.type) + 6) * s;
 
@@ -654,14 +651,14 @@ function TownNode({ town, isPlayerHere, isSelected, zoom, labelPlacement, isHove
           filter={isPlayerHere ? 'url(#playerGlow)' : undefined}
         />
       ) : (
-        // Circle for town/village (no border for village)
+        // Circle for town/village/outpost
         <circle
           cx={town.mapX}
           cy={town.mapY}
           r={size}
           fill={color}
-          stroke={town.type === 'village' ? 'none' : undefined}
-          strokeWidth={0}
+          stroke={town.type === 'town' ? '#1a1a2e' : 'none'}
+          strokeWidth={town.type === 'town' ? 0.8 * s : 0}
           opacity={opacity}
           filter={isPlayerHere ? 'url(#playerGlow)' : undefined}
         />
@@ -673,8 +670,9 @@ function TownNode({ town, isPlayerHere, isSelected, zoom, labelPlacement, isHove
           x={labelPlacement.x}
           y={labelPlacement.y}
           textAnchor={labelPlacement.anchor}
-          fill="#E8E0D0"
+          fill={isCapital ? '#E8D5A0' : isCity ? '#D8D0C0' : '#B8B0A0'}
           fontSize={fontSize}
+          fontWeight={isCapital ? 'bold' : 'normal'}
           fontFamily="Crimson Text, Georgia, serif"
           className="map-label"
           style={{ pointerEvents: 'none', userSelect: 'none' }}
@@ -824,31 +822,22 @@ function RouteLine({ route, fromPos, toPos, isActive, isHighlighted, zoom, onCli
     );
   }
 
-  // Zoom-dependent route styling (sizes in screen pixels, scaled by s)
-  let stroke: string;
+  // Zoom-dependent route styling — ONE muted color, no dashing, no multi-color
   let strokeWidth: number;
-  let dashArray: string;
   let routeOpacity: number;
 
   if (zoom < ZOOM_REGIONAL) {
-    // Continental: barely-visible hints
-    stroke = '#555';
+    // Continental: faint road hints
     strokeWidth = 1 * s;
-    dashArray = 'none';
-    routeOpacity = isHighlighted ? 0.2 : 0.1;
+    routeOpacity = isHighlighted ? 0.2 : 0.12;
   } else if (zoom < ZOOM_DETAIL) {
-    // Regional: thin subtle lines
-    stroke = '#666';
+    // Regional: subtle road lines
     strokeWidth = 1.5 * s;
-    dashArray = 'none';
-    routeOpacity = isHighlighted ? 0.35 : 0.2;
+    routeOpacity = isHighlighted ? 0.3 : 0.18;
   } else {
-    // Detail: difficulty styling, but still thin
-    const fullStyle = getRouteStyleFull(route.difficulty, route.dangerLevel);
-    stroke = fullStyle.stroke;
-    strokeWidth = fullStyle.strokeWidth * s;
-    dashArray = fullStyle.dashArray;
-    routeOpacity = isHighlighted ? 0.65 : 0.4;
+    // Detail: slightly more visible, opacity hints at difficulty
+    strokeWidth = 1.5 * s;
+    routeOpacity = isHighlighted ? 0.5 : getRouteDetailOpacity(route.dangerLevel);
   }
 
   return (
@@ -858,15 +847,15 @@ function RouteLine({ route, fromPos, toPos, isActive, isHighlighted, zoom, onCli
         onClick={(e) => { e.stopPropagation(); onClick(); }}
         onMouseEnter={onHoverStart} onMouseLeave={onHoverEnd}
         style={{ cursor: 'pointer' }} />
-      {/* Visible route line */}
+      {/* Visible route line — single muted parchment color */}
       <path
         d={pathD}
         fill="none"
-        stroke={isHighlighted ? '#C9A461' : stroke}
+        stroke={isHighlighted ? '#D4B880' : ROUTE_COLOR}
         strokeWidth={isHighlighted ? strokeWidth + 0.5 * s : strokeWidth}
-        strokeDasharray={dashArray}
         opacity={routeOpacity}
         strokeLinecap="round"
+        strokeLinejoin="round"
         className="route-line"
         style={{ pointerEvents: 'none' }}
       />
@@ -1295,28 +1284,34 @@ export default function WorldMapPage() {
     );
   }, [mapData, zoom, viewBox]);
 
-  // Visible routes (only between visible towns at zoom < ZOOM_DETAIL, all at zoom >= ZOOM_DETAIL)
+  // Visible routes — progressive disclosure by zoom level
   const visibleRoutes = useMemo(() => {
     if (!mapData) return [];
-    const visibleTownIds = new Set(visibleTowns.map(t => t.id));
+
+    const isMajorType = (type?: string) => type === 'capital' || type === 'city';
+    const isTownOrAbove = (type?: string) => type === 'capital' || type === 'city' || type === 'town';
 
     return mapData.routes.filter(r => {
       const from = townLookup.get(r.fromTownId);
       const to = townLookup.get(r.toTownId);
       if (!from || !to) return false;
 
-      // At least one endpoint must be in viewport
+      // At least one endpoint must be near viewport
       const inView = isInViewport(from.mapX, from.mapY, viewBox, 200) || isInViewport(to.mapX, to.mapY, viewBox, 200);
       if (!inView) return false;
 
-      // At continental zoom, only show routes between visible (capital/city) towns
       if (zoom < ZOOM_REGIONAL) {
-        return visibleTownIds.has(r.fromTownId) && visibleTownIds.has(r.toTownId);
+        // Continental: only major road network (capital↔capital, capital↔city, city↔city)
+        return isMajorType(from.type) && isMajorType(to.type);
       }
-
+      if (zoom < ZOOM_DETAIL) {
+        // Regional: routes with at least one city/town endpoint (hide village↔village)
+        return isTownOrAbove(from.type) || isTownOrAbove(to.type);
+      }
+      // Detail: all routes
       return true;
     });
-  }, [mapData, townLookup, viewBox, zoom, visibleTowns]);
+  }, [mapData, townLookup, viewBox, zoom]);
 
   // Compute label layout with collision avoidance
   const labelLayout = useMemo(() => {
@@ -1353,25 +1348,24 @@ export default function WorldMapPage() {
     return (zoom - ZOOM_DETAIL) / 0.5;
   }, [zoom]);
 
-  // Region name opacity by zoom level
+  // Region name opacity — subtle watermark, never dominant
   const regionNameOpacity = useMemo(() => {
     if (zoom < ZOOM_REGIONAL) {
-      // Level 1: prominent region names
-      return 0.4;
+      // Level 1: very subtle watermark
+      return 0.10;
     }
-    if (zoom < ZOOM_REGIONAL + 0.5) {
-      // Quick fade out from zoom 2.0 to 2.5
-      const t = (zoom - ZOOM_REGIONAL) / 0.5;
-      return 0.4 * (1 - t);
+    if (zoom < ZOOM_REGIONAL + 0.3) {
+      // Quick fade to invisible
+      const t = (zoom - ZOOM_REGIONAL) / 0.3;
+      return 0.10 * (1 - t);
     }
-    // Level 2-3: completely hidden — town labels take over
+    // Level 2-3: completely hidden
     return 0;
   }, [zoom]);
 
-  // Region name font size by zoom level
+  // Region name font size — much smaller than before
   const regionFontSize = useMemo(() => {
-    if (zoom < ZOOM_REGIONAL) return 30;
-    if (zoom < ZOOM_DETAIL) return 20;
+    if (zoom < ZOOM_REGIONAL) return 22;
     return 0;
   }, [zoom]);
 
@@ -1723,34 +1717,25 @@ export default function WorldMapPage() {
               fill="url(#mapBgGrad)"
             />
 
-            {/* === Layer 2: Region names (zoom-dependent, non-scaling) === */}
+            {/* === Layer 2: Region names — subtle watermarks behind everything === */}
             {regionNameOpacity > 0 && Array.from(regionCentroids.entries()).map(([regionId, center]) => {
-              const rs = 1 / zoom; // region scale factor
+              const rs = 1 / zoom;
               return (
                 <g key={`region-${regionId}`} className="region-label">
-                  {/* Subtle region background glow */}
-                  <circle
-                    cx={center.x}
-                    cy={center.y}
-                    r={80 * rs}
-                    fill={center.color}
-                    opacity={0.04}
-                    style={{ pointerEvents: 'none' }}
-                  />
                   <text
                     x={center.x}
                     y={center.y}
                     textAnchor="middle"
                     dominantBaseline="central"
-                    fill={center.color}
+                    fill="#64584E"
                     fontSize={regionFontSize * rs}
                     fontFamily="MedievalSharp, serif"
                     opacity={regionNameOpacity}
-                    letterSpacing={zoom < ZOOM_REGIONAL ? `${3 * rs}px` : `${1 * rs}px`}
+                    letterSpacing={`${0.3 * regionFontSize * rs}px`}
                     style={{
                       pointerEvents: 'none',
                       userSelect: 'none',
-                      textTransform: zoom < ZOOM_REGIONAL ? 'uppercase' : 'none',
+                      textTransform: 'uppercase',
                     } as React.CSSProperties}
                   >
                     {center.name}
