@@ -13,7 +13,8 @@ CREATE TYPE "LawStatus" AS ENUM ('PROPOSED', 'VOTING', 'ACTIVE', 'REJECTED', 'EX
 -- CreateEnum
 CREATE TYPE "CombatSessionStatus" AS ENUM ('PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED');
 
--- Convert War.status from String to WarStatus enum
+-- Convert War.status: drop default, convert type, re-add default
+ALTER TABLE "wars" ALTER COLUMN "status" DROP DEFAULT;
 ALTER TABLE "wars" ALTER COLUMN "status" TYPE "WarStatus" USING (
   CASE "status"
     WHEN 'active' THEN 'ACTIVE'::"WarStatus"
@@ -24,7 +25,8 @@ ALTER TABLE "wars" ALTER COLUMN "status" TYPE "WarStatus" USING (
 );
 ALTER TABLE "wars" ALTER COLUMN "status" SET DEFAULT 'ACTIVE'::"WarStatus";
 
--- Convert Election.status from String to ElectionStatus enum
+-- Convert Election.status: drop default, convert type, re-add default
+ALTER TABLE "elections" ALTER COLUMN "status" DROP DEFAULT;
 ALTER TABLE "elections" ALTER COLUMN "status" TYPE "ElectionStatus" USING (
   CASE "status"
     WHEN 'scheduled' THEN 'SCHEDULED'::"ElectionStatus"
@@ -35,7 +37,8 @@ ALTER TABLE "elections" ALTER COLUMN "status" TYPE "ElectionStatus" USING (
 );
 ALTER TABLE "elections" ALTER COLUMN "status" SET DEFAULT 'SCHEDULED'::"ElectionStatus";
 
--- Convert Law.status from String to LawStatus enum
+-- Convert Law.status: drop default, convert type, re-add default
+ALTER TABLE "laws" ALTER COLUMN "status" DROP DEFAULT;
 ALTER TABLE "laws" ALTER COLUMN "status" TYPE "LawStatus" USING (
   CASE "status"
     WHEN 'proposed' THEN 'PROPOSED'::"LawStatus"
@@ -48,7 +51,8 @@ ALTER TABLE "laws" ALTER COLUMN "status" TYPE "LawStatus" USING (
 );
 ALTER TABLE "laws" ALTER COLUMN "status" SET DEFAULT 'PROPOSED'::"LawStatus";
 
--- Convert CombatSession.status from String to CombatSessionStatus enum
+-- Convert CombatSession.status: drop default, convert type, re-add default
+ALTER TABLE "combat_sessions" ALTER COLUMN "status" DROP DEFAULT;
 ALTER TABLE "combat_sessions" ALTER COLUMN "status" TYPE "CombatSessionStatus" USING (
   CASE "status"
     WHEN 'pending' THEN 'PENDING'::"CombatSessionStatus"
