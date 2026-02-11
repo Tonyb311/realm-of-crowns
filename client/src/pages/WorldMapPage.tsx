@@ -151,15 +151,15 @@ function getTerrainColor(terrain: string): string {
   return TERRAIN_COLORS[key] ?? '#888888';
 }
 
-// Town node sizes by type (visual hierarchy)
+// Town node sizes by type (visual hierarchy) — dramatically larger than travel nodes
 function getTownSize(type?: string): number {
   switch (type) {
-    case 'capital': return 14;
-    case 'city': return 10;
-    case 'town': return 7;
-    case 'village': return 5;
-    case 'outpost': return 4;
-    default: return 7;
+    case 'capital': return 22;
+    case 'city': return 16;
+    case 'town': return 12;
+    case 'village': return 8;
+    case 'outpost': return 6;
+    default: return 12;
   }
 }
 
@@ -178,12 +178,12 @@ function getTownPriority(type?: string): number {
 // Label font sizes by type
 function getLabelFontSize(type?: string): number {
   switch (type) {
-    case 'capital': return 12;
-    case 'city': return 10;
-    case 'town': return 9;
-    case 'village': return 7;
-    case 'outpost': return 6;
-    default: return 9;
+    case 'capital': return 14;
+    case 'city': return 12;
+    case 'town': return 10;
+    case 'village': return 8;
+    case 'outpost': return 7;
+    default: return 10;
   }
 }
 
@@ -218,16 +218,16 @@ function getRouteStyleFull(difficulty?: string, dangerLevel?: number): {
   const diff = difficulty?.toLowerCase() ?? '';
 
   if (diff === 'deadly' || dl >= 8) {
-    return { stroke: '#dc2626', strokeWidth: 2, dashArray: '2 4' };
+    return { stroke: '#dc2626', strokeWidth: 1.5, dashArray: '2 4' };
   }
   if (diff === 'dangerous' || dl >= 5) {
-    return { stroke: '#ea580c', strokeWidth: 2, dashArray: '6 3' };
+    return { stroke: '#ea580c', strokeWidth: 1.5, dashArray: '6 3' };
   }
   if (diff === 'moderate' || dl >= 3) {
-    return { stroke: '#d97706', strokeWidth: 2, dashArray: 'none' };
+    return { stroke: '#d97706', strokeWidth: 1.5, dashArray: 'none' };
   }
   // Safe
-  return { stroke: '#78716c', strokeWidth: 2, dashArray: 'none' };
+  return { stroke: '#78716c', strokeWidth: 1.5, dashArray: 'none' };
 }
 
 // ===========================================================================
@@ -733,7 +733,12 @@ interface TravelNodeProps {
 
 function TravelNodeDot({ node, isPlayerHere, zoom, fadeOpacity, onHoverStart, onHoverEnd }: TravelNodeProps) {
   const color = getTerrainColor(node.terrain);
-  const showLabel = zoom > 4.5;
+  const showLabel = zoom > 4.8;
+
+  // Travel nodes are tiny breadcrumbs: 2px radius, low opacity
+  // Player node is the only exception — stays visible
+  const nodeRadius = isPlayerHere ? 4 : 2;
+  const nodeOpacity = isPlayerHere ? 1 : 0.35;
 
   return (
     <g
@@ -743,37 +748,28 @@ function TravelNodeDot({ node, isPlayerHere, zoom, fadeOpacity, onHoverStart, on
       className="travel-node"
     >
       {isPlayerHere && (
-        <circle cx={node.mapX} cy={node.mapY} r={7} fill="none" stroke="#fbbf24" strokeWidth={1.5} opacity={0.7}>
-          <animate attributeName="r" values="5;9;5" dur="1.5s" repeatCount="indefinite" />
+        <circle cx={node.mapX} cy={node.mapY} r={6} fill="none" stroke="#fbbf24" strokeWidth={1.5} opacity={0.7}>
+          <animate attributeName="r" values="4;8;4" dur="1.5s" repeatCount="indefinite" />
           <animate attributeName="opacity" values="0.5;0.9;0.5" dur="1.5s" repeatCount="indefinite" />
         </circle>
       )}
       <circle
         cx={node.mapX}
         cy={node.mapY}
-        r={isPlayerHere ? 5 : 3}
+        r={nodeRadius}
         fill={isPlayerHere ? '#fbbf24' : color}
-        stroke={isPlayerHere ? '#fbbf24' : 'none'}
-        strokeWidth={isPlayerHere ? 1 : 0}
-        opacity={isPlayerHere ? 1 : 0.7}
+        stroke="none"
+        opacity={nodeOpacity}
       />
-      {node.specialType && (
-        <circle
-          cx={node.mapX}
-          cy={node.mapY - 5}
-          r={2}
-          fill="#fbbf24"
-          opacity={0.8}
-        />
-      )}
       {showLabel && (
         <text
           x={node.mapX}
-          y={node.mapY + 8}
+          y={node.mapY + 6}
           textAnchor="middle"
           fill="#A89A80"
-          fontSize={5}
+          fontSize={4}
           fontFamily="Crimson Text, Georgia, serif"
+          opacity={0.5}
           style={{ pointerEvents: 'none', userSelect: 'none' }}
         >
           {node.name}
@@ -820,9 +816,9 @@ function RouteLine({ route, fromPos, toPos, isActive, isHighlighted, zoom, onCli
           onClick={(e) => { e.stopPropagation(); onClick(); }}
           onMouseEnter={onHoverStart} onMouseLeave={onHoverEnd}
           style={{ cursor: 'pointer' }} />
-        <path d={pathD} fill="none" stroke="#fbbf24" strokeWidth={5} opacity={0.2}
+        <path d={pathD} fill="none" stroke="#fbbf24" strokeWidth={4} opacity={0.15}
           strokeLinecap="round" style={{ pointerEvents: 'none' }} />
-        <path d={pathD} fill="none" stroke="#fbbf24" strokeWidth={2.5} opacity={0.9}
+        <path d={pathD} fill="none" stroke="#fbbf24" strokeWidth={2} opacity={0.85}
           strokeLinecap="round" style={{ pointerEvents: 'none' }}
           filter="url(#activeRouteGlow)" />
       </g>
@@ -836,24 +832,24 @@ function RouteLine({ route, fromPos, toPos, isActive, isHighlighted, zoom, onCli
   let routeOpacity: number;
 
   if (zoom < ZOOM_REGIONAL) {
-    // Continental: very subtle lines
+    // Continental: barely-visible hints
     stroke = '#555';
-    strokeWidth = 0.5;
+    strokeWidth = 1;
     dashArray = 'none';
-    routeOpacity = 0.08;
+    routeOpacity = isHighlighted ? 0.2 : 0.1;
   } else if (zoom < ZOOM_DETAIL) {
-    // Regional: subtle solid lines
+    // Regional: thin subtle lines
     stroke = '#666';
-    strokeWidth = 1.5;
+    strokeWidth = 1;
     dashArray = 'none';
-    routeOpacity = isHighlighted ? 0.5 : 0.25;
+    routeOpacity = isHighlighted ? 0.35 : 0.2;
   } else {
-    // Detail: full difficulty styling
+    // Detail: difficulty styling, but still thin
     const fullStyle = getRouteStyleFull(route.difficulty, route.dangerLevel);
     stroke = fullStyle.stroke;
     strokeWidth = fullStyle.strokeWidth;
     dashArray = fullStyle.dashArray;
-    routeOpacity = isHighlighted ? 0.8 : 0.55;
+    routeOpacity = isHighlighted ? 0.65 : 0.4;
   }
 
   return (
@@ -1157,8 +1153,8 @@ interface NodeTooltipProps {
 function NodeTooltip({ node, x, y }: NodeTooltipProps) {
   return (
     <div
-      className="fixed z-50 pointer-events-none bg-dark-400 border border-dark-50 rounded-lg px-3 py-2 shadow-xl"
-      style={{ left: x + 12, top: y - 8 }}
+      className="fixed z-50 pointer-events-none bg-dark-400/95 border border-dark-50 rounded-lg px-3 py-2 shadow-xl"
+      style={{ left: x + 20, top: y - 20 }}
     >
       <p className="font-display text-primary-400 text-xs">{node.name}</p>
       {node.description && <p className="text-parchment-500 text-[10px] mt-0.5">{node.description}</p>}
@@ -1190,23 +1186,26 @@ function RouteTooltipSVG({ route, midX, midY }: RouteTooltipSVGProps) {
   const label = dl <= 1 ? 'Safe' : dl <= 3 ? 'Moderate' : dl <= 6 ? 'Dangerous' : 'Deadly';
   const color = dl <= 1 ? '#4ade80' : dl <= 3 ? '#facc15' : dl <= 6 ? '#fb923c' : '#ef4444';
 
+  // Offset tooltip 25px above the route midpoint to avoid overlapping nodes
+  const tooltipY = midY - 25;
+
   return (
     <g style={{ pointerEvents: 'none' }}>
       <rect
         x={midX - 55}
-        y={midY - 26}
+        y={tooltipY - 18}
         width={110}
         height={36}
         rx={4}
         fill="#252538"
         stroke="#C9A461"
         strokeWidth={0.5}
-        opacity={0.95}
+        opacity={0.97}
       />
-      <text x={midX} y={midY - 10} textAnchor="middle" fill="#E8E0D0" fontSize={9} fontFamily="Crimson Text, serif">
+      <text x={midX} y={tooltipY - 2} textAnchor="middle" fill="#E8E0D0" fontSize={9} fontFamily="Crimson Text, serif">
         {route.name || `${route.nodeCount ?? '?'} nodes`}
       </text>
-      <text x={midX} y={midY + 3} textAnchor="middle" fill={color} fontSize={8} fontFamily="Crimson Text, serif">
+      <text x={midX} y={tooltipY + 11} textAnchor="middle" fill={color} fontSize={8} fontFamily="Crimson Text, serif">
         {label} (Danger {dl})
       </text>
     </g>
@@ -1345,12 +1344,12 @@ export default function WorldMapPage() {
     return centroids;
   }, [mapData]);
 
-  // Travel node fade opacity for smooth LOD transition
+  // Travel node fade opacity — only appear deep into detail zoom (4.0-4.5)
   const travelNodeOpacity = useMemo(() => {
-    if (zoom < ZOOM_DETAIL - 0.5) return 0;
-    if (zoom >= ZOOM_DETAIL) return 1;
-    // Fade in between 3.5 and 4.0
-    return (zoom - (ZOOM_DETAIL - 0.5)) / 0.5;
+    if (zoom < ZOOM_DETAIL) return 0;
+    if (zoom >= ZOOM_DETAIL + 0.5) return 1;
+    // Fade in between 4.0 and 4.5
+    return (zoom - ZOOM_DETAIL) / 0.5;
   }, [zoom]);
 
   // Region name opacity by zoom level
@@ -1359,13 +1358,12 @@ export default function WorldMapPage() {
       // Level 1: prominent region names
       return 0.4;
     }
-    if (zoom < ZOOM_DETAIL) {
-      // Level 2: faded region names
-      // Fade from 0.12 at zoom=2 to 0 at zoom=4
-      const t = (zoom - ZOOM_REGIONAL) / (ZOOM_DETAIL - ZOOM_REGIONAL);
-      return 0.12 * (1 - t);
+    if (zoom < ZOOM_REGIONAL + 0.5) {
+      // Quick fade out from zoom 2.0 to 2.5
+      const t = (zoom - ZOOM_REGIONAL) / 0.5;
+      return 0.4 * (1 - t);
     }
-    // Level 3: hidden
+    // Level 2-3: completely hidden — town labels take over
     return 0;
   }, [zoom]);
 
