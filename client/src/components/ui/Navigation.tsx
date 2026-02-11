@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Home,
   Store,
@@ -14,47 +15,150 @@ import {
   Hammer,
   Building2,
   Truck,
-  Flag,
   Menu,
   X,
   LogOut,
   ShieldCheck,
   Compass,
+  User,
+  ChevronUp,
+  Users,
+  Crown,
+  Wrench,
+  Landmark,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import Tooltip from './Tooltip';
 
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
 interface NavItem {
   path: string;
   label: string;
   icon: typeof Home;
-  townOnly?: boolean; // if true, grayed out when traveling
+  townOnly?: boolean;
+  adminOnly?: boolean;
+  badge?: number;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { path: '/town', label: 'Town', icon: Home, townOnly: true },
-  { path: '/travel', label: 'Travel', icon: Compass },
-  { path: '/market', label: 'Market', icon: Store, townOnly: true },
-  { path: '/quests', label: 'Quests', icon: ScrollText },
-  { path: '/skills', label: 'Skills', icon: Sparkles },
-  { path: '/map', label: 'Map', icon: Map },
-  { path: '/inventory', label: 'Inventory', icon: Package },
-  { path: '/combat', label: 'Combat', icon: Swords },
-  { path: '/guild', label: 'Guild', icon: Shield },
-  { path: '/trade', label: 'Trade', icon: Truck, townOnly: true },
-  { path: '/housing', label: 'Housing', icon: Building2, townOnly: true },
-  { path: '/professions', label: 'Professions', icon: Hammer, townOnly: true },
-  { path: '/achievements', label: 'Achieve', icon: Trophy },
-  { path: '/diplomacy', label: 'Diplomacy', icon: Flag },
-];
+interface NavCategory {
+  label: string;
+  icon: typeof Home;
+  items: NavItem[];
+}
+
+// ---------------------------------------------------------------------------
+// Primary bar items (always visible in the bottom bar, max 5 + "More")
+// ---------------------------------------------------------------------------
+
+/** Returns the primary bar items. Town/Travel is contextual. */
+function getPrimaryItems(isTraveling: boolean): NavItem[] {
+  return [
+    isTraveling
+      ? { path: '/travel', label: 'Travel', icon: Compass }
+      : { path: '/town', label: 'Town', icon: Landmark, townOnly: true },
+    { path: '/map', label: 'Map', icon: Map },
+    { path: '/combat', label: 'Combat', icon: Swords },
+    { path: '/inventory', label: 'Inventory', icon: Package },
+    { path: '/profile', label: 'Character', icon: User },
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// "More" panel categories
+// ---------------------------------------------------------------------------
+
+function getMoreCategories(isAdmin: boolean): NavCategory[] {
+  const categories: NavCategory[] = [
+    {
+      label: 'Economy',
+      icon: Store,
+      items: [
+        { path: '/market', label: 'Market', icon: Store, townOnly: true },
+        { path: '/trade', label: 'Trade', icon: Truck, townOnly: true },
+        { path: '/professions', label: 'Professions', icon: Hammer, townOnly: true },
+        { path: '/housing', label: 'Housing', icon: Building2, townOnly: true },
+      ],
+    },
+    {
+      label: 'Adventure',
+      icon: Swords,
+      items: [
+        { path: '/quests', label: 'Quests', icon: ScrollText },
+        { path: '/combat', label: 'Combat', icon: Swords },
+        { path: '/skills', label: 'Skills', icon: Sparkles },
+      ],
+    },
+    {
+      label: 'Social',
+      icon: Users,
+      items: [
+        { path: '/guild', label: 'Guild', icon: Shield },
+        { path: '/diplomacy', label: 'Diplomacy', icon: Crown },
+        { path: '/achievements', label: 'Archive', icon: Trophy },
+      ],
+    },
+  ];
+
+  // System category — always has Logout; conditionally has Admin
+  const systemItems: NavItem[] = [];
+  if (isAdmin) {
+    systemItems.push({ path: '/admin', label: 'Admin', icon: ShieldCheck, adminOnly: true });
+  }
+
+  if (systemItems.length > 0) {
+    categories.push({
+      label: 'System',
+      icon: Wrench,
+      items: systemItems,
+    });
+  }
+
+  return categories;
+}
+
+// ---------------------------------------------------------------------------
+// Badge component
+// ---------------------------------------------------------------------------
+
+function Badge({ count }: { count?: number }) {
+  if (!count || count <= 0) return null;
+  return (
+    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-blood-light text-[10px] text-parchment-50 font-bold px-1 leading-none">
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main Navigation component
+// ---------------------------------------------------------------------------
 
 export default function Navigation() {
   const { isAuthenticated, isAdmin, logout } = useAuth();
   const location = useLocation();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
-  // Check if character is traveling
+  // Close "More" when route changes
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [location.pathname]);
+
+  // Close "More" on Escape
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMoreOpen(false);
+    }
+    if (moreOpen) {
+      window.addEventListener('keydown', handleKey);
+      return () => window.removeEventListener('keydown', handleKey);
+    }
+  }, [moreOpen]);
+
+  // Fetch character data for travel status
   const { data: character } = useQuery<{ status: string } | null>({
     queryKey: ['character', 'me'],
     queryFn: async () => {
@@ -70,156 +174,361 @@ export default function Navigation() {
 
   const isTraveling = character?.status === 'traveling';
 
-  if (!isAuthenticated) return null;
+  const toggleMore = useCallback(() => {
+    setMoreOpen((prev) => !prev);
+  }, []);
 
-  // Don't show nav on login/register/character creation/admin pages
+  // Don't render at all in certain conditions
+  if (!isAuthenticated) return null;
   const hiddenPaths = ['/login', '/register', '/create-character'];
   if (hiddenPaths.includes(location.pathname)) return null;
   if (location.pathname.startsWith('/admin')) return null;
 
-  const allItems = [...NAV_ITEMS, ...(isAdmin ? [{ path: '/admin', label: 'Admin', icon: ShieldCheck }] : [])];
+  const primaryItems = getPrimaryItems(isTraveling);
+  const moreCategories = getMoreCategories(isAdmin);
 
-  function renderDesktopItem(item: NavItem & { townOnly?: boolean }) {
+  // Check if any "More" item is the active route
+  const moreIsActive = moreCategories.some((cat) =>
+    cat.items.some((item) => location.pathname === item.path),
+  );
+
+  // -------------------------------------------------------------------------
+  // Render helpers
+  // -------------------------------------------------------------------------
+
+  function isActive(path: string): boolean {
+    return location.pathname === path;
+  }
+
+  function isDisabled(item: NavItem): boolean {
+    return !!(isTraveling && item.townOnly);
+  }
+
+  /** Render a single item for the primary bottom bar (desktop: icon + label) */
+  function renderPrimaryDesktop(item: NavItem) {
     const Icon = item.icon;
-    const isActive = location.pathname === item.path;
+    const active = isActive(item.path);
+    const disabled = isDisabled(item);
     const isTravelItem = item.path === '/travel';
-    const isDisabledByTravel = isTraveling && item.townOnly;
 
-    const linkContent = (
+    const content = (
       <Link
         key={item.path}
-        to={isDisabledByTravel ? '#' : item.path}
-        onClick={isDisabledByTravel ? (e: React.MouseEvent) => e.preventDefault() : undefined}
-        className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-display transition-colors ${
-          isActive
-            ? 'bg-primary-400/15 text-primary-400 border border-primary-400/30'
-            : isDisabledByTravel
-            ? 'text-parchment-500/30 border border-transparent cursor-not-allowed'
-            : 'text-parchment-500 hover:text-parchment-200 hover:bg-dark-400/50 border border-transparent'
-        }`}
+        to={disabled ? '#' : item.path}
+        onClick={disabled ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+        className={`relative flex flex-col items-center justify-center gap-0.5 px-3 h-full min-w-[56px] transition-colors
+          ${active
+            ? 'text-primary-400'
+            : disabled
+              ? 'text-parchment-500/30 cursor-not-allowed'
+              : 'text-parchment-400 hover:text-parchment-200'
+          }`}
       >
-        <Icon className="w-3.5 h-3.5" />
-        {item.label}
-        {/* Traveling indicator on the Travel nav item */}
-        {isTravelItem && isTraveling && !isActive && (
-          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary-400 animate-pulse" />
+        {/* Active indicator bar */}
+        {active && (
+          <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary-400 rounded-b" />
         )}
+        <span className="relative">
+          <Icon className="w-5 h-5" />
+          <Badge count={item.badge} />
+          {isTravelItem && isTraveling && !active && (
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary-400 animate-pulse" />
+          )}
+        </span>
+        <span className="text-[10px] font-display leading-tight">{item.label}</span>
       </Link>
     );
 
-    if (isDisabledByTravel) {
+    if (disabled) {
       return (
         <Tooltip key={item.path} content="Available when in a town" position="top">
-          {linkContent}
+          {content}
         </Tooltip>
       );
     }
-
-    return linkContent;
+    return <span key={item.path}>{content}</span>;
   }
 
-  function renderMobileItem(item: NavItem & { townOnly?: boolean }) {
+  /** Render a single item for the primary bottom bar (mobile: icon only) */
+  function renderPrimaryMobile(item: NavItem) {
     const Icon = item.icon;
-    const isActive = location.pathname === item.path;
+    const active = isActive(item.path);
+    const disabled = isDisabled(item);
     const isTravelItem = item.path === '/travel';
-    const isDisabledByTravel = isTraveling && item.townOnly;
 
     return (
       <Link
         key={item.path}
-        to={isDisabledByTravel ? '#' : item.path}
-        onClick={(e) => {
-          if (isDisabledByTravel) {
-            e.preventDefault();
-            return;
-          }
-          setMobileOpen(false);
-        }}
-        className={`flex items-center gap-3 px-5 py-3 text-sm transition-colors ${
-          isActive
-            ? 'bg-primary-400/10 text-primary-400 border-r-2 border-primary-400'
-            : isDisabledByTravel
-            ? 'text-parchment-500/30 cursor-not-allowed'
-            : 'text-parchment-300 hover:bg-dark-400/50 hover:text-parchment-200'
-        }`}
+        to={disabled ? '#' : item.path}
+        onClick={disabled ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+        className={`relative flex flex-col items-center justify-center flex-1 h-full transition-colors
+          ${active
+            ? 'text-primary-400'
+            : disabled
+              ? 'text-parchment-500/30 cursor-not-allowed'
+              : 'text-parchment-400 hover:text-parchment-200'
+          }`}
+        aria-label={item.label}
       >
+        {active && (
+          <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-primary-400 rounded-b" />
+        )}
         <span className="relative">
-          <Icon className="w-4 h-4" />
-          {isTravelItem && isTraveling && !isActive && (
-            <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-primary-400 animate-pulse" />
-          )}
-        </span>
-        <span className="font-display">
-          {item.label}
-          {isDisabledByTravel && (
-            <span className="text-[10px] text-parchment-500/30 ml-1">(in town only)</span>
+          <Icon className="w-5 h-5" />
+          <Badge count={item.badge} />
+          {isTravelItem && isTraveling && !active && (
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary-400 animate-pulse" />
           )}
         </span>
       </Link>
     );
   }
 
-  return (
-    <>
-      {/* Desktop bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-dark-600/95 border-t border-dark-50 backdrop-blur-sm hidden md:block">
-        <div className="max-w-screen-2xl mx-auto px-4 flex items-center justify-center h-12 gap-1">
-          {allItems.map((item) => renderDesktopItem(item))}
-          <div className="w-px h-6 bg-dark-50 mx-1" />
-          <button
-            onClick={() => logout()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-display text-parchment-500 hover:text-blood-light hover:bg-dark-400/50 transition-colors border border-transparent"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            Logout
-          </button>
-        </div>
-      </nav>
+  /** Render an item inside the "More" panel */
+  function renderMoreItem(item: NavItem) {
+    const Icon = item.icon;
+    const active = isActive(item.path);
+    const disabled = isDisabled(item);
 
-      {/* Mobile hamburger button */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        className="fixed bottom-4 right-4 z-40 md:hidden w-12 h-12 bg-primary-400 text-dark-500 rounded-full shadow-lg flex items-center justify-center hover:bg-primary-300 transition-colors"
-        aria-label="Open navigation"
+    return (
+      <Link
+        key={item.path}
+        to={disabled ? '#' : item.path}
+        onClick={(e) => {
+          if (disabled) {
+            e.preventDefault();
+            return;
+          }
+          setMoreOpen(false);
+        }}
+        className={`flex items-center gap-3 px-4 py-2.5 rounded-md text-sm transition-colors
+          ${active
+            ? 'bg-primary-400/10 text-primary-400'
+            : disabled
+              ? 'text-parchment-500/30 cursor-not-allowed'
+              : 'text-parchment-300 hover:bg-dark-400/50 hover:text-parchment-200'
+          }`}
       >
-        <Menu className="w-5 h-5" />
-      </button>
+        <span className="relative">
+          <Icon className="w-4 h-4" />
+          <Badge count={item.badge} />
+        </span>
+        <span className="font-display">
+          {item.label}
+          {disabled && (
+            <span className="text-[10px] text-parchment-500/30 ml-1.5">(in town only)</span>
+          )}
+        </span>
+      </Link>
+    );
+  }
 
-      {/* Mobile slide-out nav */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div
-            className="absolute inset-0 bg-black/60"
-            onClick={() => setMobileOpen(false)}
-          />
-          <div className="absolute right-0 top-0 bottom-0 w-64 bg-dark-500 border-l border-dark-50 flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-dark-50">
-              <span className="font-display text-primary-400 text-sm">Navigation</span>
+  /** Render a category section in the "More" panel */
+  function renderCategory(category: NavCategory, idx: number) {
+    const CatIcon = category.icon;
+    return (
+      <div key={category.label}>
+        {idx > 0 && <div className="h-px bg-dark-50/50 mx-3 my-1" />}
+        <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+          <CatIcon className="w-3.5 h-3.5 text-parchment-500/60" />
+          <span className="text-[11px] font-display uppercase tracking-wider text-parchment-500/60">
+            {category.label}
+          </span>
+        </div>
+        <div className="flex flex-col">
+          {category.items.map(renderMoreItem)}
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Desktop "More" panel (opens upward from the bottom bar)
+  // -------------------------------------------------------------------------
+
+  function renderDesktopMorePanel(): ReactNode {
+    return (
+      <AnimatePresence>
+        {moreOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+              onClick={() => setMoreOpen(false)}
+            />
+            {/* Panel */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="fixed bottom-16 right-4 z-50 w-72 max-h-[70vh] bg-dark-600 border border-dark-50 rounded-lg shadow-2xl overflow-hidden flex flex-col"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-dark-50">
+                <span className="font-display text-primary-400 text-sm">Menu</span>
+                <button
+                  onClick={() => setMoreOpen(false)}
+                  className="text-parchment-500 hover:text-parchment-200 transition-colors"
+                  aria-label="Close menu"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Scrollable categories */}
+              <div className="flex-1 overflow-y-auto py-1">
+                {moreCategories.map((cat, idx) => renderCategory(cat, idx))}
+              </div>
+
+              {/* Logout — separated at the bottom */}
+              <div className="border-t border-dark-50 px-4 py-2.5">
+                <button
+                  onClick={() => {
+                    setMoreOpen(false);
+                    logout();
+                  }}
+                  className="flex items-center gap-3 w-full px-4 py-2 text-sm text-blood-light hover:bg-blood-dark/20 rounded-md transition-colors font-display"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Mobile "More" panel (full-screen overlay)
+  // -------------------------------------------------------------------------
+
+  function renderMobileMorePanel(): ReactNode {
+    return (
+      <AnimatePresence>
+        {moreOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-50 md:hidden bg-dark-600/98 backdrop-blur-sm flex flex-col"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-dark-50">
+              <span className="font-display text-primary-400 text-base">Menu</span>
               <button
-                onClick={() => setMobileOpen(false)}
-                className="text-parchment-500 hover:text-parchment-200"
+                onClick={() => setMoreOpen(false)}
+                className="text-parchment-500 hover:text-parchment-200 transition-colors p-1"
+                aria-label="Close menu"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Scrollable categories */}
             <div className="flex-1 overflow-y-auto py-2">
-              {allItems.map((item) => renderMobileItem(item))}
+              {moreCategories.map((cat, idx) => renderCategory(cat, idx))}
             </div>
-            <div className="border-t border-dark-50 p-4">
+
+            {/* Logout — separated at the bottom */}
+            <div className="border-t border-dark-50 px-5 py-4 pb-20">
               <button
                 onClick={() => {
-                  setMobileOpen(false);
+                  setMoreOpen(false);
                   logout();
                 }}
-                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-blood-light hover:bg-blood-dark/20 rounded transition-colors font-display"
+                className="flex items-center gap-3 w-full px-4 py-3 text-sm text-blood-light hover:bg-blood-dark/20 rounded-md transition-colors font-display"
               >
                 <LogOut className="w-4 h-4" />
                 Logout
               </button>
             </div>
-          </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Main render
+  // -------------------------------------------------------------------------
+
+  return (
+    <>
+      {/* Desktop "More" panel */}
+      <div className="hidden md:block">
+        {renderDesktopMorePanel()}
+      </div>
+
+      {/* Mobile "More" panel */}
+      {renderMobileMorePanel()}
+
+      {/* Desktop bottom nav bar */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-dark-600/95 border-t border-dark-50 backdrop-blur-sm hidden md:block">
+        <div className="max-w-screen-2xl mx-auto px-4 flex items-center justify-center h-14">
+          {primaryItems.map((item) => renderPrimaryDesktop(item))}
+
+          {/* Divider before "More" */}
+          <div className="w-px h-7 bg-dark-50 mx-1" />
+
+          {/* "More" button */}
+          <button
+            onClick={toggleMore}
+            className={`relative flex flex-col items-center justify-center gap-0.5 px-3 h-full min-w-[56px] transition-colors
+              ${moreOpen
+                ? 'text-primary-400'
+                : moreIsActive
+                  ? 'text-primary-300'
+                  : 'text-parchment-400 hover:text-parchment-200'
+              }`}
+            aria-label="More navigation options"
+            aria-expanded={moreOpen}
+          >
+            {(moreOpen || moreIsActive) && (
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary-400 rounded-b" />
+            )}
+            <span className="relative">
+              {moreOpen ? <ChevronUp className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </span>
+            <span className="text-[10px] font-display leading-tight">More</span>
+          </button>
         </div>
-      )}
+      </nav>
+
+      {/* Mobile bottom nav bar */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-dark-600/95 border-t border-dark-50 backdrop-blur-sm md:hidden">
+        <div className="flex items-center h-16 safe-area-bottom">
+          {primaryItems.map((item) => renderPrimaryMobile(item))}
+
+          {/* "More" button */}
+          <button
+            onClick={toggleMore}
+            className={`relative flex flex-col items-center justify-center flex-1 h-full transition-colors
+              ${moreOpen
+                ? 'text-primary-400'
+                : moreIsActive
+                  ? 'text-primary-300'
+                  : 'text-parchment-400 hover:text-parchment-200'
+              }`}
+            aria-label="More navigation options"
+            aria-expanded={moreOpen}
+          >
+            {(moreOpen || moreIsActive) && (
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-primary-400 rounded-b" />
+            )}
+            <span className="relative">
+              {moreOpen ? <ChevronUp className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </span>
+          </button>
+        </div>
+      </nav>
     </>
   );
 }

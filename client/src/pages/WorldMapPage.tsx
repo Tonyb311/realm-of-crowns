@@ -97,7 +97,10 @@ const MAP_W = 1000;
 const MAP_H = 900;
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 5;
-const ZOOM_STEP = 0.2;
+
+// LOD zoom thresholds
+const ZOOM_REGIONAL = 2.0;
+const ZOOM_DETAIL = 4.0;
 
 // Region color palette keyed by region ID
 const REGION_COLORS: Record<string, string> = {
@@ -148,37 +151,51 @@ function getTerrainColor(terrain: string): string {
   return TERRAIN_COLORS[key] ?? '#888888';
 }
 
-// Route line styles by difficulty
-function getRouteStyle(difficulty?: string, dangerLevel?: number): {
-  stroke: string;
-  strokeWidth: number;
-  dashArray: string;
-} {
-  const dl = dangerLevel ?? 0;
-  const diff = difficulty?.toLowerCase() ?? '';
-
-  if (diff === 'deadly' || dl >= 8) {
-    return { stroke: '#a22', strokeWidth: 1, dashArray: '2 3' };
+// Town node sizes by type (visual hierarchy)
+function getTownSize(type?: string): number {
+  switch (type) {
+    case 'capital': return 14;
+    case 'city': return 10;
+    case 'town': return 7;
+    case 'village': return 5;
+    case 'outpost': return 4;
+    default: return 7;
   }
-  if (diff === 'dangerous' || dl >= 5) {
-    return { stroke: '#c44', strokeWidth: 1.5, dashArray: '5 3' };
-  }
-  if (diff === 'moderate' || dl >= 3) {
-    return { stroke: '#888', strokeWidth: 1.5, dashArray: 'none' };
-  }
-  // Safe
-  return { stroke: '#666', strokeWidth: 2, dashArray: 'none' };
 }
 
-// Town size by type
-function getTownSize(type?: string): number {
+// Town type priority for label collision ordering
+function getTownPriority(type?: string): number {
+  switch (type) {
+    case 'capital': return 5;
+    case 'city': return 4;
+    case 'town': return 3;
+    case 'village': return 2;
+    case 'outpost': return 1;
+    default: return 3;
+  }
+}
+
+// Label font sizes by type
+function getLabelFontSize(type?: string): number {
   switch (type) {
     case 'capital': return 12;
     case 'city': return 10;
-    case 'town': return 8;
-    case 'village': return 6;
-    case 'outpost': return 5;
-    default: return 8;
+    case 'town': return 9;
+    case 'village': return 7;
+    case 'outpost': return 6;
+    default: return 9;
+  }
+}
+
+// Town fill opacity by type
+function getTownOpacity(type?: string): number {
+  switch (type) {
+    case 'capital': return 1;
+    case 'city': return 1;
+    case 'town': return 0.85;
+    case 'village': return 0.6;
+    case 'outpost': return 0.5;
+    default: return 0.85;
   }
 }
 
@@ -189,6 +206,171 @@ function inferTownType(pop: number): 'capital' | 'city' | 'town' | 'village' | '
   if (pop >= 2000) return 'town';
   if (pop >= 1000) return 'village';
   return 'outpost';
+}
+
+// Route line styles by difficulty — full detail (zoom level 3)
+function getRouteStyleFull(difficulty?: string, dangerLevel?: number): {
+  stroke: string;
+  strokeWidth: number;
+  dashArray: string;
+} {
+  const dl = dangerLevel ?? 0;
+  const diff = difficulty?.toLowerCase() ?? '';
+
+  if (diff === 'deadly' || dl >= 8) {
+    return { stroke: '#dc2626', strokeWidth: 2, dashArray: '2 4' };
+  }
+  if (diff === 'dangerous' || dl >= 5) {
+    return { stroke: '#ea580c', strokeWidth: 2, dashArray: '6 3' };
+  }
+  if (diff === 'moderate' || dl >= 3) {
+    return { stroke: '#d97706', strokeWidth: 2, dashArray: 'none' };
+  }
+  // Safe
+  return { stroke: '#78716c', strokeWidth: 2, dashArray: 'none' };
+}
+
+// ===========================================================================
+// Label Collision Avoidance
+// ===========================================================================
+
+interface LabelPlacement {
+  x: number;
+  y: number;
+  show: boolean;
+  anchor: 'start' | 'middle' | 'end';
+}
+
+interface LabelRect {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+function rectsOverlap(a: LabelRect, b: LabelRect): boolean {
+  return a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
+}
+
+/**
+ * Priority-based label collision avoidance.
+ * For each visible town (sorted by priority), tries 8 label placement positions.
+ * Returns a Map from town ID to { x, y, show, anchor }.
+ */
+function computeLabelLayout(
+  towns: MapTown[],
+  zoom: number,
+): Map<string, LabelPlacement> {
+  const result = new Map<string, LabelPlacement>();
+  const placedRects: LabelRect[] = [];
+
+  // Also treat town node circles as occupied rects to avoid overlapping nodes
+  const nodeRects: LabelRect[] = towns.map(t => {
+    const size = getTownSize(t.type);
+    return {
+      x1: t.mapX - size,
+      y1: t.mapY - size,
+      x2: t.mapX + size,
+      y2: t.mapY + size,
+    };
+  });
+
+  // Sort by priority descending (capitals first)
+  const sorted = [...towns].sort((a, b) => getTownPriority(b.type) - getTownPriority(a.type));
+
+  // Approximate char width in SVG coords at a given font size
+  const charWidth = (fontSize: number) => fontSize * 0.55;
+  const lineHeight = (fontSize: number) => fontSize * 1.3;
+
+  // 8 candidate positions: S, N, E, W, SE, SW, NE, NW
+  type Offset = { dx: number; dy: number; anchor: 'start' | 'middle' | 'end' };
+  const getOffsets = (nodeSize: number, fontSize: number): Offset[] => {
+    const gap = 3; // spacing between node and label
+    const lh = lineHeight(fontSize);
+    return [
+      { dx: 0, dy: nodeSize + gap + lh * 0.7, anchor: 'middle' },        // S (below)
+      { dx: 0, dy: -(nodeSize + gap), anchor: 'middle' },                 // N (above)
+      { dx: nodeSize + gap, dy: fontSize * 0.35, anchor: 'start' },       // E (right)
+      { dx: -(nodeSize + gap), dy: fontSize * 0.35, anchor: 'end' },      // W (left)
+      { dx: nodeSize + gap, dy: nodeSize + gap + lh * 0.4, anchor: 'start' },   // SE
+      { dx: -(nodeSize + gap), dy: nodeSize + gap + lh * 0.4, anchor: 'end' },  // SW
+      { dx: nodeSize + gap, dy: -(nodeSize * 0.5), anchor: 'start' },     // NE
+      { dx: -(nodeSize + gap), dy: -(nodeSize * 0.5), anchor: 'end' },    // NW
+    ];
+  };
+
+  for (const town of sorted) {
+    const fontSize = getLabelFontSize(town.type);
+    const nodeSize = getTownSize(town.type);
+    const textW = town.name.length * charWidth(fontSize);
+    const textH = lineHeight(fontSize);
+    const offsets = getOffsets(nodeSize, fontSize);
+
+    let placed = false;
+
+    for (const offset of offsets) {
+      let lx: number;
+      if (offset.anchor === 'middle') {
+        lx = town.mapX + offset.dx - textW / 2;
+      } else if (offset.anchor === 'start') {
+        lx = town.mapX + offset.dx;
+      } else {
+        // 'end'
+        lx = town.mapX + offset.dx - textW;
+      }
+      const ly = town.mapY + offset.dy - textH * 0.5;
+
+      const candidateRect: LabelRect = {
+        x1: lx - 1,
+        y1: ly - 1,
+        x2: lx + textW + 1,
+        y2: ly + textH + 1,
+      };
+
+      // Check overlap with all already-placed labels
+      let overlaps = false;
+      for (const pr of placedRects) {
+        if (rectsOverlap(candidateRect, pr)) {
+          overlaps = true;
+          break;
+        }
+      }
+
+      // Also check overlap with town node rects (avoid covering nodes)
+      if (!overlaps) {
+        for (const nr of nodeRects) {
+          if (rectsOverlap(candidateRect, nr)) {
+            overlaps = true;
+            break;
+          }
+        }
+      }
+
+      if (!overlaps) {
+        result.set(town.id, {
+          x: town.mapX + offset.dx,
+          y: town.mapY + offset.dy,
+          show: true,
+          anchor: offset.anchor,
+        });
+        placedRects.push(candidateRect);
+        placed = true;
+        break;
+      }
+    }
+
+    if (!placed) {
+      // Mark as hover-only — do not render label normally
+      result.set(town.id, {
+        x: town.mapX,
+        y: town.mapY + nodeSize + 10,
+        show: false,
+        anchor: 'middle' as const,
+      });
+    }
+  }
+
+  return result;
 }
 
 // ===========================================================================
@@ -355,8 +537,23 @@ function isInViewport(px: number, py: number, vb: ViewBox, margin: number = 100)
   );
 }
 
+// Determine if a town is visible at the current zoom level
+function isTownVisibleAtZoom(type: string | undefined, zoom: number): boolean {
+  const t = type ?? 'town';
+  if (zoom < ZOOM_REGIONAL) {
+    // Continental: only capitals and cities
+    return t === 'capital' || t === 'city';
+  }
+  if (zoom < ZOOM_DETAIL) {
+    // Regional: all town types, no travel nodes
+    return t === 'capital' || t === 'city' || t === 'town' || t === 'village' || t === 'outpost';
+  }
+  // Detail: everything
+  return true;
+}
+
 // ===========================================================================
-// Sub-component: TownNode
+// Sub-component: TownNode (with LOD-aware rendering)
 // ===========================================================================
 
 interface TownNodeProps {
@@ -364,29 +561,36 @@ interface TownNodeProps {
   isPlayerHere: boolean;
   isSelected: boolean;
   zoom: number;
+  labelPlacement: LabelPlacement | undefined;
+  isHovered: boolean;
   onClick: () => void;
   onHoverStart: () => void;
   onHoverEnd: () => void;
 }
 
-function TownNode({ town, isPlayerHere, isSelected, zoom, onClick, onHoverStart, onHoverEnd }: TownNodeProps) {
+function TownNode({ town, isPlayerHere, isSelected, zoom, labelPlacement, isHovered, onClick, onHoverStart, onHoverEnd }: TownNodeProps) {
   const size = getTownSize(town.type);
   const color = getRegionColor(town.regionId);
+  const opacity = getTownOpacity(town.type);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-  const hitSize = isMobile ? size + 4 : size + 2;
+  const hitSize = isMobile ? size + 6 : size + 4;
 
-  // Capital: star/diamond shape
   const isCapital = town.type === 'capital';
+  const isCity = town.type === 'city';
   const isOutpost = town.type === 'outpost';
 
-  // Font size scales inversely with zoom at high levels so labels don't get huge
-  const labelSize = Math.max(6, Math.min(10, 9 / Math.max(zoom, 1)));
+  const fontSize = getLabelFontSize(town.type);
+  const showLabel = labelPlacement?.show ?? false;
+
+  // Hover-only labels: show when hovered or selected
+  const showHoverLabel = !showLabel && (isHovered || isSelected);
 
   return (
     <g
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
+      className="town-node"
       style={{ cursor: 'pointer' }}
     >
       {/* Player glow ring */}
@@ -400,9 +604,9 @@ function TownNode({ town, isPlayerHere, isSelected, zoom, onClick, onHoverStart,
         </>
       )}
 
-      {/* Selection ring */}
-      {isSelected && !isPlayerHere && (
-        <circle cx={town.mapX} cy={town.mapY} r={size + 4} fill="none" stroke="#fbbf24" strokeWidth={1.5} opacity={0.7} />
+      {/* Selection ring - bright gold */}
+      {isSelected && (
+        <circle cx={town.mapX} cy={town.mapY} r={size + 5} fill="none" stroke="#fbbf24" strokeWidth={3} opacity={0.9} />
       )}
 
       {/* Invisible hit area */}
@@ -410,57 +614,97 @@ function TownNode({ town, isPlayerHere, isSelected, zoom, onClick, onHoverStart,
 
       {/* Town shape */}
       {isCapital ? (
-        // Diamond for capitals
-        <g>
-          <polygon
-            points={`${town.mapX},${town.mapY - size} ${town.mapX + size},${town.mapY} ${town.mapX},${town.mapY + size} ${town.mapX - size},${town.mapY}`}
-            fill={color}
-            stroke="#fbbf24"
-            strokeWidth={1.5}
-            filter={isPlayerHere ? 'url(#playerGlow)' : undefined}
-          />
-        </g>
+        // Diamond with gold border and glow for capitals
+        <polygon
+          points={`${town.mapX},${town.mapY - size} ${town.mapX + size},${town.mapY} ${town.mapX},${town.mapY + size} ${town.mapX - size},${town.mapY}`}
+          fill={color}
+          stroke="#fbbf24"
+          strokeWidth={2}
+          filter="url(#capitalGlow)"
+          opacity={opacity}
+        />
       ) : isOutpost ? (
         // Small diamond for outposts
         <polygon
           points={`${town.mapX},${town.mapY - size} ${town.mapX + size},${town.mapY} ${town.mapX},${town.mapY + size} ${town.mapX - size},${town.mapY}`}
           fill={color}
-          stroke={color}
-          strokeWidth={0.5}
-          opacity={0.8}
+          stroke="none"
+          opacity={opacity}
         />
-      ) : (
-        // Circle for city/town/village
+      ) : isCity ? (
+        // Circle with thick border for cities
         <circle
           cx={town.mapX}
           cy={town.mapY}
           r={size}
           fill={color}
-          stroke={town.type === 'village' ? 'none' : '#1a1a2e'}
-          strokeWidth={town.type === 'village' ? 0 : 1}
-          opacity={town.type === 'village' ? 0.75 : 1}
+          stroke="#1a1a2e"
+          strokeWidth={1.5}
+          opacity={opacity}
+          filter={isPlayerHere ? 'url(#playerGlow)' : undefined}
+        />
+      ) : (
+        // Circle for town/village (no border for village)
+        <circle
+          cx={town.mapX}
+          cy={town.mapY}
+          r={size}
+          fill={color}
+          stroke={town.type === 'village' ? 'none' : undefined}
+          strokeWidth={0}
+          opacity={opacity}
           filter={isPlayerHere ? 'url(#playerGlow)' : undefined}
         />
       )}
 
-      {/* Town name label - always visible */}
-      <text
-        x={town.mapX}
-        y={town.mapY + size + labelSize + 2}
-        textAnchor="middle"
-        fill="#E8E0D0"
-        fontSize={labelSize}
-        fontFamily="Crimson Text, Georgia, serif"
-        style={{ pointerEvents: 'none', userSelect: 'none' }}
-      >
-        {town.name}
-      </text>
+      {/* Town name label - collision-aware placement */}
+      {showLabel && labelPlacement && (
+        <text
+          x={labelPlacement.x}
+          y={labelPlacement.y}
+          textAnchor={labelPlacement.anchor}
+          fill="#E8E0D0"
+          fontSize={fontSize}
+          fontFamily="Crimson Text, Georgia, serif"
+          className="map-label"
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
+        >
+          {town.name}
+        </text>
+      )}
+
+      {/* Hover-only label (for labels that couldn't be placed without overlap) */}
+      {showHoverLabel && (
+        <g className="map-label-hover" style={{ pointerEvents: 'none' }}>
+          {/* Background rect for readability */}
+          <rect
+            x={town.mapX - (town.name.length * fontSize * 0.275) - 3}
+            y={town.mapY + size + 2}
+            width={town.name.length * fontSize * 0.55 + 6}
+            height={fontSize + 4}
+            rx={2}
+            fill="#1a1a2e"
+            opacity={0.85}
+          />
+          <text
+            x={town.mapX}
+            y={town.mapY + size + fontSize + 2}
+            textAnchor="middle"
+            fill="#fbbf24"
+            fontSize={fontSize}
+            fontFamily="Crimson Text, Georgia, serif"
+            style={{ userSelect: 'none' }}
+          >
+            {town.name}
+          </text>
+        </g>
+      )}
 
       {/* "You Are Here" label for player */}
       {isPlayerHere && (
         <text
           x={town.mapX}
-          y={town.mapY - size - 6}
+          y={town.mapY - size - 8}
           textAnchor="middle"
           fill="#fbbf24"
           fontSize={Math.max(6, 8 / Math.max(zoom, 1))}
@@ -475,26 +719,28 @@ function TownNode({ town, isPlayerHere, isSelected, zoom, onClick, onHoverStart,
 }
 
 // ===========================================================================
-// Sub-component: TravelNode
+// Sub-component: TravelNodeDot
 // ===========================================================================
 
 interface TravelNodeProps {
   node: RouteNode;
   isPlayerHere: boolean;
   zoom: number;
+  fadeOpacity: number;
   onHoverStart: (node: RouteNode, e: React.MouseEvent) => void;
   onHoverEnd: () => void;
 }
 
-function TravelNodeDot({ node, isPlayerHere, zoom, onHoverStart, onHoverEnd }: TravelNodeProps) {
+function TravelNodeDot({ node, isPlayerHere, zoom, fadeOpacity, onHoverStart, onHoverEnd }: TravelNodeProps) {
   const color = getTerrainColor(node.terrain);
-  const showLabel = zoom > 3;
+  const showLabel = zoom > 4.5;
 
   return (
     <g
       onMouseEnter={(e) => onHoverStart(node, e)}
       onMouseLeave={onHoverEnd}
-      style={{ cursor: 'pointer' }}
+      style={{ cursor: 'pointer', opacity: fadeOpacity }}
+      className="travel-node"
     >
       {isPlayerHere && (
         <circle cx={node.mapX} cy={node.mapY} r={7} fill="none" stroke="#fbbf24" strokeWidth={1.5} opacity={0.7}>
@@ -505,7 +751,7 @@ function TravelNodeDot({ node, isPlayerHere, zoom, onHoverStart, onHoverEnd }: T
       <circle
         cx={node.mapX}
         cy={node.mapY}
-        r={isPlayerHere ? 5 : 4}
+        r={isPlayerHere ? 5 : 3}
         fill={isPlayerHere ? '#fbbf24' : color}
         stroke={isPlayerHere ? '#fbbf24' : 'none'}
         strokeWidth={isPlayerHere ? 1 : 0}
@@ -514,7 +760,7 @@ function TravelNodeDot({ node, isPlayerHere, zoom, onHoverStart, onHoverEnd }: T
       {node.specialType && (
         <circle
           cx={node.mapX}
-          cy={node.mapY - 6}
+          cy={node.mapY - 5}
           r={2}
           fill="#fbbf24"
           opacity={0.8}
@@ -523,7 +769,7 @@ function TravelNodeDot({ node, isPlayerHere, zoom, onHoverStart, onHoverEnd }: T
       {showLabel && (
         <text
           x={node.mapX}
-          y={node.mapY + 10}
+          y={node.mapY + 8}
           textAnchor="middle"
           fill="#A89A80"
           fontSize={5}
@@ -538,7 +784,7 @@ function TravelNodeDot({ node, isPlayerHere, zoom, onHoverStart, onHoverEnd }: T
 }
 
 // ===========================================================================
-// Sub-component: RouteLines
+// Sub-component: RouteLine (zoom-dependent styling)
 // ===========================================================================
 
 interface RouteLinesProps {
@@ -554,7 +800,6 @@ interface RouteLinesProps {
 }
 
 function RouteLine({ route, fromPos, toPos, isActive, isHighlighted, zoom, onClick, onHoverStart, onHoverEnd }: RouteLinesProps) {
-  const style = getRouteStyle(route.difficulty, route.dangerLevel);
   const hasNodes = route.nodes && route.nodes.length > 0;
 
   // Build path from nodes if available, else straight line
@@ -567,43 +812,67 @@ function RouteLine({ route, fromPos, toPos, isActive, isHighlighted, zoom, onCli
     pathD = `M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}`;
   }
 
-  const activeStroke = '#fbbf24';
-  const highlightStroke = '#C9A461';
+  // Active travel route: always fully visible with glow
+  if (isActive) {
+    return (
+      <g>
+        <path d={pathD} fill="none" stroke="transparent" strokeWidth={14}
+          onClick={(e) => { e.stopPropagation(); onClick(); }}
+          onMouseEnter={onHoverStart} onMouseLeave={onHoverEnd}
+          style={{ cursor: 'pointer' }} />
+        <path d={pathD} fill="none" stroke="#fbbf24" strokeWidth={5} opacity={0.2}
+          strokeLinecap="round" style={{ pointerEvents: 'none' }} />
+        <path d={pathD} fill="none" stroke="#fbbf24" strokeWidth={2.5} opacity={0.9}
+          strokeLinecap="round" style={{ pointerEvents: 'none' }}
+          filter="url(#activeRouteGlow)" />
+      </g>
+    );
+  }
+
+  // Zoom-dependent route styling
+  let stroke: string;
+  let strokeWidth: number;
+  let dashArray: string;
+  let routeOpacity: number;
+
+  if (zoom < ZOOM_REGIONAL) {
+    // Continental: very subtle lines
+    stroke = '#555';
+    strokeWidth = 0.5;
+    dashArray = 'none';
+    routeOpacity = 0.08;
+  } else if (zoom < ZOOM_DETAIL) {
+    // Regional: subtle solid lines
+    stroke = '#666';
+    strokeWidth = 1.5;
+    dashArray = 'none';
+    routeOpacity = isHighlighted ? 0.5 : 0.25;
+  } else {
+    // Detail: full difficulty styling
+    const fullStyle = getRouteStyleFull(route.difficulty, route.dangerLevel);
+    stroke = fullStyle.stroke;
+    strokeWidth = fullStyle.strokeWidth;
+    dashArray = fullStyle.dashArray;
+    routeOpacity = isHighlighted ? 0.8 : 0.55;
+  }
 
   return (
     <g>
-      {/* Invisible wide hit area for route clicking */}
-      <path
-        d={pathD}
-        fill="none"
-        stroke="transparent"
-        strokeWidth={14}
+      {/* Invisible wide hit area */}
+      <path d={pathD} fill="none" stroke="transparent" strokeWidth={14}
         onClick={(e) => { e.stopPropagation(); onClick(); }}
-        onMouseEnter={onHoverStart}
-        onMouseLeave={onHoverEnd}
-        style={{ cursor: 'pointer' }}
-      />
-      {/* Active glow */}
-      {isActive && (
-        <path
-          d={pathD}
-          fill="none"
-          stroke={activeStroke}
-          strokeWidth={style.strokeWidth + 3}
-          opacity={0.25}
-          strokeLinecap="round"
-          style={{ pointerEvents: 'none' }}
-        />
-      )}
+        onMouseEnter={onHoverStart} onMouseLeave={onHoverEnd}
+        style={{ cursor: 'pointer' }} />
       {/* Visible route line */}
       <path
         d={pathD}
         fill="none"
-        stroke={isActive ? activeStroke : isHighlighted ? highlightStroke : style.stroke}
-        strokeWidth={isActive ? style.strokeWidth + 1 : isHighlighted ? style.strokeWidth + 0.5 : style.strokeWidth}
-        strokeDasharray={isActive ? 'none' : style.dashArray}
-        opacity={isActive ? 0.9 : isHighlighted ? 0.8 : 0.45}
+        stroke={isHighlighted ? '#C9A461' : stroke}
+        strokeWidth={isHighlighted ? strokeWidth + 0.5 : strokeWidth}
+        strokeDasharray={dashArray}
+        opacity={routeOpacity}
         strokeLinecap="round"
+        className="route-line"
         style={{ pointerEvents: 'none' }}
       />
     </g>
@@ -611,7 +880,7 @@ function RouteLine({ route, fromPos, toPos, isActive, isHighlighted, zoom, onCli
 }
 
 // ===========================================================================
-// Sub-component: MiniMap
+// Sub-component: MiniMap (improved)
 // ===========================================================================
 
 interface MiniMapProps {
@@ -622,10 +891,9 @@ interface MiniMapProps {
 }
 
 function MiniMap({ towns, playerTownId, viewBox, onClick }: MiniMapProps) {
-  const miniW = 160;
-  const miniH = 144; // same aspect ratio as 1000x900
-  const scaleX = miniW / MAP_W;
-  const scaleY = miniH / MAP_H;
+  const [collapsed, setCollapsed] = useState(false);
+  const miniW = 200;
+  const miniH = 180;
 
   const handleClick = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -634,8 +902,36 @@ function MiniMap({ towns, playerTownId, viewBox, onClick }: MiniMapProps) {
     onClick(mx, my);
   }, [onClick]);
 
+  // Only show capitals and cities on minimap
+  const miniTowns = useMemo(() =>
+    towns.filter(t => t.type === 'capital' || t.type === 'city'),
+    [towns]
+  );
+
+  if (collapsed) {
+    return (
+      <div className="absolute top-4 right-4 z-10 hidden md:block">
+        <button
+          onClick={() => setCollapsed(false)}
+          className="w-9 h-9 bg-dark-400/90 border border-dark-50 rounded-lg text-parchment-300 hover:text-primary-400 hover:border-primary-400/50 transition-colors flex items-center justify-center"
+          title="Show minimap"
+        >
+          <Eye className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="absolute top-4 right-4 bg-dark-500/90 border border-dark-50 rounded-lg overflow-hidden shadow-lg hidden md:block">
+    <div className="absolute top-4 right-4 bg-dark-500/85 border border-dark-50 rounded-lg overflow-hidden shadow-lg hidden md:block z-10">
+      {/* Collapse toggle */}
+      <button
+        onClick={() => setCollapsed(true)}
+        className="absolute top-1 right-1 z-20 w-5 h-5 bg-dark-400/80 border border-dark-50 rounded text-parchment-500 hover:text-parchment-200 transition-colors flex items-center justify-center"
+        title="Hide minimap"
+      >
+        <X className="w-3 h-3" />
+      </button>
       <svg
         width={miniW}
         height={miniH}
@@ -644,16 +940,30 @@ function MiniMap({ towns, playerTownId, viewBox, onClick }: MiniMapProps) {
         style={{ cursor: 'crosshair', display: 'block' }}
       >
         <rect x={0} y={0} width={MAP_W} height={MAP_H} fill="#0E0E1A" />
-        {towns.map(t => (
+        {miniTowns.map(t => (
           <circle
             key={t.id}
             cx={t.mapX}
             cy={t.mapY}
-            r={t.id === playerTownId ? 12 : 6}
+            r={t.id === playerTownId ? 16 : (t.type === 'capital' ? 10 : 7)}
             fill={t.id === playerTownId ? '#fbbf24' : getRegionColor(t.regionId)}
-            opacity={t.id === playerTownId ? 1 : 0.6}
+            opacity={t.id === playerTownId ? 1 : 0.7}
           />
         ))}
+        {/* Player dot — extra bright if not at a visible town */}
+        {playerTownId && !miniTowns.find(t => t.id === playerTownId) && (() => {
+          const pt = towns.find(t => t.id === playerTownId);
+          if (!pt) return null;
+          return (
+            <circle
+              cx={pt.mapX}
+              cy={pt.mapY}
+              r={16}
+              fill="#fbbf24"
+              opacity={1}
+            />
+          );
+        })()}
         {/* Viewport rect */}
         <rect
           x={viewBox.x}
@@ -662,8 +972,8 @@ function MiniMap({ towns, playerTownId, viewBox, onClick }: MiniMapProps) {
           height={viewBox.h}
           fill="none"
           stroke="#fbbf24"
-          strokeWidth={8}
-          opacity={0.5}
+          strokeWidth={10}
+          opacity={0.7}
           rx={4}
         />
       </svg>
@@ -919,6 +1229,7 @@ export default function WorldMapPage() {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [selectedTown, setSelectedTown] = useState<MapTown | null>(null);
+  const [hoveredTownId, setHoveredTownId] = useState<string | null>(null);
   const [hoveredRoute, setHoveredRoute] = useState<MapRoute | null>(null);
   const [hoveredNode, setHoveredNode] = useState<{ node: RouteNode; screenX: number; screenY: number } | null>(null);
   const [showTravelers, setShowTravelers] = useState(true);
@@ -928,9 +1239,8 @@ export default function WorldMapPage() {
   // Computed zoom level (1 = default; >1 = zoomed in)
   const zoom = useMemo(() => MAP_W / viewBox.w, [viewBox.w]);
 
-  // LOD thresholds
-  const showTravelNodes = zoom >= 1.5;
-  const showFullDetail = zoom >= 3;
+  // LOD level for display
+  const lodLevel = zoom < ZOOM_REGIONAL ? 1 : zoom < ZOOM_DETAIL ? 2 : 3;
 
   // Town lookup
   const townLookup = useMemo(() => {
@@ -976,6 +1286,99 @@ export default function WorldMapPage() {
     }
     return Array.from(groups.values());
   }, [mapData]);
+
+  // Visible towns filtered by zoom LOD + viewport culling
+  const visibleTowns = useMemo(() => {
+    if (!mapData) return [];
+    return mapData.towns.filter(t =>
+      isTownVisibleAtZoom(t.type, zoom) && isInViewport(t.mapX, t.mapY, viewBox)
+    );
+  }, [mapData, zoom, viewBox]);
+
+  // Visible routes (only between visible towns at zoom < ZOOM_DETAIL, all at zoom >= ZOOM_DETAIL)
+  const visibleRoutes = useMemo(() => {
+    if (!mapData) return [];
+    const visibleTownIds = new Set(visibleTowns.map(t => t.id));
+
+    return mapData.routes.filter(r => {
+      const from = townLookup.get(r.fromTownId);
+      const to = townLookup.get(r.toTownId);
+      if (!from || !to) return false;
+
+      // At least one endpoint must be in viewport
+      const inView = isInViewport(from.mapX, from.mapY, viewBox, 200) || isInViewport(to.mapX, to.mapY, viewBox, 200);
+      if (!inView) return false;
+
+      // At continental zoom, only show routes between visible (capital/city) towns
+      if (zoom < ZOOM_REGIONAL) {
+        return visibleTownIds.has(r.fromTownId) && visibleTownIds.has(r.toTownId);
+      }
+
+      return true;
+    });
+  }, [mapData, townLookup, viewBox, zoom, visibleTowns]);
+
+  // Compute label layout with collision avoidance
+  const labelLayout = useMemo(() => {
+    return computeLabelLayout(visibleTowns, zoom);
+  }, [visibleTowns, zoom]);
+
+  // Region centroids for region name display
+  const regionCentroids = useMemo(() => {
+    if (!mapData) return new Map<string, { x: number; y: number; name: string; color: string }>();
+    const regionTowns = new Map<string, MapTown[]>();
+    for (const t of mapData.towns) {
+      const arr = regionTowns.get(t.regionId) ?? [];
+      arr.push(t);
+      regionTowns.set(t.regionId, arr);
+    }
+    const centroids = new Map<string, { x: number; y: number; name: string; color: string }>();
+    for (const [regionId, towns] of regionTowns) {
+      if (towns.length < 1) continue;
+      const cx = towns.reduce((s, t) => s + t.mapX, 0) / towns.length;
+      const cy = towns.reduce((s, t) => s + t.mapY, 0) / towns.length;
+      const region = mapData.regions.find(r => r.id === regionId);
+      if (region) {
+        centroids.set(regionId, { x: cx, y: cy, name: region.name, color: getRegionColor(regionId) });
+      }
+    }
+    return centroids;
+  }, [mapData]);
+
+  // Travel node fade opacity for smooth LOD transition
+  const travelNodeOpacity = useMemo(() => {
+    if (zoom < ZOOM_DETAIL - 0.5) return 0;
+    if (zoom >= ZOOM_DETAIL) return 1;
+    // Fade in between 3.5 and 4.0
+    return (zoom - (ZOOM_DETAIL - 0.5)) / 0.5;
+  }, [zoom]);
+
+  // Region name opacity by zoom level
+  const regionNameOpacity = useMemo(() => {
+    if (zoom < ZOOM_REGIONAL) {
+      // Level 1: prominent region names
+      return 0.4;
+    }
+    if (zoom < ZOOM_DETAIL) {
+      // Level 2: faded region names
+      // Fade from 0.12 at zoom=2 to 0 at zoom=4
+      const t = (zoom - ZOOM_REGIONAL) / (ZOOM_DETAIL - ZOOM_REGIONAL);
+      return 0.12 * (1 - t);
+    }
+    // Level 3: hidden
+    return 0;
+  }, [zoom]);
+
+  // Region name font size by zoom level
+  const regionFontSize = useMemo(() => {
+    if (zoom < ZOOM_REGIONAL) return 30;
+    if (zoom < ZOOM_DETAIL) return 20;
+    return 0;
+  }, [zoom]);
+
+  // Determine active route (player is on it)
+  const activeRouteId = mapData?.playerPosition?.routeId ?? null;
+  const playerNodeIndex = mapData?.playerPosition?.nodeIndex ?? null;
 
   // ===========================================================================
   // Pan & Zoom handlers
@@ -1191,6 +1594,24 @@ export default function WorldMapPage() {
   }, []);
 
   // ===========================================================================
+  // Collect visible travel nodes
+  // ===========================================================================
+
+  const visibleTravelNodes = useMemo(() => {
+    if (travelNodeOpacity <= 0 || !mapData) return [];
+    const nodes: { node: RouteNode; routeId: string }[] = [];
+    for (const route of visibleRoutes) {
+      if (!route.nodes) continue;
+      for (const node of route.nodes) {
+        if (isInViewport(node.mapX, node.mapY, viewBox)) {
+          nodes.push({ node, routeId: route.id });
+        }
+      }
+    }
+    return nodes;
+  }, [mapData, visibleRoutes, viewBox, travelNodeOpacity]);
+
+  // ===========================================================================
   // Render
   // ===========================================================================
 
@@ -1219,56 +1640,19 @@ export default function WorldMapPage() {
     );
   }
 
-  // Build lists of visible elements (viewport culling)
-  const visibleTowns = mapData.towns.filter(t => isInViewport(t.mapX, t.mapY, viewBox));
-
-  const visibleRoutes = mapData.routes.filter(r => {
-    const from = townLookup.get(r.fromTownId);
-    const to = townLookup.get(r.toTownId);
-    if (!from || !to) return false;
-    // Route is visible if either endpoint is in viewport
-    return isInViewport(from.mapX, from.mapY, viewBox, 200) || isInViewport(to.mapX, to.mapY, viewBox, 200);
-  });
-
-  // Collect visible travel nodes from visible routes
-  const visibleTravelNodes: { node: RouteNode; routeId: string }[] = [];
-  if (showTravelNodes) {
-    for (const route of visibleRoutes) {
-      if (!route.nodes) continue;
-      for (const node of route.nodes) {
-        if (isInViewport(node.mapX, node.mapY, viewBox)) {
-          visibleTravelNodes.push({ node, routeId: route.id });
-        }
-      }
-    }
-  }
-
-  // Determine active route (player is on it)
-  const activeRouteId = mapData.playerPosition?.routeId ?? null;
-  const playerNodeIndex = mapData.playerPosition?.nodeIndex ?? null;
-
-  // Region labels (shown at low zoom)
-  const regionCenters = new Map<string, { x: number; y: number; name: string }>();
-  if (zoom < 2) {
-    const regionTowns = new Map<string, MapTown[]>();
-    for (const t of mapData.towns) {
-      const arr = regionTowns.get(t.regionId) ?? [];
-      arr.push(t);
-      regionTowns.set(t.regionId, arr);
-    }
-    for (const [regionId, towns] of regionTowns) {
-      if (towns.length < 2) continue;
-      const cx = towns.reduce((s, t) => s + t.mapX, 0) / towns.length;
-      const cy = towns.reduce((s, t) => s + t.mapY, 0) / towns.length;
-      const region = mapData.regions.find(r => r.id === regionId);
-      if (region) {
-        regionCenters.set(regionId, { x: cx, y: cy, name: region.name });
-      }
-    }
-  }
-
   return (
     <div className="min-h-screen bg-dark-500 flex flex-col">
+      {/* Inline style for smooth LOD transitions and hover effects */}
+      <style>{`
+        .town-node { transition: transform 0.15s ease; }
+        .town-node:hover { transform: scale(1.3); transform-origin: center; }
+        .route-line { transition: opacity 0.3s ease; }
+        .travel-node { transition: opacity 0.3s ease; }
+        .region-label { transition: opacity 0.4s ease, font-size 0.4s ease; }
+        .map-label { transition: opacity 0.3s ease; }
+        .map-label-hover { transition: opacity 0.2s ease; }
+      `}</style>
+
       {/* Map + Panel layout */}
       <div className="flex flex-1 overflow-hidden relative">
         {/* SVG Map */}
@@ -1311,6 +1695,16 @@ export default function WorldMapPage() {
                 </feMerge>
               </filter>
 
+              <filter id="capitalGlow" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="2" result="blur" />
+                <feFlood floodColor="#fbbf24" floodOpacity="0.25" />
+                <feComposite in2="blur" operator="in" />
+                <feMerge>
+                  <feMergeNode />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+
               <filter id="activeRouteGlow" x="-20%" y="-20%" width="140%" height="140%">
                 <feGaussianBlur stdDeviation="2" result="blur" />
                 <feFlood floodColor="#fbbf24" floodOpacity="0.3" />
@@ -1331,35 +1725,38 @@ export default function WorldMapPage() {
               fill="url(#mapBgGrad)"
             />
 
-            {/* === Layer 2: Region boundaries (subtle) === */}
-            {zoom < 2 && Array.from(regionCenters.entries()).map(([regionId, center]) => {
-              const color = getRegionColor(regionId);
-              return (
-                <g key={`region-${regionId}`}>
-                  <circle
-                    cx={center.x}
-                    cy={center.y}
-                    r={80}
-                    fill={color}
-                    opacity={0.04}
-                    style={{ pointerEvents: 'none' }}
-                  />
-                  <text
-                    x={center.x}
-                    y={center.y}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fill={color}
-                    fontSize={14}
-                    fontFamily="MedievalSharp, serif"
-                    opacity={0.3}
-                    style={{ pointerEvents: 'none', userSelect: 'none' }}
-                  >
-                    {center.name}
-                  </text>
-                </g>
-              );
-            })}
+            {/* === Layer 2: Region names (zoom-dependent) === */}
+            {regionNameOpacity > 0 && Array.from(regionCentroids.entries()).map(([regionId, center]) => (
+              <g key={`region-${regionId}`} className="region-label">
+                {/* Subtle region background glow */}
+                <circle
+                  cx={center.x}
+                  cy={center.y}
+                  r={80}
+                  fill={center.color}
+                  opacity={0.04}
+                  style={{ pointerEvents: 'none' }}
+                />
+                <text
+                  x={center.x}
+                  y={center.y}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fill={center.color}
+                  fontSize={regionFontSize}
+                  fontFamily="MedievalSharp, serif"
+                  opacity={regionNameOpacity}
+                  letterSpacing={zoom < ZOOM_REGIONAL ? '3px' : '1px'}
+                  style={{
+                    pointerEvents: 'none',
+                    userSelect: 'none',
+                    textTransform: zoom < ZOOM_REGIONAL ? 'uppercase' : 'none',
+                  } as React.CSSProperties}
+                >
+                  {center.name}
+                </text>
+              </g>
+            ))}
 
             {/* === Layer 3: Route lines === */}
             {visibleRoutes.map(route => {
@@ -1386,8 +1783,8 @@ export default function WorldMapPage() {
               );
             })}
 
-            {/* === Layer 4: Travel nodes === */}
-            {showTravelNodes && visibleTravelNodes.map(({ node, routeId }) => {
+            {/* === Layer 4: Travel nodes (fade in at zoom 3.5-4.0) === */}
+            {travelNodeOpacity > 0 && visibleTravelNodes.map(({ node, routeId }) => {
               const isPlayerNode =
                 activeRouteId === routeId &&
                 playerNodeIndex === node.nodeIndex &&
@@ -1398,6 +1795,7 @@ export default function WorldMapPage() {
                   node={node}
                   isPlayerHere={isPlayerNode}
                   zoom={zoom}
+                  fadeOpacity={isPlayerNode ? 1 : travelNodeOpacity}
                   onHoverStart={handleTravelNodeHover}
                   onHoverEnd={() => setHoveredNode(null)}
                 />
@@ -1412,15 +1810,17 @@ export default function WorldMapPage() {
                 isPlayerHere={town.id === playerTownId}
                 isSelected={selectedTown?.id === town.id}
                 zoom={zoom}
+                labelPlacement={labelLayout.get(town.id)}
+                isHovered={hoveredTownId === town.id}
                 onClick={() => setSelectedTown(selectedTown?.id === town.id ? null : town)}
-                onHoverStart={() => {}}
-                onHoverEnd={() => {}}
+                onHoverStart={() => setHoveredTownId(town.id)}
+                onHoverEnd={() => setHoveredTownId(null)}
               />
             ))}
 
             {/* === Layer 6: Travelers === */}
-            {showTravelers && showTravelNodes && travelerClusters.map((cluster, i) => (
-              <g key={`travelers-${i}`}>
+            {showTravelers && travelNodeOpacity > 0 && travelerClusters.map((cluster, i) => (
+              <g key={`travelers-${i}`} style={{ opacity: travelNodeOpacity }}>
                 <circle
                   cx={cluster.x}
                   cy={cluster.y}
@@ -1498,7 +1898,7 @@ export default function WorldMapPage() {
           {/* === UI Overlay: Zoom level + LOD indicator === */}
           <div className="absolute top-4 left-4 bg-dark-400/90 border border-dark-50 rounded-lg px-3 py-1.5 z-10">
             <span className="text-parchment-500 text-[10px] uppercase tracking-wider">
-              {zoom < 1.5 ? 'Continent View' : zoom < 3 ? 'Region View' : 'Detail View'}
+              {lodLevel === 1 ? 'Continent View' : lodLevel === 2 ? 'Region View' : 'Detail View'}
             </span>
             <span className="text-parchment-500/50 text-[9px] ml-2">
               {zoom.toFixed(1)}x
