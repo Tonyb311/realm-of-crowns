@@ -1,5 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../lib/prisma';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
 
@@ -37,7 +39,8 @@ router.get('/', authGuard, async (req: AuthenticatedRequest, res: Response) => {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    console.error('List world events error:', error);
+    if (handlePrismaError(error, res, 'list world events', req)) return;
+    logRouteError(req, 500, 'List world events error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -86,7 +89,8 @@ router.get('/war-bulletin', authGuard, async (_req: AuthenticatedRequest, res: R
       })),
     });
   } catch (error) {
-    console.error('War bulletin error:', error);
+    if (handlePrismaError(error, res, 'war bulletin', _req)) return;
+    logRouteError(_req, 500, 'War bulletin error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -113,7 +117,8 @@ router.get('/state-report', authGuard, async (_req: AuthenticatedRequest, res: R
       },
     });
   } catch (error) {
-    console.error('State report error:', error);
+    if (handlePrismaError(error, res, 'state report', _req)) return;
+    logRouteError(_req, 500, 'State report error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

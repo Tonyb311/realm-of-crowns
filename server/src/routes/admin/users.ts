@@ -2,6 +2,8 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../../lib/prisma';
+import { handlePrismaError } from '../../lib/prisma-errors';
+import { logRouteError } from '../../lib/error-logger';
 import { validate } from '../../middleware/validate';
 import { AuthenticatedRequest } from '../../types/express';
 import { Prisma } from '@prisma/client';
@@ -65,7 +67,8 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
       totalPages: Math.ceil(total / pageSize),
     });
   } catch (error) {
-    console.error('[Admin] Users list error:', error);
+    if (handlePrismaError(error, res, 'admin-list-users', req)) return;
+    logRouteError(req, 500, '[Admin] Users list error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -102,7 +105,8 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
 
     return res.json(user);
   } catch (error) {
-    console.error('[Admin] User detail error:', error);
+    if (handlePrismaError(error, res, 'admin-user-detail', req)) return;
+    logRouteError(req, 500, '[Admin] User detail error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -129,7 +133,8 @@ router.patch('/:id/role', validate(updateRoleSchema), async (req: AuthenticatedR
     console.log(`[Admin] User ${updated.username} role changed to ${role} by admin ${req.user!.userId}`);
     return res.json(updated);
   } catch (error) {
-    console.error('[Admin] Update role error:', error);
+    if (handlePrismaError(error, res, 'admin-update-role', req)) return;
+    logRouteError(req, 500, '[Admin] Update role error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -157,7 +162,8 @@ router.post('/:id/reset-password', validate(resetPasswordSchema), async (req: Au
     console.log(`[Admin] Password reset for user ${user.username} by admin ${req.user!.userId}`);
     return res.json({ message: 'Password reset successfully' });
   } catch (error) {
-    console.error('[Admin] Reset password error:', error);
+    if (handlePrismaError(error, res, 'admin-reset-password', req)) return;
+    logRouteError(req, 500, '[Admin] Reset password error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

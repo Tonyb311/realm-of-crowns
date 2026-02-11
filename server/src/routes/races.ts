@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
@@ -54,7 +56,8 @@ router.get('/', (req: Request, res: Response) => {
 
     return res.json({ races: { core, common, exotic } });
   } catch (error) {
-    console.error('List races error:', error);
+    if (handlePrismaError(error, res, 'list races', req)) return;
+    logRouteError(req, 500, 'List races error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -89,7 +92,8 @@ router.get('/relations/matrix', async (req: Request, res: Response) => {
 
     return res.json({ matrix, races: allRaces });
   } catch (error) {
-    console.error('Get relations matrix error:', error);
+    if (handlePrismaError(error, res, 'get relations matrix', req)) return;
+    logRouteError(req, 500, 'Get relations matrix error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -182,7 +186,8 @@ router.post('/abilities/racial/use', authGuard, characterGuard, validate(useRaci
       },
     });
   } catch (error) {
-    console.error('Use racial ability error:', error);
+    if (handlePrismaError(error, res, 'use racial ability', req)) return;
+    logRouteError(req, 500, 'Use racial ability error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -228,7 +233,8 @@ router.post('/changeling/shift', authGuard, characterGuard, validate(changelingS
       },
     });
   } catch (error) {
-    console.error('Changeling shift error:', error);
+    if (handlePrismaError(error, res, 'changeling shift', req)) return;
+    logRouteError(req, 500, 'Changeling shift error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -259,7 +265,8 @@ router.get('/changeling/trueform', authGuard, characterGuard, async (req: Authen
       } : null,
     });
   } catch (error) {
-    console.error('Get changeling trueform error:', error);
+    if (handlePrismaError(error, res, 'get changeling trueform', req)) return;
+    logRouteError(req, 500, 'Get changeling trueform error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -303,7 +310,8 @@ router.get('/forgeborn/maintenance', authGuard, characterGuard, async (req: Auth
         : null,
     });
   } catch (error) {
-    console.error('Get forgeborn maintenance error:', error);
+    if (handlePrismaError(error, res, 'get forgeborn maintenance', req)) return;
+    logRouteError(req, 500, 'Get forgeborn maintenance error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -342,7 +350,8 @@ router.get('/merfolk/underwater-nodes', authGuard, characterGuard, async (req: A
       total: merfolkZones.length,
     });
   } catch (error) {
-    console.error('Get merfolk underwater nodes error:', error);
+    if (handlePrismaError(error, res, 'get merfolk underwater nodes', req)) return;
+    logRouteError(req, 500, 'Get merfolk underwater nodes error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -361,7 +370,8 @@ router.get('/profession-bonuses/:race', (req: Request, res: Response) => {
 
     return res.json({ race: raceKey, professionBonuses: bonuses });
   } catch (error) {
-    console.error('Get profession bonuses error:', error);
+    if (handlePrismaError(error, res, 'get profession bonuses', req)) return;
+    logRouteError(req, 500, 'Get profession bonuses error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -386,7 +396,8 @@ router.post('/half-elf-chosen-profession', authGuard, characterGuard, validate(h
       message: `Your chosen profession is now ${profession} (+20% bonus)`,
     });
   } catch (error) {
-    console.error('Set half-elf chosen profession error:', error);
+    if (handlePrismaError(error, res, 'set half-elf chosen profession', req)) return;
+    logRouteError(req, 500, 'Set half-elf chosen profession error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -410,7 +421,8 @@ router.post('/gnome-eureka', authGuard, characterGuard, async (req: Authenticate
       message: 'Eureka! Your crafting action has been instantly completed.',
     });
   } catch (error) {
-    console.error('Gnome eureka error:', error);
+    if (handlePrismaError(error, res, 'gnome eureka', req)) return;
+    logRouteError(req, 500, 'Gnome eureka error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -434,7 +446,8 @@ router.post('/forgeborn-overclock', authGuard, characterGuard, async (req: Authe
       message: 'Overclock activated! 2x crafting speed for 1 hour.',
     });
   } catch (error) {
-    console.error('Forgeborn overclock error:', error);
+    if (handlePrismaError(error, res, 'forgeborn overclock', req)) return;
+    logRouteError(req, 500, 'Forgeborn overclock error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -467,7 +480,8 @@ router.get('/bonuses/calculate', authGuard, characterGuard, async (req: Authenti
 
     return res.json({ race: character.race, subRace, bonuses });
   } catch (error) {
-    console.error('Calculate racial bonuses error:', error);
+    if (handlePrismaError(error, res, 'calculate racial bonuses', req)) return;
+    logRouteError(req, 500, 'Calculate racial bonuses error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -486,7 +500,8 @@ router.get('/:race', (req: Request, res: Response) => {
 
     return res.json({ race: raceDef });
   } catch (error) {
-    console.error('Get race details error:', error);
+    if (handlePrismaError(error, res, 'get race details', req)) return;
+    logRouteError(req, 500, 'Get race details error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -512,7 +527,8 @@ router.get('/:race/subraces', (req: Request, res: Response) => {
       hasSubRaces: subRaces.length > 0,
     });
   } catch (error) {
-    console.error('Get sub-races error:', error);
+    if (handlePrismaError(error, res, 'get sub-races', req)) return;
+    logRouteError(req, 500, 'Get sub-races error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

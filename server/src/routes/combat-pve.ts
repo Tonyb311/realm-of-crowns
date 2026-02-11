@@ -27,6 +27,8 @@ import { checkLevelUp } from '../services/progression';
 import { checkAchievements } from '../services/achievements';
 import { redis } from '../lib/redis';
 import { ACTION_XP, DEATH_PENALTY } from '@shared/data/progression';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -320,7 +322,8 @@ router.post('/start', authGuard, validate(startPveSchema), async (req: Authentic
       },
     });
   } catch (error) {
-    console.error('PvE start error:', error);
+    if (handlePrismaError(error, res, 'pve-start', req)) return;
+    logRouteError(req, 500, 'PvE start error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -449,7 +452,8 @@ router.post('/action', authGuard, validate(combatActionSchema), async (req: Auth
 
     return res.json({ combat: formatCombatResponse(finalState) });
   } catch (error) {
-    console.error('PvE action error:', error);
+    if (handlePrismaError(error, res, 'pve-action', req)) return;
+    logRouteError(req, 500, 'PvE action error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -500,7 +504,8 @@ router.get('/state', authGuard, async (req: AuthenticatedRequest, res: Response)
       },
     });
   } catch (error) {
-    console.error('PvE state error:', error);
+    if (handlePrismaError(error, res, 'pve-state', req)) return;
+    logRouteError(req, 500, 'PvE state error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

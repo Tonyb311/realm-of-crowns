@@ -1,6 +1,8 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
@@ -88,7 +90,8 @@ router.post('/', authGuard, characterGuard, validate(createPetitionSchema), asyn
       },
     });
   } catch (error) {
-    console.error('Create petition error:', error);
+    if (handlePrismaError(error, res, 'create petition', req)) return;
+    logRouteError(req, 500, 'Create petition error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -181,7 +184,8 @@ router.post('/:id/sign', authGuard, characterGuard, async (req: AuthenticatedReq
       fulfilled: newCount >= petition.signatureGoal,
     });
   } catch (error) {
-    console.error('Sign petition error:', error);
+    if (handlePrismaError(error, res, 'sign petition', req)) return;
+    logRouteError(req, 500, 'Sign petition error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -225,7 +229,8 @@ router.get('/', authGuard, async (req: AuthenticatedRequest, res: Response) => {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    console.error('List petitions error:', error);
+    if (handlePrismaError(error, res, 'list petitions', req)) return;
+    logRouteError(req, 500, 'List petitions error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -274,7 +279,8 @@ router.get('/:id', authGuard, async (req: AuthenticatedRequest, res: Response) =
       },
     });
   } catch (error) {
-    console.error('Get petition error:', error);
+    if (handlePrismaError(error, res, 'get petition', req)) return;
+    logRouteError(req, 500, 'Get petition error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

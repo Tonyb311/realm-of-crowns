@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 import { cache } from '../middleware/cache';
 
 const router = Router();
@@ -48,7 +50,8 @@ router.get('/:id', cache(120), async (req, res) => {
     // P1 #24: Include taxRate at top level for easy client access
     return res.json({ town: { ...town, taxRate: town.treasury?.taxRate ?? 0.10 } });
   } catch (error) {
-    console.error('Get town error:', error);
+    if (handlePrismaError(error, res, 'get town', req)) return;
+    logRouteError(req, 500, 'Get town error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -96,7 +99,8 @@ router.get('/:id/resources', async (req, res) => {
 
     return res.json(resources);
   } catch (error) {
-    console.error('Get town resources error:', error);
+    if (handlePrismaError(error, res, 'get town resources', req)) return;
+    logRouteError(req, 500, 'Get town resources error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -126,7 +130,8 @@ router.get('/:id/buildings', async (req, res) => {
 
     return res.json({ buildings });
   } catch (error) {
-    console.error('Get town buildings error:', error);
+    if (handlePrismaError(error, res, 'get town buildings', req)) return;
+    logRouteError(req, 500, 'Get town buildings error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -155,7 +160,8 @@ router.get('/:id/characters', async (req, res) => {
 
     return res.json({ characters });
   } catch (error) {
-    console.error('Get town characters error:', error);
+    if (handlePrismaError(error, res, 'get town characters', req)) return;
+    logRouteError(req, 500, 'Get town characters error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

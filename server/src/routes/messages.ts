@@ -6,6 +6,8 @@ import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { getPsionSpec } from '../services/psion-perks';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -115,7 +117,8 @@ router.post('/send', authGuard, characterGuard, validate(sendMessageSchema), asy
       ...(farWhisper ? { farWhisper: true } : {}),
     });
   } catch (error) {
-    console.error('Message send error:', error);
+    if (handlePrismaError(error, res, 'message-send', req)) return;
+    logRouteError(req, 500, 'Message send error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -157,7 +160,8 @@ router.get('/inbox', authGuard, characterGuard, async (req: AuthenticatedRequest
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    console.error('Message inbox error:', error);
+    if (handlePrismaError(error, res, 'message-inbox', req)) return;
+    logRouteError(req, 500, 'Message inbox error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -194,7 +198,8 @@ router.get('/conversation/:characterId', authGuard, characterGuard, async (req: 
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    console.error('Message conversation error:', error);
+    if (handlePrismaError(error, res, 'message-conversation', req)) return;
+    logRouteError(req, 500, 'Message conversation error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -252,7 +257,8 @@ router.get('/channel/:channelType', authGuard, characterGuard, async (req: Authe
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    console.error('Message channel error:', error);
+    if (handlePrismaError(error, res, 'message-channel', req)) return;
+    logRouteError(req, 500, 'Message channel error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -279,7 +285,8 @@ router.patch('/:id/read', authGuard, characterGuard, async (req: AuthenticatedRe
 
     return res.json({ message: updated });
   } catch (error) {
-    console.error('Message read error:', error);
+    if (handlePrismaError(error, res, 'message-read', req)) return;
+    logRouteError(req, 500, 'Message read error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -302,7 +309,8 @@ router.delete('/:id', authGuard, characterGuard, async (req: AuthenticatedReques
 
     return res.json({ success: true });
   } catch (error) {
-    console.error('Message delete error:', error);
+    if (handlePrismaError(error, res, 'message-delete', req)) return;
+    logRouteError(req, 500, 'Message delete error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

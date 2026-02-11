@@ -48,6 +48,7 @@ const AdminCharactersPage = React.lazy(() => import('./pages/admin/AdminCharacte
 const AdminWorldPage = React.lazy(() => import('./pages/admin/AdminWorldPage'));
 const AdminEconomyPage = React.lazy(() => import('./pages/admin/AdminEconomyPage'));
 const AdminToolsPage = React.lazy(() => import('./pages/admin/AdminToolsPage'));
+const ErrorLogDashboardPage = React.lazy(() => import('./pages/admin/ErrorLogDashboardPage'));
 
 function App() {
   return (
@@ -233,6 +234,7 @@ function App() {
             <Route path="world" element={<AdminWorldPage />} />
             <Route path="economy" element={<AdminEconomyPage />} />
             <Route path="tools" element={<AdminToolsPage />} />
+            <Route path="error-logs" element={<ErrorLogDashboardPage />} />
           </Route>
           {/* MAJ-18: 404 catch-all route */}
           <Route path="*" element={<NotFoundPage />} />

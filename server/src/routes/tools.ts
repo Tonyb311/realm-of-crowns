@@ -7,6 +7,8 @@ import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { ProfessionType } from '@prisma/client';
 import { TOOL_TYPES, ToolTypeDefinition } from '@shared/data/tools';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -117,7 +119,8 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
       },
     });
   } catch (error) {
-    console.error('Equip tool error:', error);
+    if (handlePrismaError(error, res, 'equip-tool', req)) return;
+    logRouteError(req, 500, 'Equip tool error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -164,7 +167,8 @@ router.post('/unequip', authGuard, characterGuard, validate(unequipSchema), asyn
       },
     });
   } catch (error) {
-    console.error('Unequip tool error:', error);
+    if (handlePrismaError(error, res, 'unequip-tool', req)) return;
+    logRouteError(req, 500, 'Unequip tool error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -209,7 +213,8 @@ router.get('/equipped', authGuard, characterGuard, async (req: AuthenticatedRequ
       },
     });
   } catch (error) {
-    console.error('Get equipped tools error:', error);
+    if (handlePrismaError(error, res, 'get-equipped-tools', req)) return;
+    logRouteError(req, 500, 'Get equipped tools error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -245,7 +250,8 @@ router.get('/inventory', authGuard, characterGuard, async (req: AuthenticatedReq
 
     return res.json({ tools });
   } catch (error) {
-    console.error('Get tool inventory error:', error);
+    if (handlePrismaError(error, res, 'get-tool-inventory', req)) return;
+    logRouteError(req, 500, 'Get tool inventory error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

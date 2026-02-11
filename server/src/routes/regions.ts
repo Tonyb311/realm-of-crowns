@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
 import {
@@ -28,7 +30,8 @@ router.get('/', async (req: Request, res: Response) => {
 
     return res.json({ regions });
   } catch (error) {
-    console.error('List regions error:', error);
+    if (handlePrismaError(error, res, 'list regions', req)) return;
+    logRouteError(req, 500, 'List regions error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -94,7 +97,8 @@ router.get('/:id', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Get region error:', error);
+    if (handlePrismaError(error, res, 'get region details', req)) return;
+    logRouteError(req, 500, 'Get region error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -125,7 +129,8 @@ router.get('/:id/demographics', async (req: Request, res: Response) => {
       towns: demographics.filter(Boolean),
     });
   } catch (error) {
-    console.error('Get region demographics error:', error);
+    if (handlePrismaError(error, res, 'get region demographics', req)) return;
+    logRouteError(req, 500, 'Get region demographics error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -181,7 +186,8 @@ router.get('/:id/bonuses', authGuard, async (req: AuthenticatedRequest, res: Res
       towns: townBonuses,
     });
   } catch (error) {
-    console.error('Get region bonuses error:', error);
+    if (handlePrismaError(error, res, 'get region bonuses', req)) return;
+    logRouteError(req, 500, 'Get region bonuses error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -9,6 +9,8 @@ import { Race, DragonBloodline, BeastClan, ElementalType } from '@prisma/client'
 import { getRace } from '@shared/data/races';
 import { getStatAllocationCost, STAT_HARD_CAP } from '@shared/utils/bounded-accuracy';
 import { getGameDay, getNextTickTime } from '../lib/game-day';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -154,6 +156,20 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
     // Starting MP by class
     const maxMana = getClassMp(charClass);
 
+    // Resolve town name to actual Town ID (frontend sends name, DB needs UUID)
+    const town = await prisma.town.findFirst({
+      where: {
+        OR: [
+          { id: startingTownId },
+          { name: { equals: startingTownId, mode: 'insensitive' } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (!town) {
+      return res.status(400).json({ error: `Town "${startingTownId}" not found` });
+    }
+
     const character = await prisma.character.create({
       data: {
         userId,
@@ -169,7 +185,7 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
         maxHealth,
         mana: maxMana,
         maxMana,
-        currentTownId: startingTownId,
+        currentTownId: town.id,
       },
     });
 
@@ -180,7 +196,8 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
       },
     });
   } catch (error) {
-    console.error('Character creation error:', error);
+    if (handlePrismaError(error, res, 'character-create', req)) return;
+    logRouteError(req, 500, 'Character creation error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -197,7 +214,7 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
       },
     });
   } catch (error) {
-    console.error('Get character error:', error);
+    logRouteError(req, 500, 'Get character error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -218,7 +235,7 @@ router.get('/mine', authGuard, async (req: AuthenticatedRequest, res: Response) 
       activeCharacterId: user?.activeCharacterId,
     });
   } catch (error) {
-    console.error('List characters error:', error);
+    logRouteError(req, 500, 'List characters error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -254,7 +271,8 @@ router.post('/switch', authGuard, async (req: AuthenticatedRequest, res: Respons
       resetsAt: getNextTickTime().toISOString(),
     });
   } catch (error) {
-    console.error('Switch character error:', error);
+    if (handlePrismaError(error, res, 'character-switch', req)) return;
+    logRouteError(req, 500, 'Switch character error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -286,7 +304,7 @@ router.get('/:id', authGuard, async (req: AuthenticatedRequest, res: Response) =
       },
     });
   } catch (error) {
-    console.error('Get character by id error:', error);
+    logRouteError(req, 500, 'Get character by id error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -372,7 +390,8 @@ router.post('/allocate-stats', authGuard, characterGuard, validate(allocateStats
       maxMana: character.maxMana + manaBonus,
     });
   } catch (error) {
-    console.error('Allocate stats error:', error);
+    if (handlePrismaError(error, res, 'allocate-stats', req)) return;
+    logRouteError(req, 500, 'Allocate stats error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

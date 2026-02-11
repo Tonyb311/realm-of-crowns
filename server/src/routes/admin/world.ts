@@ -1,6 +1,8 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
+import { handlePrismaError } from '../../lib/prisma-errors';
+import { logRouteError } from '../../lib/error-logger';
 import { validate } from '../../middleware/validate';
 import { AuthenticatedRequest } from '../../types/express';
 import { Prisma } from '@prisma/client';
@@ -28,7 +30,7 @@ const editResourcesSchema = z.object({
  * GET /api/admin/world/regions
  * All regions with town count.
  */
-router.get('/regions', async (_req: AuthenticatedRequest, res: Response) => {
+router.get('/regions', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const regions = await prisma.region.findMany({
       orderBy: { name: 'asc' },
@@ -39,7 +41,8 @@ router.get('/regions', async (_req: AuthenticatedRequest, res: Response) => {
 
     return res.json(regions);
   } catch (error) {
-    console.error('[Admin] Regions list error:', error);
+    if (handlePrismaError(error, res, 'admin-list-regions', req)) return;
+    logRouteError(req, 500, '[Admin] Regions list error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -84,7 +87,8 @@ router.get('/towns', async (req: AuthenticatedRequest, res: Response) => {
       totalPages: Math.ceil(total / pageSize),
     });
   } catch (error) {
-    console.error('[Admin] Towns list error:', error);
+    if (handlePrismaError(error, res, 'admin-list-towns', req)) return;
+    logRouteError(req, 500, '[Admin] Towns list error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -113,7 +117,8 @@ router.get('/towns/:id', async (req: AuthenticatedRequest, res: Response) => {
 
     return res.json(town);
   } catch (error) {
-    console.error('[Admin] Town detail error:', error);
+    if (handlePrismaError(error, res, 'admin-town-detail', req)) return;
+    logRouteError(req, 500, '[Admin] Town detail error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -137,7 +142,8 @@ router.patch('/towns/:id', validate(editTownSchema), async (req: AuthenticatedRe
     console.log(`[Admin] Town ${town.name} edited by admin ${req.user!.userId}`);
     return res.json(updated);
   } catch (error) {
-    console.error('[Admin] Edit town error:', error);
+    if (handlePrismaError(error, res, 'admin-edit-town', req)) return;
+    logRouteError(req, 500, '[Admin] Edit town error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -170,7 +176,8 @@ router.patch('/towns/:id/resources', validate(editResourcesSchema), async (req: 
     console.log(`[Admin] Town ${town.name} resources edited (${resources.length} resources) by admin ${req.user!.userId}`);
     return res.json({ updated: updates });
   } catch (error) {
-    console.error('[Admin] Edit town resources error:', error);
+    if (handlePrismaError(error, res, 'admin-edit-town-resources', req)) return;
+    logRouteError(req, 500, '[Admin] Edit town resources error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

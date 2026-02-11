@@ -1,6 +1,8 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
+import { handlePrismaError } from '../../lib/prisma-errors';
+import { logRouteError } from '../../lib/error-logger';
 import { validate } from '../../middleware/validate';
 import { AuthenticatedRequest } from '../../types/express';
 import { Prisma } from '@prisma/client';
@@ -81,7 +83,8 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
       totalPages: Math.ceil(total / pageSize),
     });
   } catch (error) {
-    console.error('[Admin] Characters list error:', error);
+    if (handlePrismaError(error, res, 'admin-list-characters', req)) return;
+    logRouteError(req, 500, '[Admin] Characters list error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -117,7 +120,8 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
 
     return res.json(character);
   } catch (error) {
-    console.error('[Admin] Character detail error:', error);
+    if (handlePrismaError(error, res, 'admin-character-detail', req)) return;
+    logRouteError(req, 500, '[Admin] Character detail error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -141,7 +145,8 @@ router.patch('/:id', validate(editCharacterSchema), async (req: AuthenticatedReq
     console.log(`[Admin] Character ${character.name} edited by admin ${req.user!.userId}`);
     return res.json(updated);
   } catch (error) {
-    console.error('[Admin] Edit character error:', error);
+    if (handlePrismaError(error, res, 'admin-edit-character', req)) return;
+    logRouteError(req, 500, '[Admin] Edit character error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -173,7 +178,8 @@ router.post('/:id/teleport', validate(teleportSchema), async (req: Authenticated
     console.log(`[Admin] Character ${character.name} teleported to ${town.name} by admin ${req.user!.userId}`);
     return res.json({ message: `Character teleported to ${town.name}`, character: updated });
   } catch (error) {
-    console.error('[Admin] Teleport error:', error);
+    if (handlePrismaError(error, res, 'admin-teleport', req)) return;
+    logRouteError(req, 500, '[Admin] Teleport error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -207,7 +213,8 @@ router.post('/:id/give-gold', validate(giveGoldSchema), async (req: Authenticate
     console.log(`[Admin] Character ${character.name} gold adjusted by ${amount} (now ${updated.gold}) by admin ${req.user!.userId}`);
     return res.json(updated);
   } catch (error) {
-    console.error('[Admin] Give gold error:', error);
+    if (handlePrismaError(error, res, 'admin-give-gold', req)) return;
+    logRouteError(req, 500, '[Admin] Give gold error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

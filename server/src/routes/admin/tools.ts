@@ -1,6 +1,8 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
+import { handlePrismaError } from '../../lib/prisma-errors';
+import { logRouteError } from '../../lib/error-logger';
 import { validate } from '../../middleware/validate';
 import { AuthenticatedRequest } from '../../types/express';
 import { triggerManualTick } from '../../jobs/daily-tick';
@@ -30,7 +32,8 @@ router.post('/tick', async (req: AuthenticatedRequest, res: Response) => {
       return res.status(500).json({ error: 'Tick failed', details: result.error });
     }
   } catch (error) {
-    console.error('[Admin] Tick trigger error:', error);
+    if (handlePrismaError(error, res, 'admin-trigger-tick', req)) return;
+    logRouteError(req, 500, '[Admin] Tick trigger error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -74,7 +77,8 @@ router.post('/broadcast', validate(broadcastSchema), async (req: AuthenticatedRe
     console.log(`[Admin] System broadcast sent by admin ${req.user!.userId}: "${title}"`);
     return res.json({ message: 'Broadcast sent successfully' });
   } catch (error) {
-    console.error('[Admin] Broadcast error:', error);
+    if (handlePrismaError(error, res, 'admin-broadcast', req)) return;
+    logRouteError(req, 500, '[Admin] Broadcast error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -83,7 +87,7 @@ router.post('/broadcast', validate(broadcastSchema), async (req: AuthenticatedRe
  * GET /api/admin/tools/health
  * Server health check.
  */
-router.get('/health', async (_req: AuthenticatedRequest, res: Response) => {
+router.get('/health', async (req: AuthenticatedRequest, res: Response) => {
   try {
     let dbConnected = false;
     try {
@@ -101,7 +105,8 @@ router.get('/health', async (_req: AuthenticatedRequest, res: Response) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('[Admin] Health check error:', error);
+    if (handlePrismaError(error, res, 'admin-health-check', req)) return;
+    logRouteError(req, 500, '[Admin] Health check error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

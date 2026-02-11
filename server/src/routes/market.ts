@@ -12,6 +12,8 @@ import { cache } from '../middleware/cache';
 import { invalidateCache } from '../lib/redis';
 import { awardCrossTownMerchantXP } from './trade-analytics';
 import { getPsionSpec, calculateSellerUrgency, calculatePriceTrend } from '../services/psion-perks';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -88,7 +90,8 @@ router.post('/list', authGuard, characterGuard, validate(listSchema), async (req
     await invalidateCache('cache:/api/market/browse*');
     return res.status(201).json({ listing });
   } catch (error) {
-    console.error('Market list error:', error);
+    if (handlePrismaError(error, res, 'market-list', req)) return;
+    logRouteError(req, 500, 'Market list error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -229,7 +232,8 @@ router.get('/browse', authGuard, cache(30), async (req: AuthenticatedRequest, re
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    console.error('Market browse error:', error);
+    if (handlePrismaError(error, res, 'market-browse', req)) return;
+    logRouteError(req, 500, 'Market browse error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -419,7 +423,8 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
       },
     });
   } catch (error) {
-    console.error('Market buy error:', error);
+    if (handlePrismaError(error, res, 'market-buy', req)) return;
+    logRouteError(req, 500, 'Market buy error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -468,7 +473,8 @@ router.post('/cancel', authGuard, characterGuard, validate(cancelSchema), async 
     await invalidateCache('cache:/api/market/browse*');
     return res.json({ message: 'Listing cancelled and item returned to inventory' });
   } catch (error) {
-    console.error('Market cancel error:', error);
+    if (handlePrismaError(error, res, 'market-cancel', req)) return;
+    logRouteError(req, 500, 'Market cancel error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -507,7 +513,8 @@ router.get('/my-listings', authGuard, characterGuard, async (req: AuthenticatedR
       })),
     });
   } catch (error) {
-    console.error('Market my-listings error:', error);
+    if (handlePrismaError(error, res, 'market-my-listings', req)) return;
+    logRouteError(req, 500, 'Market my-listings error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -566,7 +573,8 @@ router.get('/remote-browse', authGuard, characterGuard, async (req: Authenticate
 
     return res.json({ townId, listings });
   } catch (error) {
-    console.error('Remote browse error:', error);
+    if (handlePrismaError(error, res, 'remote-browse', req)) return;
+    logRouteError(req, 500, 'Remote browse error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -612,7 +620,8 @@ router.post('/remote-buy', authGuard, characterGuard, async (req: AuthenticatedR
       itemId: listing.itemId,
     });
   } catch (error) {
-    console.error('Remote buy error:', error);
+    if (handlePrismaError(error, res, 'remote-buy', req)) return;
+    logRouteError(req, 500, 'Remote buy error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -656,7 +665,8 @@ router.post('/remote-instant-buy', authGuard, characterGuard, async (req: Authen
       itemId: listing.itemId,
     });
   } catch (error) {
-    console.error('Remote instant buy error:', error);
+    if (handlePrismaError(error, res, 'remote-instant-buy', req)) return;
+    logRouteError(req, 500, 'Remote instant buy error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -700,7 +710,8 @@ router.get('/prices-global', authGuard, characterGuard, async (req: Authenticate
 
     return res.json({ itemTemplateId, towns: result });
   } catch (error) {
-    console.error('Global prices error:', error);
+    if (handlePrismaError(error, res, 'prices-global', req)) return;
+    logRouteError(req, 500, 'Global prices error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -741,7 +752,8 @@ router.get('/history', authGuard, characterGuard, async (req: AuthenticatedReque
       })),
     });
   } catch (error) {
-    console.error('Market history error:', error);
+    if (handlePrismaError(error, res, 'market-history', req)) return;
+    logRouteError(req, 500, 'Market history error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -6,6 +6,8 @@ import { requireDailyAction } from '../middleware/daily-action';
 import { AuthenticatedRequest } from '../types/express';
 import { getGameDay, getTodayTickDate } from '../lib/game-day';
 import { isSameAccount } from '../lib/alt-guard';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -113,7 +115,8 @@ router.post('/perform', authGuard, requireDailyAction('SERVICE'), async (req: Au
 
     return res.json({ serviceAction, professionXpGained: professionXp, characterXpGained: characterXp });
   } catch (error) {
-    console.error('Service perform error:', error);
+    if (handlePrismaError(error, res, 'service-perform', req)) return;
+    logRouteError(req, 500, 'Service perform error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -132,7 +135,8 @@ router.get('/reputation', authGuard, characterGuard, async (req: AuthenticatedRe
     });
     return res.json({ reputations });
   } catch (error) {
-    console.error('Service reputation error:', error);
+    if (handlePrismaError(error, res, 'service-reputation', req)) return;
+    logRouteError(req, 500, 'Service reputation error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -159,7 +163,8 @@ router.get('/available', authGuard, characterGuard, async (req: AuthenticatedReq
 
     return res.json({ providers });
   } catch (error) {
-    console.error('Service available error:', error);
+    if (handlePrismaError(error, res, 'service-available', req)) return;
+    logRouteError(req, 500, 'Service available error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

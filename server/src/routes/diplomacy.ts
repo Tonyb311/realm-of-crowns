@@ -19,6 +19,8 @@ import {
 } from '../services/diplomacy-engine';
 import { getPsionSpec, assessTreatyCredibility, calculateTensionIndex } from '../services/psion-perks';
 import { emitNotification } from '../socket/events';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -130,7 +132,8 @@ router.get('/relations', async (_req: Request, res: Response) => {
 
     return res.json({ matrix, races: allRaces });
   } catch (error) {
-    console.error('Get relations matrix error:', error);
+    if (handlePrismaError(error, res, 'diplomacy-relations', _req)) return;
+    logRouteError(_req, 500, 'Get relations matrix error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -161,7 +164,8 @@ router.get('/relations/:race1/:race2', async (req: Request, res: Response) => {
       modifier: relation?.modifier ?? 0,
     });
   } catch (error) {
-    console.error('Get specific relation error:', error);
+    if (handlePrismaError(error, res, 'diplomacy-relation', req)) return;
+    logRouteError(req, 500, 'Get specific relation error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -282,7 +286,8 @@ router.post('/propose-treaty', authGuard, characterGuard, validate(proposeTreaty
       },
     });
   } catch (error) {
-    console.error('Propose treaty error:', error);
+    if (handlePrismaError(error, res, 'diplomacy-propose-treaty', req)) return;
+    logRouteError(req, 500, 'Propose treaty error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -389,7 +394,8 @@ router.post('/respond-treaty/:proposalId', authGuard, characterGuard, validate(r
       },
     });
   } catch (error) {
-    console.error('Respond treaty error:', error);
+    if (handlePrismaError(error, res, 'diplomacy-respond-treaty', req)) return;
+    logRouteError(req, 500, 'Respond treaty error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -492,7 +498,8 @@ router.post('/declare-war', authGuard, characterGuard, validate(declareWarSchema
       },
     });
   } catch (error) {
-    console.error('Declare war error:', error);
+    if (handlePrismaError(error, res, 'diplomacy-declare-war', req)) return;
+    logRouteError(req, 500, 'Declare war error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -573,7 +580,8 @@ router.post('/break-treaty/:treatyId', authGuard, characterGuard, async (req: Au
       },
     });
   } catch (error) {
-    console.error('Break treaty error:', error);
+    if (handlePrismaError(error, res, 'diplomacy-break-treaty', req)) return;
+    logRouteError(req, 500, 'Break treaty error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -632,7 +640,8 @@ router.get('/treaties', async (req: Request, res: Response) => {
       total: enrichedTreaties.length,
     });
   } catch (error) {
-    console.error('List treaties error:', error);
+    if (handlePrismaError(error, res, 'diplomacy-treaties', req)) return;
+    logRouteError(req, 500, 'List treaties error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -667,7 +676,8 @@ router.get('/tension/:kingdomId1/:kingdomId2', authGuard, characterGuard, async 
               : 'Peaceful',
     });
   } catch (error) {
-    console.error('Tension index error:', error);
+    if (handlePrismaError(error, res, 'diplomacy-tension', req)) return;
+    logRouteError(req, 500, 'Tension index error', error);
     return res.status(500).json({ error: 'Failed to calculate tension index' });
   }
 });
@@ -700,7 +710,8 @@ router.get('/wars', async (_req: Request, res: Response) => {
       total: wars.length,
     });
   } catch (error) {
-    console.error('List wars error:', error);
+    if (handlePrismaError(error, res, 'diplomacy-wars', _req)) return;
+    logRouteError(_req, 500, 'List wars error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -752,7 +763,8 @@ router.get('/wars/:id', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Get war details error:', error);
+    if (handlePrismaError(error, res, 'diplomacy-war-details', req)) return;
+    logRouteError(req, 500, 'Get war details error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -809,7 +821,8 @@ router.post('/wars/:id/negotiate-peace', authGuard, characterGuard, validate(neg
       },
     });
   } catch (error) {
-    console.error('Negotiate peace error:', error);
+    if (handlePrismaError(error, res, 'diplomacy-negotiate-peace', req)) return;
+    logRouteError(req, 500, 'Negotiate peace error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -849,7 +862,8 @@ router.get('/history', async (req: Request, res: Response) => {
       offset,
     });
   } catch (error) {
-    console.error('Get diplomacy history error:', error);
+    if (handlePrismaError(error, res, 'diplomacy-history', req)) return;
+    logRouteError(req, 500, 'Get diplomacy history error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

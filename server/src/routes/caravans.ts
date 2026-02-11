@@ -7,6 +7,8 @@ import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { addProfessionXP } from '../services/profession-xp';
 import { emitNotification } from '../socket/events';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 import {
   CARAVAN_TYPES,
   ESCORT_TYPES,
@@ -185,7 +187,8 @@ router.post('/create', authGuard, characterGuard, validate(createSchema), async 
       },
     });
   } catch (error) {
-    console.error('Caravan create error:', error);
+    if (handlePrismaError(error, res, 'caravan-create', req)) return;
+    logRouteError(req, 500, 'Caravan create error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -247,7 +250,8 @@ router.post('/:caravanId/load', authGuard, characterGuard, validate(loadSchema),
 
     return res.json({ cargo, totalItems: totalCargoQuantity(cargo), capacity: typeDef.capacity });
   } catch (error) {
-    console.error('Caravan load error:', error);
+    if (handlePrismaError(error, res, 'caravan-load', req)) return;
+    logRouteError(req, 500, 'Caravan load error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -292,7 +296,8 @@ router.post('/:caravanId/unload', authGuard, characterGuard, validate(unloadSche
     const typeDef = CARAVAN_TYPES[meta.caravanType];
     return res.json({ cargo: updatedCargo, totalItems: totalCargoQuantity(updatedCargo), capacity: typeDef.capacity });
   } catch (error) {
-    console.error('Caravan unload error:', error);
+    if (handlePrismaError(error, res, 'caravan-unload', req)) return;
+    logRouteError(req, 500, 'Caravan unload error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -330,7 +335,8 @@ router.post('/:caravanId/hire-escort', authGuard, characterGuard, validate(hireE
       remainingGold: character.gold - escortDef.cost,
     });
   } catch (error) {
-    console.error('Caravan hire-escort error:', error);
+    if (handlePrismaError(error, res, 'caravan-hire-escort', req)) return;
+    logRouteError(req, 500, 'Caravan hire-escort error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -375,7 +381,8 @@ router.post('/:caravanId/insure', authGuard, characterGuard, validate(insureSche
       remainingGold: character.gold - premium,
     });
   } catch (error) {
-    console.error('Caravan insure error:', error);
+    if (handlePrismaError(error, res, 'caravan-insure', req)) return;
+    logRouteError(req, 500, 'Caravan insure error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -456,7 +463,8 @@ router.post('/:caravanId/depart', authGuard, characterGuard, async (req: Authent
       },
     });
   } catch (error) {
-    console.error('Caravan depart error:', error);
+    if (handlePrismaError(error, res, 'caravan-depart', req)) return;
+    logRouteError(req, 500, 'Caravan depart error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -507,7 +515,8 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
       }),
     });
   } catch (error) {
-    console.error('Caravan mine error:', error);
+    if (handlePrismaError(error, res, 'caravan-mine', req)) return;
+    logRouteError(req, 500, 'Caravan mine error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -568,7 +577,8 @@ router.get('/:caravanId', authGuard, characterGuard, async (req: AuthenticatedRe
       },
     });
   } catch (error) {
-    console.error('Caravan detail error:', error);
+    if (handlePrismaError(error, res, 'caravan-detail', req)) return;
+    logRouteError(req, 500, 'Caravan detail error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -655,7 +665,8 @@ router.post('/:caravanId/collect', authGuard, characterGuard, async (req: Authen
       merchantXp: xpAmount,
     });
   } catch (error) {
-    console.error('Caravan collect error:', error);
+    if (handlePrismaError(error, res, 'caravan-collect', req)) return;
+    logRouteError(req, 500, 'Caravan collect error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -771,7 +782,8 @@ router.post('/:caravanId/resolve-ambush', authGuard, characterGuard, validate(re
 
     return res.json(result);
   } catch (error) {
-    console.error('Caravan resolve-ambush error:', error);
+    if (handlePrismaError(error, res, 'caravan-resolve-ambush', req)) return;
+    logRouteError(req, 500, 'Caravan resolve-ambush error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

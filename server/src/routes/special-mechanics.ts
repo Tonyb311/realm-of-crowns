@@ -6,6 +6,8 @@ import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { Race } from '@prisma/client';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 import * as changelingService from '../services/changeling-service';
 import * as forgebornService from '../services/forgeborn-service';
@@ -52,7 +54,8 @@ router.get('/changeling/status', authGuard, characterGuard, async (req: Authenti
       level: character.level,
     });
   } catch (error) {
-    console.error('Changeling status error:', error);
+    if (handlePrismaError(error, res, 'changeling-status', req)) return;
+    logRouteError(req, 500, 'Changeling status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -68,7 +71,8 @@ router.post('/changeling/shift', authGuard, characterGuard, validate(changelingS
 
     return res.json(result);
   } catch (error: any) {
-    console.error('Changeling shift error:', error);
+    if (handlePrismaError(error, res, 'changeling-shift', req)) return;
+    logRouteError(req, 500, 'Changeling shift error', error);
     return res.status(400).json({ error: error.message || 'Internal server error' });
   }
 });
@@ -82,7 +86,8 @@ router.post('/changeling/revert', authGuard, characterGuard, async (req: Authent
     const result = await changelingService.revertToTrueForm(character.id);
     return res.json(result);
   } catch (error: any) {
-    console.error('Changeling revert error:', error);
+    if (handlePrismaError(error, res, 'changeling-revert', req)) return;
+    logRouteError(req, 500, 'Changeling revert error', error);
     return res.status(400).json({ error: error.message || 'Internal server error' });
   }
 });
@@ -107,7 +112,8 @@ router.get('/forgeborn/status', authGuard, characterGuard, async (req: Authentic
       queueSlotBonus: queueBonus,
     });
   } catch (error: any) {
-    console.error('Forgeborn status error:', error);
+    if (handlePrismaError(error, res, 'forgeborn-status', req)) return;
+    logRouteError(req, 500, 'Forgeborn status error', error);
     return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
@@ -123,7 +129,8 @@ router.post('/forgeborn/maintain', authGuard, characterGuard, validate(forgeborn
 
     return res.json(result);
   } catch (error: any) {
-    console.error('Forgeborn maintain error:', error);
+    if (handlePrismaError(error, res, 'forgeborn-maintain', req)) return;
+    logRouteError(req, 500, 'Forgeborn maintain error', error);
     return res.status(400).json({ error: error.message || 'Internal server error' });
   }
 });
@@ -137,7 +144,8 @@ router.post('/forgeborn/self-repair', authGuard, characterGuard, async (req: Aut
     const result = await forgebornService.applySelfRepair(character.id);
     return res.json(result);
   } catch (error: any) {
-    console.error('Forgeborn self-repair error:', error);
+    if (handlePrismaError(error, res, 'forgeborn-self-repair', req)) return;
+    logRouteError(req, 500, 'Forgeborn self-repair error', error);
     return res.status(400).json({ error: error.message || 'Internal server error' });
   }
 });
@@ -180,7 +188,8 @@ router.get('/merfolk/status', authGuard, characterGuard, async (req: Authenticat
       waterProximity,
     });
   } catch (error) {
-    console.error('Merfolk status error:', error);
+    if (handlePrismaError(error, res, 'merfolk-status', req)) return;
+    logRouteError(req, 500, 'Merfolk status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -202,7 +211,8 @@ router.get('/nightborne/status', authGuard, characterGuard, async (req: Authenti
       superiorDeepsight: nightborneService.getSuperiorDeepsight(envStatus.underground),
     });
   } catch (error) {
-    console.error('Nightborne status error:', error);
+    if (handlePrismaError(error, res, 'nightborne-status', req)) return;
+    logRouteError(req, 500, 'Nightborne status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -229,7 +239,8 @@ router.get('/faefolk/status', authGuard, characterGuard, async (req: Authenticat
       flightCombatBonus: combatBonus,
     });
   } catch (error) {
-    console.error('Faefolk status error:', error);
+    if (handlePrismaError(error, res, 'faefolk-status', req)) return;
+    logRouteError(req, 500, 'Faefolk status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -257,7 +268,8 @@ router.get('/revenant/status', authGuard, characterGuard, async (req: Authentica
       hasUndyingFortitude: character.level >= 25,
     });
   } catch (error) {
-    console.error('Revenant status error:', error);
+    if (handlePrismaError(error, res, 'revenant-status', req)) return;
+    logRouteError(req, 500, 'Revenant status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -329,7 +341,8 @@ router.get('/:characterId/environment', authGuard, async (req: AuthenticatedRequ
 
     return res.json(result);
   } catch (error) {
-    console.error('Environment check error:', error);
+    if (handlePrismaError(error, res, 'environment-check', req)) return;
+    logRouteError(req, 500, 'Environment check error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

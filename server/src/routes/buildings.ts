@@ -15,6 +15,8 @@ import {
 } from '@shared/data/buildings/requirements';
 import { getEffectiveTaxRate } from '../services/law-effects';
 import { requireDailyAction } from '../middleware/daily-action';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -199,7 +201,8 @@ router.post('/request-permit', authGuard, characterGuard, validate(requestPermit
       },
     });
   } catch (error) {
-    console.error('Request permit error:', error);
+    if (handlePrismaError(error, res, 'request-permit', req)) return;
+    logRouteError(req, 500, 'Request permit error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -338,7 +341,8 @@ router.post('/deposit-materials', authGuard, characterGuard, validate(depositMat
       readyToStartConstruction: allSatisfied,
     });
   } catch (error) {
-    console.error('Deposit materials error:', error);
+    if (handlePrismaError(error, res, 'deposit-materials', req)) return;
+    logRouteError(req, 500, 'Deposit materials error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -429,7 +433,8 @@ router.post('/start-construction', authGuard, characterGuard, validate(buildingI
       },
     });
   } catch (error) {
-    console.error('Start construction error:', error);
+    if (handlePrismaError(error, res, 'start-construction', req)) return;
+    logRouteError(req, 500, 'Start construction error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -507,7 +512,8 @@ router.get('/construction-status', authGuard, characterGuard, async (req: Authen
       },
     });
   } catch (error) {
-    console.error('Construction status error:', error);
+    if (handlePrismaError(error, res, 'construction-status', req)) return;
+    logRouteError(req, 500, 'Construction status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -578,7 +584,8 @@ router.post('/complete-construction', authGuard, characterGuard, validate(buildi
       },
     });
   } catch (error) {
-    console.error('Complete construction error:', error);
+    if (handlePrismaError(error, res, 'complete-construction', req)) return;
+    logRouteError(req, 500, 'Complete construction error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -648,7 +655,8 @@ router.post('/upgrade', authGuard, characterGuard, validate(buildingIdSchema), a
       },
     });
   } catch (error) {
-    console.error('Upgrade building error:', error);
+    if (handlePrismaError(error, res, 'upgrade-building', req)) return;
+    logRouteError(req, 500, 'Upgrade building error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -685,7 +693,8 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
       })),
     });
   } catch (error) {
-    console.error('Get my buildings error:', error);
+    if (handlePrismaError(error, res, 'get-my-buildings', req)) return;
+    logRouteError(req, 500, 'Get my buildings error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -723,7 +732,8 @@ router.get('/town/:townId', authGuard, async (req: AuthenticatedRequest, res: Re
       })),
     });
   } catch (error) {
-    console.error('Get town buildings error:', error);
+    if (handlePrismaError(error, res, 'get-town-buildings', req)) return;
+    logRouteError(req, 500, 'Get town buildings error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -797,7 +807,8 @@ router.get('/:buildingId', authGuard, async (req: AuthenticatedRequest, res: Res
       },
     });
   } catch (error) {
-    console.error('Get building details error:', error);
+    if (handlePrismaError(error, res, 'get-building-details', req)) return;
+    logRouteError(req, 500, 'Get building details error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -889,7 +900,8 @@ router.post('/:buildingId/storage/deposit', authGuard, characterGuard, validate(
       storageCapacity: capacity,
     });
   } catch (error) {
-    console.error('Storage deposit error:', error);
+    if (handlePrismaError(error, res, 'storage-deposit', req)) return;
+    logRouteError(req, 500, 'Storage deposit error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -969,7 +981,8 @@ router.post('/:buildingId/storage/withdraw', authGuard, characterGuard, validate
       storageCapacity: STORAGE_CAPACITY[building.type] ?? 0,
     });
   } catch (error) {
-    console.error('Storage withdraw error:', error);
+    if (handlePrismaError(error, res, 'storage-withdraw', req)) return;
+    logRouteError(req, 500, 'Storage withdraw error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -1009,7 +1022,8 @@ router.get('/:buildingId/storage', authGuard, characterGuard, async (req: Authen
       },
     });
   } catch (error) {
-    console.error('List storage error:', error);
+    if (handlePrismaError(error, res, 'list-storage', req)) return;
+    logRouteError(req, 500, 'List storage error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -1056,7 +1070,8 @@ router.post('/:buildingId/rent/set-price', authGuard, characterGuard, validate(s
       },
     });
   } catch (error) {
-    console.error('Set rent price error:', error);
+    if (handlePrismaError(error, res, 'set-rent-price', req)) return;
+    logRouteError(req, 500, 'Set rent price error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -1185,7 +1200,8 @@ router.post('/:buildingId/rent/use', authGuard, characterGuard, async (req: Auth
       },
     });
   } catch (error) {
-    console.error('Use rental error:', error);
+    if (handlePrismaError(error, res, 'use-rental', req)) return;
+    logRouteError(req, 500, 'Use rental error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -1225,7 +1241,8 @@ router.get('/:buildingId/rent', authGuard, async (req: AuthenticatedRequest, res
       },
     });
   } catch (error) {
-    console.error('Get rental info error:', error);
+    if (handlePrismaError(error, res, 'get-rental-info', req)) return;
+    logRouteError(req, 500, 'Get rental info error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -1297,7 +1314,8 @@ router.post('/:buildingId/repair', authGuard, characterGuard, async (req: Authen
       },
     });
   } catch (error) {
-    console.error('Repair building error:', error);
+    if (handlePrismaError(error, res, 'repair-building', req)) return;
+    logRouteError(req, 500, 'Repair building error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -1343,7 +1361,8 @@ router.get('/:buildingId/rent/income', authGuard, characterGuard, async (req: Au
       recentRentals: rentalLog.slice(-50), // Last 50 entries
     });
   } catch (error) {
-    console.error('Get rental income error:', error);
+    if (handlePrismaError(error, res, 'get-rental-income', req)) return;
+    logRouteError(req, 500, 'Get rental income error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -1436,7 +1455,8 @@ router.get('/town/:townId/economics', authGuard, characterGuard, async (req: Aut
       },
     });
   } catch (error) {
-    console.error('Get town economics error:', error);
+    if (handlePrismaError(error, res, 'get-town-economics', req)) return;
+    logRouteError(req, 500, 'Get town economics error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

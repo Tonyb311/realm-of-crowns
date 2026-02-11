@@ -57,6 +57,10 @@ io.use(socketAuthMiddleware);
 // Initialize the event broadcaster so route handlers can emit events
 initEventBroadcaster(io);
 
+// Wire error logger to emit real-time events to admin clients
+import { setAdminEmitter } from './lib/error-logger';
+setAdminEmitter((event, data) => io.emit(event, data));
+
 // Set up presence tracking (handles connect/disconnect, friend online status)
 setupPresence(io);
 

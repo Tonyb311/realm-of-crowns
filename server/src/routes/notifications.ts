@@ -3,6 +3,8 @@ import { prisma } from '../lib/prisma';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -40,7 +42,8 @@ router.get('/', authGuard, characterGuard, async (req: AuthenticatedRequest, res
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    console.error('Get notifications error:', error);
+    if (handlePrismaError(error, res, 'notification-list', req)) return;
+    logRouteError(req, 500, 'Get notifications error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -59,7 +62,8 @@ router.patch('/read-all', authGuard, characterGuard, async (req: AuthenticatedRe
 
     return res.json({ updated: result.count });
   } catch (error) {
-    console.error('Mark all notifications read error:', error);
+    if (handlePrismaError(error, res, 'notification-read-all', req)) return;
+    logRouteError(req, 500, 'Mark all notifications read error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -89,7 +93,8 @@ router.patch('/:id/read', authGuard, characterGuard, async (req: AuthenticatedRe
 
     return res.json({ notification: updated });
   } catch (error) {
-    console.error('Mark notification read error:', error);
+    if (handlePrismaError(error, res, 'notification-read', req)) return;
+    logRouteError(req, 500, 'Mark notification read error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -116,7 +121,8 @@ router.delete('/:id', authGuard, characterGuard, async (req: AuthenticatedReques
 
     return res.json({ message: 'Notification deleted' });
   } catch (error) {
-    console.error('Delete notification error:', error);
+    if (handlePrismaError(error, res, 'notification-delete', req)) return;
+    logRouteError(req, 500, 'Delete notification error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

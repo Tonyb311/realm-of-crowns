@@ -6,6 +6,8 @@ import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { ABILITIES_BY_CLASS, SPECIALIZATIONS, ALL_ABILITIES } from '@shared/data/skills';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -70,7 +72,8 @@ router.get('/tree', authGuard, characterGuard, async (req: AuthenticatedRequest,
       tree,
     });
   } catch (error) {
-    console.error('Skill tree error:', error);
+    if (handlePrismaError(error, res, 'skill-tree', req)) return;
+    logRouteError(req, 500, 'Skill tree error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -113,7 +116,8 @@ router.post('/specialize', authGuard, characterGuard, validate(specializeSchema)
       specialization,
     });
   } catch (error) {
-    console.error('Specialize error:', error);
+    if (handlePrismaError(error, res, 'skill-specialize', req)) return;
+    logRouteError(req, 500, 'Specialize error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -229,7 +233,8 @@ router.post('/unlock', authGuard, characterGuard, validate(unlockAbilitySchema),
       unspentSkillPoints: character.unspentSkillPoints - 1,
     });
   } catch (error) {
-    console.error('Unlock ability error:', error);
+    if (handlePrismaError(error, res, 'skill-unlock', req)) return;
+    logRouteError(req, 500, 'Unlock ability error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -262,7 +267,8 @@ router.get('/abilities', authGuard, characterGuard, async (req: AuthenticatedReq
 
     return res.json({ abilities });
   } catch (error) {
-    console.error('Get abilities error:', error);
+    if (handlePrismaError(error, res, 'skill-abilities', req)) return;
+    logRouteError(req, 500, 'Get abilities error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

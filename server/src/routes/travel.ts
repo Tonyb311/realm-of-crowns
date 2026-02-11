@@ -23,6 +23,8 @@ import {
   validateItemUsageRules,
 } from '../services/combat-presets';
 import { getPsionSpec, NOMAD_TRAVEL_MULTIPLIER } from '../services/psion-perks';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -103,7 +105,8 @@ router.get('/position', authGuard, characterGuard, async (req: AuthenticatedRequ
       },
     });
   } catch (error) {
-    console.error('Travel position error:', error);
+    if (handlePrismaError(error, res, 'travel-position', req)) return;
+    logRouteError(req, 500, 'Travel position error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -150,7 +153,8 @@ router.get('/nodes', authGuard, characterGuard, async (req: AuthenticatedRequest
       })),
     });
   } catch (error) {
-    console.error('Travel nodes error:', error);
+    if (handlePrismaError(error, res, 'travel-nodes', req)) return;
+    logRouteError(req, 500, 'Travel nodes error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -201,7 +205,8 @@ router.get('/nodes/:nodeId', authGuard, characterGuard, async (req: Authenticate
       },
     });
   } catch (error) {
-    console.error('Travel node detail error:', error);
+    if (handlePrismaError(error, res, 'travel-node-detail', req)) return;
+    logRouteError(req, 500, 'Travel node detail error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -273,7 +278,8 @@ router.get('/routes/:fromTownId/:toTownId', authGuard, characterGuard, async (re
       },
     });
   } catch (error) {
-    console.error('Travel route error:', error);
+    if (handlePrismaError(error, res, 'travel-route', req)) return;
+    logRouteError(req, 500, 'Travel route error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -363,7 +369,8 @@ router.get('/node-map', authGuard, characterGuard, async (req: AuthenticatedRequ
       })),
     });
   } catch (error) {
-    console.error('Travel node-map error:', error);
+    if (handlePrismaError(error, res, 'travel-node-map', req)) return;
+    logRouteError(req, 500, 'Travel node-map error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -375,7 +382,8 @@ router.post('/border-check', authGuard, characterGuard, validate(borderCheckSche
     const result = await checkBorderCrossing(characterId, fromTownId, toTownId);
     return res.json({ borderCheck: result });
   } catch (error) {
-    console.error('Border check error:', error);
+    if (handlePrismaError(error, res, 'travel-border-check', req)) return;
+    logRouteError(req, 500, 'Border check error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -388,7 +396,8 @@ router.get('/combat-presets', authGuard, characterGuard, async (req: Authenticat
     const presets = await getCombatPresets(character.id);
     return res.json({ presets });
   } catch (error) {
-    console.error('Get combat presets error:', error);
+    if (handlePrismaError(error, res, 'get-combat-presets', req)) return;
+    logRouteError(req, 500, 'Get combat presets error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -427,7 +436,8 @@ router.put('/combat-presets', authGuard, characterGuard, validate(updatePresetsS
     const updated = await getCombatPresets(character.id);
     return res.json({ presets: updated });
   } catch (error) {
-    console.error('Update combat presets error:', error);
+    if (handlePrismaError(error, res, 'update-combat-presets', req)) return;
+    logRouteError(req, 500, 'Update combat presets error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

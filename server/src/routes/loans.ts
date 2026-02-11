@@ -5,6 +5,8 @@ import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { getGameDay } from '../lib/game-day';
 import { isSameAccount } from '../lib/alt-guard';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -101,7 +103,8 @@ router.post('/issue', authGuard, characterGuard, async (req: AuthenticatedReques
 
     return res.status(201).json({ loan });
   } catch (error) {
-    console.error('Loan issue error:', error);
+    if (handlePrismaError(error, res, 'loan-issue', req)) return;
+    logRouteError(req, 500, 'Loan issue error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -167,7 +170,8 @@ router.post('/repay', authGuard, characterGuard, async (req: AuthenticatedReques
       status: isFullyRepaid ? 'REPAID' : 'ACTIVE',
     });
   } catch (error) {
-    console.error('Loan repay error:', error);
+    if (handlePrismaError(error, res, 'loan-repay', req)) return;
+    logRouteError(req, 500, 'Loan repay error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -194,7 +198,8 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
 
     return res.json({ loansGiven, loansTaken });
   } catch (error) {
-    console.error('Loan mine error:', error);
+    if (handlePrismaError(error, res, 'loan-mine', req)) return;
+    logRouteError(req, 500, 'Loan mine error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -223,7 +228,8 @@ router.get('/:id', authGuard, characterGuard, async (req: AuthenticatedRequest, 
 
     return res.json({ loan });
   } catch (error) {
-    console.error('Loan detail error:', error);
+    if (handlePrismaError(error, res, 'loan-detail', req)) return;
+    logRouteError(req, 500, 'Loan detail error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

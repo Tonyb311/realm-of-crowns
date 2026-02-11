@@ -11,6 +11,7 @@ import { getMetrics, getMetricsContentType } from './lib/metrics';
 import { requestIdMiddleware } from './middleware/request-id';
 import { requestLoggerMiddleware } from './middleware/request-logger';
 import { metricsMiddleware } from './middleware/metrics';
+import { requestTimingMiddleware, responseLoggerMiddleware, errorHandlerMiddleware } from './middleware/error-logger';
 
 export const app = express();
 
@@ -30,8 +31,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // HTTP request logging and metrics (after body parsing, before routes)
+app.use(requestTimingMiddleware);
 app.use(requestLoggerMiddleware);
 app.use(metricsMiddleware);
+app.use(responseLoggerMiddleware);
 
 // Rate limiting
 const limiter = rateLimit({
@@ -132,10 +135,5 @@ app.use((_req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Error handler
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  logger.error({ err: err.message }, 'unhandled server error');
-  res.status(500).json({
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
-  });
-});
+// Error handler (with logging to database)
+app.use(errorHandlerMiddleware);

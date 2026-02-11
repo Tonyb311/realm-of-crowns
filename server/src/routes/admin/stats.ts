@@ -1,5 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../../lib/prisma';
+import { handlePrismaError } from '../../lib/prisma-errors';
+import { logRouteError } from '../../lib/error-logger';
 import { AuthenticatedRequest } from '../../types/express';
 
 const router = Router();
@@ -8,7 +10,7 @@ const router = Router();
  * GET /api/admin/stats/dashboard
  * Aggregate game stats for the admin dashboard.
  */
-router.get('/dashboard', async (_req: AuthenticatedRequest, res: Response) => {
+router.get('/dashboard', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -53,7 +55,8 @@ router.get('/dashboard', async (_req: AuthenticatedRequest, res: Response) => {
       activeElections,
     });
   } catch (error) {
-    console.error('[Admin] Stats dashboard error:', error);
+    if (handlePrismaError(error, res, 'admin-stats-dashboard', req)) return;
+    logRouteError(req, 500, '[Admin] Stats dashboard error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

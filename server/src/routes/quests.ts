@@ -6,6 +6,8 @@ import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { cache } from '../middleware/cache';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -128,7 +130,8 @@ router.get('/available', authGuard, cache(60), async (req: AuthenticatedRequest,
       })),
     });
   } catch (error) {
-    console.error('Get available quests error:', error);
+    if (handlePrismaError(error, res, 'quest-available', req)) return;
+    logRouteError(req, 500, 'Get available quests error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -165,7 +168,8 @@ router.get('/active', authGuard, characterGuard, async (req: AuthenticatedReques
       })),
     });
   } catch (error) {
-    console.error('Get active quests error:', error);
+    if (handlePrismaError(error, res, 'quest-active', req)) return;
+    logRouteError(req, 500, 'Get active quests error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -196,7 +200,8 @@ router.get('/completed', authGuard, characterGuard, async (req: AuthenticatedReq
       })),
     });
   } catch (error) {
-    console.error('Get completed quests error:', error);
+    if (handlePrismaError(error, res, 'quest-completed', req)) return;
+    logRouteError(req, 500, 'Get completed quests error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -316,7 +321,8 @@ router.post('/accept', authGuard, characterGuard, validate(acceptQuestSchema), a
       },
     });
   } catch (error) {
-    console.error('Accept quest error:', error);
+    if (handlePrismaError(error, res, 'quest-accept', req)) return;
+    logRouteError(req, 500, 'Accept quest error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -366,7 +372,8 @@ router.post('/progress', authGuard, characterGuard, validate(progressSchema), as
       complete: progress[String(objectiveIndex)] >= objective.quantity,
     });
   } catch (error) {
-    console.error('Quest progress error:', error);
+    if (handlePrismaError(error, res, 'quest-progress', req)) return;
+    logRouteError(req, 500, 'Quest progress error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -470,7 +477,8 @@ router.post('/complete', authGuard, characterGuard, validate(completeQuestSchema
       },
     });
   } catch (error) {
-    console.error('Complete quest error:', error);
+    if (handlePrismaError(error, res, 'quest-complete', req)) return;
+    logRouteError(req, 500, 'Complete quest error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -497,7 +505,8 @@ router.post('/abandon', authGuard, characterGuard, validate(abandonQuestSchema),
 
     return res.json({ abandoned: true, questId });
   } catch (error) {
-    console.error('Abandon quest error:', error);
+    if (handlePrismaError(error, res, 'quest-abandon', req)) return;
+    logRouteError(req, 500, 'Abandon quest error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -567,7 +576,8 @@ router.get('/npcs/:townId', authGuard, characterGuard, async (req: Authenticated
       })),
     });
   } catch (error) {
-    console.error('Get NPCs error:', error);
+    if (handlePrismaError(error, res, 'quest-npcs', req)) return;
+    logRouteError(req, 500, 'Get NPCs error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -1,5 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../../lib/prisma';
+import { handlePrismaError } from '../../lib/prisma-errors';
+import { logRouteError } from '../../lib/error-logger';
 import { AuthenticatedRequest } from '../../types/express';
 import { Prisma } from '@prisma/client';
 
@@ -52,7 +54,8 @@ router.get('/listings', async (req: AuthenticatedRequest, res: Response) => {
       totalPages: Math.ceil(total / pageSize),
     });
   } catch (error) {
-    console.error('[Admin] Economy listings error:', error);
+    if (handlePrismaError(error, res, 'admin-economy-listings', req)) return;
+    logRouteError(req, 500, '[Admin] Economy listings error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -102,7 +105,8 @@ router.delete('/listings/:id', async (req: AuthenticatedRequest, res: Response) 
     console.log(`[Admin] Listing ${listing.id} (${listing.item.template.name}) removed by admin ${req.user!.userId}`);
     return res.json({ message: 'Listing removed and item returned to seller inventory' });
   } catch (error) {
-    console.error('[Admin] Delete listing error:', error);
+    if (handlePrismaError(error, res, 'admin-delete-listing', req)) return;
+    logRouteError(req, 500, '[Admin] Delete listing error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -143,7 +147,8 @@ router.get('/transactions', async (req: AuthenticatedRequest, res: Response) => 
       totalPages: Math.ceil(total / pageSize),
     });
   } catch (error) {
-    console.error('[Admin] Economy transactions error:', error);
+    if (handlePrismaError(error, res, 'admin-economy-transactions', req)) return;
+    logRouteError(req, 500, '[Admin] Economy transactions error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -152,7 +157,7 @@ router.get('/transactions', async (req: AuthenticatedRequest, res: Response) => 
  * GET /api/admin/economy/summary
  * Economy overview stats.
  */
-router.get('/summary', async (_req: AuthenticatedRequest, res: Response) => {
+router.get('/summary', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -182,7 +187,8 @@ router.get('/summary', async (_req: AuthenticatedRequest, res: Response) => {
       transactionCount30d,
     });
   } catch (error) {
-    console.error('[Admin] Economy summary error:', error);
+    if (handlePrismaError(error, res, 'admin-economy-summary', req)) return;
+    logRouteError(req, 500, '[Admin] Economy summary error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -6,6 +6,8 @@ import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { getPsionSpec, calculateSincerityScore, getElectionProjection } from '../services/psion-perks';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -107,7 +109,8 @@ router.post('/nominate', authGuard, characterGuard, validate(nominateSchema), as
 
     return res.status(201).json({ candidate });
   } catch (error) {
-    console.error('Election nominate error:', error);
+    if (handlePrismaError(error, res, 'election-nominate', req)) return;
+    logRouteError(req, 500, 'Election nominate error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -168,7 +171,8 @@ router.post('/vote', authGuard, characterGuard, validate(voteSchema), async (req
 
     return res.status(201).json({ vote: { id: vote.id, electionId, votedAt: vote.createdAt } });
   } catch (error) {
-    console.error('Election vote error:', error);
+    if (handlePrismaError(error, res, 'election-vote', req)) return;
+    logRouteError(req, 500, 'Election vote error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -279,7 +283,8 @@ router.get('/current', authGuard, characterGuard, async (req: AuthenticatedReque
 
     return res.json({ elections: enrichedElections });
   } catch (error) {
-    console.error('Election current error:', error);
+    if (handlePrismaError(error, res, 'election-current', req)) return;
+    logRouteError(req, 500, 'Election current error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -351,7 +356,8 @@ router.get('/results', authGuard, characterGuard, async (req: AuthenticatedReque
 
     return res.json({ results });
   } catch (error) {
-    console.error('Election results error:', error);
+    if (handlePrismaError(error, res, 'election-results', req)) return;
+    logRouteError(req, 500, 'Election results error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -421,7 +427,8 @@ router.get('/candidates/:electionId', authGuard, characterGuard, async (req: Aut
       candidates: enrichedCandidates,
     });
   } catch (error) {
-    console.error('Election candidates error:', error);
+    if (handlePrismaError(error, res, 'election-candidates', req)) return;
+    logRouteError(req, 500, 'Election candidates error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -516,7 +523,8 @@ router.post('/impeach', authGuard, characterGuard, validate(impeachSchema), asyn
       },
     });
   } catch (error) {
-    console.error('Impeach error:', error);
+    if (handlePrismaError(error, res, 'election-impeach', req)) return;
+    logRouteError(req, 500, 'Impeach error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -592,7 +600,8 @@ router.post('/impeach/vote', authGuard, characterGuard, validate(impeachVoteSche
       },
     });
   } catch (error) {
-    console.error('Impeach vote error:', error);
+    if (handlePrismaError(error, res, 'election-impeach-vote', req)) return;
+    logRouteError(req, 500, 'Impeach vote error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

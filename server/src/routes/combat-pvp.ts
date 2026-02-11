@@ -24,6 +24,8 @@ import { checkAchievements } from '../services/achievements';
 import { redis } from '../lib/redis';
 import { ACTION_XP } from '@shared/data/progression';
 import { isSameAccount } from '../lib/alt-guard';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -291,7 +293,8 @@ router.post(
         },
       });
     } catch (error) {
-      console.error('PvP challenge error:', error);
+      if (handlePrismaError(error, res, 'pvp-challenge', req)) return;
+      logRouteError(req, 500, 'PvP challenge error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -415,7 +418,8 @@ router.post(
         },
       });
     } catch (error) {
-      console.error('PvP accept error:', error);
+      if (handlePrismaError(error, res, 'pvp-accept', req)) return;
+      logRouteError(req, 500, 'PvP accept error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -456,7 +460,8 @@ router.post(
 
       return res.json({ session: { id: sessionId, status: 'CANCELLED' } });
     } catch (error) {
-      console.error('PvP decline error:', error);
+      if (handlePrismaError(error, res, 'pvp-decline', req)) return;
+      logRouteError(req, 500, 'PvP decline error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -601,7 +606,8 @@ router.post(
 
       return res.json(response);
     } catch (error) {
-      console.error('PvP action error:', error);
+      if (handlePrismaError(error, res, 'pvp-action', req)) return;
+      logRouteError(req, 500, 'PvP action error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -692,7 +698,8 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('PvP state error:', error);
+      if (handlePrismaError(error, res, 'pvp-state', req)) return;
+      logRouteError(req, 500, 'PvP state error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -759,7 +766,8 @@ router.get(
 
       return res.json({ challenges });
     } catch (error) {
-      console.error('PvP challenges error:', error);
+      if (handlePrismaError(error, res, 'pvp-challenges', req)) return;
+      logRouteError(req, 500, 'PvP challenges error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -832,7 +840,8 @@ router.get(
 
       return res.json({ leaderboard, page, limit });
     } catch (error) {
-      console.error('PvP leaderboard error:', error);
+      if (handlePrismaError(error, res, 'pvp-leaderboard', req)) return;
+      logRouteError(req, 500, 'PvP leaderboard error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -1082,7 +1091,8 @@ router.post(
         },
       });
     } catch (error) {
-      console.error('PvP spar challenge error:', error);
+      if (handlePrismaError(error, res, 'pvp-spar', req)) return;
+      logRouteError(req, 500, 'PvP spar challenge error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -1196,7 +1206,8 @@ router.post(
         },
       });
     } catch (error) {
-      console.error('PvP spar-accept error:', error);
+      if (handlePrismaError(error, res, 'pvp-spar-accept', req)) return;
+      logRouteError(req, 500, 'PvP spar-accept error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -1249,7 +1260,8 @@ router.post(
 
       return res.json({ session: { id: sessionId, status: 'CANCELLED' } });
     } catch (error) {
-      console.error('PvP spar-decline error:', error);
+      if (handlePrismaError(error, res, 'pvp-spar-decline', req)) return;
+      logRouteError(req, 500, 'PvP spar-decline error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -1393,7 +1405,8 @@ router.post(
 
       return res.json(response);
     } catch (error) {
-      console.error('PvP spar-action error:', error);
+      if (handlePrismaError(error, res, 'pvp-spar-action', req)) return;
+      logRouteError(req, 500, 'PvP spar-action error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -1482,7 +1495,8 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('PvP spar-state error:', error);
+      if (handlePrismaError(error, res, 'pvp-spar-state', req)) return;
+      logRouteError(req, 500, 'PvP spar-state error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }

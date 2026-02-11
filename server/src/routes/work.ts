@@ -26,6 +26,8 @@ import {
   getMaxQueueSlots,
   applyGnomeEurekaMoment,
 } from '../services/racial-special-profession-mechanics';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -267,7 +269,8 @@ router.post('/start', authGuard, characterGuard, validate(startWorkSchema), asyn
       },
     });
   } catch (error) {
-    console.error('Start work error:', error);
+    if (handlePrismaError(error, res, 'start-work', req)) return;
+    logRouteError(req, 500, 'Start work error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -316,7 +319,8 @@ router.get('/status', authGuard, characterGuard, async (req: AuthenticatedReques
         : null,
     });
   } catch (error) {
-    console.error('Work status error:', error);
+    if (handlePrismaError(error, res, 'work-status', req)) return;
+    logRouteError(req, 500, 'Work status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -593,7 +597,8 @@ router.post('/collect', authGuard, characterGuard, async (req: AuthenticatedRequ
         : null,
     });
   } catch (error) {
-    console.error('Collect work error:', error);
+    if (handlePrismaError(error, res, 'collect-work', req)) return;
+    logRouteError(req, 500, 'Collect work error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -702,7 +707,8 @@ router.post('/cancel', authGuard, characterGuard, async (req: AuthenticatedReque
         : null,
     });
   } catch (error) {
-    console.error('Cancel work error:', error);
+    if (handlePrismaError(error, res, 'cancel-work', req)) return;
+    logRouteError(req, 500, 'Cancel work error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -727,7 +733,8 @@ router.get('/professions', authGuard, characterGuard, async (req: AuthenticatedR
       })),
     });
   } catch (error) {
-    console.error('Get professions error:', error);
+    if (handlePrismaError(error, res, 'get-professions', req)) return;
+    logRouteError(req, 500, 'Get professions error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

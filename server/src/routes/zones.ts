@@ -1,5 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../lib/prisma';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
 import { Race } from '@prisma/client';
@@ -162,7 +164,8 @@ router.get('/exclusive', authGuard, async (req: AuthenticatedRequest, res: Respo
       total: zones.length,
     });
   } catch (error) {
-    console.error('List exclusive zones error:', error);
+    if (handlePrismaError(error, res, 'list exclusive zones', req)) return;
+    logRouteError(req, 500, 'List exclusive zones error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -209,7 +212,8 @@ router.get('/:id/access', authGuard, async (req: AuthenticatedRequest, res: Resp
       },
     });
   } catch (error) {
-    console.error('Check zone access error:', error);
+    if (handlePrismaError(error, res, 'check zone access', req)) return;
+    logRouteError(req, 500, 'Check zone access error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -294,7 +298,8 @@ router.post('/:id/enter', authGuard, async (req: AuthenticatedRequest, res: Resp
       accessReason: accessResult.reason,
     });
   } catch (error) {
-    console.error('Enter zone error:', error);
+    if (handlePrismaError(error, res, 'enter zone', req)) return;
+    logRouteError(req, 500, 'Enter zone error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -336,7 +341,8 @@ router.get('/:id/resources', authGuard, async (req: AuthenticatedRequest, res: R
       total: Array.isArray(availableResources) ? availableResources.length : 0,
     });
   } catch (error) {
-    console.error('Get zone resources error:', error);
+    if (handlePrismaError(error, res, 'get zone resources', req)) return;
+    logRouteError(req, 500, 'Get zone resources error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

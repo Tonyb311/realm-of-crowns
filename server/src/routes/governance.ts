@@ -6,6 +6,8 @@ import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { emitGovernanceEvent } from '../socket/events';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -96,7 +98,8 @@ router.post('/propose-law', authGuard, characterGuard, validate(proposeLawSchema
 
     return res.status(201).json({ law });
   } catch (error) {
-    console.error('Propose law error:', error);
+    if (handlePrismaError(error, res, 'governance-propose-law', req)) return;
+    logRouteError(req, 500, 'Propose law error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -189,7 +192,8 @@ router.post('/vote-law', authGuard, characterGuard, validate(voteLawSchema), asy
 
     return res.json({ law: updatedLaw });
   } catch (error) {
-    console.error('Vote law error:', error);
+    if (handlePrismaError(error, res, 'governance-vote-law', req)) return;
+    logRouteError(req, 500, 'Vote law error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -233,7 +237,8 @@ router.post('/set-tax', authGuard, characterGuard, validate(setTaxSchema), async
 
     return res.json({ policy });
   } catch (error) {
-    console.error('Set tax error:', error);
+    if (handlePrismaError(error, res, 'governance-set-tax', req)) return;
+    logRouteError(req, 500, 'Set tax error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -261,7 +266,8 @@ router.get('/laws', authGuard, characterGuard, async (req: AuthenticatedRequest,
 
     return res.json({ laws });
   } catch (error) {
-    console.error('Get laws error:', error);
+    if (handlePrismaError(error, res, 'governance-get-laws', req)) return;
+    logRouteError(req, 500, 'Get laws error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -315,7 +321,8 @@ router.get('/town-info/:townId', authGuard, characterGuard, async (req: Authenti
       },
     });
   } catch (error) {
-    console.error('Town info error:', error);
+    if (handlePrismaError(error, res, 'governance-town-info', req)) return;
+    logRouteError(req, 500, 'Town info error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -381,7 +388,8 @@ router.post('/appoint', authGuard, characterGuard, validate(appointSchema), asyn
 
     return res.status(201).json({ councilMember });
   } catch (error) {
-    console.error('Appoint error:', error);
+    if (handlePrismaError(error, res, 'governance-appoint', req)) return;
+    logRouteError(req, 500, 'Appoint error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -450,7 +458,8 @@ router.post('/allocate-treasury', authGuard, characterGuard, validate(allocateTr
       });
     }
   } catch (error) {
-    console.error('Allocate treasury error:', error);
+    if (handlePrismaError(error, res, 'governance-allocate-treasury', req)) return;
+    logRouteError(req, 500, 'Allocate treasury error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -523,7 +532,8 @@ router.post('/declare-war', authGuard, characterGuard, validate(declareWarSchema
 
     return res.status(201).json({ war, reason });
   } catch (error) {
-    console.error('Declare war error:', error);
+    if (handlePrismaError(error, res, 'governance-declare-war', req)) return;
+    logRouteError(req, 500, 'Declare war error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -587,7 +597,8 @@ router.post('/propose-peace', authGuard, characterGuard, validate(proposePeaceSc
 
     return res.json({ war: updatedWar, terms });
   } catch (error) {
-    console.error('Propose peace error:', error);
+    if (handlePrismaError(error, res, 'governance-propose-peace', req)) return;
+    logRouteError(req, 500, 'Propose peace error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -662,7 +673,8 @@ router.get('/kingdom/:kingdomId', authGuard, characterGuard, async (req: Authent
       },
     });
   } catch (error) {
-    console.error('Kingdom info error:', error);
+    if (handlePrismaError(error, res, 'governance-kingdom-info', req)) return;
+    logRouteError(req, 500, 'Kingdom info error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

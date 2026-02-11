@@ -1922,3 +1922,40 @@ model ServiceReputation {
   @@unique([characterId, professionType])
   @@map("service_reputations")
 }
+
+// ---- Error Logging ----
+
+enum LogLevel {
+  ERROR
+  WARN
+  INFO
+  DEBUG
+}
+
+model ErrorLog {
+  id          String    @id @default(uuid())
+  timestamp   DateTime  @default(now())
+  level       LogLevel  @default(ERROR)
+  category    String    @default("general")
+  endpoint    String
+  statusCode  Int       @map("status_code")
+  message     String
+  detail      String?
+  userId      String?   @map("user_id")
+  characterId String?   @map("character_id")
+  requestBody Json?     @map("request_body")
+  userAgent   String?   @map("user_agent")
+  ip          String?
+  resolved    Boolean   @default(false)
+  resolvedBy  String?   @map("resolved_by")
+  resolvedAt  DateTime? @map("resolved_at")
+  notes       String?
+
+  @@index([timestamp])
+  @@index([level])
+  @@index([category])
+  @@index([statusCode])
+  @@index([resolved])
+  @@index([userId])
+  @@map("error_logs")
+}

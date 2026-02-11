@@ -5,6 +5,8 @@ import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -59,7 +61,8 @@ router.get('/inventory', authGuard, characterGuard, async (req: AuthenticatedReq
       })),
     });
   } catch (error) {
-    console.error('Food inventory error:', error);
+    if (handlePrismaError(error, res, 'food-inventory', req)) return;
+    logRouteError(req, 500, 'Food inventory error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -77,7 +80,8 @@ router.get('/settings', authGuard, characterGuard, async (req: AuthenticatedRequ
       preferredFoodId: character.preferredFoodId,
     });
   } catch (error) {
-    console.error('Food settings error:', error);
+    if (handlePrismaError(error, res, 'food-settings', req)) return;
+    logRouteError(req, 500, 'Food settings error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -110,7 +114,8 @@ router.put('/settings', authGuard, characterGuard, validate(updateFoodSettingsSc
       preferredFoodId: preferredFoodId ?? null,
     });
   } catch (error) {
-    console.error('Update food settings error:', error);
+    if (handlePrismaError(error, res, 'update-food-settings', req)) return;
+    logRouteError(req, 500, 'Update food settings error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -173,7 +178,8 @@ router.get('/market-freshness/:townId', authGuard, characterGuard, async (req: A
       })),
     });
   } catch (error) {
-    console.error('Market freshness error:', error);
+    if (handlePrismaError(error, res, 'market-freshness', req)) return;
+    logRouteError(req, 500, 'Market freshness error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

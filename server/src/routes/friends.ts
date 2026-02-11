@@ -7,6 +7,8 @@ import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { isOnline } from '../socket/presence';
 import { emitFriendRequest, emitFriendAccepted, emitNotification } from '../socket/events';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -99,7 +101,8 @@ router.post('/request', authGuard, characterGuard, validate(requestSchema), asyn
       },
     });
   } catch (error) {
-    console.error('Friend request error:', error);
+    if (handlePrismaError(error, res, 'friend-request', req)) return;
+    logRouteError(req, 500, 'Friend request error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -166,7 +169,8 @@ router.post('/:id/accept', authGuard, characterGuard, async (req: AuthenticatedR
       },
     });
   } catch (error) {
-    console.error('Friend accept error:', error);
+    if (handlePrismaError(error, res, 'friend-accept', req)) return;
+    logRouteError(req, 500, 'Friend accept error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -200,7 +204,8 @@ router.post('/:id/decline', authGuard, characterGuard, async (req: Authenticated
 
     return res.json({ friendship: { id: updated.id, status: updated.status } });
   } catch (error) {
-    console.error('Friend decline error:', error);
+    if (handlePrismaError(error, res, 'friend-decline', req)) return;
+    logRouteError(req, 500, 'Friend decline error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -228,7 +233,8 @@ router.delete('/:id', authGuard, characterGuard, async (req: AuthenticatedReques
 
     return res.json({ message: 'Friend removed' });
   } catch (error) {
-    console.error('Friend delete error:', error);
+    if (handlePrismaError(error, res, 'friend-remove', req)) return;
+    logRouteError(req, 500, 'Friend delete error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -269,7 +275,8 @@ router.get('/', authGuard, characterGuard, async (req: AuthenticatedRequest, res
 
     return res.json({ friends });
   } catch (error) {
-    console.error('Friends list error:', error);
+    if (handlePrismaError(error, res, 'friend-list', req)) return;
+    logRouteError(req, 500, 'Friends list error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -309,7 +316,8 @@ router.get('/requests', authGuard, characterGuard, async (req: AuthenticatedRequ
       })),
     });
   } catch (error) {
-    console.error('Friend requests error:', error);
+    if (handlePrismaError(error, res, 'friend-requests', req)) return;
+    logRouteError(req, 500, 'Friend requests error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

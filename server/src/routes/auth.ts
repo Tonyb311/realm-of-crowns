@@ -6,6 +6,8 @@ import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard, blacklistToken } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -69,7 +71,8 @@ router.post('/register', validate(registerSchema), async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    if (handlePrismaError(error, res, 'register', req)) return;
+    logRouteError(req, 500, 'Registration error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -103,7 +106,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Login error:', error);
+    logRouteError(req, 500, 'Login error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -128,7 +131,7 @@ router.get('/me', authGuard, async (req: AuthenticatedRequest, res: Response) =>
 
     return res.json({ user });
   } catch (error) {
-    console.error('Get user error:', error);
+    logRouteError(req, 500, 'Get user error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -140,7 +143,7 @@ router.post('/logout', authGuard, async (req: AuthenticatedRequest, res: Respons
     await blacklistToken(token);
     return res.json({ message: 'Logged out successfully' });
   } catch (error) {
-    console.error('Logout error:', error);
+    logRouteError(req, 500, 'Logout error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

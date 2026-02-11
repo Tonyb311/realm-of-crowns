@@ -7,6 +7,8 @@ import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { ProfessionType, ItemType } from '@prisma/client';
 import { calculateItemStats } from '../services/item-stats';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -103,7 +105,8 @@ router.post('/repair', authGuard, characterGuard, validate(repairSchema), async 
       },
     });
   } catch (error) {
-    console.error('Repair item error:', error);
+    if (handlePrismaError(error, res, 'item-repair', req)) return;
+    logRouteError(req, 500, 'Repair item error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -159,7 +162,8 @@ router.get('/details/:itemId', authGuard, characterGuard, async (req: Authentica
       },
     });
   } catch (error) {
-    console.error('Item details error:', error);
+    if (handlePrismaError(error, res, 'item-details', req)) return;
+    logRouteError(req, 500, 'Item details error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -252,7 +256,8 @@ router.get('/compare', authGuard, characterGuard, async (req: AuthenticatedReque
       },
     });
   } catch (error) {
-    console.error('Item compare error:', error);
+    if (handlePrismaError(error, res, 'item-compare', req)) return;
+    logRouteError(req, 500, 'Item compare error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

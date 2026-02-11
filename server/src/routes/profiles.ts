@@ -1,5 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../lib/prisma';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
@@ -95,7 +97,8 @@ router.get('/:id/profile', authGuard, characterGuard, async (req: AuthenticatedR
       },
     });
   } catch (error) {
-    console.error('Get profile error:', error);
+    if (handlePrismaError(error, res, 'get profile', req)) return;
+    logRouteError(req, 500, 'Get profile error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -133,7 +136,8 @@ router.get('/search', authGuard, characterGuard, async (req: AuthenticatedReques
       })),
     });
   } catch (error) {
-    console.error('Character search error:', error);
+    if (handlePrismaError(error, res, 'character search', req)) return;
+    logRouteError(req, 500, 'Character search error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

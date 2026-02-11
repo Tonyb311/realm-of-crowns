@@ -15,6 +15,8 @@ import {
 } from '@shared/data/professions';
 import type { ProfessionCategory } from '@shared/data/professions';
 import { getRace } from '@shared/data/races';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -187,7 +189,8 @@ router.post('/learn', authGuard, characterGuard, validate(professionTypeSchema),
       },
     });
   } catch (error) {
-    console.error('Learn profession error:', error);
+    if (handlePrismaError(error, res, 'learn profession', req)) return;
+    logRouteError(req, 500, 'Learn profession error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -247,7 +250,8 @@ router.post('/abandon', authGuard, characterGuard, validate(professionTypeSchema
       message: 'Profession abandoned. Progress is preserved and can be reactivated later by learning it again.',
     });
   } catch (error) {
-    console.error('Abandon profession error:', error);
+    if (handlePrismaError(error, res, 'abandon profession', req)) return;
+    logRouteError(req, 500, 'Abandon profession error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -291,7 +295,8 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
 
     return res.json({ professions: result });
   } catch (error) {
-    console.error('Get my professions error:', error);
+    if (handlePrismaError(error, res, 'get my professions', req)) return;
+    logRouteError(req, 500, 'Get my professions error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -360,7 +365,8 @@ router.get('/info/:type', authGuard, characterGuard, async (req: AuthenticatedRe
       },
     });
   } catch (error) {
-    console.error('Profession info error:', error);
+    if (handlePrismaError(error, res, 'profession info', req)) return;
+    logRouteError(req, 500, 'Profession info error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -462,7 +468,8 @@ router.get('/available', authGuard, characterGuard, async (req: AuthenticatedReq
       },
     });
   } catch (error) {
-    console.error('Available professions error:', error);
+    if (handlePrismaError(error, res, 'available professions', req)) return;
+    logRouteError(req, 500, 'Available professions error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

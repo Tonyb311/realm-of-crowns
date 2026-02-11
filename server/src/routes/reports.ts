@@ -1,5 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../lib/prisma';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
@@ -23,7 +25,8 @@ router.get('/latest', authGuard, characterGuard, async (req: AuthenticatedReques
 
     return res.json({ report });
   } catch (error) {
-    console.error('Get latest report error:', error);
+    if (handlePrismaError(error, res, 'get latest report', req)) return;
+    logRouteError(req, 500, 'Get latest report error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -41,7 +44,8 @@ router.get('/history', authGuard, characterGuard, async (req: AuthenticatedReque
 
     return res.json({ reports });
   } catch (error) {
-    console.error('Get report history error:', error);
+    if (handlePrismaError(error, res, 'get report history', req)) return;
+    logRouteError(req, 500, 'Get report history error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -73,7 +77,8 @@ router.get('/:tickDate', authGuard, characterGuard, async (req: AuthenticatedReq
 
     return res.json({ report });
   } catch (error) {
-    console.error('Get report by date error:', error);
+    if (handlePrismaError(error, res, 'get report by date', req)) return;
+    logRouteError(req, 500, 'Get report by date error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

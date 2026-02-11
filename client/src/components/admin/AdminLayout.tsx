@@ -7,6 +7,7 @@ import {
   Globe,
   Coins,
   Wrench,
+  AlertCircle,
   ArrowLeft,
   Menu,
   X,
@@ -20,6 +21,7 @@ const ADMIN_NAV = [
   { path: '/admin/world', label: 'World', icon: Globe },
   { path: '/admin/economy', label: 'Economy', icon: Coins },
   { path: '/admin/tools', label: 'Tools', icon: Wrench },
+  { path: '/admin/error-logs', label: 'Error Logs', icon: AlertCircle },
 ];
 
 function isNavActive(itemPath: string, currentPath: string, exact?: boolean): boolean {

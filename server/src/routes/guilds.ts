@@ -8,6 +8,8 @@ import { AuthenticatedRequest } from '../types/express';
 import { emitGuildEvent } from '../socket/events';
 import { cache } from '../middleware/cache';
 import { invalidateCache } from '../lib/redis';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -108,12 +110,9 @@ router.post('/', authGuard, characterGuard, validate(createGuildSchema), async (
     });
 
     return res.status(201).json({ guild });
-  } catch (error: any) {
-    if (error.code === 'P2002') {
-      const field = error.meta?.target?.[0];
-      return res.status(409).json({ error: `A guild with that ${field || 'name or tag'} already exists` });
-    }
-    console.error('Guild create error:', error);
+  } catch (error) {
+    if (handlePrismaError(error, res, 'guild-create', req)) return;
+    logRouteError(req, 500, 'Guild create error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -166,7 +165,8 @@ router.get('/', authGuard, cache(60), async (req: AuthenticatedRequest, res: Res
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    console.error('Guild list error:', error);
+    if (handlePrismaError(error, res, 'guild-list', req)) return;
+    logRouteError(req, 500, 'Guild list error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -212,7 +212,8 @@ router.get('/:id', authGuard, characterGuard, async (req: AuthenticatedRequest, 
       },
     });
   } catch (error) {
-    console.error('Guild get error:', error);
+    if (handlePrismaError(error, res, 'guild-get', req)) return;
+    logRouteError(req, 500, 'Guild get error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -242,14 +243,9 @@ router.patch('/:id', authGuard, characterGuard, validate(updateGuildSchema), asy
     });
 
     return res.json({ guild });
-  } catch (error: any) {
-    if (error.code === 'P2002') {
-      return res.status(409).json({ error: 'A guild with that name already exists' });
-    }
-    if (error.code === 'P2025') {
-      return res.status(404).json({ error: 'Guild not found' });
-    }
-    console.error('Guild update error:', error);
+  } catch (error) {
+    if (handlePrismaError(error, res, 'guild-update', req)) return;
+    logRouteError(req, 500, 'Guild update error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -287,7 +283,8 @@ router.delete('/:id', authGuard, characterGuard, async (req: AuthenticatedReques
 
     return res.json({ message: 'Guild disbanded successfully' });
   } catch (error) {
-    console.error('Guild disband error:', error);
+    if (handlePrismaError(error, res, 'guild-disband', req)) return;
+    logRouteError(req, 500, 'Guild disband error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -331,7 +328,8 @@ router.post('/:id/invite', authGuard, characterGuard, validate(memberActionSchem
 
     return res.status(201).json({ member: newMember });
   } catch (error) {
-    console.error('Guild invite error:', error);
+    if (handlePrismaError(error, res, 'guild-invite', req)) return;
+    logRouteError(req, 500, 'Guild invite error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -365,7 +363,8 @@ router.post('/:id/join', authGuard, characterGuard, async (req: AuthenticatedReq
 
     return res.status(201).json({ member: newMember });
   } catch (error) {
-    console.error('Guild join error:', error);
+    if (handlePrismaError(error, res, 'guild-join', req)) return;
+    logRouteError(req, 500, 'Guild join error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -402,7 +401,8 @@ router.post('/:id/kick', authGuard, characterGuard, validate(memberActionSchema)
 
     return res.json({ message: 'Member kicked from guild' });
   } catch (error) {
-    console.error('Guild kick error:', error);
+    if (handlePrismaError(error, res, 'guild-kick', req)) return;
+    logRouteError(req, 500, 'Guild kick error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -428,7 +428,8 @@ router.post('/:id/leave', authGuard, characterGuard, async (req: AuthenticatedRe
 
     return res.json({ message: 'You have left the guild' });
   } catch (error) {
-    console.error('Guild leave error:', error);
+    if (handlePrismaError(error, res, 'guild-leave', req)) return;
+    logRouteError(req, 500, 'Guild leave error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -461,7 +462,8 @@ router.post('/:id/promote', authGuard, characterGuard, validate(promoteSchema), 
 
     return res.json({ member: updated });
   } catch (error) {
-    console.error('Guild promote error:', error);
+    if (handlePrismaError(error, res, 'guild-promote', req)) return;
+    logRouteError(req, 500, 'Guild promote error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -493,11 +495,9 @@ router.post('/:id/donate', authGuard, characterGuard, validate(donateSchema), as
     });
 
     return res.json({ treasury: guild.treasury, donated: amount });
-  } catch (error: any) {
-    if (error.code === 'P2025') {
-      return res.status(404).json({ error: 'Guild not found' });
-    }
-    console.error('Guild donate error:', error);
+  } catch (error) {
+    if (handlePrismaError(error, res, 'guild-donate', req)) return;
+    logRouteError(req, 500, 'Guild donate error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -510,7 +510,8 @@ router.get('/:id/quests', authGuard, characterGuard, async (req: AuthenticatedRe
 
     return res.json({ quests: [] });
   } catch (error) {
-    console.error('Guild quests error:', error);
+    if (handlePrismaError(error, res, 'guild-quests', req)) return;
+    logRouteError(req, 500, 'Guild quests error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -562,7 +563,8 @@ router.post('/:id/transfer', authGuard, characterGuard, validate(transferSchema)
 
     return res.json({ message: 'Leadership transferred successfully' });
   } catch (error) {
-    console.error('Guild transfer error:', error);
+    if (handlePrismaError(error, res, 'guild-transfer', req)) return;
+    logRouteError(req, 500, 'Guild transfer error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

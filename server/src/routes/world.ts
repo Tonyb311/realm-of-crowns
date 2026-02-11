@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 import { cache } from '../middleware/cache';
 import { getGameTime } from '../services/race-environment';
 
 const router = Router();
 
 // GET /api/world/map
-router.get('/map', cache(300), async (_req, res) => {
+router.get('/map', cache(300), async (req, res) => {
   try {
     const [regions, towns, routes] = await Promise.all([
       prisma.region.findMany({
@@ -47,13 +49,14 @@ router.get('/map', cache(300), async (_req, res) => {
 
     return res.json({ regions, towns: townsWithRegionName, routes });
   } catch (error) {
-    console.error('World map error:', error);
+    if (handlePrismaError(error, res, 'world map', req)) return;
+    logRouteError(req, 500, 'World map error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // GET /api/world/regions
-router.get('/regions', cache(300), async (_req, res) => {
+router.get('/regions', cache(300), async (req, res) => {
   try {
     const regions = await prisma.region.findMany({
       include: {
@@ -73,7 +76,8 @@ router.get('/regions', cache(300), async (_req, res) => {
 
     return res.json({ regions: result });
   } catch (error) {
-    console.error('Get regions error:', error);
+    if (handlePrismaError(error, res, 'get regions', req)) return;
+    logRouteError(req, 500, 'Get regions error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -103,13 +107,14 @@ router.get('/regions/:id', async (req, res) => {
 
     return res.json({ region });
   } catch (error) {
-    console.error('Get region error:', error);
+    if (handlePrismaError(error, res, 'get region', req)) return;
+    logRouteError(req, 500, 'Get region error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // GET /api/world/time — current game time (day/night cycle)
-router.get('/time', (_req, res) => {
+router.get('/time', (req, res) => {
   try {
     const gameTime = getGameTime();
 
@@ -123,7 +128,8 @@ router.get('/time', (_req, res) => {
       },
     });
   } catch (error) {
-    console.error('Get game time error:', error);
+    if (handlePrismaError(error, res, 'get game time', req)) return;
+    logRouteError(req, 500, 'Get game time error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

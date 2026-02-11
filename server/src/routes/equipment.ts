@@ -7,6 +7,8 @@ import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { EquipSlot, ItemType } from '@prisma/client';
 import { calculateItemStats, calculateEquipmentTotals } from '../services/item-stats';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
 
@@ -163,7 +165,8 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
       },
     });
   } catch (error) {
-    console.error('Equip item error:', error);
+    if (handlePrismaError(error, res, 'equip-item', req)) return;
+    logRouteError(req, 500, 'Equip item error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -220,7 +223,8 @@ router.post('/unequip', authGuard, characterGuard, validate(unequipSchema), asyn
       },
     });
   } catch (error) {
-    console.error('Unequip item error:', error);
+    if (handlePrismaError(error, res, 'unequip-item', req)) return;
+    logRouteError(req, 500, 'Unequip item error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -262,7 +266,8 @@ router.get('/equipped', authGuard, characterGuard, async (req: AuthenticatedRequ
 
     return res.json({ equipped: items });
   } catch (error) {
-    console.error('Get equipped items error:', error);
+    if (handlePrismaError(error, res, 'equipment-list', req)) return;
+    logRouteError(req, 500, 'Get equipped items error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -284,7 +289,8 @@ router.get('/stats', authGuard, characterGuard, async (req: AuthenticatedRequest
       equippedCount: totals.items.length,
     });
   } catch (error) {
-    console.error('Get equipment stats error:', error);
+    if (handlePrismaError(error, res, 'equipment-stats', req)) return;
+    logRouteError(req, 500, 'Get equipment stats error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

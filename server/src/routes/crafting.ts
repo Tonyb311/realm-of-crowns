@@ -22,6 +22,8 @@ import {
   getForgebornOverclockMultiplier,
   getMaxQueueSlots,
 } from '../services/racial-special-profession-mechanics';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 // emitCraftingReady is in '../socket/events' — called by background autocomplete job
 
 const router = Router();
@@ -314,7 +316,8 @@ router.get('/recipes', authGuard, characterGuard, async (req: AuthenticatedReque
 
     return res.json({ recipes: result });
   } catch (error) {
-    console.error('List recipes error:', error);
+    if (handlePrismaError(error, res, 'list recipes', req)) return;
+    logRouteError(req, 500, 'List recipes error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -459,7 +462,8 @@ router.post('/start', authGuard, characterGuard, validate(startCraftSchema), asy
       },
     });
   } catch (error) {
-    console.error('Start crafting error:', error);
+    if (handlePrismaError(error, res, 'start crafting', req)) return;
+    logRouteError(req, 500, 'Start crafting error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -493,7 +497,8 @@ router.get('/status', authGuard, characterGuard, async (req: AuthenticatedReques
       message: 'Locked in for today. Will be resolved at the daily tick.',
     });
   } catch (error) {
-    console.error('Crafting status error:', error);
+    if (handlePrismaError(error, res, 'crafting status', req)) return;
+    logRouteError(req, 500, 'Crafting status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -682,11 +687,12 @@ router.post('/collect', authGuard, characterGuard, async (req: AuthenticatedRequ
       remainingInQueue,
     });
   } catch (error: any) {
+    if (handlePrismaError(error, res, 'collect crafting', req)) return;
     // P0 #5 FIX: Return 409 if already collected (race condition guard)
     if (error?.message === 'ALREADY_COLLECTED') {
       return res.status(409).json({ error: 'Crafting action already collected' });
     }
-    console.error('Collect crafting error:', error);
+    logRouteError(req, 500, 'Collect crafting error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -851,7 +857,8 @@ router.post('/queue', authGuard, characterGuard, validate(queueCraftSchema), asy
       },
     });
   } catch (error) {
-    console.error('Queue crafting error:', error);
+    if (handlePrismaError(error, res, 'queue crafting', req)) return;
+    logRouteError(req, 500, 'Queue crafting error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -890,7 +897,8 @@ router.get('/queue', authGuard, characterGuard, async (req: AuthenticatedRequest
       readyCount,
     });
   } catch (error) {
-    console.error('Get crafting queue error:', error);
+    if (handlePrismaError(error, res, 'get crafting queue', req)) return;
+    logRouteError(req, 500, 'Get crafting queue error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

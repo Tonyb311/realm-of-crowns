@@ -1,5 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../lib/prisma';
+import { handlePrismaError } from '../lib/prisma-errors';
+import { logRouteError } from '../lib/error-logger';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
@@ -118,7 +120,8 @@ router.get('/prices/:itemTemplateId', authGuard, cache(60), async (req: Authenti
 
     return res.json({ itemTemplate: template, towns });
   } catch (error) {
-    console.error('Trade prices error:', error);
+    if (handlePrismaError(error, res, 'trade prices', req)) return;
+    logRouteError(req, 500, 'Trade prices error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -166,7 +169,8 @@ router.get('/price-history/:itemTemplateId', authGuard, cache(60), async (req: A
       })),
     });
   } catch (error) {
-    console.error('Trade price-history error:', error);
+    if (handlePrismaError(error, res, 'trade price history', req)) return;
+    logRouteError(req, 500, 'Trade price-history error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -303,7 +307,8 @@ router.get('/best-routes', authGuard, cache(120), async (req: AuthenticatedReque
 
     return res.json({ routes: top10 });
   } catch (error) {
-    console.error('Trade best-routes error:', error);
+    if (handlePrismaError(error, res, 'trade best routes', req)) return;
+    logRouteError(req, 500, 'Trade best-routes error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -406,7 +411,8 @@ router.get('/profitability', authGuard, async (req: AuthenticatedRequest, res: R
       },
     });
   } catch (error) {
-    console.error('Trade profitability error:', error);
+    if (handlePrismaError(error, res, 'trade profitability', req)) return;
+    logRouteError(req, 500, 'Trade profitability error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -538,7 +544,8 @@ router.get('/town/:townId/dashboard', authGuard, characterGuard, cache(60), asyn
       } : {}),
     });
   } catch (error) {
-    console.error('Trade town dashboard error:', error);
+    if (handlePrismaError(error, res, 'trade town dashboard', req)) return;
+    logRouteError(req, 500, 'Trade town dashboard error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -663,7 +670,8 @@ router.get('/merchant/:characterId/stats', authGuard, cache(30), async (req: Aut
       })),
     });
   } catch (error) {
-    console.error('Trade merchant stats error:', error);
+    if (handlePrismaError(error, res, 'trade merchant stats', req)) return;
+    logRouteError(req, 500, 'Trade merchant stats error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
