@@ -232,6 +232,132 @@ function catmullRomToBezier(points: { x: number; y: number }[], tension: number 
 }
 
 // ===========================================================================
+// Minimum Spanning Tree — clean road network from 90 routes → ~42 edges
+// ===========================================================================
+
+class UnionFind {
+  parent: number[];
+  rank: number[];
+
+  constructor(n: number) {
+    this.parent = Array.from({ length: n }, (_, i) => i);
+    this.rank = new Array(n).fill(0);
+  }
+
+  find(x: number): number {
+    if (this.parent[x] !== x) this.parent[x] = this.find(this.parent[x]);
+    return this.parent[x];
+  }
+
+  union(x: number, y: number): boolean {
+    const px = this.find(x), py = this.find(y);
+    if (px === py) return false;
+    if (this.rank[px] < this.rank[py]) this.parent[px] = py;
+    else if (this.rank[px] > this.rank[py]) this.parent[py] = px;
+    else { this.parent[py] = px; this.rank[px]++; }
+    return true;
+  }
+}
+
+/**
+ * Builds a Minimum Spanning Tree from all routes using Kruskal's algorithm,
+ * then adds up to 15 gameplay extras (active route, capital↔capital, leaf extras).
+ * Returns the subset of routes to render (~42 MST + ≤15 extras = max ~57).
+ */
+function buildMSTEdges(
+  towns: MapTown[],
+  routes: MapRoute[],
+  townLookup: Map<string, MapTown>,
+  activeRouteId: string | null,
+): MapRoute[] {
+  if (towns.length === 0 || routes.length === 0) return [];
+
+  const townIndex = new Map(towns.map((t, i) => [t.id, i]));
+
+  // Build weighted edges from routes using Euclidean distance
+  const edges: { route: MapRoute; fi: number; ti: number; distance: number; fromType?: string; toType?: string }[] = [];
+  for (const route of routes) {
+    const from = townLookup.get(route.fromTownId);
+    const to = townLookup.get(route.toTownId);
+    if (!from || !to) continue;
+    const fi = townIndex.get(from.id);
+    const ti = townIndex.get(to.id);
+    if (fi === undefined || ti === undefined) continue;
+    const dx = from.mapX - to.mapX;
+    const dy = from.mapY - to.mapY;
+    edges.push({ route, fi, ti, distance: Math.sqrt(dx * dx + dy * dy), fromType: from.type, toType: to.type });
+  }
+
+  // Sort shortest first for Kruskal's
+  edges.sort((a, b) => a.distance - b.distance);
+
+  // Build MST with Union-Find
+  const uf = new UnionFind(towns.length);
+  const mstIds = new Set<string>();
+
+  for (const edge of edges) {
+    if (uf.union(edge.fi, edge.ti)) {
+      mstIds.add(edge.route.id);
+      if (mstIds.size === towns.length - 1) break;
+    }
+  }
+
+  // --- Gameplay extras (up to 15) ---
+  const MAX_EXTRAS = 15;
+  let extras = 0;
+
+  // 1. Active travel route always visible
+  if (activeRouteId && !mstIds.has(activeRouteId)) {
+    mstIds.add(activeRouteId);
+    extras++;
+  }
+
+  // 2. Capital↔capital and capital↔city trunk roads
+  const isMajor = (t?: string) => t === 'capital' || t === 'city';
+  for (const edge of edges) {
+    if (extras >= MAX_EXTRAS) break;
+    if (mstIds.has(edge.route.id)) continue;
+    if (isMajor(edge.fromType) && isMajor(edge.toType)) {
+      mstIds.add(edge.route.id);
+      extras++;
+    }
+  }
+
+  // 3. One extra short route per leaf node (towns with only 1 MST connection)
+  const connCount = new Map<string, number>();
+  for (const route of routes) {
+    if (!mstIds.has(route.id)) continue;
+    connCount.set(route.fromTownId, (connCount.get(route.fromTownId) ?? 0) + 1);
+    connCount.set(route.toTownId, (connCount.get(route.toTownId) ?? 0) + 1);
+  }
+  for (const edge of edges) {
+    if (extras >= MAX_EXTRAS) break;
+    if (mstIds.has(edge.route.id)) continue;
+    const fc = connCount.get(edge.route.fromTownId) ?? 0;
+    const tc = connCount.get(edge.route.toTownId) ?? 0;
+    if (fc <= 1 || tc <= 1) {
+      mstIds.add(edge.route.id);
+      extras++;
+    }
+  }
+
+  // Warn about isolated towns
+  const connected = new Set<string>();
+  for (const route of routes) {
+    if (!mstIds.has(route.id)) continue;
+    connected.add(route.fromTownId);
+    connected.add(route.toTownId);
+  }
+  for (const town of towns) {
+    if (!connected.has(town.id)) {
+      console.warn(`[MST] Town "${town.name}" (${town.id}) is isolated — no road connects it`);
+    }
+  }
+
+  return routes.filter(r => mstIds.has(r.id));
+}
+
+// ===========================================================================
 // Label Collision Avoidance
 // ===========================================================================
 
@@ -1296,41 +1422,22 @@ export default function WorldMapPage() {
     );
   }, [mapData, zoom, viewBox]);
 
-  // Pre-compute route distances and thresholds for distance-based filtering
-  const { routeDistanceMap, shortThreshold, mediumThreshold } = useMemo(() => {
-    if (!mapData) return { routeDistanceMap: new Map<string, number>(), shortThreshold: 0, mediumThreshold: 0 };
-
-    const distances: { id: string; dist: number }[] = [];
-    for (const route of mapData.routes) {
-      const from = townLookup.get(route.fromTownId);
-      const to = townLookup.get(route.toTownId);
-      if (!from || !to) continue;
-      const dx = from.mapX - to.mapX;
-      const dy = from.mapY - to.mapY;
-      distances.push({ id: route.id, dist: Math.sqrt(dx * dx + dy * dy) });
-    }
-
-    const sorted = [...distances].sort((a, b) => a.dist - b.dist);
-    const shortIdx = Math.floor(sorted.length * 0.4);
-    const mediumIdx = Math.floor(sorted.length * 0.7);
-
-    const map = new Map<string, number>();
-    for (const d of distances) map.set(d.id, d.dist);
-
-    return {
-      routeDistanceMap: map,
-      shortThreshold: sorted[shortIdx]?.dist ?? 0,
-      mediumThreshold: sorted[mediumIdx]?.dist ?? Infinity,
-    };
+  // Compute MST road network — runs once on data load, not per render
+  const mstRoutes = useMemo(() => {
+    if (!mapData) return [];
+    const activeId = mapData.playerPosition?.routeId ?? null;
+    return buildMSTEdges(mapData.towns, mapData.routes, townLookup, activeId);
   }, [mapData, townLookup]);
 
-  // Visible routes — distance-based filtering by zoom level
+  // Visible routes — MST edges with LOD filtering by zoom level
   const visibleRoutes = useMemo(() => {
     if (!mapData) return [];
 
     const activeId = mapData.playerPosition?.routeId ?? null;
+    const isMajorType = (type?: string) => type === 'capital' || type === 'city';
+    const isTownOrAbove = (type?: string) => type === 'capital' || type === 'city' || type === 'town';
 
-    return mapData.routes.filter(r => {
+    return mstRoutes.filter(r => {
       const from = townLookup.get(r.fromTownId);
       const to = townLookup.get(r.toTownId);
       if (!from || !to) return false;
@@ -1342,20 +1449,18 @@ export default function WorldMapPage() {
       // Active travel route always visible
       if (r.id === activeId) return true;
 
-      const dist = routeDistanceMap.get(r.id) ?? Infinity;
-
       if (zoom < ZOOM_REGIONAL) {
-        // Continental: only shortest routes (bottom 40% by distance)
-        return dist <= shortThreshold;
+        // Continental: only MST edges where at least one endpoint is capital/city
+        return isMajorType(from.type) || isMajorType(to.type);
       }
       if (zoom < ZOOM_DETAIL) {
-        // Regional: short + medium routes (bottom 70% by distance)
-        return dist <= mediumThreshold;
+        // Regional: MST edges where at least one endpoint is town or above
+        return isTownOrAbove(from.type) || isTownOrAbove(to.type);
       }
-      // Detail: all routes in viewport
+      // Detail: all MST edges in viewport
       return true;
     });
-  }, [mapData, townLookup, viewBox, zoom, routeDistanceMap, shortThreshold, mediumThreshold]);
+  }, [mapData, mstRoutes, townLookup, viewBox, zoom]);
 
   // Compute label layout with collision avoidance
   const labelLayout = useMemo(() => {
