@@ -45,6 +45,21 @@ export const TANNER_RECIPES: RecipeDefinition[] = [
     tier: 1,
   },
   {
+    recipeId: 'clay-cure-leather',
+    name: 'Clay-Cure Leather',
+    professionRequired: 'TANNER',
+    levelRequired: 12,
+    inputs: [
+      { itemName: 'Raw Leather', quantity: 3 },
+      { itemName: 'Salt', quantity: 2 },
+      { itemName: 'Clay', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Hard Leather', quantity: 1 }],
+    craftTime: 35,
+    xpReward: 18,
+    tier: 2,
+  },
+  {
     recipeId: 'tan-exotic-leather',
     name: 'Tan Exotic Leather',
     professionRequired: 'TANNER',

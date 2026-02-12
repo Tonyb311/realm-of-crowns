@@ -49,7 +49,7 @@ export { HOUSING_RECIPES } from './housing';
 export { MOUNT_GEAR_RECIPES } from './mount-gear';
 export { ARMORER_RECIPES, LEATHERWORKER_ARMOR_RECIPES, TAILOR_ARMOR_RECIPES, ALL_ARMOR_RECIPES } from './armor';
 
-/** All 26 processing recipes across all professions. */
+/** All processing recipes across all professions. */
 export const ALL_PROCESSING_RECIPES: RecipeDefinition[] = [
   ...SMELTER_RECIPES,
   ...TANNER_RECIPES,

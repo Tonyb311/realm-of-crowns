@@ -63,6 +63,17 @@ export const WOODWORKER_RECIPES: RecipeDefinition[] = [
     tier: 2,
   }, // Major-PROF-01: Added Furniture recipe — listed in Woodworker outputs but had no recipe
   {
+    recipeId: 'saw-rough-planks',
+    name: 'Saw Rough Planks',
+    professionRequired: 'WOODWORKER',
+    levelRequired: 1,
+    inputs: [{ itemName: 'Wood Logs', quantity: 2 }],
+    outputs: [{ itemName: 'Rough Planks', quantity: 3 }],
+    craftTime: 12,
+    xpReward: 6,
+    tier: 1,
+  },
+  {
     recipeId: 'mill-exotic',
     name: 'Mill Exotic Planks',
     professionRequired: 'WOODWORKER',

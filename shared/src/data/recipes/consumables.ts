@@ -2,21 +2,38 @@
  * Consumable recipe data for Realm of Crowns
  *
  * Covers four professions:
- *   ALCHEMIST - Potions, cures, poisons, bombs
+ *   ALCHEMIST - Potions, cures, poisons, bombs, herbal remedies
  *   COOK      - Food items with buff durations
  *   BREWER    - Alcoholic beverages with morale/stat effects
  *   SCRIBE    - Spell scrolls, maps, identification scrolls
  *
- * 45 recipes total.
+ * 56 recipes total.
  */
 
 import { ConsumableRecipe } from './types';
 
 // ============================================================
-// ALCHEMIST RECIPES (22)
+// ALCHEMIST RECIPES (24)
 // ============================================================
 
 export const ALCHEMIST_CONSUMABLES: ConsumableRecipe[] = [
+  // --- Herb Poultices ---
+  {
+    recipeId: 'alch-herb-poultice',
+    name: 'Herb Poultice',
+    professionRequired: 'ALCHEMIST',
+    levelRequired: 3,
+    inputs: [
+      { itemName: 'Wild Herbs', quantity: 3 },
+    ],
+    output: { itemName: 'Herb Poultice', quantity: 2 },
+    consumableStats: { effect: 'heal_hp', magnitude: 15, duration: 0, stackSize: 20 },
+    craftTime: 10,
+    xpReward: 8,
+    tier: 1,
+    description: 'A wad of crushed wild herbs bound with cloth. Pressed against a wound, it draws out pain.',
+  },
+
   // --- Healing Potions ---
   {
     recipeId: 'alch-minor-healing',
@@ -181,6 +198,24 @@ export const ALCHEMIST_CONSUMABLES: ConsumableRecipe[] = [
     xpReward: 15,
     tier: 2,
     description: 'A fragrant, rose-hued potion that makes the drinker impossibly compelling.',
+  },
+
+  // --- Herbal Remedy ---
+  {
+    recipeId: 'alch-herbal-remedy',
+    name: 'Herbal Remedy',
+    professionRequired: 'ALCHEMIST',
+    levelRequired: 15,
+    inputs: [
+      { itemName: 'Wild Herbs', quantity: 2 },
+      { itemName: 'Medicinal Herbs', quantity: 2 },
+    ],
+    output: { itemName: 'Herbal Remedy', quantity: 1 },
+    consumableStats: { effect: 'hp_regen', magnitude: 6, duration: 60, stackSize: 10 },
+    craftTime: 25,
+    xpReward: 18,
+    tier: 2,
+    description: 'A concentrated herbal remedy that promotes sustained healing over time.',
   },
 
   // --- Cures ---
@@ -373,7 +408,7 @@ export const ALCHEMIST_CONSUMABLES: ConsumableRecipe[] = [
 ];
 
 // ============================================================
-// COOK RECIPES (7)
+// COOK RECIPES (14)
 // ============================================================
 
 export const COOK_CONSUMABLES: ConsumableRecipe[] = [
@@ -455,6 +490,149 @@ export const COOK_CONSUMABLES: ConsumableRecipe[] = [
     description: 'A hearty bowl of vegetable soup that warms body and spirit.',
   },
   {
+    recipeId: 'cook-grilled-fish',
+    name: 'Grilled Fish',
+    professionRequired: 'COOK',
+    levelRequired: 3,
+    inputs: [
+      { itemName: 'Raw Fish', quantity: 2 },
+      { itemName: 'Salt', quantity: 1 },
+    ],
+    output: { itemName: 'Grilled Fish', quantity: 2 },
+    consumableStats: { effect: 'hp_regen', magnitude: 3, duration: 30, stackSize: 15 },
+    craftTime: 15,
+    xpReward: 8,
+    tier: 1,
+    description: 'Fish seared over hot coals until the skin crisps golden. Simple, satisfying fare.',
+  },
+  {
+    recipeId: 'cook-berry-jam',
+    name: 'Berry Jam',
+    professionRequired: 'COOK',
+    levelRequired: 3,
+    inputs: [
+      { itemName: 'Wild Berries', quantity: 4 },
+      { itemName: 'Wheat', quantity: 1 },
+    ],
+    output: { itemName: 'Berry Jam', quantity: 2 },
+    consumableStats: { effect: 'hp_regen', magnitude: 2, duration: 45, stackSize: 20 },
+    craftTime: 15,
+    xpReward: 8,
+    tier: 1,
+    description: 'Thick, sweet jam cooked down from wild berries. Spread on bread or eaten by the spoonful.',
+  },
+  {
+    recipeId: 'cook-herbal-tea',
+    name: 'Herbal Tea',
+    professionRequired: 'COOK',
+    levelRequired: 3,
+    inputs: [
+      { itemName: 'Wild Herbs', quantity: 2 },
+      { itemName: 'Salt', quantity: 1 },
+    ],
+    output: { itemName: 'Herbal Tea', quantity: 2 },
+    consumableStats: {
+      effect: 'buff_intelligence',
+      magnitude: 1,
+      duration: 30,
+      stackSize: 20,
+      secondaryEffect: 'mana_regen',
+      secondaryMagnitude: 2,
+    },
+    craftTime: 10,
+    xpReward: 8,
+    tier: 1,
+    description: 'A fragrant infusion of wild herbs that clears the mind and quickens thought.',
+  },
+  {
+    recipeId: 'cook-smoked-meat',
+    name: 'Smoked Meat',
+    professionRequired: 'COOK',
+    levelRequired: 8,
+    inputs: [
+      { itemName: 'Wild Game Meat', quantity: 2 },
+      { itemName: 'Wood Logs', quantity: 1 },
+      { itemName: 'Salt', quantity: 1 },
+    ],
+    output: { itemName: 'Smoked Meat', quantity: 3 },
+    consumableStats: { effect: 'hp_regen', magnitude: 3, duration: 60, stackSize: 15 },
+    craftTime: 30,
+    xpReward: 12,
+    tier: 1,
+    description: 'Salted game meat slowly smoked over wood logs. Keeps well on long journeys.',
+  },
+  {
+    recipeId: 'cook-apple-pie',
+    name: 'Apple Pie',
+    professionRequired: 'COOK',
+    levelRequired: 10,
+    inputs: [
+      { itemName: 'Apples', quantity: 3 },
+      { itemName: 'Wheat', quantity: 2 },
+    ],
+    output: { itemName: 'Apple Pie', quantity: 2 },
+    consumableStats: {
+      effect: 'buff_constitution',
+      magnitude: 2,
+      duration: 60,
+      stackSize: 10,
+      secondaryEffect: 'hp_regen',
+      secondaryMagnitude: 2,
+    },
+    craftTime: 25,
+    xpReward: 14,
+    tier: 2,
+    description: 'A golden-crusted pie bursting with cinnamon-spiced apple filling. A taste of home.',
+  },
+  {
+    recipeId: 'cook-berry-tart',
+    name: 'Berry Tart',
+    professionRequired: 'COOK',
+    levelRequired: 15,
+    inputs: [
+      { itemName: 'Wild Berries', quantity: 3 },
+      { itemName: 'Wheat', quantity: 2 },
+      { itemName: 'Apples', quantity: 1 },
+    ],
+    output: { itemName: 'Berry Tart', quantity: 2 },
+    consumableStats: {
+      effect: 'buff_all_stats',
+      magnitude: 1,
+      duration: 45,
+      stackSize: 10,
+      secondaryEffect: 'hp_regen',
+      secondaryMagnitude: 2,
+    },
+    craftTime: 30,
+    xpReward: 18,
+    tier: 2,
+    description: 'A delicate pastry filled with glazed berries and sliced apple. Uplift in every bite.',
+  },
+  {
+    recipeId: 'cook-seasoned-fish',
+    name: 'Seasoned Fish Platter',
+    professionRequired: 'COOK',
+    levelRequired: 15,
+    inputs: [
+      { itemName: 'Raw Fish', quantity: 3 },
+      { itemName: 'Spices', quantity: 1 },
+      { itemName: 'Wild Herbs', quantity: 1 },
+    ],
+    output: { itemName: 'Seasoned Fish Platter', quantity: 2 },
+    consumableStats: {
+      effect: 'buff_wisdom',
+      magnitude: 2,
+      duration: 60,
+      stackSize: 10,
+      secondaryEffect: 'hp_regen',
+      secondaryMagnitude: 3,
+    },
+    craftTime: 35,
+    xpReward: 18,
+    tier: 2,
+    description: 'Fish fillets dressed with aromatic spices and fresh herbs. Sharpens the senses beautifully.',
+  },
+  {
     recipeId: 'cook-fish-stew',
     name: 'Fish Stew',
     professionRequired: 'COOK',
@@ -533,10 +711,33 @@ export const COOK_CONSUMABLES: ConsumableRecipe[] = [
 ];
 
 // ============================================================
-// BREWER RECIPES (5)
+// BREWER RECIPES (7)
 // ============================================================
 
 export const BREWER_CONSUMABLES: ConsumableRecipe[] = [
+  {
+    recipeId: 'brew-apple-cider',
+    name: 'Apple Cider',
+    professionRequired: 'BREWER',
+    levelRequired: 5,
+    inputs: [
+      { itemName: 'Apples', quantity: 4 },
+      { itemName: 'Wheat', quantity: 1 },
+    ],
+    output: { itemName: 'Apple Cider', quantity: 3 },
+    consumableStats: {
+      effect: 'buff_constitution',
+      magnitude: 1,
+      duration: 30,
+      stackSize: 20,
+      secondaryEffect: 'hp_regen',
+      secondaryMagnitude: 2,
+    },
+    craftTime: 25,
+    xpReward: 10,
+    tier: 1,
+    description: 'A crisp, amber cider pressed from ripe apples. Refreshing and fortifying.',
+  },
   {
     recipeId: 'brew-ale',
     name: 'Ale',
@@ -581,6 +782,29 @@ export const BREWER_CONSUMABLES: ConsumableRecipe[] = [
     xpReward: 18,
     tier: 2,
     description: 'A bottle of rich, fruity wine. Loosens tongues and lifts spirits.',
+  },
+  {
+    recipeId: 'brew-berry-wine',
+    name: 'Berry Wine',
+    professionRequired: 'BREWER',
+    levelRequired: 10,
+    inputs: [
+      { itemName: 'Wild Berries', quantity: 5 },
+      { itemName: 'Common Herbs', quantity: 1 },
+    ],
+    output: { itemName: 'Berry Wine', quantity: 2 },
+    consumableStats: {
+      effect: 'buff_charisma',
+      magnitude: 2,
+      duration: 45,
+      stackSize: 15,
+      secondaryEffect: 'mana_regen',
+      secondaryMagnitude: 1,
+    },
+    craftTime: 40,
+    xpReward: 15,
+    tier: 2,
+    description: 'A sweet, ruby-hued wine fermented from wild berries. Loosens tongues and lifts hearts.',
   },
   {
     recipeId: 'brew-mead',

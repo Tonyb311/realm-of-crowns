@@ -122,4 +122,32 @@ export const SMELTER_RECIPES: RecipeDefinition[] = [
     xpReward: 8,
     tier: 1,
   },
+  {
+    recipeId: 'smelt-ore-chunks',
+    name: 'Smelt Ore Chunks',
+    professionRequired: 'SMELTER',
+    levelRequired: 3,
+    inputs: [
+      { itemName: 'Iron Ore Chunks', quantity: 4 },
+      { itemName: 'Coal', quantity: 2 },
+    ],
+    outputs: [{ itemName: 'Iron Ingot', quantity: 1 }],
+    craftTime: 25,
+    xpReward: 10,
+    tier: 1,
+  },
+  {
+    recipeId: 'forge-iron-fittings',
+    name: 'Forge Iron Fittings',
+    professionRequired: 'SMELTER',
+    levelRequired: 8,
+    inputs: [
+      { itemName: 'Iron Ore Chunks', quantity: 3 },
+      { itemName: 'Coal', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Iron Fittings', quantity: 4 }],
+    craftTime: 20,
+    xpReward: 12,
+    tier: 1,
+  },
 ];
