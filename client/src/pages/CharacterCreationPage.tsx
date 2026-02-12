@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { RaceDefinition, SubRaceOption, StatModifiers } from '@shared/types/race';
 import { getRacesByTier } from '@shared/data/races';
 import { SPECIALIZATIONS, ABILITIES_BY_CLASS } from '@shared/data/skills';
@@ -105,6 +106,7 @@ const STEP_LABELS = ['Race', 'Sub-Race', 'Class', 'Stats', 'Review'];
 // ---------------------------------------------------------------------------
 export default function CharacterCreationPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Wizard state
   const [step, setStep] = useState(0);
@@ -213,6 +215,8 @@ export default function CharacterCreationPage() {
         characterClass: selectedClass.id,
       });
       setCreatedCharacter(res.data.character);
+      // Invalidate character cache so /town and HUD pick up the new character
+      queryClient.invalidateQueries({ queryKey: ['character'] });
     } catch (err: any) {
       setSubmitError(err.response?.data?.error ?? 'Failed to create character. Please try again.');
     } finally {

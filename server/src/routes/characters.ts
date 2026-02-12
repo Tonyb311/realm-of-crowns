@@ -188,13 +188,24 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
 // GET /api/characters/me
 router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = req.character!;
+    // Re-query with town relation for frontend display
+    const character = await prisma.character.findUnique({
+      where: { id: req.character!.id },
+      include: { currentTown: { select: { name: true } } },
+    });
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
 
+    const { currentTown, ...rest } = character;
+    // Return flat shape with frontend-friendly field aliases
     return res.json({
-      character: {
-        ...character,
-        stats: typeof character.stats === 'string' ? JSON.parse(character.stats) : character.stats,
-      },
+      ...rest,
+      stats: typeof rest.stats === 'string' ? JSON.parse(rest.stats) : rest.stats,
+      hp: rest.health,
+      maxHp: rest.maxHealth,
+      status: rest.travelStatus === 'idle' || rest.travelStatus === 'arrived' ? 'idle' : 'traveling',
+      currentTownName: currentTown?.name ?? null,
     });
   } catch (error) {
     logRouteError(req, 500, 'Get character error', error);

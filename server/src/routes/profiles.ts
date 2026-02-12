@@ -73,6 +73,7 @@ router.get('/:id/profile', authGuard, characterGuard, async (req: AuthenticatedR
       }
     }
 
+    const rawStats = typeof character.stats === 'string' ? JSON.parse(character.stats) : (character.stats as Record<string, number> || {});
     return res.json({
       profile: {
         id: character.id,
@@ -82,16 +83,27 @@ router.get('/:id/profile', authGuard, characterGuard, async (req: AuthenticatedR
         beastClan: character.beastClan,
         elementalType: character.elementalType,
         level: character.level,
+        experience: character.xp,
+        stats: {
+          strength: rawStats.str ?? 10,
+          dexterity: rawStats.dex ?? 10,
+          constitution: rawStats.con ?? 10,
+          intelligence: rawStats.int ?? 10,
+          wisdom: rawStats.wis ?? 10,
+          charisma: rawStats.cha ?? 10,
+        },
         currentTown: character.currentTown,
-        guild,
-        professions: character.professions,
+        guildId: guild?.id,
+        guildName: guild?.name,
+        guildTag: guild?.tag,
+        professions: character.professions.map(p => p.professionType),
         pvp: { wins: pvpWins, losses: pvpLosses },
         achievements: character.playerAchievements.map((pa) => ({
           name: pa.achievement.name,
           description: pa.achievement.description,
           unlockedAt: pa.unlockedAt,
         })),
-        online: isOnline(character.id),
+        isOnline: isOnline(character.id),
         createdAt: character.createdAt,
         ...(psionInsight ? { psionInsight } : {}),
       },

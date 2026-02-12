@@ -47,7 +47,7 @@ const STAT_CONFIG = [
 ] as const;
 
 export default function ProfilePage() {
-  const { characterId } = useParams<{ characterId: string }>();
+  const { characterId: paramId } = useParams<{ characterId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -56,11 +56,14 @@ export default function ProfilePage() {
     queryFn: async () => (await api.get('/characters/me')).data,
   });
 
+  // If no characterId in URL, fall back to own character
+  const characterId = paramId || myChar?.id;
+
   const { data: profile, isLoading, error } = useQuery<CharacterProfile>({
     queryKey: ['profile', characterId],
     queryFn: async () => {
       const res = await api.get(`/characters/${characterId}/profile`);
-      return res.data;
+      return res.data.profile ?? res.data;
     },
     enabled: !!characterId,
   });
