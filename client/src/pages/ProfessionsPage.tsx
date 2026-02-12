@@ -103,7 +103,26 @@ export default function ProfessionsPage() {
     queryKey: ['professions', 'available'],
     queryFn: async () => {
       const res = await api.get('/professions/available');
-      return res.data;
+      const raw = res.data;
+      // Normalize backend shape (maxActive/currentActive/categories object)
+      // to frontend shape (totalUsed/totalMax/categoryLimits array)
+      const rawLimits = raw?.limits;
+      const cats = rawLimits?.categories ?? rawLimits?.categoryLimits ?? {};
+      const categoryLimits = Array.isArray(cats)
+        ? cats
+        : Object.entries(cats).map(([category, v]: [string, any]) => ({
+            category,
+            used: v?.current ?? v?.used ?? 0,
+            max: v?.max ?? 2,
+          }));
+      return {
+        professions: raw?.professions ?? [],
+        limits: {
+          totalUsed: rawLimits?.currentActive ?? rawLimits?.totalUsed ?? 0,
+          totalMax: rawLimits?.maxActive ?? rawLimits?.totalMax ?? 3,
+          categoryLimits,
+        },
+      };
     },
   });
 

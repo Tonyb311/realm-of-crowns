@@ -283,7 +283,7 @@ export default function ElectionPage() {
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="font-display text-realm-text-secondary text-sm flex items-center gap-2">
                           <Users className="w-4 h-4" />
-                          Candidates ({election.candidates.length})
+                          Candidates ({(election.candidates ?? []).length})
                         </h4>
                         {election.phase === 'NOMINATIONS' && (
                           <button
@@ -295,11 +295,11 @@ export default function ElectionPage() {
                         )}
                       </div>
 
-                      {election.candidates.length === 0 ? (
+                      {(election.candidates ?? []).length === 0 ? (
                         <p className="text-realm-text-muted text-sm">No candidates have entered the race yet.</p>
                       ) : (
                         <div className="space-y-3">
-                          {election.candidates.map((candidate) => (
+                          {(election.candidates ?? []).map((candidate) => (
                             <div
                               key={candidate.characterId}
                               className="bg-realm-bg-800 border border-realm-border rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
@@ -386,7 +386,7 @@ export default function ElectionPage() {
                     )}
 
                     <div className="space-y-2">
-                      {result.candidates.map((candidate) => {
+                      {(result.candidates ?? []).map((candidate) => {
                         const pct = result.totalVotes > 0 ? Math.round((candidate.votes / result.totalVotes) * 100) : 0;
                         const isWinner = result.winner?.id === candidate.characterId;
                         return (

@@ -175,8 +175,18 @@ export default function InventoryPage() {
     );
   }
 
-  const inventory = character.inventory ?? [];
-  const equipment = character.equipment ?? {} as EquipmentSlots;
+  const inventory: InventoryItem[] = character.inventory ?? [];
+  const equipment: EquipmentSlots = character.equipment ?? {
+    head: null,
+    chest: null,
+    hands: null,
+    legs: null,
+    feet: null,
+    mainHand: null,
+    offHand: null,
+    accessory1: null,
+    accessory2: null,
+  };
 
   // Check if an item is currently equipped
   const isItemEquipped = (item: InventoryItem): string | null => {

@@ -91,7 +91,7 @@ function SpecCard({
       <h3 className="font-display text-realm-gold-400 text-lg mb-2 capitalize">{spec.name}</h3>
       <p className="text-realm-text-secondary text-sm mb-4 leading-relaxed">{spec.description}</p>
       <p className="text-realm-text-muted text-xs mb-4">
-        {spec.abilities.length} abilities across {Math.max(...spec.abilities.map((a) => a.tier))} tiers
+        {(spec.abilities ?? []).length} abilities across {(spec.abilities ?? []).length > 0 ? Math.max(...spec.abilities.map((a) => a.tier)) : 0} tiers
       </p>
       <RealmButton
         onClick={onSelect}
@@ -201,11 +201,11 @@ function AbilityDetail({
       </div>
 
       {/* Effects */}
-      {Object.keys(ability.effects).length > 0 && (
+      {ability.effects && Object.keys(ability.effects).length > 0 && (
         <div className="mb-4">
           <h4 className="text-realm-text-muted text-[10px] uppercase tracking-wider mb-1.5 font-display">Effects</h4>
           <div className="flex flex-wrap gap-1.5">
-            {Object.entries(ability.effects).map(([k, v]) => (
+            {Object.entries(ability.effects ?? {}).map(([k, v]) => (
               <span key={k} className="text-[10px] bg-realm-bg-900 border border-realm-border rounded px-2 py-0.5 text-realm-text-secondary">
                 {k}: {String(v)}
               </span>
@@ -248,7 +248,21 @@ export default function SkillTreePage() {
 
   const { data: character, isLoading: charLoading } = useQuery<CharacterStats>({
     queryKey: ['character', 'me'],
-    queryFn: async () => (await api.get('/characters/me')).data,
+    queryFn: async () => {
+      const d = (await api.get('/characters/me')).data;
+      const stats = typeof d.stats === 'object' && d.stats ? d.stats : {};
+      return {
+        ...d,
+        str: d.str ?? stats.str ?? stats.strength ?? 10,
+        dex: d.dex ?? stats.dex ?? stats.dexterity ?? 10,
+        con: d.con ?? stats.con ?? stats.constitution ?? 10,
+        int: d.int ?? stats.int ?? stats.intelligence ?? 10,
+        wis: d.wis ?? stats.wis ?? stats.wisdom ?? 10,
+        cha: d.cha ?? stats.cha ?? stats.charisma ?? 10,
+        unspentStatPoints: d.unspentStatPoints ?? 0,
+        unspentSkillPoints: d.unspentSkillPoints ?? 0,
+      };
+    },
   });
 
   const { data: skillTree, isLoading: treeLoading } = useQuery<SkillTree>({
@@ -256,10 +270,19 @@ export default function SkillTreePage() {
     queryFn: async () => {
       const res = await api.get('/skills/tree');
       const d = res.data;
+      const rawSpecs = d.tree ?? d.specializations ?? [];
       return {
         className: d.class ?? d.className ?? '',
         specialization: d.specialization ?? null,
-        specializations: d.tree ?? d.specializations ?? [],
+        specializations: rawSpecs.map((s: any) => ({
+          name: s.name ?? s.specialization ?? '',
+          description: s.description ?? '',
+          abilities: (s.abilities ?? []).map((a: any) => ({
+            ...a,
+            effects: a.effects ?? {},
+          })),
+          isActive: s.isActive ?? false,
+        })),
         unspentSkillPoints: d.unspentSkillPoints ?? 0,
       };
     },
@@ -327,14 +350,14 @@ export default function SkillTreePage() {
   }
 
   const hasSpec = !!skillTree.specialization;
-  const activeSpec = skillTree.specializations.find(
+  const activeSpec = (skillTree.specializations ?? []).find(
     (s) => s.name === skillTree.specialization
   );
 
   // Build tier groups for active spec
   const tierGroups: Record<number, SkillAbility[]> = {};
   if (activeSpec) {
-    for (const ability of activeSpec.abilities) {
+    for (const ability of (activeSpec.abilities ?? [])) {
       if (!tierGroups[ability.tier]) tierGroups[ability.tier] = [];
       tierGroups[ability.tier].push(ability);
     }
@@ -343,7 +366,7 @@ export default function SkillTreePage() {
     .map(([t, abilities]) => ({ tier: Number(t), abilities }))
     .sort((a, b) => a.tier - b.tier);
 
-  const selectedAbility = activeSpec?.abilities.find((a) => a.id === selectedAbilityId) ?? null;
+  const selectedAbility = (activeSpec?.abilities ?? []).find((a) => a.id === selectedAbilityId) ?? null;
 
   return (
     <div>
@@ -418,7 +441,7 @@ export default function SkillTreePage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {skillTree.specializations.map((spec) => (
+                {(skillTree.specializations ?? []).map((spec) => (
                   <SpecCard
                     key={spec.name}
                     spec={spec}

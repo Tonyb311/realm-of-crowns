@@ -172,17 +172,17 @@ export default function KingdomPage() {
                 <Users className="w-4 h-4" />
                 Royal Council
               </h3>
-              {kingdom.council.length === 0 ? (
+              {(kingdom.council ?? []).length === 0 ? (
                 <p className="text-realm-text-muted text-sm">No council members appointed.</p>
               ) : (
                 <div className="space-y-2">
-                  {kingdom.council.map((cm) => (
+                  {(kingdom.council ?? []).map((cm) => (
                     <div key={cm.id} className="flex items-center justify-between py-1.5">
                       <div>
-                        <p className="text-realm-text-primary text-sm font-semibold">{cm.character.name}</p>
+                        <p className="text-realm-text-primary text-sm font-semibold">{cm.character?.name ?? 'Unknown'}</p>
                         <p className="text-realm-text-muted text-[10px] capitalize">{cm.role}</p>
                       </div>
-                      <span className="text-realm-text-muted text-xs">Lv. {cm.character.level}</span>
+                      <span className="text-realm-text-muted text-xs">Lv. {cm.character?.level ?? 0}</span>
                     </div>
                   ))}
                 </div>
@@ -198,14 +198,14 @@ export default function KingdomPage() {
                 <Swords className="w-5 h-5 text-realm-danger" />
                 Active Wars
               </h2>
-              {kingdom.activeWars.length === 0 ? (
+              {(kingdom.activeWars ?? []).length === 0 ? (
                 <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6 text-center">
                   <Shield className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
                   <p className="text-realm-text-muted text-sm">The kingdom is at peace.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {kingdom.activeWars.map((war) => (
+                  {(kingdom.activeWars ?? []).map((war) => (
                     <div key={war.id} className="bg-realm-bg-700 border border-realm-border rounded-lg p-4 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
@@ -241,14 +241,14 @@ export default function KingdomPage() {
                 <ScrollText className="w-5 h-5 text-realm-gold-400" />
                 Active Laws
               </h2>
-              {kingdom.activeLaws.length === 0 ? (
+              {(kingdom.activeLaws ?? []).length === 0 ? (
                 <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6 text-center">
                   <ScrollText className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
                   <p className="text-realm-text-muted text-sm">No active laws in this kingdom.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {kingdom.activeLaws.map((law) => (
+                  {(kingdom.activeLaws ?? []).map((law) => (
                     <div key={law.id} className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
                       <div className="flex items-start justify-between mb-2">
                         <div>

@@ -509,13 +509,13 @@ export default function GovernancePage() {
                         <p className="text-realm-text-muted text-sm">Vacant</p>
                       )}
                     </div>
-                    {town.council.map((cm) => (
+                    {(town.council ?? []).map((cm) => (
                       <div key={cm.id} className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
                         <div className="flex items-center gap-2 mb-3">
                           <Users className="w-4 h-4 text-realm-gold-400" />
                           <h4 className="font-display text-realm-text-muted text-xs uppercase tracking-wider capitalize">{cm.role}</h4>
                         </div>
-                        <p className="text-realm-text-primary font-semibold">{cm.character.name} (Lv. {cm.character.level})</p>
+                        <p className="text-realm-text-primary font-semibold">{cm.character?.name ?? 'Unknown'} (Lv. {cm.character?.level ?? 0})</p>
                         <p className="text-realm-text-muted text-[10px]">Since {new Date(cm.appointedAt).toLocaleDateString()}</p>
                       </div>
                     ))}

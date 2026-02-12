@@ -109,7 +109,13 @@ function GuildBrowser({ characterId }: { characterId: string }) {
     queryKey: ['guilds'],
     queryFn: async () => {
       const res = await api.get('/guilds');
-      return res.data.guilds ?? res.data;
+      const raw = res.data.guilds ?? res.data;
+      return (Array.isArray(raw) ? raw : []).map((g: any) => ({
+        ...g,
+        leaderName: g.leaderName ?? g.leader?.name ?? 'Unknown',
+        maxMembers: g.maxMembers ?? 50,
+        memberCount: g.memberCount ?? g._count?.members ?? 0,
+      }));
     },
   });
 
@@ -489,7 +495,7 @@ function GuildDashboard({ guildId, characterId }: { guildId: string; characterId
                     <div className="flex items-center gap-1.5">
                       {rankIcon(m.rank)}
                       <span className="text-sm text-realm-text-primary font-semibold">{m.characterName}</span>
-                      <span className="text-xs text-realm-text-muted capitalize">{m.race.toLowerCase()}</span>
+                      <span className="text-xs text-realm-text-muted capitalize">{(m.race ?? '').toLowerCase()}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -530,7 +536,7 @@ function GuildDashboard({ guildId, characterId }: { guildId: string; characterId
           <div className="space-y-6">
             <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6 text-center">
               <Coins className="w-10 h-10 text-realm-gold-400 mx-auto mb-3" />
-              <div className="text-3xl font-display text-realm-gold-400">{guild.treasury.toLocaleString()}</div>
+              <div className="text-3xl font-display text-realm-gold-400">{(guild.treasury ?? 0).toLocaleString()}</div>
               <div className="text-sm text-realm-text-muted mt-1">Guild Treasury (Gold)</div>
             </div>
 

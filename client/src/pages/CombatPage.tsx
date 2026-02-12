@@ -383,53 +383,107 @@ export default function CombatPage() {
   // -------------------------------------------------------------------------
   // PvE Queries & Mutations
   // -------------------------------------------------------------------------
-  const { data: pveState, isLoading: pveLoading } = useQuery<CombatState>({
+  const { data: pveState, isLoading: pveLoading } = useQuery<CombatState | null>({
     queryKey: ['combat', 'pve', 'state'],
-    queryFn: async () => (await api.get('/combat/pve/state')).data,
+    queryFn: async () => {
+      const res = await api.get('/combat/pve/state');
+      // Backend wraps in { combat: {...} }
+      return res.data?.combat ?? res.data ?? null;
+    },
     refetchInterval: 5000,
     enabled: activeTab === 'battle',
   });
 
   const pveActionMutation = useMutation({
     mutationFn: async (params: { action: string; spellId?: string; itemId?: string }) => {
-      return (await api.post('/combat/pve/action', params)).data;
+      const res = await api.post('/combat/pve/action', params);
+      // Backend wraps in { combat: {...} }
+      return res.data?.combat ?? res.data;
     },
     onSuccess: (data: CombatState) => {
-      queryClient.setQueryData(['combat', 'pve', 'state'], data);
-      processNewLogEntries(data);
+      if (data) {
+        queryClient.setQueryData(['combat', 'pve', 'state'], data);
+        processNewLogEntries(data);
+      }
     },
   });
 
   // -------------------------------------------------------------------------
   // PvP Queries & Mutations
   // -------------------------------------------------------------------------
-  const { data: pvpState } = useQuery<CombatState>({
+  const { data: pvpState } = useQuery<CombatState | null>({
     queryKey: ['combat', 'pvp', 'state'],
-    queryFn: async () => (await api.get('/combat/pvp/state')).data,
+    queryFn: async () => {
+      const res = await api.get('/combat/pvp/state');
+      const d = res.data;
+      // Backend returns { inCombat, session: {...} } — normalize to CombatState shape
+      if (!d?.inCombat || !d?.session) return null;
+      const s = d.session;
+      return {
+        sessionId: s.id ?? '',
+        status: s.status ?? 'ACTIVE',
+        combatType: 'pvp' as const,
+        currentTurnEntityId: s.currentTurn ?? '',
+        round: s.round ?? 1,
+        combatants: (s.combatants ?? s.participants ?? []).map((c: any) => ({
+          ...c,
+          entityId: c.entityId ?? c.id ?? c.characterId ?? '',
+          name: c.name ?? 'Unknown',
+          type: c.team === 'player' || c.team === 1 ? 'player' : 'enemy',
+          currentHp: c.currentHp ?? c.hp ?? 0,
+          maxHp: c.maxHp ?? c.hp ?? 0,
+          isAlive: c.isAlive ?? (c.hp > 0),
+          statusEffects: c.statusEffects ?? [],
+        })),
+        log: s.log ?? [],
+        availableSpells: s.availableSpells ?? [],
+        availableItems: s.availableItems ?? [],
+        result: d.result ?? s.result ?? undefined,
+        wager: s.wager ?? undefined,
+      } satisfies CombatState;
+    },
     refetchInterval: 5000,
     enabled: activeTab === 'battle',
   });
 
   const { data: challenges, isLoading: challengesLoading } = useQuery<PvpChallenge[]>({
     queryKey: ['combat', 'pvp', 'challenges'],
-    queryFn: async () => (await api.get('/combat/pvp/challenges')).data,
+    queryFn: async () => {
+      const res = await api.get('/combat/pvp/challenges');
+      // Backend wraps in { challenges: [...] }
+      return res.data?.challenges ?? res.data ?? [];
+    },
     refetchInterval: 15000,
     enabled: activeTab === 'pvp',
   });
 
   const { data: leaderboard, isLoading: leaderboardLoading } = useQuery<LeaderboardEntry[]>({
     queryKey: ['combat', 'pvp', 'leaderboard'],
-    queryFn: async () => (await api.get('/combat/pvp/leaderboard')).data,
+    queryFn: async () => {
+      const res = await api.get('/combat/pvp/leaderboard');
+      // Backend wraps in { leaderboard: [...], page, limit }
+      const entries = res.data?.leaderboard ?? res.data ?? [];
+      return (entries as any[]).map((e: any, idx: number) => ({
+        rank: idx + 1,
+        characterId: e.id ?? e.characterId ?? '',
+        characterName: e.name ?? e.characterName ?? 'Unknown',
+        wins: e.wins ?? 0,
+        losses: e.losses ?? 0,
+        rating: e.winRate ?? e.rating ?? 0,
+      }));
+    },
     enabled: activeTab === 'leaderboard',
   });
 
   const pvpActionMutation = useMutation({
     mutationFn: async (params: { action: string; spellId?: string; itemId?: string }) => {
-      return (await api.post('/combat/pvp/action', params)).data;
+      const res = await api.post('/combat/pvp/action', params);
+      // Backend returns { session: {...}, turnResult, result? } — not a raw CombatState
+      return res.data;
     },
-    onSuccess: (data: CombatState) => {
-      queryClient.setQueryData(['combat', 'pvp', 'state'], data);
-      processNewLogEntries(data);
+    onSuccess: (data: any) => {
+      // Invalidate PvP state to re-fetch normalized state instead of trying to set raw response
+      queryClient.invalidateQueries({ queryKey: ['combat', 'pvp', 'state'] });
     },
   });
 
@@ -472,8 +526,8 @@ export default function CombatPage() {
     (pvpState?.status === 'COMPLETED' ? pvpState : null) ??
     null;
 
-  const player = activeCombat?.combatants.find((c) => c.type === 'player') ?? null;
-  const enemies = activeCombat?.combatants.filter((c) => c.type === 'enemy') ?? [];
+  const player = (activeCombat?.combatants ?? []).find((c) => c.type === 'player') ?? null;
+  const enemies = (activeCombat?.combatants ?? []).filter((c) => c.type === 'enemy') ?? [];
   const isPlayerTurn = activeCombat ? activeCombat.currentTurnEntityId === player?.entityId : false;
   const isActive = activeCombat?.status === 'ACTIVE';
 
@@ -483,7 +537,7 @@ export default function CombatPage() {
   const lastLogIdRef = useRef<string>('');
 
   function processNewLogEntries(state: CombatState) {
-    const log = state.log;
+    const log = state.log ?? [];
     if (log.length === 0) return;
 
     const lastEntry = log[log.length - 1];
@@ -508,7 +562,8 @@ export default function CombatPage() {
     if (activeCombat) {
       processNewLogEntries(activeCombat);
     }
-  }, [activeCombat?.log.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCombat?.log?.length]);
 
   // Clean up old floating damages
   useEffect(() => {
@@ -664,8 +719,8 @@ export default function CombatPage() {
               <div className="space-y-6">
                 {/* Initiative bar */}
                 <InitiativeBar
-                  combatants={activeCombat.combatants}
-                  currentTurnId={activeCombat.currentTurnEntityId}
+                  combatants={activeCombat.combatants ?? []}
+                  currentTurnId={activeCombat.currentTurnEntityId ?? ''}
                 />
 
                 {/* Combat arena + log */}
@@ -683,7 +738,7 @@ export default function CombatPage() {
                             side="left"
                           />
                         )}
-                        {activeCombat.combatants
+                        {(activeCombat.combatants ?? [])
                           .filter((c) => c.type === 'ally')
                           .map((ally) => (
                             <CombatantCard
@@ -720,8 +775,8 @@ export default function CombatPage() {
                       <CombatActions
                         isPlayerTurn={isPlayerTurn}
                         combatType={activeCombat.combatType}
-                        spells={activeCombat.availableSpells}
-                        items={activeCombat.availableItems}
+                        spells={activeCombat.availableSpells ?? []}
+                        items={activeCombat.availableItems ?? []}
 
                         onAction={handleAction}
                         isPending={pveActionMutation.isPending || pvpActionMutation.isPending}
@@ -739,7 +794,7 @@ export default function CombatPage() {
 
                   {/* Combat Log (1 col) */}
                   <div className="lg:col-span-1">
-                    <CombatLog entries={activeCombat.log} />
+                    <CombatLog entries={activeCombat.log ?? []} />
                   </div>
                 </div>
               </div>

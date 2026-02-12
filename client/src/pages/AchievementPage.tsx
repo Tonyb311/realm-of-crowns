@@ -81,7 +81,7 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
             <div
               className="h-full rounded-full bg-realm-gold-500/60 transition-all"
               style={{
-                width: `${Math.min(100, (achievement.progress.current / achievement.progress.required) * 100)}%`,
+                width: `${achievement.progress.required > 0 ? Math.min(100, (achievement.progress.current / achievement.progress.required) * 100) : 0}%`,
               }}
             />
           </div>
@@ -140,7 +140,11 @@ export default function AchievementPage() {
   }
 
   const categories = Object.keys(grouped).sort(
-    (a, b) => (CATEGORY_ORDER.indexOf(a) ?? 99) - (CATEGORY_ORDER.indexOf(b) ?? 99)
+    (a, b) => {
+      const aIdx = CATEGORY_ORDER.indexOf(a);
+      const bIdx = CATEGORY_ORDER.indexOf(b);
+      return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
+    }
   );
 
   const filteredAchievements = selectedCategory

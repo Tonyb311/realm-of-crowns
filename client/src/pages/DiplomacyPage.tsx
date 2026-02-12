@@ -102,16 +102,10 @@ export default function DiplomacyPage() {
     queryKey: ['kingdoms'],
     queryFn: async () => {
       try {
-        // Kingdoms list may come from various endpoints
+        // Backend returns { matrix, races: string[] }
         const res = await api.get('/diplomacy/relations');
-        // Extract unique race-based kingdoms from relations
-        const races = new Set<string>();
-        const data: Array<{ race1: string; race2: string }> = res.data;
-        for (const r of data) {
-          races.add(r.race1);
-          races.add(r.race2);
-        }
-        return Array.from(races).map(r => ({ id: r, name: r.replace(/_/g, ' '), raceName: r }));
+        const raceList: string[] = res.data?.races ?? [];
+        return raceList.map(r => ({ id: r, name: r.replace(/_/g, ' '), raceName: r }));
       } catch {
         return [];
       }
@@ -124,7 +118,21 @@ export default function DiplomacyPage() {
       const params: Record<string, string | number> = { page: eventPage, limit: 15 };
       if (eventFilter !== 'ALL') params.eventType = eventFilter;
       const res = await api.get('/world-events', { params });
-      return res.data;
+      const d = res.data ?? {};
+      // Backend returns { events: [...], pagination: { pages, ... } }
+      // Map 'description' to 'message' and 'createdAt' to 'timestamp' for frontend WorldEvent type
+      const events: WorldEvent[] = (d.events ?? []).map((e: any) => ({
+        id: e.id ?? '',
+        eventType: e.eventType ?? '',
+        title: e.title ?? '',
+        message: e.message ?? e.description ?? '',
+        timestamp: e.timestamp ?? e.createdAt ?? '',
+        races: e.races ?? e.metadata?.races ?? undefined,
+      }));
+      return {
+        events,
+        totalPages: d.totalPages ?? d.pagination?.pages ?? 1,
+      };
     },
     enabled: activeTab === 'events',
   });
@@ -134,7 +142,15 @@ export default function DiplomacyPage() {
     queryFn: async () => {
       try {
         const res = await api.get('/world-events/state-report');
-        return res.data;
+        // Backend wraps in { report: {...} } with description instead of content
+        const r = res.data?.report ?? res.data;
+        if (!r) return null;
+        return {
+          id: r.id ?? '',
+          title: r.title ?? '',
+          content: r.content ?? r.description ?? '',
+          createdAt: r.createdAt ?? '',
+        };
       } catch {
         return null;
       }

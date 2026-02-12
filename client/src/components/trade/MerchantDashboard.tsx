@@ -80,7 +80,10 @@ export default function MerchantDashboard() {
     );
   }
 
-  const { profession, stats, topItemTypes, recentSales } = data;
+  const profession = data.profession ?? null;
+  const stats = data.stats ?? { totalTrades: 0, totalBought: 0, totalSold: 0, netProfit: 0, totalTradeVolume: 0, townsTraded: 0, crossTownTrades: 0, crossTownProfit: 0 };
+  const topItemTypes = data.topItemTypes ?? [];
+  const recentSales = data.recentSales ?? [];
 
   // XP bar
   const currentLevel = profession?.level ?? 0;

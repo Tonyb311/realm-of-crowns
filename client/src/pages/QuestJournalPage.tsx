@@ -86,7 +86,7 @@ function QuestCard({
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  const allObjectivesMet = mode === 'active' && quest.objectives.every((o) => o.current >= o.required);
+  const allObjectivesMet = mode === 'active' && (quest.objectives ?? []).every((o) => (o.current ?? 0) >= (o.required ?? 1));
 
   return (
     <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden">
@@ -118,9 +118,9 @@ function QuestCard({
       </button>
 
       {/* Objective progress bars (always visible for active quests) */}
-      {mode === 'active' && !expanded && (
+      {mode === 'active' && !expanded && (quest.objectives ?? []).length > 0 && (
         <div className="px-5 pb-3 space-y-1.5">
-          {quest.objectives.map((obj, i) => {
+          {(quest.objectives ?? []).map((obj, i) => {
             const pct = obj.required > 0 ? Math.min(100, (obj.current / obj.required) * 100) : 0;
             const done = obj.current >= obj.required;
             return (
@@ -154,7 +154,7 @@ function QuestCard({
               Objectives
             </h4>
             <ul className="space-y-2">
-              {quest.objectives.map((obj, i) => {
+              {(quest.objectives ?? []).map((obj, i) => {
                 const pct = obj.required > 0 ? Math.min(100, (obj.current / obj.required) * 100) : 0;
                 const done = obj.current >= obj.required;
                 return (
@@ -190,19 +190,19 @@ function QuestCard({
               Rewards
             </h4>
             <div className="flex flex-wrap gap-2">
-              {quest.rewards.xp > 0 && (
+              {(quest.rewards?.xp ?? 0) > 0 && (
                 <span className="flex items-center gap-1 text-xs bg-realm-bg-800 rounded px-2.5 py-1">
                   <Star className="w-3 h-3 text-realm-success" />
                   <span className="text-realm-success font-display">{quest.rewards.xp} XP</span>
                 </span>
               )}
-              {quest.rewards.gold > 0 && (
+              {(quest.rewards?.gold ?? 0) > 0 && (
                 <span className="flex items-center gap-1 text-xs bg-realm-bg-800 rounded px-2.5 py-1">
                   <Coins className="w-3 h-3 text-realm-gold-400" />
                   <span className="text-realm-gold-400 font-display">{quest.rewards.gold} Gold</span>
                 </span>
               )}
-              {quest.rewards.items?.map((item, i) => (
+              {(quest.rewards?.items ?? []).map((item, i) => (
                 <span key={i} className="text-xs bg-realm-bg-800 rounded px-2.5 py-1 text-realm-text-primary">
                   {item.name} x{item.quantity}
                 </span>
@@ -276,7 +276,19 @@ export default function QuestJournalPage() {
     queryKey: ['quests', 'active'],
     queryFn: async () => {
       const res = await api.get('/quests/active');
-      return res.data.quests ?? res.data;
+      const raw = res.data.quests ?? res.data;
+      return (Array.isArray(raw) ? raw : []).map((q: any) => ({
+        ...q,
+        id: q.id ?? q.questId,
+        level: q.level ?? q.levelRequired ?? 1,
+        objectives: Array.isArray(q.objectives) ? q.objectives.map((o: any) => ({
+          ...o,
+          current: o.current ?? 0,
+          required: o.required ?? 1,
+        })) : [],
+        rewards: q.rewards ?? { xp: 0, gold: 0 },
+        npcName: q.npcName ?? q.npc?.name ?? undefined,
+      }));
     },
     enabled: activeTab === 'active',
   });
@@ -285,7 +297,19 @@ export default function QuestJournalPage() {
     queryKey: ['quests', 'available'],
     queryFn: async () => {
       const res = await api.get('/quests/available');
-      return res.data.quests ?? res.data;
+      const raw = res.data.quests ?? res.data;
+      return (Array.isArray(raw) ? raw : []).map((q: any) => ({
+        ...q,
+        id: q.id ?? q.questId,
+        level: q.level ?? q.levelRequired ?? 1,
+        objectives: Array.isArray(q.objectives) ? q.objectives.map((o: any) => ({
+          ...o,
+          current: o.current ?? 0,
+          required: o.required ?? 1,
+        })) : [],
+        rewards: q.rewards ?? { xp: 0, gold: 0 },
+        npcName: q.npcName ?? q.npc?.name ?? undefined,
+      }));
     },
     enabled: activeTab === 'available',
   });
@@ -294,7 +318,19 @@ export default function QuestJournalPage() {
     queryKey: ['quests', 'completed'],
     queryFn: async () => {
       const res = await api.get('/quests/completed');
-      return res.data.quests ?? res.data;
+      const raw = res.data.quests ?? res.data;
+      return (Array.isArray(raw) ? raw : []).map((q: any) => ({
+        ...q,
+        id: q.id ?? q.questId,
+        level: q.level ?? q.levelRequired ?? 1,
+        description: q.description ?? '',
+        objectives: Array.isArray(q.objectives) ? q.objectives.map((o: any) => ({
+          ...o,
+          current: o.current ?? o.required ?? 0,
+          required: o.required ?? 1,
+        })) : [],
+        rewards: q.rewards ?? { xp: 0, gold: 0 },
+      }));
     },
     enabled: activeTab === 'completed',
   });
@@ -340,7 +376,11 @@ export default function QuestJournalPage() {
 
   const QUEST_TYPE_ORDER = ['MAIN', 'TOWN', 'DAILY', 'GUILD', 'BOUNTY', 'RACIAL'];
   const sortedGroups = Object.entries(groupedAvailable).sort(
-    (a, b) => (QUEST_TYPE_ORDER.indexOf(a[0]) ?? 99) - (QUEST_TYPE_ORDER.indexOf(b[0]) ?? 99)
+    (a, b) => {
+      const aIdx = QUEST_TYPE_ORDER.indexOf(a[0]);
+      const bIdx = QUEST_TYPE_ORDER.indexOf(b[0]);
+      return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
+    }
   );
 
   const isLoading =

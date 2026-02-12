@@ -242,11 +242,11 @@ export default function TownHallPage() {
                   <Users className="w-4 h-4" />
                   Town Council
                 </h3>
-                {town.council.length === 0 ? (
+                {(town.council ?? []).length === 0 ? (
                   <p className="text-realm-text-muted text-sm">No council members appointed.</p>
                 ) : (
                   <div className="space-y-2">
-                    {town.council.map((cm) => (
+                    {(town.council ?? []).map((cm) => (
                       <div key={cm.id} className="flex items-center justify-between py-1.5">
                         <div>
                           <p className="text-realm-text-primary text-sm font-semibold">{cm.character.name}</p>
@@ -266,12 +266,12 @@ export default function TownHallPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
                   <h3 className="font-display text-realm-text-muted text-xs uppercase tracking-wider mb-2">Town Treasury</h3>
-                  <GoldAmount amount={town.treasury} className="text-realm-gold-400 font-display text-2xl" />
+                  <GoldAmount amount={town.treasury ?? 0} className="text-realm-gold-400 font-display text-2xl" />
                 </div>
                 <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
                   <h3 className="font-display text-realm-text-muted text-xs uppercase tracking-wider mb-2">Tax Rate</h3>
                   <p className="text-realm-gold-400 font-display text-2xl">
-                    {Math.round(town.taxRate * 100)}%
+                    {Math.round((town.taxRate ?? 0.10) * 100)}%
                   </p>
                 </div>
               </div>
@@ -332,19 +332,19 @@ export default function TownHallPage() {
                   <dl className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <dt className="text-realm-text-muted text-xs">Population</dt>
-                      <dd className="text-realm-text-primary font-semibold">{town.population.toLocaleString()}</dd>
+                      <dd className="text-realm-text-primary font-semibold">{(town.population ?? 0).toLocaleString()}</dd>
                     </div>
                     <div>
                       <dt className="text-realm-text-muted text-xs">Treasury</dt>
-                      <dd><GoldAmount amount={town.treasury} className="text-realm-text-primary font-semibold" /></dd>
+                      <dd><GoldAmount amount={town.treasury ?? 0} className="text-realm-text-primary font-semibold" /></dd>
                     </div>
                     <div>
                       <dt className="text-realm-text-muted text-xs">Tax Rate</dt>
-                      <dd className="text-realm-text-primary font-semibold">{Math.round(town.taxRate * 100)}%</dd>
+                      <dd className="text-realm-text-primary font-semibold">{Math.round((town.taxRate ?? 0.10) * 100)}%</dd>
                     </div>
                     <div>
                       <dt className="text-realm-text-muted text-xs">Officials</dt>
-                      <dd className="text-realm-text-primary font-semibold">{town.council.length + (town.mayor ? 1 : 0) + (town.policy?.sheriff ? 1 : 0)}</dd>
+                      <dd className="text-realm-text-primary font-semibold">{(town.council ?? []).length + (town.mayor ? 1 : 0) + (town.policy?.sheriff ? 1 : 0)}</dd>
                     </div>
                   </dl>
                 </div>

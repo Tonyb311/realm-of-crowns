@@ -148,7 +148,10 @@ export default function MarketPage() {
     data: inventory,
   } = useQuery<InventoryItem[]>({
     queryKey: ['inventory'],
-    queryFn: async () => (await api.get('/characters/me/inventory')).data,
+    queryFn: async () => {
+      const res = await api.get('/characters/me/inventory');
+      return Array.isArray(res.data) ? res.data : (res.data?.items ?? res.data?.inventory ?? []);
+    },
     enabled: showListModal,
   });
 
@@ -156,7 +159,11 @@ export default function MarketPage() {
     data: itemOptions,
   } = useQuery<ItemOption[]>({
     queryKey: ['market', 'item-options'],
-    queryFn: async () => (await api.get('/market/item-options')).data,
+    queryFn: async () => {
+      const res = await api.get('/market/item-options');
+      const d = res.data;
+      return Array.isArray(d) ? d : (d?.items ?? d?.itemOptions ?? []);
+    },
     enabled: activeTab === 'price-history',
   });
 
@@ -165,7 +172,21 @@ export default function MarketPage() {
     isLoading: historyLoading,
   } = useQuery<PriceHistoryResponse>({
     queryKey: ['market', 'history', historyItemId],
-    queryFn: async () => (await api.get('/market/history', { params: { itemId: historyItemId, days: 30 } })).data,
+    queryFn: async () => {
+      const res = await api.get('/market/history', { params: { itemId: historyItemId, days: 30 } });
+      const d = res.data;
+      const history = Array.isArray(d?.history) ? d.history : [];
+      const totalVolume = d.totalVolume ?? history.reduce((sum: number, h: any) => sum + (h.volume ?? 0), 0);
+      const averagePrice = d.averagePrice ?? (history.length > 0
+        ? Math.round(history.reduce((sum: number, h: any) => sum + (h.avgPrice ?? 0), 0) / history.length)
+        : 0);
+      return {
+        itemName: d.itemName ?? '',
+        history,
+        averagePrice,
+        totalVolume,
+      };
+    },
     enabled: activeTab === 'price-history' && !!historyItemId,
   });
 
@@ -425,18 +446,18 @@ export default function MarketPage() {
                     <div className="bg-realm-bg-900 border border-realm-border rounded px-4 py-3">
                       <p className="text-realm-text-muted text-xs">Average Price (30d)</p>
                       <GoldAmount
-                        amount={Math.round(priceHistory.averagePrice)}
+                        amount={Math.round(priceHistory.averagePrice ?? 0)}
                         className="text-realm-gold-400 font-display text-lg"
                       />
                     </div>
                     <div className="bg-realm-bg-900 border border-realm-border rounded px-4 py-3">
                       <p className="text-realm-text-muted text-xs">Total Volume (30d)</p>
-                      <p className="text-realm-text-primary font-display text-lg">{priceHistory.totalVolume.toLocaleString()}</p>
+                      <p className="text-realm-text-primary font-display text-lg">{(priceHistory.totalVolume ?? 0).toLocaleString()}</p>
                     </div>
                   </div>
 
                   {/* Chart */}
-                  <PriceChart data={priceHistory.history} />
+                  <PriceChart data={priceHistory.history ?? []} />
                 </div>
               ) : null}
             </div>
