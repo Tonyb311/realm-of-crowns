@@ -333,38 +333,37 @@ export default function CodexItems({ searchQuery }: CodexItemsProps) {
                       key={itemName}
                       onClick={() => handleItemClick(itemName)}
                       selected={isExpanded}
-                      className={isExpanded ? 'col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4' : ''}
+                      className={`flex flex-col min-h-[100px] ${isExpanded ? 'col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4' : ''}`}
                     >
-                      <div className="space-y-2">
-                        {/* Item name and category badge */}
-                        <div className="flex items-start justify-between gap-2">
-                          <h4 className="font-display text-sm text-realm-text-primary leading-tight">
-                            {itemName}
-                          </h4>
-                          {!isExpanded && (
-                            <RealmBadge variant="default" className="shrink-0 text-[10px]">
-                              {getCategoryForItem(itemName)}
-                            </RealmBadge>
-                          )}
-                        </div>
-
-                        {/* Recipe connection summary (collapsed) */}
-                        {!isExpanded && (producedBy.length > 0 || usedIn.length > 0) && (
-                          <p className="text-xs text-realm-text-muted font-body truncate">
-                            {producedBy.length > 0 && (
-                              <span>
-                                Crafted by {formatProfession(producedBy[0].profession)}
-                                {producedBy.length > 1 ? ` +${producedBy.length - 1}` : ''}
-                              </span>
-                            )}
-                            {producedBy.length > 0 && usedIn.length > 0 && ' \u00B7 '}
-                            {usedIn.length > 0 && (
-                              <span>Used in {usedIn.length} {usedIn.length === 1 ? 'recipe' : 'recipes'}</span>
-                            )}
-                          </p>
+                      {/* Item name and category badge */}
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="font-display text-sm text-realm-text-primary leading-tight">
+                          {itemName}
+                        </h4>
+                        {!isExpanded && (
+                          <RealmBadge variant="default" className="shrink-0 text-[10px]">
+                            {getCategoryForItem(itemName)}
+                          </RealmBadge>
                         )}
+                      </div>
 
-                        {/* Expanded details */}
+                      {/* Recipe connection summary (collapsed) — flex-grow fills space */}
+                      {!isExpanded && (
+                        <p className="text-xs text-realm-text-muted font-body truncate mt-2 flex-grow">
+                          {producedBy.length > 0 && (
+                            <span>
+                              Crafted by {formatProfession(producedBy[0].profession)}
+                              {producedBy.length > 1 ? ` +${producedBy.length - 1}` : ''}
+                            </span>
+                          )}
+                          {producedBy.length > 0 && usedIn.length > 0 && ' \u00B7 '}
+                          {usedIn.length > 0 && (
+                            <span>Used in {usedIn.length} {usedIn.length === 1 ? 'recipe' : 'recipes'}</span>
+                          )}
+                        </p>
+                      )}
+
+                      {/* Expanded details */}
                         {isExpanded && (
                           <div className="mt-3 space-y-4 border-t border-realm-border pt-3">
                             {/* Category */}
@@ -436,7 +435,6 @@ export default function CodexItems({ searchQuery }: CodexItemsProps) {
                             </div>
                           </div>
                         )}
-                      </div>
                     </RealmCard>
                   );
                 })}

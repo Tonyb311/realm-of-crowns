@@ -159,7 +159,7 @@ export default function CodexWorld({ searchQuery }: CodexWorldProps) {
   }, [regionMap]);
 
   const towns: TownData[] = useMemo(() => {
-    return mapData?.towns || [];
+    return (mapData?.towns || []).filter((t) => t.released !== false);
   }, [mapData]);
 
   // ---- Filter regions and towns based on search ----

@@ -1,22 +1,13 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RealmCard } from '../ui/RealmCard';
-import { RealmBadge } from '../ui/RealmBadge';
 import type { RaceDefinition, RacialAbility, SubRaceOption, StatModifiers } from '@shared/types/race';
-import { getAllRaces, getRacesByTier } from '@shared/data/races';
+import { getRacesByTier } from '@shared/data/races';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-type TierFilter = 'all' | 'core' | 'common' | 'exotic';
-
 const STAT_KEYS: (keyof StatModifiers)[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
-
-const TIER_BADGE_VARIANT: Record<string, 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'default'> = {
-  core: 'uncommon',
-  common: 'rare',
-  exotic: 'epic',
-};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -308,63 +299,23 @@ interface CodexRacesProps {
 }
 
 export default function CodexRaces({ searchQuery }: CodexRacesProps) {
-  const [activeTier, setActiveTier] = useState<TierFilter>('all');
   const [expandedRaceId, setExpandedRaceId] = useState<string | null>(null);
 
-  // Get all race data from shared
-  const allRaces = useMemo(() => getAllRaces() || [], []);
-
-  // Filter by tier
-  const tierFiltered = useMemo(() => {
-    if (activeTier === 'all') return allRaces;
-    return (getRacesByTier(activeTier) || []);
-  }, [allRaces, activeTier]);
+  // Only show released (core) races
+  const releasedRaces = useMemo(() => (getRacesByTier('core') || []), []);
 
   // Filter by search query
   const filteredRaces = useMemo(() => {
-    if (!searchQuery) return tierFiltered;
-    return (tierFiltered || []).filter(race => matchesSearch(race, searchQuery));
-  }, [tierFiltered, searchQuery]);
-
-  // Tier counts
-  const coreCt = useMemo(() => (getRacesByTier('core') || []).length, []);
-  const commonCt = useMemo(() => (getRacesByTier('common') || []).length, []);
-  const exoticCt = useMemo(() => (getRacesByTier('exotic') || []).length, []);
-  const allCt = allRaces.length;
+    if (!searchQuery) return releasedRaces;
+    return (releasedRaces || []).filter(race => matchesSearch(race, searchQuery));
+  }, [releasedRaces, searchQuery]);
 
   function handleCardClick(raceId: string) {
     setExpandedRaceId(prev => (prev === raceId ? null : raceId));
   }
 
-  // ---------------------------------------------------------------------------
-  // Tab config
-  // ---------------------------------------------------------------------------
-  const tabs: { key: TierFilter; label: string; count: number }[] = [
-    { key: 'all', label: 'All', count: allCt },
-    { key: 'core', label: 'Core', count: coreCt },
-    { key: 'common', label: 'Common', count: commonCt },
-    { key: 'exotic', label: 'Exotic', count: exoticCt },
-  ];
-
   return (
     <div>
-      {/* Tier filter tabs */}
-      <div className="flex border-b border-realm-border mb-6">
-        {tabs.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTier(tab.key)}
-            className={`flex items-center gap-1.5 px-5 py-3 font-display text-sm border-b-2 transition-colors ${
-              activeTier === tab.key
-                ? 'border-realm-gold-400 text-realm-gold-400'
-                : 'border-transparent text-realm-text-muted hover:text-realm-text-secondary'
-            }`}
-          >
-            {tab.label}
-            <span className="text-[10px] text-realm-text-muted">({tab.count})</span>
-          </button>
-        ))}
-      </div>
 
       {/* Race cards grid */}
       {filteredRaces.length === 0 ? (
@@ -380,7 +331,6 @@ export default function CodexRaces({ searchQuery }: CodexRacesProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {(filteredRaces || []).map((race, idx) => {
             const isExpanded = expandedRaceId === race.id;
-            const isComingBadge = race.tier === 'common' || race.tier === 'exotic';
 
             return (
               <motion.div
@@ -393,33 +343,28 @@ export default function CodexRaces({ searchQuery }: CodexRacesProps) {
                 <RealmCard
                   onClick={() => handleCardClick(race.id)}
                   selected={isExpanded}
+                  className="flex flex-col min-h-[180px]"
                 >
                   {/* Card header */}
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-display text-lg text-realm-text-primary">
-                        {race.name}
-                      </h3>
-                      <RealmBadge variant={TIER_BADGE_VARIANT[race.tier] || 'default'}>
-                        {race.tier}
-                      </RealmBadge>
-                      {isComingBadge && (
-                        <RealmBadge variant="default">Coming Soon</RealmBadge>
-                      )}
-                    </div>
+                    <h3 className="font-display text-lg text-realm-text-primary">
+                      {race.name}
+                    </h3>
                   </div>
 
-                  {/* Trait name */}
-                  <p className="text-xs text-realm-text-secondary mb-2">
+                  {/* Trait name — flex-grow pushes stats to bottom */}
+                  <p className="text-xs text-realm-text-secondary mb-2 flex-grow">
                     <span className="text-realm-gold-400 font-display">{race.trait?.name}</span>
                     {race.trait?.description ? (
                       <span className="text-realm-text-muted"> — {race.trait.description}</span>
                     ) : null}
                   </p>
 
-                  {/* Stat modifiers */}
+                  {/* Stat modifiers — pinned to bottom */}
                   {race.statModifiers && (
-                    <StatModifiersDisplay stats={race.statModifiers} />
+                    <div className="mt-auto">
+                      <StatModifiersDisplay stats={race.statModifiers} />
+                    </div>
                   )}
 
                   {/* Expanded detail */}

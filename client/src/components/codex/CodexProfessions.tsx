@@ -427,7 +427,7 @@ export default function CodexProfessions({ searchQuery }: CodexProfessionsProps)
             return (
               <RealmCard
                 key={profession.type}
-                className={isExpanded ? 'lg:col-span-2' : ''}
+                className={`flex flex-col min-h-[160px] ${isExpanded ? 'lg:col-span-2' : ''}`}
                 onClick={() => toggleExpand(profession.type)}
                 selected={isExpanded}
               >
@@ -444,13 +444,14 @@ export default function CodexProfessions({ searchQuery }: CodexProfessionsProps)
                         {profession.category}
                       </span>
                     </div>
-                    <p className="text-xs text-realm-text-muted mt-1 font-body">
+                    {/* Description — flex-grow pushes stats to bottom */}
+                    <p className="text-xs text-realm-text-muted mt-1 font-body flex-grow">
                       {isExpanded
                         ? '' /* Full description shown in expanded detail */
                         : truncate(profession.description, 120)}
                     </p>
                   </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0 mt-auto">
                     <RealmBadge variant="default">
                       {profession.primaryStat}
                     </RealmBadge>

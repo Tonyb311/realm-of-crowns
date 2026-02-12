@@ -141,7 +141,7 @@ export default function CodexClasses({ searchQuery }: CodexClassesProps) {
               key={cls}
               onClick={() => handleClassClick(cls)}
               selected={isExpanded}
-              className="flex flex-col"
+              className="flex flex-col min-h-[180px]"
             >
               {/* Class name */}
               <h3 className="font-display text-lg text-realm-gold-400 mb-1">
@@ -159,13 +159,13 @@ export default function CodexClasses({ searchQuery }: CodexClassesProps) {
                 </span>
               </div>
 
-              {/* Description */}
-              <p className="text-sm font-body text-realm-text-secondary mb-3 flex-1">
+              {/* Description — flex-grow pushes stats to bottom */}
+              <p className="text-sm font-body text-realm-text-secondary mb-3 flex-grow">
                 {info.description}
               </p>
 
-              {/* Stats row */}
-              <div className="flex items-center gap-4 text-xs font-body text-realm-text-muted">
+              {/* Stats row — pinned to bottom */}
+              <div className="mt-auto flex items-center gap-4 text-xs font-body text-realm-text-muted">
                 <span>
                   <span className="text-realm-text-secondary">{specs.length}</span> specializations
                 </span>
