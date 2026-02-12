@@ -261,38 +261,40 @@ export default function CharacterCreationPage() {
   // -----------------------------------------------------------------------
   // Step 0: Race Selection
   // -----------------------------------------------------------------------
-  const renderRaceSelection = () => (
-    <div className="w-full max-w-5xl mx-auto">
-      <h2 className="text-3xl font-display text-realm-gold-400 text-center mb-6">Choose Your Race</h2>
+  const renderRaceSelection = () => {
+    const expandedRaceData = expandedRace && selectedRace?.id === expandedRace ? selectedRace : null;
 
-      {/* Tier tabs — only show when multiple tiers are released */}
-      {releasedTiers.length > 1 ? (
-        <div className="flex justify-center gap-2 mb-6">
-          {releasedTiers.map(tier => (
-            <button
-              key={tier}
-              onClick={() => setRaceTierTab(tier)}
-              className={`px-6 py-2 font-display text-sm rounded border transition-colors
-                ${raceTierTab === tier
-                  ? 'bg-realm-gold-400 text-realm-bg-900 border-realm-gold-500'
-                  : 'bg-realm-bg-700 text-realm-text-secondary border-realm-border hover:border-realm-gold-500/50'}`}
-            >
-              {tier === 'core' ? 'Core Races' : tier === 'common' ? 'Common Races' : 'Exotic Races'}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <p className="text-center text-sm text-realm-text-muted mb-6">Core Races</p>
-      )}
+    return (
+      <div className="w-full max-w-5xl mx-auto">
+        <h2 className="text-3xl font-display text-realm-gold-400 text-center mb-6">Choose Your Race</h2>
 
-      {/* Race cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {racesForTab.map(race => {
-          const isSelected = selectedRace?.id === race.id;
-          const isExpanded = expandedRace === race.id && isSelected;
-          return (
-            <div key={race.id} className="flex flex-col">
+        {/* Tier tabs — only show when multiple tiers are released */}
+        {releasedTiers.length > 1 ? (
+          <div className="flex justify-center gap-2 mb-6">
+            {releasedTiers.map(tier => (
               <button
+                key={tier}
+                onClick={() => setRaceTierTab(tier)}
+                className={`px-6 py-2 font-display text-sm rounded border transition-colors
+                  ${raceTierTab === tier
+                    ? 'bg-realm-gold-400 text-realm-bg-900 border-realm-gold-500'
+                    : 'bg-realm-bg-700 text-realm-text-secondary border-realm-border hover:border-realm-gold-500/50'}`}
+              >
+                {tier === 'core' ? 'Core Races' : tier === 'common' ? 'Common Races' : 'Exotic Races'}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="text-center text-sm text-realm-text-muted mb-6">Core Races</p>
+        )}
+
+        {/* Race cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {racesForTab.map(race => {
+            const isSelected = selectedRace?.id === race.id;
+            return (
+              <button
+                key={race.id}
                 onClick={() => selectRace(race)}
                 className={`p-4 rounded-lg border-2 text-left transition-all flex flex-col min-h-[200px]
                   ${isSelected ? 'border-realm-gold-500 bg-realm-bg-700/80 shadow-realm-glow' : 'border-realm-border bg-realm-bg-700 hover:border-realm-gold-500/40'}`}
@@ -323,77 +325,120 @@ export default function CharacterCreationPage() {
                   ))}
                 </div>
               </button>
+            );
+          })}
+        </div>
 
-              {/* Expanded details */}
-              {isExpanded && (
-                <div className="mt-1 p-4 rounded-lg bg-realm-bg-700/60 border border-realm-gold-500/30 text-sm space-y-3 animate-[fadeIn_0.2s_ease-in]">
-                  <p className="text-realm-text-secondary text-xs leading-relaxed">{race.lore}</p>
-
-                  <div>
-                    <h4 className="font-display text-realm-gold-400 text-xs mb-1">Abilities</h4>
-                    <ul className="space-y-1">
-                      {race.abilities.map(a => (
-                        <li key={a.name} className="text-xs text-realm-text-secondary">
-                          <span className="text-realm-text-primary font-semibold">{a.name}</span>
-                          <span className="text-realm-text-muted ml-1">(Lv.{a.levelRequired})</span>
-                          {' - '}{a.description}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {race.id === 'revenant' && (
-                    <div className="mt-2 p-2 rounded bg-realm-gold-500/10 border border-realm-gold-500/30">
-                      <h4 className="font-display text-realm-gold-400 text-xs mb-1">Sustenance</h4>
-                      <p className="text-xs text-realm-text-secondary">
-                        Revenants do not eat or drink. Instead, they require{' '}
-                        <span className="text-realm-gold-400 font-semibold">Soul Essence</span> — an
-                        alchemical stabilizer crafted by Alchemists. Without it, your spirit begins
-                        to fade, causing stat penalties. Budget accordingly.
-                      </p>
-                    </div>
-                  )}
-
-                  {race.id === 'forgeborn' && (
-                    <div className="mt-2 p-2 rounded bg-realm-gold-500/10 border border-realm-gold-500/30">
-                      <h4 className="font-display text-realm-gold-400 text-xs mb-1">Maintenance</h4>
-                      <p className="text-xs text-realm-text-secondary">
-                        Forgeborn do not eat or drink. Instead, they require{' '}
-                        <span className="text-realm-gold-400 font-semibold">Maintenance Kits</span> —
-                        metalworking consumables crafted by Smelters. Without regular maintenance,
-                        mechanical components degrade, causing stat penalties. Budget accordingly.
-                      </p>
-                    </div>
-                  )}
-
-                  {race.professionBonuses.length > 0 && (
-                    <div>
-                      <h4 className="font-display text-realm-gold-400 text-xs mb-1">Profession Bonuses</h4>
-                      <ul className="space-y-0.5">
-                        {race.professionBonuses.map(pb => {
-                          const bonuses: string[] = [];
-                          if (pb.speedBonus) bonuses.push(`Speed +${(pb.speedBonus * 100).toFixed(0)}%`);
-                          if (pb.qualityBonus) bonuses.push(`Quality ${pb.qualityBonus > 0 ? '+' : ''}${(pb.qualityBonus * 100).toFixed(0)}%`);
-                          if (pb.yieldBonus) bonuses.push(`Yield ${pb.yieldBonus > 0 ? '+' : ''}${(pb.yieldBonus * 100).toFixed(0)}%`);
-                          if (pb.xpBonus) bonuses.push(`XP +${(pb.xpBonus * 100).toFixed(0)}%`);
-                          return (
-                            <li key={pb.professionType} className="text-xs text-realm-text-secondary">
-                              <span className="capitalize text-realm-text-primary">{pb.professionType.replace(/_/g, ' ')}</span>
-                              {': '}{bonuses.join(', ')}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
+        {/* Expanded race detail panel — below grid */}
+        {expandedRaceData && (
+          <div className="mt-4 bg-realm-bg-800 rounded-lg border border-realm-gold-500/30 p-6 animate-[fadeIn_0.2s_ease-in]">
+            <div className="mb-4">
+              <h3 className="font-display text-xl text-realm-gold-400">{expandedRaceData.name}</h3>
+              <p className="text-xs text-realm-gold-400 italic">{expandedRaceData.trait.name}</p>
+              <p className="text-sm text-realm-text-secondary mt-1">{expandedRaceData.trait.description}</p>
             </div>
-          );
-        })}
+
+            {/* Stat Bonuses */}
+            <div className="mb-4">
+              <h4 className="font-display text-sm text-realm-gold-400 uppercase tracking-wider mb-2">
+                Stat Bonuses
+              </h4>
+              <div className="flex flex-wrap gap-3">
+                {STAT_KEYS.map(s => {
+                  const bonus = expandedRaceData.statModifiers[s];
+                  if (bonus === 0) return null;
+                  return (
+                    <div key={s} className="bg-realm-bg-700 rounded-md px-3 py-1.5 border border-realm-border">
+                      <span className="font-display text-xs text-realm-text-muted uppercase">{s}</span>
+                      <span className={`ml-1.5 font-display text-sm ${bonus > 0 ? 'text-realm-success' : 'text-realm-danger'}`}>
+                        {bonus > 0 ? '+' : ''}{bonus}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Lore */}
+            {expandedRaceData.lore && (
+              <p className="text-sm text-realm-text-muted italic mb-4 border-l-2 border-realm-gold-500/30 pl-3">
+                {expandedRaceData.lore}
+              </p>
+            )}
+
+            {/* Racial Abilities */}
+            {expandedRaceData.abilities.length > 0 && (
+              <div className="mb-4">
+                <h4 className="font-display text-sm text-realm-gold-400 uppercase tracking-wider mb-2">
+                  Racial Abilities
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {expandedRaceData.abilities.map(a => (
+                    <div key={a.name} className="bg-realm-bg-700 rounded-md p-3 border border-realm-border">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="font-display text-sm text-realm-text-primary">{a.name}</p>
+                        <span className="text-[10px] text-realm-text-muted shrink-0 ml-2">Lv.{a.levelRequired}</span>
+                      </div>
+                      <p className="text-xs text-realm-text-secondary">{a.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Special race-specific notes */}
+            {expandedRaceData.id === 'revenant' && (
+              <div className="mb-4 bg-realm-gold-500/10 rounded-md p-3 border border-realm-gold-500/20">
+                <p className="font-display text-sm text-realm-gold-400">Sustenance</p>
+                <p className="text-xs text-realm-text-secondary mt-1">
+                  Revenants do not eat or drink. Instead, they require{' '}
+                  <span className="text-realm-gold-400 font-semibold">Soul Essence</span> — an
+                  alchemical stabilizer crafted by Alchemists. Without it, your spirit begins
+                  to fade, causing stat penalties. Budget accordingly.
+                </p>
+              </div>
+            )}
+
+            {expandedRaceData.id === 'forgeborn' && (
+              <div className="mb-4 bg-realm-gold-500/10 rounded-md p-3 border border-realm-gold-500/20">
+                <p className="font-display text-sm text-realm-gold-400">Maintenance</p>
+                <p className="text-xs text-realm-text-secondary mt-1">
+                  Forgeborn do not eat or drink. Instead, they require{' '}
+                  <span className="text-realm-gold-400 font-semibold">Maintenance Kits</span> —
+                  metalworking consumables crafted by Smelters. Without regular maintenance,
+                  mechanical components degrade, causing stat penalties. Budget accordingly.
+                </p>
+              </div>
+            )}
+
+            {/* Profession Bonuses */}
+            {expandedRaceData.professionBonuses.length > 0 && (
+              <div>
+                <h4 className="font-display text-sm text-realm-gold-400 uppercase tracking-wider mb-2">
+                  Profession Bonuses
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {expandedRaceData.professionBonuses.map(pb => {
+                    const bonuses: string[] = [];
+                    if (pb.speedBonus) bonuses.push(`Speed +${(pb.speedBonus * 100).toFixed(0)}%`);
+                    if (pb.qualityBonus) bonuses.push(`Quality ${pb.qualityBonus > 0 ? '+' : ''}${(pb.qualityBonus * 100).toFixed(0)}%`);
+                    if (pb.yieldBonus) bonuses.push(`Yield ${pb.yieldBonus > 0 ? '+' : ''}${(pb.yieldBonus * 100).toFixed(0)}%`);
+                    if (pb.xpBonus) bonuses.push(`XP +${(pb.xpBonus * 100).toFixed(0)}%`);
+                    return (
+                      <div key={pb.professionType} className="bg-realm-bg-700 rounded-md px-3 py-2 border border-realm-border">
+                        <p className="text-xs text-realm-text-primary capitalize">{pb.professionType.replace(/_/g, ' ')}</p>
+                        <p className="text-[10px] text-realm-text-muted">{bonuses.join(' · ')}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   // -----------------------------------------------------------------------
   // Step 1: Sub-Race Selection
@@ -519,7 +564,7 @@ export default function CharacterCreationPage() {
                 {specNames.map(specId => {
                   const specAbilities = classAbilities.filter(a => a.specialization === specId);
                   return (
-                    <div key={specId} className="bg-realm-bg-700 rounded-md p-4 border border-realm-border">
+                    <div key={specId} className="bg-realm-bg-700 rounded-md p-4 border border-realm-border flex flex-col">
                       <h5 className="font-display text-sm text-realm-text-primary mb-1 capitalize">
                         {specId}
                       </h5>
@@ -529,18 +574,16 @@ export default function CharacterCreationPage() {
                         </p>
                       )}
                       {specAbilities.length > 0 && (
-                        <div className="space-y-1 border-t border-realm-border pt-2">
-                          {specAbilities.slice(0, 3).map(ability => (
-                            <p key={ability.id} className="text-[10px] text-realm-text-muted">
-                              <span className="text-realm-text-secondary">{ability.name}</span>
-                              <span className="ml-1">(Lv.{ability.levelRequired})</span>
-                            </p>
+                        <div className="border-t border-realm-border pt-2">
+                          {specAbilities.map(ability => (
+                            <div key={ability.id} className="py-1.5 border-b border-realm-border/20 last:border-0">
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm font-display text-realm-text-primary">{ability.name}</p>
+                                <span className="text-[10px] text-realm-text-muted shrink-0 ml-2">Lv.{ability.levelRequired}</span>
+                              </div>
+                              <p className="text-xs text-realm-text-secondary mt-0.5">{ability.description}</p>
+                            </div>
                           ))}
-                          {specAbilities.length > 3 && (
-                            <p className="text-[10px] text-realm-text-muted italic">
-                              +{specAbilities.length - 3} more abilities...
-                            </p>
-                          )}
                         </div>
                       )}
                     </div>
