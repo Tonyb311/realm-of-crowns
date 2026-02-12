@@ -496,7 +496,7 @@ export default function TownPage() {
                     >
                       <div>
                         <span className="text-realm-text-primary text-sm font-semibold">{c.name}</span>
-                        <span className="text-realm-text-muted text-xs ml-2 capitalize">{c.race.toLowerCase()}</span>
+                        <span className="text-realm-text-muted text-xs ml-2">{c.race.toLowerCase().replace(/_/g, '-').replace(/\b\w/g, c2 => c2.toUpperCase())}</span>
                       </div>
                       <span className="text-xs text-realm-text-muted">Lv. {c.level}</span>
                     </button>

@@ -121,7 +121,7 @@ export default function ProfilePage() {
                 )}
               </div>
               <div className="flex items-center gap-3 mt-2">
-                <span className="text-realm-text-secondary text-sm capitalize">{profile.race.toLowerCase()}</span>
+                <span className="text-realm-text-secondary text-sm">{profile.race.toLowerCase().replace(/_/g, '-').replace(/\b\w/g, c => c.toUpperCase())}</span>
                 <span className="text-realm-text-muted text-sm">Level {profile.level}</span>
                 {profile.guildTag && (
                   <span className="text-xs bg-realm-bg-600/40 text-realm-gold-400 px-2 py-0.5 rounded">

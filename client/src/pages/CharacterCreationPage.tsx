@@ -53,6 +53,18 @@ const SPEC_DESCRIPTIONS: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
+// Singular race name (race.name is plural, e.g. "Humans" — we need "Human")
+// ---------------------------------------------------------------------------
+function singularRaceName(race: RaceDefinition): string {
+  const special: Record<string, string> = {
+    half_elf: 'Half-Elf',
+    half_orc: 'Half-Orc',
+    nightborne: 'Nightborne',
+  };
+  return special[race.id] || race.id.charAt(0).toUpperCase() + race.id.slice(1);
+}
+
+// ---------------------------------------------------------------------------
 // Stat helpers
 // ---------------------------------------------------------------------------
 const STAT_KEYS = ['str', 'dex', 'con', 'int', 'wis', 'cha'] as const;
@@ -709,7 +721,7 @@ export default function CharacterCreationPage() {
         <RealmPanel className="mb-6">
           <div className="grid grid-cols-2 gap-y-3 text-sm">
             <span className="text-realm-text-muted">Race</span>
-            <span className="text-realm-text-primary">{selectedRace.name}</span>
+            <span className="text-realm-text-primary">{singularRaceName(selectedRace)}</span>
 
             {selectedSubRace && (
               <>
@@ -781,7 +793,7 @@ export default function CharacterCreationPage() {
       <div className="w-full max-w-2xl mx-auto text-center">
         <h2 className="text-4xl font-display text-realm-gold-400 mb-4">Character Created!</h2>
         <p className="text-xl text-realm-text-primary mb-2">
-          {createdCharacter.name} the {selectedRace.name} {selectedClass.name}
+          {createdCharacter.name} the {singularRaceName(selectedRace)} {selectedClass.name}
         </p>
         <p className="text-lg text-realm-gold-300">
           Welcome to <span className="font-bold">{createdCharacter.currentTown?.name || createdCharacter.homeTown?.name || 'your new home'}</span>!
