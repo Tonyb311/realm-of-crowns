@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { Routes, Route, useNavigate, Link, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ui/ProtectedRoute';
@@ -75,8 +75,8 @@ function App() {
           {/* Character creation — protected but no game shell */}
           <Route path="/create-character" element={<ProtectedRoute><CharacterCreationPage /></ProtectedRoute>} />
 
-          {/* Game routes — wrapped in GameShell */}
-          <Route element={<ProtectedRoute><GameShell><Outlet /></GameShell></ProtectedRoute>}>
+          {/* Game routes — wrapped in GameShell, requires character */}
+          <Route element={<ProtectedRoute><RequireCharacter><GameShell><Outlet /></GameShell></RequireCharacter></ProtectedRoute>}>
             <Route path="/town" element={<TownPage />} />
             <Route path="/market" element={<MarketPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
@@ -130,10 +130,8 @@ function RootPage() {
   return <HomePage />;
 }
 
-function HomePage() {
-  const navigate = useNavigate();
-
-  const { data: character, isLoading } = useQuery<{ id: string } | null>({
+function useCharacterCheck() {
+  return useQuery<{ id: string } | null>({
     queryKey: ['character', 'me'],
     queryFn: async () => {
       try {
@@ -145,55 +143,20 @@ function HomePage() {
       }
     },
   });
+}
 
-  const hasCharacter = !!character;
+function HomePage() {
+  const { data: character, isLoading } = useCharacterCheck();
+  if (isLoading) return <LoadingScreen />;
+  if (!character) return <Navigate to="/create-character" replace />;
+  return <Navigate to="/town" replace />;
+}
 
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-8">
-      <h1 className="text-6xl font-display text-realm-gold-400 mb-4">
-        Realm of Crowns
-      </h1>
-      <p className="text-xl text-realm-text-secondary mb-8 text-center max-w-2xl">
-        A fantasy MMORPG with 20 playable races, player-driven economy,
-        and D&D-style adventure. Your kingdom awaits.
-      </p>
-      <div className="flex gap-4">
-        {isLoading ? (
-          <div className="text-realm-gold-400 font-display text-lg animate-pulse">Loading...</div>
-        ) : hasCharacter ? (
-          <>
-            <button
-              onClick={() => navigate('/town')}
-              className="px-8 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-lg rounded hover:bg-realm-gold-400 transition-colors"
-            >
-              Enter Town
-            </button>
-            <button
-              onClick={() => navigate('/map')}
-              className="px-8 py-3 border border-realm-gold-500 text-realm-gold-400 font-display text-lg rounded hover:bg-realm-bg-700 transition-colors"
-            >
-              World Map
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              onClick={() => navigate('/create-character')}
-              className="px-8 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-lg rounded hover:bg-realm-gold-400 transition-colors"
-            >
-              Create Your Character
-            </button>
-            <button className="px-8 py-3 border border-realm-gold-500 text-realm-gold-400 font-display text-lg rounded hover:bg-realm-bg-700 transition-colors">
-              Learn More
-            </button>
-          </>
-        )}
-      </div>
-      <div className="mt-16 text-realm-text-muted text-sm">
-        <p>20 Races - 28 Professions - 68 Towns - Your Story</p>
-      </div>
-    </div>
-  );
+function RequireCharacter({ children }: { children: React.ReactNode }) {
+  const { data: character, isLoading } = useCharacterCheck();
+  if (isLoading) return <LoadingScreen />;
+  if (!character) return <Navigate to="/create-character" replace />;
+  return <>{children}</>;
 }
 
 // MAJ-18: 404 catch-all page
