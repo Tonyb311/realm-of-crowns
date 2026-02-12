@@ -7,7 +7,6 @@ export interface AbilityDefinition {
   tier: number;
   effects: Record<string, unknown>;
   cooldown: number;
-  manaCost: number;
   prerequisiteAbilityId?: string;
   levelRequired: number;
 }

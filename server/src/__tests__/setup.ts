@@ -118,8 +118,6 @@ export async function createTestUserWithCharacter(
       stats: { str: 12, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
       health: 100,
       maxHealth: 100,
-      mana: 50,
-      maxMana: 50,
       unspentStatPoints: charOptions.unspentStatPoints ?? 0,
       unspentSkillPoints: charOptions.unspentSkillPoints ?? 0,
       specialization: charOptions.specialization || null,

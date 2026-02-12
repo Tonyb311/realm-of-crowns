@@ -32,11 +32,11 @@ export const mosskin: RaceDefinition = {
     },
     {
       name: 'Druidic Magic',
-      description: 'Nature spells cost 25% less mana and deal 20% more',
+      description: 'Nature spells have 25% shorter cooldowns and deal 20% more damage',
       levelRequired: 10,
       type: 'passive',
       effectType: 'spell_enhancement',
-      effectValue: { manaCostReduction: 0.25, natureDamageBonus: 0.20, scope: 'nature_spells' },
+      effectValue: { cooldownReduction: 0.25, natureDamageBonus: 0.20, scope: 'nature_spells' },
       targetType: 'self',
     },
     {

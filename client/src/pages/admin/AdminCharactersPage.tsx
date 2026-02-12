@@ -28,8 +28,7 @@ interface AdminCharacter {
   gold: number;
   health: number;
   maxHealth: number;
-  mana: number;
-  maxMana: number;
+
   currentTownId: string | null;
   currentTownName: string | null;
   strength: number;
@@ -194,8 +193,7 @@ export default function AdminCharactersPage() {
       xp: char.xp,
       health: char.health,
       maxHealth: char.maxHealth,
-      mana: char.mana,
-      maxMana: char.maxMana,
+
       gold: char.gold,
       currentTownId: char.currentTownId,
       strength: char.strength,
@@ -512,28 +510,6 @@ export default function AdminCharactersPage() {
                         value={editForm.maxHealth ?? ''}
                         onChange={(e) => updateField('maxHealth', parseInt(e.target.value, 10) || 0)}
                         min="1"
-                        className="w-full bg-dark-400 border border-dark-50 rounded px-3 py-2 text-parchment-300 text-sm focus:border-primary-400 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-parchment-500 text-xs mb-1 block">Mana</label>
-                      <input
-                        type="number"
-                        value={editForm.mana ?? ''}
-                        onChange={(e) => updateField('mana', parseInt(e.target.value, 10) || 0)}
-                        min="0"
-                        className="w-full bg-dark-400 border border-dark-50 rounded px-3 py-2 text-parchment-300 text-sm focus:border-primary-400 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-parchment-500 text-xs mb-1 block">Max Mana</label>
-                      <input
-                        type="number"
-                        value={editForm.maxMana ?? ''}
-                        onChange={(e) => updateField('maxMana', parseInt(e.target.value, 10) || 0)}
-                        min="0"
                         className="w-full bg-dark-400 border border-dark-50 rounded px-3 py-2 text-parchment-300 text-sm focus:border-primary-400 focus:outline-none"
                       />
                     </div>

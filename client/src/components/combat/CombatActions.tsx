@@ -11,7 +11,7 @@ import {
 export interface CombatSpell {
   id: string;
   name: string;
-  mpCost: number;
+
   description: string;
   type: 'damage' | 'heal' | 'buff' | 'debuff';
 }
@@ -31,12 +31,12 @@ interface CombatActionsProps {
   combatType: 'pve' | 'pvp';
   spells: CombatSpell[];
   items: CombatItem[];
-  playerMp: number;
+
   onAction: (action: string, opts?: { spellId?: string; itemId?: string }) => void;
   isPending: boolean;
 }
 
-export default function CombatActions({ isPlayerTurn, combatType, spells, items, playerMp, onAction, isPending }: CombatActionsProps) {
+export default function CombatActions({ isPlayerTurn, combatType, spells, items, onAction, isPending }: CombatActionsProps) {
   const [submenu, setSubmenu] = useState<ActionSubmenu>(null);
 
   const disabled = !isPlayerTurn || isPending;
@@ -82,25 +82,17 @@ export default function CombatActions({ isPlayerTurn, combatType, spells, items,
                 {spells.length === 0 ? (
                   <p className="text-parchment-500 text-xs p-2">No spells available.</p>
                 ) : (
-                  spells.map((spell) => {
-                    const canCast = playerMp >= spell.mpCost;
-                    return (
+                  spells.map((spell) => (
                       <button
                         key={spell.id}
                         onClick={() => { onAction('cast_spell', { spellId: spell.id }); setSubmenu(null); }}
-                        disabled={!canCast || isPending}
+                        disabled={isPending}
                         className="w-full text-left px-3 py-2 rounded text-xs hover:bg-dark-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        <div className="flex justify-between items-baseline">
-                          <span className="text-parchment-200 font-semibold">{spell.name}</span>
-                          <span className={`${canCast ? 'text-blue-400' : 'text-red-400'}`}>
-                            {spell.mpCost} MP
-                          </span>
-                        </div>
+                        <span className="text-parchment-200 font-semibold">{spell.name}</span>
                         <p className="text-parchment-500 mt-0.5">{spell.description}</p>
                       </button>
-                    );
-                  })
+                    ))
                 )}
               </div>
             </div>

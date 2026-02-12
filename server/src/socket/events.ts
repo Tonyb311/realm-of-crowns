@@ -144,7 +144,6 @@ export function emitLevelUp(characterId: string, data: {
     statPoints: number;
     skillPoints: number;
     maxHealth: number;
-    maxMana: number;
   };
 }) {
   getIO().to(`user:${characterId}`).emit('player:level-up', data);

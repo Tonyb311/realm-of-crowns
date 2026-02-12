@@ -17,8 +17,6 @@ const editCharacterSchema = z.object({
   gold: z.number().min(0).optional(),
   health: z.number().int().min(0).optional(),
   maxHealth: z.number().int().min(1).optional(),
-  mana: z.number().int().min(0).optional(),
-  maxMana: z.number().int().min(0).optional(),
   currentTownId: z.string().optional(),
   unspentStatPoints: z.number().int().min(0).optional(),
   unspentSkillPoints: z.number().int().min(0).optional(),

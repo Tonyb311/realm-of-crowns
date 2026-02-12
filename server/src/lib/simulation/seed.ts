@@ -95,17 +95,6 @@ const CLASS_HP_MAP: Record<string, number> = {
   psion: 4,
 };
 
-// MP by class
-const CLASS_MP_MAP: Record<string, number> = {
-  mage: 100,
-  psion: 90,
-  cleric: 80,
-  bard: 60,
-  ranger: 40,
-  warrior: 20,
-  rogue: 20,
-};
-
 // ---------------------------------------------------------------------------
 // seedBots
 // ---------------------------------------------------------------------------
@@ -224,7 +213,6 @@ async function createSingleBot(
 
   const conModifier = Math.floor((stats.con - 10) / 2);
   const maxHealth = 10 + conModifier + (CLASS_HP_MAP[charClass] || 6);
-  const maxMana = CLASS_MP_MAP[charClass] || 50;
 
   // Gold by tier
   const tier = raceDef?.tier ?? 'core';
@@ -244,8 +232,6 @@ async function createSingleBot(
       gold,
       health: maxHealth,
       maxHealth,
-      mana: maxMana,
-      maxMana,
       currentTownId: townId,
     },
   });

@@ -153,14 +153,10 @@ function decideAction(
   for (const rule of presets.itemUsageRules) {
     let shouldUse = false;
     const hpPercent = (actor.currentHp / actor.maxHp) * 100;
-    const manaPercent = actor.maxMana > 0 ? (actor.currentMana / actor.maxMana) * 100 : 100;
 
     switch (rule.useWhen) {
       case 'hp_below':
         shouldUse = hpPercent <= (rule.threshold ?? 30);
-        break;
-      case 'mana_below':
-        shouldUse = manaPercent <= (rule.threshold ?? 20);
         break;
       case 'status_effect':
         shouldUse = rule.statusEffect
@@ -352,8 +348,6 @@ export async function resolveNodePvE(
     character.level,
     character.health,
     character.maxHealth,
-    character.mana,
-    character.maxMana,
     getEquipmentAC(character.equipment),
     getEquippedWeapon(character.equipment),
     {},
@@ -490,7 +484,6 @@ export async function resolveNodePvP(
     traveler.id, traveler.name, 0,
     travelerStats, traveler.level,
     traveler.health, traveler.maxHealth,
-    traveler.mana, traveler.maxMana,
     getEquipmentAC(traveler.equipment),
     getEquippedWeapon(traveler.equipment),
     {},
@@ -502,7 +495,6 @@ export async function resolveNodePvP(
     ambusher.id, ambusher.name, 1,
     ambusherStats, ambusher.level,
     ambusher.health, ambusher.maxHealth,
-    ambusher.mana, ambusher.maxMana,
     getEquipmentAC(ambusher.equipment),
     getEquippedWeapon(ambusher.equipment),
     {},
@@ -646,7 +638,7 @@ export async function resolveGroupCombat(
     const stats = parseStats(char.stats);
     const combatant = createCharacterCombatant(
       char.id, char.name, 0, stats, char.level,
-      char.health, char.maxHealth, char.mana, char.maxMana,
+      char.health, char.maxHealth,
       getEquipmentAC(char.equipment), getEquippedWeapon(char.equipment), {},
       getProficiencyBonus(char.level),
     );
@@ -671,7 +663,7 @@ export async function resolveGroupCombat(
     const stats = parseStats(char.stats);
     const combatant = createCharacterCombatant(
       char.id, char.name, 1, stats, char.level,
-      char.health, char.maxHealth, char.mana, char.maxMana,
+      char.health, char.maxHealth,
       getEquipmentAC(char.equipment), getEquippedWeapon(char.equipment), {},
       getProficiencyBonus(char.level),
     );

@@ -13,8 +13,7 @@ export interface Combatant {
   type: 'player' | 'enemy' | 'ally';
   hp: number;
   maxHp: number;
-  mp: number;
-  maxMp: number;
+
   initiative: number;
   statusEffects: StatusEffect[];
   portrait?: string;
@@ -76,7 +75,6 @@ export default function CombatantCard({ combatant, isActive, side }: { combatant
 
       <div className="mt-3 space-y-1.5">
         <StatBar current={combatant.hp} max={combatant.maxHp} color="red" label="HP" />
-        <StatBar current={combatant.mp} max={combatant.maxMp} color="blue" label="MP" />
       </div>
 
       {combatant.statusEffects.length > 0 && (

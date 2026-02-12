@@ -302,7 +302,7 @@ export function getActivePassives(
         passives.push({
           abilityName: 'Druidic Magic',
           race,
-          description: 'Nature spells cost 25% less mana and deal 20% more',
+          description: 'Nature spells have 25% shorter cooldowns and deal 20% more damage',
           modifiers: {},
           conditional: false,
         });

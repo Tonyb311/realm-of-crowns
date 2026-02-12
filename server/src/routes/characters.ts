@@ -52,18 +52,6 @@ function getClassHpBonus(charClass: CharacterClass): number {
   }
 }
 
-function getClassMp(charClass: CharacterClass): number {
-  switch (charClass) {
-    case 'mage': return 100;
-    case 'cleric': return 80;
-    case 'bard': return 60;
-    case 'ranger': return 40;
-    case 'warrior': return 20;
-    case 'rogue': return 20;
-    case 'psion': return 90;
-  }
-}
-
 function getStartingGold(tier: 'core' | 'common' | 'exotic'): number {
   switch (tier) {
     case 'core': return 100;
@@ -159,9 +147,6 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
     const conModifier = Math.floor((stats.con - 10) / 2);
     const maxHealth = 10 + conModifier + getClassHpBonus(charClass);
 
-    // Starting MP by class
-    const maxMana = getClassMp(charClass);
-
     // Resolve town name to actual Town ID (frontend sends name, DB needs UUID)
     const town = await prisma.town.findFirst({
       where: {
@@ -194,8 +179,6 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
         gold,
         health: maxHealth,
         maxHealth,
-        mana: maxMana,
-        maxMana,
         currentTownId: town.id,
       },
     });
@@ -379,9 +362,6 @@ router.post('/allocate-stats', authGuard, characterGuard, validate(allocateStats
     const conIncrease = con;
     const hpBonus = conIncrease > 0 ? conIncrease * 2 : 0;
 
-    // INT/WIS +1 mana per stat point purchased (not per cost spent)
-    const manaBonus = (intStat + wis);
-
     await prisma.character.update({
       where: { id: character.id },
       data: {
@@ -389,8 +369,6 @@ router.post('/allocate-stats', authGuard, characterGuard, validate(allocateStats
         unspentStatPoints: character.unspentStatPoints - totalCost,
         maxHealth: character.maxHealth + hpBonus,
         health: character.health + hpBonus,
-        maxMana: character.maxMana + manaBonus,
-        mana: character.mana + manaBonus,
       },
     });
 
@@ -398,7 +376,6 @@ router.post('/allocate-stats', authGuard, characterGuard, validate(allocateStats
       stats: newStats,
       unspentStatPoints: character.unspentStatPoints - totalCost,
       maxHealth: character.maxHealth + hpBonus,
-      maxMana: character.maxMana + manaBonus,
     });
   } catch (error) {
     if (handlePrismaError(error, res, 'allocate-stats', req)) return;

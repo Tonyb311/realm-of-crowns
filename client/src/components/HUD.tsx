@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   Heart,
-  Droplets,
+
   CircleDollarSign,
   MapPin,
   Crown,
@@ -26,8 +26,7 @@ interface CharacterHUD {
   xp: number;
   hp: number;
   maxHp: number;
-  mp: number;
-  maxMp: number;
+
   gold: number;
   currentTownId: string | null;
   currentTownName?: string;
@@ -147,7 +146,7 @@ export default function HUD() {
         {/* Divider */}
         <div className="w-px h-6 bg-dark-50 flex-shrink-0" />
 
-        {/* HP/MP Bars */}
+        {/* HP Bar */}
         <div className="flex items-center gap-3 flex-shrink-0">
           <StatBar
             current={character.hp ?? character.maxHp ?? 100}
@@ -155,13 +154,6 @@ export default function HUD() {
             gradient="from-red-700 to-red-500"
             label="HP"
             icon={Heart}
-          />
-          <StatBar
-            current={character.mp ?? character.maxMp ?? 50}
-            max={character.maxMp ?? 50}
-            gradient="from-blue-700 to-blue-500"
-            label="MP"
-            icon={Droplets}
           />
         </div>
 

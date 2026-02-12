@@ -12,18 +12,18 @@ interface ClassDefinition {
   name: string;
   primaryStat: string;
   hpBonus: number;
-  mpBonus: number;
+
   description: string;
 }
 
 const CLASSES: ClassDefinition[] = [
-  { id: 'warrior', name: 'Warrior', primaryStat: 'STR', hpBonus: 10, mpBonus: 20, description: 'Masters of arms and armor' },
-  { id: 'mage', name: 'Mage', primaryStat: 'INT', hpBonus: 4, mpBonus: 100, description: 'Wielders of arcane power' },
-  { id: 'rogue', name: 'Rogue', primaryStat: 'DEX', hpBonus: 6, mpBonus: 20, description: 'Shadows and precision' },
-  { id: 'cleric', name: 'Cleric', primaryStat: 'WIS', hpBonus: 8, mpBonus: 80, description: 'Divine healers and protectors' },
-  { id: 'ranger', name: 'Ranger', primaryStat: 'DEX', hpBonus: 8, mpBonus: 40, description: 'Scouts and beast companions' },
-  { id: 'bard', name: 'Bard', primaryStat: 'CHA', hpBonus: 6, mpBonus: 60, description: 'Performers and diplomats' },
-  { id: 'psion', name: 'Psion', primaryStat: 'INT', hpBonus: 4, mpBonus: 90, description: 'Masters of psionic discipline' },
+  { id: 'warrior', name: 'Warrior', primaryStat: 'STR', hpBonus: 10, description: 'Masters of arms and armor' },
+  { id: 'mage', name: 'Mage', primaryStat: 'INT', hpBonus: 4, description: 'Wielders of arcane power' },
+  { id: 'rogue', name: 'Rogue', primaryStat: 'DEX', hpBonus: 6, description: 'Shadows and precision' },
+  { id: 'cleric', name: 'Cleric', primaryStat: 'WIS', hpBonus: 8, description: 'Divine healers and protectors' },
+  { id: 'ranger', name: 'Ranger', primaryStat: 'DEX', hpBonus: 8, description: 'Scouts and beast companions' },
+  { id: 'bard', name: 'Bard', primaryStat: 'CHA', hpBonus: 6, description: 'Performers and diplomats' },
+  { id: 'psion', name: 'Psion', primaryStat: 'INT', hpBonus: 4, description: 'Masters of psionic discipline' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -438,11 +438,6 @@ export default function CharacterCreationPage() {
                 <p className="text-parchment-300">
                   HP Bonus: <span className="text-green-400">+{cls.hpBonus}</span>
                 </p>
-                {cls.mpBonus > 0 && (
-                  <p className="text-parchment-300">
-                    MP Bonus: <span className="text-blue-400">+{cls.mpBonus}</span>
-                  </p>
-                )}
               </div>
             </button>
           );
@@ -481,17 +476,11 @@ export default function CharacterCreationPage() {
         {/* Derived stats */}
         <div className="bg-dark-300 border border-dark-50 rounded-lg p-5 mb-6">
           <h3 className="font-display text-primary-400 text-sm mb-3">Derived Stats</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+          <div className="grid grid-cols-3 gap-4 text-center">
             <div>
               <p className="text-xs text-parchment-500">HP</p>
               <p className="text-xl font-display text-green-400">
                 {10 + statMod(stats.con) + (selectedClass?.hpBonus ?? 0)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-parchment-500">MP</p>
-              <p className="text-xl font-display text-blue-400">
-                {selectedClass?.mpBonus ?? 0}
               </p>
             </div>
             <div>

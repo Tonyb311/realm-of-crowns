@@ -5,7 +5,6 @@ import {
   Lock,
   Unlock,
   Zap,
-  Droplets,
   Clock,
   ChevronRight,
   Check,
@@ -26,7 +25,7 @@ interface SkillAbility {
   specialization: string;
   tier: number;
   cooldown: number;
-  manaCost: number;
+
   prerequisiteAbilityId?: string;
   unlocked: boolean;
   canUnlock: boolean;
@@ -189,12 +188,7 @@ function AbilityDetail({
             <span className="text-parchment-400">{ability.cooldown} turn cooldown</span>
           </div>
         )}
-        {ability.manaCost > 0 && (
-          <div className="flex items-center gap-1.5 text-xs bg-dark-500 rounded px-3 py-2">
-            <Droplets className="w-3 h-3 text-blue-400" />
-            <span className="text-parchment-400">{ability.manaCost} mana</span>
-          </div>
-        )}
+
         <div className="flex items-center gap-1.5 text-xs bg-dark-500 rounded px-3 py-2">
           <Zap className="w-3 h-3 text-amber-400" />
           <span className="text-parchment-400">Tier {ability.tier}</span>

@@ -867,23 +867,7 @@ export function resolvePsionAbility(
     };
   }
 
-  // Deduct mana cost
-  const manaCost = abilityDef.manaCost;
-  if (actor.currentMana < manaCost) {
-    return {
-      state: current,
-      result: {
-        type: 'psion_ability',
-        actorId,
-        abilityName: abilityDef.name,
-        abilityId,
-        saveRequired: false,
-        description: `Not enough mana for ${abilityDef.name}. Requires ${manaCost}, has ${actor.currentMana}.`,
-      },
-    };
-  }
-
-  let updatedActor = { ...actor, currentMana: actor.currentMana - manaCost };
+  let updatedActor = { ...actor };
   current = {
     ...current,
     combatants: current.combatants.map((c) => (c.id === actorId ? updatedActor : c)),
@@ -1947,8 +1931,6 @@ export function createCharacterCombatant(
   level: number,
   hp: number,
   maxHp: number,
-  mana: number,
-  maxMana: number,
   equipmentAC: number,
   weapon: WeaponInfo | null,
   spellSlots: { [level: number]: number },
@@ -1963,8 +1945,6 @@ export function createCharacterCombatant(
     level,
     currentHp: hp,
     maxHp,
-    currentMana: mana,
-    maxMana,
     ac: equipmentAC > 0 ? equipmentAC : BASE_AC + getModifier(stats.dex),
     initiative: 0,
     statusEffects: [],
@@ -2003,8 +1983,6 @@ export function createMonsterCombatant(
     level,
     currentHp: hp,
     maxHp: hp,
-    currentMana: 0,
-    maxMana: 0,
     ac,
     initiative: 0,
     statusEffects: [],

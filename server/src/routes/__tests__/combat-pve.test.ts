@@ -82,8 +82,6 @@ const mockCharacter = {
   gold: 500,
   health: 100,
   maxHealth: 100,
-  mana: 50,
-  maxMana: 50,
   xp: 200,
   currentTownId: 'town-001',
   travelStatus: 'idle',

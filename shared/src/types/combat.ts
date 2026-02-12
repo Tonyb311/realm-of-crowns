@@ -125,8 +125,6 @@ export interface Combatant {
   level: number;
   currentHp: number;
   maxHp: number;
-  currentMana: number;
-  maxMana: number;
   ac: number;
   initiative: number;
   statusEffects: StatusEffect[];

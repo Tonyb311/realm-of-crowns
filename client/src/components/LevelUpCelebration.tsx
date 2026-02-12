@@ -48,12 +48,6 @@ export default function LevelUpCelebration({ data, onDismiss }: LevelUpCelebrati
               <span className="text-red-400 font-display">+{data.maxHealthGain}</span>
             </div>
           )}
-          {data.maxManaGain > 0 && (
-            <div className="flex justify-between text-sm bg-dark-500 rounded px-4 py-2">
-              <span className="text-parchment-500">Max MP</span>
-              <span className="text-blue-400 font-display">+{data.maxManaGain}</span>
-            </div>
-          )}
         </div>
 
         <div className="flex gap-3">

@@ -41,13 +41,12 @@ export interface LevelUpResult {
   statPointsGained: number;
   skillPointsGained: number;
   maxHealthGained: number;
-  maxManaGained: number;
 }
 
 /**
  * Checks if a character has enough XP to level up.
  * If so, applies all level ups (possibly multiple), grants stat/skill points,
- * increases max HP/MP, and heals to full.
+ * increases max HP, and heals to full.
  *
  * Returns null if no level up occurred, or the details of the level-up(s).
  */
@@ -67,10 +66,8 @@ export async function checkLevelUp(characterId: string): Promise<LevelUpResult |
   const statPointsGained = levelsGained * LEVEL_UP_REWARDS.STAT_POINTS_PER_LEVEL;
   const skillPointsGained = levelsGained * LEVEL_UP_REWARDS.SKILL_POINTS_PER_LEVEL;
   const maxHealthGained = levelsGained * LEVEL_UP_REWARDS.HP_PER_LEVEL;
-  const maxManaGained = levelsGained * LEVEL_UP_REWARDS.MP_PER_LEVEL;
 
   const newMaxHealth = character.maxHealth + maxHealthGained;
-  const newMaxMana = character.maxMana + maxManaGained;
 
   await prisma.character.update({
     where: { id: characterId },
@@ -79,9 +76,7 @@ export async function checkLevelUp(characterId: string): Promise<LevelUpResult |
       unspentStatPoints: character.unspentStatPoints + statPointsGained,
       unspentSkillPoints: character.unspentSkillPoints + skillPointsGained,
       maxHealth: newMaxHealth,
-      maxMana: newMaxMana,
       health: newMaxHealth, // heal to full
-      mana: newMaxMana,     // restore mana to full
     },
   });
 
@@ -92,7 +87,6 @@ export async function checkLevelUp(characterId: string): Promise<LevelUpResult |
     statPointsGained,
     skillPointsGained,
     maxHealthGained,
-    maxManaGained,
   };
 
   // Check leveling achievements
@@ -107,7 +101,6 @@ export async function checkLevelUp(characterId: string): Promise<LevelUpResult |
       statPoints: statPointsGained,
       skillPoints: skillPointsGained,
       maxHealth: maxHealthGained,
-      maxMana: maxManaGained,
     },
   });
 

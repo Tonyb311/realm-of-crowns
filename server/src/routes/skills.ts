@@ -201,7 +201,7 @@ router.post('/unlock', authGuard, characterGuard, validate(unlockAbilitySchema),
           tier: abilityDef.tier,
           effects: abilityDef.effects as any,
           cooldown: abilityDef.cooldown,
-          manaCost: abilityDef.manaCost,
+
           prerequisiteAbilityId: abilityDef.prerequisiteAbilityId ?? null,
           levelRequired: abilityDef.levelRequired,
         },
@@ -260,7 +260,6 @@ router.get('/abilities', authGuard, characterGuard, async (req: AuthenticatedReq
       tier: ca.ability.tier,
       effects: ca.ability.effects,
       cooldown: ca.ability.cooldown,
-      manaCost: ca.ability.manaCost,
       levelRequired: ca.ability.levelRequired,
       unlockedAt: ca.unlockedAt.toISOString(),
     }));

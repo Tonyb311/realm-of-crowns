@@ -121,7 +121,6 @@ export interface LevelUpPayload {
   statPoints: number;
   skillPoints: number;
   maxHealthGain: number;
-  maxManaGain: number;
 }
 
 export interface AchievementUnlockedPayload {

@@ -40,7 +40,6 @@ async function main() {
         tier: ability.tier,
         effects: ability.effects as any,
         cooldown: ability.cooldown,
-        manaCost: ability.manaCost,
         prerequisiteAbilityId: prereqId,
         levelRequired: ability.levelRequired,
       },

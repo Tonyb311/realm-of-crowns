@@ -106,8 +106,6 @@ const mockCharacter = {
   subRace: null,
   health: 100,
   maxHealth: 100,
-  mana: 50,
-  maxMana: 50,
 };
 
 const mockRecipe = {

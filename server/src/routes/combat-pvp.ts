@@ -370,8 +370,6 @@ router.post(
           p.character.level,
           p.character.health,
           p.character.maxHealth,
-          p.character.mana,
-          p.character.maxMana,
           0, // equipmentAC — would need equipment lookup; 0 means compute from stats
           null, // weapon — provided per action
           {}, // spellSlots
@@ -1044,7 +1042,7 @@ router.post(
         });
       }
 
-      // Create pending SPAR session — save pre-spar HP/mana for restoration
+      // Create pending SPAR session — save pre-spar HP for restoration
       const session = await prisma.combatSession.create({
         data: {
           type: 'SPAR',
@@ -1057,11 +1055,9 @@ router.post(
           },
           attackerParams: {
             hp: challenger.health,
-            mana: challenger.mana,
           },
           defenderParams: {
             hp: target.health,
-            mana: target.mana,
           },
         },
       });
@@ -1150,8 +1146,6 @@ router.post(
           p.character.level,
           p.character.health,
           p.character.maxHealth,
-          p.character.mana,
-          p.character.maxMana,
           0,
           null,
           {},
@@ -1517,12 +1511,12 @@ async function finalizeSparMatch(
 
   if (!winner || !loser) return;
 
-  // Read pre-spar HP/mana from session
+  // Read pre-spar HP from session
   const session = await prisma.combatSession.findUnique({
     where: { id: sessionId },
   });
-  const attackerParams = (session?.attackerParams ?? {}) as { hp?: number; mana?: number };
-  const defenderParams = (session?.defenderParams ?? {}) as { hp?: number; mana?: number };
+  const attackerParams = (session?.attackerParams ?? {}) as { hp?: number };
+  const defenderParams = (session?.defenderParams ?? {}) as { hp?: number };
   const sessionLog = (session?.log ?? {}) as { challengerId: string; targetId: string };
 
   // Determine which combatant is attacker vs defender
@@ -1538,20 +1532,18 @@ async function finalizeSparMatch(
         log: { ...sessionLog, winnerId: winner.id } as any,
       },
     }),
-    // Restore challenger to pre-spar HP/mana
+    // Restore challenger to pre-spar HP
     prisma.character.update({
       where: { id: challengerId },
       data: {
         health: attackerParams.hp ?? winner.maxHp,
-        mana: attackerParams.mana ?? 0,
       },
     }),
-    // Restore target to pre-spar HP/mana
+    // Restore target to pre-spar HP
     prisma.character.update({
       where: { id: challengerId === winner.id ? loser.id : winner.id },
       data: {
         health: defenderParams.hp ?? loser.maxHp,
-        mana: defenderParams.mana ?? 0,
       },
     }),
   ]);

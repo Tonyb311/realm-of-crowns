@@ -719,7 +719,7 @@ export default function CombatPage() {
                         combatType={activeCombat.combatType}
                         spells={activeCombat.availableSpells}
                         items={activeCombat.availableItems}
-                        playerMp={player?.mp ?? 0}
+
                         onAction={handleAction}
                         isPending={pveActionMutation.isPending || pvpActionMutation.isPending}
                       />

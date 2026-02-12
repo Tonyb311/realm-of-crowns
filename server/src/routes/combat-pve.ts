@@ -262,8 +262,6 @@ router.post('/start', authGuard, validate(startPveSchema), async (req: Authentic
       character.level,
       character.health,
       character.maxHealth,
-      character.mana,
-      character.maxMana,
       10 + getModifier(charStats.dex), // base AC from stats
       null, // weapon provided per-action
       {},

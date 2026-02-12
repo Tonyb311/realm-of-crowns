@@ -414,8 +414,6 @@ model Character {
   currentTownId          String?          @map("current_town_id")
   health                 Int              @default(100)
   maxHealth              Int              @default(100) @map("max_health")
-  mana                   Int              @default(50)
-  maxMana                Int              @default(50) @map("max_mana")
   gold                   Int              @default(0)
   // Combat presets
   retreatHpThreshold     Int              @default(25) @map("retreat_hp_threshold")
@@ -1671,7 +1669,6 @@ model Ability {
   tier                  Int      @default(1)
   effects               Json     @default("{}")
   cooldown              Int      @default(0)
-  manaCost              Int      @default(0) @map("mana_cost")
   prerequisiteAbilityId String?  @map("prerequisite_ability_id")
   levelRequired         Int      @default(1) @map("level_required")
   createdAt             DateTime @default(now()) @map("created_at")
