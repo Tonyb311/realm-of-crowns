@@ -20,7 +20,7 @@ import {
 import api from '../services/api';
 import { getSocket } from '../services/socket';
 import QuestDialog, { type QuestOffer } from '../components/QuestDialog';
-import { SkeletonCard, SkeletonRow } from '../components/ui/LoadingSkeleton';
+import { RealmPanel, RealmButton, RealmBadge } from '../components/ui/realm-index';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -87,21 +87,21 @@ const BUILDINGS: BuildingDef[] = [
 // Biome color mapping
 // ---------------------------------------------------------------------------
 const BIOME_COLORS: Record<string, string> = {
-  plains: 'bg-green-800/60 text-green-300',
-  forest: 'bg-forest/60 text-green-300',
-  mountains: 'bg-stone-700/60 text-stone-300',
-  tundra: 'bg-cyan-900/60 text-cyan-300',
-  desert: 'bg-amber-800/60 text-amber-300',
-  swamp: 'bg-emerald-900/60 text-emerald-300',
-  volcanic: 'bg-red-900/60 text-red-300',
-  coastal: 'bg-blue-800/60 text-blue-300',
-  hills: 'bg-lime-900/60 text-lime-300',
-  underground: 'bg-purple-900/60 text-purple-300',
+  plains: 'bg-realm-success/20 text-realm-success',
+  forest: 'bg-realm-success/20 text-realm-success',
+  mountains: 'bg-realm-text-muted/20 text-realm-text-secondary',
+  tundra: 'bg-realm-teal-400/20 text-realm-teal-300',
+  desert: 'bg-realm-gold-500/20 text-realm-gold-300',
+  swamp: 'bg-realm-success/20 text-realm-success',
+  volcanic: 'bg-realm-danger/20 text-realm-danger',
+  coastal: 'bg-realm-teal-300/20 text-realm-teal-300',
+  hills: 'bg-realm-success/20 text-realm-success',
+  underground: 'bg-realm-purple-400/20 text-realm-purple-300',
 };
 
 function getBiomeBadgeClass(biome: string): string {
   const key = biome.toLowerCase().split('/')[0].trim();
-  return BIOME_COLORS[key] ?? 'bg-dark-50/60 text-parchment-300';
+  return BIOME_COLORS[key] ?? 'bg-realm-bg-600/60 text-realm-text-secondary';
 }
 
 // ---------------------------------------------------------------------------
@@ -191,19 +191,17 @@ export default function TownPage() {
   // -------------------------------------------------------------------------
   if (charLoading) {
     return (
-      <div className="min-h-screen bg-dark-500 pt-16">
-        <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          <div className="h-10 bg-dark-400 rounded animate-pulse w-48 mb-6" />
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <div className="space-y-4">
-              <SkeletonCard />
-              <SkeletonCard />
-            </div>
-            <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <SkeletonCard key={i} />
-              ))}
-            </div>
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <div className="h-10 bg-realm-bg-800 rounded animate-pulse w-48 mb-6" />
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="space-y-4">
+            <div className="h-24 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
+            <div className="h-24 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
+          </div>
+          <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-24 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
+            ))}
           </div>
         </div>
       </div>
@@ -215,15 +213,16 @@ export default function TownPage() {
   // -------------------------------------------------------------------------
   if (charError || !character) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-8">
-        <h2 className="text-2xl font-display text-primary-400 mb-4">No Character Found</h2>
-        <p className="text-parchment-300 mb-6">You need to create a character before entering a town.</p>
-        <button
+      <div className="flex flex-col items-center justify-center py-20 p-8">
+        <h2 className="text-2xl font-display text-realm-gold-400 mb-4">No Character Found</h2>
+        <p className="text-realm-text-secondary mb-6">You need to create a character before entering a town.</p>
+        <RealmButton
+          variant="primary"
+          size="lg"
           onClick={() => navigate('/create-character')}
-          className="px-8 py-3 bg-primary-400 text-dark-500 font-display text-lg rounded hover:bg-primary-300 transition-colors"
         >
           Create Character
-        </button>
+        </RealmButton>
       </div>
     );
   }
@@ -233,19 +232,20 @@ export default function TownPage() {
   // -------------------------------------------------------------------------
   if (!townId || character.status === 'traveling') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-8">
-        <Footprints className="w-16 h-16 text-primary-400 mb-6" />
-        <h2 className="text-3xl font-display text-primary-400 mb-4">Traveling...</h2>
-        <p className="text-parchment-300 mb-2 text-center max-w-md">
+      <div className="flex flex-col items-center justify-center py-20 p-8">
+        <Footprints className="w-16 h-16 text-realm-gold-400 mb-6" />
+        <h2 className="text-3xl font-display text-realm-gold-400 mb-4">Traveling...</h2>
+        <p className="text-realm-text-secondary mb-2 text-center max-w-md">
           You are currently on the road. The dust of the trail stretches behind you as your destination draws near.
         </p>
-        <p className="text-parchment-500 text-sm mb-8">Check the world map for your journey's progress.</p>
-        <button
+        <p className="text-realm-text-muted text-sm mb-8">Check the world map for your journey's progress.</p>
+        <RealmButton
+          variant="secondary"
+          size="lg"
           onClick={() => navigate('/map')}
-          className="px-8 py-3 border border-primary-400 text-primary-400 font-display text-lg rounded hover:bg-dark-300 transition-colors"
         >
           View World Map
-        </button>
+        </RealmButton>
       </div>
     );
   }
@@ -255,19 +255,17 @@ export default function TownPage() {
   // -------------------------------------------------------------------------
   if (townLoading || !town) {
     return (
-      <div className="min-h-screen bg-dark-500 pt-16">
-        <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          <div className="h-10 bg-dark-400 rounded animate-pulse w-48 mb-6" />
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <div className="space-y-4">
-              <SkeletonCard />
-              <SkeletonCard />
-            </div>
-            <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <SkeletonCard key={i} />
-              ))}
-            </div>
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <div className="h-10 bg-realm-bg-800 rounded animate-pulse w-48 mb-6" />
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="space-y-4">
+            <div className="h-24 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
+            <div className="h-24 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
+          </div>
+          <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-24 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
+            ))}
           </div>
         </div>
       </div>
@@ -279,15 +277,15 @@ export default function TownPage() {
   // -------------------------------------------------------------------------
   if (townError) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-8">
-        <h2 className="text-2xl font-display text-blood-light mb-4">Failed to Load Town</h2>
-        <p className="text-parchment-300 mb-6">Something went wrong fetching town data.</p>
-        <button
+      <div className="flex flex-col items-center justify-center py-20 p-8">
+        <h2 className="text-2xl font-display text-realm-danger mb-4">Failed to Load Town</h2>
+        <p className="text-realm-text-secondary mb-6">Something went wrong fetching town data.</p>
+        <RealmButton
+          variant="secondary"
           onClick={() => navigate('/')}
-          className="px-8 py-3 border border-primary-400 text-primary-400 font-display rounded hover:bg-dark-300 transition-colors"
         >
           Return Home
-        </button>
+        </RealmButton>
       </div>
     );
   }
@@ -301,15 +299,15 @@ export default function TownPage() {
   // Render
   // -------------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-dark-500 pt-12">
+    <div>
       {/* Header */}
-      <header className="border-b border-dark-50 bg-dark-400/50">
+      <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-display text-primary-400">{town.name}</h1>
+              <h1 className="text-4xl font-display text-realm-gold-400">{town.name}</h1>
               <div className="flex items-center gap-3 mt-2">
-                <span className="text-parchment-300 text-sm flex items-center gap-1">
+                <span className="text-realm-text-secondary text-sm flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5" />
                   {town.region}
                 </span>
@@ -319,18 +317,20 @@ export default function TownPage() {
               </div>
             </div>
             <div className="flex gap-3">
-              <button
+              <RealmButton
+                variant="secondary"
+                size="sm"
                 onClick={() => navigate('/map')}
-                className="px-5 py-2 border border-primary-400/60 text-primary-400 font-display text-sm rounded hover:bg-dark-300 transition-colors"
               >
                 World Map
-              </button>
-              <button
+              </RealmButton>
+              <RealmButton
+                variant="ghost"
+                size="sm"
                 onClick={() => navigate('/')}
-                className="px-5 py-2 border border-parchment-500/40 text-parchment-300 font-display text-sm rounded hover:bg-dark-300 transition-colors"
               >
                 Character
-              </button>
+              </RealmButton>
             </div>
           </div>
         </div>
@@ -338,76 +338,66 @@ export default function TownPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar — Town Info */}
+          {/* Sidebar -- Town Info */}
           <aside className="lg:col-span-1 space-y-6">
             {/* Description */}
-            <div className="bg-dark-300 border border-dark-50 rounded-lg p-5">
-              <h3 className="font-display text-primary-400 text-sm mb-3">About</h3>
-              <p className="text-parchment-300 text-xs leading-relaxed">{town.description}</p>
-            </div>
+            <RealmPanel title="About">
+              <p className="text-realm-text-secondary text-xs leading-relaxed">{town.description}</p>
+            </RealmPanel>
 
             {/* Stats */}
-            <div className="bg-dark-300 border border-dark-50 rounded-lg p-5">
-              <h3 className="font-display text-primary-400 text-sm mb-3">Town Info</h3>
+            <RealmPanel title="Town Info">
               <dl className="space-y-2 text-xs">
                 <div className="flex justify-between">
-                  <dt className="text-parchment-500">Population</dt>
-                  <dd className="text-parchment-200 font-semibold">
+                  <dt className="text-realm-text-muted">Population</dt>
+                  <dd className="text-realm-text-primary font-semibold">
                     <Users className="w-3 h-3 inline mr-1" />
                     {town.population.toLocaleString()}
                   </dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-parchment-500">Region</dt>
-                  <dd className="text-parchment-200">{town.region}</dd>
+                  <dt className="text-realm-text-muted">Region</dt>
+                  <dd className="text-realm-text-primary">{town.region}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-parchment-500">Biome</dt>
-                  <dd className="text-parchment-200 capitalize">{town.biome}</dd>
+                  <dt className="text-realm-text-muted">Biome</dt>
+                  <dd className="text-realm-text-primary capitalize">{town.biome}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-parchment-500">Tax Rate</dt>
+                  <dt className="text-realm-text-muted">Tax Rate</dt>
                   {/* P1 #24: Use actual server tax rate instead of hardcoded 10% */}
-                  <dd className="text-parchment-200">{Math.round((town.taxRate ?? 0.10) * 100)}%</dd>
+                  <dd className="text-realm-text-primary">{Math.round((town.taxRate ?? 0.10) * 100)}%</dd>
                 </div>
               </dl>
-            </div>
+            </RealmPanel>
 
             {/* Resources */}
             {town.resources && town.resources.length > 0 && (
-              <div className="bg-dark-300 border border-dark-50 rounded-lg p-5">
-                <h3 className="font-display text-primary-400 text-sm mb-3 flex items-center gap-1.5">
-                  <Wheat className="w-3.5 h-3.5" />
-                  Resources
-                </h3>
+              <RealmPanel title="Resources">
                 <div className="flex flex-wrap gap-1.5">
                   {town.resources.map((r) => (
                     <span
                       key={r}
-                      className="text-xs bg-dark-50/40 text-parchment-300 px-2 py-0.5 rounded"
+                      className="text-xs bg-realm-bg-600/40 text-realm-text-secondary px-2 py-0.5 rounded"
                     >
                       {r}
                     </span>
                   ))}
                 </div>
-              </div>
+              </RealmPanel>
             )}
 
             {/* Features */}
             {town.features && town.features.length > 0 && (
-              <div className="bg-dark-300 border border-dark-50 rounded-lg p-5">
-                <h3 className="font-display text-primary-400 text-sm mb-3 flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5" />
-                  Features
-                </h3>
+              <RealmPanel title="Features">
                 <ul className="space-y-1">
                   {town.features.map((f) => (
-                    <li key={f} className="text-xs text-parchment-300">
+                    <li key={f} className="text-xs text-realm-text-secondary">
                       {f}
                     </li>
                   ))}
                 </ul>
-              </div>
+              </RealmPanel>
             )}
           </aside>
 
@@ -415,7 +405,7 @@ export default function TownPage() {
           <main className="lg:col-span-3 space-y-8">
             {/* Building cards grid */}
             <section>
-              <h2 className="text-xl font-display text-parchment-200 mb-4">Buildings</h2>
+              <h2 className="text-xl font-display text-realm-text-primary mb-4">Buildings</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                 {BUILDINGS.map((building) => {
                   const Icon = building.icon;
@@ -423,17 +413,17 @@ export default function TownPage() {
                     <Link
                       key={building.key}
                       to={building.route}
-                      className="group relative bg-dark-300 border-2 border-dark-50 rounded-lg p-5 transition-all hover:border-primary-400 hover:bg-dark-300/80"
+                      className="group relative bg-realm-bg-700 border border-realm-border rounded-md p-5 transition-all hover:border-realm-gold-500/50 hover:bg-realm-bg-700/80"
                     >
                       <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-10 h-10 rounded bg-dark-50/40 flex items-center justify-center group-hover:bg-primary-400/10 transition-colors">
-                          <Icon className="w-5 h-5 text-primary-400" />
+                        <div className="flex-shrink-0 w-10 h-10 rounded bg-realm-bg-600/40 flex items-center justify-center group-hover:bg-realm-gold-400/10 transition-colors">
+                          <Icon className="w-5 h-5 text-realm-gold-400" />
                         </div>
                         <div>
-                          <h3 className="font-display text-primary-400 group-hover:text-primary-300 transition-colors">
+                          <h3 className="font-display text-realm-gold-400 group-hover:text-realm-gold-300 transition-colors">
                             {building.name}
                           </h3>
-                          <p className="text-xs text-parchment-500 mt-1">{building.description}</p>
+                          <p className="text-xs text-realm-text-muted mt-1">{building.description}</p>
                         </div>
                       </div>
                     </Link>
@@ -445,19 +435,19 @@ export default function TownPage() {
             {/* Quest Givers */}
             {questNpcs && questNpcs.length > 0 && (
               <section>
-                <h2 className="text-xl font-display text-parchment-200 mb-4 flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-primary-400" />
+                <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-realm-gold-400" />
                   Quest Givers
                 </h2>
-                <div className="bg-dark-300 border border-dark-50 rounded-lg divide-y divide-dark-50">
+                <div className="bg-realm-bg-700 border border-realm-border rounded-md divide-y divide-realm-border">
                   {questNpcs.map((npc) => (
                     <div key={npc.id} className="px-5 py-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <span className="text-parchment-200 text-sm font-semibold">{npc.name}</span>
-                          <span className="text-parchment-500 text-xs ml-2">{npc.role}</span>
+                          <span className="text-realm-text-primary text-sm font-semibold">{npc.name}</span>
+                          <span className="text-realm-text-muted text-xs ml-2">{npc.role}</span>
                         </div>
-                        <span className="text-primary-400 text-xs font-display">
+                        <span className="text-realm-gold-400 text-xs font-display">
                           {npc.availableQuestCount} quest{npc.availableQuestCount !== 1 ? 's' : ''}
                         </span>
                       </div>
@@ -467,7 +457,7 @@ export default function TownPage() {
                             <button
                               key={quest.id}
                               onClick={() => setSelectedQuest({ ...quest, npcName: npc.name })}
-                              className="text-xs px-3 py-1.5 border border-primary-400/30 text-primary-400 rounded hover:bg-primary-400/10 transition-colors"
+                              className="text-xs px-3 py-1.5 border border-realm-gold-500/30 text-realm-gold-400 rounded hover:bg-realm-gold-500/10 transition-colors"
                             >
                               {quest.name}
                             </button>
@@ -482,33 +472,33 @@ export default function TownPage() {
 
             {/* Players in town */}
             <section>
-              <h2 className="text-xl font-display text-parchment-200 mb-4 flex items-center gap-2">
-                <Users className="w-5 h-5 text-primary-400" />
+              <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5 text-realm-gold-400" />
                 Players in Town
               </h2>
               {charsLoading ? (
-                <div className="bg-dark-300 border border-dark-50 rounded-lg p-4 space-y-3">
+                <div className="bg-realm-bg-700 border border-realm-border rounded-md p-4 space-y-3">
                   {Array.from({ length: 3 }).map((_, i) => (
-                    <SkeletonRow key={i} />
+                    <div key={i} className="h-6 bg-realm-bg-600 rounded animate-pulse" />
                   ))}
                 </div>
               ) : otherCharacters.length === 0 ? (
-                <div className="bg-dark-300 border border-dark-50 rounded-lg p-6 text-center">
-                  <p className="text-parchment-500 text-sm">No other adventurers are in town right now.</p>
+                <div className="bg-realm-bg-700 border border-realm-border rounded-md p-6 text-center">
+                  <p className="text-realm-text-muted text-sm">No other adventurers are in town right now.</p>
                 </div>
               ) : (
-                <div className="bg-dark-300 border border-dark-50 rounded-lg divide-y divide-dark-50">
+                <div className="bg-realm-bg-700 border border-realm-border rounded-md divide-y divide-realm-border">
                   {otherCharacters.map((c) => (
                     <button
                       key={c.id}
                       onClick={() => navigate(`/profile/${c.id}`)}
-                      className="w-full px-5 py-3 flex items-center justify-between hover:bg-dark-200/50 transition-colors text-left"
+                      className="w-full px-5 py-3 flex items-center justify-between hover:bg-realm-bg-600/50 transition-colors text-left"
                     >
                       <div>
-                        <span className="text-parchment-200 text-sm font-semibold">{c.name}</span>
-                        <span className="text-parchment-500 text-xs ml-2 capitalize">{c.race.toLowerCase()}</span>
+                        <span className="text-realm-text-primary text-sm font-semibold">{c.name}</span>
+                        <span className="text-realm-text-muted text-xs ml-2 capitalize">{c.race.toLowerCase()}</span>
                       </div>
-                      <span className="text-xs text-parchment-500">Lv. {c.level}</span>
+                      <span className="text-xs text-realm-text-muted">Lv. {c.level}</span>
                     </button>
                   ))}
                 </div>
