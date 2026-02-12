@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RaceDefinition, SubRaceOption, StatModifiers } from '@shared/types/race';
 import { getRacesByTier } from '@shared/data/races';
+import { SPECIALIZATIONS, ABILITIES_BY_CLASS } from '@shared/data/skills';
 import api from '../services/api';
 import { RealmPanel, RealmButton, RealmInput } from '../components/ui/realm-index';
 
@@ -26,6 +27,30 @@ const CLASSES: ClassDefinition[] = [
   { id: 'bard', name: 'Bard', primaryStat: 'CHA', hpBonus: 6, description: 'Performers and diplomats' },
   { id: 'psion', name: 'Psion', primaryStat: 'INT', hpBonus: 4, description: 'Masters of psionic discipline' },
 ];
+
+const SPEC_DESCRIPTIONS: Record<string, string> = {
+  berserker: 'Unleash raw fury in battle. High damage with reckless, all-in aggression.',
+  guardian: 'An immovable shield. Absorb damage, protect allies, and outlast any foe.',
+  warlord: 'Command the battlefield. Inspire allies with tactical precision.',
+  elementalist: 'Wield fire, ice, and lightning. Devastating area damage from a distance.',
+  necromancer: 'Drain life and raise the dead. Dark magic that turns death into power.',
+  enchanter: 'Master of buffs and debuffs. Control the flow of battle with arcane manipulation.',
+  assassin: 'Strike from the shadows. Lethal single-target damage and poison mastery.',
+  thief: 'Quick hands and quicker wits. Steal, disarm, and exploit every opening.',
+  swashbuckler: 'Dashing blade duelist. Agile combat with flair and precision.',
+  healer: 'Channel divine light. Restore health, cure ailments, and shield the faithful.',
+  paladin: 'Holy warrior of unwavering faith. Smite evil and defend the righteous.',
+  inquisitor: 'Root out darkness. Punish the wicked with divine judgment.',
+  beastmaster: 'Bond with nature\'s creatures. Fight alongside animal companions.',
+  sharpshooter: 'Deadly precision at range. Every arrow finds its mark.',
+  tracker: 'Master of the wilderness. Find any trail, exploit any terrain.',
+  diplomat: 'Words as weapons. Charm, persuade, and manipulate any situation.',
+  battlechanter: 'Sing songs of war. Inspire courage in allies and dread in enemies.',
+  lorekeeper: 'Ancient knowledge made power. Counter magic and exploit weaknesses.',
+  telepath: 'Invade and crush minds. Psychic damage and mental domination.',
+  seer: 'See the future unfold. Precognition grants unmatched defense and awareness.',
+  nomad: 'Bend space to your will. Teleport, phase, and reposition at will.',
+};
 
 // ---------------------------------------------------------------------------
 // Stat helpers
@@ -75,6 +100,7 @@ export default function CharacterCreationPage() {
   const [expandedRace, setExpandedRace] = useState<string | null>(null);
   const [selectedSubRace, setSelectedSubRace] = useState<SubRaceOption | null>(null);
   const [selectedClass, setSelectedClass] = useState<ClassDefinition | null>(null);
+  const [expandedClass, setExpandedClass] = useState<string | null>(null);
   const [characterName, setCharacterName] = useState('');
   const [nameError, setNameError] = useState('');
   const [submitError, setSubmitError] = useState('');
@@ -86,6 +112,16 @@ export default function CharacterCreationPage() {
   const coreRaces = useMemo(() => getRacesByTier('core'), []);
   const commonRaces = useMemo(() => getRacesByTier('common'), []);
   const exoticRaces = useMemo(() => getRacesByTier('exotic'), []);
+
+  // Only show tiers with released content — Common/Exotic tabs reappear when those tiers
+  // have races with isReleased: true in shared data or via admin content release system
+  const releasedTiers = useMemo(() => {
+    return (['core', 'common', 'exotic'] as const).filter(tier => {
+      const races = getRacesByTier(tier);
+      if (tier === 'core') return races.length > 0;
+      return races.some((r: any) => r.isReleased === true);
+    });
+  }, []);
 
   const racesForTab = raceTierTab === 'core' ? coreRaces : raceTierTab === 'common' ? commonRaces : exoticRaces;
 
@@ -140,6 +176,16 @@ export default function CharacterCreationPage() {
     setSelectedRace(race);
     setExpandedRace(race.id);
     setSelectedSubRace(null);
+  };
+
+  // Select class with expand/collapse toggle
+  const selectClass = (cls: ClassDefinition) => {
+    if (selectedClass?.id === cls.id) {
+      setExpandedClass(prev => (prev === cls.id ? null : cls.id));
+      return;
+    }
+    setSelectedClass(cls);
+    setExpandedClass(cls.id);
   };
 
   // Submit
@@ -219,21 +265,25 @@ export default function CharacterCreationPage() {
     <div className="w-full max-w-5xl mx-auto">
       <h2 className="text-3xl font-display text-realm-gold-400 text-center mb-6">Choose Your Race</h2>
 
-      {/* Tier tabs */}
-      <div className="flex justify-center gap-2 mb-6">
-        {(['core', 'common', 'exotic'] as const).map(tier => (
-          <button
-            key={tier}
-            onClick={() => setRaceTierTab(tier)}
-            className={`px-6 py-2 font-display text-sm rounded border transition-colors
-              ${raceTierTab === tier
-                ? 'bg-realm-gold-400 text-realm-bg-900 border-realm-gold-500'
-                : 'bg-realm-bg-700 text-realm-text-secondary border-realm-border hover:border-realm-gold-500/50'}`}
-          >
-            {tier === 'core' ? 'Core Races' : tier === 'common' ? 'Common Races' : 'Exotic Races'}
-          </button>
-        ))}
-      </div>
+      {/* Tier tabs — only show when multiple tiers are released */}
+      {releasedTiers.length > 1 ? (
+        <div className="flex justify-center gap-2 mb-6">
+          {releasedTiers.map(tier => (
+            <button
+              key={tier}
+              onClick={() => setRaceTierTab(tier)}
+              className={`px-6 py-2 font-display text-sm rounded border transition-colors
+                ${raceTierTab === tier
+                  ? 'bg-realm-gold-400 text-realm-bg-900 border-realm-gold-500'
+                  : 'bg-realm-bg-700 text-realm-text-secondary border-realm-border hover:border-realm-gold-500/50'}`}
+            >
+              {tier === 'core' ? 'Core Races' : tier === 'common' ? 'Common Races' : 'Exotic Races'}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="text-center text-sm text-realm-text-muted mb-6">Core Races</p>
+      )}
 
       {/* Race cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -244,27 +294,27 @@ export default function CharacterCreationPage() {
             <div key={race.id} className="flex flex-col">
               <button
                 onClick={() => selectRace(race)}
-                className={`relative p-4 rounded-lg border-2 text-left transition-all
+                className={`p-4 rounded-lg border-2 text-left transition-all flex flex-col min-h-[200px]
                   ${isSelected ? 'border-realm-gold-500 bg-realm-bg-700/80 shadow-realm-glow' : 'border-realm-border bg-realm-bg-700 hover:border-realm-gold-500/40'}`}
               >
-                {/* Badges */}
+                {/* Badges — flow layout above name */}
                 {race.id === 'human' && (
-                  <span className="absolute top-2 right-2 text-[10px] bg-realm-success/30 text-realm-success px-2 py-0.5 rounded">
+                  <span className="self-start text-[10px] bg-realm-success/30 text-realm-success px-2 py-0.5 rounded mb-2">
                     Recommended for New Players
                   </span>
                 )}
                 {race.tier === 'exotic' && (
-                  <span className="absolute top-2 right-2 text-[10px] bg-realm-gold-500/30 text-realm-gold-300 px-2 py-0.5 rounded">
+                  <span className="self-start text-[10px] bg-realm-gold-500/30 text-realm-gold-300 px-2 py-0.5 rounded mb-2">
                     Hard Mode
                   </span>
                 )}
 
                 <h3 className="font-display text-lg text-realm-gold-400">{race.name}</h3>
                 <p className="text-xs text-realm-text-muted mb-2 italic">{race.trait.name}</p>
-                <p className="text-xs text-realm-text-secondary mb-3 line-clamp-2">{race.trait.description}</p>
+                <p className="text-xs text-realm-text-secondary mb-3 line-clamp-2 flex-grow">{race.trait.description}</p>
 
-                {/* Stat modifiers row */}
-                <div className="flex flex-wrap gap-2 text-xs">
+                {/* Stat modifiers row — pinned to bottom */}
+                <div className="flex flex-wrap gap-2 text-xs mt-auto">
                   {STAT_KEYS.map(s => (
                     <span key={s} className="flex gap-0.5">
                       <span className="text-realm-text-muted uppercase">{s}:</span>
@@ -407,36 +457,102 @@ export default function CharacterCreationPage() {
   // -----------------------------------------------------------------------
   // Step 2: Class Selection
   // -----------------------------------------------------------------------
-  const renderClassSelection = () => (
-    <div className="w-full max-w-4xl mx-auto">
-      <h2 className="text-3xl font-display text-realm-gold-400 text-center mb-6">Choose Your Class</h2>
+  const renderClassSelection = () => {
+    const expandedClassData = expandedClass ? CLASSES.find(c => c.id === expandedClass) : null;
+    const specNames = expandedClass ? (SPECIALIZATIONS[expandedClass] || []) : [];
+    const classAbilities = expandedClass ? (ABILITIES_BY_CLASS[expandedClass] || []) : [];
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {CLASSES.map(cls => {
-          const isSelected = selectedClass?.id === cls.id;
-          return (
-            <button
-              key={cls.id}
-              onClick={() => setSelectedClass(cls)}
-              className={`p-5 rounded-lg border-2 text-left transition-all
-                ${isSelected ? 'border-realm-gold-500 bg-realm-bg-700/80 shadow-realm-glow' : 'border-realm-border bg-realm-bg-700 hover:border-realm-gold-500/40'}`}
-            >
-              <h3 className="font-display text-xl text-realm-gold-400">{cls.name}</h3>
-              <p className="text-xs text-realm-text-muted mb-3">{cls.description}</p>
-              <div className="space-y-1 text-xs">
-                <p className="text-realm-text-secondary">
-                  Primary Stat: <span className="text-realm-gold-400 font-semibold">{cls.primaryStat}</span>
-                </p>
-                <p className="text-realm-text-secondary">
-                  HP Bonus: <span className="text-realm-success">+{cls.hpBonus}</span>
-                </p>
+    return (
+      <div className="w-full max-w-5xl mx-auto">
+        <h2 className="text-3xl font-display text-realm-gold-400 text-center mb-6">Choose Your Class</h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {CLASSES.map(cls => {
+            const isSelected = selectedClass?.id === cls.id;
+            return (
+              <button
+                key={cls.id}
+                onClick={() => selectClass(cls)}
+                className={`p-5 rounded-lg border-2 text-left transition-all flex flex-col min-h-[160px]
+                  ${isSelected ? 'border-realm-gold-500 bg-realm-bg-700/80 shadow-realm-glow' : 'border-realm-border bg-realm-bg-700 hover:border-realm-gold-500/40'}`}
+              >
+                <h3 className="font-display text-xl text-realm-gold-400">{cls.name}</h3>
+                <p className="text-xs text-realm-text-muted mb-3 flex-grow">{cls.description}</p>
+                <div className="space-y-1 text-xs mt-auto">
+                  <p className="text-realm-text-secondary">
+                    Primary Stat: <span className="text-realm-gold-400 font-semibold">{cls.primaryStat}</span>
+                  </p>
+                  <p className="text-realm-text-secondary">
+                    HP Bonus: <span className="text-realm-success">+{cls.hpBonus}</span>
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Expanded class detail panel */}
+        {expandedClassData && (
+          <div className="mt-4 bg-realm-bg-800 rounded-lg border border-realm-gold-500/30 p-6 animate-[fadeIn_0.2s_ease-in]">
+            <div className="mb-4">
+              <h3 className="font-display text-xl text-realm-gold-400">{expandedClassData.name}</h3>
+              <p className="text-sm text-realm-text-secondary mt-1">{expandedClassData.description}</p>
+              <div className="flex gap-4 mt-2 text-xs">
+                <span className="text-realm-text-muted">
+                  Primary Stat: <span className="text-realm-gold-400 font-semibold">{expandedClassData.primaryStat}</span>
+                </span>
+                <span className="text-realm-text-muted">
+                  HP Bonus: <span className="text-realm-success">+{expandedClassData.hpBonus}</span>
+                </span>
               </div>
-            </button>
-          );
-        })}
+            </div>
+
+            {/* Specialization paths */}
+            <div>
+              <h4 className="font-display text-sm text-realm-gold-400 uppercase tracking-wider mb-2">
+                Specialization Paths
+                <span className="text-realm-text-muted font-body normal-case tracking-normal ml-2">
+                  (choose at level 10)
+                </span>
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {specNames.map(specId => {
+                  const specAbilities = classAbilities.filter(a => a.specialization === specId);
+                  return (
+                    <div key={specId} className="bg-realm-bg-700 rounded-md p-4 border border-realm-border">
+                      <h5 className="font-display text-sm text-realm-text-primary mb-1 capitalize">
+                        {specId}
+                      </h5>
+                      {SPEC_DESCRIPTIONS[specId] && (
+                        <p className="text-xs text-realm-text-secondary mb-2">
+                          {SPEC_DESCRIPTIONS[specId]}
+                        </p>
+                      )}
+                      {specAbilities.length > 0 && (
+                        <div className="space-y-1 border-t border-realm-border pt-2">
+                          {specAbilities.slice(0, 3).map(ability => (
+                            <p key={ability.id} className="text-[10px] text-realm-text-muted">
+                              <span className="text-realm-text-secondary">{ability.name}</span>
+                              <span className="ml-1">(Lv.{ability.levelRequired})</span>
+                            </p>
+                          ))}
+                          {specAbilities.length > 3 && (
+                            <p className="text-[10px] text-realm-text-muted italic">
+                              +{specAbilities.length - 3} more abilities...
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   // -----------------------------------------------------------------------
   // Step 3: Stat Review
