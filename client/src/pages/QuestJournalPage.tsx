@@ -274,19 +274,28 @@ export default function QuestJournalPage() {
 
   const { data: activeQuests, isLoading: activeLoading } = useQuery<Quest[]>({
     queryKey: ['quests', 'active'],
-    queryFn: async () => (await api.get('/quests/active')).data,
+    queryFn: async () => {
+      const res = await api.get('/quests/active');
+      return res.data.quests ?? res.data;
+    },
     enabled: activeTab === 'active',
   });
 
   const { data: availableQuests, isLoading: availableLoading } = useQuery<Quest[]>({
     queryKey: ['quests', 'available'],
-    queryFn: async () => (await api.get('/quests/available')).data,
+    queryFn: async () => {
+      const res = await api.get('/quests/available');
+      return res.data.quests ?? res.data;
+    },
     enabled: activeTab === 'available',
   });
 
   const { data: completedQuests, isLoading: completedLoading } = useQuery<Quest[]>({
     queryKey: ['quests', 'completed'],
-    queryFn: async () => (await api.get('/quests/completed')).data,
+    queryFn: async () => {
+      const res = await api.get('/quests/completed');
+      return res.data.quests ?? res.data;
+    },
     enabled: activeTab === 'completed',
   });
 

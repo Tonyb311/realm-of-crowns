@@ -253,7 +253,16 @@ export default function SkillTreePage() {
 
   const { data: skillTree, isLoading: treeLoading } = useQuery<SkillTree>({
     queryKey: ['skills', 'tree'],
-    queryFn: async () => (await api.get('/skills/tree')).data,
+    queryFn: async () => {
+      const res = await api.get('/skills/tree');
+      const d = res.data;
+      return {
+        className: d.class ?? d.className ?? '',
+        specialization: d.specialization ?? null,
+        specializations: d.tree ?? d.specializations ?? [],
+        unspentSkillPoints: d.unspentSkillPoints ?? 0,
+      };
+    },
     enabled: !!character,
   });
 

@@ -112,7 +112,7 @@ export default function CraftingPage() {
     queryKey: ['professions'],
     queryFn: async () => {
       const res = await api.get('/work/professions');
-      return res.data;
+      return res.data.professions ?? res.data;
     },
   });
 

@@ -137,7 +137,10 @@ export default function MarketPage() {
     isLoading: myListingsLoading,
   } = useQuery<MarketListing[]>({
     queryKey: ['market', 'my-listings'],
-    queryFn: async () => (await api.get('/market/my-listings')).data,
+    queryFn: async () => {
+      const res = await api.get('/market/my-listings');
+      return res.data.listings ?? res.data;
+    },
     enabled: activeTab === 'my-listings',
   });
 

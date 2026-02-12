@@ -25,16 +25,23 @@ import { RealmPanel, RealmButton, RealmBadge } from '../components/ui/realm-inde
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+interface TownResource {
+  id: string;
+  resourceType: string;
+  abundance: number;
+  respawnRate: number;
+}
+
 interface Town {
   id: string;
   name: string;
-  region: string;
+  region: { id: string; name: string; biome: string } | string;
   population: number;
   biome: string;
   description: string;
   features: string[];
-  resources: string[];
-  buildings: string[];
+  resources: TownResource[];
+  buildings: { id: string; type: string; name: string; level: number }[];
   characters: TownCharacter[];
   taxRate?: number; // P1 #24: actual tax rate from server
 }
@@ -134,7 +141,7 @@ export default function TownPage() {
     queryKey: ['town', townId],
     queryFn: async () => {
       const res = await api.get(`/towns/${townId}`);
-      return res.data;
+      return res.data.town ?? res.data;
     },
     enabled: !!townId,
   });
@@ -147,7 +154,7 @@ export default function TownPage() {
     queryKey: ['town', townId, 'characters'],
     queryFn: async () => {
       const res = await api.get(`/towns/${townId}/characters`);
-      return res.data;
+      return res.data.characters ?? res.data;
     },
     enabled: !!townId,
   });
@@ -182,7 +189,10 @@ export default function TownPage() {
 
   const { data: questNpcs } = useQuery<QuestNpc[]>({
     queryKey: ['quests', 'npcs', townId],
-    queryFn: async () => (await api.get(`/quests/npcs/${townId}`)).data,
+    queryFn: async () => {
+      const res = await api.get(`/quests/npcs/${townId}`);
+      return res.data.npcs ?? res.data;
+    },
     enabled: !!townId,
   });
 
@@ -309,10 +319,10 @@ export default function TownPage() {
               <div className="flex items-center gap-3 mt-2">
                 <span className="text-realm-text-secondary text-sm flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5" />
-                  {town.region}
+                  {typeof town.region === 'object' ? town.region.name : town.region}
                 </span>
                 <span className={`text-xs px-2 py-0.5 rounded ${getBiomeBadgeClass(town.biome)}`}>
-                  {town.biome}
+                  {town.biome.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                 </span>
               </div>
             </div>
@@ -357,11 +367,11 @@ export default function TownPage() {
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-realm-text-muted">Region</dt>
-                  <dd className="text-realm-text-primary">{town.region}</dd>
+                  <dd className="text-realm-text-primary">{typeof town.region === 'object' ? town.region.name : town.region}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-realm-text-muted">Biome</dt>
-                  <dd className="text-realm-text-primary capitalize">{town.biome}</dd>
+                  <dd className="text-realm-text-primary">{town.biome.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-realm-text-muted">Tax Rate</dt>
@@ -377,10 +387,10 @@ export default function TownPage() {
                 <div className="flex flex-wrap gap-1.5">
                   {town.resources.map((r) => (
                     <span
-                      key={r}
+                      key={r.id ?? r.resourceType}
                       className="text-xs bg-realm-bg-600/40 text-realm-text-secondary px-2 py-0.5 rounded"
                     >
-                      {r}
+                      {(r.resourceType ?? r).toString().toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                     </span>
                   ))}
                 </div>

@@ -95,7 +95,7 @@ export default function ProfessionsPage() {
     queryKey: ['professions', 'mine'],
     queryFn: async () => {
       const res = await api.get('/professions/mine');
-      return res.data;
+      return res.data.professions ?? res.data;
     },
   });
 

@@ -109,7 +109,7 @@ function GuildBrowser({ characterId }: { characterId: string }) {
     queryKey: ['guilds'],
     queryFn: async () => {
       const res = await api.get('/guilds');
-      return res.data;
+      return res.data.guilds ?? res.data;
     },
   });
 
@@ -303,14 +303,31 @@ function GuildDashboard({ guildId, characterId }: { guildId: string; characterId
 
   const { data: guild, isLoading } = useQuery<Guild>({
     queryKey: ['guild', guildId],
-    queryFn: async () => (await api.get(`/guilds/${guildId}`)).data,
+    queryFn: async () => {
+      const res = await api.get(`/guilds/${guildId}`);
+      const g = res.data.guild ?? res.data;
+      return {
+        ...g,
+        leaderId: g.leaderId ?? g.leader?.id,
+        leaderName: g.leaderName ?? g.leader?.name,
+        memberCount: g.memberCount ?? g.members?.length ?? 0,
+        maxMembers: g.maxMembers ?? 50,
+      };
+    },
   });
 
   const { data: members = [] } = useQuery<GuildMember[]>({
     queryKey: ['guild', guildId, 'members'],
     queryFn: async () => {
       const res = await api.get(`/guilds/${guildId}`);
-      return res.data.members ?? [];
+      const g = res.data.guild ?? res.data;
+      const raw = g.members ?? res.data.members ?? [];
+      return raw.map((m: any) => ({
+        ...m,
+        characterId: m.characterId ?? m.id,
+        characterName: m.characterName ?? m.name,
+        online: m.online ?? false,
+      }));
     },
   });
 
