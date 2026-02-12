@@ -13,6 +13,7 @@ import {
   Building2,
   ScrollText,
   Sparkles,
+  BookOpen,
   Shield,
   Crown,
   Trophy,
@@ -62,6 +63,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { icon: ScrollText, label: 'Quests', route: '/quests' },
       { icon: Sparkles, label: 'Skills', route: '/skills' },
+      { icon: BookOpen, label: 'Codex', route: '/codex' },
       { icon: Shield, label: 'Guild', route: '/guild' },
       { icon: Crown, label: 'Diplomacy', route: '/diplomacy' },
       { icon: Trophy, label: 'Achievements', route: '/achievements' },

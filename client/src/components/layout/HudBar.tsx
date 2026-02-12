@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Heart,
   CircleDollarSign,
@@ -9,6 +9,7 @@ import {
   Volume2,
   VolumeX,
   Compass,
+  BookOpen,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -42,6 +43,7 @@ interface TravelStatusHUD {
 export function HudBar() {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [muted, setMutedState] = useState(getMuted());
   const [, setVol] = useState(getStoredVolume());
   const [socketStatus, setSocketStatus] = useState(getConnectionStatus());
@@ -214,6 +216,17 @@ export function HudBar() {
 
         {/* Divider */}
         <div className="w-px h-6 bg-realm-border flex-shrink-0" />
+
+        {/* Codex / Help */}
+        <Tooltip content="Codex">
+          <button
+            onClick={() => navigate('/codex')}
+            className="text-realm-text-muted hover:text-realm-gold-400 transition-colors flex-shrink-0"
+            title="Open Codex"
+          >
+            <BookOpen className="w-4 h-4" />
+          </button>
+        </Tooltip>
 
         {/* Sound toggle */}
         <button
