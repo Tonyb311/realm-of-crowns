@@ -1,8 +1,8 @@
 // Shared toast style used across event hooks
 export const TOAST_STYLE = {
-  background: '#1a1a2e',
-  color: '#e8d5b7',
-  border: '1px solid #3a3a4e',
+  background: '#151A2D',
+  color: '#E8DCC8',
+  border: '1px solid rgba(212, 168, 67, 0.15)',
 };
 
 // Rarity colors with border/text/bg classes (used by Crafting, Inventory, etc.)

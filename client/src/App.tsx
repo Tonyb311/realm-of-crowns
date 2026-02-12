@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import { Routes, Route, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ui/ProtectedRoute';
 import { AdminRoute } from './components/ui/AdminRoute';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
@@ -41,6 +41,9 @@ const TradePage = React.lazy(() => import('./pages/TradePage'));
 const DiplomacyPage = React.lazy(() => import('./pages/DiplomacyPage'));
 const TravelPage = React.lazy(() => import('./pages/TravelPage'));
 
+// Landing page
+const LandingPage = React.lazy(() => import('./pages/LandingPage'));
+
 // Admin pages
 const AdminLayout = React.lazy(() => import('./components/admin/AdminLayout'));
 const AdminDashboardPage = React.lazy(() => import('./pages/admin/AdminDashboardPage'));
@@ -63,11 +66,11 @@ function App() {
       <ChatPanel />
       <HUD />
       <Navigation />
-      <div className="min-h-screen bg-dark-500 pb-14 md:pb-12">
+      <div className="min-h-screen bg-realm-bg-900 pb-14 md:pb-12">
         <ErrorBoundary>
         <Suspense fallback={<LoadingScreen />}>
         <Routes>
-          <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+          <Route path="/" element={<RootPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route
@@ -257,6 +260,13 @@ function App() {
       </div>
     </AuthProvider>
   );
+}
+
+function RootPage() {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return <LoadingScreen />;
+  if (!isAuthenticated) return <LandingPage />;
+  return <HomePage />;
 }
 
 function HomePage() {
