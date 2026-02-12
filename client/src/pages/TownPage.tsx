@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import {
   Store,
   Beer,
@@ -66,6 +66,34 @@ interface QuestNpc {
   role: string;
   availableQuestCount: number;
   quests: QuestOffer[];
+}
+
+interface GatheringSpot {
+  name: string;
+  description: string;
+  resourceType: string;
+  item: { name: string; baseValue: number; icon: string; isFood: boolean };
+  minYield: number;
+  maxYield: number;
+  icon: string;
+}
+
+interface GatheringSpotResponse {
+  spot: GatheringSpot | null;
+  canGather: boolean;
+  actionsRemaining: number;
+  reason: string | null;
+}
+
+interface GatherResult {
+  success: boolean;
+  gathered: {
+    spotName: string;
+    item: { name: string; icon: string; baseValue: number };
+    quantity: number;
+    message: string;
+  };
+  actionsRemaining: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -194,6 +222,41 @@ export default function TownPage() {
       return res.data.npcs ?? res.data;
     },
     enabled: !!townId,
+  });
+
+  // Gathering spot query
+  const {
+    data: gatheringData,
+    isLoading: gatheringLoading,
+  } = useQuery<GatheringSpotResponse>({
+    queryKey: ['gathering', 'spot', townId],
+    queryFn: async () => {
+      const raw = (await api.get('/gathering/spot')).data;
+      return {
+        spot: raw?.spot ?? null,
+        canGather: raw?.canGather ?? false,
+        actionsRemaining: raw?.actionsRemaining ?? 0,
+        reason: raw?.reason ?? null,
+      };
+    },
+    enabled: !!townId,
+  });
+
+  // Gather mutation
+  const [gatherResult, setGatherResult] = useState<GatherResult | null>(null);
+
+  const gatherMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/gathering/gather');
+      return res.data;
+    },
+    onSuccess: (data: GatherResult) => {
+      setGatherResult(data);
+      queryClient.invalidateQueries({ queryKey: ['gathering', 'spot', townId] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      // Auto-hide result after 5 seconds
+      setTimeout(() => setGatherResult(null), 5000);
+    },
   });
 
   // -------------------------------------------------------------------------
@@ -441,6 +504,92 @@ export default function TownPage() {
                 })}
               </div>
             </section>
+
+            {/* Gathering Spot */}
+            {!gatheringLoading && gatheringData?.spot && (
+              <section>
+                <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
+                  <Wheat className="w-5 h-5 text-realm-gold-400" />
+                  Gathering
+                </h2>
+                <div className="bg-realm-bg-700 border border-realm-border rounded-md p-5">
+                  {/* Spot header */}
+                  <div className="flex items-start gap-3 mb-3">
+                    <span className="text-3xl">{gatheringData.spot.icon}</span>
+                    <div className="flex-1">
+                      <h3 className="font-display text-lg text-realm-gold-400">{gatheringData.spot.name}</h3>
+                      <p className="text-xs text-realm-text-muted capitalize">{gatheringData.spot.resourceType}</p>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <p className="text-sm text-realm-text-secondary mb-4">{gatheringData.spot.description}</p>
+
+                  {/* What you'll get */}
+                  <div className="flex items-center gap-3 mb-4 bg-realm-bg-800 rounded-md p-3">
+                    <span className="text-xl">{gatheringData.spot.item.icon}</span>
+                    <div className="flex-1">
+                      <span className="text-sm text-realm-text-primary">{gatheringData.spot.item.name}</span>
+                      <span className="text-xs text-realm-text-muted ml-2">
+                        x{gatheringData.spot.minYield}-{gatheringData.spot.maxYield}
+                      </span>
+                    </div>
+                    <span className="text-xs text-realm-gold-400">{gatheringData.spot.item.baseValue}g each</span>
+                    {gatheringData.spot.item.isFood && (
+                      <RealmBadge variant="uncommon">Edible</RealmBadge>
+                    )}
+                  </div>
+
+                  {/* Gather button */}
+                  <RealmButton
+                    variant="primary"
+                    className="w-full"
+                    onClick={() => gatherMutation.mutate()}
+                    disabled={!gatheringData.canGather || gatherMutation.isPending}
+                  >
+                    {gatherMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        Gathering...
+                      </>
+                    ) : gatheringData.canGather ? (
+                      'Gather (1 Daily Action)'
+                    ) : gatheringData.reason === 'no_actions' ? (
+                      'Daily Action Used'
+                    ) : (
+                      'Cannot Gather'
+                    )}
+                  </RealmButton>
+
+                  {/* Gather result */}
+                  {gatherResult?.success && (
+                    <div className="mt-3 bg-realm-gold-500/10 border border-realm-gold-500/20 rounded-md p-3">
+                      <p className="text-sm text-realm-gold-400 font-display mb-1">
+                        {gatherResult.gathered.message}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{gatherResult.gathered.item.icon}</span>
+                        <span className="text-sm text-realm-text-primary">
+                          {gatherResult.gathered.item.name} x{gatherResult.gathered.quantity}
+                        </span>
+                        <span className="text-xs text-realm-text-muted">
+                          ({gatherResult.gathered.item.baseValue * gatherResult.gathered.quantity}g value)
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error message */}
+                  {gatherMutation.isError && (
+                    <div className="mt-3 bg-realm-danger/10 border border-realm-danger/20 rounded-md p-3">
+                      <p className="text-sm text-realm-danger">
+                        {(gatherMutation.error as any)?.response?.data?.error || 'Gathering failed. Try again.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
 
             {/* Quest Givers */}
             {questNpcs && questNpcs.length > 0 && (

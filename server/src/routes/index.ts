@@ -39,6 +39,7 @@ import adminRouter from './admin';
 import serviceRouter from './service';
 import loanRouter from './loans';
 import gameRoutes from './game';
+import gatheringRouter from './gathering';
 
 const router = Router();
 
@@ -51,6 +52,7 @@ router.use('/towns', townsRouter);
 router.use('/travel', travelRouter);
 router.use('/market', marketRouter);
 router.use('/work', workRouter);
+router.use('/gathering', gatheringRouter);
 router.use('/crafting', craftingRouter);
 router.use('/combat/pve', combatPveRouter);
 router.use('/combat/pvp', combatPvpRouter);
