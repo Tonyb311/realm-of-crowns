@@ -127,7 +127,7 @@ function getMoreCategories(isAdmin: boolean): NavCategory[] {
 function Badge({ count }: { count?: number }) {
   if (!count || count <= 0) return null;
   return (
-    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-blood-light text-[10px] text-parchment-50 font-bold px-1 leading-none">
+    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-blood-light text-[10px] text-realm-text-primary font-bold px-1 leading-none">
       {count > 99 ? '99+' : count}
     </span>
   );
@@ -218,21 +218,21 @@ export default function Navigation() {
         onClick={disabled ? (e: React.MouseEvent) => e.preventDefault() : undefined}
         className={`relative flex flex-col items-center justify-center gap-0.5 px-3 h-full min-w-[56px] transition-colors
           ${active
-            ? 'text-primary-400'
+            ? 'text-realm-gold-400'
             : disabled
-              ? 'text-parchment-500/30 cursor-not-allowed'
-              : 'text-parchment-400 hover:text-parchment-200'
+              ? 'text-realm-text-muted/30 cursor-not-allowed'
+              : 'text-realm-text-secondary hover:text-realm-text-primary'
           }`}
       >
         {/* Active indicator bar */}
         {active && (
-          <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary-400 rounded-b" />
+          <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-realm-gold-500 rounded-b" />
         )}
         <span className="relative">
           <Icon className="w-5 h-5" />
           <Badge count={item.badge} />
           {isTravelItem && isTraveling && !active && (
-            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary-400 animate-pulse" />
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-realm-gold-500 animate-pulse" />
           )}
         </span>
         <span className="text-[10px] font-display leading-tight">{item.label}</span>
@@ -263,21 +263,21 @@ export default function Navigation() {
         onClick={disabled ? (e: React.MouseEvent) => e.preventDefault() : undefined}
         className={`relative flex flex-col items-center justify-center flex-1 h-full transition-colors
           ${active
-            ? 'text-primary-400'
+            ? 'text-realm-gold-400'
             : disabled
-              ? 'text-parchment-500/30 cursor-not-allowed'
-              : 'text-parchment-400 hover:text-parchment-200'
+              ? 'text-realm-text-muted/30 cursor-not-allowed'
+              : 'text-realm-text-secondary hover:text-realm-text-primary'
           }`}
         aria-label={item.label}
       >
         {active && (
-          <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-primary-400 rounded-b" />
+          <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-realm-gold-500 rounded-b" />
         )}
         <span className="relative">
           <Icon className="w-5 h-5" />
           <Badge count={item.badge} />
           {isTravelItem && isTraveling && !active && (
-            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary-400 animate-pulse" />
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-realm-gold-500 animate-pulse" />
           )}
         </span>
       </Link>
@@ -303,10 +303,10 @@ export default function Navigation() {
         }}
         className={`flex items-center gap-3 px-4 py-2.5 rounded-md text-sm transition-colors
           ${active
-            ? 'bg-primary-400/10 text-primary-400'
+            ? 'bg-realm-gold-500/10 text-realm-gold-400'
             : disabled
-              ? 'text-parchment-500/30 cursor-not-allowed'
-              : 'text-parchment-300 hover:bg-dark-400/50 hover:text-parchment-200'
+              ? 'text-realm-text-muted/30 cursor-not-allowed'
+              : 'text-realm-text-secondary hover:bg-realm-bg-800/50 hover:text-realm-text-primary'
           }`}
       >
         <span className="relative">
@@ -316,7 +316,7 @@ export default function Navigation() {
         <span className="font-display">
           {item.label}
           {disabled && (
-            <span className="text-[10px] text-parchment-500/30 ml-1.5">(in town only)</span>
+            <span className="text-[10px] text-realm-text-muted/30 ml-1.5">(in town only)</span>
           )}
         </span>
       </Link>
@@ -328,10 +328,10 @@ export default function Navigation() {
     const CatIcon = category.icon;
     return (
       <div key={category.label}>
-        {idx > 0 && <div className="h-px bg-dark-50/50 mx-3 my-1" />}
+        {idx > 0 && <div className="h-px bg-realm-bg-600/50 mx-3 my-1" />}
         <div className="flex items-center gap-2 px-4 pt-3 pb-1">
-          <CatIcon className="w-3.5 h-3.5 text-parchment-500/60" />
-          <span className="text-[11px] font-display uppercase tracking-wider text-parchment-500/60">
+          <CatIcon className="w-3.5 h-3.5 text-realm-text-muted/60" />
+          <span className="text-[11px] font-display uppercase tracking-wider text-realm-text-muted/60">
             {category.label}
           </span>
         </div>
@@ -366,14 +366,14 @@ export default function Navigation() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="fixed bottom-16 right-4 z-50 w-72 max-h-[70vh] bg-dark-600 border border-dark-50 rounded-lg shadow-2xl overflow-hidden flex flex-col"
+              className="fixed bottom-16 right-4 z-50 w-72 max-h-[70vh] bg-realm-bg-900 border border-realm-border rounded-lg shadow-2xl overflow-hidden flex flex-col"
             >
               {/* Header */}
-              <div className="flex items-center justify-between px-4 py-2.5 border-b border-dark-50">
-                <span className="font-display text-primary-400 text-sm">Menu</span>
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-realm-border">
+                <span className="font-display text-realm-gold-400 text-sm">Menu</span>
                 <button
                   onClick={() => setMoreOpen(false)}
-                  className="text-parchment-500 hover:text-parchment-200 transition-colors"
+                  className="text-realm-text-muted hover:text-realm-text-primary transition-colors"
                   aria-label="Close menu"
                 >
                   <X className="w-4 h-4" />
@@ -386,7 +386,7 @@ export default function Navigation() {
               </div>
 
               {/* Logout — separated at the bottom */}
-              <div className="border-t border-dark-50 px-4 py-2.5">
+              <div className="border-t border-realm-border px-4 py-2.5">
                 <button
                   onClick={() => {
                     setMoreOpen(false);
@@ -418,14 +418,14 @@ export default function Navigation() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-50 md:hidden bg-dark-600/98 backdrop-blur-sm flex flex-col"
+            className="fixed inset-0 z-50 md:hidden bg-realm-bg-900/98 backdrop-blur-sm flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-dark-50">
-              <span className="font-display text-primary-400 text-base">Menu</span>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-realm-border">
+              <span className="font-display text-realm-gold-400 text-base">Menu</span>
               <button
                 onClick={() => setMoreOpen(false)}
-                className="text-parchment-500 hover:text-parchment-200 transition-colors p-1"
+                className="text-realm-text-muted hover:text-realm-text-primary transition-colors p-1"
                 aria-label="Close menu"
               >
                 <X className="w-5 h-5" />
@@ -438,7 +438,7 @@ export default function Navigation() {
             </div>
 
             {/* Logout — separated at the bottom */}
-            <div className="border-t border-dark-50 px-5 py-4 pb-20">
+            <div className="border-t border-realm-border px-5 py-4 pb-20">
               <button
                 onClick={() => {
                   setMoreOpen(false);
@@ -471,28 +471,28 @@ export default function Navigation() {
       {renderMobileMorePanel()}
 
       {/* Desktop bottom nav bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-dark-600/95 border-t border-dark-50 backdrop-blur-sm hidden md:block">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-realm-bg-900/95 border-t border-realm-border backdrop-blur-sm hidden md:block">
         <div className="max-w-screen-2xl mx-auto px-4 flex items-center justify-center h-14">
           {primaryItems.map((item) => renderPrimaryDesktop(item))}
 
           {/* Divider before "More" */}
-          <div className="w-px h-7 bg-dark-50 mx-1" />
+          <div className="w-px h-7 bg-realm-bg-600 mx-1" />
 
           {/* "More" button */}
           <button
             onClick={toggleMore}
             className={`relative flex flex-col items-center justify-center gap-0.5 px-3 h-full min-w-[56px] transition-colors
               ${moreOpen
-                ? 'text-primary-400'
+                ? 'text-realm-gold-400'
                 : moreIsActive
-                  ? 'text-primary-300'
-                  : 'text-parchment-400 hover:text-parchment-200'
+                  ? 'text-realm-gold-400'
+                  : 'text-realm-text-secondary hover:text-realm-text-primary'
               }`}
             aria-label="More navigation options"
             aria-expanded={moreOpen}
           >
             {(moreOpen || moreIsActive) && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary-400 rounded-b" />
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-realm-gold-500 rounded-b" />
             )}
             <span className="relative">
               {moreOpen ? <ChevronUp className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -503,7 +503,7 @@ export default function Navigation() {
       </nav>
 
       {/* Mobile bottom nav bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-dark-600/95 border-t border-dark-50 backdrop-blur-sm md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-realm-bg-900/95 border-t border-realm-border backdrop-blur-sm md:hidden">
         <div className="flex items-center h-16 safe-area-bottom">
           {primaryItems.map((item) => renderPrimaryMobile(item))}
 
@@ -512,16 +512,16 @@ export default function Navigation() {
             onClick={toggleMore}
             className={`relative flex flex-col items-center justify-center flex-1 h-full transition-colors
               ${moreOpen
-                ? 'text-primary-400'
+                ? 'text-realm-gold-400'
                 : moreIsActive
-                  ? 'text-primary-300'
-                  : 'text-parchment-400 hover:text-parchment-200'
+                  ? 'text-realm-gold-400'
+                  : 'text-realm-text-secondary hover:text-realm-text-primary'
               }`}
             aria-label="More navigation options"
             aria-expanded={moreOpen}
           >
             {(moreOpen || moreIsActive) && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-primary-400 rounded-b" />
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-realm-gold-500 rounded-b" />
             )}
             <span className="relative">
               {moreOpen ? <ChevronUp className="w-5 h-5" /> : <Menu className="w-5 h-5" />}

@@ -111,12 +111,12 @@ export default function DailyDashboard() {
   }, [queryClient]);
 
   return (
-    <div className="min-h-screen bg-dark-500 pt-12 pb-16">
+    <div className="pt-12 pb-16">
       {/* Header bar */}
-      <div className="px-6 py-3 bg-dark-400 border-b border-dark-50 flex items-center justify-between">
+      <div className="px-6 py-3 bg-realm-bg-800 border-b border-realm-border flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <LayoutDashboard className="w-5 h-5 text-primary-400" />
-          <h1 className="font-display text-xl text-primary-400">Daily Dashboard</h1>
+          <LayoutDashboard className="w-5 h-5 text-realm-gold-400" />
+          <h1 className="font-display text-xl text-realm-gold-400">Daily Dashboard</h1>
         </div>
         <div className="flex items-center gap-3">
           {character && (
@@ -147,7 +147,7 @@ export default function DailyDashboard() {
           {/* Sidebar */}
           <div className="space-y-4">
             {/* Sidebar tabs */}
-            <div className="flex border-b border-dark-50">
+            <div className="flex border-b border-realm-border">
               {([
                 { key: 'food' as SidebarTab, label: 'Food', icon: null },
                 { key: 'combat' as SidebarTab, label: 'Combat', icon: Swords },
@@ -158,8 +158,8 @@ export default function DailyDashboard() {
                   onClick={() => setSidebarTab(key)}
                   className={`flex items-center gap-1.5 px-3 py-2 text-xs font-display border-b-2 transition-colors
                     ${sidebarTab === key
-                      ? 'border-primary-400 text-primary-400'
-                      : 'border-transparent text-parchment-500 hover:text-parchment-300'}`}
+                      ? 'border-realm-gold-500 text-realm-gold-400'
+                      : 'border-transparent text-realm-text-muted hover:text-realm-text-secondary'}`}
                 >
                   {Icon && <Icon className="w-3.5 h-3.5" />}
                   {label}

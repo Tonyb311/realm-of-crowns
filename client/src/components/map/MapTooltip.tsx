@@ -40,11 +40,11 @@ export default function MapTooltip({ x, y, svgRef, children, className = '' }: M
       className={`fixed z-50 pointer-events-none -translate-x-1/2 -translate-y-full ${className}`}
       style={{ left: pos.left, top: pos.top - 12 }}
     >
-      <div className="bg-dark-600 border border-dark-50 text-parchment-200 text-xs rounded px-3 py-2 shadow-lg whitespace-nowrap max-w-xs">
+      <div className="bg-realm-bg-900 border border-realm-border text-realm-text-primary text-xs rounded px-3 py-2 shadow-lg whitespace-nowrap max-w-xs">
         {children}
       </div>
       {/* Arrow */}
-      <div className="w-0 h-0 mx-auto border-x-4 border-x-transparent border-t-4 border-t-dark-600" />
+      <div className="w-0 h-0 mx-auto border-x-4 border-x-transparent border-t-4 border-t-realm-bg-900" />
     </div>
   );
 }

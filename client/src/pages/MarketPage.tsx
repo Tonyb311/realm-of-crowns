@@ -10,7 +10,6 @@ import {
   X,
 } from 'lucide-react';
 import api from '../services/api';
-import { SkeletonCard } from '../components/ui/LoadingSkeleton';
 import GoldAmount from '../components/shared/GoldAmount';
 import { RARITY_TEXT_COLORS } from '../constants';
 import MarketFilters from '../components/market/MarketFilters';
@@ -245,26 +244,26 @@ export default function MarketPage() {
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-dark-500 pt-12">
+    <div className="pt-12">
       {/* Header */}
-      <header className="border-b border-dark-50 bg-dark-400/50">
+      <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <Store className="w-8 h-8 text-primary-400" />
+              <Store className="w-8 h-8 text-realm-gold-400" />
               <div>
-                <h1 className="text-3xl font-display text-primary-400">Marketplace</h1>
-                <p className="text-parchment-500 text-sm">Trade goods with fellow adventurers</p>
+                <h1 className="text-3xl font-display text-realm-gold-400">Marketplace</h1>
+                <p className="text-realm-text-muted text-sm">Trade goods with fellow adventurers</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="bg-dark-300 border border-dark-50 rounded px-4 py-2 flex items-center gap-2">
-                <span className="text-parchment-500 text-xs">Your Gold:</span>
-                <GoldAmount amount={gold} className="text-primary-400 font-display text-sm" />
+              <div className="bg-realm-bg-700 border border-realm-border rounded px-4 py-2 flex items-center gap-2">
+                <span className="text-realm-text-muted text-xs">Your Gold:</span>
+                <GoldAmount amount={gold} className="text-realm-gold-400 font-display text-sm" />
               </div>
               <button
                 onClick={() => navigate('/town')}
-                className="px-5 py-2 border border-parchment-500/40 text-parchment-300 font-display text-sm rounded hover:bg-dark-300 transition-colors"
+                className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
               >
                 Back to Town
               </button>
@@ -274,7 +273,7 @@ export default function MarketPage() {
       </header>
 
       {/* Tabs */}
-      <div className="border-b border-dark-50 bg-dark-400/30">
+      <div className="border-b border-realm-border bg-realm-bg-800/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex gap-1">
             {tabs.map((tab) => {
@@ -286,8 +285,8 @@ export default function MarketPage() {
                   onClick={() => setActiveTab(tab.key)}
                   className={`flex items-center gap-2 px-5 py-3 font-display text-sm border-b-2 transition-colors ${
                     isActive
-                      ? 'border-primary-400 text-primary-400'
-                      : 'border-transparent text-parchment-500 hover:text-parchment-300 hover:border-parchment-500/30'
+                      ? 'border-realm-gold-400 text-realm-gold-400'
+                      : 'border-transparent text-realm-text-muted hover:text-realm-text-secondary hover:border-realm-text-muted/30'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -323,13 +322,13 @@ export default function MarketPage() {
             {browseLoading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {Array.from({ length: 8 }).map((_, i) => (
-                  <SkeletonCard key={i} />
+                  <div key={i} className="h-48 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
                 ))}
               </div>
             ) : !browseData?.listings?.length ? (
               <div className="text-center py-20">
-                <Store className="w-12 h-12 text-parchment-500/30 mx-auto mb-4" />
-                <p className="text-parchment-500">No listings found matching your criteria.</p>
+                <Store className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-4" />
+                <p className="text-realm-text-muted">No listings found matching your criteria.</p>
               </div>
             ) : (
               <>
@@ -350,17 +349,17 @@ export default function MarketPage() {
                     <button
                       disabled={page <= 1}
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      className="p-2 rounded border border-dark-50 text-parchment-400 hover:bg-dark-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      className="p-2 rounded border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
-                    <span className="text-parchment-300 text-sm font-display">
+                    <span className="text-realm-text-secondary text-sm font-display">
                       Page {page} of {totalPages}
                     </span>
                     <button
                       disabled={page >= totalPages}
                       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                      className="p-2 rounded border border-dark-50 text-parchment-400 hover:bg-dark-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      className="p-2 rounded border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
@@ -385,16 +384,16 @@ export default function MarketPage() {
         {/* TAB 3: Price History */}
         {activeTab === 'price-history' && (
           <div>
-            <h2 className="text-xl font-display text-parchment-200 mb-6">Price History</h2>
+            <h2 className="text-xl font-display text-realm-text-primary mb-6">Price History</h2>
 
-            <div className="bg-dark-300 border border-dark-50 rounded-lg p-6">
+            <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6">
               {/* Item selector */}
               <div className="mb-6">
-                <label className="text-parchment-500 text-xs mb-1 block">Select Item</label>
+                <label className="text-realm-text-muted text-xs mb-1 block">Select Item</label>
                 <select
                   value={historyItemId}
                   onChange={(e) => setHistoryItemId(e.target.value)}
-                  className="w-full max-w-sm px-3 py-2 bg-dark-500 border border-dark-50 rounded text-parchment-200 text-sm focus:border-primary-400/50 focus:outline-none"
+                  className="w-full max-w-sm px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-none"
                 >
                   <option value="">Choose an item...</option>
                   {itemOptions?.map((item) => (
@@ -405,31 +404,31 @@ export default function MarketPage() {
 
               {!historyItemId ? (
                 <div className="text-center py-16">
-                  <TrendingUp className="w-12 h-12 text-parchment-500/30 mx-auto mb-4" />
-                  <p className="text-parchment-500">Select an item to view price trends.</p>
+                  <TrendingUp className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-4" />
+                  <p className="text-realm-text-muted">Select an item to view price trends.</p>
                 </div>
               ) : historyLoading ? (
                 <div className="space-y-4 animate-pulse">
                   <div className="flex gap-6">
-                    <div className="bg-dark-500 border border-dark-50 rounded px-4 py-3 w-40 h-16" />
-                    <div className="bg-dark-500 border border-dark-50 rounded px-4 py-3 w-40 h-16" />
+                    <div className="bg-realm-bg-900 border border-realm-border rounded px-4 py-3 w-40 h-16" />
+                    <div className="bg-realm-bg-900 border border-realm-border rounded px-4 py-3 w-40 h-16" />
                   </div>
-                  <div className="bg-dark-400 rounded h-64" />
+                  <div className="bg-realm-bg-800 rounded h-64" />
                 </div>
               ) : priceHistory ? (
                 <div>
                   {/* Stats */}
                   <div className="flex gap-6 mb-6">
-                    <div className="bg-dark-500 border border-dark-50 rounded px-4 py-3">
-                      <p className="text-parchment-500 text-xs">Average Price (30d)</p>
+                    <div className="bg-realm-bg-900 border border-realm-border rounded px-4 py-3">
+                      <p className="text-realm-text-muted text-xs">Average Price (30d)</p>
                       <GoldAmount
                         amount={Math.round(priceHistory.averagePrice)}
-                        className="text-primary-400 font-display text-lg"
+                        className="text-realm-gold-400 font-display text-lg"
                       />
                     </div>
-                    <div className="bg-dark-500 border border-dark-50 rounded px-4 py-3">
-                      <p className="text-parchment-500 text-xs">Total Volume (30d)</p>
-                      <p className="text-parchment-200 font-display text-lg">{priceHistory.totalVolume.toLocaleString()}</p>
+                    <div className="bg-realm-bg-900 border border-realm-border rounded px-4 py-3">
+                      <p className="text-realm-text-muted text-xs">Total Volume (30d)</p>
+                      <p className="text-realm-text-primary font-display text-lg">{priceHistory.totalVolume.toLocaleString()}</p>
                     </div>
                   </div>
 
@@ -445,45 +444,45 @@ export default function MarketPage() {
       {/* MODAL: Item Details Popup */}
       {selectedListing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setSelectedListing(null)}>
-          <div className="bg-dark-400 border border-dark-50 rounded-lg p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-realm-bg-800 border border-realm-border rounded-lg p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-4">
-              <h3 className={`text-xl font-display ${RARITY_TEXT_COLORS[selectedListing.rarity] ?? 'text-parchment-200'}`}>
+              <h3 className={`text-xl font-display ${RARITY_TEXT_COLORS[selectedListing.rarity] ?? 'text-realm-text-primary'}`}>
                 {selectedListing.itemName}
               </h3>
-              <button onClick={() => setSelectedListing(null)} className="text-parchment-500 hover:text-parchment-200">
+              <button onClick={() => setSelectedListing(null)} className="text-realm-text-muted hover:text-realm-text-primary">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-3 mb-6">
               <div className="flex items-center gap-2">
                 <RarityBadge rarity={selectedListing.rarity} />
-                <span className="text-parchment-500 text-xs capitalize">{selectedListing.itemType}</span>
+                <span className="text-realm-text-muted text-xs capitalize">{selectedListing.itemType}</span>
               </div>
               {selectedListing.description && (
-                <p className="text-parchment-300 text-sm leading-relaxed">{selectedListing.description}</p>
+                <p className="text-realm-text-secondary text-sm leading-relaxed">{selectedListing.description}</p>
               )}
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <p className="text-parchment-500 text-xs">Price</p>
-                  <GoldAmount amount={selectedListing.price} className="text-primary-400 font-semibold" />
+                  <p className="text-realm-text-muted text-xs">Price</p>
+                  <GoldAmount amount={selectedListing.price} className="text-realm-gold-400 font-semibold" />
                 </div>
                 <div>
-                  <p className="text-parchment-500 text-xs">Quantity</p>
-                  <p className="text-parchment-200">{selectedListing.quantity}</p>
+                  <p className="text-realm-text-muted text-xs">Quantity</p>
+                  <p className="text-realm-text-primary">{selectedListing.quantity}</p>
                 </div>
                 <div>
-                  <p className="text-parchment-500 text-xs">Seller</p>
-                  <p className="text-parchment-200">{selectedListing.sellerName}</p>
+                  <p className="text-realm-text-muted text-xs">Seller</p>
+                  <p className="text-realm-text-primary">{selectedListing.sellerName}</p>
                 </div>
                 <div>
-                  <p className="text-parchment-500 text-xs">Listed</p>
-                  <p className="text-parchment-200">{new Date(selectedListing.listedAt).toLocaleDateString()}</p>
+                  <p className="text-realm-text-muted text-xs">Listed</p>
+                  <p className="text-realm-text-primary">{new Date(selectedListing.listedAt).toLocaleDateString()}</p>
                 </div>
               </div>
             </div>
             <button
               onClick={() => { setBuyConfirm(selectedListing); setSelectedListing(null); }}
-              className="w-full py-2.5 bg-primary-400 text-dark-500 font-display rounded hover:bg-primary-300 transition-colors"
+              className="w-full py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display rounded hover:bg-realm-gold-400 transition-colors"
             >
               Buy This Item
             </button>
@@ -494,53 +493,53 @@ export default function MarketPage() {
       {/* MODAL: Buy Confirmation */}
       {buyConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setBuyConfirm(null)}>
-          <div className="bg-dark-400 border border-dark-50 rounded-lg p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-display text-primary-400 mb-4">Confirm Purchase</h3>
+          <div className="bg-realm-bg-800 border border-realm-border rounded-lg p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-display text-realm-gold-400 mb-4">Confirm Purchase</h3>
             <div className="space-y-3 mb-6">
               <div className="flex justify-between text-sm">
-                <span className="text-parchment-500">Item</span>
-                <span className={`font-semibold ${RARITY_TEXT_COLORS[buyConfirm.rarity] ?? 'text-parchment-200'}`}>{buyConfirm.itemName}</span>
+                <span className="text-realm-text-muted">Item</span>
+                <span className={`font-semibold ${RARITY_TEXT_COLORS[buyConfirm.rarity] ?? 'text-realm-text-primary'}`}>{buyConfirm.itemName}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-parchment-500">Price</span>
-                <GoldAmount amount={buyConfirm.price} className="text-parchment-200" />
+                <span className="text-realm-text-muted">Price</span>
+                <GoldAmount amount={buyConfirm.price} className="text-realm-text-primary" />
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-parchment-500">Tax ({Math.round(taxRate * 100)}%)</span>
-                <GoldAmount amount={Math.ceil(buyConfirm.price * taxRate)} className="text-parchment-200" />
+                <span className="text-realm-text-muted">Tax ({Math.round(taxRate * 100)}%)</span>
+                <GoldAmount amount={Math.ceil(buyConfirm.price * taxRate)} className="text-realm-text-primary" />
               </div>
-              <div className="border-t border-dark-50 pt-2 flex justify-between text-sm font-semibold">
-                <span className="text-parchment-300">Total</span>
+              <div className="border-t border-realm-border pt-2 flex justify-between text-sm font-semibold">
+                <span className="text-realm-text-secondary">Total</span>
                 <GoldAmount
                   amount={buyConfirm.price + Math.ceil(buyConfirm.price * taxRate)}
-                  className="text-primary-400"
+                  className="text-realm-gold-400"
                 />
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-parchment-500">Your Gold</span>
-                <GoldAmount amount={gold} className="text-parchment-200" />
+                <span className="text-realm-text-muted">Your Gold</span>
+                <GoldAmount amount={gold} className="text-realm-text-primary" />
               </div>
               {gold < buyConfirm.price + Math.ceil(buyConfirm.price * taxRate) && (
-                <p className="text-blood-light text-xs">You do not have enough gold for this purchase.</p>
+                <p className="text-realm-danger text-xs">You do not have enough gold for this purchase.</p>
               )}
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => setBuyConfirm(null)}
-                className="flex-1 py-2 border border-parchment-500/30 text-parchment-300 font-display text-sm rounded hover:bg-dark-300 transition-colors"
+                className="flex-1 py-2 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => buyMutation.mutate(buyConfirm.id)}
                 disabled={buyMutation.isPending || gold < buyConfirm.price + Math.ceil(buyConfirm.price * taxRate)}
-                className="flex-1 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {buyMutation.isPending ? 'Buying...' : 'Confirm'}
               </button>
             </div>
             {buyMutation.isError && (
-              <p className="text-blood-light text-xs mt-3 text-center">Purchase failed. Please try again.</p>
+              <p className="text-realm-danger text-xs mt-3 text-center">Purchase failed. Please try again.</p>
             )}
           </div>
         </div>

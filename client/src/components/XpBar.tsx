@@ -24,17 +24,17 @@ export default function XpBar() {
     : 0;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-40 h-6 bg-dark-400/90 border-b border-dark-50 flex items-center px-4">
-      <span className="text-[10px] font-display text-parchment-400 mr-3 whitespace-nowrap">
+    <div className="fixed top-0 left-0 right-0 z-40 h-6 bg-realm-bg-800/90 border-b border-realm-border flex items-center px-4">
+      <span className="text-[10px] font-display text-realm-text-secondary mr-3 whitespace-nowrap">
         Level {character.level}
       </span>
-      <div className="flex-1 h-2 bg-dark-500 rounded-full overflow-hidden">
+      <div className="flex-1 h-2 bg-realm-bg-900 rounded-full overflow-hidden">
         <div
           className="h-full rounded-full bg-gradient-to-r from-primary-400/80 to-primary-300 transition-all duration-700"
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="text-[10px] text-parchment-500 ml-3 whitespace-nowrap">
+      <span className="text-[10px] text-realm-text-muted ml-3 whitespace-nowrap">
         {character.xp} / {xpForNextLevel} XP
       </span>
     </div>

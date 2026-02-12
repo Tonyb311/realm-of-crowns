@@ -47,7 +47,7 @@ function MiniMapInner({ towns, playerTownId, viewBox, mapWidth, mapHeight, getCo
   }
 
   return (
-    <div className="absolute top-4 right-4 bg-dark-400/90 border border-dark-50 rounded-lg p-1.5 shadow-lg">
+    <div className="absolute top-4 right-4 bg-realm-bg-800/90 border border-realm-border rounded-lg p-1.5 shadow-lg">
       <svg
         width={MINI_W}
         height={MINI_H}

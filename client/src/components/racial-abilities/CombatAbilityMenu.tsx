@@ -141,10 +141,10 @@ export default function CombatAbilityMenu({
   if (combatAbilities.length === 0) return null;
 
   return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg p-3">
+    <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-3">
       <div className="flex items-center gap-2 mb-2">
-        <Zap className="w-3.5 h-3.5 text-primary-400" />
-        <span className="text-[10px] text-parchment-500 font-display uppercase tracking-wider">
+        <Zap className="w-3.5 h-3.5 text-realm-gold-400" />
+        <span className="text-[10px] text-realm-text-muted font-display uppercase tracking-wider">
           Racial Abilities
         </span>
       </div>
@@ -204,10 +204,10 @@ export default function CombatAbilityMenu({
                       disabled:opacity-30 disabled:cursor-not-allowed
                       ${
                         isToggle && isActive
-                          ? 'bg-primary-400/20 border-primary-400/50 text-primary-400'
+                          ? 'bg-realm-gold-500/20 border-realm-gold-500/50 text-realm-gold-400'
                           : isOnCooldown
-                            ? 'bg-dark-400 border-dark-50 text-parchment-500'
-                            : 'bg-blue-900/20 border-blue-500/30 text-blue-300 hover:bg-blue-900/40'
+                            ? 'bg-realm-bg-800 border-realm-border text-realm-text-muted'
+                            : 'bg-realm-teal-300/20 border-realm-teal-300/30 text-realm-teal-300 hover:bg-realm-teal-300/40'
                       }`}
                   >
                     {isThisUsing ? (
@@ -229,7 +229,7 @@ export default function CombatAbilityMenu({
                     <TargetIcon className="w-3 h-3 opacity-50" />
 
                     {isOnCooldown && (
-                      <span className="text-[10px] text-parchment-500 tabular-nums ml-1">
+                      <span className="text-[10px] text-realm-text-muted tabular-nums ml-1">
                         {cdLeft}s
                       </span>
                     )}
@@ -238,8 +238,8 @@ export default function CombatAbilityMenu({
 
                 {/* Thousand Faces target selector dropdown */}
                 {isCopier && targetSelector === ability.name && (
-                  <div className="absolute top-full left-0 mt-1 w-48 bg-dark-400 border border-dark-50 rounded-lg shadow-xl z-20 p-2">
-                    <p className="text-[10px] text-parchment-500 px-2 py-1 mb-1">
+                  <div className="absolute top-full left-0 mt-1 w-48 bg-realm-bg-800 border border-realm-border rounded-lg shadow-xl z-20 p-2">
+                    <p className="text-[10px] text-realm-text-muted px-2 py-1 mb-1">
                       Copy Enemy Ability
                     </p>
                     <button
@@ -248,7 +248,7 @@ export default function CombatAbilityMenu({
                         setTargetSelector(null);
                       }}
                       disabled={isThisUsing}
-                      className="w-full text-left px-3 py-2 text-xs text-parchment-200 hover:bg-dark-300 rounded transition-colors"
+                      className="w-full text-left px-3 py-2 text-xs text-realm-text-primary hover:bg-realm-bg-700 rounded transition-colors"
                     >
                       <Crosshair className="w-3 h-3 inline mr-1.5" />
                       Use on Target

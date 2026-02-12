@@ -49,9 +49,9 @@ function formatDuration(startedAt: string): string {
 }
 
 function getScoreColor(myScore: number, theirScore: number): string {
-  if (myScore > theirScore) return 'text-emerald-400';
-  if (myScore < theirScore) return 'text-red-400';
-  return 'text-amber-400';
+  if (myScore > theirScore) return 'text-realm-success';
+  if (myScore < theirScore) return 'text-realm-danger';
+  return 'text-realm-gold-400';
 }
 
 // ---------------------------------------------------------------------------
@@ -99,8 +99,8 @@ export default function WarDashboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
-        <span className="ml-2 text-parchment-300 font-display">Loading war data...</span>
+        <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
+        <span className="ml-2 text-realm-text-secondary font-display">Loading war data...</span>
       </div>
     );
   }
@@ -108,9 +108,9 @@ export default function WarDashboard() {
   if (activeWars.length === 0) {
     return (
       <div className="text-center py-16">
-        <Shield className="w-10 h-10 text-parchment-500 mx-auto mb-3" />
-        <p className="text-parchment-300 font-display">Peace reigns across Aethermere</p>
-        <p className="text-parchment-500 text-xs mt-1">No active wars at this time.</p>
+        <Shield className="w-10 h-10 text-realm-text-muted mx-auto mb-3" />
+        <p className="text-realm-text-secondary font-display">Peace reigns across Aethermere</p>
+        <p className="text-realm-text-muted text-xs mt-1">No active wars at this time.</p>
       </div>
     );
   }
@@ -119,8 +119,8 @@ export default function WarDashboard() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Swords className="w-5 h-5 text-red-400" />
-        <h3 className="font-display text-red-400 text-lg">Active Conflicts ({activeWars.length})</h3>
+        <Swords className="w-5 h-5 text-realm-danger" />
+        <h3 className="font-display text-realm-danger text-lg">Active Conflicts ({activeWars.length})</h3>
       </div>
 
       {/* War cards */}
@@ -134,22 +134,22 @@ export default function WarDashboard() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="bg-dark-400 border border-red-500/20 rounded-lg p-4"
+              className="bg-realm-bg-800 border border-realm-danger/20 rounded-lg p-4"
             >
               {/* Combatants */}
               <div className="flex items-center justify-between mb-3">
                 <div className="text-left">
-                  <p className="text-parchment-200 font-display text-sm">{war.attackerName}</p>
-                  <p className="text-parchment-500 text-[10px]">{war.attackerRace} (Attacker)</p>
+                  <p className="text-realm-text-primary font-display text-sm">{war.attackerName}</p>
+                  <p className="text-realm-text-muted text-[10px]">{war.attackerRace} (Attacker)</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Skull className="w-4 h-4 text-red-400" />
-                  <span className="text-parchment-500 text-xs font-display">VS</span>
-                  <Skull className="w-4 h-4 text-red-400" />
+                  <Skull className="w-4 h-4 text-realm-danger" />
+                  <span className="text-realm-text-muted text-xs font-display">VS</span>
+                  <Skull className="w-4 h-4 text-realm-danger" />
                 </div>
                 <div className="text-right">
-                  <p className="text-parchment-200 font-display text-sm">{war.defenderName}</p>
-                  <p className="text-parchment-500 text-[10px]">{war.defenderRace} (Defender)</p>
+                  <p className="text-realm-text-primary font-display text-sm">{war.defenderName}</p>
+                  <p className="text-realm-text-muted text-[10px]">{war.defenderRace} (Defender)</p>
                 </div>
               </div>
 
@@ -159,12 +159,12 @@ export default function WarDashboard() {
                   <span className={`text-xs font-display ${getScoreColor(war.attackerScore, war.defenderScore)}`}>
                     {war.attackerScore}
                   </span>
-                  <span className="text-parchment-500 text-[10px]">WAR SCORE</span>
+                  <span className="text-realm-text-muted text-[10px]">WAR SCORE</span>
                   <span className={`text-xs font-display ${getScoreColor(war.defenderScore, war.attackerScore)}`}>
                     {war.defenderScore}
                   </span>
                 </div>
-                <div className="h-2 bg-dark-500 rounded-full overflow-hidden flex">
+                <div className="h-2 bg-realm-bg-900 rounded-full overflow-hidden flex">
                   <div
                     className="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-500"
                     style={{ width: `${attackerPct}%` }}
@@ -177,7 +177,7 @@ export default function WarDashboard() {
               </div>
 
               {/* Meta */}
-              <div className="flex items-center justify-between text-[10px] text-parchment-500">
+              <div className="flex items-center justify-between text-[10px] text-realm-text-muted">
                 <div className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   Duration: {formatDuration(war.startedAt)}
@@ -191,10 +191,10 @@ export default function WarDashboard() {
               </div>
 
               {/* Enlist placeholder */}
-              <div className="mt-3 pt-2 border-t border-dark-50">
+              <div className="mt-3 pt-2 border-t border-realm-border">
                 <button
                   disabled
-                  className="text-[10px] px-2 py-1 rounded bg-dark-500 text-parchment-500 border border-dark-50 cursor-not-allowed font-display"
+                  className="text-[10px] px-2 py-1 rounded bg-realm-bg-900 text-realm-text-muted border border-realm-border cursor-not-allowed font-display"
                 >
                   Enlist (Coming Soon)
                 </button>
@@ -206,15 +206,15 @@ export default function WarDashboard() {
 
       {/* Recent war events from bulletin */}
       {bulletin?.recentEvents && bulletin.recentEvents.length > 0 && (
-        <section className="bg-dark-400 border border-dark-50 rounded-lg p-3">
-          <h4 className="font-display text-parchment-300 text-xs mb-2">Recent War Events</h4>
+        <section className="bg-realm-bg-800 border border-realm-border rounded-lg p-3">
+          <h4 className="font-display text-realm-text-secondary text-xs mb-2">Recent War Events</h4>
           <div className="space-y-1.5 max-h-40 overflow-y-auto">
             {bulletin.recentEvents.map((evt, i) => (
-              <div key={i} className="flex items-start gap-2 text-xs border-l-2 border-red-500/30 pl-2">
-                <span className="text-parchment-500 whitespace-nowrap shrink-0 text-[10px]">
+              <div key={i} className="flex items-start gap-2 text-xs border-l-2 border-realm-danger/30 pl-2">
+                <span className="text-realm-text-muted whitespace-nowrap shrink-0 text-[10px]">
                   {new Date(evt.timestamp).toLocaleTimeString()}
                 </span>
-                <span className="text-parchment-300">{evt.description}</span>
+                <span className="text-realm-text-secondary">{evt.description}</span>
               </div>
             ))}
           </div>

@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
-import { SkeletonTable } from '../../components/ui/LoadingSkeleton';
 import ErrorMessage from '../../components/ui/ErrorMessage';
 
 // ---------------------------------------------------------------------------
@@ -49,8 +48,8 @@ const PAGE_SIZE = 20;
 
 const ROLE_STYLES: Record<string, string> = {
   admin: 'text-blood-light bg-blood-dark/20 border-blood-dark/40',
-  moderator: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
-  player: 'text-green-400 bg-green-400/10 border-green-400/30',
+  moderator: 'text-realm-teal-300 bg-realm-teal-300/10 border-realm-teal-300/30',
+  player: 'text-realm-success bg-realm-success/10 border-realm-success/30',
 };
 
 // ---------------------------------------------------------------------------
@@ -152,64 +151,73 @@ export default function AdminUsersPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-display text-primary-400 mb-6">User Management</h1>
+      <h1 className="text-2xl font-display text-realm-gold-400 mb-6">User Management</h1>
 
       {/* Search */}
       <div className="mb-6">
         <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-parchment-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-realm-text-muted" />
           <input
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search by username or email..."
-            className="w-full pl-10 pr-3 py-2 bg-dark-400 border border-dark-50 rounded px-3 text-parchment-300 text-sm placeholder:text-parchment-500/50 focus:border-primary-400 focus:outline-none"
+            className="w-full pl-10 pr-3 py-2 bg-realm-bg-800 border border-realm-border rounded px-3 text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-none"
           />
         </div>
       </div>
 
       {/* Table */}
       {isLoading ? (
-        <SkeletonTable rows={8} cols={6} />
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden animate-pulse">
+          <div className="border-b border-realm-border px-4 py-3 flex gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (<div key={i} className="flex-1 h-3 bg-realm-bg-800 rounded" />))}
+          </div>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="px-4 py-3 flex gap-4 border-b border-realm-border last:border-0">
+              {Array.from({ length: 6 }).map((_, j) => (<div key={j} className="flex-1 h-3 bg-realm-bg-800 rounded" />))}
+            </div>
+          ))}
+        </div>
       ) : isError ? (
         <ErrorMessage error={error} onRetry={refetch} />
       ) : !data?.users?.length ? (
         <div className="text-center py-20">
-          <Users className="w-12 h-12 text-parchment-500/30 mx-auto mb-4" />
-          <p className="text-parchment-500">No users found.</p>
+          <Users className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-4" />
+          <p className="text-realm-text-muted">No users found.</p>
         </div>
       ) : (
-        <div className="bg-dark-300 border border-dark-50 rounded-lg overflow-hidden">
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-dark-50 text-left">
-                <th className="px-4 py-3 text-parchment-500 text-xs font-display">Username</th>
-                <th className="px-4 py-3 text-parchment-500 text-xs font-display hidden sm:table-cell">Email</th>
-                <th className="px-4 py-3 text-parchment-500 text-xs font-display">Role</th>
-                <th className="px-4 py-3 text-parchment-500 text-xs font-display hidden md:table-cell">Characters</th>
-                <th className="px-4 py-3 text-parchment-500 text-xs font-display hidden lg:table-cell">Created</th>
-                <th className="px-4 py-3 text-parchment-500 text-xs font-display">Actions</th>
+              <tr className="border-b border-realm-border text-left">
+                <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Username</th>
+                <th className="px-4 py-3 text-realm-text-muted text-xs font-display hidden sm:table-cell">Email</th>
+                <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Role</th>
+                <th className="px-4 py-3 text-realm-text-muted text-xs font-display hidden md:table-cell">Characters</th>
+                <th className="px-4 py-3 text-realm-text-muted text-xs font-display hidden lg:table-cell">Created</th>
+                <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-dark-50">
+            <tbody className="divide-y divide-realm-border/50">
               {data.users.map((user) => {
                 const isExpanded = expandedUserId === user.id;
                 return (
                   <tr key={user.id} className="group">
                     <td colSpan={6} className="p-0">
                       <div
-                        className="flex items-center hover:bg-dark-400/30 transition-colors cursor-pointer"
+                        className="flex items-center hover:bg-realm-bg-800/30 transition-colors cursor-pointer"
                         onClick={() => handleToggleExpand(user.id)}
                       >
-                        <div className="px-4 py-3 text-sm text-parchment-200 flex items-center gap-2 flex-1 min-w-0">
+                        <div className="px-4 py-3 text-sm text-realm-text-primary flex items-center gap-2 flex-1 min-w-0">
                           {isExpanded ? (
-                            <ChevronUp className="w-3.5 h-3.5 text-parchment-500 flex-shrink-0" />
+                            <ChevronUp className="w-3.5 h-3.5 text-realm-text-muted flex-shrink-0" />
                           ) : (
-                            <ChevronDown className="w-3.5 h-3.5 text-parchment-500 flex-shrink-0" />
+                            <ChevronDown className="w-3.5 h-3.5 text-realm-text-muted flex-shrink-0" />
                           )}
                           <span className="truncate">{user.username}</span>
                         </div>
-                        <div className="px-4 py-3 text-sm text-parchment-400 hidden sm:block flex-1 min-w-0">
+                        <div className="px-4 py-3 text-sm text-realm-text-secondary hidden sm:block flex-1 min-w-0">
                           <span className="truncate block">{user.email}</span>
                         </div>
                         <div className="px-4 py-3 flex-shrink-0">
@@ -221,23 +229,23 @@ export default function AdminUsersPage() {
                             {user.role}
                           </span>
                         </div>
-                        <div className="px-4 py-3 text-sm text-parchment-300 hidden md:block flex-shrink-0 w-24 text-center">
+                        <div className="px-4 py-3 text-sm text-realm-text-secondary hidden md:block flex-shrink-0 w-24 text-center">
                           {user.characterCount}
                         </div>
-                        <div className="px-4 py-3 text-xs text-parchment-500 hidden lg:block flex-shrink-0 w-28">
+                        <div className="px-4 py-3 text-xs text-realm-text-muted hidden lg:block flex-shrink-0 w-28">
                           {new Date(user.createdAt).toLocaleDateString()}
                         </div>
                         <div className="px-4 py-3 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => handleOpenEditRole(user)}
-                              className="px-2.5 py-1 text-xs border border-primary-400/40 text-primary-400 rounded hover:bg-primary-400/10 transition-colors"
+                              className="px-2.5 py-1 text-xs border border-realm-gold-500/40 text-realm-gold-400 rounded hover:bg-realm-gold-500/10 transition-colors"
                             >
                               Edit Role
                             </button>
                             <button
                               onClick={() => setResetPwUser(user)}
-                              className="px-2.5 py-1 text-xs border border-parchment-500/30 text-parchment-400 rounded hover:bg-dark-400 transition-colors"
+                              className="px-2.5 py-1 text-xs border border-realm-border/30 text-realm-text-secondary rounded hover:bg-realm-bg-800 transition-colors"
                             >
                               Reset PW
                             </button>
@@ -248,16 +256,16 @@ export default function AdminUsersPage() {
                       {/* Expanded Characters */}
                       {isExpanded && user.characters && user.characters.length > 0 && (
                         <div className="px-8 pb-3">
-                          <div className="bg-dark-400/50 border border-dark-50 rounded-lg p-3">
-                            <p className="text-parchment-500 text-xs mb-2 font-display">Characters:</p>
+                          <div className="bg-realm-bg-800/50 border border-realm-border rounded-lg p-3">
+                            <p className="text-realm-text-muted text-xs mb-2 font-display">Characters:</p>
                             <div className="space-y-1.5">
                               {user.characters.map((char) => (
                                 <div
                                   key={char.id}
                                   className="flex items-center gap-3 text-sm"
                                 >
-                                  <span className="text-parchment-200">{char.name}</span>
-                                  <span className="text-parchment-500 text-xs">
+                                  <span className="text-realm-text-primary">{char.name}</span>
+                                  <span className="text-realm-text-muted text-xs">
                                     {char.race} - Lv.{char.level}
                                   </span>
                                 </div>
@@ -268,7 +276,7 @@ export default function AdminUsersPage() {
                       )}
                       {isExpanded && (!user.characters || user.characters.length === 0) && (
                         <div className="px-8 pb-3">
-                          <p className="text-parchment-500 text-xs italic">No characters</p>
+                          <p className="text-realm-text-muted text-xs italic">No characters</p>
                         </div>
                       )}
                     </td>
@@ -286,7 +294,7 @@ export default function AdminUsersPage() {
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="p-2 rounded border border-dark-50 text-parchment-400 hover:bg-dark-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="p-2 rounded border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -308,8 +316,8 @@ export default function AdminUsersPage() {
                   onClick={() => setPage(pageNum)}
                   className={`w-8 h-8 rounded text-xs font-display transition-colors ${
                     page === pageNum
-                      ? 'bg-primary-400/20 text-primary-400 border border-primary-400/40'
-                      : 'text-parchment-400 hover:bg-dark-300 border border-transparent'
+                      ? 'bg-realm-gold-500/20 text-realm-gold-400 border border-realm-gold-500/40'
+                      : 'text-realm-text-secondary hover:bg-realm-bg-700 border border-transparent'
                   }`}
                 >
                   {pageNum}
@@ -320,7 +328,7 @@ export default function AdminUsersPage() {
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="p-2 rounded border border-dark-50 text-parchment-400 hover:bg-dark-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="p-2 rounded border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -334,27 +342,27 @@ export default function AdminUsersPage() {
           onClick={() => setEditRoleUser(null)}
         >
           <div
-            className="bg-dark-400 border border-dark-50 rounded-lg p-6 max-w-sm w-full mx-4"
+            className="bg-realm-bg-800 border border-realm-border rounded-lg p-6 max-w-sm w-full mx-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-display text-primary-400">Edit Role</h3>
+              <h3 className="text-lg font-display text-realm-gold-400">Edit Role</h3>
               <button
                 onClick={() => setEditRoleUser(null)}
-                className="text-parchment-500 hover:text-parchment-200"
+                className="text-realm-text-muted hover:text-realm-text-primary"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-parchment-300 text-sm mb-4">
-              Change role for <span className="text-parchment-200 font-semibold">{editRoleUser.username}</span>
+            <p className="text-realm-text-secondary text-sm mb-4">
+              Change role for <span className="text-realm-text-primary font-semibold">{editRoleUser.username}</span>
             </p>
             <div className="mb-6">
-              <label className="text-parchment-500 text-xs mb-1 block">Role</label>
+              <label className="text-realm-text-muted text-xs mb-1 block">Role</label>
               <select
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value)}
-                className="w-full bg-dark-400 border border-dark-50 rounded px-3 py-2 text-parchment-300 text-sm focus:border-primary-400 focus:outline-none"
+                className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
               >
                 <option value="player">Player</option>
                 <option value="moderator">Moderator</option>
@@ -364,14 +372,14 @@ export default function AdminUsersPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setEditRoleUser(null)}
-                className="flex-1 py-2 border border-parchment-500/30 text-parchment-300 font-display text-sm rounded hover:bg-dark-300 transition-colors"
+                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveRole}
                 disabled={editRoleMutation.isPending || newRole === editRoleUser.role}
-                className="flex-1 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {editRoleMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Save
@@ -388,42 +396,42 @@ export default function AdminUsersPage() {
           onClick={() => setResetPwUser(null)}
         >
           <div
-            className="bg-dark-400 border border-dark-50 rounded-lg p-6 max-w-sm w-full mx-4"
+            className="bg-realm-bg-800 border border-realm-border rounded-lg p-6 max-w-sm w-full mx-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-display text-primary-400">Reset Password</h3>
+              <h3 className="text-lg font-display text-realm-gold-400">Reset Password</h3>
               <button
                 onClick={() => setResetPwUser(null)}
-                className="text-parchment-500 hover:text-parchment-200"
+                className="text-realm-text-muted hover:text-realm-text-primary"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-parchment-300 text-sm mb-4">
-              Set a new password for <span className="text-parchment-200 font-semibold">{resetPwUser.username}</span>
+            <p className="text-realm-text-secondary text-sm mb-4">
+              Set a new password for <span className="text-realm-text-primary font-semibold">{resetPwUser.username}</span>
             </p>
             <div className="mb-6">
-              <label className="text-parchment-500 text-xs mb-1 block">New Password</label>
+              <label className="text-realm-text-muted text-xs mb-1 block">New Password</label>
               <input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Minimum 6 characters"
-                className="w-full bg-dark-400 border border-dark-50 rounded px-3 py-2 text-parchment-300 text-sm placeholder:text-parchment-500/50 focus:border-primary-400 focus:outline-none"
+                className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-none"
               />
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => { setResetPwUser(null); setNewPassword(''); }}
-                className="flex-1 py-2 border border-parchment-500/30 text-parchment-300 font-display text-sm rounded hover:bg-dark-300 transition-colors"
+                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleResetPassword}
                 disabled={resetPwMutation.isPending || newPassword.length < 6}
-                className="flex-1 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {resetPwMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Reset

@@ -206,8 +206,8 @@ export default function DiplomacyOverlay({ regions, towns }: DiplomacyOverlayPro
           onClick={() => setVisible(v => !v)}
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-display transition-colors border ${
             visible
-              ? 'bg-primary-400/15 text-primary-400 border-primary-400/30'
-              : 'bg-dark-400/90 text-parchment-500 border-dark-50 hover:text-parchment-300'
+              ? 'bg-realm-gold-500/15 text-realm-gold-400 border-realm-gold-500/30'
+              : 'bg-realm-bg-800/90 text-realm-text-muted border-realm-border hover:text-realm-text-secondary'
           }`}
         >
           {visible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}

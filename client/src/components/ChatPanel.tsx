@@ -216,11 +216,11 @@ export default function ChatPanel() {
     return (
       <button
         onClick={() => { setIsOpen(true); setIsMinimized(false); }}
-        className="fixed bottom-16 md:bottom-16 right-4 z-30 bg-dark-300 border border-primary-400/60 text-primary-400 p-3 rounded-full shadow-lg hover:bg-dark-200 transition-colors"
+        className="fixed bottom-16 md:bottom-16 right-4 z-30 bg-realm-bg-700 border border-realm-gold-500/60 text-realm-gold-400 p-3 rounded-full shadow-lg hover:bg-realm-bg-600 transition-colors"
       >
         <MessageSquare className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-blood-light text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+          <span className="absolute -top-1 -right-1 bg-blood-light text-realm-text-primary text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -231,25 +231,25 @@ export default function ChatPanel() {
   // Minimized bar
   if (isMinimized) {
     return (
-      <div className="fixed bottom-12 md:bottom-12 right-4 z-30 w-80 bg-dark-300 border border-dark-50 border-b-0 rounded-t-lg shadow-xl">
+      <div className="fixed bottom-12 md:bottom-12 right-4 z-30 w-80 bg-realm-bg-700 border border-realm-border border-b-0 rounded-t-lg shadow-xl">
         <div className="flex items-center justify-between px-3 py-2">
           <button
             onClick={() => setIsMinimized(false)}
-            className="flex items-center gap-2 text-primary-400 font-display text-sm"
+            className="flex items-center gap-2 text-realm-gold-400 font-display text-sm"
           >
             <MessageSquare className="w-4 h-4" />
             Chat
             {unreadCount > 0 && (
-              <span className="bg-blood-light text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+              <span className="bg-blood-light text-realm-text-primary text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
                 {unreadCount}
               </span>
             )}
           </button>
           <div className="flex gap-1">
-            <button onClick={() => setIsMinimized(false)} className="p-1 text-parchment-500 hover:text-parchment-200">
+            <button onClick={() => setIsMinimized(false)} className="p-1 text-realm-text-muted hover:text-realm-text-primary">
               <ChevronUp className="w-4 h-4" />
             </button>
-            <button onClick={() => setIsOpen(false)} className="p-1 text-parchment-500 hover:text-parchment-200">
+            <button onClick={() => setIsOpen(false)} className="p-1 text-realm-text-muted hover:text-realm-text-primary">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -260,30 +260,30 @@ export default function ChatPanel() {
 
   // Full panel
   return (
-    <div className="fixed inset-0 md:inset-auto md:bottom-12 md:right-4 z-30 md:w-96 md:h-[28rem] bg-dark-400 border border-dark-50 md:rounded-t-lg shadow-xl flex flex-col pt-12 md:pt-0">
+    <div className="fixed inset-0 md:inset-auto md:bottom-12 md:right-4 z-30 md:w-96 md:h-[28rem] bg-realm-bg-800 border border-realm-border md:rounded-t-lg shadow-xl flex flex-col pt-12 md:pt-0">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-dark-50 bg-dark-300 rounded-t-lg">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-realm-border bg-realm-bg-700 rounded-t-lg">
         <div className="flex items-center gap-2">
-          <MessageSquare className="w-4 h-4 text-primary-400" />
-          <span className="font-display text-primary-400 text-sm">Chat</span>
+          <MessageSquare className="w-4 h-4 text-realm-gold-400" />
+          <span className="font-display text-realm-gold-400 text-sm">Chat</span>
           {activeTab === 'private' && privateTarget && (
-            <span className="text-xs text-parchment-400">
+            <span className="text-xs text-realm-text-secondary">
               - {privateTarget.name}
             </span>
           )}
         </div>
         <div className="flex gap-1">
-          <button onClick={() => setIsMinimized(true)} className="p-1 text-parchment-500 hover:text-parchment-200">
+          <button onClick={() => setIsMinimized(true)} className="p-1 text-realm-text-muted hover:text-realm-text-primary">
             <Minus className="w-4 h-4" />
           </button>
-          <button onClick={() => setIsOpen(false)} className="p-1 text-parchment-500 hover:text-parchment-200">
+          <button onClick={() => setIsOpen(false)} className="p-1 text-realm-text-muted hover:text-realm-text-primary">
             <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
       {/* Tab bar */}
-      <div className="flex border-b border-dark-50">
+      <div className="flex border-b border-realm-border">
         {CHANNEL_TABS.map((tab) => {
           const Icon = tab.icon;
           return (
@@ -295,8 +295,8 @@ export default function ChatPanel() {
               }}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs transition-colors ${
                 activeTab === tab.key
-                  ? 'text-primary-400 border-b-2 border-primary-400 bg-dark-300/50'
-                  : 'text-parchment-500 hover:text-parchment-300'
+                  ? 'text-realm-gold-400 border-b-2 border-realm-gold-500 bg-realm-bg-700/50'
+                  : 'text-realm-text-muted hover:text-realm-text-secondary'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -315,16 +315,16 @@ export default function ChatPanel() {
               <button
                 key={conv.characterId}
                 onClick={() => setPrivateTarget({ id: conv.characterId, name: conv.characterName })}
-                className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-dark-300 transition-colors text-left"
+                className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-realm-bg-700 transition-colors text-left"
               >
                 <div className="min-w-0">
-                  <p className="text-sm text-parchment-200 font-semibold truncate">{conv.characterName}</p>
-                  <p className="text-xs text-parchment-500 truncate">{conv.lastMessage}</p>
+                  <p className="text-sm text-realm-text-primary font-semibold truncate">{conv.characterName}</p>
+                  <p className="text-xs text-realm-text-muted truncate">{conv.lastMessage}</p>
                 </div>
                 <div className="flex-shrink-0 ml-2">
-                  <span className="text-[10px] text-parchment-500">{formatTime(conv.timestamp)}</span>
+                  <span className="text-[10px] text-realm-text-muted">{formatTime(conv.timestamp)}</span>
                   {conv.unread && conv.unread > 0 && (
-                    <span className="ml-1 bg-primary-400 text-dark-500 text-[10px] font-bold rounded-full min-w-[16px] h-4 inline-flex items-center justify-center px-1">
+                    <span className="ml-1 bg-realm-gold-500 text-realm-bg-900 text-[10px] font-bold rounded-full min-w-[16px] h-4 inline-flex items-center justify-center px-1">
                       {conv.unread}
                     </span>
                   )}
@@ -332,28 +332,28 @@ export default function ChatPanel() {
               </button>
             ))
           ) : (
-            <div className="flex items-center justify-center h-full text-sm text-parchment-500">
+            <div className="flex items-center justify-center h-full text-sm text-realm-text-muted">
               No conversations yet.
             </div>
           )
         ) : channelLoading ? (
           <div className="flex items-center justify-center h-full">
-            <Loader2 className="w-5 h-5 text-primary-400 animate-spin" />
+            <Loader2 className="w-5 h-5 text-realm-gold-400 animate-spin" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-sm text-parchment-500">
+          <div className="flex items-center justify-center h-full text-sm text-realm-text-muted">
             No messages yet. Be the first to speak.
           </div>
         ) : (
           messages.map((msg) => (
             <div key={msg.id} className="group">
               <div className="flex items-baseline gap-1.5">
-                <span className="text-xs font-semibold text-primary-400 cursor-pointer hover:underline">
+                <span className="text-xs font-semibold text-realm-gold-400 cursor-pointer hover:underline">
                   {msg.sender.name}
                 </span>
-                <span className="text-[10px] text-parchment-500">{formatTime(msg.timestamp)}</span>
+                <span className="text-[10px] text-realm-text-muted">{formatTime(msg.timestamp)}</span>
               </div>
-              <p className="text-sm text-parchment-300 pl-0 leading-snug break-words">{msg.content}</p>
+              <p className="text-sm text-realm-text-secondary pl-0 leading-snug break-words">{msg.content}</p>
             </div>
           ))
         )}
@@ -364,7 +364,7 @@ export default function ChatPanel() {
       {activeTab === 'private' && privateTarget && (
         <button
           onClick={() => setPrivateTarget(null)}
-          className="px-3 py-1 text-xs text-primary-400 hover:text-primary-300 border-t border-dark-50 text-left"
+          className="px-3 py-1 text-xs text-realm-gold-400 hover:text-realm-gold-400 border-t border-realm-border text-left"
         >
           Back to conversations
         </button>
@@ -372,7 +372,7 @@ export default function ChatPanel() {
 
       {/* Input */}
       {(activeTab !== 'private' || privateTarget) && (
-        <div className="border-t border-dark-50 px-3 py-2">
+        <div className="border-t border-realm-border px-3 py-2">
           <div className="flex items-end gap-2">
             <textarea
               ref={inputRef}
@@ -381,12 +381,12 @@ export default function ChatPanel() {
               onKeyDown={handleKeyDown}
               placeholder={`Message ${activeTab === 'private' && privateTarget ? privateTarget.name : activeTab} chat...`}
               rows={1}
-              className="flex-1 bg-dark-300 border border-dark-50 rounded px-3 py-1.5 text-sm text-parchment-200 placeholder-parchment-500 resize-none focus:outline-none focus:border-primary-400 max-h-20"
+              className="flex-1 bg-realm-bg-700 border border-realm-border rounded px-3 py-1.5 text-sm text-realm-text-primary placeholder-realm-text-muted resize-none focus:outline-none focus:border-realm-gold-500 max-h-20"
             />
             <button
               onClick={sendMessage}
               disabled={!inputValue.trim()}
-              className="p-2 text-primary-400 hover:text-primary-300 disabled:text-parchment-500 disabled:cursor-not-allowed transition-colors"
+              className="p-2 text-realm-gold-400 hover:text-realm-gold-400 disabled:text-realm-text-muted disabled:cursor-not-allowed transition-colors"
             >
               <Send className="w-4 h-4" />
             </button>

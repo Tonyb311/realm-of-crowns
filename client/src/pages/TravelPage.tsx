@@ -28,7 +28,6 @@ import {
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import { TOAST_STYLE } from '../constants';
-import { SkeletonCard } from '../components/ui/LoadingSkeleton';
 import Tooltip from '../components/ui/Tooltip';
 
 // ---------------------------------------------------------------------------
@@ -112,7 +111,7 @@ const TERRAIN_COLORS: Record<string, { badge: string; accent: string; bgTint: st
 
 function getTerrainStyle(terrain: string) {
   const key = terrain?.toLowerCase().split('/')[0].trim() ?? '';
-  return TERRAIN_COLORS[key] ?? { badge: 'bg-dark-50/60 text-parchment-300', accent: 'text-parchment-400', bgTint: 'from-dark-600/30' };
+  return TERRAIN_COLORS[key] ?? { badge: 'bg-realm-border/60 text-realm-text-secondary', accent: 'text-realm-text-secondary', bgTint: 'from-transparent' };
 }
 
 // ---------------------------------------------------------------------------
@@ -141,11 +140,11 @@ function getSpecialIcon(specialType: string | null) {
 
 function getDifficultyStyle(difficulty: string): string {
   switch (difficulty?.toLowerCase()) {
-    case 'safe': return 'text-green-400 bg-green-400/10 border-green-400/30';
-    case 'moderate': return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30';
+    case 'safe': return 'text-realm-success bg-realm-success/10 border-realm-success/30';
+    case 'moderate': return 'text-realm-gold-400 bg-realm-gold-400/10 border-realm-gold-400/30';
     case 'dangerous': return 'text-orange-400 bg-orange-400/10 border-orange-400/30';
-    case 'deadly': return 'text-red-400 bg-red-400/10 border-red-400/30';
-    default: return 'text-parchment-400 bg-parchment-400/10 border-parchment-400/30';
+    case 'deadly': return 'text-realm-danger bg-realm-danger/10 border-realm-danger/30';
+    default: return 'text-realm-text-secondary bg-realm-text-secondary/10 border-realm-border';
   }
 }
 
@@ -158,11 +157,11 @@ function DangerDots({ level }: { level: number }) {
   const clamped = Math.max(0, Math.min(max, level));
 
   function dotColor(i: number): string {
-    if (i >= clamped) return 'bg-dark-50';
-    if (clamped <= 3) return 'bg-green-400';
-    if (clamped <= 6) return 'bg-yellow-400';
+    if (i >= clamped) return 'bg-realm-border';
+    if (clamped <= 3) return 'bg-realm-success';
+    if (clamped <= 6) return 'bg-realm-gold-400';
     if (clamped <= 8) return 'bg-orange-400';
-    return 'bg-red-400';
+    return 'bg-realm-danger';
   }
 
   return (
@@ -214,10 +213,10 @@ function TickCountdown() {
 
   return (
     <div className="flex items-center gap-2">
-      <Clock className="w-4 h-4 text-primary-400" />
-      <span className="text-xs text-parchment-500">Next tick in:</span>
+      <Clock className="w-4 h-4 text-realm-gold-400" />
+      <span className="text-xs text-realm-text-muted">Next tick in:</span>
       <motion.span
-        className="font-display text-lg text-primary-400 tabular-nums"
+        className="font-display text-lg text-realm-gold-400 tabular-nums"
         animate={{ opacity: [1, 0.7, 1] }}
         transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
       >
@@ -248,24 +247,24 @@ function RouteMap({ nodes, currentIndex, direction, routeName, dayNumber, estima
   const visibleNodes = expanded ? nodes : nodes;
 
   return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg overflow-hidden">
+    <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-dark-50">
+      <div className="p-4 border-b border-realm-border">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Compass className="w-4 h-4 text-primary-400" />
-            <h3 className="font-display text-primary-400 text-sm">{routeName}</h3>
+            <Compass className="w-4 h-4 text-realm-gold-400" />
+            <h3 className="font-display text-realm-gold-400 text-sm">{routeName}</h3>
           </div>
-          <div className="flex items-center gap-3 text-xs text-parchment-500">
+          <div className="flex items-center gap-3 text-xs text-realm-text-muted">
             <span>Day {dayNumber} of ~{estimatedDays}</span>
-            <span className="text-parchment-500/50">|</span>
+            <span className="text-realm-text-muted/50">|</span>
             <span>Arriving in ~{ticksRemaining} tick{ticksRemaining !== 1 ? 's' : ''}</span>
-            <span className="text-parchment-500/50">|</span>
+            <span className="text-realm-text-muted/50">|</span>
             <span className="flex items-center gap-1">
               {direction === 'forward' ? (
-                <ArrowRight className="w-3 h-3 text-primary-400" />
+                <ArrowRight className="w-3 h-3 text-realm-gold-400" />
               ) : (
-                <RotateCcw className="w-3 h-3 text-amber-400" />
+                <RotateCcw className="w-3 h-3 text-realm-gold-400" />
               )}
               {direction === 'forward' ? 'Forward' : 'Reversing'}
             </span>
@@ -291,22 +290,22 @@ function RouteMap({ nodes, currentIndex, direction, routeName, dayNumber, estima
                       <div
                         className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
                           isCurrent
-                            ? 'border-primary-400 bg-primary-400/20 shadow-[0_0_12px_rgba(212,175,55,0.4)]'
+                            ? 'border-realm-gold-400 bg-realm-gold-400/20 shadow-[0_0_12px_rgba(212,175,55,0.4)]'
                             : isCompleted
-                            ? 'border-dark-50 bg-dark-400'
-                            : 'border-dark-50/50 bg-dark-400/50'
+                            ? 'border-realm-border bg-realm-bg-800'
+                            : 'border-realm-border/50 bg-realm-bg-800/50'
                         }`}
                       >
-                        {isCompleted && <Check className="w-3.5 h-3.5 text-parchment-500/50" />}
+                        {isCompleted && <Check className="w-3.5 h-3.5 text-realm-text-muted/50" />}
                         {isCurrent && (
                           <motion.div
-                            className="w-3 h-3 rounded-full bg-primary-400"
+                            className="w-3 h-3 rounded-full bg-realm-gold-400"
                             animate={{ scale: [1, 1.3, 1] }}
                             transition={{ duration: 1.5, repeat: Infinity }}
                           />
                         )}
                         {isUpcoming && SpecialIcon && (
-                          <SpecialIcon className="w-3 h-3 text-parchment-500/40" />
+                          <SpecialIcon className="w-3 h-3 text-realm-text-muted/40" />
                         )}
                       </div>
                     </div>
@@ -316,10 +315,10 @@ function RouteMap({ nodes, currentIndex, direction, routeName, dayNumber, estima
                   <span
                     className={`text-[9px] mt-1.5 max-w-[60px] text-center truncate ${
                       isCurrent
-                        ? 'text-primary-400 font-semibold'
+                        ? 'text-realm-gold-400 font-semibold'
                         : isCompleted
-                        ? 'text-parchment-500/40'
-                        : 'text-parchment-500/60'
+                        ? 'text-realm-text-muted/40'
+                        : 'text-realm-text-muted/60'
                     }`}
                   >
                     {node.name}
@@ -331,10 +330,10 @@ function RouteMap({ nodes, currentIndex, direction, routeName, dayNumber, estima
                   <div
                     className={`h-0.5 w-8 sm:w-12 flex-shrink-0 ${
                       i < currentIndex
-                        ? 'bg-parchment-500/20'
+                        ? 'bg-realm-text-muted/20'
                         : i === currentIndex
-                        ? 'bg-gradient-to-r from-primary-400/60 to-dark-50/30'
-                        : 'bg-dark-50/20'
+                        ? 'bg-gradient-to-r from-realm-gold-400/60 to-realm-border/30'
+                        : 'bg-realm-border/20'
                     }`}
                   />
                 )}
@@ -348,7 +347,7 @@ function RouteMap({ nodes, currentIndex, direction, routeName, dayNumber, estima
       {nodes.length > 8 && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full py-2 border-t border-dark-50 flex items-center justify-center gap-1 text-[10px] text-parchment-500 hover:text-parchment-300 transition-colors"
+          className="w-full py-2 border-t border-realm-border flex items-center justify-center gap-1 text-[10px] text-realm-text-muted hover:text-realm-text-secondary transition-colors"
         >
           {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           {expanded ? 'Collapse' : `Show all ${nodes.length} nodes`}
@@ -372,18 +371,18 @@ function CurrentNodePanel({ node, nextNode, terrain }: CurrentNodePanelProps) {
   const terrainStyle = getTerrainStyle(terrain || node.terrain);
 
   return (
-    <div className={`bg-dark-300 border border-dark-50 rounded-lg overflow-hidden`}>
+    <div className={`bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden`}>
       {/* Atmospheric terrain tint at top */}
       <div className={`h-1 bg-gradient-to-r ${terrainStyle.bgTint} to-transparent`} />
 
       <div className="p-6">
         {/* Node name */}
-        <h2 className="text-2xl sm:text-3xl font-display text-primary-400 mb-3">
+        <h2 className="text-2xl sm:text-3xl font-display text-realm-gold-400 mb-3">
           {node.name}
         </h2>
 
         {/* Description */}
-        <p className="text-parchment-300 text-sm leading-relaxed mb-5">
+        <p className="text-realm-text-secondary text-sm leading-relaxed mb-5">
           {node.description || 'The path stretches before you, winding through the landscape. Each step brings you closer to your destination.'}
         </p>
 
@@ -396,7 +395,7 @@ function CurrentNodePanel({ node, nextNode, terrain }: CurrentNodePanelProps) {
 
           {/* Danger level */}
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-parchment-500 uppercase tracking-wider">Danger</span>
+            <span className="text-[10px] text-realm-text-muted uppercase tracking-wider">Danger</span>
             <DangerDots level={node.dangerLevel} />
           </div>
 
@@ -414,17 +413,17 @@ function CurrentNodePanel({ node, nextNode, terrain }: CurrentNodePanelProps) {
 
         {/* Next node preview */}
         {nextNode && (
-          <div className="flex items-center gap-2 p-3 bg-dark-400/60 rounded-lg border border-dark-50/50">
-            <ArrowRight className="w-4 h-4 text-parchment-500 flex-shrink-0" />
-            <span className="text-xs text-parchment-500">Next tick moves you to:</span>
-            <span className="text-xs text-parchment-200 font-display">{nextNode.name}</span>
+          <div className="flex items-center gap-2 p-3 bg-realm-bg-800/60 rounded-lg border border-realm-border/50">
+            <ArrowRight className="w-4 h-4 text-realm-text-muted flex-shrink-0" />
+            <span className="text-xs text-realm-text-muted">Next tick moves you to:</span>
+            <span className="text-xs text-realm-text-primary font-display">{nextNode.name}</span>
           </div>
         )}
 
         {!nextNode && (
-          <div className="flex items-center gap-2 p-3 bg-green-900/20 rounded-lg border border-green-500/20">
-            <MapPin className="w-4 h-4 text-green-400 flex-shrink-0" />
-            <span className="text-xs text-green-300">You will arrive at your destination on the next tick.</span>
+          <div className="flex items-center gap-2 p-3 bg-realm-success/20 rounded-lg border border-realm-success/20">
+            <MapPin className="w-4 h-4 text-realm-success flex-shrink-0" />
+            <span className="text-xs text-realm-success">You will arrive at your destination on the next tick.</span>
           </div>
         )}
       </div>
@@ -438,9 +437,9 @@ function CurrentNodePanel({ node, nextNode, terrain }: CurrentNodePanelProps) {
 
 function TravelersPanel({ players }: { players: NodePlayer[] }) {
   return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg">
-      <div className="p-4 border-b border-dark-50">
-        <h3 className="font-display text-primary-400 text-sm flex items-center gap-2">
+    <div className="bg-realm-bg-700 border border-realm-border rounded-lg">
+      <div className="p-4 border-b border-realm-border">
+        <h3 className="font-display text-realm-gold-400 text-sm flex items-center gap-2">
           <Users className="w-4 h-4" />
           Fellow Travelers
         </h3>
@@ -448,18 +447,18 @@ function TravelersPanel({ players }: { players: NodePlayer[] }) {
 
       {players.length === 0 ? (
         <div className="p-6 text-center">
-          <p className="text-parchment-500 text-xs">No other travelers here.</p>
-          <p className="text-parchment-500/50 text-[10px] mt-1">The road is quiet and empty.</p>
+          <p className="text-realm-text-muted text-xs">No other travelers here.</p>
+          <p className="text-realm-text-muted/50 text-[10px] mt-1">The road is quiet and empty.</p>
         </div>
       ) : (
-        <div className="divide-y divide-dark-50">
+        <div className="divide-y divide-realm-border">
           {players.map((p) => (
             <div key={p.id} className="px-4 py-3 flex items-center justify-between">
               <div>
-                <span className="text-parchment-200 text-sm font-semibold">{p.name}</span>
-                <span className="text-parchment-500 text-xs ml-2 capitalize">{p.race?.toLowerCase()}</span>
+                <span className="text-realm-text-primary text-sm font-semibold">{p.name}</span>
+                <span className="text-realm-text-muted text-xs ml-2 capitalize">{p.race?.toLowerCase()}</span>
               </div>
-              <span className="text-xs text-parchment-500">Lv. {p.level}</span>
+              <span className="text-xs text-realm-text-muted">Lv. {p.level}</span>
             </div>
           ))}
         </div>
@@ -476,33 +475,33 @@ function GroupPanel({ groupName, members }: { groupName: string | null; members:
   if (!members || members.length === 0) return null;
 
   return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg">
-      <div className="p-4 border-b border-dark-50">
-        <h3 className="font-display text-primary-400 text-sm flex items-center gap-2">
+    <div className="bg-realm-bg-700 border border-realm-border rounded-lg">
+      <div className="p-4 border-b border-realm-border">
+        <h3 className="font-display text-realm-gold-400 text-sm flex items-center gap-2">
           <Shield className="w-4 h-4" />
           {groupName || 'Travel Group'}
         </h3>
       </div>
 
-      <div className="divide-y divide-dark-50">
+      <div className="divide-y divide-realm-border">
         {members.map((m) => (
           <div key={m.id} className="px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-parchment-200 text-sm font-semibold">{m.name}</span>
-              <span className="text-parchment-500 text-xs capitalize">{m.race?.toLowerCase()}</span>
+              <span className="text-realm-text-primary text-sm font-semibold">{m.name}</span>
+              <span className="text-realm-text-muted text-xs capitalize">{m.race?.toLowerCase()}</span>
               {m.role === 'leader' && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary-400/10 text-primary-400 border border-primary-400/30 font-display flex items-center gap-0.5">
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-realm-gold-400/10 text-realm-gold-400 border border-realm-gold-400/30 font-display flex items-center gap-0.5">
                   <Crown className="w-2.5 h-2.5" />
                   Leader
                 </span>
               )}
               {m.role === 'member' && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-dark-50/40 text-parchment-500 font-display">
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-realm-border/40 text-realm-text-muted font-display">
                   Member
                 </span>
               )}
             </div>
-            <span className="text-xs text-parchment-500">Lv. {m.level}</span>
+            <span className="text-xs text-realm-text-muted">Lv. {m.level}</span>
           </div>
         ))}
       </div>
@@ -538,7 +537,7 @@ function ActionPanel({
   const nearestTown = direction === 'forward' ? originTownName : destinationTownName;
 
   return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg p-5">
+    <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
       {/* Tick countdown */}
       <div className="flex items-center justify-center mb-5">
         <TickCountdown />
@@ -558,7 +557,7 @@ function ActionPanel({
             );
           }}
           disabled={isReversing}
-          className="flex-1 py-3 px-4 border border-primary-400/40 text-primary-400 font-display text-sm rounded hover:bg-primary-400/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 py-3 px-4 border border-realm-gold-400/40 text-realm-gold-400 font-display text-sm rounded hover:bg-realm-gold-400/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isReversing ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -572,14 +571,14 @@ function ActionPanel({
         {!showCancelConfirm ? (
           <button
             onClick={() => setShowCancelConfirm(true)}
-            className="flex-1 py-3 px-4 border border-red-500/40 text-red-400 font-display text-sm rounded hover:bg-red-500/10 transition-colors flex items-center justify-center gap-2"
+            className="flex-1 py-3 px-4 border border-realm-danger/40 text-realm-danger font-display text-sm rounded hover:bg-realm-danger/10 transition-colors flex items-center justify-center gap-2"
           >
             <XCircle className="w-4 h-4" />
             Cancel Journey
           </button>
         ) : (
-          <div className="flex-1 flex flex-col gap-2 p-3 bg-red-900/10 border border-red-500/20 rounded-lg">
-            <p className="text-xs text-red-300 text-center">
+          <div className="flex-1 flex flex-col gap-2 p-3 bg-realm-danger/10 border border-realm-danger/20 rounded-lg">
+            <p className="text-xs text-realm-danger text-center">
               Return to {nearestTown || 'nearest town'}?
             </p>
             <div className="flex gap-2">
@@ -589,14 +588,14 @@ function ActionPanel({
                   setShowCancelConfirm(false);
                 }}
                 disabled={isCanceling}
-                className="flex-1 py-2 bg-red-600 text-white font-display text-xs rounded hover:bg-red-500 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+                className="flex-1 py-2 bg-realm-danger text-realm-text-primary font-display text-xs rounded hover:bg-realm-danger/80 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
               >
                 {isCanceling ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                 Confirm
               </button>
               <button
                 onClick={() => setShowCancelConfirm(false)}
-                className="flex-1 py-2 border border-dark-50 text-parchment-400 font-display text-xs rounded hover:bg-dark-400 transition-colors"
+                className="flex-1 py-2 border border-realm-border text-realm-text-secondary font-display text-xs rounded hover:bg-realm-bg-800 transition-colors"
               >
                 Nevermind
               </button>
@@ -668,11 +667,11 @@ export default function TravelPage() {
   // ---------------------------------------------------------------------------
   if (statusLoading) {
     return (
-      <div className="min-h-screen bg-dark-600 pt-16">
+      <div className="pt-16">
         <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-6">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
+          <div className="h-32 bg-realm-bg-700 border border-realm-border rounded-lg animate-pulse" />
+          <div className="h-32 bg-realm-bg-700 border border-realm-border rounded-lg animate-pulse" />
+          <div className="h-32 bg-realm-bg-700 border border-realm-border rounded-lg animate-pulse" />
         </div>
       </div>
     );
@@ -683,13 +682,13 @@ export default function TravelPage() {
   // ---------------------------------------------------------------------------
   if (statusError) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-8">
-        <AlertTriangle className="w-12 h-12 text-red-400 mb-4" />
-        <h2 className="text-2xl font-display text-red-400 mb-4">Travel Error</h2>
-        <p className="text-parchment-300 mb-6">Failed to load travel status.</p>
+      <div className="flex flex-col items-center justify-center h-full p-8">
+        <AlertTriangle className="w-12 h-12 text-realm-danger mb-4" />
+        <h2 className="text-2xl font-display text-realm-danger mb-4">Travel Error</h2>
+        <p className="text-realm-text-secondary mb-6">Failed to load travel status.</p>
         <button
           onClick={() => navigate('/town')}
-          className="px-8 py-3 border border-primary-400 text-primary-400 font-display rounded hover:bg-dark-300 transition-colors"
+          className="px-8 py-3 border border-realm-gold-400 text-realm-gold-400 font-display rounded hover:bg-realm-bg-700 transition-colors"
         >
           Return to Town
         </button>
@@ -702,22 +701,22 @@ export default function TravelPage() {
   // ---------------------------------------------------------------------------
   if (!travelStatus?.traveling) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-8">
-        <Compass className="w-16 h-16 text-parchment-500/30 mb-6" />
-        <h2 className="text-3xl font-display text-primary-400 mb-4">Not Traveling</h2>
-        <p className="text-parchment-300 mb-2 text-center max-w-md">
+      <div className="flex flex-col items-center justify-center h-full p-8">
+        <Compass className="w-16 h-16 text-realm-text-muted/30 mb-6" />
+        <h2 className="text-3xl font-display text-realm-gold-400 mb-4">Not Traveling</h2>
+        <p className="text-realm-text-secondary mb-2 text-center max-w-md">
           You are not currently on a journey. Visit your town to plan a trip.
         </p>
         <div className="flex gap-4 mt-6">
           <button
             onClick={() => navigate('/town')}
-            className="px-8 py-3 bg-primary-400 text-dark-500 font-display text-lg rounded hover:bg-primary-300 transition-colors"
+            className="px-8 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-lg rounded hover:bg-realm-gold-400 transition-colors"
           >
             Go to Town
           </button>
           <button
             onClick={() => navigate('/map')}
-            className="px-8 py-3 border border-primary-400 text-primary-400 font-display text-lg rounded hover:bg-dark-300 transition-colors"
+            className="px-8 py-3 border border-realm-gold-400 text-realm-gold-400 font-display text-lg rounded hover:bg-realm-bg-700 transition-colors"
           >
             World Map
           </button>
@@ -748,13 +747,13 @@ export default function TravelPage() {
   } = travelStatus;
 
   return (
-    <div className="min-h-screen bg-dark-600 pt-12">
+    <div className="pt-12">
       {/* Subtle terrain-influenced gradient at top */}
-      <div className={`h-32 bg-gradient-to-b ${terrainStyle.bgTint} to-dark-600 absolute top-12 left-0 right-0 pointer-events-none`} />
+      <div className={`h-32 bg-gradient-to-b ${terrainStyle.bgTint} to-transparent absolute top-12 left-0 right-0 pointer-events-none`} />
 
       <div className="relative max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8 space-y-6">
         {/* Route header breadcrumb */}
-        <div className="flex items-center gap-2 text-xs text-parchment-500">
+        <div className="flex items-center gap-2 text-xs text-realm-text-muted">
           <MapPin className="w-3 h-3" />
           <span>{originTownName}</span>
           <ArrowRight className="w-3 h-3" />

@@ -60,7 +60,7 @@ export default function Tooltip({
           className={`absolute z-50 ${POSITION_CLASSES[position]} pointer-events-none`}
           role="tooltip"
         >
-          <span className="block bg-dark-600 border border-dark-50 text-parchment-200 text-xs rounded px-3 py-1.5 shadow-lg whitespace-nowrap max-w-xs">
+          <span className="block bg-realm-bg-900 border border-realm-border text-realm-text-primary text-xs rounded px-3 py-1.5 shadow-lg whitespace-nowrap max-w-xs">
             {content}
           </span>
           <span

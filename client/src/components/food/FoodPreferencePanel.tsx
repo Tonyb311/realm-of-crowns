@@ -92,15 +92,15 @@ export default function FoodPreferencePanel() {
 
   if (isLoading) {
     return (
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-6 flex items-center justify-center">
-        <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg p-5">
-      <h3 className="font-display text-primary-400 text-sm flex items-center gap-2 mb-4">
+    <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+      <h3 className="font-display text-realm-gold-400 text-sm flex items-center gap-2 mb-4">
         <Settings className="w-4 h-4" />
         Food Preferences
       </h3>
@@ -111,29 +111,29 @@ export default function FoodPreferencePanel() {
             key={opt.value}
             className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all
               ${priority === opt.value
-                ? 'border-green-500/40 bg-green-500/5'
-                : 'border-dark-50 hover:border-parchment-500/20'}`}
+                ? 'border-realm-success/40 bg-realm-success/5'
+                : 'border-realm-border hover:border-realm-text-muted/20'}`}
           >
             <input
               type="radio"
               name="foodPriority"
               checked={priority === opt.value}
               onChange={() => setPriority(opt.value)}
-              className="mt-0.5 w-3.5 h-3.5 border-dark-50 bg-dark-500 text-green-500 focus:ring-green-500 focus:ring-offset-0"
+              className="mt-0.5 w-3.5 h-3.5 border-realm-border bg-realm-bg-900 text-realm-success focus:ring-realm-success focus:ring-offset-0"
             />
             <div>
-              <p className="text-parchment-200 text-xs font-display">{opt.label}</p>
-              <p className="text-parchment-500 text-[10px]">{opt.description}</p>
+              <p className="text-realm-text-primary text-xs font-display">{opt.label}</p>
+              <p className="text-realm-text-muted text-[10px]">{opt.description}</p>
             </div>
           </label>
         ))}
       </div>
 
       {/* Preview */}
-      <div className="p-3 bg-dark-400 rounded-lg mb-4">
-        <p className="text-[10px] text-parchment-500 uppercase tracking-wider mb-1">Tomorrow's Strategy</p>
-        <p className="text-parchment-200 text-xs flex items-center gap-1.5">
-          <Apple className="w-3 h-3 text-green-400" />
+      <div className="p-3 bg-realm-bg-800 rounded-lg mb-4">
+        <p className="text-[10px] text-realm-text-muted uppercase tracking-wider mb-1">Tomorrow's Strategy</p>
+        <p className="text-realm-text-primary text-xs flex items-center gap-1.5">
+          <Apple className="w-3 h-3 text-realm-success" />
           {getPreviewText(priority)}
         </p>
       </div>
@@ -142,7 +142,7 @@ export default function FoodPreferencePanel() {
       <button
         onClick={() => saveMutation.mutate()}
         disabled={saveMutation.isPending}
-        className="w-full py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {saveMutation.isPending ? (
           <Loader2 className="w-4 h-4 animate-spin" />

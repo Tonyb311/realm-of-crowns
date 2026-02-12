@@ -73,12 +73,12 @@ interface SectionConfig {
 }
 
 const SECTIONS: SectionConfig[] = [
-  { key: 'food',        label: 'Food & Hunger',   icon: Apple,      color: 'text-green-400' },
-  { key: 'action',      label: 'Action Result',   icon: ScrollText, color: 'text-primary-400' },
-  { key: 'combat',      label: 'Combat Log',      icon: Swords,     color: 'text-red-400' },
-  { key: 'economy',     label: 'Economy',         icon: Coins,      color: 'text-yellow-400' },
-  { key: 'progression', label: 'Progression',     icon: TrendingUp, color: 'text-blue-400' },
-  { key: 'worldNews',   label: 'World News',      icon: Globe,      color: 'text-purple-400' },
+  { key: 'food',        label: 'Food & Hunger',   icon: Apple,      color: 'text-realm-success' },
+  { key: 'action',      label: 'Action Result',   icon: ScrollText, color: 'text-realm-gold-400' },
+  { key: 'combat',      label: 'Combat Log',      icon: Swords,     color: 'text-realm-danger' },
+  { key: 'economy',     label: 'Economy',         icon: Coins,      color: 'text-realm-gold-400' },
+  { key: 'progression', label: 'Progression',     icon: TrendingUp, color: 'text-realm-teal-300' },
+  { key: 'worldNews',   label: 'World News',      icon: Globe,      color: 'text-realm-purple-300' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -115,17 +115,17 @@ export default function DailyReportView({ onDismiss, asModal = false }: DailyRep
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+        <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
       </div>
     );
   }
 
   if (!report) {
     return (
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center">
-        <ScrollText className="w-10 h-10 text-parchment-500/30 mx-auto mb-3" />
-        <p className="text-parchment-500 text-sm">No daily report available yet.</p>
-        <p className="text-parchment-500/60 text-xs mt-1">Reports are generated after each daily tick.</p>
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+        <ScrollText className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
+        <p className="text-realm-text-muted text-sm">No daily report available yet.</p>
+        <p className="text-realm-text-muted/60 text-xs mt-1">Reports are generated after each daily tick.</p>
       </div>
     );
   }
@@ -135,8 +135,8 @@ export default function DailyReportView({ onDismiss, asModal = false }: DailyRep
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-display text-xl text-primary-400">Daily Report</h2>
-          <p className="text-parchment-500 text-xs">
+          <h2 className="font-display text-xl text-realm-gold-400">Daily Report</h2>
+          <p className="text-realm-text-muted text-xs">
             {new Date(report.tickDate).toLocaleDateString('en-US', {
               weekday: 'long',
               year: 'numeric',
@@ -148,7 +148,7 @@ export default function DailyReportView({ onDismiss, asModal = false }: DailyRep
         {onDismiss && (
           <button
             onClick={onDismiss}
-            className="text-parchment-500 hover:text-parchment-200 transition-colors"
+            className="text-realm-text-muted hover:text-realm-text-primary transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -167,19 +167,19 @@ export default function DailyReportView({ onDismiss, asModal = false }: DailyRep
         const isExpanded = expandedSections.has(section.key);
 
         return (
-          <div key={section.key} className="bg-dark-400 border border-dark-50 rounded-lg overflow-hidden">
+          <div key={section.key} className="bg-realm-bg-800 border border-realm-border rounded-lg overflow-hidden">
             <button
               onClick={() => toggleSection(section.key)}
-              className="w-full flex items-center justify-between p-3 hover:bg-dark-300/50 transition-colors"
+              className="w-full flex items-center justify-between p-3 hover:bg-realm-bg-700/50 transition-colors"
             >
               <div className="flex items-center gap-2">
                 <Icon className={`w-4 h-4 ${section.color}`} />
                 <span className={`font-display text-sm ${section.color}`}>{section.label}</span>
               </div>
               {isExpanded ? (
-                <ChevronUp className="w-4 h-4 text-parchment-500" />
+                <ChevronUp className="w-4 h-4 text-realm-text-muted" />
               ) : (
-                <ChevronDown className="w-4 h-4 text-parchment-500" />
+                <ChevronDown className="w-4 h-4 text-realm-text-muted" />
               )}
             </button>
 
@@ -192,7 +192,7 @@ export default function DailyReportView({ onDismiss, asModal = false }: DailyRep
                   transition={{ duration: 0.2 }}
                   className="overflow-hidden"
                 >
-                  <div className="px-3 pb-3 border-t border-dark-50">
+                  <div className="px-3 pb-3 border-t border-realm-border">
                     <SectionContent sectionKey={section.key} data={sectionData} />
                   </div>
                 </motion.div>
@@ -206,7 +206,7 @@ export default function DailyReportView({ onDismiss, asModal = false }: DailyRep
       {onDismiss && (
         <button
           onClick={onDismiss}
-          className="w-full py-2.5 border border-parchment-500/30 text-parchment-300 font-display text-sm rounded hover:bg-dark-400 transition-colors"
+          className="w-full py-2.5 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-800 transition-colors"
         >
           Dismiss Report
         </button>
@@ -221,7 +221,7 @@ export default function DailyReportView({ onDismiss, asModal = false }: DailyRep
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-dark-300 border border-primary-400/30 rounded-lg p-5 w-full max-w-xl max-h-[85vh] overflow-y-auto"
+          className="bg-realm-bg-700 border border-realm-gold-500/30 rounded-lg p-5 w-full max-w-xl max-h-[85vh] overflow-y-auto"
         >
           {content}
         </motion.div>
@@ -251,28 +251,28 @@ function SectionContent({ sectionKey, data }: { sectionKey: string; data: any })
     case 'worldNews':
       return <WorldNewsSection data={data} />;
     default:
-      return <p className="text-parchment-500 text-xs pt-2">No data.</p>;
+      return <p className="text-realm-text-muted text-xs pt-2">No data.</p>;
   }
 }
 
 function FoodSection({ data }: { data: any }) {
   const hungerColors: Record<string, string> = {
-    FED: 'text-green-400',
-    HUNGRY: 'text-yellow-400',
-    STARVING: 'text-red-400',
-    INCAPACITATED: 'text-red-500',
+    FED: 'text-realm-success',
+    HUNGRY: 'text-realm-gold-400',
+    STARVING: 'text-realm-danger',
+    INCAPACITATED: 'text-realm-danger',
   };
 
   return (
     <div className="pt-2 space-y-2">
       {data.consumed && (
-        <p className="text-parchment-200 text-xs">
-          Consumed: <span className="text-parchment-300 font-display">{data.consumed}</span>
+        <p className="text-realm-text-primary text-xs">
+          Consumed: <span className="text-realm-text-secondary font-display">{data.consumed}</span>
         </p>
       )}
       <p className="text-xs">
         Hunger State:{' '}
-        <span className={`font-display ${hungerColors[data.hungerState] ?? 'text-parchment-300'}`}>
+        <span className={`font-display ${hungerColors[data.hungerState] ?? 'text-realm-text-secondary'}`}>
           {data.hungerState}
         </span>
       </p>
@@ -293,12 +293,12 @@ function FoodSection({ data }: { data: any }) {
 function ActionSection({ data }: { data: any }) {
   return (
     <div className="pt-2 space-y-2">
-      <p className="text-xs text-parchment-500">
-        Action: <span className="text-parchment-200 font-display">{data.type}</span>
+      <p className="text-xs text-realm-text-muted">
+        Action: <span className="text-realm-text-primary font-display">{data.type}</span>
       </p>
-      <p className="text-parchment-200 text-xs">{data.outcome}</p>
+      <p className="text-realm-text-primary text-xs">{data.outcome}</p>
       {data.details && (
-        <p className="text-parchment-400 text-[10px]">{data.details}</p>
+        <p className="text-realm-text-secondary text-[10px]">{data.details}</p>
       )}
     </div>
   );
@@ -311,18 +311,18 @@ function CombatSection({ data }: { data: any }) {
     <div className="pt-2 space-y-2">
       {data.outcome && (
         <p className={`font-display text-sm ${
-          data.outcome === 'WIN' ? 'text-green-400'
-            : data.outcome === 'LOSS' ? 'text-red-400'
-            : 'text-yellow-400'
+          data.outcome === 'WIN' ? 'text-realm-success'
+            : data.outcome === 'LOSS' ? 'text-realm-danger'
+            : 'text-realm-gold-400'
         }`}>
           Result: {data.outcome}
         </p>
       )}
       {data.loot && data.loot.length > 0 && (
         <div>
-          <p className="text-[10px] text-parchment-500 uppercase tracking-wider mb-1">Loot</p>
+          <p className="text-[10px] text-realm-text-muted uppercase tracking-wider mb-1">Loot</p>
           {data.loot.map((item: any, i: number) => (
-            <p key={i} className="text-parchment-200 text-xs">
+            <p key={i} className="text-realm-text-primary text-xs">
               {item.name} x{item.quantity}
             </p>
           ))}
@@ -337,16 +337,16 @@ function EconomySection({ data }: { data: any }) {
   return (
     <div className="pt-2 space-y-1">
       {data.goldEarned != null && data.goldEarned > 0 && (
-        <p className="text-green-400 text-xs">+{data.goldEarned} gold earned</p>
+        <p className="text-realm-success text-xs">+{data.goldEarned} gold earned</p>
       )}
       {data.goldSpent != null && data.goldSpent > 0 && (
-        <p className="text-red-400 text-xs">-{data.goldSpent} gold spent</p>
+        <p className="text-realm-danger text-xs">-{data.goldSpent} gold spent</p>
       )}
       {data.taxCollected != null && data.taxCollected > 0 && (
-        <p className="text-yellow-400 text-xs">+{data.taxCollected} gold (tax revenue)</p>
+        <p className="text-realm-gold-400 text-xs">+{data.taxCollected} gold (tax revenue)</p>
       )}
       {data.netChange != null && (
-        <p className={`text-xs font-display mt-1 ${data.netChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+        <p className={`text-xs font-display mt-1 ${data.netChange >= 0 ? 'text-realm-success' : 'text-realm-danger'}`}>
           Net: {data.netChange >= 0 ? '+' : ''}{data.netChange} gold
         </p>
       )}
@@ -358,27 +358,27 @@ function ProgressionSection({ data }: { data: any }) {
   return (
     <div className="pt-2 space-y-2">
       {data.xpEarned != null && data.xpEarned > 0 && (
-        <p className="text-blue-400 text-xs">+{data.xpEarned} XP</p>
+        <p className="text-realm-teal-300 text-xs">+{data.xpEarned} XP</p>
       )}
       {data.professionXp && data.professionXp.length > 0 && (
         <div>
           {data.professionXp.map((p: any, i: number) => (
-            <p key={i} className="text-parchment-200 text-xs">
+            <p key={i} className="text-realm-text-primary text-xs">
               {p.profession}: +{p.xp} XP
             </p>
           ))}
         </div>
       )}
       {data.levelUp && (
-        <p className="text-primary-400 font-display text-sm">
+        <p className="text-realm-gold-400 font-display text-sm">
           Level Up! Now level {data.newLevel}
         </p>
       )}
       {data.questProgress && data.questProgress.length > 0 && (
         <div>
-          <p className="text-[10px] text-parchment-500 uppercase tracking-wider mb-1">Quests</p>
+          <p className="text-[10px] text-realm-text-muted uppercase tracking-wider mb-1">Quests</p>
           {data.questProgress.map((q: string, i: number) => (
-            <p key={i} className="text-parchment-300 text-xs">{q}</p>
+            <p key={i} className="text-realm-text-secondary text-xs">{q}</p>
           ))}
         </div>
       )}
@@ -388,15 +388,15 @@ function ProgressionSection({ data }: { data: any }) {
 
 function WorldNewsSection({ data }: { data: any }) {
   if (!data.events || data.events.length === 0) {
-    return <p className="text-parchment-500 text-xs pt-2">No world events today.</p>;
+    return <p className="text-realm-text-muted text-xs pt-2">No world events today.</p>;
   }
 
   return (
     <div className="pt-2 space-y-2">
       {data.events.map((evt: any, i: number) => (
-        <div key={i} className="border-l-2 border-purple-500/30 pl-3">
-          <p className="text-parchment-200 text-xs font-display">{evt.title}</p>
-          <p className="text-parchment-400 text-[10px]">{evt.message}</p>
+        <div key={i} className="border-l-2 border-realm-purple-300/30 pl-3">
+          <p className="text-realm-text-primary text-xs font-display">{evt.title}</p>
+          <p className="text-realm-text-secondary text-[10px]">{evt.message}</p>
         </div>
       ))}
     </div>

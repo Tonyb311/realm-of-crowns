@@ -51,14 +51,14 @@ interface LockedAction {
 // ---------------------------------------------------------------------------
 
 const ACTION_CONFIG: Record<ActionType, { label: string; icon: typeof Pickaxe; color: string }> = {
-  GATHER:      { label: 'Gather',      icon: Pickaxe,    color: 'text-green-400' },
-  CRAFT:       { label: 'Craft',       icon: Hammer,     color: 'text-blue-400' },
-  TRAVEL:      { label: 'Travel',      icon: MapPin,     color: 'text-yellow-400' },
+  GATHER:      { label: 'Gather',      icon: Pickaxe,    color: 'text-realm-success' },
+  CRAFT:       { label: 'Craft',       icon: Hammer,     color: 'text-realm-teal-300' },
+  TRAVEL:      { label: 'Travel',      icon: MapPin,     color: 'text-realm-gold-400' },
   GUARD:       { label: 'Guard',       icon: Shield,     color: 'text-cyan-400' },
-  AMBUSH:      { label: 'Ambush',      icon: Crosshair,  color: 'text-red-400' },
-  ENLIST:      { label: 'Enlist',      icon: ScrollText,  color: 'text-purple-400' },
-  PROPOSE_LAW: { label: 'Propose Law', icon: Scale,      color: 'text-amber-400' },
-  REST:        { label: 'Rest',        icon: BedDouble,  color: 'text-parchment-400' },
+  AMBUSH:      { label: 'Ambush',      icon: Crosshair,  color: 'text-realm-danger' },
+  ENLIST:      { label: 'Enlist',      icon: ScrollText,  color: 'text-realm-purple-300' },
+  PROPOSE_LAW: { label: 'Propose Law', icon: Scale,      color: 'text-realm-gold-400' },
+  REST:        { label: 'Rest',        icon: BedDouble,  color: 'text-realm-text-secondary' },
 };
 
 // ---------------------------------------------------------------------------
@@ -141,8 +141,8 @@ export default function ActionLockInPanel() {
 
   if (isLoading) {
     return (
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-6 flex items-center justify-center">
-        <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
       </div>
     );
   }
@@ -152,23 +152,23 @@ export default function ActionLockInPanel() {
     const cfg = ACTION_CONFIG[locked.actionType];
     const Icon = cfg.icon;
     return (
-      <div className="bg-dark-300 border border-primary-400/30 rounded-lg p-5">
+      <div className="bg-realm-bg-700 border border-realm-gold-500/30 rounded-lg p-5">
         <div className="flex items-center gap-2 mb-3">
-          <Lock className="w-4 h-4 text-primary-400" />
-          <h3 className="font-display text-primary-400 text-sm">Action Locked</h3>
+          <Lock className="w-4 h-4 text-realm-gold-400" />
+          <h3 className="font-display text-realm-gold-400 text-sm">Action Locked</h3>
         </div>
 
-        <div className="flex items-center gap-3 p-4 bg-dark-400 border border-dark-50 rounded-lg mb-4">
+        <div className="flex items-center gap-3 p-4 bg-realm-bg-800 border border-realm-border rounded-lg mb-4">
           <Icon className={`w-6 h-6 ${cfg.color}`} />
           <div className="flex-1">
             <p className={`font-display text-lg ${cfg.color}`}>{cfg.label}</p>
             {locked.actionTarget && Object.keys(locked.actionTarget).length > 0 && (
-              <p className="text-parchment-500 text-xs mt-0.5">
+              <p className="text-realm-text-muted text-xs mt-0.5">
                 {formatTarget(locked.actionTarget)}
               </p>
             )}
           </div>
-          <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
+          <CheckCircle2 className="w-5 h-5 text-realm-success flex-shrink-0" />
         </div>
 
         <div className="flex gap-2">
@@ -177,14 +177,14 @@ export default function ActionLockInPanel() {
               setSelectedType(locked.actionType);
               setActionTarget(locked.actionTarget);
             }}
-            className="flex-1 py-2 border border-primary-400/40 text-primary-400 font-display text-sm rounded hover:bg-dark-400 transition-colors"
+            className="flex-1 py-2 border border-realm-gold-500/40 text-realm-gold-400 font-display text-sm rounded hover:bg-realm-bg-800 transition-colors"
           >
             Change
           </button>
           <button
             onClick={() => cancelMutation.mutate()}
             disabled={cancelMutation.isPending}
-            className="flex-1 py-2 border border-red-500/40 text-red-400 font-display text-sm rounded hover:bg-red-900/20 transition-colors disabled:opacity-50"
+            className="flex-1 py-2 border border-realm-danger/40 text-realm-danger font-display text-sm rounded hover:bg-realm-danger/20 transition-colors disabled:opacity-50"
           >
             {cancelMutation.isPending ? 'Cancelling...' : 'Cancel'}
           </button>
@@ -195,10 +195,10 @@ export default function ActionLockInPanel() {
 
   // No locked action: show action selector
   return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg p-5">
+    <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-display text-primary-400 text-sm">Choose Daily Action</h3>
-        <span className="text-[10px] text-parchment-500 bg-dark-400 px-2 py-0.5 rounded">
+        <h3 className="font-display text-realm-gold-400 text-sm">Choose Daily Action</h3>
+        <span className="text-[10px] text-realm-text-muted bg-realm-bg-800 px-2 py-0.5 rounded">
           Default: REST
         </span>
       </div>
@@ -224,10 +224,10 @@ export default function ActionLockInPanel() {
               title={action.reason ?? cfg.label}
               className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border text-xs font-display transition-all
                 ${isSelected
-                  ? `border-primary-400 bg-primary-400/10 ${cfg.color}`
+                  ? `border-realm-gold-500 bg-realm-gold-500/10 ${cfg.color}`
                   : isDisabled
-                    ? 'border-dark-50 bg-dark-400/30 text-parchment-500/30 cursor-not-allowed'
-                    : 'border-dark-50 bg-dark-400/50 text-parchment-300 hover:border-primary-400/40'}`}
+                    ? 'border-realm-border bg-realm-bg-800/30 text-realm-text-muted/30 cursor-not-allowed'
+                    : 'border-realm-border bg-realm-bg-800/50 text-realm-text-secondary hover:border-realm-gold-500/40'}`}
             >
               <Icon className="w-5 h-5" />
               {cfg.label}
@@ -262,12 +262,12 @@ export default function ActionLockInPanel() {
             />
           )}
           {selectedType === 'ENLIST' && (
-            <p className="text-parchment-500 text-xs p-3 bg-dark-400 rounded-lg">
+            <p className="text-realm-text-muted text-xs p-3 bg-realm-bg-800 rounded-lg">
               You will enlist in available military service for the day.
             </p>
           )}
           {selectedType === 'PROPOSE_LAW' && (
-            <p className="text-parchment-500 text-xs p-3 bg-dark-400 rounded-lg">
+            <p className="text-realm-text-muted text-xs p-3 bg-realm-bg-800 rounded-lg">
               You will spend the day drafting a new law proposal.
             </p>
           )}
@@ -279,7 +279,7 @@ export default function ActionLockInPanel() {
         <button
           onClick={() => lockInMutation.mutate({ actionType: selectedType, target: actionTarget })}
           disabled={lockInMutation.isPending}
-          className="w-full py-3 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {lockInMutation.isPending ? (
             <>
@@ -296,7 +296,7 @@ export default function ActionLockInPanel() {
       )}
 
       {lockInMutation.isError && (
-        <div className="mt-3 p-3 bg-red-900/30 border border-red-500/50 rounded text-red-300 text-xs flex items-center gap-2">
+        <div className="mt-3 p-3 bg-realm-danger/30 border border-realm-danger/50 rounded text-realm-danger text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {(lockInMutation.error as any)?.response?.data?.error ?? 'Failed to lock in action'}
         </div>
@@ -319,10 +319,10 @@ function GatherSubPanel({
   onChange: (t: Record<string, unknown>) => void;
 }) {
   return (
-    <div className="p-3 bg-dark-400 rounded-lg space-y-3">
-      <p className="text-[10px] text-parchment-500 uppercase tracking-wider">Select Resource</p>
+    <div className="p-3 bg-realm-bg-800 rounded-lg space-y-3">
+      <p className="text-[10px] text-realm-text-muted uppercase tracking-wider">Select Resource</p>
       {resources.length === 0 ? (
-        <p className="text-parchment-500 text-xs">No resources available in your location.</p>
+        <p className="text-realm-text-muted text-xs">No resources available in your location.</p>
       ) : (
         <div className="grid grid-cols-2 gap-2">
           {resources.map((r) => (
@@ -331,11 +331,11 @@ function GatherSubPanel({
               onClick={() => onChange({ ...target, resourceId: r.id, resourceName: r.resourceName })}
               className={`p-2 text-left rounded border text-xs transition-all
                 ${target.resourceId === r.id
-                  ? 'border-green-500 bg-green-500/10 text-green-400'
-                  : 'border-dark-50 text-parchment-300 hover:border-green-500/40'}`}
+                  ? 'border-realm-success bg-realm-success/10 text-realm-success'
+                  : 'border-realm-border text-realm-text-secondary hover:border-realm-success/40'}`}
             >
               <span className="font-display">{r.resourceName}</span>
-              <span className="block text-[10px] text-parchment-500 capitalize">{r.resourceType.toLowerCase()}</span>
+              <span className="block text-[10px] text-realm-text-muted capitalize">{r.resourceType.toLowerCase()}</span>
             </button>
           ))}
         </div>
@@ -354,10 +354,10 @@ function CraftSubPanel({
   onChange: (t: Record<string, unknown>) => void;
 }) {
   return (
-    <div className="p-3 bg-dark-400 rounded-lg space-y-3">
-      <p className="text-[10px] text-parchment-500 uppercase tracking-wider">Select Recipe</p>
+    <div className="p-3 bg-realm-bg-800 rounded-lg space-y-3">
+      <p className="text-[10px] text-realm-text-muted uppercase tracking-wider">Select Recipe</p>
       {recipes.length === 0 ? (
-        <p className="text-parchment-500 text-xs">No recipes available.</p>
+        <p className="text-realm-text-muted text-xs">No recipes available.</p>
       ) : (
         <div className="max-h-48 overflow-y-auto space-y-1">
           {recipes.map((r) => (
@@ -366,11 +366,11 @@ function CraftSubPanel({
               onClick={() => onChange({ ...target, recipeId: r.id, recipeName: r.name })}
               className={`w-full p-2 text-left rounded border text-xs transition-all
                 ${target.recipeId === r.id
-                  ? 'border-blue-500 bg-blue-500/10 text-blue-400'
-                  : 'border-dark-50 text-parchment-300 hover:border-blue-500/40'}`}
+                  ? 'border-realm-teal-300 bg-realm-teal-300/10 text-realm-teal-300'
+                  : 'border-realm-border text-realm-text-secondary hover:border-realm-teal-300/40'}`}
             >
               <span className="font-display">{r.name}</span>
-              <span className="ml-2 text-[10px] text-parchment-500">{r.professionType}</span>
+              <span className="ml-2 text-[10px] text-realm-text-muted">{r.professionType}</span>
             </button>
           ))}
         </div>
@@ -391,19 +391,19 @@ function NodeSubPanel({
   actionLabel: string;
 }) {
   const dangerColor = (level: number) => {
-    if (level <= 2) return 'text-green-400';
-    if (level <= 5) return 'text-yellow-400';
+    if (level <= 2) return 'text-realm-success';
+    if (level <= 5) return 'text-realm-gold-400';
     if (level <= 7) return 'text-orange-400';
-    return 'text-red-400';
+    return 'text-realm-danger';
   };
 
   return (
-    <div className="p-3 bg-dark-400 rounded-lg space-y-3">
-      <p className="text-[10px] text-parchment-500 uppercase tracking-wider">
+    <div className="p-3 bg-realm-bg-800 rounded-lg space-y-3">
+      <p className="text-[10px] text-realm-text-muted uppercase tracking-wider">
         Select Node to {actionLabel}
       </p>
       {nodes.length === 0 ? (
-        <p className="text-parchment-500 text-xs">No connected nodes found.</p>
+        <p className="text-realm-text-muted text-xs">No connected nodes found.</p>
       ) : (
         <div className="space-y-1 max-h-48 overflow-y-auto">
           {nodes.map((n) => (
@@ -412,12 +412,12 @@ function NodeSubPanel({
               onClick={() => onChange({ ...target, targetNodeId: n.id, nodeName: n.name })}
               className={`w-full p-2 text-left rounded border text-xs transition-all flex items-center justify-between
                 ${target.targetNodeId === n.id
-                  ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400'
-                  : 'border-dark-50 text-parchment-300 hover:border-yellow-500/40'}`}
+                  ? 'border-realm-gold-500 bg-realm-gold-500/10 text-realm-gold-400'
+                  : 'border-realm-border text-realm-text-secondary hover:border-realm-gold-500/40'}`}
             >
               <div>
                 <span className="font-display">{n.name}</span>
-                <span className="ml-2 text-[10px] text-parchment-500 capitalize">{n.type.toLowerCase().replace(/_/g, ' ')}</span>
+                <span className="ml-2 text-[10px] text-realm-text-muted capitalize">{n.type.toLowerCase().replace(/_/g, ' ')}</span>
               </div>
               <span className={`text-[10px] font-display ${dangerColor(n.dangerLevel)}`}>
                 Danger {n.dangerLevel}

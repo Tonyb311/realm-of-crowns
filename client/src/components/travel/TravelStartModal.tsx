@@ -50,11 +50,11 @@ interface TravelRoute {
 
 function getDifficultyStyle(difficulty: string): string {
   switch (difficulty?.toLowerCase()) {
-    case 'safe':      return 'text-green-400 bg-green-400/10 border-green-400/30';
-    case 'moderate':  return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30';
+    case 'safe':      return 'text-realm-success bg-realm-success/10 border-realm-success/30';
+    case 'moderate':  return 'text-realm-gold-400 bg-realm-gold-400/10 border-realm-gold-400/30';
     case 'dangerous': return 'text-orange-400 bg-orange-400/10 border-orange-400/30';
-    case 'deadly':    return 'text-red-400 bg-red-400/10 border-red-400/30';
-    default:          return 'text-parchment-400 bg-parchment-400/10 border-parchment-400/30';
+    case 'deadly':    return 'text-realm-danger bg-realm-danger/10 border-realm-danger/30';
+    default:          return 'text-realm-text-secondary bg-realm-text-secondary/10 border-realm-border';
   }
 }
 
@@ -72,14 +72,14 @@ function DangerBar({ level }: { level: number }) {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[10px] text-parchment-500 w-12">Danger</span>
-      <div className="flex-1 h-1.5 bg-dark-400 rounded-full overflow-hidden">
+      <span className="text-[10px] text-realm-text-muted w-12">Danger</span>
+      <div className="flex-1 h-1.5 bg-realm-bg-800 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full bg-gradient-to-r ${barColor} transition-all`}
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="text-[10px] text-parchment-500 w-6 text-right">{level}/10</span>
+      <span className="text-[10px] text-realm-text-muted w-6 text-right">{level}/10</span>
     </div>
   );
 }
@@ -99,15 +99,15 @@ function RouteCard({ route, onTravelSolo, onFormGroup, isTraveling }: RouteCardP
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="bg-dark-400 border border-dark-50 rounded-lg overflow-hidden">
+    <div className="bg-realm-bg-800 border border-realm-border rounded-lg overflow-hidden">
       {/* Card header */}
       <div className="p-4">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
-            <h4 className="font-display text-parchment-200 text-sm">{route.name}</h4>
+            <h4 className="font-display text-realm-text-primary text-sm">{route.name}</h4>
             <div className="flex items-center gap-1.5 mt-1">
-              <MapPin className="w-3 h-3 text-primary-400" />
-              <span className="text-xs text-parchment-400">{route.destinationTownName}</span>
+              <MapPin className="w-3 h-3 text-realm-gold-400" />
+              <span className="text-xs text-realm-text-secondary">{route.destinationTownName}</span>
             </div>
           </div>
           <span className={`text-[10px] px-2 py-0.5 rounded border ${getDifficultyStyle(route.difficulty)}`}>
@@ -118,10 +118,10 @@ function RouteCard({ route, onTravelSolo, onFormGroup, isTraveling }: RouteCardP
         {/* Stats row */}
         <div className="flex items-center gap-4 mb-3">
           <div className="flex items-center gap-1">
-            <Footprints className="w-3 h-3 text-parchment-500" />
-            <span className="text-xs text-parchment-400">~{route.nodeCount} day{route.nodeCount !== 1 ? 's' : ''} journey</span>
+            <Footprints className="w-3 h-3 text-realm-text-muted" />
+            <span className="text-xs text-realm-text-secondary">~{route.nodeCount} day{route.nodeCount !== 1 ? 's' : ''} journey</span>
           </div>
-          <span className="text-[10px] px-2 py-0.5 rounded bg-dark-50/40 text-parchment-500 capitalize">
+          <span className="text-[10px] px-2 py-0.5 rounded bg-realm-border/40 text-realm-text-muted capitalize">
             {(route.terrain || 'mixed').replace(/_/g, ' ')}
           </span>
         </div>
@@ -132,7 +132,7 @@ function RouteCard({ route, onTravelSolo, onFormGroup, isTraveling }: RouteCardP
         {/* Expand to see nodes */}
         <button
           onClick={() => setExpanded(!expanded)}
-          className="mt-3 flex items-center gap-1 text-[10px] text-parchment-500 hover:text-parchment-300 transition-colors"
+          className="mt-3 flex items-center gap-1 text-[10px] text-realm-text-muted hover:text-realm-text-secondary transition-colors"
         >
           {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           {expanded ? 'Hide route details' : 'Show route details'}
@@ -151,17 +151,17 @@ function RouteCard({ route, onTravelSolo, onFormGroup, isTraveling }: RouteCardP
                 {(route.nodes || []).map((node, i) => (
                   <div
                     key={node.id}
-                    className="flex items-center gap-2 py-1.5 px-2 bg-dark-500/50 rounded text-xs"
+                    className="flex items-center gap-2 py-1.5 px-2 bg-realm-bg-900/50 rounded text-xs"
                   >
-                    <span className="text-parchment-500 w-4 text-center text-[10px]">{i + 1}</span>
-                    <span className="text-parchment-300 flex-1">{node.name}</span>
-                    <span className="text-parchment-500 text-[10px] capitalize">
+                    <span className="text-realm-text-muted w-4 text-center text-[10px]">{i + 1}</span>
+                    <span className="text-realm-text-secondary flex-1">{node.name}</span>
+                    <span className="text-realm-text-muted text-[10px] capitalize">
                       {node.type?.toLowerCase().replace(/_/g, ' ')}
                     </span>
                     <span className={`text-[10px] font-display ${
-                      node.dangerLevel <= 2 ? 'text-green-400'
-                        : node.dangerLevel <= 5 ? 'text-yellow-400'
-                        : 'text-red-400'
+                      node.dangerLevel <= 2 ? 'text-realm-success'
+                        : node.dangerLevel <= 5 ? 'text-realm-gold-400'
+                        : 'text-realm-danger'
                     }`}>
                       D{node.dangerLevel}
                     </span>
@@ -174,11 +174,11 @@ function RouteCard({ route, onTravelSolo, onFormGroup, isTraveling }: RouteCardP
       </div>
 
       {/* Action buttons */}
-      <div className="flex border-t border-dark-50">
+      <div className="flex border-t border-realm-border">
         <button
           onClick={() => onTravelSolo(route.id)}
           disabled={isTraveling}
-          className="flex-1 py-3 text-xs font-display text-primary-400 hover:bg-primary-400/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 border-r border-dark-50"
+          className="flex-1 py-3 text-xs font-display text-realm-gold-400 hover:bg-realm-gold-400/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 border-r border-realm-border"
         >
           {isTraveling ? (
             <Loader2 className="w-3 h-3 animate-spin" />
@@ -190,7 +190,7 @@ function RouteCard({ route, onTravelSolo, onFormGroup, isTraveling }: RouteCardP
         <button
           onClick={() => onFormGroup(route.id)}
           disabled={isTraveling}
-          className="flex-1 py-3 text-xs font-display text-parchment-400 hover:bg-dark-300/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+          className="flex-1 py-3 text-xs font-display text-realm-text-secondary hover:bg-realm-bg-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
         >
           <Users className="w-3 h-3" />
           Form Group
@@ -260,17 +260,17 @@ export default function TravelStartModal({ isOpen, onClose, destinationTownId }:
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ duration: 0.2 }}
-        className="relative bg-dark-500 border border-dark-50 rounded-lg shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+        className="relative bg-realm-bg-900 border border-realm-border rounded-lg shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-dark-50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-realm-border">
           <div className="flex items-center gap-2">
-            <Compass className="w-5 h-5 text-primary-400" />
-            <h2 className="text-xl font-display text-primary-400">Choose Your Path</h2>
+            <Compass className="w-5 h-5 text-realm-gold-400" />
+            <h2 className="text-xl font-display text-realm-gold-400">Choose Your Path</h2>
           </div>
           <button
             onClick={onClose}
-            className="text-parchment-500 hover:text-parchment-200 transition-colors"
+            className="text-realm-text-muted hover:text-realm-text-primary transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -291,25 +291,25 @@ export default function TravelStartModal({ isOpen, onClose, destinationTownId }:
           {/* Loading */}
           {routesLoading && (
             <div className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 text-primary-400 animate-spin mb-3" />
-              <p className="text-parchment-500 text-sm">Scouting available routes...</p>
+              <Loader2 className="w-8 h-8 text-realm-gold-400 animate-spin mb-3" />
+              <p className="text-realm-text-muted text-sm">Scouting available routes...</p>
             </div>
           )}
 
           {/* Error */}
           {routesError && (
             <div className="flex flex-col items-center justify-center py-12">
-              <AlertTriangle className="w-8 h-8 text-red-400 mb-3" />
-              <p className="text-red-300 text-sm">Failed to load routes.</p>
+              <AlertTriangle className="w-8 h-8 text-realm-danger mb-3" />
+              <p className="text-realm-danger text-sm">Failed to load routes.</p>
             </div>
           )}
 
           {/* Empty */}
           {!routesLoading && !routesError && filteredRoutes.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12">
-              <MapPin className="w-10 h-10 text-parchment-500/30 mb-3" />
-              <p className="text-parchment-500 text-sm">No available routes found.</p>
-              <p className="text-parchment-500/50 text-xs mt-1">
+              <MapPin className="w-10 h-10 text-realm-text-muted/30 mb-3" />
+              <p className="text-realm-text-muted text-sm">No available routes found.</p>
+              <p className="text-realm-text-muted/50 text-xs mt-1">
                 {destinationTownId
                   ? 'No routes lead to this destination from your current town.'
                   : 'There are no routes from your current location.'}

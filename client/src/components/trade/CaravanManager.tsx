@@ -210,25 +210,25 @@ export default function CaravanManager() {
       <div className="space-y-6">
         <button
           onClick={() => { setView('list'); setSelectedCaravan(null); setError(''); }}
-          className="flex items-center gap-1 text-parchment-500 hover:text-parchment-300 text-sm"
+          className="flex items-center gap-1 text-realm-text-muted hover:text-realm-text-secondary text-sm"
         >
           <ChevronLeft className="w-4 h-4" />
           Back to caravans
         </button>
 
-        <div className="bg-dark-300 border border-dark-50 rounded-lg p-4">
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
           <div className="flex items-center gap-3 mb-4">
-            <Truck className="w-5 h-5 text-primary-400" />
+            <Truck className="w-5 h-5 text-realm-gold-400" />
             <div>
-              <h3 className="font-display text-parchment-200">{typeDef.name}</h3>
-              <p className="text-parchment-500 text-xs">
+              <h3 className="font-display text-realm-text-primary">{typeDef.name}</h3>
+              <p className="text-realm-text-muted text-xs">
                 {selectedCaravan.from.name} → {selectedCaravan.to.name}
               </p>
             </div>
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded px-3 py-2 mb-4">
+            <div className="flex items-center gap-2 text-realm-danger text-xs bg-realm-danger/10 border border-realm-danger/20 rounded px-3 py-2 mb-4">
               <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
               {error}
             </div>
@@ -249,7 +249,7 @@ export default function CaravanManager() {
 
               {/* Escort hire */}
               <div className="mt-6">
-                <h4 className="font-display text-sm text-parchment-300 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <h4 className="font-display text-sm text-realm-text-secondary uppercase tracking-wider mb-2 flex items-center gap-2">
                   <Shield className="w-4 h-4" />
                   Hire Escort
                 </h4>
@@ -259,14 +259,14 @@ export default function CaravanManager() {
                       key={escort.type}
                       onClick={() => hireEscortMutation.mutate({ caravanId: selectedCaravan.id, escortType: escort.type })}
                       disabled={hireEscortMutation.isPending || selectedCaravan.escort === escort.type}
-                      className={`text-left bg-dark-400 border rounded-lg p-3 transition-all ${
+                      className={`text-left bg-realm-bg-800 border rounded-lg p-3 transition-all ${
                         selectedCaravan.escort === escort.type
-                          ? 'border-primary-400/50 bg-primary-400/5'
-                          : 'border-dark-50 hover:border-primary-400/30'
+                          ? 'border-realm-gold-500/50 bg-realm-gold-500/5'
+                          : 'border-realm-border hover:border-realm-gold-500/30'
                       } disabled:opacity-50`}
                     >
-                      <p className="font-display text-parchment-200 text-xs">{escort.name}</p>
-                      <p className="text-parchment-500 text-[10px]">
+                      <p className="font-display text-realm-text-primary text-xs">{escort.name}</p>
+                      <p className="text-realm-text-muted text-[10px]">
                         {escort.cost}g &middot; +{escort.safetyBonus}% safety
                       </p>
                     </button>
@@ -276,7 +276,7 @@ export default function CaravanManager() {
 
               {/* Insurance */}
               <div className="mt-6">
-                <h4 className="font-display text-sm text-parchment-300 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <h4 className="font-display text-sm text-realm-text-secondary uppercase tracking-wider mb-2 flex items-center gap-2">
                   <FileText className="w-4 h-4" />
                   Insurance
                 </h4>
@@ -286,14 +286,14 @@ export default function CaravanManager() {
                       key={ins.coverage}
                       onClick={() => insureMutation.mutate({ caravanId: selectedCaravan.id, coverage: ins.coverage })}
                       disabled={insureMutation.isPending || selectedCaravan.insurance === ins.coverage || selectedCaravan.totalItems === 0}
-                      className={`text-left bg-dark-400 border rounded-lg p-3 transition-all ${
+                      className={`text-left bg-realm-bg-800 border rounded-lg p-3 transition-all ${
                         selectedCaravan.insurance === ins.coverage
-                          ? 'border-primary-400/50 bg-primary-400/5'
-                          : 'border-dark-50 hover:border-primary-400/30'
+                          ? 'border-realm-gold-500/50 bg-realm-gold-500/5'
+                          : 'border-realm-border hover:border-realm-gold-500/30'
                       } disabled:opacity-50`}
                     >
-                      <p className="font-display text-parchment-200 text-xs">{ins.name}</p>
-                      <p className="text-parchment-500 text-[10px]">
+                      <p className="font-display text-realm-text-primary text-xs">{ins.name}</p>
+                      <p className="text-realm-text-muted text-[10px]">
                         {Math.round(ins.premiumRate * 100)}% premium &middot; {Math.round(ins.payoutRate * 100)}% payout
                       </p>
                     </button>
@@ -302,17 +302,17 @@ export default function CaravanManager() {
               </div>
 
               {/* Depart button */}
-              <div className="mt-6 pt-4 border-t border-dark-50">
+              <div className="mt-6 pt-4 border-t border-realm-border">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-parchment-500">
-                    <p>Caravan cost: <span className="text-primary-400">{typeDef.cost}g</span></p>
+                  <div className="text-xs text-realm-text-muted">
+                    <p>Caravan cost: <span className="text-realm-gold-400">{typeDef.cost}g</span></p>
                     <p>Travel speed: {typeDef.speedMultiplier}x</p>
                   </div>
                 </div>
                 <button
                   onClick={() => departMutation.mutate(selectedCaravan.id)}
                   disabled={departMutation.isPending || selectedCaravan.totalItems === 0}
-                  className="w-full px-4 py-3 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full px-4 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {departMutation.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -337,17 +337,17 @@ export default function CaravanManager() {
       <div className="space-y-6">
         <button
           onClick={() => { setView('list'); setError(''); }}
-          className="flex items-center gap-1 text-parchment-500 hover:text-parchment-300 text-sm"
+          className="flex items-center gap-1 text-realm-text-muted hover:text-realm-text-secondary text-sm"
         >
           <ChevronLeft className="w-4 h-4" />
           Back to caravans
         </button>
 
-        <div className="bg-dark-300 border border-dark-50 rounded-lg p-4">
-          <h3 className="font-display text-parchment-200 mb-4">New Caravan</h3>
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
+          <h3 className="font-display text-realm-text-primary mb-4">New Caravan</h3>
 
           {error && (
-            <div className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded px-3 py-2 mb-4">
+            <div className="flex items-center gap-2 text-realm-danger text-xs bg-realm-danger/10 border border-realm-danger/20 rounded px-3 py-2 mb-4">
               <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
               {error}
             </div>
@@ -355,12 +355,12 @@ export default function CaravanManager() {
 
           {/* Destination */}
           <div className="mb-4">
-            <label className="block font-display text-xs text-parchment-400 uppercase tracking-wider mb-2">
+            <label className="block font-display text-xs text-realm-text-secondary uppercase tracking-wider mb-2">
               <MapPin className="w-3.5 h-3.5 inline mr-1" />
               Destination
             </label>
             {routes.length === 0 ? (
-              <p className="text-parchment-500 text-xs">No routes available from your current town.</p>
+              <p className="text-realm-text-muted text-xs">No routes available from your current town.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {routes.map(route => {
@@ -369,14 +369,14 @@ export default function CaravanManager() {
                     <button
                       key={route.id}
                       onClick={() => setSelectedDestination(dest.id)}
-                      className={`text-left bg-dark-400 border rounded-lg p-3 transition-all ${
+                      className={`text-left bg-realm-bg-800 border rounded-lg p-3 transition-all ${
                         selectedDestination === dest.id
-                          ? 'border-primary-400/50 bg-primary-400/5'
-                          : 'border-dark-50 hover:border-primary-400/30'
+                          ? 'border-realm-gold-500/50 bg-realm-gold-500/5'
+                          : 'border-realm-border hover:border-realm-gold-500/30'
                       }`}
                     >
-                      <p className="font-display text-parchment-200 text-xs">{dest.name}</p>
-                      <p className="text-parchment-500 text-[10px]">
+                      <p className="font-display text-realm-text-primary text-xs">{dest.name}</p>
+                      <p className="text-realm-text-muted text-[10px]">
                         Distance: {route.distance} &middot; Danger: {route.dangerLevel}/10
                       </p>
                     </button>
@@ -388,7 +388,7 @@ export default function CaravanManager() {
 
           {/* Caravan type */}
           <div className="mb-4">
-            <label className="block font-display text-xs text-parchment-400 uppercase tracking-wider mb-2">
+            <label className="block font-display text-xs text-realm-text-secondary uppercase tracking-wider mb-2">
               <Truck className="w-3.5 h-3.5 inline mr-1" />
               Caravan Type
             </label>
@@ -397,18 +397,18 @@ export default function CaravanManager() {
                 <button
                   key={typeDef.type}
                   onClick={() => setSelectedCaravanType(typeDef.type)}
-                  className={`text-left bg-dark-400 border rounded-lg p-3 transition-all ${
+                  className={`text-left bg-realm-bg-800 border rounded-lg p-3 transition-all ${
                     selectedCaravanType === typeDef.type
-                      ? 'border-primary-400/50 bg-primary-400/5'
-                      : 'border-dark-50 hover:border-primary-400/30'
+                      ? 'border-realm-gold-500/50 bg-realm-gold-500/5'
+                      : 'border-realm-border hover:border-realm-gold-500/30'
                   }`}
                 >
-                  <p className="font-display text-parchment-200 text-xs">{typeDef.name}</p>
-                  <p className="text-parchment-500 text-[10px]">
+                  <p className="font-display text-realm-text-primary text-xs">{typeDef.name}</p>
+                  <p className="text-realm-text-muted text-[10px]">
                     {typeDef.capacity} slots &middot; {typeDef.cost}g &middot; {typeDef.speedMultiplier}x speed
                   </p>
                   {typeDef.merchantLevelRequired > 0 && (
-                    <p className="text-yellow-500/80 text-[10px]">
+                    <p className="text-realm-gold-400/80 text-[10px]">
                       Requires Merchant Lv.{typeDef.merchantLevelRequired}
                     </p>
                   )}
@@ -418,15 +418,15 @@ export default function CaravanManager() {
           </div>
 
           {/* Summary + Create */}
-          <div className="pt-4 border-t border-dark-50">
-            <div className="flex items-center justify-between text-xs text-parchment-500 mb-3">
+          <div className="pt-4 border-t border-realm-border">
+            <div className="flex items-center justify-between text-xs text-realm-text-muted mb-3">
               <span>Capacity: {selectedType.capacity} slots</span>
-              <span>Cost on depart: <span className="text-primary-400">{selectedType.cost}g</span></span>
+              <span>Cost on depart: <span className="text-realm-gold-400">{selectedType.cost}g</span></span>
             </div>
             <button
               onClick={() => createMutation.mutate()}
               disabled={createMutation.isPending || !selectedDestination}
-              className="w-full px-4 py-3 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full px-4 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {createMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -446,13 +446,13 @@ export default function CaravanManager() {
     <div className="space-y-6">
       {/* Header + New button */}
       <div className="flex items-center justify-between">
-        <p className="text-parchment-500 text-sm">
+        <p className="text-realm-text-muted text-sm">
           {caravans.length === 0 ? 'No caravans yet. Create one to start trading!' : `${caravans.length} caravan(s)`}
         </p>
         <button
           onClick={() => { setView('create'); setError(''); setSelectedDestination(''); }}
           disabled={!currentTownId}
-          className="px-4 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           New Caravan
@@ -461,14 +461,14 @@ export default function CaravanManager() {
 
       {caravansLoading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+          <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
         </div>
       ) : (
         <>
           {/* Ambushed */}
           {ambushedCaravans.length > 0 && (
             <div>
-              <h3 className="font-display text-sm text-red-400 uppercase tracking-wider mb-3">
+              <h3 className="font-display text-sm text-realm-danger uppercase tracking-wider mb-3">
                 Ambushed ({ambushedCaravans.length})
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -486,7 +486,7 @@ export default function CaravanManager() {
           {/* Pending (loading) */}
           {pendingCaravans.length > 0 && (
             <div>
-              <h3 className="font-display text-sm text-parchment-500 uppercase tracking-wider mb-3">
+              <h3 className="font-display text-sm text-realm-text-muted uppercase tracking-wider mb-3">
                 Loading ({pendingCaravans.length})
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -504,7 +504,7 @@ export default function CaravanManager() {
           {/* In transit */}
           {inTransitCaravans.length > 0 && (
             <div>
-              <h3 className="font-display text-sm text-parchment-500 uppercase tracking-wider mb-3">
+              <h3 className="font-display text-sm text-realm-text-muted uppercase tracking-wider mb-3">
                 In Transit ({inTransitCaravans.length})
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -523,7 +523,7 @@ export default function CaravanManager() {
           {/* Completed */}
           {completedCaravans.length > 0 && (
             <div>
-              <h3 className="font-display text-sm text-parchment-500 uppercase tracking-wider mb-3">
+              <h3 className="font-display text-sm text-realm-text-muted uppercase tracking-wider mb-3">
                 Completed ({completedCaravans.length})
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -535,9 +535,9 @@ export default function CaravanManager() {
           )}
 
           {caravans.length === 0 && (
-            <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center">
-              <Truck className="w-10 h-10 text-parchment-500/30 mx-auto mb-3" />
-              <p className="text-parchment-500 text-sm mb-4">
+            <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+              <Truck className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
+              <p className="text-realm-text-muted text-sm mb-4">
                 No caravans yet. Create your first caravan to start trading between towns!
               </p>
             </div>

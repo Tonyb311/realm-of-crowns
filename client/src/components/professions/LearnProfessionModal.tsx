@@ -30,28 +30,28 @@ export default function LearnProfessionModal({
       <div className="absolute inset-0 bg-black/70" onClick={onCancel} />
 
       {/* Modal */}
-      <div className="relative bg-dark-400 border border-dark-50 rounded-lg max-w-md w-full">
+      <div className="relative bg-realm-bg-800 border border-realm-border rounded-lg max-w-md w-full">
         <button
           onClick={onCancel}
-          className="absolute top-3 right-3 text-parchment-500 hover:text-parchment-200"
+          className="absolute top-3 right-3 text-realm-text-muted hover:text-realm-text-primary"
         >
           <X className="w-5 h-5" />
         </button>
 
         <div className="p-6">
-          <h3 className="font-display text-xl text-primary-400 mb-2">
+          <h3 className="font-display text-xl text-realm-gold-400 mb-2">
             Learn {professionName}?
           </h3>
 
-          <p className="text-sm text-parchment-400 mb-4 line-clamp-3">
+          <p className="text-sm text-realm-text-secondary mb-4 line-clamp-3">
             {description}
           </p>
 
           {/* Slot info */}
-          <div className="bg-dark-300 border border-dark-50 rounded p-3 mb-4">
+          <div className="bg-realm-bg-700 border border-realm-border rounded p-3 mb-4">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-xs text-parchment-500">Profession Slots</span>
-              <span className="text-xs font-display text-parchment-200">
+              <span className="text-xs text-realm-text-muted">Profession Slots</span>
+              <span className="text-xs font-display text-realm-text-primary">
                 {slotsUsed}/{slotsMax} used
               </span>
             </div>
@@ -62,10 +62,10 @@ export default function LearnProfessionModal({
                   key={i}
                   className={`w-6 h-2 rounded-full ${
                     i < slotsUsed
-                      ? 'bg-primary-400'
+                      ? 'bg-realm-gold-500'
                       : i === slotsUsed
-                        ? 'bg-primary-400/40 animate-pulse'
-                        : 'bg-dark-500'
+                        ? 'bg-realm-gold-400/40 animate-pulse'
+                        : 'bg-realm-bg-900'
                   }`}
                 />
               ))}
@@ -75,10 +75,10 @@ export default function LearnProfessionModal({
             <div className="space-y-1">
               {categoryLimits.map((cl) => (
                 <div key={cl.category} className="flex justify-between text-[10px]">
-                  <span className="text-parchment-500 capitalize">
+                  <span className="text-realm-text-muted capitalize">
                     {cl.category.toLowerCase()}
                   </span>
-                  <span className="text-parchment-400">
+                  <span className="text-realm-text-secondary">
                     {cl.used}/{cl.max}
                   </span>
                 </div>
@@ -87,7 +87,7 @@ export default function LearnProfessionModal({
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-900/30 border border-red-500/50 rounded text-red-300 text-sm flex items-center gap-2">
+            <div className="mb-4 p-3 bg-realm-danger/20 border border-realm-danger/50 rounded text-realm-danger text-sm flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
@@ -97,7 +97,7 @@ export default function LearnProfessionModal({
             <button
               onClick={onConfirm}
               disabled={isLoading}
-              className="flex-1 py-2.5 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
               {isLoading ? 'Learning...' : 'Confirm'}
@@ -105,7 +105,7 @@ export default function LearnProfessionModal({
             <button
               onClick={onCancel}
               disabled={isLoading}
-              className="flex-1 py-2.5 border border-parchment-500/30 text-parchment-400 font-display text-sm rounded hover:bg-dark-300 transition-colors disabled:opacity-50"
+              className="flex-1 py-2.5 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>

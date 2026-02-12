@@ -58,7 +58,7 @@ function StatusBadge({ status }: { status: string }) {
     <span
       className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded ${
         isOk
-          ? 'text-green-400 bg-green-400/10 border border-green-400/30'
+          ? 'text-realm-success bg-realm-success/10 border border-realm-success/30'
           : 'text-blood-light bg-blood-dark/20 border border-blood-dark/40'
       }`}
     >
@@ -131,23 +131,23 @@ export default function AdminToolsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-display text-primary-400 mb-6">Admin Tools</h1>
+      <h1 className="text-2xl font-display text-realm-gold-400 mb-6">Admin Tools</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Trigger Daily Tick */}
-        <div className="bg-dark-300 border border-dark-50 rounded-lg p-6">
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6">
           <div className="flex items-center gap-2 mb-4">
-            <Play className="w-5 h-5 text-primary-400" />
-            <h2 className="font-display text-parchment-200 text-lg">Trigger Daily Tick</h2>
+            <Play className="w-5 h-5 text-realm-gold-400" />
+            <h2 className="font-display text-realm-text-primary text-lg">Trigger Daily Tick</h2>
           </div>
-          <p className="text-parchment-500 text-sm mb-4">
+          <p className="text-realm-text-muted text-sm mb-4">
             Manually trigger the daily game tick. This processes resource respawns, building upkeep,
             food consumption, item durability decay, and other daily maintenance tasks.
           </p>
           <button
             onClick={handleTick}
             disabled={tickMutation.isPending}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {tickMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -157,7 +157,7 @@ export default function AdminToolsPage() {
             {tickMutation.isPending ? 'Running Tick...' : 'Run Daily Tick'}
           </button>
           {tickMutation.isSuccess && (
-            <p className="text-green-400 text-xs mt-3">
+            <p className="text-realm-success text-xs mt-3">
               Tick completed successfully.
             </p>
           )}
@@ -169,39 +169,39 @@ export default function AdminToolsPage() {
         </div>
 
         {/* System Broadcast */}
-        <div className="bg-dark-300 border border-dark-50 rounded-lg p-6">
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6">
           <div className="flex items-center gap-2 mb-4">
-            <Send className="w-5 h-5 text-primary-400" />
-            <h2 className="font-display text-parchment-200 text-lg">System Broadcast</h2>
+            <Send className="w-5 h-5 text-realm-gold-400" />
+            <h2 className="font-display text-realm-text-primary text-lg">System Broadcast</h2>
           </div>
-          <p className="text-parchment-500 text-sm mb-4">
+          <p className="text-realm-text-muted text-sm mb-4">
             Send a system-wide notification to all connected players.
           </p>
           <div className="space-y-3">
             <div>
-              <label className="text-parchment-500 text-xs mb-1 block">Title</label>
+              <label className="text-realm-text-muted text-xs mb-1 block">Title</label>
               <input
                 type="text"
                 value={broadcastTitle}
                 onChange={(e) => setBroadcastTitle(e.target.value)}
                 placeholder="Announcement title..."
-                className="w-full bg-dark-400 border border-dark-50 rounded px-3 py-2 text-parchment-300 text-sm placeholder:text-parchment-500/50 focus:border-primary-400 focus:outline-none"
+                className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-none"
               />
             </div>
             <div>
-              <label className="text-parchment-500 text-xs mb-1 block">Message</label>
+              <label className="text-realm-text-muted text-xs mb-1 block">Message</label>
               <textarea
                 value={broadcastMessage}
                 onChange={(e) => setBroadcastMessage(e.target.value)}
                 placeholder="Write your announcement..."
                 rows={4}
-                className="w-full bg-dark-400 border border-dark-50 rounded px-3 py-2 text-parchment-300 text-sm placeholder:text-parchment-500/50 focus:border-primary-400 focus:outline-none resize-none"
+                className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-none resize-none"
               />
             </div>
             <button
               onClick={handleBroadcast}
               disabled={broadcastMutation.isPending || !broadcastTitle.trim() || !broadcastMessage.trim()}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {broadcastMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -214,19 +214,19 @@ export default function AdminToolsPage() {
         </div>
 
         {/* Server Health */}
-        <div className="bg-dark-300 border border-dark-50 rounded-lg p-6 lg:col-span-2">
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6 lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-primary-400" />
-              <h2 className="font-display text-parchment-200 text-lg">Server Health</h2>
+              <Activity className="w-5 h-5 text-realm-gold-400" />
+              <h2 className="font-display text-realm-text-primary text-lg">Server Health</h2>
             </div>
-            <span className="text-parchment-500 text-[10px]">Auto-refreshes every 10s</span>
+            <span className="text-realm-text-muted text-[10px]">Auto-refreshes every 10s</span>
           </div>
 
           {healthLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-16 bg-dark-500 rounded" />
+                <div key={i} className="h-16 bg-realm-bg-900 rounded" />
               ))}
             </div>
           ) : healthError ? (
@@ -234,61 +234,61 @@ export default function AdminToolsPage() {
           ) : health ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Status */}
-              <div className="bg-dark-500/50 border border-dark-50 rounded-lg p-4">
+              <div className="bg-realm-bg-900/50 border border-realm-border rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Server className="w-3.5 h-3.5 text-parchment-500" />
-                  <span className="text-parchment-500 text-xs">Status</span>
+                  <Server className="w-3.5 h-3.5 text-realm-text-muted" />
+                  <span className="text-realm-text-muted text-xs">Status</span>
                 </div>
                 <StatusBadge status={health.status || 'unknown'} />
               </div>
 
               {/* Uptime */}
-              <div className="bg-dark-500/50 border border-dark-50 rounded-lg p-4">
+              <div className="bg-realm-bg-900/50 border border-realm-border rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Clock className="w-3.5 h-3.5 text-parchment-500" />
-                  <span className="text-parchment-500 text-xs">Uptime</span>
+                  <Clock className="w-3.5 h-3.5 text-realm-text-muted" />
+                  <span className="text-realm-text-muted text-xs">Uptime</span>
                 </div>
-                <p className="text-parchment-200 text-sm font-display">
+                <p className="text-realm-text-primary text-sm font-display">
                   {health.uptimeFormatted || formatUptime(health.uptime)}
                 </p>
               </div>
 
               {/* Node Version */}
-              <div className="bg-dark-500/50 border border-dark-50 rounded-lg p-4">
+              <div className="bg-realm-bg-900/50 border border-realm-border rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Cpu className="w-3.5 h-3.5 text-parchment-500" />
-                  <span className="text-parchment-500 text-xs">Node.js</span>
+                  <Cpu className="w-3.5 h-3.5 text-realm-text-muted" />
+                  <span className="text-realm-text-muted text-xs">Node.js</span>
                 </div>
-                <p className="text-parchment-200 text-sm font-display">{health.nodeVersion || 'N/A'}</p>
+                <p className="text-realm-text-primary text-sm font-display">{health.nodeVersion || 'N/A'}</p>
               </div>
 
               {/* DB Status */}
-              <div className="bg-dark-500/50 border border-dark-50 rounded-lg p-4">
+              <div className="bg-realm-bg-900/50 border border-realm-border rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Database className="w-3.5 h-3.5 text-parchment-500" />
-                  <span className="text-parchment-500 text-xs">Database</span>
+                  <Database className="w-3.5 h-3.5 text-realm-text-muted" />
+                  <span className="text-realm-text-muted text-xs">Database</span>
                 </div>
                 <StatusBadge status={health.dbStatus || 'unknown'} />
               </div>
 
               {/* Memory RSS */}
-              <div className="bg-dark-500/50 border border-dark-50 rounded-lg p-4">
+              <div className="bg-realm-bg-900/50 border border-realm-border rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <HardDrive className="w-3.5 h-3.5 text-parchment-500" />
-                  <span className="text-parchment-500 text-xs">Memory (RSS)</span>
+                  <HardDrive className="w-3.5 h-3.5 text-realm-text-muted" />
+                  <span className="text-realm-text-muted text-xs">Memory (RSS)</span>
                 </div>
-                <p className="text-parchment-200 text-sm font-display">
+                <p className="text-realm-text-primary text-sm font-display">
                   {health.memory?.rss != null ? formatBytes(health.memory.rss) : 'N/A'}
                 </p>
               </div>
 
               {/* Heap Used */}
-              <div className="bg-dark-500/50 border border-dark-50 rounded-lg p-4">
+              <div className="bg-realm-bg-900/50 border border-realm-border rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <HardDrive className="w-3.5 h-3.5 text-parchment-500" />
-                  <span className="text-parchment-500 text-xs">Heap Used</span>
+                  <HardDrive className="w-3.5 h-3.5 text-realm-text-muted" />
+                  <span className="text-realm-text-muted text-xs">Heap Used</span>
                 </div>
-                <p className="text-parchment-200 text-sm font-display">
+                <p className="text-realm-text-primary text-sm font-display">
                   {health.memory?.heapUsed != null ? formatBytes(health.memory.heapUsed) : 'N/A'}
                   {' / '}
                   {health.memory?.heapTotal != null ? formatBytes(health.memory.heapTotal) : 'N/A'}
@@ -297,22 +297,22 @@ export default function AdminToolsPage() {
 
               {/* Redis Status */}
               {health.redisStatus && (
-                <div className="bg-dark-500/50 border border-dark-50 rounded-lg p-4">
+                <div className="bg-realm-bg-900/50 border border-realm-border rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Database className="w-3.5 h-3.5 text-parchment-500" />
-                    <span className="text-parchment-500 text-xs">Redis</span>
+                    <Database className="w-3.5 h-3.5 text-realm-text-muted" />
+                    <span className="text-realm-text-muted text-xs">Redis</span>
                   </div>
                   <StatusBadge status={health.redisStatus} />
                 </div>
               )}
 
               {/* Last Checked */}
-              <div className="bg-dark-500/50 border border-dark-50 rounded-lg p-4">
+              <div className="bg-realm-bg-900/50 border border-realm-border rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Clock className="w-3.5 h-3.5 text-parchment-500" />
-                  <span className="text-parchment-500 text-xs">Last Checked</span>
+                  <Clock className="w-3.5 h-3.5 text-realm-text-muted" />
+                  <span className="text-realm-text-muted text-xs">Last Checked</span>
                 </div>
-                <p className="text-parchment-200 text-sm font-display">
+                <p className="text-realm-text-primary text-sm font-display">
                   {new Date(health.timestamp).toLocaleTimeString()}
                 </p>
               </div>

@@ -36,30 +36,30 @@ export default function MarketFilters({
   sort, onSortChange,
 }: MarketFiltersProps) {
   return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg p-4 mb-6">
+    <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4 mb-6">
       <div className="flex flex-wrap gap-3 items-end">
         {/* Search */}
         <div className="flex-1 min-w-[200px]">
-          <label className="text-parchment-500 text-xs mb-1 block">Search</label>
+          <label className="text-realm-text-muted text-xs mb-1 block">Search</label>
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-parchment-500" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-realm-text-muted" />
             <input
               type="text"
               value={searchText}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Item name..."
-              className="w-full pl-9 pr-3 py-2 bg-dark-500 border border-dark-50 rounded text-parchment-200 text-sm placeholder:text-parchment-500/50 focus:border-primary-400/50 focus:outline-none"
+              className="w-full pl-9 pr-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-400/50 focus:outline-none"
             />
           </div>
         </div>
 
         {/* Type filter */}
         <div>
-          <label className="text-parchment-500 text-xs mb-1 block">Type</label>
+          <label className="text-realm-text-muted text-xs mb-1 block">Type</label>
           <select
             value={filterType}
             onChange={(e) => onFilterTypeChange(e.target.value)}
-            className="px-3 py-2 bg-dark-500 border border-dark-50 rounded text-parchment-200 text-sm focus:border-primary-400/50 focus:outline-none"
+            className="px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-none"
           >
             {ITEM_TYPES.map((t) => (
               <option key={t} value={t}>{t}</option>
@@ -69,11 +69,11 @@ export default function MarketFilters({
 
         {/* Rarity filter */}
         <div>
-          <label className="text-parchment-500 text-xs mb-1 block">Rarity</label>
+          <label className="text-realm-text-muted text-xs mb-1 block">Rarity</label>
           <select
             value={filterRarity}
             onChange={(e) => onFilterRarityChange(e.target.value)}
-            className="px-3 py-2 bg-dark-500 border border-dark-50 rounded text-parchment-200 text-sm focus:border-primary-400/50 focus:outline-none"
+            className="px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-none"
           >
             <option value="All">All</option>
             {RARITY_ORDER.map((r) => (
@@ -85,33 +85,33 @@ export default function MarketFilters({
         {/* Price range */}
         <div className="flex items-end gap-2">
           <div>
-            <label className="text-parchment-500 text-xs mb-1 block">Min Price</label>
+            <label className="text-realm-text-muted text-xs mb-1 block">Min Price</label>
             <input
               type="number"
               value={priceMin}
               onChange={(e) => onPriceMinChange(e.target.value)}
               placeholder="0"
               min="0"
-              className="w-24 px-3 py-2 bg-dark-500 border border-dark-50 rounded text-parchment-200 text-sm placeholder:text-parchment-500/50 focus:border-primary-400/50 focus:outline-none"
+              className="w-24 px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-400/50 focus:outline-none"
             />
           </div>
-          <span className="text-parchment-500 pb-2">-</span>
+          <span className="text-realm-text-muted pb-2">-</span>
           <div>
-            <label className="text-parchment-500 text-xs mb-1 block">Max Price</label>
+            <label className="text-realm-text-muted text-xs mb-1 block">Max Price</label>
             <input
               type="number"
               value={priceMax}
               onChange={(e) => onPriceMaxChange(e.target.value)}
               placeholder="Any"
               min="0"
-              className="w-24 px-3 py-2 bg-dark-500 border border-dark-50 rounded text-parchment-200 text-sm placeholder:text-parchment-500/50 focus:border-primary-400/50 focus:outline-none"
+              className="w-24 px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-400/50 focus:outline-none"
             />
           </div>
         </div>
 
         {/* Sort */}
         <div>
-          <label className="text-parchment-500 text-xs mb-1 block">Sort</label>
+          <label className="text-realm-text-muted text-xs mb-1 block">Sort</label>
           <div className="flex gap-1">
             {([
               { key: 'price_asc', label: 'Price', icon: ArrowUp },
@@ -126,8 +126,8 @@ export default function MarketFilters({
                   onClick={() => onSortChange(s.key)}
                   className={`flex items-center gap-1 px-2.5 py-2 rounded text-xs transition-colors ${
                     sort === s.key
-                      ? 'bg-primary-400/20 text-primary-400 border border-primary-400/40'
-                      : 'bg-dark-500 text-parchment-500 border border-dark-50 hover:text-parchment-300'
+                      ? 'bg-realm-gold-400/20 text-realm-gold-400 border border-realm-gold-400/40'
+                      : 'bg-realm-bg-900 text-realm-text-muted border border-realm-border hover:text-realm-text-secondary'
                   }`}
                 >
                   <Icon className="w-3 h-3" />

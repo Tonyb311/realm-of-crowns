@@ -128,28 +128,28 @@ export default function ProfessionBonusDisplay({
             transition={{ delay: i * 0.05 }}
             className={`flex items-center justify-between text-xs px-3 py-1.5 rounded ${
               isNegative
-                ? 'bg-red-900/10 border border-red-500/20'
-                : 'bg-green-900/10 border border-green-500/20'
+                ? 'bg-realm-danger/10 border border-realm-danger/20'
+                : 'bg-realm-success/10 border border-realm-success/20'
             }`}
           >
-            <span className="flex items-center gap-1.5 text-parchment-300">
+            <span className="flex items-center gap-1.5 text-realm-text-secondary">
               {isNegative ? (
-                <TrendingDown className="w-3 h-3 text-red-400" />
+                <TrendingDown className="w-3 h-3 text-realm-danger" />
               ) : (
-                <TrendingUp className="w-3 h-3 text-green-400" />
+                <TrendingUp className="w-3 h-3 text-realm-success" />
               )}
               <span>{BONUS_TYPE_LABELS[bonus.bonusType] ?? bonus.bonusType}</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span
                 className={`font-display ${
-                  isNegative ? 'text-red-400' : 'text-green-400'
+                  isNegative ? 'text-realm-danger' : 'text-realm-success'
                 }`}
               >
                 {isNegative ? '' : '+'}
                 {bonus.bonusPercent}%
               </span>
-              <span className="text-[10px] text-parchment-500">({bonus.source})</span>
+              <span className="text-[10px] text-realm-text-muted">({bonus.source})</span>
             </span>
           </motion.div>
         );
@@ -160,12 +160,12 @@ export default function ProfessionBonusDisplay({
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="flex items-center gap-2 px-3 py-2 rounded bg-amber-900/20 border border-amber-500/30"
+          className="flex items-center gap-2 px-3 py-2 rounded bg-realm-gold-500/10 border border-realm-gold-500/30"
         >
-          <Cog className="w-4 h-4 text-amber-400 animate-spin" style={{ animationDuration: '3s' }} />
-          <span className="text-xs text-amber-300 font-display">2x Speed Active</span>
+          <Cog className="w-4 h-4 text-realm-gold-400 animate-spin" style={{ animationDuration: '3s' }} />
+          <span className="text-xs text-realm-gold-400 font-display">2x Speed Active</span>
           {data.forgebornOverclockRemaining != null && (
-            <span className="text-[10px] text-amber-400/60 ml-auto tabular-nums">
+            <span className="text-[10px] text-realm-gold-400/60 ml-auto tabular-nums">
               {data.forgebornOverclockRemaining}s
             </span>
           )}
@@ -182,8 +182,8 @@ export default function ProfessionBonusDisplay({
           onClick={() => eurekaMutation.mutate()}
           disabled={eurekaMutation.isPending}
           className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded
-            bg-purple-900/30 border border-purple-500/40 text-purple-300 font-display text-xs
-            hover:bg-purple-900/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            bg-realm-purple-300/10 border border-realm-purple-300/40 text-realm-purple-300 font-display text-xs
+            hover:bg-realm-purple-300/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {eurekaMutation.isPending ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />

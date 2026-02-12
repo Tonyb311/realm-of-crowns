@@ -13,7 +13,7 @@ export default function CountdownTimer({ endDate }: { endDate: string }) {
   const diff = Math.max(0, end - now);
 
   if (diff <= 0) {
-    return <span className="text-parchment-500 text-xs">Ended</span>;
+    return <span className="text-realm-text-muted text-xs">Ended</span>;
   }
 
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -22,7 +22,7 @@ export default function CountdownTimer({ endDate }: { endDate: string }) {
   const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
   return (
-    <span className="text-primary-400 text-xs font-display flex items-center gap-1">
+    <span className="text-realm-gold-400 text-xs font-display flex items-center gap-1">
       <Clock className="w-3 h-3" />
       {days > 0 && `${days}d `}{hours}h {minutes}m {seconds}s remaining
     </span>

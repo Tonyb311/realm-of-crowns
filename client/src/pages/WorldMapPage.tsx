@@ -864,7 +864,7 @@ function MiniMap({ towns, playerTownId, viewBox, onClick }: MiniMapProps) {
       <div className="absolute top-4 right-4 z-10 hidden md:block">
         <button
           onClick={() => setCollapsed(false)}
-          className="w-9 h-9 bg-dark-400/90 border border-dark-50 rounded-lg text-parchment-300 hover:text-primary-400 hover:border-primary-400/50 transition-colors flex items-center justify-center"
+          className="w-9 h-9 bg-realm-bg-800/90 border border-realm-border rounded-lg text-realm-text-secondary hover:text-realm-gold-400 hover:border-realm-gold-400/50 transition-colors flex items-center justify-center"
           title="Show minimap"
         >
           <Eye className="w-4 h-4" />
@@ -874,11 +874,11 @@ function MiniMap({ towns, playerTownId, viewBox, onClick }: MiniMapProps) {
   }
 
   return (
-    <div className="absolute top-4 right-4 bg-dark-500/85 border border-dark-50 rounded-lg overflow-hidden shadow-lg hidden md:block z-10">
+    <div className="absolute top-4 right-4 bg-realm-bg-900/85 border border-realm-border rounded-lg overflow-hidden shadow-lg hidden md:block z-10">
       {/* Collapse toggle */}
       <button
         onClick={() => setCollapsed(true)}
-        className="absolute top-1 right-1 z-20 w-5 h-5 bg-dark-400/80 border border-dark-50 rounded text-parchment-500 hover:text-parchment-200 transition-colors flex items-center justify-center"
+        className="absolute top-1 right-1 z-20 w-5 h-5 bg-realm-bg-800/80 border border-realm-border rounded text-realm-text-muted hover:text-realm-text-primary transition-colors flex items-center justify-center"
         title="Hide minimap"
       >
         <X className="w-3 h-3" />
@@ -952,29 +952,29 @@ function TownInfoPanel({
 }: TownInfoPanelProps) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const typeBadgeColor = {
-    capital: 'text-amber-400 bg-amber-400/10 border-amber-400/30',
-    city: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
-    town: 'text-parchment-300 bg-parchment-300/10 border-parchment-300/30',
-    village: 'text-green-400 bg-green-400/10 border-green-400/30',
+    capital: 'text-realm-gold-400 bg-realm-gold-400/10 border-realm-gold-400/30',
+    city: 'text-realm-teal-300 bg-realm-teal-300/10 border-realm-teal-300/30',
+    town: 'text-realm-text-secondary bg-realm-text-secondary/10 border-realm-border',
+    village: 'text-realm-success bg-realm-success/10 border-realm-success/30',
     outpost: 'text-orange-400 bg-orange-400/10 border-orange-400/30',
-  }[town.type ?? 'town'] ?? 'text-parchment-300 bg-parchment-300/10 border-parchment-300/30';
+  }[town.type ?? 'town'] ?? 'text-realm-text-secondary bg-realm-text-secondary/10 border-realm-border';
 
   const difficultyLabel = (dl: number) => {
-    if (dl <= 1) return { text: 'Safe', cls: 'text-green-400' };
-    if (dl <= 3) return { text: 'Moderate', cls: 'text-yellow-400' };
+    if (dl <= 1) return { text: 'Safe', cls: 'text-realm-success' };
+    if (dl <= 3) return { text: 'Moderate', cls: 'text-realm-gold-400' };
     if (dl <= 6) return { text: 'Dangerous', cls: 'text-orange-400' };
-    return { text: 'Deadly', cls: 'text-red-400' };
+    return { text: 'Deadly', cls: 'text-realm-danger' };
   };
 
   const content = (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-dark-50">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-realm-border">
         <div className="flex items-center gap-2 min-w-0">
-          <MapPin className="w-4 h-4 text-primary-400 shrink-0" />
-          <h2 className="font-display text-primary-400 text-lg truncate">{town.name}</h2>
+          <MapPin className="w-4 h-4 text-realm-gold-400 shrink-0" />
+          <h2 className="font-display text-realm-gold-400 text-lg truncate">{town.name}</h2>
         </div>
-        <button onClick={onClose} className="text-parchment-500 hover:text-parchment-200 transition-colors shrink-0">
+        <button onClick={onClose} className="text-realm-text-muted hover:text-realm-text-primary transition-colors shrink-0">
           <X className="w-5 h-5" />
         </button>
       </div>
@@ -986,11 +986,11 @@ function TownInfoPanel({
           <span className={`text-[10px] px-2 py-0.5 rounded border capitalize ${typeBadgeColor}`}>
             {town.type ?? 'town'}
           </span>
-          <span className="text-[10px] px-2 py-0.5 rounded border text-parchment-400 bg-dark-300/50 border-dark-50">
+          <span className="text-[10px] px-2 py-0.5 rounded border text-realm-text-secondary bg-realm-bg-700/50 border-realm-border">
             {town.regionName}
           </span>
           {isPlayerHere && (
-            <span className="text-[10px] px-2 py-0.5 rounded border text-amber-400 bg-amber-400/10 border-amber-400/30">
+            <span className="text-[10px] px-2 py-0.5 rounded border text-realm-gold-400 bg-realm-gold-400/10 border-realm-gold-400/30">
               Current Location
             </span>
           )}
@@ -998,25 +998,25 @@ function TownInfoPanel({
 
         {/* Population */}
         <div className="flex items-center gap-2 text-sm">
-          <Users className="w-3.5 h-3.5 text-parchment-500" />
-          <span className="text-parchment-300">Population: {town.population.toLocaleString()}</span>
+          <Users className="w-3.5 h-3.5 text-realm-text-muted" />
+          <span className="text-realm-text-secondary">Population: {town.population.toLocaleString()}</span>
         </div>
 
         {/* Biome */}
         <div className="flex items-center gap-2 text-sm">
-          <Info className="w-3.5 h-3.5 text-parchment-500" />
-          <span className="text-parchment-300">Biome: {town.biome}</span>
+          <Info className="w-3.5 h-3.5 text-realm-text-muted" />
+          <span className="text-realm-text-secondary">Biome: {town.biome}</span>
         </div>
 
         {/* Description */}
         {town.description && (
-          <p className="text-parchment-400 text-sm leading-relaxed">{town.description}</p>
+          <p className="text-realm-text-secondary text-sm leading-relaxed">{town.description}</p>
         )}
 
         {/* Connected routes */}
         {connectedRoutes.length > 0 && (
           <div>
-            <h3 className="text-parchment-200 text-xs font-display uppercase tracking-wider mb-2">Connected Routes</h3>
+            <h3 className="text-realm-text-primary text-xs font-display uppercase tracking-wider mb-2">Connected Routes</h3>
             <div className="space-y-2">
               {connectedRoutes.map(route => {
                 const otherTownId = route.fromTownId === town.id ? route.toTownId : route.fromTownId;
@@ -1026,17 +1026,17 @@ function TownInfoPanel({
                   <button
                     key={route.id}
                     onClick={() => otherTown && onSelectTown(otherTown)}
-                    className="w-full flex items-center justify-between px-3 py-2 bg-dark-400 hover:bg-dark-300 border border-dark-50 rounded transition-colors text-left"
+                    className="w-full flex items-center justify-between px-3 py-2 bg-realm-bg-800 hover:bg-realm-bg-600 border border-realm-border rounded transition-colors text-left"
                   >
                     <div className="min-w-0">
-                      <span className="text-parchment-200 text-xs block truncate">{otherTown?.name ?? otherTownId}</span>
+                      <span className="text-realm-text-primary text-xs block truncate">{otherTown?.name ?? otherTownId}</span>
                       {route.name && (
-                        <span className="text-parchment-500 text-[10px] block truncate">{route.name}</span>
+                        <span className="text-realm-text-muted text-[10px] block truncate">{route.name}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className={`text-[10px] ${dl.cls}`}>{dl.text}</span>
-                      <ChevronRight className="w-3 h-3 text-parchment-500" />
+                      <ChevronRight className="w-3 h-3 text-realm-text-muted" />
                     </div>
                   </button>
                 );
@@ -1048,11 +1048,11 @@ function TownInfoPanel({
 
       {/* Travel button */}
       {!isPlayerHere && (
-        <div className="px-5 py-4 border-t border-dark-50">
+        <div className="px-5 py-4 border-t border-realm-border">
           <button
             onClick={() => onTravel(town.id)}
             disabled={isTraveling}
-            className="w-full py-3 rounded-lg font-display text-sm bg-primary-500/20 hover:bg-primary-500/30 text-primary-400 border border-primary-500/30 hover:border-primary-400/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-lg font-display text-sm bg-realm-gold-500/20 hover:bg-realm-gold-500/30 text-realm-gold-400 border border-realm-gold-500/30 hover:border-realm-gold-400/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <Compass className="w-4 h-4" />
             Travel Here
@@ -1070,7 +1070,7 @@ function TownInfoPanel({
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: 320, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="w-80 bg-dark-500 border-l border-dark-50 flex flex-col h-full shrink-0"
+        className="w-80 bg-realm-bg-900 border-l border-realm-border flex flex-col h-full shrink-0"
       >
         {content}
       </motion.div>
@@ -1084,11 +1084,11 @@ function TownInfoPanel({
       animate={{ y: 0 }}
       exit={{ y: '100%' }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="absolute bottom-0 left-0 right-0 bg-dark-500 border-t border-dark-50 rounded-t-xl max-h-[60vh] flex flex-col z-30"
+      className="absolute bottom-0 left-0 right-0 bg-realm-bg-900 border-t border-realm-border rounded-t-xl max-h-[60vh] flex flex-col z-30"
     >
       {/* Drag handle */}
       <div className="flex justify-center py-2">
-        <div className="w-10 h-1 bg-dark-50 rounded-full" />
+        <div className="w-10 h-1 bg-realm-border rounded-full" />
       </div>
       {content}
     </motion.div>
@@ -1109,21 +1109,21 @@ interface NodeTooltipProps {
 function NodeTooltip({ node, x, y, totalNodes }: NodeTooltipProps) {
   return (
     <div
-      className="fixed z-50 pointer-events-none bg-dark-400/95 border border-dark-50 rounded-lg px-3 py-2 shadow-xl"
+      className="fixed z-50 pointer-events-none bg-realm-bg-800/95 border border-realm-border rounded-lg px-3 py-2 shadow-xl"
       style={{ left: x + 20, top: y - 20 }}
     >
-      <p className="font-display text-primary-400 text-xs">{node.name}</p>
-      {node.description && <p className="text-parchment-500 text-[10px] mt-0.5">{node.description}</p>}
+      <p className="font-display text-realm-gold-400 text-xs">{node.name}</p>
+      {node.description && <p className="text-realm-text-muted text-[10px] mt-0.5">{node.description}</p>}
       <div className="flex items-center gap-3 mt-1">
-        <span className="text-parchment-400 text-[10px] capitalize">{node.terrain}</span>
-        <span className={`text-[10px] ${node.dangerLevel <= 2 ? 'text-green-400' : node.dangerLevel <= 5 ? 'text-yellow-400' : 'text-red-400'}`}>
+        <span className="text-realm-text-secondary text-[10px] capitalize">{node.terrain}</span>
+        <span className={`text-[10px] ${node.dangerLevel <= 2 ? 'text-realm-success' : node.dangerLevel <= 5 ? 'text-realm-gold-400' : 'text-realm-danger'}`}>
           Danger: {node.dangerLevel}
         </span>
       </div>
       <div className="flex items-center gap-3 mt-0.5">
-        <span className="text-parchment-500 text-[10px]">Day {node.nodeIndex} of {totalNodes + 1}</span>
+        <span className="text-realm-text-muted text-[10px]">Day {node.nodeIndex} of {totalNodes + 1}</span>
         {node.specialType && (
-          <span className="text-amber-400 text-[10px]">{node.specialType}</span>
+          <span className="text-realm-gold-400 text-[10px]">{node.specialType}</span>
         )}
       </div>
     </div>
@@ -1562,10 +1562,10 @@ export default function WorldMapPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-dark-500">
+      <div className="flex items-center justify-center h-full bg-realm-bg-900">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-primary-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-primary-400 font-display text-2xl animate-pulse">
+          <div className="w-8 h-8 border-2 border-realm-gold-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-realm-gold-400 font-display text-2xl animate-pulse">
             Charting the realm...
           </p>
         </div>
@@ -1575,18 +1575,18 @@ export default function WorldMapPage() {
 
   if (loadError || !mapData) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-dark-500">
+      <div className="flex items-center justify-center h-full bg-realm-bg-900">
         <div className="text-center">
-          <Shield className="w-12 h-12 text-parchment-500/30 mx-auto mb-4" />
-          <p className="text-parchment-300 font-display text-xl mb-2">No map data available</p>
-          <p className="text-parchment-500 text-sm">The cartographers are still at work.</p>
+          <Shield className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-4" />
+          <p className="text-realm-text-secondary font-display text-xl mb-2">No map data available</p>
+          <p className="text-realm-text-muted text-sm">The cartographers are still at work.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-dark-500 flex flex-col">
+    <div className="h-full bg-realm-bg-900 flex flex-col">
       {/* Inline style for smooth LOD transitions */}
       <style>{`
         .town-node { cursor: pointer; }
@@ -1805,22 +1805,22 @@ export default function WorldMapPage() {
           <div className="absolute bottom-4 right-4 flex flex-col gap-1.5 z-10">
             <button
               onClick={zoomIn}
-              className="w-9 h-9 bg-dark-400/90 border border-dark-50 rounded-lg text-parchment-300 hover:text-primary-400 hover:border-primary-400/50 transition-colors flex items-center justify-center"
+              className="w-9 h-9 bg-realm-bg-800/90 border border-realm-border rounded-lg text-realm-text-secondary hover:text-realm-gold-400 hover:border-realm-gold-400/50 transition-colors flex items-center justify-center"
               title="Zoom in (+)"
             >
               <Plus className="w-4 h-4" />
             </button>
             <button
               onClick={zoomOut}
-              className="w-9 h-9 bg-dark-400/90 border border-dark-50 rounded-lg text-parchment-300 hover:text-primary-400 hover:border-primary-400/50 transition-colors flex items-center justify-center"
+              className="w-9 h-9 bg-realm-bg-800/90 border border-realm-border rounded-lg text-realm-text-secondary hover:text-realm-gold-400 hover:border-realm-gold-400/50 transition-colors flex items-center justify-center"
               title="Zoom out (-)"
             >
               <Minus className="w-4 h-4" />
             </button>
-            <div className="w-9 h-px bg-dark-50 my-0.5" />
+            <div className="w-9 h-px bg-realm-border my-0.5" />
             <button
               onClick={centerOnPlayer}
-              className="w-9 h-9 bg-dark-400/90 border border-dark-50 rounded-lg text-parchment-300 hover:text-primary-400 hover:border-primary-400/50 transition-colors flex items-center justify-center"
+              className="w-9 h-9 bg-realm-bg-800/90 border border-realm-border rounded-lg text-realm-text-secondary hover:text-realm-gold-400 hover:border-realm-gold-400/50 transition-colors flex items-center justify-center"
               title="Center on me"
             >
               <Compass className="w-4 h-4" />
@@ -1828,8 +1828,8 @@ export default function WorldMapPage() {
             {mapData.travelers && mapData.travelers.length > 0 && (
               <button
                 onClick={() => setShowTravelers(prev => !prev)}
-                className={`w-9 h-9 bg-dark-400/90 border rounded-lg transition-colors flex items-center justify-center ${
-                  showTravelers ? 'border-blue-400/50 text-blue-400' : 'border-dark-50 text-parchment-500'
+                className={`w-9 h-9 bg-realm-bg-800/90 border rounded-lg transition-colors flex items-center justify-center ${
+                  showTravelers ? 'border-realm-teal-300/50 text-realm-teal-300' : 'border-realm-border text-realm-text-muted'
                 }`}
                 title={showTravelers ? 'Hide travelers' : 'Show travelers'}
               >
@@ -1839,18 +1839,18 @@ export default function WorldMapPage() {
           </div>
 
           {/* === UI Overlay: Zoom level + LOD indicator === */}
-          <div className="absolute top-4 left-4 bg-dark-400/90 border border-dark-50 rounded-lg px-3 py-1.5 z-10">
-            <span className="text-parchment-500 text-[10px] uppercase tracking-wider">
+          <div className="absolute top-4 left-4 bg-realm-bg-800/90 border border-realm-border rounded-lg px-3 py-1.5 z-10">
+            <span className="text-realm-text-muted text-[10px] uppercase tracking-wider">
               {lodLevel === 1 ? 'Continent View' : lodLevel === 2 ? 'Region View' : 'Detail View'}
             </span>
-            <span className="text-parchment-500/50 text-[9px] ml-2">
+            <span className="text-realm-text-muted/50 text-[9px] ml-2">
               {zoom.toFixed(1)}x
             </span>
           </div>
 
           {/* === UI Overlay: Title === */}
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-            <h1 className="font-display text-primary-400 text-xl md:text-2xl drop-shadow-lg whitespace-nowrap">
+            <h1 className="font-display text-realm-gold-400 text-xl md:text-2xl drop-shadow-lg whitespace-nowrap">
               World of Aethermere
             </h1>
           </div>
@@ -1914,14 +1914,14 @@ function RegionLegend({ regions }: { regions: MapRegion[] }) {
 
   return (
     <div className="absolute bottom-4 left-4 z-10">
-      <div className="bg-dark-400/90 border border-dark-50 rounded-lg overflow-hidden">
+      <div className="bg-realm-bg-800/90 border border-realm-border rounded-lg overflow-hidden">
         <button
           onClick={() => setOpen(prev => !prev)}
           className="flex items-center gap-2 px-3 py-2 w-full text-left"
         >
-          <MapPin className="w-3 h-3 text-primary-400" />
-          <span className="font-display text-primary-400 text-xs">Regions</span>
-          <span className="text-parchment-500 text-[10px] ml-auto">{open ? '[-]' : '[+]'}</span>
+          <MapPin className="w-3 h-3 text-realm-gold-400" />
+          <span className="font-display text-realm-gold-400 text-xs">Regions</span>
+          <span className="text-realm-text-muted text-[10px] ml-auto">{open ? '[-]' : '[+]'}</span>
         </button>
         <AnimatePresence>
           {open && (
@@ -1939,7 +1939,7 @@ function RegionLegend({ regions }: { regions: MapRegion[] }) {
                       className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: getRegionColor(r.id) }}
                     />
-                    <span className="text-parchment-300 text-[10px]">{r.name}</span>
+                    <span className="text-realm-text-secondary text-[10px]">{r.name}</span>
                   </div>
                 ))}
               </div>

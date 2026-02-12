@@ -7,7 +7,7 @@ export interface PriceHistoryPoint {
 export default function PriceChart({ data }: { data: PriceHistoryPoint[] }) {
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-parchment-500 text-sm">
+      <div className="flex items-center justify-center h-64 text-realm-text-muted text-sm">
         No price data available
       </div>
     );

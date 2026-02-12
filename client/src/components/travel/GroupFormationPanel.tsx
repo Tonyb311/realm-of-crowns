@@ -123,8 +123,8 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
   // Loading
   if (groupLoading) {
     return (
-      <div className="bg-dark-400 border border-dark-50 rounded-lg p-6 flex items-center justify-center">
-        <Loader2 className="w-5 h-5 text-primary-400 animate-spin" />
+      <div className="bg-realm-bg-800 border border-realm-border rounded-lg p-6 flex items-center justify-center">
+        <Loader2 className="w-5 h-5 text-realm-gold-400 animate-spin" />
       </div>
     );
   }
@@ -134,15 +134,15 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
   // If no group exists yet, show creation form
   if (!group) {
     return (
-      <div className="bg-dark-400 border border-dark-50 rounded-lg overflow-hidden">
-        <div className="p-4 border-b border-dark-50 flex items-center justify-between">
-          <h3 className="font-display text-primary-400 text-sm flex items-center gap-2">
+      <div className="bg-realm-bg-800 border border-realm-border rounded-lg overflow-hidden">
+        <div className="p-4 border-b border-realm-border flex items-center justify-between">
+          <h3 className="font-display text-realm-gold-400 text-sm flex items-center gap-2">
             <Users className="w-4 h-4" />
             Form Travel Group
           </h3>
           <button
             onClick={onClose}
-            className="text-parchment-500 hover:text-parchment-200 transition-colors"
+            className="text-realm-text-muted hover:text-realm-text-primary transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -151,7 +151,7 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
         <div className="p-4 space-y-4">
           {/* Group name input */}
           <div>
-            <label className="text-[10px] text-parchment-500 uppercase tracking-wider block mb-1.5">
+            <label className="text-[10px] text-realm-text-muted uppercase tracking-wider block mb-1.5">
               Group Name (optional)
             </label>
             <input
@@ -160,7 +160,7 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="Enter a name for your group..."
               maxLength={50}
-              className="w-full bg-dark-500 border border-dark-50 rounded px-3 py-2 text-sm text-parchment-200 placeholder:text-parchment-500/50 focus:border-primary-400 focus:outline-none"
+              className="w-full bg-realm-bg-900 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary placeholder:text-realm-text-muted/50 focus:border-realm-gold-400 focus:outline-none"
             />
           </div>
 
@@ -168,7 +168,7 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
           <button
             onClick={() => createMutation.mutate()}
             disabled={createMutation.isPending}
-            className="w-full py-3 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {createMutation.isPending ? (
               <>
@@ -183,7 +183,7 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
             )}
           </button>
 
-          <p className="text-[10px] text-parchment-500 text-center">
+          <p className="text-[10px] text-realm-text-muted text-center">
             Share the group ID with others so they can join before departing.
           </p>
         </div>
@@ -196,16 +196,16 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
   const canStart = group.members.length >= 2 && isLeader;
 
   return (
-    <div className="bg-dark-400 border border-dark-50 rounded-lg overflow-hidden">
+    <div className="bg-realm-bg-800 border border-realm-border rounded-lg overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-dark-50 flex items-center justify-between">
-        <h3 className="font-display text-primary-400 text-sm flex items-center gap-2">
+      <div className="p-4 border-b border-realm-border flex items-center justify-between">
+        <h3 className="font-display text-realm-gold-400 text-sm flex items-center gap-2">
           <Users className="w-4 h-4" />
           {group.name || 'Travel Group'}
         </h3>
         <button
           onClick={onClose}
-          className="text-parchment-500 hover:text-parchment-200 transition-colors"
+          className="text-realm-text-muted hover:text-realm-text-primary transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -213,16 +213,16 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
 
       <div className="p-4 space-y-4">
         {/* Group ID for sharing */}
-        <div className="flex items-center gap-2 p-3 bg-dark-500 rounded-lg">
-          <span className="text-[10px] text-parchment-500 uppercase tracking-wider flex-shrink-0">Group ID</span>
-          <code className="text-xs text-parchment-300 font-mono flex-1 truncate">{group.id}</code>
+        <div className="flex items-center gap-2 p-3 bg-realm-bg-900 rounded-lg">
+          <span className="text-[10px] text-realm-text-muted uppercase tracking-wider flex-shrink-0">Group ID</span>
+          <code className="text-xs text-realm-text-secondary font-mono flex-1 truncate">{group.id}</code>
           <button
             onClick={() => handleCopyGroupId(group.id)}
-            className="text-parchment-500 hover:text-primary-400 transition-colors flex-shrink-0"
+            className="text-realm-text-muted hover:text-realm-gold-400 transition-colors flex-shrink-0"
             title="Copy group ID"
           >
             {copiedGroupId ? (
-              <Check className="w-3.5 h-3.5 text-green-400" />
+              <Check className="w-3.5 h-3.5 text-realm-success" />
             ) : (
               <Copy className="w-3.5 h-3.5" />
             )}
@@ -231,26 +231,26 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
 
         {/* Members list */}
         <div>
-          <p className="text-[10px] text-parchment-500 uppercase tracking-wider mb-2">
+          <p className="text-[10px] text-realm-text-muted uppercase tracking-wider mb-2">
             Members ({group.members.length})
           </p>
           <div className="space-y-1">
             {group.members.map((member) => (
               <div
                 key={member.id}
-                className="flex items-center justify-between py-2 px-3 bg-dark-500/50 rounded"
+                className="flex items-center justify-between py-2 px-3 bg-realm-bg-900/50 rounded"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-parchment-200 text-sm font-semibold">{member.name}</span>
-                  <span className="text-parchment-500 text-xs capitalize">{member.race?.toLowerCase()}</span>
+                  <span className="text-realm-text-primary text-sm font-semibold">{member.name}</span>
+                  <span className="text-realm-text-muted text-xs capitalize">{member.race?.toLowerCase()}</span>
                   {member.role === 'leader' && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary-400/10 text-primary-400 border border-primary-400/30 font-display flex items-center gap-0.5">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-realm-gold-400/10 text-realm-gold-400 border border-realm-gold-400/30 font-display flex items-center gap-0.5">
                       <Crown className="w-2.5 h-2.5" />
                       Leader
                     </span>
                   )}
                 </div>
-                <span className="text-xs text-parchment-500">Lv. {member.level}</span>
+                <span className="text-xs text-realm-text-muted">Lv. {member.level}</span>
               </div>
             ))}
           </div>
@@ -258,9 +258,9 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
 
         {/* Minimum members warning */}
         {group.members.length < 2 && isLeader && (
-          <div className="flex items-center gap-2 p-2.5 bg-amber-900/20 border border-amber-500/20 rounded-lg">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-            <p className="text-amber-300 text-[10px]">
+          <div className="flex items-center gap-2 p-2.5 bg-realm-gold-500/10 border border-realm-gold-500/20 rounded-lg">
+            <AlertTriangle className="w-3.5 h-3.5 text-realm-gold-400 flex-shrink-0" />
+            <p className="text-realm-gold-400 text-[10px]">
               Need at least 2 members to start the journey. Share the group ID to invite others.
             </p>
           </div>
@@ -272,7 +272,7 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
             <button
               onClick={() => startMutation.mutate(group.id)}
               disabled={!canStart || startMutation.isPending}
-              className="flex-1 py-3 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {startMutation.isPending ? (
                 <>
@@ -287,7 +287,7 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
               )}
             </button>
           ) : (
-            <div className="flex-1 py-3 text-center text-xs text-parchment-500 bg-dark-500 rounded-lg">
+            <div className="flex-1 py-3 text-center text-xs text-realm-text-muted bg-realm-bg-900 rounded-lg">
               Waiting for the leader to start the journey...
             </div>
           )}
@@ -295,7 +295,7 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
           <button
             onClick={() => leaveMutation.mutate()}
             disabled={leaveMutation.isPending}
-            className="py-3 px-4 border border-red-500/40 text-red-400 font-display text-sm rounded hover:bg-red-500/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+            className="py-3 px-4 border border-realm-danger/40 text-realm-danger font-display text-sm rounded hover:bg-realm-danger/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
           >
             {leaveMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />

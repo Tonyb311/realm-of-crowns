@@ -60,13 +60,13 @@ function StatBar({
     <Tooltip content={`${label}: ${current}/${max}`}>
       <div className="flex items-center gap-1.5">
         <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-        <div className="w-20 h-2.5 bg-dark-600 rounded-full overflow-hidden border border-dark-50/50">
+        <div className="w-20 h-2.5 bg-realm-bg-900 rounded-full overflow-hidden border border-realm-border/50">
           <div
             className={`h-full rounded-full bg-gradient-to-r ${gradient} transition-all duration-500`}
             style={{ width: `${pct}%` }}
           />
         </div>
-        <span className="text-[10px] text-parchment-400 w-12 tabular-nums">
+        <span className="text-[10px] text-realm-text-secondary w-12 tabular-nums">
           {current}/{max}
         </span>
       </div>
@@ -121,20 +121,20 @@ export default function HUD() {
   const raceInitial = character.race ? character.race.charAt(0).toUpperCase() : '?';
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-40 bg-dark-600/95 border-b border-dark-50 backdrop-blur-sm">
+    <div className="fixed top-0 left-0 right-0 z-40 bg-realm-bg-900/95 border-b border-realm-border backdrop-blur-sm">
       <div className="max-w-screen-2xl mx-auto px-3 flex items-center h-12 gap-3">
         {/* Portrait + Name */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-primary-400/20 border border-primary-400/40 flex items-center justify-center">
-            <span className="text-primary-400 font-display text-sm">{raceInitial}</span>
+          <div className="w-8 h-8 rounded-lg bg-realm-gold-500/20 border border-realm-gold-500/40 flex items-center justify-center">
+            <span className="text-realm-gold-400 font-display text-sm">{raceInitial}</span>
           </div>
           <div className="hidden sm:block">
             <div className="flex items-center gap-1.5">
-              <span className="text-parchment-200 text-xs font-semibold truncate max-w-[100px]">
+              <span className="text-realm-text-primary text-xs font-semibold truncate max-w-[100px]">
                 {character.name}
               </span>
               <Tooltip content={`Level ${character.level}`}>
-                <span className="flex items-center gap-0.5 text-[10px] text-primary-400 bg-primary-400/10 border border-primary-400/30 rounded px-1.5 py-0.5 font-display">
+                <span className="flex items-center gap-0.5 text-[10px] text-realm-gold-400 bg-realm-gold-500/10 border border-realm-gold-500/30 rounded px-1.5 py-0.5 font-display">
                   <Crown className="w-2.5 h-2.5" />
                   {character.level}
                 </span>
@@ -144,7 +144,7 @@ export default function HUD() {
         </div>
 
         {/* Divider */}
-        <div className="w-px h-6 bg-dark-50 flex-shrink-0" />
+        <div className="w-px h-6 bg-realm-bg-600 flex-shrink-0" />
 
         {/* HP Bar */}
         <div className="flex items-center gap-3 flex-shrink-0">
@@ -158,18 +158,18 @@ export default function HUD() {
         </div>
 
         {/* Divider */}
-        <div className="w-px h-6 bg-dark-50 flex-shrink-0 hidden md:block" />
+        <div className="w-px h-6 bg-realm-bg-600 flex-shrink-0 hidden md:block" />
 
         {/* XP Bar (hidden on small) */}
         <div className="hidden md:flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-[10px] text-parchment-500">XP</span>
-          <div className="w-24 h-2 bg-dark-500 rounded-full overflow-hidden border border-dark-50/50">
+          <span className="text-[10px] text-realm-text-muted">XP</span>
+          <div className="w-24 h-2 bg-realm-bg-900 rounded-full overflow-hidden border border-realm-border/50">
             <div
               className="h-full rounded-full bg-gradient-to-r from-primary-400/80 to-primary-300 transition-all duration-700"
               style={{ width: `${xpPct}%` }}
             />
           </div>
-          <span className="text-[10px] text-parchment-500 tabular-nums">
+          <span className="text-[10px] text-realm-text-muted tabular-nums">
             {character.xp}/{xpForNextLevel}
           </span>
         </div>
@@ -180,8 +180,8 @@ export default function HUD() {
         {/* Gold */}
         <Tooltip content={`${(character.gold ?? 0).toLocaleString()} gold`}>
           <div className="flex items-center gap-1 text-xs flex-shrink-0">
-            <CircleDollarSign className="w-3.5 h-3.5 text-primary-400" />
-            <span className="text-primary-400 font-display tabular-nums">
+            <CircleDollarSign className="w-3.5 h-3.5 text-realm-gold-400" />
+            <span className="text-realm-gold-400 font-display tabular-nums">
               {(character.gold ?? 0).toLocaleString()}
             </span>
           </div>
@@ -192,7 +192,7 @@ export default function HUD() {
           <Tooltip content="Current location">
             <Link
               to="/map"
-              className="hidden lg:flex items-center gap-1 text-xs text-parchment-400 hover:text-primary-400 transition-colors flex-shrink-0"
+              className="hidden lg:flex items-center gap-1 text-xs text-realm-text-secondary hover:text-realm-gold-400 transition-colors flex-shrink-0"
             >
               <MapPin className="w-3 h-3" />
               <span className="truncate max-w-[100px]">{character.currentTownName}</span>
@@ -205,13 +205,13 @@ export default function HUD() {
           <Tooltip content="Click to view journey">
             <Link
               to="/travel"
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded bg-primary-400/10 border border-primary-400/30 text-primary-400 hover:bg-primary-400/15 transition-colors flex-shrink-0"
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400 hover:bg-realm-gold-500/15 transition-colors flex-shrink-0"
             >
               <Compass className="w-3 h-3 animate-[spin_8s_linear_infinite]" />
               <span className="text-[10px] font-display truncate max-w-[80px]">
                 {travelStatus.currentNode?.name || 'Traveling'}
               </span>
-              <span className="text-[9px] text-primary-400/70 tabular-nums">
+              <span className="text-[9px] text-realm-gold-400/70 tabular-nums">
                 Day {travelStatus.dayNumber}/{travelStatus.estimatedDays}
               </span>
             </Link>
@@ -223,7 +223,7 @@ export default function HUD() {
           <Tooltip content="Traveling">
             <Link
               to="/travel"
-              className="flex sm:hidden items-center gap-1 text-xs text-primary-400 flex-shrink-0"
+              className="flex sm:hidden items-center gap-1 text-xs text-realm-gold-400 flex-shrink-0"
             >
               <Compass className="w-3.5 h-3.5 animate-[spin_8s_linear_infinite]" />
             </Link>
@@ -234,18 +234,18 @@ export default function HUD() {
         {socketStatus !== 'connected' && (
           <Tooltip content={socketStatus === 'reconnecting' ? 'Reconnecting...' : 'Disconnected'}>
             <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-              socketStatus === 'reconnecting' ? 'bg-amber-400 animate-pulse' : 'bg-red-500'
+              socketStatus === 'reconnecting' ? 'bg-realm-gold-400 animate-pulse' : 'bg-realm-danger'
             }`} />
           </Tooltip>
         )}
 
         {/* Divider */}
-        <div className="w-px h-6 bg-dark-50 flex-shrink-0" />
+        <div className="w-px h-6 bg-realm-bg-600 flex-shrink-0" />
 
         {/* Sound toggle */}
         <button
           onClick={() => setMutedState(!muted)}
-          className="text-parchment-500 hover:text-parchment-200 transition-colors flex-shrink-0"
+          className="text-realm-text-muted hover:text-realm-text-primary transition-colors flex-shrink-0"
           title={muted ? 'Unmute' : 'Mute'}
         >
           {muted ? (

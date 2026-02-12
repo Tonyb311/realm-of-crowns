@@ -150,9 +150,9 @@ function getTransformTheme(name: string, subRace?: string): TransformTheme {
       };
     }
     return {
-      borderColor: 'border-primary-400',
-      glowColor: 'shadow-primary-400/30',
-      bgGradient: 'from-primary-400/20 to-transparent',
+      borderColor: 'border-realm-gold-500',
+      glowColor: 'shadow-realm-gold-500/30',
+      bgGradient: 'from-realm-gold-500/20 to-transparent',
       icon: Flame,
       label: 'Draconic Power',
       animateStyle: 'flicker',
@@ -161,9 +161,9 @@ function getTransformTheme(name: string, subRace?: string): TransformTheme {
 
   // Default
   return {
-    borderColor: 'border-primary-400',
-    glowColor: 'shadow-primary-400/30',
-    bgGradient: 'from-primary-400/20 to-transparent',
+    borderColor: 'border-realm-gold-500',
+    glowColor: 'shadow-realm-gold-500/30',
+    bgGradient: 'from-realm-gold-500/20 to-transparent',
     icon: Sparkles,
     label: name,
     animateStyle: 'pulse',
@@ -261,7 +261,7 @@ export default function TransformationOverlay({
         exit={{ opacity: 0, y: -10 }}
         className="fixed top-16 left-1/2 -translate-x-1/2 z-30"
       >
-        <div className={`relative bg-dark-400/95 backdrop-blur-sm rounded-xl shadow-xl ${theme.glowColor} shadow-lg`}>
+        <div className={`relative bg-realm-bg-800/95 backdrop-blur-sm rounded-xl shadow-xl ${theme.glowColor} shadow-lg`}>
           {/* Animated border */}
           <AnimatedBorder style={theme.animateStyle} borderColor={theme.borderColor} />
 
@@ -290,7 +290,7 @@ export default function TransformationOverlay({
                 {theme.label}
               </p>
               {timeLeft > 0 && (
-                <p className="text-[10px] text-parchment-500 flex items-center gap-1">
+                <p className="text-[10px] text-realm-text-muted flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   {minutes > 0 ? `${minutes}m ` : ''}{seconds}s remaining
                 </p>
@@ -300,7 +300,7 @@ export default function TransformationOverlay({
             {canDismiss && onCancel && (
               <button
                 onClick={onCancel}
-                className="ml-3 p-1 text-parchment-500 hover:text-parchment-200 transition-colors"
+                className="ml-3 p-1 text-realm-text-muted hover:text-realm-text-primary transition-colors"
                 title="Cancel transformation"
               >
                 <X className="w-4 h-4" />

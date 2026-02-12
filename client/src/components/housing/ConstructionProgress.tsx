@@ -73,7 +73,7 @@ export default function ConstructionProgress({
     <div className="space-y-4">
       {/* Material checklist */}
       <div>
-        <h4 className="text-xs font-display text-parchment-500 uppercase tracking-wider mb-2">
+        <h4 className="text-xs font-display text-realm-text-muted uppercase tracking-wider mb-2">
           Materials for Level {targetLevel}
         </h4>
         <div className="space-y-1.5">
@@ -82,14 +82,14 @@ export default function ConstructionProgress({
             return (
               <div key={mat.itemName} className="flex items-center gap-2">
                 {satisfied ? (
-                  <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-realm-success flex-shrink-0" />
                 ) : (
-                  <Package className="w-4 h-4 text-parchment-500 flex-shrink-0" />
+                  <Package className="w-4 h-4 text-realm-text-muted flex-shrink-0" />
                 )}
-                <span className={`text-sm flex-1 ${satisfied ? 'text-green-400' : 'text-parchment-300'}`}>
+                <span className={`text-sm flex-1 ${satisfied ? 'text-realm-success' : 'text-realm-text-secondary'}`}>
                   {mat.itemName}
                 </span>
-                <span className={`text-xs font-display ${satisfied ? 'text-green-400' : 'text-red-400'}`}>
+                <span className={`text-xs font-display ${satisfied ? 'text-realm-success' : 'text-realm-danger'}`}>
                   {mat.deposited}/{mat.required}
                 </span>
               </div>
@@ -104,20 +104,20 @@ export default function ConstructionProgress({
           <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-1.5">
               {isComplete ? (
-                <CheckCircle2 className="w-4 h-4 text-green-400" />
+                <CheckCircle2 className="w-4 h-4 text-realm-success" />
               ) : (
-                <Loader2 className="w-4 h-4 text-primary-400 animate-spin" />
+                <Loader2 className="w-4 h-4 text-realm-gold-400 animate-spin" />
               )}
-              <span className="text-xs text-parchment-500">
+              <span className="text-xs text-realm-text-muted">
                 {isComplete ? 'Construction complete!' : 'Under construction...'}
               </span>
             </div>
-            <span className="text-xs text-parchment-500">{remainingText}</span>
+            <span className="text-xs text-realm-text-muted">{remainingText}</span>
           </div>
-          <div className="h-3 bg-dark-500 rounded-full overflow-hidden">
+          <div className="h-3 bg-realm-bg-900 rounded-full overflow-hidden">
             <motion.div
               className={`h-full rounded-full transition-colors ${
-                isComplete ? 'bg-green-500' : 'bg-primary-400'
+                isComplete ? 'bg-realm-success' : 'bg-realm-gold-500'
               }`}
               initial={{ width: 0 }}
               animate={{ width: `${livePercent}%` }}
@@ -129,7 +129,7 @@ export default function ConstructionProgress({
 
       {/* Pending status */}
       {status === 'PENDING' && (
-        <div className="flex items-center gap-2 text-sm text-parchment-500">
+        <div className="flex items-center gap-2 text-sm text-realm-text-muted">
           <Clock className="w-4 h-4" />
           {allMaterialsDeposited
             ? 'All materials deposited. Ready to start construction!'
@@ -142,7 +142,7 @@ export default function ConstructionProgress({
         <button
           onClick={onComplete}
           disabled={isCompleting}
-          className="w-full py-2.5 bg-green-600 text-white font-display text-sm rounded hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-2.5 bg-realm-success text-realm-text-primary font-display text-sm rounded hover:bg-realm-success/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isCompleting ? 'Completing...' : 'Complete Construction'}
         </button>

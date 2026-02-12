@@ -186,22 +186,22 @@ export default function ConstructionFlow({ townId, onClose, existingBuildingId }
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/70" />
       <motion.div
-        className="relative bg-dark-400 border border-dark-50 rounded-lg max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto"
+        className="relative bg-realm-bg-800 border border-realm-border rounded-lg max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.2 }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-dark-50">
-          <h3 className="font-display text-lg text-primary-400">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-realm-border">
+          <h3 className="font-display text-lg text-realm-gold-400">
             {step === 'select' && 'Choose Building Type'}
             {step === 'materials' && 'Deposit Materials'}
             {step === 'deposit' && 'Deposit Materials'}
             {step === 'building' && 'Start Construction'}
             {step === 'done' && 'Under Construction'}
           </h3>
-          <button onClick={onClose} className="text-parchment-500 hover:text-parchment-200">
+          <button onClick={onClose} className="text-realm-text-muted hover:text-realm-text-primary">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -209,7 +209,7 @@ export default function ConstructionFlow({ townId, onClose, existingBuildingId }
         <div className="p-6">
           {/* Error */}
           {error && (
-            <div className="mb-4 p-3 bg-red-900/30 border border-red-500/50 rounded text-red-300 text-sm flex items-center gap-2">
+            <div className="mb-4 p-3 bg-realm-danger/20 border border-realm-danger/50 rounded text-realm-danger text-sm flex items-center gap-2">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
@@ -225,8 +225,8 @@ export default function ConstructionFlow({ townId, onClose, existingBuildingId }
                     onClick={() => setSelectedType(type)}
                     className={`p-3 text-left rounded border text-sm transition-colors
                       ${selectedType === type
-                        ? 'border-primary-400 bg-primary-400/10 text-primary-400'
-                        : 'border-dark-50 bg-dark-500 text-parchment-300 hover:border-dark-50/80'}`}
+                        ? 'border-realm-gold-500 bg-realm-gold-500/10 text-realm-gold-400'
+                        : 'border-realm-border bg-realm-bg-900 text-realm-text-secondary hover:border-realm-border/80'}`}
                   >
                     {buildingTypeLabel(type)}
                   </button>
@@ -235,14 +235,14 @@ export default function ConstructionFlow({ townId, onClose, existingBuildingId }
 
               {selectedType && (
                 <div>
-                  <label className="block text-xs text-parchment-500 mb-1">Building Name</label>
+                  <label className="block text-xs text-realm-text-muted mb-1">Building Name</label>
                   <input
                     type="text"
                     value={buildingName}
                     onChange={(e) => setBuildingName(e.target.value)}
                     placeholder={`My ${buildingTypeLabel(selectedType)}`}
                     maxLength={100}
-                    className="w-full px-3 py-2 bg-dark-500 border border-dark-50 rounded text-sm text-parchment-200 placeholder:text-parchment-500/50 focus:border-primary-400 focus:outline-none"
+                    className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-sm text-realm-text-primary placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-none"
                   />
                 </div>
               )}
@@ -250,7 +250,7 @@ export default function ConstructionFlow({ townId, onClose, existingBuildingId }
               <button
                 onClick={() => requestPermitMutation.mutate()}
                 disabled={!selectedType || !buildingName.trim() || requestPermitMutation.isPending}
-                className="w-full py-2.5 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {requestPermitMutation.isPending ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Requesting Permit...</>
@@ -274,8 +274,8 @@ export default function ConstructionFlow({ townId, onClose, existingBuildingId }
               {constructionData.construction.status === 'PENDING' && (
                 <>
                   {/* Inventory check per material */}
-                  <div className="border border-dark-50 rounded p-3">
-                    <h4 className="text-xs font-display text-parchment-500 uppercase tracking-wider mb-2">
+                  <div className="border border-realm-border rounded p-3">
+                    <h4 className="text-xs font-display text-realm-text-muted uppercase tracking-wider mb-2">
                       Your Inventory
                     </h4>
                     {constructionData.construction.materialProgress.map((mat: any) => {
@@ -284,8 +284,8 @@ export default function ConstructionFlow({ townId, onClose, existingBuildingId }
                       const enough = have >= stillNeeded;
                       return (
                         <div key={mat.itemName} className="flex items-center justify-between text-xs py-0.5">
-                          <span className="text-parchment-300">{mat.itemName}</span>
-                          <span className={enough ? 'text-green-400' : 'text-red-400'}>
+                          <span className="text-realm-text-secondary">{mat.itemName}</span>
+                          <span className={enough ? 'text-realm-success' : 'text-realm-danger'}>
                             Have {have} / Need {stillNeeded > 0 ? stillNeeded : 0}
                           </span>
                         </div>
@@ -296,7 +296,7 @@ export default function ConstructionFlow({ townId, onClose, existingBuildingId }
                   <button
                     onClick={handleDepositAll}
                     disabled={depositMutation.isPending}
-                    className="w-full py-2.5 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {depositMutation.isPending ? (
                       <><Loader2 className="w-4 h-4 animate-spin" /> Depositing...</>
@@ -313,7 +313,7 @@ export default function ConstructionFlow({ townId, onClose, existingBuildingId }
                 <button
                   onClick={() => startConstructionMutation.mutate()}
                   disabled={startConstructionMutation.isPending}
-                  className="w-full py-2.5 bg-green-600 text-white font-display text-sm rounded hover:bg-green-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full py-2.5 bg-realm-success text-realm-text-primary font-display text-sm rounded hover:bg-realm-success/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {startConstructionMutation.isPending ? (
                     <><Loader2 className="w-4 h-4 animate-spin" /> Starting...</>
@@ -329,7 +329,7 @@ export default function ConstructionFlow({ townId, onClose, existingBuildingId }
                 <button
                   onClick={() => completeMutation.mutate()}
                   disabled={completeMutation.isPending}
-                  className="w-full py-2.5 bg-green-600 text-white font-display text-sm rounded hover:bg-green-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full py-2.5 bg-realm-success text-realm-text-primary font-display text-sm rounded hover:bg-realm-success/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {completeMutation.isPending ? (
                     <><Loader2 className="w-4 h-4 animate-spin" /> Completing...</>
@@ -353,7 +353,7 @@ export default function ConstructionFlow({ townId, onClose, existingBuildingId }
               <button
                 onClick={() => startConstructionMutation.mutate()}
                 disabled={startConstructionMutation.isPending}
-                className="w-full py-2.5 bg-green-600 text-white font-display text-sm rounded hover:bg-green-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-realm-success text-realm-text-primary font-display text-sm rounded hover:bg-realm-success/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {startConstructionMutation.isPending ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Starting...</>
@@ -372,17 +372,17 @@ export default function ConstructionFlow({ townId, onClose, existingBuildingId }
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', delay: 0.1 }}
               >
-                <Clock className="w-12 h-12 text-primary-400 mx-auto" />
+                <Clock className="w-12 h-12 text-realm-gold-400 mx-auto" />
               </motion.div>
               <div>
-                <h4 className="font-display text-lg text-parchment-200">Construction Started!</h4>
-                <p className="text-sm text-parchment-500 mt-1">
+                <h4 className="font-display text-lg text-realm-text-primary">Construction Started!</h4>
+                <p className="text-sm text-realm-text-muted mt-1">
                   Your building is now under construction. Check back when the timer completes.
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="w-full py-2.5 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors"
+                className="w-full py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
               >
                 Close
               </button>

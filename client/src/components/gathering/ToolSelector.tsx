@@ -31,12 +31,12 @@ interface ToolSelectorProps {
 // Tier badge colors (shared with ToolSlot)
 // ---------------------------------------------------------------------------
 const TIER_COLORS: Record<string, string> = {
-  CRUDE:       'bg-gray-600 text-gray-200',
+  CRUDE:       'bg-realm-bg-600 text-realm-text-muted',
   COPPER:      'bg-orange-800 text-orange-200',
   IRON:        'bg-slate-500 text-slate-100',
-  STEEL:       'bg-blue-700 text-blue-100',
-  MITHRIL:     'bg-purple-700 text-purple-100',
-  ADAMANTINE:  'bg-amber-600 text-amber-100',
+  STEEL:       'bg-realm-teal-300/20 text-realm-teal-300',
+  MITHRIL:     'bg-realm-purple-300/20 text-realm-purple-300',
+  ADAMANTINE:  'bg-realm-gold-400/20 text-realm-gold-400',
 };
 
 function tierLabel(tier: string): string {
@@ -44,9 +44,9 @@ function tierLabel(tier: string): string {
 }
 
 function durabilityColor(ratio: number): string {
-  if (ratio > 0.5) return 'bg-green-500';
-  if (ratio > 0.25) return 'bg-yellow-500';
-  return 'bg-red-500';
+  if (ratio > 0.5) return 'bg-realm-success';
+  if (ratio > 0.25) return 'bg-realm-gold-400';
+  return 'bg-realm-danger';
 }
 
 // ---------------------------------------------------------------------------
@@ -102,16 +102,16 @@ export default function ToolSelector({ professionType, currentTool, onClose, onE
 
       {/* Modal */}
       <div
-        className="relative bg-dark-400 border border-dark-50 rounded-lg max-w-md w-full max-h-[80vh] flex flex-col"
+        className="relative bg-realm-bg-800 border border-realm-border rounded-lg max-w-md w-full max-h-[80vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-dark-50">
+        <div className="flex items-center justify-between p-5 border-b border-realm-border">
           <div className="flex items-center gap-2">
-            <Wrench className="w-5 h-5 text-primary-400" />
-            <h3 className="font-display text-primary-400 text-lg">Select Tool</h3>
+            <Wrench className="w-5 h-5 text-realm-gold-400" />
+            <h3 className="font-display text-realm-gold-400 text-lg">Select Tool</h3>
           </div>
-          <button onClick={onClose} className="text-parchment-500 hover:text-parchment-200">
+          <button onClick={onClose} className="text-realm-text-muted hover:text-realm-text-primary">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -120,13 +120,13 @@ export default function ToolSelector({ professionType, currentTool, onClose, onE
         <div className="p-5 overflow-y-auto flex-1 space-y-2">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 text-primary-400 animate-spin" />
+              <Loader2 className="w-5 h-5 text-realm-gold-400 animate-spin" />
             </div>
           ) : !tools || tools.length === 0 ? (
             <div className="text-center py-8">
-              <Wrench className="w-8 h-8 text-parchment-500/30 mx-auto mb-2" />
-              <p className="text-parchment-500 text-sm">No tools available for this profession.</p>
-              <p className="text-parchment-500/60 text-xs mt-1">Craft or buy tools from the market.</p>
+              <Wrench className="w-8 h-8 text-realm-text-muted/30 mx-auto mb-2" />
+              <p className="text-realm-text-muted text-sm">No tools available for this profession.</p>
+              <p className="text-realm-text-muted/60 text-xs mt-1">Craft or buy tools from the market.</p>
             </div>
           ) : (
             <>
@@ -142,20 +142,20 @@ export default function ToolSelector({ professionType, currentTool, onClose, onE
                     onClick={() => setSelectedItemId(tool.itemId)}
                     className={`w-full p-3 rounded-lg border text-left transition-all ${
                       isCurrentlyEquipped
-                        ? 'border-green-500/50 bg-green-900/10'
+                        ? 'border-realm-success/50 bg-realm-success/5'
                         : isSelected
-                          ? 'border-primary-400 bg-primary-400/10'
-                          : 'border-dark-50 bg-dark-300 hover:border-dark-50/80'
+                          ? 'border-realm-gold-400 bg-realm-gold-400/10'
+                          : 'border-realm-border bg-realm-bg-700 hover:border-realm-border/80'
                     }`}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-parchment-200 font-display">{tool.name}</span>
+                        <span className="text-sm text-realm-text-primary font-display">{tool.name}</span>
                         <span className={`text-[9px] px-1.5 py-0.5 rounded font-display ${tierBadge}`}>
                           {tierLabel(tool.tier)}
                         </span>
                         {isCurrentlyEquipped && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-900/40 text-green-400 font-display flex items-center gap-0.5">
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-realm-success/20 text-realm-success font-display flex items-center gap-0.5">
                             <Check className="w-2.5 h-2.5" />
                             Equipped
                           </span>
@@ -164,23 +164,23 @@ export default function ToolSelector({ professionType, currentTool, onClose, onE
                     </div>
 
                     <div className="flex items-center gap-3 mt-1">
-                      <span className="text-[10px] text-green-400">
+                      <span className="text-[10px] text-realm-success">
                         +{Math.round(tool.speedBonus * 100)}% speed
                       </span>
-                      <span className="text-[10px] text-blue-400">
+                      <span className="text-[10px] text-realm-teal-300">
                         +{Math.round(tool.yieldBonus * 100)}% yield
                       </span>
                     </div>
 
                     {/* Durability bar */}
                     <div className="mt-1.5 flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-dark-500 rounded-full overflow-hidden">
+                      <div className="flex-1 h-1.5 bg-realm-bg-900 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all ${durabilityColor(ratio)}`}
                           style={{ width: `${Math.max(2, ratio * 100)}%` }}
                         />
                       </div>
-                      <span className="text-[10px] text-parchment-500">
+                      <span className="text-[10px] text-realm-text-muted">
                         {tool.durability}/{tool.maxDurability}
                       </span>
                     </div>
@@ -192,12 +192,12 @@ export default function ToolSelector({ professionType, currentTool, onClose, onE
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 p-5 border-t border-dark-50">
+        <div className="flex gap-3 p-5 border-t border-realm-border">
           {currentTool && (
             <button
               onClick={() => unequipMutation.mutate()}
               disabled={isMutating}
-              className="flex-1 py-2.5 border border-red-500/30 text-red-400 font-display text-sm rounded hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 py-2.5 border border-realm-danger/30 text-realm-danger font-display text-sm rounded hover:bg-realm-danger/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {unequipMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Unequip
@@ -208,7 +208,7 @@ export default function ToolSelector({ professionType, currentTool, onClose, onE
               if (selectedItemId) equipMutation.mutate(selectedItemId);
             }}
             disabled={!selectedItemId || isMutating || currentTool?.itemId === selectedItemId}
-            className="flex-1 py-2.5 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {equipMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
             Equip
@@ -216,7 +216,7 @@ export default function ToolSelector({ professionType, currentTool, onClose, onE
         </div>
 
         {(equipMutation.isError || unequipMutation.isError) && (
-          <p className="text-red-400 text-xs text-center pb-3">
+          <p className="text-realm-danger text-xs text-center pb-3">
             {(equipMutation.error as Error)?.message || (unequipMutation.error as Error)?.message || 'Failed. Please try again.'}
           </p>
         )}

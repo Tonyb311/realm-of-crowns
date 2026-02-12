@@ -96,7 +96,7 @@ export default function TownInfoPanel({
     <AnimatePresence>
       <motion.div
         key={town.id}
-        className="w-80 bg-dark-300 border-l border-dark-50 p-5 overflow-y-auto flex flex-col"
+        className="w-80 bg-realm-bg-700 border-l border-realm-border p-5 overflow-y-auto flex flex-col"
         initial={{ x: 80, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: 80, opacity: 0 }}
@@ -104,10 +104,10 @@ export default function TownInfoPanel({
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-xl text-primary-400">{town.name}</h2>
+          <h2 className="font-display text-xl text-realm-gold-400">{town.name}</h2>
           <button
             onClick={onClose}
-            className="text-parchment-500 hover:text-parchment-200 transition-colors"
+            className="text-realm-text-muted hover:text-realm-text-primary transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -116,58 +116,58 @@ export default function TownInfoPanel({
         {/* Region badge */}
         <div className="flex items-center gap-2 mb-4">
           <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: regionColor.fill }} />
-          <span className="text-parchment-300 text-sm">{town.regionName}</span>
+          <span className="text-realm-text-secondary text-sm">{town.regionName}</span>
         </div>
 
         {/* Key details grid */}
         <div className="space-y-3 mb-6">
           <div className="flex items-start gap-2">
-            <MapPin className="w-3.5 h-3.5 text-parchment-500 mt-0.5 shrink-0" />
+            <MapPin className="w-3.5 h-3.5 text-realm-text-muted mt-0.5 shrink-0" />
             <div>
-              <p className="text-parchment-500 text-xs uppercase tracking-wider">Biome</p>
-              <p className="text-parchment-200 text-sm">{town.biome}</p>
+              <p className="text-realm-text-muted text-xs uppercase tracking-wider">Biome</p>
+              <p className="text-realm-text-primary text-sm">{town.biome}</p>
             </div>
           </div>
 
           <div className="flex items-start gap-2">
-            <Users className="w-3.5 h-3.5 text-parchment-500 mt-0.5 shrink-0" />
+            <Users className="w-3.5 h-3.5 text-realm-text-muted mt-0.5 shrink-0" />
             <div>
-              <p className="text-parchment-500 text-xs uppercase tracking-wider">Population</p>
-              <p className="text-parchment-200 text-sm">
-                {town.population.toLocaleString()} <span className="text-parchment-500 text-xs">({popTier})</span>
+              <p className="text-realm-text-muted text-xs uppercase tracking-wider">Population</p>
+              <p className="text-realm-text-primary text-sm">
+                {town.population.toLocaleString()} <span className="text-realm-text-muted text-xs">({popTier})</span>
               </p>
             </div>
           </div>
 
           <div className="flex items-start gap-2">
-            <Pickaxe className="w-3.5 h-3.5 text-parchment-500 mt-0.5 shrink-0" />
+            <Pickaxe className="w-3.5 h-3.5 text-realm-text-muted mt-0.5 shrink-0" />
             <div>
-              <p className="text-parchment-500 text-xs uppercase tracking-wider">Specialty</p>
-              <p className="text-parchment-200 text-sm">{town.specialty}</p>
+              <p className="text-realm-text-muted text-xs uppercase tracking-wider">Specialty</p>
+              <p className="text-realm-text-primary text-sm">{town.specialty}</p>
             </div>
           </div>
 
           <div className="flex items-start gap-2">
-            <Compass className="w-3.5 h-3.5 text-parchment-500 mt-0.5 shrink-0" />
+            <Compass className="w-3.5 h-3.5 text-realm-text-muted mt-0.5 shrink-0" />
             <div>
-              <p className="text-parchment-500 text-xs uppercase tracking-wider">Notable</p>
-              <p className="text-parchment-200 text-sm">{town.notableFeature}</p>
+              <p className="text-realm-text-muted text-xs uppercase tracking-wider">Notable</p>
+              <p className="text-realm-text-primary text-sm">{town.notableFeature}</p>
             </div>
           </div>
 
           <div>
-            <p className="text-parchment-500 text-xs uppercase tracking-wider">Description</p>
-            <p className="text-parchment-300 text-xs leading-relaxed mt-0.5">{town.description}</p>
+            <p className="text-realm-text-muted text-xs uppercase tracking-wider">Description</p>
+            <p className="text-realm-text-secondary text-xs leading-relaxed mt-0.5">{town.description}</p>
           </div>
         </div>
 
         {/* Resources */}
         {town.resources.length > 0 && (
           <div className="mb-6">
-            <p className="text-parchment-500 text-xs uppercase tracking-wider mb-2">Resources</p>
+            <p className="text-realm-text-muted text-xs uppercase tracking-wider mb-2">Resources</p>
             <div className="flex flex-wrap gap-1.5">
               {town.resources.map(r => (
-                <span key={r} className="px-2 py-0.5 bg-dark-400 border border-dark-50 rounded text-parchment-300 text-xs">
+                <span key={r} className="px-2 py-0.5 bg-realm-bg-800 border border-realm-border rounded text-realm-text-secondary text-xs">
                   {r}
                 </span>
               ))}
@@ -178,16 +178,16 @@ export default function TownInfoPanel({
         {/* Racial bonuses/penalties */}
         {bonusData && (
           <div className="mb-6">
-            <p className="text-parchment-500 text-xs uppercase tracking-wider mb-2">
-              Racial Majority: <span className="text-parchment-300 normal-case">{bonusData.racialMajority}</span>
+            <p className="text-realm-text-muted text-xs uppercase tracking-wider mb-2">
+              Racial Majority: <span className="text-realm-text-secondary normal-case">{bonusData.racialMajority}</span>
             </p>
             {bonusData.bonuses.length > 0 && (
               <div className="space-y-1 mb-2">
                 {bonusData.bonuses.map((b, i) => (
                   <div key={i} className="flex items-center gap-1.5 text-xs">
-                    <ShieldCheck className="w-3 h-3 text-green-400 shrink-0" />
-                    <span className="text-green-400">+{b.value}%</span>
-                    <span className="text-parchment-300">{b.description}</span>
+                    <ShieldCheck className="w-3 h-3 text-realm-success shrink-0" />
+                    <span className="text-realm-success">+{b.value}%</span>
+                    <span className="text-realm-text-secondary">{b.description}</span>
                   </div>
                 ))}
               </div>
@@ -196,9 +196,9 @@ export default function TownInfoPanel({
               <div className="space-y-1">
                 {bonusData.penalties.map((p, i) => (
                   <div key={i} className="flex items-center gap-1.5 text-xs">
-                    <ShieldAlert className="w-3 h-3 text-red-400 shrink-0" />
-                    <span className="text-red-400">{p.value}%</span>
-                    <span className="text-parchment-300">{p.description}</span>
+                    <ShieldAlert className="w-3 h-3 text-realm-danger shrink-0" />
+                    <span className="text-realm-danger">{p.value}%</span>
+                    <span className="text-realm-text-secondary">{p.description}</span>
                   </div>
                 ))}
               </div>
@@ -206,13 +206,13 @@ export default function TownInfoPanel({
           </div>
         )}
         {loadingBonuses && (
-          <p className="text-parchment-500 text-[10px] mb-4 animate-pulse">Loading regional modifiers...</p>
+          <p className="text-realm-text-muted text-[10px] mb-4 animate-pulse">Loading regional modifiers...</p>
         )}
 
         {/* Connected routes */}
         {connectedRoutes.length > 0 && (
           <div className="mb-6">
-            <p className="text-parchment-500 text-xs uppercase tracking-wider mb-2">Routes</p>
+            <p className="text-realm-text-muted text-xs uppercase tracking-wider mb-2">Routes</p>
             <div className="space-y-1">
               {connectedRoutes.map(r => {
                 const otherId = r.fromTownId === town.id ? r.toTownId : r.fromTownId;
@@ -223,10 +223,10 @@ export default function TownInfoPanel({
                   <button
                     key={r.id}
                     onClick={() => onSelectTown(other)}
-                    className="w-full flex items-center justify-between px-2 py-1.5 bg-dark-400/50 rounded hover:bg-dark-400 transition-colors text-left"
+                    className="w-full flex items-center justify-between px-2 py-1.5 bg-realm-bg-800/50 rounded hover:bg-realm-bg-800 transition-colors text-left"
                   >
-                    <span className="text-parchment-200 text-xs">{other.name}</span>
-                    <span className="text-parchment-500 text-[10px]">
+                    <span className="text-realm-text-primary text-xs">{other.name}</span>
+                    <span className="text-realm-text-muted text-[10px]">
                       {r.distance}L / {dangerLabel}
                     </span>
                   </button>
@@ -240,14 +240,14 @@ export default function TownInfoPanel({
         {!isPlayerHere && (
           <button
             onClick={() => onTravel(town.id)}
-            className="mt-auto w-full py-3 bg-primary-400 text-dark-500 font-display text-base rounded hover:bg-primary-300 transition-colors flex items-center justify-center gap-2"
+            className="mt-auto w-full py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-base rounded hover:bg-realm-gold-400 transition-colors flex items-center justify-center gap-2"
           >
             <Footprints className="w-4 h-4" />
             Travel to {town.name}
           </button>
         )}
         {isPlayerHere && (
-          <div className="mt-auto w-full py-3 bg-dark-400 text-primary-400 font-display text-base rounded text-center border border-primary-400/30">
+          <div className="mt-auto w-full py-3 bg-realm-bg-800 text-realm-gold-400 font-display text-base rounded text-center border border-realm-gold-400/30">
             You are here
           </div>
         )}

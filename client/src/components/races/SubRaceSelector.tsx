@@ -38,7 +38,7 @@ export default function SubRaceSelector({ raceName, subRaces, selectedSubRace, o
 
   return (
     <div>
-      <h3 className="font-display text-primary-400 text-sm mb-3">
+      <h3 className="font-display text-realm-gold-400 text-sm mb-3">
         Choose {raceName} Sub-Race
       </h3>
 
@@ -53,39 +53,39 @@ export default function SubRaceSelector({ raceName, subRaces, selectedSubRace, o
               onClick={() => onSelect(sr)}
               className={`p-4 rounded-lg border-2 text-left transition-all
                 ${isSelected
-                  ? 'border-primary-400'
+                  ? 'border-realm-gold-400'
                   : elemStyle
                     ? `${elemStyle.border} border-opacity-40 hover:border-opacity-80`
-                    : 'border-dark-50 hover:border-primary-400/40'}
-                ${elemStyle ? elemStyle.bg : 'bg-dark-300'}`}
+                    : 'border-realm-border hover:border-realm-gold-400/40'}
+                ${elemStyle ? elemStyle.bg : 'bg-realm-bg-700'}`}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05, duration: 0.2 }}
             >
-              <h4 className={`font-display text-base ${elemStyle ? elemStyle.text : 'text-primary-400'}`}>
+              <h4 className={`font-display text-base ${elemStyle ? elemStyle.text : 'text-realm-gold-400'}`}>
                 {sr.name}
               </h4>
-              <p className="text-xs text-parchment-300 mt-1 mb-2">{sr.description}</p>
+              <p className="text-xs text-realm-text-secondary mt-1 mb-2">{sr.description}</p>
 
               {/* Element + Resistance */}
               {sr.element && sr.resistance && (
-                <p className="text-xs text-parchment-500">
-                  Element: <span className={elemStyle ? elemStyle.text : 'text-parchment-200'}>{sr.element}</span>
-                  {' | '}Resistance: <span className="text-parchment-200">{sr.resistance}</span>
+                <p className="text-xs text-realm-text-muted">
+                  Element: <span className={elemStyle ? elemStyle.text : 'text-realm-text-primary'}>{sr.element}</span>
+                  {' | '}Resistance: <span className="text-realm-text-primary">{sr.resistance}</span>
                 </p>
               )}
 
               {/* Bonus stat */}
               {sr.bonusStat && sr.bonusValue && (
                 <p className="text-xs mt-1">
-                  <span className="text-parchment-500 uppercase">{sr.bonusStat}:</span>{' '}
-                  <span className="text-green-400">+{sr.bonusValue}</span>
+                  <span className="text-realm-text-muted uppercase">{sr.bonusStat}:</span>{' '}
+                  <span className="text-realm-success">+{sr.bonusValue}</span>
                 </p>
               )}
 
               {/* Special perk */}
               {sr.specialPerk && !sr.element && (
-                <p className="text-xs text-parchment-500 mt-1 italic">{sr.specialPerk}</p>
+                <p className="text-xs text-realm-text-muted mt-1 italic">{sr.specialPerk}</p>
               )}
             </motion.button>
           );

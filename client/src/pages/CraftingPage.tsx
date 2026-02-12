@@ -68,13 +68,13 @@ interface WorkshopInfo {
 // ---------------------------------------------------------------------------
 function WorkshopIndicator({ workshop }: { workshop: WorkshopInfo }) {
   return (
-    <div className="mb-6 p-3 bg-dark-300 border border-primary-400/30 rounded-lg flex items-center gap-3">
-      <Building2 className="w-5 h-5 text-primary-400 flex-shrink-0" />
+    <div className="mb-6 p-3 bg-realm-bg-700 border border-realm-gold-400/30 rounded-lg flex items-center gap-3">
+      <Building2 className="w-5 h-5 text-realm-gold-400 flex-shrink-0" />
       <div>
-        <p className="text-sm text-parchment-200 font-display">
+        <p className="text-sm text-realm-text-primary font-display">
           Crafting in Level {workshop.level} {workshop.name}
         </p>
-        <p className="text-[10px] text-parchment-500">
+        <p className="text-[10px] text-realm-text-muted">
           +{workshop.speedBonus} speed, +{workshop.qualityBonus} quality bonus
         </p>
       </div>
@@ -342,25 +342,25 @@ export default function CraftingPage() {
   // Render
   // -------------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-dark-500 pt-12">
+    <div className="pt-12">
       {/* Header */}
-      <header className="border-b border-dark-50 bg-dark-400/50">
+      <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-display text-primary-400">Workshop</h1>
-              <p className="text-parchment-500 text-sm mt-1">Craft, gather, and refine</p>
+              <h1 className="text-4xl font-display text-realm-gold-400">Workshop</h1>
+              <p className="text-realm-text-muted text-sm mt-1">Craft, gather, and refine</p>
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => navigate('/inventory')}
-                className="px-5 py-2 border border-primary-400/60 text-primary-400 font-display text-sm rounded hover:bg-dark-300 transition-colors"
+                className="px-5 py-2 border border-realm-gold-400/60 text-realm-gold-400 font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
               >
                 Inventory
               </button>
               <button
                 onClick={() => navigate('/town')}
-                className="px-5 py-2 border border-parchment-500/40 text-parchment-300 font-display text-sm rounded hover:bg-dark-300 transition-colors"
+                className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
               >
                 Back to Town
               </button>
@@ -373,25 +373,25 @@ export default function CraftingPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar -- Professions */}
           <aside className="lg:col-span-1">
-            <div className="bg-dark-300 border border-dark-50 rounded-lg p-5 sticky top-8">
-              <h3 className="font-display text-primary-400 text-sm mb-3">Your Professions</h3>
+            <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 sticky top-8">
+              <h3 className="font-display text-realm-gold-400 text-sm mb-3">Your Professions</h3>
               {!professions || professions.length === 0 ? (
-                <p className="text-parchment-500 text-xs">No professions yet. Start gathering to learn one.</p>
+                <p className="text-realm-text-muted text-xs">No professions yet. Start gathering to learn one.</p>
               ) : (
                 <div className="space-y-3">
                   {professions.map((prof) => (
                     <div key={prof.professionType}>
                       <div className="flex justify-between items-baseline mb-1">
-                        <span className="text-parchment-200 text-xs font-semibold">
+                        <span className="text-realm-text-primary text-xs font-semibold">
                           {professionLabel(prof.professionType)}
                         </span>
-                        <span className="text-parchment-500 text-[10px]">
+                        <span className="text-realm-text-muted text-[10px]">
                           Lv.{prof.level} ({prof.tier})
                         </span>
                       </div>
-                      <div className="h-1.5 bg-dark-500 rounded-full overflow-hidden">
+                      <div className="h-1.5 bg-realm-bg-900 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-primary-400/70 rounded-full transition-all"
+                          className="h-full bg-realm-gold-400/70 rounded-full transition-all"
                           style={{
                             width: prof.xpToNextLevel > 0
                               ? `${(prof.xp / prof.xpToNextLevel) * 100}%`
@@ -399,7 +399,7 @@ export default function CraftingPage() {
                           }}
                         />
                       </div>
-                      <p className="text-[10px] text-parchment-500 mt-0.5">
+                      <p className="text-[10px] text-realm-text-muted mt-0.5">
                         {prof.xp}/{prof.xpToNextLevel} XP
                       </p>
                     </div>
@@ -412,7 +412,7 @@ export default function CraftingPage() {
           {/* Main content */}
           <main className="lg:col-span-3">
             {/* Tabs */}
-            <div className="flex border-b border-dark-50 mb-6">
+            <div className="flex border-b border-realm-border mb-6">
               {([
                 { key: 'recipes' as Tab, label: 'Recipes', icon: Hammer },
                 { key: 'progress' as Tab, label: 'Queue', icon: Clock },
@@ -423,18 +423,18 @@ export default function CraftingPage() {
                   onClick={() => { setActiveTab(key); setCollectResult(null); }}
                   className={`flex items-center gap-2 px-5 py-3 font-display text-sm border-b-2 transition-colors
                     ${activeTab === key
-                      ? 'border-primary-400 text-primary-400'
-                      : 'border-transparent text-parchment-500 hover:text-parchment-300'}`}
+                      ? 'border-realm-gold-400 text-realm-gold-400'
+                      : 'border-transparent text-realm-text-muted hover:text-realm-text-secondary'}`}
                 >
                   <Icon className="w-4 h-4" />
                   {label}
                   {key === 'progress' && queueCount > 0 && (
-                    <span className="ml-1 px-1.5 py-0.5 text-[10px] font-display bg-primary-400/20 text-primary-400 rounded-full">
+                    <span className="ml-1 px-1.5 py-0.5 text-[10px] font-display bg-realm-gold-400/20 text-realm-gold-400 rounded-full">
                       {readyCount > 0 ? `${readyCount} ready` : queueCount}
                     </span>
                   )}
                   {key === 'work' && isWorking && (
-                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                    <span className="w-2 h-2 bg-realm-success rounded-full animate-pulse" />
                   )}
                 </button>
               ))}
@@ -442,9 +442,9 @@ export default function CraftingPage() {
 
             {/* Collect Result Notification (fallback for simple results) */}
             {collectResult && (
-              <div className="mb-6 p-4 bg-dark-300 border border-primary-400/50 rounded-lg">
+              <div className="mb-6 p-4 bg-realm-bg-700 border border-realm-gold-400/50 rounded-lg">
                 <div className="flex items-start gap-3">
-                  <Sparkles className="w-5 h-5 text-primary-400 flex-shrink-0 mt-0.5" />
+                  <Sparkles className="w-5 h-5 text-realm-gold-400 flex-shrink-0 mt-0.5" />
                   <div>
                     {collectResult.item && (
                       <p className={`font-display text-lg ${getRarityStyle(collectResult.item.quality || collectResult.item.rarity).text}`}>
@@ -455,22 +455,22 @@ export default function CraftingPage() {
                       </p>
                     )}
                     {collectResult.items && collectResult.items.map((it, i) => (
-                      <p key={i} className="text-parchment-200 text-sm">
+                      <p key={i} className="text-realm-text-primary text-sm">
                         {it.name} x{it.quantity}
                       </p>
                     ))}
                     {collectResult.xpEarned && (
-                      <p className="text-parchment-300 text-xs mt-1">+{collectResult.xpEarned} XP</p>
+                      <p className="text-realm-text-secondary text-xs mt-1">+{collectResult.xpEarned} XP</p>
                     )}
                     {collectResult.leveledUp && (
-                      <p className="text-primary-400 text-xs mt-1 font-display">
+                      <p className="text-realm-gold-400 text-xs mt-1 font-display">
                         Level Up! Now level {collectResult.newLevel}
                       </p>
                     )}
                   </div>
                   <button
                     onClick={() => setCollectResult(null)}
-                    className="ml-auto text-parchment-500 hover:text-parchment-300 text-xs"
+                    className="ml-auto text-realm-text-muted hover:text-realm-text-secondary text-xs"
                   >
                     Dismiss
                   </button>

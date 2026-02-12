@@ -82,9 +82,9 @@ const STATUS_COLORS: Record<RelationStatus, { bg: string; text: string }> = {
   ALLIED:      { bg: 'bg-emerald-500/15', text: 'text-emerald-400' },
   FRIENDLY:    { bg: 'bg-sky-500/15',     text: 'text-sky-400' },
   NEUTRAL:     { bg: 'bg-slate-500/15',   text: 'text-slate-400' },
-  DISTRUSTFUL: { bg: 'bg-amber-500/15',   text: 'text-amber-400' },
+  DISTRUSTFUL: { bg: 'bg-realm-gold-500/15', text: 'text-realm-gold-400' },
   HOSTILE:     { bg: 'bg-orange-500/15',   text: 'text-orange-400' },
-  BLOOD_FEUD:  { bg: 'bg-red-700/15',     text: 'text-red-400' },
+  BLOOD_FEUD:  { bg: 'bg-realm-danger/15',     text: 'text-realm-danger' },
 };
 
 const ACTION_TYPES = ['PEACE_PETITION', 'WAR_PETITION', 'TREATY_REQUEST', 'POLICY_CHANGE'] as const;
@@ -209,9 +209,9 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
   return (
     <div className="space-y-4">
       {/* Relations overview */}
-      <section className="bg-dark-400 border border-dark-50 rounded-lg p-3">
-        <h4 className="font-display text-parchment-300 text-sm mb-2 flex items-center gap-1.5">
-          <Users className="w-3.5 h-3.5 text-primary-400" />
+      <section className="bg-realm-bg-800 border border-realm-border rounded-lg p-3">
+        <h4 className="font-display text-realm-text-secondary text-sm mb-2 flex items-center gap-1.5">
+          <Users className="w-3.5 h-3.5 text-realm-gold-400" />
           Your Kingdom's Relations
         </h4>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
@@ -219,7 +219,7 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
             const c = STATUS_COLORS[r.status] ?? STATUS_COLORS.NEUTRAL;
             return (
               <div key={r.race} className={`${c.bg} rounded px-2 py-1.5 flex items-center justify-between`}>
-                <span className="text-parchment-300 text-[11px]">{formatRaceName(r.race)}</span>
+                <span className="text-realm-text-secondary text-[11px]">{formatRaceName(r.race)}</span>
                 <span className={`text-[10px] font-display ${c.text}`}>
                   {r.status.replace(/_/g, ' ')}
                 </span>
@@ -231,19 +231,19 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
 
       {/* Treaties and wars */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <section className="bg-dark-400 border border-dark-50 rounded-lg p-3">
-          <h4 className="font-display text-parchment-300 text-xs mb-2 flex items-center gap-1.5">
+        <section className="bg-realm-bg-800 border border-realm-border rounded-lg p-3">
+          <h4 className="font-display text-realm-text-secondary text-xs mb-2 flex items-center gap-1.5">
             <Handshake className="w-3.5 h-3.5 text-emerald-400" />
             Active Treaties ({myTreaties.length})
           </h4>
           {myTreaties.length === 0 ? (
-            <p className="text-parchment-500 text-xs">None</p>
+            <p className="text-realm-text-muted text-xs">None</p>
           ) : (
             <div className="space-y-1">
               {myTreaties.map(t => {
                 const partner = t.party1KingdomId === kingdomId ? t.party2Name : t.party1Name;
                 return (
-                  <div key={t.id} className="text-xs text-parchment-300">
+                  <div key={t.id} className="text-xs text-realm-text-secondary">
                     <span className="text-emerald-400">{t.type.replace(/_/g, ' ')}</span> with {partner}
                   </div>
                 );
@@ -252,22 +252,22 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
           )}
         </section>
 
-        <section className="bg-dark-400 border border-dark-50 rounded-lg p-3">
-          <h4 className="font-display text-parchment-300 text-xs mb-2 flex items-center gap-1.5">
-            <Swords className="w-3.5 h-3.5 text-red-400" />
+        <section className="bg-realm-bg-800 border border-realm-border rounded-lg p-3">
+          <h4 className="font-display text-realm-text-secondary text-xs mb-2 flex items-center gap-1.5">
+            <Swords className="w-3.5 h-3.5 text-realm-danger" />
             Active Wars ({myWars.length})
           </h4>
           {myWars.length === 0 ? (
-            <p className="text-parchment-500 text-xs">None</p>
+            <p className="text-realm-text-muted text-xs">None</p>
           ) : (
             <div className="space-y-1">
               {myWars.map(w => {
                 const isAttacker = w.attackerKingdomId === kingdomId;
                 const enemy = isAttacker ? w.defenderName : w.attackerName;
                 return (
-                  <div key={w.id} className="text-xs text-parchment-300">
-                    vs <span className="text-red-400">{enemy}</span>
-                    <span className="text-parchment-500 ml-1">
+                  <div key={w.id} className="text-xs text-realm-text-secondary">
+                    vs <span className="text-realm-danger">{enemy}</span>
+                    <span className="text-realm-text-muted ml-1">
                       ({w.attackerScore}-{w.defenderScore})
                     </span>
                   </div>
@@ -279,15 +279,15 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
       </div>
 
       {/* Petitions */}
-      <section className="bg-dark-400 border border-dark-50 rounded-lg p-3">
+      <section className="bg-realm-bg-800 border border-realm-border rounded-lg p-3">
         <div className="flex items-center justify-between mb-2">
-          <h4 className="font-display text-parchment-300 text-sm flex items-center gap-1.5">
-            <ScrollText className="w-3.5 h-3.5 text-primary-400" />
+          <h4 className="font-display text-realm-text-secondary text-sm flex items-center gap-1.5">
+            <ScrollText className="w-3.5 h-3.5 text-realm-gold-400" />
             Petitions
           </h4>
           <button
             onClick={() => setShowPetitionForm(!showPetitionForm)}
-            className="text-[10px] px-2 py-1 rounded bg-primary-400/10 text-primary-400 border border-primary-400/30 hover:bg-primary-400/20 transition-colors font-display flex items-center gap-1"
+            className="text-[10px] px-2 py-1 rounded bg-realm-gold-500/10 text-realm-gold-400 border border-realm-gold-500/30 hover:bg-realm-gold-500/20 transition-colors font-display flex items-center gap-1"
           >
             <PenLine className="w-3 h-3" />
             New Petition
@@ -299,26 +299,26 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
-            className="mb-3 bg-dark-500 rounded p-3 space-y-2"
+            className="mb-3 bg-realm-bg-900 rounded p-3 space-y-2"
           >
             <input
               type="text"
               value={petitionTitle}
               onChange={e => setPetitionTitle(e.target.value)}
               placeholder="Petition title"
-              className="w-full bg-dark-400 border border-dark-50 rounded px-3 py-1.5 text-parchment-300 text-sm focus:border-primary-400/50 outline-none"
+              className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500/50 outline-none"
             />
             <textarea
               value={petitionDesc}
               onChange={e => setPetitionDesc(e.target.value)}
               placeholder="Describe what you want to change..."
               rows={3}
-              className="w-full bg-dark-400 border border-dark-50 rounded px-3 py-1.5 text-parchment-300 text-sm focus:border-primary-400/50 outline-none resize-none"
+              className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500/50 outline-none resize-none"
             />
             <select
               value={petitionAction}
               onChange={e => setPetitionAction(e.target.value)}
-              className="w-full bg-dark-400 border border-dark-50 rounded px-3 py-1.5 text-parchment-300 text-sm focus:border-primary-400/50 outline-none"
+              className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500/50 outline-none"
             >
               {ACTION_TYPES.map(t => (
                 <option key={t} value={t}>{formatActionType(t)}</option>
@@ -327,7 +327,7 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
             <button
               onClick={() => createPetition.mutate()}
               disabled={!petitionTitle.trim() || createPetition.isPending}
-              className="w-full py-1.5 bg-primary-400 text-dark-500 font-display text-xs rounded hover:bg-primary-300 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+              className="w-full py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
             >
               {createPetition.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <PenLine className="w-3 h-3" />}
               Submit Petition
@@ -337,33 +337,33 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
 
         {/* Petition list */}
         {!petitions || petitions.length === 0 ? (
-          <p className="text-parchment-500 text-xs">No active petitions.</p>
+          <p className="text-realm-text-muted text-xs">No active petitions.</p>
         ) : (
           <div className="space-y-2">
             {petitions.map(p => {
               const pct = Math.min(100, Math.round((p.signatureCount / Math.max(1, p.threshold)) * 100));
               return (
-                <div key={p.id} className="bg-dark-500 rounded p-2">
+                <div key={p.id} className="bg-realm-bg-900 rounded p-2">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-parchment-200 text-xs font-display">{p.title}</span>
-                    <span className="text-parchment-500 text-[10px]">{formatActionType(p.actionType)}</span>
+                    <span className="text-realm-text-primary text-xs font-display">{p.title}</span>
+                    <span className="text-realm-text-muted text-[10px]">{formatActionType(p.actionType)}</span>
                   </div>
-                  <p className="text-parchment-500 text-[11px] mb-1.5 line-clamp-2">{p.description}</p>
+                  <p className="text-realm-text-muted text-[11px] mb-1.5 line-clamp-2">{p.description}</p>
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 bg-dark-400 rounded-full overflow-hidden">
+                    <div className="flex-1 h-1.5 bg-realm-bg-800 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-primary-400 rounded-full transition-all"
+                        className="h-full bg-realm-gold-500 rounded-full transition-all"
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                    <span className="text-[10px] text-parchment-500">
+                    <span className="text-[10px] text-realm-text-muted">
                       {p.signatureCount}/{p.threshold}
                     </span>
                     {!p.hasSigned && (
                       <button
                         onClick={() => signPetition.mutate(p.id)}
                         disabled={signPetition.isPending}
-                        className="text-[10px] px-1.5 py-0.5 rounded bg-primary-400/10 text-primary-400 hover:bg-primary-400/20 transition-colors flex items-center gap-0.5"
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-realm-gold-500/10 text-realm-gold-400 hover:bg-realm-gold-500/20 transition-colors flex items-center gap-0.5"
                       >
                         <Check className="w-3 h-3" />
                         Sign
@@ -378,22 +378,22 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
       </section>
 
       {/* Diplomatic history timeline */}
-      <section className="bg-dark-400 border border-dark-50 rounded-lg p-3">
-        <h4 className="font-display text-parchment-300 text-sm mb-2 flex items-center gap-1.5">
-          <History className="w-3.5 h-3.5 text-parchment-500" />
+      <section className="bg-realm-bg-800 border border-realm-border rounded-lg p-3">
+        <h4 className="font-display text-realm-text-secondary text-sm mb-2 flex items-center gap-1.5">
+          <History className="w-3.5 h-3.5 text-realm-text-muted" />
           Diplomatic History
         </h4>
         {!historyData?.events || historyData.events.length === 0 ? (
-          <p className="text-parchment-500 text-xs">No events recorded.</p>
+          <p className="text-realm-text-muted text-xs">No events recorded.</p>
         ) : (
           <>
             <div className="space-y-1.5 max-h-60 overflow-y-auto">
               {historyData.events.map(evt => (
-                <div key={evt.id} className="flex items-start gap-2 text-xs border-l-2 border-dark-50 pl-2">
-                  <span className="text-parchment-500 whitespace-nowrap shrink-0 text-[10px]">
+                <div key={evt.id} className="flex items-start gap-2 text-xs border-l-2 border-realm-border pl-2">
+                  <span className="text-realm-text-muted whitespace-nowrap shrink-0 text-[10px]">
                     {new Date(evt.timestamp).toLocaleDateString()}
                   </span>
-                  <span className="text-parchment-300">{evt.description}</span>
+                  <span className="text-realm-text-secondary">{evt.description}</span>
                 </div>
               ))}
             </div>
@@ -402,17 +402,17 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
                 <button
                   onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
                   disabled={historyPage <= 1}
-                  className="text-parchment-500 hover:text-parchment-200 disabled:opacity-30 transition-colors"
+                  className="text-realm-text-muted hover:text-realm-text-primary disabled:opacity-30 transition-colors"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="text-parchment-500 text-xs">
+                <span className="text-realm-text-muted text-xs">
                   {historyPage} / {historyData.totalPages}
                 </span>
                 <button
                   onClick={() => setHistoryPage(p => Math.min(historyData.totalPages, p + 1))}
                   disabled={historyPage >= historyData.totalPages}
-                  className="text-parchment-500 hover:text-parchment-200 disabled:opacity-30 transition-colors"
+                  className="text-realm-text-muted hover:text-realm-text-primary disabled:opacity-30 transition-colors"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>

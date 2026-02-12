@@ -41,11 +41,11 @@ interface SearchResult {
 // Rarity color helper
 // ---------------------------------------------------------------------------
 const RARITY_COLORS: Record<string, string> = {
-  COMMON: 'text-parchment-400',
-  UNCOMMON: 'text-green-400',
-  RARE: 'text-blue-400',
-  EPIC: 'text-purple-400',
-  LEGENDARY: 'text-yellow-400',
+  COMMON: 'text-realm-text-secondary',
+  UNCOMMON: 'text-realm-success',
+  RARE: 'text-realm-teal-300',
+  EPIC: 'text-realm-purple-300',
+  LEGENDARY: 'text-realm-gold-400',
 };
 
 // ---------------------------------------------------------------------------
@@ -84,17 +84,17 @@ export default function PriceCompare() {
   const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
 
   function priceColor(price: number): string {
-    if (maxPrice === minPrice) return 'text-parchment-200';
+    if (maxPrice === minPrice) return 'text-realm-text-primary';
     const ratio = (price - minPrice) / (maxPrice - minPrice);
-    if (ratio <= 0.33) return 'text-green-400';
-    if (ratio >= 0.66) return 'text-red-400';
-    return 'text-yellow-400';
+    if (ratio <= 0.33) return 'text-realm-success';
+    if (ratio >= 0.66) return 'text-realm-danger';
+    return 'text-realm-gold-400';
   }
 
   function TrendIcon({ trend }: { trend: 'up' | 'down' | 'stable' }) {
-    if (trend === 'up') return <TrendingUp className="w-3.5 h-3.5 text-green-400" />;
-    if (trend === 'down') return <TrendingDown className="w-3.5 h-3.5 text-red-400" />;
-    return <Minus className="w-3.5 h-3.5 text-parchment-500" />;
+    if (trend === 'up') return <TrendingUp className="w-3.5 h-3.5 text-realm-success" />;
+    if (trend === 'down') return <TrendingDown className="w-3.5 h-3.5 text-realm-danger" />;
+    return <Minus className="w-3.5 h-3.5 text-realm-text-muted" />;
   }
 
   function demandBadge(volume: number, avgVolume: number): JSX.Element | null {
@@ -102,14 +102,14 @@ export default function PriceCompare() {
     const ratio = volume / avgVolume;
     if (ratio >= 1.5) {
       return (
-        <span className="px-1.5 py-0.5 text-[9px] font-display bg-green-500/15 text-green-400 border border-green-500/30 rounded-full">
+        <span className="px-1.5 py-0.5 text-[9px] font-display bg-realm-success/15 text-realm-success border border-realm-success/30 rounded-full">
           High Demand
         </span>
       );
     }
     if (ratio <= 0.5) {
       return (
-        <span className="px-1.5 py-0.5 text-[9px] font-display bg-red-500/15 text-red-400 border border-red-500/30 rounded-full">
+        <span className="px-1.5 py-0.5 text-[9px] font-display bg-realm-danger/15 text-realm-danger border border-realm-danger/30 rounded-full">
           Low Demand
         </span>
       );
@@ -125,7 +125,7 @@ export default function PriceCompare() {
     <div className="space-y-6">
       {/* Search bar */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-parchment-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-realm-text-muted" />
         <input
           type="text"
           value={searchTerm}
@@ -134,19 +134,19 @@ export default function PriceCompare() {
             if (e.target.value.length < 2) setSelectedItemId(null);
           }}
           placeholder="Search for an item to compare prices..."
-          className="w-full pl-10 pr-4 py-2.5 bg-dark-300 border border-dark-50 rounded-lg text-parchment-200 text-sm placeholder:text-parchment-600 focus:outline-none focus:border-primary-400/50"
+          className="w-full pl-10 pr-4 py-2.5 bg-realm-bg-700 border border-realm-border rounded-lg text-realm-text-primary text-sm placeholder:text-realm-text-muted/60 focus:outline-none focus:border-realm-gold-500/50"
         />
       </div>
 
       {/* Search results dropdown */}
       {searchTerm.length >= 2 && !selectedItemId && (
-        <div className="bg-dark-300 border border-dark-50 rounded-lg overflow-hidden">
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden">
           {searchLoading ? (
             <div className="flex justify-center py-4">
-              <Loader2 className="w-5 h-5 text-primary-400 animate-spin" />
+              <Loader2 className="w-5 h-5 text-realm-gold-400 animate-spin" />
             </div>
           ) : searchResults.length === 0 ? (
-            <p className="text-parchment-500 text-xs p-4 text-center">No items found</p>
+            <p className="text-realm-text-muted text-xs p-4 text-center">No items found</p>
           ) : (
             <div className="max-h-48 overflow-y-auto">
               {searchResults.map(item => (
@@ -156,12 +156,12 @@ export default function PriceCompare() {
                     setSelectedItemId(item.id);
                     setSearchTerm(item.name);
                   }}
-                  className="w-full text-left px-4 py-2.5 hover:bg-dark-400 transition-colors border-b border-dark-50 last:border-b-0"
+                  className="w-full text-left px-4 py-2.5 hover:bg-realm-bg-800 transition-colors border-b border-realm-border last:border-b-0"
                 >
-                  <span className={`text-sm ${RARITY_COLORS[item.rarity] ?? 'text-parchment-200'}`}>
+                  <span className={`text-sm ${RARITY_COLORS[item.rarity] ?? 'text-realm-text-primary'}`}>
                     {item.name}
                   </span>
-                  <span className="text-parchment-600 text-[10px] ml-2">
+                  <span className="text-realm-text-muted/60 text-[10px] ml-2">
                     {item.type.replace(/_/g, ' ')}
                   </span>
                 </button>
@@ -175,23 +175,23 @@ export default function PriceCompare() {
       {selectedItemId && (
         priceLoading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+            <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
           </div>
         ) : towns.length === 0 ? (
-          <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center">
-            <BarChart3 className="w-10 h-10 text-parchment-500/30 mx-auto mb-3" />
-            <p className="text-parchment-500 text-sm">
+          <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+            <BarChart3 className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
+            <p className="text-realm-text-muted text-sm">
               No price data available for this item yet.
             </p>
           </div>
         ) : (
-          <div className="bg-dark-300 border border-dark-50 rounded-lg overflow-hidden">
+          <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden">
             {priceData?.itemTemplate && (
-              <div className="px-4 py-3 border-b border-dark-50">
-                <h3 className={`font-display text-sm ${RARITY_COLORS[priceData.itemTemplate.rarity] ?? 'text-parchment-200'}`}>
+              <div className="px-4 py-3 border-b border-realm-border">
+                <h3 className={`font-display text-sm ${RARITY_COLORS[priceData.itemTemplate.rarity] ?? 'text-realm-text-primary'}`}>
                   {priceData.itemTemplate.name}
                 </h3>
-                <p className="text-parchment-500 text-[10px]">
+                <p className="text-realm-text-muted text-[10px]">
                   {priceData.itemTemplate.type.replace(/_/g, ' ')} &middot; {priceData.itemTemplate.rarity}
                 </p>
               </div>
@@ -200,22 +200,22 @@ export default function PriceCompare() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-dark-50">
-                    <th className="text-left px-4 py-2 text-parchment-500 text-xs font-display uppercase tracking-wider">Town</th>
-                    <th className="text-right px-4 py-2 text-parchment-500 text-xs font-display uppercase tracking-wider">Avg Price</th>
-                    <th className="text-right px-4 py-2 text-parchment-500 text-xs font-display uppercase tracking-wider">Volume</th>
-                    <th className="text-center px-4 py-2 text-parchment-500 text-xs font-display uppercase tracking-wider">Trend</th>
-                    <th className="text-right px-4 py-2 text-parchment-500 text-xs font-display uppercase tracking-wider">Demand</th>
+                  <tr className="border-b border-realm-border">
+                    <th className="text-left px-4 py-2 text-realm-text-muted text-xs font-display uppercase tracking-wider">Town</th>
+                    <th className="text-right px-4 py-2 text-realm-text-muted text-xs font-display uppercase tracking-wider">Avg Price</th>
+                    <th className="text-right px-4 py-2 text-realm-text-muted text-xs font-display uppercase tracking-wider">Volume</th>
+                    <th className="text-center px-4 py-2 text-realm-text-muted text-xs font-display uppercase tracking-wider">Trend</th>
+                    <th className="text-right px-4 py-2 text-realm-text-muted text-xs font-display uppercase tracking-wider">Demand</th>
                   </tr>
                 </thead>
                 <tbody>
                   {towns.map(town => (
-                    <tr key={town.townId} className="border-b border-dark-50/50 hover:bg-dark-400/50">
-                      <td className="px-4 py-2.5 text-parchment-200">{town.townName}</td>
+                    <tr key={town.townId} className="border-b border-realm-border/50 hover:bg-realm-bg-800/50">
+                      <td className="px-4 py-2.5 text-realm-text-primary">{town.townName}</td>
                       <td className={`px-4 py-2.5 text-right font-display ${priceColor(town.avgPrice)}`}>
                         {town.avgPrice}g
                       </td>
-                      <td className="px-4 py-2.5 text-right text-parchment-400">{town.volume}</td>
+                      <td className="px-4 py-2.5 text-right text-realm-text-secondary">{town.volume}</td>
                       <td className="px-4 py-2.5">
                         <div className="flex justify-center">
                           <TrendIcon trend={town.trend} />
@@ -232,15 +232,15 @@ export default function PriceCompare() {
 
             {/* Price spread summary */}
             {prices.length >= 2 && (
-              <div className="px-4 py-3 border-t border-dark-50 flex items-center justify-between text-xs text-parchment-500">
+              <div className="px-4 py-3 border-t border-realm-border flex items-center justify-between text-xs text-realm-text-muted">
                 <span>
-                  Lowest: <span className="text-green-400 font-display">{minPrice}g</span>
+                  Lowest: <span className="text-realm-success font-display">{minPrice}g</span>
                 </span>
                 <span>
-                  Spread: <span className="text-primary-400 font-display">{Math.round((maxPrice - minPrice) * 100) / 100}g</span>
+                  Spread: <span className="text-realm-gold-400 font-display">{Math.round((maxPrice - minPrice) * 100) / 100}g</span>
                 </span>
                 <span>
-                  Highest: <span className="text-red-400 font-display">{maxPrice}g</span>
+                  Highest: <span className="text-realm-danger font-display">{maxPrice}g</span>
                 </span>
               </div>
             )}
@@ -249,9 +249,9 @@ export default function PriceCompare() {
       )}
 
       {!selectedItemId && searchTerm.length < 2 && (
-        <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center">
-          <BarChart3 className="w-10 h-10 text-parchment-500/30 mx-auto mb-3" />
-          <p className="text-parchment-500 text-sm">
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+          <BarChart3 className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
+          <p className="text-realm-text-muted text-sm">
             Search for an item to compare prices across all towns.
           </p>
         </div>

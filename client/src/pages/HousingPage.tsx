@@ -136,27 +136,27 @@ export default function HousingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-dark-500 pt-12">
+    <div className="pt-12">
       {/* Header */}
-      <header className="border-b border-dark-50 bg-dark-400/50">
+      <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-display text-primary-400">Housing</h1>
-              <p className="text-parchment-500 text-sm mt-1">Build, manage, and upgrade your properties</p>
+              <h1 className="text-4xl font-display text-realm-gold-400">Housing</h1>
+              <p className="text-realm-text-muted text-sm mt-1">Build, manage, and upgrade your properties</p>
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowConstructionFlow(true)}
                 disabled={!townId}
-                className="px-5 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Build New
               </button>
               <button
                 onClick={() => navigate('/town')}
-                className="px-5 py-2 border border-parchment-500/40 text-parchment-300 font-display text-sm rounded hover:bg-dark-300 transition-colors"
+                className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
               >
                 Back to Town
               </button>
@@ -167,7 +167,7 @@ export default function HousingPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Tabs */}
-        <div className="flex border-b border-dark-50 mb-6">
+        <div className="flex border-b border-realm-border mb-6">
           {([
             { key: 'my-properties' as Tab, label: 'My Properties', icon: Home },
             { key: 'town-buildings' as Tab, label: 'Town Buildings', icon: Building2 },
@@ -177,13 +177,13 @@ export default function HousingPage() {
               onClick={() => setActiveTab(key)}
               className={`flex items-center gap-2 px-5 py-3 font-display text-sm border-b-2 transition-colors
                 ${activeTab === key
-                  ? 'border-primary-400 text-primary-400'
-                  : 'border-transparent text-parchment-500 hover:text-parchment-300'}`}
+                  ? 'border-realm-gold-400 text-realm-gold-400'
+                  : 'border-transparent text-realm-text-muted hover:text-realm-text-secondary'}`}
             >
               <Icon className="w-4 h-4" />
               {label}
               {key === 'my-properties' && myBuildings.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 text-[10px] font-display bg-primary-400/20 text-primary-400 rounded-full">
+                <span className="ml-1 px-1.5 py-0.5 text-[10px] font-display bg-realm-gold-500/20 text-realm-gold-400 rounded-full">
                   {myBuildings.length}
                 </span>
               )}
@@ -209,9 +209,9 @@ export default function HousingPage() {
               onSelectBuilding={handleBuildingClick}
             />
           ) : (
-            <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center">
-              <Building2 className="w-10 h-10 text-parchment-500/30 mx-auto mb-3" />
-              <p className="text-parchment-500 text-sm">
+            <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+              <Building2 className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
+              <p className="text-realm-text-muted text-sm">
                 You are not currently in a town. Travel to a town to view its buildings.
               </p>
             </div>
@@ -280,20 +280,20 @@ function MyPropertiesTab({ buildings, isLoading, onBuildingClick, onBuildNew, ha
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+        <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
       </div>
     );
   }
 
   if (buildings.length === 0) {
     return (
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center">
-        <Hammer className="w-10 h-10 text-parchment-500/30 mx-auto mb-3" />
-        <p className="text-parchment-500 text-sm mb-4">You don't own any buildings yet.</p>
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+        <Hammer className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
+        <p className="text-realm-text-muted text-sm mb-4">You don't own any buildings yet.</p>
         {hasTown && (
           <button
             onClick={onBuildNew}
-            className="px-6 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors"
+            className="px-6 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
           >
             Build Your First Property
           </button>
@@ -311,7 +311,7 @@ function MyPropertiesTab({ buildings, isLoading, onBuildingClick, onBuildNew, ha
       {/* Under construction */}
       {underConstruction.length > 0 && (
         <div>
-          <h3 className="font-display text-sm text-parchment-500 uppercase tracking-wider mb-3">
+          <h3 className="font-display text-sm text-realm-text-muted uppercase tracking-wider mb-3">
             Under Construction ({underConstruction.length})
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -325,7 +325,7 @@ function MyPropertiesTab({ buildings, isLoading, onBuildingClick, onBuildNew, ha
       {/* Active buildings */}
       {active.length > 0 && (
         <div>
-          <h3 className="font-display text-sm text-parchment-500 uppercase tracking-wider mb-3">
+          <h3 className="font-display text-sm text-realm-text-muted uppercase tracking-wider mb-3">
             Active Properties ({active.length})
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

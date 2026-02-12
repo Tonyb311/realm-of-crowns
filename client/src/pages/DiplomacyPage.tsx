@@ -183,18 +183,18 @@ export default function DiplomacyPage() {
   const isRuler = character?.isRuler ?? false;
 
   return (
-    <div className="min-h-screen bg-dark-500 pt-12 pb-16">
+    <div className="pt-12 pb-16">
       {/* Header */}
-      <div className="px-6 py-4 bg-dark-400 border-b border-dark-50">
-        <h1 className="text-2xl font-display text-primary-400 flex items-center gap-2">
+      <div className="px-6 py-4 bg-realm-bg-800 border-b border-realm-border">
+        <h1 className="text-2xl font-display text-realm-gold-400 flex items-center gap-2">
           <Flag className="w-6 h-6" />
           Diplomacy
         </h1>
-        <p className="text-parchment-500 text-xs mt-1">Relations, treaties, wars, and world affairs</p>
+        <p className="text-realm-text-muted text-xs mt-1">Relations, treaties, wars, and world affairs</p>
       </div>
 
       {/* Tab navigation */}
-      <div className="px-6 py-2 bg-dark-400/50 border-b border-dark-50 flex items-center gap-1 overflow-x-auto">
+      <div className="px-6 py-2 bg-realm-bg-800/50 border-b border-realm-border flex items-center gap-1 overflow-x-auto">
         {TAB_CONFIG.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -204,8 +204,8 @@ export default function DiplomacyPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-display transition-colors whitespace-nowrap ${
                 isActive
-                  ? 'bg-primary-400/15 text-primary-400 border border-primary-400/30'
-                  : 'text-parchment-500 hover:text-parchment-200 hover:bg-dark-400/50 border border-transparent'
+                  ? 'bg-realm-gold-500/15 text-realm-gold-400 border border-realm-gold-500/30'
+                  : 'text-realm-text-muted hover:text-realm-text-primary hover:bg-realm-bg-800/50 border border-transparent'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -216,7 +216,7 @@ export default function DiplomacyPage() {
         {isRuler && (
           <button
             onClick={() => setActiveTab('relations')}
-            className="ml-auto text-[10px] px-2 py-1 rounded bg-amber-400/10 text-amber-400 border border-amber-400/30 font-display"
+            className="ml-auto text-[10px] px-2 py-1 rounded bg-realm-gold-500/10 text-realm-gold-400 border border-realm-gold-500/30 font-display"
           >
             Ruler
           </button>
@@ -249,16 +249,16 @@ export default function DiplomacyPage() {
               >
                 {/* State of Aethermere report */}
                 {stateReport && (
-                  <section className="bg-dark-400 border border-primary-400/20 rounded-lg p-4">
-                    <h3 className="font-display text-primary-400 text-sm mb-2 flex items-center gap-1.5">
+                  <section className="bg-realm-bg-800 border border-realm-gold-500/20 rounded-lg p-4">
+                    <h3 className="font-display text-realm-gold-400 text-sm mb-2 flex items-center gap-1.5">
                       <ScrollText className="w-4 h-4" />
                       State of Aethermere
                     </h3>
-                    <p className="text-parchment-200 text-xs font-display mb-1">{stateReport.title}</p>
-                    <p className="text-parchment-400 text-xs whitespace-pre-wrap leading-relaxed">
+                    <p className="text-realm-text-primary text-xs font-display mb-1">{stateReport.title}</p>
+                    <p className="text-realm-text-secondary text-xs whitespace-pre-wrap leading-relaxed">
                       {stateReport.content}
                     </p>
-                    <p className="text-parchment-500 text-[10px] mt-2">
+                    <p className="text-realm-text-muted text-[10px] mt-2">
                       {new Date(stateReport.createdAt).toLocaleDateString()}
                     </p>
                   </section>
@@ -266,7 +266,7 @@ export default function DiplomacyPage() {
 
                 {/* Event filter */}
                 <div className="flex items-center gap-2">
-                  <Filter className="w-3.5 h-3.5 text-parchment-500" />
+                  <Filter className="w-3.5 h-3.5 text-realm-text-muted" />
                   <div className="flex gap-1 flex-wrap">
                     {EVENT_TYPES.map(type => (
                       <button
@@ -274,8 +274,8 @@ export default function DiplomacyPage() {
                         onClick={() => { setEventFilter(type); setEventPage(1); }}
                         className={`text-[10px] px-2 py-0.5 rounded font-display transition-colors ${
                           eventFilter === type
-                            ? 'bg-primary-400/15 text-primary-400 border border-primary-400/30'
-                            : 'text-parchment-500 hover:text-parchment-300 border border-transparent'
+                            ? 'bg-realm-gold-500/15 text-realm-gold-400 border border-realm-gold-500/30'
+                            : 'text-realm-text-muted hover:text-realm-text-secondary border border-transparent'
                         }`}
                       >
                         {type}
@@ -287,10 +287,10 @@ export default function DiplomacyPage() {
                 {/* Event list */}
                 {loadingEvents ? (
                   <div className="flex items-center justify-center py-10">
-                    <Loader2 className="w-5 h-5 text-primary-400 animate-spin" />
+                    <Loader2 className="w-5 h-5 text-realm-gold-400 animate-spin" />
                   </div>
                 ) : !worldEvents?.events || worldEvents.events.length === 0 ? (
-                  <p className="text-parchment-500 text-xs text-center py-10">No world events found.</p>
+                  <p className="text-realm-text-muted text-xs text-center py-10">No world events found.</p>
                 ) : (
                   <div className="space-y-2">
                     {worldEvents.events.map((evt, i) => (
@@ -299,19 +299,19 @@ export default function DiplomacyPage() {
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.02 }}
-                        className="bg-dark-400 border border-dark-50 rounded-lg p-3"
+                        className="bg-realm-bg-800 border border-realm-border rounded-lg p-3"
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-parchment-200 text-xs font-display">{evt.title}</span>
-                          <span className="text-parchment-500 text-[10px]">
+                          <span className="text-realm-text-primary text-xs font-display">{evt.title}</span>
+                          <span className="text-realm-text-muted text-[10px]">
                             {new Date(evt.timestamp).toLocaleDateString()}
                           </span>
                         </div>
-                        <p className="text-parchment-400 text-xs">{evt.message}</p>
+                        <p className="text-realm-text-secondary text-xs">{evt.message}</p>
                         {evt.races && evt.races.length > 0 && (
                           <div className="flex gap-1 mt-1.5">
                             {evt.races.map(r => (
-                              <span key={r} className="text-[9px] px-1.5 py-0.5 rounded bg-dark-500 text-parchment-500 border border-dark-50">
+                              <span key={r} className="text-[9px] px-1.5 py-0.5 rounded bg-realm-bg-900 text-realm-text-muted border border-realm-border">
                                 {r.replace(/_/g, ' ')}
                               </span>
                             ))}
@@ -328,17 +328,17 @@ export default function DiplomacyPage() {
                     <button
                       onClick={() => setEventPage(p => Math.max(1, p - 1))}
                       disabled={eventPage <= 1}
-                      className="text-parchment-500 hover:text-parchment-200 disabled:opacity-30 transition-colors"
+                      className="text-realm-text-muted hover:text-realm-text-primary disabled:opacity-30 transition-colors"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
-                    <span className="text-parchment-500 text-xs">
+                    <span className="text-realm-text-muted text-xs">
                       Page {eventPage} of {worldEvents.totalPages}
                     </span>
                     <button
                       onClick={() => setEventPage(p => Math.min(worldEvents.totalPages, p + 1))}
                       disabled={eventPage >= worldEvents.totalPages}
-                      className="text-parchment-500 hover:text-parchment-200 disabled:opacity-30 transition-colors"
+                      className="text-realm-text-muted hover:text-realm-text-primary disabled:opacity-30 transition-colors"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>

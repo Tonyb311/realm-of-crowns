@@ -102,25 +102,25 @@ export default function NotificationDropdown() {
     <div ref={containerRef} className="fixed top-4 right-4 z-50">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-parchment-400 hover:text-primary-400 transition-colors bg-dark-300 border border-dark-50 rounded-full shadow-lg"
+        className="relative p-2 text-realm-text-secondary hover:text-realm-gold-400 transition-colors bg-realm-bg-700 border border-realm-border rounded-full shadow-lg"
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 bg-blood-light text-white text-[10px] font-bold rounded-full w-4.5 h-4.5 flex items-center justify-center min-w-[18px] px-1">
+          <span className="absolute -top-0.5 -right-0.5 bg-blood-light text-realm-text-primary text-[10px] font-bold rounded-full w-4.5 h-4.5 flex items-center justify-center min-w-[18px] px-1">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-dark-300 border border-dark-50 rounded-lg shadow-xl z-50 max-h-96 flex flex-col">
+        <div className="absolute right-0 mt-2 w-80 bg-realm-bg-700 border border-realm-border rounded-lg shadow-xl z-50 max-h-96 flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-dark-50">
-            <h3 className="font-display text-primary-400 text-sm">Notifications</h3>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-realm-border">
+            <h3 className="font-display text-realm-gold-400 text-sm">Notifications</h3>
             {unreadCount > 0 && (
               <button
                 onClick={() => markAllRead.mutate()}
-                className="text-xs text-parchment-500 hover:text-primary-400 transition-colors flex items-center gap-1"
+                className="text-xs text-realm-text-muted hover:text-realm-gold-400 transition-colors flex items-center gap-1"
               >
                 <CheckCheck className="w-3 h-3" />
                 Mark all read
@@ -132,31 +132,31 @@ export default function NotificationDropdown() {
           <div className="overflow-y-auto flex-1">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-5 h-5 text-primary-400 animate-spin" />
+                <Loader2 className="w-5 h-5 text-realm-gold-400 animate-spin" />
               </div>
             ) : notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-parchment-500">
+              <div className="px-4 py-8 text-center text-sm text-realm-text-muted">
                 No notifications yet.
               </div>
             ) : (
               notifications.map((n) => (
                 <div
                   key={n.id}
-                  className={`px-4 py-3 border-b border-dark-50/50 hover:bg-dark-200/50 transition-colors ${
-                    !n.read ? 'bg-dark-200/30' : ''
+                  className={`px-4 py-3 border-b border-realm-border/50 hover:bg-realm-bg-600/50 transition-colors ${
+                    !n.read ? 'bg-realm-bg-600/30' : ''
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-parchment-200 font-semibold truncate">{n.title}</p>
-                      <p className="text-xs text-parchment-400 mt-0.5 line-clamp-2">{n.message}</p>
-                      <p className="text-[10px] text-parchment-500 mt-1">{getTimeAgo(n.createdAt)}</p>
+                      <p className="text-sm text-realm-text-primary font-semibold truncate">{n.title}</p>
+                      <p className="text-xs text-realm-text-secondary mt-0.5 line-clamp-2">{n.message}</p>
+                      <p className="text-[10px] text-realm-text-muted mt-1">{getTimeAgo(n.createdAt)}</p>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {!n.read && (
                         <button
                           onClick={() => markRead.mutate(n.id)}
-                          className="p-1 text-parchment-500 hover:text-primary-400 transition-colors"
+                          className="p-1 text-realm-text-muted hover:text-realm-gold-400 transition-colors"
                           title="Mark as read"
                         >
                           <Check className="w-3 h-3" />
@@ -164,7 +164,7 @@ export default function NotificationDropdown() {
                       )}
                       <button
                         onClick={() => deleteNotification.mutate(n.id)}
-                        className="p-1 text-parchment-500 hover:text-blood-light transition-colors"
+                        className="p-1 text-realm-text-muted hover:text-blood-light transition-colors"
                         title="Delete"
                       >
                         <Trash2 className="w-3 h-3" />

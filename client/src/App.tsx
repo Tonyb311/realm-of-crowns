@@ -150,27 +150,27 @@ function HomePage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-8">
-      <h1 className="text-6xl font-display text-primary-400 mb-4">
+      <h1 className="text-6xl font-display text-realm-gold-400 mb-4">
         Realm of Crowns
       </h1>
-      <p className="text-xl text-parchment-300 mb-8 text-center max-w-2xl">
+      <p className="text-xl text-realm-text-secondary mb-8 text-center max-w-2xl">
         A fantasy MMORPG with 20 playable races, player-driven economy,
         and D&D-style adventure. Your kingdom awaits.
       </p>
       <div className="flex gap-4">
         {isLoading ? (
-          <div className="text-primary-400 font-display text-lg animate-pulse">Loading...</div>
+          <div className="text-realm-gold-400 font-display text-lg animate-pulse">Loading...</div>
         ) : hasCharacter ? (
           <>
             <button
               onClick={() => navigate('/town')}
-              className="px-8 py-3 bg-primary-400 text-dark-500 font-display text-lg rounded hover:bg-primary-300 transition-colors"
+              className="px-8 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-lg rounded hover:bg-realm-gold-400 transition-colors"
             >
               Enter Town
             </button>
             <button
               onClick={() => navigate('/map')}
-              className="px-8 py-3 border border-primary-400 text-primary-400 font-display text-lg rounded hover:bg-dark-300 transition-colors"
+              className="px-8 py-3 border border-realm-gold-500 text-realm-gold-400 font-display text-lg rounded hover:bg-realm-bg-700 transition-colors"
             >
               World Map
             </button>
@@ -179,17 +179,17 @@ function HomePage() {
           <>
             <button
               onClick={() => navigate('/create-character')}
-              className="px-8 py-3 bg-primary-400 text-dark-500 font-display text-lg rounded hover:bg-primary-300 transition-colors"
+              className="px-8 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-lg rounded hover:bg-realm-gold-400 transition-colors"
             >
               Create Your Character
             </button>
-            <button className="px-8 py-3 border border-primary-400 text-primary-400 font-display text-lg rounded hover:bg-dark-300 transition-colors">
+            <button className="px-8 py-3 border border-realm-gold-500 text-realm-gold-400 font-display text-lg rounded hover:bg-realm-bg-700 transition-colors">
               Learn More
             </button>
           </>
         )}
       </div>
-      <div className="mt-16 text-parchment-500 text-sm">
+      <div className="mt-16 text-realm-text-muted text-sm">
         <p>20 Races - 28 Professions - 68 Towns - Your Story</p>
       </div>
     </div>
@@ -200,13 +200,13 @@ function HomePage() {
 function NotFoundPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-8">
-      <h1 className="text-6xl font-display text-primary-400 mb-4">404</h1>
-      <p className="text-xl text-parchment-300 mb-8 text-center max-w-lg">
+      <h1 className="text-6xl font-display text-realm-gold-400 mb-4">404</h1>
+      <p className="text-xl text-realm-text-secondary mb-8 text-center max-w-lg">
         This page does not exist. Perhaps the road was lost, or the map was wrong.
       </p>
       <Link
         to="/"
-        className="px-8 py-3 bg-primary-400 text-dark-500 font-display text-lg rounded hover:bg-primary-300 transition-colors"
+        className="px-8 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-lg rounded hover:bg-realm-gold-400 transition-colors"
       >
         Return Home
       </Link>

@@ -53,15 +53,15 @@ interface ContentReleaseData {
 
 const TIER_STYLES: Record<string, { badge: string; label: string }> = {
   core: {
-    badge: 'text-yellow-400 bg-yellow-400/10 border border-yellow-400/30',
+    badge: 'text-realm-gold-400 bg-realm-gold-400/10 border border-realm-gold-400/30',
     label: 'Core',
   },
   common: {
-    badge: 'text-gray-300 bg-gray-300/10 border border-gray-300/30',
+    badge: 'text-realm-text-muted bg-realm-bg-600/10 border border-realm-border/30',
     label: 'Common',
   },
   exotic: {
-    badge: 'text-amber-600 bg-amber-600/10 border border-amber-600/30',
+    badge: 'text-realm-gold-500 bg-realm-gold-500/10 border border-realm-gold-500/30',
     label: 'Exotic',
   },
 };
@@ -99,12 +99,12 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
 
 function StatusBadge({ isReleased }: { isReleased: boolean }) {
   return isReleased ? (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded text-green-400 bg-green-400/10 border border-green-400/30">
+    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded text-realm-success bg-realm-success/10 border border-realm-success/30">
       <Unlock className="w-3 h-3" />
       Released
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded text-parchment-500 bg-dark-500/50 border border-dark-50">
+    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded text-realm-text-muted bg-realm-bg-900/50 border border-realm-border">
       <Lock className="w-3 h-3" />
       Locked
     </span>
@@ -250,9 +250,9 @@ export default function ContentReleasePage() {
   if (isLoading) {
     return (
       <div>
-        <h1 className="text-2xl font-display text-primary-400 mb-6">Content Release Manager</h1>
+        <h1 className="text-2xl font-display text-realm-gold-400 mb-6">Content Release Manager</h1>
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-primary-400 animate-spin" />
+          <Loader2 className="w-8 h-8 text-realm-gold-400 animate-spin" />
         </div>
       </div>
     );
@@ -261,14 +261,14 @@ export default function ContentReleasePage() {
   if (isError) {
     return (
       <div>
-        <h1 className="text-2xl font-display text-primary-400 mb-6">Content Release Manager</h1>
-        <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center">
-          <p className="text-parchment-300 mb-4">
+        <h1 className="text-2xl font-display text-realm-gold-400 mb-6">Content Release Manager</h1>
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+          <p className="text-realm-text-secondary mb-4">
             {(error as any)?.response?.data?.message || 'Failed to load content release data'}
           </p>
           <button
             onClick={() => refetch()}
-            className="px-5 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors"
+            className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
           >
             Retry
           </button>
@@ -281,58 +281,58 @@ export default function ContentReleasePage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-display text-primary-400 mb-6">Content Release Manager</h1>
+      <h1 className="text-2xl font-display text-realm-gold-400 mb-6">Content Release Manager</h1>
 
       {/* ------------------------------------------------------------------- */}
       {/* 1. Summary Cards                                                     */}
       {/* ------------------------------------------------------------------- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
         {/* Races Released */}
-        <div className="bg-dark-500/50 border border-dark-50 rounded-lg p-4">
+        <div className="bg-realm-bg-900/50 border border-realm-border rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Shield className="w-4 h-4 text-primary-400" />
-            <span className="text-parchment-500 text-xs">Races Released</span>
+            <Shield className="w-4 h-4 text-realm-gold-400" />
+            <span className="text-realm-text-muted text-xs">Races Released</span>
           </div>
-          <p className="text-2xl font-display text-parchment-200">
+          <p className="text-2xl font-display text-realm-text-primary">
             {summary?.releasedRaces ?? 0}
-            <span className="text-parchment-500 text-base">/{summary?.totalRaces ?? 0}</span>
+            <span className="text-realm-text-muted text-base">/{summary?.totalRaces ?? 0}</span>
           </p>
         </div>
 
         {/* Towns Released */}
-        <div className="bg-dark-500/50 border border-dark-50 rounded-lg p-4">
+        <div className="bg-realm-bg-900/50 border border-realm-border rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
-            <MapPin className="w-4 h-4 text-primary-400" />
-            <span className="text-parchment-500 text-xs">Towns Released</span>
+            <MapPin className="w-4 h-4 text-realm-gold-400" />
+            <span className="text-realm-text-muted text-xs">Towns Released</span>
           </div>
-          <p className="text-2xl font-display text-parchment-200">
+          <p className="text-2xl font-display text-realm-text-primary">
             {summary?.releasedTowns ?? 0}
-            <span className="text-parchment-500 text-base">/{summary?.totalTowns ?? 0}</span>
+            <span className="text-realm-text-muted text-base">/{summary?.totalTowns ?? 0}</span>
           </p>
         </div>
 
         {/* Total Content */}
-        <div className="bg-dark-500/50 border border-dark-50 rounded-lg p-4">
+        <div className="bg-realm-bg-900/50 border border-realm-border rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
-            <BarChart3 className="w-4 h-4 text-primary-400" />
-            <span className="text-parchment-500 text-xs">Total Content</span>
+            <BarChart3 className="w-4 h-4 text-realm-gold-400" />
+            <span className="text-realm-text-muted text-xs">Total Content</span>
           </div>
-          <p className="text-2xl font-display text-parchment-200">
+          <p className="text-2xl font-display text-realm-text-primary">
             {summary?.percentReleased ?? 0}%
-            <span className="text-parchment-500 text-base"> released</span>
+            <span className="text-realm-text-muted text-base"> released</span>
           </p>
         </div>
       </div>
 
       {/* Progress Bar */}
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-4 mb-6">
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4 mb-6">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-parchment-500 text-xs font-display">Overall Release Progress</span>
-          <span className="text-parchment-200 text-xs font-display">{summary?.percentReleased ?? 0}%</span>
+          <span className="text-realm-text-muted text-xs font-display">Overall Release Progress</span>
+          <span className="text-realm-text-primary text-xs font-display">{summary?.percentReleased ?? 0}%</span>
         </div>
-        <div className="w-full bg-dark-500 rounded-full h-3 overflow-hidden">
+        <div className="w-full bg-realm-bg-900 rounded-full h-3 overflow-hidden">
           <div
-            className="bg-primary-400 h-3 rounded-full transition-all duration-500"
+            className="bg-realm-gold-500 h-3 rounded-full transition-all duration-500"
             style={{ width: `${summary?.percentReleased ?? 0}%` }}
           />
         </div>
@@ -341,22 +341,22 @@ export default function ContentReleasePage() {
       {/* ------------------------------------------------------------------- */}
       {/* 2. Race Release Panel                                                */}
       {/* ------------------------------------------------------------------- */}
-      <div className="bg-dark-300 border border-dark-50 rounded-lg mb-6">
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg mb-6">
         <button
           onClick={() => setRacePanelOpen(!racePanelOpen)}
           className="w-full flex items-center justify-between p-5 text-left"
         >
           <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-primary-400" />
-            <h2 className="font-display text-parchment-200 text-lg">Race Releases</h2>
-            <span className="text-parchment-500 text-xs ml-2">
+            <Shield className="w-5 h-5 text-realm-gold-400" />
+            <h2 className="font-display text-realm-text-primary text-lg">Race Releases</h2>
+            <span className="text-realm-text-muted text-xs ml-2">
               {summary?.releasedRaces ?? 0}/{summary?.totalRaces ?? 0}
             </span>
           </div>
           {racePanelOpen ? (
-            <ChevronUp className="w-5 h-5 text-parchment-500" />
+            <ChevronUp className="w-5 h-5 text-realm-text-muted" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-parchment-500" />
+            <ChevronDown className="w-5 h-5 text-realm-text-muted" />
           )}
         </button>
 
@@ -373,10 +373,10 @@ export default function ContentReleasePage() {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <TierBadge tier={tier} />
-                      <span className="text-parchment-200 text-sm font-display">
+                      <span className="text-realm-text-primary text-sm font-display">
                         {TIER_STYLES[tier]?.label || tier} Races
                       </span>
-                      <span className="text-parchment-500 text-xs">
+                      <span className="text-realm-text-muted text-xs">
                         ({races.filter((r) => r.isReleased).length}/{races.length} released)
                       </span>
                     </div>
@@ -384,7 +384,7 @@ export default function ContentReleasePage() {
                       <button
                         onClick={() => handleBulkReleaseRaceTier(tier)}
                         disabled={anyMutationPending}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-400 text-dark-500 font-display text-xs rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {bulkReleaseMutation.isPending ? (
                           <Loader2 className="w-3 h-3 animate-spin" />
@@ -401,10 +401,10 @@ export default function ContentReleasePage() {
                     {races.map((race) => (
                       <div
                         key={race.id}
-                        className="flex items-center justify-between py-2.5 px-3 rounded hover:bg-dark-400/30 transition-colors border border-transparent hover:border-dark-50"
+                        className="flex items-center justify-between py-2.5 px-3 rounded hover:bg-realm-bg-800/30 transition-colors border border-transparent hover:border-realm-border"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-parchment-200 text-sm font-medium truncate">
+                          <span className="text-realm-text-primary text-sm font-medium truncate">
                             {race.contentName}
                           </span>
                           <TierBadge tier={race.tier} />
@@ -413,11 +413,11 @@ export default function ContentReleasePage() {
 
                         <div className="flex items-center gap-4 shrink-0 ml-4">
                           {race.releasedAt && (
-                            <span className="text-parchment-500 text-xs hidden lg:inline">
+                            <span className="text-realm-text-muted text-xs hidden lg:inline">
                               {formatDate(race.releasedAt)}
                             </span>
                           )}
-                          <div className="flex items-center gap-1 text-parchment-500 text-xs min-w-[60px] justify-end">
+                          <div className="flex items-center gap-1 text-realm-text-muted text-xs min-w-[60px] justify-end">
                             <Users className="w-3 h-3" />
                             <span>{race.playerCount}</span>
                           </div>
@@ -426,8 +426,8 @@ export default function ContentReleasePage() {
                             disabled={anyMutationPending}
                             className={`inline-flex items-center gap-1.5 px-3 py-1.5 font-display text-xs rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                               race.isReleased
-                                ? 'bg-dark-500 text-parchment-500 border border-dark-50 hover:bg-dark-400 hover:text-parchment-300'
-                                : 'bg-primary-400 text-dark-500 hover:bg-primary-300'
+                                ? 'bg-realm-bg-900 text-realm-text-muted border border-realm-border hover:bg-realm-bg-800 hover:text-realm-text-secondary'
+                                : 'bg-realm-gold-500 text-realm-bg-900 hover:bg-realm-gold-400'
                             }`}
                           >
                             {race.isReleased ? (
@@ -456,22 +456,22 @@ export default function ContentReleasePage() {
       {/* ------------------------------------------------------------------- */}
       {/* 3. Town Release Panel                                                */}
       {/* ------------------------------------------------------------------- */}
-      <div className="bg-dark-300 border border-dark-50 rounded-lg mb-6">
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg mb-6">
         <button
           onClick={() => setTownPanelOpen(!townPanelOpen)}
           className="w-full flex items-center justify-between p-5 text-left"
         >
           <div className="flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-primary-400" />
-            <h2 className="font-display text-parchment-200 text-lg">Town Releases</h2>
-            <span className="text-parchment-500 text-xs ml-2">
+            <MapPin className="w-5 h-5 text-realm-gold-400" />
+            <h2 className="font-display text-realm-text-primary text-lg">Town Releases</h2>
+            <span className="text-realm-text-muted text-xs ml-2">
               {summary?.releasedTowns ?? 0}/{summary?.totalTowns ?? 0}
             </span>
           </div>
           {townPanelOpen ? (
-            <ChevronUp className="w-5 h-5 text-parchment-500" />
+            <ChevronUp className="w-5 h-5 text-realm-text-muted" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-parchment-500" />
+            <ChevronDown className="w-5 h-5 text-realm-text-muted" />
           )}
         </button>
 
@@ -487,11 +487,11 @@ export default function ContentReleasePage() {
                   {/* Region Header */}
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-parchment-500" />
-                      <span className="text-parchment-200 text-sm font-display">
+                      <MapPin className="w-4 h-4 text-realm-text-muted" />
+                      <span className="text-realm-text-primary text-sm font-display">
                         {regionName}
                       </span>
-                      <span className="text-parchment-500 text-xs">
+                      <span className="text-realm-text-muted text-xs">
                         ({towns.filter((t) => t.isReleased).length}/{towns.length} released)
                       </span>
                     </div>
@@ -499,7 +499,7 @@ export default function ContentReleasePage() {
                       <button
                         onClick={() => handleBulkReleaseRegion(regionName)}
                         disabled={anyMutationPending}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-400 text-dark-500 font-display text-xs rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {bulkReleaseMutation.isPending ? (
                           <Loader2 className="w-3 h-3 animate-spin" />
@@ -516,13 +516,13 @@ export default function ContentReleasePage() {
                     {towns.map((town) => (
                       <div
                         key={town.id}
-                        className="flex items-center justify-between py-2.5 px-3 rounded hover:bg-dark-400/30 transition-colors border border-transparent hover:border-dark-50"
+                        className="flex items-center justify-between py-2.5 px-3 rounded hover:bg-realm-bg-800/30 transition-colors border border-transparent hover:border-realm-border"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-parchment-200 text-sm font-medium truncate">
+                          <span className="text-realm-text-primary text-sm font-medium truncate">
                             {town.name}
                           </span>
-                          <span className="text-parchment-500 text-xs hidden sm:inline">
+                          <span className="text-realm-text-muted text-xs hidden sm:inline">
                             {town.regionName}
                           </span>
                           <StatusBadge isReleased={town.isReleased} />
@@ -530,11 +530,11 @@ export default function ContentReleasePage() {
 
                         <div className="flex items-center gap-4 shrink-0 ml-4">
                           {town.releasedAt && (
-                            <span className="text-parchment-500 text-xs hidden lg:inline">
+                            <span className="text-realm-text-muted text-xs hidden lg:inline">
                               {formatDate(town.releasedAt)}
                             </span>
                           )}
-                          <div className="flex items-center gap-1 text-parchment-500 text-xs min-w-[60px] justify-end">
+                          <div className="flex items-center gap-1 text-realm-text-muted text-xs min-w-[60px] justify-end">
                             <Users className="w-3 h-3" />
                             <span>{town.playerCount}</span>
                           </div>
@@ -543,8 +543,8 @@ export default function ContentReleasePage() {
                             disabled={anyMutationPending}
                             className={`inline-flex items-center gap-1.5 px-3 py-1.5 font-display text-xs rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                               town.isReleased
-                                ? 'bg-dark-500 text-parchment-500 border border-dark-50 hover:bg-dark-400 hover:text-parchment-300'
-                                : 'bg-primary-400 text-dark-500 hover:bg-primary-300'
+                                ? 'bg-realm-bg-900 text-realm-text-muted border border-realm-border hover:bg-realm-bg-800 hover:text-realm-text-secondary'
+                                : 'bg-realm-gold-500 text-realm-bg-900 hover:bg-realm-gold-400'
                             }`}
                           >
                             {town.isReleased ? (

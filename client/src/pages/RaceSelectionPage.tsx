@@ -120,21 +120,21 @@ export default function RaceSelectionPage() {
   // ---------------------------------------------------------------------------
   if (racesLoading) {
     return (
-      <div className="min-h-screen bg-dark-500 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-primary-400 animate-spin" />
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="w-8 h-8 text-realm-gold-400 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-dark-500 pt-12">
+    <div className="pt-12">
       {/* Header */}
-      <header className="border-b border-dark-50 bg-dark-400/50">
+      <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-display text-primary-400">Choose Your Race</h1>
-              <p className="text-parchment-500 text-sm mt-1">
+              <h1 className="text-4xl font-display text-realm-gold-400">Choose Your Race</h1>
+              <p className="text-realm-text-muted text-sm mt-1">
                 Select a race to view details, abilities, and profession affinities
               </p>
             </div>
@@ -142,8 +142,8 @@ export default function RaceSelectionPage() {
               onClick={() => setShowCompare(!showCompare)}
               className={`flex items-center gap-2 px-5 py-2 border font-display text-sm rounded transition-colors
                 ${showCompare
-                  ? 'bg-primary-400 text-dark-500 border-primary-400'
-                  : 'border-primary-400/60 text-primary-400 hover:bg-dark-300'}`}
+                  ? 'bg-realm-gold-500 text-realm-bg-900 border-realm-gold-500'
+                  : 'border-realm-gold-400/60 text-realm-gold-400 hover:bg-realm-bg-700'}`}
             >
               <GitCompareArrows className="w-4 h-4" />
               Compare
@@ -169,7 +169,7 @@ export default function RaceSelectionPage() {
         </AnimatePresence>
 
         {/* Tier tabs */}
-        <div className="flex border-b border-dark-50 mb-6">
+        <div className="flex border-b border-realm-border mb-6">
           {(['core', 'common', 'exotic'] as const).map(tier => {
             const cfg = TIER_CONFIG[tier];
             const Icon = cfg.icon;
@@ -180,12 +180,12 @@ export default function RaceSelectionPage() {
                 onClick={() => setActiveTier(tier)}
                 className={`flex items-center gap-2 px-5 py-3 font-display text-sm border-b-2 transition-colors
                   ${activeTier === tier
-                    ? 'border-primary-400 text-primary-400'
-                    : 'border-transparent text-parchment-500 hover:text-parchment-300'}`}
+                    ? 'border-realm-gold-400 text-realm-gold-400'
+                    : 'border-transparent text-realm-text-muted hover:text-realm-text-secondary'}`}
               >
                 <Icon className="w-4 h-4" />
                 {cfg.label}
-                <span className="text-[10px] text-parchment-500">({count})</span>
+                <span className="text-[10px] text-realm-text-muted">({count})</span>
               </button>
             );
           })}
@@ -235,15 +235,15 @@ export default function RaceSelectionPage() {
                 >
                   {/* Exotic warning */}
                   {exoticWarning && (
-                    <div className="p-3 bg-amber-900/20 border border-amber-500/40 rounded-lg flex items-start gap-2">
-                      <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-                      <p className="text-xs text-amber-200">{exoticWarning}</p>
+                    <div className="p-3 bg-realm-gold-500/10 border border-realm-gold-500/40 rounded-lg flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-realm-gold-400 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-realm-gold-300">{exoticWarning}</p>
                     </div>
                   )}
 
                   {detailLoading ? (
-                    <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 flex justify-center">
-                      <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+                    <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 flex justify-center">
+                      <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
                     </div>
                   ) : raceDetail ? (
                     <>
@@ -257,7 +257,7 @@ export default function RaceSelectionPage() {
 
                       {/* Sub-race selector */}
                       {raceDetail.subRaces && raceDetail.subRaces.length > 0 && (
-                        <div className="bg-dark-300 border border-dark-50 rounded-lg p-4">
+                        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
                           <SubRaceSelector
                             raceName={raceDetail.name}
                             subRaces={raceDetail.subRaces}
@@ -269,27 +269,27 @@ export default function RaceSelectionPage() {
 
                       {/* Starting town info */}
                       {raceDetail.id === 'changeling' && (
-                        <div className="bg-dark-300 border border-dark-50 rounded-lg p-4">
-                          <h3 className="font-display text-primary-400 text-xs uppercase tracking-wider mb-2">
+                        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
+                          <h3 className="font-display text-realm-gold-400 text-xs uppercase tracking-wider mb-2">
                             Starting Town
                           </h3>
-                          <p className="text-xs text-parchment-300">
+                          <p className="text-xs text-realm-text-secondary">
                             As a Changeling, you may begin your journey in any town. You will choose your starting location during character creation.
                           </p>
                         </div>
                       )}
 
                       {raceDetail.id !== 'changeling' && raceDetail.startingTowns.length > 0 && (
-                        <div className="bg-dark-300 border border-dark-50 rounded-lg p-4">
-                          <h3 className="font-display text-primary-400 text-xs uppercase tracking-wider mb-2">
+                        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
+                          <h3 className="font-display text-realm-gold-400 text-xs uppercase tracking-wider mb-2">
                             Starting Towns
                           </h3>
-                          <p className="text-xs text-parchment-500 mb-2">
+                          <p className="text-xs text-realm-text-muted mb-2">
                             Core races default to their homeland capital.
                           </p>
                           <div className="flex flex-wrap gap-1.5">
                             {raceDetail.startingTowns.map(town => (
-                              <span key={town} className="text-xs bg-dark-400 text-parchment-200 px-2 py-1 rounded">
+                              <span key={town} className="text-xs bg-realm-bg-800 text-realm-text-primary px-2 py-1 rounded">
                                 {town}
                               </span>
                             ))}
@@ -303,9 +303,9 @@ export default function RaceSelectionPage() {
             </AnimatePresence>
 
             {!selectedRaceId && (
-              <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center sticky top-8">
-                <Users className="w-10 h-10 text-parchment-500/30 mx-auto mb-3" />
-                <p className="text-parchment-500 text-sm">
+              <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center sticky top-8">
+                <Users className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
+                <p className="text-realm-text-muted text-sm">
                   Click a race card to view details
                 </p>
               </div>

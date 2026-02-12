@@ -33,17 +33,17 @@ export default function CraftingQueue({ queue, isLoading, onCollect, isCollectin
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+        <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
       </div>
     );
   }
 
   if (queue.length === 0) {
     return (
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center">
-        <Clock className="w-10 h-10 text-parchment-500/30 mx-auto mb-3" />
-        <p className="text-parchment-500 text-sm">No active crafting.</p>
-        <p className="text-parchment-500/60 text-xs mt-1">Start a recipe from the Recipes tab.</p>
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+        <Clock className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
+        <p className="text-realm-text-muted text-sm">No active crafting.</p>
+        <p className="text-realm-text-muted/60 text-xs mt-1">Start a recipe from the Recipes tab.</p>
       </div>
     );
   }
@@ -65,26 +65,26 @@ export default function CraftingQueue({ queue, isLoading, onCollect, isCollectin
         return (
           <div
             key={item.id}
-            className={`bg-dark-300 border rounded-lg p-4 ${
-              isReady ? 'border-green-500/50' : 'border-dark-50'
+            className={`bg-realm-bg-700 border rounded-lg p-4 ${
+              isReady ? 'border-realm-success/50' : 'border-realm-border'
             }`}
           >
             <div className="flex items-center gap-3 mb-2">
               {isReady ? (
-                <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
+                <CheckCircle2 className="w-5 h-5 text-realm-success flex-shrink-0" />
               ) : (
-                <Loader2 className="w-5 h-5 text-primary-400 animate-spin flex-shrink-0" />
+                <Loader2 className="w-5 h-5 text-realm-gold-400 animate-spin flex-shrink-0" />
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h4 className="font-display text-parchment-200 text-sm truncate">
+                  <h4 className="font-display text-realm-text-primary text-sm truncate">
                     {item.recipeName}
                   </h4>
-                  <span className="text-[10px] text-parchment-500 flex-shrink-0">
+                  <span className="text-[10px] text-realm-text-muted flex-shrink-0">
                     #{item.index}
                   </span>
                 </div>
-                <p className="text-[10px] text-parchment-500">
+                <p className="text-[10px] text-realm-text-muted">
                   {isReady ? 'Ready to collect!' : `${remainingMin}m ${remainingSec}s remaining`}
                 </p>
               </div>
@@ -92,8 +92,8 @@ export default function CraftingQueue({ queue, isLoading, onCollect, isCollectin
                 <button
                   onClick={onCollect}
                   disabled={isCollecting}
-                  className="px-4 py-1.5 bg-green-600 text-white font-display text-xs rounded
-                    hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                  className="px-4 py-1.5 bg-realm-success text-realm-text-primary font-display text-xs rounded
+                    hover:bg-realm-success/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                 >
                   {isCollecting ? 'Collecting...' : 'Collect'}
                 </button>
@@ -101,10 +101,10 @@ export default function CraftingQueue({ queue, isLoading, onCollect, isCollectin
             </div>
 
             {/* Progress bar */}
-            <div className="h-2 bg-dark-500 rounded-full overflow-hidden">
+            <div className="h-2 bg-realm-bg-900 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-1000 ${
-                  isReady ? 'bg-green-500' : 'bg-primary-400'
+                  isReady ? 'bg-realm-success' : 'bg-realm-gold-400'
                 }`}
                 style={{ width: `${progress}%` }}
               />

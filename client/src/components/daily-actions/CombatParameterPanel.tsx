@@ -46,14 +46,14 @@ const STANCES: {
     key: 'AGGRESSIVE',
     label: 'Aggressive',
     icon: Swords,
-    color: 'text-red-400 border-red-500/40 bg-red-500/10',
+    color: 'text-realm-danger border-realm-danger/40 bg-realm-danger/10',
     description: '+2 Attack / -2 AC',
   },
   {
     key: 'BALANCED',
     label: 'Balanced',
     icon: Scale,
-    color: 'text-parchment-300 border-parchment-500/40 bg-parchment-500/10',
+    color: 'text-realm-text-secondary border-realm-text-muted/40 bg-realm-text-muted/10',
     description: 'No modifiers',
   },
   {
@@ -67,7 +67,7 @@ const STANCES: {
     key: 'EVASIVE',
     label: 'Evasive',
     icon: Wind,
-    color: 'text-green-400 border-green-500/40 bg-green-500/10',
+    color: 'text-realm-success border-realm-success/40 bg-realm-success/10',
     description: '-4 Attack / +4 AC / +4 Flee',
   },
 ];
@@ -137,22 +137,22 @@ export default function CombatParameterPanel() {
 
   if (isLoading) {
     return (
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-6 flex items-center justify-center">
-        <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg p-5 space-y-5">
-      <h3 className="font-display text-primary-400 text-sm flex items-center gap-2">
+    <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 space-y-5">
+      <h3 className="font-display text-realm-gold-400 text-sm flex items-center gap-2">
         <Zap className="w-4 h-4" />
         Combat Parameters
       </h3>
 
       {/* Stance selector */}
       <div>
-        <p className="text-[10px] text-parchment-500 uppercase tracking-wider mb-2">Combat Stance</p>
+        <p className="text-[10px] text-realm-text-muted uppercase tracking-wider mb-2">Combat Stance</p>
         <div className="grid grid-cols-2 gap-2">
           {STANCES.map((s) => {
             const Icon = s.icon;
@@ -162,7 +162,7 @@ export default function CombatParameterPanel() {
                 key={s.key}
                 onClick={() => setStance(s.key)}
                 className={`flex items-center gap-2 p-3 rounded-lg border text-xs font-display transition-all
-                  ${isActive ? s.color : 'border-dark-50 text-parchment-500 hover:border-parchment-500/30'}`}
+                  ${isActive ? s.color : 'border-realm-border text-realm-text-muted hover:border-realm-text-muted/30'}`}
               >
                 <Icon className="w-4 h-4" />
                 <div className="text-left">
@@ -177,17 +177,17 @@ export default function CombatParameterPanel() {
 
       {/* Retreat conditions */}
       <div>
-        <p className="text-[10px] text-parchment-500 uppercase tracking-wider mb-2">Retreat Conditions</p>
-        <div className="space-y-3 p-3 bg-dark-400 rounded-lg">
+        <p className="text-[10px] text-realm-text-muted uppercase tracking-wider mb-2">Retreat Conditions</p>
+        <div className="space-y-3 p-3 bg-realm-bg-800 rounded-lg">
           {/* Never retreat toggle */}
           <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
               checked={neverRetreat}
               onChange={(e) => setNeverRetreat(e.target.checked)}
-              className="w-4 h-4 rounded border-dark-50 bg-dark-500 text-primary-400 focus:ring-primary-400 focus:ring-offset-0"
+              className="w-4 h-4 rounded border-realm-border bg-realm-bg-900 text-realm-gold-400 focus:ring-realm-gold-500 focus:ring-offset-0"
             />
-            <span className={`text-xs ${neverRetreat ? 'text-red-400 font-display' : 'text-parchment-300'}`}>
+            <span className={`text-xs ${neverRetreat ? 'text-realm-danger font-display' : 'text-realm-text-secondary'}`}>
               Never Retreat (fight to the death)
             </span>
           </label>
@@ -197,8 +197,8 @@ export default function CombatParameterPanel() {
               {/* HP threshold */}
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-xs text-parchment-300">HP Threshold</span>
-                  <span className="text-xs text-primary-400 font-display">{hpThreshold}%</span>
+                  <span className="text-xs text-realm-text-secondary">HP Threshold</span>
+                  <span className="text-xs text-realm-gold-400 font-display">{hpThreshold}%</span>
                 </div>
                 <input
                   type="range"
@@ -207,15 +207,15 @@ export default function CombatParameterPanel() {
                   step={5}
                   value={hpThreshold}
                   onChange={(e) => setHpThreshold(Number(e.target.value))}
-                  className="w-full h-1.5 bg-dark-500 rounded-full appearance-none cursor-pointer accent-primary-400"
+                  className="w-full h-1.5 bg-realm-bg-900 rounded-full appearance-none cursor-pointer accent-realm-gold-400"
                 />
               </div>
 
               {/* Opposition ratio */}
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-xs text-parchment-300">Opposition Ratio</span>
-                  <span className="text-xs text-primary-400 font-display">{oppositionRatio}:1</span>
+                  <span className="text-xs text-realm-text-secondary">Opposition Ratio</span>
+                  <span className="text-xs text-realm-gold-400 font-display">{oppositionRatio}:1</span>
                 </div>
                 <input
                   type="range"
@@ -224,15 +224,15 @@ export default function CombatParameterPanel() {
                   step={1}
                   value={oppositionRatio}
                   onChange={(e) => setOppositionRatio(Number(e.target.value))}
-                  className="w-full h-1.5 bg-dark-500 rounded-full appearance-none cursor-pointer accent-primary-400"
+                  className="w-full h-1.5 bg-realm-bg-900 rounded-full appearance-none cursor-pointer accent-realm-gold-400"
                 />
               </div>
 
               {/* Round limit */}
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-xs text-parchment-300">Round Limit</span>
-                  <span className="text-xs text-primary-400 font-display">{roundLimit}</span>
+                  <span className="text-xs text-realm-text-secondary">Round Limit</span>
+                  <span className="text-xs text-realm-gold-400 font-display">{roundLimit}</span>
                 </div>
                 <input
                   type="range"
@@ -241,7 +241,7 @@ export default function CombatParameterPanel() {
                   step={1}
                   value={roundLimit}
                   onChange={(e) => setRoundLimit(Number(e.target.value))}
-                  className="w-full h-1.5 bg-dark-500 rounded-full appearance-none cursor-pointer accent-primary-400"
+                  className="w-full h-1.5 bg-realm-bg-900 rounded-full appearance-none cursor-pointer accent-realm-gold-400"
                 />
               </div>
             </>
@@ -251,21 +251,21 @@ export default function CombatParameterPanel() {
 
       {/* PvP Loot */}
       <div>
-        <p className="text-[10px] text-parchment-500 uppercase tracking-wider mb-2">PvP Loot Behavior</p>
+        <p className="text-[10px] text-realm-text-muted uppercase tracking-wider mb-2">PvP Loot Behavior</p>
         <div className="space-y-1">
           {PVP_LOOT_OPTIONS.map((opt) => (
             <label
               key={opt.value}
-              className="flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-dark-400 transition-colors"
+              className="flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-realm-bg-800 transition-colors"
             >
               <input
                 type="radio"
                 name="pvpLoot"
                 checked={pvpLoot === opt.value}
                 onChange={() => setPvpLoot(opt.value)}
-                className="w-3.5 h-3.5 border-dark-50 bg-dark-500 text-primary-400 focus:ring-primary-400 focus:ring-offset-0"
+                className="w-3.5 h-3.5 border-realm-border bg-realm-bg-900 text-realm-gold-400 focus:ring-realm-gold-500 focus:ring-offset-0"
               />
-              <span className="text-xs text-parchment-300">{opt.label}</span>
+              <span className="text-xs text-realm-text-secondary">{opt.label}</span>
             </label>
           ))}
         </div>
@@ -275,7 +275,7 @@ export default function CombatParameterPanel() {
       <button
         onClick={() => saveMutation.mutate()}
         disabled={saveMutation.isPending}
-        className="w-full py-2.5 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {saveMutation.isPending ? (
           <Loader2 className="w-4 h-4 animate-spin" />
@@ -286,7 +286,7 @@ export default function CombatParameterPanel() {
       </button>
 
       {saveMutation.isError && (
-        <div className="p-3 bg-red-900/30 border border-red-500/50 rounded text-red-300 text-xs flex items-center gap-2">
+        <div className="p-3 bg-realm-danger/30 border border-realm-danger/50 rounded text-realm-danger text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {(saveMutation.error as any)?.response?.data?.error ?? 'Failed to save parameters'}
         </div>

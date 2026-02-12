@@ -61,14 +61,14 @@ const NODE_TYPE_CONFIG: Record<string, { icon: typeof MapPin; color: string; fil
   CAMP:         { icon: Tent,      color: 'text-orange-400',   fill: 'fill-orange-400/20' },
   RUINS:        { icon: Skull,     color: 'text-red-400',      fill: 'fill-red-400/20' },
   CROSSROADS:   { icon: CircleDot, color: 'text-yellow-400',   fill: 'fill-yellow-400/20' },
-  PLAINS:       { icon: MapPin,    color: 'text-parchment-400', fill: 'fill-parchment-400/20' },
+  PLAINS:       { icon: MapPin,    color: 'text-stone-400',     fill: 'fill-stone-400/20' },
   SWAMP:        { icon: Droplets,  color: 'text-green-600',    fill: 'fill-green-600/20' },
   UNDERGROUND:  { icon: Mountain,  color: 'text-purple-400',   fill: 'fill-purple-400/20' },
   COASTAL:      { icon: Droplets,  color: 'text-cyan-400',     fill: 'fill-cyan-400/20' },
 };
 
 function getNodeConfig(type: string) {
-  return NODE_TYPE_CONFIG[type] ?? { icon: MapPin, color: 'text-parchment-500', fill: 'fill-parchment-500/20' };
+  return NODE_TYPE_CONFIG[type] ?? { icon: MapPin, color: 'text-stone-500', fill: 'fill-stone-500/20' };
 }
 
 function dangerBorderColor(level: number): string {
@@ -135,17 +135,17 @@ export default function NodeMapView({ highlightNodeId, onNodeClick }: NodeMapVie
 
   if (mapLoading) {
     return (
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-6 flex items-center justify-center min-h-[300px]">
-        <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6 flex items-center justify-center min-h-[300px]">
+        <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
       </div>
     );
   }
 
   if (!mapData || mapData.nodes.length === 0) {
     return (
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center">
-        <MapPin className="w-10 h-10 text-parchment-500/30 mx-auto mb-3" />
-        <p className="text-parchment-500 text-sm">No map data available for this region.</p>
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+        <MapPin className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
+        <p className="text-realm-text-muted text-sm">No map data available for this region.</p>
       </div>
     );
   }
@@ -159,14 +159,14 @@ export default function NodeMapView({ highlightNodeId, onNodeClick }: NodeMapVie
   const viewBox = `${minX} ${minY} ${maxX - minX} ${maxY - minY}`;
 
   return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg overflow-hidden">
-      <div className="p-3 border-b border-dark-50 flex items-center justify-between">
-        <h3 className="font-display text-primary-400 text-sm flex items-center gap-2">
+    <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden">
+      <div className="p-3 border-b border-realm-border flex items-center justify-between">
+        <h3 className="font-display text-realm-gold-400 text-sm flex items-center gap-2">
           <MapPin className="w-4 h-4" />
           Node Map
         </h3>
         {positionData?.position?.town && (
-          <span className="text-[10px] text-parchment-500">
+          <span className="text-[10px] text-realm-text-muted">
             Currently in: {positionData.position.town.name}
           </span>
         )}
@@ -174,7 +174,7 @@ export default function NodeMapView({ highlightNodeId, onNodeClick }: NodeMapVie
 
       <svg
         viewBox={viewBox}
-        className="w-full h-[400px] bg-dark-400"
+        className="w-full h-[400px] bg-realm-bg-800"
         preserveAspectRatio="xMidYMid meet"
       >
         {/* Connections */}
@@ -190,7 +190,7 @@ export default function NodeMapView({ highlightNodeId, onNodeClick }: NodeMapVie
               y1={from.y}
               x2={to.x}
               y2={to.y}
-              className="stroke-parchment-500/20"
+              className="stroke-stone-500/20"
               strokeWidth={2}
               strokeDasharray={conn.bidirectional ? undefined : '4 4'}
             />
@@ -224,15 +224,15 @@ export default function NodeMapView({ highlightNodeId, onNodeClick }: NodeMapVie
               {/* Node circle */}
               <circle
                 r={r}
-                className={`fill-dark-300 stroke-parchment-500/40 ${
-                  isPlayerHere ? 'stroke-primary-400 stroke-[3]' : ''
+                className={`fill-slate-900 stroke-stone-500/40 ${
+                  isPlayerHere ? 'stroke-amber-400 stroke-[3]' : ''
                 } ${isHighlighted ? 'stroke-yellow-400 stroke-[3]' : ''}`}
                 strokeWidth={isPlayerHere || isHighlighted ? 3 : 1.5}
               />
 
               {/* Player indicator */}
               {isPlayerHere && (
-                <circle r={5} className="fill-primary-400 animate-pulse" />
+                <circle r={5} className="fill-amber-400 animate-pulse" />
               )}
 
               {/* Node type indicator (colored dot) */}
@@ -244,7 +244,7 @@ export default function NodeMapView({ highlightNodeId, onNodeClick }: NodeMapVie
               <text
                 y={r + 14}
                 textAnchor="middle"
-                className={`text-[8px] fill-parchment-300 font-display ${isPlayerHere ? 'fill-primary-400' : ''}`}
+                className={`text-[8px] fill-stone-300 font-display ${isPlayerHere ? 'fill-amber-400' : ''}`}
               >
                 {node.name.length > 14 ? node.name.slice(0, 12) + '...' : node.name}
               </text>
@@ -265,11 +265,11 @@ export default function NodeMapView({ highlightNodeId, onNodeClick }: NodeMapVie
       </svg>
 
       {/* Legend */}
-      <div className="p-3 border-t border-dark-50 flex flex-wrap gap-3">
+      <div className="p-3 border-t border-realm-border flex flex-wrap gap-3">
         {Object.entries(NODE_TYPE_CONFIG).slice(0, 6).map(([type, cfg]) => (
           <div key={type} className="flex items-center gap-1">
             <span className={`w-2 h-2 rounded-full ${cfg.color.replace('text-', 'bg-')}`} />
-            <span className="text-[9px] text-parchment-500 capitalize">
+            <span className="text-[9px] text-realm-text-muted capitalize">
               {type.toLowerCase().replace(/_/g, ' ')}
             </span>
           </div>

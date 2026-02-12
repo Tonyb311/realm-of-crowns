@@ -54,15 +54,15 @@ export default function ErrorMessage({
 
   return (
     <div
-      className={`bg-dark-300 border border-blood-dark/40 rounded-lg p-6 text-center ${className}`}
+      className={`bg-realm-bg-700 border border-blood-dark/40 rounded-lg p-6 text-center ${className}`}
     >
       <Icon className="w-10 h-10 text-blood-light mx-auto mb-3" />
       <h3 className="font-display text-blood-light text-lg mb-1">{info.title}</h3>
-      <p className="text-parchment-400 text-sm mb-4 max-w-md mx-auto">{info.message}</p>
+      <p className="text-realm-text-secondary text-sm mb-4 max-w-md mx-auto">{info.message}</p>
       {onRetry && (
         <button
           onClick={onRetry}
-          className="inline-flex items-center gap-2 px-5 py-2 border border-primary-400/50 text-primary-400 font-display text-sm rounded hover:bg-dark-200 transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2 border border-realm-gold-500/50 text-realm-gold-400 font-display text-sm rounded hover:bg-realm-bg-600 transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
           Try Again

@@ -75,7 +75,7 @@ export default function MerchantDashboard() {
   if (isLoading || !data) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+        <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
       </div>
     );
   }
@@ -91,34 +91,34 @@ export default function MerchantDashboard() {
   return (
     <div className="space-y-6">
       {/* Profession level card */}
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-4">
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary-400/10 flex items-center justify-center">
-              <ShoppingCart className="w-5 h-5 text-primary-400" />
+            <div className="w-10 h-10 rounded-lg bg-realm-gold-500/10 flex items-center justify-center">
+              <ShoppingCart className="w-5 h-5 text-realm-gold-400" />
             </div>
             <div>
-              <h3 className="font-display text-parchment-200 text-sm">Merchant</h3>
-              <p className="text-parchment-500 text-[10px]">
+              <h3 className="font-display text-realm-text-primary text-sm">Merchant</h3>
+              <p className="text-realm-text-muted text-[10px]">
                 {profession ? `${profession.tier} - Level ${profession.level}` : 'Not yet started'}
               </p>
             </div>
           </div>
           {profession && (
             <div className="text-right">
-              <p className="font-display text-primary-400 text-lg">Lv.{profession.level}</p>
+              <p className="font-display text-realm-gold-400 text-lg">Lv.{profession.level}</p>
             </div>
           )}
         </div>
         {profession && (
           <div>
-            <div className="flex items-center justify-between text-[10px] text-parchment-500 mb-1">
+            <div className="flex items-center justify-between text-[10px] text-realm-text-muted mb-1">
               <span>{currentXp} XP</span>
               <span>{xpNeeded} XP to next level</span>
             </div>
-            <div className="w-full h-2 bg-dark-500 rounded-full overflow-hidden">
+            <div className="w-full h-2 bg-realm-bg-900 rounded-full overflow-hidden">
               <div
-                className="h-full bg-primary-400 rounded-full transition-all duration-300"
+                className="h-full bg-realm-gold-500 rounded-full transition-all duration-300"
                 style={{ width: `${xpProgress}%` }}
               />
             </div>
@@ -129,39 +129,39 @@ export default function MerchantDashboard() {
       {/* Stats grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard
-          icon={<BarChart3 className="w-4 h-4 text-blue-400" />}
+          icon={<BarChart3 className="w-4 h-4 text-realm-teal-300" />}
           label="Total Trades"
           value={stats.totalTrades.toString()}
         />
         <StatCard
-          icon={<Coins className="w-4 h-4 text-yellow-400" />}
+          icon={<Coins className="w-4 h-4 text-realm-gold-400" />}
           label="Net Profit"
           value={`${stats.netProfit >= 0 ? '+' : ''}${stats.netProfit}g`}
-          valueColor={stats.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}
+          valueColor={stats.netProfit >= 0 ? 'text-realm-success' : 'text-realm-danger'}
         />
         <StatCard
-          icon={<MapPin className="w-4 h-4 text-purple-400" />}
+          icon={<MapPin className="w-4 h-4 text-realm-purple-300" />}
           label="Towns Traded"
           value={stats.townsTraded.toString()}
         />
         <StatCard
-          icon={<ArrowUpRight className="w-4 h-4 text-green-400" />}
+          icon={<ArrowUpRight className="w-4 h-4 text-realm-success" />}
           label="Cross-Town Profit"
           value={`${stats.crossTownProfit}g`}
-          valueColor="text-green-400"
+          valueColor="text-realm-success"
         />
       </div>
 
       {/* Two-column layout for details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Top item types */}
-        <div className="bg-dark-300 border border-dark-50 rounded-lg p-4">
-          <h4 className="font-display text-sm text-parchment-300 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <Star className="w-4 h-4 text-yellow-400" />
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
+          <h4 className="font-display text-sm text-realm-text-secondary uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Star className="w-4 h-4 text-realm-gold-400" />
             Top Item Types
           </h4>
           {topItemTypes.length === 0 ? (
-            <p className="text-parchment-500 text-xs">No trade data yet.</p>
+            <p className="text-realm-text-muted text-xs">No trade data yet.</p>
           ) : (
             <div className="space-y-2">
               {topItemTypes.map((item, index) => {
@@ -170,14 +170,14 @@ export default function MerchantDashboard() {
                 return (
                   <div key={item.type}>
                     <div className="flex items-center justify-between text-xs mb-0.5">
-                      <span className="text-parchment-300">
+                      <span className="text-realm-text-secondary">
                         {item.type.replace(/_/g, ' ')}
                       </span>
-                      <span className="text-primary-400 font-display">{item.revenue}g</span>
+                      <span className="text-realm-gold-400 font-display">{item.revenue}g</span>
                     </div>
-                    <div className="w-full h-1 bg-dark-500 rounded-full overflow-hidden">
+                    <div className="w-full h-1 bg-realm-bg-900 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-primary-400/40 rounded-full"
+                        className="h-full bg-realm-gold-500/40 rounded-full"
                         style={{ width: `${barWidth}%` }}
                       />
                     </div>
@@ -189,24 +189,24 @@ export default function MerchantDashboard() {
         </div>
 
         {/* Recent sales */}
-        <div className="bg-dark-300 border border-dark-50 rounded-lg p-4">
-          <h4 className="font-display text-sm text-parchment-300 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-green-400" />
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
+          <h4 className="font-display text-sm text-realm-text-secondary uppercase tracking-wider mb-3 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-realm-success" />
             Recent Sales
           </h4>
           {recentSales.length === 0 ? (
-            <p className="text-parchment-500 text-xs">No sales yet.</p>
+            <p className="text-realm-text-muted text-xs">No sales yet.</p>
           ) : (
             <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
               {recentSales.map((sale, index) => (
-                <div key={index} className="flex items-center justify-between text-xs py-1 border-b border-dark-50/50 last:border-b-0">
+                <div key={index} className="flex items-center justify-between text-xs py-1 border-b border-realm-border/50 last:border-b-0">
                   <div className="min-w-0">
-                    <p className="text-parchment-200 truncate">{sale.itemName}</p>
-                    <p className="text-parchment-600 text-[10px]">
+                    <p className="text-realm-text-primary truncate">{sale.itemName}</p>
+                    <p className="text-realm-text-muted/60 text-[10px]">
                       x{sale.quantity} at {sale.townName}
                     </p>
                   </div>
-                  <span className="text-primary-400 font-display flex-shrink-0 ml-2">
+                  <span className="text-realm-gold-400 font-display flex-shrink-0 ml-2">
                     {sale.price * sale.quantity}g
                   </span>
                 </div>
@@ -217,19 +217,19 @@ export default function MerchantDashboard() {
       </div>
 
       {/* Summary row */}
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-4">
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
-            <p className="text-parchment-500 text-[10px] uppercase tracking-wider mb-1">Total Bought</p>
-            <p className="font-display text-parchment-200">{stats.totalBought}g</p>
+            <p className="text-realm-text-muted text-[10px] uppercase tracking-wider mb-1">Total Bought</p>
+            <p className="font-display text-realm-text-primary">{stats.totalBought}g</p>
           </div>
           <div>
-            <p className="text-parchment-500 text-[10px] uppercase tracking-wider mb-1">Total Sold</p>
-            <p className="font-display text-parchment-200">{stats.totalSold}g</p>
+            <p className="text-realm-text-muted text-[10px] uppercase tracking-wider mb-1">Total Sold</p>
+            <p className="font-display text-realm-text-primary">{stats.totalSold}g</p>
           </div>
           <div>
-            <p className="text-parchment-500 text-[10px] uppercase tracking-wider mb-1">Trade Volume</p>
-            <p className="font-display text-parchment-200">{stats.totalTradeVolume} items</p>
+            <p className="text-realm-text-muted text-[10px] uppercase tracking-wider mb-1">Trade Volume</p>
+            <p className="font-display text-realm-text-primary">{stats.totalTradeVolume} items</p>
           </div>
         </div>
       </div>
@@ -244,7 +244,7 @@ function StatCard({
   icon,
   label,
   value,
-  valueColor = 'text-parchment-200',
+  valueColor = 'text-realm-text-primary',
 }: {
   icon: React.ReactNode;
   label: string;
@@ -252,10 +252,10 @@ function StatCard({
   valueColor?: string;
 }) {
   return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg p-3">
+    <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-3">
       <div className="flex items-center gap-2 mb-1">
         {icon}
-        <span className="text-parchment-500 text-[10px] uppercase tracking-wider">{label}</span>
+        <span className="text-realm-text-muted text-[10px] uppercase tracking-wider">{label}</span>
       </div>
       <p className={`font-display text-lg ${valueColor}`}>{value}</p>
     </div>

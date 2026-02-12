@@ -88,7 +88,7 @@ function StatusBadge({ building }: { building: BuildingData }) {
   if (building.underConstruction || building.level === 0) {
     if (building.constructionStatus === 'IN_PROGRESS') {
       return (
-        <span className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-display bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 rounded-full">
+        <span className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-display bg-realm-gold-500/15 text-realm-gold-400 border border-realm-gold-500/30 rounded-full">
           <Clock className="w-3 h-3" />
           Building
         </span>
@@ -102,7 +102,7 @@ function StatusBadge({ building }: { building: BuildingData }) {
     );
   }
   return (
-    <span className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-display bg-green-500/15 text-green-400 border border-green-500/30 rounded-full">
+    <span className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-display bg-realm-success/15 text-realm-success border border-realm-success/30 rounded-full">
       Active
     </span>
   );
@@ -118,7 +118,7 @@ function LevelStars({ level }: { level: number }) {
       {Array.from({ length: 5 }).map((_, i) => (
         <Star
           key={i}
-          className={`w-3 h-3 ${i < level ? 'text-primary-400 fill-primary-400' : 'text-dark-50'}`}
+          className={`w-3 h-3 ${i < level ? 'text-realm-gold-400 fill-realm-gold-400' : 'text-realm-border'}`}
         />
       ))}
     </div>
@@ -132,34 +132,34 @@ export default function BuildingCard({ building, onClick, showOwner }: BuildingC
   return (
     <button
       onClick={() => onClick?.(building)}
-      className="w-full text-left bg-dark-300 border border-dark-50 rounded-lg p-4 transition-all hover:border-primary-400/30 hover:bg-dark-300/80 group"
+      className="w-full text-left bg-realm-bg-700 border border-realm-border rounded-lg p-4 transition-all hover:border-realm-gold-500/30 hover:bg-realm-bg-700/80 group"
     >
       <div className="flex items-start gap-3">
         {/* Icon */}
-        <div className="w-10 h-10 rounded-lg bg-dark-500 flex items-center justify-center flex-shrink-0 border border-dark-50 group-hover:border-primary-400/20">
-          <BuildingIcon type={building.type} className="w-5 h-5 text-primary-400" />
+        <div className="w-10 h-10 rounded-lg bg-realm-bg-900 flex items-center justify-center flex-shrink-0 border border-realm-border group-hover:border-realm-gold-500/20">
+          <BuildingIcon type={building.type} className="w-5 h-5 text-realm-gold-400" />
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <h4 className="font-display text-parchment-200 text-sm truncate">
+            <h4 className="font-display text-realm-text-primary text-sm truncate">
               {building.name}
             </h4>
             <StatusBadge building={building} />
           </div>
-          <p className="text-[10px] text-parchment-500 mb-1">
+          <p className="text-[10px] text-realm-text-muted mb-1">
             {buildingTypeLabel(building.type)}
           </p>
           <div className="flex items-center gap-3">
             <LevelStars level={building.level} />
             {building.town && (
-              <span className="text-[10px] text-parchment-500">
+              <span className="text-[10px] text-realm-text-muted">
                 {building.town.name}
               </span>
             )}
             {showOwner && building.owner && (
-              <span className="text-[10px] text-parchment-500">
+              <span className="text-[10px] text-realm-text-muted">
                 Owner: {building.owner.name}
               </span>
             )}
@@ -168,7 +168,7 @@ export default function BuildingCard({ building, onClick, showOwner }: BuildingC
 
         {/* Chevron */}
         {onClick && (
-          <ChevronRight className="w-4 h-4 text-parchment-500 group-hover:text-primary-400 flex-shrink-0 mt-1" />
+          <ChevronRight className="w-4 h-4 text-realm-text-muted group-hover:text-realm-gold-400 flex-shrink-0 mt-1" />
         )}
       </div>
     </button>

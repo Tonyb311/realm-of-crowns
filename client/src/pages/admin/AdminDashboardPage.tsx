@@ -23,7 +23,6 @@ import {
   Legend,
 } from 'recharts';
 import api from '../../services/api';
-import { SkeletonCard } from '../../components/ui/LoadingSkeleton';
 import ErrorMessage from '../../components/ui/ErrorMessage';
 
 interface DashboardStats {
@@ -79,15 +78,18 @@ export default function AdminDashboardPage() {
   if (isLoading) {
     return (
       <div>
-        <h1 className="text-2xl font-display text-primary-400 mb-6">Dashboard</h1>
+        <h1 className="text-2xl font-display text-realm-gold-400 mb-6">Dashboard</h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
           {Array.from({ length: 6 }).map((_, i) => (
-            <SkeletonCard key={i} />
+            <div key={i} className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 space-y-3 animate-pulse">
+              <div className="h-4 bg-realm-bg-800 rounded w-2/5" />
+              <div className="h-6 bg-realm-bg-800 rounded w-3/5" />
+            </div>
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <SkeletonCard className="h-80" />
-          <SkeletonCard className="h-80" />
+          <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 h-80 animate-pulse" />
+          <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 h-80 animate-pulse" />
         </div>
       </div>
     );
@@ -96,7 +98,7 @@ export default function AdminDashboardPage() {
   if (isError) {
     return (
       <div>
-        <h1 className="text-2xl font-display text-primary-400 mb-6">Dashboard</h1>
+        <h1 className="text-2xl font-display text-realm-gold-400 mb-6">Dashboard</h1>
         <ErrorMessage error={error} onRetry={refetch} />
       </div>
     );
@@ -106,7 +108,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-display text-primary-400 mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-display text-realm-gold-400 mb-6">Dashboard</h1>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
@@ -116,13 +118,13 @@ export default function AdminDashboardPage() {
           return (
             <div
               key={card.key}
-              className="bg-dark-300 border border-dark-50 rounded-lg p-5"
+              className="bg-realm-bg-700 border border-realm-border rounded-lg p-5"
             >
               <div className="flex items-center gap-2 mb-2">
-                <Icon className="w-4 h-4 text-primary-400" />
-                <span className="text-parchment-500 text-xs">{card.label}</span>
+                <Icon className="w-4 h-4 text-realm-gold-400" />
+                <span className="text-realm-text-muted text-xs">{card.label}</span>
               </div>
-              <p className="text-2xl font-display text-parchment-200">
+              <p className="text-2xl font-display text-realm-text-primary">
                 {formatValue(value ?? 0, card.format)}
               </p>
             </div>
@@ -138,9 +140,9 @@ export default function AdminDashboardPage() {
             {stats.activeWars ?? 0} Active War{(stats.activeWars ?? 0) !== 1 ? 's' : ''}
           </span>
         </div>
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-400/10 border border-primary-400/30 rounded-lg">
-          <Vote className="w-4 h-4 text-primary-400" />
-          <span className="text-primary-400 text-sm font-display">
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-realm-gold-400/10 border border-realm-gold-400/30 rounded-lg">
+          <Vote className="w-4 h-4 text-realm-gold-400" />
+          <span className="text-realm-gold-400 text-sm font-display">
             {stats.activeElections ?? 0} Active Election{(stats.activeElections ?? 0) !== 1 ? 's' : ''}
           </span>
         </div>
@@ -149,8 +151,8 @@ export default function AdminDashboardPage() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Race Distribution Bar Chart */}
-        <div className="bg-dark-300 border border-dark-50 rounded-lg p-5">
-          <h2 className="font-display text-parchment-200 text-lg mb-4">Race Distribution</h2>
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+          <h2 className="font-display text-realm-text-primary text-lg mb-4">Race Distribution</h2>
           {stats.raceDistribution && stats.raceDistribution.length > 0 ? (
             <ResponsiveContainer width="100%" height={400}>
               <BarChart
@@ -184,15 +186,15 @@ export default function AdminDashboardPage() {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-64 text-parchment-500 text-sm">
+            <div className="flex items-center justify-center h-64 text-realm-text-muted text-sm">
               No race data available
             </div>
           )}
         </div>
 
         {/* Class Distribution Pie Chart */}
-        <div className="bg-dark-300 border border-dark-50 rounded-lg p-5">
-          <h2 className="font-display text-parchment-200 text-lg mb-4">Class Distribution</h2>
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+          <h2 className="font-display text-realm-text-primary text-lg mb-4">Class Distribution</h2>
           {stats.classDistribution && stats.classDistribution.length > 0 ? (
             <ResponsiveContainer width="100%" height={400}>
               <PieChart>
@@ -230,7 +232,7 @@ export default function AdminDashboardPage() {
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-64 text-parchment-500 text-sm">
+            <div className="flex items-center justify-center h-64 text-realm-text-muted text-sm">
               No class data available
             </div>
           )}

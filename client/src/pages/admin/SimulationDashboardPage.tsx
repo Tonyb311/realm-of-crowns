@@ -84,21 +84,21 @@ interface ActivityResponse {
 // ---------------------------------------------------------------------------
 
 const PROFILE_COLORS: Record<string, string> = {
-  gatherer: 'bg-green-500/20 text-green-400 border-green-500/30',
-  crafter: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-  merchant: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  warrior: 'bg-red-500/20 text-red-400 border-red-500/30',
-  politician: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  socialite: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  explorer: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
-  balanced: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  gatherer: 'bg-realm-success/20 text-realm-success border-realm-success/30',
+  crafter: 'bg-realm-gold-500/20 text-realm-gold-400 border-realm-gold-500/30',
+  merchant: 'bg-realm-gold-500/20 text-realm-gold-400 border-realm-gold-500/30',
+  warrior: 'bg-realm-danger/20 text-realm-danger border-realm-danger/30',
+  politician: 'bg-realm-purple-300/20 text-realm-purple-300 border-realm-purple-300/30',
+  socialite: 'bg-realm-teal-300/20 text-realm-teal-300 border-realm-teal-300/30',
+  explorer: 'bg-realm-teal-300/20 text-realm-teal-300 border-realm-teal-300/30',
+  balanced: 'bg-realm-bg-900/20 text-realm-text-muted border-realm-border/30',
 };
 
 const BOT_STATUS_STYLES: Record<string, string> = {
-  active: 'text-green-400 bg-green-400/10 border-green-400/30',
-  idle: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30',
-  paused: 'text-gray-400 bg-gray-400/10 border-gray-400/30',
-  error: 'text-red-400 bg-red-400/10 border-red-400/30',
+  active: 'text-realm-success bg-realm-success/10 border-realm-success/30',
+  idle: 'text-realm-gold-400 bg-realm-gold-400/10 border-realm-gold-400/30',
+  paused: 'text-realm-text-muted bg-realm-bg-600/10 border-realm-border/30',
+  error: 'text-realm-danger bg-realm-danger/10 border-realm-danger/30',
 };
 
 const FOCUS_SYSTEMS = [
@@ -149,15 +149,15 @@ function ProfileBadge({ profile }: { profile: string }) {
 
 function SimStatusBadge({ status }: { status: string }) {
   const config: Record<string, { className: string; pulse: boolean }> = {
-    idle: { className: 'text-gray-400 bg-gray-400/10 border-gray-400/30', pulse: false },
-    running: { className: 'text-green-400 bg-green-400/10 border-green-400/30', pulse: true },
-    paused: { className: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30', pulse: false },
-    stopping: { className: 'text-red-400 bg-red-400/10 border-red-400/30', pulse: false },
+    idle: { className: 'text-realm-text-muted bg-realm-bg-600/10 border-realm-border/30', pulse: false },
+    running: { className: 'text-realm-success bg-realm-success/10 border-realm-success/30', pulse: true },
+    paused: { className: 'text-realm-gold-400 bg-realm-gold-400/10 border-realm-gold-400/30', pulse: false },
+    stopping: { className: 'text-realm-danger bg-realm-danger/10 border-realm-danger/30', pulse: false },
   };
   const c = config[status] || config.idle;
   return (
     <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded border ${c.className}`}>
-      {c.pulse && <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />}
+      {c.pulse && <span className="w-2 h-2 rounded-full bg-realm-success animate-pulse" />}
       {status.toUpperCase()}
     </span>
   );
@@ -338,13 +338,13 @@ export default function SimulationDashboardPage() {
   if (isLoading) {
     return (
       <div>
-        <h1 className="text-2xl font-display text-primary-400 mb-6">Simulation Dashboard</h1>
+        <h1 className="text-2xl font-display text-realm-gold-400 mb-6">Simulation Dashboard</h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-24 bg-dark-300 border border-dark-50 rounded-xl animate-pulse" />
+            <div key={i} className="h-24 bg-realm-bg-700 border border-realm-border rounded-xl animate-pulse" />
           ))}
         </div>
-        <div className="h-64 bg-dark-300 border border-dark-50 rounded-xl animate-pulse" />
+        <div className="h-64 bg-realm-bg-700 border border-realm-border rounded-xl animate-pulse" />
       </div>
     );
   }
@@ -352,15 +352,15 @@ export default function SimulationDashboardPage() {
   if (isError) {
     return (
       <div>
-        <h1 className="text-2xl font-display text-primary-400 mb-6">Simulation Dashboard</h1>
-        <div className="bg-dark-300 border border-dark-50 rounded-xl p-8 text-center">
-          <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-          <p className="text-parchment-300 mb-4">
+        <h1 className="text-2xl font-display text-realm-gold-400 mb-6">Simulation Dashboard</h1>
+        <div className="bg-realm-bg-700 border border-realm-border rounded-xl p-8 text-center">
+          <AlertTriangle className="w-10 h-10 text-realm-danger mx-auto mb-3" />
+          <p className="text-realm-text-secondary mb-4">
             {(error as any)?.response?.data?.message || 'Failed to load simulation status'}
           </p>
           <button
             onClick={() => refetchStatus()}
-            className="px-5 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors"
+            className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
           >
             Retry
           </button>
@@ -371,26 +371,26 @@ export default function SimulationDashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-display text-primary-400 mb-6">Simulation Dashboard</h1>
+      <h1 className="text-2xl font-display text-realm-gold-400 mb-6">Simulation Dashboard</h1>
 
       {/* ------------------------------------------------------------------- */}
       {/* 1. Control Panel                                                     */}
       {/* ------------------------------------------------------------------- */}
-      <div className="bg-dark-300 rounded-xl border border-dark-50 p-5 mb-6">
+      <div className="bg-realm-bg-700 rounded-xl border border-realm-border p-5 mb-6">
         <div className="flex flex-wrap items-center gap-4">
           {/* Status badge */}
           <SimStatusBadge status={status?.status || 'idle'} />
 
           {/* Bot count input */}
           <div className="flex items-center gap-2">
-            <label className="text-parchment-500 text-xs whitespace-nowrap">Bots:</label>
+            <label className="text-realm-text-muted text-xs whitespace-nowrap">Bots:</label>
             <input
               type="number"
               min={1}
               max={100}
               value={botCount}
               onChange={(e) => setBotCount(Math.max(1, parseInt(e.target.value, 10) || 1))}
-              className="w-20 bg-dark-400 border border-dark-50 rounded px-2 py-1.5 text-parchment-300 text-sm focus:border-primary-400 focus:outline-none"
+              className="w-20 bg-realm-bg-800 border border-realm-border rounded px-2 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
             />
           </div>
 
@@ -398,7 +398,7 @@ export default function SimulationDashboardPage() {
           <button
             onClick={() => seedMutation.mutate()}
             disabled={anyMutationPending}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {seedMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
             Seed
@@ -408,7 +408,7 @@ export default function SimulationDashboardPage() {
           <button
             onClick={() => startMutation.mutate()}
             disabled={anyMutationPending || isRunning}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {startMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
             Start
@@ -419,7 +419,7 @@ export default function SimulationDashboardPage() {
             <button
               onClick={() => resumeMutation.mutate()}
               disabled={anyMutationPending}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {resumeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
               Resume
@@ -428,7 +428,7 @@ export default function SimulationDashboardPage() {
             <button
               onClick={() => pauseMutation.mutate()}
               disabled={anyMutationPending || !isRunning}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-yellow-600 text-white font-display text-sm rounded hover:bg-yellow-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-text-primary font-display text-sm rounded hover:bg-realm-gold-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {pauseMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pause className="w-4 h-4" />}
               Pause
@@ -439,7 +439,7 @@ export default function SimulationDashboardPage() {
           <button
             onClick={() => stopMutation.mutate()}
             disabled={anyMutationPending || isIdle}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-display text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-danger hover:bg-realm-danger text-realm-text-primary font-display text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {stopMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Square className="w-4 h-4" />}
             Stop
@@ -449,7 +449,7 @@ export default function SimulationDashboardPage() {
           <button
             onClick={handleCleanup}
             disabled={anyMutationPending || isRunning}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-display text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-danger hover:bg-realm-danger text-realm-text-primary font-display text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {cleanupMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
             Cleanup
@@ -462,123 +462,123 @@ export default function SimulationDashboardPage() {
       {/* ------------------------------------------------------------------- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         {/* Active Bots */}
-        <div className="bg-dark-300 rounded-xl border border-dark-50 p-5">
+        <div className="bg-realm-bg-700 rounded-xl border border-realm-border p-5">
           <div className="flex items-center gap-2 mb-2">
-            <Bot className="w-4 h-4 text-primary-400" />
-            <span className="text-parchment-500 text-sm">Active Bots</span>
+            <Bot className="w-4 h-4 text-realm-gold-400" />
+            <span className="text-realm-text-muted text-sm">Active Bots</span>
           </div>
-          <p className="text-3xl font-bold text-primary-400">{status?.activeBots ?? 0}</p>
+          <p className="text-3xl font-bold text-realm-gold-400">{status?.activeBots ?? 0}</p>
         </div>
 
         {/* Total Actions */}
-        <div className="bg-dark-300 rounded-xl border border-dark-50 p-5">
+        <div className="bg-realm-bg-700 rounded-xl border border-realm-border p-5">
           <div className="flex items-center gap-2 mb-2">
-            <Activity className="w-4 h-4 text-primary-400" />
-            <span className="text-parchment-500 text-sm">Total Actions</span>
+            <Activity className="w-4 h-4 text-realm-gold-400" />
+            <span className="text-realm-text-muted text-sm">Total Actions</span>
           </div>
-          <p className="text-3xl font-bold text-primary-400">{(status?.totalActions ?? 0).toLocaleString()}</p>
+          <p className="text-3xl font-bold text-realm-gold-400">{(status?.totalActions ?? 0).toLocaleString()}</p>
         </div>
 
         {/* Actions/Min */}
-        <div className="bg-dark-300 rounded-xl border border-dark-50 p-5">
+        <div className="bg-realm-bg-700 rounded-xl border border-realm-border p-5">
           <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-4 h-4 text-primary-400" />
-            <span className="text-parchment-500 text-sm">Actions/Min</span>
+            <TrendingUp className="w-4 h-4 text-realm-gold-400" />
+            <span className="text-realm-text-muted text-sm">Actions/Min</span>
           </div>
-          <p className="text-3xl font-bold text-primary-400">{(status?.actionsPerMinute ?? 0).toFixed(1)}</p>
+          <p className="text-3xl font-bold text-realm-gold-400">{(status?.actionsPerMinute ?? 0).toFixed(1)}</p>
         </div>
 
         {/* Errors */}
-        <div className="bg-dark-300 rounded-xl border border-dark-50 p-5">
+        <div className="bg-realm-bg-700 rounded-xl border border-realm-border p-5">
           <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-4 h-4 text-red-400" />
-            <span className="text-parchment-500 text-sm">Errors</span>
+            <AlertTriangle className="w-4 h-4 text-realm-danger" />
+            <span className="text-realm-text-muted text-sm">Errors</span>
           </div>
-          <p className="text-3xl font-bold text-primary-400">{(status?.totalErrors ?? 0).toLocaleString()}</p>
+          <p className="text-3xl font-bold text-realm-gold-400">{(status?.totalErrors ?? 0).toLocaleString()}</p>
         </div>
 
         {/* Error Rate */}
-        <div className="bg-dark-300 rounded-xl border border-dark-50 p-5">
+        <div className="bg-realm-bg-700 rounded-xl border border-realm-border p-5">
           <div className="flex items-center gap-2 mb-2">
-            <Zap className="w-4 h-4 text-yellow-400" />
-            <span className="text-parchment-500 text-sm">Error Rate %</span>
+            <Zap className="w-4 h-4 text-realm-gold-400" />
+            <span className="text-realm-text-muted text-sm">Error Rate %</span>
           </div>
-          <p className="text-3xl font-bold text-primary-400">{errorRate}%</p>
+          <p className="text-3xl font-bold text-realm-gold-400">{errorRate}%</p>
         </div>
 
         {/* Uptime */}
-        <div className="bg-dark-300 rounded-xl border border-dark-50 p-5">
+        <div className="bg-realm-bg-700 rounded-xl border border-realm-border p-5">
           <div className="flex items-center gap-2 mb-2">
-            <Clock className="w-4 h-4 text-primary-400" />
-            <span className="text-parchment-500 text-sm">Uptime</span>
+            <Clock className="w-4 h-4 text-realm-gold-400" />
+            <span className="text-realm-text-muted text-sm">Uptime</span>
           </div>
-          <p className="text-3xl font-bold text-primary-400">{formatUptime(status?.uptime ?? 0)}</p>
+          <p className="text-3xl font-bold text-realm-gold-400">{formatUptime(status?.uptime ?? 0)}</p>
         </div>
       </div>
 
       {/* ------------------------------------------------------------------- */}
       {/* 3. Activity Feed                                                     */}
       {/* ------------------------------------------------------------------- */}
-      <div className="bg-dark-300 rounded-xl border border-dark-50 p-5 mb-6">
+      <div className="bg-realm-bg-700 rounded-xl border border-realm-border p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Activity className="w-5 h-5 text-primary-400" />
-            <h2 className="font-display text-parchment-200 text-lg">Activity Feed</h2>
+            <Activity className="w-5 h-5 text-realm-gold-400" />
+            <h2 className="font-display text-realm-text-primary text-lg">Activity Feed</h2>
           </div>
-          <span className="text-parchment-500 text-[10px]">
+          <span className="text-realm-text-muted text-[10px]">
             Auto-refreshes every {isRunning ? '3s' : '10s'}
           </span>
         </div>
 
         {recentActivity.length === 0 ? (
-          <div className="text-center py-10 text-parchment-500 text-sm">
+          <div className="text-center py-10 text-realm-text-muted text-sm">
             No recent activity. Seed bots and start the simulation to see actions here.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px]">
               <thead>
-                <tr className="border-b border-dark-50 text-left">
-                  <th className="px-3 py-2 text-parchment-500 text-xs font-display">Time</th>
-                  <th className="px-3 py-2 text-parchment-500 text-xs font-display">Bot</th>
-                  <th className="px-3 py-2 text-parchment-500 text-xs font-display">Profile</th>
-                  <th className="px-3 py-2 text-parchment-500 text-xs font-display">Action</th>
-                  <th className="px-3 py-2 text-parchment-500 text-xs font-display w-10">OK</th>
-                  <th className="px-3 py-2 text-parchment-500 text-xs font-display">Detail</th>
-                  <th className="px-3 py-2 text-parchment-500 text-xs font-display text-right">Duration</th>
+                <tr className="border-b border-realm-border text-left">
+                  <th className="px-3 py-2 text-realm-text-muted text-xs font-display">Time</th>
+                  <th className="px-3 py-2 text-realm-text-muted text-xs font-display">Bot</th>
+                  <th className="px-3 py-2 text-realm-text-muted text-xs font-display">Profile</th>
+                  <th className="px-3 py-2 text-realm-text-muted text-xs font-display">Action</th>
+                  <th className="px-3 py-2 text-realm-text-muted text-xs font-display w-10">OK</th>
+                  <th className="px-3 py-2 text-realm-text-muted text-xs font-display">Detail</th>
+                  <th className="px-3 py-2 text-realm-text-muted text-xs font-display text-right">Duration</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-dark-50">
+              <tbody className="divide-y divide-realm-border/50">
                 {recentActivity.map((entry, idx) => (
                   <tr
                     key={`${entry.timestamp}-${entry.characterId}-${idx}`}
-                    className={`hover:bg-dark-400/30 transition-colors ${
-                      entry.success ? '' : 'bg-red-500/5'
+                    className={`hover:bg-realm-bg-800/30 transition-colors ${
+                      entry.success ? '' : 'bg-realm-danger/5'
                     }`}
                   >
-                    <td className="px-3 py-2 text-xs text-parchment-300 whitespace-nowrap">
+                    <td className="px-3 py-2 text-xs text-realm-text-secondary whitespace-nowrap">
                       {formatRelativeTime(entry.timestamp)}
                     </td>
-                    <td className="px-3 py-2 text-xs text-parchment-200 font-medium">
+                    <td className="px-3 py-2 text-xs text-realm-text-primary font-medium">
                       {entry.botName}
                     </td>
                     <td className="px-3 py-2">
                       <ProfileBadge profile={entry.profile} />
                     </td>
-                    <td className="px-3 py-2 text-xs text-parchment-300 font-mono">
+                    <td className="px-3 py-2 text-xs text-realm-text-secondary font-mono">
                       {entry.action}
                     </td>
                     <td className="px-3 py-2">
                       {entry.success ? (
-                        <CheckCircle2 className="w-4 h-4 text-green-400" />
+                        <CheckCircle2 className="w-4 h-4 text-realm-success" />
                       ) : (
-                        <XCircle className="w-4 h-4 text-red-400" />
+                        <XCircle className="w-4 h-4 text-realm-danger" />
                       )}
                     </td>
-                    <td className="px-3 py-2 text-xs text-parchment-300 max-w-[250px] truncate">
+                    <td className="px-3 py-2 text-xs text-realm-text-secondary max-w-[250px] truncate">
                       {entry.detail}
                     </td>
-                    <td className="px-3 py-2 text-xs text-parchment-500 text-right whitespace-nowrap">
+                    <td className="px-3 py-2 text-xs text-realm-text-muted text-right whitespace-nowrap">
                       {entry.durationMs}ms
                     </td>
                   </tr>
@@ -592,62 +592,62 @@ export default function SimulationDashboardPage() {
       {/* ------------------------------------------------------------------- */}
       {/* 4. Bot Roster Table                                                  */}
       {/* ------------------------------------------------------------------- */}
-      <div className="bg-dark-300 rounded-xl border border-dark-50 p-5 mb-6">
+      <div className="bg-realm-bg-700 rounded-xl border border-realm-border p-5 mb-6">
         <div className="flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5 text-primary-400" />
-          <h2 className="font-display text-parchment-200 text-lg">Bot Roster</h2>
+          <Users className="w-5 h-5 text-realm-gold-400" />
+          <h2 className="font-display text-realm-text-primary text-lg">Bot Roster</h2>
           {status?.bots && (
-            <span className="text-parchment-500 text-xs ml-auto">{status.bots.length} bots</span>
+            <span className="text-realm-text-muted text-xs ml-auto">{status.bots.length} bots</span>
           )}
         </div>
 
         {!status?.bots || status.bots.length === 0 ? (
-          <div className="text-center py-10 text-parchment-500 text-sm">
+          <div className="text-center py-10 text-realm-text-muted text-sm">
             No bots seeded yet. Use the Seed button above to create test bots.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px]">
               <thead>
-                <tr className="border-b border-dark-50 text-left">
-                  <th className="px-3 py-2 text-parchment-500 text-xs font-display">Name</th>
-                  <th className="px-3 py-2 text-parchment-500 text-xs font-display">Profile</th>
-                  <th className="px-3 py-2 text-parchment-500 text-xs font-display">Race</th>
-                  <th className="px-3 py-2 text-parchment-500 text-xs font-display">Class</th>
-                  <th className="px-3 py-2 text-parchment-500 text-xs font-display text-right">Level</th>
-                  <th className="px-3 py-2 text-parchment-500 text-xs font-display text-right">Gold</th>
-                  <th className="px-3 py-2 text-parchment-500 text-xs font-display">Last Action</th>
-                  <th className="px-3 py-2 text-parchment-500 text-xs font-display text-right">Errors</th>
-                  <th className="px-3 py-2 text-parchment-500 text-xs font-display">Status</th>
+                <tr className="border-b border-realm-border text-left">
+                  <th className="px-3 py-2 text-realm-text-muted text-xs font-display">Name</th>
+                  <th className="px-3 py-2 text-realm-text-muted text-xs font-display">Profile</th>
+                  <th className="px-3 py-2 text-realm-text-muted text-xs font-display">Race</th>
+                  <th className="px-3 py-2 text-realm-text-muted text-xs font-display">Class</th>
+                  <th className="px-3 py-2 text-realm-text-muted text-xs font-display text-right">Level</th>
+                  <th className="px-3 py-2 text-realm-text-muted text-xs font-display text-right">Gold</th>
+                  <th className="px-3 py-2 text-realm-text-muted text-xs font-display">Last Action</th>
+                  <th className="px-3 py-2 text-realm-text-muted text-xs font-display text-right">Errors</th>
+                  <th className="px-3 py-2 text-realm-text-muted text-xs font-display">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-dark-50">
+              <tbody className="divide-y divide-realm-border/50">
                 {status.bots.map((bot) => (
-                  <tr key={bot.characterId} className="hover:bg-dark-400/30 transition-colors">
-                    <td className="px-3 py-2 text-xs text-parchment-200 font-medium">
+                  <tr key={bot.characterId} className="hover:bg-realm-bg-800/30 transition-colors">
+                    <td className="px-3 py-2 text-xs text-realm-text-primary font-medium">
                       {bot.characterName}
                     </td>
                     <td className="px-3 py-2">
                       <ProfileBadge profile={bot.profile} />
                     </td>
-                    <td className="px-3 py-2 text-xs text-parchment-300">{bot.race}</td>
-                    <td className="px-3 py-2 text-xs text-parchment-300">{bot.class}</td>
-                    <td className="px-3 py-2 text-xs text-parchment-300 text-right">{bot.level}</td>
-                    <td className="px-3 py-2 text-xs text-primary-400 text-right font-mono">
+                    <td className="px-3 py-2 text-xs text-realm-text-secondary">{bot.race}</td>
+                    <td className="px-3 py-2 text-xs text-realm-text-secondary">{bot.class}</td>
+                    <td className="px-3 py-2 text-xs text-realm-text-secondary text-right">{bot.level}</td>
+                    <td className="px-3 py-2 text-xs text-realm-gold-400 text-right font-mono">
                       {bot.gold.toLocaleString()}
                     </td>
-                    <td className="px-3 py-2 text-xs text-parchment-300">
+                    <td className="px-3 py-2 text-xs text-realm-text-secondary">
                       <div className="flex flex-col">
                         <span className="truncate max-w-[150px]">{bot.lastAction || '-'}</span>
                         {bot.lastActionAt && (
-                          <span className="text-parchment-500 text-[10px]">
+                          <span className="text-realm-text-muted text-[10px]">
                             {formatRelativeTime(bot.lastActionAt)}
                           </span>
                         )}
                       </div>
                     </td>
                     <td className="px-3 py-2 text-xs text-right">
-                      <span className={bot.errorsTotal > 0 ? 'text-red-400' : 'text-parchment-500'}>
+                      <span className={bot.errorsTotal > 0 ? 'text-realm-danger' : 'text-realm-text-muted'}>
                         {bot.errorsTotal}
                       </span>
                     </td>
@@ -671,22 +671,22 @@ export default function SimulationDashboardPage() {
       {/* ------------------------------------------------------------------- */}
       {/* 5. Quick Actions                                                     */}
       {/* ------------------------------------------------------------------- */}
-      <div className="bg-dark-300 rounded-xl border border-dark-50 p-5">
+      <div className="bg-realm-bg-700 rounded-xl border border-realm-border p-5">
         <div className="flex items-center gap-2 mb-4">
-          <Zap className="w-5 h-5 text-primary-400" />
-          <h2 className="font-display text-parchment-200 text-lg">Quick Actions</h2>
+          <Zap className="w-5 h-5 text-realm-gold-400" />
+          <h2 className="font-display text-realm-text-primary text-lg">Quick Actions</h2>
         </div>
 
         <div className="flex flex-wrap items-end gap-4">
           {/* Error Storm */}
           <div>
-            <p className="text-parchment-500 text-xs mb-2">
+            <p className="text-realm-text-muted text-xs mb-2">
               Trigger an error storm for 30 seconds to stress-test error handling.
             </p>
             <button
               onClick={() => errorStormMutation.mutate()}
               disabled={errorStormMutation.isPending || !isRunning}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-display text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-danger hover:bg-realm-danger text-realm-text-primary font-display text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {errorStormMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -698,11 +698,11 @@ export default function SimulationDashboardPage() {
           </div>
 
           {/* Divider */}
-          <div className="hidden sm:block w-px h-10 bg-dark-50" />
+          <div className="hidden sm:block w-px h-10 bg-realm-bg-600" />
 
           {/* Focus System */}
           <div>
-            <p className="text-parchment-500 text-xs mb-2">
+            <p className="text-realm-text-muted text-xs mb-2">
               Focus all bots on a single system for 60 seconds.
             </p>
             <div className="flex items-center gap-2">
@@ -710,7 +710,7 @@ export default function SimulationDashboardPage() {
                 <select
                   value={focusSystem}
                   onChange={(e) => setFocusSystem(e.target.value)}
-                  className="appearance-none bg-dark-400 border border-dark-50 rounded pl-3 pr-8 py-2 text-parchment-300 text-sm focus:border-primary-400 focus:outline-none cursor-pointer"
+                  className="appearance-none bg-realm-bg-800 border border-realm-border rounded pl-3 pr-8 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none cursor-pointer"
                 >
                   {FOCUS_SYSTEMS.map((sys) => (
                     <option key={sys} value={sys}>
@@ -718,12 +718,12 @@ export default function SimulationDashboardPage() {
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-parchment-500 pointer-events-none" />
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-realm-text-muted pointer-events-none" />
               </div>
               <button
                 onClick={() => focusMutation.mutate(focusSystem)}
                 disabled={focusMutation.isPending || !isRunning}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {focusMutation.isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

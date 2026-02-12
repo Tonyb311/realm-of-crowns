@@ -84,9 +84,9 @@ type Tab = 'current' | 'history' | 'impeachment';
 // Helpers
 // ---------------------------------------------------------------------------
 const PHASE_COLORS: Record<string, string> = {
-  NOMINATIONS: 'bg-blue-400/10 text-blue-400 border-blue-400/30',
-  VOTING: 'bg-green-400/10 text-green-400 border-green-400/30',
-  COMPLETED: 'bg-parchment-500/10 text-parchment-500 border-parchment-500/30',
+  NOMINATIONS: 'bg-realm-teal-300/10 text-realm-teal-300 border-realm-teal-300/30',
+  VOTING: 'bg-realm-success/10 text-realm-success border-realm-success/30',
+  COMPLETED: 'bg-realm-text-muted/10 text-realm-text-muted border-realm-text-muted/30',
 };
 
 // ---------------------------------------------------------------------------
@@ -183,28 +183,28 @@ export default function ElectionPage() {
   // Render
   // -------------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-dark-500 pt-12">
+    <div className="pt-12">
       {/* Header */}
-      <header className="border-b border-dark-50 bg-dark-400/50">
+      <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <Vote className="w-8 h-8 text-primary-400" />
+              <Vote className="w-8 h-8 text-realm-gold-400" />
               <div>
-                <h1 className="text-3xl font-display text-primary-400">Elections</h1>
-                <p className="text-parchment-500 text-sm">Shape the future of your realm</p>
+                <h1 className="text-3xl font-display text-realm-gold-400">Elections</h1>
+                <p className="text-realm-text-muted text-sm">Shape the future of your realm</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/town-hall')}
-                className="px-5 py-2 border border-primary-400/60 text-primary-400 font-display text-sm rounded hover:bg-dark-300 transition-colors"
+                className="px-5 py-2 border border-realm-gold-500/60 text-realm-gold-400 font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
               >
                 Town Hall
               </button>
               <button
                 onClick={() => navigate('/town')}
-                className="px-5 py-2 border border-parchment-500/40 text-parchment-300 font-display text-sm rounded hover:bg-dark-300 transition-colors"
+                className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
               >
                 Back to Town
               </button>
@@ -214,7 +214,7 @@ export default function ElectionPage() {
       </header>
 
       {/* Tabs */}
-      <div className="border-b border-dark-50 bg-dark-400/30">
+      <div className="border-b border-realm-border bg-realm-bg-800/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex gap-1">
             {tabs.map((tab) => {
@@ -226,8 +226,8 @@ export default function ElectionPage() {
                   onClick={() => setActiveTab(tab.key)}
                   className={`flex items-center gap-2 px-5 py-3 font-display text-sm border-b-2 transition-colors ${
                     isActive
-                      ? 'border-primary-400 text-primary-400'
-                      : 'border-transparent text-parchment-500 hover:text-parchment-300 hover:border-parchment-500/30'
+                      ? 'border-realm-gold-500 text-realm-gold-400'
+                      : 'border-transparent text-realm-text-muted hover:text-realm-text-secondary hover:border-realm-text-muted/30'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -249,22 +249,22 @@ export default function ElectionPage() {
           <div>
             {electionsLoading ? (
               <div className="flex justify-center py-20">
-                <Loader2 className="w-8 h-8 text-primary-400 animate-spin" />
+                <Loader2 className="w-8 h-8 text-realm-gold-400 animate-spin" />
               </div>
             ) : elections.length === 0 ? (
               <div className="text-center py-20">
-                <Vote className="w-12 h-12 text-parchment-500/30 mx-auto mb-4" />
-                <p className="text-parchment-500 mb-2">No active or upcoming elections.</p>
-                <p className="text-parchment-500/60 text-sm">Check back later for new elections.</p>
+                <Vote className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-4" />
+                <p className="text-realm-text-muted mb-2">No active or upcoming elections.</p>
+                <p className="text-realm-text-muted/60 text-sm">Check back later for new elections.</p>
               </div>
             ) : (
               <div className="space-y-6">
                 {elections.map((election) => (
-                  <div key={election.id} className="bg-dark-300 border border-dark-50 rounded-lg overflow-hidden">
+                  <div key={election.id} className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden">
                     {/* Election header */}
-                    <div className="px-6 py-4 border-b border-dark-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="px-6 py-4 border-b border-realm-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <h3 className="font-display text-parchment-200 text-lg">
+                        <h3 className="font-display text-realm-text-primary text-lg">
                           {election.type === 'MAYOR' ? 'Mayoral' : 'Ruler'} Election
                           {election.town && ` - ${election.town.name}`}
                         </h3>
@@ -274,21 +274,21 @@ export default function ElectionPage() {
                       </div>
                       <div className="flex items-center gap-4">
                         <CountdownTimer endDate={election.endDate} />
-                        <span className="text-parchment-500 text-xs">Term #{election.termNumber}</span>
+                        <span className="text-realm-text-muted text-xs">Term #{election.termNumber}</span>
                       </div>
                     </div>
 
                     {/* Candidates */}
                     <div className="p-6">
                       <div className="flex items-center justify-between mb-4">
-                        <h4 className="font-display text-parchment-400 text-sm flex items-center gap-2">
+                        <h4 className="font-display text-realm-text-secondary text-sm flex items-center gap-2">
                           <Users className="w-4 h-4" />
                           Candidates ({election.candidates.length})
                         </h4>
                         {election.phase === 'NOMINATIONS' && (
                           <button
                             onClick={() => { setNominateElectionId(election.id); setShowNominateModal(true); }}
-                            className="px-4 py-1.5 bg-primary-400 text-dark-500 font-display text-xs rounded hover:bg-primary-300 transition-colors"
+                            className="px-4 py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded hover:bg-realm-gold-400 transition-colors"
                           >
                             Run for Office
                           </button>
@@ -296,27 +296,27 @@ export default function ElectionPage() {
                       </div>
 
                       {election.candidates.length === 0 ? (
-                        <p className="text-parchment-500 text-sm">No candidates have entered the race yet.</p>
+                        <p className="text-realm-text-muted text-sm">No candidates have entered the race yet.</p>
                       ) : (
                         <div className="space-y-3">
                           {election.candidates.map((candidate) => (
                             <div
                               key={candidate.characterId}
-                              className="bg-dark-400 border border-dark-50 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                              className="bg-realm-bg-800 border border-realm-border rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
                             >
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg border-2 border-primary-400/30 bg-primary-400/10 flex items-center justify-center">
-                                  <Crown className="w-5 h-5 text-primary-400" />
+                                <div className="w-10 h-10 rounded-lg border-2 border-realm-gold-500/30 bg-realm-gold-500/10 flex items-center justify-center">
+                                  <Crown className="w-5 h-5 text-realm-gold-400" />
                                 </div>
                                 <div>
-                                  <p className="text-parchment-200 font-semibold text-sm">{candidate.name}</p>
-                                  <p className="text-parchment-500 text-xs">
+                                  <p className="text-realm-text-primary font-semibold text-sm">{candidate.name}</p>
+                                  <p className="text-realm-text-muted text-xs">
                                     {candidate.race} - Lv. {candidate.level}
                                   </p>
                                 </div>
                               </div>
                               {candidate.platform && (
-                                <p className="text-parchment-400 text-xs flex-1 sm:mx-4 italic">
+                                <p className="text-realm-text-secondary text-xs flex-1 sm:mx-4 italic">
                                   "{candidate.platform}"
                                 </p>
                               )}
@@ -324,7 +324,7 @@ export default function ElectionPage() {
                                 <button
                                   onClick={() => voteMutation.mutate({ electionId: election.id, candidateId: candidate.characterId })}
                                   disabled={voteMutation.isPending}
-                                  className="px-4 py-1.5 bg-green-400/20 text-green-400 text-xs font-display rounded border border-green-400/30 hover:bg-green-400/30 transition-colors disabled:opacity-50"
+                                  className="px-4 py-1.5 bg-realm-success/20 text-realm-success text-xs font-display rounded border border-realm-success/30 hover:bg-realm-success/30 transition-colors disabled:opacity-50"
                                 >
                                   {voteMutation.isPending ? 'Voting...' : 'Vote'}
                                 </button>
@@ -335,7 +335,7 @@ export default function ElectionPage() {
                       )}
 
                       {voteMutation.isError && (
-                        <div className="mt-3 p-2 bg-red-900/30 border border-red-500/50 rounded text-red-300 text-xs flex items-center gap-2">
+                        <div className="mt-3 p-2 bg-realm-danger/30 border border-realm-danger/50 rounded text-realm-danger text-xs flex items-center gap-2">
                           <AlertCircle className="w-3 h-3 flex-shrink-0" />
                           {(voteMutation.error as any)?.response?.data?.error ?? 'Failed to cast vote.'}
                         </div>
@@ -355,33 +355,33 @@ export default function ElectionPage() {
           <div>
             {resultsLoading ? (
               <div className="flex justify-center py-20">
-                <Loader2 className="w-8 h-8 text-primary-400 animate-spin" />
+                <Loader2 className="w-8 h-8 text-realm-gold-400 animate-spin" />
               </div>
             ) : results.length === 0 ? (
               <div className="text-center py-20">
-                <Trophy className="w-12 h-12 text-parchment-500/30 mx-auto mb-4" />
-                <p className="text-parchment-500">No past election results.</p>
+                <Trophy className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-4" />
+                <p className="text-realm-text-muted">No past election results.</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {results.map((result) => (
-                  <div key={result.id} className="bg-dark-300 border border-dark-50 rounded-lg p-5">
+                  <div key={result.id} className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h4 className="font-display text-parchment-200 text-sm">
+                        <h4 className="font-display text-realm-text-primary text-sm">
                           {result.type === 'MAYOR' ? 'Mayoral' : 'Ruler'} Election - Term #{result.termNumber}
                         </h4>
-                        <p className="text-parchment-500 text-xs">
+                        <p className="text-realm-text-muted text-xs">
                           {new Date(result.startDate).toLocaleDateString()} - {new Date(result.endDate).toLocaleDateString()}
                         </p>
                       </div>
-                      <span className="text-parchment-500 text-xs">{result.totalVotes} total votes</span>
+                      <span className="text-realm-text-muted text-xs">{result.totalVotes} total votes</span>
                     </div>
 
                     {result.winner && (
-                      <div className="bg-primary-400/10 border border-primary-400/30 rounded p-3 mb-3 flex items-center gap-2">
-                        <Trophy className="w-4 h-4 text-primary-400" />
-                        <span className="text-primary-400 font-display text-sm">Winner: {result.winner.name}</span>
+                      <div className="bg-realm-gold-500/10 border border-realm-gold-500/30 rounded p-3 mb-3 flex items-center gap-2">
+                        <Trophy className="w-4 h-4 text-realm-gold-400" />
+                        <span className="text-realm-gold-400 font-display text-sm">Winner: {result.winner.name}</span>
                       </div>
                     )}
 
@@ -391,16 +391,16 @@ export default function ElectionPage() {
                         const isWinner = result.winner?.id === candidate.characterId;
                         return (
                           <div key={candidate.characterId} className="flex items-center gap-3">
-                            <span className={`text-sm w-32 truncate ${isWinner ? 'text-primary-400 font-semibold' : 'text-parchment-300'}`}>
+                            <span className={`text-sm w-32 truncate ${isWinner ? 'text-realm-gold-400 font-semibold' : 'text-realm-text-secondary'}`}>
                               {candidate.name}
                             </span>
-                            <div className="flex-1 h-4 bg-dark-500 rounded-full overflow-hidden">
+                            <div className="flex-1 h-4 bg-realm-bg-900 rounded-full overflow-hidden">
                               <div
-                                className={`h-full rounded-full transition-all ${isWinner ? 'bg-primary-400/60' : 'bg-parchment-500/30'}`}
+                                className={`h-full rounded-full transition-all ${isWinner ? 'bg-realm-gold-500/60' : 'bg-realm-text-muted/30'}`}
                                 style={{ width: `${pct}%` }}
                               />
                             </div>
-                            <span className="text-parchment-400 text-xs w-16 text-right">
+                            <span className="text-realm-text-secondary text-xs w-16 text-right">
                               {candidate.votes} ({pct}%)
                             </span>
                           </div>
@@ -420,21 +420,21 @@ export default function ElectionPage() {
         {activeTab === 'impeachment' && (
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-display text-parchment-200">Impeachment</h2>
+              <h2 className="text-xl font-display text-realm-text-primary">Impeachment</h2>
               <button
                 onClick={() => setShowImpeachModal(true)}
-                className="px-5 py-2 bg-red-900/30 border border-red-500/40 text-red-400 font-display text-sm rounded hover:bg-red-900/50 transition-colors"
+                className="px-5 py-2 bg-realm-danger/30 border border-realm-danger/40 text-realm-danger font-display text-sm rounded hover:bg-realm-danger/50 transition-colors"
               >
                 Start Impeachment
               </button>
             </div>
 
-            <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center">
-              <Gavel className="w-12 h-12 text-parchment-500/30 mx-auto mb-4" />
-              <p className="text-parchment-500 text-sm mb-2">
+            <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+              <Gavel className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-4" />
+              <p className="text-realm-text-muted text-sm mb-2">
                 Impeachment allows citizens to remove an elected official from office.
               </p>
-              <p className="text-parchment-500/60 text-xs">
+              <p className="text-realm-text-muted/60 text-xs">
                 Requires a majority vote within the 48-hour voting period.
               </p>
             </div>
@@ -447,46 +447,46 @@ export default function ElectionPage() {
       {/* ================================================================= */}
       {showNominateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowNominateModal(false)}>
-          <div className="bg-dark-400 border border-dark-50 rounded-lg p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-realm-bg-800 border border-realm-border rounded-lg p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-display text-primary-400">Run for Office</h3>
-              <button onClick={() => setShowNominateModal(false)} className="text-parchment-500 hover:text-parchment-200">
+              <h3 className="text-lg font-display text-realm-gold-400">Run for Office</h3>
+              <button onClick={() => setShowNominateModal(false)} className="text-realm-text-muted hover:text-realm-text-primary">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="text-parchment-500 text-xs mb-1 block">Your Platform</label>
+                <label className="text-realm-text-muted text-xs mb-1 block">Your Platform</label>
                 <textarea
                   value={platform}
                   onChange={(e) => setPlatform(e.target.value)}
                   placeholder="Share your vision for the town..."
                   maxLength={2000}
                   rows={4}
-                  className="w-full px-3 py-2 bg-dark-500 border border-dark-50 rounded text-parchment-200 text-sm placeholder:text-parchment-500/50 focus:border-primary-400/50 focus:outline-none resize-none"
+                  className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-none resize-none"
                 />
-                <p className="text-parchment-500/50 text-[10px] text-right mt-1">{platform.length}/2000</p>
+                <p className="text-realm-text-muted/50 text-[10px] text-right mt-1">{platform.length}/2000</p>
               </div>
             </div>
 
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowNominateModal(false)}
-                className="flex-1 py-2 border border-parchment-500/30 text-parchment-300 font-display text-sm rounded hover:bg-dark-300 transition-colors"
+                className="flex-1 py-2 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => nominateMutation.mutate({ electionId: nominateElectionId, platform })}
                 disabled={nominateMutation.isPending}
-                className="flex-1 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {nominateMutation.isPending ? 'Submitting...' : 'Enter Race'}
               </button>
             </div>
             {nominateMutation.isError && (
-              <p className="text-blood-light text-xs mt-3 text-center">
+              <p className="text-realm-danger text-xs mt-3 text-center">
                 {(nominateMutation.error as any)?.response?.data?.error ?? 'Failed to nominate.'}
               </p>
             )}
@@ -499,28 +499,28 @@ export default function ElectionPage() {
       {/* ================================================================= */}
       {showImpeachModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowImpeachModal(false)}>
-          <div className="bg-dark-400 border border-dark-50 rounded-lg p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-realm-bg-800 border border-realm-border rounded-lg p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-display text-red-400">Start Impeachment</h3>
-              <button onClick={() => setShowImpeachModal(false)} className="text-parchment-500 hover:text-parchment-200">
+              <h3 className="text-lg font-display text-realm-danger">Start Impeachment</h3>
+              <button onClick={() => setShowImpeachModal(false)} className="text-realm-text-muted hover:text-realm-text-primary">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="text-parchment-500 text-xs mb-1 block">Target Official ID</label>
+                <label className="text-realm-text-muted text-xs mb-1 block">Target Official ID</label>
                 <input
                   type="text"
                   value={impeachTargetId}
                   onChange={(e) => setImpeachTargetId(e.target.value)}
                   placeholder="Character ID of the official"
-                  className="w-full px-3 py-2 bg-dark-500 border border-dark-50 rounded text-parchment-200 text-sm placeholder:text-parchment-500/50 focus:border-primary-400/50 focus:outline-none"
+                  className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-none"
                 />
               </div>
 
-              <div className="bg-red-900/20 border border-red-500/30 rounded p-3">
-                <p className="text-red-300 text-xs">
+              <div className="bg-realm-danger/20 border border-realm-danger/30 rounded p-3">
+                <p className="text-realm-danger text-xs">
                   This will start a 48-hour impeachment vote. All town residents can vote. A majority is required to remove the official.
                 </p>
               </div>
@@ -529,20 +529,20 @@ export default function ElectionPage() {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowImpeachModal(false)}
-                className="flex-1 py-2 border border-parchment-500/30 text-parchment-300 font-display text-sm rounded hover:bg-dark-300 transition-colors"
+                className="flex-1 py-2 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => impeachMutation.mutate({ targetId: impeachTargetId, townId: character?.currentTownId ?? undefined })}
                 disabled={impeachMutation.isPending || !impeachTargetId.trim()}
-                className="flex-1 py-2 bg-red-900/40 text-red-400 border border-red-500/40 font-display text-sm rounded hover:bg-red-900/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-2 bg-realm-danger/40 text-realm-danger border border-realm-danger/40 font-display text-sm rounded hover:bg-realm-danger/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {impeachMutation.isPending ? 'Starting...' : 'Start Vote'}
               </button>
             </div>
             {impeachMutation.isError && (
-              <p className="text-blood-light text-xs mt-3 text-center">
+              <p className="text-realm-danger text-xs mt-3 text-center">
                 {(impeachMutation.error as any)?.response?.data?.error ?? 'Failed to start impeachment.'}
               </p>
             )}

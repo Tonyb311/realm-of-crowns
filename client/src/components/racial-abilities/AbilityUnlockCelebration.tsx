@@ -23,11 +23,11 @@ function getTheme(abilityType: 'active' | 'passive', effectType?: string) {
   if (lower.includes('damage') || lower.includes('attack') || lower.includes('combat') || lower.includes('breath')) {
     return {
       glow: 'shadow-red-500/40',
-      border: 'border-red-500',
-      bg: 'bg-red-900/20',
-      text: 'text-red-400',
-      iconBg: 'bg-red-900/30 border-red-500/40',
-      buttonBg: 'bg-red-600 hover:bg-red-500',
+      border: 'border-realm-danger',
+      bg: 'bg-realm-danger/20',
+      text: 'text-realm-danger',
+      iconBg: 'bg-realm-danger/20 border-realm-danger/40',
+      buttonBg: 'bg-realm-danger hover:bg-realm-danger/80',
       particle: '#ef4444',
     };
   }
@@ -36,11 +36,11 @@ function getTheme(abilityType: 'active' | 'passive', effectType?: string) {
   if (abilityType === 'passive') {
     return {
       glow: 'shadow-green-500/40',
-      border: 'border-green-500',
-      bg: 'bg-green-900/20',
-      text: 'text-green-400',
-      iconBg: 'bg-green-900/30 border-green-500/40',
-      buttonBg: 'bg-green-600 hover:bg-green-500',
+      border: 'border-realm-success',
+      bg: 'bg-realm-success/20',
+      text: 'text-realm-success',
+      iconBg: 'bg-realm-success/20 border-realm-success/40',
+      buttonBg: 'bg-realm-success hover:bg-realm-success/80',
       particle: '#22c55e',
     };
   }
@@ -48,11 +48,11 @@ function getTheme(abilityType: 'active' | 'passive', effectType?: string) {
   // Default / utility
   return {
     glow: 'shadow-blue-500/40',
-    border: 'border-blue-500',
-    bg: 'bg-blue-900/20',
-    text: 'text-blue-400',
-    iconBg: 'bg-blue-900/30 border-blue-500/40',
-    buttonBg: 'bg-blue-600 hover:bg-blue-500',
+    border: 'border-realm-teal-300',
+    bg: 'bg-realm-teal-300/20',
+    text: 'text-realm-teal-300',
+    iconBg: 'bg-realm-teal-300/20 border-realm-teal-300/40',
+    buttonBg: 'bg-realm-teal-300 hover:bg-realm-teal-300/80',
     particle: '#3b82f6',
   };
 }
@@ -147,7 +147,7 @@ export default function AbilityUnlockCelebration({
 
         {/* Card */}
         <motion.div
-          className={`relative bg-dark-400 ${theme.border} border-2 rounded-xl p-8 max-w-sm w-full mx-4 text-center
+          className={`relative bg-realm-bg-800 ${theme.border} border-2 rounded-xl p-8 max-w-sm w-full mx-4 text-center
             shadow-2xl ${theme.glow}`}
           initial={{ opacity: 0, scale: 0.8, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -194,7 +194,7 @@ export default function AbilityUnlockCelebration({
 
           {/* Title */}
           <motion.p
-            className="text-[10px] text-parchment-500 uppercase tracking-widest font-display mb-1"
+            className="text-[10px] text-realm-text-muted uppercase tracking-widest font-display mb-1"
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
@@ -213,7 +213,7 @@ export default function AbilityUnlockCelebration({
 
           {/* Description */}
           <motion.p
-            className="text-sm text-parchment-300 leading-relaxed mb-6"
+            className="text-sm text-realm-text-secondary leading-relaxed mb-6"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
@@ -236,7 +236,7 @@ export default function AbilityUnlockCelebration({
           {/* Dismiss button */}
           <motion.button
             onClick={onDismiss}
-            className={`w-full py-3 ${theme.buttonBg} text-white font-display text-base rounded-lg transition-colors`}
+            className={`w-full py-3 ${theme.buttonBg} text-realm-text-primary font-display text-base rounded-lg transition-colors`}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}

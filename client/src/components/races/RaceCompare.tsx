@@ -34,16 +34,16 @@ const STAT_LABELS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 function StatBar({ label, value, maxValue }: { label: string; value: number; maxValue: number }) {
   const percent = Math.max(0, Math.min(100, ((value + 4) / 8) * 100));
-  const color = value > 0 ? 'bg-green-500' : value < 0 ? 'bg-red-500' : 'bg-parchment-500/40';
+  const color = value > 0 ? 'bg-realm-success' : value < 0 ? 'bg-realm-danger' : 'bg-realm-text-muted/40';
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[10px] text-parchment-500 uppercase w-8 text-right">{label}</span>
-      <div className="flex-1 h-2 bg-dark-500 rounded-full overflow-hidden">
+      <span className="text-[10px] text-realm-text-muted uppercase w-8 text-right">{label}</span>
+      <div className="flex-1 h-2 bg-realm-bg-900 rounded-full overflow-hidden">
         <div className={`h-full rounded-full ${color} transition-all`} style={{ width: `${percent}%` }} />
       </div>
       <span className={`text-xs font-display w-8 text-right ${
-        value > 0 ? 'text-green-400' : value < 0 ? 'text-red-400' : 'text-parchment-500'
+        value > 0 ? 'text-realm-success' : value < 0 ? 'text-realm-danger' : 'text-realm-text-muted'
       }`}>
         {value > 0 ? `+${value}` : value}
       </span>
@@ -111,8 +111,8 @@ export default function RaceCompare() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-4">
-        <GitCompareArrows className="w-5 h-5 text-primary-400" />
-        <h2 className="font-display text-xl text-primary-400">Compare Races</h2>
+        <GitCompareArrows className="w-5 h-5 text-realm-gold-400" />
+        <h2 className="font-display text-xl text-realm-gold-400">Compare Races</h2>
       </div>
 
       {/* Race selectors */}
@@ -122,20 +122,20 @@ export default function RaceCompare() {
             <select
               value={id}
               onChange={e => toggleRace(idx, e.target.value)}
-              className="appearance-none bg-dark-300 border border-dark-50 rounded px-4 py-2 text-sm text-parchment-200 pr-8 focus:border-primary-400 focus:outline-none min-w-[180px]"
+              className="appearance-none bg-realm-bg-700 border border-realm-border rounded px-4 py-2 text-sm text-realm-text-primary pr-8 focus:border-realm-gold-400 focus:outline-none min-w-[180px]"
             >
               <option value="">Select race...</option>
               {allRaces.map(r => (
                 <option key={r.id} value={r.id}>{r.name}</option>
               ))}
             </select>
-            <ChevronDown className="w-3.5 h-3.5 text-parchment-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-realm-text-muted absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
         ))}
         {selectedIds.length < 3 && (
           <button
             onClick={addSlot}
-            className="px-4 py-2 border border-dashed border-primary-400/40 text-primary-400 text-sm font-display rounded hover:bg-dark-300 transition-colors"
+            className="px-4 py-2 border border-dashed border-realm-gold-400/40 text-realm-gold-400 text-sm font-display rounded hover:bg-realm-bg-700 transition-colors"
           >
             + Add Race
           </button>
@@ -144,7 +144,7 @@ export default function RaceCompare() {
 
       {isLoading && (
         <div className="flex justify-center py-8">
-          <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+          <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
         </div>
       )}
 
@@ -157,22 +157,22 @@ export default function RaceCompare() {
           transition={{ duration: 0.3 }}
         >
           {/* Stat comparison */}
-          <div className="bg-dark-300 border border-dark-50 rounded-lg p-5">
-            <h3 className="font-display text-primary-400 text-xs uppercase tracking-wider mb-4">Stat Modifiers</h3>
+          <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+            <h3 className="font-display text-realm-gold-400 text-xs uppercase tracking-wider mb-4">Stat Modifiers</h3>
 
             <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${selectedRaces.length}, 1fr)` }}>
               {/* Race names */}
               {selectedRaces.map(race => (
                 <div key={race.id} className="text-center">
-                  <p className="font-display text-sm text-parchment-200">{race.name}</p>
-                  <p className="text-[10px] text-parchment-500 capitalize">{race.tier}</p>
+                  <p className="font-display text-sm text-realm-text-primary">{race.name}</p>
+                  <p className="text-[10px] text-realm-text-muted capitalize">{race.tier}</p>
                 </div>
               ))}
             </div>
 
             {STAT_KEYS.map(stat => (
               <div key={stat} className="mt-3">
-                <p className="text-[10px] text-parchment-500 uppercase mb-1">{STAT_LABELS[stat]}</p>
+                <p className="text-[10px] text-realm-text-muted uppercase mb-1">{STAT_LABELS[stat]}</p>
                 <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${selectedRaces.length}, 1fr)` }}>
                   {selectedRaces.map(race => (
                     <StatBar
@@ -188,17 +188,17 @@ export default function RaceCompare() {
           </div>
 
           {/* Ability comparison */}
-          <div className="bg-dark-300 border border-dark-50 rounded-lg p-5">
-            <h3 className="font-display text-primary-400 text-xs uppercase tracking-wider mb-4">Abilities</h3>
+          <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+            <h3 className="font-display text-realm-gold-400 text-xs uppercase tracking-wider mb-4">Abilities</h3>
 
             <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${selectedRaces.length}, 1fr)` }}>
               {selectedRaces.map(race => (
                 <div key={race.id} className="space-y-2">
-                  <p className="font-display text-sm text-parchment-200 border-b border-dark-50 pb-1">{race.name}</p>
+                  <p className="font-display text-sm text-realm-text-primary border-b border-realm-border pb-1">{race.name}</p>
                   {race.abilities.map(a => (
-                    <div key={a.name} className="bg-dark-400 rounded p-2">
-                      <p className="text-xs text-parchment-200 font-display">{a.name}</p>
-                      <p className="text-[10px] text-parchment-500">
+                    <div key={a.name} className="bg-realm-bg-800 rounded p-2">
+                      <p className="text-xs text-realm-text-primary font-display">{a.name}</p>
+                      <p className="text-[10px] text-realm-text-muted">
                         Lv.{a.levelRequired} | {a.type}
                       </p>
                     </div>
@@ -209,15 +209,15 @@ export default function RaceCompare() {
           </div>
 
           {/* Profession bonus comparison */}
-          <div className="bg-dark-300 border border-dark-50 rounded-lg p-5">
-            <h3 className="font-display text-primary-400 text-xs uppercase tracking-wider mb-4">Profession Bonuses</h3>
+          <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+            <h3 className="font-display text-realm-gold-400 text-xs uppercase tracking-wider mb-4">Profession Bonuses</h3>
 
             <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${selectedRaces.length}, 1fr)` }}>
               {selectedRaces.map(race => (
                 <div key={race.id} className="space-y-1.5">
-                  <p className="font-display text-sm text-parchment-200 border-b border-dark-50 pb-1">{race.name}</p>
+                  <p className="font-display text-sm text-realm-text-primary border-b border-realm-border pb-1">{race.name}</p>
                   {race.professionBonuses.length === 0 ? (
-                    <p className="text-xs text-parchment-500">No bonuses</p>
+                    <p className="text-xs text-realm-text-muted">No bonuses</p>
                   ) : (
                     race.professionBonuses.map(pb => {
                       const parts: string[] = [];
@@ -226,11 +226,11 @@ export default function RaceCompare() {
                       if (pb.yieldBonus) parts.push(`Yield +${(pb.yieldBonus * 100).toFixed(0)}%`);
                       if (pb.xpBonus) parts.push(`XP +${(pb.xpBonus * 100).toFixed(0)}%`);
                       return (
-                        <div key={pb.professionType} className="bg-dark-400 rounded px-2 py-1.5">
-                          <p className="text-xs text-parchment-200 capitalize">
+                        <div key={pb.professionType} className="bg-realm-bg-800 rounded px-2 py-1.5">
+                          <p className="text-xs text-realm-text-primary capitalize">
                             {pb.professionType.replace(/_/g, ' ').toLowerCase()}
                           </p>
-                          <p className="text-[10px] text-green-400">{parts.join(', ')}</p>
+                          <p className="text-[10px] text-realm-success">{parts.join(', ')}</p>
                         </div>
                       );
                     })
@@ -243,7 +243,7 @@ export default function RaceCompare() {
       )}
 
       {selectedRaces.length < 2 && !isLoading && selectedIds.length > 0 && (
-        <p className="text-sm text-parchment-500 text-center py-8">
+        <p className="text-sm text-realm-text-muted text-center py-8">
           Select at least 2 races to compare.
         </p>
       )}

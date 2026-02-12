@@ -61,7 +61,7 @@ export default function PlayerSearch({ onSelect, placeholder = 'Search players..
   return (
     <div ref={containerRef} className="relative">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-parchment-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-realm-text-muted" />
         <input
           type="text"
           value={query}
@@ -71,33 +71,33 @@ export default function PlayerSearch({ onSelect, placeholder = 'Search players..
           }}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className="w-full pl-9 pr-3 py-2 bg-dark-400 border border-dark-50 rounded text-sm text-parchment-200 placeholder-parchment-500 focus:outline-none focus:border-primary-400"
+          className="w-full pl-9 pr-3 py-2 bg-realm-bg-800 border border-realm-border rounded text-sm text-realm-text-primary placeholder-realm-text-muted focus:outline-none focus:border-realm-gold-500"
         />
       </div>
 
       {isOpen && debouncedQuery.length >= 2 && (
-        <div className="absolute z-50 mt-1 w-full bg-dark-300 border border-dark-50 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+        <div className="absolute z-50 mt-1 w-full bg-realm-bg-700 border border-realm-border rounded-lg shadow-xl max-h-60 overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-4">
-              <Loader2 className="w-4 h-4 text-primary-400 animate-spin" />
+              <Loader2 className="w-4 h-4 text-realm-gold-400 animate-spin" />
             </div>
           ) : !results || results.length === 0 ? (
-            <div className="px-4 py-3 text-sm text-parchment-500">No players found.</div>
+            <div className="px-4 py-3 text-sm text-realm-text-muted">No players found.</div>
           ) : (
             results.map((c) => (
               <button
                 key={c.id}
                 onClick={() => handleSelect(c)}
-                className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-dark-200 transition-colors text-left"
+                className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-realm-bg-600 transition-colors text-left"
               >
                 <div>
-                  <span className="text-sm text-parchment-200 font-semibold">{c.name}</span>
+                  <span className="text-sm text-realm-text-primary font-semibold">{c.name}</span>
                   {c.guildTag && (
-                    <span className="ml-1.5 text-xs text-primary-400">[{c.guildTag}]</span>
+                    <span className="ml-1.5 text-xs text-realm-gold-400">[{c.guildTag}]</span>
                   )}
-                  <span className="ml-2 text-xs text-parchment-500 capitalize">{c.race.toLowerCase()}</span>
+                  <span className="ml-2 text-xs text-realm-text-muted capitalize">{c.race.toLowerCase()}</span>
                 </div>
-                <span className="text-xs text-parchment-500">Lv. {c.level}</span>
+                <span className="text-xs text-realm-text-muted">Lv. {c.level}</span>
               </button>
             ))
           )}

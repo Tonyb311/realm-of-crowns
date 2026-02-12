@@ -35,11 +35,11 @@ interface BestTradesProps {
 // Rarity color helper
 // ---------------------------------------------------------------------------
 const RARITY_COLORS: Record<string, string> = {
-  COMMON: 'text-parchment-400',
-  UNCOMMON: 'text-green-400',
-  RARE: 'text-blue-400',
-  EPIC: 'text-purple-400',
-  LEGENDARY: 'text-yellow-400',
+  COMMON: 'text-realm-text-secondary',
+  UNCOMMON: 'text-realm-success',
+  RARE: 'text-realm-teal-300',
+  EPIC: 'text-realm-purple-300',
+  LEGENDARY: 'text-realm-gold-400',
 };
 
 // ---------------------------------------------------------------------------
@@ -60,16 +60,16 @@ export default function BestTrades({ onStartTrade }: BestTradesProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+        <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
       </div>
     );
   }
 
   if (routes.length === 0) {
     return (
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center">
-        <TrendingUp className="w-10 h-10 text-parchment-500/30 mx-auto mb-3" />
-        <p className="text-parchment-500 text-sm">
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+        <TrendingUp className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
+        <p className="text-realm-text-muted text-sm">
           No profitable trade routes found yet. Prices need more market activity.
         </p>
       </div>
@@ -78,24 +78,24 @@ export default function BestTrades({ onStartTrade }: BestTradesProps) {
 
   return (
     <div className="space-y-3">
-      <p className="text-parchment-500 text-xs">
+      <p className="text-realm-text-muted text-xs">
         Top {routes.length} most profitable trade routes based on recent market data.
       </p>
 
       {routes.map((route, index) => (
         <div
           key={`${route.item.id}-${route.buyTown.id}-${route.sellTown.id}`}
-          className="bg-dark-300 border border-dark-50 rounded-lg p-4 hover:border-primary-400/20 transition-all"
+          className="bg-realm-bg-700 border border-realm-border rounded-lg p-4 hover:border-realm-gold-500/20 transition-all"
         >
           <div className="flex items-start justify-between gap-4">
             {/* Left: item + route */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-parchment-600 text-[10px] font-display">#{index + 1}</span>
-                <span className={`font-display text-sm truncate ${RARITY_COLORS[route.item.rarity] ?? 'text-parchment-200'}`}>
+                <span className="text-realm-text-muted/60 text-[10px] font-display">#{index + 1}</span>
+                <span className={`font-display text-sm truncate ${RARITY_COLORS[route.item.rarity] ?? 'text-realm-text-primary'}`}>
                   {route.item.name}
                 </span>
-                <span className="text-parchment-600 text-[10px]">
+                <span className="text-realm-text-muted/60 text-[10px]">
                   {route.item.type.replace(/_/g, ' ')}
                 </span>
               </div>
@@ -103,26 +103,26 @@ export default function BestTrades({ onStartTrade }: BestTradesProps) {
               {/* Route */}
               <div className="flex items-center gap-2 text-xs">
                 <div className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3 text-green-400" />
-                  <span className="text-parchment-300">{route.buyTown.name}</span>
-                  <span className="text-green-400 font-display">{route.buyPrice}g</span>
+                  <MapPin className="w-3 h-3 text-realm-success" />
+                  <span className="text-realm-text-secondary">{route.buyTown.name}</span>
+                  <span className="text-realm-success font-display">{route.buyPrice}g</span>
                 </div>
-                <ArrowRight className="w-3 h-3 text-parchment-600" />
+                <ArrowRight className="w-3 h-3 text-realm-text-muted/60" />
                 <div className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3 text-red-400" />
-                  <span className="text-parchment-300">{route.sellTown.name}</span>
-                  <span className="text-red-400 font-display">{route.sellPrice}g</span>
+                  <MapPin className="w-3 h-3 text-realm-danger" />
+                  <span className="text-realm-text-secondary">{route.sellTown.name}</span>
+                  <span className="text-realm-danger font-display">{route.sellPrice}g</span>
                 </div>
               </div>
 
               {/* Meta */}
-              <div className="flex items-center gap-3 mt-1.5 text-[10px] text-parchment-500">
+              <div className="flex items-center gap-3 mt-1.5 text-[10px] text-realm-text-muted">
                 {route.distance !== null && <span>Distance: {route.distance}</span>}
                 <span>
-                  Profit: <span className="text-primary-400 font-display">{route.estimatedProfit}g/unit</span>
+                  Profit: <span className="text-realm-gold-400 font-display">{route.estimatedProfit}g/unit</span>
                 </span>
                 <span>
-                  Margin: <span className={`font-display ${route.profitMargin >= 50 ? 'text-green-400' : route.profitMargin >= 20 ? 'text-yellow-400' : 'text-parchment-400'}`}>
+                  Margin: <span className={`font-display ${route.profitMargin >= 50 ? 'text-realm-success' : route.profitMargin >= 20 ? 'text-realm-gold-400' : 'text-realm-text-secondary'}`}>
                     {route.profitMargin}%
                   </span>
                 </span>
@@ -131,14 +131,14 @@ export default function BestTrades({ onStartTrade }: BestTradesProps) {
 
             {/* Right: profit badge + start trade button */}
             <div className="flex flex-col items-end gap-2 flex-shrink-0">
-              <div className="flex items-center gap-1 px-2 py-1 bg-green-500/10 border border-green-500/20 rounded text-green-400 text-xs font-display">
+              <div className="flex items-center gap-1 px-2 py-1 bg-realm-success/10 border border-realm-success/20 rounded text-realm-success text-xs font-display">
                 <Coins className="w-3 h-3" />
                 +{route.estimatedProfit}g
               </div>
               {onStartTrade && (
                 <button
                   onClick={() => onStartTrade(route.buyTown.id, route.sellTown.id)}
-                  className="flex items-center gap-1 px-2.5 py-1 bg-primary-400/15 text-primary-400 text-[10px] font-display rounded hover:bg-primary-400/25 transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-1 bg-realm-gold-500/15 text-realm-gold-400 text-[10px] font-display rounded hover:bg-realm-gold-500/25 transition-colors"
                 >
                   <Truck className="w-3 h-3" />
                   Start Trade

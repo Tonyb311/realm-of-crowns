@@ -38,15 +38,15 @@ export default function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-dark-500">
+    <div className="flex min-h-screen bg-realm-bg-900">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-56 bg-dark-600 border-r border-dark-50 fixed inset-y-0 left-0 z-30">
+      <aside className="hidden md:flex flex-col w-56 bg-realm-bg-900 border-r border-realm-border fixed inset-y-0 left-0 z-30">
         {/* Logo / Title */}
-        <div className="flex items-center gap-2.5 px-5 py-5 border-b border-dark-50">
-          <ShieldCheck className="w-6 h-6 text-primary-400 flex-shrink-0" />
+        <div className="flex items-center gap-2.5 px-5 py-5 border-b border-realm-border">
+          <ShieldCheck className="w-6 h-6 text-realm-gold-400 flex-shrink-0" />
           <div>
-            <h1 className="font-display text-primary-400 text-sm leading-tight">Admin Panel</h1>
-            <p className="text-parchment-500 text-[10px]">Realm of Crowns</p>
+            <h1 className="font-display text-realm-gold-400 text-sm leading-tight">Admin Panel</h1>
+            <p className="text-realm-text-muted text-[10px]">Realm of Crowns</p>
           </div>
         </div>
 
@@ -61,8 +61,8 @@ export default function AdminLayout() {
                 to={item.path}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-display transition-colors ${
                   active
-                    ? 'bg-primary-400/15 text-primary-400 border border-primary-400/30'
-                    : 'text-parchment-300 hover:bg-dark-400 hover:text-parchment-200 border border-transparent'
+                    ? 'bg-realm-gold-500/15 text-realm-gold-400 border border-realm-gold-500/30'
+                    : 'text-realm-text-secondary hover:bg-realm-bg-800 hover:text-realm-text-primary border border-transparent'
                 }`}
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />
@@ -73,10 +73,10 @@ export default function AdminLayout() {
         </nav>
 
         {/* Back to Game */}
-        <div className="p-3 border-t border-dark-50">
+        <div className="p-3 border-t border-realm-border">
           <Link
             to="/town"
-            className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-parchment-500 hover:text-parchment-200 hover:bg-dark-400 transition-colors font-display"
+            className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-realm-text-muted hover:text-realm-text-primary hover:bg-realm-bg-800 transition-colors font-display"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Game
@@ -85,15 +85,15 @@ export default function AdminLayout() {
       </aside>
 
       {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-30 bg-dark-600/95 border-b border-dark-50 backdrop-blur-sm">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-30 bg-realm-bg-900/95 border-b border-realm-border backdrop-blur-sm">
         <div className="flex items-center justify-between px-4 h-12">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-primary-400" />
-            <span className="font-display text-primary-400 text-sm">Admin Panel</span>
+            <ShieldCheck className="w-5 h-5 text-realm-gold-400" />
+            <span className="font-display text-realm-gold-400 text-sm">Admin Panel</span>
           </div>
           <button
             onClick={() => setMobileOpen(true)}
-            className="text-parchment-300 hover:text-parchment-200"
+            className="text-realm-text-secondary hover:text-realm-text-primary"
             aria-label="Open admin navigation"
           >
             <Menu className="w-5 h-5" />
@@ -108,15 +108,15 @@ export default function AdminLayout() {
             className="absolute inset-0 bg-black/60"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="absolute left-0 top-0 bottom-0 w-64 bg-dark-600 border-r border-dark-50 flex flex-col">
-            <div className="flex items-center justify-between px-4 py-4 border-b border-dark-50">
+          <div className="absolute left-0 top-0 bottom-0 w-64 bg-realm-bg-900 border-r border-realm-border flex flex-col">
+            <div className="flex items-center justify-between px-4 py-4 border-b border-realm-border">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-primary-400" />
-                <span className="font-display text-primary-400 text-sm">Admin Panel</span>
+                <ShieldCheck className="w-5 h-5 text-realm-gold-400" />
+                <span className="font-display text-realm-gold-400 text-sm">Admin Panel</span>
               </div>
               <button
                 onClick={() => setMobileOpen(false)}
-                className="text-parchment-500 hover:text-parchment-200"
+                className="text-realm-text-muted hover:text-realm-text-primary"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -132,8 +132,8 @@ export default function AdminLayout() {
                     onClick={() => setMobileOpen(false)}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-display transition-colors ${
                       active
-                        ? 'bg-primary-400/15 text-primary-400 border border-primary-400/30'
-                        : 'text-parchment-300 hover:bg-dark-400 hover:text-parchment-200 border border-transparent'
+                        ? 'bg-realm-gold-500/15 text-realm-gold-400 border border-realm-gold-500/30'
+                        : 'text-realm-text-secondary hover:bg-realm-bg-800 hover:text-realm-text-primary border border-transparent'
                     }`}
                   >
                     <Icon className="w-4 h-4 flex-shrink-0" />
@@ -142,11 +142,11 @@ export default function AdminLayout() {
                 );
               })}
             </nav>
-            <div className="p-3 border-t border-dark-50">
+            <div className="p-3 border-t border-realm-border">
               <Link
                 to="/town"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-parchment-500 hover:text-parchment-200 hover:bg-dark-400 transition-colors font-display"
+                className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-realm-text-muted hover:text-realm-text-primary hover:bg-realm-bg-800 transition-colors font-display"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back to Game

@@ -37,13 +37,13 @@ export interface Profession {
 }
 
 const ABUNDANCE_COLORS: Record<string, { text: string; bg: string; border: string }> = {
-  ABUNDANT:  { text: 'text-green-400',  bg: 'bg-green-500/15',  border: 'border-green-500/30' },
-  HIGH:      { text: 'text-green-400',  bg: 'bg-green-500/10',  border: 'border-green-500/20' },
-  MODERATE:  { text: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' },
-  NORMAL:    { text: 'text-parchment-400', bg: '', border: '' },
+  ABUNDANT:  { text: 'text-realm-success',  bg: 'bg-realm-success/15',  border: 'border-realm-success/30' },
+  HIGH:      { text: 'text-realm-success',  bg: 'bg-realm-success/10',  border: 'border-realm-success/20' },
+  MODERATE:  { text: 'text-realm-gold-400', bg: 'bg-realm-gold-400/10', border: 'border-realm-gold-400/20' },
+  NORMAL:    { text: 'text-realm-text-secondary', bg: '', border: '' },
   LOW:       { text: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
-  SCARCE:    { text: 'text-red-400',    bg: 'bg-red-500/10',    border: 'border-red-500/20' },
-  DEPLETED:  { text: 'text-red-500',    bg: 'bg-red-500/15',    border: 'border-red-500/30' },
+  SCARCE:    { text: 'text-realm-danger',    bg: 'bg-realm-danger/10',    border: 'border-realm-danger/20' },
+  DEPLETED:  { text: 'text-realm-danger',    bg: 'bg-realm-danger/15',    border: 'border-realm-danger/30' },
 };
 
 function abundanceStyle(abundance: string) {
@@ -102,7 +102,7 @@ export default function WorkTab({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+        <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
       </div>
     );
   }
@@ -119,18 +119,18 @@ export default function WorkTab({
     const remainingSeconds = Math.ceil(remaining / 1000) % 60;
 
     return (
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-6">
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6">
         <div className="flex items-center gap-3 mb-4">
           {workStatus.ready ? (
-            <CheckCircle2 className="w-6 h-6 text-green-400" />
+            <CheckCircle2 className="w-6 h-6 text-realm-success" />
           ) : (
-            <Loader2 className="w-6 h-6 text-green-400 animate-spin" />
+            <Loader2 className="w-6 h-6 text-realm-success animate-spin" />
           )}
           <div className="flex-1">
-            <h3 className="font-display text-lg text-parchment-200">
+            <h3 className="font-display text-lg text-realm-text-primary">
               Gathering {workStatus.resource ?? '...'}
             </h3>
-            <p className="text-xs text-parchment-500">
+            <p className="text-xs text-realm-text-muted">
               {workStatus.profession ? professionLabel(workStatus.profession) : ''}
               {workStatus.ready ? ' - Ready to collect!' : ` - ${remainingMinutes}m ${remainingSeconds}s remaining`}
             </p>
@@ -138,10 +138,10 @@ export default function WorkTab({
         </div>
 
         {/* Progress bar */}
-        <div className="h-3 bg-dark-500 rounded-full overflow-hidden mb-4">
+        <div className="h-3 bg-realm-bg-900 rounded-full overflow-hidden mb-4">
           <div
             className={`h-full rounded-full transition-all duration-1000 ${
-              workStatus.ready ? 'bg-green-500' : 'bg-green-600'
+              workStatus.ready ? 'bg-realm-success' : 'bg-realm-success/80'
             }`}
             style={{ width: `${progress}%` }}
           />
@@ -152,8 +152,8 @@ export default function WorkTab({
             <button
               onClick={onCollect}
               disabled={isCollecting}
-              className="flex-1 py-3 bg-green-600 text-white font-display text-base rounded
-                hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 py-3 bg-realm-success text-realm-text-primary font-display text-base rounded
+                hover:bg-realm-success/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isCollecting ? 'Collecting...' : 'Collect Resources'}
             </button>
@@ -164,15 +164,15 @@ export default function WorkTab({
                   <button
                     onClick={() => { onCancel(); setShowCancelConfirm(false); }}
                     disabled={isCancelling}
-                    className="flex-1 py-2.5 bg-red-700 text-white font-display text-sm rounded
-                      hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="flex-1 py-2.5 bg-realm-danger text-realm-text-primary font-display text-sm rounded
+                      hover:bg-realm-danger/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isCancelling && <Loader2 className="w-4 h-4 animate-spin" />}
                     Confirm Cancel
                   </button>
                   <button
                     onClick={() => setShowCancelConfirm(false)}
-                    className="px-4 py-2.5 border border-parchment-500/30 text-parchment-300 font-display text-sm rounded hover:bg-dark-400 transition-colors"
+                    className="px-4 py-2.5 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-800 transition-colors"
                   >
                     Keep Working
                   </button>
@@ -180,8 +180,8 @@ export default function WorkTab({
               ) : (
                 <button
                   onClick={() => setShowCancelConfirm(true)}
-                  className="flex-1 py-2.5 border border-red-500/40 text-red-400 font-display text-sm rounded
-                    hover:bg-red-900/20 transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 py-2.5 border border-realm-danger/40 text-realm-danger font-display text-sm rounded
+                    hover:bg-realm-danger/10 transition-colors flex items-center justify-center gap-2"
                 >
                   <XCircle className="w-4 h-4" />
                   Cancel Gathering
@@ -192,7 +192,7 @@ export default function WorkTab({
         </div>
 
         {showCancelConfirm && !workStatus.ready && (
-          <p className="text-[10px] text-parchment-500 mt-2 text-center">
+          <p className="text-[10px] text-realm-text-muted mt-2 text-center">
             Cancelling early may yield partial resources or none at all.
           </p>
         )}
@@ -209,15 +209,15 @@ export default function WorkTab({
   return (
     <div className="space-y-6">
       {startError && (
-        <div className="p-3 bg-red-900/30 border border-red-500/50 rounded text-red-300 text-sm flex items-center gap-2">
+        <div className="p-3 bg-realm-danger/20 border border-realm-danger/50 rounded text-realm-danger text-sm flex items-center gap-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {startError}
         </div>
       )}
 
       {/* Profession selector */}
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-5">
-        <h3 className="font-display text-primary-400 text-sm mb-3">Select Profession</h3>
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+        <h3 className="font-display text-realm-gold-400 text-sm mb-3">Select Profession</h3>
         <div className="flex flex-wrap gap-2">
           {availableProfessions.map((pt) => {
             const prof = professions.find((p) => p.professionType === pt);
@@ -228,8 +228,8 @@ export default function WorkTab({
                 onClick={() => setSelectedProfession(pt)}
                 className={`px-3 py-1.5 text-xs font-display rounded border transition-colors
                   ${isSelected
-                    ? 'bg-primary-400 text-dark-500 border-primary-400'
-                    : 'bg-dark-400 text-parchment-300 border-dark-50 hover:border-primary-400/40'}`}
+                    ? 'bg-realm-gold-500 text-realm-bg-900 border-realm-gold-500'
+                    : 'bg-realm-bg-800 text-realm-text-secondary border-realm-border hover:border-realm-gold-400/40'}`}
               >
                 {professionLabel(pt)}
                 {prof && <span className="ml-1 opacity-70">Lv.{prof.level}</span>}
@@ -241,8 +241,8 @@ export default function WorkTab({
 
       {/* Tool slot */}
       {selectedProfession && (
-        <div className="bg-dark-300 border border-dark-50 rounded-lg p-5">
-          <h3 className="font-display text-primary-400 text-sm mb-3">Equipped Tool</h3>
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+          <h3 className="font-display text-realm-gold-400 text-sm mb-3">Equipped Tool</h3>
           <ToolSlot
             tool={equippedTool}
             onClick={() => setShowToolSelector(true)}
@@ -263,10 +263,10 @@ export default function WorkTab({
       )}
 
       {/* Available resources */}
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-5">
-        <h3 className="font-display text-primary-400 text-sm mb-3">Available Resources</h3>
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+        <h3 className="font-display text-realm-gold-400 text-sm mb-3">Available Resources</h3>
         {townResources.length === 0 ? (
-          <p className="text-parchment-500 text-xs">No resources available in this town.</p>
+          <p className="text-realm-text-muted text-xs">No resources available in this town.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {townResources.map((tr) => {
@@ -278,12 +278,12 @@ export default function WorkTab({
                   onClick={() => setSelectedResource(tr.id)}
                   className={`p-3 text-left rounded border transition-all
                     ${isSelected
-                      ? 'border-primary-400 bg-primary-400/10'
-                      : `border-dark-50 bg-dark-400/50 hover:border-dark-50/80 ${aStyle.bg}`}`}
+                      ? 'border-realm-gold-400 bg-realm-gold-400/10'
+                      : `border-realm-border bg-realm-bg-800/50 hover:border-realm-border/80 ${aStyle.bg}`}`}
                 >
-                  <p className="text-sm text-parchment-200">{tr.resourceName}</p>
+                  <p className="text-sm text-realm-text-primary">{tr.resourceName}</p>
                   <div className="flex justify-between mt-1">
-                    <span className="text-[10px] text-parchment-500 capitalize">{tr.resourceType.toLowerCase()}</span>
+                    <span className="text-[10px] text-realm-text-muted capitalize">{tr.resourceType.toLowerCase()}</span>
                     <span className={`text-[10px] capitalize font-display ${aStyle.text}`}>
                       {tr.abundance?.toLowerCase() ?? 'normal'}
                     </span>
@@ -299,8 +299,8 @@ export default function WorkTab({
       <button
         onClick={onStartWork}
         disabled={!selectedProfession || !selectedResource || isStarting}
-        className="w-full py-3 bg-forest text-white font-display text-base rounded
-          hover:bg-forest-light transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-full py-3 bg-realm-success text-realm-text-primary font-display text-base rounded
+          hover:bg-realm-success/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {isStarting ? 'Starting...' : 'Start Working'}
       </button>

@@ -207,7 +207,7 @@ export function HudBar() {
         {socketStatus !== 'connected' && (
           <Tooltip content={socketStatus === 'reconnecting' ? 'Reconnecting...' : 'Disconnected'}>
             <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-              socketStatus === 'reconnecting' ? 'bg-amber-400 animate-pulse' : 'bg-red-500'
+              socketStatus === 'reconnecting' ? 'bg-realm-gold-400 animate-pulse' : 'bg-realm-danger'
             }`} />
           </Tooltip>
         )}

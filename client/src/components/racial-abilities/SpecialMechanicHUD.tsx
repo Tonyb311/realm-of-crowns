@@ -92,7 +92,7 @@ function HUDWidget({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`bg-dark-400/90 backdrop-blur-sm border rounded-lg shadow-lg transition-all ${
+      className={`bg-realm-bg-800/90 backdrop-blur-sm border rounded-lg shadow-lg transition-all ${
         pulse ? `border-${accentColor}-500/60 animate-pulse` : `border-${accentColor}-500/30`
       }`}
       style={{ minWidth: 180 }}
@@ -106,9 +106,9 @@ function HUDWidget({
           {label}
         </span>
         {expanded ? (
-          <ChevronUp className="w-3 h-3 text-parchment-500" />
+          <ChevronUp className="w-3 h-3 text-realm-text-muted" />
         ) : (
-          <ChevronDown className="w-3 h-3 text-parchment-500" />
+          <ChevronDown className="w-3 h-3 text-realm-text-muted" />
         )}
       </button>
       <AnimatePresence>
@@ -120,7 +120,7 @@ function HUDWidget({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-3 pb-3 pt-1 border-t border-dark-50">
+            <div className="px-3 pb-3 pt-1 border-t border-realm-border">
               {children}
             </div>
           </motion.div>
@@ -157,12 +157,12 @@ function ChangelingHUD() {
     <HUDWidget icon={data.isShifted ? EyeOff : Eye} label={data.isShifted ? data.currentAppearance : 'True Form'} accentColor="purple">
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-parchment-500">Appearance</span>
-          <span className="text-parchment-200">{data.currentAppearance}</span>
+          <span className="text-realm-text-muted">Appearance</span>
+          <span className="text-realm-text-primary">{data.currentAppearance}</span>
         </div>
         <div className="flex items-center justify-between text-xs">
-          <span className="text-parchment-500">Status</span>
-          <span className={data.detected ? 'text-red-400' : 'text-green-400'}>
+          <span className="text-realm-text-muted">Status</span>
+          <span className={data.detected ? 'text-realm-danger' : 'text-realm-success'}>
             {data.detected ? 'Detected' : 'Undetected'}
           </span>
         </div>
@@ -211,7 +211,7 @@ function ForgebornHUD() {
 
   const condPct = data.maxCondition > 0 ? (data.condition / data.maxCondition) * 100 : 100;
   const barColor =
-    condPct > 60 ? 'bg-green-500' : condPct > 30 ? 'bg-yellow-500' : 'bg-red-500';
+    condPct > 60 ? 'bg-realm-success' : condPct > 30 ? 'bg-realm-gold-500' : 'bg-realm-danger';
 
   return (
     <HUDWidget
@@ -224,10 +224,10 @@ function ForgebornHUD() {
         {/* Condition bar */}
         <div>
           <div className="flex justify-between text-[10px] mb-1">
-            <span className="text-parchment-500">Condition</span>
-            <span className="text-parchment-400">{data.condition}/{data.maxCondition}</span>
+            <span className="text-realm-text-muted">Condition</span>
+            <span className="text-realm-text-secondary">{data.condition}/{data.maxCondition}</span>
           </div>
-          <div className="h-2 bg-dark-500 rounded-full overflow-hidden">
+          <div className="h-2 bg-realm-bg-900 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${barColor}`}
               style={{ width: `${condPct}%` }}
@@ -236,7 +236,7 @@ function ForgebornHUD() {
         </div>
 
         {data.maintenanceOverdue && (
-          <div className="flex items-center gap-1.5 text-[10px] text-amber-400">
+          <div className="flex items-center gap-1.5 text-[10px] text-realm-gold-400">
             <AlertTriangle className="w-3 h-3" />
             Maintenance overdue
           </div>
@@ -288,11 +288,11 @@ function NightborneHUD() {
     >
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-parchment-500">Time</span>
-          <span className="text-parchment-200 capitalize">{data.currentTime}</span>
+          <span className="text-realm-text-muted">Time</span>
+          <span className="text-realm-text-primary capitalize">{data.currentTime}</span>
         </div>
         {data.inSunlight && (
-          <div className="flex items-center gap-1.5 text-[10px] text-amber-400 bg-amber-900/20 rounded px-2 py-1">
+          <div className="flex items-center gap-1.5 text-[10px] text-realm-gold-400 bg-realm-gold-500/20 rounded px-2 py-1">
             <Sun className="w-3 h-3" />
             {data.penalty}
           </div>
@@ -322,14 +322,14 @@ function MerfolkHUD() {
     >
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-parchment-500">Speed</span>
-          <span className={data.speedModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
+          <span className="text-realm-text-muted">Speed</span>
+          <span className={data.speedModifier >= 0 ? 'text-realm-success' : 'text-realm-danger'}>
             {data.speedModifier >= 0 ? '+' : ''}{data.speedModifier}%
           </span>
         </div>
         {data.waterType && (
           <div className="flex items-center justify-between text-xs">
-            <span className="text-parchment-500">Water</span>
+            <span className="text-realm-text-muted">Water</span>
             <span className="text-cyan-300 capitalize">{data.waterType}</span>
           </div>
         )}
@@ -368,20 +368,20 @@ function FaefolkHUD() {
     >
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-parchment-500">Flight</span>
-          <span className={data.isFlying ? 'text-sky-400' : 'text-parchment-400'}>
+          <span className="text-realm-text-muted">Flight</span>
+          <span className={data.isFlying ? 'text-sky-400' : 'text-realm-text-secondary'}>
             {data.isFlying ? 'Active' : data.canFly ? 'Ready' : 'Unavailable'}
           </span>
         </div>
         {data.heavyLoad && (
-          <div className="flex items-center gap-1.5 text-[10px] text-amber-400 bg-amber-900/20 rounded px-2 py-1">
+          <div className="flex items-center gap-1.5 text-[10px] text-realm-gold-400 bg-realm-gold-500/20 rounded px-2 py-1">
             <AlertTriangle className="w-3 h-3" />
             Heavy load - flight impaired
           </div>
         )}
         <div className="flex items-center justify-between text-[10px]">
-          <span className="text-parchment-500">Load</span>
-          <span className="text-parchment-400">
+          <span className="text-realm-text-muted">Load</span>
+          <span className="text-realm-text-secondary">
             {data.currentLoad}/{data.maxFlyingLoad}
           </span>
         </div>
@@ -405,8 +405,8 @@ function RevenantHUD() {
   return (
     <HUDWidget icon={Skull} label="Death Ward" accentColor="red">
       <div className="flex items-center gap-2 text-xs">
-        <Shield className="w-3.5 h-3.5 text-green-400" />
-        <span className="text-parchment-300">
+        <Shield className="w-3.5 h-3.5 text-realm-success" />
+        <span className="text-realm-text-secondary">
           {data.deathPenaltyReduction}% Reduced Death Penalty
         </span>
       </div>

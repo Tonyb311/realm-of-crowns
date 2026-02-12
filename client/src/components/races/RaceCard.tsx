@@ -35,9 +35,9 @@ const TIER_BADGE: Record<string, { bg: string; text: string; label: string }> = 
 const STAT_KEYS = ['str', 'dex', 'con', 'int', 'wis', 'cha'] as const;
 
 function renderStatMod(val: number) {
-  if (val > 0) return <span className="text-green-400">+{val}</span>;
-  if (val < 0) return <span className="text-red-400">{val}</span>;
-  return <span className="text-parchment-500">+0</span>;
+  if (val > 0) return <span className="text-realm-success">+{val}</span>;
+  if (val < 0) return <span className="text-realm-danger">{val}</span>;
+  return <span className="text-realm-text-muted">+0</span>;
 }
 
 // ---------------------------------------------------------------------------
@@ -51,8 +51,8 @@ export default function RaceCard({ race, isSelected, onClick }: RaceCardProps) {
       onClick={onClick}
       className={`relative p-4 rounded-lg border-2 text-left transition-all w-full
         ${isSelected
-          ? 'border-primary-400 bg-dark-300/80 shadow-[0_0_12px_rgba(var(--color-primary-400-rgb,212,175,55),0.15)]'
-          : 'border-dark-50 bg-dark-300 hover:border-primary-400/40'}`}
+          ? 'border-realm-gold-400 bg-realm-bg-700/80 shadow-[0_0_12px_rgba(var(--color-primary-400-rgb,212,175,55),0.15)]'
+          : 'border-realm-border bg-realm-bg-700 hover:border-realm-gold-400/40'}`}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       transition={{ duration: 0.15 }}
@@ -63,19 +63,19 @@ export default function RaceCard({ race, isSelected, onClick }: RaceCardProps) {
       </span>
 
       {/* Race name */}
-      <h3 className="font-display text-lg text-primary-400 pr-14">{race.name}</h3>
+      <h3 className="font-display text-lg text-realm-gold-400 pr-14">{race.name}</h3>
 
       {/* Homeland */}
-      <p className="text-[10px] text-parchment-500 mb-1">{race.homelandRegion}</p>
+      <p className="text-[10px] text-realm-text-muted mb-1">{race.homelandRegion}</p>
 
       {/* Trait highlight */}
-      <p className="text-xs text-parchment-300 mb-3 line-clamp-2 italic">{race.trait.name}: {race.trait.description}</p>
+      <p className="text-xs text-realm-text-secondary mb-3 line-clamp-2 italic">{race.trait.name}: {race.trait.description}</p>
 
       {/* Stat modifiers row */}
       <div className="flex flex-wrap gap-2 text-xs">
         {STAT_KEYS.map(s => (
           <span key={s} className="flex gap-0.5">
-            <span className="text-parchment-500 uppercase">{s}:</span>
+            <span className="text-realm-text-muted uppercase">{s}:</span>
             {renderStatMod(race.statModifiers[s])}
           </span>
         ))}

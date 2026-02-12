@@ -39,24 +39,24 @@ export default function ReportHistoryPanel() {
 
   if (isLoading) {
     return (
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-6 flex items-center justify-center">
-        <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
       </div>
     );
   }
 
   if (reports.length === 0) {
     return (
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center">
-        <Calendar className="w-10 h-10 text-parchment-500/30 mx-auto mb-3" />
-        <p className="text-parchment-500 text-sm">No past reports.</p>
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+        <Calendar className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
+        <p className="text-realm-text-muted text-sm">No past reports.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg p-5">
-      <h3 className="font-display text-primary-400 text-sm flex items-center gap-2 mb-4">
+    <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+      <h3 className="font-display text-realm-gold-400 text-sm flex items-center gap-2 mb-4">
         <ScrollText className="w-4 h-4" />
         Report History
       </h3>
@@ -67,14 +67,14 @@ export default function ReportHistoryPanel() {
           const date = new Date(report.tickDate);
 
           return (
-            <div key={report.id} className="border border-dark-50 rounded-lg overflow-hidden">
+            <div key={report.id} className="border border-realm-border rounded-lg overflow-hidden">
               <button
                 onClick={() => setExpandedId(isExpanded ? null : report.id)}
-                className="w-full flex items-center justify-between p-3 hover:bg-dark-400/50 transition-colors"
+                className="w-full flex items-center justify-between p-3 hover:bg-realm-bg-800/50 transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 text-parchment-500" />
-                  <span className="text-parchment-200 text-xs font-display">
+                  <Calendar className="w-3.5 h-3.5 text-realm-text-muted" />
+                  <span className="text-realm-text-primary text-xs font-display">
                     {date.toLocaleDateString('en-US', {
                       weekday: 'short',
                       month: 'short',
@@ -83,9 +83,9 @@ export default function ReportHistoryPanel() {
                   </span>
                 </div>
                 {isExpanded ? (
-                  <ChevronUp className="w-4 h-4 text-parchment-500" />
+                  <ChevronUp className="w-4 h-4 text-realm-text-muted" />
                 ) : (
-                  <ChevronDown className="w-4 h-4 text-parchment-500" />
+                  <ChevronDown className="w-4 h-4 text-realm-text-muted" />
                 )}
               </button>
 
@@ -98,7 +98,7 @@ export default function ReportHistoryPanel() {
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-3 pb-3 border-t border-dark-50">
+                    <div className="px-3 pb-3 border-t border-realm-border">
                       <ReportSummary sections={report.sections} />
                     </div>
                   </motion.div>
@@ -120,7 +120,7 @@ function ReportSummary({ sections }: { sections: Record<string, unknown> }) {
   const entries = Object.entries(sections).filter(([, v]) => v != null);
 
   if (entries.length === 0) {
-    return <p className="text-parchment-500 text-xs pt-2">No details recorded.</p>;
+    return <p className="text-realm-text-muted text-xs pt-2">No details recorded.</p>;
   }
 
   return (
@@ -129,7 +129,7 @@ function ReportSummary({ sections }: { sections: Record<string, unknown> }) {
         const data = val as Record<string, unknown>;
         return (
           <div key={key}>
-            <p className="text-[10px] text-parchment-500 uppercase tracking-wider">{formatSectionKey(key)}</p>
+            <p className="text-[10px] text-realm-text-muted uppercase tracking-wider">{formatSectionKey(key)}</p>
             <SummarizedSection sectionKey={key} data={data} />
           </div>
         );
@@ -142,38 +142,38 @@ function SummarizedSection({ sectionKey, data }: { sectionKey: string; data: Rec
   switch (sectionKey) {
     case 'food':
       return (
-        <p className="text-parchment-300 text-xs">
+        <p className="text-realm-text-secondary text-xs">
           {data.consumed ? `Ate ${data.consumed}` : 'No food consumed'} — {String(data.hungerState ?? 'unknown')}
         </p>
       );
     case 'action':
       return (
-        <p className="text-parchment-300 text-xs">
+        <p className="text-realm-text-secondary text-xs">
           {String(data.type ?? '')}: {String(data.outcome ?? '')}
         </p>
       );
     case 'combat':
-      if (!(data as any).occurred) return <p className="text-parchment-500 text-xs">No combat</p>;
-      return <p className="text-parchment-300 text-xs">Combat: {String(data.outcome ?? 'unknown')}</p>;
+      if (!(data as any).occurred) return <p className="text-realm-text-muted text-xs">No combat</p>;
+      return <p className="text-realm-text-secondary text-xs">Combat: {String(data.outcome ?? 'unknown')}</p>;
     case 'economy':
       return (
-        <p className={`text-xs ${(data.netChange as number) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+        <p className={`text-xs ${(data.netChange as number) >= 0 ? 'text-realm-success' : 'text-realm-danger'}`}>
           Net: {(data.netChange as number) >= 0 ? '+' : ''}{String(data.netChange ?? 0)} gold
         </p>
       );
     case 'progression':
       return (
-        <p className="text-parchment-300 text-xs">
+        <p className="text-realm-text-secondary text-xs">
           {data.xpEarned ? `+${data.xpEarned} XP` : 'No XP'}
           {data.levelUp ? ` — Level Up to ${data.newLevel}!` : ''}
         </p>
       );
     case 'worldNews': {
       const events = (data.events as any[]) ?? [];
-      return <p className="text-parchment-300 text-xs">{events.length} world event(s)</p>;
+      return <p className="text-realm-text-secondary text-xs">{events.length} world event(s)</p>;
     }
     default:
-      return <p className="text-parchment-500 text-xs">-</p>;
+      return <p className="text-realm-text-muted text-xs">-</p>;
   }
 }
 
