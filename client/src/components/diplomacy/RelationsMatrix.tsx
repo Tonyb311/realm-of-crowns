@@ -67,7 +67,24 @@ export default function RelationsMatrix() {
     queryFn: async () => {
       const res = await api.get('/diplomacy/relations');
       const d = res.data;
-      return Array.isArray(d) ? d : (d?.matrix ?? []);
+      if (Array.isArray(d)) return d;
+      // Backend returns { matrix: { race1: { race2: { status, modifier } } }, races: [...] }
+      // Flatten into array of { race1, race2, status, score }
+      const matrix = d?.matrix;
+      if (!matrix || typeof matrix !== 'object') return [];
+      const result: RacialRelation[] = [];
+      for (const r1 of Object.keys(matrix)) {
+        const row = matrix[r1];
+        if (!row || typeof row !== 'object') continue;
+        for (const r2 of Object.keys(row)) {
+          if (r1 >= r2) continue; // avoid duplicates and self
+          const cell = row[r2];
+          if (cell && cell.status && cell.status !== 'SELF') {
+            result.push({ race1: r1, race2: r2, status: cell.status, score: cell.modifier ?? 0 });
+          }
+        }
+      }
+      return result;
     },
   });
 
@@ -214,12 +231,18 @@ function RelationDetailDrawer({
     queryKey: ['diplomacy', 'history', race1, race2],
     queryFn: async () => {
       const res = await api.get('/diplomacy/history', { params: { race: race1, limit: 20 } });
-      // Filter events involving both races
       const d = res.data;
-      const events: HistoryEvent[] = Array.isArray(d) ? d : (d?.events ?? []);
-      return events.filter(
-        e => (e.race1 === race1 && e.race2 === race2) || (e.race1 === race2 && e.race2 === race1)
-      );
+      const rawEvents: any[] = Array.isArray(d) ? d : (d?.events ?? []);
+      // Backend returns { type, initiator: { race }, target: { race }, details, timestamp }
+      // Map to { eventType, description, timestamp, race1, race2 }
+      return rawEvents.map((e: any) => ({
+        id: e.id ?? '',
+        eventType: e.eventType ?? e.type ?? '',
+        description: e.description ?? (typeof e.details === 'string' ? e.details : JSON.stringify(e.details ?? '')),
+        timestamp: e.timestamp ?? '',
+        race1: e.race1 ?? e.initiator?.race ?? undefined,
+        race2: e.race2 ?? e.target?.race ?? undefined,
+      }));
     },
   });
 
@@ -228,7 +251,9 @@ function RelationDetailDrawer({
     queryFn: async () => {
       try {
         const res = await api.get(`/diplomacy/relations/${race1}/${race2}`);
-        return res.data;
+        const d = res.data;
+        // Backend returns { race1, race2, status, modifier } — map modifier to score
+        return d ? { ...d, score: d.score ?? d.modifier ?? 0 } : null;
       } catch {
         return null;
       }

@@ -118,7 +118,23 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
     queryFn: async () => {
       const res = await api.get('/diplomacy/relations');
       const d = res.data;
-      return Array.isArray(d) ? d : (d?.matrix ?? []);
+      if (Array.isArray(d)) return d;
+      // Backend returns { matrix: { race1: { race2: { status, modifier } } }, races: [...] }
+      const matrix = d?.matrix;
+      if (!matrix || typeof matrix !== 'object') return [];
+      const result: RacialRelation[] = [];
+      for (const r1 of Object.keys(matrix)) {
+        const row = matrix[r1];
+        if (!row || typeof row !== 'object') continue;
+        for (const r2 of Object.keys(row)) {
+          if (r1 >= r2) continue;
+          const cell = row[r2];
+          if (cell && cell.status && cell.status !== 'SELF') {
+            result.push({ race1: r1, race2: r2, status: cell.status, score: cell.modifier ?? 0 });
+          }
+        }
+      }
+      return result;
     },
   });
 
@@ -127,7 +143,16 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
     queryFn: async () => {
       const res = await api.get('/diplomacy/treaties');
       const d = res.data;
-      return Array.isArray(d) ? d : (d?.treaties ?? []);
+      const raw: any[] = Array.isArray(d) ? d : (d?.treaties ?? []);
+      return raw.map((t: any) => ({
+        id: t.id,
+        type: t.type,
+        party1KingdomId: t.party1KingdomId ?? t.proposerKingdomId ?? t.proposerKingdom?.id ?? '',
+        party1Name: t.party1Name ?? t.proposerKingdom?.name ?? 'Unknown',
+        party2KingdomId: t.party2KingdomId ?? t.receiverKingdomId ?? t.receiverKingdom?.id ?? '',
+        party2Name: t.party2Name ?? t.receiverKingdom?.name ?? 'Unknown',
+        status: t.status,
+      }));
     },
   });
 
@@ -136,7 +161,17 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
     queryFn: async () => {
       const res = await api.get('/diplomacy/wars');
       const d = res.data;
-      return Array.isArray(d) ? d : (d?.wars ?? []);
+      const raw: any[] = Array.isArray(d) ? d : (d?.wars ?? []);
+      return raw.map((w: any) => ({
+        id: w.id,
+        attackerName: w.attackerName ?? w.attackerKingdom?.name ?? 'Unknown',
+        defenderName: w.defenderName ?? w.defenderKingdom?.name ?? 'Unknown',
+        attackerKingdomId: w.attackerKingdomId ?? w.attackerKingdom?.id ?? '',
+        defenderKingdomId: w.defenderKingdomId ?? w.defenderKingdom?.id ?? '',
+        attackerScore: w.attackerScore ?? 0,
+        defenderScore: w.defenderScore ?? 0,
+        status: w.status ?? '',
+      }));
     },
   });
 
@@ -145,7 +180,20 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
     queryFn: async () => {
       const res = await api.get('/petitions', { params: { kingdomId, status: 'ACTIVE' } });
       const d = res.data;
-      return Array.isArray(d) ? d : (d?.petitions ?? []);
+      const raw: any[] = Array.isArray(d) ? d : (d?.petitions ?? []);
+      // Backend: petitionType → actionType, signatureGoal → threshold
+      return raw.map((p: any) => ({
+        id: p.id,
+        kingdomId: p.kingdomId ?? kingdomId,
+        title: p.title ?? '',
+        description: p.description ?? '',
+        actionType: p.actionType ?? p.petitionType ?? '',
+        status: p.status ?? '',
+        signatureCount: p.signatureCount ?? 0,
+        threshold: p.threshold ?? p.signatureGoal ?? 10,
+        createdAt: p.createdAt ?? '',
+        hasSigned: p.hasSigned ?? false,
+      }));
     },
   });
 
@@ -154,9 +202,15 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
     queryFn: async () => {
       const res = await api.get('/diplomacy/history', { params: { race: playerRace, page: historyPage, limit: 10 } });
       const d = res.data;
+      const rawEvents: any[] = Array.isArray(d) ? d : (d?.events ?? []);
       return {
-        events: Array.isArray(d) ? d : (d?.events ?? []),
-        totalPages: d?.totalPages ?? d?.pagination?.pages ?? 1,
+        events: rawEvents.map((e: any) => ({
+          id: e.id ?? '',
+          eventType: e.eventType ?? e.type ?? '',
+          description: e.description ?? (typeof e.details === 'string' ? e.details : ''),
+          timestamp: e.timestamp ?? '',
+        })),
+        totalPages: d?.totalPages ?? d?.pagination?.pages ?? (Math.ceil((d?.total ?? 0) / (d?.limit ?? 10)) || 1),
       };
     },
   });

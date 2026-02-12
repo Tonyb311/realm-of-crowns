@@ -66,7 +66,23 @@ export default function WarDashboard() {
       const { default: api } = await import('../../services/api');
       const res = await api.get('/diplomacy/wars');
       const d = res.data;
-      return Array.isArray(d) ? d : (d?.wars ?? []);
+      const raw: any[] = Array.isArray(d) ? d : (d?.wars ?? []);
+      // Backend: { attackerKingdom: { id, name }, defenderKingdom: { id, name } }
+      // Frontend: { attackerKingdomId, attackerName, attackerRace, defenderKingdomId, defenderName, defenderRace }
+      return raw.map((w: any) => ({
+        id: w.id,
+        attackerKingdomId: w.attackerKingdomId ?? w.attackerKingdom?.id ?? '',
+        attackerName: w.attackerName ?? w.attackerKingdom?.name ?? 'Unknown',
+        attackerRace: w.attackerRace ?? '',
+        defenderKingdomId: w.defenderKingdomId ?? w.defenderKingdom?.id ?? '',
+        defenderName: w.defenderName ?? w.defenderKingdom?.name ?? 'Unknown',
+        defenderRace: w.defenderRace ?? '',
+        attackerScore: w.attackerScore ?? 0,
+        defenderScore: w.defenderScore ?? 0,
+        status: w.status ?? '',
+        reason: w.reason ?? '',
+        startedAt: w.startedAt ?? '',
+      }));
     },
   });
 

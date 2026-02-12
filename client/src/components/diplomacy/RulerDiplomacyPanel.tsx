@@ -102,7 +102,20 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
     queryFn: async () => {
       const res = await api.get('/diplomacy/treaties');
       const d = res.data;
-      return Array.isArray(d) ? d : (d?.treaties ?? []);
+      const raw: any[] = Array.isArray(d) ? d : (d?.treaties ?? []);
+      // Backend: { proposerKingdom: { id, name }, receiverKingdom: { id, name }, proposerKingdomId }
+      // Frontend: { party1KingdomId, party1Name, party2KingdomId, party2Name }
+      return raw.map((t: any) => ({
+        id: t.id,
+        type: t.type,
+        party1KingdomId: t.party1KingdomId ?? t.proposerKingdomId ?? t.proposerKingdom?.id ?? '',
+        party1Name: t.party1Name ?? t.proposerKingdom?.name ?? 'Unknown',
+        party2KingdomId: t.party2KingdomId ?? t.receiverKingdomId ?? t.receiverKingdom?.id ?? '',
+        party2Name: t.party2Name ?? t.receiverKingdom?.name ?? 'Unknown',
+        status: t.status,
+        intermediaryId: t.intermediaryId ?? undefined,
+        createdAt: t.createdAt ?? t.startsAt ?? '',
+      }));
     },
   });
 
@@ -111,18 +124,42 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
     queryFn: async () => {
       const res = await api.get('/diplomacy/wars');
       const d = res.data;
-      return Array.isArray(d) ? d : (d?.wars ?? []);
+      const raw: any[] = Array.isArray(d) ? d : (d?.wars ?? []);
+      return raw.map((w: any) => ({
+        id: w.id,
+        attackerKingdomId: w.attackerKingdomId ?? w.attackerKingdom?.id ?? '',
+        attackerName: w.attackerName ?? w.attackerKingdom?.name ?? 'Unknown',
+        defenderKingdomId: w.defenderKingdomId ?? w.defenderKingdom?.id ?? '',
+        defenderName: w.defenderName ?? w.defenderKingdom?.name ?? 'Unknown',
+        attackerScore: w.attackerScore ?? 0,
+        defenderScore: w.defenderScore ?? 0,
+        status: w.status ?? '',
+        reason: w.reason ?? '',
+        startedAt: w.startedAt ?? '',
+      }));
     },
   });
 
   const { data: proposals } = useQuery<TreatyProposal[]>({
     queryKey: ['diplomacy', 'proposals', kingdomId],
     queryFn: async () => {
-      // Proposals come from the treaties endpoint with status PENDING
       const res = await api.get('/diplomacy/treaties');
       const d = res.data;
-      const all: TreatyProposal[] = Array.isArray(d) ? d : (d?.treaties ?? []);
-      return all.filter((t: TreatyProposal) => t.status === 'PENDING');
+      const raw: any[] = Array.isArray(d) ? d : (d?.treaties ?? []);
+      // Map backend field names and filter for PENDING
+      return raw
+        .filter((t: any) => t.status === 'PENDING')
+        .map((t: any) => ({
+          id: t.id,
+          senderKingdomId: t.senderKingdomId ?? t.proposerKingdomId ?? t.proposerKingdom?.id ?? '',
+          senderName: t.senderName ?? t.proposerKingdom?.name ?? 'Unknown',
+          receiverKingdomId: t.receiverKingdomId ?? t.receiverKingdom?.id ?? '',
+          receiverName: t.receiverName ?? t.receiverKingdom?.name ?? 'Unknown',
+          type: t.type,
+          status: t.status,
+          intermediaryId: t.intermediaryId ?? undefined,
+          createdAt: t.createdAt ?? t.startsAt ?? '',
+        }));
     },
   });
 

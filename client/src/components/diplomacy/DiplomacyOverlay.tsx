@@ -78,7 +78,22 @@ export default function DiplomacyOverlay({ regions, towns }: DiplomacyOverlayPro
     queryFn: async () => {
       const res = await api.get('/diplomacy/relations');
       const d = res.data;
-      return Array.isArray(d) ? d : (d?.matrix ?? []);
+      if (Array.isArray(d)) return d;
+      const matrix = d?.matrix;
+      if (!matrix || typeof matrix !== 'object') return [];
+      const result: RacialRelation[] = [];
+      for (const r1 of Object.keys(matrix)) {
+        const row = matrix[r1];
+        if (!row || typeof row !== 'object') continue;
+        for (const r2 of Object.keys(row)) {
+          if (r1 >= r2) continue;
+          const cell = row[r2];
+          if (cell && cell.status && cell.status !== 'SELF') {
+            result.push({ race1: r1, race2: r2, status: cell.status, score: cell.modifier ?? 0 });
+          }
+        }
+      }
+      return result;
     },
     enabled: visible,
   });
@@ -88,7 +103,16 @@ export default function DiplomacyOverlay({ regions, towns }: DiplomacyOverlayPro
     queryFn: async () => {
       const res = await api.get('/diplomacy/treaties');
       const d = res.data;
-      return Array.isArray(d) ? d : (d?.treaties ?? []);
+      const raw: any[] = Array.isArray(d) ? d : (d?.treaties ?? []);
+      // Backend: { proposerKingdom: { id, name }, receiverKingdom: { id, name } }
+      // Frontend: { party1Race, party2Race }
+      return raw.map((t: any) => ({
+        id: t.id,
+        type: t.type,
+        party1Race: t.party1Race ?? t.proposerKingdom?.name ?? '',
+        party2Race: t.party2Race ?? t.receiverKingdom?.name ?? '',
+        status: t.status,
+      }));
     },
     enabled: visible,
   });
@@ -98,7 +122,17 @@ export default function DiplomacyOverlay({ regions, towns }: DiplomacyOverlayPro
     queryFn: async () => {
       const res = await api.get('/diplomacy/wars');
       const d = res.data;
-      return Array.isArray(d) ? d : (d?.wars ?? []);
+      const raw: any[] = Array.isArray(d) ? d : (d?.wars ?? []);
+      // Backend: { attackerKingdom: { id, name }, defenderKingdom: { id, name } }
+      // Frontend: { attackerRace, defenderRace }
+      return raw.map((w: any) => ({
+        id: w.id,
+        attackerRace: w.attackerRace ?? w.attackerKingdom?.name ?? '',
+        defenderRace: w.defenderRace ?? w.defenderKingdom?.name ?? '',
+        attackerScore: w.attackerScore ?? 0,
+        defenderScore: w.defenderScore ?? 0,
+        status: w.status,
+      }));
     },
     enabled: visible,
   });
