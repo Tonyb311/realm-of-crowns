@@ -62,6 +62,10 @@
   .animate-float-up {
     animation: floatUp 1.5s ease-out forwards;
   }
+
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 
 @keyframes floatUp {

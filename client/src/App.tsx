@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { Routes, Route, useNavigate, Link } from 'react-router-dom';
+import { Routes, Route, useNavigate, Link, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ui/ProtectedRoute';
@@ -7,14 +7,13 @@ import { AdminRoute } from './components/ui/AdminRoute';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import LoadingScreen from './components/LoadingScreen';
 import api from './services/api';
+import { GameShell } from './components/layout/GameShell';
 // Global components (always loaded)
 import PoliticalNotifications from './components/PoliticalNotifications';
 import ChatPanel from './components/ChatPanel';
 import NotificationDropdown from './components/NotificationDropdown';
 import SocialEventsProvider from './components/SocialEventsProvider';
 import ProgressionEventsProvider from './components/ProgressionEventsProvider';
-import HUD from './components/HUD';
-import Navigation from './components/ui/Navigation';
 
 // Lazy-loaded page components
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
@@ -64,183 +63,44 @@ function App() {
       <ProgressionEventsProvider />
       <NotificationDropdown />
       <ChatPanel />
-      <HUD />
-      <Navigation />
-      <div className="min-h-screen bg-realm-bg-900 pb-14 md:pb-12">
+      <div className="min-h-screen bg-realm-bg-900">
         <ErrorBoundary>
         <Suspense fallback={<LoadingScreen />}>
         <Routes>
+          {/* Public routes — no shell */}
           <Route path="/" element={<RootPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route
-            path="/create-character"
-            element={
-              <ProtectedRoute>
-                <CharacterCreationPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/town"
-            element={
-              <ProtectedRoute>
-                <TownPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/market"
-            element={
-              <ProtectedRoute>
-                <MarketPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/inventory"
-            element={
-              <ProtectedRoute>
-                <InventoryPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/crafting"
-            element={
-              <ProtectedRoute>
-                <CraftingPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/combat"
-            element={
-              <ProtectedRoute>
-                <CombatPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/map"
-            element={
-              <ProtectedRoute>
-                <WorldMapPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/town-hall"
-            element={
-              <ProtectedRoute>
-                <TownHallPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/elections"
-            element={
-              <ProtectedRoute>
-                <ElectionPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/governance"
-            element={
-              <ProtectedRoute>
-                <GovernancePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/kingdom"
-            element={
-              <ProtectedRoute>
-                <KingdomPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/guild"
-            element={
-              <ProtectedRoute>
-                <GuildPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile/:characterId"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/quests"
-            element={
-              <ProtectedRoute>
-                <QuestJournalPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/skills"
-            element={
-              <ProtectedRoute>
-                <SkillTreePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/achievements"
-            element={
-              <ProtectedRoute>
-                <AchievementPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/professions"
-            element={
-              <ProtectedRoute>
-                <ProfessionsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/housing"
-            element={
-              <ProtectedRoute>
-                <HousingPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/trade"
-            element={
-              <ProtectedRoute>
-                <TradePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/diplomacy"
-            element={
-              <ProtectedRoute>
-                <DiplomacyPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/travel"
-            element={
-              <ProtectedRoute>
-                <TravelPage />
-              </ProtectedRoute>
-            }
-          />
+
+          {/* Character creation — protected but no game shell */}
+          <Route path="/create-character" element={<ProtectedRoute><CharacterCreationPage /></ProtectedRoute>} />
+
+          {/* Game routes — wrapped in GameShell */}
+          <Route element={<ProtectedRoute><GameShell><Outlet /></GameShell></ProtectedRoute>}>
+            <Route path="/town" element={<TownPage />} />
+            <Route path="/market" element={<MarketPage />} />
+            <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/crafting" element={<CraftingPage />} />
+            <Route path="/combat" element={<CombatPage />} />
+            <Route path="/map" element={<WorldMapPage />} />
+            <Route path="/town-hall" element={<TownHallPage />} />
+            <Route path="/elections" element={<ElectionPage />} />
+            <Route path="/governance" element={<GovernancePage />} />
+            <Route path="/kingdom" element={<KingdomPage />} />
+            <Route path="/guild" element={<GuildPage />} />
+            <Route path="/profile/:characterId" element={<ProfilePage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/quests" element={<QuestJournalPage />} />
+            <Route path="/skills" element={<SkillTreePage />} />
+            <Route path="/achievements" element={<AchievementPage />} />
+            <Route path="/professions" element={<ProfessionsPage />} />
+            <Route path="/housing" element={<HousingPage />} />
+            <Route path="/trade" element={<TradePage />} />
+            <Route path="/diplomacy" element={<DiplomacyPage />} />
+            <Route path="/travel" element={<TravelPage />} />
+          </Route>
+
+          {/* Admin routes — own layout */}
           <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
             <Route index element={<AdminDashboardPage />} />
             <Route path="users" element={<AdminUsersPage />} />
@@ -252,7 +112,8 @@ function App() {
             <Route path="simulation" element={<SimulationDashboardPage />} />
             <Route path="content-release" element={<ContentReleasePage />} />
           </Route>
-          {/* MAJ-18: 404 catch-all route */}
+
+          {/* 404 catch-all */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
         </Suspense>
