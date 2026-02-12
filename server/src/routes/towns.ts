@@ -48,7 +48,8 @@ router.get('/:id', cache(120), async (req, res) => {
     }
 
     // P1 #24: Include taxRate at top level for easy client access
-    return res.json({ town: { ...town, taxRate: town.treasury?.taxRate ?? 0.10 } });
+    // Override static seed population with live character count
+    return res.json({ town: { ...town, taxRate: town.treasury?.taxRate ?? 0.10, population: town.characters.length } });
   } catch (error) {
     if (handlePrismaError(error, res, 'get town', req)) return;
     logRouteError(req, 500, 'Get town error', error);
