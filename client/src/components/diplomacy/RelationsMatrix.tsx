@@ -66,7 +66,8 @@ export default function RelationsMatrix() {
     queryKey: ['diplomacy', 'relations'],
     queryFn: async () => {
       const res = await api.get('/diplomacy/relations');
-      return res.data;
+      const d = res.data;
+      return Array.isArray(d) ? d : (d?.matrix ?? []);
     },
   });
 
@@ -214,7 +215,8 @@ function RelationDetailDrawer({
     queryFn: async () => {
       const res = await api.get('/diplomacy/history', { params: { race: race1, limit: 20 } });
       // Filter events involving both races
-      const events: HistoryEvent[] = res.data.events ?? res.data;
+      const d = res.data;
+      const events: HistoryEvent[] = Array.isArray(d) ? d : (d?.events ?? []);
       return events.filter(
         e => (e.race1 === race1 && e.race2 === race2) || (e.race1 === race2 && e.race2 === race1)
       );

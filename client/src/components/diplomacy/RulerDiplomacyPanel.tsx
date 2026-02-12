@@ -101,7 +101,8 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
     queryKey: ['diplomacy', 'treaties'],
     queryFn: async () => {
       const res = await api.get('/diplomacy/treaties');
-      return res.data;
+      const d = res.data;
+      return Array.isArray(d) ? d : (d?.treaties ?? []);
     },
   });
 
@@ -109,7 +110,8 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
     queryKey: ['diplomacy', 'wars'],
     queryFn: async () => {
       const res = await api.get('/diplomacy/wars');
-      return res.data;
+      const d = res.data;
+      return Array.isArray(d) ? d : (d?.wars ?? []);
     },
   });
 
@@ -118,7 +120,8 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
     queryFn: async () => {
       // Proposals come from the treaties endpoint with status PENDING
       const res = await api.get('/diplomacy/treaties');
-      const all: TreatyProposal[] = res.data;
+      const d = res.data;
+      const all: TreatyProposal[] = Array.isArray(d) ? d : (d?.treaties ?? []);
       return all.filter((t: TreatyProposal) => t.status === 'PENDING');
     },
   });

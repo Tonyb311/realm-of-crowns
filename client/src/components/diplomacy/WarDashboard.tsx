@@ -65,7 +65,8 @@ export default function WarDashboard() {
     queryFn: async () => {
       const { default: api } = await import('../../services/api');
       const res = await api.get('/diplomacy/wars');
-      return res.data;
+      const d = res.data;
+      return Array.isArray(d) ? d : (d?.wars ?? []);
     },
   });
 
@@ -74,7 +75,17 @@ export default function WarDashboard() {
     queryFn: async () => {
       const { default: api } = await import('../../services/api');
       const res = await api.get('/world-events/war-bulletin');
-      return res.data;
+      const d = res.data;
+      // Backend returns { activeWars, recentWarEvents } — normalize to WarBulletin shape
+      return {
+        warId: d?.activeWars?.[0]?.id ?? '',
+        attackerScore: d?.activeWars?.[0]?.attackerScore ?? 0,
+        defenderScore: d?.activeWars?.[0]?.defenderScore ?? 0,
+        recentEvents: (d?.recentWarEvents ?? []).map((e: any) => ({
+          description: e.description ?? e.title ?? '',
+          timestamp: e.createdAt ?? '',
+        })),
+      };
     },
   });
 

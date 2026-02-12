@@ -117,7 +117,8 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
     queryKey: ['diplomacy', 'relations'],
     queryFn: async () => {
       const res = await api.get('/diplomacy/relations');
-      return res.data;
+      const d = res.data;
+      return Array.isArray(d) ? d : (d?.matrix ?? []);
     },
   });
 
@@ -125,7 +126,8 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
     queryKey: ['diplomacy', 'treaties'],
     queryFn: async () => {
       const res = await api.get('/diplomacy/treaties');
-      return res.data;
+      const d = res.data;
+      return Array.isArray(d) ? d : (d?.treaties ?? []);
     },
   });
 
@@ -133,7 +135,8 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
     queryKey: ['diplomacy', 'wars'],
     queryFn: async () => {
       const res = await api.get('/diplomacy/wars');
-      return res.data;
+      const d = res.data;
+      return Array.isArray(d) ? d : (d?.wars ?? []);
     },
   });
 
@@ -141,7 +144,8 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
     queryKey: ['petitions', kingdomId],
     queryFn: async () => {
       const res = await api.get('/petitions', { params: { kingdomId, status: 'ACTIVE' } });
-      return res.data;
+      const d = res.data;
+      return Array.isArray(d) ? d : (d?.petitions ?? []);
     },
   });
 
@@ -149,7 +153,11 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
     queryKey: ['diplomacy', 'history', playerRace, historyPage],
     queryFn: async () => {
       const res = await api.get('/diplomacy/history', { params: { race: playerRace, page: historyPage, limit: 10 } });
-      return res.data;
+      const d = res.data;
+      return {
+        events: Array.isArray(d) ? d : (d?.events ?? []),
+        totalPages: d?.totalPages ?? d?.pagination?.pages ?? 1,
+      };
     },
   });
 

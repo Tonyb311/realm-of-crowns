@@ -77,7 +77,8 @@ export default function DiplomacyOverlay({ regions, towns }: DiplomacyOverlayPro
     queryKey: ['diplomacy', 'relations'],
     queryFn: async () => {
       const res = await api.get('/diplomacy/relations');
-      return res.data;
+      const d = res.data;
+      return Array.isArray(d) ? d : (d?.matrix ?? []);
     },
     enabled: visible,
   });
@@ -86,7 +87,8 @@ export default function DiplomacyOverlay({ regions, towns }: DiplomacyOverlayPro
     queryKey: ['diplomacy', 'treaties'],
     queryFn: async () => {
       const res = await api.get('/diplomacy/treaties');
-      return res.data;
+      const d = res.data;
+      return Array.isArray(d) ? d : (d?.treaties ?? []);
     },
     enabled: visible,
   });
@@ -95,7 +97,8 @@ export default function DiplomacyOverlay({ regions, towns }: DiplomacyOverlayPro
     queryKey: ['diplomacy', 'wars'],
     queryFn: async () => {
       const res = await api.get('/diplomacy/wars');
-      return res.data;
+      const d = res.data;
+      return Array.isArray(d) ? d : (d?.wars ?? []);
     },
     enabled: visible,
   });
