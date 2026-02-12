@@ -60,7 +60,7 @@ const ELEMENT_COLORS: Record<string, { bg: string; border: string; text: string 
 // ---------------------------------------------------------------------------
 // Wizard step labels
 // ---------------------------------------------------------------------------
-const STEP_LABELS = ['Race', 'Sub-Race', 'Class', 'Stats', 'Town', 'Review'];
+const STEP_LABELS = ['Race', 'Sub-Race', 'Class', 'Stats', 'Review'];
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -74,12 +74,11 @@ export default function CharacterCreationPage() {
   const [expandedRace, setExpandedRace] = useState<string | null>(null);
   const [selectedSubRace, setSelectedSubRace] = useState<SubRaceOption | null>(null);
   const [selectedClass, setSelectedClass] = useState<ClassDefinition | null>(null);
-  const [selectedTown, setSelectedTown] = useState<string>('');
-  const [changelingTown, setChangelingTown] = useState('');
   const [characterName, setCharacterName] = useState('');
   const [nameError, setNameError] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createdCharacter, setCreatedCharacter] = useState<any>(null);
   const [raceTierTab, setRaceTierTab] = useState<'core' | 'common' | 'exotic'>('core');
 
   // Pre-group races
@@ -99,9 +98,9 @@ export default function CharacterCreationPage() {
   }, [selectedRace, selectedSubRace]);
 
   // Effective step indices — skip sub-race step when race has none
-  // Logical steps: 0=Race, 1=SubRace(conditional), 2=Class, 3=Stats, 4=Town, 5=Review
+  // Logical steps: 0=Race, 1=SubRace(conditional), 2=Class, 3=Stats, 4=Review
   const effectiveSteps = useMemo(() => {
-    const steps = [0, 2, 3, 4, 5]; // Race, Class, Stats, Town, Review
+    const steps = [0, 2, 3, 4]; // Race, Class, Stats, Review
     if (hasSubRaces) {
       steps.splice(1, 0, 1); // insert SubRace after Race
     }
@@ -118,14 +117,10 @@ export default function CharacterCreationPage() {
       case 1: return !!selectedSubRace;
       case 2: return !!selectedClass;
       case 3: return true; // stats are read-only
-      case 4: {
-        if (selectedRace?.id === 'changeling') return changelingTown.trim().length >= 2;
-        return !!selectedTown;
-      }
-      case 5: return characterName.length >= 3 && characterName.length <= 20 && !nameError;
+      case 4: return characterName.length >= 3 && characterName.length <= 20 && !nameError;
       default: return false;
     }
-  }, [currentLogicalStep, selectedRace, selectedSubRace, selectedClass, selectedTown, changelingTown, characterName, nameError]);
+  }, [currentLogicalStep, selectedRace, selectedSubRace, selectedClass, characterName, nameError]);
 
   const goNext = () => {
     if (step < totalSteps - 1) setStep(s => s + 1);
@@ -144,8 +139,6 @@ export default function CharacterCreationPage() {
     setSelectedRace(race);
     setExpandedRace(race.id);
     setSelectedSubRace(null);
-    setSelectedTown('');
-    setChangelingTown('');
   };
 
   // Submit
@@ -154,15 +147,13 @@ export default function CharacterCreationPage() {
     setIsSubmitting(true);
     setSubmitError('');
     try {
-      const town = selectedRace.id === 'changeling' ? changelingTown.trim() : selectedTown;
-      await api.post('/characters/create', {
+      const res = await api.post('/characters/create', {
         name: characterName,
         race: selectedRace.id.toUpperCase(),
         subRace: selectedSubRace?.id ?? undefined,
         characterClass: selectedClass.id,
-        startingTownId: town,
       });
-      navigate('/');
+      setCreatedCharacter(res.data.character);
     } catch (err: any) {
       setSubmitError(err.response?.data?.error ?? 'Failed to create character. Please try again.');
     } finally {
@@ -532,59 +523,10 @@ export default function CharacterCreationPage() {
   };
 
   // -----------------------------------------------------------------------
-  // Step 4: Starting Town
-  // -----------------------------------------------------------------------
-  const renderTownSelection = () => {
-    if (!selectedRace) return null;
-    const isChangeling = selectedRace.id === 'changeling';
-
-    return (
-      <div className="w-full max-w-3xl mx-auto">
-        <h2 className="text-3xl font-display text-primary-400 text-center mb-2">Choose Starting Town</h2>
-        <p className="text-center text-parchment-500 text-sm mb-6">{selectedRace.homelandRegion}</p>
-
-        {isChangeling ? (
-          <div className="bg-dark-300 border border-dark-50 rounded-lg p-6 text-center">
-            <p className="text-parchment-300 mb-4">
-              As a Changeling, you may begin in any town. Enter the name of the town where you wish to start your journey.
-            </p>
-            <input
-              type="text"
-              value={changelingTown}
-              onChange={e => setChangelingTown(e.target.value)}
-              placeholder="Enter town name..."
-              className="w-full max-w-sm mx-auto block px-4 py-2 bg-dark-500 border border-dark-50 rounded
-                text-parchment-200 placeholder-parchment-500 focus:border-primary-400 focus:outline-none"
-            />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {selectedRace.startingTowns.map(town => {
-              const isSelected = selectedTown === town;
-              return (
-                <button
-                  key={town}
-                  onClick={() => setSelectedTown(town)}
-                  className={`p-5 rounded-lg border-2 text-left transition-all
-                    ${isSelected ? 'border-primary-400 bg-dark-300/80' : 'border-dark-50 bg-dark-300 hover:border-primary-400/40'}`}
-                >
-                  <h3 className="font-display text-lg text-primary-400">{town}</h3>
-                  <p className="text-xs text-parchment-500 mt-1">{selectedRace.homelandRegion}</p>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // -----------------------------------------------------------------------
-  // Step 5: Review & Confirm
+  // Step 4: Review & Confirm
   // -----------------------------------------------------------------------
   const renderReview = () => {
     if (!selectedRace || !selectedClass || !stats) return null;
-    const town = selectedRace.id === 'changeling' ? changelingTown.trim() : selectedTown;
 
     return (
       <div className="w-full max-w-2xl mx-auto">
@@ -623,7 +565,7 @@ export default function CharacterCreationPage() {
             <span className="text-parchment-200">{selectedClass.name}</span>
 
             <span className="text-parchment-500">Starting Town</span>
-            <span className="text-parchment-200">{town}</span>
+            <span className="text-parchment-200 italic text-parchment-400">Auto-assigned based on race</span>
           </div>
 
           {/* Compact stat line */}
@@ -666,15 +608,50 @@ export default function CharacterCreationPage() {
       case 1: return renderSubRaceSelection();
       case 2: return renderClassSelection();
       case 3: return renderStatReview();
-      case 4: return renderTownSelection();
-      case 5: return renderReview();
+      case 4: return renderReview();
       default: return null;
     }
   };
 
   // -----------------------------------------------------------------------
+  // Success screen after character creation
+  // -----------------------------------------------------------------------
+  const renderSuccess = () => {
+    if (!createdCharacter || !selectedRace || !selectedClass) return null;
+
+    return (
+      <div className="w-full max-w-2xl mx-auto text-center">
+        <h2 className="text-4xl font-display text-primary-400 mb-4">Character Created!</h2>
+        <p className="text-xl text-parchment-200 mb-2">
+          {createdCharacter.name} the {selectedRace.name} {selectedClass.name}
+        </p>
+        <p className="text-lg text-amber-200">
+          Welcome to <span className="font-bold">{createdCharacter.currentTown?.name || createdCharacter.homeTown?.name || 'your new home'}</span>!
+        </p>
+        <p className="text-sm text-parchment-500 mb-8">Your journey begins here.</p>
+
+        <button
+          onClick={() => navigate('/')}
+          className="px-10 py-3 bg-primary-400 text-dark-500 font-display text-lg rounded
+            hover:bg-primary-300 transition-colors"
+        >
+          Enter the World
+        </button>
+      </div>
+    );
+  };
+
+  // -----------------------------------------------------------------------
   // Layout
   // -----------------------------------------------------------------------
+  if (createdCharacter) {
+    return (
+      <div className="min-h-screen bg-dark-500 py-16 px-4 flex items-center justify-center">
+        {renderSuccess()}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-dark-500 py-8 px-4">
       {renderProgressBar()}
@@ -694,7 +671,7 @@ export default function CharacterCreationPage() {
             Back
           </button>
         )}
-        {currentLogicalStep < 5 && (
+        {currentLogicalStep < 4 && (
           <button
             onClick={goNext}
             disabled={!canGoNext()}

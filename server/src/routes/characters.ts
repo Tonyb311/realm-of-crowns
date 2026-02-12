@@ -11,7 +11,8 @@ import { getStatAllocationCost, STAT_HARD_CAP } from '@shared/utils/bounded-accu
 import { getGameDay, getNextTickTime } from '../lib/game-day';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
-import { isRaceReleased, isTownReleased } from '../lib/content-release';
+import { isRaceReleased } from '../lib/content-release';
+import { assignStartingTown } from '../lib/starting-town';
 
 const router = Router();
 
@@ -33,7 +34,6 @@ const createCharacterSchema = z.object({
   characterClass: z.enum(VALID_CLASSES as unknown as [string, ...string[]], {
     errorMap: () => ({ message: `Invalid class. Must be one of: ${VALID_CLASSES.join(', ')}` }),
   }),
-  startingTownId: z.string().min(1, 'Starting town is required'),
 });
 
 function raceEnumToRegistryKey(race: Race): string {
@@ -63,7 +63,7 @@ function getStartingGold(tier: 'core' | 'common' | 'exotic'): number {
 // POST /api/characters/create
 router.post('/create', authGuard, validate(createCharacterSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { name, race, subRace, characterClass, startingTownId } = req.body;
+    const { name, race, subRace, characterClass } = req.body;
     const userId = req.user!.userId;
     const raceEnum = race as Race;
     const charClass = characterClass as CharacterClass;
@@ -147,24 +147,8 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
     const conModifier = Math.floor((stats.con - 10) / 2);
     const maxHealth = 10 + conModifier + getClassHpBonus(charClass);
 
-    // Resolve town name to actual Town ID (frontend sends name, DB needs UUID)
-    const town = await prisma.town.findFirst({
-      where: {
-        OR: [
-          { id: startingTownId },
-          { name: { equals: startingTownId, mode: 'insensitive' } },
-        ],
-      },
-      select: { id: true },
-    });
-    if (!town) {
-      return res.status(400).json({ error: `Town "${startingTownId}" not found` });
-    }
-
-    // Content gating: check if starting town is released
-    if (!(await isTownReleased(town.id))) {
-      return res.status(400).json({ error: 'This starting location is not yet available' });
-    }
+    // Auto-assign starting town based on race (least-populated home city)
+    const startingTown = await assignStartingTown(registryKey);
 
     const character = await prisma.character.create({
       data: {
@@ -179,7 +163,12 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
         gold,
         health: maxHealth,
         maxHealth,
-        currentTownId: town.id,
+        currentTownId: startingTown.id,
+        homeTownId: startingTown.id,
+      },
+      include: {
+        currentTown: { select: { id: true, name: true } },
+        homeTown: { select: { id: true, name: true } },
       },
     });
 

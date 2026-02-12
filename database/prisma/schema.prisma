@@ -412,6 +412,7 @@ model Character {
   title                  String?
   stats                  Json             @default("{}")
   currentTownId          String?          @map("current_town_id")
+  homeTownId             String?          @map("home_town_id")
   health                 Int              @default(100)
   maxHealth              Int              @default(100) @map("max_health")
   gold                   Int              @default(0)
@@ -442,6 +443,7 @@ model Character {
 
   user          User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   currentTown   Town? @relation("CharacterCurrentTown", fields: [currentTownId], references: [id])
+  homeTown      Town? @relation("CharacterHomeTown", fields: [homeTownId], references: [id])
   preferredFood Item? @relation("CharacterPreferredFood", fields: [preferredFoodId], references: [id], onDelete: SetNull)
 
   equipment               CharacterEquipment[]
@@ -628,6 +630,7 @@ model Town {
   mayor  Character? @relation("TownMayor", fields: [mayorId], references: [id], onDelete: SetNull)
 
   characters        Character[]        @relation("CharacterCurrentTown")
+  homeCharacters    Character[]        @relation("CharacterHomeTown")
   resources         TownResource[]
   routesFrom        TravelRoute[]      @relation("RouteFrom")
   routesTo          TravelRoute[]      @relation("RouteTo")

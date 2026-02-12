@@ -233,6 +233,7 @@ async function createSingleBot(
       health: maxHealth,
       maxHealth,
       currentTownId: townId,
+      homeTownId: townId,
     },
   });
 

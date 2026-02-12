@@ -10,6 +10,7 @@ import errorLogsRouter from './errorLogs';
 import simulationRouter from './simulation';
 import contentReleaseRouter from './contentRelease';
 import travelRouter from './travel';
+import populationRouter from './population';
 
 const router = Router();
 
@@ -24,5 +25,6 @@ router.use('/error-logs', errorLogsRouter);
 router.use('/simulation', simulationRouter);
 router.use('/content-release', contentReleaseRouter);
 router.use('/travel', travelRouter);
+router.use('/population', populationRouter);
 
 export default router;

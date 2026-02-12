@@ -13,6 +13,10 @@ import {
 describe('Characters API', () => {
   afterEach(async () => {
     await cleanupTestData();
+    // Clean up any content release records created during tests
+    await prisma.contentRelease.deleteMany({
+      where: { contentId: { startsWith: 'test_' } },
+    }).catch(() => {});
   });
 
   afterAll(async () => {
@@ -24,7 +28,18 @@ describe('Characters API', () => {
   describe('POST /api/characters/create', () => {
     it('should create a character successfully', async () => {
       const testUser = await createTestUser();
-      const { town } = await createTestTown();
+      // Create a released town matching a Human starting town name
+      const { town } = await createTestTown('Kingshold');
+      await prisma.town.update({
+        where: { id: town.id },
+        data: { isReleased: true },
+      });
+      // Ensure HUMAN race is marked as released in ContentRelease table
+      await prisma.contentRelease.upsert({
+        where: { contentType_contentId: { contentType: 'race', contentId: 'human' } },
+        create: { contentType: 'race', contentId: 'human', contentName: 'Humans', tier: 'core', isReleased: true, releasedAt: new Date() },
+        update: { isReleased: true, releasedAt: new Date() },
+      });
 
       const res = await request(app)
         .post('/api/characters/create')
@@ -33,7 +48,6 @@ describe('Characters API', () => {
           name: 'TestHero',
           race: 'HUMAN',
           characterClass: 'warrior',
-          startingTownId: town.id,
         });
 
       expect(res.status).toBe(201);
@@ -41,7 +55,9 @@ describe('Characters API', () => {
       expect(res.body.character.name).toBe('TestHero');
       expect(res.body.character.race).toBe('HUMAN');
       expect(res.body.character.class).toBe('warrior');
+      // Town is auto-assigned based on race; verify it's the released Kingshold town
       expect(res.body.character.currentTownId).toBe(town.id);
+      expect(res.body.character.homeTownId).toBe(town.id);
       expect(res.body.character.stats).toBeDefined();
       expect(res.body.character.gold).toBeGreaterThan(0);
 
@@ -60,7 +76,6 @@ describe('Characters API', () => {
           name: 'SecondHero',
           race: 'ELF',
           characterClass: 'mage',
-          startingTownId: town.id,
         });
 
       expect(res.status).toBe(409);
@@ -69,7 +84,6 @@ describe('Characters API', () => {
 
     it('should reject invalid race', async () => {
       const testUser = await createTestUser();
-      const { town } = await createTestTown();
 
       const res = await request(app)
         .post('/api/characters/create')
@@ -78,7 +92,6 @@ describe('Characters API', () => {
           name: 'BadRace',
           race: 'NOTARACE',
           characterClass: 'warrior',
-          startingTownId: town.id,
         });
 
       expect(res.status).toBe(400);
@@ -86,7 +99,6 @@ describe('Characters API', () => {
 
     it('should reject invalid class', async () => {
       const testUser = await createTestUser();
-      const { town } = await createTestTown();
 
       const res = await request(app)
         .post('/api/characters/create')
@@ -95,7 +107,6 @@ describe('Characters API', () => {
           name: 'BadClass',
           race: 'HUMAN',
           characterClass: 'wizard',
-          startingTownId: town.id,
         });
 
       expect(res.status).toBe(400);
@@ -103,7 +114,6 @@ describe('Characters API', () => {
 
     it('should require sub-race for Drakonid', async () => {
       const testUser = await createTestUser();
-      const { town } = await createTestTown();
 
       const res = await request(app)
         .post('/api/characters/create')
@@ -112,7 +122,6 @@ describe('Characters API', () => {
           name: 'DragonNoSub',
           race: 'DRAKONID',
           characterClass: 'warrior',
-          startingTownId: town.id,
         });
 
       expect(res.status).toBe(400);
@@ -126,7 +135,6 @@ describe('Characters API', () => {
           name: 'NoAuth',
           race: 'HUMAN',
           characterClass: 'warrior',
-          startingTownId: 'some-id',
         });
 
       expect(res.status).toBe(401);
