@@ -23,16 +23,16 @@ export interface Combatant {
 function StatBar({ current, max, color, label }: { current: number; max: number; color: 'red' | 'blue'; label: string }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 0;
   const gradient = color === 'red'
-    ? 'from-red-700 to-red-500'
-    : 'from-blue-700 to-blue-500';
+    ? 'from-realm-hp to-red-500'
+    : 'from-realm-teal-400 to-realm-teal-300';
 
   return (
     <div>
       <div className="flex justify-between text-[10px] mb-0.5">
-        <span className="text-parchment-500">{label}</span>
-        <span className="text-parchment-400">{current}/{max}</span>
+        <span className="text-realm-text-muted">{label}</span>
+        <span className="text-realm-text-secondary">{current}/{max}</span>
       </div>
-      <div className="h-3 bg-dark-500 rounded-full overflow-hidden border border-dark-50">
+      <div className="h-3 bg-realm-bg-900 rounded-full overflow-hidden border border-realm-border">
         <div
           className={`h-full rounded-full bg-gradient-to-r ${gradient} transition-all duration-500`}
           style={{ width: `${pct}%` }}
@@ -43,32 +43,32 @@ function StatBar({ current, max, color, label }: { current: number; max: number;
 }
 
 export default function CombatantCard({ combatant, isActive, side }: { combatant: Combatant; isActive: boolean; side: 'left' | 'right' }) {
-  const borderColor = isActive ? 'border-primary-400' : combatant.type === 'enemy' ? 'border-red-900/50' : 'border-dark-50';
+  const borderColor = isActive ? 'border-realm-gold-500' : combatant.type === 'enemy' ? 'border-realm-danger/50' : 'border-realm-border';
 
   return (
-    <div className={`bg-dark-300 border-2 ${borderColor} rounded-lg p-4 transition-all ${isActive ? 'ring-1 ring-primary-400/30' : ''}`}>
+    <div className={`bg-realm-bg-700 border-2 ${borderColor} rounded-lg p-4 transition-all ${isActive ? 'ring-1 ring-realm-gold-500/30' : ''}`}>
       {isActive && (
         <div className="flex items-center gap-1 mb-2">
-          <ChevronRight className="w-3 h-3 text-primary-400 animate-pulse" />
-          <span className="text-[10px] text-primary-400 font-display uppercase tracking-wider">Current Turn</span>
+          <ChevronRight className="w-3 h-3 text-realm-gold-400 animate-pulse" />
+          <span className="text-[10px] text-realm-gold-400 font-display uppercase tracking-wider">Current Turn</span>
         </div>
       )}
       <div className={`flex items-center gap-3 ${side === 'right' ? 'flex-row-reverse text-right' : ''}`}>
         <div className={`w-14 h-14 rounded-lg border-2 flex items-center justify-center flex-shrink-0
-          ${combatant.type === 'enemy' ? 'border-red-900/50 bg-red-900/10' : 'border-primary-400/30 bg-primary-400/10'}`}
+          ${combatant.type === 'enemy' ? 'border-realm-danger/50 bg-realm-danger/10' : 'border-realm-gold-500/30 bg-realm-gold-400/10'}`}
         >
           {combatant.type === 'enemy' ? (
-            <Skull className="w-7 h-7 text-red-400" />
+            <Skull className="w-7 h-7 text-realm-danger" />
           ) : (
-            <Crown className="w-7 h-7 text-primary-400" />
+            <Crown className="w-7 h-7 text-realm-gold-400" />
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className={`font-display text-sm truncate ${combatant.type === 'enemy' ? 'text-red-400' : 'text-parchment-200'}`}>
+          <h3 className={`font-display text-sm truncate ${combatant.type === 'enemy' ? 'text-realm-danger' : 'text-realm-text-primary'}`}>
             {combatant.name}
           </h3>
           {combatant.level && (
-            <p className="text-[10px] text-parchment-500">Lv. {combatant.level}</p>
+            <p className="text-[10px] text-realm-text-muted">Lv. {combatant.level}</p>
           )}
         </div>
       </div>
@@ -82,7 +82,7 @@ export default function CombatantCard({ combatant, isActive, side }: { combatant
           {combatant.statusEffects.map((effect) => (
             <span
               key={effect.id}
-              className="text-[9px] bg-dark-500 border border-dark-50 rounded px-1.5 py-0.5 text-parchment-400"
+              className="text-[9px] bg-realm-bg-900 border border-realm-border rounded px-1.5 py-0.5 text-realm-text-secondary"
               title={`${effect.name} (${effect.duration} turns)`}
             >
               {effect.name}

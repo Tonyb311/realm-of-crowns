@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { getSocket } from '../services/socket';
-import { SkeletonCard } from '../components/ui/LoadingSkeleton';
+import { RealmButton } from '../components/ui/realm-index';
 import PlayerSearch from '../components/PlayerSearch';
 import CombatLog from '../components/combat/CombatLog';
 import type { CombatLogEntry } from '../components/combat/CombatLog';
@@ -82,22 +82,22 @@ function DiceRollDisplay({ roll, visible, onDone }: { roll: number | null; visib
       <div className="animate-bounce">
         <div className={`
           w-24 h-24 rounded-xl flex items-center justify-center border-4 shadow-2xl
-          ${isCritical ? 'bg-primary-400/20 border-primary-400 shadow-primary-400/30' :
-            isMiss ? 'bg-red-900/30 border-red-500 shadow-red-500/30' :
-            'bg-dark-300 border-parchment-500/50'}
+          ${isCritical ? 'bg-realm-gold-400/20 border-realm-gold-500 shadow-realm-gold-400/30' :
+            isMiss ? 'bg-realm-danger/20 border-realm-danger shadow-realm-danger/30' :
+            'bg-realm-bg-700 border-realm-text-muted/50'}
         `}>
           <div className="text-center">
-            <Dices className={`w-5 h-5 mx-auto mb-1 ${isCritical ? 'text-primary-400' : isMiss ? 'text-red-400' : 'text-parchment-400'}`} />
-            <span className={`text-3xl font-display ${isCritical ? 'text-primary-400' : isMiss ? 'text-red-400' : 'text-parchment-200'}`}>
+            <Dices className={`w-5 h-5 mx-auto mb-1 ${isCritical ? 'text-realm-gold-400' : isMiss ? 'text-realm-danger' : 'text-realm-text-secondary'}`} />
+            <span className={`text-3xl font-display ${isCritical ? 'text-realm-gold-400' : isMiss ? 'text-realm-danger' : 'text-realm-text-primary'}`}>
               {roll}
             </span>
           </div>
         </div>
         {isCritical && (
-          <p className="text-center mt-2 text-primary-400 font-display text-lg animate-pulse">CRITICAL!</p>
+          <p className="text-center mt-2 text-realm-gold-400 font-display text-lg animate-pulse">CRITICAL!</p>
         )}
         {isMiss && (
-          <p className="text-center mt-2 text-red-400 font-display text-lg animate-pulse">MISS!</p>
+          <p className="text-center mt-2 text-realm-danger font-display text-lg animate-pulse">MISS!</p>
         )}
       </div>
     </div>
@@ -121,7 +121,7 @@ function FloatingDamage({ amount, type, id }: { amount: number; type: 'damage' |
     <span
       key={id}
       className={`absolute font-display text-2xl font-bold animate-float-up pointer-events-none
-        ${type === 'damage' ? 'text-red-400' : 'text-green-400'}`}
+        ${type === 'damage' ? 'text-realm-danger' : 'text-realm-success'}`}
       style={{ top: '30%', right: type === 'damage' ? '20%' : '60%' }}
     >
       {type === 'damage' ? `-${amount}` : `+${amount}`}
@@ -150,17 +150,17 @@ function PvpChallengePanel({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+        <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
       </div>
     );
   }
 
   if (challenges.length === 0) {
     return (
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center">
-        <Swords className="w-10 h-10 text-parchment-500/30 mx-auto mb-3" />
-        <p className="text-parchment-500 text-sm">No pending challenges.</p>
-        <p className="text-parchment-500/60 text-xs mt-1">Challenge another player from the town screen.</p>
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+        <Swords className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
+        <p className="text-realm-text-muted text-sm">No pending challenges.</p>
+        <p className="text-realm-text-muted/60 text-xs mt-1">Challenge another player from the town screen.</p>
       </div>
     );
   }
@@ -168,14 +168,14 @@ function PvpChallengePanel({
   return (
     <div className="space-y-3">
       {challenges.map((ch) => (
-        <div key={ch.sessionId} className="bg-dark-300 border border-dark-50 rounded-lg p-4">
+        <div key={ch.sessionId} className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="font-display text-parchment-200 text-sm">{ch.challengerName}</h4>
-              <p className="text-parchment-500 text-[10px]">
+              <h4 className="font-display text-realm-text-primary text-sm">{ch.challengerName}</h4>
+              <p className="text-realm-text-muted text-[10px]">
                 {new Date(ch.createdAt).toLocaleTimeString()}
                 {ch.wager != null && ch.wager > 0 && (
-                  <span className="ml-2 text-primary-400">Wager: {ch.wager} gold</span>
+                  <span className="ml-2 text-realm-gold-400">Wager: {ch.wager} gold</span>
                 )}
               </p>
             </div>
@@ -183,14 +183,14 @@ function PvpChallengePanel({
               <button
                 onClick={() => onAccept(ch.sessionId)}
                 disabled={acceptPending}
-                className="px-4 py-1.5 bg-primary-400 text-dark-500 font-display text-xs rounded hover:bg-primary-300 transition-colors disabled:opacity-50"
+                className="px-4 py-1.5 bg-realm-gold-400 text-realm-bg-900 font-display text-xs rounded hover:bg-realm-gold-300 transition-colors disabled:opacity-50"
               >
                 Accept
               </button>
               <button
                 onClick={() => onDecline(ch.sessionId)}
                 disabled={declinePending}
-                className="px-4 py-1.5 border border-red-500/40 text-red-400 font-display text-xs rounded hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                className="px-4 py-1.5 border border-realm-danger/40 text-realm-danger font-display text-xs rounded hover:bg-realm-danger/20 transition-colors disabled:opacity-50"
               >
                 Decline
               </button>
@@ -209,48 +209,48 @@ function PvpLeaderboard({ entries, isLoading }: { entries: LeaderboardEntry[]; i
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+        <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
       </div>
     );
   }
 
   if (entries.length === 0) {
     return (
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center">
-        <Trophy className="w-10 h-10 text-parchment-500/30 mx-auto mb-3" />
-        <p className="text-parchment-500 text-sm">No rankings yet.</p>
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+        <Trophy className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
+        <p className="text-realm-text-muted text-sm">No rankings yet.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg overflow-hidden">
+    <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-dark-50 text-left">
-            <th className="px-4 py-3 text-parchment-500 text-xs font-display w-16">Rank</th>
-            <th className="px-4 py-3 text-parchment-500 text-xs font-display">Name</th>
-            <th className="px-4 py-3 text-parchment-500 text-xs font-display text-center">Wins</th>
-            <th className="px-4 py-3 text-parchment-500 text-xs font-display text-center">Losses</th>
-            <th className="px-4 py-3 text-parchment-500 text-xs font-display text-right">Rating</th>
+          <tr className="border-b border-realm-border text-left">
+            <th className="px-4 py-3 text-realm-text-muted text-xs font-display w-16">Rank</th>
+            <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Name</th>
+            <th className="px-4 py-3 text-realm-text-muted text-xs font-display text-center">Wins</th>
+            <th className="px-4 py-3 text-realm-text-muted text-xs font-display text-center">Losses</th>
+            <th className="px-4 py-3 text-realm-text-muted text-xs font-display text-right">Rating</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-dark-50">
+        <tbody className="divide-y divide-realm-border">
           {entries.map((entry) => (
-            <tr key={entry.characterId} className="hover:bg-dark-200/30 transition-colors">
+            <tr key={entry.characterId} className="hover:bg-realm-bg-600/30 transition-colors">
               <td className="px-4 py-3 font-display text-sm">
                 {entry.rank <= 3 ? (
-                  <span className={`${entry.rank === 1 ? 'text-primary-400' : entry.rank === 2 ? 'text-parchment-300' : 'text-amber-700'}`}>
+                  <span className={`${entry.rank === 1 ? 'text-realm-gold-400' : entry.rank === 2 ? 'text-realm-text-secondary' : 'text-realm-bronze-400'}`}>
                     #{entry.rank}
                   </span>
                 ) : (
-                  <span className="text-parchment-500">#{entry.rank}</span>
+                  <span className="text-realm-text-muted">#{entry.rank}</span>
                 )}
               </td>
-              <td className="px-4 py-3 text-sm text-parchment-200 font-semibold">{entry.characterName}</td>
-              <td className="px-4 py-3 text-sm text-green-400 text-center">{entry.wins}</td>
-              <td className="px-4 py-3 text-sm text-red-400 text-center">{entry.losses}</td>
-              <td className="px-4 py-3 text-sm text-primary-400 font-display text-right">{entry.rating}</td>
+              <td className="px-4 py-3 text-sm text-realm-text-primary font-semibold">{entry.characterName}</td>
+              <td className="px-4 py-3 text-sm text-realm-success text-center">{entry.wins}</td>
+              <td className="px-4 py-3 text-sm text-realm-danger text-center">{entry.losses}</td>
+              <td className="px-4 py-3 text-sm text-realm-gold-400 font-display text-right">{entry.rating}</td>
             </tr>
           ))}
         </tbody>
@@ -279,23 +279,23 @@ function ChallengeModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div className="bg-dark-400 border border-dark-50 rounded-lg p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-realm-bg-800 border border-realm-border rounded-lg p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-display text-primary-400">Challenge Player</h3>
-          <button onClick={onClose} className="text-parchment-500 hover:text-parchment-200">
+          <h3 className="text-lg font-display text-realm-gold-400">Challenge Player</h3>
+          <button onClick={onClose} className="text-realm-text-muted hover:text-realm-text-primary">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="text-parchment-500 text-xs mb-1 block">Search Player</label>
+            <label className="text-realm-text-muted text-xs mb-1 block">Search Player</label>
             {targetName ? (
-              <div className="flex items-center justify-between px-3 py-2 bg-dark-500 border border-dark-50 rounded text-parchment-200 text-sm">
+              <div className="flex items-center justify-between px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm">
                 <span>{targetName}</span>
                 <button
                   onClick={() => { setTargetId(''); setTargetName(''); }}
-                  className="text-parchment-500 hover:text-parchment-200"
+                  className="text-realm-text-muted hover:text-realm-text-primary"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -311,20 +311,20 @@ function ChallengeModal({
             )}
           </div>
           <div>
-            <label className="text-parchment-500 text-xs mb-1 block">Wager (optional)</label>
+            <label className="text-realm-text-muted text-xs mb-1 block">Wager (optional)</label>
             <input
               type="number"
               value={wager}
               onChange={(e) => setWager(e.target.value)}
               placeholder="0"
               min="0"
-              className="w-full px-3 py-2 bg-dark-500 border border-dark-50 rounded text-parchment-200 text-sm placeholder:text-parchment-500/50 focus:border-primary-400/50 focus:outline-none"
+              className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-none"
             />
           </div>
         </div>
 
         {error && (
-          <div className="mt-3 p-2 bg-red-900/30 border border-red-500/50 rounded text-red-300 text-xs flex items-center gap-2">
+          <div className="mt-3 p-2 bg-realm-danger/20 border border-realm-danger/50 rounded text-realm-danger text-xs flex items-center gap-2">
             <AlertCircle className="w-3 h-3 flex-shrink-0" />
             {error}
           </div>
@@ -333,14 +333,14 @@ function ChallengeModal({
         <div className="flex gap-3 mt-6">
           <button
             onClick={onClose}
-            className="flex-1 py-2 border border-parchment-500/30 text-parchment-300 font-display text-sm rounded hover:bg-dark-300 transition-colors"
+            className="flex-1 py-2 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={() => onChallenge(targetId, wager ? parseInt(wager, 10) : undefined)}
             disabled={isPending || !targetId.trim()}
-            className="flex-1 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 py-2 bg-realm-gold-400 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isPending ? 'Sending...' : 'Challenge'}
           </button>
@@ -536,7 +536,7 @@ export default function CombatPage() {
   // Render
   // -------------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-dark-500 pt-12">
+    <div>
       {/* Dice Roll Overlay */}
       <DiceRollDisplay roll={diceRoll} visible={showDice} onDone={hideDice} />
 
@@ -556,14 +556,14 @@ export default function CombatPage() {
       </div>
 
       {/* Header */}
-      <header className="border-b border-dark-50 bg-dark-400/50">
+      <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <Swords className="w-8 h-8 text-primary-400" />
+              <Swords className="w-8 h-8 text-realm-gold-400" />
               <div>
-                <h1 className="text-3xl font-display text-primary-400">Combat</h1>
-                <p className="text-parchment-500 text-sm">
+                <h1 className="text-3xl font-display text-realm-gold-400">Combat</h1>
+                <p className="text-realm-text-muted text-sm">
                   {activeCombat?.status === 'ACTIVE'
                     ? `Round ${activeCombat.round} - ${activeCombat.combatType === 'pvp' ? 'PvP' : 'PvE'}`
                     : 'Ready for battle'}
@@ -572,24 +572,25 @@ export default function CombatPage() {
             </div>
             <div className="flex items-center gap-3">
               {activeCombat?.wager != null && activeCombat.wager > 0 && (
-                <div className="bg-dark-300 border border-primary-400/30 rounded px-3 py-1.5 text-xs">
-                  <span className="text-parchment-500">Wager: </span>
-                  <span className="text-primary-400 font-display">{activeCombat.wager} gold</span>
+                <div className="bg-realm-bg-700 border border-realm-gold-500/30 rounded px-3 py-1.5 text-xs">
+                  <span className="text-realm-text-muted">Wager: </span>
+                  <span className="text-realm-gold-400 font-display">{activeCombat.wager} gold</span>
                 </div>
               )}
-              <button
+              <RealmButton
+                variant="ghost"
+                size="sm"
                 onClick={() => navigate('/town')}
-                className="px-5 py-2 border border-parchment-500/40 text-parchment-300 font-display text-sm rounded hover:bg-dark-300 transition-colors"
               >
                 Back to Town
-              </button>
+              </RealmButton>
             </div>
           </div>
         </div>
       </header>
 
       {/* Tabs */}
-      <div className="border-b border-dark-50 bg-dark-400/30">
+      <div className="border-b border-realm-border bg-realm-bg-800/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex gap-1">
             {([
@@ -602,13 +603,13 @@ export default function CombatPage() {
                 onClick={() => setActiveTab(key)}
                 className={`flex items-center gap-2 px-5 py-3 font-display text-sm border-b-2 transition-colors
                   ${activeTab === key
-                    ? 'border-primary-400 text-primary-400'
-                    : 'border-transparent text-parchment-500 hover:text-parchment-300 hover:border-parchment-500/30'}`}
+                    ? 'border-realm-gold-500 text-realm-gold-400'
+                    : 'border-transparent text-realm-text-muted hover:text-realm-text-secondary hover:border-realm-text-muted/30'}`}
               >
                 <Icon className="w-4 h-4" />
                 {label}
                 {key === 'pvp' && challenges && challenges.length > 0 && (
-                  <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span className="w-5 h-5 bg-realm-danger text-realm-text-primary text-[10px] font-bold rounded-full flex items-center justify-center">
                     {challenges.length}
                   </span>
                 )}
@@ -626,35 +627,37 @@ export default function CombatPage() {
           <div>
             {pveLoading ? (
               <div className="space-y-6">
-                <div className="h-12 bg-dark-300 border border-dark-50 rounded-lg animate-pulse" />
+                <div className="h-12 bg-realm-bg-700 border border-realm-border rounded-lg animate-pulse" />
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <SkeletonCard />
-                    <SkeletonCard />
+                    <div className="h-48 bg-realm-bg-700 border border-realm-border rounded-lg animate-pulse" />
+                    <div className="h-48 bg-realm-bg-700 border border-realm-border rounded-lg animate-pulse" />
                   </div>
-                  <SkeletonCard className="h-64" />
+                  <div className="h-64 bg-realm-bg-700 border border-realm-border rounded-lg animate-pulse" />
                 </div>
               </div>
             ) : !activeCombat || activeCombat.status === 'finished' ? (
-              <div className="bg-dark-300 border border-dark-50 rounded-lg p-12 text-center">
-                <Swords className="w-16 h-16 text-parchment-500/20 mx-auto mb-4" />
-                <h2 className="text-xl font-display text-parchment-300 mb-2">No Active Combat</h2>
-                <p className="text-parchment-500 text-sm mb-6">
+              <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-12 text-center">
+                <Swords className="w-16 h-16 text-realm-text-muted/20 mx-auto mb-4" />
+                <h2 className="text-xl font-display text-realm-text-secondary mb-2">No Active Combat</h2>
+                <p className="text-realm-text-muted text-sm mb-6">
                   Start a PvE encounter or accept a PvP challenge to begin fighting.
                 </p>
                 <div className="flex gap-3 justify-center">
-                  <button
+                  <RealmButton
+                    variant="secondary"
+                    size="sm"
                     onClick={() => setActiveTab('pvp')}
-                    className="px-6 py-2 border border-primary-400/60 text-primary-400 font-display text-sm rounded hover:bg-dark-300 transition-colors"
                   >
                     View PvP Challenges
-                  </button>
-                  <button
+                  </RealmButton>
+                  <RealmButton
+                    variant="ghost"
+                    size="sm"
                     onClick={() => navigate('/town')}
-                    className="px-6 py-2 border border-parchment-500/40 text-parchment-300 font-display text-sm rounded hover:bg-dark-300 transition-colors"
                   >
                     Back to Town
-                  </button>
+                  </RealmButton>
                 </div>
               </div>
             ) : (
@@ -694,8 +697,8 @@ export default function CombatPage() {
 
                       {/* VS divider */}
                       <div className="hidden sm:flex absolute inset-0 items-center justify-center pointer-events-none">
-                        <div className="bg-dark-400 border border-dark-50 rounded-full w-10 h-10 flex items-center justify-center">
-                          <span className="text-parchment-500 font-display text-xs">VS</span>
+                        <div className="bg-realm-bg-800 border border-realm-border rounded-full w-10 h-10 flex items-center justify-center">
+                          <span className="text-realm-text-muted font-display text-xs">VS</span>
                         </div>
                       </div>
 
@@ -727,7 +730,7 @@ export default function CombatPage() {
 
                     {/* Error display */}
                     {(pveActionMutation.isError || pvpActionMutation.isError) && (
-                      <div className="p-3 bg-red-900/30 border border-red-500/50 rounded text-red-300 text-sm flex items-center gap-2">
+                      <div className="p-3 bg-realm-danger/20 border border-realm-danger/50 rounded text-realm-danger text-sm flex items-center gap-2">
                         <AlertCircle className="w-4 h-4 flex-shrink-0" />
                         Action failed. Please try again.
                       </div>
@@ -748,13 +751,14 @@ export default function CombatPage() {
         {activeTab === 'pvp' && (
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-display text-parchment-200">PvP Challenges</h2>
-              <button
+              <h2 className="text-xl font-display text-realm-text-primary">PvP Challenges</h2>
+              <RealmButton
+                variant="primary"
+                size="sm"
                 onClick={() => setShowChallengeModal(true)}
-                className="px-5 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 transition-colors"
               >
                 Challenge Player
-              </button>
+              </RealmButton>
             </div>
 
             <PvpChallengePanel
@@ -771,7 +775,7 @@ export default function CombatPage() {
         {/* TAB: Leaderboard */}
         {activeTab === 'leaderboard' && (
           <div>
-            <h2 className="text-xl font-display text-parchment-200 mb-6">PvP Rankings</h2>
+            <h2 className="text-xl font-display text-realm-text-primary mb-6">PvP Rankings</h2>
             <PvpLeaderboard
               entries={leaderboard ?? []}
               isLoading={leaderboardLoading}

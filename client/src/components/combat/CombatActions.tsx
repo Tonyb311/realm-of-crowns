@@ -42,11 +42,11 @@ export default function CombatActions({ isPlayerTurn, combatType, spells, items,
   const disabled = !isPlayerTurn || isPending;
 
   return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg p-4">
+    <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4">
       {!isPlayerTurn && (
         <div className="text-center py-2 mb-3">
-          <Loader2 className="w-4 h-4 text-parchment-500 animate-spin mx-auto mb-1" />
-          <p className="text-parchment-500 text-xs">Waiting for opponent...</p>
+          <Loader2 className="w-4 h-4 text-realm-text-muted animate-spin mx-auto mb-1" />
+          <p className="text-realm-text-muted text-xs">Waiting for opponent...</p>
         </div>
       )}
 
@@ -55,8 +55,8 @@ export default function CombatActions({ isPlayerTurn, combatType, spells, items,
         <button
           onClick={() => { setSubmenu(null); onAction('attack'); }}
           disabled={disabled}
-          className="flex items-center gap-2 px-4 py-2.5 bg-red-900/30 border border-red-500/40 text-red-400 font-display text-sm rounded
-            hover:bg-red-900/50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-4 py-2.5 bg-realm-danger/20 border border-realm-danger/40 text-realm-danger font-display text-sm rounded
+            hover:bg-realm-danger/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <Swords className="w-4 h-4" />
           Attack
@@ -69,28 +69,28 @@ export default function CombatActions({ isPlayerTurn, combatType, spells, items,
             disabled={disabled}
             className={`flex items-center gap-2 px-4 py-2.5 border font-display text-sm rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed
               ${submenu === 'spells'
-                ? 'bg-blue-900/30 border-blue-400/50 text-blue-400'
-                : 'bg-blue-900/20 border-blue-500/30 text-blue-400 hover:bg-blue-900/40'}`}
+                ? 'bg-realm-teal-400/20 border-realm-teal-300/50 text-realm-teal-300'
+                : 'bg-realm-teal-400/10 border-realm-teal-300/30 text-realm-teal-300 hover:bg-realm-teal-400/30'}`}
           >
             <Sparkles className="w-4 h-4" />
             Spells
           </button>
 
           {submenu === 'spells' && (
-            <div className="absolute bottom-full left-0 mb-2 w-56 bg-dark-400 border border-dark-50 rounded-lg shadow-xl z-10">
+            <div className="absolute bottom-full left-0 mb-2 w-56 bg-realm-bg-800 border border-realm-border rounded-lg shadow-xl z-10">
               <div className="p-2 max-h-48 overflow-y-auto">
                 {spells.length === 0 ? (
-                  <p className="text-parchment-500 text-xs p-2">No spells available.</p>
+                  <p className="text-realm-text-muted text-xs p-2">No spells available.</p>
                 ) : (
                   spells.map((spell) => (
                       <button
                         key={spell.id}
                         onClick={() => { onAction('cast_spell', { spellId: spell.id }); setSubmenu(null); }}
                         disabled={isPending}
-                        className="w-full text-left px-3 py-2 rounded text-xs hover:bg-dark-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="w-full text-left px-3 py-2 rounded text-xs hover:bg-realm-bg-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        <span className="text-parchment-200 font-semibold">{spell.name}</span>
-                        <p className="text-parchment-500 mt-0.5">{spell.description}</p>
+                        <span className="text-realm-text-primary font-semibold">{spell.name}</span>
+                        <p className="text-realm-text-muted mt-0.5">{spell.description}</p>
                       </button>
                     ))
                 )}
@@ -106,31 +106,31 @@ export default function CombatActions({ isPlayerTurn, combatType, spells, items,
             disabled={disabled}
             className={`flex items-center gap-2 px-4 py-2.5 border font-display text-sm rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed
               ${submenu === 'items'
-                ? 'bg-green-900/30 border-green-400/50 text-green-400'
-                : 'bg-green-900/20 border-green-500/30 text-green-400 hover:bg-green-900/40'}`}
+                ? 'bg-realm-success/20 border-realm-success/50 text-realm-success'
+                : 'bg-realm-success/10 border-realm-success/30 text-realm-success hover:bg-realm-success/30'}`}
           >
             <Package className="w-4 h-4" />
             Items
           </button>
 
           {submenu === 'items' && (
-            <div className="absolute bottom-full left-0 mb-2 w-56 bg-dark-400 border border-dark-50 rounded-lg shadow-xl z-10">
+            <div className="absolute bottom-full left-0 mb-2 w-56 bg-realm-bg-800 border border-realm-border rounded-lg shadow-xl z-10">
               <div className="p-2 max-h-48 overflow-y-auto">
                 {items.length === 0 ? (
-                  <p className="text-parchment-500 text-xs p-2">No usable items.</p>
+                  <p className="text-realm-text-muted text-xs p-2">No usable items.</p>
                 ) : (
                   items.map((item) => (
                     <button
                       key={item.id}
                       onClick={() => { onAction('use_item', { itemId: item.id }); setSubmenu(null); }}
                       disabled={isPending}
-                      className="w-full text-left px-3 py-2 rounded text-xs hover:bg-dark-300 transition-colors disabled:opacity-40"
+                      className="w-full text-left px-3 py-2 rounded text-xs hover:bg-realm-bg-700 transition-colors disabled:opacity-40"
                     >
                       <div className="flex justify-between items-baseline">
-                        <span className="text-parchment-200 font-semibold">{item.name}</span>
-                        <span className="text-parchment-500">x{item.quantity}</span>
+                        <span className="text-realm-text-primary font-semibold">{item.name}</span>
+                        <span className="text-realm-text-muted">x{item.quantity}</span>
                       </div>
-                      <p className="text-parchment-500 mt-0.5">{item.description}</p>
+                      <p className="text-realm-text-muted mt-0.5">{item.description}</p>
                     </button>
                   ))
                 )}
@@ -143,8 +143,8 @@ export default function CombatActions({ isPlayerTurn, combatType, spells, items,
         <button
           onClick={() => { setSubmenu(null); onAction('defend'); }}
           disabled={disabled}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary-400/10 border border-primary-400/30 text-primary-400 font-display text-sm rounded
-            hover:bg-primary-400/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-4 py-2.5 bg-realm-gold-400/10 border border-realm-gold-500/30 text-realm-gold-400 font-display text-sm rounded
+            hover:bg-realm-gold-400/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <Shield className="w-4 h-4" />
           Defend
@@ -155,15 +155,15 @@ export default function CombatActions({ isPlayerTurn, combatType, spells, items,
           <button
             onClick={() => { setSubmenu(null); onAction('flee'); }}
             disabled={disabled}
-            className="flex items-center gap-2 px-4 py-2.5 bg-dark-400 border border-parchment-500/30 text-parchment-400 font-display text-sm rounded
-              hover:bg-dark-300 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2.5 bg-realm-bg-800 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded
+              hover:bg-realm-bg-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <Footprints className="w-4 h-4" />
             Flee
           </button>
         )}
 
-        {isPending && <Loader2 className="w-5 h-5 text-primary-400 animate-spin self-center ml-2" />}
+        {isPending && <Loader2 className="w-5 h-5 text-realm-gold-400 animate-spin self-center ml-2" />}
       </div>
     </div>
   );

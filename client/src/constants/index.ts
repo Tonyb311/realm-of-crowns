@@ -7,12 +7,12 @@ export const TOAST_STYLE = {
 
 // Rarity colors with border/text/bg classes (used by Crafting, Inventory, etc.)
 export const RARITY_COLORS: Record<string, { border: string; text: string; bg: string }> = {
-  POOR:       { border: 'border-gray-500',   text: 'text-gray-400',   bg: 'bg-gray-500/10' },
-  COMMON:     { border: 'border-parchment-300', text: 'text-parchment-300', bg: 'bg-parchment-300/10' },
-  FINE:       { border: 'border-green-500',  text: 'text-green-400',  bg: 'bg-green-500/10' },
-  SUPERIOR:   { border: 'border-blue-500',   text: 'text-blue-400',   bg: 'bg-blue-500/10' },
-  MASTERWORK: { border: 'border-purple-500', text: 'text-purple-400', bg: 'bg-purple-500/10' },
-  LEGENDARY:  { border: 'border-amber-400',  text: 'text-amber-400',  bg: 'bg-amber-400/10' },
+  POOR:       { border: 'border-realm-text-muted/50',   text: 'text-realm-text-muted',     bg: 'bg-realm-text-muted/10' },
+  COMMON:     { border: 'border-realm-text-secondary/50', text: 'text-realm-text-secondary', bg: 'bg-realm-text-secondary/10' },
+  FINE:       { border: 'border-realm-success/50',  text: 'text-realm-success',  bg: 'bg-realm-success/10' },
+  SUPERIOR:   { border: 'border-realm-teal-300/50', text: 'text-realm-teal-300', bg: 'bg-realm-teal-300/10' },
+  MASTERWORK: { border: 'border-realm-purple-300/50', text: 'text-realm-purple-300', bg: 'bg-realm-purple-300/10' },
+  LEGENDARY:  { border: 'border-realm-gold-300/50',  text: 'text-realm-gold-300',  bg: 'bg-realm-gold-300/10' },
 };
 
 export function getRarityStyle(rarity: string) {
@@ -21,20 +21,20 @@ export function getRarityStyle(rarity: string) {
 
 // Rarity badge color classes (single string per rarity, used by Market)
 export const RARITY_BADGE_COLORS: Record<string, string> = {
-  POOR: 'text-gray-400 bg-gray-400/10 border-gray-400/30',
-  COMMON: 'text-parchment-200 bg-parchment-200/10 border-parchment-200/30',
-  FINE: 'text-green-400 bg-green-400/10 border-green-400/30',
-  SUPERIOR: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
-  MASTERWORK: 'text-purple-400 bg-purple-400/10 border-purple-400/30',
-  LEGENDARY: 'text-amber-400 bg-amber-400/10 border-amber-400/30',
+  POOR: 'text-realm-text-muted bg-realm-text-muted/10 border-realm-text-muted/30',
+  COMMON: 'text-realm-text-secondary bg-realm-text-secondary/10 border-realm-text-secondary/30',
+  FINE: 'text-realm-success bg-realm-success/10 border-realm-success/30',
+  SUPERIOR: 'text-realm-teal-300 bg-realm-teal-300/10 border-realm-teal-300/30',
+  MASTERWORK: 'text-realm-purple-300 bg-realm-purple-300/10 border-realm-purple-300/30',
+  LEGENDARY: 'text-realm-gold-300 bg-realm-gold-300/10 border-realm-gold-300/30',
 };
 
 // Rarity text-only colors (used by Market, Combat)
 export const RARITY_TEXT_COLORS: Record<string, string> = {
-  POOR: 'text-gray-400',
-  COMMON: 'text-parchment-200',
-  FINE: 'text-green-400',
-  SUPERIOR: 'text-blue-400',
-  MASTERWORK: 'text-purple-400',
-  LEGENDARY: 'text-amber-400',
+  POOR: 'text-realm-text-muted',
+  COMMON: 'text-realm-text-secondary',
+  FINE: 'text-realm-success',
+  SUPERIOR: 'text-realm-teal-300',
+  MASTERWORK: 'text-realm-purple-300',
+  LEGENDARY: 'text-realm-gold-300',
 };

@@ -15,8 +15,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import api from '../services/api';
-import { RARITY_COLORS, getRarityStyle } from '../constants';
-import { InventorySkeleton } from '../components/ui/LoadingSkeleton';
+import { getRarityStyle } from '../constants';
+import { RealmButton } from '../components/ui/realm-index';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -144,20 +144,33 @@ export default function InventoryPage() {
   // Loading / Error states
   // -------------------------------------------------------------------------
   if (isLoading) {
-    return <InventorySkeleton />;
+    return (
+      <div className="space-y-6">
+        <div className="h-32 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-20 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
+            ))}
+          </div>
+          <div className="h-48 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
+        </div>
+      </div>
+    );
   }
 
   if (error || !character) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-8">
-        <h2 className="text-2xl font-display text-primary-400 mb-4">No Character Found</h2>
-        <p className="text-parchment-300 mb-6">You need a character to view your inventory.</p>
-        <button
+      <div className="flex flex-col items-center justify-center py-20 p-8">
+        <h2 className="text-2xl font-display text-realm-gold-400 mb-4">No Character Found</h2>
+        <p className="text-realm-text-secondary mb-6">You need a character to view your inventory.</p>
+        <RealmButton
+          variant="primary"
+          size="lg"
           onClick={() => navigate('/create-character')}
-          className="px-8 py-3 bg-primary-400 text-dark-500 font-display text-lg rounded hover:bg-primary-300 transition-colors"
         >
           Create Character
-        </button>
+        </RealmButton>
       </div>
     );
   }
@@ -178,30 +191,31 @@ export default function InventoryPage() {
   // Render
   // -------------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-dark-500 pt-12">
+    <div>
       {/* Header */}
-      <header className="border-b border-dark-50 bg-dark-400/50">
+      <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-display text-primary-400">Inventory</h1>
-              <p className="text-parchment-500 text-sm mt-1">{character.name}</p>
+              <h1 className="text-4xl font-display text-realm-gold-400">Inventory</h1>
+              <p className="text-realm-text-muted text-sm mt-1">{character.name}</p>
             </div>
             <div className="flex items-center gap-4">
               {/* Gold balance */}
-              <div className="flex items-center gap-2 bg-dark-300 border border-primary-400/30 rounded-lg px-4 py-2">
-                <Coins className="w-5 h-5 text-primary-400" />
-                <span className="font-display text-xl text-primary-400">
+              <div className="flex items-center gap-2 bg-realm-bg-700 border border-realm-gold-500/30 rounded-lg px-4 py-2">
+                <Coins className="w-5 h-5 text-realm-gold-400" />
+                <span className="font-display text-xl text-realm-gold-400">
                   {(character.gold ?? 0).toLocaleString()}
                 </span>
-                <span className="text-parchment-500 text-xs">gold</span>
+                <span className="text-realm-text-muted text-xs">gold</span>
               </div>
-              <button
+              <RealmButton
+                variant="ghost"
+                size="sm"
                 onClick={() => navigate('/town')}
-                className="px-5 py-2 border border-parchment-500/40 text-parchment-300 font-display text-sm rounded hover:bg-dark-300 transition-colors"
               >
                 Back to Town
-              </button>
+              </RealmButton>
             </div>
           </div>
         </div>
@@ -210,7 +224,7 @@ export default function InventoryPage() {
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Equipment Slots */}
         <section className="mb-8">
-          <h2 className="text-xl font-display text-parchment-200 mb-4">Equipment</h2>
+          <h2 className="text-xl font-display text-realm-text-primary mb-4">Equipment</h2>
           <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-3">
             {EQUIPMENT_SLOTS.map((slot, idx) => {
               const equipped = equipment[slot.key];
@@ -224,15 +238,15 @@ export default function InventoryPage() {
                   className={`relative flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all min-h-[80px]
                     ${equipped
                       ? `${rarityStyle!.border} ${rarityStyle!.bg} hover:brightness-110`
-                      : 'border-dark-50 bg-dark-300/50 hover:border-dark-50/80'}`}
+                      : 'border-realm-border border-dashed bg-realm-bg-700/50 hover:border-realm-border/80'}`}
                 >
-                  <Icon className={`w-5 h-5 mb-1 ${equipped ? rarityStyle!.text : 'text-parchment-500/40'}`} />
+                  <Icon className={`w-5 h-5 mb-1 ${equipped ? rarityStyle!.text : 'text-realm-text-muted/40'}`} />
                   {equipped ? (
                     <span className={`text-[10px] text-center leading-tight ${rarityStyle!.text}`}>
                       {equipped.template.name}
                     </span>
                   ) : (
-                    <span className="text-[10px] text-parchment-500/40">{slot.label}</span>
+                    <span className="text-[10px] text-realm-text-muted/40">{slot.label}</span>
                   )}
                 </button>
               );
@@ -243,21 +257,23 @@ export default function InventoryPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Inventory Grid */}
           <section className="lg:col-span-2">
-            <h2 className="text-xl font-display text-parchment-200 mb-4">
+            <h2 className="text-xl font-display text-realm-text-primary mb-4">
               Items
-              <span className="text-parchment-500 text-sm ml-2">({inventory.length})</span>
+              <span className="text-realm-text-muted text-sm ml-2">({inventory.length})</span>
             </h2>
 
             {inventory.length === 0 ? (
-              <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center">
-                <Package className="w-12 h-12 text-parchment-500/30 mx-auto mb-3" />
-                <p className="text-parchment-500 text-sm">Your inventory is empty.</p>
-                <button
+              <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+                <Package className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-3" />
+                <p className="text-realm-text-muted text-sm">Your inventory is empty.</p>
+                <RealmButton
+                  variant="secondary"
+                  size="sm"
+                  className="mt-4"
                   onClick={() => navigate('/crafting')}
-                  className="mt-4 px-6 py-2 border border-primary-400/60 text-primary-400 font-display text-sm rounded hover:bg-dark-300 transition-colors"
                 >
                   Start Crafting
-                </button>
+                </RealmButton>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -273,11 +289,11 @@ export default function InventoryPage() {
                       onClick={() => setSelectedItem(item)}
                       className={`relative p-3 rounded-lg border-2 text-left transition-all
                         ${isSelected
-                          ? `${rarityStyle.border} ${rarityStyle.bg} ring-1 ring-primary-400/50`
+                          ? `${rarityStyle.border} ${rarityStyle.bg} ring-1 ring-realm-gold-500/50`
                           : `${rarityStyle.border} border-opacity-40 ${rarityStyle.bg} hover:border-opacity-80`}`}
                     >
                       {equippedSlot && (
-                        <span className="absolute top-1 right-1 text-[9px] bg-primary-400/20 text-primary-400 px-1.5 py-0.5 rounded">
+                        <span className="absolute top-1 right-1 text-[9px] bg-realm-gold-400/20 text-realm-gold-400 px-1.5 py-0.5 rounded">
                           E
                         </span>
                       )}
@@ -287,13 +303,13 @@ export default function InventoryPage() {
                           <p className={`text-sm font-semibold truncate ${rarityStyle.text}`}>
                             {item.template.name}
                           </p>
-                          <p className="text-[10px] text-parchment-500 capitalize">
+                          <p className="text-[10px] text-realm-text-muted capitalize">
                             {item.template.type.toLowerCase()}
                           </p>
                         </div>
                       </div>
                       {item.quantity > 1 && (
-                        <span className="absolute bottom-1 right-2 text-xs text-parchment-300 font-semibold">
+                        <span className="absolute bottom-1 right-2 text-xs text-realm-text-secondary font-semibold">
                           x{item.quantity}
                         </span>
                       )}
@@ -317,9 +333,9 @@ export default function InventoryPage() {
                 isUnequipping={unequipMutation.isPending}
               />
             ) : (
-              <div className="bg-dark-300 border border-dark-50 rounded-lg p-6 text-center sticky top-8">
-                <ChevronRight className="w-8 h-8 text-parchment-500/30 mx-auto mb-2" />
-                <p className="text-parchment-500 text-sm">Select an item to view details</p>
+              <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6 text-center sticky top-8">
+                <ChevronRight className="w-8 h-8 text-realm-text-muted/30 mx-auto mb-2" />
+                <p className="text-realm-text-muted text-sm">Select an item to view details</p>
               </div>
             )}
           </aside>
@@ -354,8 +370,11 @@ function ItemDetailPanel({
   const rarityStyle = getRarityStyle(item.quality || item.template.rarity);
   const qualityLabel = item.quality || item.template.rarity || 'COMMON';
 
+  const durPct = item.template.durability > 0 ? item.currentDurability / item.template.durability : 1;
+  const durColor = durPct > 0.5 ? 'bg-realm-success' : durPct > 0.25 ? 'bg-realm-gold-400' : 'bg-realm-danger';
+
   return (
-    <div className={`bg-dark-300 border-2 ${rarityStyle.border} rounded-lg p-5 sticky top-8`}>
+    <div className={`bg-realm-bg-700 border-2 ${rarityStyle.border} rounded-lg p-5 sticky top-8`}>
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div>
@@ -364,7 +383,7 @@ function ItemDetailPanel({
         </div>
         <button
           onClick={onClose}
-          className="text-parchment-500 hover:text-parchment-200 transition-colors"
+          className="text-realm-text-muted hover:text-realm-text-primary transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
@@ -372,27 +391,27 @@ function ItemDetailPanel({
 
       {/* Type */}
       <div className="mb-4">
-        <span className="text-xs text-parchment-500 uppercase tracking-wider">Type</span>
-        <p className="text-parchment-200 text-sm capitalize">{item.template.type.toLowerCase()}</p>
+        <span className="text-xs text-realm-text-muted uppercase tracking-wider">Type</span>
+        <p className="text-realm-text-primary text-sm capitalize">{item.template.type.toLowerCase()}</p>
       </div>
 
       {/* Description */}
       {item.template.description && (
         <div className="mb-4">
-          <span className="text-xs text-parchment-500 uppercase tracking-wider">Description</span>
-          <p className="text-parchment-300 text-xs leading-relaxed mt-1">{item.template.description}</p>
+          <span className="text-xs text-realm-text-muted uppercase tracking-wider">Description</span>
+          <p className="text-realm-text-secondary text-xs leading-relaxed mt-1">{item.template.description}</p>
         </div>
       )}
 
       {/* Stats */}
       {item.template.stats && Object.keys(item.template.stats).length > 0 && (
         <div className="mb-4">
-          <span className="text-xs text-parchment-500 uppercase tracking-wider">Stats</span>
+          <span className="text-xs text-realm-text-muted uppercase tracking-wider">Stats</span>
           <div className="mt-1 space-y-1">
             {Object.entries(item.template.stats).map(([stat, value]) => (
               <div key={stat} className="flex justify-between text-xs">
-                <span className="text-parchment-400 capitalize">{stat.replace(/_/g, ' ')}</span>
-                <span className={value > 0 ? 'text-green-400' : 'text-red-400'}>
+                <span className="text-realm-text-secondary capitalize">{stat.replace(/_/g, ' ')}</span>
+                <span className={value > 0 ? 'text-realm-success' : 'text-realm-danger'}>
                   {value > 0 ? '+' : ''}{value}
                 </span>
               </div>
@@ -404,23 +423,17 @@ function ItemDetailPanel({
       {/* Durability */}
       {item.template.durability > 0 && (
         <div className="mb-4">
-          <span className="text-xs text-parchment-500 uppercase tracking-wider">Durability</span>
+          <span className="text-xs text-realm-text-muted uppercase tracking-wider">Durability</span>
           <div className="mt-1 flex items-center gap-2">
-            <div className="flex-1 h-2 bg-dark-500 rounded-full overflow-hidden">
+            <div className="flex-1 h-2 bg-realm-bg-900 rounded-full overflow-hidden">
               <div
-                className="h-full bg-green-500 rounded-full transition-all"
+                className={`h-full ${durColor} rounded-full transition-all`}
                 style={{
-                  width: `${(item.currentDurability / item.template.durability) * 100}%`,
-                  backgroundColor:
-                    item.currentDurability / item.template.durability > 0.5
-                      ? '#4ade80'
-                      : item.currentDurability / item.template.durability > 0.25
-                        ? '#fbbf24'
-                        : '#ef4444',
+                  width: `${durPct * 100}%`,
                 }}
               />
             </div>
-            <span className="text-xs text-parchment-300">
+            <span className="text-xs text-realm-text-secondary">
               {item.currentDurability}/{item.template.durability}
             </span>
           </div>
@@ -430,40 +443,40 @@ function ItemDetailPanel({
       {/* Quantity */}
       {item.quantity > 1 && (
         <div className="mb-4">
-          <span className="text-xs text-parchment-500 uppercase tracking-wider">Quantity</span>
-          <p className="text-parchment-200 text-sm">{item.quantity}</p>
+          <span className="text-xs text-realm-text-muted uppercase tracking-wider">Quantity</span>
+          <p className="text-realm-text-primary text-sm">{item.quantity}</p>
         </div>
       )}
 
       {/* Crafted By */}
       {item.craftedByName && (
         <div className="mb-4">
-          <span className="text-xs text-parchment-500 uppercase tracking-wider">Crafted By</span>
-          <p className="text-parchment-200 text-sm">{item.craftedByName}</p>
+          <span className="text-xs text-realm-text-muted uppercase tracking-wider">Crafted By</span>
+          <p className="text-realm-text-primary text-sm">{item.craftedByName}</p>
         </div>
       )}
 
       {/* Actions */}
       <div className="mt-6 space-y-2">
         {equippedSlot ? (
-          <button
+          <RealmButton
+            variant="danger"
+            className="w-full"
             onClick={() => onUnequip(equippedSlot)}
             disabled={isUnequipping}
-            className="w-full py-2 border-2 border-blood-light text-blood-light font-display text-sm rounded
-              hover:bg-blood-dark/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isUnequipping ? 'Unequipping...' : 'Unequip'}
-          </button>
+          </RealmButton>
         ) : (
           (item.template.type === 'WEAPON' || item.template.type === 'ARMOR') && (
-            <button
+            <RealmButton
+              variant="primary"
+              className="w-full"
               onClick={onEquip}
               disabled={isEquipping}
-              className="w-full py-2 bg-primary-400 text-dark-500 font-display text-sm rounded
-                hover:bg-primary-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isEquipping ? 'Equipping...' : 'Equip'}
-            </button>
+            </RealmButton>
           )
         )}
       </div>

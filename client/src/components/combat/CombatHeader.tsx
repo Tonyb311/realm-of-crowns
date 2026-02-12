@@ -5,8 +5,8 @@ export default function InitiativeBar({ combatants, currentTurnId }: { combatant
   const sorted = [...combatants].sort((a, b) => b.initiative - a.initiative);
 
   return (
-    <div className="flex items-center gap-2 bg-dark-300 border border-dark-50 rounded-lg px-4 py-2">
-      <span className="text-[10px] text-parchment-500 font-display uppercase tracking-wider mr-2">Initiative</span>
+    <div className="flex items-center gap-2 bg-realm-bg-700 border border-realm-border rounded-lg px-4 py-2">
+      <span className="text-[10px] text-realm-text-muted font-display uppercase tracking-wider mr-2">Initiative</span>
       {sorted.map((c) => {
         const isActive = c.entityId === currentTurnId;
         return (
@@ -14,10 +14,10 @@ export default function InitiativeBar({ combatants, currentTurnId }: { combatant
             key={c.entityId}
             className={`flex items-center gap-1.5 px-2 py-1 rounded border text-xs transition-all
               ${isActive
-                ? 'border-primary-400 bg-primary-400/10 text-primary-400'
+                ? 'border-realm-gold-500 bg-realm-gold-400/10 text-realm-gold-400'
                 : c.type === 'enemy'
-                  ? 'border-red-900/30 text-red-400/70'
-                  : 'border-dark-50 text-parchment-400'
+                  ? 'border-realm-danger/30 text-realm-danger/70'
+                  : 'border-realm-border text-realm-text-secondary'
               }`}
             title={`${c.name}: Initiative ${c.initiative}`}
           >
