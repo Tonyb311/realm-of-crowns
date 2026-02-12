@@ -638,9 +638,48 @@ List all characters currently in a town.
 
 ---
 
+> **Note:** The travel system was overhauled to a **node-based tick system**. Characters travel along
+> TravelRoutes composed of TravelNodes, advancing 1 node per game tick. The old timer-based travel
+> (destination + minutes) has been replaced. See `server/src/routes/travel.ts` for the full API.
+
+### GET /api/travel/routes
+
+List available travel routes from the character's current town.
+
+**Auth required:** Yes
+
+**Success Response (200):**
+
+```json
+{
+  "routes": [
+    {
+      "id": "clx...",
+      "name": "Heartlands Road",
+      "description": "...",
+      "origin": { "id": "clx...", "name": "Millhaven" },
+      "destination": { "id": "clx...", "name": "Bridgewater" },
+      "nodeCount": 4,
+      "difficulty": "easy",
+      "terrain": "ROAD",
+      "dangerLevel": 1,
+      "bidirectional": true
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+| Code | Condition |
+|------|-----------|
+| 400  | Already traveling, not in a town |
+
+---
+
 ### POST /api/travel/start
 
-Begin traveling to a destination town. Requires a direct route. Travel time is based on route distance (1 minute per distance unit). Wars can block travel to enemy capitals or increase travel time by 50%.
+Begin traveling along a route. Characters advance 1 node per game tick. Travel takes `nodeCount` ticks to complete.
 
 **Auth required:** Yes
 
@@ -648,26 +687,22 @@ Begin traveling to a destination town. Requires a direct route. Travel time is b
 
 | Field | Type | Required | Validation |
 |-------|------|----------|------------|
-| `destinationTownId` | string | Yes | Non-empty |
+| `routeId` | string | Yes | Non-empty |
 
 **Success Response (201):**
 
 ```json
 {
   "travel": {
-    "id": "clx...",
-    "route": {
-      "id": "clx...",
-      "from": { "id": "clx...", "name": "Millhaven" },
-      "to": { "id": "clx...", "name": "Stonehold" },
-      "distance": 15,
-      "dangerLevel": 2,
-      "terrain": "ROAD"
-    },
-    "departedAt": "2026-01-20T10:00:00.000Z",
-    "arrivesAt": "2026-01-20T10:15:00.000Z",
-    "distanceMinutes": 15,
-    "warWarning": "War between Kingdom A and Kingdom B makes travel dangerous. Travel time increased by 50%."
+    "routeId": "clx...",
+    "routeName": "Heartlands Road",
+    "origin": { "id": "clx...", "name": "Millhaven" },
+    "destination": { "id": "clx...", "name": "Bridgewater" },
+    "nodeCount": 4,
+    "currentNodeIndex": 0,
+    "direction": "forward",
+    "etaTicks": 4,
+    "nextTickAt": "2026-01-20T10:00:00.000Z"
   }
 }
 ```
@@ -676,15 +711,14 @@ Begin traveling to a destination town. Requires a direct route. Travel time is b
 
 | Code | Condition |
 |------|-----------|
-| 400  | Not in a town, already in that town, already traveling, no direct route |
-| 403  | Travel blocked by war (enemy capital) |
+| 400  | Not in a town, already traveling, route not found or not released |
 | 404  | No character found |
 
 ---
 
 ### GET /api/travel/status
 
-Check current travel status. Automatically completes travel if the time has elapsed.
+Check current travel status. Returns node position and ETA in ticks.
 
 **Auth required:** Yes
 
@@ -694,39 +728,28 @@ Check current travel status. Automatically completes travel if the time has elap
 { "traveling": false }
 ```
 
-**Success Response (200) -- Just arrived (auto-completed):**
-
-```json
-{
-  "traveling": false,
-  "arrivedAt": { "id": "clx...", "name": "Stonehold" }
-}
-```
-
 **Success Response (200) -- In transit:**
 
 ```json
 {
   "traveling": true,
-  "route": {
-    "id": "clx...",
-    "from": { "id": "clx...", "name": "Millhaven" },
-    "to": { "id": "clx...", "name": "Stonehold" },
-    "distance": 15,
-    "dangerLevel": 2,
-    "terrain": "ROAD"
-  },
-  "departedAt": "2026-01-20T10:00:00.000Z",
-  "arrivesAt": "2026-01-20T10:15:00.000Z",
-  "remainingMinutes": 8
+  "routeId": "clx...",
+  "routeName": "Heartlands Road",
+  "origin": { "id": "clx...", "name": "Millhaven" },
+  "destination": { "id": "clx...", "name": "Bridgewater" },
+  "currentNodeIndex": 2,
+  "nodeCount": 4,
+  "direction": "forward",
+  "etaTicks": 2,
+  "nextTickAt": "2026-01-20T10:00:00.000Z"
 }
 ```
 
 ---
 
-### POST /api/travel/arrive
+### POST /api/travel/cancel
 
-Manually complete travel after the travel timer has elapsed.
+Cancel an in-progress journey. Character is placed at the nearest town.
 
 **Auth required:** Yes
 
@@ -736,8 +759,8 @@ Manually complete travel after the travel timer has elapsed.
 
 ```json
 {
-  "arrived": true,
-  "town": { "id": "clx...", "name": "Stonehold" }
+  "cancelled": true,
+  "returnedTo": { "id": "clx...", "name": "Millhaven" }
 }
 ```
 
@@ -745,7 +768,7 @@ Manually complete travel after the travel timer has elapsed.
 
 | Code | Condition |
 |------|-----------|
-| 400  | Not currently traveling, travel not yet complete |
+| 400  | Not currently traveling |
 | 404  | No character found |
 
 ---
@@ -3682,3 +3705,27 @@ Get the character's unlocked abilities (for combat integration).
 | Code | Condition |
 |------|-----------|
 | 404  | No character found |
+
+---
+
+## Admin Endpoints
+
+All admin endpoints require the `adminGuard` middleware (user must have admin role). They are mounted under `/api/admin/`.
+
+**Source:** `server/src/routes/admin/`
+
+| Sub-route | File | Description |
+|-----------|------|-------------|
+| `/api/admin/stats` | `stats.ts` | Server statistics and metrics |
+| `/api/admin/users` | `users.ts` | User management |
+| `/api/admin/characters` | `characters.ts` | Character administration |
+| `/api/admin/world` | `world.ts` | World data management |
+| `/api/admin/economy` | `economy.ts` | Economy monitoring and adjustments |
+| `/api/admin/tools` | `tools.ts` | Admin utility tools |
+| `/api/admin/error-logs` | `errorLogs.ts` | Error log viewer |
+| `/api/admin/simulation` | `simulation.ts` | Game simulation controls |
+| `/api/admin/content-release` | `contentRelease.ts` | Content release management |
+| `/api/admin/travel` | `travel.ts` | Travel route administration |
+| `/api/admin/population` | `population.ts` | Population management |
+
+See the individual route files for endpoint details.

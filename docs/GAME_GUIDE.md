@@ -1120,7 +1120,7 @@ Items crafted from exclusive resources are among the most valuable in the game. 
 
 ## The Profession System
 
-Professions are the engine of Aethermere's economy. Every piece of equipment, every potion, every cooked meal is produced by a player with the right profession. There are **28 professions** divided into three categories.
+Professions are the engine of Aethermere's economy. Every piece of equipment, every potion, every cooked meal is produced by a player with the right profession. There are **29 professions** divided into three categories.
 
 You may learn up to **3 professions** (Humans with the Adaptable Crafter ability can learn 4). Choose wisely -- a good combination of gathering, crafting, and service professions creates a self-sustaining economic loop.
 
@@ -1186,7 +1186,7 @@ Professions level from **1 to 100**, divided into 6 tiers. Higher tiers unlock b
 | Master | 76-90 | Master recipes, exclusive patterns |
 | Grandmaster | 91-100 | Legendary recipes, unique creations |
 
-Profession XP is earned by performing profession activities. Crafting an item awards XP based on the recipe difficulty. Each profession level also requires `level * 100` XP to advance (e.g., level 10 to 11 requires 1000 XP). When you gain enough XP, you level up and your tier may advance.
+Profession XP is earned by performing profession activities. Crafting an item awards XP based on the recipe difficulty. Each profession level requires a gradually increasing amount of XP to advance -- starting at 100 XP for level 1 and scaling by +15 per level (e.g., level 10 requires 235 XP). When you gain enough XP, you level up and your tier may advance.
 
 **Crafting speed bonus:** Your craft time is reduced by **2% per profession level**. A level 50 blacksmith crafts items in half the time of a level 1 apprentice.
 
@@ -1320,19 +1320,19 @@ When you defeat a monster:
 
 | Reward | Formula |
 |--------|---------|
-| XP | Monster Level x 25 |
+| XP | Monster Level x 5 |
 | Gold | Varies by monster loot table |
 | Items | Random drops based on loot table |
 
-> **Example:** Defeating a Level 8 Skeleton Warrior awards 200 XP (8 x 25) plus gold and potential item drops.
+> **Example:** Defeating a Level 8 Skeleton Warrior awards 40 XP (8 x 5) plus gold and potential item drops. Even fleeing or surviving a lost fight grants a flat 5 XP consolation.
 
 ### Death
 
 If your HP reaches zero, you are defeated. Death carries penalties:
 
-- **Gold loss:** You lose a percentage of your carried gold
-- **XP loss:** You lose some XP (but never below your current level threshold)
-- **Durability loss:** Your equipped items lose durability
+- **Gold loss:** 5% of your carried gold
+- **XP loss:** 15 x your level (but never below your current level threshold)
+- **Durability loss:** All equipped items lose 5 durability
 - **Revenant bonus:** Revenants take only 50% of these penalties and respawn at 50% HP
 
 ### Status Effects
@@ -1376,12 +1376,12 @@ Combat abilities can apply various status effects. Understanding these is key to
 
 For efficient progression, follow this monster difficulty curve:
 
-1. **Level 1-3:** Verdant Heartlands or The Crossroads. Giant Rats (25 XP), Goblins (25-50 XP). Safe, fast kills.
-2. **Level 3-5:** Stay in Heartlands for Wolves (75 XP) and Bandits (75-100 XP). Accept the main quest chain.
-3. **Level 5-7:** Ironvault Mountains or Shadowmere Marshes. Giant Spiders (125 XP), Skeleton Warriors (125 XP).
-4. **Level 7-10:** Ashenfang Wastes for Orc Warriors (175-200 XP). Begin bounty quests.
+1. **Level 1-3:** Verdant Heartlands or The Crossroads. Giant Rats (5 XP), Goblins (5-10 XP). Safe kills, supplemented by quests.
+2. **Level 3-5:** Stay in Heartlands for Wolves (15 XP) and Bandits (15-20 XP). Accept the main quest chain for lumpy XP bonuses.
+3. **Level 5-7:** Ironvault Mountains or Shadowmere Marshes. Giant Spiders (25 XP), Skeleton Warriors (25 XP).
+4. **Level 7-10:** Ashenfang Wastes for Orc Warriors (35-40 XP). Begin bounty quests.
 5. **Level 10-12:** Choose your specialization. Push into harder content with your new abilities.
-6. **Level 12-16:** Frozen Reaches for Dire Wolves (300 XP) and Young Dragons (500+ XP). Complete the main quest chain.
+6. **Level 12-16:** Frozen Reaches for Dire Wolves (50 XP) and Young Dragons (75+ XP). Complete the main quest chain.
 7. **Level 16+:** Post-campaign content. PvP dueling, political ambitions, crafting empires, and endgame zone farming.
 
 ---
@@ -1410,11 +1410,11 @@ To challenge another player to a PvP duel:
 
 | Reward | Amount |
 |--------|--------|
-| XP | 50 x Opponent's Level |
+| XP | 8 x Opponent's Level |
 | Gold Wager | Winner's wager + Loser's wager - 5% tax |
 | Leaderboard Rating | Adjusted based on outcome |
 
-> **Example:** Defeating a Level 20 opponent awards 1000 XP (50 x 20). If both wagered 500 gold, the winner receives 950 gold (1000 - 5% tax).
+> **Example:** Defeating a Level 20 opponent awards 160 XP (8 x 20). If both wagered 500 gold, the winner receives 950 gold (1000 - 5% tax).
 
 ### After the Duel
 
@@ -1430,26 +1430,33 @@ Your PvP wins and losses are tracked on a global leaderboard. Climbing the leade
 
 ## The XP Curve
 
-XP requirements increase with each level. The formula is straightforward:
+XP requirements increase with each level following a gentle exponential curve:
 
-**XP to next level = Current Level x 100**
+**XP to next level = floor(10 x level^1.15) + 30**
+
+The +30 base keeps early levels from being trivially fast, while the 1.15 exponent provides steady escalation without feeling grindy.
 
 | Level | XP for Next Level | Cumulative XP |
 |-------|-------------------|---------------|
-| 1 -> 2 | 100 | 100 |
-| 2 -> 3 | 200 | 300 |
-| 3 -> 4 | 300 | 600 |
-| 4 -> 5 | 400 | 1,000 |
-| 5 -> 6 | 500 | 1,500 |
-| 10 -> 11 | 1,000 | 5,500 |
-| 15 -> 16 | 1,500 | 12,000 |
-| 20 -> 21 | 2,000 | 21,000 |
-| 25 -> 26 | 2,500 | 32,500 |
-| 30 -> 31 | 3,000 | 46,500 |
-| 40 -> 41 | 4,000 | 82,000 |
-| 50 -> 51 | 5,000 | 127,500 |
+| 1 -> 2 | 40 | 40 |
+| 2 -> 3 | 52 | 92 |
+| 3 -> 4 | 65 | 157 |
+| 4 -> 5 | 79 | 236 |
+| 5 -> 6 | 93 | 329 |
+| 10 -> 11 | 171 | 1,025 |
+| 15 -> 16 | 255 | 2,129 |
+| 20 -> 21 | 343 | 3,666 |
+| 25 -> 26 | 435 | 5,655 |
+| 30 -> 31 | 529 | 8,110 |
+| 40 -> 41 | 725 | 14,472 |
+| 50 -> 51 | 929 | 22,836 |
 
-**Cumulative XP formula:** Total XP to reach level L = `100 * (L-1) * L / 2`
+**Estimated progression milestones** (at roughly 1 major action per day):
+- **Level 5:** ~2 weeks
+- **Level 10:** ~1 month
+- **Level 25:** ~4 months
+- **Level 40:** ~10 months
+- **Level 50:** ~15 months
 
 ## Level-Up Rewards
 
@@ -1464,6 +1471,12 @@ Every time you level up, you receive:
 | Full Heal | HP and Mana restored to new maximum |
 
 > **Example:** Reaching level 20 means you have gained 38 stat points (2 per level from 2-20) and 19 skill points to distribute.
+
+## The Daily Action Model
+
+Aethermere uses a **1 major action per day** pacing system. Each day, you can perform one major action -- Work (gather or craft), Travel, Combat, or a Political action. Actions are submitted and processed at the server tick. This means progression is measured in days and weeks, not hours. Plan your days wisely: a day spent traveling is a day not spent gathering or fighting.
+
+You also earn a small login bonus (5 XP) just for showing up, plus a streak bonus (+2 XP per consecutive day, capping at +10 XP after 5 days). Consistent daily play adds up over time.
 
 ## Key Level Milestones
 
@@ -1508,15 +1521,18 @@ Each ability has a prerequisite. You must learn the lower-tier ability before un
 
 | Source | XP Amount |
 |--------|-----------|
-| PvE Combat Victory | Monster Level x 25 |
-| PvP Duel Victory | 50 x Opponent Level |
-| Crafting | Recipe XP reward (varies) |
-| Main Quests | 100 - 5,000 (see quest list) |
-| Town Quests | 100 - 400 |
-| Daily Quests | 100 - 300 |
-| Guild Quests | 500 - 800 |
-| Bounty Quests | 400 - 2,000 |
-| Achievements | 25 - 2,000 |
+| PvE Combat Victory | 5 x Monster Level |
+| PvP Duel Victory | 8 x Opponent Level |
+| Gathering (Work action) | 15-30 (based on resource tier) |
+| Crafting (Work action) | 8-40 (based on recipe) |
+| Main Quests | 25 - 600 (see quest list) |
+| Town Quests | 25 - 380 |
+| Recurring Quests | 20 - 300 |
+| Guild Quests | 60 - 100 |
+| Bounty Quests | 80 - 550 |
+| Achievements | 10 - 150 |
+| Login Bonus | 5 (flat daily) |
+| Streak Bonus | +2 per consecutive day (max +10) |
 
 ### XP Boosting
 
@@ -1532,161 +1548,218 @@ Several abilities and effects increase XP gain:
 
 ## Quests
 
-Quests provide structured objectives with guaranteed rewards. There are 6 quest types:
+Quests provide structured objectives with guaranteed rewards. There are **49 quests** across 5 types:
 
-### Main Story Quests (8 quests)
+### Main Story Quests (12 quests)
 
-A linear chain that tells the story of Aethermere's looming darkness. Each quest unlocks the next.
+A linear chain across two acts that tells the story of Aethermere's looming darkness. Each quest unlocks the next.
+
+**Act I (Levels 1-16):**
 
 | # | Quest | Level | Objectives | Rewards |
 |---|-------|-------|-----------|---------|
-| 1 | The Awakening | 1 | Talk to Elder Tomas | 100 XP, 25g |
-| 2 | Proving Ground | 1 | Kill 5 Goblins, 3 Giant Rats | 250 XP, 50g |
-| 3 | Gathering Supplies | 2 | Gather 5 Ore, 5 Wood | 300 XP, 75g |
-| 4 | The Road Ahead | 3 | Visit Hearthshire, Kill 5 Bandits | 500 XP, 100g |
-| 5 | Shadows Stir | 5 | Visit Nethermire, Kill 5 Skeleton Warriors | 750 XP, 150g |
-| 6 | Into the Depths | 7 | Visit Kazad-Vorn, Kill 8 Giant Spiders | 1,000 XP, 200g |
-| 7 | Rumors of Dragonfire | 12 | Visit Drakenspire, Kill 5 Dire Wolves, 1 Young Dragon | 2,000 XP, 500g |
-| 8 | The Final Stand | 16 | Visit Ashenmoor, Kill the Lich | 5,000 XP, 1,000g, +100 Rep |
+| 1 | The Awakening | 1 | Talk to Elder Tomas | 25 XP, 50g |
+| 2 | Proving Ground | 1 | Kill 2 Goblins, 2 Giant Rats | 40 XP, 80g |
+| 3 | Gathering Supplies | 2 | Gather 3 Ore, 3 Wood | 45 XP, 100g |
+| 4 | The Road Ahead | 3 | Visit Hearthshire, Kill 2 Bandits | 60 XP, 130g |
+| 5 | Shadows Stir | 5 | Visit Nethermire, Kill 2 Skeleton Warriors | 85 XP, 180g |
+| 6 | Into the Depths | 7 | Visit Kazad-Vorn, Kill 3 Giant Spiders | 120 XP, 280g |
+| 7 | Rumors of Dragonfire | 12 | Visit Drakenspire, Kill 2 Dire Wolves, 1 Young Dragon | 200 XP, 450g |
+| 8 | The Final Stand | 16 | Visit Ashenmoor, Kill the Lich | 250 XP, 600g, +50 Rep |
 
-### Town Quests (14 quests)
+**Act II (Levels 20-30):**
 
-Region-specific quests available from town notice boards. Four regions currently have town quests:
+| # | Quest | Level | Objectives | Rewards |
+|---|-------|-------|-----------|---------|
+| 9 | The Sunken Throne | 20 | Visit Coralspire, Kill 1 Abyssal Kraken, Gather 3 Reagents | 350 XP, 800g, +75 Rep |
+| 10 | Crown of Shadows | 24 | Visit Duskwarden, Kill 2 Shadow Weavers, 1 Drow Matriarch | 400 XP, 1,000g, +100 Rep |
+| 11 | Twilight of Nations | 27 | Visit Kingshold + Aelindra, Kill 2 Void Harbingers | 500 XP, 1,200g, +100 Rep |
+| 12 | Dawn of Eternity | 30 | Visit The Confluence, Kill 1 Void Colossus | 600 XP, 1,500g, +200 Rep |
+
+### Town Quests (20 quests)
+
+Region-specific quests available from town notice boards. Multiple regions have town quests:
 
 **Verdant Heartlands (5 quests):**
-- Rat Infestation (L1): Kill 5 Giant Rats -- 100 XP, 30g
-- Harvest Protection (L2): Kill 4 Wolves -- 150 XP, 40g
-- Blacksmith's Request (L2): Gather 8 Ore -- 150 XP, 50g
-- Bandit Highway (L3): Kill 6 Bandits + Visit Bridgewater -- 250 XP, 75g
-- Timber for the Mill (L1): Gather 10 Wood -- 120 XP, 40g
+- Rat Infestation (L1): Kill 2 Giant Rats -- 25 XP, 60g
+- Harvest Protection (L2): Kill 2 Wolves -- 35 XP, 80g
+- Blacksmith's Request (L2): Gather 3 Ore -- 35 XP, 80g
+- Bandit Highway (L3): Kill 2 Bandits + Visit Bridgewater -- 50 XP, 120g
+- Timber for the Mill (L1): Gather 3 Wood -- 25 XP, 60g
 
 **Silverwood Forest (3 quests):**
-- Wolf Pack Cull (L2): Kill 6 Wolves -- 150 XP, 35g
-- Herbal Remedy (L2): Gather 8 Herbs -- 175 XP, 45g
-- Enchanted Wood (L3): Gather 12 Wood -- 200 XP, 55g
+- Wolf Pack Cull (L2): Kill 2 Wolves -- 35 XP, 80g
+- Herbal Remedy (L2): Gather 3 Herbs -- 40 XP, 90g
+- Enchanted Wood (L3): Gather 4 Wood -- 50 XP, 110g
 
 **Ironvault Mountains (3 quests):**
-- Mine Clearance (L5): Kill 5 Giant Spiders -- 200 XP, 60g
-- Ore Requisition (L5): Gather 15 Ore -- 250 XP, 80g
-- Stone Guardian (L10): Kill 1 Ancient Golem -- 400 XP, 120g
+- Mine Clearance (L5): Kill 2 Giant Spiders -- 70 XP, 160g
+- Ore Requisition (L5): Gather 5 Ore -- 75 XP, 170g
+- Stone Guardian (L10): Kill 1 Ancient Golem -- 150 XP, 350g
 
 **The Crossroads (3 quests):**
-- Goblin Trouble (L1): Kill 8 Goblins -- 120 XP, 35g
-- Grain for the Market (L1): Gather 10 Grain -- 130 XP, 40g
-- Trade Route Patrol (L2): Visit Greenhollow + Peddler's Rest -- 200 XP, 60g
+- Goblin Trouble (L1): Kill 3 Goblins -- 25 XP, 60g
+- Grain for the Market (L1): Gather 3 Grain -- 30 XP, 70g
+- Trade Route Patrol (L2): Visit Greenhollow + Peddler's Rest -- 40 XP, 90g
 
-### Daily Quests (5 quests)
+**Twilight March (2 quests):**
+- Border Tensions (L8): Kill 3 Orc Skirmishers + Visit Dawnbridge -- 120 XP, 280g
+- Diplomatic Correspondence (L6): Visit Aelindra + Kingshold -- 85 XP, 200g
 
-Repeatable every 24 hours. The bread and butter of daily progression.
+**Thornwilds (1 quest):**
+- Alpha Challenge (L12): Kill 1 Dire Beast + Gather 3 Hides -- 180 XP, 400g
 
-| Quest | Level | Objective | Rewards |
-|-------|-------|----------|---------|
-| Daily Hunt | 1 | Kill any 5 monsters | 150 XP, 30g |
-| Daily Gathering | 1 | Gather any 5 resources | 125 XP, 25g |
-| Daily Patrol | 1 | Visit 2 different towns | 100 XP, 20g |
-| Monster Slayer | 3 | Kill any 10 monsters | 300 XP, 60g |
-| Prospector | 3 | Gather 10 ore | 200 XP, 45g |
+**Underdark (1 quest):**
+- Silk Harvest (L20): Kill 3 Giant Spiders + Gather 4 Fiber -- 350 XP, 800g
+
+**Pelagic Depths (1 quest):**
+- Tidal Predators (L10): Kill 2 Reef Sharks + 2 Giant Eels -- 150 XP, 350g
+
+**Skyspire Peaks (1 quest):**
+- Avalanche Clearing (L22): Kill 2 Frost Giants + Gather 5 Stone -- 380 XP, 850g
+
+### Recurring Quests (8 quests)
+
+Repeatable on cooldown (72 hours for Tier 1-2, 168 hours/weekly for Tier 3-4). Steady sources of XP between major quest completions.
+
+**Tier 1 (Level 1, 72h cooldown):**
+
+| Quest | Objective | Rewards |
+|-------|----------|---------|
+| Recurring Hunt | Kill any 2 monsters | 30 XP, 60g |
+| Recurring Gathering | Gather any 3 resources | 25 XP, 50g |
+| Recurring Patrol | Visit 1 neighboring town | 20 XP, 45g |
+
+**Tier 2 (Level 5, 72h cooldown):**
+
+| Quest | Objective | Rewards |
+|-------|----------|---------|
+| Recurring Slayer | Kill any 3 monsters | 55 XP, 120g |
+| Recurring Prospector | Gather 3 ore | 50 XP, 110g |
+
+**Tier 3 (Level 15, weekly cooldown):**
+
+| Quest | Objective | Rewards |
+|-------|----------|---------|
+| Realm Warden | Kill 3 monsters + Visit a border town | 150 XP, 350g |
+| War Supplier | Gather 5 resources | 130 XP, 300g |
+
+**Tier 4 (Level 25, weekly cooldown):**
+
+| Quest | Objective | Rewards |
+|-------|----------|---------|
+| Champion's Trial | Kill 3 creatures + Gather 3 rare reagents | 300 XP, 700g |
 
 ### Guild Quests (3 quests)
 
-Available to guild members. Award reputation in addition to XP and gold.
+Available to guild members. Award reputation in addition to XP and gold. Designed for groups of 3-5 players over 1-2 weeks.
 
 | Quest | Level | Objectives | Rewards |
 |-------|-------|-----------|---------|
-| Guild Initiation | 3 | Kill 10 Goblins, 10 Wolves | 500 XP, 100g, +25 Rep |
-| Guild Resource Drive | 5 | Gather 20 Ore, 20 Wood, 10 Herbs | 600 XP, 150g, +30 Rep |
-| Guild Expedition | 7 | Visit Nethermire, Kazad-Vorn, Drakenspire | 800 XP, 200g, +40 Rep |
+| Guild Initiation | 3 | Kill 5 Goblins, 5 Wolves | 60 XP, 150g, +25 Rep |
+| Guild Resource Drive | 5 | Gather 8 Ore, 8 Wood, 5 Herbs | 80 XP, 200g, +30 Rep |
+| Guild Expedition | 7 | Visit Nethermire, Kazad-Vorn | 100 XP, 250g, +40 Rep |
 
-### Bounty Quests (3 quests)
+### Bounty Quests (6 quests)
 
-High-reward hunts for dangerous targets.
+High-reward hunts for dangerous targets. Repeatable with 2-4 week cooldowns.
+
+**Mid-Level Bounties:**
 
 | Quest | Level | Target | Rewards |
 |-------|-------|--------|---------|
-| Bounty: Orc Raiders | 5 | Kill 8 Orc Warriors (Ashenfang Wastes) | 400 XP, 120g |
-| Bounty: Troll Menace | 8 | Kill 4 Trolls (Shadowmere Marshes) | 600 XP, 180g |
-| Bounty: Dragon Slayer | 12 | Kill 2 Young Dragons (Frozen Reaches) | 2,000 XP, 500g |
+| Bounty: Orc Raiders | 5 | Kill 3 Orc Warriors (Ashenfang Wastes) | 80 XP, 180g |
+| Bounty: Troll Menace | 8 | Kill 2 Trolls (Shadowmere Marshes) | 120 XP, 280g |
+| Bounty: Dragon Slayer | 12 | Kill 1 Young Dragon (Frozen Reaches) | 200 XP, 500g |
+
+**High-Level Bounties:**
+
+| Quest | Level | Target | Rewards |
+|-------|-------|--------|---------|
+| Bounty: Underdark Purge | 18 | Kill 3 Shadow Wraiths + 1 Wraith Lord | 300 XP, 700g |
+| Bounty: Elemental Surge | 25 | Kill 3 Rogue Elementals + 1 Elemental Titan | 450 XP, 1,100g |
+| Bounty: Void Incursion | 30 | Kill 3 Void Stalkers + 1 Void Behemoth | 550 XP, 1,400g |
 
 ## Achievements
 
-Achievements reward you for reaching milestones across all aspects of the game. There are **24 achievements** across 10 categories.
+Achievements reward you for reaching milestones across all aspects of the game. There are **27 achievements** across 10 categories. Thresholds have been calibrated for the daily action pacing -- these are meant to feel achievable within each gameplay phase.
 
 ### Combat (PvE) Achievements
 
 | Achievement | Requirement | Reward |
 |------------|------------|--------|
-| First Blood | Win 1 PvE combat | 50 XP |
-| Monster Slayer | Win 10 PvE combats | 200 XP, 50g |
-| Veteran Warrior | Win 50 PvE combats | 500 XP, 200g, "Veteran" title |
-| Champion of the Realm | Win 200 PvE combats | 2,000 XP, 1,000g, "Champion" title |
+| First Blood | Win 1 PvE combat | 10 XP |
+| Monster Slayer | Win 5 PvE combats | 30 XP, 25g |
+| Veteran Warrior | Win 20 PvE combats | 75 XP, 100g, "Veteran" title |
+| Champion of the Realm | Win 75 PvE combats | 150 XP, 500g, "Champion" title |
 
 ### Combat (PvP) Achievements
 
 | Achievement | Requirement | Reward |
 |------------|------------|--------|
-| Duelist | Win 1 PvP duel | 100 XP |
-| Gladiator | Win 10 PvP duels | 500 XP, 100g, "Gladiator" title |
-| Warlord | Win 50 PvP duels | 2,000 XP, 500g, "Warlord" title |
+| Duelist | Win 1 PvP duel | 15 XP |
+| Gladiator | Win 10 PvP duels | 75 XP, 50g, "Gladiator" title |
+| Warlord | Win 50 PvP duels | 150 XP, 250g, "Warlord" title |
 
 ### Crafting Achievements
 
 | Achievement | Requirement | Reward |
 |------------|------------|--------|
-| Apprentice Crafter | Craft 10 items | 100 XP |
-| Journeyman Crafter | Craft 50 items | 300 XP, 100g |
-| Master Artisan | Reach Expert tier in any crafting profession | 500 XP, 200g, "Master Artisan" title |
+| Apprentice Crafter | Craft 5 items | 15 XP |
+| Journeyman Crafter | Craft 25 items | 50 XP, 50g |
+| Master Artisan | Reach Expert tier in any crafting profession | 75 XP, 100g, "Master Artisan" title |
 
 ### Social Achievements
 
 | Achievement | Requirement | Reward |
 |------------|------------|--------|
-| Making Friends | Add 1 friend | 25 XP |
-| Social Butterfly | Have 10 friends | 200 XP, "Social Butterfly" title |
-| Guild Founder | Create or lead a guild | 300 XP, 100g |
+| Making Friends | Add 1 friend | 10 XP |
+| Social Butterfly | Have 10 friends | 30 XP, "Social Butterfly" title |
+| Guild Founder | Create or lead a guild | 50 XP, 50g |
 
 ### Exploration Achievements
 
 | Achievement | Requirement | Reward |
 |------------|------------|--------|
-| Explorer | Visit 5 different towns | 150 XP |
-| World Traveler | Visit 15 different towns | 500 XP, 200g, "World Traveler" title |
+| Explorer | Visit 3 different towns | 25 XP |
+| World Traveler | Visit 8 different towns | 75 XP, 100g, "World Traveler" title |
 
 ### Economy Achievements
 
 | Achievement | Requirement | Reward |
 |------------|------------|--------|
-| First Sale | Sell 1 item on market | 50 XP |
-| Merchant | Complete 20 market sales | 300 XP, 100g |
-| Merchant Prince | Earn 10,000g from market sales | 1,000 XP, "Merchant Prince" title |
+| First Sale | Sell 1 item on market | 10 XP |
+| Merchant | Complete 20 market sales | 50 XP, 50g |
+| Merchant Prince | Earn 10,000g from market sales | 100 XP, "Merchant Prince" title |
 
 ### Political Achievements
 
 | Achievement | Requirement | Reward |
 |------------|------------|--------|
-| Elected Official | Win an election | 500 XP, 200g |
-| Lawmaker | Enact a law | 300 XP |
+| Elected Official | Win an election | 75 XP, 100g |
+| Lawmaker | Enact a law | 50 XP |
 
 ### Leveling Achievements
 
 | Achievement | Requirement | Reward |
 |------------|------------|--------|
-| Adventurer | Reach level 10 | 200 XP, "Adventurer" title |
-| Seasoned Hero | Reach level 25 | 500 XP, 500g, "Hero" title |
-| Legend | Reach level 50 | 2,000 XP, 2,000g, "Legend" title |
+| Adventurer | Reach level 10 | 30 XP, "Adventurer" title |
+| Seasoned Hero | Reach level 25 | 75 XP, 250g, "Hero" title |
+| Legend | Reach level 50 | 150 XP, 1,000g, "Legend" title |
 
 ### Gathering Achievements
 
 | Achievement | Requirement | Reward |
 |------------|------------|--------|
-| Gatherer | Complete 25 gathering actions | 150 XP |
-| Resource Baron | Complete 100 gathering actions | 500 XP, 300g, "Resource Baron" title |
+| Gatherer | Complete 10 gathering actions | 25 XP |
+| Resource Baron | Complete 40 gathering actions | 75 XP, 150g, "Resource Baron" title |
 
 ### Progression Achievements
 
 | Achievement | Requirement | Reward |
 |------------|------------|--------|
-| Specialized | Choose a class specialization | 200 XP |
-| Skill Master | Unlock 10 abilities | 500 XP, "Skill Master" title |
+| Specialized | Choose a class specialization | 30 XP |
+| Skill Master | Unlock 10 abilities | 75 XP, "Skill Master" title |
 
 ---
 
@@ -1848,8 +1921,8 @@ Dwarves have the unique racial ability **Clan Loyalty** (level 25): all same-rac
 
 Add other players as friends to see when they are online, quickly message them, and find them for duels or trading.
 
-- **Achievement:** Adding your first friend earns the "Making Friends" achievement (25 XP)
-- **Achievement:** Having 10 friends earns "Social Butterfly" (200 XP + title)
+- **Achievement:** Adding your first friend earns the "Making Friends" achievement (10 XP)
+- **Achievement:** Having 10 friends earns "Social Butterfly" (30 XP + title)
 
 ## Player Profiles
 
@@ -2171,9 +2244,9 @@ The trade-off: -25% cooking quality (the dead have poor taste) and **-20% reputa
 Your first few hours in Aethermere will set the tone for your entire experience. Follow this checklist to get started on the right foot:
 
 1. **Pick a Core race for your first character.** Humans, Dwarves, and Halflings are the most forgiving.
-2. **Talk to the town elder.** Accept "The Awakening" quest for your first 100 XP.
+2. **Talk to the town elder.** Accept "The Awakening" quest for your first 25 XP.
 3. **Complete "Proving Ground."** Kill Goblins and Giant Rats around your starting town. This gets you to level 2-3 quickly.
-4. **Pick up daily quests.** Daily Hunt and Daily Gathering are available at level 1 and should be completed every day.
+4. **Pick up recurring quests.** Recurring Hunt and Recurring Gathering are available at level 1 and can be completed every 72 hours.
 5. **Learn your first profession.** Mining, Herbalism, or Farming are great first choices -- they produce raw materials that are always in demand.
 6. **Learn a crafting profession.** Pair it with your gathering: Mining + Smelting, or Herbalism + Alchemy.
 7. **Sell surplus materials on the marketplace.** Even low-level materials sell. Build your gold reserve early.
@@ -2240,7 +2313,7 @@ Your first few hours in Aethermere will set the tone for your entire experience.
 
 ### Early Game (Level 1-10)
 
-- Complete daily quests every day (275 XP + 55g minimum from Daily Hunt + Daily Gathering)
+- Complete recurring quests as soon as their cooldowns reset (75 XP + 155g from the three Tier 1 quests every 72 hours)
 - Gather raw materials and sell them -- even common ore and herbs have buyers
 - Avoid spending gold on marketplace gear until level 10; quest and monster drops are sufficient
 - Do not buy potions; fight monsters at or below your level to avoid needing them
@@ -2267,7 +2340,7 @@ Your first few hours in Aethermere will set the tone for your entire experience.
 
 2. **Ignoring professions.** Combat XP alone is not enough. Professions provide gold, equipment, and crafting XP that contributes to character leveling.
 
-3. **Skipping daily quests.** 24 hours of missed dailies is 275+ XP and 55+ gold you can never recover. The compound effect over weeks is enormous.
+3. **Ignoring recurring quests.** Each 72-hour cooldown reset is 75+ XP and 155+ gold you can never recover. The compound effect over weeks is enormous.
 
 4. **Fighting above your level without preparation.** Death penalties (gold/XP/durability loss) set you back significantly. Fight at or slightly below your level unless you have a specific reason.
 
@@ -2318,7 +2391,7 @@ A: Yes, but travel takes real time and routes follow predefined connections. You
 A: Yes. PvP is duel-based and requires both players to agree. You must accept a challenge to fight. There is no open-world PvP where you can be attacked without consent.
 
 **Q: What is the level cap?**
-A: There is no hard level cap. The XP curve continues scaling (Level x 100 per level). However, the highest-tier racial abilities and class capstones unlock at level 40, and the main story quest concludes around level 16. Levels beyond 40 provide stat points and skill points but no new ability unlocks.
+A: The level cap is 50. The XP curve follows floor(10 x level^1.15) + 30, scaling gently from 40 XP at level 1 to 929 XP at level 50. The highest-tier racial abilities and class capstones unlock at level 40, and the main story quest concludes around level 30 (Act II). Levels beyond 40 provide stat points and skill points but no new ability unlocks.
 
 **Q: How do I become mayor?**
 A: Live in a town as a resident. When an election is called, nominate yourself. Town residents vote, and the candidate with the most votes wins. You can serve up to 3 consecutive terms before a mandatory break. To become a kingdom ruler, you must first be a mayor, then be elected by other mayors.
@@ -2525,7 +2598,7 @@ A: Mostly yes. Professions can be leveled entirely through gathering and craftin
 | 25 | Nature's Wrath | Active | Entangle all enemies, 2 turns (12h CD) |
 | 40 | Feywild Gateway | Active | Open portal to Feywild zone (48h CD) |
 
-## Exotic Races (42 abilities)
+## Exotic Races (43 abilities)
 
 ### Goliath (6)
 | Lv | Ability | Type | Effect |
@@ -2649,14 +2722,14 @@ A: Mostly yes. Professions can be leveled entirely through gathering and craftin
 
 ## Profession Tier Requirements
 
-| Tier | Level | XP Required (cumulative) |
-|------|-------|-------------------------|
-| Apprentice | 1-10 | 0 - 5,500 |
-| Journeyman | 11-25 | 5,500 - 32,500 |
-| Craftsman | 26-50 | 32,500 - 127,500 |
-| Expert | 51-75 | 127,500 - 287,500 |
-| Master | 76-90 | 287,500 - 408,500 |
-| Grandmaster | 91-100 | 408,500 - 504,500 |
+| Tier | Level | Cumulative XP to Enter |
+|------|-------|------------------------|
+| Apprentice | 1-10 | 0 |
+| Journeyman | 11-25 | ~1,675 |
+| Craftsman | 26-50 | ~7,000 |
+| Expert | 51-75 | ~23,375 |
+| Master | 76-90 | ~49,125 |
+| Grandmaster | 91-100 | ~69,075 |
 
 ---
 
@@ -2924,42 +2997,37 @@ At profession level 50 with max tools and workshop, the minimum roll is 21 (Mast
 
 ## Full XP Table (Levels 1-50)
 
-| Level | XP for Next | Cumulative XP | Total Stat Pts | Total Skill Pts | Max HP (base) | Max Mana (base) |
-|-------|------------|---------------|----------------|-----------------|---------------|-----------------|
-| 1 | 100 | 0 | 0 | 0 | 100 | 50 |
-| 2 | 200 | 100 | 2 | 1 | 110 | 55 |
-| 3 | 300 | 300 | 4 | 2 | 120 | 60 |
-| 4 | 400 | 600 | 6 | 3 | 130 | 65 |
-| 5 | 500 | 1,000 | 8 | 4 | 140 | 70 |
-| 6 | 600 | 1,500 | 10 | 5 | 150 | 75 |
-| 7 | 700 | 2,100 | 12 | 6 | 160 | 80 |
-| 8 | 800 | 2,800 | 14 | 7 | 170 | 85 |
-| 9 | 900 | 3,600 | 16 | 8 | 180 | 90 |
-| 10 | 1,000 | 4,500 | 18 | 9 | 190 | 95 |
-| 11 | 1,100 | 5,500 | 20 | 10 | 200 | 100 |
-| 12 | 1,200 | 6,600 | 22 | 11 | 210 | 105 |
-| 13 | 1,300 | 7,800 | 24 | 12 | 220 | 110 |
-| 14 | 1,400 | 9,100 | 26 | 13 | 230 | 115 |
-| 15 | 1,500 | 10,500 | 28 | 14 | 240 | 120 |
-| 16 | 1,600 | 12,000 | 30 | 15 | 250 | 125 |
-| 17 | 1,700 | 13,600 | 32 | 16 | 260 | 130 |
-| 18 | 1,800 | 15,300 | 34 | 17 | 270 | 135 |
-| 19 | 1,900 | 17,100 | 36 | 18 | 280 | 140 |
-| 20 | 2,000 | 19,000 | 38 | 19 | 290 | 145 |
-| 25 | 2,500 | 30,000 | 48 | 24 | 340 | 170 |
-| 30 | 3,000 | 43,500 | 58 | 29 | 390 | 195 |
-| 35 | 3,500 | 59,500 | 68 | 34 | 440 | 220 |
-| 40 | 4,000 | 78,000 | 78 | 39 | 490 | 245 |
-| 45 | 4,500 | 99,000 | 88 | 44 | 540 | 270 |
-| 50 | 5,000 | 122,500 | 98 | 49 | 590 | 295 |
+XP per level uses the formula: **floor(10 x level^1.15) + 30**
+
+| Level | XP for Next | Cumulative XP | Est. Days | Total Stat Pts | Total Skill Pts | Max HP (base) | Max Mana (base) |
+|-------|------------|---------------|-----------|----------------|-----------------|---------------|-----------------|
+| 1 | 40 | 0 | 0 | 0 | 0 | 100 | 50 |
+| 2 | 52 | 40 | 2 | 2 | 1 | 110 | 55 |
+| 3 | 65 | 92 | 4 | 4 | 2 | 120 | 60 |
+| 4 | 79 | 157 | 7 | 6 | 3 | 130 | 65 |
+| 5 | 93 | 236 | 10 | 8 | 4 | 140 | 70 |
+| 6 | 108 | 329 | 13 | 10 | 5 | 150 | 75 |
+| 7 | 123 | 437 | 16 | 12 | 6 | 160 | 80 |
+| 8 | 139 | 560 | 19 | 14 | 7 | 170 | 85 |
+| 9 | 155 | 699 | 23 | 16 | 8 | 180 | 90 |
+| 10 | 171 | 854 | 28 | 18 | 9 | 190 | 95 |
+| 15 | 255 | 1,874 | 52 | 28 | 14 | 240 | 120 |
+| 20 | 343 | 3,323 | 82 | 38 | 19 | 290 | 145 |
+| 25 | 435 | 5,220 | 118 | 48 | 24 | 340 | 170 |
+| 30 | 529 | 7,581 | 164 | 58 | 29 | 390 | 195 |
+| 35 | 626 | 10,420 | 218 | 68 | 34 | 440 | 220 |
+| 40 | 725 | 13,747 | 282 | 78 | 39 | 490 | 245 |
+| 45 | 826 | 17,573 | 356 | 88 | 44 | 540 | 270 |
+| 50 | 929 | 21,907 | 439 | 98 | 49 | 590 | 295 |
 
 **Formulas:**
-- XP for next level: `Level * 100`
-- Cumulative XP to reach level L: `100 * (L-1) * L / 2`
+- XP for next level: `floor(10 * level^1.15) + 30`
 - Stat points at level L: `(L-1) * 2`
 - Skill points at level L: `(L-1) * 1`
 - Base max HP at level L: `100 + (L-1) * 10`
 - Base max mana at level L: `50 + (L-1) * 5`
+
+**Estimated days** assume phased daily XP income: ~25/day early on, scaling to ~52/day at endgame as you unlock higher-tier work, quests, and streak bonuses.
 
 ---
 
@@ -3028,10 +3096,10 @@ At profession level 50 with max tools and workshop, the minimum roll is 21 (Mast
 1. Create character -> Pick Core race (Human/Dwarf/Halfling recommended)
 2. Pick class -> Warrior (easy), Rogue (medium), Mage (advanced)
 3. Talk to town elder -> Accept "The Awakening" quest
-4. Kill 5 Goblins + 3 Giant Rats -> Complete "Proving Ground"
+4. Kill 2 Goblins + 2 Giant Rats -> Complete "Proving Ground"
 5. Learn Mining or Herbalism -> Gather raw materials
 6. Learn a crafting profession -> Make items to sell
-7. Do daily quests EVERY DAY -> 275+ XP, 55+ gold
+7. Do recurring quests on cooldown -> 75+ XP, 155+ gold per cycle
 8. Reach level 10 -> CHOOSE YOUR SPECIALIZATION
 9. Join a guild -> Social and economic benefits
 10. Explore the world -> 68 towns await
@@ -3058,8 +3126,8 @@ Level 40: TIER 5 CAPSTONE. Sixth racial ability.
 ```
 Attack Roll: d20 + Stat Mod + Equipment >= Target AC = HIT
 Damage:      Weapon Dice + Stat Mod + Ability Bonuses
-XP on Win:   Monster Level x 25 (PvE) or 50 x Opponent Level (PvP)
-Death:       Lose gold %, XP %, equipment durability
+XP on Win:   5 x Monster Level (PvE) or 8 x Opponent Level (PvP)
+Death:       5% gold, 15 x level XP, 5 durability
              Revenant: 50% of all penalties
 ```
 

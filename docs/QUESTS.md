@@ -4,7 +4,7 @@
 
 ## Overview
 
-The quest system supports multiple quest types, NPC quest givers, automatic progress tracking via triggers, and a full skill/specialization tree tied to **7 character classes**. Progression is driven by an XP-based leveling system with a **max level of 50**, a rebalanced daily-action XP curve, and level-up rewards of stat points, skill points, and HP/MP increases.
+The quest system provides **49 quests** (12 main, 20 town, 8 recurring, 3 guild, 6 bounty) with NPC quest givers, automatic progress tracking via triggers, and a full skill/specialization tree tied to **7 character classes** (Warrior, Mage, Rogue, Cleric, Ranger, Bard, Psion). Progression is driven by an XP-based leveling system with a **max level of 50**, a rebalanced daily-action XP curve (1 major action per day), and level-up rewards of stat points, skill points, and HP/MP increases.
 
 ---
 
@@ -18,12 +18,17 @@ The quest system supports multiple quest types, NPC quest givers, automatic prog
 |------|-------------|
 | `MAIN` | Story-driven quests forming the main narrative |
 | `TOWN` | Town-specific quests tied to a location |
-| `DAILY` | Repeatable quests with cooldown timers |
+| `DAILY` | Recurring quests with 72h (3-day) or 168h (weekly) cooldowns. Formerly called "Daily Quests"; renamed to "Recurring Quests" to reflect multi-day cooldown pacing. |
 | `GUILD` | Guild-exclusive quests |
 | `BOUNTY` | Kill-target bounty quests |
 | `RACIAL` | Race-specific quests (defined in type system, not yet populated) |
 
 Quest definitions live in `shared/src/data/quests/` and are exported via `ALL_QUESTS` (aggregation of `MAIN_QUESTS`, `TOWN_QUESTS`, `DAILY_QUESTS`, `GUILD_QUESTS`, `BOUNTY_QUESTS`).
+
+**Objective quantity ranges** (rebalanced for daily-action pacing):
+- KILL objectives: **1--3 targets** per objective (previously 5--10)
+- GATHER objectives: **2--5 items** per objective (previously 8--15)
+- Guild quests use higher quantities (5--8) since they are designed for multi-player, multi-week completion.
 
 ### Objective Types
 

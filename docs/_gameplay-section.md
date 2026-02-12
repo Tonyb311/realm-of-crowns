@@ -1049,19 +1049,19 @@ When a player character dies in PvE combat:
 
 | Penalty | Value |
 |---------|-------|
-| **Gold lost** | 10% of current gold |
-| **XP lost** | 50 XP per character level |
-| **Equipment durability** | 10 durability damage to ALL equipped items |
+| **Gold lost** | 5% of current gold |
+| **XP lost** | 15 XP per character level |
+| **Equipment durability** | 5 durability damage to ALL equipped items |
 | **Respawn** | Teleported to nearest town |
 
 ```
-Constants from combat-engine.ts:
-DEATH_GOLD_LOSS_PERCENT = 10
-DEATH_XP_LOSS_PER_LEVEL = 50
-DEATH_DURABILITY_DAMAGE = 10
+Constants from xp-curve.ts (DEATH_PENALTY):
+GOLD_LOSS_PERCENT = 5
+XP_LOSS_PER_LEVEL = 15
+DURABILITY_DAMAGE = 5
 ```
 
-**Revenant racial bonus**: 50% reduced death penalty (5% gold, 25 XP/level, 5 durability) and 50% faster respawn time.
+**Revenant racial bonus**: 50% reduced death penalty (2.5% gold, 7.5 XP/level, 2.5 durability) and 50% faster respawn time.
 
 > **Tip**: Keep your equipment repaired and avoid fighting monsters more than 3 levels above you. The XP and durability penalties scale with level and can set you back significantly at higher levels.
 

@@ -1,6 +1,6 @@
 # Realm of Crowns
 
-A browser-based fantasy MMORPG set in the world of Aethermere. 20 playable races, 28 professions, 68 towns, a fully player-driven economy, D&D-style turn-based combat, democratic governance, racial diplomacy, trade caravans, player housing, and real-time social systems. Built as a modern full-stack TypeScript monorepo.
+A browser-based fantasy MMORPG set in the world of Aethermere. 20 playable races, 29 professions, 68 towns, a fully player-driven economy, D&D-style turn-based combat, democratic governance, racial diplomacy, trade caravans, player housing, and real-time social systems. Built as a modern full-stack TypeScript monorepo.
 
 <!-- Screenshots -->
 <!-- ![World Map](docs/screenshots/world-map.png) -->
@@ -11,10 +11,10 @@ A browser-based fantasy MMORPG set in the world of Aethermere. 20 playable races
 ## Features
 
 ### 20 Playable Races
-Seven core races (Human, Elf, Dwarf, Halfling, Orc, Tiefling, Dragonborn), six common races (Half-Elf, Half-Orc, Gnome, Merfolk, Beastfolk, Faefolk), and seven exotic races (Goliath, Drow, Firbolg, Warforged, Genasi, Revenant, Changeling). Sub-races include Dragonborn ancestries, Beastfolk clans, and Genasi elements. Each race has unique stat modifiers, 6 racial abilities unlocked at levels 1/5/10/15/25/40, profession bonuses, and exclusive resource zones. 120 racial abilities total with full combat and profession integration.
+Seven core races (Human, Elf, Dwarf, Halfling, Orc, Tiefling, Dragonborn), six common races (Half-Elf, Half-Orc, Gnome, Merfolk, Beastfolk, Faefolk), and seven exotic races (Goliath, Drow, Firbolg, Warforged, Genasi, Revenant, Changeling). Sub-races include Dragonborn ancestries, Beastfolk clans, and Genasi elements. Each race has unique stat modifiers, 6 racial abilities unlocked at levels 1/5/10/15/25/40 (Nightborne has 7), profession bonuses, and exclusive resource zones. 121 racial abilities total with full combat and profession integration.
 
 ### Player-Driven Economy
-No NPC-created items -- every sword, potion, and meal is player-crafted. 28 professions across gathering (7), crafting (15), and service (7) categories, each with 100 levels and 6 mastery tiers (Apprentice through Grandmaster). Complete multi-step crafting chains: miners produce ore, smelters refine it into ingots, blacksmiths forge weapons, enchanters add magical effects. Item quality from Poor to Legendary determined by a d20 roll plus modifiers. Item durability (weapons 100 uses, armor 150, tools 50) creates constant replacement demand. Free-market player marketplace with supply/demand pricing, town taxes, and price history tracking.
+No NPC-created items -- every sword, potion, and meal is player-crafted. 29 professions across gathering (7), crafting (15), and service (7) categories, each with 100 levels and 6 mastery tiers (Apprentice through Grandmaster). Complete multi-step crafting chains: miners produce ore, smelters refine it into ingots, blacksmiths forge weapons, enchanters add magical effects. Item quality from Poor to Legendary determined by a d20 roll plus modifiers. Item durability (weapons 100 uses, armor 150, tools 50) creates constant replacement demand. Free-market player marketplace with supply/demand pricing, town taxes, and price history tracking.
 
 ### Gathering and Resource System
 Seven gathering professions harvest raw materials from biome-specific resource nodes. Real-time gathering with timers, d20-based quality rolls, tool bonuses, and town abundance levels. Resource depletion and regeneration cycles. 60+ distinct raw resources across ores, woods, grains, herbs, animal products, fish, and stone categories.
@@ -29,7 +29,7 @@ Players own houses, workshops, and shops in towns. Construction requires player-
 Geographic resource scarcity drives inter-town trade. Merchants load cargo into caravans (handcart, wagon, large wagon, trade convoy) and ship goods between towns. Bandit ambush events during transit. Caravan escorts and cargo insurance. Per-item per-town price history tracking, cross-town price comparison, trade route profitability calculator, and supply/demand indicators. Merchant profession XP earned from profitable trades.
 
 ### D&D-Style Combat
-Turn-based combat with initiative rolls (d20 + DEX), attack rolls vs AC, damage dice by weapon type, critical hits, spell slots, and status effects. 120 racial abilities integrated into the combat engine (Dragonborn breath weapons, Orc blood fury, Changeling mid-combat shifting, Beastfolk beast form, and more). PvE encounters with level-appropriate monsters, multi-room dungeons with bosses, and loot tables. PvP duels with wager system, arena rankings, and anti-grief protections. Death incurs gold loss, XP loss, and equipment damage.
+Turn-based combat with initiative rolls (d20 + DEX), attack rolls vs AC, damage dice by weapon type, critical hits, spell slots, and status effects. 121 racial abilities integrated into the combat engine (Dragonborn breath weapons, Orc blood fury, Changeling mid-combat shifting, Beastfolk beast form, and more). PvE encounters with level-appropriate monsters, multi-room dungeons with bosses, and loot tables. PvP duels with wager system, arena rankings, and anti-grief protections. Death penalties: 5% gold loss, 15 x level XP loss, 5 durability damage to equipped gear (Revenants get half).
 
 ### Democratic Governance
 Elected town mayors set tax rates, build infrastructure, appoint officials, and manage treasuries. Kingdom rulers declare war or peace, pass kingdom-wide laws, and negotiate treaties. Full election lifecycle with nominations, campaigning, and voting periods. Laws have real gameplay effects on trade fees, military funding, and item access. Citizen petition system to influence diplomatic decisions.
@@ -47,7 +47,7 @@ Changeling shapeshifting (change visible race, fool NPCs, copy player appearance
 Real-time chat via Socket.io (town, kingdom, guild, private, trade channels). Guild creation with officer ranks, shared treasury, cooperative quests, and guild halls. Friends list with online status. Player profiles, search, and reputation tracking. Notification system for political events, combat results, trade completions, and more.
 
 ### Quest System and Progression
-Main story, town, daily, guild, and bounty quest types. Quest chains with multi-objective tracking. XP from combat, quests, crafting, and gathering feeds into a leveling system with stat allocation, ability unlocks, and skill trees. Seven class specializations per class (Warrior, Mage, Rogue, Cleric, Ranger, Bard, Psion). Achievement system with milestone rewards.
+Main story, town, recurring (72h cooldown), guild, and bounty quest types -- 49 quests total. Quest chains with multi-objective tracking. XP from combat, quests, crafting, and gathering feeds into a leveling system (XP per level: `floor(10 * level^1.15) + 30`) with stat allocation, ability unlocks, and skill trees. Seven classes (Warrior, Mage, Rogue, Cleric, Ranger, Bard, Psion) with 3 specializations each (21 total). 27 achievements with milestone rewards. Daily action economy: 1 major action per day (Work or Travel) paces progression deliberately.
 
 ### World of Aethermere
 68 towns across 21 territories spanning 8 major regions. Resource distribution by biome drives inter-regional trade. Real-time travel between towns with border crossing checks, racial tariffs, and danger encounters. Interactive zoomable fantasy map with region overlays, town icons by type, travel routes, and diplomatic border coloring.
@@ -63,8 +63,8 @@ Main story, town, daily, guild, and bounty quest types. Quest chains with multi-
 | Auth | JWT (jsonwebtoken), bcrypt |
 | Validation | Zod (shared between client and server) |
 | Testing | Jest, Supertest |
-| Deployment | Docker Compose, Nginx, GitHub Actions CI |
-| Cloud | Azure PostgreSQL Flexible Server, Azure Cache for Redis (optional) |
+| Deployment | Docker Compose (local), Azure Container Apps (production), Nginx, GitHub Actions CI |
+| Cloud | Azure Container Apps (eastus), Azure PostgreSQL Flexible Server, Azure Cache for Redis, ACR (rocregistry.azurecr.io) |
 
 ## Quick Start
 
@@ -116,12 +116,14 @@ Prisma Studio: `npm run db:studio`
 | Document | Description |
 |---|---|
 | [Races](docs/RACES.md) | All 20 races with stats, abilities, lore, and sub-races |
-| [Economy](docs/ECONOMY.md) | 28 professions, crafting chains, marketplace mechanics |
+| [Economy](docs/ECONOMY.md) | 29 professions, crafting chains, marketplace mechanics |
 | [World Map](docs/WORLD_MAP.md) | 8 regions, 21 territories, 68 towns, geography, travel routes |
 | [Combat](docs/COMBAT.md) | Turn-based combat, PvE encounters, PvP duels, racial abilities |
 | [Politics](docs/POLITICS.md) | Elections, governance, laws, diplomacy, war system |
 | [Social](docs/SOCIAL.md) | Guilds, messaging, friends, notifications |
 | [Quests](docs/QUESTS.md) | Quest types, progression, skill trees, achievements |
+| [Daily Action Rebalance](docs/DAILY_ACTION_REBALANCE.md) | Daily action economy rebalance design |
+| [Rebalance Checklist](docs/REBALANCE_INTEGRATION_CHECKLIST.md) | Rebalance implementation checklist |
 
 ## Project Structure
 
@@ -129,7 +131,7 @@ Prisma Studio: `npm run db:studio`
 realm-of-crowns/
   client/                React + Vite frontend
     src/
-      components/        50+ UI components organized by system
+      components/        60+ UI components organized by system
         auth/            Login/register forms
         character/       Character creation wizard
         combat/          Battle screen, action menus, dice rolls
@@ -154,27 +156,29 @@ realm-of-crowns/
         town/            Town dashboard, building directory
         trade/           Caravan management, price comparison
         travel/          Travel progress, route selection
-        ui/              Reusable UI primitives (buttons, modals, etc.)
+        ui/              18 Realm* primitives + utility components (ErrorBoundary, ProtectedRoute, etc.)
+        layout/          6 layout components (GameShell, HudBar, Sidebar, BottomNav, PageHeader, PageLoader)
       context/           Auth context provider
       hooks/             Custom React hooks (useSocket, useApi, useAuth)
-      pages/             24 page components
+      pages/             26 game pages + 9 admin pages (35 total)
+        admin/           Admin dashboard, users, characters, economy, world, error logs, simulation, content release
       services/          API client, socket client, utility services
       App.tsx            Root component with routing
       main.tsx           React 18 entry point
   server/                Express + Socket.io backend
     src/
-      routes/            41 route files (auth, combat, economy, politics, etc.)
+      routes/            40 game route files + 12 admin route files (52 total)
       services/          31 service modules (combat abilities, racial bonuses, etc.)
-      middleware/        4 middleware modules (auth, cache, validation, daily-action)
+      middleware/        6 middleware modules (auth, cache, validation, daily-action, admin, character-guard)
       socket/            4 socket modules (chat, events, presence, middleware)
-      jobs/              17 cron jobs (elections, taxes, caravans, maintenance, etc.)
-      lib/               3 library modules (prisma, redis, socket)
+      jobs/              18 cron jobs (elections, taxes, caravans, maintenance, travel-tick, etc.)
+      lib/               5 library modules (prisma, redis, combat-engine, game-day, alt-guard)
       __tests__/         8 integration test suites
   shared/                Shared types, constants, and game data
     src/
       data/
         races/           20 race definition files (core/common/exotic)
-        professions/     28 profession definitions, XP curves, tiers
+        professions/     29 profession definitions, XP curves, tiers
         recipes/         15 recipe files (weapons, armor, consumables, etc.)
         resources/       8 resource category files (ores, woods, herbs, etc.)
         skills/          8 skill tree files (7 classes + types)
@@ -228,7 +232,7 @@ Copy `.env.example` to `.env`. Key variables:
 
 ## Docker
 
-### Production
+### Local Production-Like
 
 ```bash
 docker compose up --build
@@ -250,9 +254,16 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 npm run dev
 ```
 
-### Azure (Optional)
+### Production (Azure Container Apps)
 
-The project supports Azure PostgreSQL Flexible Server and Azure Cache for Redis as an alternative to local Docker containers. Update `.env` with Azure connection strings.
+The live deployment runs on Azure Container Apps in East US:
+- **Container App:** `realm-of-crowns` in `roc-env` (0.5 CPU / 1GB RAM)
+- **Container Registry:** `rocregistry.azurecr.io` (built via `az acr build`)
+- **PostgreSQL:** Azure Flexible Server (`roc-db-server`, Standard_B1ms, v15)
+- **Redis:** Azure Cache for Redis (`roc-redis-cache`, Basic C0)
+- **Live URL:** https://realm-of-crowns.ambitioustree-37a1315e.eastus.azurecontainerapps.io
+
+Docker images are built with `az acr build --no-logs` (avoids Windows Unicode crash). The `server/Dockerfile` builds both client (Vite) and server (tsc). Alpine requires `apk add --no-cache openssl` for Prisma.
 
 ## CI/CD
 
@@ -286,7 +297,7 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on pushes to main/mast
 - Zod validation on all API endpoints
 - Route handlers delegate to services for business logic
 - Socket.io events for all real-time updates
-- Tailwind CSS for all styling with dark fantasy theme
+- Tailwind CSS with Arcane-inspired design system: `realm-*` tokens (realm-bg, realm-gold, realm-bronze, realm-teal, realm-purple), Cinzel (display) + Inter (body) typography, Realm* UI components
 
 ## License
 

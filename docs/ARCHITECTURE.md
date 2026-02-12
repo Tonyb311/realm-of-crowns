@@ -1,6 +1,6 @@
 # Realm of Crowns -- Technical Architecture Document
 
-> Version 0.3.0 | Last updated: 2026-02-10 | Reflects Phase 2B completion (Prompts 00-18) + P0/P1/P2/P3 fix passes
+> Version 0.3.1 | Last updated: 2026-02-12 | Reflects Phase 2B completion (Prompts 00-18) + P0/P1/P2/P3 fix passes
 
 This document describes the technical architecture of Realm of Crowns, a browser-based fantasy MMORPG built as an npm workspaces monorepo. It is derived from reading the actual codebase, not design aspirations.
 
@@ -74,7 +74,7 @@ This document describes the technical architecture of Realm of Crowns, a browser
 ### Request/Response Flow
 
 1. The client sends an HTTP request to `/api/*`.
-2. In development, Vite proxies `/api/*` and `/socket.io/*` to port 4000. In production, Nginx performs the reverse proxy.
+2. In development, Vite proxies `/api/*` and `/socket.io/*` to port 4000. In production, the server serves client static files directly (Azure Container Apps) or Nginx performs the reverse proxy (Docker Compose).
 3. Express middleware pipeline processes the request in order: `helmet` (security headers) -> `cors` -> `express.json()` -> `rateLimit` -> route matching.
 4. Route handlers call `authGuard` (JWT verification), optionally `validate` (Zod schema), optionally `cache` (Redis lookup), then invoke service-layer logic.
 5. Services interact with PostgreSQL via Prisma ORM and Redis via `ioredis`.
@@ -120,12 +120,13 @@ Defined in `client/src/App.tsx` using React Router v6 `<Routes>` and `<Route>`. 
 
 **Public routes:** `/login`, `/register`
 
-**Protected routes (20):**
+**Protected routes (26 game + 9 admin = 35 total):**
 
 | Path | Page Component | Purpose |
 |------|---------------|---------|
-| `/` | `HomePage` (inline) | Landing / character check |
+| `/` | `LandingPage` | Landing / character check |
 | `/create-character` | `CharacterCreationPage` | Character creation with race selection |
+| `/race-selection` | `RaceSelectionPage` | Race browser with tier filtering |
 | `/town` | `TownPage` | Current town overview |
 | `/market` | `MarketPage` | Marketplace listings |
 | `/inventory` | `InventoryPage` | Character inventory |
@@ -145,6 +146,10 @@ Defined in `client/src/App.tsx` using React Router v6 `<Routes>` and `<Route>`. 
 | `/housing` | `HousingPage` | Building management |
 | `/trade` | `TradePage` | Trade routes and caravans |
 | `/diplomacy` | `DiplomacyPage` | Racial relations and treaties |
+| `/travel` | `TravelPage` | Travel interface |
+| `/daily` | `DailyDashboard` | Daily action dashboard |
+| `/admin` | `AdminDashboardPage` | Admin overview |
+| `/admin/*` | 8 admin sub-pages | Users, characters, world, economy, tools, error logs, content release, simulation |
 
 ### Global UI Components
 
@@ -217,6 +222,7 @@ client/src/
     housing/           -- Building construction, upgrades
     hud/               -- HUD sub-components
     inventory/         -- Item grid, equipment slots
+    layout/            -- Page layout shells (GameShell, HudBar, Sidebar, BottomNav, PageHeader, PageLoader)
     map/               -- World map, region browser
     messaging/         -- Chat channels
     politics/          -- Election UI, governance panels
@@ -228,28 +234,82 @@ client/src/
     town/              -- Town overview, buildings, NPCs
     trade/             -- Caravan management, trade routes
     travel/            -- Travel interface, node map
-    ui/                -- Shared primitives (ProtectedRoute, Navigation, etc.)
+    ui/                -- 18 UI primitives (Realm* components, routing guards, error handling, etc.)
+    admin/             -- Admin layout wrapper
+    shared/            -- Cross-feature utilities (GoldAmount, CountdownTimer)
     -- Standalone components:
     ChatPanel.tsx, FriendsList.tsx, HUD.tsx, LoadingScreen.tsx,
     LevelUpCelebration.tsx, NotificationDropdown.tsx, PlayerSearch.tsx,
     PoliticalNotifications.tsx, ProgressionEventsProvider.tsx,
     QuestDialog.tsx, SocialEventsProvider.tsx, StatAllocation.tsx, XpBar.tsx
-  pages/               -- 24 top-level page components (one per route)
+  pages/               -- 26 game pages + 9 admin pages (35 total)
+    admin/             -- Admin dashboard, users, characters, world, economy, tools, error logs, content release, simulation
   services/            -- api.ts, socket.ts, sounds.ts
   context/             -- AuthContext.tsx
   hooks/               -- 7 real-time event hooks
   types/               -- Client-specific type declarations
   utils/               -- Client-side utilities
-  styles/              -- Additional CSS
+  constants/           -- Rarity utilities, toast styles
 ```
 
 ### Styling
 
-Tailwind CSS 3 with a custom medieval/fantasy theme defined in `client/tailwind.config.js`:
+Tailwind CSS 3 with a custom fantasy theme defined in `client/tailwind.config.js`:
 
-- **Color palette:** `primary` (gold/amber tones, 50-900), `dark` (deep blue-black, 50-900), `parchment` (tan/cream, 50-500), `blood` (crimson variants), `forest` (green variants).
-- **Fonts:** `MedievalSharp` (display/headings), `Crimson Text` (body), `Fira Code` (monospace).
-- **Background textures:** `parchment-texture` and `dark-stone` image URLs.
+- **Color palette (legacy):** `primary` (gold/amber, 50-900), `dark` (deep blue-black, 50-900), `parchment` (tan/cream, 50-500), `blood` (crimson variants), `forest` (green variants).
+- **Color palette (current design system):** `realm-bg` (navy backgrounds, 500-900), `realm-gold` (gold accents, 100-700), `realm-bronze` (copper secondary, 300-600), `realm-teal` (teal secondary, 300-600), `realm-purple` (magic/rare accent, 300-500), `realm-text` (primary/secondary/muted/gold), `realm-success`, `realm-danger`, `realm-warning`, `realm-hp`.
+- **Fonts:** `Cinzel` (display/headings via `font-display`), `Inter` (body text via `font-body`), `Fira Code` (monospace). Legacy `MedievalSharp` and `Crimson Text` retained as `font-display-legacy` and `font-body-legacy`.
+- **Background textures:** `parchment-texture` and `dark-stone` image URLs, `realm-vignette` radial gradient, `realm-panel-gradient` top-edge shimmer.
+- **Custom shadows:** `realm-glow` (gold halo), `realm-glow-strong` (brighter gold), `realm-inner` (inset highlight), `realm-panel` (deep drop shadow with gold inset).
+- **Custom CSS (`client/src/index.css`):** `pulse-subtle` keyframe animation, gold-tinted custom scrollbars.
+
+### Frontend Design System
+
+The client follows a layered component architecture with a consistent "arcane tome" visual language: dark navy backgrounds, gold accents, warm cream text, and subtle glow effects.
+
+#### Layout Architecture
+
+`GameShell` provides the top-level authenticated layout:
+
+```
+GameShell
+  +-- HudBar (top bar: character stats, gold, health/mana, hunger)
+  +-- Sidebar (desktop: left-side navigation, hidden on mobile)
+  +-- BottomNav (mobile: bottom tab bar, hidden on desktop)
+  +-- <Outlet /> (page content area)
+```
+
+- **Responsive strategy:** Desktop uses a left sidebar for navigation; mobile collapses to a bottom tab bar. Breakpoint at `md` (768px).
+- **PageHeader** provides consistent page titles with optional back navigation.
+- **PageLoader** shows a branded loading spinner during page transitions.
+
+#### Component Library (`components/ui/` -- 18 files)
+
+Nine `Realm*` components provide the core design system primitives:
+
+| Component | Purpose |
+|-----------|---------|
+| `RealmButton` | Styled button with gold border, hover glow, loading/disabled states |
+| `RealmPanel` | Container panel with dark background, gold border, optional header |
+| `RealmCard` | Smaller card variant of RealmPanel for list items |
+| `RealmModal` | Overlay dialog with backdrop blur and gold header bar |
+| `RealmInput` | Text input with dark background, gold focus ring |
+| `RealmBadge` | Small pill label for status, rarity, or category |
+| `RealmProgress` | Progress bar with gradient fill and optional label |
+| `RealmTooltip` | Hover/tap tooltip with dark background |
+| `RealmSkeleton` | Shimmer placeholder for loading states |
+
+Additional UI utilities: `Modal` (lightweight overlay), `LoadingSkeleton` (legacy), `ErrorBoundary` (React error catch), `PageLayout` (page wrapper), `ErrorMessage` (inline error display), `Tooltip` (legacy tooltip), `AdminRoute` (admin role guard), `ProtectedRoute` (auth guard), `Navigation` (nav bar).
+
+#### Typography
+
+- **Display/headings:** `Cinzel` (serif, loaded via Google Fonts). Used for page titles, panel headers, item names.
+- **Body text:** `Inter` (sans-serif). Used for descriptions, stats, chat, UI labels.
+- Applied via Tailwind classes: `font-display` and `font-body`.
+
+#### Color Philosophy
+
+Dark navy backgrounds (`realm-bg-900` through `realm-bg-500`) with gold accents (`realm-gold-*`) create a rich, immersive fantasy atmosphere. Warm cream text (`realm-text-primary: #E8DCC8`) ensures readability. Status colors follow gaming conventions: green for success/health, red for danger/HP loss, purple for magic/rare items, teal for informational highlights.
 
 ### Build Optimization
 
@@ -317,7 +377,7 @@ rateLimit({                 -- 100 requests per 15-minute window on /api/*
   v
 /api/health                 -- Health check (no auth): { status, game, version, timestamp }
 /api                        -- Welcome endpoint
-/api/*                      -- Route tree (35+ sub-routers)
+/api/*                      -- Route tree (52 route modules: 40 root + 12 admin)
   |
   v
 Static files (prod only)    -- Serves client/dist/, SPA fallback for non-API paths
@@ -331,7 +391,7 @@ Error handler               -- 500; full message in dev, generic in prod
 
 ### Route Registration
 
-All routes are mounted under `/api` via `server/src/routes/index.ts`. The router registers **35+ sub-routers**:
+All routes are mounted under `/api` via `server/src/routes/index.ts`. The router registers **52 route modules (40 root + 12 admin)**:
 
 | Route Prefix | Module | Purpose |
 |-------------|--------|---------|
@@ -374,6 +434,23 @@ All routes are mounted under `/api` via `server/src/routes/index.ts`. The router
 | `/service` | `service.ts` | Service profession actions |
 | `/loans` | `loans.ts` | Banker loans, interest, repayment |
 | `/game` | `game.ts` | Game day number, tick status, time-until-reset |
+
+**Admin routes (12 files in `admin/` subdirectory, all require `requireAdmin` middleware):**
+
+| Route Prefix | Module | Purpose |
+|-------------|--------|---------|
+| `/admin` | `admin/index.ts` | Admin route aggregator |
+| `/admin/stats` | `admin/stats.ts` | Server statistics and metrics |
+| `/admin/users` | `admin/users.ts` | User management |
+| `/admin/characters` | `admin/characters.ts` | Character management |
+| `/admin/world` | `admin/world.ts` | World/region/town management |
+| `/admin/economy` | `admin/economy.ts` | Economy monitoring and tools |
+| `/admin/tools` | `admin/tools.ts` | Admin utility tools |
+| `/admin/error-logs` | `admin/errorLogs.ts` | Error log viewing |
+| `/admin/simulation` | `admin/simulation.ts` | Game simulation controls |
+| `/admin/content-release` | `admin/contentRelease.ts` | Content release management |
+| `/admin/travel` | `admin/travel.ts` | Travel system admin tools |
+| `/admin/population` | `admin/population.ts` | Population statistics |
 
 ### Middleware
 
@@ -587,7 +664,7 @@ Prisma Migrate with a development-centric workflow:
 
 Production: `prisma migrate deploy` (applied in Docker build or CI pipeline).
 
-Current migrations (11 as of Phase 1):
+Current migrations (15):
 ```
 20260207204007_init
 20260208120000_add_friends
@@ -599,6 +676,11 @@ Current migrations (11 as of Phase 1):
 20260209121626_extend_profession_system
 20260209144137_race_schema_v2
 20260210000000_six_systems_foundation
+20260210100000_add_inventory_unique_constraint
+20260210100100_add_law_vote_tracking
+20260210200000_add_kingdom_region_relation
+20260210200100_add_missing_indexes
+20260210200200_fix_cascade_deletes
 ```
 
 ### Seeding Strategy
@@ -662,7 +744,7 @@ shared/src/
     buildings/            -- Building type data, costs, bonuses
     caravans/             -- Caravan configuration
     items/                -- Item template data
-    professions/          -- 28 profession definitions (categories, stats, tiers)
+    professions/          -- 29 profession definitions (categories, stats, tiers)
     progression/          -- XP curves, level requirements, stat growth
     quests/               -- Quest template data
     races/                -- 20 race definitions: stats, abilities (6 per race),
@@ -903,6 +985,7 @@ These are still started from `server/src/index.ts` and run on their own schedule
 | Caravan Events | `caravan-events.ts` | Varies | Step 7 |
 | State of Aethermere | `state-of-aethermere.ts` | Varies | Step 11 |
 | Seer Premonition | `seer-premonition.ts` | Varies | Standalone |
+| Travel Tick | `travel-tick.ts` | Varies | Step 2 |
 
 ### Game Day Concept
 
@@ -1020,7 +1103,7 @@ router.get('/towns', cache(300), getTownsHandler);
 - Referrer-Policy
 - And other security-related headers
 
-**Nginx** (production, `client/nginx.conf`) adds:
+**Nginx** (local Docker Compose only, `client/nginx.conf`) adds:
 - X-Frame-Options: SAMEORIGIN
 - X-Content-Type-Options: nosniff
 - X-XSS-Protection: 1; mode=block
@@ -1191,9 +1274,42 @@ npm run typecheck               # TypeScript compiler --noEmit check
 
 ## 11. Deployment
 
-### Container Architecture
+### Production Architecture (Azure Container Apps)
 
-The application deploys as a four-container system via Docker Compose:
+The application runs as a single-container deployment on Azure, with managed database and cache services:
+
+```
+                      HTTPS
+                        |
+           +------------v--------------+
+           |  Azure Container Apps     |
+           |  realm-of-crowns          |
+           |  (roc-env, eastus)        |
+           |                           |
+           |  Node.js 20 + Express     |
+           |  Serves client static     |
+           |  files + API + Socket.io  |
+           |  0.5 CPU / 1 GB RAM       |
+           +------+------------+-------+
+                  |            |
+           +------v----+  +---v---------+
+           | Azure DB   |  | Azure Cache |
+           | PostgreSQL |  | for Redis   |
+           | (B1ms, v15)|  | (Basic C0)  |
+           | roc-db-    |  | roc-redis-  |
+           | server     |  | cache       |
+           +------------+  +-------------+
+```
+
+**Live URL:** `https://realm-of-crowns.ambitioustree-37a1315e.eastus.azurecontainerapps.io`
+**Container Registry:** `rocregistry.azurecr.io` (Azure Container Registry)
+**Resource Group:** `rg-realm-of-crowns`
+
+In production, the server serves the Vite-built client static files directly (SPA fallback in `app.ts`), so no separate Nginx container is needed.
+
+### Local Development Architecture (Docker Compose)
+
+For local development, Docker Compose provides PostgreSQL and Redis:
 
 ```
                     Port 80
@@ -1244,7 +1360,7 @@ Multi-stage build optimized for production:
 8. Set `NODE_ENV=production`, expose port 4000.
 9. Run: `node -r tsconfig-paths/register dist/index.js`.
 
-The server serves the client's static files in production mode (SPA fallback in `app.ts`), so the separate Nginx container is optional if you want a single-server deployment.
+In production (Azure Container Apps), only the server container runs -- it serves the client's static files directly via SPA fallback in `app.ts`. The separate Nginx container is only used in local Docker Compose deployments.
 
 ### Client Dockerfile (`client/Dockerfile`)
 
@@ -1302,7 +1418,17 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 | `NODE_ENV` | `development` | No | Environment mode (`development` or `production`) |
 | `CLIENT_URL` | `http://localhost:3000` | No | Allowed CORS origin |
 
-### Production Deployment Commands
+### Production Deployment Commands (Azure)
+
+```bash
+# Build and push image to Azure Container Registry (uses --no-logs to avoid Windows Unicode crash)
+az acr build --registry rocregistry --image realm-of-crowns:latest --no-logs .
+
+# Update the Container App to use the new image
+az containerapp update --name realm-of-crowns --resource-group rg-realm-of-crowns --image rocregistry.azurecr.io/realm-of-crowns:latest
+```
+
+### Local Docker Compose Deployment
 
 ```bash
 # Build all containers
@@ -1321,10 +1447,10 @@ docker compose exec server npm run db:seed --workspace=database
 docker compose logs -f server
 ```
 
-### Target Infrastructure
+### Production Build Notes
 
-The project is designed for deployment to container orchestration platforms such as Azure Container Apps with:
-- Azure Container Registry for image storage
-- Azure Database for PostgreSQL (managed)
-- Azure Cache for Redis (managed)
-- Or equivalent services on any cloud provider supporting Docker containers
+- Server and shared packages use CommonJS (`"module": "CommonJS"`) for Node.js runtime compatibility.
+- `@shared/*` path alias is resolved at runtime via `tsconfig-paths/register`.
+- Production uses `server/tsconfig.production.json` (standalone, no `extends`) to avoid path resolution issues in the container.
+- `server/tsconfig.build.json` (extends `tsconfig.json`) is used for local builds.
+- Alpine base images require `apk add --no-cache openssl` for Prisma.

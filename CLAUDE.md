@@ -14,7 +14,7 @@ All systems implemented across Phase 1 (core), Phase 2A (economy), and Phase 2B 
 - **Auth:** JWT + bcrypt
 - **Validation:** Zod
 - **Testing:** Jest + Supertest
-- **Deployment:** Docker Compose + Nginx + GitHub Actions CI
+- **Deployment:** Docker Compose (local) + Azure Container Apps (production) + Nginx + GitHub Actions CI
 - **Monorepo:** npm workspaces (client, server, shared, database)
 
 ## Project Structure
@@ -45,6 +45,17 @@ All systems implemented across Phase 1 (core), Phase 2A (economy), and Phase 2B 
 - `docs/QUESTS.md` -- Quests, skills, specializations, leveling, progression
 - `docs/PROMPTS.md` -- All agent team prompts consolidated
 - `docs/PROMPT_QUEUE.md` -- Build phases and completion status
+- `docs/DAILY_ACTION_REBALANCE.md` -- Daily action economy rebalance design
+- `docs/REBALANCE_INTEGRATION_CHECKLIST.md` -- Rebalance implementation checklist
+
+## Frontend Design System
+- **Typography:** Cinzel (display/headers) + Inter (body text) loaded via Google Fonts
+- **Theme:** Tailwind CSS with `realm-*` design tokens in `tailwind.config.js` -- realm-bg-900 to 500, realm-gold, realm-bronze, realm-teal, realm-purple, realm-text-primary/secondary/muted, realm-success, realm-danger, realm-warning, realm-hp
+- **Arcane aesthetic:** Dark fantasy UI inspired by Arcane -- gold accents, deep backgrounds, glowing highlights
+- **UI components (18 files in `client/src/components/ui/`):** 9 Realm* primitives (RealmButton, RealmPanel, RealmCard, RealmModal, RealmInput, RealmBadge, RealmProgress, RealmTooltip, RealmSkeleton) + 9 utility/infrastructure components (Modal, LoadingSkeleton, ErrorBoundary, PageLayout, ErrorMessage, Tooltip, AdminRoute, ProtectedRoute, Navigation)
+- **Layout components (6 files in `client/src/components/layout/`):** GameShell, HudBar, Sidebar, BottomNav, PageHeader, PageLoader
+- **Rarity display:** `getRarityStyle()`, `RARITY_COLORS`, `RARITY_BADGE_COLORS`, `RARITY_TEXT_COLORS` in `client/src/constants/index.ts`
+- **Custom CSS:** `client/src/index.css` -- pulse-subtle keyframe animation, gold scrollbar styling
 
 ## 20 Playable Races
 ### Core (7) -- 5 towns each, easy start
@@ -70,7 +81,7 @@ Changeling (Nomadic -- no hometown)
 - Common: halfElf.ts, halfOrc.ts, gnome.ts, merfolk.ts, beastfolk.ts, faefolk.ts
 - Exotic: goliath.ts, nightborne.ts, mosskin.ts, forgeborn.ts, elementari.ts, revenant.ts, changeling.ts
 
-## 28 Professions
+## 29 Professions
 ### Gathering (7): Farmer, Rancher, Fisherman, Lumberjack, Miner, Herbalist, Hunter
 ### Crafting (15): Smelter, Blacksmith, Armorer, Woodworker, Tanner, Leatherworker, Tailor, Alchemist, Enchanter, Cook, Brewer, Jeweler, Fletcher, Mason, Scribe
 ### Service (7): Merchant, Innkeeper, Healer, Stable Master, Banker, Courier, Mercenary Captain
@@ -79,8 +90,8 @@ Changeling (Nomadic -- no hometown)
 - Levels 1-100 with 6 tiers: Apprentice -> Journeyman -> Craftsman -> Expert -> Master -> Grandmaster
 - Quality roll: d20 + (professionLevel/5) + toolBonus + workshopBonus + racialBonus
 
-## Implemented Server Routes (41 files)
-All routes in `server/src/routes/`:
+## Implemented Server Routes (40 game + 12 admin = 52 files)
+All game routes in `server/src/routes/`:
 - `auth.ts` -- Registration, login, logout, current user (JWT)
 - `characters.ts` -- Character creation, character sheet, public profiles
 - `world.ts` -- World map data, kingdoms, regions
@@ -123,6 +134,20 @@ All routes in `server/src/routes/`:
 - `game.ts` -- Game state, server status
 - `index.ts` -- Route aggregator
 
+Admin routes in `server/src/routes/admin/`:
+- `stats.ts` -- Admin dashboard statistics
+- `users.ts` -- User management
+- `characters.ts` -- Character administration
+- `economy.ts` -- Economy monitoring and adjustments
+- `world.ts` -- World/town/region management
+- `travel.ts` -- Travel administration
+- `tools.ts` -- Admin tool utilities
+- `errorLogs.ts` -- Error log viewer
+- `simulation.ts` -- Game simulation tools
+- `contentRelease.ts` -- Content release management
+- `population.ts` -- Population analytics
+- `index.ts` -- Admin route aggregator
+
 ## Implemented Server Services (31 files)
 All services in `server/src/services/`:
 - `achievements.ts` -- Achievement tracking and milestone rewards
@@ -157,7 +182,7 @@ All services in `server/src/services/`:
 - `tick-combat-resolver.ts` -- Combat tick resolution engine
 - `travel-resolver.ts` -- Travel time calculation and completion
 
-## Implemented Cron Jobs (17 files)
+## Implemented Cron Jobs (18 files)
 All jobs in `server/src/jobs/`:
 - `election-lifecycle.ts` -- Advance election phases automatically
 - `tax-collection.ts` -- Collect player and town taxes on schedule
@@ -175,10 +200,12 @@ All jobs in `server/src/jobs/`:
 - `loan-processing.ts` -- Process banker loan interest and payments
 - `service-npc-income.ts` -- NPC service income generation
 - `seer-premonition.ts` -- Seer class event generation
+- `travel-tick.ts` -- Travel progress tick processing
 - `index.ts` -- Job scheduler aggregator
 
-## Implemented Client Pages (24 files)
-All pages in `client/src/pages/`:
+## Implemented Client Pages (26 game + 9 admin = 35 files)
+All game pages in `client/src/pages/`:
+- `LandingPage.tsx` -- Public landing page
 - `LoginPage.tsx` -- Account login
 - `RegisterPage.tsx` -- Account registration
 - `CharacterCreationPage.tsx` -- 5-step character creation wizard
@@ -203,6 +230,18 @@ All pages in `client/src/pages/`:
 - `AchievementPage.tsx` -- Achievement gallery with locked/unlocked states
 - `ProfilePage.tsx` -- Character sheet, achievements, reputation
 - `DailyDashboard.tsx` -- Daily action overview and summary
+- `TravelPage.tsx` -- Travel interface, route selection, progress
+
+Admin pages in `client/src/pages/admin/`:
+- `AdminDashboardPage.tsx` -- Admin overview dashboard
+- `AdminToolsPage.tsx` -- Admin tool panel
+- `AdminCharactersPage.tsx` -- Character management
+- `AdminEconomyPage.tsx` -- Economy monitoring
+- `AdminUsersPage.tsx` -- User management
+- `AdminWorldPage.tsx` -- World/town administration
+- `ErrorLogDashboardPage.tsx` -- Error log viewer
+- `ContentReleasePage.tsx` -- Content release management
+- `SimulationDashboardPage.tsx` -- Game simulation dashboard
 
 ## Implemented Client Components (30+ directories)
 Key component directories in `client/src/components/`:
@@ -231,17 +270,18 @@ Key component directories in `client/src/components/`:
 - `town/` -- Town dashboard, building directory
 - `trade/` -- Caravan management, price comparison tables
 - `travel/` -- Travel progress, route selection
-- `ui/` -- Reusable primitives (buttons, modals, tooltips, etc.)
+- `ui/` -- 18 reusable primitives: 9 Realm* components + ErrorBoundary, PageLayout, Modal, LoadingSkeleton, ErrorMessage, Tooltip, AdminRoute, ProtectedRoute, Navigation
+- `layout/` -- 6 layout components: GameShell, HudBar, Sidebar, BottomNav, PageHeader, PageLoader
 - Standalone: `HUD.tsx`, `ChatPanel.tsx`, `FriendsList.tsx`, `NotificationDropdown.tsx`, `PlayerSearch.tsx`, `PoliticalNotifications.tsx`, `QuestDialog.tsx`, `LevelUpCelebration.tsx`, `LoadingScreen.tsx`, `XpBar.tsx`, `StatAllocation.tsx`, `ProgressionEventsProvider.tsx`, `SocialEventsProvider.tsx`
 
 ## Shared Data Files
 All static game data in `shared/src/data/`:
 - `races/` -- 20 race definition files organized by tier (core/, common/, exotic/) + index.ts
-- `professions/` -- 28 profession definitions (gathering.ts, crafting.ts, service.ts), XP curves, tiers, types
+- `professions/` -- 29 profession definitions (gathering.ts, crafting.ts, service.ts), XP curves, tiers, types
 - `recipes/` -- 15 recipe files: weapons.ts, armor.ts, consumables.ts, accessories.ts, enchantments.ts, ranged-weapons.ts, smelter.ts, tanner.ts, tailor.ts, mason.ts, woodworker.ts, housing.ts, mount-gear.ts, index.ts, types.ts
 - `resources/` -- 8 resource category files: ores.ts, woods.ts, grains.ts, herbs.ts, animal.ts, fish.ts, stone.ts + index.ts, types.ts
-- `skills/` -- 8 skill tree files: warrior.ts, mage.ts, rogue.ts, cleric.ts, ranger.ts, bard.ts, psion.ts + index.ts, types.ts
-- `quests/` -- 5 quest files: main-quests.ts, town-quests.ts, daily-quests.ts, guild-quests.ts, bounty-quests.ts + index.ts, types.ts
+- `skills/` -- 8 skill tree files: warrior.ts, mage.ts, rogue.ts, cleric.ts, ranger.ts, bard.ts, psion.ts (7 classes) + index.ts, types.ts
+- `quests/` -- 5 quest files: main-quests.ts, town-quests.ts, daily-quests.ts (recurring quests, 72h cooldown), guild-quests.ts, bounty-quests.ts + index.ts, types.ts (49 quests total: 12 main + 20 town + 8 recurring + 3 guild + 6 bounty)
 - `tools/` -- Tool tier definitions (index.ts)
 - `buildings/` -- Building requirements (requirements.ts)
 - `caravans/` -- Caravan type definitions (types.ts)
@@ -285,14 +325,16 @@ All static game data in `shared/src/data/`:
 
 ## Key Design Principles
 1. **Player-driven economy** -- No NPC-created items. Every sword, potion, and meal is player-crafted
-2. **Real-time actions** -- Gathering, crafting, travel take real-world time (minutes to hours)
-3. **Item durability** -- Weapons (100 uses), armor (150 uses), tools (50 uses) break -> constant demand
-4. **3-profession limit** -- Forces interdependence, nobody is self-sufficient
-5. **Geographic scarcity** -- Resources tied to biomes/regions -> trade is necessary
-6. **D&D mechanics** -- d20 rolls, ability scores (STR/DEX/CON/INT/WIS/CHA), AC, spell slots
-7. **Player politics** -- Elected mayors and rulers with real governance power
-8. **Racial relations** -- 20x20 diplomacy matrix affects tariffs, access, NPC behavior
-9. **Exclusive zones** -- 11 zones only certain races can access (Underdark, Deep Ocean, Feywild, etc.)
+2. **Daily action economy** -- 1 major action per day (Work or Travel). Paces progression deliberately
+3. **Real-time actions** -- Gathering, crafting, travel take real-world time (minutes to hours)
+4. **Item durability** -- Weapons (100 uses), armor (150 uses), tools (50 uses) break -> constant demand
+5. **3-profession limit** -- Forces interdependence, nobody is self-sufficient
+6. **Geographic scarcity** -- Resources tied to biomes/regions -> trade is necessary
+7. **D&D mechanics** -- d20 rolls, ability scores (STR/DEX/CON/INT/WIS/CHA), AC, spell slots
+8. **Player politics** -- Elected mayors and rulers with real governance power
+9. **Racial relations** -- 20x20 diplomacy matrix affects tariffs, access, NPC behavior
+10. **Exclusive zones** -- 11 zones only certain races can access (Underdark, Deep Ocean, Feywild, etc.)
+11. **Arcane aesthetic** -- Dark fantasy UI with Cinzel/Inter typography, realm-* design tokens, gold accents on deep backgrounds
 
 ## The World of Aethermere -- 8 Major Regions + Sub-regions
 
@@ -386,12 +428,19 @@ Herbalist -> Miner/Woodworker -> Smelter -> Alchemist
 - Server-side weapon validation (damage from equipped weapon DB lookup, not client)
 - PvE combat wrapped in database transaction for atomicity
 - Redis key pattern: `combat:pve:{sessionId}` (NOT `combat:{characterId}`)
+- PvE XP reward: `5 * monster.level`
 - 121 racial abilities across 20 races (6 per race, Nightborne has 7; unlock at levels 1/5/10/15/25/40)
 - PvE encounters, dungeons with bosses, PvP duels, arena, kingdom wars
 - Status effects: poisoned, stunned, blessed, burning, frozen, etc.
-- Death penalties: gold loss, XP loss, equipment durability damage
+- Death penalties: 5% gold loss, 15 x level XP loss, 5 durability damage to all equipped gear
 - Flee action: FLED status with minor penalty (half XP loss, 50% HP, no gold/durability loss)
 - Revenant reduced death penalty (halved)
+
+## Progression System
+- XP formula: `floor(10 * level^1.15) + 30` XP required per level
+- 7 classes: Warrior, Mage, Rogue, Cleric, Ranger, Bard, Psion (each with 3 specializations = 21 total)
+- 27 achievements across combat, economy, social, and exploration categories
+- 49 quests: 12 main + 20 town + 8 recurring (72h cooldown, formerly "daily quests") + 3 guild + 6 bounty
 
 ## Political System
 - Elected town mayors (set taxes, build, appoint officials)
@@ -448,7 +497,7 @@ All 19 prompts (00-18) across 3 phases are complete. Implemented systems:
 - Integration tests, Docker Compose, CI/CD
 
 **Phase 2A -- Economy Expansion:**
-- 28 profession system with learn/abandon, XP curves, 6 tiers
+- 29 profession system with learn/abandon, XP curves, 6 tiers
 - Resource gathering engine with d20 rolls, tool bonuses, depletion
 - 60+ raw resources across 8 categories assigned to towns by biome
 - Tool system (6 types, 6 material tiers, durability)

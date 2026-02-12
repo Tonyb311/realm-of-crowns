@@ -6,7 +6,7 @@
 
 Realm of Crowns uses a **D&D-style turn-based combat system** with four modes: PvE (player vs. environment), PvP Duels (wagered competitive fights), Spars (zero-stakes practice fights), and Arena (future). Combat state is stored in **Redis** with an in-memory fallback, ensuring persistence across server restarts while maintaining low-latency access during fights.
 
-The combat engine (`server/src/lib/combat-engine.ts`) implements full D&D mechanics: d20 attack rolls vs. AC, proficiency bonuses, ability score modifiers, spell save DCs, status effects with DoT/HoT, critical hits with doubled dice, initiative order, and racial ability integration.
+The combat engine (`server/src/lib/combat-engine.ts`) implements full D&D mechanics: d20 attack rolls vs. AC, proficiency bonuses, ability score modifiers, spell save DCs, status effects with DoT/HoT, critical hits with doubled dice, initiative order, and racial ability integration. Characters choose from **7 classes** (Warrior, Mage, Rogue, Cleric, Ranger, Bard, Psion) with 21 specializations and 121 racial combat abilities across 20 races.
 
 ---
 
@@ -286,7 +286,7 @@ When a banished combatant's duration expires:
 
 ## Racial Ability Combat Integration
 
-Racial abilities are integrated into the combat engine via the `RacialCombatTracker`. Examples:
+There are **121 racial combat abilities** across all 20 races (6 per race, except Nightborne which has 7), unlocking at character levels 1, 5, 10, 15, 25, and 40. These abilities are integrated into the combat engine via the `RacialCombatTracker`. Examples:
 
 - **Orc Blood Fury**: Damage multiplier when active
 - **Orc Relentless Endurance**: Prevent death once per combat

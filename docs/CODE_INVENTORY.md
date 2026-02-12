@@ -1,6 +1,6 @@
 # Realm of Crowns -- Code Inventory
 
-> Updated 2026-02-10. Covers every source file in the repository after Phase 2B completion + P0/P1/P2/P3 fix passes.
+> Updated 2026-02-12. Covers every source file in the repository after Phase 2B completion + P0/P1/P2/P3 fix passes.
 
 ---
 
@@ -32,8 +32,9 @@
 realm_of_crowns/
   client/
     src/
-      components/          # 83 implemented components across 18 subdirectories
-        ui/                # 8 reusable UI primitives
+      components/          # 90+ implemented components across 20+ subdirectories
+        ui/                # 18 UI primitives (Realm* components, routing guards, error handling)
+        layout/            # 6 layout components (GameShell, HudBar, Sidebar, BottomNav, PageHeader, PageLoader)
         professions/       # 3 profession UI components
         gathering/         # 3 gathering UI components
         crafting/          # 5 crafting UI components
@@ -52,18 +53,20 @@ realm_of_crowns/
         admin/             # 1 admin layout component
       context/             # 1 context (AuthContext)
       hooks/               # 7 custom hooks
-      pages/               # 24 page components + 6 admin pages (30 total)
+      pages/               # 26 game pages + 9 admin pages (35 total)
+        admin/             # 9 admin pages
       services/            # 3 service modules (api, socket, sounds)
-      constants/           # 1 constants module
+      constants/           # 1 constants module (rarity utilities, toast styles)
       App.tsx              # Root component, routing, global providers
       main.tsx             # React 18 entry point
   server/
     src/
       index.ts             # HTTP + Socket.io server, cron bootstrap
       app.ts               # Express app configuration
-      routes/              # 40 route modules (33 root + 7 admin)
+      routes/              # 52 route modules (40 root + 12 admin)
+        admin/             # 12 admin route modules
       services/            # 31 service modules
-      jobs/                # 17 cron job modules
+      jobs/                # 18 cron job modules (including index)
       middleware/           # 6 middleware modules
       lib/                 # 5 library modules
       socket/              # 4 socket handler/utility modules
@@ -88,7 +91,7 @@ realm_of_crowns/
   database/
     prisma/
       schema.prisma        # Prisma schema with 45+ models and 20+ enums
-      migrations/          # 11 migrations (init through fix_cascade_deletes)
+      migrations/          # 15 migrations (init through fix_cascade_deletes)
     seeds/                 # 18 seed files
 ```
 
@@ -98,13 +101,13 @@ realm_of_crowns/
 
 All routes are mounted under `/api` in `server/src/routes/index.ts`.
 
-### Route Modules (40 total: 33 root + 7 admin)
+### Route Modules (52 total: 40 root + 12 admin)
 
-**Root routes (33 files):**
+**Root routes (40 files):**
 `auth.ts`, `characters.ts`, `elections.ts`, `governance.ts`, `messages.ts`, `friends.ts`, `notifications.ts`, `profiles.ts`, `skills.ts`, `travel.ts`, `work.ts`, `crafting.ts`, `world.ts`, `towns.ts`, `market.ts`, `guilds.ts`, `quests.ts`, `combat-pve.ts`, `combat-pvp.ts`, `actions.ts`, `buildings.ts`, `caravans.ts`, `equipment.ts`, `food.ts`, `items.ts`, `professions.ts`, `races.ts`, `reports.ts`, `special-mechanics.ts`, `tools.ts`, `trade-analytics.ts`, `regions.ts`, `world-events.ts`, `loans.ts`, `service.ts`, `zones.ts`, `diplomacy.ts`, `petitions.ts`, `game.ts`, `index.ts`
 
-**Admin routes (7 files in `admin/` subdirectory):**
-`admin/index.ts`, `admin/stats.ts`, `admin/users.ts`, `admin/characters.ts`, `admin/world.ts`, `admin/economy.ts`, `admin/tools.ts`
+**Admin routes (12 files in `admin/` subdirectory):**
+`admin/index.ts`, `admin/stats.ts`, `admin/users.ts`, `admin/characters.ts`, `admin/world.ts`, `admin/economy.ts`, `admin/tools.ts`, `admin/errorLogs.ts`, `admin/simulation.ts`, `admin/contentRelease.ts`, `admin/travel.ts`, `admin/population.ts`
 
 ---
 
@@ -142,12 +145,13 @@ Server listens on port 4000 with CORS enabled. JWT auth via socket middleware.
 
 ---
 
-## 4. Client Pages (30 total: 24 root + 6 admin)
+## 4. Client Pages (35 total: 26 game + 9 admin)
 
-### Root Pages (24 files)
+### Game Pages (26 files)
 
 | File | Route | Description |
 |------|-------|-------------|
+| `LandingPage.tsx` | `/` | Landing page / character check |
 | `LoginPage.tsx` | `/login` | Email + password form |
 | `RegisterPage.tsx` | `/register` | Account registration |
 | `CharacterCreationPage.tsx` | `/create-character` | 4-step wizard: race, class, stats, name |
@@ -171,9 +175,10 @@ Server listens on port 4000 with CORS enabled. JWT auth via socket middleware.
 | `HousingPage.tsx` | `/housing` | Building/housing system |
 | `TradePage.tsx` | `/trade` | Caravan trade system |
 | `DiplomacyPage.tsx` | `/diplomacy` | Racial relations, treaties |
+| `TravelPage.tsx` | `/travel` | Travel interface and route selection |
 | `DailyDashboard.tsx` | `/daily` | Daily action dashboard |
 
-### Admin Pages (6 files in `admin/` subdirectory)
+### Admin Pages (9 files in `admin/` subdirectory)
 
 | File | Route | Description |
 |------|-------|-------------|
@@ -183,18 +188,51 @@ Server listens on port 4000 with CORS enabled. JWT auth via socket middleware.
 | `AdminWorldPage.tsx` | `/admin/world` | World/region management |
 | `AdminEconomyPage.tsx` | `/admin/economy` | Economy monitoring |
 | `AdminToolsPage.tsx` | `/admin/tools` | Admin tools |
+| `ErrorLogDashboardPage.tsx` | `/admin/error-logs` | Error log viewer and dashboard |
+| `ContentReleasePage.tsx` | `/admin/content-release` | Content release management |
+| `SimulationDashboardPage.tsx` | `/admin/simulation` | Game simulation controls |
 
 ---
 
-## 5. Client Components (83 total)
+## 5. Client Components (90+ total)
 
 ### Application Components (13 root-level)
 
 `ChatPanel.tsx`, `HUD.tsx`, `FriendsList.tsx`, `NotificationDropdown.tsx`, `QuestDialog.tsx`, `StatAllocation.tsx`, `PlayerSearch.tsx`, `LevelUpCelebration.tsx`, `PoliticalNotifications.tsx`, `XpBar.tsx`, `ProgressionEventsProvider.tsx`, `SocialEventsProvider.tsx`, `LoadingScreen.tsx`
 
-### UI Primitives (`ui/` -- 8 files)
+### UI Primitives (`ui/` -- 18 files)
 
-`ProtectedRoute.tsx`, `AdminRoute.tsx`, `Navigation.tsx`, `ErrorBoundary.tsx`, `ErrorMessage.tsx`, `Tooltip.tsx`, `LoadingSkeleton.tsx`, `PageLayout.tsx`
+| File | Description |
+|------|-------------|
+| `RealmButton.tsx` | Styled button with gold border, hover glow, loading/disabled states |
+| `RealmPanel.tsx` | Container panel with dark background, gold border, optional header |
+| `RealmCard.tsx` | Smaller card variant of RealmPanel for list items |
+| `RealmModal.tsx` | Overlay dialog with backdrop blur and gold header bar |
+| `RealmInput.tsx` | Text input with dark background, gold focus ring |
+| `RealmBadge.tsx` | Small pill label for status, rarity, or category |
+| `RealmProgress.tsx` | Progress bar with gradient fill and optional label |
+| `RealmTooltip.tsx` | Hover/tap tooltip with dark background |
+| `RealmSkeleton.tsx` | Shimmer placeholder for loading states |
+| `Modal.tsx` | Lightweight overlay dialog (legacy) |
+| `LoadingSkeleton.tsx` | Animated loading placeholder (legacy) |
+| `ErrorBoundary.tsx` | React error boundary with fallback UI |
+| `PageLayout.tsx` | Standard page content wrapper with consistent padding |
+| `ErrorMessage.tsx` | Inline error message display |
+| `Tooltip.tsx` | Basic tooltip component (legacy) |
+| `AdminRoute.tsx` | Route guard requiring admin role |
+| `ProtectedRoute.tsx` | Route guard requiring authentication |
+| `Navigation.tsx` | Primary navigation bar |
+
+### Layout Components (`layout/` -- 6 files)
+
+| File | Description |
+|------|-------------|
+| `GameShell.tsx` | Top-level authenticated layout (HudBar + Sidebar/BottomNav + content) |
+| `HudBar.tsx` | Top bar with character stats, gold, health/mana, hunger indicators |
+| `Sidebar.tsx` | Desktop left-side navigation panel |
+| `BottomNav.tsx` | Mobile bottom tab bar (visible below `md` breakpoint) |
+| `PageHeader.tsx` | Consistent page title with optional back navigation |
+| `PageLoader.tsx` | Branded loading spinner for page transitions |
 
 ### Feature Components by Subdirectory
 
@@ -253,7 +291,13 @@ Server listens on port 4000 with CORS enabled. JWT auth via socket middleware.
 
 | File | Description |
 |------|-------------|
-| `constants/index.ts` | Shared client constants |
+| `constants/index.ts` | Rarity color maps (`RARITY_COLORS`, `RARITY_BADGE_COLORS`, `RARITY_TEXT_COLORS`), `getRarityStyle()` helper, shared `TOAST_STYLE` object |
+
+### Styles
+
+| File | Description |
+|------|-------------|
+| `index.css` | Tailwind imports, `pulse-subtle` keyframe animation, gold-tinted custom scrollbar styles |
 
 ---
 
@@ -342,7 +386,7 @@ Server listens on port 4000 with CORS enabled. JWT auth via socket middleware.
 
 ---
 
-## 11. Cron Jobs (17 files including index)
+## 11. Cron Jobs (18 files including index)
 
 | File | Schedule | Description |
 |------|----------|-------------|
@@ -363,6 +407,7 @@ Server listens on port 4000 with CORS enabled. JWT auth via socket middleware.
 | `service-npc-income.ts` | Periodic | NPC service income processing |
 | `loan-processing.ts` | Periodic | Loan interest and repayment |
 | `reputation-decay.ts` | Periodic | Diplomacy reputation decay |
+| `travel-tick.ts` | Periodic | Travel movement resolution between ticks |
 
 ---
 
@@ -416,7 +461,7 @@ Total: 126 class abilities (18 per class x 7 classes)
 
 `gathering.ts` (7 professions), `crafting.ts` (15 professions), `service.ts` (7 professions), `tiers.ts`, `xp-curve.ts`, `types.ts`, `index.ts`.
 
-Total: 28 professions (Rancher is one profession, not Rancher + Herder).
+Total: 29 professions (7 gathering + 15 crafting + 7 service).
 
 ### Recipes (`data/recipes/`) -- 15 files
 
@@ -507,7 +552,7 @@ Seed output: 20 regions, 69 towns, 51 resources, 220 item templates, 190 racial 
 
 ---
 
-## 17. Migrations (11 total)
+## 17. Migrations (15 total)
 
 | Migration | Description |
 |-----------|-------------|

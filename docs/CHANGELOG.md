@@ -608,7 +608,7 @@ All development phases for Realm of Crowns, documenting what was built in each p
 - **docs/CODE_INVENTORY.md** -- Full codebase audit: every API endpoint, Socket.io event, client page, component, service, cron job, database model, shared data file, and middleware
 - **docs/API_REFERENCE.md** -- Comprehensive API reference for all endpoints with request/response shapes, validation rules, and error codes
 - **docs/ARCHITECTURE.md** -- Technical architecture document covering system design, frontend/backend architecture, database design, caching, security, and development workflow
-- **docs/GAME_GUIDE.md** -- Player-facing game guide covering all 20 races, 6+ classes, 28 professions, economy, combat, politics, social systems, quests, and progression
+- **docs/GAME_GUIDE.md** -- Player-facing game guide covering all 20 races, 7 classes, 29 professions, economy, combat, politics, social systems, quests, and progression
 - **docs/COMBAT.md** -- Combat system design document
 - **docs/POLITICS.md** -- Political system design document
 - **docs/SOCIAL.md** -- Social systems design document
@@ -690,7 +690,7 @@ All development phases for Realm of Crowns, documenting what was built in each p
 
 ---
 
-## P2/P3 Fix Pass (2026-02-10) -- IN PROGRESS
+## P2/P3 Fix Pass (2026-02-10) -- COMPLETE
 
 ### Documentation Sync
 - Updated GAME_GUIDE.md: added Psion class (7th class), fixed region count (21 territories)
@@ -707,17 +707,112 @@ All development phases for Realm of Crowns, documenting what was built in each p
 
 ---
 
+## Quest & Progression Rebalance (2026-02-11) -- COMPLETE
+
+Full rebalance of XP curves, quests, achievements, and death penalties to align with a daily-action economy pacing model.
+
+### XP Curve Overhaul
+- New XP formula: `floor(10 * level^1.15) + 30` (ranges from 40 XP at level 1 to ~929 XP at level 50)
+- PvE combat XP: `5 * monster.level` (was `25 * monster.level`)
+- Gathering and crafting XP adjusted for 1-action-per-day model
+
+### Quest Rebalance (49 quests)
+- All 49 quests rebalanced for daily-action economy pacing
+- Kill objectives reduced: 1-3 (was 5-10)
+- Gather objectives reduced: 2-5 (was 8-15)
+- "Daily Quests" renamed to "Recurring Quests" with 72-hour cooldown
+
+### Achievement Rebalance (27 achievements)
+- 27 achievements rebalanced with lower thresholds to match new pacing
+
+### Death Penalty Softened
+- Gold loss: 5% (was 10%)
+- XP loss: `15 * level` (was `50 * level`)
+- Durability loss: 5 (was 10)
+
+### Documentation
+- Created `docs/DAILY_ACTION_REBALANCE.md` -- full rebalance specification
+- Created `docs/REBALANCE_INTEGRATION_CHECKLIST.md` -- integration verification checklist
+
+---
+
+## Arcane Visual Overhaul (2026-02-11 to 2026-02-12) -- COMPLETE
+
+Complete visual redesign of the entire frontend with a cohesive arcane fantasy theme. 143+ files touched across 6 phases.
+
+### Phase 1 -- Design System
+- Extended Tailwind theme with `realm-*` tokens: navy backgrounds (`realm-dark`, `realm-darker`), gold accents (`realm-gold`, `realm-gold-light`), warm cream text (`realm-text`, `realm-text-muted`)
+- Typography system: Cinzel (display/headings) + Inter (body text)
+- Created 9 reusable UI components in `client/src/components/ui/`:
+  - `RealmButton` -- themed button with variant and size props
+  - `RealmPanel` -- container panel with arcane border styling
+  - `RealmCard` -- content card with hover effects
+  - `RealmModal` -- modal dialog with backdrop blur
+  - `RealmInput` -- form input with label and validation states
+  - `RealmBadge` -- status/category badge with color variants
+  - `RealmProgress` -- progress bar with animated fill
+  - `RealmTooltip` -- hover tooltip with delay
+  - `RealmSkeleton` -- loading placeholder with shimmer animation
+- Built landing page with hero section, feature showcase, and race gallery
+- Themed auth pages (Login + Register) with arcane visual treatment
+
+### Phase 2 -- Game Shell
+- `HudBar` -- top navigation bar with character stats, gold, location
+- `Sidebar` -- desktop sidebar navigation with icon + label links
+- `BottomNav` -- mobile bottom navigation bar
+- `GameShell` -- wrapper component combining HudBar + Sidebar + BottomNav + content area
+- `PageHeader` -- consistent page title and breadcrumb component
+- `PageLoader` -- full-page loading state with themed spinner
+
+### Phase 3a -- Core Pages
+- Town page rethemed with realm tokens and RealmPanel/RealmCard components
+- Profile page rethemed with stat blocks and achievement display
+- Character Creation page rethemed with step wizard styling
+
+### Phase 3b -- Combat & Inventory
+- Inventory page rethemed with rarity-coded item cards and equipment slot grid
+- Combat page rethemed with 5 sub-components (battle view, action menu, combat log, HP/MP bars, initiative tracker)
+- Created rarity display utilities in `client/src/constants/index.ts` (color mapping, label formatting)
+
+### Phase 3c -- Skills & Quests
+- SkillTree page rethemed with node graph styling and specialization panels
+- StatAllocation component rethemed with point distribution controls
+- QuestJournal page rethemed with quest cards, progress bars, and objective lists
+- CombatLogViewer rethemed with styled log entries
+- Added `pulse-subtle` CSS animation for active/highlighted elements
+
+### Phase 3d -- Final Sweep
+- 100+ remaining files rethemed across all game systems:
+  - Politics: TownHall, Election, Governance, Kingdom pages and components
+  - Market: MarketPage, listing cards, price history charts
+  - Crafting: CraftingPage, recipe browser, craft queue, quality results
+  - Trade: TradePage, caravan management, price comparison, merchant dashboard
+  - Housing: HousingPage, building cards, construction progress
+  - Map: WorldMapPage, region overlays, town info panels, mini-map
+  - Travel: travel progress, route selection
+  - Race: RaceSelectionPage, race cards, comparison tool, sub-race selector
+  - Social: GuildPage, messaging, friends list, notifications
+  - Daily: DailyDashboard, daily action widgets, daily report
+  - Racial: racial ability cards, cooldown timers, special mechanic indicators
+  - Food: food buff display, consumption UI
+  - Admin: all admin pages and components
+- Zero old color tokens remaining after sweep -- full consistency across 143+ files
+
+---
+
 ## Summary
 
 | Metric | Count |
 |--------|-------|
 | Development prompts executed | 19 (00-08, 09-14, 15-18) |
-| Server route files | 41 |
+| Server route files | 52 (includes 12 admin route files) |
 | Server service modules | 31 |
-| Cron jobs | 17 |
+| Cron jobs | 18 (includes travel-tick.ts) |
 | Server middleware | 6 |
 | Server libraries | 5 |
-| Client pages | 30 (24 root + 6 admin) |
+| Client pages | 35 (26 game + 9 admin) |
+| Client UI components | 18 files (RealmButton, RealmPanel, RealmCard, etc.) |
+| Client layout components | 6 files (HudBar, Sidebar, BottomNav, GameShell, PageHeader, PageLoader) |
 | Client components | 83 across 18 subdirectories |
 | Client hooks | 7 |
 | Shared data files | 80+ |
@@ -728,7 +823,10 @@ All development phases for Realm of Crowns, documenting what was built in each p
 | Sub-race options | 17 (7 ancestries + 6 clans + 4 elements) |
 | Racial abilities | 121 (6 per race, Nightborne has 7) |
 | Professions | 29 (7 gathering + 15 crafting + 7 service) |
+| Quests | 49 (rebalanced for daily-action pacing) |
+| Achievements | 28 (rebalanced with lower thresholds) |
 | Towns | 68 across 21 territories |
 | Exclusive resource zones | 11 |
 | Recipe files | 15 |
 | Raw resource categories | 8 (60+ individual resources) |
+| Death penalty | 5% gold, 15*level XP, 5 durability |

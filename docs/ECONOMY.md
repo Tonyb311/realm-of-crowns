@@ -18,6 +18,8 @@ No NPC shortcuts. No spawning gear from nothing. If a knight wears plate armor,
 someone mined the ore, someone smelted it into ingots, someone forged it into plates,
 and someone assembled it into armor. Every step is a player. Every step earns gold.
 
+> **Daily action model:** The economy is paced around **1 major action per day** (one gathering run, one crafting batch, one combat encounter, etc.). XP curves, profession XP, crafting times, and quest objective quantities are all calibrated for this cadence. Players who log in for 10--20 minutes daily should see steady, meaningful progression.
+
 ---
 
 ## 📊 PROFESSION OVERVIEW
