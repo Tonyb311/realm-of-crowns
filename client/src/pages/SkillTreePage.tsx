@@ -13,7 +13,7 @@ import {
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import StatAllocation from '../components/StatAllocation';
-import { SkeletonCard, SkeletonText } from '../components/ui/LoadingSkeleton';
+import { RealmButton } from '../components/ui/realm-index';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,11 +67,11 @@ interface CharacterStats {
 const TIER_LABELS = ['', 'Tier I', 'Tier II', 'Tier III', 'Tier IV', 'Tier V'];
 const TIER_COLORS = [
   '',
-  'border-parchment-500/30',
-  'border-blue-500/30',
-  'border-purple-500/30',
-  'border-amber-500/30',
-  'border-red-500/30',
+  'border-realm-text-secondary/30',   // Tier I - neutral
+  'border-realm-teal-300/30',         // Tier II - teal
+  'border-realm-purple-300/30',       // Tier III - purple
+  'border-realm-gold-400/30',         // Tier IV - gold
+  'border-realm-danger/30',           // Tier V - red
 ];
 
 // ---------------------------------------------------------------------------
@@ -87,20 +87,21 @@ function SpecCard({
   isPending: boolean;
 }) {
   return (
-    <div className="bg-dark-300 border-2 border-dark-50 rounded-lg p-6 hover:border-primary-400/50 transition-all">
-      <h3 className="font-display text-primary-400 text-lg mb-2 capitalize">{spec.name}</h3>
-      <p className="text-parchment-300 text-sm mb-4 leading-relaxed">{spec.description}</p>
-      <p className="text-parchment-500 text-xs mb-4">
+    <div className="bg-realm-bg-700 border-2 border-realm-border rounded-lg p-6 hover:border-realm-gold-500/50 transition-all">
+      <h3 className="font-display text-realm-gold-400 text-lg mb-2 capitalize">{spec.name}</h3>
+      <p className="text-realm-text-secondary text-sm mb-4 leading-relaxed">{spec.description}</p>
+      <p className="text-realm-text-muted text-xs mb-4">
         {spec.abilities.length} abilities across {Math.max(...spec.abilities.map((a) => a.tier))} tiers
       </p>
-      <button
+      <RealmButton
         onClick={onSelect}
         disabled={isPending}
-        className="w-full py-2.5 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        variant="primary"
+        className="w-full flex items-center justify-center gap-2"
       >
         {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
         Choose {spec.name}
-      </button>
+      </RealmButton>
     </div>
   );
 }
@@ -125,29 +126,29 @@ function SkillNode({
       onClick={onSelect}
       className={`relative w-full text-left p-3 rounded-lg border-2 transition-all ${
         selected
-          ? 'border-primary-400 bg-primary-400/10 ring-1 ring-primary-400/30'
+          ? 'border-realm-gold-500 bg-realm-gold-500/10 ring-1 ring-realm-gold-500/30'
           : ability.unlocked
-            ? 'border-green-500/40 bg-green-900/10 hover:border-green-400/60'
+            ? 'border-realm-success/40 bg-realm-success/10 hover:border-realm-success/60'
             : canUnlockNow
-              ? 'border-primary-400/30 bg-dark-300 hover:border-primary-400/60'
-              : 'border-dark-50 bg-dark-300 opacity-50'
+              ? 'border-realm-gold-500/30 bg-realm-bg-700 hover:border-realm-gold-500/60 animate-pulse-subtle'
+              : 'border-realm-border bg-realm-bg-700 opacity-50'
       }`}
     >
       <div className="flex items-center gap-2">
         {ability.unlocked ? (
-          <Unlock className="w-4 h-4 text-green-400 flex-shrink-0" />
+          <Unlock className="w-4 h-4 text-realm-success flex-shrink-0" />
         ) : canUnlockNow ? (
-          <Sparkles className="w-4 h-4 text-primary-400 flex-shrink-0" />
+          <Sparkles className="w-4 h-4 text-realm-gold-400 flex-shrink-0" />
         ) : (
-          <Lock className="w-4 h-4 text-parchment-500/50 flex-shrink-0" />
+          <Lock className="w-4 h-4 text-realm-text-muted/50 flex-shrink-0" />
         )}
         <span className={`text-sm font-semibold truncate ${
-          ability.unlocked ? 'text-green-400' : locked ? 'text-parchment-500/50' : 'text-parchment-200'
+          ability.unlocked ? 'text-realm-success' : locked ? 'text-realm-text-muted/50' : 'text-realm-text-primary'
         }`}>
           {ability.name}
         </span>
       </div>
-      <p className="text-[10px] text-parchment-500 mt-1">Lv. {ability.levelRequired}</p>
+      <p className="text-[10px] text-realm-text-muted mt-1">Lv. {ability.levelRequired}</p>
     </button>
   );
 }
@@ -167,45 +168,45 @@ function AbilityDetail({
   hasPoints: boolean;
 }) {
   return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg p-5">
+    <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
       <div className="flex items-center gap-2 mb-3">
         {ability.unlocked ? (
-          <Check className="w-5 h-5 text-green-400" />
+          <Check className="w-5 h-5 text-realm-success" />
         ) : ability.canUnlock ? (
-          <Sparkles className="w-5 h-5 text-primary-400" />
+          <Sparkles className="w-5 h-5 text-realm-gold-400" />
         ) : (
-          <Lock className="w-5 h-5 text-parchment-500" />
+          <Lock className="w-5 h-5 text-realm-text-muted" />
         )}
-        <h3 className="font-display text-primary-400 text-lg">{ability.name}</h3>
+        <h3 className="font-display text-realm-gold-400 text-lg">{ability.name}</h3>
       </div>
 
-      <p className="text-parchment-300 text-sm leading-relaxed mb-4">{ability.description}</p>
+      <p className="text-realm-text-secondary text-sm leading-relaxed mb-4">{ability.description}</p>
 
       <div className="grid grid-cols-2 gap-2 mb-4">
         {ability.cooldown > 0 && (
-          <div className="flex items-center gap-1.5 text-xs bg-dark-500 rounded px-3 py-2">
-            <Clock className="w-3 h-3 text-parchment-500" />
-            <span className="text-parchment-400">{ability.cooldown} turn cooldown</span>
+          <div className="flex items-center gap-1.5 text-xs bg-realm-bg-900 rounded px-3 py-2">
+            <Clock className="w-3 h-3 text-realm-text-muted" />
+            <span className="text-realm-text-secondary">{ability.cooldown} turn cooldown</span>
           </div>
         )}
 
-        <div className="flex items-center gap-1.5 text-xs bg-dark-500 rounded px-3 py-2">
-          <Zap className="w-3 h-3 text-amber-400" />
-          <span className="text-parchment-400">Tier {ability.tier}</span>
+        <div className="flex items-center gap-1.5 text-xs bg-realm-bg-900 rounded px-3 py-2">
+          <Zap className="w-3 h-3 text-realm-gold-400" />
+          <span className="text-realm-text-secondary">Tier {ability.tier}</span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs bg-dark-500 rounded px-3 py-2">
-          <ChevronRight className="w-3 h-3 text-parchment-500" />
-          <span className="text-parchment-400">Lv. {ability.levelRequired} req.</span>
+        <div className="flex items-center gap-1.5 text-xs bg-realm-bg-900 rounded px-3 py-2">
+          <ChevronRight className="w-3 h-3 text-realm-text-muted" />
+          <span className="text-realm-text-secondary">Lv. {ability.levelRequired} req.</span>
         </div>
       </div>
 
       {/* Effects */}
       {Object.keys(ability.effects).length > 0 && (
         <div className="mb-4">
-          <h4 className="text-parchment-500 text-[10px] uppercase tracking-wider mb-1.5 font-display">Effects</h4>
+          <h4 className="text-realm-text-muted text-[10px] uppercase tracking-wider mb-1.5 font-display">Effects</h4>
           <div className="flex flex-wrap gap-1.5">
             {Object.entries(ability.effects).map(([k, v]) => (
-              <span key={k} className="text-[10px] bg-dark-500 border border-dark-50 rounded px-2 py-0.5 text-parchment-400">
+              <span key={k} className="text-[10px] bg-realm-bg-900 border border-realm-border rounded px-2 py-0.5 text-realm-text-secondary">
                 {k}: {String(v)}
               </span>
             ))}
@@ -214,21 +215,22 @@ function AbilityDetail({
       )}
 
       {ability.unlocked ? (
-        <div className="text-green-400 text-sm font-display flex items-center gap-1.5">
+        <div className="text-realm-success text-sm font-display flex items-center gap-1.5">
           <Check className="w-4 h-4" />
           Unlocked
         </div>
       ) : ability.canUnlock ? (
-        <button
+        <RealmButton
           onClick={onUnlock}
           disabled={isPending || !hasPoints}
-          className="w-full py-2.5 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          variant="primary"
+          className="w-full flex items-center justify-center gap-2"
         >
           {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
           {hasPoints ? 'Unlock (1 Skill Point)' : 'No Skill Points'}
-        </button>
+        </RealmButton>
       ) : (
-        <p className="text-parchment-500 text-xs">
+        <p className="text-realm-text-muted text-xs">
           Requires: Level {ability.levelRequired}
           {ability.prerequisiteAbilityId && ', prerequisite ability'}
         </p>
@@ -285,22 +287,22 @@ export default function SkillTreePage() {
 
   if (charLoading || treeLoading) {
     return (
-      <div className="min-h-screen bg-dark-500 pt-16">
+      <div className="pt-16">
         <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-6">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-dark-400 rounded animate-pulse" />
+            <div className="w-8 h-8 bg-realm-bg-700 animate-pulse border border-realm-border rounded-md" />
             <div className="space-y-2">
-              <SkeletonText className="w-48 h-6" />
-              <SkeletonText className="w-32 h-3" />
+              <div className="w-48 h-6 bg-realm-bg-700 animate-pulse border border-realm-border rounded-md" />
+              <div className="w-32 h-3 bg-realm-bg-700 animate-pulse border border-realm-border rounded-md" />
             </div>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-4">
               {Array.from({ length: 6 }).map((_, i) => (
-                <SkeletonCard key={i} />
+                <div key={i} className="h-24 bg-realm-bg-700 animate-pulse border border-realm-border rounded-md" />
               ))}
             </div>
-            <SkeletonCard />
+            <div className="h-64 bg-realm-bg-700 animate-pulse border border-realm-border rounded-md" />
           </div>
         </div>
       </div>
@@ -310,7 +312,7 @@ export default function SkillTreePage() {
   if (!character || !skillTree) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-parchment-500">Unable to load skill data.</p>
+        <p className="text-realm-text-muted">Unable to load skill data.</p>
       </div>
     );
   }
@@ -335,35 +337,39 @@ export default function SkillTreePage() {
   const selectedAbility = activeSpec?.abilities.find((a) => a.id === selectedAbilityId) ?? null;
 
   return (
-    <div className="min-h-screen bg-dark-500 pt-12">
+    <div>
       {/* Header */}
-      <header className="border-b border-dark-50 bg-dark-400/50">
+      <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <Sparkles className="w-8 h-8 text-primary-400" />
+              <Sparkles className="w-8 h-8 text-realm-gold-400" />
               <div>
-                <h1 className="text-3xl font-display text-primary-400">Skills & Abilities</h1>
-                <p className="text-parchment-500 text-sm">
+                <h1 className="text-3xl font-display text-realm-gold-400">Skills & Abilities</h1>
+                <p className="text-realm-text-muted text-sm">
                   <span className="capitalize">{skillTree.className}</span>
                   {hasSpec && (
                     <>
-                      <span className="mx-1.5 text-parchment-500/50">/</span>
-                      <span className="capitalize text-parchment-300">{skillTree.specialization}</span>
+                      <span className="mx-1.5 text-realm-text-muted/50">/</span>
+                      <span className="capitalize text-realm-text-secondary">{skillTree.specialization}</span>
                     </>
                   )}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="bg-dark-300 border border-dark-50 rounded px-4 py-2 text-sm">
-                <span className="text-parchment-500">Skill Points: </span>
-                <span className="text-primary-400 font-display">{skillTree.unspentSkillPoints}</span>
+              <div className={`bg-realm-bg-700 rounded px-4 py-2 text-sm ${
+                skillTree.unspentSkillPoints > 0
+                  ? 'border border-realm-gold-500/30 shadow-realm-glow'
+                  : 'border border-realm-border'
+              }`}>
+                <span className="text-realm-text-muted">Skill Points: </span>
+                <span className="text-realm-gold-400 font-display">{skillTree.unspentSkillPoints}</span>
               </div>
               {character.unspentStatPoints > 0 && (
-                <div className="bg-dark-300 border border-primary-400/30 rounded px-4 py-2 text-sm">
-                  <span className="text-parchment-500">Stat Points: </span>
-                  <span className="text-primary-400 font-display">{character.unspentStatPoints}</span>
+                <div className="bg-realm-bg-700 border border-realm-gold-500/30 shadow-realm-glow rounded px-4 py-2 text-sm">
+                  <span className="text-realm-text-muted">Stat Points: </span>
+                  <span className="text-realm-gold-400 font-display">{character.unspentStatPoints}</span>
                 </div>
               )}
             </div>
@@ -390,14 +396,14 @@ export default function SkillTreePage() {
         {/* Specialization Selection (if not yet specialized) */}
         {!hasSpec ? (
           <div>
-            <h2 className="text-xl font-display text-parchment-200 mb-2">Choose Your Specialization</h2>
-            <p className="text-parchment-500 text-sm mb-6">
+            <h2 className="text-xl font-display text-realm-text-primary mb-2">Choose Your Specialization</h2>
+            <p className="text-realm-text-muted text-sm mb-6">
               Select a specialization to unlock abilities. This choice is permanent.
             </p>
             {character.level < 10 ? (
-              <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center">
-                <Lock className="w-10 h-10 text-parchment-500/30 mx-auto mb-3" />
-                <p className="text-parchment-500 text-sm">
+              <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+                <Lock className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
+                <p className="text-realm-text-muted text-sm">
                   Specialization unlocks at level 10. You are currently level {character.level}.
                 </p>
               </div>
@@ -422,11 +428,11 @@ export default function SkillTreePage() {
               {sortedTiers.map(({ tier, abilities }) => (
                 <div key={tier}>
                   <div className="flex items-center gap-2 mb-3">
-                    <div className={`w-8 h-0.5 ${TIER_COLORS[tier] || 'bg-dark-50'} bg-current`} />
-                    <h3 className="font-display text-parchment-400 text-xs uppercase tracking-wider">
+                    <div className={`w-8 h-0.5 ${TIER_COLORS[tier] || 'bg-realm-border'} bg-current`} />
+                    <h3 className="font-display text-realm-text-secondary text-xs uppercase tracking-wider">
                       {TIER_LABELS[tier] || `Tier ${tier}`}
                     </h3>
-                    <div className={`flex-1 h-0.5 ${TIER_COLORS[tier] || 'bg-dark-50'} bg-current opacity-30`} />
+                    <div className={`flex-1 h-0.5 ${TIER_COLORS[tier] || 'bg-realm-border'} bg-current opacity-30`} />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {abilities.map((ability) => (
@@ -452,9 +458,9 @@ export default function SkillTreePage() {
                   hasPoints={skillTree.unspentSkillPoints > 0}
                 />
               ) : (
-                <div className="bg-dark-300 border border-dark-50 rounded-lg p-8 text-center">
-                  <Sparkles className="w-10 h-10 text-parchment-500/20 mx-auto mb-3" />
-                  <p className="text-parchment-500 text-sm">Select an ability to view details.</p>
+                <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+                  <Sparkles className="w-10 h-10 text-realm-text-muted/20 mx-auto mb-3" />
+                  <p className="text-realm-text-muted text-sm">Select an ability to view details.</p>
                 </div>
               )}
             </div>

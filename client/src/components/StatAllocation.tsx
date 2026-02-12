@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Plus, Minus, Check, RotateCcw } from 'lucide-react';
 import api from '../services/api';
+import { RealmButton } from './ui/realm-index';
 
 interface StatAllocationProps {
   currentStats: {
@@ -17,12 +18,12 @@ interface StatAllocationProps {
 }
 
 const STAT_LABELS: { key: keyof StatAllocationProps['currentStats']; label: string; color: string }[] = [
-  { key: 'str', label: 'Strength', color: 'text-red-400' },
-  { key: 'dex', label: 'Dexterity', color: 'text-green-400' },
-  { key: 'con', label: 'Constitution', color: 'text-amber-400' },
-  { key: 'int', label: 'Intelligence', color: 'text-blue-400' },
-  { key: 'wis', label: 'Wisdom', color: 'text-purple-400' },
-  { key: 'cha', label: 'Charisma', color: 'text-pink-400' },
+  { key: 'str', label: 'Strength', color: 'text-realm-danger' },
+  { key: 'dex', label: 'Dexterity', color: 'text-realm-success' },
+  { key: 'con', label: 'Constitution', color: 'text-realm-gold-400' },
+  { key: 'int', label: 'Intelligence', color: 'text-realm-teal-300' },
+  { key: 'wis', label: 'Wisdom', color: 'text-realm-purple-300' },
+  { key: 'cha', label: 'Charisma', color: 'text-realm-bronze-400' },
 ];
 
 export default function StatAllocation({ currentStats, unspentStatPoints, onDone }: StatAllocationProps) {
@@ -70,18 +71,18 @@ export default function StatAllocation({ currentStats, unspentStatPoints, onDone
 
   if (unspentStatPoints === 0) {
     return (
-      <div className="bg-dark-300 border border-dark-50 rounded-lg p-6 text-center">
-        <p className="text-parchment-500 text-sm">No stat points to allocate.</p>
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6 text-center">
+        <p className="text-realm-text-muted text-sm">No stat points to allocate.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-dark-300 border border-dark-50 rounded-lg p-6">
+    <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-display text-primary-400">Allocate Stats</h3>
-        <span className="text-sm font-display text-parchment-200">
-          {remaining} <span className="text-parchment-500">points remaining</span>
+        <h3 className="font-display text-realm-gold-400">Allocate Stats</h3>
+        <span className="text-sm font-display text-realm-text-primary">
+          {remaining} <span className="text-realm-text-muted">points remaining</span>
         </span>
       </div>
 
@@ -89,11 +90,11 @@ export default function StatAllocation({ currentStats, unspentStatPoints, onDone
         {STAT_LABELS.map(({ key, label, color }) => (
           <div key={key} className="flex items-center gap-3">
             <span className={`w-24 text-sm font-semibold ${color}`}>{label}</span>
-            <span className="text-parchment-200 text-sm w-8 text-right font-display">
+            <span className="text-realm-text-primary text-sm w-8 text-right font-display">
               {currentStats[key]}
             </span>
             {allocations[key] > 0 && (
-              <span className="text-green-400 text-sm font-display w-10">
+              <span className="text-realm-success text-sm font-display w-10">
                 +{allocations[key]}
               </span>
             )}
@@ -102,14 +103,14 @@ export default function StatAllocation({ currentStats, unspentStatPoints, onDone
               <button
                 onClick={() => decrement(key)}
                 disabled={allocations[key] <= 0}
-                className="w-7 h-7 rounded border border-dark-50 flex items-center justify-center text-parchment-400 hover:bg-dark-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="w-7 h-7 rounded border border-realm-border flex items-center justify-center text-realm-text-secondary hover:bg-realm-bg-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <Minus className="w-3 h-3" />
               </button>
               <button
                 onClick={() => increment(key)}
                 disabled={remaining <= 0}
-                className="w-7 h-7 rounded border border-dark-50 flex items-center justify-center text-parchment-400 hover:bg-dark-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="w-7 h-7 rounded border border-realm-border flex items-center justify-center text-realm-text-secondary hover:bg-realm-bg-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <Plus className="w-3 h-3" />
               </button>
@@ -119,22 +120,25 @@ export default function StatAllocation({ currentStats, unspentStatPoints, onDone
       </div>
 
       {mutation.isError && (
-        <p className="mt-3 text-red-400 text-xs">Failed to allocate stats. Please try again.</p>
+        <p className="mt-3 text-realm-danger text-xs">Failed to allocate stats. Please try again.</p>
       )}
 
       <div className="flex gap-3 mt-6">
-        <button
+        <RealmButton
           onClick={reset}
           disabled={totalAllocated === 0}
-          className="flex items-center gap-1.5 px-4 py-2 border border-parchment-500/30 text-parchment-300 font-display text-sm rounded hover:bg-dark-200 disabled:opacity-30 transition-colors"
+          variant="secondary"
+          size="sm"
+          className="flex items-center gap-1.5"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           Reset
-        </button>
-        <button
+        </RealmButton>
+        <RealmButton
           onClick={confirm}
           disabled={totalAllocated === 0 || mutation.isPending}
-          className="flex items-center gap-1.5 px-6 py-2 bg-primary-400 text-dark-500 font-display text-sm rounded hover:bg-primary-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          variant="primary"
+          className="flex items-center gap-1.5"
         >
           {mutation.isPending ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -142,7 +146,7 @@ export default function StatAllocation({ currentStats, unspentStatPoints, onDone
             <Check className="w-3.5 h-3.5" />
           )}
           Confirm
-        </button>
+        </RealmButton>
       </div>
     </div>
   );

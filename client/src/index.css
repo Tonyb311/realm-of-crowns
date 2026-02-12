@@ -66,6 +66,10 @@
   .safe-area-pb {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+
+  .animate-pulse-subtle {
+    animation: pulseSubtle 3s ease-in-out infinite;
+  }
 }
 
 @keyframes floatUp {
@@ -77,4 +81,9 @@
     opacity: 0;
     transform: translateY(-60px);
   }
+}
+
+@keyframes pulseSubtle {
+  0%, 100% { border-color: rgba(212, 168, 67, 0.4); }
+  50% { border-color: rgba(212, 168, 67, 0.15); }
 }
