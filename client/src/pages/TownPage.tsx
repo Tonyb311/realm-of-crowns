@@ -93,6 +93,7 @@ interface GatherResult {
     quantity: number;
     message: string;
   };
+  xpEarned?: number;
   actionsRemaining: number;
 }
 
@@ -254,6 +255,7 @@ export default function TownPage() {
       setGatherResult(data);
       queryClient.invalidateQueries({ queryKey: ['gathering', 'spot', townId] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
       // Auto-hide result after 5 seconds
       setTimeout(() => setGatherResult(null), 5000);
     },
@@ -575,6 +577,11 @@ export default function TownPage() {
                         <span className="text-xs text-realm-text-muted">
                           ({gatherResult.gathered.item.baseValue * gatherResult.gathered.quantity}g value)
                         </span>
+                        {gatherResult.xpEarned != null && gatherResult.xpEarned > 0 && (
+                          <span className="text-xs text-realm-teal-400 font-display">
+                            +{gatherResult.xpEarned} XP
+                          </span>
+                        )}
                       </div>
                     </div>
                   )}

@@ -188,16 +188,107 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
 // GET /api/characters/me
 router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    // Re-query with town relation for frontend display
+    // Re-query with town, inventory and equipment relations for frontend display
     const character = await prisma.character.findUnique({
       where: { id: req.character!.id },
-      include: { currentTown: { select: { name: true } } },
+      include: {
+        currentTown: { select: { name: true } },
+        inventory: {
+          include: {
+            item: {
+              include: {
+                template: true,
+                craftedBy: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
+        equipment: {
+          include: {
+            item: {
+              include: { template: true },
+            },
+          },
+        },
+      },
     });
     if (!character) {
       return res.status(404).json({ error: 'Character not found' });
     }
 
-    const { currentTown, ...rest } = character;
+    const { currentTown, inventory, equipment, ...rest } = character;
+
+    // Transform inventory into frontend-friendly shape
+    // Includes top-level aliases (name, type, rarity, templateName, itemId) for
+    // compatibility with CraftingPage, MarketPage, and InventoryPage expectations.
+    const inventoryItems = (inventory || []).map((inv: any) => ({
+      id: inv.item.id,
+      itemId: inv.item.id,
+      templateId: inv.item.templateId,
+      templateName: inv.item.template.name,
+      name: inv.item.template.name,
+      type: inv.item.template.type,
+      rarity: inv.item.template.rarity,
+      description: inv.item.template.description,
+      template: {
+        id: inv.item.template.id,
+        name: inv.item.template.name,
+        type: inv.item.template.type,
+        rarity: inv.item.template.rarity,
+        description: inv.item.template.description,
+        stats: inv.item.template.stats,
+        durability: inv.item.template.durability,
+      },
+      quantity: inv.quantity,
+      currentDurability: inv.item.currentDurability,
+      quality: inv.item.quality,
+      craftedById: inv.item.craftedById,
+      craftedByName: inv.item.craftedBy?.name ?? null,
+      enchantments: inv.item.enchantments ?? [],
+    }));
+
+    // Transform equipment into slot-based map
+    const SLOT_MAP: Record<string, string> = {
+      HEAD: 'head',
+      CHEST: 'chest',
+      HANDS: 'hands',
+      LEGS: 'legs',
+      FEET: 'feet',
+      MAIN_HAND: 'mainHand',
+      OFF_HAND: 'offHand',
+      ACCESSORY_1: 'accessory1',
+      ACCESSORY_2: 'accessory2',
+    };
+
+    const equipmentSlots: Record<string, any> = {
+      head: null, chest: null, hands: null, legs: null, feet: null,
+      mainHand: null, offHand: null, accessory1: null, accessory2: null,
+    };
+
+    for (const equip of (equipment || [])) {
+      const slotKey = SLOT_MAP[equip.slot] || equip.slot.toLowerCase();
+      if (slotKey in equipmentSlots) {
+        equipmentSlots[slotKey] = {
+          id: equip.item.id,
+          templateId: equip.item.templateId,
+          template: {
+            id: equip.item.template.id,
+            name: equip.item.template.name,
+            type: equip.item.template.type,
+            rarity: equip.item.template.rarity,
+            description: equip.item.template.description,
+            stats: equip.item.template.stats,
+            durability: equip.item.template.durability,
+          },
+          quantity: 1,
+          currentDurability: equip.item.currentDurability,
+          quality: equip.item.quality,
+          craftedById: equip.item.craftedById,
+          enchantments: equip.item.enchantments ?? [],
+        };
+      }
+    }
+
     // Return flat shape with frontend-friendly field aliases
     return res.json({
       ...rest,
@@ -206,9 +297,57 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
       maxHp: rest.maxHealth,
       status: rest.travelStatus === 'idle' || rest.travelStatus === 'arrived' ? 'idle' : 'traveling',
       currentTownName: currentTown?.name ?? null,
+      inventory: inventoryItems,
+      equipment: equipmentSlots,
     });
   } catch (error) {
     logRouteError(req, 500, 'Get character error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/characters/me/inventory — Standalone inventory endpoint (used by MarketPage)
+router.get('/me/inventory', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = await prisma.character.findUnique({
+      where: { id: req.character!.id },
+      include: {
+        inventory: {
+          include: {
+            item: {
+              include: {
+                template: true,
+                craftedBy: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    const items = (character.inventory || []).map((inv: any) => ({
+      id: inv.item.id,
+      itemId: inv.item.id,
+      templateId: inv.item.templateId,
+      templateName: inv.item.template.name,
+      name: inv.item.template.name,
+      type: inv.item.template.type,
+      rarity: inv.item.template.rarity,
+      description: inv.item.template.description,
+      quantity: inv.quantity,
+      currentDurability: inv.item.currentDurability,
+      quality: inv.item.quality,
+      craftedById: inv.item.craftedById,
+      craftedByName: inv.item.craftedBy?.name ?? null,
+      enchantments: inv.item.enchantments ?? [],
+    }));
+
+    return res.json(items);
+  } catch (error) {
+    logRouteError(req, 500, 'Get inventory error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

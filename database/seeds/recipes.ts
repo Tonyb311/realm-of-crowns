@@ -440,6 +440,15 @@ const RESOURCE_ITEMS: ResourceItemDef[] = [
   { name: 'Salt', type: 'MATERIAL', description: 'Sea salt harvested from tidal pools. Essential for preservation.' },
   { name: 'Rare Herbs', type: 'MATERIAL', description: 'Elusive plants that grow only in specific conditions.' },
   { name: 'Arcane Reagents', type: 'MATERIAL', description: 'Volatile magical substances harvested from places of power.' },
+  // Town gathering spot items
+  { name: 'Apples', type: 'MATERIAL', description: 'Crisp apples picked from the royal orchards.' },
+  { name: 'Raw Fish', type: 'MATERIAL', description: 'Fresh fish caught from nearby waters.' },
+  { name: 'Wild Berries', type: 'MATERIAL', description: 'A handful of wild berries foraged from the bushes.' },
+  { name: 'Wild Herbs', type: 'MATERIAL', description: 'Fragrant herbs gathered from the wild.' },
+  { name: 'Iron Ore Chunks', type: 'MATERIAL', description: 'Rough chunks of iron ore from the mines.' },
+  { name: 'Wood Logs', type: 'MATERIAL', description: 'Freshly felled timber logs.' },
+  { name: 'Stone Blocks', type: 'MATERIAL', description: 'Rough-hewn stone blocks from the quarry.' },
+  { name: 'Clay', type: 'MATERIAL', description: 'Wet clay dug from river banks.' },
   // Legacy references (used by non-processing recipes)
   { name: 'Herbs', type: 'MATERIAL', description: 'A bundle of gathered herbs with medicinal properties.' },
   { name: 'Grain', type: 'MATERIAL', description: 'Harvested grain, a staple crop.' },

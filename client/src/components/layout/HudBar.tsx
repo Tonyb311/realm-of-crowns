@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import { xpToNextLevel } from '@shared/data/progression/xp-curve';
 import Tooltip from '../ui/Tooltip';
 import { RealmProgress } from '../ui/RealmProgress';
 import { getMuted, setMuted, getStoredVolume, setVolume } from '../../services/sounds';
@@ -78,7 +79,7 @@ export function HudBar() {
   const hiddenPaths = ['/login', '/register', '/create-character'];
   if (hiddenPaths.includes(location.pathname)) return null;
 
-  const xpForNextLevel = character.level * 100;
+  const xpForNextLevel = xpToNextLevel(character.level);
   const raceInitial = character.race ? character.race.charAt(0).toUpperCase() : '?';
   const hpCurrent = character.hp ?? character.maxHp ?? 100;
   const hpMax = character.maxHp ?? 100;

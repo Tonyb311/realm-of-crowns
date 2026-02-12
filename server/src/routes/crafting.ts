@@ -486,16 +486,22 @@ router.get('/status', authGuard, characterGuard, requireTown, async (req: Authen
     }
 
     const now = new Date();
-    // In the daily-tick model, crafting is locked in for the day and resolved at tick.
-    // We report it as "in progress" until the tick completes it.
+    const elapsedMs = now.getTime() - activeCraft.createdAt.getTime();
+    const requiredMs = activeCraft.recipe.craftTime * 60 * 1000;
+    const isReady = elapsedMs >= requiredMs;
+    const remainingMinutes = isReady ? 0 : Math.ceil((requiredMs - elapsedMs) / 60000);
+
     return res.json({
       crafting: true,
-      ready: false,
+      ready: isReady,
       recipeId: activeCraft.recipeId,
       recipeName: activeCraft.recipe.name,
       lockedInAt: activeCraft.createdAt.toISOString(),
-      tickDate: activeCraft.tickDate?.toISOString() ?? null,
-      message: 'Locked in for today. Will be resolved at the daily tick.',
+      completesAt: new Date(activeCraft.createdAt.getTime() + requiredMs).toISOString(),
+      remainingMinutes,
+      message: isReady
+        ? 'Crafting complete! Collect your item.'
+        : `Crafting in progress. ${remainingMinutes} minute(s) remaining.`,
     });
   } catch (error) {
     if (handlePrismaError(error, res, 'crafting status', req)) return;
@@ -516,8 +522,7 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
     }
 
     // Find the earliest completed crafting action (status COMPLETED, ready to collect)
-    // In the daily-tick model, the tick processor sets status to COMPLETED.
-    const activeCraft = await prisma.craftingAction.findFirst({
+    let activeCraft = await prisma.craftingAction.findFirst({
       where: {
         characterId: character.id,
         status: 'COMPLETED',
@@ -526,15 +531,35 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
       orderBy: { createdAt: 'asc' },
     });
 
+    // Auto-complete: if no COMPLETED craft exists, check IN_PROGRESS crafts
+    // whose craftTime has elapsed and transition them to COMPLETED.
     if (!activeCraft) {
-      // Check if there are pending crafts that aren't done yet
       const pendingCraft = await prisma.craftingAction.findFirst({
         where: { characterId: character.id, status: 'IN_PROGRESS' },
+        include: { recipe: true },
+        orderBy: { createdAt: 'asc' },
       });
+
       if (pendingCraft) {
-        return res.status(400).json({ error: 'Crafting is not yet complete' });
+        const elapsedMs = Date.now() - pendingCraft.createdAt.getTime();
+        const requiredMs = pendingCraft.recipe.craftTime * 60 * 1000;
+
+        if (elapsedMs >= requiredMs) {
+          // Auto-transition to COMPLETED
+          await prisma.craftingAction.update({
+            where: { id: pendingCraft.id },
+            data: { status: 'COMPLETED' },
+          });
+          activeCraft = { ...pendingCraft, status: 'COMPLETED' };
+        } else {
+          const remainingMinutes = Math.ceil((requiredMs - elapsedMs) / 60000);
+          return res.status(400).json({
+            error: `Crafting is not yet complete. ${remainingMinutes} minute(s) remaining.`,
+          });
+        }
+      } else {
+        return res.status(400).json({ error: 'No active crafting action' });
       }
-      return res.status(400).json({ error: 'No active crafting action' });
     }
 
     // Get profession for quality roll

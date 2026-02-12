@@ -6,6 +6,8 @@ import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { getTodayTickDate, getNextTickTime } from '../lib/game-day';
 import { getGatheringSpot } from '@shared/data/gathering';
+import { ACTION_XP } from '@shared/data/progression';
+import { checkLevelUp } from '../services/progression';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
 
@@ -172,6 +174,15 @@ router.post('/gather', authGuard, characterGuard, async (req: AuthenticatedReque
       });
     });
 
+    // Award character XP for gathering (base 15 XP, half goes to character)
+    const gatherXp = ACTION_XP.WORK_GATHER_BASE;
+    const characterXpGain = Math.max(1, Math.floor(gatherXp / 2));
+    await prisma.character.update({
+      where: { id: character.id },
+      data: { xp: { increment: characterXpGain } },
+    });
+    await checkLevelUp(character.id);
+
     return res.json({
       success: true,
       gathered: {
@@ -184,6 +195,7 @@ router.post('/gather', authGuard, characterGuard, async (req: AuthenticatedReque
         quantity,
         message: spot.gatherMessage,
       },
+      xpEarned: characterXpGain,
       actionsRemaining: 0,
     });
   } catch (error) {

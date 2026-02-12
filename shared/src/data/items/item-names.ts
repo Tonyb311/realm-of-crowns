@@ -27,6 +27,7 @@ export const ITEMS = {
   AREA_MAP: 'Area Map',
   ARMOR_STAND: 'Armor Stand',
   ARROWS: 'Arrows',
+  BAKED_APPLES: 'Baked Apples',
   BARK: 'Bark',
   BARREL: 'Barrel',
   BEAMS: 'Beams',
