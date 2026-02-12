@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
-import { characterGuard } from '../middleware/character-guard';
+import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { emitGovernanceEvent } from '../socket/events';
 import { handlePrismaError } from '../lib/prisma-errors';
@@ -60,7 +60,7 @@ const proposePeaceSchema = z.object({
 // --- Helpers ---
 
 // POST /propose-law
-router.post('/propose-law', authGuard, characterGuard, validate(proposeLawSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/propose-law', authGuard, characterGuard, requireTown, validate(proposeLawSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { kingdomId, title, description, effects, lawType, expiresAt } = req.body;
     const character = req.character!;
@@ -109,7 +109,7 @@ router.post('/propose-law', authGuard, characterGuard, validate(proposeLawSchema
 });
 
 // POST /vote-law
-router.post('/vote-law', authGuard, characterGuard, validate(voteLawSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/vote-law', authGuard, characterGuard, requireTown, validate(voteLawSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { lawId, vote } = req.body;
     const character = req.character!;
@@ -207,7 +207,7 @@ router.post('/vote-law', authGuard, characterGuard, validate(voteLawSchema), asy
 });
 
 // POST /set-tax
-router.post('/set-tax', authGuard, characterGuard, validate(setTaxSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/set-tax', authGuard, characterGuard, requireTown, validate(setTaxSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { townId, taxRate } = req.body;
     const character = req.character!;
@@ -256,7 +256,7 @@ router.post('/set-tax', authGuard, characterGuard, validate(setTaxSchema), async
 });
 
 // GET /laws
-router.get('/laws', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/laws', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const kingdomId = req.query.kingdomId as string | undefined;
     const status = req.query.status as 'PROPOSED' | 'VOTING' | 'ACTIVE' | 'REJECTED' | 'EXPIRED' | undefined;
@@ -285,7 +285,7 @@ router.get('/laws', authGuard, characterGuard, async (req: AuthenticatedRequest,
 });
 
 // GET /town-info/:townId
-router.get('/town-info/:townId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/town-info/:townId', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { townId } = req.params;
 
@@ -340,7 +340,7 @@ router.get('/town-info/:townId', authGuard, characterGuard, async (req: Authenti
 });
 
 // POST /appoint
-router.post('/appoint', authGuard, characterGuard, validate(appointSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/appoint', authGuard, characterGuard, requireTown, validate(appointSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { characterId, role, townId, kingdomId } = req.body;
     const character = req.character!;
@@ -411,7 +411,7 @@ router.post('/appoint', authGuard, characterGuard, validate(appointSchema), asyn
 });
 
 // POST /allocate-treasury
-router.post('/allocate-treasury', authGuard, characterGuard, validate(allocateTreasurySchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/allocate-treasury', authGuard, characterGuard, requireTown, validate(allocateTreasurySchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { townId, kingdomId, amount, purpose, details } = req.body;
     const character = req.character!;
@@ -485,7 +485,7 @@ router.post('/allocate-treasury', authGuard, characterGuard, validate(allocateTr
 });
 
 // POST /declare-war
-router.post('/declare-war', authGuard, characterGuard, validate(declareWarSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/declare-war', authGuard, characterGuard, requireTown, validate(declareWarSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { targetKingdomId, reason } = req.body;
     const character = req.character!;
@@ -563,7 +563,7 @@ router.post('/declare-war', authGuard, characterGuard, validate(declareWarSchema
 });
 
 // POST /propose-peace
-router.post('/propose-peace', authGuard, characterGuard, validate(proposePeaceSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/propose-peace', authGuard, characterGuard, requireTown, validate(proposePeaceSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { warId, terms } = req.body;
     const character = req.character!;
@@ -632,7 +632,7 @@ router.post('/propose-peace', authGuard, characterGuard, validate(proposePeaceSc
 });
 
 // GET /kingdom/:kingdomId
-router.get('/kingdom/:kingdomId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/kingdom/:kingdomId', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { kingdomId } = req.params;
 

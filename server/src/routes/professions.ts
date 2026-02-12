@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
-import { characterGuard } from '../middleware/character-guard';
+import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { ProfessionType, Race } from '@prisma/client';
 import {
@@ -70,7 +70,7 @@ const professionTypeSchema = z.object({
 // POST /api/professions/learn — Explicitly learn a new profession
 // ---------------------------------------------------------------------------
 
-router.post('/learn', authGuard, characterGuard, validate(professionTypeSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/learn', authGuard, characterGuard, requireTown, validate(professionTypeSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { professionType } = req.body;
     const profEnum = professionType as ProfessionType;
@@ -203,7 +203,7 @@ router.post('/learn', authGuard, characterGuard, validate(professionTypeSchema),
 // POST /api/professions/abandon — Abandon a profession (preserves progress)
 // ---------------------------------------------------------------------------
 
-router.post('/abandon', authGuard, characterGuard, validate(professionTypeSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/abandon', authGuard, characterGuard, requireTown, validate(professionTypeSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { professionType } = req.body;
     const profEnum = professionType as ProfessionType;
@@ -268,7 +268,7 @@ router.post('/abandon', authGuard, characterGuard, validate(professionTypeSchema
 // GET /api/professions/mine — Get all my active professions with full details
 // ---------------------------------------------------------------------------
 
-router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/mine', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
 
@@ -313,7 +313,7 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
 // GET /api/professions/info/:type — Get profession details (static data)
 // ---------------------------------------------------------------------------
 
-router.get('/info/:type', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/info/:type', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { type } = req.params;
     const profEnum = type as ProfessionType;
@@ -383,7 +383,7 @@ router.get('/info/:type', authGuard, characterGuard, async (req: AuthenticatedRe
 // GET /api/professions/available — List all professions with learn status
 // ---------------------------------------------------------------------------
 
-router.get('/available', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/available', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
 

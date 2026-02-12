@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
-import { characterGuard } from '../middleware/character-guard';
+import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { cache } from '../middleware/cache';
 import { handlePrismaError } from '../lib/prisma-errors';
@@ -137,7 +137,7 @@ router.get('/available', authGuard, cache(60), async (req: AuthenticatedRequest,
 });
 
 // GET /api/quests/active — List character's active quests with progress
-router.get('/active', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/active', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
 
@@ -175,7 +175,7 @@ router.get('/active', authGuard, characterGuard, async (req: AuthenticatedReques
 });
 
 // GET /api/quests/completed — List character's completed quests
-router.get('/completed', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/completed', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
 
@@ -207,7 +207,7 @@ router.get('/completed', authGuard, characterGuard, async (req: AuthenticatedReq
 });
 
 // POST /api/quests/accept — Accept a quest
-router.post('/accept', authGuard, characterGuard, validate(acceptQuestSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/accept', authGuard, characterGuard, requireTown, validate(acceptQuestSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { questId } = req.body;
     const character = req.character!;
@@ -332,7 +332,7 @@ router.post('/accept', authGuard, characterGuard, validate(acceptQuestSchema), a
 });
 
 // POST /api/quests/progress — Manually report progress on an objective
-router.post('/progress', authGuard, characterGuard, validate(progressSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/progress', authGuard, characterGuard, requireTown, validate(progressSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { questId, objectiveIndex, amount } = req.body;
     const character = req.character!;
@@ -383,7 +383,7 @@ router.post('/progress', authGuard, characterGuard, validate(progressSchema), as
 });
 
 // POST /api/quests/complete — Complete a quest and claim rewards
-router.post('/complete', authGuard, characterGuard, validate(completeQuestSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/complete', authGuard, characterGuard, requireTown, validate(completeQuestSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { questId } = req.body;
     const character = req.character!;
@@ -488,7 +488,7 @@ router.post('/complete', authGuard, characterGuard, validate(completeQuestSchema
 });
 
 // POST /api/quests/abandon — Abandon an active quest
-router.post('/abandon', authGuard, characterGuard, validate(abandonQuestSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/abandon', authGuard, characterGuard, requireTown, validate(abandonQuestSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { questId } = req.body;
     const character = req.character!;
@@ -516,7 +516,7 @@ router.post('/abandon', authGuard, characterGuard, validate(abandonQuestSchema),
 });
 
 // GET /api/quests/npcs/:townId — List NPCs in a town with their available quests
-router.get('/npcs/:townId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/npcs/:townId', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { townId } = req.params;
 

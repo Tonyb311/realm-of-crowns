@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
-import { characterGuard } from '../middleware/character-guard';
+import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { BuildingType } from '@prisma/client';
 import {
@@ -117,7 +117,7 @@ function getConditionEffects(condition: number): { effectTier: string; effective
 // =========================================================================
 // POST /api/buildings/request-permit
 // =========================================================================
-router.post('/request-permit', authGuard, characterGuard, validate(requestPermitSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/request-permit', authGuard, characterGuard, requireTown, validate(requestPermitSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { townId, buildingType, name } = req.body;
     const character = req.character!;
@@ -214,7 +214,7 @@ router.post('/request-permit', authGuard, characterGuard, validate(requestPermit
 // =========================================================================
 // POST /api/buildings/deposit-materials
 // =========================================================================
-router.post('/deposit-materials', authGuard, characterGuard, validate(depositMaterialsSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/deposit-materials', authGuard, characterGuard, requireTown, validate(depositMaterialsSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId, materials } = req.body;
     const character = req.character!;
@@ -359,7 +359,7 @@ router.post('/deposit-materials', authGuard, characterGuard, validate(depositMat
 // POST /api/buildings/start-construction
 // Daily action candidate: add requireDailyAction('CONSTRUCT') middleware when daily action tracking is enabled
 // =========================================================================
-router.post('/start-construction', authGuard, characterGuard, validate(buildingIdSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/start-construction', authGuard, characterGuard, requireTown, validate(buildingIdSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.body;
     const character = req.character!;
@@ -454,7 +454,7 @@ router.post('/start-construction', authGuard, characterGuard, validate(buildingI
 // =========================================================================
 // GET /api/buildings/construction-status?buildingId=xxx
 // =========================================================================
-router.get('/construction-status', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/construction-status', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.query;
     if (!buildingId || typeof buildingId !== 'string') {
@@ -533,7 +533,7 @@ router.get('/construction-status', authGuard, characterGuard, async (req: Authen
 // =========================================================================
 // POST /api/buildings/complete-construction
 // =========================================================================
-router.post('/complete-construction', authGuard, characterGuard, validate(buildingIdSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/complete-construction', authGuard, characterGuard, requireTown, validate(buildingIdSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.body;
     const character = req.character!;
@@ -609,7 +609,7 @@ router.post('/complete-construction', authGuard, characterGuard, validate(buildi
 // =========================================================================
 // POST /api/buildings/upgrade
 // =========================================================================
-router.post('/upgrade', authGuard, characterGuard, validate(buildingIdSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/upgrade', authGuard, characterGuard, requireTown, validate(buildingIdSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.body;
     const character = req.character!;
@@ -684,7 +684,7 @@ router.post('/upgrade', authGuard, characterGuard, validate(buildingIdSchema), a
 // =========================================================================
 // GET /api/buildings/mine — all my buildings across towns
 // =========================================================================
-router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/mine', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
 
@@ -836,7 +836,7 @@ router.get('/:buildingId', authGuard, async (req: AuthenticatedRequest, res: Res
 // =========================================================================
 // POST /api/buildings/:buildingId/storage/deposit
 // =========================================================================
-router.post('/:buildingId/storage/deposit', authGuard, characterGuard, validate(storageDepositSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:buildingId/storage/deposit', authGuard, characterGuard, requireTown, validate(storageDepositSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.params;
     const { itemId, quantity } = req.body;
@@ -933,7 +933,7 @@ router.post('/:buildingId/storage/deposit', authGuard, characterGuard, validate(
 // =========================================================================
 // POST /api/buildings/:buildingId/storage/withdraw
 // =========================================================================
-router.post('/:buildingId/storage/withdraw', authGuard, characterGuard, validate(storageWithdrawSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:buildingId/storage/withdraw', authGuard, characterGuard, requireTown, validate(storageWithdrawSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.params;
     const { itemId, quantity } = req.body;
@@ -1018,7 +1018,7 @@ router.post('/:buildingId/storage/withdraw', authGuard, characterGuard, validate
 // =========================================================================
 // GET /api/buildings/:buildingId/storage — list stored items
 // =========================================================================
-router.get('/:buildingId/storage', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:buildingId/storage', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.params;
     const character = req.character!;
@@ -1059,7 +1059,7 @@ router.get('/:buildingId/storage', authGuard, characterGuard, async (req: Authen
 // =========================================================================
 // POST /api/buildings/:buildingId/rent/set-price — set workshop rental price
 // =========================================================================
-router.post('/:buildingId/rent/set-price', authGuard, characterGuard, validate(setRentPriceSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:buildingId/rent/set-price', authGuard, characterGuard, requireTown, validate(setRentPriceSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.params;
     const { pricePerUse } = req.body;
@@ -1111,7 +1111,7 @@ router.post('/:buildingId/rent/set-price', authGuard, characterGuard, validate(s
 // =========================================================================
 // POST /api/buildings/:buildingId/rent/use — pay to use a workshop
 // =========================================================================
-router.post('/:buildingId/rent/use', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:buildingId/rent/use', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.params;
     const character = req.character!;
@@ -1286,7 +1286,7 @@ router.get('/:buildingId/rent', authGuard, async (req: AuthenticatedRequest, res
 // =========================================================================
 // POST /api/buildings/:buildingId/repair — repair building condition
 // =========================================================================
-router.post('/:buildingId/repair', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:buildingId/repair', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.params;
     const character = req.character!;
@@ -1363,7 +1363,7 @@ router.post('/:buildingId/repair', authGuard, characterGuard, async (req: Authen
 // =========================================================================
 // GET /api/buildings/:buildingId/rent/income — rental income history
 // =========================================================================
-router.get('/:buildingId/rent/income', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:buildingId/rent/income', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { buildingId } = req.params;
     const character = req.character!;
@@ -1410,7 +1410,7 @@ router.get('/:buildingId/rent/income', authGuard, characterGuard, async (req: Au
 // =========================================================================
 // GET /api/buildings/town/:townId/economics — mayor economic reports
 // =========================================================================
-router.get('/town/:townId/economics', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/town/:townId/economics', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { townId } = req.params;
     const character = req.character!;

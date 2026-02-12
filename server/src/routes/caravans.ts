@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
-import { characterGuard } from '../middleware/character-guard';
+import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { addProfessionXP } from '../services/profession-xp';
 import { emitNotification } from '../socket/events';
@@ -117,7 +117,7 @@ function serializeCargo(items: CargoItem[], meta: CaravanMeta): object {
 // POST /api/caravans/create
 // ---------------------------------------------------------------------------
 
-router.post('/create', authGuard, characterGuard, validate(createSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/create', authGuard, characterGuard, requireTown, validate(createSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { fromTownId, toTownId, caravanType } = req.body as {
       fromTownId: string; toTownId: string; caravanType: CaravanType;
@@ -207,7 +207,7 @@ router.post('/create', authGuard, characterGuard, validate(createSchema), async 
 // POST /api/caravans/:caravanId/load
 // ---------------------------------------------------------------------------
 
-router.post('/:caravanId/load', authGuard, characterGuard, validate(loadSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:caravanId/load', authGuard, characterGuard, requireTown, validate(loadSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { caravanId } = req.params;
     const { itemId, quantity } = req.body as { itemId: string; quantity: number };
@@ -270,7 +270,7 @@ router.post('/:caravanId/load', authGuard, characterGuard, validate(loadSchema),
 // POST /api/caravans/:caravanId/unload
 // ---------------------------------------------------------------------------
 
-router.post('/:caravanId/unload', authGuard, characterGuard, validate(unloadSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:caravanId/unload', authGuard, characterGuard, requireTown, validate(unloadSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { caravanId } = req.params;
     const { itemId, quantity } = req.body as { itemId: string; quantity: number };
@@ -316,7 +316,7 @@ router.post('/:caravanId/unload', authGuard, characterGuard, validate(unloadSche
 // POST /api/caravans/:caravanId/hire-escort
 // ---------------------------------------------------------------------------
 
-router.post('/:caravanId/hire-escort', authGuard, characterGuard, validate(hireEscortSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:caravanId/hire-escort', authGuard, characterGuard, requireTown, validate(hireEscortSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { caravanId } = req.params;
     const { escortType } = req.body as { escortType: EscortType };
@@ -355,7 +355,7 @@ router.post('/:caravanId/hire-escort', authGuard, characterGuard, validate(hireE
 // POST /api/caravans/:caravanId/insure
 // ---------------------------------------------------------------------------
 
-router.post('/:caravanId/insure', authGuard, characterGuard, validate(insureSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:caravanId/insure', authGuard, characterGuard, requireTown, validate(insureSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { caravanId } = req.params;
     const { coverage } = req.body as { coverage: InsuranceCoverage };
@@ -401,7 +401,7 @@ router.post('/:caravanId/insure', authGuard, characterGuard, validate(insureSche
 // POST /api/caravans/:caravanId/depart
 // ---------------------------------------------------------------------------
 
-router.post('/:caravanId/depart', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:caravanId/depart', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { caravanId } = req.params;
     const character = req.character!;
@@ -487,7 +487,7 @@ router.post('/:caravanId/depart', authGuard, characterGuard, async (req: Authent
 // GET /api/caravans/mine
 // ---------------------------------------------------------------------------
 
-router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/mine', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
 
@@ -539,7 +539,7 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
 // GET /api/caravans/:caravanId
 // ---------------------------------------------------------------------------
 
-router.get('/:caravanId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:caravanId', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { caravanId } = req.params;
     const character = req.character!;
@@ -601,7 +601,7 @@ router.get('/:caravanId', authGuard, characterGuard, async (req: AuthenticatedRe
 // POST /api/caravans/:caravanId/collect
 // ---------------------------------------------------------------------------
 
-router.post('/:caravanId/collect', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:caravanId/collect', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { caravanId } = req.params;
     const character = req.character!;
@@ -689,7 +689,7 @@ router.post('/:caravanId/collect', authGuard, characterGuard, async (req: Authen
 // POST /api/caravans/:caravanId/resolve-ambush
 // ---------------------------------------------------------------------------
 
-router.post('/:caravanId/resolve-ambush', authGuard, characterGuard, validate(resolveAmbushSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:caravanId/resolve-ambush', authGuard, characterGuard, requireTown, validate(resolveAmbushSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { caravanId } = req.params;
     const { choice } = req.body as { choice: AmbushChoice };

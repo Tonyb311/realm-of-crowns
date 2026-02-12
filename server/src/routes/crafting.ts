@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
-import { characterGuard } from '../middleware/character-guard';
+import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { qualityRoll } from '@shared/utils/dice';
 import { getProficiencyBonus, getModifier } from '@shared/utils/bounded-accuracy';
@@ -214,7 +214,7 @@ async function consumeIngredients(
 // =========================================================================
 // GET /api/crafting/recipes
 // =========================================================================
-router.get('/recipes', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/recipes', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
 
@@ -325,7 +325,7 @@ router.get('/recipes', authGuard, characterGuard, async (req: AuthenticatedReque
 // =========================================================================
 // POST /api/crafting/start  (single craft — kept for backward compat)
 // =========================================================================
-router.post('/start', authGuard, characterGuard, validate(startCraftSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/start', authGuard, characterGuard, requireTown, validate(startCraftSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { recipeId } = req.body;
     const character = req.character!;
@@ -472,7 +472,7 @@ router.post('/start', authGuard, characterGuard, validate(startCraftSchema), asy
 // =========================================================================
 // GET /api/crafting/status
 // =========================================================================
-router.get('/status', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/status', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
 
@@ -507,7 +507,7 @@ router.get('/status', authGuard, characterGuard, async (req: AuthenticatedReques
 // =========================================================================
 // POST /api/crafting/collect — collects the FIRST completed action in queue
 // =========================================================================
-router.post('/collect', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/collect', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
 
@@ -705,7 +705,7 @@ router.post('/collect', authGuard, characterGuard, async (req: AuthenticatedRequ
 // =========================================================================
 // POST /api/crafting/queue — batch craft { recipeId, count: 1-10 }
 // =========================================================================
-router.post('/queue', authGuard, characterGuard, validate(queueCraftSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/queue', authGuard, characterGuard, requireTown, validate(queueCraftSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { recipeId, count } = req.body;
     const character = req.character!;
@@ -872,7 +872,7 @@ router.post('/queue', authGuard, characterGuard, validate(queueCraftSchema), asy
 // =========================================================================
 // GET /api/crafting/queue — returns all IN_PROGRESS crafting actions
 // =========================================================================
-router.get('/queue', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/queue', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
 

@@ -18,7 +18,10 @@ export default function SocialEventsProvider() {
 
   const { data: character } = useQuery<CharacterInfo>({
     queryKey: ['character', 'me'],
-    queryFn: async () => (await api.get('/characters/me')).data,
+    queryFn: async () => {
+      try { return (await api.get('/characters/me')).data; }
+      catch (e: any) { if (e.response?.status === 404) return null; throw e; }
+    },
     enabled: isAuthenticated,
   });
 

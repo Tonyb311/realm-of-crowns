@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
-import { characterGuard } from '../middleware/character-guard';
+import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { ProfessionType, ResourceType, Race } from '@prisma/client';
 import { getRace } from '@shared/data/races';
@@ -129,7 +129,7 @@ async function getEquippedTool(characterId: string, professionType: ProfessionTy
 }
 
 // POST /api/work/start
-router.post('/start', authGuard, characterGuard, validate(startWorkSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/start', authGuard, characterGuard, requireTown, validate(startWorkSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { professionType, resourceId } = req.body;
     const profEnum = professionType as ProfessionType;
@@ -273,7 +273,7 @@ router.post('/start', authGuard, characterGuard, validate(startWorkSchema), asyn
 });
 
 // GET /api/work/status
-router.get('/status', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/status', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
 
@@ -323,7 +323,7 @@ router.get('/status', authGuard, characterGuard, async (req: AuthenticatedReques
 });
 
 // POST /api/work/collect
-router.post('/collect', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/collect', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
 
@@ -605,7 +605,7 @@ router.post('/collect', authGuard, characterGuard, async (req: AuthenticatedRequ
 });
 
 // POST /api/work/cancel
-router.post('/cancel', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/cancel', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
 
@@ -719,7 +719,7 @@ router.post('/cancel', authGuard, characterGuard, async (req: AuthenticatedReque
 });
 
 // GET /api/work/professions
-router.get('/professions', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/professions', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
 
