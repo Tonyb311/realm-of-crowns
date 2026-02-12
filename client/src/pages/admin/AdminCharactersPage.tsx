@@ -121,14 +121,40 @@ export default function AdminCharactersPage() {
       if (classFilter !== 'All') params.className = classFilter;
       if (levelMin) params.levelMin = levelMin;
       if (levelMax) params.levelMax = levelMax;
-      return (await api.get('/admin/characters', { params })).data;
+      const raw = (await api.get('/admin/characters', { params })).data;
+      // Backend returns { data: [...], total, page, pageSize, totalPages }
+      // with class (not className), currentTown: { name } (not currentTownName)
+      const rawChars: any[] = raw?.characters ?? raw?.data ?? [];
+      return {
+        characters: rawChars.map((c: any) => ({
+          ...c,
+          className: c.className ?? c.class ?? '',
+          currentTownName: c.currentTownName ?? c.currentTown?.name ?? null,
+          currentTownId: c.currentTownId ?? c.currentTown?.id ?? null,
+        })),
+        total: raw?.total ?? 0,
+        page: raw?.page ?? 1,
+        pageSize: raw?.pageSize ?? PAGE_SIZE,
+      };
     },
   });
 
   // Towns query (for location dropdown)
   const { data: townsData } = useQuery<TownsResponse>({
     queryKey: ['admin', 'towns', 'all'],
-    queryFn: async () => (await api.get('/admin/world/towns', { params: { pageSize: '200' } })).data,
+    queryFn: async () => {
+      const raw = (await api.get('/admin/world/towns', { params: { pageSize: '200' } })).data;
+      // Backend returns { data: [...] } — normalize to { towns: [...] }
+      const rawTowns: any[] = raw?.towns ?? raw?.data ?? [];
+      return {
+        towns: rawTowns.map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          regionName: t.regionName ?? t.region?.name ?? '',
+        })),
+        total: raw?.total ?? rawTowns.length,
+      };
+    },
     enabled: !!editChar || !!teleportChar,
   });
 

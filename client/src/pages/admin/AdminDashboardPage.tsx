@@ -71,7 +71,29 @@ export default function AdminDashboardPage() {
     refetch,
   } = useQuery<DashboardStats>({
     queryKey: ['admin', 'dashboard'],
-    queryFn: async () => (await api.get('/admin/stats/dashboard')).data,
+    queryFn: async () => {
+      const raw = (await api.get('/admin/stats/dashboard')).data;
+      // Backend returns: raceCounts, classCounts (with "class" key), totalListings, no onlineNow
+      // Frontend expects: raceDistribution, classDistribution (with "className" key), activeListings, onlineNow
+      return {
+        totalUsers: raw?.totalUsers ?? 0,
+        totalCharacters: raw?.totalCharacters ?? 0,
+        onlineNow: raw?.onlineNow ?? 0,
+        totalGold: raw?.totalGold ?? 0,
+        activeListings: raw?.activeListings ?? raw?.totalListings ?? 0,
+        totalGuilds: raw?.totalGuilds ?? 0,
+        activeWars: raw?.activeWars ?? 0,
+        activeElections: raw?.activeElections ?? 0,
+        raceDistribution: (raw?.raceDistribution ?? raw?.raceCounts ?? []).map((r: any) => ({
+          race: r.race ?? '',
+          count: r.count ?? 0,
+        })),
+        classDistribution: (raw?.classDistribution ?? raw?.classCounts ?? []).map((c: any) => ({
+          className: c.className ?? c.class ?? '',
+          count: c.count ?? 0,
+        })),
+      };
+    },
     refetchInterval: 30000,
   });
 

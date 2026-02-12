@@ -90,7 +90,20 @@ export default function AdminUsersPage() {
         pageSize: String(PAGE_SIZE),
       };
       if (debouncedSearch) params.search = debouncedSearch;
-      return (await api.get('/admin/users', { params })).data;
+      const raw = (await api.get('/admin/users', { params })).data;
+      // Backend returns { data: [...], total, page, pageSize, totalPages }
+      // Frontend expects { users: [...], total, page, pageSize }
+      const rawUsers: any[] = raw?.users ?? raw?.data ?? [];
+      return {
+        users: rawUsers.map((u: any) => ({
+          ...u,
+          characterCount: u.characterCount ?? u._count?.characters ?? 0,
+          characters: u.characters ?? [],
+        })),
+        total: raw?.total ?? 0,
+        page: raw?.page ?? 1,
+        pageSize: raw?.pageSize ?? PAGE_SIZE,
+      };
     },
   });
 

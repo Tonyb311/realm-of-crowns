@@ -73,7 +73,18 @@ export default function AdminWorldPage() {
   // Regions query
   const { data: regions, isLoading: regionsLoading, isError: regionsError, error: regionsErr, refetch: regionsRefetch } = useQuery<Region[]>({
     queryKey: ['admin', 'regions'],
-    queryFn: async () => (await api.get('/admin/world/regions')).data,
+    queryFn: async () => {
+      const raw = (await api.get('/admin/world/regions')).data;
+      // Backend returns array with _count.towns, no biome field
+      const arr: any[] = Array.isArray(raw) ? raw : (raw?.regions ?? raw?.data ?? []);
+      return arr.map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        biome: r.biome ?? '',
+        description: r.description ?? '',
+        townCount: r.townCount ?? r._count?.towns ?? 0,
+      }));
+    },
   });
 
   // Town detail query
@@ -393,7 +404,21 @@ function RegionAccordion({
     queryKey: ['admin', 'region-towns', region.id],
     queryFn: async () => {
       const res = await api.get('/admin/world/towns', { params: { regionId: region.id, pageSize: '100' } });
-      return res.data.towns ?? res.data;
+      const raw = res.data;
+      // Backend returns { data: [...] } with nested objects
+      const arr: any[] = raw?.towns ?? raw?.data ?? (Array.isArray(raw) ? raw : []);
+      return arr.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        regionId: t.regionId ?? '',
+        regionName: t.regionName ?? t.region?.name ?? '',
+        biome: t.biome ?? '',
+        population: t.population ?? 0,
+        description: t.description ?? '',
+        mayorName: t.mayorName ?? t.mayor?.name ?? null,
+        characterCount: t.characterCount ?? t._count?.characters ?? 0,
+        buildingCount: t.buildingCount ?? t._count?.buildings ?? 0,
+      }));
     },
     enabled: isExpanded,
   });

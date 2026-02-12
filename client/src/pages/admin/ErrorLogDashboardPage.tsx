@@ -189,7 +189,26 @@ export default function ErrorLogDashboardPage() {
     refetch: refetchStats,
   } = useQuery<StatsResponse>({
     queryKey: ['admin', 'error-logs', 'stats'],
-    queryFn: async () => (await api.get('/admin/error-logs/stats')).data,
+    queryFn: async () => {
+      const raw = (await api.get('/admin/error-logs/stats')).data;
+      // Backend returns { totals: { last24h, last7d, last30d, unresolved } }
+      // Frontend expects { counts: { last24h, last7d, last30d }, unresolved }
+      const totals = raw?.totals ?? {};
+      return {
+        ...raw,
+        counts: {
+          last24h: totals.last24h ?? 0,
+          last7d: totals.last7d ?? 0,
+          last30d: totals.last30d ?? 0,
+        },
+        unresolved: totals.unresolved ?? raw?.unresolved ?? 0,
+        byLevel: Array.isArray(raw?.byLevel) ? raw.byLevel : [],
+        byCategory: Array.isArray(raw?.byCategory) ? raw.byCategory : [],
+        byStatusCode: Array.isArray(raw?.byStatusCode) ? raw.byStatusCode : [],
+        topMessages: Array.isArray(raw?.topMessages) ? raw.topMessages : [],
+        hourlyTrend: Array.isArray(raw?.hourlyTrend) ? raw.hourlyTrend : [],
+      };
+    },
     refetchInterval: 30000,
   });
 

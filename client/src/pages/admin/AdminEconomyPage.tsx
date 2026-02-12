@@ -99,8 +99,25 @@ export default function AdminEconomyPage() {
     refetch: listingsRefetch,
   } = useQuery<ListingsResponse>({
     queryKey: ['admin', 'economy', 'listings', listingsPage],
-    queryFn: async () =>
-      (await api.get('/admin/economy/listings', { params: { page: String(listingsPage), pageSize: String(PAGE_SIZE) } })).data,
+    queryFn: async () => {
+      const raw = (await api.get('/admin/economy/listings', { params: { page: String(listingsPage), pageSize: String(PAGE_SIZE) } })).data;
+      // Backend returns { data: [...] } with nested seller/item objects
+      const arr: any[] = raw?.listings ?? raw?.data ?? [];
+      return {
+        listings: arr.map((l: any) => ({
+          id: l.id,
+          sellerName: l.sellerName ?? l.seller?.name ?? '',
+          itemName: l.itemName ?? l.item?.template?.name ?? l.item?.name ?? '',
+          price: l.price ?? 0,
+          quantity: l.quantity ?? 0,
+          townName: l.townName ?? l.town?.name ?? '',
+          listedAt: l.listedAt ?? l.createdAt ?? '',
+        })),
+        total: raw?.total ?? 0,
+        page: raw?.page ?? 1,
+        pageSize: raw?.pageSize ?? PAGE_SIZE,
+      };
+    },
     enabled: activeTab === 'listings',
   });
 
@@ -113,8 +130,25 @@ export default function AdminEconomyPage() {
     refetch: txRefetch,
   } = useQuery<TransactionsResponse>({
     queryKey: ['admin', 'economy', 'transactions', txPage],
-    queryFn: async () =>
-      (await api.get('/admin/economy/transactions', { params: { page: String(txPage), pageSize: String(PAGE_SIZE) } })).data,
+    queryFn: async () => {
+      const raw = (await api.get('/admin/economy/transactions', { params: { page: String(txPage), pageSize: String(PAGE_SIZE) } })).data;
+      // Backend returns { data: [...] } with nested buyer/seller/item objects
+      const arr: any[] = raw?.transactions ?? raw?.data ?? [];
+      return {
+        transactions: arr.map((tx: any) => ({
+          id: tx.id,
+          buyerName: tx.buyerName ?? tx.buyer?.name ?? '',
+          sellerName: tx.sellerName ?? tx.seller?.name ?? '',
+          itemName: tx.itemName ?? tx.item?.template?.name ?? tx.item?.name ?? '',
+          price: tx.price ?? tx.totalPrice ?? tx.pricePerUnit ?? 0,
+          quantity: tx.quantity ?? 0,
+          createdAt: tx.createdAt ?? tx.timestamp ?? '',
+        })),
+        total: raw?.total ?? 0,
+        page: raw?.page ?? 1,
+        pageSize: raw?.pageSize ?? PAGE_SIZE,
+      };
+    },
     enabled: activeTab === 'transactions',
   });
 
@@ -127,7 +161,17 @@ export default function AdminEconomyPage() {
     refetch: overviewRefetch,
   } = useQuery<EconomyOverview>({
     queryKey: ['admin', 'economy', 'overview'],
-    queryFn: async () => (await api.get('/admin/economy/overview')).data,
+    queryFn: async () => {
+      // Backend endpoint is /summary not /overview; field names differ
+      const raw = (await api.get('/admin/economy/summary')).data;
+      return {
+        goldCirculation: raw?.goldCirculation ?? raw?.totalGoldCirculation ?? 0,
+        listingCount: raw?.listingCount ?? raw?.activeListingCount ?? 0,
+        totalListingValue: raw?.totalListingValue ?? raw?.activeListingTotalValue ?? 0,
+        transactionsLast30Days: raw?.transactionsLast30Days ?? raw?.transactionCount30d ?? 0,
+        transactionVolume: Array.isArray(raw?.transactionVolume) ? raw.transactionVolume : [],
+      };
+    },
     enabled: activeTab === 'overview',
   });
 
