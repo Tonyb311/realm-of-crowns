@@ -32,6 +32,9 @@ export interface BotState {
   pendingCrafting: boolean;
   pausedUntil: number;
   intelligence: number; // 0-100
+  partyId: string | null;       // Current party ID (null if not in a party)
+  partyRole: string | null;     // 'leader' | 'member' | null
+  partyTicksRemaining: number;  // Ticks until bot disbands the party (3-5)
 }
 
 export interface SimulationConfig {

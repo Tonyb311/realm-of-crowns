@@ -559,3 +559,465 @@ export async function resolveRoadEncounter(
     totalRounds,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Group Road Encounter Result
+// ---------------------------------------------------------------------------
+
+export interface GroupRoadEncounterResult {
+  /** Whether an encounter occurred (false = safe travel). */
+  encountered: boolean;
+  /** If encountered, did the party win? */
+  won?: boolean;
+  /** Monster name. */
+  monsterName?: string;
+  /** Monster level. */
+  monsterLevel?: number;
+  /** Total combat rounds. */
+  totalRounds?: number;
+  /** Per-member results. */
+  memberResults?: {
+    characterId: string;
+    survived: boolean;
+    xpAwarded: number;
+    goldAwarded: number;
+    deathPenalty?: { goldLost: number; xpLost: number; durabilityDamage: number };
+  }[];
+}
+
+// ---------------------------------------------------------------------------
+// Core: Resolve Group Road Encounter
+// ---------------------------------------------------------------------------
+
+/**
+ * Roll for and resolve a group road encounter during travel.
+ *
+ * Mirrors resolveRoadEncounter() but for a party of characters fighting
+ * a single scaled monster together.
+ *
+ * Monster scaling:
+ * - Level based on HIGHEST character level in the party
+ * - HP multiplied by party size
+ * - Damage bonus: +1 per extra member beyond the first
+ *
+ * Rewards / penalties:
+ * - XP per living member = base monster XP / party size
+ * - Gold split evenly among living members
+ * - Only dead members receive death penalties
+ * - All members receive consolation XP on loss
+ *
+ * The caller (travel-tick.ts) handles moving characters to origin/destination
+ * based on the encounter result.
+ */
+export async function resolveGroupRoadEncounter(
+  memberCharacterIds: string[],
+  originTownId: string,
+  destinationTownId: string,
+  routeInfo?: { dangerLevel: number; terrain: string },
+  partyId?: string,
+): Promise<GroupRoadEncounterResult> {
+  if (memberCharacterIds.length === 0) {
+    return { encountered: false };
+  }
+
+  // 1. Load ALL member characters with their equipment data
+  const characters = await prisma.character.findMany({
+    where: { id: { in: memberCharacterIds } },
+    select: {
+      id: true,
+      name: true,
+      level: true,
+      health: true,
+      maxHealth: true,
+      stats: true,
+      gold: true,
+      xp: true,
+    },
+  });
+
+  if (characters.length === 0) {
+    logger.warn({ memberCharacterIds }, 'Group road encounter: no characters found');
+    return { encountered: false };
+  }
+
+  // 2. Find the highest level among members
+  const highestLevel = Math.max(...characters.map(c => c.level));
+
+  // 3. Roll for encounter — chance scales with route danger + highest member level
+  let encounterChance = getEncounterChance(routeInfo?.dangerLevel ?? 3);
+
+  const cap = ENCOUNTER_CHANCE_CAP_BY_LEVEL[highestLevel];
+  if (cap !== undefined) {
+    encounterChance = Math.min(encounterChance, cap);
+  } else if (highestLevel >= 6) {
+    encounterChance = Math.min(1.0, encounterChance * HIGH_LEVEL_ENCOUNTER_MULTIPLIER);
+  }
+
+  const roll = Math.random();
+  if (roll > encounterChance) {
+    return { encountered: false };
+  }
+
+  // 4. Select a level-appropriate monster (biome → region → any)
+  const levelRange = getMonsterLevelRange(highestLevel);
+  const routeBiome = routeInfo?.terrain ? terrainToBiome(routeInfo.terrain) : null;
+
+  const destTown = await prisma.town.findUnique({
+    where: { id: destinationTownId },
+    select: { regionId: true },
+  });
+
+  let monsters: Awaited<ReturnType<typeof prisma.monster.findMany>> = [];
+
+  if (routeBiome) {
+    monsters = await prisma.monster.findMany({
+      where: {
+        biome: routeBiome,
+        level: { gte: levelRange.min, lte: levelRange.max },
+      },
+    });
+  }
+
+  if (monsters.length === 0 && destTown?.regionId) {
+    monsters = await prisma.monster.findMany({
+      where: {
+        regionId: destTown.regionId,
+        level: { gte: levelRange.min, lte: levelRange.max },
+      },
+    });
+  }
+
+  if (monsters.length === 0) {
+    monsters = await prisma.monster.findMany({
+      where: { level: { gte: levelRange.min, lte: levelRange.max } },
+    });
+  }
+
+  if (monsters.length === 0) {
+    logger.warn({ memberCharacterIds, levelRange }, 'Group road encounter: no suitable monsters found');
+    return { encountered: false };
+  }
+
+  const monster = monsters[Math.floor(Math.random() * monsters.length)];
+  const monsterStats = monster.stats as Record<string, number>;
+  const memberCount = characters.length;
+
+  // 5. Scale the monster: HP * partySize, bonusDamage + (partySize - 1)
+  const scaledMonsterHp = (monsterStats.hp ?? 50) * memberCount;
+  const baseMonsterWeapon = buildMonsterWeapon(monsterStats);
+  const scaledMonsterWeapon: WeaponInfo = {
+    ...baseMonsterWeapon,
+    bonusDamage: baseMonsterWeapon.bonusDamage + (memberCount - 1),
+  };
+
+  // 6. Create combat state with all members (team 0) + scaled monster (team 1)
+  const sessionId = crypto.randomUUID();
+  const combatants = [];
+
+  // Build player combatants and cache their weapons for combat resolution
+  const playerWeapons: Record<string, WeaponInfo> = {};
+  for (const char of characters) {
+    const charStats = parseStats(char.stats);
+    const playerWeapon = await getEquippedWeapon(char.id);
+    const armorAC = await getEquipmentAC(char.id);
+    const playerAC = 10 + getModifier(charStats.dex) + armorAC;
+
+    playerWeapons[char.id] = playerWeapon;
+
+    combatants.push(
+      createCharacterCombatant(
+        char.id,
+        char.name,
+        0, // team 0 = players
+        charStats,
+        char.level,
+        char.maxHealth, // road rest heals to full
+        char.maxHealth,
+        playerAC,
+        playerWeapon,
+        {},
+        getProficiencyBonus(char.level),
+      ),
+    );
+  }
+
+  const monsterCombatant = createMonsterCombatant(
+    `monster-${monster.id}`,
+    monster.name,
+    1, // team 1 = monster
+    parseStats(monster.stats),
+    monster.level,
+    scaledMonsterHp,
+    monsterStats.ac ?? 12,
+    scaledMonsterWeapon,
+    0, // proficiency already baked into monster attack stat
+  );
+  combatants.push(monsterCombatant);
+
+  let combatState = createCombatState(sessionId, 'PVE', combatants);
+
+  // 7. Auto-resolve combat (alternating attacks, max rounds)
+  for (let tick = 0; tick < MAX_COMBAT_ROUNDS * (memberCount + 1); tick++) {
+    if (combatState.status !== 'ACTIVE') break;
+
+    const currentActorId = combatState.turnOrder[combatState.turnIndex];
+    const currentActor = combatState.combatants.find(c => c.id === currentActorId);
+
+    if (!currentActor || !currentActor.isAlive) {
+      combatState = resolveTurn(combatState, { type: 'defend', actorId: currentActorId }, {});
+      continue;
+    }
+
+    // Determine target: monster attacks random living player, players attack monster
+    const enemies = combatState.combatants.filter(c => c.team !== currentActor.team && c.isAlive);
+    if (enemies.length === 0) break;
+
+    const target = enemies[Math.floor(Math.random() * enemies.length)];
+    const weapon = currentActor.entityType === 'monster'
+      ? (currentActor.weapon ?? undefined)
+      : playerWeapons[currentActor.id] ?? UNARMED_WEAPON;
+
+    combatState = resolveTurn(
+      combatState,
+      { type: 'attack', actorId: currentActorId, targetId: target.id },
+      { weapon },
+    );
+  }
+
+  // 8. Determine outcome: party wins if monster is dead, loses if all players are dead
+  const monsterResult = combatState.combatants.find(c => c.entityType === 'monster');
+  const playerResults = combatState.combatants.filter(c => c.entityType === 'character');
+  const partyWon = !(monsterResult?.isAlive ?? true);
+  const totalRounds = combatState.round;
+
+  const livingMembers = playerResults.filter(p => p.isAlive);
+  const deadMembers = playerResults.filter(p => !p.isAlive);
+  const livingCount = livingMembers.length;
+
+  // 9. Apply outcomes in a transaction
+  const memberResults: GroupRoadEncounterResult['memberResults'] = [];
+
+  await prisma.$transaction(async (tx) => {
+    if (partyWon) {
+      // Win: split XP and gold among living members
+      const totalXp = getMonsterKillXp(monster.level);
+      const xpPerMember = livingCount > 0 ? Math.floor(totalXp / memberCount) : 0;
+
+      // Calculate total gold from loot table
+      let totalGold = 0;
+      const lootTable = monster.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number }[];
+      for (const entry of lootTable) {
+        if (Math.random() <= entry.dropChance) {
+          totalGold += entry.gold * (Math.floor(Math.random() * (entry.maxQty - entry.minQty + 1)) + entry.minQty);
+        }
+      }
+      const goldPerMember = livingCount > 0 ? Math.floor(totalGold / livingCount) : 0;
+
+      for (const char of characters) {
+        const combatant = playerResults.find(p => p.id === char.id);
+        const survived = combatant?.isAlive ?? false;
+
+        if (survived) {
+          await tx.character.update({
+            where: { id: char.id },
+            data: {
+              xp: { increment: xpPerMember },
+              gold: { increment: goldPerMember },
+              health: combatant?.currentHp ?? char.health,
+            },
+          });
+          memberResults.push({
+            characterId: char.id,
+            survived: true,
+            xpAwarded: xpPerMember,
+            goldAwarded: goldPerMember,
+          });
+        } else {
+          // Dead member: no rewards
+          await tx.character.update({
+            where: { id: char.id },
+            data: {
+              health: char.maxHealth, // respawn at full HP
+            },
+          });
+          memberResults.push({
+            characterId: char.id,
+            survived: false,
+            xpAwarded: 0,
+            goldAwarded: 0,
+          });
+        }
+      }
+    } else {
+      // Loss: dead members get death penalty, all members get consolation XP
+      for (const char of characters) {
+        const combatant = playerResults.find(p => p.id === char.id);
+        const survived = combatant?.isAlive ?? false;
+
+        if (!survived) {
+          // Dead member: apply death penalty
+          const penalty = calculateDeathPenalty(
+            char.id,
+            char.level,
+            char.gold,
+            originTownId,
+          );
+
+          await tx.character.update({
+            where: { id: char.id },
+            data: {
+              health: char.maxHealth, // respawn at full HP
+              gold: Math.max(0, char.gold - penalty.goldLost),
+              xp: Math.max(0, char.xp - penalty.xpLost),
+            },
+          });
+
+          // Damage equipment durability
+          const equipment = await tx.characterEquipment.findMany({
+            where: { characterId: char.id },
+            select: { itemId: true },
+          });
+          if (equipment.length > 0) {
+            const itemIds = equipment.map(e => e.itemId);
+            await tx.$executeRaw`
+              UPDATE "items"
+              SET "current_durability" = GREATEST(0, "current_durability" - ${penalty.durabilityDamage})
+              WHERE "id" IN (${Prisma.join(itemIds)})
+            `;
+          }
+
+          memberResults.push({
+            characterId: char.id,
+            survived: false,
+            xpAwarded: ACTION_XP.PVE_SURVIVE,
+            goldAwarded: 0,
+            deathPenalty: {
+              goldLost: penalty.goldLost,
+              xpLost: penalty.xpLost,
+              durabilityDamage: penalty.durabilityDamage,
+            },
+          });
+        } else {
+          // Living member on a lost fight: no penalty, just consolation XP
+          memberResults.push({
+            characterId: char.id,
+            survived: true,
+            xpAwarded: ACTION_XP.PVE_SURVIVE,
+            goldAwarded: 0,
+          });
+        }
+
+        // All members get consolation XP
+        await tx.character.update({
+          where: { id: char.id },
+          data: { xp: { increment: ACTION_XP.PVE_SURVIVE } },
+        });
+      }
+    }
+  });
+
+  // 10. Post-transaction side effects for winning members
+  try {
+    if (partyWon) {
+      for (const mr of memberResults) {
+        if (mr.survived) {
+          onMonsterKill(mr.characterId, monster.name, 1);
+          await checkLevelUp(mr.characterId);
+
+          const pveWins = await prisma.combatParticipant.count({
+            where: {
+              characterId: mr.characterId,
+              session: { type: 'PVE', status: 'COMPLETED' },
+              currentHp: { gt: 0 },
+            },
+          });
+          await checkAchievements(mr.characterId, 'combat_pve', { wins: pveWins });
+        }
+      }
+    }
+  } catch (sideEffectErr: any) {
+    logger.warn(
+      { memberCharacterIds, err: sideEffectErr.message },
+      'Group road encounter: post-combat side-effect error (non-fatal)',
+    );
+  }
+
+  // 11. Log combat encounters — one record per member
+  if (COMBAT_LOGGING_ENABLED) {
+    const outcome: 'win' | 'loss' = partyWon ? 'win' : 'loss';
+
+    for (const char of characters) {
+      const combatant = playerResults.find(p => p.id === char.id);
+      const mr = memberResults.find(m => m.characterId === char.id);
+
+      try {
+        await prisma.combatEncounterLog.create({
+          data: {
+            type: 'pve',
+            sessionId,
+            characterId: char.id,
+            characterName: char.name,
+            opponentId: monsterCombatant.id,
+            opponentName: monster.name,
+            townId: null, // road encounter, not in a town
+            partyId: partyId ?? null,
+            startedAt: new Date(Date.now() - (totalRounds * 6000)),
+            endedAt: new Date(),
+            outcome,
+            totalRounds,
+            characterStartHp: char.maxHealth,
+            characterEndHp: combatant?.currentHp ?? 0,
+            opponentStartHp: scaledMonsterHp,
+            opponentEndHp: monsterResult?.currentHp ?? 0,
+            characterWeapon: playerWeapons[char.id]?.name ?? 'Unarmed Strike',
+            opponentWeapon: monsterResult?.weapon?.name ?? 'Natural Attack',
+            xpAwarded: mr?.xpAwarded ?? 0,
+            goldAwarded: mr?.goldAwarded ?? 0,
+            lootDropped: '',
+            rounds: [] as any, // shared combat state is identical — full log in first member's record
+            summary: `Group encounter (${memberCount} members): ${partyWon ? 'Victory' : 'Defeat'} vs ${monster.name} (L${monster.level}) in ${totalRounds} rounds.`,
+            triggerSource: 'group_road_encounter',
+            originTownId,
+            destinationTownId,
+            simulationTick: getSimulationTick(),
+          },
+        });
+      } catch (logErr: any) {
+        logger.error(
+          { characterId: char.id, err: logErr.message },
+          'Failed to write group combat encounter log',
+        );
+      }
+    }
+  }
+
+  logger.info(
+    {
+      memberCharacterIds,
+      memberCount,
+      highestLevel,
+      monster: monster.name,
+      monsterLevel: monster.level,
+      scaledMonsterHp,
+      routeDanger: routeInfo?.dangerLevel ?? null,
+      routeTerrain: routeInfo?.terrain ?? null,
+      outcome: partyWon ? 'win' : 'loss',
+      rounds: totalRounds,
+      livingMembers: livingCount,
+      deadMembers: deadMembers.length,
+      partyId: partyId ?? null,
+      originTownId,
+      destinationTownId,
+    },
+    'Group road encounter resolved',
+  );
+
+  return {
+    encountered: true,
+    won: partyWon,
+    monsterName: monster.name,
+    monsterLevel: monster.level,
+    totalRounds,
+    memberResults,
+  };
+}

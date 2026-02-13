@@ -73,6 +73,19 @@ export async function refreshBotState(bot: BotState): Promise<void> {
     const crafting = craftRes.data?.active || craftRes.data?.inProgress || false;
     bot.pendingCrafting = !!crafting;
   }
+
+  // Check party status
+  const partyRes = await get('/parties/me', bot.token);
+  if (partyRes.status >= 200 && partyRes.status < 300) {
+    if (partyRes.data?.party) {
+      bot.partyId = partyRes.data.party.id;
+      const myMembership = partyRes.data.party.members?.find((m: any) => m.characterId === bot.characterId);
+      bot.partyRole = myMembership?.role || 'member';
+    } else {
+      bot.partyId = null;
+      bot.partyRole = null;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -827,6 +840,165 @@ export async function completeQuest(bot: BotState, questId: string): Promise<Act
     const res = await post(endpoint, bot.token, { questId });
     if (res.status >= 200 && res.status < 300) {
       return { success: true, detail: `Completed quest ${questId}`, endpoint };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 22. createParty
+// ---------------------------------------------------------------------------
+
+export async function createParty(bot: BotState): Promise<ActionResult> {
+  const endpoint = '/parties/create';
+  try {
+    const res = await post(endpoint, bot.token, {});
+    if (res.status >= 200 && res.status < 300) {
+      const partyId = res.data?.party?.id || res.data?.partyId || res.data?.id;
+      if (partyId) {
+        bot.partyId = partyId;
+        bot.partyRole = 'leader';
+        bot.partyTicksRemaining = 3 + Math.floor(Math.random() * 3); // 3-5 ticks
+      }
+      return { success: true, detail: `Created party${partyId ? ` (${partyId})` : ''}`, endpoint };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 23. inviteToParty
+// ---------------------------------------------------------------------------
+
+export async function inviteToParty(bot: BotState, targetBot: BotState): Promise<ActionResult> {
+  const endpoint = `/parties/${bot.partyId}/invite`;
+  try {
+    const res = await post(endpoint, bot.token, { characterId: targetBot.characterId });
+    if (res.status >= 200 && res.status < 300) {
+      return { success: true, detail: `Invited ${targetBot.characterName} to party`, endpoint };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 24. acceptPartyInvite
+// ---------------------------------------------------------------------------
+
+export async function acceptPartyInvite(bot: BotState): Promise<ActionResult> {
+  const checkEndpoint = '/parties/me';
+  const endpoint = '/parties/accept';
+  try {
+    const meRes = await get(checkEndpoint, bot.token);
+    if (meRes.status < 200 || meRes.status >= 300) {
+      return { success: false, detail: 'Failed to check party status', endpoint: checkEndpoint };
+    }
+
+    const invitations: any[] = meRes.data?.pendingInvitations || meRes.data?.invitations || [];
+    if (invitations.length === 0) {
+      return { success: false, detail: 'No pending party invitations', endpoint: checkEndpoint };
+    }
+
+    const invite = invitations[0];
+    const partyId = invite.party?.id || invite.partyId || invite.id;
+    const acceptEndpoint = `/parties/${partyId}/accept`;
+    const res = await post(acceptEndpoint, bot.token, {});
+    if (res.status >= 200 && res.status < 300) {
+      bot.partyId = partyId;
+      bot.partyRole = 'member';
+      return { success: true, detail: `Joined party ${partyId}`, endpoint: acceptEndpoint };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint: acceptEndpoint };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 25. disbandParty
+// ---------------------------------------------------------------------------
+
+export async function disbandParty(bot: BotState): Promise<ActionResult> {
+  const endpoint = `/parties/${bot.partyId}/disband`;
+  try {
+    const res = await post(endpoint, bot.token, {});
+    if (res.status >= 200 && res.status < 300) {
+      bot.partyId = null;
+      bot.partyRole = null;
+      bot.partyTicksRemaining = 0;
+      return { success: true, detail: 'Disbanded party', endpoint };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 26. leaveParty
+// ---------------------------------------------------------------------------
+
+export async function leaveParty(bot: BotState): Promise<ActionResult> {
+  const endpoint = `/parties/${bot.partyId}/leave`;
+  try {
+    const res = await post(endpoint, bot.token, {});
+    if (res.status >= 200 && res.status < 300) {
+      bot.partyId = null;
+      bot.partyRole = null;
+      bot.partyTicksRemaining = 0;
+      return { success: true, detail: 'Left party', endpoint };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 27. partyTravel
+// ---------------------------------------------------------------------------
+
+export async function partyTravel(bot: BotState): Promise<ActionResult> {
+  const endpoint = '/travel/start';
+  try {
+    // Fetch available routes from the bot's current town
+    const routesRes = await get('/travel/routes', bot.token);
+    if (routesRes.status < 200 || routesRes.status >= 300) {
+      return {
+        success: false,
+        detail: routesRes.data?.error || `Failed to fetch travel routes: HTTP ${routesRes.status}`,
+        endpoint,
+      };
+    }
+
+    const routes: any[] = routesRes.data?.routes || routesRes.data || [];
+    if (routes.length === 0) {
+      return {
+        success: false,
+        detail: 'No travel routes available from current town',
+        endpoint,
+      };
+    }
+
+    // Pick a random route
+    const route = pickRandom(routes)!;
+    const routeId = route.id || route.routeId;
+    const destName = route.destination?.name || route.name || routeId;
+
+    // The /travel/start endpoint detects party leaders and initiates group travel
+    const res = await post(endpoint, bot.token, { routeId });
+    if (res.status >= 200 && res.status < 300) {
+      return {
+        success: true,
+        detail: `Party traveling to ${destName}`,
+        endpoint,
+      };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
   } catch (err: any) {

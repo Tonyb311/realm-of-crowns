@@ -171,7 +171,10 @@ router.get('/routes/:routeId', authGuard, characterGuard, async (req: Authentica
   }
 });
 
-// POST /api/travel/start -- Begin solo journey
+// POST /api/travel/start -- Begin solo or party journey
+// If the character is a party leader → initiates GROUP travel for all members
+// If the character is in a party but NOT the leader → reject
+// If the character is NOT in a party → solo travel (unchanged)
 router.post('/start', authGuard, characterGuard, validate(startTravelSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { routeId } = req.body;
@@ -183,6 +186,33 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
 
     if (!character.currentTownId) {
       return res.status(400).json({ error: 'You must be in a town to begin traveling' });
+    }
+
+    // Check if character is in an active party
+    const partyMembership = await prisma.partyMember.findFirst({
+      where: { characterId: character.id, leftAt: null },
+      include: {
+        party: {
+          include: {
+            members: {
+              where: { leftAt: null },
+              include: {
+                character: {
+                  select: { id: true, name: true, level: true, currentTownId: true, travelStatus: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const isInParty = !!partyMembership && partyMembership.party.status === 'active';
+    const isPartyLeader = isInParty && partyMembership!.role === 'leader';
+
+    // Party member but not leader → reject
+    if (isInParty && !isPartyLeader) {
+      return res.status(403).json({ error: 'Only the party leader can initiate travel' });
     }
 
     const route = await prisma.travelRoute.findUnique({
@@ -218,7 +248,101 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
       return res.status(400).json({ error: 'You are not at either end of this route' });
     }
 
-    // Create travel state and update character in a transaction
+    // ---- PARTY TRAVEL (leader initiates group travel) ----
+    if (isPartyLeader) {
+      const party = partyMembership!.party;
+      const partyMembers = party.members;
+
+      // Validate all members are in the correct town and idle
+      const invalidMembers = partyMembers.filter(
+        m => m.character.currentTownId !== character.currentTownId || m.character.travelStatus !== 'idle'
+      );
+
+      if (invalidMembers.length > 0) {
+        const names = invalidMembers.map(m => m.character.name).join(', ');
+        return res.status(400).json({
+          error: `Some party members are not ready: ${names}. All members must be idle and in the same town.`,
+        });
+      }
+
+      const memberCharacterIds = partyMembers.map(m => m.character.id);
+
+      // Create a TravelGroup linked to the party, with GroupTravelState
+      const groupTravelState = await prisma.$transaction(async (tx) => {
+        const travelGroup = await tx.travelGroup.create({
+          data: {
+            leaderId: character.id,
+            name: party.name || null,
+            status: 'traveling',
+            partyId: party.id,
+          },
+        });
+
+        // Create TravelGroupMembers
+        for (const member of partyMembers) {
+          await tx.travelGroupMember.create({
+            data: {
+              groupId: travelGroup.id,
+              characterId: member.character.id,
+              role: member.role,
+            },
+          });
+        }
+
+        const gts = await tx.groupTravelState.create({
+          data: {
+            groupId: travelGroup.id,
+            routeId: route.id,
+            currentNodeIndex: 0,
+            direction,
+            status: 'traveling',
+            speedModifier: 1,
+          },
+        });
+
+        // Update all member characters
+        for (const charId of memberCharacterIds) {
+          await tx.character.update({
+            where: { id: charId },
+            data: {
+              travelStatus: 'traveling_group',
+              currentTownId: null,
+            },
+          });
+        }
+
+        return gts;
+      });
+
+      const etaTicks = calculateEtaTicks(0, route.nodeCount, direction, groupTravelState.speedModifier);
+
+      return res.status(201).json({
+        type: 'party',
+        travelState: {
+          id: groupTravelState.id,
+          routeId: groupTravelState.routeId,
+          currentNodeIndex: groupTravelState.currentNodeIndex,
+          direction: groupTravelState.direction,
+          status: groupTravelState.status,
+          startedAt: groupTravelState.startedAt,
+        },
+        route: {
+          name: route.name,
+          fromTown: route.fromTown,
+          toTown: route.toTown,
+          nodeCount: route.nodeCount,
+        },
+        party: {
+          id: party.id,
+          name: party.name,
+          memberCount: memberCharacterIds.length,
+        },
+        etaTicks,
+        nextTickAt: getNextTickTime(),
+      });
+    }
+
+    // ---- SOLO TRAVEL (no party) ----
     const travelState = await prisma.$transaction(async (tx) => {
       const state = await tx.characterTravelState.create({
         data: {
@@ -246,6 +370,7 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
     const etaTicks = calculateEtaTicks(0, route.nodeCount, direction, travelState.speedModifier);
 
     return res.status(201).json({
+      type: 'solo',
       travelState: {
         id: travelState.id,
         routeId: travelState.routeId,

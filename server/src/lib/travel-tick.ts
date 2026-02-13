@@ -1,6 +1,6 @@
 import { prisma } from './prisma';
 import { logger } from './logger';
-import { resolveRoadEncounter } from './road-encounter';
+import { resolveRoadEncounter, resolveGroupRoadEncounter } from './road-encounter';
 import { ACTION_XP } from '@shared/data/progression';
 import { checkLevelUp } from '../services/progression';
 
@@ -12,6 +12,9 @@ export interface TravelTickResult {
   soloEncounterLosses: number;
   groupsMoved: number;
   groupsArrived: number;
+  groupEncountered: number;
+  groupEncounterWins: number;
+  groupEncounterLosses: number;
   errors: number;
 }
 
@@ -36,6 +39,9 @@ export async function processTravelTick(): Promise<TravelTickResult> {
     soloEncounterLosses: 0,
     groupsMoved: 0,
     groupsArrived: 0,
+    groupEncountered: 0,
+    groupEncounterWins: 0,
+    groupEncounterLosses: 0,
     errors: 0,
   };
 
@@ -62,6 +68,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
       },
       group: {
         include: {
+          party: { select: { id: true } },
           members: {
             include: {
               character: { select: { id: true } },
@@ -215,7 +222,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
   }
 
   // -----------------------------------------------------------------------
-  // 4. Process group travelers (encounters not yet implemented for groups)
+  // 4. Process group travelers (with group road encounters)
   // -----------------------------------------------------------------------
   for (const groupState of groupTravelers) {
     try {
@@ -232,45 +239,148 @@ export async function processTravelTick(): Promise<TravelTickResult> {
         const destinationTownId = groupState.direction === 'forward'
           ? groupState.route.toTownId
           : groupState.route.fromTownId;
+        const originTownId = groupState.direction === 'forward'
+          ? groupState.route.fromTownId
+          : groupState.route.toTownId;
 
         // Collect all member character IDs
         const memberCharacterIds = groupState.group.members.map((m) => m.character.id);
+        const groupPartyId = groupState.group.party?.id ?? undefined;
 
-        // Arrival: move ALL group members to destination town atomically
-        // NOTE: Group road encounters would need special handling (shared combat?)
-        // For now, groups arrive safely without encounter checks
-        const groupTravelXp = ACTION_XP.TRAVEL_PER_NODE * groupState.route.nodeCount;
-        await prisma.$transaction([
-          // Update all member characters (with travel XP)
-          prisma.character.updateMany({
-            where: { id: { in: memberCharacterIds } },
-            data: {
-              currentTownId: destinationTownId,
-              travelStatus: 'idle',
-              xp: { increment: groupTravelXp },
-            },
-          }),
-          // Delete the group travel state
-          prisma.groupTravelState.delete({
-            where: { id: groupState.id },
-          }),
-          // Mark the group as arrived
-          prisma.travelGroup.update({
-            where: { id: groupState.groupId },
-            data: { status: 'arrived' },
-          }),
-        ]);
-
-        result.groupsArrived++;
-        logger.info(
-          {
-            groupId: groupState.groupId,
-            destinationTownId,
-            memberCount: memberCharacterIds.length,
-            routeNodeCount: groupState.route.nodeCount,
-          },
-          'Travel group arrived at destination',
+        // --- Group Road Encounter Check ---
+        const encounter = await resolveGroupRoadEncounter(
+          memberCharacterIds,
+          originTownId,
+          destinationTownId,
+          { dangerLevel: groupState.route.dangerLevel, terrain: groupState.route.terrain },
+          groupPartyId,
         );
+
+        const groupTravelXp = ACTION_XP.TRAVEL_PER_NODE * groupState.route.nodeCount;
+
+        if (encounter.encountered) {
+          result.groupEncountered++;
+
+          if (encounter.won) {
+            // Won encounter: all members arrive at destination with travel XP
+            result.groupEncounterWins++;
+            const winOps: any[] = [
+              prisma.character.updateMany({
+                where: { id: { in: memberCharacterIds } },
+                data: {
+                  currentTownId: destinationTownId,
+                  travelStatus: 'idle',
+                  xp: { increment: groupTravelXp },
+                },
+              }),
+              prisma.groupTravelState.delete({
+                where: { id: groupState.id },
+              }),
+              prisma.travelGroup.update({
+                where: { id: groupState.groupId },
+                data: { status: 'arrived' },
+              }),
+            ];
+            if (groupPartyId) {
+              winOps.push(prisma.party.update({ where: { id: groupPartyId }, data: { townId: destinationTownId } }));
+            }
+            await prisma.$transaction(winOps);
+
+            // Level-up check for each member (non-fatal)
+            for (const charId of memberCharacterIds) {
+              try { await checkLevelUp(charId); } catch { /* non-fatal */ }
+            }
+
+            result.groupsArrived++;
+            logger.info(
+              {
+                groupId: groupState.groupId,
+                destinationTownId,
+                memberCount: memberCharacterIds.length,
+                encounter: `Won vs ${encounter.monsterName} (L${encounter.monsterLevel})`,
+              },
+              'Travel group won road encounter, arrived at destination',
+            );
+          } else {
+            // Lost encounter: all members return to origin town (penalties already applied)
+            result.groupEncounterLosses++;
+            const lossOps: any[] = [
+              prisma.character.updateMany({
+                where: { id: { in: memberCharacterIds } },
+                data: {
+                  currentTownId: originTownId,
+                  travelStatus: 'idle',
+                  xp: { increment: groupTravelXp },
+                },
+              }),
+              prisma.groupTravelState.delete({
+                where: { id: groupState.id },
+              }),
+              prisma.travelGroup.update({
+                where: { id: groupState.groupId },
+                data: { status: 'arrived' },
+              }),
+            ];
+            if (groupPartyId) {
+              lossOps.push(prisma.party.update({ where: { id: groupPartyId }, data: { townId: originTownId } }));
+            }
+            await prisma.$transaction(lossOps);
+
+            // Level-up check for each member (non-fatal)
+            for (const charId of memberCharacterIds) {
+              try { await checkLevelUp(charId); } catch { /* non-fatal */ }
+            }
+
+            logger.info(
+              {
+                groupId: groupState.groupId,
+                originTownId,
+                memberCount: memberCharacterIds.length,
+                encounter: `Lost vs ${encounter.monsterName} (L${encounter.monsterLevel})`,
+              },
+              'Travel group lost road encounter, returned to origin',
+            );
+          }
+        } else {
+          // No encounter: arrive at destination with travel XP
+          const safeOps: any[] = [
+            prisma.character.updateMany({
+              where: { id: { in: memberCharacterIds } },
+              data: {
+                currentTownId: destinationTownId,
+                travelStatus: 'idle',
+                xp: { increment: groupTravelXp },
+              },
+            }),
+            prisma.groupTravelState.delete({
+              where: { id: groupState.id },
+            }),
+            prisma.travelGroup.update({
+              where: { id: groupState.groupId },
+              data: { status: 'arrived' },
+            }),
+          ];
+          if (groupPartyId) {
+            safeOps.push(prisma.party.update({ where: { id: groupPartyId }, data: { townId: destinationTownId } }));
+          }
+          await prisma.$transaction(safeOps);
+
+          // Level-up check for each member (non-fatal)
+          for (const charId of memberCharacterIds) {
+            try { await checkLevelUp(charId); } catch { /* non-fatal */ }
+          }
+
+          result.groupsArrived++;
+          logger.info(
+            {
+              groupId: groupState.groupId,
+              destinationTownId,
+              memberCount: memberCharacterIds.length,
+              routeNodeCount: groupState.route.nodeCount,
+            },
+            'Travel group arrived at destination (safe journey)',
+          );
+        }
       } else {
         // Still en route: advance node index
         await prisma.groupTravelState.update({

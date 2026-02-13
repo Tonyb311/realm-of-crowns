@@ -13,7 +13,7 @@ type ActionKey =
   | 'gather' | 'craft' | 'buy' | 'sell'
   | 'quest' | 'travel' | 'message'
   | 'friend' | 'nominate' | 'vote' | 'guild'
-  | 'equip' | 'browse';
+  | 'equip' | 'browse' | 'party';
 
 // ---- Per-profile weight tables ----
 // Combat weight removed from all profiles — PvE happens via road encounters during travel.
@@ -152,6 +152,70 @@ export async function decideBotAction(
   // Check if travel is possible (more than 1 unique town among bots)
   const uniqueTowns = new Set(allBots.map(b => b.currentTownId)).size;
   const canTravel = uniqueTowns > 1;
+
+  // ─── Party lifecycle management ───
+  if (bot.partyId) {
+    if (bot.partyRole === 'leader') {
+      bot.partyTicksRemaining--;
+
+      // Time to disband? (0 or fewer ticks remaining)
+      if (bot.partyTicksRemaining <= 0) {
+        return actions.disbandParty(bot);
+      }
+
+      // Leader with party: try to invite nearby partyless bots (if party < 3)
+      const partyMembers = allBots.filter(b => b.partyId === bot.partyId);
+      if (partyMembers.length < 3) {
+        const candidates = allBots.filter(
+          b => !b.partyId && b.currentTownId === bot.currentTownId && b.characterId !== bot.characterId,
+        );
+        if (candidates.length > 0) {
+          const target = candidates[Math.floor(Math.random() * candidates.length)];
+          return actions.inviteToParty(bot, target);
+        }
+      }
+
+      // Leader: wait 2 ticks for recruitment before traveling
+      // (partyTicksRemaining starts at 5-7, only travel when <= remaining - 2)
+      const initialTicks = 5; // approximate initial value
+      const ticksElapsed = initialTicks - bot.partyTicksRemaining;
+      if (ticksElapsed < 2) {
+        return { success: true, detail: 'Party leader recruiting (waiting for members)', endpoint: 'none' };
+      }
+
+      // Leader with party: initiate group travel if possible
+      if (canTravel) {
+        return actions.partyTravel(bot);
+      }
+    }
+
+    // Non-leader in party: fall through to individual actions (craft, gather, quest, etc.)
+  }
+
+  // ─── Always check for pending party invites when not in a party ───
+  if (!bot.partyId && bot.currentTownId) {
+    const acceptResult = await actions.acceptPartyInvite(bot);
+    if (acceptResult.success) {
+      return acceptResult;
+    }
+  }
+
+  // ─── Party formation check (not in a party, 30% chance) ───
+  if (!bot.partyId && bot.currentTownId && Math.random() < 0.3) {
+    // Try to create a party if there are other partyless bots nearby
+    const nearbyPartyless = allBots.filter(
+      b => !b.partyId && b.characterId !== bot.characterId && b.currentTownId === bot.currentTownId,
+    );
+    if (nearbyPartyless.length > 0) {
+      const createResult = await actions.createParty(bot);
+      if (createResult.success) {
+        // Immediately invite a nearby bot
+        const target = nearbyPartyless[Math.floor(Math.random() * nearbyPartyless.length)];
+        await actions.inviteToParty(bot, target);
+        return createResult;
+      }
+    }
+  }
 
   // ─── Quest-first logic ───
   if (config.enabledSystems.quests) {

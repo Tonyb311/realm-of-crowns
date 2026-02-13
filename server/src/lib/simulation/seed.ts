@@ -359,6 +359,9 @@ async function createSingleBot(
     pendingCrafting: false,
     pausedUntil: 0,
     intelligence: config.intelligence,
+    partyId: null,
+    partyRole: null,
+    partyTicksRemaining: 0,
   };
 }
 

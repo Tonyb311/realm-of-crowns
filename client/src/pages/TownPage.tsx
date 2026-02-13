@@ -21,6 +21,7 @@ import api from '../services/api';
 import { getSocket } from '../services/socket';
 import QuestDialog, { type QuestOffer } from '../components/QuestDialog';
 import { RealmPanel, RealmButton, RealmBadge } from '../components/ui/realm-index';
+import PartyPanel from '../components/party/PartyPanel';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -474,6 +475,9 @@ export default function TownPage() {
                 </ul>
               </RealmPanel>
             )}
+
+            {/* Party */}
+            <PartyPanel characterId={character.id} />
           </aside>
 
           {/* Main content */}

@@ -503,6 +503,10 @@ model Character {
   loansTaken              Loan[]                  @relation("LoanBorrower")
   serviceReputations      ServiceReputation[]
   lawVotes                LawVote[]
+  partyMemberships        PartyMember[]
+  ledParties              Party[]                 @relation("PartyLeader")
+  partyInvitationsReceived PartyInvitation[]      @relation("PartyInvitee")
+  partyInvitationsSent    PartyInvitation[]       @relation("PartyInviter")
 
   @@index([userId])
   @@index([currentTownId])
@@ -654,6 +658,7 @@ model Town {
   townPolicy        TownPolicy?
   councilMembers    CouncilMember[]    @relation("TownCouncil")
   npcs              Npc[]
+  parties           Party[]
 
   @@index([regionId])
   @@index([mayorId])
@@ -1459,6 +1464,7 @@ model CombatEncounterLog {
   opponentId       String?  @map("opponent_id")
   opponentName     String   @default("") @map("opponent_name")
   townId           String?  @map("town_id")
+  partyId          String?  @map("party_id")
   startedAt        DateTime @default(now()) @map("started_at")
   endedAt          DateTime @default(now()) @map("ended_at")
   outcome          String   @default("") // 'win' | 'loss' | 'flee' | 'draw'
@@ -1474,7 +1480,7 @@ model CombatEncounterLog {
   lootDropped      String   @default("") @map("loot_dropped")
   rounds           Json     @default("[]")
   summary          String   @default("")
-  triggerSource    String   @default("town_pve") @map("trigger_source") // 'road_encounter' | 'town_pve' | 'pvp_duel' | 'pvp_spar' | 'arena'
+  triggerSource    String   @default("town_pve") @map("trigger_source") // 'road_encounter' | 'group_road_encounter' | 'town_pve' | 'pvp_duel' | 'pvp_spar' | 'arena'
   originTownId     String?  @map("origin_town_id")
   destinationTownId String? @map("destination_town_id")
   simulationTick   Int?     @map("simulation_tick")
@@ -1482,6 +1488,7 @@ model CombatEncounterLog {
 
   character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   town            Town?     @relation(fields: [townId], references: [id], onDelete: SetNull)
+  party           Party?    @relation(fields: [partyId], references: [id], onDelete: SetNull)
   originTown      Town?     @relation("EncounterOrigin", fields: [originTownId], references: [id], onDelete: SetNull)
   destinationTown Town?     @relation("EncounterDestination", fields: [destinationTownId], references: [id], onDelete: SetNull)
 
@@ -1489,6 +1496,7 @@ model CombatEncounterLog {
   @@index([simulationTick])
   @@index([type])
   @@index([triggerSource])
+  @@index([partyId])
   @@map("combat_encounter_logs")
 }
 
@@ -1832,21 +1840,84 @@ model TravelNode {
   @@map("travel_nodes")
 }
 
+// ---- Party System ----
+
+model Party {
+  id          String    @id @default(uuid())
+  name        String?
+  leaderId    String    @map("leader_id")
+  townId      String    @map("town_id")
+  status      String    @default("active") // active, disbanded
+  maxSize     Int       @default(5) @map("max_size")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  disbandedAt DateTime? @map("disbanded_at")
+
+  leader      Character           @relation("PartyLeader", fields: [leaderId], references: [id])
+  town        Town                @relation(fields: [townId], references: [id])
+  members     PartyMember[]
+  invitations PartyInvitation[]
+  travelGroups TravelGroup[]
+  combatEncounterLogs CombatEncounterLog[]
+
+  @@index([leaderId])
+  @@index([townId])
+  @@index([status])
+  @@map("parties")
+}
+
+model PartyMember {
+  id          String    @id @default(uuid())
+  partyId     String    @map("party_id")
+  characterId String    @map("character_id")
+  role        String    @default("member") // leader, member
+  joinedAt    DateTime  @default(now()) @map("joined_at")
+  leftAt      DateTime? @map("left_at")
+
+  party     Party     @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([partyId])
+  @@index([characterId])
+  @@index([characterId, leftAt])
+  @@map("party_members")
+}
+
+model PartyInvitation {
+  id          String   @id @default(uuid())
+  partyId     String   @map("party_id")
+  characterId String   @map("character_id")
+  invitedById String   @map("invited_by_id")
+  status      String   @default("pending") // pending, accepted, declined, expired
+  createdAt   DateTime @default(now()) @map("created_at")
+  expiresAt   DateTime @map("expires_at")
+
+  party     Party     @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  character Character @relation("PartyInvitee", fields: [characterId], references: [id], onDelete: Cascade)
+  invitedBy Character @relation("PartyInviter", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([partyId])
+  @@index([characterId, status])
+  @@map("party_invitations")
+}
+
 model TravelGroup {
   id        String   @id @default(uuid())
   leaderId  String   @map("leader_id")
   name      String?
   status    String   @default("forming") // forming, traveling, arrived, disbanded
   maxSize   Int      @default(5)  @map("max_size")
+  partyId   String?  @map("party_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   leader      Character           @relation("TravelGroupLeader", fields: [leaderId], references: [id])
+  party       Party?              @relation(fields: [partyId], references: [id], onDelete: SetNull)
   members     TravelGroupMember[]
   travelState GroupTravelState?
 
   @@index([leaderId])
   @@index([status])
+  @@index([partyId])
   @@map("travel_groups")
 }
 

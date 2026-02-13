@@ -5,6 +5,7 @@ node_modules/
 
 # Build
 dist/
+dist_check/
 build/
 *.tsbuildinfo
 
@@ -26,6 +27,7 @@ database/prisma/migrations/*_migration_lock.toml
 # OS
 .DS_Store
 Thumbs.db
+nul
 
 # Logs
 *.log

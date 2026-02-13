@@ -40,6 +40,7 @@ import serviceRouter from './service';
 import loanRouter from './loans';
 import gameRoutes from './game';
 import gatheringRouter from './gathering';
+import partiesRouter from './parties';
 
 const router = Router();
 
@@ -85,5 +86,6 @@ router.use('/admin', adminRouter);
 router.use('/service', serviceRouter);
 router.use('/loans', loanRouter);
 router.use('/game', gameRoutes);
+router.use('/parties', partiesRouter);
 
 export default router;
