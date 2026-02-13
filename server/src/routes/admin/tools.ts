@@ -6,6 +6,7 @@ import { logRouteError } from '../../lib/error-logger';
 import { validate } from '../../middleware/validate';
 import { AuthenticatedRequest } from '../../types/express';
 import { triggerManualTick } from '../../jobs/daily-tick';
+import { getGameDay, getTodayTickDate, getGameDayOffset, resetGameDayOffset } from '../../lib/game-day';
 import { getIO } from '../../socket/events';
 
 const router = Router();
@@ -27,7 +28,10 @@ router.post('/tick', async (req: AuthenticatedRequest, res: Response) => {
     const result = await triggerManualTick();
 
     if (result.success) {
-      return res.json({ message: 'Daily tick completed successfully' });
+      return res.json({
+        message: 'Daily tick completed successfully',
+        result: result.result,
+      });
     } else {
       return res.status(500).json({ error: 'Tick failed', details: result.error });
     }
@@ -108,6 +112,40 @@ router.get('/health', async (req: AuthenticatedRequest, res: Response) => {
   } catch (error) {
     if (handlePrismaError(error, res, 'admin-health-check', req)) return;
     logRouteError(req, 500, '[Admin] Health check error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/admin/tools/game-day
+ * Get current game day information.
+ */
+router.get('/game-day', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    return res.json({
+      gameDay: getGameDay(),
+      tickDate: getTodayTickDate().toISOString().slice(0, 10),
+      offset: getGameDayOffset(),
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/admin/tools/reset-game-day
+ * Reset the game day offset back to 0 (real-time).
+ */
+router.post('/reset-game-day', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    resetGameDayOffset();
+    console.log(`[Admin] Game day offset reset by admin ${req.user!.userId}`);
+    return res.json({
+      message: 'Game day offset reset to 0',
+      gameDay: getGameDay(),
+      tickDate: getTodayTickDate().toISOString().slice(0, 10),
+    });
+  } catch (error) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

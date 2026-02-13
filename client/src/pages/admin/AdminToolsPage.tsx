@@ -12,6 +12,8 @@ import {
   HardDrive,
   CheckCircle2,
   XCircle,
+  Calendar,
+  RotateCcw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -36,9 +38,28 @@ interface ServerHealth {
   timestamp: string;
 }
 
+interface DailyTickResultData {
+  tickDate: string;
+  charactersProcessed: number;
+  gatherActionsProcessed: number;
+  craftActionsProcessed: number;
+  restActionsProcessed: number;
+  lawsProcessed: number;
+  resourcesRestored: number;
+  durationMs: number;
+  gameDayOffset: number;
+  errors: string[];
+}
+
 interface TickResult {
   message: string;
-  details?: Record<string, unknown>;
+  result?: DailyTickResultData;
+}
+
+interface GameDayInfo {
+  gameDay: number;
+  tickDate: string;
+  offset: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -76,6 +97,13 @@ export default function AdminToolsPage() {
   const [broadcastTitle, setBroadcastTitle] = useState('');
   const [broadcastMessage, setBroadcastMessage] = useState('');
 
+  // Game day info query
+  const { data: gameDay, refetch: refetchGameDay } = useQuery<GameDayInfo>({
+    queryKey: ['admin', 'tools', 'game-day'],
+    queryFn: async () => (await api.get('/admin/tools/game-day')).data,
+    refetchInterval: 10000,
+  });
+
   // Daily tick mutation
   const tickMutation = useMutation<TickResult>({
     mutationFn: async () => {
@@ -83,9 +111,22 @@ export default function AdminToolsPage() {
     },
     onSuccess: (data) => {
       toast.success(data.message || 'Daily tick completed');
+      refetchGameDay();
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || 'Daily tick failed');
+    },
+  });
+
+  // Reset game day mutation
+  const resetDayMutation = useMutation({
+    mutationFn: async () => (await api.post('/admin/tools/reset-game-day')).data,
+    onSuccess: () => {
+      toast.success('Game day offset reset to real time');
+      refetchGameDay();
+    },
+    onError: () => {
+      toast.error('Failed to reset game day');
     },
   });
 
@@ -138,29 +179,122 @@ export default function AdminToolsPage() {
         <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6">
           <div className="flex items-center gap-2 mb-4">
             <Play className="w-5 h-5 text-realm-gold-400" />
-            <h2 className="font-display text-realm-text-primary text-lg">Trigger Daily Tick</h2>
+            <h2 className="font-display text-realm-text-primary text-lg">Daily Tick &amp; Game Day</h2>
           </div>
-          <p className="text-realm-text-muted text-sm mb-4">
-            Manually trigger the daily game tick. This processes resource respawns, building upkeep,
-            food consumption, item durability decay, and other daily maintenance tasks.
-          </p>
-          <button
-            onClick={handleTick}
-            disabled={tickMutation.isPending}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {tickMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Play className="w-4 h-4" />
-            )}
-            {tickMutation.isPending ? 'Running Tick...' : 'Run Daily Tick'}
-          </button>
-          {tickMutation.isSuccess && (
-            <p className="text-realm-success text-xs mt-3">
-              Tick completed successfully.
-            </p>
+
+          {/* Game Day Info */}
+          {gameDay && (
+            <div className="bg-realm-bg-900/50 border border-realm-border rounded-lg p-3 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="w-3.5 h-3.5 text-realm-gold-400" />
+                <span className="text-realm-text-muted text-xs">Current Game Day</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <div>
+                  <span className="text-realm-gold-400 font-display text-lg">Day {gameDay.gameDay}</span>
+                  <span className="text-realm-text-muted text-xs ml-2">({gameDay.tickDate})</span>
+                </div>
+                {gameDay.offset > 0 && (
+                  <span className="text-xs text-realm-warning bg-realm-warning/10 border border-realm-warning/30 rounded px-2 py-0.5">
+                    +{gameDay.offset} day offset
+                  </span>
+                )}
+              </div>
+            </div>
           )}
+
+          <p className="text-realm-text-muted text-sm mb-4">
+            Manually trigger the daily tick to simulate a new game day. Processes all locked-in
+            actions, then advances the game day so players can take new actions immediately.
+          </p>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleTick}
+              disabled={tickMutation.isPending}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {tickMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4" />
+              )}
+              {tickMutation.isPending ? 'Running Tick...' : 'Run Daily Tick'}
+            </button>
+
+            {gameDay && gameDay.offset > 0 && (
+              <button
+                onClick={() => resetDayMutation.mutate()}
+                disabled={resetDayMutation.isPending}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-realm-bg-800 text-realm-text-secondary font-display text-sm rounded border border-realm-border hover:border-realm-gold-500/50 hover:text-realm-text-primary transition-colors disabled:opacity-50"
+              >
+                {resetDayMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RotateCcw className="w-4 h-4" />
+                )}
+                Reset to Real Time
+              </button>
+            )}
+          </div>
+
+          {/* Tick Results */}
+          {tickMutation.isSuccess && tickMutation.data?.result && (
+            <div className="mt-4 bg-realm-bg-900/50 border border-realm-success/30 rounded-lg p-4">
+              <p className="text-realm-success font-display text-sm mb-3">Tick completed successfully</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                <div>
+                  <span className="text-realm-text-muted">Tick Date</span>
+                  <p className="text-realm-text-primary font-display">{tickMutation.data.result.tickDate}</p>
+                </div>
+                <div>
+                  <span className="text-realm-text-muted">Characters</span>
+                  <p className="text-realm-text-primary font-display">{tickMutation.data.result.charactersProcessed}</p>
+                </div>
+                <div>
+                  <span className="text-realm-text-muted">Gathering</span>
+                  <p className="text-realm-text-primary font-display">{tickMutation.data.result.gatherActionsProcessed}</p>
+                </div>
+                <div>
+                  <span className="text-realm-text-muted">Crafting</span>
+                  <p className="text-realm-text-primary font-display">{tickMutation.data.result.craftActionsProcessed}</p>
+                </div>
+                <div>
+                  <span className="text-realm-text-muted">Resting</span>
+                  <p className="text-realm-text-primary font-display">{tickMutation.data.result.restActionsProcessed}</p>
+                </div>
+                <div>
+                  <span className="text-realm-text-muted">Laws Processed</span>
+                  <p className="text-realm-text-primary font-display">{tickMutation.data.result.lawsProcessed}</p>
+                </div>
+                <div>
+                  <span className="text-realm-text-muted">Resources Restored</span>
+                  <p className="text-realm-text-primary font-display">{tickMutation.data.result.resourcesRestored}</p>
+                </div>
+                <div>
+                  <span className="text-realm-text-muted">Duration</span>
+                  <p className="text-realm-text-primary font-display">{tickMutation.data.result.durationMs}ms</p>
+                </div>
+                <div>
+                  <span className="text-realm-text-muted">Day Offset</span>
+                  <p className="text-realm-text-primary font-display">+{tickMutation.data.result.gameDayOffset}</p>
+                </div>
+              </div>
+              {tickMutation.data.result.errors.length > 0 && (
+                <div className="mt-3 text-blood-light text-xs">
+                  <p className="font-display mb-1">Errors:</p>
+                  {tickMutation.data.result.errors.map((err, i) => (
+                    <p key={i}>{err}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {tickMutation.isSuccess && !tickMutation.data?.result && (
+            <p className="text-realm-success text-xs mt-3">Tick completed successfully.</p>
+          )}
+
           {tickMutation.isError && (
             <p className="text-blood-light text-xs mt-3">
               Tick failed. Check server logs for details.

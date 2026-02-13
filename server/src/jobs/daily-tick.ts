@@ -21,6 +21,7 @@ import { onResourceGather } from '../services/quest-triggers';
 import { processServiceNpcIncome } from './service-npc-income';
 import { processLoans } from './loan-processing';
 import { processReputationDecay } from './reputation-decay';
+import { getTodayTickDate, advanceGameDay } from '../lib/game-day';
 import { qualityRoll } from '@shared/utils/dice';
 import { getProficiencyBonus, getModifier as getStatModifier } from '@shared/utils/bounded-accuracy';
 import { getProfessionByType } from '@shared/data/professions';
@@ -129,10 +130,29 @@ interface CharacterResults {
 // Main Processor
 // ---------------------------------------------------------------------------
 
-export async function processDailyTick(): Promise<void> {
-  const tickDate = new Date();
+export interface DailyTickResult {
+  tickDate: string;
+  charactersProcessed: number;
+  gatherActionsProcessed: number;
+  craftActionsProcessed: number;
+  restActionsProcessed: number;
+  lawsProcessed: number;
+  resourcesRestored: number;
+  durationMs: number;
+  gameDayOffset: number;
+  errors: string[];
+}
+
+export async function processDailyTick(): Promise<DailyTickResult> {
+  const startTime = Date.now();
+  const tickDate = getTodayTickDate();
   const tickDateStr = tickDate.toISOString().slice(0, 10);
-  console.log(`[DailyTick] Starting tick at ${tickDate.toISOString()} (${tickDateStr})`);
+  console.log(`[DailyTick] Starting tick for game day ${tickDateStr}`);
+  let gatherCount = 0;
+  let craftCount = 0;
+  let restCount = 0;
+  let lawsCount = 0;
+  let resourcesRestoredCount = 0;
 
   // Per-character result accumulator
   const characterResults = new Map<string, CharacterResults>();
@@ -312,6 +332,7 @@ export async function processDailyTick(): Promise<void> {
         },
       },
     });
+    gatherCount = gatherActions.length;
 
     for (let i = 0; i < gatherActions.length; i += BATCH_SIZE) {
       const batch = gatherActions.slice(i, i + BATCH_SIZE);
@@ -341,6 +362,7 @@ export async function processDailyTick(): Promise<void> {
         },
       },
     });
+    craftCount = craftActions.length;
 
     for (let i = 0; i < craftActions.length; i += BATCH_SIZE) {
       const batch = craftActions.slice(i, i + BATCH_SIZE);
@@ -419,6 +441,7 @@ export async function processDailyTick(): Promise<void> {
     const proposedLaws = await prisma.law.findMany({
       where: { status: 'PROPOSED', expiresAt: { lte: now } },
     });
+    lawsCount = proposedLaws.length;
 
     for (const law of proposedLaws) {
       const passed = law.votesFor > law.votesAgainst;
@@ -501,6 +524,7 @@ export async function processDailyTick(): Promise<void> {
     if (resourcesRestored > 0) {
       console.log(`[DailyTick]   Restored abundance for ${resourcesRestored} town resources`);
     }
+    resourcesRestoredCount = resourcesRestored;
 
     // --- Caravan Arrivals ---
     const arrivedCaravans = await prisma.caravan.findMany({
@@ -550,6 +574,7 @@ export async function processDailyTick(): Promise<void> {
       },
       select: { characterId: true },
     });
+    restCount = restActions.length;
 
     const restingIds = new Set(restActions.map(a => a.characterId));
 
@@ -754,7 +779,21 @@ export async function processDailyTick(): Promise<void> {
     await processReputationDecay();
   });
 
-  console.log(`[DailyTick] Tick complete in ${Date.now() - tickDate.getTime()}ms (${characterResults.size} characters processed)`);
+  const durationMs = Date.now() - startTime;
+  console.log(`[DailyTick] Tick complete in ${durationMs}ms (${characterResults.size} characters processed)`);
+
+  return {
+    tickDate: tickDateStr,
+    charactersProcessed: characterResults.size,
+    gatherActionsProcessed: gatherCount,
+    craftActionsProcessed: craftCount,
+    restActionsProcessed: restCount,
+    lawsProcessed: lawsCount,
+    resourcesRestored: resourcesRestoredCount,
+    durationMs,
+    gameDayOffset: 0,
+    errors: [],
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1688,10 +1727,14 @@ function buildReportSummary(results: CharacterResults): string {
 // Manual trigger function (exported for admin route)
 // ---------------------------------------------------------------------------
 
-export async function triggerManualTick(): Promise<{ success: boolean; error?: string }> {
+export async function triggerManualTick(): Promise<{ success: boolean; result?: DailyTickResult; error?: string }> {
   try {
-    await processDailyTick();
-    return { success: true };
+    const result = await processDailyTick();
+    // Advance the game day so players can take new actions immediately
+    const newOffset = advanceGameDay(1);
+    result.gameDayOffset = newOffset;
+    console.log(`[DailyTick] Game day advanced. Offset: +${newOffset}, next tick date: ${getTodayTickDate().toISOString().slice(0, 10)}`);
+    return { success: true, result };
   } catch (err) {
     console.error('[DailyTick] Manual trigger failed:', err);
     return { success: false, error: (err as Error).message };
