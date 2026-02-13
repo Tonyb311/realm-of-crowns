@@ -26,6 +26,7 @@ import { ACTION_XP } from '@shared/data/progression';
 import { isSameAccount } from '../lib/alt-guard';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
+import { logPvpCombat, COMBAT_LOGGING_ENABLED } from '../lib/combat-logger';
 
 const router = Router();
 
@@ -931,6 +932,35 @@ async function finalizePvpMatch(
 
   // Clean up in-memory state
   await deletePvpCombatState(sessionId);
+
+  // Write structured combat encounter logs (one per participant)
+  if (COMBAT_LOGGING_ENABLED) {
+    const winnerEquip = await prisma.characterEquipment.findUnique({
+      where: { characterId_slot: { characterId: winner.id, slot: 'MAIN_HAND' } },
+      include: { item: { include: { template: { select: { name: true } } } } },
+    });
+    const loserEquip = await prisma.characterEquipment.findUnique({
+      where: { characterId_slot: { characterId: loser.id, slot: 'MAIN_HAND' } },
+      include: { item: { include: { template: { select: { name: true } } } } },
+    });
+
+    logPvpCombat({
+      sessionId,
+      state: combatState,
+      winnerId: winner.id,
+      loserId: loser.id,
+      winnerName: winner.name,
+      loserName: loser.name,
+      townId: session?.locationTownId ?? null,
+      winnerStartHp: winner.maxHp,
+      loserStartHp: loser.maxHp,
+      winnerWeapon: winnerEquip?.item?.template?.name ?? 'Unarmed Strike',
+      loserWeapon: loserEquip?.item?.template?.name ?? 'Unarmed Strike',
+      xpAwarded: xpReward,
+      wagerAmount: wager,
+      isSpar: false,
+    });
+  }
 }
 
 // ---- Spar cooldown tracking (Redis with in-memory fallback) ----
@@ -1561,6 +1591,26 @@ async function finalizeSparMatch(
 
   // Clean up in-memory state
   await deletePvpCombatState(sessionId);
+
+  // Write structured combat encounter logs for spar
+  if (COMBAT_LOGGING_ENABLED) {
+    logPvpCombat({
+      sessionId,
+      state: combatState,
+      winnerId: winner.id,
+      loserId: loser.id,
+      winnerName: winner.name,
+      loserName: loser.name,
+      townId: session?.locationTownId ?? null,
+      winnerStartHp: winner.maxHp,
+      loserStartHp: loser.maxHp,
+      winnerWeapon: 'Spar Weapon',
+      loserWeapon: 'Spar Weapon',
+      xpAwarded: 0,
+      wagerAmount: 0,
+      isSpar: true,
+    });
+  }
 }
 
 export default router;

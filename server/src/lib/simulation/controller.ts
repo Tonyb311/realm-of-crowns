@@ -24,6 +24,7 @@ import { refreshBotState } from './actions';
 import { advanceGameDay, getGameDay, getGameDayOffset } from '../../lib/game-day';
 import { processDailyTick } from '../../jobs/daily-tick';
 import { logger } from '../../lib/logger';
+import { setSimulationTick } from '../../lib/simulation-context';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -215,6 +216,9 @@ class SimulationController {
     let failures = 0;
     const errors: string[] = [];
     let botsProcessed = 0;
+
+    // Set simulation context so combat logs get tagged with this tick number
+    setSimulationTick(this.singleTickCount + 1);
 
     // 1. Advance game day
     advanceGameDay(1);
@@ -421,6 +425,9 @@ class SimulationController {
     };
 
     this.tickHistory.push(tickResult);
+
+    // Clear simulation context
+    setSimulationTick(null);
 
     return tickResult;
   }

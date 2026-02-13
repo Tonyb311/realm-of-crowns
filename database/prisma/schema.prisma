@@ -464,6 +464,7 @@ model Character {
   guildMemberships        GuildMember[]
   questProgress           QuestProgress[]
   combatParticipations    CombatParticipant[]
+  combatEncounterLogs     CombatEncounterLog[]
   sentMessages            Message[]               @relation("MessageSender")
   receivedMessages        Message[]               @relation("MessageRecipient")
   notifications           Notification[]
@@ -644,8 +645,9 @@ model Town {
   impeachments      Impeachment[]      @relation("TownImpeachments")
   treasury          TownTreasury?
   gatheringActions  GatheringAction[]
-  combatSessions    CombatSession[]
-  messages          Message[]          @relation("TownMessages")
+  combatSessions      CombatSession[]
+  combatEncounterLogs CombatEncounterLog[]
+  messages            Message[]          @relation("TownMessages")
   townPolicy        TownPolicy?
   councilMembers    CouncilMember[]    @relation("TownCouncil")
   npcs              Npc[]
@@ -1440,6 +1442,42 @@ model CombatParticipant {
   @@index([sessionId])
   @@index([characterId])
   @@map("combat_participants")
+}
+
+model CombatEncounterLog {
+  id               String   @id @default(uuid())
+  type             String   // 'pve' | 'pvp'
+  sessionId        String?  @map("session_id")
+  characterId      String   @map("character_id")
+  characterName    String   @default("") @map("character_name")
+  opponentId       String?  @map("opponent_id")
+  opponentName     String   @default("") @map("opponent_name")
+  townId           String?  @map("town_id")
+  startedAt        DateTime @default(now()) @map("started_at")
+  endedAt          DateTime @default(now()) @map("ended_at")
+  outcome          String   @default("") // 'win' | 'loss' | 'flee' | 'draw'
+  totalRounds      Int      @default(0) @map("total_rounds")
+  characterStartHp Int      @default(0) @map("character_start_hp")
+  characterEndHp   Int      @default(0) @map("character_end_hp")
+  opponentStartHp  Int      @default(0) @map("opponent_start_hp")
+  opponentEndHp    Int      @default(0) @map("opponent_end_hp")
+  characterWeapon  String   @default("") @map("character_weapon")
+  opponentWeapon   String   @default("") @map("opponent_weapon")
+  xpAwarded        Int      @default(0) @map("xp_awarded")
+  goldAwarded      Int      @default(0) @map("gold_awarded")
+  lootDropped      String   @default("") @map("loot_dropped")
+  rounds           Json     @default("[]")
+  summary          String   @default("")
+  simulationTick   Int?     @map("simulation_tick")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  town      Town?     @relation(fields: [townId], references: [id], onDelete: SetNull)
+
+  @@index([characterId, startedAt])
+  @@index([simulationTick])
+  @@index([type])
+  @@map("combat_encounter_logs")
 }
 
 model Monster {

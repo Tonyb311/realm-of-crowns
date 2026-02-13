@@ -29,6 +29,7 @@ import { redis } from '../lib/redis';
 import { ACTION_XP, DEATH_PENALTY } from '@shared/data/progression';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
+import { logPveCombat, COMBAT_LOGGING_ENABLED } from '../lib/combat-logger';
 
 const router = Router();
 
@@ -689,6 +690,58 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
     result: playerWon ? 'victory' : playerFled ? 'fled' : 'defeat',
     summary: playerWon ? 'You won the battle!' : playerFled ? 'You fled from combat.' : 'You were defeated.',
   });
+
+  // Write structured combat encounter log (async, non-blocking for combat flow)
+  if (COMBAT_LOGGING_ENABLED) {
+    const monsterCombatant = state.combatants.find(c => c.entityType === 'monster');
+    const character = await prisma.character.findUnique({
+      where: { id: playerId },
+      select: { name: true, currentTownId: true },
+    });
+
+    // Calculate rewards that were applied in the transaction above
+    let xpAwarded = 0;
+    let goldAwarded = 0;
+    let lootDropped = '';
+    let outcome: 'win' | 'loss' | 'flee' | 'draw' = 'draw';
+
+    if (playerWon && monsterCombatant) {
+      outcome = 'win';
+      const monsterId = monsterCombatant.id.replace('monster-', '');
+      const monster = await prisma.monster.findUnique({ where: { id: monsterId } });
+      if (monster) {
+        xpAwarded = ACTION_XP.PVE_WIN_PER_MONSTER_LEVEL * monster.level;
+      }
+    } else if (playerFled) {
+      outcome = 'flee';
+    } else {
+      outcome = 'loss';
+    }
+
+    // Look up equipped weapon name for the log
+    const equip = await prisma.characterEquipment.findUnique({
+      where: { characterId_slot: { characterId: playerId, slot: 'MAIN_HAND' } },
+      include: { item: { include: { template: { select: { name: true } } } } },
+    });
+    const weaponName = equip?.item?.template?.name ?? 'Unarmed Strike';
+
+    logPveCombat({
+      sessionId,
+      state,
+      characterId: playerId,
+      characterName: character?.name ?? 'Unknown',
+      opponentName: monsterCombatant?.name ?? 'Unknown Monster',
+      townId: character?.currentTownId ?? null,
+      characterStartHp: playerCombatant?.maxHp ?? 0,
+      opponentStartHp: monsterCombatant?.maxHp ?? 0,
+      characterWeapon: weaponName,
+      opponentWeapon: monsterCombatant?.weapon?.name ?? 'Natural Attack',
+      xpAwarded,
+      goldAwarded,
+      lootDropped,
+      outcome,
+    });
+  }
 
   // Clean up combat state
   await deleteCombatState(sessionId);

@@ -540,6 +540,51 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(actionsDetail), 'All Actions Detail');
     }
 
+    // Sheet 13: Combat Encounter Logs
+    try {
+      // Get tick range from simulation history for filtering
+      const tickNumbers = history.map((t: any) => t.tickNumber).filter((n: number) => n != null);
+      const combatLogs = tickNumbers.length > 0
+        ? await prisma.combatEncounterLog.findMany({
+            where: { simulationTick: { in: tickNumbers } },
+            orderBy: { startedAt: 'asc' },
+          })
+        : await prisma.combatEncounterLog.findMany({
+            where: {
+              character: { user: { isTestAccount: true } },
+            },
+            orderBy: { startedAt: 'asc' },
+            take: 5000,
+          });
+
+      if (combatLogs.length > 0) {
+        const combatData = combatLogs.map((log: any) => ({
+          Tick: log.simulationTick ?? '',
+          Type: log.type,
+          Character: log.characterName,
+          Opponent: log.opponentName,
+          Town: log.townId ? resolveTown(log.townId) : '',
+          Outcome: log.outcome,
+          TotalRounds: log.totalRounds,
+          CharStartHP: log.characterStartHp,
+          CharEndHP: log.characterEndHp,
+          OppStartHP: log.opponentStartHp,
+          OppEndHP: log.opponentEndHp,
+          DamageDealt: Math.max(0, log.opponentStartHp - log.opponentEndHp),
+          DamageTaken: Math.max(0, log.characterStartHp - log.characterEndHp),
+          CharWeapon: log.characterWeapon,
+          OppWeapon: log.opponentWeapon,
+          XPAwarded: log.xpAwarded,
+          GoldAwarded: log.goldAwarded,
+          Summary: log.summary,
+        }));
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(combatData), 'Combat Logs');
+      }
+    } catch (combatLogErr) {
+      // Don't fail the entire export if combat logs fail
+      console.error('Failed to add combat logs sheet:', combatLogErr);
+    }
+
     // If only summary sheet exists (no data sheets added), that's fine — summary has metadata
 
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
@@ -551,6 +596,62 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
   } catch (error: any) {
     logRouteError(req as any, 500, '[Simulation] Export error', error);
     return res.status(500).json({ error: error.message || 'Export failed' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/simulation/combat-detail — Download full combat round data as JSON
+// ---------------------------------------------------------------------------
+router.get('/combat-detail', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const history = simulationController.getTickHistory();
+    const tickNumbers = history.map((t: any) => t.tickNumber).filter((n: number) => n != null);
+
+    const combatLogs = tickNumbers.length > 0
+      ? await prisma.combatEncounterLog.findMany({
+          where: { simulationTick: { in: tickNumbers } },
+          orderBy: { startedAt: 'asc' },
+        })
+      : await prisma.combatEncounterLog.findMany({
+          where: {
+            character: { user: { isTestAccount: true } },
+          },
+          orderBy: { startedAt: 'asc' },
+          take: 5000,
+        });
+
+    const detail = combatLogs.map((log: any) => ({
+      id: log.id,
+      type: log.type,
+      sessionId: log.sessionId,
+      characterId: log.characterId,
+      characterName: log.characterName,
+      opponentName: log.opponentName,
+      townId: log.townId,
+      outcome: log.outcome,
+      totalRounds: log.totalRounds,
+      characterStartHp: log.characterStartHp,
+      characterEndHp: log.characterEndHp,
+      opponentStartHp: log.opponentStartHp,
+      opponentEndHp: log.opponentEndHp,
+      characterWeapon: log.characterWeapon,
+      opponentWeapon: log.opponentWeapon,
+      xpAwarded: log.xpAwarded,
+      goldAwarded: log.goldAwarded,
+      lootDropped: log.lootDropped,
+      summary: log.summary,
+      simulationTick: log.simulationTick,
+      startedAt: log.startedAt,
+      endedAt: log.endedAt,
+      rounds: log.rounds, // Full round-by-round JSONB data
+    }));
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename=combat-detail.json');
+    return res.json({ encounters: detail, total: detail.length });
+  } catch (error: any) {
+    logRouteError(req as any, 500, '[Simulation] Combat detail export error', error);
+    return res.status(500).json({ error: error.message || 'Combat detail export failed' });
   }
 });
 

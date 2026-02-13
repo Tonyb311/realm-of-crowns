@@ -11,84 +11,8 @@ import { BotState, BotProfile, SeedConfig, DEFAULT_CONFIG, BOT_PROFILES } from '
 import { generateCharacterName, resetNameCounter } from './names';
 import { logger } from '../../lib/logger';
 import { giveStartingInventory } from '../../lib/starting-inventory';
+import { giveStarterWeapon } from '../../lib/starting-weapons';
 import { getReleasedRaceKeys, getReleasedTownIds } from '../../lib/content-release';
-
-// ---------------------------------------------------------------------------
-// Starting Weapon
-// ---------------------------------------------------------------------------
-
-let startingWeaponTemplateId: string | null = null;
-
-/**
- * Ensures a "Rustic Shortsword" ItemTemplate exists in the database.
- * This is a basic starter weapon so bots don't fight unarmed (1d4).
- * Stats use the combat-engine format (diceCount/diceSides/etc.), NOT the
- * recipe WeaponStats format (baseDamage/speed/etc.).
- */
-async function ensureStartingWeaponTemplate(): Promise<string> {
-  if (startingWeaponTemplateId) return startingWeaponTemplateId;
-
-  const stableId = 'sim-starter-rustic-shortsword';
-
-  const template = await prisma.itemTemplate.upsert({
-    where: { id: stableId },
-    update: {},
-    create: {
-      id: stableId,
-      name: 'Rustic Shortsword',
-      type: 'WEAPON',
-      rarity: 'COMMON',
-      description: 'A simple but serviceable shortsword. Good enough for a new adventurer.',
-      durability: 100,
-      levelRequired: 1,
-      stats: {
-        diceCount: 1,
-        diceSides: 6,
-        damageModifierStat: 'str',
-        attackModifierStat: 'str',
-        bonusDamage: 0,
-        bonusAttack: 0,
-        damageType: 'SLASHING',
-      },
-    },
-  });
-
-  startingWeaponTemplateId = template.id;
-  return template.id;
-}
-
-/**
- * Give a bot character a starting weapon: create an Item from the starter
- * template, add it to inventory, and equip it to MAIN_HAND.
- */
-async function giveStartingWeapon(characterId: string): Promise<void> {
-  const templateId = await ensureStartingWeaponTemplate();
-
-  const item = await prisma.item.create({
-    data: {
-      templateId,
-      ownerId: characterId,
-      quality: 'COMMON',
-      currentDurability: 100,
-    },
-  });
-
-  await prisma.inventory.create({
-    data: {
-      characterId,
-      itemId: item.id,
-      quantity: 1,
-    },
-  });
-
-  await prisma.characterEquipment.create({
-    data: {
-      characterId,
-      slot: 'MAIN_HAND',
-      itemId: item.id,
-    },
-  });
-}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -398,8 +322,8 @@ async function createSingleBot(
   // 12. Give starting inventory (5 Basic Rations)
   await giveStartingInventory(character.id);
 
-  // 12b. Give starting weapon (Rustic Shortsword -> MAIN_HAND)
-  await giveStartingWeapon(character.id);
+  // 12b. Give class-appropriate starter weapon (equipped to MAIN_HAND)
+  await giveStarterWeapon(character.id, charClass);
 
   // 13. Generate JWT
   const token = jwt.sign(
