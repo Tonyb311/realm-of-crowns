@@ -55,6 +55,7 @@ const AdminToolsPage = React.lazy(() => import('./pages/admin/AdminToolsPage'));
 const ErrorLogDashboardPage = React.lazy(() => import('./pages/admin/ErrorLogDashboardPage'));
 const SimulationDashboardPage = React.lazy(() => import('./pages/admin/SimulationDashboardPage'));
 const ContentReleasePage = React.lazy(() => import('./pages/admin/ContentReleasePage'));
+const AdminMonstersPage = React.lazy(() => import('./pages/admin/AdminMonstersPage'));
 
 function App() {
   return (
@@ -114,6 +115,7 @@ function App() {
             <Route path="error-logs" element={<ErrorLogDashboardPage />} />
             <Route path="simulation" element={<SimulationDashboardPage />} />
             <Route path="content-release" element={<ContentReleasePage />} />
+            <Route path="monsters" element={<AdminMonstersPage />} />
           </Route>
 
           {/* 404 catch-all */}

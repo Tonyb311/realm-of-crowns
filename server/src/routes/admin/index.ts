@@ -11,6 +11,7 @@ import simulationRouter from './simulation';
 import contentReleaseRouter from './contentRelease';
 import travelRouter from './travel';
 import populationRouter from './population';
+import monstersRouter from './monsters';
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use('/simulation', simulationRouter);
 router.use('/content-release', contentReleaseRouter);
 router.use('/travel', travelRouter);
 router.use('/population', populationRouter);
+router.use('/monsters', monstersRouter);
 
 export default router;

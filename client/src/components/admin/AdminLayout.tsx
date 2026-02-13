@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Bot,
   Layers,
+  Skull,
   ArrowLeft,
   Menu,
   X,
@@ -26,6 +27,7 @@ const ADMIN_NAV = [
   { path: '/admin/error-logs', label: 'Error Logs', icon: AlertCircle },
   { path: '/admin/simulation', label: 'Simulation', icon: Bot },
   { path: '/admin/content-release', label: 'Content Release', icon: Layers },
+  { path: '/admin/monsters', label: 'Monsters', icon: Skull },
 ];
 
 function isNavActive(itemPath: string, currentPath: string, exact?: boolean): boolean {
