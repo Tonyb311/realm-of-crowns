@@ -22,6 +22,7 @@ import { startSeerPremonitionJob } from './jobs/seer-premonition';
 import { startTravelTickJob } from './jobs/travel-tick';
 // DEPRECATED: Forgeborn maintenance now handled by daily tick in food-system.ts
 // import { startForgebornMaintenanceJob } from './jobs/forgeborn-maintenance';
+import { startMarketCycleTimer, stopMarketCycleTimer } from './jobs/market-cycle';
 import { registerChatHandlers } from './socket/chat-handlers';
 import { socketAuthMiddleware, cleanupRateLimit } from './socket/middleware';
 import { setupPresence } from './socket/presence';
@@ -113,6 +114,7 @@ httpServer.listen(PORT, () => {
   startStateOfAethermereJob();
   startSeerPremonitionJob();
   startTravelTickJob(io);
+  startMarketCycleTimer();
   // DEPRECATED: Forgeborn maintenance now handled by daily tick in food-system.ts
   // startForgebornMaintenanceJob();
 
@@ -127,6 +129,7 @@ const gracefulShutdown = async (signal: string) => {
     process.exit(1);
   }, 10000);
   try {
+    stopMarketCycleTimer();
     httpServer.close();
     io.close();
     if (redis) await redis.quit();

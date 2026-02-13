@@ -422,8 +422,9 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
         Failures: t.failures,
         Gathered: t.actionBreakdown?.gather ?? 0,
         Crafted: t.actionBreakdown?.craft ?? 0,
-        Sold: t.actionBreakdown?.sell ?? 0,
-        Bought: t.actionBreakdown?.buy ?? 0,
+        MarketList: t.actionBreakdown?.market_list ?? 0,
+        MarketBuy: t.actionBreakdown?.market_buy ?? 0,
+        MarketAuction: t.actionBreakdown?.market_auction ?? 0,
         Quested: t.actionBreakdown?.quest ?? 0,
         Traveled: t.actionBreakdown?.travel ?? 0,
         Combat: t.actionBreakdown?.combat ?? 0,
@@ -584,6 +585,96 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       // Don't fail the entire export if combat logs fail
       console.error('Failed to add combat logs sheet:', combatLogErr);
     }
+
+    // Sheet 14: Market Activity — one row per resolved auction transaction
+    try {
+      const marketTransactions = await prisma.tradeTransaction.findMany({
+        where: { auctionCycleId: { not: null } },
+        include: {
+          buyer: { select: { name: true } },
+          seller: { select: { name: true, professions: { where: { isActive: true }, select: { professionType: true } } } },
+          item: { include: { template: { select: { name: true } } } },
+          town: { select: { name: true } },
+          cycle: { select: { cycleNumber: true } },
+        },
+        orderBy: { timestamp: 'asc' },
+      });
+
+      if (marketTransactions.length > 0) {
+        const marketData = await Promise.all(marketTransactions.map(async (tx: any) => {
+          const orderCount = await prisma.marketBuyOrder.count({
+            where: { listing: { soldTo: tx.buyerId, soldPrice: tx.price, townId: tx.townId } },
+          });
+
+          const winningOrder = await prisma.marketBuyOrder.findFirst({
+            where: { buyerId: tx.buyerId, status: 'won', auctionCycleId: tx.auctionCycleId },
+            select: { priorityScore: true, rollResult: true },
+          });
+
+          return {
+            Tick: tx.cycle?.cycleNumber || 0,
+            Town: tx.town.name,
+            ItemName: tx.item?.template?.name || 'Unknown',
+            Quantity: tx.quantity,
+            AskingPrice: tx.price,
+            SalePrice: tx.price,
+            SellerName: tx.seller.name,
+            BuyerName: tx.buyer.name,
+            NumBidders: orderCount,
+            WinningScore: winningOrder?.priorityScore || 0,
+            WinningRoll: winningOrder?.rollResult || 0,
+            Fee: tx.sellerFee,
+          };
+        }));
+
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(marketData), 'Market Activity');
+      }
+    } catch { /* Don't fail export if market data fails */ }
+
+    // Sheet 15: Market Summary — one row per resolved auction cycle
+    try {
+      const cycles = await prisma.auctionCycle.findMany({
+        where: { status: 'resolved' },
+        include: {
+          town: { select: { name: true } },
+          transactions: { select: { price: true, quantity: true } },
+          orders: {
+            select: {
+              status: true,
+              buyer: {
+                select: {
+                  professions: { where: { isActive: true, professionType: 'MERCHANT' }, select: { id: true } },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { resolvedAt: 'asc' },
+      });
+
+      if (cycles.length > 0) {
+        const summaryData = cycles.map((cycle: any) => {
+          const totalGold = cycle.transactions.reduce((sum: number, t: any) => sum + t.price * t.quantity, 0);
+          const wonOrders = cycle.orders.filter((o: any) => o.status === 'won');
+          const merchantWins = wonOrders.filter((o: any) => o.buyer.professions.length > 0).length;
+          const nonMerchantWins = wonOrders.length - merchantWins;
+
+          return {
+            Cycle: cycle.cycleNumber,
+            Town: cycle.town.name,
+            TotalListings: cycle.ordersProcessed,
+            TransactionsCompleted: cycle.transactionsCompleted,
+            TotalGoldTraded: totalGold,
+            AvgSalePrice: cycle.transactions.length > 0 ? Math.round(totalGold / cycle.transactions.length) : 0,
+            MerchantWins: merchantWins,
+            NonMerchantWins: nonMerchantWins,
+            MerchantWinRate: wonOrders.length > 0 ? `${Math.round(merchantWins / wonOrders.length * 100)}%` : 'N/A',
+          };
+        });
+
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(summaryData), 'Market Summary');
+      }
+    } catch { /* Don't fail export if market summary fails */ }
 
     // If only summary sheet exists (no data sheets added), that's fine — summary has metadata
 

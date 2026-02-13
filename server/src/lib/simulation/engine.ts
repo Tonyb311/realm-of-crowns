@@ -9,24 +9,28 @@ import { PROFESSION_UNLOCK_LEVEL } from '@shared/data/progression/xp-curve';
 // ---- Action key union ----
 // NOTE: 'combat' removed as standalone action — PvE combat now only occurs
 // as road encounters during travel (resolved by travel-tick.ts)
+// NOTE: 'buy', 'sell', 'browse' removed — market actions are now FREE actions
+// that happen after the main action loop (see doFreeMarketActions in actions.ts)
 type ActionKey =
-  | 'gather' | 'craft' | 'buy' | 'sell'
+  | 'gather' | 'craft'
   | 'quest' | 'travel' | 'message'
   | 'friend' | 'nominate' | 'vote' | 'guild'
-  | 'equip' | 'browse' | 'party';
+  | 'equip' | 'party';
 
 // ---- Per-profile weight tables ----
 // Combat weight removed from all profiles — PvE happens via road encounters during travel.
 // Travel weight increased to compensate, since travel is now the path to combat XP.
+// Market weights (buy/sell/browse) removed — market actions are now FREE actions
+// that happen after the main action loop and don't consume action slots.
 const PROFILE_WEIGHTS: Record<BotProfile, Partial<Record<ActionKey, number>>> = {
-  gatherer:   { gather: 40, sell: 20, travel: 15, browse: 10, buy: 5, craft: 5, quest: 5 },
-  crafter:    { craft: 30, buy: 25, sell: 20, browse: 10, gather: 10, travel: 5 },
-  merchant:   { buy: 30, sell: 30, travel: 20, browse: 15, gather: 5 },
-  warrior:    { travel: 35, quest: 25, buy: 10, equip: 15, browse: 10, sell: 5 },
-  politician: { message: 25, nominate: 15, vote: 15, friend: 15, browse: 15, travel: 10, quest: 5 },
-  socialite:  { message: 30, friend: 25, quest: 15, vote: 10, guild: 10, browse: 10 },
-  explorer:   { travel: 50, gather: 20, quest: 20, browse: 10 },
-  balanced:   { gather: 12, craft: 12, buy: 12, sell: 12, quest: 12, travel: 15, message: 8, friend: 6, browse: 6, equip: 5 },
+  gatherer:   { gather: 45, travel: 20, craft: 10, quest: 10, equip: 5, message: 5, friend: 5 },
+  crafter:    { craft: 40, gather: 20, travel: 10, quest: 10, equip: 10, message: 5, friend: 5 },
+  merchant:   { travel: 35, quest: 20, message: 15, friend: 10, guild: 10, equip: 10 },
+  warrior:    { travel: 40, quest: 30, equip: 20, message: 5, friend: 5 },
+  politician: { message: 25, nominate: 15, vote: 15, friend: 15, travel: 15, quest: 10, guild: 5 },
+  socialite:  { message: 30, friend: 25, quest: 15, vote: 10, guild: 10, travel: 10 },
+  explorer:   { travel: 55, gather: 20, quest: 20, equip: 5 },
+  balanced:   { gather: 15, craft: 15, quest: 15, travel: 20, message: 10, friend: 8, equip: 7, guild: 5, nominate: 3, vote: 2 },
 };
 
 // ---- Gathering professions for random selection ----
@@ -66,11 +70,7 @@ function filterWeights(
       case 'craft':
         if (!enabled.crafting) allowed = false;
         break;
-      case 'buy':
-      case 'sell':
-      case 'browse':
-        if (!enabled.market) allowed = false;
-        break;
+      // 'buy', 'sell', 'browse' removed — market actions are now FREE (see doFreeMarketActions)
       // 'combat' removed — PvE combat now only occurs as road encounters during travel
       case 'quest':
         if (!enabled.quests) allowed = false;
@@ -109,8 +109,8 @@ function mapObjectiveToAction(objectiveType: string): ActionKey | null {
     case 'SELECT_PROFESSION':  return null; // Handled by existing learn-profession logic
     case 'GATHER':             return 'gather';
     case 'CRAFT':              return 'craft';
-    case 'MARKET_SELL':        return 'sell';
-    case 'MARKET_BUY':         return 'buy';
+    case 'MARKET_SELL':        return null; // Market actions are now FREE (handled by doFreeMarketActions)
+    case 'MARKET_BUY':         return null; // Market actions are now FREE (handled by doFreeMarketActions)
     default:                   return null;
   }
 }
@@ -120,8 +120,7 @@ function executeAction(action: ActionKey, bot: BotState, allBots: BotState[]): P
   switch (action) {
     case 'gather':    return actions.startGathering(bot);
     case 'craft':     return actions.startCrafting(bot);
-    case 'buy':       return actions.buyFromMarket(bot);
-    case 'sell':      return actions.listOnMarket(bot);
+    // 'buy', 'sell', 'browse' removed — market actions are now FREE (see doFreeMarketActions)
     // 'combat' removed — PvE combat now only occurs as road encounters during travel
     case 'quest':     return actions.acceptQuest(bot);
     case 'travel':    return actions.travel(bot);
@@ -131,7 +130,6 @@ function executeAction(action: ActionKey, bot: BotState, allBots: BotState[]): P
     case 'vote':      return actions.voteInElection(bot, allBots);
     case 'guild':     return actions.createGuild(bot);
     case 'equip':     return actions.equipItem(bot);
-    case 'browse':    return actions.browseMarket(bot);
     default:          return Promise.resolve({ success: true, detail: 'Idle', endpoint: 'none' });
   }
 }

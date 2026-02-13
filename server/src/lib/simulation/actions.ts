@@ -259,7 +259,7 @@ export async function collectCrafting(bot: BotState): Promise<ActionResult> {
 // ---------------------------------------------------------------------------
 
 export async function browseMarket(bot: BotState): Promise<ActionResult> {
-  const endpoint = `/market/browse?townId=${bot.currentTownId}&limit=20`;
+  const endpoint = '/market/browse?limit=20';
   try {
     const res = await get(endpoint, bot.token);
     if (res.status >= 200 && res.status < 300) {
@@ -277,11 +277,11 @@ export async function browseMarket(bot: BotState): Promise<ActionResult> {
 }
 
 // ---------------------------------------------------------------------------
-// 8. buyFromMarket
+// 8. buyFromMarket (auction-based: places a buy order with bidPrice)
 // ---------------------------------------------------------------------------
 
 export async function buyFromMarket(bot: BotState): Promise<ActionResult> {
-  const browseEndpoint = `/market/browse?townId=${bot.currentTownId}&limit=20`;
+  const browseEndpoint = '/market/browse?limit=20';
   const endpoint = '/market/buy';
   try {
     const browseRes = await get(browseEndpoint, bot.token);
@@ -310,14 +310,22 @@ export async function buyFromMarket(bot: BotState): Promise<ActionResult> {
 
     const listing = pickRandom(affordable)!;
     const listingId = listing.id || listing.listingId;
-    const price = listing.price || listing.unitPrice || 0;
+    const askingPrice = listing.price || listing.unitPrice || 0;
 
-    const res = await post(endpoint, bot.token, { listingId, quantity: 1 });
+    // Merchant-profile bots bid closer to asking price (rely on merchant priority bonus)
+    // Other profiles bid higher to compensate for lack of merchant bonus
+    const isMerchant = bot.professions.some(p => p.toUpperCase() === 'MERCHANT');
+    const bidMultiplier = isMerchant
+      ? 1.0 + Math.random() * 0.05   // 100-105% of asking price
+      : 1.0 + Math.random() * 0.2;   // 100-120% of asking price
+    const bidPrice = Math.ceil(askingPrice * bidMultiplier);
+
+    const res = await post(endpoint, bot.token, { listingId, bidPrice });
     if (res.status >= 200 && res.status < 300) {
-      bot.gold -= price;
+      bot.gold -= bidPrice;
       return {
         success: true,
-        detail: `Bought item for ${price} gold`,
+        detail: `Placed buy order for ${bidPrice}g (asking: ${askingPrice}g)`,
         endpoint,
       };
     }
@@ -358,7 +366,13 @@ export async function listOnMarket(bot: BotState): Promise<ActionResult> {
 
     const item = pickRandom(sellable)!;
     const itemId = item.id || item.itemId;
-    const price = Math.floor(Math.random() * 46) + 5; // 5-50 gold
+
+    // Smarter pricing: base 10-40g, merchant bots list 20% higher
+    let price = Math.max(5, Math.floor(Math.random() * 30) + 10);
+    const isMerchant = bot.professions.some(p => p.toUpperCase() === 'MERCHANT');
+    if (isMerchant) {
+      price = Math.ceil(price * 1.2);
+    }
 
     const res = await post(endpoint, bot.token, { itemId, price, quantity: 1 });
     if (res.status >= 200 && res.status < 300) {
@@ -1004,6 +1018,28 @@ export async function partyTravel(bot: BotState): Promise<ActionResult> {
   } catch (err: any) {
     return { success: false, detail: err.message, endpoint };
   }
+}
+
+// ---------------------------------------------------------------------------
+// 28. doFreeMarketActions — FREE market actions (don't consume action slots)
+// ---------------------------------------------------------------------------
+
+export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]> {
+  const results: ActionResult[] = [];
+
+  // 1. List surplus items (if bot has non-equipped items)
+  try {
+    const listResult = await listOnMarket(bot);
+    if (listResult.success) results.push(listResult);
+  } catch { /* ignore market errors */ }
+
+  // 2. Browse and place buy orders on items we need
+  try {
+    const buyResult = await buyFromMarket(bot);
+    if (buyResult.success) results.push(buyResult);
+  } catch { /* ignore market errors */ }
+
+  return results;
 }
 
 // ---------------------------------------------------------------------------

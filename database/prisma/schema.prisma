@@ -417,6 +417,7 @@ model Character {
   health                 Int              @default(100)
   maxHealth              Int              @default(100) @map("max_health")
   gold                   Int              @default(0)
+  escrowedGold           Int              @default(0) @map("escrowed_gold")
   // Combat presets
   retreatHpThreshold     Int              @default(25) @map("retreat_hp_threshold")
   retreatOppositionRatio Float            @default(3.0) @map("retreat_opposition_ratio")
@@ -507,6 +508,7 @@ model Character {
   ledParties              Party[]                 @relation("PartyLeader")
   partyInvitationsReceived PartyInvitation[]      @relation("PartyInvitee")
   partyInvitationsSent    PartyInvitation[]       @relation("PartyInviter")
+  marketBuyOrders         MarketBuyOrder[]
 
   @@index([userId])
   @@index([currentTownId])
@@ -659,6 +661,7 @@ model Town {
   councilMembers    CouncilMember[]    @relation("TownCouncil")
   npcs              Npc[]
   parties           Party[]
+  auctionCycles     AuctionCycle[]
 
   @@index([regionId])
   @@index([mayorId])
@@ -1016,43 +1019,57 @@ model BuildingConstruction {
 // ---- Economy & Trade ----
 
 model MarketListing {
-  id        String    @id @default(uuid())
-  sellerId  String    @map("seller_id")
-  itemId    String    @map("item_id")
-  price     Int
-  quantity  Int       @default(1)
-  townId    String    @map("town_id")
-  listedAt  DateTime  @default(now()) @map("listed_at")
-  expiresAt DateTime? @map("expires_at")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  id             String    @id @default(uuid())
+  sellerId       String    @map("seller_id")
+  itemId         String    @map("item_id")
+  itemTemplateId String    @default("") @map("item_template_id")
+  itemName       String    @default("") @map("item_name")
+  price          Int                        // askingPrice (minimum bid)
+  quantity       Int       @default(1)
+  townId         String    @map("town_id")
+  status         String    @default("active")  // active|sold|cancelled|expired
+  auctionCycleId String?   @map("auction_cycle_id")
+  listedAt       DateTime  @default(now()) @map("listed_at")
+  expiresAt      DateTime? @map("expires_at")
+  soldAt         DateTime? @map("sold_at")
+  soldTo         String?   @map("sold_to")
+  soldPrice      Int?      @map("sold_price")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  seller Character @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  item   Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  town   Town      @relation(fields: [townId], references: [id])
+  seller    Character       @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  item      Item            @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  town      Town            @relation(fields: [townId], references: [id])
+  cycle     AuctionCycle?   @relation(fields: [auctionCycleId], references: [id])
+  buyOrders MarketBuyOrder[]
 
   @@index([sellerId])
   @@index([townId])
   @@index([itemId])
   @@index([townId, price])
+  @@index([status, townId])
   @@map("market_listings")
 }
 
 model TradeTransaction {
-  id        String   @id @default(uuid())
-  buyerId   String   @map("buyer_id")
-  sellerId  String   @map("seller_id")
-  itemId    String   @map("item_id")
-  price     Int
-  quantity  Int      @default(1)
-  townId    String   @map("town_id")
-  timestamp DateTime @default(now())
-  createdAt DateTime @default(now()) @map("created_at")
+  id             String   @id @default(uuid())
+  buyerId        String   @map("buyer_id")
+  sellerId       String   @map("seller_id")
+  itemId         String   @map("item_id")
+  price          Int
+  quantity       Int      @default(1)
+  townId         String   @map("town_id")
+  sellerFee      Int      @default(0) @map("seller_fee")
+  sellerNet      Int      @default(0) @map("seller_net")
+  auctionCycleId String?  @map("auction_cycle_id")
+  timestamp      DateTime @default(now())
+  createdAt      DateTime @default(now()) @map("created_at")
 
-  buyer  Character @relation("Buyer", fields: [buyerId], references: [id])
-  seller Character @relation("Seller", fields: [sellerId], references: [id])
-  item   Item      @relation(fields: [itemId], references: [id])
-  town   Town      @relation(fields: [townId], references: [id])
+  buyer  Character     @relation("Buyer", fields: [buyerId], references: [id])
+  seller Character     @relation("Seller", fields: [sellerId], references: [id])
+  item   Item          @relation(fields: [itemId], references: [id])
+  town   Town          @relation(fields: [townId], references: [id])
+  cycle  AuctionCycle? @relation(fields: [auctionCycleId], references: [id])
 
   @@index([buyerId])
   @@index([sellerId])
@@ -1060,6 +1077,7 @@ model TradeTransaction {
   @@index([timestamp])
   @@index([buyerId, createdAt]) // MAJOR-06: trade history lookups per buyer
   @@index([sellerId, createdAt]) // MAJOR-06: trade history lookups per seller
+  @@index([auctionCycleId])
   @@map("trade_transactions")
 }
 
@@ -1079,6 +1097,49 @@ model PriceHistory {
   @@index([itemTemplateId])
   @@index([townId])
   @@map("price_histories")
+}
+
+model MarketBuyOrder {
+  id             String    @id @default(uuid())
+  buyerId        String    @map("buyer_id")
+  listingId      String    @map("listing_id")
+  bidPrice       Int       @map("bid_price")
+  status         String    @default("pending")  // pending|won|lost|cancelled
+  priorityScore  Float?    @map("priority_score")
+  rollResult     Int?      @map("roll_result")
+  rollBreakdown  Json?     @map("roll_breakdown")
+  placedAt       DateTime  @default(now()) @map("placed_at")
+  resolvedAt     DateTime? @map("resolved_at")
+  auctionCycleId String?   @map("auction_cycle_id")
+
+  buyer   Character     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  listing MarketListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  cycle   AuctionCycle? @relation(fields: [auctionCycleId], references: [id])
+
+  @@unique([buyerId, listingId])
+  @@index([listingId])
+  @@index([buyerId])
+  @@index([status])
+  @@map("market_buy_orders")
+}
+
+model AuctionCycle {
+  id                    String    @id @default(uuid())
+  townId                String    @map("town_id")
+  cycleNumber           Int       @map("cycle_number")
+  startedAt             DateTime  @default(now()) @map("started_at")
+  resolvedAt            DateTime? @map("resolved_at")
+  status                String    @default("open")  // open|processing|resolved
+  ordersProcessed       Int       @default(0) @map("orders_processed")
+  transactionsCompleted Int       @default(0) @map("transactions_completed")
+
+  town         Town               @relation(fields: [townId], references: [id])
+  listings     MarketListing[]
+  orders       MarketBuyOrder[]
+  transactions TradeTransaction[]
+
+  @@index([townId, status])
+  @@map("auction_cycles")
 }
 
 model Caravan {

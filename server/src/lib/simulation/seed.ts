@@ -448,9 +448,24 @@ export async function cleanupBots(): Promise<{ deletedUsers: number; deletedChar
         data: { craftedById: null },
       });
 
+      // ── Market buy orders (Cascade on buyerId, but must clean before listings) ──
+      await tx.marketBuyOrder.deleteMany({
+        where: { buyer: { user: { isTestAccount: true } } },
+      });
+
       // ── Trade transactions (Restrict on buyerId/sellerId) ──
       await tx.tradeTransaction.deleteMany({
         where: { OR: [{ buyerId: { in: charIds } }, { sellerId: { in: charIds } }] },
+      });
+
+      // ── Auction cycles (clean up orphaned cycles with no remaining listings/orders) ──
+      await tx.auctionCycle.deleteMany({
+        where: {
+          AND: [
+            { listings: { none: {} } },
+            { orders: { none: {} } },
+          ],
+        },
       });
 
       // ── Diplomacy events (Restrict on initiatorId/targetId) ──

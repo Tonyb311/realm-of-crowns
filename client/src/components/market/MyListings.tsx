@@ -1,46 +1,98 @@
-import { Package } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Package, Users, Loader2 } from 'lucide-react';
+import { RealmButton } from '../ui/RealmButton';
+import { RealmBadge } from '../ui/RealmBadge';
+import { RealmSkeleton } from '../ui/RealmSkeleton';
 import GoldAmount from '../shared/GoldAmount';
-import { RarityBadge, type MarketListing } from './ListingCard';
+import { RarityBadge } from './ListingCard';
 import { RARITY_TEXT_COLORS } from '../../constants';
+import api from '../../services/api';
 
-interface MyListingsProps {
-  listings: MarketListing[] | undefined;
-  isLoading: boolean;
-  onListItem: () => void;
-  onCancel: (listingId: string) => void;
-  cancelPending: boolean;
+interface MyListingItem {
+  id: string;
+  name: string;
+  type: string;
+  rarity: string;
 }
 
-export default function MyListings({
-  listings,
-  isLoading,
-  onListItem,
-  onCancel,
-  cancelPending,
-}: MyListingsProps) {
+interface MyListing {
+  id: string;
+  price: number;
+  quantity: number;
+  status: string;
+  listedAt: string;
+  expiresAt: string;
+  town?: { id: string; name: string };
+  item: MyListingItem;
+  buyOrderCount: number;
+}
+
+interface MyListingsResponse {
+  listings: MyListing[];
+}
+
+interface MyListingsProps {
+  onListItem: () => void;
+}
+
+export default function MyListings({ onListItem }: MyListingsProps) {
+  const queryClient = useQueryClient();
+
+  const { data, isLoading } = useQuery<MyListingsResponse>({
+    queryKey: ['market', 'my-listings'],
+    queryFn: async () => (await api.get('/market/my-listings')).data,
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async (listingId: string) => {
+      return (await api.delete(`/market/listings/${listingId}`)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['market'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['characters', 'current'] });
+    },
+  });
+
+  const listings = data?.listings ?? [];
+
+  function getStatusBadge(status: string) {
+    switch (status) {
+      case 'active':
+        return <RealmBadge variant="uncommon">Active</RealmBadge>;
+      case 'sold':
+        return <RealmBadge variant="legendary">Sold</RealmBadge>;
+      case 'cancelled':
+        return <RealmBadge variant="default">Cancelled</RealmBadge>;
+      case 'expired':
+        return <RealmBadge variant="common">Expired</RealmBadge>;
+      default:
+        return <RealmBadge variant="default">{status}</RealmBadge>;
+    }
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-display text-realm-text-primary">Your Active Listings</h2>
-        <button
-          onClick={onListItem}
-          className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
-        >
+        <h2 className="text-xl font-display text-realm-text-primary">Your Listings</h2>
+        <RealmButton variant="primary" size="md" onClick={onListItem}>
           List Item
-        </button>
+        </RealmButton>
       </div>
 
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-16 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
+            <RealmSkeleton key={i} className="h-16 w-full" />
           ))}
         </div>
-      ) : !listings?.length ? (
+      ) : !listings.length ? (
         <div className="text-center py-20">
           <Package className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-4" />
-          <p className="text-realm-text-muted mb-2">You have no active listings.</p>
-          <p className="text-realm-text-muted/60 text-sm">List items from your inventory to start selling.</p>
+          <p className="text-realm-text-muted mb-2">You have no listings.</p>
+          <p className="text-realm-text-muted/60 text-sm">
+            List items from your inventory to start selling.
+          </p>
         </div>
       ) : (
         <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden">
@@ -51,38 +103,60 @@ export default function MyListings({
                 <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Rarity</th>
                 <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Price</th>
                 <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Qty</th>
+                <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Orders</th>
+                <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Status</th>
                 <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Listed</th>
-                <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Expires</th>
                 <th className="px-4 py-3 text-realm-text-muted text-xs font-display"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-realm-border/50">
               {listings.map((listing) => (
                 <tr key={listing.id} className="hover:bg-realm-bg-600/30 transition-colors">
-                  <td className={`px-4 py-3 text-sm font-semibold ${RARITY_TEXT_COLORS[listing.rarity] ?? 'text-realm-text-primary'}`}>
-                    {listing.itemName}
+                  <td
+                    className={`px-4 py-3 text-sm font-semibold ${
+                      RARITY_TEXT_COLORS[listing.item.rarity] ?? 'text-realm-text-primary'
+                    }`}
+                  >
+                    {listing.item.name}
                   </td>
                   <td className="px-4 py-3">
-                    <RarityBadge rarity={listing.rarity} />
+                    <RarityBadge rarity={listing.item.rarity} />
                   </td>
                   <td className="px-4 py-3 text-sm">
                     <GoldAmount amount={listing.price} className="text-realm-gold-400" />
                   </td>
-                  <td className="px-4 py-3 text-sm text-realm-text-secondary">{listing.quantity}</td>
+                  <td className="px-4 py-3 text-sm text-realm-text-secondary">
+                    {listing.quantity}
+                  </td>
+                  <td className="px-4 py-3">
+                    {listing.buyOrderCount > 0 ? (
+                      <span className="inline-flex items-center gap-1 text-xs text-realm-text-secondary">
+                        <Users className="w-3 h-3" />
+                        {listing.buyOrderCount}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-realm-text-muted">0</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">{getStatusBadge(listing.status)}</td>
                   <td className="px-4 py-3 text-xs text-realm-text-muted">
                     {new Date(listing.listedAt).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-3 text-xs text-realm-text-muted">
-                    {new Date(listing.expiresAt).toLocaleDateString()}
-                  </td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => onCancel(listing.id)}
-                      disabled={cancelPending}
-                      className="px-3 py-1 text-xs text-realm-danger border border-realm-danger/30 rounded hover:bg-realm-danger/10 transition-colors disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
+                    {listing.status === 'active' && (
+                      <RealmButton
+                        variant="danger"
+                        size="sm"
+                        onClick={() => cancelMutation.mutate(listing.id)}
+                        disabled={cancelMutation.isPending}
+                      >
+                        {cancelMutation.isPending ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          'Cancel'
+                        )}
+                      </RealmButton>
+                    )}
                   </td>
                 </tr>
               ))}

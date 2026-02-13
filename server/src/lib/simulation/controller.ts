@@ -34,8 +34,10 @@ import { setSimulationTick } from '../../lib/simulation-context';
 function categorizeAction(endpoint: string): string {
   if (endpoint.includes('work') || endpoint.includes('gather')) return 'gather';
   if (endpoint.includes('craft')) return 'craft';
-  if (endpoint.includes('market/buy') || endpoint.includes('buy')) return 'buy';
-  if (endpoint.includes('market/list') || endpoint.includes('sell') || endpoint.includes('market/browse')) return 'sell';
+  if (endpoint.includes('market/buy') || endpoint.includes('buy')) return 'market_buy';
+  if (endpoint.includes('market/list') || endpoint.includes('sell')) return 'market_list';
+  if (endpoint.includes('market/browse')) return 'market_browse';
+  if (endpoint.includes('market_auction')) return 'market_auction';
   // Road encounters are tracked by the travel tick, not individual bot actions
   if (endpoint.includes('road_encounter')) return 'road_encounter';
   if (endpoint.includes('quest')) return 'quest';
@@ -246,6 +248,21 @@ class SimulationController {
       errors.push(`Travel tick error: ${err.message}`);
     }
 
+    // 2c. Resolve market auctions for all towns with pending orders
+    try {
+      const { resolveAllTownAuctions } = await import('../auction-engine');
+      const auctionResult = await resolveAllTownAuctions();
+      if (auctionResult.transactionsCompleted > 0) {
+        actionBreakdown['market_auction'] = (actionBreakdown['market_auction'] || 0) + auctionResult.transactionsCompleted;
+      }
+      logger.info(
+        { tick: this.singleTickCount + 1, ...auctionResult },
+        'Market auctions resolved within simulation',
+      );
+    } catch (err: any) {
+      errors.push(`Market auction error: ${err.message}`);
+    }
+
     // Gold tracking accumulators
     const goldByProfession: Record<string, { earned: number; spent: number; net: number; botCount: number }> = {};
     const goldByTown: Record<string, { earned: number; spent: number; net: number }> = {};
@@ -340,6 +357,40 @@ class SimulationController {
 
         // If action was idle/paused, or bot was deactivated/paused, stop giving actions
         if (result.endpoint === 'none' || botDeactivated || bot.pausedUntil > Date.now()) break;
+      }
+
+      // Free market actions (don't consume action slots)
+      if (this.config.enabledSystems.market && bot.currentTownId && bot.isActive) {
+        try {
+          const { doFreeMarketActions } = await import('./actions');
+          const marketResults = await doFreeMarketActions(bot);
+          for (const mr of marketResults) {
+            const marketAction = categorizeAction(mr.endpoint);
+            actionBreakdown[marketAction] = (actionBreakdown[marketAction] || 0) + 1;
+            if (mr.success) successes++;
+            else failures++;
+
+            logActivity({
+              timestamp: new Date().toISOString(),
+              characterId: bot.characterId,
+              botName: bot.characterName,
+              profile: bot.profile,
+              action: marketAction,
+              endpoint: mr.endpoint,
+              success: mr.success,
+              detail: `[FREE] ${mr.detail}`,
+              durationMs: 0,
+            });
+
+            botActions.push({
+              order: botActions.length + 1,
+              type: `${marketAction} [FREE]`,
+              detail: mr.detail,
+              success: mr.success,
+              goldDelta: 0,
+            });
+          }
+        } catch { /* ignore market errors */ }
       }
 
       // Final state refresh to get accurate gold

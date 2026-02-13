@@ -12,6 +12,7 @@ import contentReleaseRouter from './contentRelease';
 import travelRouter from './travel';
 import populationRouter from './population';
 import monstersRouter from './monsters';
+import marketRouter from './market';
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use('/content-release', contentReleaseRouter);
 router.use('/travel', travelRouter);
 router.use('/population', populationRouter);
 router.use('/monsters', monstersRouter);
+router.use('/market', marketRouter);
 
 export default router;

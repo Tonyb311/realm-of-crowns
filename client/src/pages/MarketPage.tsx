@@ -1,61 +1,85 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Store,
   ChevronLeft,
   ChevronRight,
   Package,
+  ShoppingCart,
+  ClipboardList,
   TrendingUp,
   X,
+  Lock,
 } from 'lucide-react';
 import api from '../services/api';
 import GoldAmount from '../components/shared/GoldAmount';
 import { RARITY_TEXT_COLORS } from '../constants';
 import MarketFilters from '../components/market/MarketFilters';
-import ListingCard, { RarityBadge, type MarketListing } from '../components/market/ListingCard';
-import PriceChart, { type PriceHistoryPoint } from '../components/market/PriceChart';
+import ListingCard, { RarityBadge, type AuctionListing } from '../components/market/ListingCard';
+import PriceChart from '../components/market/PriceChart';
 import SellForm from '../components/market/SellForm';
 import MyListings from '../components/market/MyListings';
+import OrderList from '../components/market/OrderList';
+import AuctionTimer from '../components/market/AuctionTimer';
+import BidModal from '../components/market/BidModal';
+import RollBreakdown from '../components/market/RollBreakdown';
+import { RealmBadge } from '../components/ui/RealmBadge';
+import { RealmSkeleton } from '../components/ui/RealmSkeleton';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-interface InventoryItem {
+interface CharacterData {
   id: string;
-  itemId: string;
   name: string;
-  type: string;
-  rarity: string;
-  quantity: number;
-  description?: string;
+  gold: number;
+  escrowedGold?: number;
+  currentTownId: string | null;
+  currentTownName?: string;
+  professions?: Array<{ name: string }>;
+}
+
+interface BrowseResponse {
+  listings: AuctionListing[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 interface PriceHistoryResponse {
   itemName: string;
-  history: PriceHistoryPoint[];
+  transactions: Array<{ salePrice: number; soldAt: string; quantity: number }>;
+}
+
+interface AuctionResult {
+  id: string;
+  itemName: string;
+  bidPrice: number;
+  status: string;
+  resolvedAt: string;
+  rollBreakdown: {
+    raw: number;
+    modifiers: Array<{ source: string; value: number }>;
+    total: number;
+  } | null;
+}
+
+interface MarketTrend {
+  itemName: string;
   averagePrice: number;
-  totalVolume: number;
+  volume: number;
+  trend: 'up' | 'down' | 'stable';
 }
 
-interface BrowseResponse {
-  listings: MarketListing[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-
-interface WalletResponse {
-  gold: number;
-}
-
-interface ItemOption {
-  itemId: string;
-  name: string;
+interface ResultsResponse {
+  results: AuctionResult[];
+  marketTrends: MarketTrend[] | null;
 }
 
 type SortField = 'price_asc' | 'price_desc' | 'newest' | 'rarity';
-type Tab = 'browse' | 'my-listings' | 'price-history';
+type Tab = 'browse' | 'sell' | 'my-orders' | 'my-listings' | 'results';
 
 const PAGE_SIZE = 12;
 
@@ -76,50 +100,48 @@ export default function MarketPage() {
   const [priceMax, setPriceMax] = useState('');
   const [sort, setSort] = useState<SortField>('newest');
   const [page, setPage] = useState(1);
-  const [selectedListing, setSelectedListing] = useState<MarketListing | null>(null);
-  const [buyConfirm, setBuyConfirm] = useState<MarketListing | null>(null);
+  const [selectedListing, setSelectedListing] = useState<AuctionListing | null>(null);
+  const [bidListing, setBidListing] = useState<AuctionListing | null>(null);
 
-  // -- My Listings state --
-  const [showListModal, setShowListModal] = useState(false);
-  const [listItemId, setListItemId] = useState('');
-  const [listPrice, setListPrice] = useState('');
-  const [listQty, setListQty] = useState('1');
+  // -- Sell state --
+  const [showSellForm, setShowSellForm] = useState(false);
 
   // -- Price History state --
-  const [historyItemId, setHistoryItemId] = useState('');
+  const [historyItemTemplateId, setHistoryItemTemplateId] = useState('');
+
+  // -- Success toast --
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Queries
   // ---------------------------------------------------------------------------
-  const { data: charData } = useQuery<{ currentTownId: string | null }>({
-    queryKey: ['character', 'me'],
-    queryFn: async () => (await api.get('/characters/me')).data,
+  const { data: character } = useQuery<CharacterData>({
+    queryKey: ['characters', 'current'],
+    queryFn: async () => (await api.get('/characters/current')).data,
   });
 
-  const { data: townData } = useQuery<{ town: { taxRate?: number } }>({
-    queryKey: ['town', charData?.currentTownId],
-    queryFn: async () => (await api.get(`/towns/${charData!.currentTownId}`)).data,
-    enabled: !!charData?.currentTownId,
-  });
-
-  const taxRate = townData?.town?.taxRate ?? 0.10;
-
-  const { data: wallet } = useQuery<WalletResponse>({
-    queryKey: ['wallet'],
-    queryFn: async () => (await api.get('/characters/me/wallet')).data,
-  });
+  const gold = character?.gold ?? 0;
+  const escrowedGold = character?.escrowedGold ?? 0;
+  const townName = character?.currentTownName ?? 'Local';
+  const isMerchant =
+    character?.professions?.some((p) => p.name.toLowerCase() === 'merchant') ?? false;
 
   const browseParams = useMemo(() => {
     const params: Record<string, string> = {
       page: String(page),
-      pageSize: String(PAGE_SIZE),
+      limit: String(PAGE_SIZE),
       sort,
     };
     if (searchText) params.search = searchText;
     if (filterType !== 'All') params.type = filterType;
     if (filterRarity !== 'All') params.rarity = filterRarity;
-    if (priceMin) params.priceMin = priceMin;
-    if (priceMax) params.priceMax = priceMax;
+    if (priceMin) params.minPrice = priceMin;
+    if (priceMax) params.maxPrice = priceMax;
     return params;
   }, [page, sort, searchText, filterType, filterRarity, priceMin, priceMax]);
 
@@ -133,120 +155,33 @@ export default function MarketPage() {
   });
 
   const {
-    data: myListings,
-    isLoading: myListingsLoading,
-  } = useQuery<MarketListing[]>({
-    queryKey: ['market', 'my-listings'],
-    queryFn: async () => {
-      const res = await api.get('/market/my-listings');
-      return res.data.listings ?? res.data;
-    },
-    enabled: activeTab === 'my-listings',
-  });
-
-  const {
-    data: inventory,
-  } = useQuery<InventoryItem[]>({
-    queryKey: ['inventory'],
-    queryFn: async () => {
-      const res = await api.get('/characters/me/inventory');
-      return Array.isArray(res.data) ? res.data : (res.data?.items ?? res.data?.inventory ?? []);
-    },
-    enabled: showListModal,
-  });
-
-  const {
-    data: itemOptions,
-  } = useQuery<ItemOption[]>({
-    queryKey: ['market', 'item-options'],
-    queryFn: async () => {
-      const res = await api.get('/market/item-options');
-      const d = res.data;
-      return Array.isArray(d) ? d : (d?.items ?? d?.itemOptions ?? []);
-    },
-    enabled: activeTab === 'price-history',
-  });
-
-  const {
     data: priceHistory,
     isLoading: historyLoading,
+    isError: historyError,
   } = useQuery<PriceHistoryResponse>({
-    queryKey: ['market', 'history', historyItemId],
-    queryFn: async () => {
-      const res = await api.get('/market/history', { params: { itemId: historyItemId, days: 30 } });
-      const d = res.data;
-      const history = Array.isArray(d?.history) ? d.history : [];
-      const totalVolume = d.totalVolume ?? history.reduce((sum: number, h: any) => sum + (h.volume ?? 0), 0);
-      const averagePrice = d.averagePrice ?? (history.length > 0
-        ? Math.round(history.reduce((sum: number, h: any) => sum + (h.avgPrice ?? 0), 0) / history.length)
-        : 0);
-      return {
-        itemName: d.itemName ?? '',
-        history,
-        averagePrice,
-        totalVolume,
-      };
-    },
-    enabled: activeTab === 'price-history' && !!historyItemId,
+    queryKey: ['market', 'price-history', historyItemTemplateId],
+    queryFn: async () =>
+      (
+        await api.get('/market/price-history', {
+          params: { itemTemplateId: historyItemTemplateId },
+        })
+      ).data,
+    enabled: activeTab === 'results' && isMerchant && !!historyItemTemplateId,
   });
 
-  // ---------------------------------------------------------------------------
-  // Mutations
-  // ---------------------------------------------------------------------------
-  const buyMutation = useMutation({
-    mutationFn: async (listingId: string) => {
-      return (await api.post('/market/buy', { listingId })).data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['market'] });
-      queryClient.invalidateQueries({ queryKey: ['wallet'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      setBuyConfirm(null);
-    },
+  const {
+    data: resultsData,
+    isLoading: resultsLoading,
+  } = useQuery<ResultsResponse>({
+    queryKey: ['market', 'results'],
+    queryFn: async () => (await api.get('/market/results')).data,
+    enabled: activeTab === 'results',
   });
-
-  const cancelMutation = useMutation({
-    mutationFn: async (listingId: string) => {
-      return (await api.post('/market/cancel', { listingId })).data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['market'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-    },
-  });
-
-  const listMutation = useMutation({
-    mutationFn: async (data: { itemId: string; price: number; quantity: number }) => {
-      return (await api.post('/market/list', data)).data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['market'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      setShowListModal(false);
-      setListItemId('');
-      setListPrice('');
-      setListQty('1');
-    },
-  });
-
-  const handleList = useCallback(() => {
-    const price = parseFloat(listPrice);
-    const quantity = parseInt(listQty, 10);
-    if (!listItemId || isNaN(price) || price <= 0 || isNaN(quantity) || quantity <= 0) return;
-    listMutation.mutate({ itemId: listItemId, price, quantity });
-  }, [listItemId, listPrice, listQty, listMutation]);
 
   // ---------------------------------------------------------------------------
   // Derived values
   // ---------------------------------------------------------------------------
-  const totalPages = browseData ? Math.ceil(browseData.total / PAGE_SIZE) : 1;
-  const gold = wallet?.gold ?? 0;
-
-  const selectedInventoryItem = inventory?.find((i) => i.itemId === listItemId);
-  const listPriceNum = parseFloat(listPrice) || 0;
-  const listQtyNum = parseInt(listQty, 10) || 0;
-  const listTotal = listPriceNum * listQtyNum;
-  const listTax = Math.ceil(listTotal * taxRate);
+  const totalPages = browseData?.totalPages ?? 1;
 
   // Filter state setters that also reset page
   const handleSearchChange = useCallback((v: string) => { setSearchText(v); setPage(1); }, []);
@@ -260,8 +195,10 @@ export default function MarketPage() {
   // ---------------------------------------------------------------------------
   const tabs: { key: Tab; label: string; icon: typeof Store }[] = [
     { key: 'browse', label: 'Browse', icon: Store },
-    { key: 'my-listings', label: 'My Listings', icon: Package },
-    { key: 'price-history', label: 'Price History', icon: TrendingUp },
+    { key: 'sell', label: 'Sell', icon: Package },
+    { key: 'my-orders', label: 'My Orders', icon: ShoppingCart },
+    { key: 'my-listings', label: 'My Listings', icon: ClipboardList },
+    { key: 'results', label: 'Results', icon: TrendingUp },
   ];
 
   // ---------------------------------------------------------------------------
@@ -269,6 +206,13 @@ export default function MarketPage() {
   // ---------------------------------------------------------------------------
   return (
     <div className="pt-12">
+      {/* Toast notification */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-[60] bg-realm-bg-700 border border-realm-gold-400/30 rounded-lg px-4 py-3 shadow-lg animate-fade-in">
+          <p className="text-realm-gold-400 text-sm font-display">{toast}</p>
+        </div>
+      )}
+
       {/* Header */}
       <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
@@ -276,14 +220,24 @@ export default function MarketPage() {
             <div className="flex items-center gap-3">
               <Store className="w-8 h-8 text-realm-gold-400" />
               <div>
-                <h1 className="text-3xl font-display text-realm-gold-400">Marketplace</h1>
-                <p className="text-realm-text-muted text-sm">Trade goods with fellow adventurers</p>
+                <h1 className="text-3xl font-display text-realm-gold-400">
+                  {townName} Market
+                </h1>
+                <p className="text-realm-text-muted text-sm">
+                  Batch auction marketplace -- place orders and compete for items
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 flex-wrap">
+              <AuctionTimer />
               <div className="bg-realm-bg-700 border border-realm-border rounded px-4 py-2 flex items-center gap-2">
-                <span className="text-realm-text-muted text-xs">Your Gold:</span>
+                <span className="text-realm-text-muted text-xs">Gold:</span>
                 <GoldAmount amount={gold} className="text-realm-gold-400 font-display text-sm" />
+                {escrowedGold > 0 && (
+                  <span className="text-realm-text-muted text-xs">
+                    ({escrowedGold}g in escrow)
+                  </span>
+                )}
               </div>
               <button
                 onClick={() => navigate('/town')}
@@ -299,7 +253,7 @@ export default function MarketPage() {
       {/* Tabs */}
       <div className="border-b border-realm-border bg-realm-bg-800/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex gap-1">
+          <nav className="flex gap-1 overflow-x-auto">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.key;
@@ -307,7 +261,7 @@ export default function MarketPage() {
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`flex items-center gap-2 px-5 py-3 font-display text-sm border-b-2 transition-colors ${
+                  className={`flex items-center gap-2 px-5 py-3 font-display text-sm border-b-2 transition-colors whitespace-nowrap ${
                     isActive
                       ? 'border-realm-gold-400 text-realm-gold-400'
                       : 'border-transparent text-realm-text-muted hover:text-realm-text-secondary hover:border-realm-text-muted/30'
@@ -324,7 +278,9 @@ export default function MarketPage() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {/* TAB 1: Browse */}
+        {/* ================================================================
+            TAB 1: Browse
+            ================================================================ */}
         {activeTab === 'browse' && (
           <div>
             <MarketFilters
@@ -346,13 +302,18 @@ export default function MarketPage() {
             {browseLoading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="h-48 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
+                  <RealmSkeleton
+                    key={i}
+                    className="h-48 w-full"
+                  />
                 ))}
               </div>
             ) : !browseData?.listings?.length ? (
               <div className="text-center py-20">
                 <Store className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-4" />
-                <p className="text-realm-text-muted">No listings found matching your criteria.</p>
+                <p className="text-realm-text-muted">
+                  No listings found matching your criteria.
+                </p>
               </div>
             ) : (
               <>
@@ -362,7 +323,7 @@ export default function MarketPage() {
                       key={listing.id}
                       listing={listing}
                       onSelect={setSelectedListing}
-                      onBuy={setBuyConfirm}
+                      onPlaceOrder={setBidListing}
                     />
                   ))}
                 </div>
@@ -394,101 +355,342 @@ export default function MarketPage() {
           </div>
         )}
 
-        {/* TAB 2: My Listings */}
-        {activeTab === 'my-listings' && (
-          <MyListings
-            listings={myListings}
-            isLoading={myListingsLoading}
-            onListItem={() => setShowListModal(true)}
-            onCancel={(id) => cancelMutation.mutate(id)}
-            cancelPending={cancelMutation.isPending}
-          />
+        {/* ================================================================
+            TAB 2: Sell
+            ================================================================ */}
+        {activeTab === 'sell' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-display text-realm-text-primary">Sell Items</h2>
+                <p className="text-realm-text-muted text-sm mt-1">
+                  List items from your inventory. Buyers will place orders and compete
+                  in auction cycles.
+                </p>
+              </div>
+            </div>
+            {/* Inline sell form -- opens as a modal for consistency with existing patterns */}
+            <div className="flex justify-center">
+              <button
+                onClick={() => setShowSellForm(true)}
+                className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 hover:border-realm-gold-400/40 transition-colors cursor-pointer text-center max-w-md w-full"
+              >
+                <Package className="w-12 h-12 text-realm-gold-400/60 mx-auto mb-4" />
+                <p className="text-realm-text-primary font-display text-lg mb-2">
+                  List an Item for Sale
+                </p>
+                <p className="text-realm-text-muted text-sm">
+                  Select an item from your inventory, set your asking price, and wait for
+                  buyers to place orders.
+                </p>
+              </button>
+            </div>
+          </div>
         )}
 
-        {/* TAB 3: Price History */}
-        {activeTab === 'price-history' && (
+        {/* ================================================================
+            TAB 3: My Orders
+            ================================================================ */}
+        {activeTab === 'my-orders' && (
           <div>
-            <h2 className="text-xl font-display text-realm-text-primary mb-6">Price History</h2>
-
-            <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6">
-              {/* Item selector */}
-              <div className="mb-6">
-                <label className="text-realm-text-muted text-xs mb-1 block">Select Item</label>
-                <select
-                  value={historyItemId}
-                  onChange={(e) => setHistoryItemId(e.target.value)}
-                  className="w-full max-w-sm px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-none"
-                >
-                  <option value="">Choose an item...</option>
-                  {itemOptions?.map((item) => (
-                    <option key={item.itemId} value={item.itemId}>{item.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {!historyItemId ? (
-                <div className="text-center py-16">
-                  <TrendingUp className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-4" />
-                  <p className="text-realm-text-muted">Select an item to view price trends.</p>
-                </div>
-              ) : historyLoading ? (
-                <div className="space-y-4 animate-pulse">
-                  <div className="flex gap-6">
-                    <div className="bg-realm-bg-900 border border-realm-border rounded px-4 py-3 w-40 h-16" />
-                    <div className="bg-realm-bg-900 border border-realm-border rounded px-4 py-3 w-40 h-16" />
-                  </div>
-                  <div className="bg-realm-bg-800 rounded h-64" />
-                </div>
-              ) : priceHistory ? (
-                <div>
-                  {/* Stats */}
-                  <div className="flex gap-6 mb-6">
-                    <div className="bg-realm-bg-900 border border-realm-border rounded px-4 py-3">
-                      <p className="text-realm-text-muted text-xs">Average Price (30d)</p>
-                      <GoldAmount
-                        amount={Math.round(priceHistory.averagePrice ?? 0)}
-                        className="text-realm-gold-400 font-display text-lg"
-                      />
-                    </div>
-                    <div className="bg-realm-bg-900 border border-realm-border rounded px-4 py-3">
-                      <p className="text-realm-text-muted text-xs">Total Volume (30d)</p>
-                      <p className="text-realm-text-primary font-display text-lg">{(priceHistory.totalVolume ?? 0).toLocaleString()}</p>
-                    </div>
-                  </div>
-
-                  {/* Chart */}
-                  <PriceChart data={priceHistory.history ?? []} />
-                </div>
-              ) : null}
+            <div className="mb-6">
+              <h2 className="text-xl font-display text-realm-text-primary">Your Buy Orders</h2>
+              <p className="text-realm-text-muted text-sm mt-1">
+                Track your pending bids and view resolved auction results.
+              </p>
             </div>
+            <OrderList />
+          </div>
+        )}
+
+        {/* ================================================================
+            TAB 4: My Listings
+            ================================================================ */}
+        {activeTab === 'my-listings' && (
+          <MyListings onListItem={() => setShowSellForm(true)} />
+        )}
+
+        {/* ================================================================
+            TAB 5: Results
+            ================================================================ */}
+        {activeTab === 'results' && (
+          <div>
+            <h2 className="text-xl font-display text-realm-text-primary mb-6">
+              Auction Results
+            </h2>
+
+            {resultsLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <RealmSkeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : !resultsData?.results?.length ? (
+              <div className="text-center py-16">
+                <TrendingUp className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-4" />
+                <p className="text-realm-text-muted">
+                  No auction results yet. Place orders to see your history here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2 mb-8">
+                {resultsData.results.map((result) => {
+                  const isWon =
+                    result.status === 'won' || result.status === 'fulfilled';
+                  const isLost =
+                    result.status === 'lost' || result.status === 'outbid';
+
+                  return (
+                    <div
+                      key={result.id}
+                      className={`bg-realm-bg-700 border rounded-lg p-4 ${
+                        isWon
+                          ? 'border-realm-success/30'
+                          : isLost
+                            ? 'border-realm-danger/30'
+                            : 'border-realm-border'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-realm-text-primary text-sm font-semibold">
+                            {result.itemName}
+                          </span>
+                          {isWon && (
+                            <RealmBadge variant="uncommon">Won</RealmBadge>
+                          )}
+                          {isLost && (
+                            <span className="inline-flex items-center gap-1 font-display text-xs uppercase tracking-wider px-2 py-0.5 rounded-sm border border-realm-danger/50 text-realm-danger">
+                              Lost
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <GoldAmount
+                            amount={result.bidPrice}
+                            className="text-realm-text-secondary text-sm"
+                          />
+                          <p className="text-realm-text-muted text-[10px]">
+                            {new Date(result.resolvedAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      {result.rollBreakdown && (
+                        <div className="pt-2 border-t border-realm-border/50">
+                          <RollBreakdown rollBreakdown={result.rollBreakdown} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Merchant-only market trends */}
+            {isMerchant && resultsData?.marketTrends && resultsData.marketTrends.length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-lg font-display text-realm-text-primary mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-realm-gold-400" />
+                  Market Trends
+                  <RealmBadge variant="legendary">Merchant</RealmBadge>
+                </h3>
+                <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-realm-border text-left">
+                        <th className="px-4 py-3 text-realm-text-muted text-xs font-display">
+                          Item
+                        </th>
+                        <th className="px-4 py-3 text-realm-text-muted text-xs font-display">
+                          Avg Price
+                        </th>
+                        <th className="px-4 py-3 text-realm-text-muted text-xs font-display">
+                          Volume
+                        </th>
+                        <th className="px-4 py-3 text-realm-text-muted text-xs font-display">
+                          Trend
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-realm-border/50">
+                      {resultsData.marketTrends.map((trend, i) => (
+                        <tr key={i} className="hover:bg-realm-bg-600/30 transition-colors">
+                          <td className="px-4 py-3 text-sm text-realm-text-primary font-semibold">
+                            {trend.itemName}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <GoldAmount
+                              amount={Math.round(trend.averagePrice)}
+                              className="text-realm-gold-400"
+                            />
+                          </td>
+                          <td className="px-4 py-3 text-sm text-realm-text-secondary">
+                            {trend.volume}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <span
+                              className={
+                                trend.trend === 'up'
+                                  ? 'text-realm-success'
+                                  : trend.trend === 'down'
+                                    ? 'text-realm-danger'
+                                    : 'text-realm-text-muted'
+                              }
+                            >
+                              {trend.trend === 'up'
+                                ? 'Rising'
+                                : trend.trend === 'down'
+                                  ? 'Falling'
+                                  : 'Stable'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Merchant-only price history */}
+            {isMerchant && (
+              <div className="mt-8">
+                <h3 className="text-lg font-display text-realm-text-primary mb-4 flex items-center gap-2">
+                  Price History
+                  <RealmBadge variant="legendary">Merchant</RealmBadge>
+                </h3>
+                <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6">
+                  <div className="mb-4">
+                    <label className="text-realm-text-muted text-xs mb-1 block">
+                      Item Template ID
+                    </label>
+                    <input
+                      type="text"
+                      value={historyItemTemplateId}
+                      onChange={(e) => setHistoryItemTemplateId(e.target.value)}
+                      placeholder="Enter item template ID..."
+                      className="w-full max-w-sm px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-none placeholder:text-realm-text-muted/50"
+                    />
+                  </div>
+
+                  {!historyItemTemplateId ? (
+                    <div className="text-center py-12">
+                      <TrendingUp className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
+                      <p className="text-realm-text-muted text-sm">
+                        Enter an item template ID to view price history.
+                      </p>
+                    </div>
+                  ) : historyLoading ? (
+                    <div className="space-y-3 animate-pulse">
+                      <RealmSkeleton className="h-64 w-full" />
+                    </div>
+                  ) : historyError ? (
+                    <div className="text-center py-12">
+                      <p className="text-realm-danger text-sm">
+                        Could not load price history. Merchant profession required.
+                      </p>
+                    </div>
+                  ) : priceHistory ? (
+                    <div>
+                      <p className="text-realm-text-primary font-display text-sm mb-3">
+                        {priceHistory.itemName}
+                      </p>
+                      {priceHistory.transactions.length === 0 ? (
+                        <p className="text-realm-text-muted text-sm text-center py-8">
+                          No transactions recorded for this item.
+                        </p>
+                      ) : (
+                        <PriceChart
+                          data={priceHistory.transactions.map((t) => ({
+                            date: t.soldAt,
+                            avgPrice: t.salePrice,
+                            volume: t.quantity,
+                          }))}
+                        />
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            )}
+
+            {!isMerchant && (
+              <div className="mt-8 bg-realm-bg-700 border border-realm-border rounded-lg p-6 text-center">
+                <Lock className="w-8 h-8 text-realm-text-muted/40 mx-auto mb-3" />
+                <p className="text-realm-text-muted text-sm">
+                  Market trends and price history are exclusive to the{' '}
+                  <span className="text-realm-gold-400">Merchant</span> profession.
+                </p>
+                <p className="text-realm-text-muted/60 text-xs mt-1">
+                  Learn the Merchant profession to unlock advanced market intelligence.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* MODAL: Item Details Popup */}
+      {/* ================================================================
+          MODAL: Item Details Popup
+          ================================================================ */}
       {selectedListing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setSelectedListing(null)}>
-          <div className="bg-realm-bg-800 border border-realm-border rounded-lg p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => setSelectedListing(null)}
+        >
+          <div
+            className="bg-realm-bg-800 border border-realm-border rounded-lg p-6 max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start justify-between mb-4">
-              <h3 className={`text-xl font-display ${RARITY_TEXT_COLORS[selectedListing.rarity] ?? 'text-realm-text-primary'}`}>
-                {selectedListing.itemName}
+              <h3
+                className={`text-xl font-display ${
+                  RARITY_TEXT_COLORS[selectedListing.item.rarity] ??
+                  'text-realm-text-primary'
+                }`}
+              >
+                {selectedListing.item.name}
               </h3>
-              <button onClick={() => setSelectedListing(null)} className="text-realm-text-muted hover:text-realm-text-primary">
+              <button
+                onClick={() => setSelectedListing(null)}
+                className="text-realm-text-muted hover:text-realm-text-primary"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-3 mb-6">
               <div className="flex items-center gap-2">
-                <RarityBadge rarity={selectedListing.rarity} />
-                <span className="text-realm-text-muted text-xs capitalize">{selectedListing.itemType}</span>
+                <RarityBadge rarity={selectedListing.item.rarity} />
+                <span className="text-realm-text-muted text-xs capitalize">
+                  {selectedListing.item.type}
+                </span>
               </div>
-              {selectedListing.description && (
-                <p className="text-realm-text-secondary text-sm leading-relaxed">{selectedListing.description}</p>
+              {selectedListing.item.description && (
+                <p className="text-realm-text-secondary text-sm leading-relaxed">
+                  {selectedListing.item.description}
+                </p>
               )}
+              {selectedListing.item.stats &&
+                Object.keys(selectedListing.item.stats).length > 0 && (
+                  <div className="bg-realm-bg-900 border border-realm-border rounded p-3">
+                    <p className="text-realm-text-muted text-xs mb-2">Stats</p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {Object.entries(selectedListing.item.stats).map(([key, val]) => (
+                        <div key={key} className="flex justify-between text-xs">
+                          <span className="text-realm-text-muted capitalize">{key}</span>
+                          <span className="text-realm-text-primary">{val}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <p className="text-realm-text-muted text-xs">Price</p>
-                  <GoldAmount amount={selectedListing.price} className="text-realm-gold-400 font-semibold" />
+                  <p className="text-realm-text-muted text-xs">Asking Price</p>
+                  <GoldAmount
+                    amount={selectedListing.price}
+                    className="text-realm-gold-400 font-semibold"
+                  />
                 </div>
                 <div>
                   <p className="text-realm-text-muted text-xs">Quantity</p>
@@ -496,98 +698,55 @@ export default function MarketPage() {
                 </div>
                 <div>
                   <p className="text-realm-text-muted text-xs">Seller</p>
-                  <p className="text-realm-text-primary">{selectedListing.sellerName}</p>
+                  <p className="text-realm-text-primary">
+                    {selectedListing.seller.name}
+                  </p>
                 </div>
                 <div>
                   <p className="text-realm-text-muted text-xs">Listed</p>
-                  <p className="text-realm-text-primary">{new Date(selectedListing.listedAt).toLocaleDateString()}</p>
+                  <p className="text-realm-text-primary">
+                    {new Date(selectedListing.listedAt).toLocaleDateString()}
+                  </p>
                 </div>
               </div>
             </div>
             <button
-              onClick={() => { setBuyConfirm(selectedListing); setSelectedListing(null); }}
+              onClick={() => {
+                setBidListing(selectedListing);
+                setSelectedListing(null);
+              }}
               className="w-full py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display rounded hover:bg-realm-gold-400 transition-colors"
             >
-              Buy This Item
+              Place Order
             </button>
           </div>
         </div>
       )}
 
-      {/* MODAL: Buy Confirmation */}
-      {buyConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setBuyConfirm(null)}>
-          <div className="bg-realm-bg-800 border border-realm-border rounded-lg p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-display text-realm-gold-400 mb-4">Confirm Purchase</h3>
-            <div className="space-y-3 mb-6">
-              <div className="flex justify-between text-sm">
-                <span className="text-realm-text-muted">Item</span>
-                <span className={`font-semibold ${RARITY_TEXT_COLORS[buyConfirm.rarity] ?? 'text-realm-text-primary'}`}>{buyConfirm.itemName}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-realm-text-muted">Price</span>
-                <GoldAmount amount={buyConfirm.price} className="text-realm-text-primary" />
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-realm-text-muted">Tax ({Math.round(taxRate * 100)}%)</span>
-                <GoldAmount amount={Math.ceil(buyConfirm.price * taxRate)} className="text-realm-text-primary" />
-              </div>
-              <div className="border-t border-realm-border pt-2 flex justify-between text-sm font-semibold">
-                <span className="text-realm-text-secondary">Total</span>
-                <GoldAmount
-                  amount={buyConfirm.price + Math.ceil(buyConfirm.price * taxRate)}
-                  className="text-realm-gold-400"
-                />
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-realm-text-muted">Your Gold</span>
-                <GoldAmount amount={gold} className="text-realm-text-primary" />
-              </div>
-              {gold < buyConfirm.price + Math.ceil(buyConfirm.price * taxRate) && (
-                <p className="text-realm-danger text-xs">You do not have enough gold for this purchase.</p>
-              )}
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setBuyConfirm(null)}
-                className="flex-1 py-2 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => buyMutation.mutate(buyConfirm.id)}
-                disabled={buyMutation.isPending || gold < buyConfirm.price + Math.ceil(buyConfirm.price * taxRate)}
-                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {buyMutation.isPending ? 'Buying...' : 'Confirm'}
-              </button>
-            </div>
-            {buyMutation.isError && (
-              <p className="text-realm-danger text-xs mt-3 text-center">Purchase failed. Please try again.</p>
-            )}
-          </div>
-        </div>
+      {/* ================================================================
+          MODAL: Bid (Place Buy Order)
+          ================================================================ */}
+      {bidListing && (
+        <BidModal
+          listing={bidListing}
+          onClose={() => setBidListing(null)}
+          onSuccess={() => {
+            setBidListing(null);
+            showToast('Buy order placed successfully! Gold held in escrow.');
+          }}
+        />
       )}
 
-      {/* MODAL: List Item */}
-      {showListModal && (
+      {/* ================================================================
+          MODAL: Sell Form
+          ================================================================ */}
+      {showSellForm && (
         <SellForm
-          inventory={inventory}
-          listItemId={listItemId}
-          onListItemIdChange={setListItemId}
-          listPrice={listPrice}
-          onListPriceChange={setListPrice}
-          listQty={listQty}
-          onListQtyChange={setListQty}
-          listTotal={listTotal}
-          listTax={listTax}
-          selectedInventoryItem={selectedInventoryItem}
-          listPriceNum={listPriceNum}
-          listQtyNum={listQtyNum}
-          isPending={listMutation.isPending}
-          isError={listMutation.isError}
-          onSubmit={handleList}
-          onClose={() => setShowListModal(false)}
+          onClose={() => setShowSellForm(false)}
+          onSuccess={() => {
+            setShowSellForm(false);
+            showToast('Item listed for sale!');
+          }}
         />
       )}
     </div>
