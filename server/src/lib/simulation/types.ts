@@ -31,6 +31,7 @@ export interface BotState {
   pendingGathering: boolean;
   pendingCrafting: boolean;
   pausedUntil: number;
+  intelligence: number; // 0-100
 }
 
 export interface SimulationConfig {
@@ -63,6 +64,8 @@ export interface SimulationStatus {
   uptime: number;
   bots: BotSummary[];
   recentActivity: ActivityEntry[];
+  intelligence: number;
+  gameDayOffset: number;
 }
 
 export interface BotSummary {
@@ -104,6 +107,61 @@ export interface ActionResult {
 export interface DispatchResult {
   status: number;
   data: any;
+}
+
+// ---------------------------------------------------------------------------
+// Seed Configuration (used by seedBots, separate from SimulationConfig)
+// ---------------------------------------------------------------------------
+
+export interface SeedConfig {
+  count: number;
+  townIds: string[] | 'all';
+  intelligence: number; // 0-100
+  raceDistribution: 'even' | 'realistic';
+  classDistribution: 'even' | 'realistic';
+  professionDistribution: 'even' | 'diverse';
+  startingLevel: number; // 1-10
+  namePrefix: string;
+}
+
+export const DEFAULT_SEED_CONFIG: SeedConfig = {
+  count: 20,
+  townIds: 'all',
+  intelligence: 50,
+  raceDistribution: 'realistic',
+  classDistribution: 'realistic',
+  professionDistribution: 'diverse',
+  startingLevel: 1,
+  namePrefix: 'Bot',
+};
+
+// ---------------------------------------------------------------------------
+// Tick result returned after running a simulation tick
+// ---------------------------------------------------------------------------
+
+export interface SimTickResult {
+  tickNumber: number;
+  botsProcessed: number;
+  actionBreakdown: Record<string, number>; // e.g. { gather: 12, craft: 5, sell: 3 }
+  successes: number;
+  failures: number;
+  errors: string[];
+  durationMs: number;
+}
+
+// ---------------------------------------------------------------------------
+// Stats for dashboard distribution charts
+// ---------------------------------------------------------------------------
+
+export interface SimulationStats {
+  raceDistribution: { name: string; count: number }[];
+  classDistribution: { name: string; count: number }[];
+  professionDistribution: { name: string; count: number }[];
+  townDistribution: { name: string; count: number }[];
+  levelDistribution: { level: number; count: number }[];
+  totalGold: number;
+  totalItems: number;
+  averageLevel: number;
 }
 
 export const DEFAULT_CONFIG: SimulationConfig = {

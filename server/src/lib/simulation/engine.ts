@@ -24,6 +24,14 @@ const PROFILE_WEIGHTS: Record<BotProfile, Partial<Record<ActionKey, number>>> = 
   balanced:   { gather: 12, craft: 12, buy: 12, sell: 12, combat: 12, quest: 10, travel: 10, message: 8, friend: 6, browse: 6 },
 };
 
+// ---- Gathering professions for random selection ----
+const GATHERING_PROFESSIONS = ['MINER', 'FARMER', 'LUMBERJACK', 'HERBALIST', 'FISHERMAN', 'HUNTER', 'RANCHER'];
+
+// ---- Random pick helper ----
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 // ---- Weighted random selection ----
 function weightedSelect(weights: Partial<Record<ActionKey, number>>): ActionKey {
   const entries = Object.entries(weights) as [ActionKey, number][];
@@ -89,6 +97,27 @@ function filterWeights(
   return filtered;
 }
 
+// ---- Execute a specific action by key ----
+function executeAction(action: ActionKey, bot: BotState, allBots: BotState[]): Promise<ActionResult> {
+  switch (action) {
+    case 'gather':    return actions.startGathering(bot);
+    case 'craft':     return actions.startCrafting(bot);
+    case 'buy':       return actions.buyFromMarket(bot);
+    case 'sell':      return actions.listOnMarket(bot);
+    case 'combat':    return actions.startCombat(bot);
+    case 'quest':     return actions.acceptQuest(bot);
+    case 'travel':    return actions.travel(bot);
+    case 'message':   return actions.sendMessage(bot);
+    case 'friend':    return actions.addFriend(bot, allBots);
+    case 'nominate':  return actions.nominateForElection(bot);
+    case 'vote':      return actions.voteInElection(bot, allBots);
+    case 'guild':     return actions.createGuild(bot);
+    case 'equip':     return actions.equipItem(bot);
+    case 'browse':    return actions.browseMarket(bot);
+    default:          return Promise.resolve({ success: true, detail: 'Idle', endpoint: 'none' });
+  }
+}
+
 // ---- Main decision function ----
 export async function decideBotAction(
   bot: BotState,
@@ -100,8 +129,17 @@ export async function decideBotAction(
     return { success: true, detail: 'Bot paused (cooldown)', endpoint: 'none' };
   }
 
-  // 2. If no professions, learn one based on profile
+  const intelligence = bot.intelligence ?? 50;
+
+  // 2. If no professions, learn one based on profile (or random for low intelligence)
   if (bot.professions.length === 0) {
+    if (Math.random() * 100 > intelligence) {
+      // Random profession choice
+      const randomProf = pickRandom(GATHERING_PROFESSIONS);
+      return actions.learnProfession(bot, randomProf);
+    }
+
+    // Smart (profile-based) profession choice
     let profType: string;
     switch (bot.profile) {
       case 'gatherer':   profType = 'MINER';      break;
@@ -141,7 +179,19 @@ export async function decideBotAction(
     return actions.collectCrafting(bot);
   }
 
-  // 4. Select action from weighted table
+  // 4. Intelligence modulates action selection
+  if (Math.random() * 100 > intelligence) {
+    // Random action — pick any enabled action
+    const profileWeights = PROFILE_WEIGHTS.balanced;
+    const filteredWeights = filterWeights(profileWeights, config.enabledSystems);
+    const allActions = Object.keys(filteredWeights) as ActionKey[];
+    if (allActions.length > 0) {
+      const randomAction = pickRandom(allActions);
+      return executeAction(randomAction, bot, allBots);
+    }
+  }
+
+  // 5. Smart action — use profile weights (existing logic)
   const profileWeights = PROFILE_WEIGHTS[bot.profile] || PROFILE_WEIGHTS.balanced;
   const filteredWeights = filterWeights(profileWeights, config.enabledSystems);
 
@@ -151,24 +201,7 @@ export async function decideBotAction(
 
   const selected = weightedSelect(filteredWeights);
 
-  switch (selected) {
-    case 'gather':    return actions.startGathering(bot);
-    case 'craft':     return actions.startCrafting(bot);
-    case 'buy':       return actions.buyFromMarket(bot);
-    case 'sell':      return actions.listOnMarket(bot);
-    case 'combat':    return actions.startCombat(bot);
-    case 'quest':     return actions.acceptQuest(bot);
-    case 'travel':    return actions.travel(bot);
-    case 'message':   return actions.sendMessage(bot);
-    case 'friend':    return actions.addFriend(bot, allBots);
-    case 'nominate':  return actions.nominateForElection(bot);
-    case 'vote':      return actions.voteInElection(bot, allBots);
-    case 'guild':     return actions.createGuild(bot);
-    case 'equip':     return actions.equipItem(bot);
-    case 'browse':    return actions.browseMarket(bot);
-    default:
-      return { success: true, detail: 'Idle', endpoint: 'none' };
-  }
+  return executeAction(selected, bot, allBots);
 }
 
 // ---- Error storm: deliberately trigger invalid actions ----

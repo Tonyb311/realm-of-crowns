@@ -52,3 +52,15 @@ export async function get(path: string, token: string): Promise<DispatchResult> 
 export async function post(path: string, token: string, body?: unknown): Promise<DispatchResult> {
   return dispatch('POST', path, token, body);
 }
+
+export async function put(path: string, token: string, body?: unknown): Promise<DispatchResult> {
+  return dispatch('PUT', path, token, body);
+}
+
+export async function patch(path: string, token: string, body?: unknown): Promise<DispatchResult> {
+  return dispatch('PATCH', path, token, body);
+}
+
+export async function del(path: string, token: string, body?: unknown): Promise<DispatchResult> {
+  return dispatch('DELETE', path, token, body);
+}

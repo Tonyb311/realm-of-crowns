@@ -16,23 +16,18 @@ const router = Router();
 // --- Schemas ---
 
 const seedSchema = z.object({
-  botCount: z.number().int().min(1).max(100).default(20),
-  tickIntervalMs: z.number().int().min(1000).max(60000).optional(),
-  botsPerTick: z.number().int().min(1).max(20).optional(),
-  profileDistribution: z.record(z.number().int().min(0)).optional(),
-  enabledSystems: z
-    .object({
-      combat: z.boolean().optional(),
-      crafting: z.boolean().optional(),
-      gathering: z.boolean().optional(),
-      market: z.boolean().optional(),
-      quests: z.boolean().optional(),
-      governance: z.boolean().optional(),
-      guilds: z.boolean().optional(),
-      travel: z.boolean().optional(),
-      social: z.boolean().optional(),
-    })
-    .optional(),
+  count: z.number().int().min(1).max(500).default(20),
+  townIds: z.union([z.array(z.string().uuid()), z.literal('all')]).default('all'),
+  intelligence: z.number().int().min(0).max(100).default(50),
+  raceDistribution: z.enum(['even', 'realistic']).default('realistic'),
+  classDistribution: z.enum(['even', 'realistic']).default('realistic'),
+  professionDistribution: z.enum(['even', 'diverse']).default('diverse'),
+  startingLevel: z.number().int().min(1).max(10).default(1),
+  namePrefix: z.string().min(1).max(20).default('Bot'),
+});
+
+const runSchema = z.object({
+  ticks: z.number().int().min(1).max(100).default(1),
 });
 
 const configPatchSchema = z.object({
@@ -91,6 +86,49 @@ router.post('/seed', validate(seedSchema), async (req: AuthenticatedRequest, res
     if (handlePrismaError(error, res, 'simulation-seed', req)) return;
     logRouteError(req, 500, '[Simulation] Seed error', error);
     return res.status(500).json({ error: 'Failed to seed bots' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/simulation/tick — Run one simulation tick
+// ---------------------------------------------------------------------------
+router.post('/tick', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await simulationController.runSingleTick();
+    return res.json(result);
+  } catch (error: any) {
+    logRouteError(req, 500, '[Simulation] Tick error', error);
+    return res.status(500).json({ error: error.message || 'Tick failed' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/simulation/run — Run N ticks
+// ---------------------------------------------------------------------------
+router.post('/run', validate(runSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { ticks } = req.body;
+    const results = await simulationController.runTicks(ticks);
+    return res.json({
+      message: `Completed ${ticks} tick(s)`,
+      ticksRun: results.length,
+      results,
+    });
+  } catch (error: any) {
+    logRouteError(req, 500, '[Simulation] Run error', error);
+    return res.status(500).json({ error: error.message || 'Run failed' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/simulation/stats — Distribution & economy stats
+// ---------------------------------------------------------------------------
+router.get('/stats', async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const stats = simulationController.getSimulationStats();
+    return res.json(stats);
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
   }
 });
 

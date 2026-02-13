@@ -7,8 +7,8 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { Race, DragonBloodline, BeastClan, ElementalType } from '@prisma/client';
 import { getRace } from '@shared/data/races';
-import { BotState, BotProfile, SimulationConfig, DEFAULT_CONFIG, BOT_PROFILES } from './types';
-import { generateCharacterName, generateBotUsername, generateBotEmail, resetNameCounter } from './names';
+import { BotState, BotProfile, SeedConfig, DEFAULT_CONFIG, BOT_PROFILES } from './types';
+import { generateCharacterName, resetNameCounter } from './names';
 import { logger } from '../../lib/logger';
 
 // ---------------------------------------------------------------------------
@@ -49,6 +49,8 @@ function pickWeighted<T>(all: T[], favored: T[]): T {
 
 const ALL_RACES = Object.values(Race);
 const ALL_CLASSES = ['warrior', 'mage', 'rogue', 'cleric', 'ranger', 'bard', 'psion'] as const;
+
+const GATHERING_PROFESSIONS = ['MINER', 'FARMER', 'LUMBERJACK', 'HERBALIST', 'FISHERMAN', 'HUNTER', 'RANCHER'];
 
 const PROFILE_RACE_PREFERENCES: Record<BotProfile, Race[]> = {
   gatherer: [Race.HUMAN, Race.HARTHFOLK, Race.MOSSKIN, Race.ELF],
@@ -95,6 +97,17 @@ const CLASS_HP_MAP: Record<string, number> = {
   psion: 4,
 };
 
+// Primary stat by class (for distributing extra stat points at higher starting levels)
+const CLASS_PRIMARY_STAT: Record<string, string> = {
+  warrior: 'str',
+  mage: 'int',
+  rogue: 'dex',
+  cleric: 'wis',
+  ranger: 'dex',
+  bard: 'cha',
+  psion: 'int',
+};
+
 // ---------------------------------------------------------------------------
 // seedBots
 // ---------------------------------------------------------------------------
@@ -105,35 +118,38 @@ const CLASS_HP_MAP: Record<string, number> = {
  *
  * Bots are created in batches of 10 to avoid overwhelming the database.
  */
-export async function seedBots(config: SimulationConfig): Promise<BotState[]> {
+export async function seedBots(config: SeedConfig): Promise<BotState[]> {
   resetNameCounter();
 
   const bots: BotState[] = [];
   const batchSize = 10;
 
   // Pre-resolve the profile distribution weights
-  const profiles = Object.keys(config.profileDistribution) as BotProfile[];
-  const profileWeights = profiles.map((p) => config.profileDistribution[p] || 1);
+  const profiles = [...BOT_PROFILES];
+  const profileWeights = profiles.map((p) => DEFAULT_CONFIG.profileDistribution[p] || 1);
 
-  // If distribution is empty, fall back to defaults
-  if (profiles.length === 0) {
-    const defaults = DEFAULT_CONFIG.profileDistribution;
-    for (const p of BOT_PROFILES) {
-      profiles.push(p);
-      profileWeights.push(defaults[p] || 1);
-    }
+  // Build town pool
+  let townPool: { id: string; name: string }[];
+  if (config.townIds === 'all') {
+    townPool = await prisma.town.findMany({ select: { id: true, name: true } });
+  } else {
+    townPool = await prisma.town.findMany({
+      where: { id: { in: config.townIds } },
+      select: { id: true, name: true },
+    });
   }
+  if (townPool.length === 0) throw new Error('No valid towns found');
 
-  for (let batchStart = 1; batchStart <= config.botCount; batchStart += batchSize) {
-    const batchEnd = Math.min(batchStart + batchSize - 1, config.botCount);
+  for (let batchStart = 1; batchStart <= config.count; batchStart += batchSize) {
+    const batchEnd = Math.min(batchStart + batchSize - 1, config.count);
     const batchIndices = Array.from({ length: batchEnd - batchStart + 1 }, (_, k) => batchStart + k);
 
     const batchResults = await Promise.all(
-      batchIndices.map((i) => createSingleBot(i, profiles, profileWeights)),
+      batchIndices.map((i) => createSingleBot(i, config, townPool, profiles, profileWeights)),
     );
 
     bots.push(...batchResults);
-    logger.info({ batch: `${batchStart}-${batchEnd}`, total: config.botCount }, 'Bot batch seeded');
+    logger.info({ batch: `${batchStart}-${batchEnd}`, total: config.count }, 'Bot batch seeded');
   }
 
   logger.info({ count: bots.length }, 'All bots seeded');
@@ -142,41 +158,64 @@ export async function seedBots(config: SimulationConfig): Promise<BotState[]> {
 
 async function createSingleBot(
   index: number,
+  config: SeedConfig,
+  townPool: { id: string; name: string }[],
   profiles: BotProfile[],
   profileWeights: number[],
 ): Promise<BotState> {
   // 1. Assign profile
   const profile = weightedRandom(profiles, profileWeights);
 
-  // 2. Choose race (profile-influenced)
-  const favoredRaces = PROFILE_RACE_PREFERENCES[profile];
-  const raceEnum: Race = favoredRaces.length > 0
-    ? pickWeighted(ALL_RACES, favoredRaces)
-    : pick(ALL_RACES);
-
-  // 3. Choose class (profile-influenced)
-  const favoredClasses = PROFILE_CLASS_PREFERENCES[profile];
-  const charClass: string = favoredClasses.length > 0
-    ? pickWeighted([...ALL_CLASSES], favoredClasses)
-    : pick([...ALL_CLASSES]);
-
-  // 4. Resolve starting town
-  const registryKey = raceToRegistryKey(raceEnum);
-  const raceDef = getRace(registryKey);
-  let townId: string;
-
-  if (raceDef && raceDef.startingTowns.length > 0) {
-    const townName = pick(raceDef.startingTowns);
-    const town = await prisma.town.findFirst({
-      where: { name: { equals: townName, mode: 'insensitive' } },
-    });
-    townId = town?.id ?? (await getRandomTownId());
+  // 2. Choose race
+  let raceEnum: Race;
+  if (config.raceDistribution === 'even') {
+    // Uniform distribution across all races
+    raceEnum = pick(ALL_RACES);
   } else {
-    // CHANGELING or missing race def -- pick any town
-    townId = await getRandomTownId();
+    // 'realistic' — profile-weighted approach
+    const favoredRaces = PROFILE_RACE_PREFERENCES[profile];
+    raceEnum = favoredRaces.length > 0
+      ? pickWeighted(ALL_RACES, favoredRaces)
+      : pick(ALL_RACES);
   }
 
-  // 5. Sub-race handling
+  // 3. Choose class
+  let charClass: string;
+  if (config.classDistribution === 'even') {
+    // Uniform distribution across all classes
+    charClass = pick([...ALL_CLASSES]);
+  } else {
+    // 'realistic' — profile-weighted approach
+    const favoredClasses = PROFILE_CLASS_PREFERENCES[profile];
+    charClass = favoredClasses.length > 0
+      ? pickWeighted([...ALL_CLASSES], favoredClasses)
+      : pick([...ALL_CLASSES]);
+  }
+
+  // 4. Resolve race definition (used for town, stats, and tier)
+  const registryKey = raceToRegistryKey(raceEnum);
+  const raceDef = getRace(registryKey);
+
+  // 5. Resolve starting town
+  let townId: string;
+  if (Array.isArray(config.townIds)) {
+    // Admin specified towns — distribute evenly
+    townId = townPool[index % townPool.length].id;
+  } else {
+    // 'all' — use race-based defaults
+    if (raceDef && raceDef.startingTowns.length > 0) {
+      const townName = pick(raceDef.startingTowns);
+      const town = await prisma.town.findFirst({
+        where: { name: { equals: townName, mode: 'insensitive' } },
+      });
+      townId = town?.id ?? townPool[index % townPool.length].id;
+    } else {
+      // CHANGELING or missing race def — pick from pool
+      townId = townPool[index % townPool.length].id;
+    }
+  }
+
+  // 6. Sub-race handling
   let dragonBloodline: DragonBloodline | null = null;
   let beastClan: BeastClan | null = null;
   let elementalType: ElementalType | null = null;
@@ -189,20 +228,21 @@ async function createSingleBot(
     elementalType = pick(Object.values(ElementalType));
   }
 
-  // 6. Create User
+  // 7. Create User
   const user = await prisma.user.create({
     data: {
-      email: generateBotEmail(index),
-      username: generateBotUsername(index),
+      email: `${config.namePrefix.toLowerCase()}${index}@simulation.roc`,
+      username: `${config.namePrefix.toLowerCase()}${index}`,
       passwordHash: await bcrypt.hash('simbot', 4), // low rounds for speed
       isTestAccount: true,
     },
   });
 
-  // 7. Calculate starting stats
+  // 8. Calculate starting stats
+
   const baseStat = 10;
   const mods = raceDef?.statModifiers ?? { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
-  const stats = {
+  const stats: Record<string, number> = {
     str: baseStat + mods.str,
     dex: baseStat + mods.dex,
     con: baseStat + mods.con,
@@ -211,14 +251,39 @@ async function createSingleBot(
     cha: baseStat + mods.cha,
   };
 
+  // 9. Starting level handling
+  const startLevel = Math.max(1, Math.min(10, config.startingLevel));
+
+  // Calculate accumulated XP for this level
+  let accumulatedXP = 0;
+  for (let lvl = 1; lvl < startLevel; lvl++) {
+    accumulatedXP += Math.floor(10 * Math.pow(lvl, 1.15)) + 30;
+  }
+
+  // Extra stat points from leveling — distribute to primary stat based on class
+  const extraStatPoints = startLevel - 1;
+  const primaryStat = CLASS_PRIMARY_STAT[charClass] || 'str';
+  stats[primaryStat] += extraStatPoints;
+
   const conModifier = Math.floor((stats.con - 10) / 2);
-  const maxHealth = 10 + conModifier + (CLASS_HP_MAP[charClass] || 6);
+  const maxHealth = (10 + conModifier + (CLASS_HP_MAP[charClass] || 6)) * startLevel;
 
   // Gold by tier
   const tier = raceDef?.tier ?? 'core';
   const gold = GOLD_BY_TIER[tier] ?? 100;
 
-  // 8. Create Character
+  // Skill points from leveling
+  const unspentSkillPoints = startLevel - 1;
+
+  // 10. Starting profession (if professionDistribution is configured)
+  let startingProfession: string | null = null;
+  if (config.professionDistribution === 'even') {
+    // Round-robin through gathering professions
+    startingProfession = GATHERING_PROFESSIONS[index % GATHERING_PROFESSIONS.length];
+  }
+  // 'diverse' uses profile-based selection at runtime (existing engine logic)
+
+  // 11. Create Character
   const character = await prisma.character.create({
     data: {
       userId: user.id,
@@ -230,21 +295,24 @@ async function createSingleBot(
       class: charClass,
       stats,
       gold,
+      level: startLevel,
+      xp: accumulatedXP,
       health: maxHealth,
       maxHealth,
+      unspentSkillPoints,
       currentTownId: townId,
       homeTownId: townId,
     },
   });
 
-  // 9. Generate JWT
+  // 12. Generate JWT
   const token = jwt.sign(
     { userId: user.id, username: user.username, role: 'player' },
     process.env.JWT_SECRET!,
     { expiresIn: '7d' },
   );
 
-  // 10. Return BotState
+  // 13. Return BotState
   return {
     userId: user.id,
     characterId: character.id,
@@ -256,8 +324,8 @@ async function createSingleBot(
     class: charClass,
     currentTownId: townId,
     gold,
-    level: 1,
-    professions: [],
+    level: startLevel,
+    professions: startingProfession ? [startingProfession] : [],
     lastActionAt: Date.now(),
     lastAction: null,
     actionsCompleted: 0,
@@ -267,13 +335,8 @@ async function createSingleBot(
     pendingGathering: false,
     pendingCrafting: false,
     pausedUntil: 0,
+    intelligence: config.intelligence,
   };
-}
-
-async function getRandomTownId(): Promise<string> {
-  const towns = await prisma.town.findMany({ select: { id: true } });
-  if (towns.length === 0) throw new Error('No towns found in database');
-  return pick(towns).id;
 }
 
 // ---------------------------------------------------------------------------

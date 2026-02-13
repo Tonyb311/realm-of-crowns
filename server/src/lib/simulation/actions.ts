@@ -537,9 +537,17 @@ export async function nominateForElection(
 ): Promise<ActionResult> {
   const endpoint = '/elections/nominate';
   try {
+    // Try to find current election for bot's town
+    const electionsRes = await get(`/elections/current?townId=${bot.currentTownId}`, bot.token);
+    const electionId = electionsRes.data?.election?.id || electionsRes.data?.id;
+
+    if (!electionId) {
+      return { success: false, detail: 'No active election found', endpoint };
+    }
+
     const res = await post(endpoint, bot.token, {
-      electionId: 'current',
-      platform: 'Bot candidate',
+      electionId,
+      platform: 'Bot candidate for a better tomorrow!',
     });
     if (res.status >= 200 && res.status < 300) {
       return {
@@ -564,24 +572,33 @@ export async function voteInElection(
 ): Promise<ActionResult> {
   const endpoint = '/elections/vote';
   try {
-    const otherBots = allBots.filter((b) => b.characterId !== bot.characterId);
-    const candidate = pickRandom(otherBots);
-    if (!candidate) {
-      return {
-        success: false,
-        detail: 'No other bots to vote for',
-        endpoint,
-      };
+    const electionsRes = await get(`/elections/current?townId=${bot.currentTownId}`, bot.token);
+    const electionId = electionsRes.data?.election?.id || electionsRes.data?.id;
+
+    if (!electionId) {
+      return { success: false, detail: 'No active election found', endpoint };
     }
 
-    const res = await post(endpoint, bot.token, {
-      electionId: 'current',
-      candidateId: candidate.characterId,
-    });
+    // Get candidates from the election or pick another bot
+    const candidates = electionsRes.data?.election?.candidates || electionsRes.data?.candidates || [];
+    let candidateId: string;
+
+    if (candidates.length > 0) {
+      const candidate = candidates[Math.floor(Math.random() * candidates.length)];
+      candidateId = candidate.characterId || candidate.id;
+    } else {
+      // Fallback: vote for a random other bot
+      const otherBots = allBots.filter((b) => b.characterId !== bot.characterId);
+      const target = pickRandom(otherBots);
+      if (!target) return { success: false, detail: 'No candidates available', endpoint };
+      candidateId = target.characterId;
+    }
+
+    const res = await post(endpoint, bot.token, { electionId, candidateId });
     if (res.status >= 200 && res.status < 300) {
       return {
         success: true,
-        detail: `Voted for ${candidate.characterName}`,
+        detail: 'Voted in election',
         endpoint,
       };
     }
