@@ -119,9 +119,19 @@ const CLASS_PRIMARY_STAT: Record<string, string> = {
  * Create bot accounts and characters in the database, returning fully
  * populated BotState objects ready for the simulation loop.
  *
+ * Idempotent: automatically cleans up any existing test accounts before
+ * creating new ones, so calling seed multiple times never fails.
+ *
  * Bots are created in batches of 10 to avoid overwhelming the database.
  */
 export async function seedBots(config: SeedConfig): Promise<BotState[]> {
+  // Clean up any existing test bots first (makes seed idempotent)
+  const existing = await prisma.user.count({ where: { isTestAccount: true } });
+  if (existing > 0) {
+    logger.info({ existing }, 'Cleaning up existing test accounts before seeding');
+    await cleanupBots();
+  }
+
   resetNameCounter();
 
   const bots: BotState[] = [];
@@ -371,7 +381,8 @@ async function createSingleBot(
 
 /**
  * Bulletproof cleanup: removes ALL test accounts and their associated data
- * without foreign-key violations.
+ * without foreign-key violations. Handles every non-cascading FK pointing to
+ * Character before deleting users (which cascades to characters).
  */
 export async function cleanupBots(): Promise<{ deletedUsers: number; deletedCharacters: number }> {
   // 1. Gather test user IDs
@@ -393,49 +404,105 @@ export async function cleanupBots(): Promise<{ deletedUsers: number; deletedChar
   });
   const charIds = testCharacters.map((c) => c.id);
 
-  // 3. Transactional cleanup to avoid FK violations
+  // 3. Transactional cleanup — delete/nullify non-cascading FKs first
   const result = await prisma.$transaction(async (tx) => {
-    // 4. Delete items owned by bot characters
     if (charIds.length > 0) {
-      await tx.item.deleteMany({ where: { ownerId: { in: charIds } } });
+      // ── Party system (Restrict FK on leaderId) ──
+      // Delete invitations, members, then parties
+      await tx.partyInvitation.deleteMany({
+        where: { OR: [{ characterId: { in: charIds } }, { invitedById: { in: charIds } }] },
+      });
+      await tx.partyMember.deleteMany({
+        where: { characterId: { in: charIds } },
+      });
+      await tx.party.deleteMany({
+        where: { leaderId: { in: charIds } },
+      });
 
-      // 5. Null out craftedById references on items crafted by bots but owned by real players
+      // ── Travel groups (Restrict FK on leaderId) ──
+      // Delete group travel state, members, then groups
+      const botGroups = await tx.travelGroup.findMany({
+        where: { leaderId: { in: charIds } },
+        select: { id: true },
+      });
+      const groupIds = botGroups.map((g) => g.id);
+      if (groupIds.length > 0) {
+        await tx.groupTravelState.deleteMany({ where: { groupId: { in: groupIds } } });
+        await tx.travelGroupMember.deleteMany({ where: { groupId: { in: groupIds } } });
+        await tx.travelGroup.deleteMany({ where: { id: { in: groupIds } } });
+      }
+      // Also remove bot characters from non-bot travel groups
+      await tx.travelGroupMember.deleteMany({
+        where: { characterId: { in: charIds } },
+      });
+
+      // ── Character travel state (in case bots are mid-travel) ──
+      await tx.characterTravelState.deleteMany({
+        where: { characterId: { in: charIds } },
+      });
+
+      // ── Items (SetNull on ownerId/craftedById) ──
+      await tx.item.deleteMany({ where: { ownerId: { in: charIds } } });
       await tx.item.updateMany({
         where: { craftedById: { in: charIds } },
         data: { craftedById: null },
       });
 
-      // 6. Null out guild leaderId
+      // ── Trade transactions (Restrict on buyerId/sellerId) ──
+      await tx.tradeTransaction.deleteMany({
+        where: { OR: [{ buyerId: { in: charIds } }, { sellerId: { in: charIds } }] },
+      });
+
+      // ── Diplomacy events (Restrict on initiatorId/targetId) ──
+      await tx.diplomacyEvent.deleteMany({
+        where: { OR: [{ initiatorId: { in: charIds } }, { targetId: { in: charIds } }] },
+      });
+
+      // ── Treaties (Restrict on proposedById) ──
+      await tx.treaty.deleteMany({
+        where: { proposedById: { in: charIds } },
+      });
+
+      // ── Laws (Restrict on enactedById) ──
+      await tx.lawVote.deleteMany({
+        where: { characterId: { in: charIds } },
+      });
+      await tx.law.deleteMany({
+        where: { enactedById: { in: charIds } },
+      });
+
+      // ── Council members (Restrict on appointedById) ──
+      await tx.councilMember.deleteMany({
+        where: { OR: [{ characterId: { in: charIds } }, { appointedById: { in: charIds } }] },
+      });
+
+      // ── Nullify shared-entity leader/mayor/ruler FKs ──
       await tx.guild.updateMany({
         where: { leaderId: { in: charIds } },
         data: { leaderId: null },
       });
-
-      // 7. Null out town mayorId
       await tx.town.updateMany({
         where: { mayorId: { in: charIds } },
         data: { mayorId: null },
       });
-
-      // 8. Null out kingdom rulerId
       await tx.kingdom.updateMany({
         where: { rulerId: { in: charIds } },
         data: { rulerId: null },
       });
 
-      // 9. Delete DailyAction records
+      // ── DailyAction records ──
       await tx.dailyAction.deleteMany({
         where: { characterId: { in: charIds } },
       });
     }
 
-    // 10. Delete users (cascades to characters and most other tables)
+    // 4. Delete users (cascades to characters and all remaining Cascade FKs)
     const deleted = await tx.user.deleteMany({
       where: { isTestAccount: true },
     });
 
     return { deletedUsers: deleted.count, deletedCharacters: charIds.length };
-  });
+  }, { timeout: 30000 });
 
   logger.info(result, 'Bot cleanup complete');
   return result;
