@@ -385,9 +385,9 @@ async function createSingleBot(
  * Character before deleting users (which cascades to characters).
  */
 export async function cleanupBots(): Promise<{ deletedUsers: number; deletedCharacters: number }> {
-  // 1. Gather test user IDs
+  // 1. Gather test user IDs (explicitly exclude admin accounts)
   const testUsers = await prisma.user.findMany({
-    where: { isTestAccount: true },
+    where: { isTestAccount: true, role: { not: 'admin' } },
     select: { id: true },
   });
   const userIds = testUsers.map((u) => u.id);
@@ -512,8 +512,9 @@ export async function cleanupBots(): Promise<{ deletedUsers: number; deletedChar
     }
 
     // 4. Delete users (cascades to characters and all remaining Cascade FKs)
+    // Explicitly exclude admin accounts as a safety measure
     const deleted = await tx.user.deleteMany({
-      where: { isTestAccount: true },
+      where: { isTestAccount: true, role: { not: 'admin' } },
     });
 
     return { deletedUsers: deleted.count, deletedCharacters: charIds.length };

@@ -8,6 +8,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 import { seedWorld } from './world';
 import { seedResources } from './resources';
 import { seedRecipes } from './recipes';
@@ -28,9 +29,39 @@ import { seedAccessoryRecipes } from './accessory-recipes';
 
 const prisma = new PrismaClient();
 
+async function seedAdmin(prisma: PrismaClient) {
+  const ADMIN_EMAIL = 'admin@roc.com';
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'RealmAdmin2026!';
+
+  const existing = await prisma.user.findUnique({ where: { email: ADMIN_EMAIL } });
+  if (existing) {
+    // Ensure role is admin
+    if (existing.role !== 'admin') {
+      await prisma.user.update({ where: { id: existing.id }, data: { role: 'admin' } });
+    }
+    console.log('  Admin account (admin@roc.com) already exists — skipped');
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
+  await prisma.user.create({
+    data: {
+      email: ADMIN_EMAIL,
+      username: 'admin',
+      passwordHash,
+      role: 'admin',
+      isTestAccount: false,
+    },
+  });
+  console.log('  Admin account (admin@roc.com) created');
+}
+
 async function main() {
   console.log('⚔️  Seeding the Realm of Crowns database...');
   console.log('');
+
+  // Admin account: must exist before anything else
+  await seedAdmin(prisma);
 
   // World geography: regions, towns, routes, resources
   await seedWorld(prisma);

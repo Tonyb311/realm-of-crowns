@@ -28,6 +28,8 @@ import { socketAuthMiddleware, cleanupRateLimit } from './socket/middleware';
 import { setupPresence } from './socket/presence';
 import { initEventBroadcaster } from './socket/events';
 
+import { ensureAdminAccount } from './lib/ensure-admin';
+
 const PORT = process.env.PORT || 4000;
 const httpServer = createServer(app);
 
@@ -98,8 +100,11 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'CHANGE_ME_IN_PRODUCTI
   process.exit(1);
 }
 
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, async () => {
   logger.info({ port: PORT }, 'Realm of Crowns server started');
+
+  // Ensure admin account exists (creates if missing)
+  await ensureAdminAccount();
 
   // Start background jobs
   startElectionLifecycle(io);
