@@ -26,8 +26,8 @@ export async function assignStartingTown(raceId: string): Promise<{ id: string; 
     townNames = releasedTowns.map(t => t.name);
   }
 
-  // 4. Resolve town names to IDs (only released towns)
-  const towns = await prisma.town.findMany({
+  // 4. Resolve town names to IDs (prefer released, fall back to all)
+  let towns = await prisma.town.findMany({
     where: {
       name: { in: townNames, mode: 'insensitive' },
       isReleased: true,
@@ -35,8 +35,16 @@ export async function assignStartingTown(raceId: string): Promise<{ id: string; 
     select: { id: true, name: true },
   });
 
+  // Fallback: if no released towns, use any matching town so creation doesn't 500
   if (towns.length === 0) {
-    throw new Error(`No released home towns found for race: ${raceId}`);
+    towns = await prisma.town.findMany({
+      where: { name: { in: townNames, mode: 'insensitive' } },
+      select: { id: true, name: true },
+    });
+  }
+
+  if (towns.length === 0) {
+    throw new Error(`No home towns found for race: ${raceId} (checked: ${townNames.join(', ')})`);
   }
 
   if (towns.length === 1) {

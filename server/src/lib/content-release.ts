@@ -75,6 +75,11 @@ export async function getReleasedTownIds(): Promise<Set<string>> {
 }
 
 export async function isRaceReleased(raceKey: string): Promise<boolean> {
+  // If no ContentRelease rows exist at all (fresh DB before startup seed),
+  // allow all races so character creation doesn't fail with 400.
+  const totalRows = await prisma.contentRelease.count({ where: { contentType: 'race' } });
+  if (totalRows === 0) return true;
+
   const released = await getReleasedRaceKeys();
   return released.has(raceKey);
 }

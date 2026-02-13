@@ -29,6 +29,7 @@ import { setupPresence } from './socket/presence';
 import { initEventBroadcaster } from './socket/events';
 
 import { ensureAdminAccount } from './lib/ensure-admin';
+import { ensureCoreContentReleased } from './lib/ensure-content-released';
 
 const PORT = process.env.PORT || 4000;
 const httpServer = createServer(app);
@@ -105,6 +106,9 @@ httpServer.listen(PORT, async () => {
 
   // Ensure admin account exists (creates if missing)
   await ensureAdminAccount();
+
+  // Ensure core races and towns are released (creates ContentRelease rows if needed)
+  await ensureCoreContentReleased();
 
   // Start background jobs
   startElectionLifecycle(io);
