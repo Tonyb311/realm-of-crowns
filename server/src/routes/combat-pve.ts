@@ -599,8 +599,8 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
           const itemIds = equipment.map(e => e.itemId);
           // Use raw SQL for atomic GREATEST(0, durability - damage) in a single query
           await tx.$executeRaw`
-            UPDATE "Item"
-            SET "currentDurability" = GREATEST(0, "currentDurability" - ${penalty.durabilityDamage})
+            UPDATE "items"
+            SET "current_durability" = GREATEST(0, "current_durability" - ${penalty.durabilityDamage})
             WHERE "id" IN (${Prisma.join(itemIds)})
           `;
         }
