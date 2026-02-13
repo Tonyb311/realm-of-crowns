@@ -377,21 +377,36 @@ export default function SimulationDashboardPage() {
     queryFn: async () => (await api.get('/admin/simulation/status')).data,
     refetchInterval: (query) => {
       const s = query.state.data?.status;
-      return s === 'running' ? 3000 : 10000;
+      return s === 'running' ? 5000 : 30000;
     },
+    retry: (failureCount, err: any) => {
+      if (err?.response?.status === 429) return failureCount < 3;
+      return failureCount < 2;
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30000),
   });
 
   const { data: stats } = useQuery<SimulationStats>({
     queryKey: ['admin', 'simulation', 'stats'],
     queryFn: async () => (await api.get('/admin/simulation/stats')).data,
     enabled: (status?.botCount ?? 0) > 0,
-    refetchInterval: () => (status?.status === 'running' ? 5000 : 15000),
+    refetchInterval: () => (status?.status === 'running' ? 10000 : 30000),
+    retry: (failureCount, err: any) => {
+      if (err?.response?.status === 429) return failureCount < 3;
+      return failureCount < 2;
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30000),
   });
 
   const { data: activityData } = useQuery<{ recentActivity: ActivityEntry[] }>({
     queryKey: ['admin', 'simulation', 'activity'],
     queryFn: async () => (await api.get('/admin/simulation/activity', { params: { count: 50 } })).data,
-    refetchInterval: () => (status?.status === 'running' ? 3000 : 10000),
+    refetchInterval: () => (status?.status === 'running' ? 5000 : 30000),
+    retry: (failureCount, err: any) => {
+      if (err?.response?.status === 429) return failureCount < 3;
+      return failureCount < 2;
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30000),
   });
 
   const { data: botLogsData } = useQuery<{ logs: BotDayLog[] }>({
@@ -1250,7 +1265,7 @@ export default function SimulationDashboardPage() {
             <h2 className="font-display text-realm-text-primary text-lg">Activity Log</h2>
           </div>
           <span className="text-realm-text-muted text-[10px]">
-            Auto-refreshes every {isRunning ? '3s' : '10s'} -- showing last 50 entries
+            Auto-refreshes every {isRunning ? '5s' : '30s'} -- showing last 50 entries
           </span>
         </div>
 

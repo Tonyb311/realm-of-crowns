@@ -36,7 +36,7 @@ app.use(requestLoggerMiddleware);
 app.use(metricsMiddleware);
 app.use(responseLoggerMiddleware);
 
-// Rate limiting (skip for simulation bots with valid secret)
+// Rate limiting (skip for simulation bots and admin routes)
 function getSimulationSecret(): string {
   return process.env.SIMULATION_SECRET || (process.env.JWT_SECRET || 'fallback').slice(0, 16);
 }
@@ -45,7 +45,13 @@ const limiter = rateLimit({
   max: 500, // 500 req / 15 min — game pages fire 10-20 API calls each
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.headers['x-simulation-secret'] === getSimulationSecret(),
+  skip: (req) => {
+    // Simulation bots bypass via shared secret header
+    if (req.headers['x-simulation-secret'] === getSimulationSecret()) return true;
+    // Admin dashboard endpoints have their own auth — exempt from public rate limit
+    if (req.path.startsWith('/api/admin/')) return true;
+    return false;
+  },
 });
 app.use('/api/', limiter);
 

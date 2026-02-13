@@ -218,8 +218,17 @@ export async function decideBotAction(
   }
 
   // ─── Quest-first logic ───
+  // Quest acceptance is a FREE action — it doesn't consume a tick action.
+  // Only the objective actions (travel, gather, craft, etc.) cost actions.
   if (config.enabledSystems.quests) {
-    const activeQuest = await actions.checkActiveQuest(bot);
+    let activeQuest = await actions.checkActiveQuest(bot);
+
+    // If no active quest, try to accept one (free — doesn't cost an action)
+    if (!activeQuest) {
+      await actions.acceptQuest(bot);
+      // Re-check: did we just accept a quest?
+      activeQuest = await actions.checkActiveQuest(bot);
+    }
 
     if (activeQuest) {
       // Map quest objective type to bot action
@@ -244,14 +253,8 @@ export async function decideBotAction(
       }
       // If all objectives met (TUTORIAL auto-completes via triggers),
       // refresh state and fall through
-    } else {
-      // No active quest — try to accept next one
-      const acceptResult = await actions.acceptQuest(bot);
-      if (acceptResult.success) {
-        return acceptResult;
-      }
-      // If no quests available or acceptance failed, fall through to profile-based AI
     }
+    // If no quests available or acceptance failed, fall through to profile-based AI
   }
 
   // 2. If no professions, either grind XP (below level gate) or learn one
