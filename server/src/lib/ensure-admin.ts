@@ -16,12 +16,13 @@ export async function ensureAdminAccount(): Promise<void> {
     const existing = await prisma.user.findUnique({ where: { email: ADMIN_EMAIL } });
 
     if (existing) {
-      // Ensure role is 'admin' in case it was accidentally changed
+      // Always reset password + role so the admin can log in after DB resets
+      const passwordHash = await bcrypt.hash(DEFAULT_ADMIN_PASSWORD, 12);
+      await prisma.user.update({
+        where: { id: existing.id },
+        data: { role: 'admin', passwordHash },
+      });
       if (existing.role !== 'admin') {
-        await prisma.user.update({
-          where: { id: existing.id },
-          data: { role: 'admin' },
-        });
         logger.warn('Admin account role was not "admin" — fixed');
       }
       return;
