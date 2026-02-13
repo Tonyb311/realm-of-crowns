@@ -18,6 +18,7 @@ import { getRace } from '@shared/data/races';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
 import { PROFESSION_UNLOCK_LEVEL } from '@shared/data/progression/xp-curve';
+import { onSelectProfession } from '../services/quest-triggers';
 
 const router = Router();
 
@@ -138,6 +139,8 @@ router.post('/learn', authGuard, characterGuard, requireTown, validate(professio
         data: { isActive: true },
       });
 
+      onSelectProfession(character.id).catch(() => {}); // fire-and-forget
+
       return res.json({
         profession: {
           type: reactivated.professionType,
@@ -186,6 +189,8 @@ router.post('/learn', authGuard, characterGuard, requireTown, validate(professio
         isActive: true,
       },
     });
+
+    onSelectProfession(character.id).catch(() => {}); // fire-and-forget
 
     return res.status(201).json({
       profession: {

@@ -9,6 +9,7 @@ import { EquipSlot, ItemType } from '@prisma/client';
 import { calculateItemStats, calculateEquipmentTotals } from '../services/item-stats';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
+import { onEquipItem } from '../services/quest-triggers';
 
 const router = Router();
 
@@ -145,6 +146,8 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
     });
 
     const calculated = calculateItemStats(item);
+
+    onEquipItem(character.id).catch(() => {}); // fire-and-forget
 
     return res.json({
       equipped: {

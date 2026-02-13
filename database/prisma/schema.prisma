@@ -272,6 +272,7 @@ enum QuestType {
   GUILD
   BOUNTY
   RACIAL
+  TUTORIAL
 }
 
 enum FriendStatus {
@@ -1340,11 +1341,14 @@ model Npc {
 model Quest {
   id                  String    @id @default(uuid())
   name                String
+  slug                String?   @unique
   type                QuestType
   description         String?
   objectives          Json      @default("[]")
   rewards             Json      @default("{}")
   levelRequired       Int       @default(1) @map("level_required")
+  sortOrder           Int       @default(0) @map("sort_order")
+  isActive            Boolean   @default(true) @map("is_active")
   regionId            String?   @map("region_id")
   prerequisiteQuestId String?   @map("prerequisite_quest_id")
   isRepeatable        Boolean   @default(false) @map("is_repeatable")

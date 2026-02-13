@@ -15,6 +15,7 @@ import { getPsionSpec, calculateSellerUrgency, calculatePriceTrend } from '../se
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
 import { isTownReleased } from '../lib/content-release';
+import { onMarketSell, onMarketBuy } from '../services/quest-triggers';
 
 const router = Router();
 
@@ -91,6 +92,8 @@ router.post('/list', authGuard, characterGuard, validate(listSchema), async (req
             data: { quantity: { decrement: quantity } },
           }),
     ]);
+
+    onMarketSell(character.id).catch(() => {}); // fire-and-forget
 
     await invalidateCache('cache:/api/market/browse*');
     return res.status(201).json({ listing });
@@ -402,6 +405,8 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
 
       return transaction;
     });
+
+    onMarketBuy(character.id).catch(() => {}); // fire-and-forget
 
     // Award cross-town Merchant XP to the seller (non-blocking)
     awardCrossTownMerchantXP(

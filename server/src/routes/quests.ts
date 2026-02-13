@@ -58,6 +58,7 @@ router.get('/available', authGuard, characterGuard, cache(60), async (req: Authe
 
     const quests = await prisma.quest.findMany({
       where: {
+        isActive: true,
         levelRequired: { lte: character.level },
         ...(townFilter
           ? {
@@ -70,6 +71,7 @@ router.get('/available', authGuard, characterGuard, cache(60), async (req: Authe
       include: {
         region: { select: { id: true, name: true } },
       },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
     });
 
     const now = new Date();
@@ -219,6 +221,16 @@ router.post('/accept', authGuard, characterGuard, requireTown, validate(acceptQu
     const quest = await prisma.quest.findUnique({ where: { id: questId } });
     if (!quest) {
       return res.status(404).json({ error: 'Quest not found' });
+    }
+
+    // Enforce one active quest at a time
+    const activeQuest = await prisma.questProgress.findFirst({
+      where: { characterId: character.id, status: 'IN_PROGRESS' },
+    });
+    if (activeQuest) {
+      return res.status(400).json({
+        error: 'You already have an active quest. Complete or abandon it first.',
+      });
     }
 
     // Check level requirement
@@ -585,5 +597,53 @@ router.get('/npcs/:townId', authGuard, characterGuard, requireTown, async (req: 
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+/**
+ * Auto-complete a tutorial quest: mark completed + award rewards.
+ * Called from quest-triggers when all objectives are met on a tutorial quest.
+ */
+export async function autoCompleteTutorialQuest(
+  characterId: string,
+  questProgressId: string,
+): Promise<void> {
+  try {
+    const qp = await prisma.questProgress.findUnique({
+      where: { id: questProgressId },
+      include: { quest: true },
+    });
+    if (!qp || qp.status !== 'IN_PROGRESS') return;
+    if (qp.quest.type !== 'TUTORIAL') return;
+
+    const rewards = qp.quest.rewards as { xp?: number; gold?: number; items?: string[] };
+
+    await prisma.$transaction(async (tx) => {
+      // Award XP and gold
+      await tx.character.update({
+        where: { id: characterId },
+        data: {
+          xp: { increment: rewards.xp || 0 },
+          gold: { increment: rewards.gold || 0 },
+        },
+      });
+
+      // Mark quest as completed
+      await tx.questProgress.update({
+        where: { id: questProgressId },
+        data: {
+          status: 'COMPLETED',
+          completedAt: new Date(),
+        },
+      });
+    });
+
+    // Check for level up
+    const { checkLevelUp } = await import('../services/progression');
+    await checkLevelUp(characterId);
+
+    console.log(`[Quest] Auto-completed tutorial quest "${qp.quest.name}" for character ${characterId}`);
+  } catch (error) {
+    console.error('[Quest] Auto-complete error:', error);
+  }
+}
 
 export default router;

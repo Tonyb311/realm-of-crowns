@@ -59,6 +59,7 @@ const QUEST_TYPE_COLORS: Record<string, string> = {
   GUILD: 'bg-realm-purple-300/10 text-realm-purple-300 border-realm-purple-300/30',
   BOUNTY: 'bg-realm-danger/10 text-realm-danger border-realm-danger/30',
   RACIAL: 'bg-realm-gold-400/10 text-realm-gold-400 border-realm-gold-400/30',
+  TUTORIAL: 'bg-realm-teal-300/10 text-realm-teal-300 border-realm-teal-300/30',
 };
 
 function getQuestTypeBadge(type: string) {
@@ -290,7 +291,7 @@ export default function QuestJournalPage() {
         npcName: q.npcName ?? q.npc?.name ?? undefined,
       }));
     },
-    enabled: activeTab === 'active',
+    enabled: activeTab === 'active' || activeTab === 'available',
   });
 
   const { data: availableQuests, isLoading: availableLoading } = useQuery<Quest[]>({
@@ -374,7 +375,7 @@ export default function QuestJournalPage() {
     }
   }
 
-  const QUEST_TYPE_ORDER = ['MAIN', 'TOWN', 'DAILY', 'GUILD', 'BOUNTY', 'RACIAL'];
+  const QUEST_TYPE_ORDER = ['TUTORIAL', 'MAIN', 'TOWN', 'DAILY', 'GUILD', 'BOUNTY', 'RACIAL'];
   const sortedGroups = Object.entries(groupedAvailable).sort(
     (a, b) => {
       const aIdx = QUEST_TYPE_ORDER.indexOf(a[0]);
@@ -462,6 +463,12 @@ export default function QuestJournalPage() {
           </div>
         ) : activeTab === 'available' ? (
           <div className="space-y-6">
+            {activeQuests && activeQuests.length > 0 && (
+              <div className="bg-realm-bg-700/50 border border-realm-gold-500/20 rounded-lg px-4 py-3 mb-4 text-sm text-realm-gold-400 flex items-center gap-2">
+                <ScrollText className="w-4 h-4 flex-shrink-0" />
+                You have an active quest. Complete or abandon it before accepting a new one.
+              </div>
+            )}
             {sortedGroups.length === 0 ? (
               <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-12 text-center">
                 <ScrollText className="w-12 h-12 text-realm-text-muted/20 mx-auto mb-3" />

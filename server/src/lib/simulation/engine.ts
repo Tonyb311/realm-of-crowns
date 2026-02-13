@@ -98,6 +98,21 @@ function filterWeights(
   return filtered;
 }
 
+// ---- Map quest objective type to bot action ----
+function mapObjectiveToAction(objectiveType: string): ActionKey | null {
+  switch (objectiveType) {
+    case 'KILL':               return 'combat';
+    case 'VISIT':              return 'travel';
+    case 'EQUIP':              return 'equip';
+    case 'SELECT_PROFESSION':  return null; // Handled by existing learn-profession logic
+    case 'GATHER':             return 'gather';
+    case 'CRAFT':              return 'craft';
+    case 'MARKET_SELL':        return 'sell';
+    case 'MARKET_BUY':         return 'buy';
+    default:                   return null;
+  }
+}
+
 // ---- Execute a specific action by key ----
 function executeAction(action: ActionKey, bot: BotState, allBots: BotState[]): Promise<ActionResult> {
   switch (action) {
@@ -135,6 +150,43 @@ export async function decideBotAction(
   // Check if travel is possible (more than 1 unique town among bots)
   const uniqueTowns = new Set(allBots.map(b => b.currentTownId)).size;
   const canTravel = uniqueTowns > 1;
+
+  // ─── Quest-first logic ───
+  if (config.enabledSystems.quests) {
+    const activeQuest = await actions.checkActiveQuest(bot);
+
+    if (activeQuest) {
+      // Map quest objective type to bot action
+      const firstIncomplete = activeQuest.objectives.findIndex(
+        (obj: any, idx: number) => (activeQuest.progress[String(idx)] || 0) < obj.quantity,
+      );
+
+      if (firstIncomplete >= 0) {
+        const objType = activeQuest.objectives[firstIncomplete].type;
+        const questAction = mapObjectiveToAction(objType);
+
+        if (questAction) {
+          // For profession-dependent actions, ensure bot has a profession
+          if (['gather', 'craft'].includes(questAction) && bot.professions.length === 0) {
+            // Can't do this yet — fall through to existing logic
+          } else if (questAction === 'travel' && !canTravel) {
+            // Can't travel — fall through
+          } else {
+            return executeAction(questAction, bot, allBots);
+          }
+        }
+      }
+      // If all objectives met (TUTORIAL auto-completes via triggers),
+      // refresh state and fall through
+    } else {
+      // No active quest — try to accept next one
+      const acceptResult = await actions.acceptQuest(bot);
+      if (acceptResult.success) {
+        return acceptResult;
+      }
+      // If no quests available or acceptance failed, fall through to profile-based AI
+    }
+  }
 
   // 2. If no professions, either grind XP (below level gate) or learn one
   if (bot.professions.length === 0) {

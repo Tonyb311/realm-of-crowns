@@ -806,6 +806,45 @@ export async function equipItem(bot: BotState): Promise<ActionResult> {
 }
 
 // ---------------------------------------------------------------------------
+// 20. checkActiveQuest — get the bot's active quest info
+// ---------------------------------------------------------------------------
+
+export async function checkActiveQuest(bot: BotState): Promise<{ questId: string; objectives: any[]; progress: Record<string, number>; type: string } | null> {
+  try {
+    const res = await get('/quests/active', bot.token);
+    if (res.status < 200 || res.status >= 300) return null;
+    const quests: any[] = res.data?.quests || res.data || [];
+    if (quests.length === 0) return null;
+    const q = quests[0];
+    return {
+      questId: q.questId || q.id,
+      objectives: q.objectives || [],
+      progress: q.progress || {},
+      type: q.type || 'TUTORIAL',
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 21. completeQuest — turn in a completed quest
+// ---------------------------------------------------------------------------
+
+export async function completeQuest(bot: BotState, questId: string): Promise<ActionResult> {
+  const endpoint = '/quests/complete';
+  try {
+    const res = await post(endpoint, bot.token, { questId });
+    if (res.status >= 200 && res.status < 300) {
+      return { success: true, detail: `Completed quest ${questId}`, endpoint };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 19. triggerInvalidAction
 // ---------------------------------------------------------------------------
 

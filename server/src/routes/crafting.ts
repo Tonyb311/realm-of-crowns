@@ -24,6 +24,7 @@ import {
 } from '../services/racial-special-profession-mechanics';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
+import { onCraftItem } from '../services/quest-triggers';
 // emitCraftingReady is in '../socket/events' — called by background autocomplete job
 
 const router = Router();
@@ -687,6 +688,8 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
       itemsCrafted,
       professionTier: xpResult?.newTier ?? profession?.tier ?? 'APPRENTICE',
     });
+
+    onCraftItem(character.id).catch(() => {}); // fire-and-forget
 
     // Check remaining queue
     const remainingInQueue = await prisma.craftingAction.count({
