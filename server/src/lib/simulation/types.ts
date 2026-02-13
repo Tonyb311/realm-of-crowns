@@ -136,6 +136,49 @@ export const DEFAULT_SEED_CONFIG: SeedConfig = {
 };
 
 // ---------------------------------------------------------------------------
+// Gold tracking per tick
+// ---------------------------------------------------------------------------
+
+export interface GoldStats {
+  totalEarned: number;
+  totalSpent: number;
+  netGoldChange: number;
+  byProfession: Record<string, { earned: number; spent: number; net: number; botCount: number }>;
+  byTown: Record<string, { earned: number; spent: number; net: number }>;
+  byLevel: Record<number, { earned: number; spent: number; net: number }>;
+  topEarners: { botName: string; profession: string; town: string; earned: number }[];
+}
+
+// ---------------------------------------------------------------------------
+// Per-bot daily log
+// ---------------------------------------------------------------------------
+
+export interface BotDayLog {
+  tickNumber: number;
+  gameDay: number;
+  botId: string;
+  botName: string;
+  race: string;
+  class: string;
+  profession: string;
+  town: string;
+  level: number;
+  goldStart: number;
+  goldEnd: number;
+  goldNet: number;
+  actionsUsed: number;
+  actions: {
+    order: number;
+    type: string;
+    detail: string;
+    success: boolean;
+    goldDelta: number;
+    error?: string;
+  }[];
+  summary: string;
+}
+
+// ---------------------------------------------------------------------------
 // Tick result returned after running a simulation tick
 // ---------------------------------------------------------------------------
 
@@ -147,6 +190,8 @@ export interface SimTickResult {
   failures: number;
   errors: string[];
   durationMs: number;
+  goldStats: GoldStats;
+  gameDay: number;
 }
 
 // ---------------------------------------------------------------------------

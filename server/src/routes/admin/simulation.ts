@@ -4,6 +4,7 @@
 
 import { Router, Response } from 'express';
 import { z } from 'zod';
+import * as XLSX from 'xlsx';
 import { validate } from '../../middleware/validate';
 import { handlePrismaError } from '../../lib/prisma-errors';
 import { logRouteError } from '../../lib/error-logger';
@@ -261,6 +262,229 @@ router.post('/focus', validate(focusSchema), async (req: AuthenticatedRequest, r
     return res.json({ message: `Focused on ${system} for ${durationSeconds}s` });
   } catch (error: any) {
     return res.status(400).json({ error: error.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/simulation/history — Tick history
+// ---------------------------------------------------------------------------
+router.get('/history', async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const history = simulationController.getTickHistory();
+    return res.json({ ticks: history, total: history.length });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/simulation/bot-logs — Per-bot daily logs with filters
+// ---------------------------------------------------------------------------
+router.get('/bot-logs', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    let logs = simulationController.getBotDayLogs();
+
+    if (req.query.botId) {
+      logs = logs.filter(l => l.botId === req.query.botId);
+    }
+    if (req.query.tick) {
+      logs = logs.filter(l => l.tickNumber === Number(req.query.tick));
+    }
+    if (req.query.botName) {
+      logs = logs.filter(l => l.botName.toLowerCase().includes(String(req.query.botName).toLowerCase()));
+    }
+
+    return res.json({ logs, total: logs.length });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/simulation/export — Download Excel report
+// ---------------------------------------------------------------------------
+router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const stats = simulationController.getSimulationStats();
+    const status = simulationController.getStatus();
+    const history = simulationController.getTickHistory();
+    const botLogs = simulationController.getBotDayLogs();
+
+    const workbook = XLSX.utils.book_new();
+
+    // Sheet 1: Bot Details
+    const botData = (status.bots ?? []).map((b: any) => ({
+      Name: b.characterName,
+      Race: b.race,
+      Class: b.class,
+      Profile: b.profile,
+      Level: b.level,
+      Gold: b.gold,
+      Town: b.currentTownId,
+      ActionsCompleted: b.actionsCompleted,
+      Errors: b.errorsTotal,
+      Status: b.status,
+    }));
+    if (botData.length > 0) {
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(botData), 'Bots');
+    }
+
+    // Sheet 2: Race Distribution
+    if (stats.raceDistribution.length > 0) {
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.raceDistribution.map((d: any) => ({ Race: d.name, Count: d.count }))), 'Race Distribution');
+    }
+
+    // Sheet 3: Class Distribution
+    if (stats.classDistribution.length > 0) {
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.classDistribution.map((d: any) => ({ Class: d.name, Count: d.count }))), 'Class Distribution');
+    }
+
+    // Sheet 4: Profession Distribution
+    if (stats.professionDistribution.length > 0) {
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.professionDistribution.map((d: any) => ({ Profession: d.name, Count: d.count }))), 'Prof Distribution');
+    }
+
+    // Sheet 5: Town Distribution
+    if (stats.townDistribution.length > 0) {
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.townDistribution.map((d: any) => ({ Town: d.name, Count: d.count }))), 'Town Distribution');
+    }
+
+    // Sheet 6: Tick History
+    const tickData = history.map((t: any) => ({
+      Tick: t.tickNumber,
+      GameDay: t.gameDay ?? 0,
+      BotsProcessed: t.botsProcessed,
+      Successes: t.successes,
+      Failures: t.failures,
+      Gathered: t.actionBreakdown?.gather ?? 0,
+      Crafted: t.actionBreakdown?.craft ?? 0,
+      Sold: t.actionBreakdown?.sell ?? 0,
+      Bought: t.actionBreakdown?.buy ?? 0,
+      Quested: t.actionBreakdown?.quest ?? 0,
+      Traveled: t.actionBreakdown?.travel ?? 0,
+      Combat: t.actionBreakdown?.combat ?? 0,
+      GoldEarned: t.goldStats?.totalEarned ?? 0,
+      GoldSpent: t.goldStats?.totalSpent ?? 0,
+      NetGold: t.goldStats?.netGoldChange ?? 0,
+      Errors: t.errors?.length ?? 0,
+      DurationMs: t.durationMs,
+    }));
+    if (tickData.length > 0) {
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(tickData), 'Tick History');
+    }
+
+    // Sheet 7: Gold by Profession (per tick)
+    const goldByProf: any[] = [];
+    history.forEach((t: any) => {
+      if (t.goldStats?.byProfession) {
+        Object.entries(t.goldStats.byProfession).forEach(([prof, data]: [string, any]) => {
+          goldByProf.push({
+            Tick: t.tickNumber,
+            Profession: prof,
+            BotCount: data.botCount,
+            Earned: data.earned,
+            Spent: data.spent,
+            Net: data.net,
+            AvgPerBot: data.botCount > 0 ? Math.round(data.net / data.botCount) : 0,
+          });
+        });
+      }
+    });
+    if (goldByProf.length > 0) {
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(goldByProf), 'Gold by Profession');
+    }
+
+    // Sheet 8: Gold by Town
+    const goldByTown: any[] = [];
+    history.forEach((t: any) => {
+      if (t.goldStats?.byTown) {
+        Object.entries(t.goldStats.byTown).forEach(([town, data]: [string, any]) => {
+          goldByTown.push({
+            Tick: t.tickNumber,
+            Town: town,
+            Earned: data.earned,
+            Spent: data.spent,
+            Net: data.net,
+          });
+        });
+      }
+    });
+    if (goldByTown.length > 0) {
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(goldByTown), 'Gold by Town');
+    }
+
+    // Sheet 9: Activity Log
+    const recentActivity = status.recentActivity ?? [];
+    if (recentActivity.length > 0) {
+      const actData = recentActivity.slice(0, 500).map((a: any) => ({
+        Time: a.timestamp,
+        Bot: a.botName,
+        Profile: a.profile,
+        Action: a.action,
+        Success: a.success,
+        Detail: a.detail,
+        DurationMs: a.durationMs,
+      }));
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(actData), 'Activity Log');
+    }
+
+    // Sheet 10: Bot Daily Logs
+    if (botLogs.length > 0) {
+      const dailyData = botLogs.map((l: any) => ({
+        Tick: l.tickNumber,
+        GameDay: l.gameDay,
+        BotName: l.botName,
+        Race: l.race,
+        Class: l.class,
+        Profession: l.profession,
+        Town: l.town,
+        Level: l.level,
+        GoldStart: l.goldStart,
+        GoldEnd: l.goldEnd,
+        GoldNet: l.goldNet,
+        ActionsUsed: l.actionsUsed,
+        Summary: l.summary,
+      }));
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(dailyData), 'Bot Daily Logs');
+    }
+
+    // Sheet 11: All Actions Detail
+    const actionsDetail: any[] = [];
+    botLogs.forEach((l: any) => {
+      (l.actions || []).forEach((a: any) => {
+        actionsDetail.push({
+          Tick: l.tickNumber,
+          BotName: l.botName,
+          Profession: l.profession,
+          Town: l.town,
+          Level: l.level,
+          ActionOrder: a.order,
+          ActionType: a.type,
+          Detail: a.detail,
+          Success: a.success,
+          GoldDelta: a.goldDelta,
+          Error: a.error ?? '',
+        });
+      });
+    });
+    if (actionsDetail.length > 0) {
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(actionsDetail), 'All Actions Detail');
+    }
+
+    // If no sheets added, add a placeholder
+    if (workbook.SheetNames.length === 0) {
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([{ message: 'No simulation data. Seed bots and run ticks first.' }]), 'Info');
+    }
+
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    const gameDay = history.length > 0 ? (history[history.length - 1] as any).gameDay ?? 0 : 0;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=simulation-export-day${gameDay}.xlsx`);
+    return res.send(Buffer.from(buffer));
+  } catch (error: any) {
+    logRouteError(req as any, 500, '[Simulation] Export error', error);
+    return res.status(500).json({ error: error.message || 'Export failed' });
   }
 });
 

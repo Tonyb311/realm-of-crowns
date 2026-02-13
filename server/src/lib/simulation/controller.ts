@@ -12,6 +12,8 @@ import {
   ActivityEntry,
   ActionResult,
   SeedConfig,
+  GoldStats,
+  BotDayLog,
   DEFAULT_CONFIG,
   DEFAULT_SEED_CONFIG,
 } from './types';
@@ -19,7 +21,8 @@ import { seedBots, cleanupBots, initResourceCache } from './seed';
 import { decideBotAction, errorStormAction } from './engine';
 import { logActivity, getRecentActivity, getStats as getActivityStats, getUptime, resetLog } from './activity-log';
 import { refreshBotState } from './actions';
-import { getGameDayOffset } from '../../lib/game-day';
+import { advanceGameDay, getGameDay, getGameDayOffset } from '../../lib/game-day';
+import { processDailyTick } from '../../jobs/daily-tick';
 import { logger } from '../../lib/logger';
 
 // ---------------------------------------------------------------------------
@@ -55,6 +58,8 @@ class SimulationController {
   private focusSystem: string | null = null;
   private focusUntil: number = 0;
   private tickIndex: number = 0;
+  private tickHistory: SimTickResult[] = [];
+  private botDayLogs: BotDayLog[] = [];
 
   // ---------------------------------------------------------------------------
   // Seed bots
@@ -206,11 +211,30 @@ class SimulationController {
     const errors: string[] = [];
     let botsProcessed = 0;
 
+    // 1. Advance game day
+    advanceGameDay(1);
+
+    // 2. Run daily tick (reset actions, process events)
+    try { await processDailyTick(); } catch (err: any) {
+      errors.push(`Daily tick error: ${err.message}`);
+    }
+
+    // Gold tracking accumulators
+    const goldByProfession: Record<string, { earned: number; spent: number; net: number; botCount: number }> = {};
+    const goldByTown: Record<string, { earned: number; spent: number; net: number }> = {};
+    const goldByLevel: Record<number, { earned: number; spent: number; net: number }> = {};
+    let totalEarned = 0;
+    let totalSpent = 0;
+    const earnerList: { botName: string; profession: string; town: string; earned: number }[] = [];
+
     const activeBots = this.bots.filter((b) => b.isActive);
 
     for (const bot of activeBots) {
       // Refresh state
       try { await refreshBotState(bot); } catch { /* ignore */ }
+
+      // Record gold before action
+      const goldBefore = bot.gold;
 
       // Decide and execute
       let result: ActionResult;
@@ -237,7 +261,54 @@ class SimulationController {
         else if (bot.consecutiveErrors > 5) bot.pausedUntil = Date.now() + 30_000;
       }
 
-      // Log
+      // Refresh state after action to get updated gold
+      try { await refreshBotState(bot); } catch { /* ignore */ }
+      const goldAfter = bot.gold;
+      const goldDelta = goldAfter - goldBefore;
+
+      // Accumulate gold stats
+      const earned = goldDelta > 0 ? goldDelta : 0;
+      const spent = goldDelta < 0 ? Math.abs(goldDelta) : 0;
+      totalEarned += earned;
+      totalSpent += spent;
+
+      // By profession
+      const profKey = bot.professions[0] || 'None';
+      if (!goldByProfession[profKey]) {
+        goldByProfession[profKey] = { earned: 0, spent: 0, net: 0, botCount: 0 };
+      }
+      goldByProfession[profKey].earned += earned;
+      goldByProfession[profKey].spent += spent;
+      goldByProfession[profKey].net += goldDelta;
+      goldByProfession[profKey].botCount++;
+
+      // By town
+      if (!goldByTown[bot.currentTownId]) {
+        goldByTown[bot.currentTownId] = { earned: 0, spent: 0, net: 0 };
+      }
+      goldByTown[bot.currentTownId].earned += earned;
+      goldByTown[bot.currentTownId].spent += spent;
+      goldByTown[bot.currentTownId].net += goldDelta;
+
+      // By level
+      if (!goldByLevel[bot.level]) {
+        goldByLevel[bot.level] = { earned: 0, spent: 0, net: 0 };
+      }
+      goldByLevel[bot.level].earned += earned;
+      goldByLevel[bot.level].spent += spent;
+      goldByLevel[bot.level].net += goldDelta;
+
+      // Top earners tracking
+      if (earned > 0) {
+        earnerList.push({
+          botName: bot.characterName,
+          profession: profKey,
+          town: bot.currentTownId,
+          earned,
+        });
+      }
+
+      // Log activity
       const entry: ActivityEntry = {
         timestamp: new Date().toISOString(),
         characterId: bot.characterId,
@@ -255,11 +326,53 @@ class SimulationController {
       bot.lastActionAt = Date.now();
       bot.actionsCompleted++;
       botsProcessed++;
+
+      // Per-bot day log
+      const botLog: BotDayLog = {
+        tickNumber: this.tickIndex + 1,
+        gameDay: getGameDay(),
+        botId: bot.characterId,
+        botName: bot.characterName,
+        race: bot.race,
+        class: bot.class,
+        profession: profKey,
+        town: bot.currentTownId,
+        level: bot.level,
+        goldStart: goldBefore,
+        goldEnd: goldAfter,
+        goldNet: goldDelta,
+        actionsUsed: 1,
+        actions: [{
+          order: 1,
+          type: actionType,
+          detail: result.detail,
+          success: result.success,
+          goldDelta,
+          error: result.success ? undefined : result.detail,
+        }],
+        summary: `${actionType} — ${goldDelta >= 0 ? '+' : ''}${goldDelta}g`,
+      };
+      this.botDayLogs.push(botLog);
     }
 
     this.tickIndex++;
 
-    return {
+    // Build gold stats
+    const topEarners = earnerList
+      .sort((a, b) => b.earned - a.earned)
+      .slice(0, 10);
+
+    const goldStats: GoldStats = {
+      totalEarned,
+      totalSpent,
+      netGoldChange: totalEarned - totalSpent,
+      byProfession: goldByProfession,
+      byTown: goldByTown,
+      byLevel: goldByLevel,
+      topEarners,
+    };
+
+    const tickResult: SimTickResult = {
       tickNumber: this.tickIndex,
       botsProcessed,
       actionBreakdown,
@@ -267,7 +380,13 @@ class SimulationController {
       failures,
       errors: errors.slice(0, 20), // cap at 20
       durationMs: Date.now() - startTime,
+      goldStats,
+      gameDay: getGameDay(),
     };
+
+    this.tickHistory.push(tickResult);
+
+    return tickResult;
   }
 
   // ---------------------------------------------------------------------------
@@ -345,6 +464,17 @@ class SimulationController {
   }
 
   // ---------------------------------------------------------------------------
+  // Tick history & bot day logs
+  // ---------------------------------------------------------------------------
+  getTickHistory(): SimTickResult[] {
+    return this.tickHistory;
+  }
+
+  getBotDayLogs(): BotDayLog[] {
+    return this.botDayLogs;
+  }
+
+  // ---------------------------------------------------------------------------
   // Cleanup (full teardown)
   // ---------------------------------------------------------------------------
   async cleanup(): Promise<any> {
@@ -361,6 +491,8 @@ class SimulationController {
     this.errorStormUntil = 0;
     this.focusSystem = null;
     this.focusUntil = 0;
+    this.tickHistory = [];
+    this.botDayLogs = [];
     resetLog();
     logger.info('Simulation cleaned up');
     return result;

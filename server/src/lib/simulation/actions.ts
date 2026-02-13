@@ -7,7 +7,7 @@
 
 import { BotState, ActionResult } from './types';
 import { get, post } from './dispatcher';
-import { getResourcesByType } from '@shared/data/resources';
+import { getResourcesByType } from './seed';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -127,9 +127,9 @@ export async function startGathering(bot: BotState): Promise<ActionResult> {
       };
     }
 
-    // Pick a random resource type and find a matching resource
+    // Pick a random resource type and find a matching resource from DB cache
     const chosenType = pickRandom(resourceTypes)!;
-    const resources = getResourcesByType(chosenType as any);
+    const resources = getResourcesByType(chosenType);
     const resource = pickRandom(resources);
     if (!resource) {
       return {
@@ -152,7 +152,9 @@ export async function startGathering(bot: BotState): Promise<ActionResult> {
         endpoint,
       };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    // Graceful failure for HTTP errors
+    bot.pendingGathering = false;
+    return { success: false, detail: res.data?.error || `Gathering failed: HTTP ${res.status}`, endpoint };
   } catch (err: any) {
     return { success: false, detail: err.message, endpoint };
   }

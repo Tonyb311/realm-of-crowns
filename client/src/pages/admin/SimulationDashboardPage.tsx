@@ -21,6 +21,7 @@ import {
   Coins,
   Gauge,
   Sliders,
+  Download,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -83,6 +84,41 @@ interface SimulationStatus {
   recentActivity: ActivityEntry[];
 }
 
+interface GoldStats {
+  totalEarned: number;
+  totalSpent: number;
+  netGoldChange: number;
+  byProfession: Record<string, { earned: number; spent: number; net: number; botCount: number }>;
+  byTown: Record<string, { earned: number; spent: number; net: number }>;
+  byLevel: Record<number, { earned: number; spent: number; net: number }>;
+  topEarners: { botName: string; profession: string; town: string; earned: number }[];
+}
+
+interface BotDayLog {
+  tickNumber: number;
+  gameDay: number;
+  botId: string;
+  botName: string;
+  race: string;
+  class: string;
+  profession: string;
+  town: string;
+  level: number;
+  goldStart: number;
+  goldEnd: number;
+  goldNet: number;
+  actionsUsed: number;
+  actions: {
+    order: number;
+    type: string;
+    detail: string;
+    success: boolean;
+    goldDelta: number;
+    error?: string;
+  }[];
+  summary: string;
+}
+
 interface SimTickResult {
   tickNumber: number;
   botsProcessed: number;
@@ -91,6 +127,8 @@ interface SimTickResult {
   failures: number;
   errors: string[];
   durationMs: number;
+  gameDay: number;
+  goldStats?: GoldStats;
 }
 
 interface SimulationStats {
@@ -191,6 +229,19 @@ function getIntelligenceLabel(value: number): { label: string; colorClass: strin
   if (value <= 30) return { label: 'Random', colorClass: 'text-realm-danger' };
   if (value <= 70) return { label: 'Semi-Smart', colorClass: 'text-realm-warning' };
   return { label: 'Optimized', colorClass: 'text-realm-success' };
+}
+
+function getActionColor(type: string): string {
+  switch (type) {
+    case 'gather': return 'text-realm-success';
+    case 'craft': return 'text-realm-gold-400';
+    case 'sell': case 'buy': return 'text-realm-gold-500';
+    case 'combat': return 'text-realm-danger';
+    case 'travel': return 'text-realm-purple-300';
+    case 'social': case 'message': case 'friend': return 'text-realm-teal-300';
+    case 'quest': return 'text-realm-warning';
+    default: return 'text-realm-text-muted';
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -310,6 +361,7 @@ export default function SimulationDashboardPage() {
   const [lastTickResult, setLastTickResult] = useState<SimTickResult | null>(null);
   const [showBotRoster, setShowBotRoster] = useState(false);
   const [focusSystem, setFocusSystem] = useState<string>(FOCUS_SYSTEMS[0]);
+  const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
 
   // -- Queries --------------------------------------------------------------
 
@@ -340,6 +392,14 @@ export default function SimulationDashboardPage() {
     queryFn: async () => (await api.get('/admin/simulation/activity', { params: { count: 50 } })).data,
     refetchInterval: () => (status?.status === 'running' ? 3000 : 10000),
   });
+
+  const { data: botLogsData } = useQuery<{ logs: BotDayLog[] }>({
+    queryKey: ['admin', 'simulation', 'bot-logs', selectedBotId],
+    queryFn: async () => (await api.get('/admin/simulation/bot-logs', { params: { botId: selectedBotId } })).data,
+    enabled: !!selectedBotId,
+  });
+
+  const botLogs = botLogsData?.logs ?? [];
 
   // -- Derived data ---------------------------------------------------------
 
@@ -501,6 +561,28 @@ export default function SimulationDashboardPage() {
     }
   }
 
+  async function handleExport() {
+    try {
+      const response = await api.get('/admin/simulation/export', {
+        responseType: 'blob',
+      });
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `simulation-export-day${lastTickResult?.gameDay ?? 0}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast.success('Export downloaded');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Export failed');
+    }
+  }
+
   // -- Loading state --------------------------------------------------------
 
   if (isLoading) {
@@ -545,7 +627,6 @@ export default function SimulationDashboardPage() {
   // -- Main render ----------------------------------------------------------
 
   const currentStatus = status?.status ?? 'idle';
-  const gameDayOffset = status?.gameDayOffset ?? 0;
 
   return (
     <div className="space-y-6">
@@ -558,7 +639,7 @@ export default function SimulationDashboardPage() {
         <div className="flex items-center gap-1.5 text-realm-text-muted text-sm ml-auto">
           <Clock className="w-4 h-4" />
           <span>
-            Game Day: <span className="text-realm-text-secondary font-medium">{gameDayOffset}</span>
+            Game Day: <span className="text-realm-gold-400 font-display">{lastTickResult?.gameDay ?? status?.gameDayOffset ?? 0}</span>
           </span>
           {status?.uptime ? (
             <span className="ml-3">
@@ -837,6 +918,16 @@ export default function SimulationDashboardPage() {
             </button>
           )}
 
+          {/* Export Excel */}
+          <button
+            onClick={handleExport}
+            disabled={(status?.botCount ?? 0) === 0}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4" />
+            Export Excel
+          </button>
+
           {/* Spacer */}
           <div className="flex-1" />
 
@@ -1046,6 +1137,68 @@ export default function SimulationDashboardPage() {
       )}
 
       {/* ================================================================= */}
+      {/* 4b. Gold Economy Stats                                            */}
+      {/* ================================================================= */}
+      {lastTickResult?.goldStats && (
+        <div className="bg-realm-bg-700 rounded-xl border border-realm-border p-5">
+          <h2 className="font-display text-lg text-realm-gold-400 mb-4">Gold Economy</h2>
+
+          {/* Summary row */}
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="bg-realm-bg-800 rounded-lg p-3 text-center">
+              <p className="text-xs text-realm-text-muted">Earned</p>
+              <p className="text-lg font-display text-realm-success">+{lastTickResult.goldStats.totalEarned.toLocaleString()}g</p>
+            </div>
+            <div className="bg-realm-bg-800 rounded-lg p-3 text-center">
+              <p className="text-xs text-realm-text-muted">Spent</p>
+              <p className="text-lg font-display text-realm-danger">-{lastTickResult.goldStats.totalSpent.toLocaleString()}g</p>
+            </div>
+            <div className="bg-realm-bg-800 rounded-lg p-3 text-center">
+              <p className="text-xs text-realm-text-muted">Net</p>
+              <p className={`text-lg font-display ${lastTickResult.goldStats.netGoldChange >= 0 ? 'text-realm-success' : 'text-realm-danger'}`}>
+                {lastTickResult.goldStats.netGoldChange >= 0 ? '+' : ''}{lastTickResult.goldStats.netGoldChange.toLocaleString()}g
+              </p>
+            </div>
+          </div>
+
+          {/* By Profession table */}
+          {Object.keys(lastTickResult.goldStats.byProfession).length > 0 && (
+            <>
+              <h3 className="font-display text-sm text-realm-text-secondary mb-2">By Profession</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-realm-text-muted text-xs border-b border-realm-border">
+                      <th className="text-left py-1 px-2">Profession</th>
+                      <th className="text-right py-1 px-2">Bots</th>
+                      <th className="text-right py-1 px-2">Earned</th>
+                      <th className="text-right py-1 px-2">Spent</th>
+                      <th className="text-right py-1 px-2">Net/Bot</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(lastTickResult.goldStats.byProfession)
+                      .sort(([, a], [, b]) => b.net - a.net)
+                      .map(([prof, data]) => (
+                        <tr key={prof} className="text-realm-text-secondary border-t border-realm-border/30">
+                          <td className="py-1 px-2">{prof}</td>
+                          <td className="text-right py-1 px-2">{data.botCount}</td>
+                          <td className="text-right py-1 px-2 text-realm-success">+{data.earned}g</td>
+                          <td className="text-right py-1 px-2 text-realm-danger">-{data.spent}g</td>
+                          <td className="text-right py-1 px-2">
+                            {data.botCount > 0 ? Math.round(data.net / data.botCount) : 0}g
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ================================================================= */}
       {/* 5. Activity Log                                                   */}
       {/* ================================================================= */}
       <div className="bg-realm-bg-700 rounded-xl border border-realm-border p-5">
@@ -1173,7 +1326,8 @@ export default function SimulationDashboardPage() {
                     {bots.map((bot) => (
                       <tr
                         key={bot.characterId}
-                        className="hover:bg-realm-bg-800/30 transition-colors"
+                        className="hover:bg-realm-bg-800/30 transition-colors cursor-pointer"
+                        onClick={() => setSelectedBotId(selectedBotId === bot.characterId ? null : bot.characterId)}
                       >
                         <td className="px-3 py-2 text-xs text-realm-text-primary font-medium">
                           {bot.characterName}
@@ -1224,6 +1378,57 @@ export default function SimulationDashboardPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Per-Bot Detail View */}
+            {selectedBotId && (
+              <div className="bg-realm-bg-700 rounded-xl border border-realm-gold-500/30 p-5 mt-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-display text-lg text-realm-gold-400">
+                    {status?.bots?.find(b => b.characterId === selectedBotId)?.characterName ?? 'Bot'} — Daily History
+                  </h3>
+                  <button
+                    onClick={() => setSelectedBotId(null)}
+                    className="text-realm-text-muted hover:text-realm-text-secondary text-lg"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {botLogs.length === 0 ? (
+                  <p className="text-realm-text-muted text-sm text-center py-4">No logs yet. Run some ticks first.</p>
+                ) : (
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                    {botLogs.map((day) => (
+                      <div key={day.tickNumber} className="bg-realm-bg-800 rounded-lg p-3">
+                        <div className="flex justify-between text-sm mb-2">
+                          <span className="text-realm-gold-400 font-display">Day {day.gameDay} (Tick {day.tickNumber})</span>
+                          <span className="text-realm-text-muted text-xs">{day.summary}</span>
+                          <span className={`font-display ${day.goldNet >= 0 ? 'text-realm-success' : 'text-realm-danger'}`}>
+                            {day.goldNet >= 0 ? '+' : ''}{day.goldNet}g
+                          </span>
+                        </div>
+
+                        <div className="space-y-1">
+                          {day.actions.map((action) => (
+                            <div key={action.order} className="flex items-center text-xs text-realm-text-secondary gap-2">
+                              <span className="w-5 text-realm-text-muted">{action.order}.</span>
+                              <span className={`w-14 font-medium ${getActionColor(action.type)}`}>{action.type}</span>
+                              <span className="flex-grow truncate">{action.detail}</span>
+                              {action.goldDelta !== 0 && (
+                                <span className={`whitespace-nowrap ${action.goldDelta > 0 ? 'text-realm-success' : 'text-realm-danger'}`}>
+                                  {action.goldDelta > 0 ? '+' : ''}{action.goldDelta}g
+                                </span>
+                              )}
+                              {!action.success && <span className="text-realm-danger">✗</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -10,6 +10,8 @@ import { getRace } from '@shared/data/races';
 import { BotState, BotProfile, SeedConfig, DEFAULT_CONFIG, BOT_PROFILES } from './types';
 import { generateCharacterName, resetNameCounter } from './names';
 import { logger } from '../../lib/logger';
+import { giveStartingInventory } from '../../lib/starting-inventory';
+import { getReleasedRaceKeys, getReleasedTownIds } from '../../lib/content-release';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -79,11 +81,11 @@ function raceToRegistryKey(race: Race): string {
   return race.toLowerCase();
 }
 
-// Gold starting amounts by race tier
+// Gold starting amounts by race tier (0 gold — bots start with 5 Basic Rations instead)
 const GOLD_BY_TIER: Record<string, number> = {
-  core: 100,
-  common: 75,
-  exotic: 50,
+  core: 0,
+  common: 0,
+  exotic: 0,
 };
 
 // HP by class
@@ -128,24 +130,34 @@ export async function seedBots(config: SeedConfig): Promise<BotState[]> {
   const profiles = [...BOT_PROFILES];
   const profileWeights = profiles.map((p) => DEFAULT_CONFIG.profileDistribution[p] || 1);
 
-  // Build town pool
+  // Filter races to released content only
+  const releasedRaceKeys = await getReleasedRaceKeys();
+  const releasedRaceEnums = ALL_RACES.filter(r => releasedRaceKeys.has(r.toLowerCase()));
+  if (releasedRaceEnums.length === 0) {
+    throw new Error('No released races found. Release at least one race before seeding bots.');
+  }
+
+  // Build town pool — only released towns
   let townPool: { id: string; name: string }[];
   if (config.townIds === 'all') {
-    townPool = await prisma.town.findMany({ select: { id: true, name: true } });
+    townPool = await prisma.town.findMany({
+      where: { isReleased: true },
+      select: { id: true, name: true },
+    });
   } else {
     townPool = await prisma.town.findMany({
-      where: { id: { in: config.townIds } },
+      where: { id: { in: config.townIds }, isReleased: true },
       select: { id: true, name: true },
     });
   }
-  if (townPool.length === 0) throw new Error('No valid towns found');
+  if (townPool.length === 0) throw new Error('No valid released towns found');
 
   for (let batchStart = 1; batchStart <= config.count; batchStart += batchSize) {
     const batchEnd = Math.min(batchStart + batchSize - 1, config.count);
     const batchIndices = Array.from({ length: batchEnd - batchStart + 1 }, (_, k) => batchStart + k);
 
     const batchResults = await Promise.all(
-      batchIndices.map((i) => createSingleBot(i, config, townPool, profiles, profileWeights)),
+      batchIndices.map((i) => createSingleBot(i, config, townPool, profiles, profileWeights, releasedRaceEnums)),
     );
 
     bots.push(...batchResults);
@@ -162,21 +174,22 @@ async function createSingleBot(
   townPool: { id: string; name: string }[],
   profiles: BotProfile[],
   profileWeights: number[],
+  releasedRaceEnums: Race[] = ALL_RACES,
 ): Promise<BotState> {
   // 1. Assign profile
   const profile = weightedRandom(profiles, profileWeights);
 
-  // 2. Choose race
+  // 2. Choose race (from released races only)
   let raceEnum: Race;
   if (config.raceDistribution === 'even') {
-    // Uniform distribution across all races
-    raceEnum = pick(ALL_RACES);
+    // Uniform distribution across released races
+    raceEnum = pick(releasedRaceEnums);
   } else {
-    // 'realistic' — profile-weighted approach
-    const favoredRaces = PROFILE_RACE_PREFERENCES[profile];
+    // 'realistic' — profile-weighted approach, filtered to released
+    const favoredRaces = PROFILE_RACE_PREFERENCES[profile].filter(r => releasedRaceEnums.includes(r));
     raceEnum = favoredRaces.length > 0
-      ? pickWeighted(ALL_RACES, favoredRaces)
-      : pick(ALL_RACES);
+      ? pickWeighted(releasedRaceEnums, favoredRaces)
+      : pick(releasedRaceEnums);
   }
 
   // 3. Choose class
@@ -202,11 +215,11 @@ async function createSingleBot(
     // Admin specified towns — distribute evenly
     townId = townPool[index % townPool.length].id;
   } else {
-    // 'all' — use race-based defaults
+    // 'all' — use race-based defaults (released towns only)
     if (raceDef && raceDef.startingTowns.length > 0) {
       const townName = pick(raceDef.startingTowns);
       const town = await prisma.town.findFirst({
-        where: { name: { equals: townName, mode: 'insensitive' } },
+        where: { name: { equals: townName, mode: 'insensitive' }, isReleased: true },
       });
       townId = town?.id ?? townPool[index % townPool.length].id;
     } else {
@@ -305,14 +318,17 @@ async function createSingleBot(
     },
   });
 
-  // 12. Generate JWT
+  // 12. Give starting inventory (5 Basic Rations)
+  await giveStartingInventory(character.id);
+
+  // 13. Generate JWT
   const token = jwt.sign(
     { userId: user.id, username: user.username, role: 'player' },
     process.env.JWT_SECRET!,
     { expiresIn: '7d' },
   );
 
-  // 13. Return BotState
+  // 14. Return BotState
   return {
     userId: user.id,
     characterId: character.id,

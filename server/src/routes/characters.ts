@@ -13,6 +13,7 @@ import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
 import { isRaceReleased } from '../lib/content-release';
 import { assignStartingTown } from '../lib/starting-town';
+import { giveStartingInventory } from '../lib/starting-inventory';
 
 const router = Router();
 
@@ -53,11 +54,7 @@ function getClassHpBonus(charClass: CharacterClass): number {
 }
 
 function getStartingGold(tier: 'core' | 'common' | 'exotic'): number {
-  switch (tier) {
-    case 'core': return 100;
-    case 'common': return 75;
-    case 'exotic': return 50;
-  }
+  return 0; // All characters start with 0 gold + 5 Basic Rations
 }
 
 // POST /api/characters/create
@@ -171,6 +168,9 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
         homeTown: { select: { id: true, name: true } },
       },
     });
+
+    // Give starting inventory (5 Basic Rations)
+    await giveStartingInventory(character.id);
 
     return res.status(201).json({
       character: {
