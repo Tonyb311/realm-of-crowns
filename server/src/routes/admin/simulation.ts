@@ -586,14 +586,26 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       console.error('Failed to add combat logs sheet:', combatLogErr);
     }
 
-    // Sheet 14: Market Activity — one row per resolved auction transaction
+    // Sheet 14: Market Transactions — one row per completed sale
     try {
       const marketTransactions = await prisma.tradeTransaction.findMany({
         where: { auctionCycleId: { not: null } },
         include: {
-          buyer: { select: { name: true } },
-          seller: { select: { name: true, professions: { where: { isActive: true }, select: { professionType: true } } } },
-          item: { include: { template: { select: { name: true } } } },
+          buyer: {
+            select: {
+              name: true,
+              level: true,
+              professions: { where: { isActive: true }, select: { professionType: true } },
+            },
+          },
+          seller: {
+            select: {
+              name: true,
+              level: true,
+              professions: { where: { isActive: true }, select: { professionType: true } },
+            },
+          },
+          item: { include: { template: { select: { name: true, type: true } } } },
           town: { select: { name: true } },
           cycle: { select: { cycleNumber: true } },
         },
@@ -601,80 +613,181 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       });
 
       if (marketTransactions.length > 0) {
-        const marketData = await Promise.all(marketTransactions.map(async (tx: any) => {
-          const orderCount = await prisma.marketBuyOrder.count({
-            where: { listing: { soldTo: tx.buyerId, soldPrice: tx.price, townId: tx.townId } },
-          });
+        const txData = marketTransactions.map(tx => {
+          const allBidders = (tx as any).allBidders as any[] | null;
+          const numBidders = (tx as any).numBidders ?? 1;
+          const contested = (tx as any).contested ?? false;
 
-          const winningOrder = await prisma.marketBuyOrder.findFirst({
-            where: { buyerId: tx.buyerId, status: 'won', auctionCycleId: tx.auctionCycleId },
-            select: { priorityScore: true, rollResult: true },
-          });
+          // Find winner and runner-up from allBidders
+          let winnerScore = 0, winnerRoll = 0, runnerUpScore = 0, runnerUpRoll = 0;
+          if (allBidders && allBidders.length > 0) {
+            const winner = allBidders.find((b: any) => b.outcome === 'won');
+            const losers = allBidders.filter((b: any) => b.outcome === 'lost')
+              .sort((a: any, b: any) => (b.priorityScore || 0) - (a.priorityScore || 0));
+
+            winnerScore = winner?.priorityScore || 0;
+            winnerRoll = winner?.rollResult || winner?.rollBreakdown?.total || 0;
+            if (losers.length > 0) {
+              runnerUpScore = losers[0]?.priorityScore || 0;
+              runnerUpRoll = losers[0]?.rollResult || losers[0]?.rollBreakdown?.total || 0;
+            }
+          }
 
           return {
             Tick: tx.cycle?.cycleNumber || 0,
             Town: tx.town.name,
-            ItemName: tx.item?.template?.name || 'Unknown',
+            ItemName: tx.item.template.name,
+            ItemType: tx.item.template.type,
             Quantity: tx.quantity,
             AskingPrice: tx.price,
             SalePrice: tx.price,
             SellerName: tx.seller.name,
+            SellerLevel: tx.seller.level,
+            SellerProfession: tx.seller.professions.map((p: any) => p.professionType).join(', ') || 'None',
             BuyerName: tx.buyer.name,
-            NumBidders: orderCount,
-            WinningScore: winningOrder?.priorityScore || 0,
-            WinningRoll: winningOrder?.rollResult || 0,
-            Fee: tx.sellerFee,
+            BuyerLevel: tx.buyer.level,
+            BuyerProfession: tx.buyer.professions.map((p: any) => p.professionType).join(', ') || 'None',
+            NumBidders: numBidders,
+            Contested: contested ? 'Yes' : 'No',
+            WinnerPriorityScore: Math.round(winnerScore * 100) / 100,
+            WinnerRollTotal: winnerRoll,
+            RunnerUpScore: Math.round(runnerUpScore * 100) / 100,
+            RunnerUpRoll: runnerUpRoll,
+            FeeRate: tx.seller.professions.some((p: any) => p.professionType === 'MERCHANT') ? '5%' : '10%',
+            FeeAmount: tx.sellerFee,
+            SellerNetProceeds: tx.sellerNet,
           };
+        });
+
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(txData), 'Market Transactions');
+      }
+    } catch { /* Don't fail export */ }
+
+    // Sheet 15: Market Orders — one row per buy order placed
+    try {
+      const allOrders = await prisma.marketBuyOrder.findMany({
+        include: {
+          buyer: {
+            select: {
+              name: true,
+              professions: { where: { isActive: true }, select: { professionType: true } },
+            },
+          },
+          listing: {
+            select: {
+              itemName: true,
+              price: true,
+              townId: true,
+              town: { select: { name: true } },
+              _count: { select: { buyOrders: true } },
+            },
+          },
+          cycle: { select: { cycleNumber: true } },
+        },
+        orderBy: { placedAt: 'asc' },
+      });
+
+      if (allOrders.length > 0) {
+        const orderData = allOrders.map(o => ({
+          Tick: o.cycle?.cycleNumber || 0,
+          Town: o.listing.town.name,
+          ItemName: o.listing.itemName || 'Unknown',
+          BuyerName: o.buyer.name,
+          BuyerProfession: o.buyer.professions.map((p: any) => p.professionType).join(', ') || 'None',
+          BidPrice: o.bidPrice,
+          AskingPrice: o.listing.price,
+          BidRatio: Math.round((o.bidPrice / Math.max(o.listing.price, 1)) * 100) + '%',
+          PriorityScore: o.priorityScore != null ? Math.round(o.priorityScore * 100) / 100 : '',
+          HagglingRoll: o.rollResult ?? '',
+          Outcome: o.status,
+          CompetingBids: o.listing._count.buyOrders,
         }));
 
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(marketData), 'Market Activity');
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(orderData), 'Market Orders');
       }
-    } catch { /* Don't fail export if market data fails */ }
+    } catch { /* Don't fail export */ }
 
-    // Sheet 15: Market Summary — one row per resolved auction cycle
+    // Sheet 16: Market Summary — one row per resolved cycle
     try {
       const cycles = await prisma.auctionCycle.findMany({
         where: { status: 'resolved' },
         include: {
           town: { select: { name: true } },
-          transactions: { select: { price: true, quantity: true } },
-          orders: {
-            select: {
-              status: true,
-              buyer: {
-                select: {
-                  professions: { where: { isActive: true, professionType: 'MERCHANT' }, select: { id: true } },
-                },
-              },
-            },
-          },
         },
         orderBy: { resolvedAt: 'asc' },
       });
 
       if (cycles.length > 0) {
-        const summaryData = cycles.map((cycle: any) => {
-          const totalGold = cycle.transactions.reduce((sum: number, t: any) => sum + t.price * t.quantity, 0);
-          const wonOrders = cycle.orders.filter((o: any) => o.status === 'won');
-          const merchantWins = wonOrders.filter((o: any) => o.buyer.professions.length > 0).length;
-          const nonMerchantWins = wonOrders.length - merchantWins;
+        const mktSummaryData = cycles.map(cycle => ({
+          Cycle: cycle.cycleNumber,
+          Town: cycle.town.name,
+          OrdersProcessed: cycle.ordersProcessed,
+          TransactionsCompleted: cycle.transactionsCompleted,
+          ContestedListings: (cycle as any).contestedListings ?? 0,
+          TotalGoldTraded: (cycle as any).totalGoldTraded ?? 0,
+          AvgSalePrice: cycle.transactionsCompleted > 0
+            ? Math.round(((cycle as any).totalGoldTraded ?? 0) / cycle.transactionsCompleted)
+            : 0,
+          MerchantWins: (cycle as any).merchantWins ?? 0,
+          NonMerchantWins: (cycle as any).nonMerchantWins ?? 0,
+          MerchantWinRate: (() => {
+            const mw = (cycle as any).merchantWins ?? 0;
+            const nmw = (cycle as any).nonMerchantWins ?? 0;
+            const total = mw + nmw;
+            return total > 0 ? Math.round(mw / total * 100) + '%' : 'N/A';
+          })(),
+          ResolvedAt: cycle.resolvedAt?.toISOString() || '',
+        }));
 
-          return {
-            Cycle: cycle.cycleNumber,
-            Town: cycle.town.name,
-            TotalListings: cycle.ordersProcessed,
-            TransactionsCompleted: cycle.transactionsCompleted,
-            TotalGoldTraded: totalGold,
-            AvgSalePrice: cycle.transactions.length > 0 ? Math.round(totalGold / cycle.transactions.length) : 0,
-            MerchantWins: merchantWins,
-            NonMerchantWins: nonMerchantWins,
-            MerchantWinRate: wonOrders.length > 0 ? `${Math.round(merchantWins / wonOrders.length * 100)}%` : 'N/A',
-          };
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(mktSummaryData), 'Market Summary');
+      }
+    } catch { /* Don't fail export */ }
+
+    // Sheet 17: Economy Overview — macro indicators
+    try {
+      // Get all characters for wealth distribution
+      const characters = await prisma.character.findMany({
+        select: { gold: true, escrowedGold: true, level: true },
+        where: { user: { isTestAccount: true } }, // Only sim bots
+      });
+
+      if (characters.length > 0) {
+        const totalGoldEcon = characters.reduce((sum, c) => sum + c.gold + c.escrowedGold, 0);
+        const avgGoldEcon = Math.round(totalGoldEcon / characters.length);
+
+        // Calculate Gini coefficient
+        const golds = characters.map(c => c.gold + c.escrowedGold).sort((a, b) => a - b);
+        const n = golds.length;
+        let giniNumerator = 0;
+        for (let i = 0; i < n; i++) {
+          giniNumerator += (2 * (i + 1) - n - 1) * golds[i];
+        }
+        const gini = n > 1 ? Math.round((giniNumerator / (n * golds.reduce((a, b) => a + b, 0) || 1)) * 1000) / 1000 : 0;
+
+        // Count items and listings
+        const activeListings = await prisma.marketListing.count({ where: { status: 'active' } });
+        const totalTransactionsEcon = await prisma.tradeTransaction.count({ where: { auctionCycleId: { not: null } } });
+        const totalGoldTradedEcon = await prisma.tradeTransaction.aggregate({
+          where: { auctionCycleId: { not: null } },
+          _sum: { price: true },
         });
 
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(summaryData), 'Market Summary');
+        const overviewData = [{
+          TotalCharacters: characters.length,
+          TotalGoldInCirculation: totalGoldEcon,
+          AveragePlayerGold: avgGoldEcon,
+          MedianPlayerGold: golds[Math.floor(n / 2)] || 0,
+          MinGold: golds[0] || 0,
+          MaxGold: golds[n - 1] || 0,
+          GoldGini: gini,
+          ActiveListings: activeListings,
+          TotalTransactions: totalTransactionsEcon,
+          TotalGoldTraded: totalGoldTradedEcon._sum.price || 0,
+        }];
+
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(overviewData), 'Economy Overview');
       }
-    } catch { /* Don't fail export if market summary fails */ }
+    } catch { /* Don't fail export */ }
 
     // If only summary sheet exists (no data sheets added), that's fine — summary has metadata
 

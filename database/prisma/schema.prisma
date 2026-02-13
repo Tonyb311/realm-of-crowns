@@ -1061,6 +1061,9 @@ model TradeTransaction {
   townId         String   @map("town_id")
   sellerFee      Int      @default(0) @map("seller_fee")
   sellerNet      Int      @default(0) @map("seller_net")
+  numBidders     Int      @default(1) @map("num_bidders")
+  contested      Boolean  @default(false)
+  allBidders     Json?    @map("all_bidders")   // JSONB: [{name, profession, bidPrice, priorityScore, rollResult, rollBreakdown, outcome}]
   auctionCycleId String?  @map("auction_cycle_id")
   timestamp      DateTime @default(now())
   createdAt      DateTime @default(now()) @map("created_at")
@@ -1132,6 +1135,10 @@ model AuctionCycle {
   status                String    @default("open")  // open|processing|resolved
   ordersProcessed       Int       @default(0) @map("orders_processed")
   transactionsCompleted Int       @default(0) @map("transactions_completed")
+  contestedListings     Int       @default(0) @map("contested_listings")
+  merchantWins          Int       @default(0) @map("merchant_wins")
+  nonMerchantWins       Int       @default(0) @map("non_merchant_wins")
+  totalGoldTraded       Int       @default(0) @map("total_gold_traded")
 
   town         Town               @relation(fields: [townId], references: [id])
   listings     MarketListing[]

@@ -180,6 +180,14 @@ export interface BotDayLog {
     error?: string;
   }[];
   summary: string;
+  // Per-bot market activity tracking
+  marketItemsListed: number;
+  marketOrdersPlaced: number;
+  marketAuctionsWon: number;
+  marketAuctionsLost: number;
+  marketGoldSpent: number;
+  marketGoldEarned: number;
+  marketNetGold: number;
 }
 
 // ---------------------------------------------------------------------------

@@ -26,6 +26,7 @@ import { processDailyTick } from '../../jobs/daily-tick';
 import { processTravelTick } from '../../lib/travel-tick';
 import { logger } from '../../lib/logger';
 import { setSimulationTick } from '../../lib/simulation-context';
+import { prisma } from '../../lib/prisma';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -249,6 +250,7 @@ class SimulationController {
     }
 
     // 2c. Resolve market auctions for all towns with pending orders
+    const auctionResolvedBefore = new Date();
     try {
       const { resolveAllTownAuctions } = await import('../auction-engine');
       const auctionResult = await resolveAllTownAuctions();
@@ -262,6 +264,7 @@ class SimulationController {
     } catch (err: any) {
       errors.push(`Market auction error: ${err.message}`);
     }
+    const auctionResolvedAfter = new Date();
 
     // Gold tracking accumulators
     const goldByProfession: Record<string, { earned: number; spent: number; net: number; botCount: number }> = {};
@@ -360,6 +363,8 @@ class SimulationController {
       }
 
       // Free market actions (don't consume action slots)
+      let botMarketItemsListed = 0;
+      let botMarketOrdersPlaced = 0;
       if (this.config.enabledSystems.market && bot.currentTownId && bot.isActive) {
         try {
           const { doFreeMarketActions } = await import('./actions');
@@ -369,6 +374,12 @@ class SimulationController {
             actionBreakdown[marketAction] = (actionBreakdown[marketAction] || 0) + 1;
             if (mr.success) successes++;
             else failures++;
+
+            // Track per-bot market action counts
+            if (mr.success) {
+              if (marketAction === 'market_list') botMarketItemsListed++;
+              if (marketAction === 'market_buy') botMarketOrdersPlaced++;
+            }
 
             logActivity({
               timestamp: new Date().toISOString(),
@@ -392,6 +403,51 @@ class SimulationController {
           }
         } catch { /* ignore market errors */ }
       }
+
+      // Query per-bot auction results from the cycles resolved this tick
+      let botAuctionsWon = 0;
+      let botAuctionsLost = 0;
+      let botMarketGoldSpent = 0;
+      let botMarketGoldEarned = 0;
+      try {
+        // Count buy orders resolved in this tick's auction resolution
+        const wonOrders = await prisma.marketBuyOrder.count({
+          where: {
+            buyerId: bot.characterId,
+            status: 'won',
+            resolvedAt: { gte: auctionResolvedBefore, lte: auctionResolvedAfter },
+          },
+        });
+        const lostOrders = await prisma.marketBuyOrder.count({
+          where: {
+            buyerId: bot.characterId,
+            status: 'lost',
+            resolvedAt: { gte: auctionResolvedBefore, lte: auctionResolvedAfter },
+          },
+        });
+        botAuctionsWon = wonOrders;
+        botAuctionsLost = lostOrders;
+
+        // Sum gold spent on won auctions (as buyer)
+        const wonTransactions = await prisma.tradeTransaction.aggregate({
+          where: {
+            buyerId: bot.characterId,
+            createdAt: { gte: auctionResolvedBefore, lte: auctionResolvedAfter },
+          },
+          _sum: { price: true },
+        });
+        botMarketGoldSpent = wonTransactions._sum.price ?? 0;
+
+        // Sum gold earned from sales (as seller)
+        const sellTransactions = await prisma.tradeTransaction.aggregate({
+          where: {
+            sellerId: bot.characterId,
+            createdAt: { gte: auctionResolvedBefore, lte: auctionResolvedAfter },
+          },
+          _sum: { sellerNet: true },
+        });
+        botMarketGoldEarned = sellTransactions._sum.sellerNet ?? 0;
+      } catch { /* ignore query errors */ }
 
       // Final state refresh to get accurate gold
       try { await refreshBotState(bot); } catch { /* ignore */ }
@@ -460,6 +516,13 @@ class SimulationController {
         actionsUsed: botActions.length,
         actions: botActions,
         summary: `${actionSummaryParts.join(', ')} — ${goldDelta >= 0 ? '+' : ''}${goldDelta}g`,
+        marketItemsListed: botMarketItemsListed,
+        marketOrdersPlaced: botMarketOrdersPlaced,
+        marketAuctionsWon: botAuctionsWon,
+        marketAuctionsLost: botAuctionsLost,
+        marketGoldSpent: botMarketGoldSpent,
+        marketGoldEarned: botMarketGoldEarned,
+        marketNetGold: botMarketGoldEarned - botMarketGoldSpent,
       };
       this.botDayLogs.push(botLog);
     }

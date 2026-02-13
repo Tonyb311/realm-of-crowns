@@ -85,6 +85,10 @@ export async function resolveAuctionCycle(townId: string): Promise<{
 
   let totalOrdersProcessed = 0;
   let totalTransactionsCompleted = 0;
+  let contestedCount = 0;
+  let merchantWinCount = 0;
+  let nonMerchantWinCount = 0;
+  let totalGoldTraded = 0;
 
   try {
     // 3. Query all active listings in this town that have at least one pending buy order
@@ -261,6 +265,39 @@ export async function resolveAuctionCycle(townId: string): Promise<{
         }
       }
 
+      // Build allBidders logging array from scoredOrders
+      const contested = pendingOrders.length > 1;
+      // Build a roll data lookup for bidders who went through tie-breaking
+      const rollDataMap = new Map<string, { rollResult: number; d20: number; merchantRollBonus: number }>();
+      // The rolledOrders variable only exists in the tie-breaking scope above, so we
+      // re-derive roll info from the winner/losers which may carry roll data.
+      if ('rollResult' in winner) {
+        const w = winner as any;
+        rollDataMap.set(w.order.buyerId, { rollResult: w.rollResult, d20: w.d20, merchantRollBonus: w.merchantRollBonus });
+      }
+      for (const loser of losers) {
+        if ('rollResult' in loser) {
+          const l = loser as any;
+          rollDataMap.set(l.order.buyerId, { rollResult: l.rollResult, d20: l.d20, merchantRollBonus: l.merchantRollBonus });
+        }
+      }
+
+      const allBidders = scoredOrders.map(so => {
+        const rollInfo = rollDataMap.get(so.order.buyerId);
+        return {
+          name: so.order.buyer.name,
+          buyerId: so.order.buyerId,
+          isMerchant: (so.profs || []).includes('MERCHANT'),
+          bidPrice: so.order.bidPrice,
+          priorityScore: so.priorityScore,
+          rollResult: rollInfo?.rollResult ?? null,
+          rollBreakdown: rollInfo ? { raw: rollInfo.d20, chaMod: so.chaMod, merchantRollBonus: rollInfo.merchantRollBonus, total: rollInfo.rollResult } : null,
+          outcome: so.order.buyerId === winner.order.buyerId ? 'won' : 'lost',
+        };
+      });
+
+      if (contested) contestedCount++;
+
       // 5. Winner processing (inside a $transaction)
       // Determine seller fee rate
       const sellerProfs = await prisma.playerProfession.findMany({
@@ -350,6 +387,9 @@ export async function resolveAuctionCycle(townId: string): Promise<{
             townId,
             sellerFee: fee,
             sellerNet: sellerNet,
+            numBidders: pendingOrders.length,
+            contested,
+            allBidders,
             auctionCycleId: cycle.id,
           },
         });
@@ -430,6 +470,12 @@ export async function resolveAuctionCycle(townId: string): Promise<{
         price: bidPrice,
       });
 
+      // Accumulate cycle-level stats for logging
+      const winnerIsMerchant = (winner.profs || []).includes('MERCHANT');
+      if (winnerIsMerchant) merchantWinCount++;
+      else nonMerchantWinCount++;
+      totalGoldTraded += bidPrice;
+
       totalOrdersProcessed += pendingOrders.length;
       totalTransactionsCompleted += 1;
     }
@@ -442,6 +488,10 @@ export async function resolveAuctionCycle(townId: string): Promise<{
         resolvedAt: new Date(),
         ordersProcessed: totalOrdersProcessed,
         transactionsCompleted: totalTransactionsCompleted,
+        contestedListings: contestedCount,
+        merchantWins: merchantWinCount,
+        nonMerchantWins: nonMerchantWinCount,
+        totalGoldTraded: totalGoldTraded,
       },
     });
 
