@@ -34,6 +34,9 @@ function categorizeAction(endpoint: string): string {
   if (endpoint.includes('craft')) return 'craft';
   if (endpoint.includes('market/buy') || endpoint.includes('buy')) return 'buy';
   if (endpoint.includes('market/list') || endpoint.includes('sell') || endpoint.includes('market/browse')) return 'sell';
+  // Distinguish combat wins from losses for accurate tracking
+  if (endpoint.includes('combat') && endpoint.includes('/win')) return 'combat_win';
+  if (endpoint.includes('combat') && endpoint.includes('/loss')) return 'combat_loss';
   if (endpoint.includes('combat')) return 'combat';
   if (endpoint.includes('quest')) return 'quest';
   if (endpoint.includes('travel')) return 'travel';
@@ -57,7 +60,8 @@ class SimulationController {
   private errorStormUntil: number = 0;
   private focusSystem: string | null = null;
   private focusUntil: number = 0;
-  private tickIndex: number = 0;
+  private tickIndex: number = 0;         // round-robin index for interval mode
+  private singleTickCount: number = 0;   // sequential counter for runSingleTick
   private tickHistory: SimTickResult[] = [];
   private botDayLogs: BotDayLog[] = [];
 
@@ -202,6 +206,7 @@ class SimulationController {
 
   // ---------------------------------------------------------------------------
   // Run a single tick across ALL bots (not interval-based, synchronous)
+  // Each bot gets up to config.actionsPerTick actions per tick.
   // ---------------------------------------------------------------------------
   async runSingleTick(): Promise<SimTickResult> {
     const startTime = Date.now();
@@ -228,40 +233,94 @@ class SimulationController {
     const earnerList: { botName: string; profession: string; town: string; earned: number }[] = [];
 
     const activeBots = this.bots.filter((b) => b.isActive);
+    const maxActions = this.config.actionsPerTick;
 
     for (const bot of activeBots) {
-      // Refresh state
+      // Refresh state before the action loop
       try { await refreshBotState(bot); } catch { /* ignore */ }
 
-      // Record gold before action
+      // Record gold before first action
       const goldBefore = bot.gold;
 
-      // Decide and execute
-      let result: ActionResult;
-      try {
-        result = await decideBotAction(bot, this.bots, this.config);
-      } catch (err: any) {
-        result = { success: false, detail: `Uncaught: ${err.message}`, endpoint: 'error' };
+      const botActions: Array<{
+        order: number;
+        type: string;
+        detail: string;
+        success: boolean;
+        goldDelta: number;
+        error?: string;
+      }> = [];
+
+      let botDeactivated = false;
+
+      for (let actionNum = 0; actionNum < maxActions; actionNum++) {
+        const goldBeforeAction = bot.gold;
+
+        // Decide and execute
+        let result: ActionResult;
+        try {
+          result = await decideBotAction(bot, this.bots, this.config);
+        } catch (err: any) {
+          result = { success: false, detail: `Uncaught: ${err.message}`, endpoint: 'error' };
+        }
+
+        // Categorize action
+        const actionType = categorizeAction(result.endpoint);
+        actionBreakdown[actionType] = (actionBreakdown[actionType] || 0) + 1;
+
+        if (result.success) {
+          successes++;
+          bot.consecutiveErrors = 0;
+        } else {
+          failures++;
+          bot.consecutiveErrors++;
+          bot.errorsTotal++;
+          if (result.detail) errors.push(`${bot.characterName}: ${result.detail}`);
+          // Same escalation logic
+          if (bot.consecutiveErrors > 10) {
+            bot.isActive = false;
+            botDeactivated = true;
+          } else if (bot.consecutiveErrors > 5) {
+            bot.pausedUntil = Date.now() + 30_000;
+          }
+        }
+
+        // Quick state refresh between actions to pick up gold/xp changes
+        try { await refreshBotState(bot); } catch { /* ignore */ }
+
+        const actionGoldDelta = bot.gold - goldBeforeAction;
+
+        botActions.push({
+          order: actionNum + 1,
+          type: actionType,
+          detail: result.detail,
+          success: result.success,
+          goldDelta: actionGoldDelta,
+          error: result.success ? undefined : result.detail,
+        });
+
+        // Log each action individually
+        logActivity({
+          timestamp: new Date().toISOString(),
+          characterId: bot.characterId,
+          botName: bot.characterName,
+          profile: bot.profile,
+          action: actionType,
+          endpoint: result.endpoint,
+          success: result.success,
+          detail: result.detail,
+          durationMs: Date.now() - startTime,
+        });
+
+        bot.lastAction = result.detail;
+        bot.lastActionAt = Date.now();
+        bot.actionsCompleted++;
+
+        // If action was idle/paused, or bot was deactivated/paused, stop giving actions
+        if (result.endpoint === 'none' || botDeactivated || bot.pausedUntil > Date.now()) break;
       }
 
-      // Categorize action
-      const actionType = categorizeAction(result.endpoint);
-      actionBreakdown[actionType] = (actionBreakdown[actionType] || 0) + 1;
-
-      if (result.success) {
-        successes++;
-        bot.consecutiveErrors = 0;
-      } else {
-        failures++;
-        bot.consecutiveErrors++;
-        bot.errorsTotal++;
-        if (result.detail) errors.push(`${bot.characterName}: ${result.detail}`);
-        // Same escalation logic
-        if (bot.consecutiveErrors > 10) bot.isActive = false;
-        else if (bot.consecutiveErrors > 5) bot.pausedUntil = Date.now() + 30_000;
-      }
-
-      // Refresh state after action to get updated gold
+      // Final state refresh to get accurate gold
       try { await refreshBotState(bot); } catch { /* ignore */ }
       const goldAfter = bot.gold;
       const goldDelta = goldAfter - goldBefore;
@@ -308,28 +367,12 @@ class SimulationController {
         });
       }
 
-      // Log activity
-      const entry: ActivityEntry = {
-        timestamp: new Date().toISOString(),
-        characterId: bot.characterId,
-        botName: bot.characterName,
-        profile: bot.profile,
-        action: actionType,
-        endpoint: result.endpoint,
-        success: result.success,
-        detail: result.detail,
-        durationMs: Date.now() - startTime,
-      };
-      logActivity(entry);
-
-      bot.lastAction = result.detail;
-      bot.lastActionAt = Date.now();
-      bot.actionsCompleted++;
       botsProcessed++;
 
-      // Per-bot day log
+      // Per-bot day log with all actions accumulated
+      const actionSummaryParts = botActions.map((a) => a.type);
       const botLog: BotDayLog = {
-        tickNumber: this.tickIndex + 1,
+        tickNumber: this.singleTickCount + 1,
         gameDay: getGameDay(),
         botId: bot.characterId,
         botName: bot.characterName,
@@ -341,21 +384,14 @@ class SimulationController {
         goldStart: goldBefore,
         goldEnd: goldAfter,
         goldNet: goldDelta,
-        actionsUsed: 1,
-        actions: [{
-          order: 1,
-          type: actionType,
-          detail: result.detail,
-          success: result.success,
-          goldDelta,
-          error: result.success ? undefined : result.detail,
-        }],
-        summary: `${actionType} — ${goldDelta >= 0 ? '+' : ''}${goldDelta}g`,
+        actionsUsed: botActions.length,
+        actions: botActions,
+        summary: `${actionSummaryParts.join(', ')} — ${goldDelta >= 0 ? '+' : ''}${goldDelta}g`,
       };
       this.botDayLogs.push(botLog);
     }
 
-    this.tickIndex++;
+    this.singleTickCount++;
 
     // Build gold stats
     const topEarners = earnerList
@@ -373,7 +409,7 @@ class SimulationController {
     };
 
     const tickResult: SimTickResult = {
-      tickNumber: this.tickIndex,
+      tickNumber: this.singleTickCount,
       botsProcessed,
       actionBreakdown,
       successes,
@@ -488,6 +524,7 @@ class SimulationController {
     this.seedConfig = DEFAULT_SEED_CONFIG;
     this.startedAt = null;
     this.tickIndex = 0;
+    this.singleTickCount = 0;
     this.errorStormUntil = 0;
     this.focusSystem = null;
     this.focusUntil = 0;

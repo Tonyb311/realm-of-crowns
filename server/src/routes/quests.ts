@@ -36,7 +36,7 @@ const abandonQuestSchema = z.object({
 // ---- Routes ----
 
 // GET /api/quests/available — List available quests for the character
-router.get('/available', authGuard, cache(60), async (req: AuthenticatedRequest, res: Response) => {
+router.get('/available', authGuard, characterGuard, cache(60), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
 

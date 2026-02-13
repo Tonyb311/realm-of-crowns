@@ -38,6 +38,7 @@ export interface SimulationConfig {
   botCount: number;
   tickIntervalMs: number;
   botsPerTick: number;
+  actionsPerTick: number;
   profileDistribution: Partial<Record<BotProfile, number>>;
   enabledSystems: {
     combat: boolean;
@@ -213,6 +214,7 @@ export const DEFAULT_CONFIG: SimulationConfig = {
   botCount: 20,
   tickIntervalMs: 5000,
   botsPerTick: 5,
+  actionsPerTick: 3,
   profileDistribution: {
     gatherer: 3,
     crafter: 2,

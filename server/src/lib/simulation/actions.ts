@@ -393,6 +393,7 @@ export async function startCombat(bot: BotState): Promise<ActionResult> {
     }
 
     let outcome = 'UNKNOWN';
+    let playerSurvived = false;
     const actionEndpoint = '/combat/pve/action';
     const MAX_TURNS = 20;
 
@@ -419,14 +420,45 @@ export async function startCombat(bot: BotState): Promise<ActionResult> {
         status === 'COMPLETED'
       ) {
         outcome = status;
+
+        // Check combatant isAlive to determine if player actually won
+        const combatants: any[] =
+          actionRes.data?.combat?.combatants ||
+          actionRes.data?.combatants ||
+          [];
+        const playerCombatant = combatants.find(
+          (c: any) => c.entityType !== 'monster',
+        );
+        playerSurvived = playerCombatant?.isAlive === true;
         break;
       }
     }
 
+    // Determine true win vs loss based on player survival
+    const isWin = playerSurvived && (outcome === 'VICTORY' || outcome === 'COMPLETED');
+    const isFled = outcome === 'FLED';
+
+    let detail: string;
+    let resultEndpoint: string;
+
+    if (isWin) {
+      detail = `Combat victory (${outcome})`;
+      resultEndpoint = '/combat/pve/win';
+    } else if (isFled) {
+      detail = `Combat fled`;
+      resultEndpoint = '/combat/pve/loss';
+    } else if (outcome === 'COMPLETED' || outcome === 'DEFEAT') {
+      detail = `Combat defeat (died)`;
+      resultEndpoint = '/combat/pve/loss';
+    } else {
+      detail = `Combat ended: ${outcome}`;
+      resultEndpoint = '/combat/pve/loss';
+    }
+
     return {
-      success: outcome === 'VICTORY' || outcome === 'COMPLETED',
-      detail: `Combat ended with outcome: ${outcome}`,
-      endpoint,
+      success: isWin,
+      detail,
+      endpoint: resultEndpoint,
     };
   } catch (err: any) {
     return { success: false, detail: err.message, endpoint };

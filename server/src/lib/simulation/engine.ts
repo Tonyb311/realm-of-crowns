@@ -132,14 +132,19 @@ export async function decideBotAction(
 
   const intelligence = bot.intelligence ?? 50;
 
+  // Check if travel is possible (more than 1 unique town among bots)
+  const uniqueTowns = new Set(allBots.map(b => b.currentTownId)).size;
+  const canTravel = uniqueTowns > 1;
+
   // 2. If no professions, either grind XP (below level gate) or learn one
   if (bot.professions.length === 0) {
     if (bot.level < PROFESSION_UNLOCK_LEVEL) {
       // Pre-profession: grind XP via combat, quests, and travel
+      const travelWeight = canTravel ? 15 : 0;
       const preProfWeights: { key: ActionKey; weight: number }[] = [
         { key: 'combat', weight: 60 },
-        { key: 'quest', weight: 25 },
-        { key: 'travel', weight: 15 },
+        { key: 'quest', weight: 25 + (canTravel ? 0 : 15) },
+        { key: 'travel', weight: travelWeight },
       ];
       const total = preProfWeights.reduce((sum, w) => sum + w.weight, 0);
       let rand = Math.random() * total;
@@ -203,6 +208,7 @@ export async function decideBotAction(
     // Random action — pick any enabled action
     const profileWeights = PROFILE_WEIGHTS.balanced;
     const filteredWeights = filterWeights(profileWeights, config.enabledSystems);
+    if (!canTravel) delete filteredWeights.travel;
     const allActions = Object.keys(filteredWeights) as ActionKey[];
     if (allActions.length > 0) {
       const randomAction = pickRandom(allActions);
@@ -213,6 +219,7 @@ export async function decideBotAction(
   // 5. Smart action — use profile weights (existing logic)
   const profileWeights = PROFILE_WEIGHTS[bot.profile] || PROFILE_WEIGHTS.balanced;
   const filteredWeights = filterWeights(profileWeights, config.enabledSystems);
+  if (!canTravel) delete filteredWeights.travel;
 
   if (Object.keys(filteredWeights).length === 0) {
     return { success: true, detail: 'No enabled systems', endpoint: 'none' };
