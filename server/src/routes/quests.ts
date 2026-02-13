@@ -5,7 +5,6 @@ import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { cache } from '../middleware/cache';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
 
@@ -36,7 +35,7 @@ const abandonQuestSchema = z.object({
 // ---- Routes ----
 
 // GET /api/quests/available — List available quests for the character
-router.get('/available', authGuard, characterGuard, cache(60), async (req: AuthenticatedRequest, res: Response) => {
+router.get('/available', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
 
