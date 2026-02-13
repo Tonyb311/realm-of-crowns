@@ -51,7 +51,7 @@ import {
 } from '../services/racial-combat-abilities';
 import { getBeastfolkNaturalWeapon } from '../services/racial-passive-tracker';
 import { psionAbilities } from '@shared/data/skills/psion';
-import { DEATH_PENALTY } from '@shared/data/progression';
+import { DEATH_PENALTY, getDeathXpPenalty, getDeathDurabilityPenalty } from '@shared/data/progression';
 
 // ---- Constants ----
 
@@ -59,8 +59,6 @@ const DEFEND_AC_BONUS = 2;
 const BASE_AC = 10;
 const DEFAULT_FLEE_DC = 10;
 const DEATH_GOLD_LOSS_PERCENT = DEATH_PENALTY.GOLD_LOSS_PERCENT;
-const DEATH_XP_LOSS_PER_LEVEL = DEATH_PENALTY.XP_LOSS_PER_LEVEL;
-const DEATH_DURABILITY_DAMAGE = DEATH_PENALTY.DURABILITY_DAMAGE;
 
 // ---- Status Effect Definitions ----
 
@@ -1927,7 +1925,7 @@ function checkCombatEnd(state: CombatState): CombatState {
 
 // ---- Death Penalty ----
 
-/** Calculate death penalties for a character. */
+/** Calculate death penalties for a character. Uses level-scaled penalties. */
 export function calculateDeathPenalty(
   characterId: string,
   level: number,
@@ -1935,14 +1933,15 @@ export function calculateDeathPenalty(
   respawnTownId: string
 ): DeathPenalty {
   const goldLost = Math.floor(gold * (DEATH_GOLD_LOSS_PERCENT / 100));
-  const xpLost = level * DEATH_XP_LOSS_PER_LEVEL;
+  const xpLost = getDeathXpPenalty(level);
+  const durabilityDamage = getDeathDurabilityPenalty(level);
 
   return {
     characterId,
     goldLostPercent: DEATH_GOLD_LOSS_PERCENT,
     goldLost,
     xpLost,
-    durabilityDamage: DEATH_DURABILITY_DAMAGE,
+    durabilityDamage,
     respawnTownId,
   };
 }

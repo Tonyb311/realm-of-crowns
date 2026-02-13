@@ -37,6 +37,7 @@ import {
   type CombatStance,
   type StanceModifiers,
 } from './combat-presets';
+import { getMonsterKillXp } from '@shared/data/progression';
 import {
   createRacialCombatTracker,
   type RacialCombatTracker,
@@ -367,7 +368,7 @@ export async function resolveNodePvE(
     monsterStats.hp ?? 50,
     monsterStats.ac ?? 12,
     buildMonsterWeapon(monsterStats),
-    getProficiencyBonus(monster.level),
+    0, // Monster attack stat already includes proficiency equivalent
   );
 
   // Create combat state
@@ -406,7 +407,7 @@ export async function resolveNodePvE(
 
   if (playerSurvived) {
     // Player won
-    xpReward = monster.level * 25;
+    xpReward = getMonsterKillXp(monster.level);
     const lootTable = monster.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number }[];
     for (const entry of lootTable) {
       if (Math.random() <= entry.dropChance) {

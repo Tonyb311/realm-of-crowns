@@ -11,7 +11,7 @@ import { BotState, BotProfile, SeedConfig, DEFAULT_CONFIG, BOT_PROFILES } from '
 import { generateCharacterName, resetNameCounter } from './names';
 import { logger } from '../../lib/logger';
 import { giveStartingInventory } from '../../lib/starting-inventory';
-import { giveStarterWeapon } from '../../lib/starting-weapons';
+import { giveStarterWeapon, giveStarterArmor } from '../../lib/starting-weapons';
 import { getReleasedRaceKeys, getReleasedTownIds } from '../../lib/content-release';
 
 // ---------------------------------------------------------------------------
@@ -324,6 +324,9 @@ async function createSingleBot(
 
   // 12b. Give class-appropriate starter weapon (equipped to MAIN_HAND)
   await giveStarterWeapon(character.id, charClass);
+
+  // 12c. Give starter armor (Rustic Leather Vest, +2 AC, equipped to CHEST)
+  await giveStarterArmor(character.id);
 
   // 13. Generate JWT
   const token = jwt.sign(

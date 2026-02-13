@@ -1,6 +1,8 @@
 import { prisma } from './prisma';
 import { logger } from './logger';
 import { resolveRoadEncounter } from './road-encounter';
+import { ACTION_XP } from '@shared/data/progression';
+import { checkLevelUp } from '../services/progression';
 
 export interface TravelTickResult {
   soloMoved: number;
@@ -107,39 +109,46 @@ export async function processTravelTick(): Promise<TravelTickResult> {
           result.soloEncountered++;
 
           if (encounter.won) {
-            // Won encounter: arrive at destination with rewards already applied
+            // Won encounter: arrive at destination with combat + travel XP
             result.soloEncounterWins++;
+            const travelXp = ACTION_XP.TRAVEL_PER_NODE * traveler.route.nodeCount;
             await prisma.$transaction([
               prisma.character.update({
                 where: { id: traveler.characterId },
                 data: {
                   currentTownId: destinationTownId,
                   travelStatus: 'idle',
+                  xp: { increment: travelXp },
                 },
               }),
               prisma.characterTravelState.delete({
                 where: { id: traveler.id },
               }),
             ]);
+
+            try { await checkLevelUp(traveler.characterId); } catch { /* non-fatal */ }
 
             result.soloArrived++;
             logger.info(
               {
                 characterId: traveler.characterId,
                 destinationTownId,
+                travelXp,
                 encounter: `Won vs ${encounter.monsterName} (L${encounter.monsterLevel})`,
               },
               'Solo traveler won road encounter, arrived at destination',
             );
           } else {
-            // Lost encounter: return to origin town (penalties already applied)
+            // Lost encounter: return to origin town (penalties already applied, travel XP still granted)
             result.soloEncounterLosses++;
+            const lostTravelXp = ACTION_XP.TRAVEL_PER_NODE * traveler.route.nodeCount;
             await prisma.$transaction([
               prisma.character.update({
                 where: { id: traveler.characterId },
                 data: {
                   currentTownId: originTownId,
                   travelStatus: 'idle',
+                  xp: { increment: lostTravelXp },
                 },
               }),
               prisma.characterTravelState.delete({
@@ -147,23 +156,28 @@ export async function processTravelTick(): Promise<TravelTickResult> {
               }),
             ]);
 
+            try { await checkLevelUp(traveler.characterId); } catch { /* non-fatal */ }
+
             logger.info(
               {
                 characterId: traveler.characterId,
                 originTownId,
+                travelXp: lostTravelXp,
                 encounter: `Lost vs ${encounter.monsterName} (L${encounter.monsterLevel})`,
               },
               'Solo traveler lost road encounter, returned to origin',
             );
           }
         } else {
-          // No encounter: arrive at destination normally
+          // No encounter: arrive at destination with travel XP
+          const safeTravelXp = ACTION_XP.TRAVEL_PER_NODE * traveler.route.nodeCount;
           await prisma.$transaction([
             prisma.character.update({
               where: { id: traveler.characterId },
               data: {
                 currentTownId: destinationTownId,
                 travelStatus: 'idle',
+                xp: { increment: safeTravelXp },
               },
             }),
             prisma.characterTravelState.delete({
@@ -171,9 +185,11 @@ export async function processTravelTick(): Promise<TravelTickResult> {
             }),
           ]);
 
+          try { await checkLevelUp(traveler.characterId); } catch { /* non-fatal */ }
+
           result.soloArrived++;
           logger.info(
-            { characterId: traveler.characterId, destinationTownId, routeNodeCount: traveler.route.nodeCount },
+            { characterId: traveler.characterId, destinationTownId, travelXp: safeTravelXp, routeNodeCount: traveler.route.nodeCount },
             'Solo traveler arrived at destination (safe journey)',
           );
         }
@@ -223,13 +239,15 @@ export async function processTravelTick(): Promise<TravelTickResult> {
         // Arrival: move ALL group members to destination town atomically
         // NOTE: Group road encounters would need special handling (shared combat?)
         // For now, groups arrive safely without encounter checks
+        const groupTravelXp = ACTION_XP.TRAVEL_PER_NODE * groupState.route.nodeCount;
         await prisma.$transaction([
-          // Update all member characters
+          // Update all member characters (with travel XP)
           prisma.character.updateMany({
             where: { id: { in: memberCharacterIds } },
             data: {
               currentTownId: destinationTownId,
               travelStatus: 'idle',
+              xp: { increment: groupTravelXp },
             },
           }),
           // Delete the group travel state

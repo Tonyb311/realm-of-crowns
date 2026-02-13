@@ -26,7 +26,7 @@ import { onMonsterKill } from '../services/quest-triggers';
 import { checkLevelUp } from '../services/progression';
 import { checkAchievements } from '../services/achievements';
 import { redis } from '../lib/redis';
-import { ACTION_XP, DEATH_PENALTY } from '@shared/data/progression';
+import { ACTION_XP, DEATH_PENALTY, getMonsterKillXp, getDeathXpPenalty } from '@shared/data/progression';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
 import { logPveCombat, COMBAT_LOGGING_ENABLED } from '../lib/combat-logger';
@@ -421,8 +421,8 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
       // P2 #52 FIX: Player fled — apply minor penalty instead of full death penalties
       const character = await tx.character.findUnique({ where: { id: playerId } });
       if (character) {
-        // Minor flee penalty: small XP loss (half of death penalty), no gold loss, no durability damage
-        const minorXpLoss = Math.floor(character.level * (DEATH_PENALTY.XP_LOSS_PER_LEVEL / 2));
+        // Minor flee penalty: half the level-scaled death XP penalty, no gold loss, no durability damage
+        const minorXpLoss = Math.floor(getDeathXpPenalty(character.level) / 2);
         await tx.character.update({
           where: { id: playerId },
           data: {
@@ -480,7 +480,7 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
         const monster = await tx.monster.findUnique({ where: { id: monsterId } });
 
         if (monster) {
-          const xpReward = ACTION_XP.PVE_WIN_PER_MONSTER_LEVEL * monster.level;
+          const xpReward = getMonsterKillXp(monster.level);
           const lootTable = monster.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number }[];
 
           let totalGold = 0;
@@ -573,7 +573,7 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
       const monsterId = monsterCombatant.id.replace('monster-', '');
       const monster = await prisma.monster.findUnique({ where: { id: monsterId } });
       if (monster) {
-        xpAwarded = ACTION_XP.PVE_WIN_PER_MONSTER_LEVEL * monster.level;
+        xpAwarded = getMonsterKillXp(monster.level);
       }
     } else if (playerFled) {
       outcome = 'flee';

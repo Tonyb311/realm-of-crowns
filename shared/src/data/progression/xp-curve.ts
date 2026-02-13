@@ -153,9 +153,10 @@ export const ACTION_XP = {
   TRAVEL_PER_NODE: 3,            // 3 XP per node traversed (typical journey: 2-5 nodes = 6-15 XP)
 
   // -- PvE Combat --
-  // Old: monster.level * 25 (designed for optional repeatable grinds)
-  // New: scaled down since combat is now a daily commitment, not a grind
-  PVE_WIN_PER_MONSTER_LEVEL: 5,  // Win: 5 * monster level (L5 mob = 25 XP, L10 = 50 XP)
+  // Front-loaded XP: low-tier kills give extra XP so Level 1 players progress.
+  // At higher levels, use the standard per-level formula.
+  // Actual reward is computed by getMonsterKillXp(monsterLevel) below.
+  PVE_WIN_PER_MONSTER_LEVEL: 5,  // Base multiplier for high-level (6+) monsters
   PVE_SURVIVE: 5,                // Flat XP for surviving (flee/lose) — consolation prize
 
   // -- PvP Combat --
@@ -193,25 +194,136 @@ export const LEVEL_UP_REWARDS = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// Death Penalty
+// Death Penalty — Level-Scaled
 // ---------------------------------------------------------------------------
 
 /**
- * Rebalanced death penalties for daily-action economy.
+ * Death penalties scale with character level to avoid crushing new players.
  *
- * In the old system, dying cost 50 * level XP. At level 10 that's 500 XP,
- * which could be recovered in a few combat sessions. In the daily-action
- * economy, 500 XP represents ~10-15 days of progress — far too punishing.
+ * At Level 1, dying costs only 3 XP (7.5% of the 40 XP needed for Level 2).
+ * At Level 8+, the penalty reaches the old standard of 15 XP per level.
+ * At Level 11+, it increases to 20 XP to keep high-level death meaningful.
  *
- * New penalties:
- * - Gold: 5% (down from 10%) — still stings but doesn't bankrupt
- * - XP: 15 * level (down from 50 * level) — ~1-3 days of XP at most levels
- * - Durability: 5 (down from 10) — equipment lasts longer between repairs
+ * Durability penalties also scale: Level 1 characters lose only 1 durability
+ * per death, so starter weapons (100 dur) survive ~100 deaths. High-level
+ * characters lose 5 durability, creating meaningful equipment upkeep.
  *
  * Revenant racial ability (50% death penalty reduction) still applies on top.
+ *
+ * Design rationale: A single death should NOT undo more than one win's
+ * worth of XP at any level. At Level 1, one kill = 15 XP, one death = -3 XP.
+ */
+
+/** XP lost on death, indexed by character level. */
+export const DEATH_XP_BY_LEVEL: Record<number, number> = {
+  1: 3,     // Dying is a slap on the wrist — you're still learning
+  2: 5,
+  3: 8,
+  4: 8,
+  5: 12,
+  6: 12,
+  7: 12,
+  8: 15,
+  9: 15,
+  10: 15,
+  // 11+ handled by getDeathXpPenalty() fallback
+};
+
+/** Durability damage to equipped items on death, indexed by character level. */
+export const DEATH_DURABILITY_BY_LEVEL: Record<number, number> = {
+  1: 1,
+  2: 1,
+  3: 3,
+  4: 3,
+  5: 5,
+  // 6+ handled by getDeathDurabilityPenalty() fallback
+};
+
+/** Get XP penalty for dying at the given character level. */
+export function getDeathXpPenalty(level: number): number {
+  if (level >= 11) return 20;
+  return DEATH_XP_BY_LEVEL[level] ?? 15;
+}
+
+/** Get durability damage for dying at the given character level. */
+export function getDeathDurabilityPenalty(level: number): number {
+  if (level >= 5) return 5;
+  return DEATH_DURABILITY_BY_LEVEL[level] ?? 5;
+}
+
+/**
+ * Legacy flat death penalty constants. Kept for backward compatibility
+ * with systems that haven't been updated to use the scaled functions.
+ * New code should use getDeathXpPenalty() and getDeathDurabilityPenalty().
  */
 export const DEATH_PENALTY = {
-  GOLD_LOSS_PERCENT: 5,          // Lose 5% of gold on death (old: 10%)
-  XP_LOSS_PER_LEVEL: 15,         // Lose 15 * level XP on death (old: 50 * level)
-  DURABILITY_DAMAGE: 5,          // All equipped items lose 5 durability (old: 10)
+  GOLD_LOSS_PERCENT: 5,          // Lose 5% of gold on death
+  XP_LOSS_PER_LEVEL: 15,         // @deprecated — use getDeathXpPenalty(level) instead
+  DURABILITY_DAMAGE: 5,          // @deprecated — use getDeathDurabilityPenalty(level) instead
 } as const;
+
+// ---------------------------------------------------------------------------
+// Monster Kill XP — Front-loaded for Early Game
+// ---------------------------------------------------------------------------
+
+/**
+ * XP awarded for killing a monster, by monster level.
+ * Low-tier monsters (1-5) give boosted XP to accelerate early progression.
+ * High-tier monsters (6+) use the standard formula.
+ *
+ * Math check at Level 1:
+ *   Kill XP = 15, Death penalty = -3
+ *   Expected XP per encounter at 70% win rate:
+ *     0.70 * 15 + 0.30 * (-3 + 5) = 10.5 + 0.6 = +11.1 XP per encounter
+ *   Clearly positive — deaths don't create spirals.
+ */
+export const LOW_TIER_KILL_XP: Record<number, number> = {
+  1: 15,   // Up from 5 — Level 2 in ~3 wins
+  2: 20,
+  3: 25,
+  4: 30,
+  5: 30,
+};
+
+/** Get XP reward for killing a monster of the given level. */
+export function getMonsterKillXp(monsterLevel: number): number {
+  return LOW_TIER_KILL_XP[monsterLevel] ?? (ACTION_XP.PVE_WIN_PER_MONSTER_LEVEL * monsterLevel);
+}
+
+// ---------------------------------------------------------------------------
+// Encounter Chance — Character Level Modifier
+// ---------------------------------------------------------------------------
+
+/**
+ * Low-level characters face fewer road encounters, making travel less
+ * punishing during the learning phase. High-level characters face more.
+ *
+ * This caps the encounter chance (computed from route danger level)
+ * for low-level characters, and applies a multiplier for high-level ones.
+ */
+export const ENCOUNTER_CHANCE_CAP_BY_LEVEL: Record<number, number> = {
+  1: 0.25,   // Max 25% even on dangerous roads
+  2: 0.35,   // Max 35%
+};
+
+/** Multiplier for encounter chance at high levels (6+). */
+export const HIGH_LEVEL_ENCOUNTER_MULTIPLIER = 1.15;
+
+// ---------------------------------------------------------------------------
+// Encounter Level Range — Tighter at Low Levels
+// ---------------------------------------------------------------------------
+
+/**
+ * Monster level range for road encounters, by character level.
+ * Level 1 characters ONLY face level 1 monsters (Giant Rat, Goblin).
+ * No wolves, no bandits until the character has leveled up.
+ */
+export const ENCOUNTER_LEVEL_RANGE: Record<number, { min: number; max: number }> = {
+  1: { min: 1, max: 1 },
+  2: { min: 1, max: 2 },
+  3: { min: 1, max: 4 },
+  4: { min: 1, max: 4 },
+  5: { min: 2, max: 7 },
+  6: { min: 2, max: 7 },
+  7: { min: 2, max: 7 },
+};

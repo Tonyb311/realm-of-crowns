@@ -26,7 +26,14 @@ import type {
 } from '@shared/types/combat';
 import { getModifier } from '@shared/types/combat';
 import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
-import { ACTION_XP, DEATH_PENALTY } from '@shared/data/progression';
+import {
+  ACTION_XP,
+  DEATH_PENALTY,
+  getMonsterKillXp,
+  ENCOUNTER_CHANCE_CAP_BY_LEVEL,
+  HIGH_LEVEL_ENCOUNTER_MULTIPLIER,
+  ENCOUNTER_LEVEL_RANGE,
+} from '@shared/data/progression';
 import { onMonsterKill } from '../services/quest-triggers';
 import { checkLevelUp } from '../services/progression';
 import { checkAchievements } from '../services/achievements';
@@ -91,14 +98,14 @@ export function getEncounterChance(dangerLevel: number): number {
 
 /**
  * Monster level range based on character level.
- * Characters face monsters at or below their level range.
+ * Level 1 ONLY faces level 1 monsters (Giant Rat, Goblin) — no wolves.
+ * Ranges defined in shared balance constants for easy tuning.
  */
 export function getMonsterLevelRange(charLevel: number): { min: number; max: number } {
-  if (charLevel <= 2) return { min: 1, max: 2 };
-  if (charLevel <= 5) return { min: 1, max: 5 };
-  if (charLevel <= 10) return { min: 1, max: 10 };
-  if (charLevel <= 20) return { min: Math.max(1, charLevel - 10), max: charLevel };
-  return { min: Math.max(1, charLevel - 15), max: charLevel };
+  const fixed = ENCOUNTER_LEVEL_RANGE[charLevel];
+  if (fixed) return fixed;
+  // Level 8+: face monsters within ±3 levels
+  return { min: Math.max(1, charLevel - 3), max: charLevel + 3 };
 }
 
 /** Maximum combat rounds before auto-draw (safety valve). */
@@ -155,6 +162,26 @@ const UNARMED_WEAPON: WeaponInfo = {
   bonusDamage: 0,
   bonusAttack: 0,
 };
+
+/**
+ * Get the total AC bonus from all equipped armor/shield items.
+ * Sums the `ac` stat from each equipped item's template.
+ */
+async function getEquipmentAC(characterId: string): Promise<number> {
+  const equipment = await prisma.characterEquipment.findMany({
+    where: { characterId },
+    include: { item: { include: { template: true } } },
+  });
+
+  let ac = 0;
+  for (const equip of equipment) {
+    const stats = equip.item.template.stats as Record<string, number> | undefined;
+    if (stats?.ac) {
+      ac += stats.ac;
+    }
+  }
+  return ac;
+}
 
 async function getEquippedWeapon(characterId: string): Promise<WeaponInfo> {
   const equip = await prisma.characterEquipment.findUnique({
@@ -226,13 +253,7 @@ export async function resolveRoadEncounter(
   destinationTownId: string,
   routeInfo?: { dangerLevel: number; terrain: string },
 ): Promise<RoadEncounterResult> {
-  // 1. Roll for encounter — chance scales with route danger level
-  const encounterChance = getEncounterChance(routeInfo?.dangerLevel ?? 3);
-  if (Math.random() > encounterChance) {
-    return { encountered: false };
-  }
-
-  // 2. Load character data
+  // 1. Load character data (needed for level-based encounter chance)
   const character = await prisma.character.findUnique({
     where: { id: characterId },
     select: {
@@ -249,6 +270,23 @@ export async function resolveRoadEncounter(
 
   if (!character) {
     logger.warn({ characterId }, 'Road encounter: character not found');
+    return { encountered: false };
+  }
+
+  // 2. Roll for encounter — chance scales with route danger + character level
+  let encounterChance = getEncounterChance(routeInfo?.dangerLevel ?? 3);
+
+  // Low-level characters face fewer encounters (capped)
+  const cap = ENCOUNTER_CHANCE_CAP_BY_LEVEL[character.level];
+  if (cap !== undefined) {
+    encounterChance = Math.min(encounterChance, cap);
+  } else if (character.level >= 6) {
+    // High-level characters face slightly more encounters
+    encounterChance = Math.min(1.0, encounterChance * HIGH_LEVEL_ENCOUNTER_MULTIPLIER);
+  }
+
+  const roll = Math.random();
+  if (roll > encounterChance) {
     return { encountered: false };
   }
 
@@ -300,10 +338,15 @@ export async function resolveRoadEncounter(
   const monsterStats = monster.stats as Record<string, number>;
   const charStats = parseStats(character.stats);
 
-  // 4. Get character's equipped weapon
+  // 4. Get character's equipped weapon and armor AC
   const playerWeapon = await getEquippedWeapon(characterId);
+  const armorAC = await getEquipmentAC(characterId);
+  // AC = 10 + DEX modifier + armor bonus (matches tick-combat-resolver.ts)
+  const playerAC = 10 + getModifier(charStats.dex) + armorAC;
 
   // 5. Create combat state (no DB session needed — this is auto-resolved)
+  //    Characters enter road encounters at full HP — road rest heals them.
+  //    This prevents cascading damage from multiple encounters making wins impossible.
   const sessionId = crypto.randomUUID();
   const playerCombatant = createCharacterCombatant(
     character.id,
@@ -311,14 +354,17 @@ export async function resolveRoadEncounter(
     0,
     charStats,
     character.level,
-    character.health,
     character.maxHealth,
-    10 + getModifier(charStats.dex),
+    character.maxHealth,
+    playerAC,
     playerWeapon,
     {},
     getProficiencyBonus(character.level),
   );
 
+  // Monster proficiency = 0 because the seed `attack` stat already includes the
+  // monster's total attack bonus (stat mod + proficiency equivalent).  Adding
+  // getProficiencyBonus on top would double-count it.
   const monsterCombatant = createMonsterCombatant(
     `monster-${monster.id}`,
     monster.name,
@@ -328,7 +374,7 @@ export async function resolveRoadEncounter(
     monsterStats.hp ?? 50,
     monsterStats.ac ?? 12,
     buildMonsterWeapon(monsterStats),
-    getProficiencyBonus(monster.level),
+    0,
   );
 
   let combatState = createCombatState(sessionId, 'PVE', [playerCombatant, monsterCombatant]);
@@ -374,8 +420,8 @@ export async function resolveRoadEncounter(
   // 8. Apply outcomes within a transaction
   await prisma.$transaction(async (tx) => {
     if (playerWon) {
-      // Win: award XP and gold
-      xpAwarded = ACTION_XP.PVE_WIN_PER_MONSTER_LEVEL * monster.level;
+      // Win: award XP (front-loaded for low-tier monsters) and gold
+      xpAwarded = getMonsterKillXp(monster.level);
       const lootTable = monster.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number }[];
 
       for (const entry of lootTable) {
@@ -433,18 +479,27 @@ export async function resolveRoadEncounter(
   });
 
   // 9. Post-transaction side effects (quest triggers, level up, achievements)
-  if (playerWon) {
-    onMonsterKill(characterId, monster.name, 1);
-    await checkLevelUp(characterId);
+  //    Wrapped in try/catch so the encounter result is returned even if
+  //    a side-effect (e.g. achievement JSON path) errors.
+  try {
+    if (playerWon) {
+      onMonsterKill(characterId, monster.name, 1);
+      await checkLevelUp(characterId);
 
-    const pveWins = await prisma.combatParticipant.count({
-      where: {
-        characterId,
-        session: { type: 'PVE', status: 'COMPLETED' },
-        currentHp: { gt: 0 },
-      },
-    });
-    await checkAchievements(characterId, 'combat_pve', { wins: pveWins });
+      const pveWins = await prisma.combatParticipant.count({
+        where: {
+          characterId,
+          session: { type: 'PVE', status: 'COMPLETED' },
+          currentHp: { gt: 0 },
+        },
+      });
+      await checkAchievements(characterId, 'combat_pve', { wins: pveWins });
+    }
+  } catch (sideEffectErr: any) {
+    logger.warn(
+      { characterId, err: sideEffectErr.message },
+      'Road encounter: post-combat side-effect error (non-fatal)',
+    );
   }
 
   // 10. Log the combat encounter
@@ -458,7 +513,7 @@ export async function resolveRoadEncounter(
       characterName: character.name,
       opponentName: monster.name,
       townId: null, // road encounter, not in a town
-      characterStartHp: character.health,
+      characterStartHp: character.maxHealth,
       opponentStartHp: monsterStats.hp ?? 50,
       characterWeapon: playerWeapon.name,
       opponentWeapon: monsterResult?.weapon?.name ?? 'Natural Attack',

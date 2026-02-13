@@ -96,3 +96,31 @@ export const STARTER_WEAPONS: Record<string, StarterWeaponDef> = {
 
 /** Fallback weapon if class not found in mapping */
 export const FALLBACK_STARTER_WEAPON = STARTER_WEAPONS.warrior;
+
+// ---------------------------------------------------------------------------
+// Starter Armor
+// ---------------------------------------------------------------------------
+
+/**
+ * Every new character spawns with a "Rustic Leather Vest" equipped to CHEST.
+ * This provides +2 AC, bringing Level 1 AC from 10 + DEX to 12 + DEX.
+ *
+ * Without this, Level 1 characters have AC 10-11 and monsters hit 75-90%
+ * of the time, resulting in a 0% win rate. With +2 AC, monster hit rates
+ * drop to 50-60%, making combat survivable.
+ */
+export interface StarterArmorDef {
+  templateId: string;
+  name: string;
+  description: string;
+  stats: {
+    ac: number;
+  };
+}
+
+export const STARTER_ARMOR: StarterArmorDef = {
+  templateId: 'starter-rustic-leather-vest',
+  name: 'Rustic Leather Vest',
+  description: 'A worn but sturdy leather vest. It won\'t stop a dragon\'s claw, but it might save your life against a goblin.',
+  stats: { ac: 2 },
+};

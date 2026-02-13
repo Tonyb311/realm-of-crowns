@@ -10,9 +10,9 @@ import { QuestDefinition } from './types';
  * - One quest active at a time (enforced server-side)
  * - Auto-complete when objective is met (no manual turn-in)
  * - sortOrder uses gaps of 10 for future insertions
- * - Pre-profession quests (10-40) should collectively get players to Level 3
+ * - Pre-profession quests (10-40) provide ~50 XP (30-40% of Level 3)
  *   XP to Level 3: 40 (L1→2) + 52 (L2→3) = 92 XP
- *   Quest rewards alone: 75 XP + combat XP from fights ≈ 110-140 total
+ *   Quest rewards alone: 50 XP + combat XP from kills (~15 XP each) ≈ 95-125 total
  */
 
 export const TUTORIAL_QUESTS: QuestDefinition[] = [
@@ -28,7 +28,7 @@ export const TUTORIAL_QUESTS: QuestDefinition[] = [
     description:
       'Every adventurer must face their first foe. Seek out a creature near town and prove you can hold your own in battle.',
     objectives: [{ type: 'KILL', target: '*', quantity: 1 }],
-    rewards: { xp: 20, gold: 10 },
+    rewards: { xp: 15, gold: 10 },    // First win — meaningful, not huge
     levelRequired: 1,
     sortOrder: 10,
     isRepeatable: false,
@@ -42,7 +42,7 @@ export const TUTORIAL_QUESTS: QuestDefinition[] = [
     description:
       'The world of Aethermere is vast and full of wonder. Set out from your hometown and travel to a neighboring settlement.',
     objectives: [{ type: 'VISIT', target: '*', quantity: 1 }],
-    rewards: { xp: 15, gold: 15 },
+    rewards: { xp: 10, gold: 5 },     // Easy task, small reward
     levelRequired: 1,
     sortOrder: 20,
     prerequisiteQuestId: 'tutorial-first-blood',
@@ -57,7 +57,7 @@ export const TUTORIAL_QUESTS: QuestDefinition[] = [
     description:
       'A warrior is only as good as their equipment. Open your inventory and equip a weapon or piece of armor to prepare for the challenges ahead.',
     objectives: [{ type: 'EQUIP', target: '*', quantity: 1 }],
-    rewards: { xp: 10, gold: 5 },
+    rewards: { xp: 5, gold: 0 },       // Trivial action, minimal reward
     levelRequired: 1,
     sortOrder: 30,
     prerequisiteQuestId: 'tutorial-wanderlust',
@@ -72,7 +72,7 @@ export const TUTORIAL_QUESTS: QuestDefinition[] = [
     description:
       'One victory does not make a warrior. Return to the wilds and defeat three more creatures to steel yourself for the road ahead.',
     objectives: [{ type: 'KILL', target: '*', quantity: 3 }],
-    rewards: { xp: 30, gold: 25 },
+    rewards: { xp: 20, gold: 20 },    // Bigger reward for persistence
     levelRequired: 1,
     sortOrder: 40,
     prerequisiteQuestId: 'tutorial-gear-up',

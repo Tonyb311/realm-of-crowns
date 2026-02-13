@@ -14,7 +14,7 @@ import { logRouteError } from '../lib/error-logger';
 import { isRaceReleased } from '../lib/content-release';
 import { assignStartingTown } from '../lib/starting-town';
 import { giveStartingInventory } from '../lib/starting-inventory';
-import { giveStarterWeapon } from '../lib/starting-weapons';
+import { giveStarterWeapon, giveStarterArmor } from '../lib/starting-weapons';
 
 const router = Router();
 
@@ -175,6 +175,9 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
 
     // Give class-appropriate starter weapon (equipped to MAIN_HAND)
     await giveStarterWeapon(character.id, charClass);
+
+    // Give starter armor (Rustic Leather Vest, +2 AC, equipped to CHEST)
+    await giveStarterArmor(character.id);
 
     return res.status(201).json({
       character: {
