@@ -44,7 +44,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
     where: { status: 'traveling' },
     include: {
       route: {
-        select: { nodeCount: true, fromTownId: true, toTownId: true },
+        select: { nodeCount: true, fromTownId: true, toTownId: true, dangerLevel: true, terrain: true },
       },
     },
   });
@@ -56,7 +56,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
     where: { status: 'traveling' },
     include: {
       route: {
-        select: { nodeCount: true, fromTownId: true, toTownId: true },
+        select: { nodeCount: true, fromTownId: true, toTownId: true, dangerLevel: true, terrain: true },
       },
       group: {
         include: {
@@ -100,6 +100,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
           traveler.characterId,
           originTownId,
           destinationTownId,
+          { dangerLevel: traveler.route.dangerLevel, terrain: traveler.route.terrain },
         );
 
         if (encounter.encountered) {

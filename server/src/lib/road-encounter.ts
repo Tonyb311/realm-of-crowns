@@ -10,7 +10,7 @@
  */
 
 import { prisma } from './prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma, BiomeType } from '@prisma/client';
 import { logger } from './logger';
 import {
   createCombatState,
@@ -37,8 +37,57 @@ import { getSimulationTick } from './simulation-context';
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Probability of a random encounter during any travel action (45%). */
-export const ROAD_ENCOUNTER_CHANCE = 0.45;
+/** Base encounter chance — modified by route danger level. */
+export const BASE_ENCOUNTER_CHANCE = 0.15;
+
+/**
+ * Encounter chance by route danger level (1-7).
+ * Level 1 = safe (15%), Level 4 = moderate (45%), Level 7 = extreme (75%).
+ */
+export const DANGER_ENCOUNTER_CHANCE: Record<number, number> = {
+  1: 0.15,
+  2: 0.25,
+  3: 0.35,
+  4: 0.45,
+  5: 0.55,
+  6: 0.65,
+  7: 0.75,
+};
+
+/**
+ * Map route terrain strings to monster biome types.
+ * Multiple terrain keywords can map to the same biome.
+ */
+const TERRAIN_TO_BIOME: [RegExp, BiomeType][] = [
+  [/forest|wood|grove|glade|silverwood|elven|sacred/i, BiomeType.FOREST],
+  [/mountain|peak|altitude|mine|cavern|tunnel|descent|foothill/i, BiomeType.MOUNTAIN],
+  [/swamp|marsh|bog|mist|blighted|cursed/i, BiomeType.SWAMP],
+  [/plains|farm|meadow|cobblestone|paved|trade|country|border|highway|fortified/i, BiomeType.PLAINS],
+  [/hill|valley|river/i, BiomeType.HILLS],
+  [/volcanic|ember|lava|scorched/i, BiomeType.VOLCANIC],
+  [/tundra|frozen|frost|ice/i, BiomeType.TUNDRA],
+  [/coast|sea|ocean|coral|shallow|beach|seaside/i, BiomeType.COASTAL],
+  [/desert|arid|sand|rift/i, BiomeType.DESERT],
+  [/badland|waste|war|lawless|contested|frontier|hostile/i, BiomeType.BADLANDS],
+  [/underdark|subterranean|underground/i, BiomeType.UNDERGROUND],
+  [/fey|feywild|glimmer|moonpetal/i, BiomeType.FEYWILD],
+];
+
+/**
+ * Derive a monster biome from a route terrain string.
+ * Falls back to null (any biome) if no match found.
+ */
+export function terrainToBiome(terrain: string): BiomeType | null {
+  for (const [pattern, biome] of TERRAIN_TO_BIOME) {
+    if (pattern.test(terrain)) return biome;
+  }
+  return null;
+}
+
+/** Get encounter chance for a given danger level. */
+export function getEncounterChance(dangerLevel: number): number {
+  return DANGER_ENCOUNTER_CHANCE[Math.max(1, Math.min(7, dangerLevel))] ?? BASE_ENCOUNTER_CHANCE;
+}
 
 /**
  * Monster level range based on character level.
@@ -162,8 +211,8 @@ export interface RoadEncounterResult {
  * Roll for and resolve a road encounter during travel.
  *
  * This function:
- * 1. Rolls against ROAD_ENCOUNTER_CHANCE
- * 2. If encounter triggers, selects a level-appropriate monster
+ * 1. Rolls against danger-level-scaled encounter chance (15%-75%)
+ * 2. If encounter triggers, selects a monster matching the route biome/terrain
  * 3. Auto-resolves combat (alternating attack turns)
  * 4. Applies rewards (win) or penalties (loss) to the character
  * 5. Logs the encounter
@@ -175,9 +224,11 @@ export async function resolveRoadEncounter(
   characterId: string,
   originTownId: string,
   destinationTownId: string,
+  routeInfo?: { dangerLevel: number; terrain: string },
 ): Promise<RoadEncounterResult> {
-  // 1. Roll for encounter
-  if (Math.random() > ROAD_ENCOUNTER_CHANCE) {
+  // 1. Roll for encounter — chance scales with route danger level
+  const encounterChance = getEncounterChance(routeInfo?.dangerLevel ?? 3);
+  if (Math.random() > encounterChance) {
     return { encountered: false };
   }
 
@@ -202,23 +253,39 @@ export async function resolveRoadEncounter(
   }
 
   // 3. Select a level-appropriate monster
+  //    Priority: biome match (from route terrain) → region match → any
   const levelRange = getMonsterLevelRange(character.level);
+  const routeBiome = routeInfo?.terrain ? terrainToBiome(routeInfo.terrain) : null;
 
-  // Try to find monsters from the destination region first, then fallback globally
   const destTown = await prisma.town.findUnique({
     where: { id: destinationTownId },
     select: { regionId: true },
   });
 
-  let monsters = await prisma.monster.findMany({
-    where: {
-      regionId: destTown?.regionId ?? undefined,
-      level: { gte: levelRange.min, lte: levelRange.max },
-    },
-  });
+  let monsters: Awaited<ReturnType<typeof prisma.monster.findMany>> = [];
+
+  // Try biome match first (most thematic — forest road gets forest monsters)
+  if (routeBiome) {
+    monsters = await prisma.monster.findMany({
+      where: {
+        biome: routeBiome,
+        level: { gte: levelRange.min, lte: levelRange.max },
+      },
+    });
+  }
+
+  // Fallback to region match
+  if (monsters.length === 0 && destTown?.regionId) {
+    monsters = await prisma.monster.findMany({
+      where: {
+        regionId: destTown.regionId,
+        level: { gte: levelRange.min, lte: levelRange.max },
+      },
+    });
+  }
 
   if (monsters.length === 0) {
-    // Fallback: any monster in level range
+    // Final fallback: any monster in level range
     monsters = await prisma.monster.findMany({
       where: { level: { gte: levelRange.min, lte: levelRange.max } },
     });
@@ -411,6 +478,11 @@ export async function resolveRoadEncounter(
       characterName: character.name,
       monster: monster.name,
       monsterLevel: monster.level,
+      monsterBiome: (monster as any).biome ?? null,
+      routeDanger: routeInfo?.dangerLevel ?? null,
+      routeTerrain: routeInfo?.terrain ?? null,
+      routeBiome: routeBiome ?? null,
+      encounterChance,
       outcome: playerWon ? 'win' : 'loss',
       rounds: totalRounds,
       xpAwarded,

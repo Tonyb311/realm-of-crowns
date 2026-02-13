@@ -248,6 +248,83 @@ Every exotic race has access to something no one else can easily get -- this is 
 
 ---
 
+## ROAD NETWORK & TRAVEL ROUTES
+
+The world contains **87 unique bidirectional routes** connecting all 68 towns. Routes are defined in `database/seeds/world.ts` and stored as `TravelRoute` records with intermediate `TravelNode` waypoints.
+
+### Route Properties
+
+Each route has:
+- **Name** — Descriptive road name (e.g., "The Blood Feud Border", "Sacred Path")
+- **Danger Level (1-7)** — Affects road encounter chance (15% at level 1, up to 75% at level 7)
+- **Terrain** — Determines which monster biomes spawn during encounters (e.g., "forest path" → FOREST monsters)
+- **Node Count** — Number of intermediate travel nodes (1 node = 1 day of travel)
+- **Distance** — Approximate distance value
+
+### Danger Level Distribution
+
+| Danger | Routes | Encounter Chance | Character |
+|--------|--------|-----------------|-----------|
+| 1 (Safe) | 35 (40%) | 15% | Merchant roads, paved highways |
+| 2 (Moderate) | 24 (28%) | 25% | Forest paths, mountain trails |
+| 3 (Dangerous) | 18 (21%) | 35% | Deep swamps, volcanic trails, border roads |
+| 4 (Extreme) | 8 (9%) | 45% | High peaks, underdark, cursed lands |
+| 5 (Blood Feud) | 1 (1%) | 55% | Hammerfall ↔ Grakthar (Dwarf-Orc border) |
+| 6-7 | 0 | 65-75% | Reserved for future content |
+
+### Hub Towns (4+ Connections)
+
+| Town | Connections | Role |
+|------|------------|------|
+| **Porto Sole** | 9 | Coastal megahub — highest traffic trading post |
+| **Kingshold** | 8 | Human capital — central political hub |
+| **Aelindra** | 8 | Elf capital — forest nexus |
+| **Nethermire** | 7 | Tiefling capital — swamp junction, connects to underdark/tundra |
+| **Kazad-Vorn** | 7 | Dwarf capital — underground hub, mountain crossroads |
+| **Grakthar** | 6 | Orc capital — wasteland center |
+| **Drakenspire** | 6 | Dragonborn capital — mountain/tundra nexus |
+| **Hearthshire** | 5 | Halfling hub — safe trade center |
+| **Thornwatch** | 5 | Border town — dangerous contested junction |
+| **Mistwatch** | 5 | Marsh guardian — gateway to Shadowmere |
+
+### Dead-End & Isolated Towns
+
+| Town | Connections | Notes |
+|------|------------|-------|
+| Rootholme (Firbolg) | 1 | Only connects to Misthaven |
+| Windbreak (Goliath) | 1 | Only connects to Skyhold |
+| The Foundry (Warforged) | 2 | Kazad-Vorn + Porto Sole |
+| The Confluence (Genasi) | 2 | Porto Sole + Emberheart |
+| Ashenmoor (Revenant) | 1* | Only connects to Nethermire (via Mistwatch) |
+
+### Key Chokepoints
+
+1. **Rootholme → Misthaven** — Only access to Mistwood Glens (Firbolg territory)
+2. **Windbreak → Skyhold** — Only access to Skypeak Plateaus (Goliath territory)
+3. **Vel'Naris ↔ Nethermire** — Only surface access for Drow (danger 4)
+4. **Hammerfall ↔ Grakthar** — Dwarf-Orc blood feud border (danger 5, most dangerous route)
+5. **Kingshold → Mistwatch** — Only direct access from Heartlands to Shadowmere Marshes
+
+### Adjacency Enforcement
+
+Travel is enforced at all levels:
+- **Backend:** `POST /travel/start` requires a valid `routeId` — players select a route, not a destination town
+- **Frontend:** `GET /travel/routes` returns only routes where the character's current town is an endpoint
+- **Bot AI:** Simulation bots query the same `/travel/routes` endpoint
+- **Encounter system:** Route `dangerLevel` scales encounter chance; route `terrain` selects biome-appropriate monsters
+
+### Road Encounter Integration
+
+When a traveler arrives at their destination, the system rolls for a road encounter:
+1. **Encounter chance** = `DANGER_ENCOUNTER_CHANCE[route.dangerLevel]` (15%-75%)
+2. **Monster selection** priority: biome match (from route terrain) → region match → any level-appropriate
+3. **Win** → Arrive at destination with XP + gold rewards
+4. **Lose** → Returned to origin town with death penalty (gold/XP loss, equipment durability damage)
+
+Implementation: `server/src/lib/road-encounter.ts` + `server/src/lib/travel-tick.ts`
+
+---
+
 ## Cross-Reference
 
 - **Full 20-race compendium** (stats, abilities, profession bonuses, lore): `docs/RACES.md`

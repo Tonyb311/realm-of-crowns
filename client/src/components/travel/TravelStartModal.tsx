@@ -88,6 +88,12 @@ function DangerBar({ level }: { level: number }) {
 // Route Card
 // ---------------------------------------------------------------------------
 
+/** Encounter chance by route danger level (mirrors server-side DANGER_ENCOUNTER_CHANCE). */
+function getEncounterChancePct(dangerLevel: number): number {
+  const CHANCE: Record<number, number> = { 1: 15, 2: 25, 3: 35, 4: 45, 5: 55, 6: 65, 7: 75 };
+  return CHANCE[Math.max(1, Math.min(7, dangerLevel))] ?? 35;
+}
+
 interface RouteCardProps {
   route: TravelRoute;
   onTravelSolo: (routeId: string) => void;
@@ -97,6 +103,7 @@ interface RouteCardProps {
 
 function RouteCard({ route, onTravelSolo, onFormGroup, isTraveling }: RouteCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const encounterPct = getEncounterChancePct(route.dangerLevel);
 
   return (
     <div className="bg-realm-bg-800 border border-realm-border rounded-lg overflow-hidden">
@@ -124,6 +131,16 @@ function RouteCard({ route, onTravelSolo, onFormGroup, isTraveling }: RouteCardP
           <span className="text-[10px] px-2 py-0.5 rounded bg-realm-border/40 text-realm-text-muted capitalize">
             {(route.terrain || 'mixed').replace(/_/g, ' ')}
           </span>
+          <div className="flex items-center gap-1">
+            <Shield className="w-3 h-3 text-realm-text-muted" />
+            <span className={`text-[10px] ${
+              encounterPct <= 25 ? 'text-realm-success'
+                : encounterPct <= 45 ? 'text-realm-gold-400'
+                : 'text-realm-danger'
+            }`}>
+              {encounterPct}% encounter
+            </span>
+          </div>
         </div>
 
         {/* Danger bar */}
