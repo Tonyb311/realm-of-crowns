@@ -266,6 +266,7 @@ export async function buildCombatParams(characterId: string): Promise<{
       attackModifierStat: weaponStats.attackModifierStat ?? 'str',
       bonusDamage: weaponStats.bonusDamage ?? 0,
       bonusAttack: weaponStats.bonusAttack ?? 0,
+      damageType: weaponStats.damageType ?? undefined,
     };
   }
 

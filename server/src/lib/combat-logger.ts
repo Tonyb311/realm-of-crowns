@@ -3,8 +3,8 @@
  *
  * Builds structured per-encounter logs from combat engine state.
  * Each encounter produces one CombatEncounterLog record with:
- * - Encounter header (participants, location, weapons, starting HP)
- * - Per-round data as JSONB array (attack rolls, damage, HP, status effects)
+ * - Encounter context (combatant stat blocks, weapons, initiative, turn order)
+ * - Per-round data as JSONB array (full roll breakdowns, modifiers, HP tracking)
  * - Encounter footer (outcome, totals, rewards)
  *
  * Used by both PvE and PvP combat resolution.
@@ -14,39 +14,158 @@
 import { prisma } from './prisma';
 import { logger } from './logger';
 import { getSimulationTick } from './simulation-context';
-import type { CombatState, TurnLogEntry } from '@shared/types/combat';
+import type {
+  CombatState,
+  TurnLogEntry,
+  AttackResult,
+  CastResult,
+  FleeResult,
+  ItemResult,
+  DefendResult,
+  RacialAbilityActionResult,
+  PsionAbilityResult,
+  AttackModifierBreakdown,
+} from '@shared/types/combat';
 
 // Config flag — can be turned off in production if performance is a concern
 export const COMBAT_LOGGING_ENABLED = process.env.COMBAT_LOGGING_ENABLED !== 'false';
+
+// ---- Encounter Context ----
+
+export interface CombatantSnapshot {
+  id: string;
+  name: string;
+  entityType: string;
+  team: number;
+  level: number;
+  race?: string;
+  hp: number;
+  maxHp: number;
+  ac: number;
+  stats: { str: number; dex: number; con: number; int: number; wis: number; cha: number };
+  proficiencyBonus: number;
+  initiative: number;
+  weapon: {
+    name: string;
+    dice: string;
+    damageType?: string;
+    bonusAttack: number;
+    bonusDamage: number;
+    attackStat: string;
+    damageStat: string;
+  } | null;
+}
+
+export interface EncounterContext {
+  combatants: CombatantSnapshot[];
+  turnOrder: string[];
+}
+
+// ---- Round Log Entry ----
 
 export interface RoundLogEntry {
   round: number;
   actor: string;
   actorId: string;
   action: string;
-  attackRoll?: number;
-  attackModifier?: number;
-  totalAttackRoll?: number;
+  // Attack details
+  attackRoll?: {
+    raw: number;
+    modifiers: AttackModifierBreakdown[];
+    total: number;
+  };
   targetAC?: number;
   hit?: boolean;
-  damageRoll?: number;
-  damageModifier?: number;
-  totalDamage?: number;
-  damageType?: string;
   isCritical?: boolean;
-  healAmount?: number;
+  damageRoll?: {
+    dice: string;
+    rolls: number[];
+    modifiers: AttackModifierBreakdown[];
+    total: number;
+    type?: string;
+  };
+  targetHpBefore?: number;
+  targetHpAfter?: number;
+  targetKilled?: boolean;
+  weaponName?: string;
+  negatedAttack?: boolean;
+  // Cast/spell details
+  spellName?: string;
+  saveDC?: number;
+  saveRoll?: number;
+  saveTotal?: number;
+  saveSucceeded?: boolean;
+  // Flee details
+  fleeRoll?: number;
+  fleeDC?: number;
   fleeSuccess?: boolean;
+  // Heal
+  healAmount?: number;
+  // Defend
+  acBonusGranted?: number;
+  // Item
+  itemName?: string;
+  // Ability
+  abilityName?: string;
+  abilityDescription?: string;
+  // Status effects
   statusEffectsApplied: string[];
   statusEffectsExpired: string[];
+  statusTickDamage?: number;
+  statusTickHealing?: number;
+  // HP snapshot for all combatants after this action
   hpAfter: Record<string, number>;
 }
 
 /**
+ * Build encounter context with starting stat blocks for all combatants.
+ */
+function buildEncounterContext(state: CombatState): EncounterContext {
+  // Use the first round's combatants — they represent the starting state
+  // since combatants are immutable (new objects each round via spread)
+  // We take the snapshot from the state but use maxHp as the starting HP indicator
+  const combatants: CombatantSnapshot[] = state.combatants.map(c => ({
+    id: c.id,
+    name: c.name,
+    entityType: c.entityType,
+    team: c.team,
+    level: c.level,
+    race: c.race,
+    hp: c.maxHp, // starting HP (use maxHp since currentHp is final state)
+    maxHp: c.maxHp,
+    ac: c.ac,
+    stats: { ...c.stats },
+    proficiencyBonus: c.proficiencyBonus,
+    initiative: c.initiative,
+    weapon: c.weapon ? {
+      name: c.weapon.name,
+      dice: `${c.weapon.diceCount}d${c.weapon.diceSides}`,
+      damageType: c.weapon.damageType,
+      bonusAttack: c.weapon.bonusAttack,
+      bonusDamage: c.weapon.bonusDamage,
+      attackStat: c.weapon.attackModifierStat,
+      damageStat: c.weapon.damageModifierStat,
+    } : null,
+  }));
+
+  return {
+    combatants,
+    turnOrder: [...state.turnOrder],
+  };
+}
+
+/**
  * Extract structured per-round data from the combat engine's TurnLogEntry array.
- * The engine stores results in typed objects — we flatten them into a readable format.
+ * Uses typed result objects for correct field access.
  */
 function buildRoundsData(state: CombatState): RoundLogEntry[] {
   const rounds: RoundLogEntry[] = [];
+
+  // Track HP per combatant across rounds
+  const hpTracker: Record<string, number> = {};
+  for (const c of state.combatants) {
+    hpTracker[c.id] = c.maxHp; // start at max HP
+  }
 
   for (const entry of state.log) {
     const actor = state.combatants.find(c => c.id === entry.actorId);
@@ -60,68 +179,175 @@ function buildRoundsData(state: CombatState): RoundLogEntry[] {
       hpAfter: {},
     };
 
-    // Extract data from the result based on action type
-    const result = entry.result as Record<string, any>;
-
-    if (entry.action === 'attack' && result) {
-      round.attackRoll = result.roll ?? result.attackRoll;
-      round.attackModifier = result.modifier ?? result.attackModifier;
-      round.totalAttackRoll = (round.attackRoll ?? 0) + (round.attackModifier ?? 0);
-      round.targetAC = result.targetAC ?? result.ac;
-      round.hit = result.hit ?? false;
-      round.isCritical = result.critical ?? result.isCritical ?? false;
-      if (round.hit) {
-        round.damageRoll = result.damageRoll ?? result.damage;
-        round.damageModifier = result.damageModifier ?? 0;
-        round.totalDamage = result.totalDamage ?? result.damage ?? 0;
-        round.damageType = result.damageType;
-      }
-    } else if (entry.action === 'cast' && result) {
-      round.totalDamage = result.damage ?? 0;
-      round.healAmount = result.healing ?? 0;
-      round.damageType = result.damageType;
-      round.hit = result.hit ?? (result.damage > 0);
-      if (result.statusApplied) {
-        round.statusEffectsApplied.push(result.statusApplied);
-      }
-    } else if (entry.action === 'flee' && result) {
-      round.fleeSuccess = result.success ?? false;
-      round.attackRoll = result.roll;
-      round.targetAC = result.dc;
-    } else if (entry.action === 'defend') {
-      // Defend action — no roll data
-    } else if (entry.action === 'item' && result) {
-      round.healAmount = result.healAmount ?? result.healing ?? 0;
-      round.totalDamage = result.damage ?? 0;
-    } else if ((entry.action === 'racial_ability' || entry.action === 'psion_ability') && result) {
-      round.totalDamage = result.damage ?? 0;
-      round.healAmount = result.healing ?? 0;
-      if (result.statusApplied) {
-        round.statusEffectsApplied.push(result.statusApplied);
-      }
-    }
-
-    // Process status tick data
+    // Process status tick damage/healing first (happens at start of turn)
     if (entry.statusTicks && Array.isArray(entry.statusTicks)) {
+      let tickDmg = 0;
+      let tickHeal = 0;
       for (const tick of entry.statusTicks) {
         if (tick.expired) {
           round.statusEffectsExpired.push(tick.effectName ?? 'unknown');
         }
         if (tick.damage && tick.damage > 0) {
-          round.totalDamage = (round.totalDamage ?? 0) + tick.damage;
+          tickDmg += tick.damage;
+          hpTracker[tick.combatantId] = tick.hpAfter;
         }
         if (tick.healing && tick.healing > 0) {
-          round.healAmount = (round.healAmount ?? 0) + tick.healing;
+          tickHeal += tick.healing;
+          hpTracker[tick.combatantId] = tick.hpAfter;
         }
+      }
+      if (tickDmg > 0) round.statusTickDamage = tickDmg;
+      if (tickHeal > 0) round.statusTickHealing = tickHeal;
+    }
+
+    // Extract data from the typed result based on action type
+    const result = entry.result;
+
+    if (result.type === 'attack') {
+      const atk = result as AttackResult;
+      round.attackRoll = {
+        raw: atk.attackRoll,
+        modifiers: atk.attackModifiers ?? [],
+        total: atk.attackTotal,
+      };
+      round.targetAC = atk.targetAC;
+      round.hit = atk.hit;
+      round.isCritical = atk.critical;
+      round.negatedAttack = atk.negatedAttack;
+      round.weaponName = atk.weaponName;
+      round.targetHpBefore = atk.targetHpBefore ?? hpTracker[atk.targetId];
+      round.targetHpAfter = atk.targetHpAfter;
+      round.targetKilled = atk.targetKilled;
+
+      if (atk.hit && atk.totalDamage > 0) {
+        round.damageRoll = {
+          dice: atk.weaponDice ?? 'unknown',
+          rolls: atk.damageRolls ?? [],
+          modifiers: atk.damageModifiers ?? [],
+          total: atk.totalDamage,
+          type: atk.damageType,
+        };
+      }
+
+      // Update HP tracker
+      if (atk.targetId) {
+        hpTracker[atk.targetId] = atk.targetHpAfter;
+      }
+
+    } else if (result.type === 'cast') {
+      const cast = result as CastResult;
+      round.spellName = cast.spellName;
+      round.saveDC = cast.saveDC;
+      round.saveRoll = cast.saveRoll;
+      round.saveTotal = cast.saveTotal;
+      round.saveSucceeded = cast.saveSucceeded;
+      round.targetHpAfter = cast.targetHpAfter;
+      round.targetKilled = cast.targetKilled;
+      round.targetHpBefore = hpTracker[cast.targetId];
+
+      if (cast.totalDamage && cast.totalDamage > 0) {
+        round.damageRoll = {
+          dice: 'spell',
+          rolls: [],
+          modifiers: [],
+          total: cast.totalDamage,
+        };
+      }
+      if (cast.healAmount && cast.healAmount > 0) {
+        round.healAmount = cast.healAmount;
+      }
+      if (cast.statusApplied) {
+        round.statusEffectsApplied.push(cast.statusApplied);
+      }
+
+      // Update HP tracker
+      hpTracker[cast.targetId] = cast.targetHpAfter;
+
+    } else if (result.type === 'flee') {
+      const flee = result as FleeResult;
+      round.fleeRoll = flee.fleeRoll;
+      round.fleeDC = flee.fleeDC;
+      round.fleeSuccess = flee.success;
+
+    } else if (result.type === 'defend') {
+      const def = result as DefendResult;
+      round.acBonusGranted = def.acBonusGranted;
+
+    } else if (result.type === 'item') {
+      const item = result as ItemResult;
+      round.itemName = item.itemName;
+      round.targetHpAfter = item.targetHpAfter;
+      round.targetHpBefore = hpTracker[item.targetId];
+      if (item.healAmount && item.healAmount > 0) {
+        round.healAmount = item.healAmount;
+      }
+      if (item.damageAmount && item.damageAmount > 0) {
+        round.damageRoll = {
+          dice: 'item',
+          rolls: [],
+          modifiers: [],
+          total: item.damageAmount,
+        };
+      }
+      if (item.statusApplied) {
+        round.statusEffectsApplied.push(item.statusApplied);
+      }
+
+      hpTracker[item.targetId] = item.targetHpAfter;
+
+    } else if (result.type === 'racial_ability') {
+      const racial = result as RacialAbilityActionResult;
+      round.abilityName = racial.abilityName;
+      round.abilityDescription = racial.description;
+      if (racial.damage && racial.damage > 0) {
+        round.damageRoll = {
+          dice: 'ability',
+          rolls: [],
+          modifiers: [],
+          total: racial.damage,
+        };
+      }
+      if (racial.healing && racial.healing > 0) {
+        round.healAmount = racial.healing;
+      }
+      if (racial.statusApplied) {
+        round.statusEffectsApplied.push(racial.statusApplied);
+      }
+
+    } else if (result.type === 'psion_ability') {
+      const psion = result as PsionAbilityResult;
+      round.abilityName = psion.abilityName;
+      round.abilityDescription = psion.description;
+      round.saveDC = psion.saveDC;
+      round.saveRoll = psion.saveRoll;
+      round.saveTotal = psion.saveTotal;
+      round.saveSucceeded = psion.saveSucceeded;
+      if (psion.targetHpAfter !== undefined) {
+        round.targetHpAfter = psion.targetHpAfter;
+        round.targetKilled = psion.targetKilled;
+      }
+      if (psion.damage && psion.damage > 0) {
+        round.damageRoll = {
+          dice: 'psion',
+          rolls: [],
+          modifiers: [],
+          total: psion.damage,
+        };
+      }
+      if (psion.statusApplied) {
+        round.statusEffectsApplied.push(psion.statusApplied);
+      }
+
+      // Update HP tracker for psion targets
+      if (psion.targetId && psion.targetHpAfter !== undefined) {
+        hpTracker[psion.targetId] = psion.targetHpAfter;
       }
     }
 
     // Snapshot HP for all combatants after this action
     for (const c of state.combatants) {
-      round.hpAfter[c.name] = c.currentHp;
+      round.hpAfter[c.name] = hpTracker[c.id] ?? c.currentHp;
     }
-    // Note: HP snapshot here is from final state — for per-round accuracy,
-    // we use the round number to approximate. This is acceptable for analysis.
 
     rounds.push(round);
   }
@@ -191,12 +417,19 @@ export async function logPveCombat(params: {
     const opponentEndHp = monsterCombatant?.currentHp ?? 0;
     const totalRounds = state.round;
 
+    const encounterContext = buildEncounterContext(state);
     const rounds = buildRoundsData(state);
     const summary = buildSummary(
       params.outcome, totalRounds, characterName, opponentName,
       params.characterStartHp, characterEndHp,
       params.opponentStartHp, opponentEndHp,
     );
+
+    // Store rounds with encounter context as first element
+    const roundsWithContext = [
+      { _encounterContext: encounterContext },
+      ...rounds,
+    ];
 
     await prisma.combatEncounterLog.create({
       data: {
@@ -220,7 +453,7 @@ export async function logPveCombat(params: {
         xpAwarded: params.xpAwarded,
         goldAwarded: params.goldAwarded,
         lootDropped: params.lootDropped,
-        rounds: rounds as any,
+        rounds: roundsWithContext as any,
         summary,
         simulationTick: params.simulationTick ?? getSimulationTick(),
       },
@@ -260,7 +493,13 @@ export async function logPvpCombat(params: {
     const loserCombatant = state.combatants.find(c => c.id === loserId);
 
     const totalRounds = state.round;
+    const encounterContext = buildEncounterContext(state);
     const rounds = buildRoundsData(state);
+
+    const roundsWithContext = [
+      { _encounterContext: encounterContext },
+      ...rounds,
+    ];
 
     // Winner's perspective
     const winnerSummary = buildSummary(
@@ -300,7 +539,7 @@ export async function logPvpCombat(params: {
           opponentWeapon: params.loserWeapon,
           xpAwarded: params.xpAwarded,
           goldAwarded: params.wagerAmount,
-          rounds: rounds as any,
+          rounds: roundsWithContext as any,
           summary: winnerSummary,
         },
       }),
@@ -325,7 +564,7 @@ export async function logPvpCombat(params: {
           opponentWeapon: params.winnerWeapon,
           xpAwarded: 0,
           goldAwarded: params.wagerAmount > 0 ? -params.wagerAmount : 0,
-          rounds: rounds as any,
+          rounds: roundsWithContext as any,
           summary: loserSummary,
         },
       }),

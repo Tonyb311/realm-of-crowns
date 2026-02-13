@@ -723,6 +723,7 @@ function buildMonsterWeapon(monsterStats: Record<string, unknown>): WeaponInfo {
     attackModifierStat: 'str',
     bonusDamage: damage.bonus,
     bonusAttack: (monsterStats.attack as number) ?? 0,
+    damageType: (monsterStats.damageType as string) ?? 'BLUDGEONING',
   };
 }
 
@@ -753,6 +754,7 @@ function getEquippedWeapon(equipment: any[]): WeaponInfo | null {
     attackModifierStat: stats.attackModifierStat ?? 'str',
     bonusDamage: stats.bonusDamage ?? 0,
     bonusAttack: stats.bonusAttack ?? 0,
+    damageType: stats.damageType ?? undefined,
   };
 }
 

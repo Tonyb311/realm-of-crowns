@@ -137,6 +137,7 @@ function buildMonsterWeapon(monsterStats: Record<string, unknown>): WeaponInfo {
     attackModifierStat: 'str',
     bonusDamage: damage.bonus,
     bonusAttack: (monsterStats.attack as number) ?? 0,
+    damageType: (monsterStats.damageType as string) ?? 'BLUDGEONING',
   };
 }
 
@@ -173,6 +174,7 @@ async function getEquippedWeapon(characterId: string): Promise<WeaponInfo> {
     attackModifierStat: stats.attackModifierStat === 'dex' ? 'dex' : 'str',
     bonusDamage: (typeof stats.bonusDamage === 'number') ? stats.bonusDamage : 0,
     bonusAttack: (typeof stats.bonusAttack === 'number') ? stats.bonusAttack : 0,
+    damageType: (typeof stats.damageType === 'string') ? stats.damageType : undefined,
   };
 }
 

@@ -84,6 +84,8 @@ export interface WeaponInfo {
   /** Flat bonus from enchantments, quality, etc. */
   bonusDamage: number;
   bonusAttack: number;
+  /** Damage type (SLASHING, PIERCING, BLUDGEONING, etc.) */
+  damageType?: string;
 }
 
 export interface SpellInfo {
@@ -157,19 +159,32 @@ export interface Combatant {
 
 // ---- Turn Resolution Results ----
 
+export interface AttackModifierBreakdown {
+  source: string;
+  value: number;
+}
+
 export interface AttackResult {
   type: 'attack';
   actorId: string;
   targetId: string;
   attackRoll: number;
   attackTotal: number;
+  attackModifiers?: AttackModifierBreakdown[];
   targetAC: number;
   hit: boolean;
   critical: boolean;
   damageRoll: number;
+  damageRolls?: number[];
+  damageModifiers?: AttackModifierBreakdown[];
+  damageType?: string;
   totalDamage: number;
+  targetHpBefore?: number;
   targetHpAfter: number;
   targetKilled: boolean;
+  weaponName?: string;
+  weaponDice?: string;
+  negatedAttack?: boolean;
 }
 
 export interface CastResult {

@@ -24,6 +24,7 @@ import type {
   ItemInfo,
   TurnResult,
   AttackResult,
+  AttackModifierBreakdown,
   CastResult,
   DefendResult,
   ItemResult,
@@ -418,14 +419,31 @@ export function resolveAttack(
   const statMod = getModifier(actor.stats[weapon.attackModifierStat]);
   let atkMod = statMod + actor.proficiencyBonus + weapon.bonusAttack;
 
-  // Apply status effect modifiers to attack roll
-  for (const effect of actor.statusEffects) {
-    const def = STATUS_EFFECT_DEFS[effect.name];
-    if (def) atkMod += def.attackModifier;
+  // Track individual modifier sources for logging
+  const atkModBreakdown: AttackModifierBreakdown[] = [
+    { source: weapon.attackModifierStat.toUpperCase(), value: statMod },
+    { source: 'proficiency', value: actor.proficiencyBonus },
+  ];
+  if (weapon.bonusAttack !== 0) {
+    atkModBreakdown.push({ source: 'weaponBonus', value: weapon.bonusAttack });
   }
 
+  // Apply status effect modifiers to attack roll
+  let statusAtkMod = 0;
+  for (const effect of actor.statusEffects) {
+    const def = STATUS_EFFECT_DEFS[effect.name];
+    if (def && def.attackModifier !== 0) {
+      statusAtkMod += def.attackModifier;
+    }
+  }
+  if (statusAtkMod !== 0) {
+    atkModBreakdown.push({ source: 'statusEffects', value: statusAtkMod });
+  }
+  atkMod += statusAtkMod;
+
   // Racial attack bonus
-  if (racialMods) {
+  if (racialMods && racialMods.attackBonus !== 0) {
+    atkModBreakdown.push({ source: 'racial', value: racialMods.attackBonus });
     atkMod += racialMods.attackBonus;
   }
 
@@ -440,6 +458,9 @@ export function resolveAttack(
 
   let totalDamage = 0;
   let damageRollValue = 0;
+  let damageRolls: number[] = [];
+  const dmgModBreakdown: AttackModifierBreakdown[] = [];
+  const targetHpBefore = target.currentHp;
 
   // Precognitive Dodge reaction: negate the hit entirely
   if (roll.hit && target.hasReaction && target.reactionType === 'precognitive_dodge') {
@@ -450,15 +471,22 @@ export function resolveAttack(
       targetId,
       attackRoll: roll.roll,
       attackTotal: roll.total,
+      attackModifiers: atkModBreakdown,
       targetAC,
       hit: false,
       critical: false,
       damageRoll: 0,
+      damageRolls: [],
+      damageModifiers: [],
+      damageType: weapon.damageType,
       totalDamage: 0,
+      targetHpBefore,
       targetHpAfter: target.currentHp,
       targetKilled: false,
+      weaponName: weapon.name,
+      weaponDice: `${weapon.diceCount}d${weapon.diceSides}`,
       negatedAttack: true,
-    } as AttackResult;
+    };
 
     const combatants = state.combatants.map((c) => {
       if (c.id === targetId) return target;
@@ -472,23 +500,36 @@ export function resolveAttack(
   if (roll.hit) {
     const dmg = calculateDamage(actor, weapon, roll.critical);
     damageRollValue = dmg.total;
+    damageRolls = dmg.rolls;
     totalDamage = Math.max(0, dmg.total);
+
+    // Track damage modifier breakdown
+    const dmgStatMod = getModifier(actor.stats[weapon.damageModifierStat]);
+    dmgModBreakdown.push({ source: weapon.damageModifierStat.toUpperCase(), value: dmgStatMod });
+    if (weapon.bonusDamage !== 0) {
+      dmgModBreakdown.push({ source: 'weaponBonus', value: weapon.bonusDamage });
+    }
 
     // Half-Orc Savage Attacks: extra die on crit
     if (roll.critical && racialMods && racialMods.extraCritDice > 0) {
       const extraDmg = damageRoll(racialMods.extraCritDice, weapon.diceSides);
       totalDamage += extraDmg.total;
       damageRollValue += extraDmg.total;
+      damageRolls = [...damageRolls, ...extraDmg.rolls];
+      dmgModBreakdown.push({ source: 'savageAttacks', value: extraDmg.total });
     }
 
     // Racial damage multiplier (Orc Blood Fury, Beastfolk Apex Predator, etc.)
     if (racialMods && racialMods.damageMultiplier !== 1.0) {
+      const before = totalDamage;
       totalDamage = Math.floor(totalDamage * racialMods.damageMultiplier);
+      dmgModBreakdown.push({ source: 'racialMultiplier', value: totalDamage - before });
     }
 
     // Racial flat damage bonus (Goliath Titan's Grip)
     if (racialMods && racialMods.damageFlatBonus > 0) {
       totalDamage += racialMods.damageFlatBonus;
+      dmgModBreakdown.push({ source: 'racialFlat', value: racialMods.damageFlatBonus });
     }
 
     // Check death prevention (Orc Relentless Endurance, Revenant Undying Fortitude)
@@ -534,13 +575,20 @@ export function resolveAttack(
     targetId,
     attackRoll: roll.roll,
     attackTotal: roll.total,
+    attackModifiers: atkModBreakdown,
     targetAC,
     hit: roll.hit,
     critical: roll.critical,
     damageRoll: damageRollValue,
+    damageRolls,
+    damageModifiers: dmgModBreakdown,
+    damageType: weapon.damageType,
     totalDamage,
+    targetHpBefore,
     targetHpAfter: target.currentHp,
     targetKilled: !target.isAlive,
+    weaponName: weapon.name,
+    weaponDice: `${weapon.diceCount}d${weapon.diceSides}`,
   };
 
   const combatants = state.combatants.map((c) => {
