@@ -16,12 +16,15 @@ import {
   Shield,
   Loader2,
   MessageSquare,
+  CheckCircle,
+  Clock,
 } from 'lucide-react';
 import api from '../services/api';
 import { getSocket } from '../services/socket';
 import QuestDialog, { type QuestOffer } from '../components/QuestDialog';
 import { RealmPanel, RealmButton, RealmBadge } from '../components/ui/realm-index';
 import PartyPanel from '../components/party/PartyPanel';
+import { ActionConfirmModal } from '../components/hud/ActionConfirmModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -84,6 +87,19 @@ interface GatheringSpotResponse {
   canGather: boolean;
   actionsRemaining: number;
   reason: string | null;
+  committedAction?: {
+    type: string;
+    detail: string;
+    status: string;
+  } | null;
+}
+
+interface ActionStatusResponse {
+  gameDay: number;
+  actionUsed: boolean;
+  actionType: string | null;
+  resetsAt: string;
+  timeUntilResetMs: number;
 }
 
 interface GatherResult {
@@ -107,17 +123,18 @@ interface BuildingDef {
   description: string;
   route: string;
   icon: typeof Store;
+  freeAction?: boolean;
 }
 
 const BUILDINGS: BuildingDef[] = [
-  { key: 'market', name: 'Market', description: 'Buy and sell goods', route: '/market', icon: Store },
-  { key: 'tavern', name: 'Tavern', description: 'Rest, recruit, hear rumors', route: '/tavern', icon: Beer },
+  { key: 'market', name: 'Market', description: 'Buy and sell goods', route: '/market', icon: Store, freeAction: true },
+  { key: 'tavern', name: 'Tavern', description: 'Rest, recruit, hear rumors', route: '/tavern', icon: Beer, freeAction: true },
   { key: 'blacksmith', name: 'Blacksmith', description: 'Forge weapons and armor', route: '/crafting', icon: Hammer },
-  { key: 'town_hall', name: 'Town Hall', description: 'Governance and laws', route: '/town-hall', icon: Landmark },
+  { key: 'town_hall', name: 'Town Hall', description: 'Governance and laws', route: '/town-hall', icon: Landmark, freeAction: true },
   { key: 'notice_board', name: 'Notice Board', description: 'Travel advisories and road reports', route: '/travel', icon: Swords },
-  { key: 'temple', name: 'Temple', description: 'Healing and blessings', route: '/temple', icon: Heart },
-  { key: 'jobs_board', name: 'Jobs Board', description: 'Find work and quests', route: '/jobs', icon: ScrollText },
-  { key: 'stable', name: 'Stable', description: 'Manage mounts, prepare travel', route: '/stable', icon: Footprints },
+  { key: 'temple', name: 'Temple', description: 'Healing and blessings', route: '/temple', icon: Heart, freeAction: true },
+  { key: 'jobs_board', name: 'Jobs Board', description: 'Find work and quests', route: '/jobs', icon: ScrollText, freeAction: true },
+  { key: 'stable', name: 'Stable', description: 'Manage mounts, prepare travel', route: '/stable', icon: Footprints, freeAction: true },
 ];
 
 // ---------------------------------------------------------------------------
@@ -244,6 +261,17 @@ export default function TownPage() {
     enabled: !!townId,
   });
 
+  // Action status query -- is daily action used?
+  const { data: actionStatus } = useQuery<ActionStatusResponse>({
+    queryKey: ['game', 'action-status'],
+    queryFn: async () => (await api.get('/game/action-status')).data,
+    enabled: !!townId,
+    refetchInterval: 60_000,
+  });
+
+  // Confirm modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
   // Gather mutation
   const [gatherResult, setGatherResult] = useState<GatherResult | null>(null);
 
@@ -254,9 +282,11 @@ export default function TownPage() {
     },
     onSuccess: (data: GatherResult) => {
       setGatherResult(data);
+      setShowConfirmModal(false);
       queryClient.invalidateQueries({ queryKey: ['gathering', 'spot', townId] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
+      queryClient.invalidateQueries({ queryKey: ['game', 'action-status'] });
       // Auto-hide result after 5 seconds
       setTimeout(() => setGatherResult(null), 5000);
     },
@@ -498,10 +528,17 @@ export default function TownPage() {
                         <div className="flex-shrink-0 w-10 h-10 rounded bg-realm-bg-600/40 flex items-center justify-center group-hover:bg-realm-gold-400/10 transition-colors">
                           <Icon className="w-5 h-5 text-realm-gold-400" />
                         </div>
-                        <div>
-                          <h3 className="font-display text-realm-gold-400 group-hover:text-realm-gold-300 transition-colors">
-                            {building.name}
-                          </h3>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-display text-realm-gold-400 group-hover:text-realm-gold-300 transition-colors">
+                              {building.name}
+                            </h3>
+                            {building.freeAction && (
+                              <span className="text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-realm-success/10 border border-realm-success/30 text-realm-success">
+                                Free
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-realm-text-muted mt-1">{building.description}</p>
                         </div>
                       </div>
@@ -546,21 +583,46 @@ export default function TownPage() {
                     )}
                   </div>
 
+                  {/* Committed action notice */}
+                  {actionStatus?.actionUsed && (
+                    <div className="mb-4 flex items-center gap-2 bg-realm-bg-800 border border-realm-border rounded-md p-3">
+                      <CheckCircle className="w-4 h-4 text-realm-text-muted flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-xs text-realm-text-muted">
+                          {gatheringData.committedAction ? (
+                            <>
+                              <span className="text-realm-text-secondary font-semibold">
+                                {gatheringData.committedAction.detail}
+                              </span>{' '}
+                              committed -- results after next tick
+                            </>
+                          ) : (
+                            <>Daily action already used today</>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 text-[10px] text-realm-text-muted">
+                        <Clock className="w-3 h-3" />
+                        <span>Resets at tick</span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Gather button */}
                   <RealmButton
                     variant="primary"
                     className="w-full"
-                    onClick={() => gatherMutation.mutate()}
-                    disabled={!gatheringData.canGather || gatherMutation.isPending}
+                    onClick={() => setShowConfirmModal(true)}
+                    disabled={!gatheringData.canGather || gatherMutation.isPending || actionStatus?.actionUsed}
                   >
                     {gatherMutation.isPending ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
                         Gathering...
                       </>
-                    ) : gatheringData.canGather ? (
-                      'Gather (1 Daily Action)'
-                    ) : gatheringData.reason === 'no_actions' ? (
+                    ) : gatheringData.canGather && !actionStatus?.actionUsed ? (
+                      'Commit Daily Action'
+                    ) : gatheringData.reason === 'no_actions' || actionStatus?.actionUsed ? (
                       'Daily Action Used'
                     ) : (
                       'Cannot Gather'
@@ -686,6 +748,20 @@ export default function TownPage() {
           onAccepted={() => queryClient.invalidateQueries({ queryKey: ['quests', 'npcs', townId] })}
         />
       )}
+
+      {/* Action Confirm Modal */}
+      <ActionConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={() => gatherMutation.mutate()}
+        actionType="Gather"
+        actionDetail={
+          gatheringData?.spot
+            ? `${gatheringData.spot.item.name} at ${gatheringData.spot.name}`
+            : 'Unknown resource'
+        }
+        isPending={gatherMutation.isPending}
+      />
     </div>
   );
 }

@@ -1,13 +1,10 @@
 import { Router, Response } from 'express';
-import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { getTodayTickDate, getNextTickTime } from '../lib/game-day';
 import { getGatheringSpot } from '@shared/data/gathering';
-import { ACTION_XP } from '@shared/data/progression';
-import { checkLevelUp } from '../services/progression';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
 
@@ -43,6 +40,8 @@ router.get('/spot', authGuard, characterGuard, async (req: AuthenticatedRequest,
 
     const canGather = !existing;
     const reason = existing ? 'no_actions' : null;
+    const actionType = existing?.actionType || null;
+    const actionStatus = existing?.status || null;
 
     return res.json({
       spot: {
@@ -62,6 +61,11 @@ router.get('/spot', authGuard, characterGuard, async (req: AuthenticatedRequest,
       canGather,
       actionsRemaining: canGather ? 1 : 0,
       reason,
+      committedAction: existing ? {
+        type: actionType,
+        status: actionStatus,
+        target: existing.actionTarget,
+      } : null,
     });
   } catch (error) {
     if (handlePrismaError(error, res, 'gathering-spot', req)) return;
@@ -108,95 +112,38 @@ router.post('/gather', authGuard, characterGuard, async (req: AuthenticatedReque
       return res.status(404).json({ error: 'No gathering spot in this town.' });
     }
 
-    // Roll yield
-    const quantity = Math.floor(Math.random() * (spot.maxYield - spot.minYield + 1)) + spot.minYield;
-
-    // Transaction: create items + consume daily action
-    await prisma.$transaction(async (tx) => {
-      // Find or create item template
-      let itemTemplate = await tx.itemTemplate.findFirst({
-        where: { name: spot.item.templateName },
-      });
-      if (!itemTemplate) {
-        itemTemplate = await tx.itemTemplate.create({
-          data: {
-            name: spot.item.templateName,
-            type: spot.item.type === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL',
-            rarity: 'COMMON',
-            description: spot.item.description,
-            isFood: spot.item.isFood,
-            shelfLifeDays: spot.item.shelfLifeDays,
-            isPerishable: spot.item.shelfLifeDays != null,
-            foodBuff: spot.item.foodBuff ?? Prisma.JsonNull,
-            levelRequired: 1,
-          },
-        });
-      }
-
-      // Find existing inventory slot for this template
-      const existingSlot = await tx.inventory.findFirst({
-        where: {
-          characterId: character.id,
-          item: { templateId: itemTemplate.id },
+    // Create LOCKED_IN daily action — items and XP are awarded at tick resolution
+    await prisma.dailyAction.create({
+      data: {
+        characterId: character.id,
+        tickDate: todayTick,
+        actionType: 'GATHER',
+        actionTarget: {
+          type: 'town_gathering',
+          townId: town.id,
+          spotName: spot.name,
+          itemName: spot.item.templateName,
+          templateName: spot.item.templateName,
+          itemType: spot.item.type === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL',
+          isFood: spot.item.isFood,
+          shelfLifeDays: spot.item.shelfLifeDays,
+          description: spot.item.description,
+          foodBuff: spot.item.foodBuff ?? null,
+          minYield: spot.minYield,
+          maxYield: spot.maxYield,
         },
-        include: { item: true },
-      });
-
-      if (existingSlot) {
-        await tx.inventory.update({
-          where: { id: existingSlot.id },
-          data: { quantity: existingSlot.quantity + quantity },
-        });
-      } else {
-        const item = await tx.item.create({
-          data: {
-            templateId: itemTemplate.id,
-            ownerId: character.id,
-            quality: 'COMMON',
-            daysRemaining: spot.item.shelfLifeDays,
-          },
-        });
-        await tx.inventory.create({
-          data: { characterId: character.id, itemId: item.id, quantity },
-        });
-      }
-
-      // Create daily action to consume the slot
-      await tx.dailyAction.create({
-        data: {
-          characterId: character.id,
-          tickDate: todayTick,
-          actionType: 'GATHER',
-          actionTarget: { type: 'town_gathering', townId: town.id, spotName: spot.name, itemName: spot.item.templateName, quantity },
-          status: 'COMPLETED',
-          result: { item: spot.item.templateName, quantity, spotName: spot.name },
-        },
-      });
+        status: 'LOCKED_IN',
+      },
     });
-
-    // Award character XP for gathering (base 15 XP, half goes to character)
-    const gatherXp = ACTION_XP.WORK_GATHER_BASE;
-    const characterXpGain = Math.max(1, Math.floor(gatherXp / 2));
-    await prisma.character.update({
-      where: { id: character.id },
-      data: { xp: { increment: characterXpGain } },
-    });
-    await checkLevelUp(character.id);
 
     return res.json({
       success: true,
-      gathered: {
-        spotName: spot.name,
-        item: {
-          name: spot.item.templateName,
-          icon: spot.item.icon,
-          baseValue: spot.item.baseValue,
-        },
-        quantity,
-        message: spot.gatherMessage,
-      },
-      xpEarned: characterXpGain,
-      actionsRemaining: 0,
+      committed: true,
+      action: 'GATHER',
+      spotName: spot.name,
+      itemName: spot.item.templateName,
+      message: `You've committed to gathering ${spot.item.templateName}. Results will be available after the tick resolves.`,
+      resetsAt: getNextTickTime().toISOString(),
     });
   } catch (error) {
     if (handlePrismaError(error, res, 'gathering-gather', req)) return;

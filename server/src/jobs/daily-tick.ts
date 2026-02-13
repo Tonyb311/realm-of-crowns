@@ -6,6 +6,7 @@
  */
 
 import { prisma } from '../lib/prisma';
+import { Prisma } from '@prisma/client';
 import { processSpoilage, processAutoConsumption, getHungerModifier, processRevenantSustenance, processForgebornMaintenance } from '../services/food-system';
 import { resolveNodePvE, resolveNodePvP } from '../services/tick-combat-resolver';
 import { createDailyReport, compileReport } from '../services/daily-report';
@@ -25,6 +26,7 @@ import { getTodayTickDate, advanceGameDay } from '../lib/game-day';
 import { qualityRoll } from '@shared/utils/dice';
 import { getProficiencyBonus, getModifier as getStatModifier } from '@shared/utils/bounded-accuracy';
 import { getProfessionByType } from '@shared/data/professions';
+import { ACTION_XP } from '@shared/data/progression';
 import {
   emitDailyReportReady,
   emitNotification,
@@ -834,6 +836,14 @@ async function processGatherAction(
   getResults: (id: string) => CharacterResults,
 ): Promise<void> {
   const target = action.actionTarget as Record<string, unknown>;
+
+  // Handle spot-based gathering from the gathering.ts route
+  if (target.type === 'town_gathering') {
+    await processGatherSpotAction(action, getResults);
+    return;
+  }
+
+  // Original resource-based logic continues below...
   const resourceId = target.resourceId as string;
   const professionType = target.professionType as ProfessionType;
   const char = action.character;
@@ -1028,6 +1038,129 @@ async function processGatherAction(
     professionXpGained: xpGained,
   };
   results.xpEarned += characterXpGain;
+}
+
+// ---------------------------------------------------------------------------
+// Spot-based Gathering sub-processor (for gathering.ts route actions)
+// ---------------------------------------------------------------------------
+
+async function processGatherSpotAction(
+  action: {
+    id: string;
+    characterId: string;
+    actionTarget: unknown;
+    character: {
+      id: string;
+      race: string;
+      subRace: unknown;
+      level: number;
+      currentTownId: string | null;
+      hungerState: string;
+    };
+  },
+  getResults: (id: string) => CharacterResults,
+): Promise<void> {
+  const target = action.actionTarget as Record<string, unknown>;
+  const char = action.character;
+
+  const itemName = target.itemName as string;
+  const templateName = target.templateName as string;
+  const itemType = target.itemType as string;
+  const isFood = target.isFood as boolean;
+  const shelfLifeDays = target.shelfLifeDays as number | null;
+  const description = target.description as string;
+  const foodBuff = target.foodBuff as { stat: string; value: number } | null;
+  const minYield = target.minYield as number;
+  const maxYield = target.maxYield as number;
+
+  if (!templateName || !itemType) {
+    getResults(char.id).notifications.push('Gathering failed: invalid action data.');
+    return;
+  }
+
+  // Roll yield
+  const quantity = Math.floor(Math.random() * (maxYield - minYield + 1)) + minYield;
+
+  // Create items in a transaction
+  await prisma.$transaction(async (tx) => {
+    // Find or create item template
+    let itemTemplate = await tx.itemTemplate.findFirst({
+      where: { name: templateName },
+    });
+    if (!itemTemplate) {
+      itemTemplate = await tx.itemTemplate.create({
+        data: {
+          name: templateName,
+          type: itemType === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL',
+          rarity: 'COMMON',
+          description: description || `Raw ${templateName} gathered from the wilds.`,
+          isFood: isFood,
+          shelfLifeDays: shelfLifeDays,
+          isPerishable: shelfLifeDays != null,
+          foodBuff: foodBuff ?? Prisma.JsonNull,
+          levelRequired: 1,
+        },
+      });
+    }
+
+    // Find existing inventory slot for this template
+    const existingSlot = await tx.inventory.findFirst({
+      where: {
+        characterId: char.id,
+        item: { templateId: itemTemplate.id },
+      },
+      include: { item: true },
+    });
+
+    if (existingSlot) {
+      await tx.inventory.update({
+        where: { id: existingSlot.id },
+        data: { quantity: existingSlot.quantity + quantity },
+      });
+    } else {
+      const item = await tx.item.create({
+        data: {
+          templateId: itemTemplate.id,
+          ownerId: char.id,
+          quality: 'COMMON',
+          daysRemaining: shelfLifeDays,
+        },
+      });
+      await tx.inventory.create({
+        data: { characterId: char.id, itemId: item.id, quantity },
+      });
+    }
+
+    // Mark the action as COMPLETED
+    await tx.dailyAction.update({
+      where: { id: action.id },
+      data: {
+        status: 'COMPLETED',
+        result: { item: templateName, quantity, spotName: target.spotName as string },
+      },
+    });
+  });
+
+  // Award character XP for gathering (base 15 XP, half goes to character)
+  const gatherXp = ACTION_XP.WORK_GATHER_BASE;
+  const characterXpGain = Math.max(1, Math.floor(gatherXp / 2));
+  await prisma.character.update({
+    where: { id: char.id },
+    data: { xp: { increment: characterXpGain } },
+  });
+  await checkLevelUp(char.id);
+
+  // Record results
+  const results = getResults(char.id);
+  results.action = {
+    type: 'GATHER',
+    resourceName: itemName,
+    resourceType: 'town_gathering',
+    quantity,
+    xpGained: characterXpGain,
+  };
+  results.xpEarned += characterXpGain;
+  results.notifications.push(`Gathered ${quantity}x ${itemName}.`);
 }
 
 // ---------------------------------------------------------------------------

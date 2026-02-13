@@ -18,6 +18,7 @@ import Tooltip from '../ui/Tooltip';
 import { RealmProgress } from '../ui/RealmProgress';
 import { getMuted, setMuted, getStoredVolume, setVolume } from '../../services/sounds';
 import { getConnectionStatus, onConnectionStatusChange } from '../../services/socket';
+import { DailyActionStatus } from '../hud/DailyActionStatus';
 
 interface CharacterHUD {
   id: string;
@@ -162,6 +163,9 @@ export function HudBar() {
             </span>
           </div>
         </Tooltip>
+
+        {/* Daily Action Status */}
+        <DailyActionStatus />
 
         {/* Location (when in town, hidden on small) */}
         {!isTraveling && character.currentTownName && (

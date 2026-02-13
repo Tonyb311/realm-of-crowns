@@ -2,6 +2,8 @@
 // Bot Simulation Types
 // ---------------------------------------------------------------------------
 
+import { TICK_CONSTANTS } from '@shared/data/constants/tick';
+
 export const BOT_PROFILES = [
   'gatherer', 'crafter', 'merchant', 'warrior',
   'politician', 'socialite', 'explorer', 'balanced',
@@ -225,7 +227,7 @@ export const DEFAULT_CONFIG: SimulationConfig = {
   botCount: 20,
   tickIntervalMs: 5000,
   botsPerTick: 5,
-  actionsPerTick: 3,
+  actionsPerTick: TICK_CONSTANTS.ACTIONS_PER_TICK,
   profileDistribution: {
     gatherer: 3,
     crafter: 2,

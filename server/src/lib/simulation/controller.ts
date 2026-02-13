@@ -222,50 +222,6 @@ class SimulationController {
     // Set simulation context so combat logs get tagged with this tick number
     setSimulationTick(this.singleTickCount + 1);
 
-    // 1. Advance game day
-    advanceGameDay(1);
-
-    // 2. Run daily tick (reset actions, process events)
-    try { await processDailyTick(); } catch (err: any) {
-      errors.push(`Daily tick error: ${err.message}`);
-    }
-
-    // 2b. Process travel tick — advance travelers and resolve road encounters
-    try {
-      const travelResult = await processTravelTick();
-      if (travelResult.soloEncountered > 0) {
-        actionBreakdown['road_encounter'] = (actionBreakdown['road_encounter'] || 0) + travelResult.soloEncountered;
-        actionBreakdown['road_encounter_win'] = (actionBreakdown['road_encounter_win'] || 0) + travelResult.soloEncounterWins;
-        actionBreakdown['road_encounter_loss'] = (actionBreakdown['road_encounter_loss'] || 0) + travelResult.soloEncounterLosses;
-      }
-      if (travelResult.soloArrived > 0) {
-        actionBreakdown['travel_arrived'] = (actionBreakdown['travel_arrived'] || 0) + travelResult.soloArrived;
-      }
-      logger.info(
-        { tick: this.singleTickCount + 1, ...travelResult },
-        'Travel tick processed within simulation',
-      );
-    } catch (err: any) {
-      errors.push(`Travel tick error: ${err.message}`);
-    }
-
-    // 2c. Resolve market auctions for all towns with pending orders
-    const auctionResolvedBefore = new Date();
-    try {
-      const { resolveAllTownAuctions } = await import('../auction-engine');
-      const auctionResult = await resolveAllTownAuctions();
-      if (auctionResult.transactionsCompleted > 0) {
-        actionBreakdown['market_auction'] = (actionBreakdown['market_auction'] || 0) + auctionResult.transactionsCompleted;
-      }
-      logger.info(
-        { tick: this.singleTickCount + 1, ...auctionResult },
-        'Market auctions resolved within simulation',
-      );
-    } catch (err: any) {
-      errors.push(`Market auction error: ${err.message}`);
-    }
-    const auctionResolvedAfter = new Date();
-
     // Gold tracking accumulators
     const goldByProfession: Record<string, { earned: number; spent: number; net: number; botCount: number }> = {};
     const goldByTown: Record<string, { earned: number; spent: number; net: number }> = {};
@@ -277,12 +233,30 @@ class SimulationController {
     const activeBots = this.bots.filter((b) => b.isActive);
     const maxActions = this.config.actionsPerTick;
 
+    // -----------------------------------------------------------------------
+    // Phase 1: Bot action loop (each bot commits actions + free market actions)
+    // Bots commit LOCKED_IN actions that processDailyTick will resolve.
+    // -----------------------------------------------------------------------
+    // Per-bot tracking structures (populated here, used after market resolution)
+    const botGoldBefore = new Map<string, number>();
+    const botActionsList = new Map<string, Array<{
+      order: number;
+      type: string;
+      detail: string;
+      success: boolean;
+      goldDelta: number;
+      error?: string;
+    }>>();
+    const botMarketItemsListedMap = new Map<string, number>();
+    const botMarketOrdersPlacedMap = new Map<string, number>();
+
     for (const bot of activeBots) {
       // Refresh state before the action loop
       try { await refreshBotState(bot); } catch { /* ignore */ }
 
       // Record gold before first action
       const goldBefore = bot.gold;
+      botGoldBefore.set(bot.characterId, goldBefore);
 
       const botActions: Array<{
         order: number;
@@ -403,6 +377,68 @@ class SimulationController {
           }
         } catch { /* ignore market errors */ }
       }
+
+      botActionsList.set(bot.characterId, botActions);
+      botMarketItemsListedMap.set(bot.characterId, botMarketItemsListed);
+      botMarketOrdersPlacedMap.set(bot.characterId, botMarketOrdersPlaced);
+    }
+
+    // -----------------------------------------------------------------------
+    // Phase 2: Run daily tick (resolves LOCKED_IN gather/craft actions from Phase 1)
+    // -----------------------------------------------------------------------
+    try { await processDailyTick(); } catch (err: any) {
+      errors.push(`Daily tick error: ${err.message}`);
+    }
+
+    // -----------------------------------------------------------------------
+    // Phase 3: Process travel tick — advance travelers and resolve road encounters
+    // -----------------------------------------------------------------------
+    try {
+      const travelResult = await processTravelTick();
+      if (travelResult.soloEncountered > 0) {
+        actionBreakdown['road_encounter'] = (actionBreakdown['road_encounter'] || 0) + travelResult.soloEncountered;
+        actionBreakdown['road_encounter_win'] = (actionBreakdown['road_encounter_win'] || 0) + travelResult.soloEncounterWins;
+        actionBreakdown['road_encounter_loss'] = (actionBreakdown['road_encounter_loss'] || 0) + travelResult.soloEncounterLosses;
+      }
+      if (travelResult.soloArrived > 0) {
+        actionBreakdown['travel_arrived'] = (actionBreakdown['travel_arrived'] || 0) + travelResult.soloArrived;
+      }
+      logger.info(
+        { tick: this.singleTickCount + 1, ...travelResult },
+        'Travel tick processed within simulation',
+      );
+    } catch (err: any) {
+      errors.push(`Travel tick error: ${err.message}`);
+    }
+
+    // -----------------------------------------------------------------------
+    // Phase 4: Resolve market auctions for all towns with pending orders
+    // -----------------------------------------------------------------------
+    const auctionResolvedBefore = new Date();
+    try {
+      const { resolveAllTownAuctions } = await import('../auction-engine');
+      const auctionResult = await resolveAllTownAuctions();
+      if (auctionResult.transactionsCompleted > 0) {
+        actionBreakdown['market_auction'] = (actionBreakdown['market_auction'] || 0) + auctionResult.transactionsCompleted;
+      }
+      logger.info(
+        { tick: this.singleTickCount + 1, ...auctionResult },
+        'Market auctions resolved within simulation',
+      );
+    } catch (err: any) {
+      errors.push(`Market auction error: ${err.message}`);
+    }
+    const auctionResolvedAfter = new Date();
+
+    // -----------------------------------------------------------------------
+    // Phase 5: Per-bot auction result queries + gold tracking + day logs
+    // (now AFTER market resolution so auction results are available)
+    // -----------------------------------------------------------------------
+    for (const bot of activeBots) {
+      const goldBefore = botGoldBefore.get(bot.characterId) ?? bot.gold;
+      const botActions = botActionsList.get(bot.characterId) ?? [];
+      const botMarketItemsListed = botMarketItemsListedMap.get(bot.characterId) ?? 0;
+      const botMarketOrdersPlaced = botMarketOrdersPlacedMap.get(bot.characterId) ?? 0;
 
       // Query per-bot auction results from the cycles resolved this tick
       let botAuctionsWon = 0;
@@ -526,6 +562,12 @@ class SimulationController {
       };
       this.botDayLogs.push(botLog);
     }
+
+    // -----------------------------------------------------------------------
+    // Phase 6: Advance game day (AFTER resolution so bots commit against
+    // the current day and resolution happens before we move forward)
+    // -----------------------------------------------------------------------
+    advanceGameDay(1);
 
     this.singleTickCount++;
 

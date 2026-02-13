@@ -220,9 +220,14 @@ export default function MarketPage() {
             <div className="flex items-center gap-3">
               <Store className="w-8 h-8 text-realm-gold-400" />
               <div>
-                <h1 className="text-3xl font-display text-realm-gold-400">
-                  {townName} Market
-                </h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-3xl font-display text-realm-gold-400">
+                    {townName} Market
+                  </h1>
+                  <span className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded bg-realm-success/10 border border-realm-success/30 text-realm-success">
+                    Free Action
+                  </span>
+                </div>
                 <p className="text-realm-text-muted text-sm">
                   Batch auction marketplace -- place orders and compete for items
                 </p>
