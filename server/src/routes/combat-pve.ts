@@ -392,10 +392,16 @@ router.post('/action', authGuard, validate(combatActionSchema), async (req: Auth
     }
 
     // Resolve the player's action
+    // Auto-target the first alive enemy in PvE if no target specified
+    const currentState0 = (await getCombatState(sessionId))!;
+    const playerTeam = currentState0.combatants.find(c => c.id === character.id)?.team ?? 0;
+    const autoTargetId = action.targetId
+      || currentState0.combatants.find(c => c.team !== playerTeam && c.isAlive)?.id;
+
     const combatAction: CombatAction = {
       type: action.type,
       actorId: currentActorId === character.id ? character.id : state.turnOrder[state.turnIndex],
-      targetId: action.targetId,
+      targetId: autoTargetId,
       resourceId: action.resourceId,
       spellSlotLevel: action.spellSlotLevel,
     };
