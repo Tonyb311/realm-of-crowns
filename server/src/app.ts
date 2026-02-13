@@ -131,12 +131,45 @@ app.use('/api', router);
 
 // Serve client static files in production
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../../client/dist')));
+  const clientDist = path.join(__dirname, '../../client/dist');
+
+  // Explicit MIME types — Alpine/Docker can fail to resolve .js via mime package,
+  // causing browsers to reject ES modules served as text/plain.
+  const MIME_TYPES: Record<string, string> = {
+    '.js': 'application/javascript; charset=utf-8',
+    '.mjs': 'application/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.html': 'text/html; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.svg': 'image/svg+xml',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.ico': 'image/x-icon',
+    '.webp': 'image/webp',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.ttf': 'font/ttf',
+    '.otf': 'font/otf',
+    '.map': 'application/json',
+  };
+
+  app.use(express.static(clientDist, {
+    setHeaders: (res, filePath) => {
+      const ext = path.extname(filePath).toLowerCase();
+      const mimeType = MIME_TYPES[ext];
+      if (mimeType) {
+        res.setHeader('Content-Type', mimeType);
+      }
+    },
+  }));
+
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
       return next();
     }
-    res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
+    res.sendFile(path.join(clientDist, 'index.html'));
   });
 }
 
