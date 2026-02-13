@@ -357,6 +357,7 @@ export default function SimulationDashboardPage() {
   const [raceDistribution, setRaceDistribution] = useState<'even' | 'realistic'>('realistic');
   const [classDistribution, setClassDistribution] = useState<'even' | 'realistic'>('realistic');
   const [professionDistribution, setProfessionDistribution] = useState<'even' | 'diverse'>('diverse');
+  const [selectedTowns, setSelectedTowns] = useState<string[] | 'all'>('all');
   const [runTickCount, setRunTickCount] = useState(5);
   const [lastTickResult, setLastTickResult] = useState<SimTickResult | null>(null);
   const [showBotRoster, setShowBotRoster] = useState(false);
@@ -401,6 +402,22 @@ export default function SimulationDashboardPage() {
 
   const botLogs = botLogsData?.logs ?? [];
 
+  const { data: townsData } = useQuery<{ id: string; name: string; regionName: string }[]>({
+    queryKey: ['admin', 'towns', 'released'],
+    queryFn: async () => {
+      const raw = (await api.get('/admin/world/towns', { params: { pageSize: '200' } })).data;
+      const rawTowns: any[] = raw?.towns ?? raw?.data ?? [];
+      return rawTowns
+        .map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          regionName: t.regionName ?? t.region?.name ?? '',
+        }))
+        .sort((a, b) => a.regionName.localeCompare(b.regionName) || a.name.localeCompare(b.name));
+    },
+  });
+  const towns = townsData ?? [];
+
   // -- Derived data ---------------------------------------------------------
 
   const isRunning = status?.status === 'running';
@@ -427,7 +444,7 @@ export default function SimulationDashboardPage() {
           raceDistribution,
           classDistribution,
           professionDistribution,
-          townIds: 'all',
+          townIds: selectedTowns,
           namePrefix: 'Bot',
         })
       ).data,
@@ -799,7 +816,32 @@ export default function SimulationDashboardPage() {
           </fieldset>
         </div>
 
-        {/* Row 3: Action Buttons */}
+        {/* Row 3: Town Selection */}
+        <div className="space-y-1.5">
+          <label className="text-realm-text-muted text-xs font-display block">Town Selection</label>
+          <select
+            value={selectedTowns === 'all' ? 'all' : selectedTowns[0] ?? 'all'}
+            onChange={(e) => {
+              if (e.target.value === 'all') setSelectedTowns('all');
+              else setSelectedTowns([e.target.value]);
+            }}
+            className="bg-realm-bg-800 border border-realm-border rounded px-2 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none w-full max-w-md"
+          >
+            <option value="all">All Towns (distributed by race)</option>
+            {towns.map((town) => (
+              <option key={town.id} value={town.id}>
+                {town.name}{town.regionName ? ` — ${town.regionName}` : ''}
+              </option>
+            ))}
+          </select>
+          {selectedTowns !== 'all' && (
+            <p className="text-xs text-realm-gold-400">
+              All {botCount} bots will spawn in {towns.find(t => t.id === selectedTowns[0])?.name ?? 'selected town'}
+            </p>
+          )}
+        </div>
+
+        {/* Row 4: Action Buttons */}
         <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-realm-border/50">
           {/* Seed Bots */}
           <button
