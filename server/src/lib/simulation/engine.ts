@@ -4,6 +4,7 @@
 
 import { BotState, BotProfile, SimulationConfig, ActionResult } from './types';
 import * as actions from './actions';
+import { PROFESSION_UNLOCK_LEVEL } from '@shared/data/progression/xp-curve';
 
 // ---- Action key union ----
 type ActionKey =
@@ -131,8 +132,26 @@ export async function decideBotAction(
 
   const intelligence = bot.intelligence ?? 50;
 
-  // 2. If no professions, learn one based on profile (or random for low intelligence)
+  // 2. If no professions, either grind XP (below level gate) or learn one
   if (bot.professions.length === 0) {
+    if (bot.level < PROFESSION_UNLOCK_LEVEL) {
+      // Pre-profession: grind XP via combat, quests, and travel
+      const preProfWeights: { key: ActionKey; weight: number }[] = [
+        { key: 'combat', weight: 60 },
+        { key: 'quest', weight: 25 },
+        { key: 'travel', weight: 15 },
+      ];
+      const total = preProfWeights.reduce((sum, w) => sum + w.weight, 0);
+      let rand = Math.random() * total;
+      let selectedKey: ActionKey = 'combat';
+      for (const { key, weight } of preProfWeights) {
+        rand -= weight;
+        if (rand <= 0) { selectedKey = key; break; }
+      }
+      return executeAction(selectedKey, bot, allBots);
+    }
+
+    // Level 3+: learn a profession based on profile (or random for low intelligence)
     if (Math.random() * 100 > intelligence) {
       // Random profession choice
       const randomProf = pickRandom(GATHERING_PROFESSIONS);

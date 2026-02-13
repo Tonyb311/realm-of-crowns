@@ -9,11 +9,14 @@ import {
   AlertTriangle,
   BookOpen,
   User,
+  Lock,
 } from 'lucide-react';
 import api from '../services/api';
+import { useCharacter } from '../hooks/useCharacter';
 import ProfessionCard from '../components/professions/ProfessionCard';
 import ProfessionDetail from '../components/professions/ProfessionDetail';
 import LearnProfessionModal from '../components/professions/LearnProfessionModal';
+import { PROFESSION_UNLOCK_LEVEL } from '@shared/data/progression/xp-curve';
 import type { ProfessionCategory } from '@shared/data/professions/types';
 import type { ProfessionCardData } from '../components/professions/ProfessionCard';
 
@@ -87,6 +90,10 @@ export default function ProfessionsPage() {
   const [learnTarget, setLearnTarget] = useState<AvailableProfession | null>(null);
   const [abandonTarget, setAbandonTarget] = useState<string | null>(null);
   const [learnError, setLearnError] = useState<string | null>(null);
+
+  // Character data for level gating
+  const { data: character } = useCharacter<{ level: number }>();
+  const belowProfessionLevel = (character?.level ?? 0) < PROFESSION_UNLOCK_LEVEL;
 
   // -----------------------------------------------------------------------
   // Queries
@@ -273,6 +280,19 @@ export default function ProfessionsPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        {/* Level gate banner */}
+        {belowProfessionLevel && (
+          <div className="mb-6 flex items-center gap-3 rounded-lg border border-realm-gold-400/30 bg-realm-gold-400/5 px-5 py-3">
+            <Lock className="w-5 h-5 text-realm-gold-400 flex-shrink-0" />
+            <p className="text-sm text-realm-gold-400 font-display">
+              Professions unlock at Level {PROFESSION_UNLOCK_LEVEL}.{' '}
+              <span className="text-realm-text-muted font-sans">
+                Gain XP through combat and quests to reach Level {PROFESSION_UNLOCK_LEVEL}.
+              </span>
+            </p>
+          </div>
+        )}
+
         {/* View mode toggle */}
         <div className="flex border-b border-realm-border mb-6">
           <button
@@ -348,10 +368,11 @@ export default function ProfessionsPage() {
                     profession={toCardData(prof)}
                     onClick={() => setSelectedProfession(prof.type)}
                     onLearn={
-                      prof.status === 'available'
+                      prof.status === 'available' && !belowProfessionLevel
                         ? () => setLearnTarget(prof)
                         : undefined
                     }
+                    levelLocked={belowProfessionLevel}
                   />
                 ))}
               </div>
@@ -405,9 +426,9 @@ export default function ProfessionsPage() {
           professionType={selectedProfession}
           onClose={() => setSelectedProfession(null)}
           isLearned={allProfessions.find((p) => p.type === selectedProfession)?.status === 'learned'}
-          isAvailable={allProfessions.find((p) => p.type === selectedProfession)?.status === 'available'}
+          isAvailable={allProfessions.find((p) => p.type === selectedProfession)?.status === 'available' && !belowProfessionLevel}
           onLearn={
-            allProfessions.find((p) => p.type === selectedProfession)?.status === 'available'
+            allProfessions.find((p) => p.type === selectedProfession)?.status === 'available' && !belowProfessionLevel
               ? () => {
                   const prof = allProfessions.find((p) => p.type === selectedProfession);
                   if (prof) {

@@ -35,6 +35,8 @@ interface ProfessionCardProps {
   onClick?: () => void;
   onLearn?: () => void;
   onAbandon?: () => void;
+  /** When true, the Learn button is replaced with a "Locked" badge (character below PROFESSION_UNLOCK_LEVEL). */
+  levelLocked?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -74,6 +76,7 @@ export default function ProfessionCard({
   onClick,
   onLearn,
   onAbandon,
+  levelLocked = false,
 }: ProfessionCardProps) {
   const CategoryIcon = CATEGORY_ICONS[profession.category] ?? Hammer;
   const catColor = CATEGORY_COLORS[profession.category] ?? CATEGORY_COLORS.CRAFTING;
@@ -199,7 +202,15 @@ export default function ProfessionCard({
       {/* Action buttons */}
       {!compact && (
         <div className="mt-3">
-          {profession.status === 'available' && onLearn && (
+          {profession.status === 'available' && levelLocked && (
+            <button
+              disabled
+              className="w-full py-1.5 bg-realm-bg-800 text-realm-text-muted font-display text-xs rounded cursor-not-allowed flex items-center justify-center gap-1"
+            >
+              <Lock className="w-3 h-3" /> Requires Level 3
+            </button>
+          )}
+          {profession.status === 'available' && !levelLocked && onLearn && (
             <button
               onClick={(e) => { e.stopPropagation(); onLearn(); }}
               className="w-full py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded hover:bg-realm-gold-400 transition-colors"

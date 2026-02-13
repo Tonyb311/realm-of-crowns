@@ -9,6 +9,7 @@ import { validate } from '../../middleware/validate';
 import { handlePrismaError } from '../../lib/prisma-errors';
 import { logRouteError } from '../../lib/error-logger';
 import { AuthenticatedRequest } from '../../types/express';
+import { prisma } from '../../lib/prisma';
 import { simulationController } from '../../lib/simulation/controller';
 import { getTestPlayerCount } from '../../lib/simulation/seed';
 
@@ -310,17 +311,70 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
     const history = simulationController.getTickHistory();
     const botLogs = simulationController.getBotDayLogs();
 
+    // Resolve town UUIDs to human-readable names
+    const allTowns = await prisma.town.findMany({ select: { id: true, name: true } });
+    const townNameMap = new Map(allTowns.map(t => [t.id, t.name]));
+    function resolveTown(id: string): string { return townNameMap.get(id) ?? id; }
+
     const workbook = XLSX.utils.book_new();
 
-    // Sheet 1: Bot Details
-    const botData = (status.bots ?? []).map((b: any) => ({
+    // ---- Summary sheet (computed first, inserted as first sheet) ----
+    let totalEarned = 0;
+    let totalSpent = 0;
+    let totalActions = 0;
+    let totalErrors = 0;
+    history.forEach((t: any) => {
+      totalEarned += t.goldStats?.totalEarned ?? 0;
+      totalSpent += t.goldStats?.totalSpent ?? 0;
+      totalActions += (t.successes ?? 0) + (t.failures ?? 0);
+      totalErrors += t.failures ?? 0;
+    });
+    const netGold = totalEarned - totalSpent;
+    const errorRate = totalActions > 0 ? (totalErrors / totalActions * 100).toFixed(1) : '0.0';
+
+    const bots = status.bots ?? [];
+    const avgLevel = bots.length > 0
+      ? Math.round(bots.reduce((sum: number, b: any) => sum + b.level, 0) / bots.length * 10) / 10
+      : 0;
+
+    const lastTick = history.length > 0 ? history[history.length - 1] : null;
+    const topEarner = (lastTick as any)?.goldStats?.topEarners?.[0];
+    const topEarnerName = topEarner?.botName ?? 'N/A';
+    const topEarnerGold = topEarner?.earned ?? 0;
+
+    // Profession adoption (use stats.professionDistribution — bot summaries lack professions array)
+    const profDist = stats.professionDistribution ?? [];
+    const botsWithProf = profDist.reduce((sum: number, p: any) => sum + p.count, 0);
+    const topProfession = profDist.length > 0 ? profDist[0].name : 'None';
+
+    const summaryData = [
+      { Metric: 'Bots Seeded', Value: bots.length },
+      { Metric: 'Ticks Completed', Value: history.length },
+      { Metric: 'Start Game Day', Value: history.length > 0 ? (history[0] as any).gameDay : 'N/A' },
+      { Metric: 'End Game Day', Value: lastTick ? (lastTick as any).gameDay : 'N/A' },
+      { Metric: 'Total Gold Earned', Value: totalEarned },
+      { Metric: 'Total Gold Spent', Value: totalSpent },
+      { Metric: 'Net Gold Change', Value: netGold },
+      { Metric: 'Total Actions', Value: totalActions },
+      { Metric: 'Total Errors', Value: totalErrors },
+      { Metric: 'Error Rate', Value: `${errorRate}%` },
+      { Metric: 'Avg Bot Level', Value: avgLevel },
+      { Metric: 'Top Earner', Value: topEarnerName },
+      { Metric: 'Top Earner Gold', Value: topEarnerGold },
+      { Metric: 'Bots with Professions', Value: botsWithProf },
+      { Metric: 'Most Popular Profession', Value: topProfession },
+    ];
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(summaryData), 'Summary');
+
+    // Sheet 2: Bot Details
+    const botData = bots.map((b: any) => ({
       Name: b.characterName,
       Race: b.race,
       Class: b.class,
       Profile: b.profile,
       Level: b.level,
       Gold: b.gold,
-      Town: b.currentTownId,
+      Town: resolveTown(b.currentTownId),
       ActionsCompleted: b.actionsCompleted,
       Errors: b.errorsTotal,
       Status: b.status,
@@ -329,51 +383,66 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(botData), 'Bots');
     }
 
-    // Sheet 2: Race Distribution
+    // Sheet 3: Race Distribution
     if (stats.raceDistribution.length > 0) {
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.raceDistribution.map((d: any) => ({ Race: d.name, Count: d.count }))), 'Race Distribution');
     }
 
-    // Sheet 3: Class Distribution
+    // Sheet 4: Class Distribution
     if (stats.classDistribution.length > 0) {
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.classDistribution.map((d: any) => ({ Class: d.name, Count: d.count }))), 'Class Distribution');
     }
 
-    // Sheet 4: Profession Distribution
+    // Sheet 5: Profession Distribution
     if (stats.professionDistribution.length > 0) {
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.professionDistribution.map((d: any) => ({ Profession: d.name, Count: d.count }))), 'Prof Distribution');
     }
 
-    // Sheet 5: Town Distribution
+    // Sheet 6: Town Distribution
     if (stats.townDistribution.length > 0) {
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.townDistribution.map((d: any) => ({ Town: d.name, Count: d.count }))), 'Town Distribution');
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.townDistribution.map((d: any) => ({ Town: resolveTown(d.name), Count: d.count }))), 'Town Distribution');
     }
 
-    // Sheet 6: Tick History
-    const tickData = history.map((t: any) => ({
-      Tick: t.tickNumber,
-      GameDay: t.gameDay ?? 0,
-      BotsProcessed: t.botsProcessed,
-      Successes: t.successes,
-      Failures: t.failures,
-      Gathered: t.actionBreakdown?.gather ?? 0,
-      Crafted: t.actionBreakdown?.craft ?? 0,
-      Sold: t.actionBreakdown?.sell ?? 0,
-      Bought: t.actionBreakdown?.buy ?? 0,
-      Quested: t.actionBreakdown?.quest ?? 0,
-      Traveled: t.actionBreakdown?.travel ?? 0,
-      Combat: t.actionBreakdown?.combat ?? 0,
-      GoldEarned: t.goldStats?.totalEarned ?? 0,
-      GoldSpent: t.goldStats?.totalSpent ?? 0,
-      NetGold: t.goldStats?.netGoldChange ?? 0,
-      Errors: t.errors?.length ?? 0,
-      DurationMs: t.durationMs,
-    }));
+    // Sheet 7: Tick History (with cumulative columns)
+    let cumGoldEarned = 0;
+    let cumGoldSpent = 0;
+    let cumActions = 0;
+    const tickData = history.map((t: any) => {
+      const earned = t.goldStats?.totalEarned ?? 0;
+      const spent = t.goldStats?.totalSpent ?? 0;
+      cumGoldEarned += earned;
+      cumGoldSpent += spent;
+      cumActions += (t.successes ?? 0) + (t.failures ?? 0);
+
+      return {
+        Tick: t.tickNumber,
+        GameDay: t.gameDay ?? 0,
+        BotsProcessed: t.botsProcessed,
+        Successes: t.successes,
+        Failures: t.failures,
+        Gathered: t.actionBreakdown?.gather ?? 0,
+        Crafted: t.actionBreakdown?.craft ?? 0,
+        Sold: t.actionBreakdown?.sell ?? 0,
+        Bought: t.actionBreakdown?.buy ?? 0,
+        Quested: t.actionBreakdown?.quest ?? 0,
+        Traveled: t.actionBreakdown?.travel ?? 0,
+        Combat: t.actionBreakdown?.combat ?? 0,
+        GoldEarned: earned,
+        GoldSpent: spent,
+        NetGold: t.goldStats?.netGoldChange ?? 0,
+        CumulativeGoldEarned: cumGoldEarned,
+        CumulativeGoldSpent: cumGoldSpent,
+        CumulativeNetGold: cumGoldEarned - cumGoldSpent,
+        CumulativeActions: cumActions,
+        Errors: t.errors?.length ?? 0,
+        DurationMs: t.durationMs,
+      };
+    });
     if (tickData.length > 0) {
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(tickData), 'Tick History');
     }
 
-    // Sheet 7: Gold by Profession (per tick)
+    // Sheet 8: Gold by Profession (per tick)
     const goldByProf: any[] = [];
     history.forEach((t: any) => {
       if (t.goldStats?.byProfession) {
@@ -394,14 +463,14 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(goldByProf), 'Gold by Profession');
     }
 
-    // Sheet 8: Gold by Town
+    // Sheet 9: Gold by Town
     const goldByTown: any[] = [];
     history.forEach((t: any) => {
       if (t.goldStats?.byTown) {
         Object.entries(t.goldStats.byTown).forEach(([town, data]: [string, any]) => {
           goldByTown.push({
             Tick: t.tickNumber,
-            Town: town,
+            Town: resolveTown(town),
             Earned: data.earned,
             Spent: data.spent,
             Net: data.net,
@@ -413,7 +482,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(goldByTown), 'Gold by Town');
     }
 
-    // Sheet 9: Activity Log
+    // Sheet 10: Activity Log
     const recentActivity = status.recentActivity ?? [];
     if (recentActivity.length > 0) {
       const actData = recentActivity.slice(0, 500).map((a: any) => ({
@@ -428,7 +497,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(actData), 'Activity Log');
     }
 
-    // Sheet 10: Bot Daily Logs
+    // Sheet 11: Bot Daily Logs
     if (botLogs.length > 0) {
       const dailyData = botLogs.map((l: any) => ({
         Tick: l.tickNumber,
@@ -437,7 +506,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
         Race: l.race,
         Class: l.class,
         Profession: l.profession,
-        Town: l.town,
+        Town: resolveTown(l.town),
         Level: l.level,
         GoldStart: l.goldStart,
         GoldEnd: l.goldEnd,
@@ -448,7 +517,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(dailyData), 'Bot Daily Logs');
     }
 
-    // Sheet 11: All Actions Detail
+    // Sheet 12: All Actions Detail
     const actionsDetail: any[] = [];
     botLogs.forEach((l: any) => {
       (l.actions || []).forEach((a: any) => {
@@ -456,7 +525,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
           Tick: l.tickNumber,
           BotName: l.botName,
           Profession: l.profession,
-          Town: l.town,
+          Town: resolveTown(l.town),
           Level: l.level,
           ActionOrder: a.order,
           ActionType: a.type,
@@ -471,10 +540,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(actionsDetail), 'All Actions Detail');
     }
 
-    // If no sheets added, add a placeholder
-    if (workbook.SheetNames.length === 0) {
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([{ message: 'No simulation data. Seed bots and run ticks first.' }]), 'Info');
-    }
+    // If only summary sheet exists (no data sheets added), that's fine — summary has metadata
 
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 

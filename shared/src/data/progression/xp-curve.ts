@@ -52,6 +52,9 @@ export function levelForXp(totalXp: number): number {
 
 export const MAX_LEVEL = 50;
 
+/** Minimum character level required to learn a profession. */
+export const PROFESSION_UNLOCK_LEVEL = 3;
+
 // ---------------------------------------------------------------------------
 // XP Table — precomputed reference for all 50 levels
 // ---------------------------------------------------------------------------

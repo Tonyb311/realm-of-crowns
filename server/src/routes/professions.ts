@@ -17,6 +17,7 @@ import type { ProfessionCategory } from '@shared/data/professions';
 import { getRace } from '@shared/data/races';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
+import { PROFESSION_UNLOCK_LEVEL } from '@shared/data/progression/xp-curve';
 
 const router = Router();
 
@@ -78,6 +79,11 @@ router.post('/learn', authGuard, characterGuard, requireTown, validate(professio
 
     if (character.travelStatus !== 'idle') {
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
+    // Level gate: must be at least Level 3 to learn a profession
+    if (character.level < PROFESSION_UNLOCK_LEVEL) {
+      return res.status(400).json({ error: 'You must be at least Level 3 to choose a profession.' });
     }
 
     // Look up static definition
