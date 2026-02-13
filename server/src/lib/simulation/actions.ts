@@ -514,45 +514,35 @@ export async function acceptQuest(bot: BotState): Promise<ActionResult> {
 export async function travel(bot: BotState): Promise<ActionResult> {
   const endpoint = '/travel/start';
   try {
-    // Fetch the world map to find available towns
-    const mapRes = await get('/world/map', bot.token);
-    if (mapRes.status < 200 || mapRes.status >= 300) {
+    // Fetch available routes from the bot's current town
+    const routesRes = await get('/travel/routes', bot.token);
+    if (routesRes.status < 200 || routesRes.status >= 300) {
       return {
         success: false,
-        detail: mapRes.data?.error || `Failed to fetch world map: HTTP ${mapRes.status}`,
+        detail: routesRes.data?.error || `Failed to fetch travel routes: HTTP ${routesRes.status}`,
         endpoint,
       };
     }
 
-    // Extract towns from regions
-    const regions: any[] = mapRes.data?.regions || mapRes.data || [];
-    const allTowns: any[] = [];
-    for (const region of regions) {
-      const towns: any[] = region.towns || [];
-      for (const town of towns) {
-        const townId = town.id || town.townId;
-        if (townId && townId !== bot.currentTownId) {
-          allTowns.push(town);
-        }
-      }
-    }
-
-    if (allTowns.length === 0) {
+    const routes: any[] = routesRes.data?.routes || routesRes.data || [];
+    if (routes.length === 0) {
       return {
         success: false,
-        detail: 'No destination towns found',
+        detail: 'No travel routes available from current town',
         endpoint,
       };
     }
 
-    const destination = pickRandom(allTowns)!;
-    const destinationTownId = destination.id || destination.townId;
+    // Pick a random route
+    const route = pickRandom(routes)!;
+    const routeId = route.id || route.routeId;
+    const destName = route.destination?.name || route.name || routeId;
 
-    const res = await post(endpoint, bot.token, { destinationTownId });
+    const res = await post(endpoint, bot.token, { routeId });
     if (res.status >= 200 && res.status < 300) {
       return {
         success: true,
-        detail: `Traveling to ${destination.name || destinationTownId}`,
+        detail: `Traveling to ${destName}`,
         endpoint,
       };
     }

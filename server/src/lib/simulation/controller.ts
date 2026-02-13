@@ -23,6 +23,7 @@ import { logActivity, getRecentActivity, getStats as getActivityStats, getUptime
 import { refreshBotState } from './actions';
 import { advanceGameDay, getGameDay, getGameDayOffset } from '../../lib/game-day';
 import { processDailyTick } from '../../jobs/daily-tick';
+import { processTravelTick } from '../../lib/travel-tick';
 import { logger } from '../../lib/logger';
 import { setSimulationTick } from '../../lib/simulation-context';
 
@@ -35,10 +36,8 @@ function categorizeAction(endpoint: string): string {
   if (endpoint.includes('craft')) return 'craft';
   if (endpoint.includes('market/buy') || endpoint.includes('buy')) return 'buy';
   if (endpoint.includes('market/list') || endpoint.includes('sell') || endpoint.includes('market/browse')) return 'sell';
-  // Distinguish combat wins from losses for accurate tracking
-  if (endpoint.includes('combat') && endpoint.includes('/win')) return 'combat_win';
-  if (endpoint.includes('combat') && endpoint.includes('/loss')) return 'combat_loss';
-  if (endpoint.includes('combat')) return 'combat';
+  // Road encounters are tracked by the travel tick, not individual bot actions
+  if (endpoint.includes('road_encounter')) return 'road_encounter';
   if (endpoint.includes('quest')) return 'quest';
   if (endpoint.includes('travel')) return 'travel';
   if (endpoint.includes('message')) return 'social';
@@ -226,6 +225,25 @@ class SimulationController {
     // 2. Run daily tick (reset actions, process events)
     try { await processDailyTick(); } catch (err: any) {
       errors.push(`Daily tick error: ${err.message}`);
+    }
+
+    // 2b. Process travel tick — advance travelers and resolve road encounters
+    try {
+      const travelResult = await processTravelTick();
+      if (travelResult.soloEncountered > 0) {
+        actionBreakdown['road_encounter'] = (actionBreakdown['road_encounter'] || 0) + travelResult.soloEncountered;
+        actionBreakdown['road_encounter_win'] = (actionBreakdown['road_encounter_win'] || 0) + travelResult.soloEncounterWins;
+        actionBreakdown['road_encounter_loss'] = (actionBreakdown['road_encounter_loss'] || 0) + travelResult.soloEncounterLosses;
+      }
+      if (travelResult.soloArrived > 0) {
+        actionBreakdown['travel_arrived'] = (actionBreakdown['travel_arrived'] || 0) + travelResult.soloArrived;
+      }
+      logger.info(
+        { tick: this.singleTickCount + 1, ...travelResult },
+        'Travel tick processed within simulation',
+      );
+    } catch (err: any) {
+      errors.push(`Travel tick error: ${err.message}`);
     }
 
     // Gold tracking accumulators

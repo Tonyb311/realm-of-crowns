@@ -404,6 +404,9 @@ export async function logPveCombat(params: {
   lootDropped: string;
   outcome: 'win' | 'loss' | 'flee' | 'draw';
   simulationTick?: number | null;
+  triggerSource?: string;
+  originTownId?: string | null;
+  destinationTownId?: string | null;
 }): Promise<void> {
   if (!COMBAT_LOGGING_ENABLED) return;
 
@@ -455,6 +458,9 @@ export async function logPveCombat(params: {
         lootDropped: params.lootDropped,
         rounds: roundsWithContext as any,
         summary,
+        triggerSource: params.triggerSource ?? 'town_pve',
+        originTownId: params.originTownId ?? null,
+        destinationTownId: params.destinationTownId ?? null,
         simulationTick: params.simulationTick ?? getSimulationTick(),
       },
     });
@@ -516,11 +522,13 @@ export async function logPvpCombat(params: {
     );
 
     const type = params.isSpar ? 'spar' : 'pvp';
+    const triggerSource = params.isSpar ? 'pvp_spar' : 'pvp_duel';
 
     await prisma.$transaction([
       prisma.combatEncounterLog.create({
         data: {
           type,
+          triggerSource,
           sessionId: params.sessionId,
           characterId: winnerId,
           characterName: winnerName,
@@ -546,6 +554,7 @@ export async function logPvpCombat(params: {
       prisma.combatEncounterLog.create({
         data: {
           type,
+          triggerSource,
           sessionId: params.sessionId,
           characterId: loserId,
           characterName: loserName,

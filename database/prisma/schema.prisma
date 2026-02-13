@@ -648,6 +648,8 @@ model Town {
   gatheringActions  GatheringAction[]
   combatSessions      CombatSession[]
   combatEncounterLogs CombatEncounterLog[]
+  encounterOrigins      CombatEncounterLog[] @relation("EncounterOrigin")
+  encounterDestinations CombatEncounterLog[] @relation("EncounterDestination")
   messages            Message[]          @relation("TownMessages")
   townPolicy        TownPolicy?
   councilMembers    CouncilMember[]    @relation("TownCouncil")
@@ -1472,15 +1474,21 @@ model CombatEncounterLog {
   lootDropped      String   @default("") @map("loot_dropped")
   rounds           Json     @default("[]")
   summary          String   @default("")
+  triggerSource    String   @default("town_pve") @map("trigger_source") // 'road_encounter' | 'town_pve' | 'pvp_duel' | 'pvp_spar' | 'arena'
+  originTownId     String?  @map("origin_town_id")
+  destinationTownId String? @map("destination_town_id")
   simulationTick   Int?     @map("simulation_tick")
   createdAt        DateTime @default(now()) @map("created_at")
 
-  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  town      Town?     @relation(fields: [townId], references: [id], onDelete: SetNull)
+  character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  town            Town?     @relation(fields: [townId], references: [id], onDelete: SetNull)
+  originTown      Town?     @relation("EncounterOrigin", fields: [originTownId], references: [id], onDelete: SetNull)
+  destinationTown Town?     @relation("EncounterDestination", fields: [destinationTownId], references: [id], onDelete: SetNull)
 
   @@index([characterId, startedAt])
   @@index([simulationTick])
   @@index([type])
+  @@index([triggerSource])
   @@map("combat_encounter_logs")
 }
 

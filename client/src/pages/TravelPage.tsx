@@ -707,6 +707,15 @@ export default function TravelPage() {
         <p className="text-realm-text-secondary mb-2 text-center max-w-md">
           You are not currently on a journey. Visit your town to plan a trip.
         </p>
+        <div className="mt-4 p-3 bg-realm-warning/10 border border-realm-warning/30 rounded-lg max-w-md text-center">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <Shield className="w-4 h-4 text-realm-warning" />
+            <span className="text-xs font-display text-realm-warning">Road Encounters</span>
+          </div>
+          <p className="text-xs text-realm-text-muted">
+            Beware: monsters roam the roads between towns. You may face a random encounter upon arrival. Win to proceed; lose and you'll be sent back.
+          </p>
+        </div>
         <div className="flex gap-4 mt-6">
           <button
             onClick={() => navigate('/town')}
@@ -759,6 +768,20 @@ export default function TravelPage() {
           <ArrowRight className="w-3 h-3" />
           <span>{destinationTownName}</span>
         </div>
+
+        {/* Road encounter warning */}
+        {ticksRemaining <= 1 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-2 bg-realm-warning/10 border border-realm-warning/30 rounded-lg flex items-center gap-2"
+          >
+            <Shield className="w-4 h-4 text-realm-warning flex-shrink-0" />
+            <p className="text-xs text-realm-warning">
+              You approach your destination. A road encounter may await you upon arrival.
+            </p>
+          </motion.div>
+        )}
 
         {/* Route Map */}
         <AnimatePresence mode="wait">

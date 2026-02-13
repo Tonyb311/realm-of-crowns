@@ -113,7 +113,7 @@ const BUILDINGS: BuildingDef[] = [
   { key: 'tavern', name: 'Tavern', description: 'Rest, recruit, hear rumors', route: '/tavern', icon: Beer },
   { key: 'blacksmith', name: 'Blacksmith', description: 'Forge weapons and armor', route: '/crafting', icon: Hammer },
   { key: 'town_hall', name: 'Town Hall', description: 'Governance and laws', route: '/town-hall', icon: Landmark },
-  { key: 'training_grounds', name: 'Training Grounds', description: 'Combat practice', route: '/training', icon: Swords },
+  { key: 'notice_board', name: 'Notice Board', description: 'Travel advisories and road reports', route: '/travel', icon: Swords },
   { key: 'temple', name: 'Temple', description: 'Healing and blessings', route: '/temple', icon: Heart },
   { key: 'jobs_board', name: 'Jobs Board', description: 'Find work and quests', route: '/jobs', icon: ScrollText },
   { key: 'stable', name: 'Stable', description: 'Manage mounts, prepare travel', route: '/stable', icon: Footprints },

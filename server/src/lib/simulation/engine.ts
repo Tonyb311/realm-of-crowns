@@ -7,22 +7,26 @@ import * as actions from './actions';
 import { PROFESSION_UNLOCK_LEVEL } from '@shared/data/progression/xp-curve';
 
 // ---- Action key union ----
+// NOTE: 'combat' removed as standalone action — PvE combat now only occurs
+// as road encounters during travel (resolved by travel-tick.ts)
 type ActionKey =
   | 'gather' | 'craft' | 'buy' | 'sell'
-  | 'combat' | 'quest' | 'travel' | 'message'
+  | 'quest' | 'travel' | 'message'
   | 'friend' | 'nominate' | 'vote' | 'guild'
   | 'equip' | 'browse';
 
 // ---- Per-profile weight tables ----
+// Combat weight removed from all profiles — PvE happens via road encounters during travel.
+// Travel weight increased to compensate, since travel is now the path to combat XP.
 const PROFILE_WEIGHTS: Record<BotProfile, Partial<Record<ActionKey, number>>> = {
   gatherer:   { gather: 40, sell: 20, travel: 15, browse: 10, buy: 5, craft: 5, quest: 5 },
   crafter:    { craft: 30, buy: 25, sell: 20, browse: 10, gather: 10, travel: 5 },
   merchant:   { buy: 30, sell: 30, travel: 20, browse: 15, gather: 5 },
-  warrior:    { combat: 45, quest: 20, buy: 10, travel: 10, equip: 10, browse: 5 },
+  warrior:    { travel: 35, quest: 25, buy: 10, equip: 15, browse: 10, sell: 5 },
   politician: { message: 25, nominate: 15, vote: 15, friend: 15, browse: 15, travel: 10, quest: 5 },
   socialite:  { message: 30, friend: 25, quest: 15, vote: 10, guild: 10, browse: 10 },
-  explorer:   { travel: 40, gather: 20, combat: 20, quest: 15, browse: 5 },
-  balanced:   { gather: 12, craft: 12, buy: 12, sell: 12, combat: 12, quest: 10, travel: 10, message: 8, friend: 6, browse: 6 },
+  explorer:   { travel: 50, gather: 20, quest: 20, browse: 10 },
+  balanced:   { gather: 12, craft: 12, buy: 12, sell: 12, quest: 12, travel: 15, message: 8, friend: 6, browse: 6, equip: 5 },
 };
 
 // ---- Gathering professions for random selection ----
@@ -67,9 +71,7 @@ function filterWeights(
       case 'browse':
         if (!enabled.market) allowed = false;
         break;
-      case 'combat':
-        if (!enabled.combat) allowed = false;
-        break;
+      // 'combat' removed — PvE combat now only occurs as road encounters during travel
       case 'quest':
         if (!enabled.quests) allowed = false;
         break;
@@ -101,7 +103,7 @@ function filterWeights(
 // ---- Map quest objective type to bot action ----
 function mapObjectiveToAction(objectiveType: string): ActionKey | null {
   switch (objectiveType) {
-    case 'KILL':               return 'combat';
+    case 'KILL':               return 'travel'; // PvE combat occurs as road encounters during travel
     case 'VISIT':              return 'travel';
     case 'EQUIP':              return 'equip';
     case 'SELECT_PROFESSION':  return null; // Handled by existing learn-profession logic
@@ -120,7 +122,7 @@ function executeAction(action: ActionKey, bot: BotState, allBots: BotState[]): P
     case 'craft':     return actions.startCrafting(bot);
     case 'buy':       return actions.buyFromMarket(bot);
     case 'sell':      return actions.listOnMarket(bot);
-    case 'combat':    return actions.startCombat(bot);
+    // 'combat' removed — PvE combat now only occurs as road encounters during travel
     case 'quest':     return actions.acceptQuest(bot);
     case 'travel':    return actions.travel(bot);
     case 'message':   return actions.sendMessage(bot);
@@ -191,16 +193,15 @@ export async function decideBotAction(
   // 2. If no professions, either grind XP (below level gate) or learn one
   if (bot.professions.length === 0) {
     if (bot.level < PROFESSION_UNLOCK_LEVEL) {
-      // Pre-profession: grind XP via combat, quests, and travel
-      const travelWeight = canTravel ? 15 : 0;
+      // Pre-profession: grind XP via travel (road encounters) and quests
+      const travelWeight = canTravel ? 60 : 0;
       const preProfWeights: { key: ActionKey; weight: number }[] = [
-        { key: 'combat', weight: 60 },
-        { key: 'quest', weight: 25 + (canTravel ? 0 : 15) },
+        { key: 'quest', weight: 40 + (canTravel ? 0 : 60) },
         { key: 'travel', weight: travelWeight },
       ];
       const total = preProfWeights.reduce((sum, w) => sum + w.weight, 0);
       let rand = Math.random() * total;
-      let selectedKey: ActionKey = 'combat';
+      let selectedKey: ActionKey = 'quest';
       for (const { key, weight } of preProfWeights) {
         rand -= weight;
         if (rand <= 0) { selectedKey = key; break; }
