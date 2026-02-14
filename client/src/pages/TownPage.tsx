@@ -477,20 +477,52 @@ export default function TownPage() {
               </dl>
             </RealmPanel>
 
-            {/* Resources */}
-            {town.resources && town.resources.length > 0 && (
-              <RealmPanel title="Resources">
-                <div className="flex flex-wrap gap-1.5">
-                  {town.resources.map((r) => (
-                    <span
-                      key={r.id ?? r.resourceType}
-                      className="text-xs bg-realm-bg-600/40 text-realm-text-secondary px-2 py-0.5 rounded"
-                    >
-                      {(r.resourceType ?? r).toString().toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                    </span>
-                  ))}
+            {/* Gathering Summary */}
+            {!gatheringLoading && gatheringData?.spot && (
+              <div
+                className={`bg-realm-bg-700 border rounded-lg overflow-hidden transition-colors ${
+                  actionStatus?.actionUsed
+                    ? 'border-realm-border opacity-60'
+                    : 'border-realm-border hover:border-realm-gold-500/40 cursor-pointer'
+                }`}
+                onClick={() => {
+                  const el = document.getElementById('gathering-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+              >
+                <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                  <h3 className="font-display text-realm-gold-400 text-sm flex items-center gap-1.5">
+                    <Wheat className="w-3.5 h-3.5" />
+                    Gathering
+                  </h3>
+                  <span className="text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400">
+                    Daily Action
+                  </span>
                 </div>
-              </RealmPanel>
+                <div className="px-4 pb-3">
+                  {actionStatus?.actionUsed ? (
+                    <div className="flex items-center gap-2 py-1.5">
+                      <CheckCircle className="w-3.5 h-3.5 text-realm-text-muted flex-shrink-0" />
+                      <span className="text-[11px] text-realm-text-muted">Action committed</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-2 py-1">
+                      <span className="text-lg leading-none mt-0.5">{gatheringData.spot.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-realm-text-primary truncate">{gatheringData.spot.name}</p>
+                        <div className="flex items-center justify-between mt-0.5">
+                          <span className="text-[11px] text-realm-text-muted">
+                            {gatheringData.spot.item.name} (x{gatheringData.spot.minYield}-{gatheringData.spot.maxYield})
+                          </span>
+                          <span className="text-[11px] text-realm-gold-400 font-display ml-1 flex-shrink-0">
+                            {gatheringData.spot.item.baseValue}g ea
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
 
             {/* Features */}
@@ -550,7 +582,7 @@ export default function TownPage() {
 
             {/* Gathering Spot */}
             {!gatheringLoading && gatheringData?.spot && (
-              <section>
+              <section id="gathering-section">
                 <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
                   <Wheat className="w-5 h-5 text-realm-gold-400" />
                   Gathering
