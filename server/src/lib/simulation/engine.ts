@@ -12,6 +12,7 @@
 import { BotState, BotProfile, SimulationConfig, ActionResult } from './types';
 import * as actions from './actions';
 import { PROFESSION_UNLOCK_LEVEL } from '@shared/data/progression/xp-curve';
+import { SimulationLogger, captureBotState } from './sim-logger';
 
 // ---- Daily action keys (the only actions that consume the daily action slot) ----
 type DailyActionKey = 'gather' | 'craft' | 'travel';
@@ -73,13 +74,16 @@ function mapObjectiveToDailyAction(objectiveType: string): DailyActionKey | null
   }
 }
 
-// ---- Execute a daily action ----
-async function executeDailyAction(action: DailyActionKey, bot: BotState): Promise<ActionResult> {
+// ---- Execute a daily action (with timing) ----
+async function executeDailyAction(action: DailyActionKey, bot: BotState): Promise<{ result: ActionResult; durationMs: number }> {
+  const start = Date.now();
+  let result: ActionResult;
   switch (action) {
-    case 'gather': return actions.gatherFromSpot(bot);
-    case 'craft':  return actions.startCrafting(bot);
-    case 'travel': return actions.travel(bot);
+    case 'gather': result = await actions.gatherFromSpot(bot); break;
+    case 'craft':  result = await actions.startCrafting(bot); break;
+    case 'travel': result = await actions.travel(bot); break;
   }
+  return { result, durationMs: Date.now() - start };
 }
 
 // ---- Try daily actions in fallback order until one succeeds ----
@@ -87,21 +91,66 @@ async function tryDailyWithFallback(
   bot: BotState,
   order: DailyActionKey[],
   enabled: SimulationConfig['enabledSystems'],
+  logger?: SimulationLogger,
+  tick?: number,
 ): Promise<ActionResult> {
   const failureReasons: string[] = [];
+  let attemptNumber = 0;
+  let lastFailReason = '';
+
   for (const action of order) {
     if (action === 'gather' && !enabled.gathering) { failureReasons.push(`${action}: disabled`); continue; }
     if (action === 'craft' && !enabled.crafting) { failureReasons.push(`${action}: disabled`); continue; }
     if (action === 'travel' && !enabled.travel) { failureReasons.push(`${action}: disabled`); continue; }
-    const result = await executeDailyAction(action, bot);
+
+    attemptNumber++;
+    const { result, durationMs } = await executeDailyAction(action, bot);
+
+    if (logger && tick != null) {
+      logger.logFromResult(bot, result, {
+        tick,
+        phase: 'daily',
+        intent: action,
+        attemptNumber,
+        fallbackReason: lastFailReason || undefined,
+        durationMs,
+        dailyActionUsed: false,
+      });
+    }
+
     if (result.success) return result;
-    const reason = `${action}: ${result.detail} (${result.endpoint})`;
-    failureReasons.push(reason);
+
+    lastFailReason = `${action} failed (${result.httpStatus ?? '?'}): ${result.detail}`;
+    failureReasons.push(`${action}: ${result.detail} (${result.endpoint})`);
     console.log(`[SIM] ${bot.characterName} ${action.toUpperCase()} FAILED: ${result.detail} [endpoint: ${result.endpoint}]`);
   }
+
   const allReasons = failureReasons.join(' | ');
   console.log(`[SIM] ${bot.characterName} ALL ACTIONS FAILED: ${allReasons}`);
   return { success: false, detail: `All failed — ${allReasons}`, endpoint: 'none' };
+}
+
+// ---- Timed free action helper ----
+async function timedFreeAction(
+  fn: () => Promise<ActionResult>,
+  bot: BotState,
+  intent: string,
+  logger: SimulationLogger | undefined,
+  tick: number | undefined,
+): Promise<ActionResult> {
+  const start = Date.now();
+  const result = await fn();
+  if (logger && tick != null) {
+    logger.logFromResult(bot, result, {
+      tick,
+      phase: 'free',
+      intent,
+      attemptNumber: 1,
+      durationMs: Date.now() - start,
+      dailyActionUsed: false,
+    });
+  }
+  return result;
 }
 
 // ---- Main decision function ----
@@ -109,6 +158,8 @@ export async function decideBotAction(
   bot: BotState,
   allBots: BotState[],
   config: SimulationConfig,
+  logger?: SimulationLogger,
+  tick?: number,
 ): Promise<ActionResult> {
   // 0. Cooldown check
   if (bot.pausedUntil > Date.now()) {
@@ -134,7 +185,7 @@ export async function decideBotAction(
 
     if (bot.partyTicksRemaining <= 0) {
       // Time to disband
-      try { await actions.disbandParty(bot); } catch { /* ignore */ }
+      try { await timedFreeAction(() => actions.disbandParty(bot), bot, 'disband_party', logger, tick); } catch { /* ignore */ }
     } else {
       // Try to invite nearby partyless bots (if party < 3)
       const partyMembers = allBots.filter(b => b.partyId === bot.partyId);
@@ -144,7 +195,7 @@ export async function decideBotAction(
         );
         if (candidates.length > 0) {
           const target = candidates[Math.floor(Math.random() * candidates.length)];
-          try { await actions.inviteToParty(bot, target); } catch { /* ignore */ }
+          try { await timedFreeAction(() => actions.inviteToParty(bot, target), bot, 'invite_to_party', logger, tick); } catch { /* ignore */ }
         }
       }
     }
@@ -152,7 +203,7 @@ export async function decideBotAction(
 
   // A2: Accept pending party invites (free)
   if (!bot.partyId && bot.currentTownId) {
-    try { await actions.acceptPartyInvite(bot); } catch { /* ignore */ }
+    try { await timedFreeAction(() => actions.acceptPartyInvite(bot), bot, 'accept_party_invite', logger, tick); } catch { /* ignore */ }
   }
 
   // A3: Party formation (free, 30% chance if not in a party)
@@ -162,10 +213,10 @@ export async function decideBotAction(
     );
     if (nearbyPartyless.length > 0) {
       try {
-        const createResult = await actions.createParty(bot);
+        const createResult = await timedFreeAction(() => actions.createParty(bot), bot, 'create_party', logger, tick);
         if (createResult.success) {
           const target = nearbyPartyless[Math.floor(Math.random() * nearbyPartyless.length)];
-          try { await actions.inviteToParty(bot, target); } catch { /* ignore */ }
+          try { await timedFreeAction(() => actions.inviteToParty(bot, target), bot, 'invite_to_party', logger, tick); } catch { /* ignore */ }
         }
       } catch { /* ignore */ }
     }
@@ -176,7 +227,7 @@ export async function decideBotAction(
   if (config.enabledSystems.quests) {
     activeQuest = await actions.checkActiveQuest(bot);
     if (!activeQuest) {
-      try { await actions.acceptQuest(bot); } catch { /* ignore */ }
+      try { await timedFreeAction(() => actions.acceptQuest(bot), bot, 'accept_quest', logger, tick); } catch { /* ignore */ }
       activeQuest = await actions.checkActiveQuest(bot);
     }
   }
@@ -190,7 +241,7 @@ export async function decideBotAction(
   if (bot.professions.length === 0) {
     if (bot.level < PROFESSION_UNLOCK_LEVEL) {
       // Below level gate: gather from spot (no profession needed) or travel
-      return tryDailyWithFallback(bot, ['gather', 'travel', 'craft'], config.enabledSystems);
+      return tryDailyWithFallback(bot, ['gather', 'travel', 'craft'], config.enabledSystems, logger, tick);
     }
 
     // Level 3+: learn a profession based on profile (or random for low intelligence)
@@ -211,7 +262,11 @@ export async function decideBotAction(
       }
     }
 
+    const start1 = Date.now();
     const result = await actions.learnProfession(bot, profType);
+    if (logger && tick != null) {
+      logger.logFromResult(bot, result, { tick, phase: 'daily', intent: 'learn_profession', attemptNumber: 1, durationMs: Date.now() - start1, dailyActionUsed: false });
+    }
     if (result.success) return result;
 
     // Fallback professions
@@ -221,33 +276,51 @@ export async function decideBotAction(
       case 'crafter':   fallbacks.push('SMELTER', 'FARMER'); break;
       default:          fallbacks.push('FARMER', 'MINER'); break;
     }
-    for (const fb of fallbacks) {
-      const fbResult = await actions.learnProfession(bot, fb);
+    for (let i = 0; i < fallbacks.length; i++) {
+      const startFb = Date.now();
+      const fbResult = await actions.learnProfession(bot, fallbacks[i]);
+      if (logger && tick != null) {
+        logger.logFromResult(bot, fbResult, { tick, phase: 'daily', intent: 'learn_profession', attemptNumber: i + 2, fallbackReason: `learn ${profType} failed`, durationMs: Date.now() - startFb, dailyActionUsed: false });
+      }
       if (fbResult.success) return fbResult;
     }
 
     // If learning still failed, gather or travel instead
-    return tryDailyWithFallback(bot, ['gather', 'travel'], config.enabledSystems);
+    return tryDailyWithFallback(bot, ['gather', 'travel'], config.enabledSystems, logger, tick);
   }
 
   // B2: Pending collections
   if (bot.pendingGathering) {
-    return actions.collectGathering(bot);
+    const start2 = Date.now();
+    const r = await actions.collectGathering(bot);
+    if (logger && tick != null) {
+      logger.logFromResult(bot, r, { tick, phase: 'daily', intent: 'collect_gathering', attemptNumber: 1, durationMs: Date.now() - start2, dailyActionUsed: false });
+    }
+    return r;
   }
   if (bot.pendingCrafting) {
-    return actions.collectCrafting(bot);
+    const start3 = Date.now();
+    const r = await actions.collectCrafting(bot);
+    if (logger && tick != null) {
+      logger.logFromResult(bot, r, { tick, phase: 'daily', intent: 'collect_crafting', attemptNumber: 1, durationMs: Date.now() - start3, dailyActionUsed: false });
+    }
+    return r;
   }
 
   // B3: Party leader prefers group travel as daily action
   if (bot.partyId && bot.partyRole === 'leader' && bot.partyTicksRemaining > 0) {
+    const start4 = Date.now();
     const travelResult = await actions.partyTravel(bot);
+    if (logger && tick != null) {
+      logger.logFromResult(bot, travelResult, { tick, phase: 'daily', intent: 'party_travel', attemptNumber: 1, durationMs: Date.now() - start4, dailyActionUsed: false });
+    }
     if (travelResult.success) return travelResult;
     // Fall through if group travel failed
   }
 
   // B3b: Non-leader party members — leave party before acting (travel requires leader)
   if (bot.partyId && bot.partyRole !== 'leader') {
-    try { await actions.leaveParty(bot); } catch { /* ignore */ }
+    try { await timedFreeAction(() => actions.leaveParty(bot), bot, 'leave_party', logger, tick); } catch { /* ignore */ }
   }
 
   // B4: Quest-guided daily action
@@ -265,7 +338,10 @@ export async function decideBotAction(
         if (questAction === 'craft' && bot.professions.length === 0) {
           // Can't craft yet — fall through to profile-weighted
         } else {
-          const result = await executeDailyAction(questAction, bot);
+          const { result, durationMs } = await executeDailyAction(questAction, bot);
+          if (logger && tick != null) {
+            logger.logFromResult(bot, result, { tick, phase: 'daily', intent: `quest_${questAction}`, attemptNumber: 1, durationMs, dailyActionUsed: false });
+          }
           if (result.success) return result;
           // If quest-guided action failed, fall through to profile-weighted
         }
@@ -287,12 +363,15 @@ export async function decideBotAction(
       selected = weightedSelect(filteredWeights);
     }
 
-    const result = await executeDailyAction(selected, bot);
+    const { result, durationMs } = await executeDailyAction(selected, bot);
+    if (logger && tick != null) {
+      logger.logFromResult(bot, result, { tick, phase: 'daily', intent: selected, attemptNumber: 1, durationMs, dailyActionUsed: false });
+    }
     if (result.success) return result;
   }
 
   // B6: FALLBACK — try each daily action in order until one works
-  return tryDailyWithFallback(bot, ['gather', 'travel', 'craft'], config.enabledSystems);
+  return tryDailyWithFallback(bot, ['gather', 'travel', 'craft'], config.enabledSystems, logger, tick);
 }
 
 // ---- Error storm: deliberately trigger invalid actions ----

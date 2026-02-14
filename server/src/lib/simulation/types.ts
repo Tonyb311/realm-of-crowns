@@ -112,6 +112,9 @@ export interface ActionResult {
   success: boolean;
   detail: string;
   endpoint: string;
+  httpStatus?: number;
+  requestBody?: Record<string, any>;
+  responseBody?: Record<string, any>;
 }
 
 export interface DispatchResult {
@@ -254,3 +257,71 @@ export const DEFAULT_CONFIG: SimulationConfig = {
     social: true,
   },
 };
+
+// ---------------------------------------------------------------------------
+// Detailed per-bot action logging
+// ---------------------------------------------------------------------------
+
+export interface BotStateSnapshot {
+  level: number;
+  town: string;
+  gold: number;
+  dailyActionUsed: boolean;
+  profession: string;
+  isInParty: boolean;
+  isTraveling: boolean;
+}
+
+export interface BotActionEntry {
+  tick: number;
+  botName: string;
+  botId: string;
+  phase: 'free' | 'daily' | 'post';
+  timestamp: string;
+  intent: string;
+  endpoint: string;
+  requestBody: Record<string, any>;
+  httpStatus: number;
+  success: boolean;
+  responseBody: Record<string, any>;
+  attemptNumber: number;
+  fallbackReason?: string;
+  durationMs: number;
+  botState: BotStateSnapshot;
+}
+
+export interface TickResolutionEntry {
+  tick: number;
+  botName: string;
+  botId: string;
+  actionType: string;
+  actionDetail: string;
+  resourceGained: string;
+  xpEarned: number;
+  levelBefore: number;
+  levelAfter: number;
+  goldBefore: number;
+  goldAfter: number;
+  townBefore: string;
+  townAfter: string;
+}
+
+export interface BotTimeline {
+  botName: string;
+  botId: string;
+  race: string;
+  class: string;
+  profile: string;
+  startTown: string;
+  endTown: string;
+  townsVisited: number;
+  startLevel: number;
+  endLevel: number;
+  startGold: number;
+  endGold: number;
+  actionsCommitted: number;
+  actionsFailed: number;
+  resourcesGathered: number;
+  itemsCrafted: number;
+  questsCompleted: number;
+}

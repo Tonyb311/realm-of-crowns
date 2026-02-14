@@ -789,6 +789,91 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       }
     } catch { /* Don't fail export */ }
 
+    // Sheet 18: Bot Action Log — one row per API call per bot per tick
+    try {
+      const detailedLog = simulationController.getDetailedActionLog();
+      if (detailedLog.length > 0) {
+        const actionLogData = detailedLog.map(e => ({
+          Tick: e.tick,
+          Bot: e.botName,
+          Phase: e.phase,
+          Intent: e.intent,
+          'Attempt#': e.attemptNumber,
+          Endpoint: e.endpoint,
+          Status: e.httpStatus,
+          Success: e.success,
+          Detail: typeof e.responseBody === 'object'
+            ? (e.responseBody.detail || e.responseBody.error || JSON.stringify(e.responseBody).slice(0, 200))
+            : String(e.responseBody),
+          FallbackReason: e.fallbackReason || '',
+          DurationMs: e.durationMs,
+          BotLevel: e.botState.level,
+          BotTown: resolveTown(e.botState.town),
+          BotGold: e.botState.gold,
+          BotProfession: e.botState.profession,
+          InParty: e.botState.isInParty,
+          Traveling: e.botState.isTraveling,
+          DailyUsed: e.botState.dailyActionUsed,
+        }));
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(actionLogData), 'Bot Action Log');
+      }
+    } catch { /* Don't fail export */ }
+
+    // Sheet 19: Tick Resolutions — one row per bot per tick
+    try {
+      const resolutions = simulationController.getTickResolutions();
+      if (resolutions.length > 0) {
+        const resData = resolutions.map(r => ({
+          Tick: r.tick,
+          Bot: r.botName,
+          ActionType: r.actionType,
+          ActionDetail: r.actionDetail,
+          ResourceGained: r.resourceGained,
+          XPEarned: r.xpEarned,
+          LevelBefore: r.levelBefore,
+          LevelAfter: r.levelAfter,
+          GoldBefore: r.goldBefore,
+          GoldAfter: r.goldAfter,
+          GoldNet: r.goldAfter - r.goldBefore,
+          TownBefore: resolveTown(r.townBefore),
+          TownAfter: resolveTown(r.townAfter),
+          TownChanged: r.townBefore !== r.townAfter ? 'Yes' : 'No',
+        }));
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(resData), 'Tick Resolutions');
+      }
+    } catch { /* Don't fail export */ }
+
+    // Sheet 20: Bot Timelines — one row per bot summarizing their full journey
+    try {
+      const timelines = simulationController.getBotTimelines();
+      if (timelines.length > 0) {
+        const timelineData = timelines.map(t => ({
+          Bot: t.botName,
+          Race: t.race,
+          Class: t.class,
+          Profile: t.profile,
+          StartTown: resolveTown(t.startTown),
+          EndTown: resolveTown(t.endTown),
+          TownsVisited: t.townsVisited,
+          StartLevel: t.startLevel,
+          EndLevel: t.endLevel,
+          LevelsGained: t.endLevel - t.startLevel,
+          StartGold: t.startGold,
+          EndGold: t.endGold,
+          GoldNet: t.endGold - t.startGold,
+          ActionsCommitted: t.actionsCommitted,
+          ActionsFailed: t.actionsFailed,
+          SuccessRate: t.actionsCommitted + t.actionsFailed > 0
+            ? Math.round(t.actionsCommitted / (t.actionsCommitted + t.actionsFailed) * 100) + '%'
+            : 'N/A',
+          ResourcesGathered: t.resourcesGathered,
+          ItemsCrafted: t.itemsCrafted,
+          QuestsCompleted: t.questsCompleted,
+        }));
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(timelineData), 'Bot Timelines');
+      }
+    } catch { /* Don't fail export */ }
+
     // If only summary sheet exists (no data sheets added), that's fine — summary has metadata
 
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });

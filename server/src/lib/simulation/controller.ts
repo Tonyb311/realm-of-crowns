@@ -14,6 +14,9 @@ import {
   SeedConfig,
   GoldStats,
   BotDayLog,
+  BotActionEntry,
+  TickResolutionEntry,
+  BotTimeline,
   DEFAULT_CONFIG,
   DEFAULT_SEED_CONFIG,
 } from './types';
@@ -27,6 +30,7 @@ import { processTravelTick } from '../../lib/travel-tick';
 import { logger } from '../../lib/logger';
 import { setSimulationTick } from '../../lib/simulation-context';
 import { prisma } from '../../lib/prisma';
+import { SimulationLogger, captureBotState } from './sim-logger';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -69,6 +73,7 @@ class SimulationController {
   private tickHistory: SimTickResult[] = [];
   private botDayLogs: BotDayLog[] = [];
   private runProgress: { current: number; total: number } | null = null;
+  private simLogger: SimulationLogger = new SimulationLogger();
 
   // ---------------------------------------------------------------------------
   // Seed bots
@@ -150,6 +155,8 @@ class SimulationController {
     // (plus free side-effects handled inside decideBotAction).
     // -----------------------------------------------------------------------
     const botGoldBefore = new Map<string, number>();
+    const botTownBefore = new Map<string, string>();
+    const botLevelBefore = new Map<string, number>();
     const botActionsList = new Map<string, Array<{
       order: number;
       type: string;
@@ -165,9 +172,11 @@ class SimulationController {
       // Refresh state before the action
       try { await refreshBotState(bot); } catch { /* ignore */ }
 
-      // Record gold before action
+      // Record state before action
       const goldBefore = bot.gold;
       botGoldBefore.set(bot.characterId, goldBefore);
+      botTownBefore.set(bot.characterId, bot.currentTownId);
+      botLevelBefore.set(bot.characterId, bot.level);
 
       const botActions: Array<{
         order: number;
@@ -182,7 +191,7 @@ class SimulationController {
       const goldBeforeAction = bot.gold;
       let result: ActionResult;
       try {
-        result = await decideBotAction(bot, this.bots, this.config);
+        result = await decideBotAction(bot, this.bots, this.config, this.simLogger, this.singleTickCount + 1);
       } catch (err: any) {
         result = { success: false, detail: `Uncaught: ${err.message}`, endpoint: 'error' };
       }
@@ -241,7 +250,11 @@ class SimulationController {
       if (this.config.enabledSystems.market && bot.currentTownId && bot.isActive) {
         try {
           const { doFreeMarketActions } = await import('./actions');
+          const mktStart = Date.now();
           const marketResults = await doFreeMarketActions(bot);
+          const mktDuration = Date.now() - mktStart;
+          const perActionMs = marketResults.length > 0 ? Math.round(mktDuration / marketResults.length) : 0;
+
           for (const mr of marketResults) {
             const marketAction = categorizeAction(mr.endpoint);
             actionBreakdown[marketAction] = (actionBreakdown[marketAction] || 0) + 1;
@@ -253,6 +266,16 @@ class SimulationController {
               if (marketAction === 'market_list') botMarketItemsListed++;
               if (marketAction === 'market_buy') botMarketOrdersPlaced++;
             }
+
+            // Log to detailed sim logger (post phase)
+            this.simLogger.logFromResult(bot, mr, {
+              tick: this.singleTickCount + 1,
+              phase: 'post',
+              intent: marketAction,
+              attemptNumber: 1,
+              durationMs: perActionMs,
+              dailyActionUsed: true,
+            });
 
             logActivity({
               timestamp: new Date().toISOString(),
@@ -433,6 +456,24 @@ class SimulationController {
 
       botsProcessed++;
 
+      // Per-bot tick resolution entry
+      const dailyAction = botActions.find(a => !a.type.includes('[FREE]') && a.success);
+      this.simLogger.logTickResolution({
+        tick: this.singleTickCount + 1,
+        botName: bot.characterName,
+        botId: bot.characterId,
+        actionType: dailyAction?.type || 'none',
+        actionDetail: dailyAction?.detail || 'No action committed',
+        resourceGained: dailyAction?.type === 'gather' && dailyAction?.detail ? dailyAction.detail : '',
+        xpEarned: 0, // XP tracking would require DB query — omitted for performance
+        levelBefore: botLevelBefore.get(bot.characterId) ?? bot.level,
+        levelAfter: bot.level,
+        goldBefore: goldBefore,
+        goldAfter: goldAfter,
+        townBefore: botTownBefore.get(bot.characterId) ?? bot.currentTownId,
+        townAfter: bot.currentTownId,
+      });
+
       // Per-bot day log with all actions accumulated
       const actionSummaryParts = botActions.map((a) => a.type);
       const botLog: BotDayLog = {
@@ -596,6 +637,22 @@ class SimulationController {
     return this.botDayLogs;
   }
 
+  getSimLogger(): SimulationLogger {
+    return this.simLogger;
+  }
+
+  getDetailedActionLog(): BotActionEntry[] {
+    return this.simLogger.getActionLog();
+  }
+
+  getTickResolutions(): TickResolutionEntry[] {
+    return this.simLogger.getTickResolutions();
+  }
+
+  getBotTimelines(): BotTimeline[] {
+    return this.simLogger.getBotTimelines(this.bots);
+  }
+
   // ---------------------------------------------------------------------------
   // Cleanup (full teardown)
   // ---------------------------------------------------------------------------
@@ -616,6 +673,7 @@ class SimulationController {
     this.focusUntil = 0;
     this.tickHistory = [];
     this.botDayLogs = [];
+    this.simLogger.clear();
     resetLog();
     logger.info('Simulation cleaned up');
     return result;

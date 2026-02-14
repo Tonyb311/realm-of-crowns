@@ -113,11 +113,11 @@ export async function learnProfession(
       if (!bot.professions.includes(professionType)) {
         bot.professions.push(professionType);
       }
-      return { success: true, detail: `Learned profession ${professionType}`, endpoint };
+      return { success: true, detail: `Learned profession ${professionType}`, endpoint, httpStatus: res.status, requestBody: { professionType }, responseBody: res.data };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { professionType }, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -136,11 +136,14 @@ export async function gatherFromSpot(bot: BotState): Promise<ActionResult> {
         success: true,
         detail: `Gathering ${res.data?.itemName || 'resources'} at ${res.data?.spotName || 'local spot'}`,
         endpoint,
+        httpStatus: res.status,
+        requestBody: {},
+        responseBody: res.data,
       };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -161,6 +164,9 @@ export async function startGathering(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: 'Bot has no gathering profession',
         endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: 'Bot has no gathering profession' },
       };
     }
 
@@ -171,6 +177,9 @@ export async function startGathering(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: `No resource types mapped for ${profKey}`,
         endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: `No resource types mapped for ${profKey}` },
       };
     }
 
@@ -183,6 +192,9 @@ export async function startGathering(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: `No resources found for type ${chosenType}`,
         endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: `No resources found for type ${chosenType}` },
       };
     }
 
@@ -197,13 +209,16 @@ export async function startGathering(bot: BotState): Promise<ActionResult> {
         success: true,
         detail: `Started gathering ${resource.name} as ${profKey}`,
         endpoint,
+        httpStatus: res.status,
+        requestBody: { professionType: profKey, resourceId: resource.id },
+        responseBody: res.data,
       };
     }
     // Graceful failure for HTTP errors
     bot.pendingGathering = false;
-    return { success: false, detail: res.data?.error || `Gathering failed: HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `Gathering failed: HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { professionType: profKey, resourceId: resource.id }, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -217,11 +232,11 @@ export async function collectGathering(bot: BotState): Promise<ActionResult> {
     const res = await post(endpoint, bot.token);
     if (res.status >= 200 && res.status < 300) {
       bot.pendingGathering = false;
-      return { success: true, detail: 'Collected gathering results', endpoint };
+      return { success: true, detail: 'Collected gathering results', endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -239,6 +254,9 @@ export async function startCrafting(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: recipesRes.data?.error || `Failed to fetch recipes: HTTP ${recipesRes.status}`,
         endpoint,
+        httpStatus: recipesRes.status,
+        requestBody: {},
+        responseBody: recipesRes.data,
       };
     }
 
@@ -249,6 +267,9 @@ export async function startCrafting(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: 'No craftable recipes available',
         endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: 'No craftable recipes available' },
       };
     }
 
@@ -262,11 +283,14 @@ export async function startCrafting(bot: BotState): Promise<ActionResult> {
         success: true,
         detail: `Started crafting ${recipe.name || recipeId}`,
         endpoint,
+        httpStatus: res.status,
+        requestBody: { recipeId },
+        responseBody: res.data,
       };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { recipeId }, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -280,11 +304,11 @@ export async function collectCrafting(bot: BotState): Promise<ActionResult> {
     const res = await post(endpoint, bot.token);
     if (res.status >= 200 && res.status < 300) {
       bot.pendingCrafting = false;
-      return { success: true, detail: 'Collected crafting results', endpoint };
+      return { success: true, detail: 'Collected crafting results', endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -302,11 +326,14 @@ export async function browseMarket(bot: BotState): Promise<ActionResult> {
         success: true,
         detail: `Found ${listings.length} marketplace listings`,
         endpoint,
+        httpStatus: res.status,
+        requestBody: {},
+        responseBody: res.data,
       };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -324,6 +351,9 @@ export async function buyFromMarket(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: browseRes.data?.error || `Failed to browse market: HTTP ${browseRes.status}`,
         endpoint,
+        httpStatus: browseRes.status,
+        requestBody: {},
+        responseBody: browseRes.data,
       };
     }
 
@@ -339,6 +369,9 @@ export async function buyFromMarket(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: 'No affordable listings found',
         endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: 'No affordable listings found' },
       };
     }
 
@@ -361,11 +394,14 @@ export async function buyFromMarket(bot: BotState): Promise<ActionResult> {
         success: true,
         detail: `Placed buy order for ${bidPrice}g (asking: ${askingPrice}g)`,
         endpoint,
+        httpStatus: res.status,
+        requestBody: { listingId, bidPrice },
+        responseBody: res.data,
       };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { listingId, bidPrice }, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -382,6 +418,9 @@ export async function listOnMarket(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: invRes.data?.error || `Failed to fetch inventory: HTTP ${invRes.status}`,
         endpoint,
+        httpStatus: invRes.status,
+        requestBody: {},
+        responseBody: invRes.data,
       };
     }
 
@@ -395,6 +434,9 @@ export async function listOnMarket(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: 'No non-equipped items to list',
         endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: 'No non-equipped items to list' },
       };
     }
 
@@ -414,11 +456,14 @@ export async function listOnMarket(bot: BotState): Promise<ActionResult> {
         success: true,
         detail: `Listed item ${item.name || itemId} for ${price} gold`,
         endpoint,
+        httpStatus: res.status,
+        requestBody: { itemId, price, quantity: 1 },
+        responseBody: res.data,
       };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { itemId, price, quantity: 1 }, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -437,6 +482,9 @@ export async function startCombat(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: startRes.data?.error || `Failed to start combat: HTTP ${startRes.status}`,
         endpoint,
+        httpStatus: startRes.status,
+        requestBody: { characterId: bot.characterId },
+        responseBody: startRes.data,
       };
     }
 
@@ -450,6 +498,9 @@ export async function startCombat(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: 'No sessionId returned from combat start',
         endpoint,
+        httpStatus: startRes.status,
+        requestBody: { characterId: bot.characterId },
+        responseBody: startRes.data,
       };
     }
 
@@ -520,9 +571,12 @@ export async function startCombat(bot: BotState): Promise<ActionResult> {
       success: isWin,
       detail,
       endpoint: resultEndpoint,
+      httpStatus: startRes.status,
+      requestBody: { characterId: bot.characterId },
+      responseBody: startRes.data,
     };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -539,6 +593,9 @@ export async function acceptQuest(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: availRes.data?.error || `Failed to fetch quests: HTTP ${availRes.status}`,
         endpoint,
+        httpStatus: availRes.status,
+        requestBody: {},
+        responseBody: availRes.data,
       };
     }
 
@@ -548,6 +605,9 @@ export async function acceptQuest(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: 'No available quests',
         endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: 'No available quests' },
       };
     }
 
@@ -560,11 +620,14 @@ export async function acceptQuest(bot: BotState): Promise<ActionResult> {
         success: true,
         detail: `Accepted quest: ${quest.name || quest.title || questId}`,
         endpoint,
+        httpStatus: res.status,
+        requestBody: { questId },
+        responseBody: res.data,
       };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { questId }, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -582,6 +645,9 @@ export async function travel(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: routesRes.data?.error || `Failed to fetch travel routes: HTTP ${routesRes.status}`,
         endpoint,
+        httpStatus: routesRes.status,
+        requestBody: {},
+        responseBody: routesRes.data,
       };
     }
 
@@ -591,6 +657,9 @@ export async function travel(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: 'No travel routes available from current town',
         endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: 'No travel routes available from current town' },
       };
     }
 
@@ -605,11 +674,14 @@ export async function travel(bot: BotState): Promise<ActionResult> {
         success: true,
         detail: `Traveling to ${destName}`,
         endpoint,
+        httpStatus: res.status,
+        requestBody: { routeId },
+        responseBody: res.data,
       };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { routeId }, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -627,7 +699,7 @@ export async function nominateForElection(
     const electionId = electionsRes.data?.election?.id || electionsRes.data?.id;
 
     if (!electionId) {
-      return { success: false, detail: 'No active election found', endpoint };
+      return { success: false, detail: 'No active election found', endpoint, httpStatus: electionsRes.status, requestBody: {}, responseBody: electionsRes.data };
     }
 
     const res = await post(endpoint, bot.token, {
@@ -639,11 +711,14 @@ export async function nominateForElection(
         success: true,
         detail: 'Nominated for election',
         endpoint,
+        httpStatus: res.status,
+        requestBody: { electionId, platform: 'Bot candidate for a better tomorrow!' },
+        responseBody: res.data,
       };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { electionId, platform: 'Bot candidate for a better tomorrow!' }, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -661,7 +736,7 @@ export async function voteInElection(
     const electionId = electionsRes.data?.election?.id || electionsRes.data?.id;
 
     if (!electionId) {
-      return { success: false, detail: 'No active election found', endpoint };
+      return { success: false, detail: 'No active election found', endpoint, httpStatus: electionsRes.status, requestBody: {}, responseBody: electionsRes.data };
     }
 
     // Get candidates from the election or pick another bot
@@ -675,7 +750,7 @@ export async function voteInElection(
       // Fallback: vote for a random other bot
       const otherBots = allBots.filter((b) => b.characterId !== bot.characterId);
       const target = pickRandom(otherBots);
-      if (!target) return { success: false, detail: 'No candidates available', endpoint };
+      if (!target) return { success: false, detail: 'No candidates available', endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: 'No candidates available' } };
       candidateId = target.characterId;
     }
 
@@ -685,11 +760,14 @@ export async function voteInElection(
         success: true,
         detail: 'Voted in election',
         endpoint,
+        httpStatus: res.status,
+        requestBody: { electionId, candidateId },
+        responseBody: res.data,
       };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { electionId, candidateId }, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -710,11 +788,14 @@ export async function sendMessage(bot: BotState): Promise<ActionResult> {
         success: true,
         detail: `Sent message: "${content}"`,
         endpoint,
+        httpStatus: res.status,
+        requestBody: { channelType: 'TOWN', content },
+        responseBody: res.data,
       };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { channelType: 'TOWN', content }, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -735,6 +816,9 @@ export async function addFriend(
         success: false,
         detail: 'No other bots to add as friend',
         endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: 'No other bots to add as friend' },
       };
     }
 
@@ -746,11 +830,14 @@ export async function addFriend(
         success: true,
         detail: `Sent friend request to ${target.characterName}`,
         endpoint,
+        httpStatus: res.status,
+        requestBody: { characterId: target.characterId },
+        responseBody: res.data,
       };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { characterId: target.characterId }, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -766,6 +853,9 @@ export async function createGuild(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: `Not enough gold (${bot.gold}/500)`,
         endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: `Not enough gold (${bot.gold}/500)` },
       };
     }
 
@@ -784,11 +874,14 @@ export async function createGuild(bot: BotState): Promise<ActionResult> {
         success: true,
         detail: `Created guild "Guild of ${bot.characterName}" [${tag}]`,
         endpoint,
+        httpStatus: res.status,
+        requestBody: { name: `Guild of ${bot.characterName}`, tag, description: 'A guild for adventurers' },
+        responseBody: res.data,
       };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { name: `Guild of ${bot.characterName}`, tag, description: 'A guild for adventurers' }, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -805,6 +898,9 @@ export async function equipItem(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: invRes.data?.error || `Failed to fetch inventory: HTTP ${invRes.status}`,
         endpoint,
+        httpStatus: invRes.status,
+        requestBody: {},
+        responseBody: invRes.data,
       };
     }
 
@@ -827,6 +923,9 @@ export async function equipItem(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: 'No equippable items found in inventory',
         endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: 'No equippable items found in inventory' },
       };
     }
 
@@ -848,11 +947,14 @@ export async function equipItem(bot: BotState): Promise<ActionResult> {
         success: true,
         detail: `Equipped ${item.name || itemId} to ${slot}`,
         endpoint,
+        httpStatus: res.status,
+        requestBody: { itemId, slot },
+        responseBody: res.data,
       };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { itemId, slot }, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -887,11 +989,11 @@ export async function completeQuest(bot: BotState, questId: string): Promise<Act
   try {
     const res = await post(endpoint, bot.token, { questId });
     if (res.status >= 200 && res.status < 300) {
-      return { success: true, detail: `Completed quest ${questId}`, endpoint };
+      return { success: true, detail: `Completed quest ${questId}`, endpoint, httpStatus: res.status, requestBody: { questId }, responseBody: res.data };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { questId }, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -910,11 +1012,11 @@ export async function createParty(bot: BotState): Promise<ActionResult> {
         bot.partyRole = 'leader';
         bot.partyTicksRemaining = 3 + Math.floor(Math.random() * 3); // 3-5 ticks
       }
-      return { success: true, detail: `Created party${partyId ? ` (${partyId})` : ''}`, endpoint };
+      return { success: true, detail: `Created party${partyId ? ` (${partyId})` : ''}`, endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -927,11 +1029,11 @@ export async function inviteToParty(bot: BotState, targetBot: BotState): Promise
   try {
     const res = await post(endpoint, bot.token, { characterId: targetBot.characterId });
     if (res.status >= 200 && res.status < 300) {
-      return { success: true, detail: `Invited ${targetBot.characterName} to party`, endpoint };
+      return { success: true, detail: `Invited ${targetBot.characterName} to party`, endpoint, httpStatus: res.status, requestBody: { characterId: targetBot.characterId }, responseBody: res.data };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { characterId: targetBot.characterId }, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -945,12 +1047,12 @@ export async function acceptPartyInvite(bot: BotState): Promise<ActionResult> {
   try {
     const meRes = await get(checkEndpoint, bot.token);
     if (meRes.status < 200 || meRes.status >= 300) {
-      return { success: false, detail: 'Failed to check party status', endpoint: checkEndpoint };
+      return { success: false, detail: 'Failed to check party status', endpoint: checkEndpoint, httpStatus: meRes.status, requestBody: {}, responseBody: meRes.data };
     }
 
     const invitations: any[] = meRes.data?.pendingInvitations || meRes.data?.invitations || [];
     if (invitations.length === 0) {
-      return { success: false, detail: 'No pending party invitations', endpoint: checkEndpoint };
+      return { success: false, detail: 'No pending party invitations', endpoint: checkEndpoint, httpStatus: 0, requestBody: {}, responseBody: { error: 'No pending party invitations' } };
     }
 
     const invite = invitations[0];
@@ -960,11 +1062,11 @@ export async function acceptPartyInvite(bot: BotState): Promise<ActionResult> {
     if (res.status >= 200 && res.status < 300) {
       bot.partyId = partyId;
       bot.partyRole = 'member';
-      return { success: true, detail: `Joined party ${partyId}`, endpoint: acceptEndpoint };
+      return { success: true, detail: `Joined party ${partyId}`, endpoint: acceptEndpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint: acceptEndpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint: acceptEndpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -980,11 +1082,11 @@ export async function disbandParty(bot: BotState): Promise<ActionResult> {
       bot.partyId = null;
       bot.partyRole = null;
       bot.partyTicksRemaining = 0;
-      return { success: true, detail: 'Disbanded party', endpoint };
+      return { success: true, detail: 'Disbanded party', endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -1000,11 +1102,11 @@ export async function leaveParty(bot: BotState): Promise<ActionResult> {
       bot.partyId = null;
       bot.partyRole = null;
       bot.partyTicksRemaining = 0;
-      return { success: true, detail: 'Left party', endpoint };
+      return { success: true, detail: 'Left party', endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -1022,6 +1124,9 @@ export async function partyTravel(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: routesRes.data?.error || `Failed to fetch travel routes: HTTP ${routesRes.status}`,
         endpoint,
+        httpStatus: routesRes.status,
+        requestBody: {},
+        responseBody: routesRes.data,
       };
     }
 
@@ -1031,6 +1136,9 @@ export async function partyTravel(bot: BotState): Promise<ActionResult> {
         success: false,
         detail: 'No travel routes available from current town',
         endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: 'No travel routes available from current town' },
       };
     }
 
@@ -1046,11 +1154,14 @@ export async function partyTravel(bot: BotState): Promise<ActionResult> {
         success: true,
         detail: `Party traveling to ${destName}`,
         endpoint,
+        httpStatus: res.status,
+        requestBody: { routeId },
+        responseBody: res.data,
       };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { routeId }, responseBody: res.data };
   } catch (err: any) {
-    return { success: false, detail: err.message, endpoint };
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
 }
 
@@ -1095,8 +1206,11 @@ export async function triggerInvalidAction(
       success: false,
       detail: res.data?.error || `Error storm: HTTP ${res.status}`,
       endpoint,
+      httpStatus: res.status,
+      requestBody: { listingId: 'invalid-uuid-000', quantity: -1 },
+      responseBody: res.data,
     };
   } catch (err: any) {
-    return { success: false, detail: `Error storm: ${err.message}`, endpoint };
+    return { success: false, detail: `Error storm: ${err.message}`, endpoint, httpStatus: 0, requestBody: { listingId: 'invalid-uuid-000', quantity: -1 }, responseBody: { error: err.message } };
   }
 }
