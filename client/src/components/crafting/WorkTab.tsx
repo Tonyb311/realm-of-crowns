@@ -68,6 +68,7 @@ interface WorkTabProps {
   isCancelling: boolean;
   startError?: string;
   equippedTool: EquippedTool | null;
+  actionUsed?: boolean;
 }
 
 export default function WorkTab({
@@ -87,6 +88,7 @@ export default function WorkTab({
   isCancelling,
   startError,
   equippedTool,
+  actionUsed,
 }: WorkTabProps) {
   const [now, setNow] = useState(Date.now());
   const [showToolSelector, setShowToolSelector] = useState(false);
@@ -295,14 +297,23 @@ export default function WorkTab({
         )}
       </div>
 
+      {/* Daily action lockout notice */}
+      {actionUsed && (
+        <div className="p-3 bg-realm-bg-800 border border-realm-border rounded-lg flex items-center gap-2 mb-3">
+          <CheckCircle2 className="w-4 h-4 text-realm-text-muted flex-shrink-0" />
+          <p className="text-sm text-realm-text-muted">Daily action already committed</p>
+        </div>
+      )}
+
       {/* Start work button */}
       <button
         onClick={onStartWork}
-        disabled={!selectedProfession || !selectedResource || isStarting}
+        disabled={!selectedProfession || !selectedResource || isStarting || actionUsed}
+        title={actionUsed ? 'Daily action already committed' : undefined}
         className="w-full py-3 bg-realm-success text-realm-text-primary font-display text-base rounded
           hover:bg-realm-success/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       >
-        {isStarting ? 'Starting...' : 'Start Working'}
+        {actionUsed ? 'Daily Action Used' : isStarting ? 'Starting...' : 'Start Working'}
       </button>
     </div>
   );

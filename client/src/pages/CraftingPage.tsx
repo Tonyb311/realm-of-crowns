@@ -107,6 +107,14 @@ export default function CraftingPage() {
   useGatheringEvents();
   useCraftingEvents();
 
+  // Daily action status — lock out work/craft when action already committed
+  const { data: actionStatus } = useQuery<{ actionUsed: boolean; actionType: string | null }>({
+    queryKey: ['game', 'action-status'],
+    queryFn: async () => (await api.get('/game/action-status')).data,
+    refetchInterval: 60_000,
+  });
+  const actionUsed = actionStatus?.actionUsed ?? false;
+
   // Fetch professions
   const { data: professions } = useQuery<Profession[]>({
     queryKey: ['professions'],
@@ -540,6 +548,7 @@ export default function CraftingPage() {
                 isCancelling={cancelWorkMutation.isPending}
                 startError={startWorkMutation.error?.message}
                 equippedTool={equippedTool ?? null}
+                actionUsed={actionUsed}
               />
             )}
           </main>

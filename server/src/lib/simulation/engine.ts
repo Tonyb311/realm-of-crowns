@@ -115,6 +115,12 @@ export async function decideBotAction(
     return { success: true, detail: 'Bot paused (cooldown)', endpoint: 'none' };
   }
 
+  // 0b. Skip bots that are currently traveling — they already committed travel
+  if (bot.pendingTravel) {
+    console.log(`[SIM] ${bot.characterName} skipping — currently traveling`);
+    return { success: true, detail: 'Currently traveling (awaiting tick resolution)', endpoint: 'none' };
+  }
+
   const intelligence = bot.intelligence ?? 50;
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -237,6 +243,11 @@ export async function decideBotAction(
     const travelResult = await actions.partyTravel(bot);
     if (travelResult.success) return travelResult;
     // Fall through if group travel failed
+  }
+
+  // B3b: Non-leader party members — leave party before acting (travel requires leader)
+  if (bot.partyId && bot.partyRole !== 'leader') {
+    try { await actions.leaveParty(bot); } catch { /* ignore */ }
   }
 
   // B4: Quest-guided daily action

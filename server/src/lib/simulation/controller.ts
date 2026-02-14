@@ -102,110 +102,21 @@ class SimulationController {
   }
 
   // ---------------------------------------------------------------------------
-  // Tick (interval-based, processes botsPerTick bots)
+  // Tick (interval-based) — delegates to runSingleTick so tick resolution fires
   // ---------------------------------------------------------------------------
+  private tickInProgress = false;
+
   private async tick(): Promise<void> {
     if (this.status !== 'running') return;
+    if (this.tickInProgress) return; // prevent overlapping ticks
 
-    const now = Date.now();
-    const activeBots = this.bots.filter((b) => b.isActive);
-    const count = Math.min(this.config.botsPerTick, activeBots.length);
-
-    // Build effective config (focus override)
-    let effectiveConfig = this.config;
-    if (this.focusSystem && this.focusUntil > now) {
-      const focusEnabled: SimulationConfig['enabledSystems'] = {
-        combat: false,
-        crafting: false,
-        gathering: false,
-        market: false,
-        quests: false,
-        governance: false,
-        guilds: false,
-        travel: false,
-        social: false,
-      };
-      // Enable only the focused system if it is a valid key
-      if (this.focusSystem in focusEnabled) {
-        (focusEnabled as any)[this.focusSystem] = true;
-      }
-      effectiveConfig = { ...this.config, enabledSystems: focusEnabled };
-    }
-
-    for (let i = 0; i < count; i++) {
-      const botIdx = this.tickIndex % activeBots.length;
-      this.tickIndex++;
-      const bot = activeBots[botIdx];
-
-      if (!bot.isActive || bot.pausedUntil > now) continue;
-
-      const startTime = Date.now();
-      let result: { success: boolean; detail: string; endpoint: string };
-
-      // Quietly refresh bot state from the database
-      try {
-        await refreshBotState(bot);
-      } catch (_err) {
-        // Ignore refresh errors
-      }
-
-      // Decide and execute action
-      try {
-        if (this.errorStormUntil > now) {
-          result = await errorStormAction(bot);
-        } else {
-          result = await decideBotAction(bot, this.bots, effectiveConfig);
-        }
-      } catch (err: any) {
-        result = {
-          success: false,
-          detail: `Uncaught: ${err.message}`,
-          endpoint: 'error',
-        };
-      }
-
-      const durationMs = Date.now() - startTime;
-
-      // Log activity
-      const entry: ActivityEntry = {
-        timestamp: new Date().toISOString(),
-        characterId: bot.characterId,
-        botName: bot.characterName,
-        profile: bot.profile,
-        action: result.endpoint,
-        endpoint: result.endpoint,
-        success: result.success,
-        detail: result.detail,
-        durationMs,
-      };
-      logActivity(entry);
-
-      // Update bot state
-      bot.lastAction = result.detail;
-      bot.lastActionAt = Date.now();
-      bot.actionsCompleted++;
-
-      if (result.success) {
-        bot.consecutiveErrors = 0;
-      } else {
-        bot.consecutiveErrors++;
-        bot.errorsTotal++;
-
-        // Escalating pause / deactivation on consecutive errors
-        if (bot.consecutiveErrors > 10) {
-          bot.isActive = false;
-          logger.warn(
-            { bot: bot.characterName, errors: bot.consecutiveErrors },
-            'Bot deactivated after >10 consecutive errors',
-          );
-        } else if (bot.consecutiveErrors > 5) {
-          bot.pausedUntil = Date.now() + 30_000;
-          logger.warn(
-            { bot: bot.characterName, errors: bot.consecutiveErrors },
-            'Bot paused 30s after >5 consecutive errors',
-          );
-        }
-      }
+    this.tickInProgress = true;
+    try {
+      await this.runSingleTick();
+    } catch (err: any) {
+      logger.error({ err: err.message }, 'Interval tick error');
+    } finally {
+      this.tickInProgress = false;
     }
   }
 
@@ -233,13 +144,11 @@ class SimulationController {
     const earnerList: { botName: string; profession: string; town: string; earned: number }[] = [];
 
     const activeBots = this.bots.filter((b) => b.isActive);
-    const maxActions = this.config.actionsPerTick;
 
     // -----------------------------------------------------------------------
-    // Phase 1: Bot action loop (each bot commits actions + free market actions)
-    // Bots commit LOCKED_IN actions that processDailyTick will resolve.
+    // Phase 1: Bot action loop — each bot commits exactly 1 daily action
+    // (plus free side-effects handled inside decideBotAction).
     // -----------------------------------------------------------------------
-    // Per-bot tracking structures (populated here, used after market resolution)
     const botGoldBefore = new Map<string, number>();
     const botActionsList = new Map<string, Array<{
       order: number;
@@ -253,10 +162,10 @@ class SimulationController {
     const botMarketOrdersPlacedMap = new Map<string, number>();
 
     for (const bot of activeBots) {
-      // Refresh state before the action loop
+      // Refresh state before the action
       try { await refreshBotState(bot); } catch { /* ignore */ }
 
-      // Record gold before first action
+      // Record gold before action
       const goldBefore = bot.gold;
       botGoldBefore.set(bot.characterId, goldBefore);
 
@@ -269,74 +178,62 @@ class SimulationController {
         error?: string;
       }> = [];
 
-      let botDeactivated = false;
-
-      for (let actionNum = 0; actionNum < maxActions; actionNum++) {
-        const goldBeforeAction = bot.gold;
-
-        // Decide and execute
-        let result: ActionResult;
-        try {
-          result = await decideBotAction(bot, this.bots, this.config);
-        } catch (err: any) {
-          result = { success: false, detail: `Uncaught: ${err.message}`, endpoint: 'error' };
-        }
-
-        // Categorize action
-        const actionType = categorizeAction(result.endpoint);
-        actionBreakdown[actionType] = (actionBreakdown[actionType] || 0) + 1;
-
-        if (result.success) {
-          successes++;
-          bot.consecutiveErrors = 0;
-        } else {
-          failures++;
-          bot.consecutiveErrors++;
-          bot.errorsTotal++;
-          if (result.detail) errors.push(`${bot.characterName}: ${result.detail}`);
-          // Same escalation logic
-          if (bot.consecutiveErrors > 10) {
-            bot.isActive = false;
-            botDeactivated = true;
-          } else if (bot.consecutiveErrors > 5) {
-            bot.pausedUntil = Date.now() + 30_000;
-          }
-        }
-
-        // Quick state refresh between actions to pick up gold/xp changes
-        try { await refreshBotState(bot); } catch { /* ignore */ }
-
-        const actionGoldDelta = bot.gold - goldBeforeAction;
-
-        botActions.push({
-          order: actionNum + 1,
-          type: actionType,
-          detail: result.detail,
-          success: result.success,
-          goldDelta: actionGoldDelta,
-          error: result.success ? undefined : result.detail,
-        });
-
-        // Log each action individually
-        logActivity({
-          timestamp: new Date().toISOString(),
-          characterId: bot.characterId,
-          botName: bot.characterName,
-          profile: bot.profile,
-          action: actionType,
-          endpoint: result.endpoint,
-          success: result.success,
-          detail: result.detail,
-          durationMs: Date.now() - startTime,
-        });
-
-        bot.lastAction = result.detail;
-        bot.lastActionAt = Date.now();
-        bot.actionsCompleted++;
-
-        // If action was idle/paused, or bot was deactivated/paused, stop giving actions
-        if (result.endpoint === 'none' || botDeactivated || bot.pausedUntil > Date.now()) break;
+      // --- Single call to decideBotAction (handles free + daily action) ---
+      const goldBeforeAction = bot.gold;
+      let result: ActionResult;
+      try {
+        result = await decideBotAction(bot, this.bots, this.config);
+      } catch (err: any) {
+        result = { success: false, detail: `Uncaught: ${err.message}`, endpoint: 'error' };
       }
+
+      const actionType = categorizeAction(result.endpoint);
+      actionBreakdown[actionType] = (actionBreakdown[actionType] || 0) + 1;
+
+      if (result.success) {
+        successes++;
+        bot.consecutiveErrors = 0;
+      } else {
+        failures++;
+        bot.consecutiveErrors++;
+        bot.errorsTotal++;
+        if (result.detail) errors.push(`${bot.characterName}: ${result.detail}`);
+        if (bot.consecutiveErrors > 10) {
+          bot.isActive = false;
+        } else if (bot.consecutiveErrors > 5) {
+          bot.pausedUntil = Date.now() + 30_000;
+        }
+      }
+
+      // Refresh after action to pick up gold/xp changes
+      try { await refreshBotState(bot); } catch { /* ignore */ }
+
+      const actionGoldDelta = bot.gold - goldBeforeAction;
+
+      botActions.push({
+        order: 1,
+        type: actionType,
+        detail: result.detail,
+        success: result.success,
+        goldDelta: actionGoldDelta,
+        error: result.success ? undefined : result.detail,
+      });
+
+      logActivity({
+        timestamp: new Date().toISOString(),
+        characterId: bot.characterId,
+        botName: bot.characterName,
+        profile: bot.profile,
+        action: actionType,
+        endpoint: result.endpoint,
+        success: result.success,
+        detail: result.detail,
+        durationMs: Date.now() - startTime,
+      });
+
+      bot.lastAction = result.detail;
+      bot.lastActionAt = Date.now();
+      bot.actionsCompleted++;
 
       // Free market actions (don't consume action slots)
       let botMarketItemsListed = 0;

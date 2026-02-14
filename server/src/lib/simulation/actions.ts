@@ -74,6 +74,16 @@ export async function refreshBotState(bot: BotState): Promise<void> {
     bot.pendingCrafting = !!crafting;
   }
 
+  // Check travel status
+  const travelRes = await get('/travel/status', bot.token);
+  if (travelRes.status >= 200 && travelRes.status < 300) {
+    bot.pendingTravel = !!travelRes.data?.traveling;
+    // Update town if travel completed (bot arrived somewhere new)
+    if (!travelRes.data?.traveling && travelRes.data?.currentTownId) {
+      bot.currentTownId = travelRes.data.currentTownId;
+    }
+  }
+
   // Check party status
   const partyRes = await get('/parties/me', bot.token);
   if (partyRes.status >= 200 && partyRes.status < 300) {

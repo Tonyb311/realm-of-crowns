@@ -13,6 +13,8 @@ import {
   Shield,
   Users,
   Footprints,
+  CheckCircle,
+  Clock,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -99,9 +101,10 @@ interface RouteCardProps {
   onTravelSolo: (routeId: string) => void;
   onFormGroup: (routeId: string) => void;
   isTraveling: boolean;
+  actionUsed?: boolean;
 }
 
-function RouteCard({ route, onTravelSolo, onFormGroup, isTraveling }: RouteCardProps) {
+function RouteCard({ route, onTravelSolo, onFormGroup, isTraveling, actionUsed }: RouteCardProps) {
   const [expanded, setExpanded] = useState(false);
   const encounterPct = getEncounterChancePct(route.dangerLevel);
 
@@ -194,7 +197,8 @@ function RouteCard({ route, onTravelSolo, onFormGroup, isTraveling }: RouteCardP
       <div className="flex border-t border-realm-border">
         <button
           onClick={() => onTravelSolo(route.id)}
-          disabled={isTraveling}
+          disabled={isTraveling || actionUsed}
+          title={actionUsed ? 'Daily action already committed' : undefined}
           className="flex-1 py-3 text-xs font-display text-realm-gold-400 hover:bg-realm-gold-400/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 border-r border-realm-border"
         >
           {isTraveling ? (
@@ -202,15 +206,16 @@ function RouteCard({ route, onTravelSolo, onFormGroup, isTraveling }: RouteCardP
           ) : (
             <Compass className="w-3 h-3" />
           )}
-          Travel Solo
+          {actionUsed ? 'Action Used' : 'Travel Solo'}
         </button>
         <button
           onClick={() => onFormGroup(route.id)}
-          disabled={isTraveling}
+          disabled={isTraveling || actionUsed}
+          title={actionUsed ? 'Daily action already committed' : undefined}
           className="flex-1 py-3 text-xs font-display text-realm-text-secondary hover:bg-realm-bg-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
         >
           <Users className="w-3 h-3" />
-          Form Group
+          {actionUsed ? 'Action Used' : 'Form Group'}
         </button>
       </div>
     </div>
@@ -227,10 +232,27 @@ interface TravelStartModalProps {
   destinationTownId?: string;
 }
 
+interface ActionStatusResponse {
+  actionUsed: boolean;
+  actionType: string | null;
+  resetsAt: string;
+  timeUntilResetMs: number;
+}
+
 export default function TravelStartModal({ isOpen, onClose, destinationTownId }: TravelStartModalProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [groupRouteId, setGroupRouteId] = useState<string | null>(null);
+
+  // Check if daily action is already committed
+  const { data: actionStatus } = useQuery<ActionStatusResponse>({
+    queryKey: ['game', 'action-status'],
+    queryFn: () => api.get('/game/action-status').then(r => r.data),
+    enabled: isOpen,
+    refetchInterval: 60_000,
+  });
+
+  const actionUsed = actionStatus?.actionUsed ?? false;
 
   // Fetch available routes
   const { data: routes, isLoading: routesLoading, error: routesError } = useQuery<TravelRoute[]>({
@@ -334,6 +356,25 @@ export default function TravelStartModal({ isOpen, onClose, destinationTownId }:
             </div>
           )}
 
+          {/* Daily action lockout banner */}
+          {actionUsed && (
+            <div className="mb-4 p-3 bg-realm-bg-800 border border-realm-border rounded-lg flex items-center gap-3">
+              <CheckCircle className="w-5 h-5 text-realm-text-muted flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm text-realm-text-muted">
+                  Daily action already committed
+                  {actionStatus?.actionType && (
+                    <span className="text-realm-text-secondary ml-1">({actionStatus.actionType.toLowerCase()})</span>
+                  )}
+                </p>
+                <p className="text-[10px] text-realm-text-muted/60 flex items-center gap-1 mt-0.5">
+                  <Clock className="w-3 h-3" />
+                  Resets at next tick
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Route list */}
           {!routesLoading && filteredRoutes.length > 0 && !groupRouteId && (
             <div className="space-y-4">
@@ -344,6 +385,7 @@ export default function TravelStartModal({ isOpen, onClose, destinationTownId }:
                   onTravelSolo={(routeId) => travelMutation.mutate(routeId)}
                   onFormGroup={(routeId) => setGroupRouteId(routeId)}
                   isTraveling={travelMutation.isPending}
+                  actionUsed={actionUsed}
                 />
               ))}
             </div>

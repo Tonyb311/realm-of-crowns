@@ -367,6 +367,7 @@ async function createSingleBot(
     isActive: true,
     pendingGathering: false,
     pendingCrafting: false,
+    pendingTravel: false,
     pausedUntil: 0,
     intelligence: config.intelligence,
     partyId: null,

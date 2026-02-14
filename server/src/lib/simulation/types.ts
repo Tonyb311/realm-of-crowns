@@ -32,6 +32,7 @@ export interface BotState {
   isActive: boolean;
   pendingGathering: boolean;
   pendingCrafting: boolean;
+  pendingTravel: boolean;
   pausedUntil: number;
   intelligence: number; // 0-100
   partyId: string | null;       // Current party ID (null if not in a party)
