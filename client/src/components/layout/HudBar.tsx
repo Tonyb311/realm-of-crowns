@@ -86,7 +86,7 @@ export function HudBar() {
   const hpMax = character.maxHp ?? 100;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 h-14 lg:h-16 bg-realm-bg-800/95 backdrop-blur-sm border-b border-realm-border">
+    <div className="sticky top-0 z-50 h-14 lg:h-16 bg-realm-bg-800/95 backdrop-blur-sm border-b border-realm-border">
       <div className="max-w-screen-2xl mx-auto px-3 flex items-center h-full gap-3">
         {/* Left: Avatar + Name + Level */}
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -99,7 +99,7 @@ export function HudBar() {
             <span className="text-realm-text-gold font-display text-xs font-semibold truncate max-w-[100px]">
               {character.name}
             </span>
-            <Tooltip content={`Level ${character.level}`}>
+            <Tooltip content={`Level ${character.level}`} position="bottom">
               <span className="flex items-center gap-0.5 text-[10px] text-realm-gold-400 bg-realm-gold-400/10 border border-realm-gold-400/30 rounded px-1.5 py-0.5 font-display">
                 <Crown className="w-2.5 h-2.5" />
                 {character.level}
@@ -120,7 +120,7 @@ export function HudBar() {
 
         {/* Center: HP bar */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <Tooltip content={`HP: ${hpCurrent}/${hpMax}`}>
+          <Tooltip content={`HP: ${hpCurrent}/${hpMax}`} position="bottom">
             <div className="flex items-center gap-1.5">
               <Heart className="w-3.5 h-3.5 text-realm-hp flex-shrink-0" />
               <div className="w-20">
@@ -138,7 +138,7 @@ export function HudBar() {
 
         {/* XP bar (hidden on small screens) */}
         <div className="hidden md:flex items-center gap-1.5 flex-shrink-0">
-          <Tooltip content={`XP: ${character.xp}/${xpForNextLevel}`}>
+          <Tooltip content={`XP: ${character.xp}/${xpForNextLevel}`} position="bottom">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-realm-text-muted">XP</span>
               <div className="w-24">
@@ -155,7 +155,7 @@ export function HudBar() {
         <div className="flex-1" />
 
         {/* Gold */}
-        <Tooltip content={`${(character.gold ?? 0).toLocaleString()} gold`}>
+        <Tooltip content={`${(character.gold ?? 0).toLocaleString()} gold`} position="bottom">
           <div className="flex items-center gap-1 text-xs flex-shrink-0">
             <CircleDollarSign className="w-3.5 h-3.5 text-realm-gold-400" />
             <span className="text-realm-gold-400 font-display tabular-nums">
@@ -169,7 +169,7 @@ export function HudBar() {
 
         {/* Location (when in town, hidden on small) */}
         {!isTraveling && character.currentTownName && (
-          <Tooltip content="Current location">
+          <Tooltip content="Current location" position="bottom">
             <Link
               to={character.currentTownId ? '/town' : '/map'}
               className="hidden lg:flex items-center gap-1 text-xs text-realm-text-secondary hover:text-realm-gold-400 transition-colors flex-shrink-0"
@@ -182,7 +182,7 @@ export function HudBar() {
 
         {/* Travel status indicator (when traveling, hidden on small) */}
         {isTraveling && travelStatus?.traveling && (
-          <Tooltip content="Click to view journey">
+          <Tooltip content="Click to view journey" position="bottom">
             <Link
               to="/travel"
               className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded bg-realm-gold-400/10 border border-realm-gold-400/30 text-realm-gold-400 hover:bg-realm-gold-400/15 transition-colors flex-shrink-0"
@@ -200,7 +200,7 @@ export function HudBar() {
 
         {/* Traveling compact (mobile fallback) */}
         {isTraveling && (
-          <Tooltip content="Traveling">
+          <Tooltip content="Traveling" position="bottom">
             <Link
               to="/travel"
               className="flex sm:hidden items-center gap-1 text-xs text-realm-gold-400 flex-shrink-0"
@@ -212,7 +212,7 @@ export function HudBar() {
 
         {/* Socket connection status */}
         {socketStatus !== 'connected' && (
-          <Tooltip content={socketStatus === 'reconnecting' ? 'Reconnecting...' : 'Disconnected'}>
+          <Tooltip content={socketStatus === 'reconnecting' ? 'Reconnecting...' : 'Disconnected'} position="bottom">
             <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
               socketStatus === 'reconnecting' ? 'bg-realm-gold-400 animate-pulse' : 'bg-realm-danger'
             }`} />
@@ -223,7 +223,7 @@ export function HudBar() {
         <div className="w-px h-6 bg-realm-border flex-shrink-0" />
 
         {/* Codex / Help */}
-        <Tooltip content="Codex">
+        <Tooltip content="Codex" position="bottom">
           <button
             onClick={() => navigate('/codex')}
             className="text-realm-text-muted hover:text-realm-gold-400 transition-colors flex-shrink-0"

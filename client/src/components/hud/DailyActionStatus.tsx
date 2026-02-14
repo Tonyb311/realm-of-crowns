@@ -31,7 +31,7 @@ export function DailyActionStatus() {
 
   if (actionUsed) {
     return (
-      <Tooltip content={`Daily action used: ${actionType ?? 'Unknown'}. Resets at next tick.`}>
+      <Tooltip content={`Daily action used: ${actionType ?? 'Unknown'}. Resets at next tick.`} position="bottom">
         <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-realm-bg-600/40 border border-realm-border">
           <CheckCircle className="w-3 h-3 text-realm-text-muted flex-shrink-0" />
           <span className="text-[10px] text-realm-text-muted truncate max-w-[80px] hidden sm:inline">
@@ -45,7 +45,7 @@ export function DailyActionStatus() {
   }
 
   return (
-    <Tooltip content="You have 1 daily action available. Gather, travel, or craft!">
+    <Tooltip content="You have 1 daily action available. Gather, travel, or craft!" position="bottom">
       <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-realm-gold-400/10 border border-realm-gold-400/30 animate-pulse-subtle">
         <Zap className="w-3 h-3 text-realm-gold-400 flex-shrink-0" />
         <span className="text-[10px] text-realm-gold-400 font-display whitespace-nowrap hidden sm:inline">
