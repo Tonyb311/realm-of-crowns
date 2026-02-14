@@ -71,6 +71,7 @@ export interface SimulationStatus {
   bots: BotSummary[];
   recentActivity: ActivityEntry[];
   intelligence: number;
+  gameDay: number;
   gameDayOffset: number;
   runProgress: { current: number; total: number } | null;
   lastTickNumber: number;

@@ -741,6 +741,7 @@ class SimulationController {
       bots: this.getBotSummaries(),
       recentActivity: getRecentActivity(50),
       intelligence: this.seedConfig.intelligence,
+      gameDay: getGameDay(),
       gameDayOffset: getGameDayOffset(),
       runProgress: this.runProgress,
       lastTickNumber: this.singleTickCount,

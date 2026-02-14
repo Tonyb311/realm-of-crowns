@@ -79,6 +79,7 @@ interface SimulationStatus {
   uptime: number;
   dbTestPlayers: number;
   intelligence: number;
+  gameDay: number;
   gameDayOffset: number;
   runProgress: { current: number; total: number } | null;
   lastTickNumber: number;
@@ -676,7 +677,7 @@ export default function SimulationDashboardPage() {
       {/* ================================================================= */}
       {/* 1. Header Row                                                     */}
       {/* ================================================================= */}
-      <div className="flex flex-wrap items-center gap-4 pr-12">
+      <div className="flex flex-wrap items-center gap-4 pr-20">
         <h1 className="text-2xl font-display text-realm-gold-400">Simulation Dashboard</h1>
         <SimStatusBadge status={currentStatus} />
         {status?.runProgress && (
@@ -688,7 +689,7 @@ export default function SimulationDashboardPage() {
         <div className="flex items-center gap-1.5 text-realm-text-muted text-sm ml-auto">
           <Clock className="w-4 h-4" />
           <span>
-            Game Day: <span className="text-realm-gold-400 font-display">{lastTickResult?.gameDay ?? status?.gameDayOffset ?? 0}</span>
+            Game Day: <span className="text-realm-gold-400 font-display">{lastTickResult?.gameDay ?? status?.gameDay ?? 0}</span>
           </span>
           {(status?.lastTickNumber ?? 0) > 0 && !status?.runProgress && (
             <span className="ml-3">

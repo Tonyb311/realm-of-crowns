@@ -88,14 +88,20 @@ async function tryDailyWithFallback(
   order: DailyActionKey[],
   enabled: SimulationConfig['enabledSystems'],
 ): Promise<ActionResult> {
+  const failureReasons: string[] = [];
   for (const action of order) {
-    if (action === 'gather' && !enabled.gathering) continue;
-    if (action === 'craft' && !enabled.crafting) continue;
-    if (action === 'travel' && !enabled.travel) continue;
+    if (action === 'gather' && !enabled.gathering) { failureReasons.push(`${action}: disabled`); continue; }
+    if (action === 'craft' && !enabled.crafting) { failureReasons.push(`${action}: disabled`); continue; }
+    if (action === 'travel' && !enabled.travel) { failureReasons.push(`${action}: disabled`); continue; }
     const result = await executeDailyAction(action, bot);
     if (result.success) return result;
+    const reason = `${action}: ${result.detail} (${result.endpoint})`;
+    failureReasons.push(reason);
+    console.log(`[SIM] ${bot.characterName} ${action.toUpperCase()} FAILED: ${result.detail} [endpoint: ${result.endpoint}]`);
   }
-  return { success: false, detail: 'No daily action available (all attempts failed)', endpoint: 'none' };
+  const allReasons = failureReasons.join(' | ');
+  console.log(`[SIM] ${bot.characterName} ALL ACTIONS FAILED: ${allReasons}`);
+  return { success: false, detail: `All failed — ${allReasons}`, endpoint: 'none' };
 }
 
 // ---- Main decision function ----
