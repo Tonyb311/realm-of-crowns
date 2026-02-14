@@ -13,16 +13,13 @@ import {
   MapPin,
   Users,
   Wheat,
-  Shield,
-  Loader2,
   MessageSquare,
   CheckCircle,
-  Clock,
 } from 'lucide-react';
 import api from '../services/api';
 import { getSocket } from '../services/socket';
 import QuestDialog, { type QuestOffer } from '../components/QuestDialog';
-import { RealmPanel, RealmButton, RealmBadge } from '../components/ui/realm-index';
+import { RealmPanel, RealmButton } from '../components/ui/realm-index';
 import PartyPanel from '../components/party/PartyPanel';
 import { ActionConfirmModal } from '../components/hud/ActionConfirmModal';
 
@@ -477,7 +474,7 @@ export default function TownPage() {
               </dl>
             </RealmPanel>
 
-            {/* Gathering Summary */}
+            {/* Gathering */}
             {!gatheringLoading && gatheringData?.spot && (
               <div
                 className={`bg-realm-bg-700 border rounded-lg overflow-hidden transition-colors ${
@@ -486,8 +483,8 @@ export default function TownPage() {
                     : 'border-realm-border hover:border-realm-gold-500/40 cursor-pointer'
                 }`}
                 onClick={() => {
-                  const el = document.getElementById('gathering-section');
-                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  if (actionStatus?.actionUsed || gatherMutation.isPending) return;
+                  setShowConfirmModal(true);
                 }}
               >
                 <div className="flex items-center justify-between px-4 pt-3 pb-2">
@@ -510,18 +507,41 @@ export default function TownPage() {
                       <span className="text-lg leading-none mt-0.5">{gatheringData.spot.icon}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-realm-text-primary truncate">{gatheringData.spot.name}</p>
-                        <div className="flex items-center justify-between mt-0.5">
-                          <span className="text-[11px] text-realm-text-muted">
-                            {gatheringData.spot.item.name} (x{gatheringData.spot.minYield}-{gatheringData.spot.maxYield})
-                          </span>
-                          <span className="text-[11px] text-realm-gold-400 font-display ml-1 flex-shrink-0">
-                            {gatheringData.spot.item.baseValue}g ea
-                          </span>
-                        </div>
+                        <span className="text-[11px] text-realm-text-muted">
+                          {gatheringData.spot.item.name} (x{gatheringData.spot.minYield}-{gatheringData.spot.maxYield})
+                        </span>
                       </div>
                     </div>
                   )}
                 </div>
+
+                {/* Gather result toast */}
+                {gatherResult?.success && (
+                  <div className="px-4 pb-3">
+                    <div className="bg-realm-gold-500/10 border border-realm-gold-500/20 rounded p-2">
+                      <div className="flex items-center gap-2">
+                        <span>{gatherResult.gathered.item.icon}</span>
+                        <span className="text-xs text-realm-gold-400 font-display">
+                          {gatherResult.gathered.item.name} x{gatherResult.gathered.quantity}
+                        </span>
+                        {gatherResult.xpEarned != null && gatherResult.xpEarned > 0 && (
+                          <span className="text-[10px] text-realm-teal-400 font-display">
+                            +{gatherResult.xpEarned} XP
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Gather error */}
+                {gatherMutation.isError && (
+                  <div className="px-4 pb-3">
+                    <p className="text-[11px] text-realm-danger">
+                      {(gatherMutation.error as any)?.response?.data?.error || 'Gathering failed.'}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -579,122 +599,6 @@ export default function TownPage() {
                 })}
               </div>
             </section>
-
-            {/* Gathering Spot */}
-            {!gatheringLoading && gatheringData?.spot && (
-              <section id="gathering-section">
-                <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
-                  <Wheat className="w-5 h-5 text-realm-gold-400" />
-                  Gathering
-                </h2>
-                <div className="bg-realm-bg-700 border border-realm-border rounded-md p-5">
-                  {/* Spot header */}
-                  <div className="flex items-start gap-3 mb-3">
-                    <span className="text-3xl">{gatheringData.spot.icon}</span>
-                    <div className="flex-1">
-                      <h3 className="font-display text-lg text-realm-gold-400">{gatheringData.spot.name}</h3>
-                      <p className="text-xs text-realm-text-muted capitalize">{gatheringData.spot.resourceType}</p>
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-sm text-realm-text-secondary mb-4">{gatheringData.spot.description}</p>
-
-                  {/* What you'll get */}
-                  <div className="flex items-center gap-3 mb-4 bg-realm-bg-800 rounded-md p-3">
-                    <span className="text-xl">{gatheringData.spot.item.icon}</span>
-                    <div className="flex-1">
-                      <span className="text-sm text-realm-text-primary">{gatheringData.spot.item.name}</span>
-                      <span className="text-xs text-realm-text-muted ml-2">
-                        x{gatheringData.spot.minYield}-{gatheringData.spot.maxYield}
-                      </span>
-                    </div>
-                    <span className="text-xs text-realm-gold-400">{gatheringData.spot.item.baseValue}g each</span>
-                    {gatheringData.spot.item.isFood && (
-                      <RealmBadge variant="uncommon">Edible</RealmBadge>
-                    )}
-                  </div>
-
-                  {/* Committed action notice */}
-                  {actionStatus?.actionUsed && (
-                    <div className="mb-4 flex items-center gap-2 bg-realm-bg-800 border border-realm-border rounded-md p-3">
-                      <CheckCircle className="w-4 h-4 text-realm-text-muted flex-shrink-0" />
-                      <div className="flex-1">
-                        <p className="text-xs text-realm-text-muted">
-                          {gatheringData.committedAction ? (
-                            <>
-                              <span className="text-realm-text-secondary font-semibold">
-                                {gatheringData.committedAction.detail}
-                              </span>{' '}
-                              committed -- results after next tick
-                            </>
-                          ) : (
-                            <>Daily action already used today</>
-                          )}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1 text-[10px] text-realm-text-muted">
-                        <Clock className="w-3 h-3" />
-                        <span>Resets at tick</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Gather button */}
-                  <RealmButton
-                    variant="primary"
-                    className="w-full"
-                    onClick={() => setShowConfirmModal(true)}
-                    disabled={!gatheringData.canGather || gatherMutation.isPending || actionStatus?.actionUsed}
-                  >
-                    {gatherMutation.isPending ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        Gathering...
-                      </>
-                    ) : gatheringData.canGather && !actionStatus?.actionUsed ? (
-                      'Commit Daily Action'
-                    ) : gatheringData.reason === 'no_actions' || actionStatus?.actionUsed ? (
-                      'Daily Action Used'
-                    ) : (
-                      'Cannot Gather'
-                    )}
-                  </RealmButton>
-
-                  {/* Gather result */}
-                  {gatherResult?.success && (
-                    <div className="mt-3 bg-realm-gold-500/10 border border-realm-gold-500/20 rounded-md p-3">
-                      <p className="text-sm text-realm-gold-400 font-display mb-1">
-                        {gatherResult.gathered.message}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{gatherResult.gathered.item.icon}</span>
-                        <span className="text-sm text-realm-text-primary">
-                          {gatherResult.gathered.item.name} x{gatherResult.gathered.quantity}
-                        </span>
-                        <span className="text-xs text-realm-text-muted">
-                          ({gatherResult.gathered.item.baseValue * gatherResult.gathered.quantity}g value)
-                        </span>
-                        {gatherResult.xpEarned != null && gatherResult.xpEarned > 0 && (
-                          <span className="text-xs text-realm-teal-400 font-display">
-                            +{gatherResult.xpEarned} XP
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Error message */}
-                  {gatherMutation.isError && (
-                    <div className="mt-3 bg-realm-danger/10 border border-realm-danger/20 rounded-md p-3">
-                      <p className="text-sm text-realm-danger">
-                        {(gatherMutation.error as any)?.response?.data?.error || 'Gathering failed. Try again.'}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </section>
-            )}
 
             {/* Quest Givers */}
             {questNpcs && questNpcs.length > 0 && (
