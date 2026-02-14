@@ -82,11 +82,11 @@ function raceToRegistryKey(race: Race): string {
   return race.toLowerCase();
 }
 
-// Gold starting amounts by race tier (0 gold — bots start with 5 Basic Rations instead)
+// Gold starting amounts by race tier
 const GOLD_BY_TIER: Record<string, number> = {
-  core: 0,
-  common: 0,
-  exotic: 0,
+  core: 100,
+  common: 100,
+  exotic: 100,
 };
 
 // HP by class
@@ -357,6 +357,7 @@ async function createSingleBot(
     class: charClass,
     currentTownId: townId,
     gold,
+    xp: accumulatedXP,
     level: startLevel,
     professions: startingProfession ? [startingProfession] : [],
     lastActionAt: Date.now(),

@@ -51,6 +51,7 @@ export async function refreshBotState(bot: BotState): Promise<void> {
   if (charRes.status >= 200 && charRes.status < 300 && charRes.data) {
     const d = charRes.data.character || charRes.data;
     if (d.gold !== undefined) bot.gold = d.gold;
+    if (d.xp !== undefined) bot.xp = d.xp;
     if (d.level !== undefined) bot.level = d.level;
     if (d.currentTownId) bot.currentTownId = d.currentTownId;
     if (Array.isArray(d.professions)) {
@@ -670,6 +671,7 @@ export async function travel(bot: BotState): Promise<ActionResult> {
 
     const res = await post(endpoint, bot.token, { routeId });
     if (res.status >= 200 && res.status < 300) {
+      bot.pendingTravel = true;
       return {
         success: true,
         detail: `Traveling to ${destName}`,
@@ -1150,6 +1152,7 @@ export async function partyTravel(bot: BotState): Promise<ActionResult> {
     // The /travel/start endpoint detects party leaders and initiates group travel
     const res = await post(endpoint, bot.token, { routeId });
     if (res.status >= 200 && res.status < 300) {
+      bot.pendingTravel = true;
       return {
         success: true,
         detail: `Party traveling to ${destName}`,

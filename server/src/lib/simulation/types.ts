@@ -22,6 +22,7 @@ export interface BotState {
   class: string;
   currentTownId: string;
   gold: number;
+  xp: number;
   level: number;
   professions: string[];
   lastActionAt: number;

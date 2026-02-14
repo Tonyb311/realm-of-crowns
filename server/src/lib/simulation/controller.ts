@@ -155,6 +155,7 @@ class SimulationController {
     // (plus free side-effects handled inside decideBotAction).
     // -----------------------------------------------------------------------
     const botGoldBefore = new Map<string, number>();
+    const botXpBefore = new Map<string, number>();
     const botTownBefore = new Map<string, string>();
     const botLevelBefore = new Map<string, number>();
     const botActionsList = new Map<string, Array<{
@@ -175,6 +176,7 @@ class SimulationController {
       // Record state before action
       const goldBefore = bot.gold;
       botGoldBefore.set(bot.characterId, goldBefore);
+      botXpBefore.set(bot.characterId, bot.xp);
       botTownBefore.set(bot.characterId, bot.currentTownId);
       botLevelBefore.set(bot.characterId, bot.level);
 
@@ -247,7 +249,7 @@ class SimulationController {
       // Free market actions (don't consume action slots)
       let botMarketItemsListed = 0;
       let botMarketOrdersPlaced = 0;
-      if (this.config.enabledSystems.market && bot.currentTownId && bot.isActive) {
+      if (this.config.enabledSystems.market && bot.currentTownId && bot.isActive && !bot.pendingTravel) {
         try {
           const { doFreeMarketActions } = await import('./actions');
           const mktStart = Date.now();
@@ -458,6 +460,8 @@ class SimulationController {
 
       // Per-bot tick resolution entry
       const dailyAction = botActions.find(a => !a.type.includes('[FREE]') && a.success);
+      const xpBefore = botXpBefore.get(bot.characterId) ?? 0;
+      const xpAfter = bot.xp;
       this.simLogger.logTickResolution({
         tick: this.singleTickCount + 1,
         botName: bot.characterName,
@@ -465,7 +469,7 @@ class SimulationController {
         actionType: dailyAction?.type || 'none',
         actionDetail: dailyAction?.detail || 'No action committed',
         resourceGained: dailyAction?.type === 'gather' && dailyAction?.detail ? dailyAction.detail : '',
-        xpEarned: 0, // XP tracking would require DB query — omitted for performance
+        xpEarned: xpAfter - xpBefore,
         levelBefore: botLevelBefore.get(bot.characterId) ?? bot.level,
         levelAfter: bot.level,
         goldBefore: goldBefore,

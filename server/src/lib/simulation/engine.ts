@@ -14,6 +14,13 @@ import * as actions from './actions';
 import { PROFESSION_UNLOCK_LEVEL } from '@shared/data/progression/xp-curve';
 import { SimulationLogger, captureBotState } from './sim-logger';
 
+// ---- Crafting professions — bots need one of these to attempt crafting ----
+const CRAFTING_PROFESSIONS = new Set([
+  'SMELTER', 'BLACKSMITH', 'ARMORER', 'WOODWORKER', 'TANNER', 'LEATHERWORKER',
+  'TAILOR', 'ALCHEMIST', 'ENCHANTER', 'COOK', 'BREWER', 'JEWELER', 'FLETCHER',
+  'MASON', 'SCRIBE',
+]);
+
 // ---- Daily action keys (the only actions that consume the daily action slot) ----
 type DailyActionKey = 'gather' | 'craft' | 'travel';
 
@@ -51,14 +58,19 @@ function weightedSelect(weights: Partial<Record<DailyActionKey, number>>): Daily
   return entries[0][0];
 }
 
-// ---- Filter weights by enabled systems ----
+// ---- Filter weights by enabled systems + bot capabilities ----
 function filterDailyWeights(
   weights: Record<DailyActionKey, number>,
   enabled: SimulationConfig['enabledSystems'],
+  bot?: BotState,
 ): Partial<Record<DailyActionKey, number>> {
   const filtered: Partial<Record<DailyActionKey, number>> = {};
   if (enabled.gathering) filtered.gather = weights.gather;
-  if (enabled.crafting) filtered.craft = weights.craft;
+  if (enabled.crafting) {
+    // Only include craft if bot has a crafting profession
+    const hasCraftingProf = bot?.professions.some(p => CRAFTING_PROFESSIONS.has(p.toUpperCase())) ?? true;
+    if (hasCraftingProf) filtered.craft = weights.craft;
+  }
   if (enabled.travel) filtered.travel = weights.travel;
   return filtered;
 }
@@ -101,6 +113,9 @@ async function tryDailyWithFallback(
   for (const action of order) {
     if (action === 'gather' && !enabled.gathering) { failureReasons.push(`${action}: disabled`); continue; }
     if (action === 'craft' && !enabled.crafting) { failureReasons.push(`${action}: disabled`); continue; }
+    if (action === 'craft' && !bot.professions.some(p => CRAFTING_PROFESSIONS.has(p.toUpperCase()))) {
+      failureReasons.push(`${action}: no crafting profession`); continue;
+    }
     if (action === 'travel' && !enabled.travel) { failureReasons.push(`${action}: disabled`); continue; }
 
     attemptNumber++;
@@ -169,6 +184,16 @@ export async function decideBotAction(
   // 0b. Skip bots that are currently traveling — they already committed travel
   if (bot.pendingTravel) {
     console.log(`[SIM] ${bot.characterName} skipping — currently traveling`);
+    if (logger && tick != null) {
+      logger.logFromResult(bot, { success: true, detail: 'Currently traveling (skipped)', endpoint: 'none' }, {
+        tick,
+        phase: 'daily',
+        intent: 'travel_skip',
+        attemptNumber: 0,
+        durationMs: 0,
+        dailyActionUsed: false,
+      });
+    }
     return { success: true, detail: 'Currently traveling (awaiting tick resolution)', endpoint: 'none' };
   }
 
@@ -351,7 +376,7 @@ export async function decideBotAction(
 
   // B5: Profile-weighted daily action selection
   const profileWeights = DAILY_WEIGHTS[bot.profile] || DAILY_WEIGHTS.balanced;
-  const filteredWeights = filterDailyWeights(profileWeights, config.enabledSystems);
+  const filteredWeights = filterDailyWeights(profileWeights, config.enabledSystems, bot);
 
   if (Object.keys(filteredWeights).length > 0) {
     // Intelligence modulation: sometimes pick random instead of profile-based
