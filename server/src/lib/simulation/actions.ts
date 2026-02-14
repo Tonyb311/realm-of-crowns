@@ -112,7 +112,31 @@ export async function learnProfession(
 }
 
 // ---------------------------------------------------------------------------
-// 3. startGathering
+// 3. gatherFromSpot — NEW spot-based gathering (no profession required)
+// Uses POST /gathering/gather which creates a LOCKED_IN DailyAction
+// resolved at tick time. Works for ALL characters in any town with a spot.
+// ---------------------------------------------------------------------------
+
+export async function gatherFromSpot(bot: BotState): Promise<ActionResult> {
+  const endpoint = '/gathering/gather';
+  try {
+    const res = await post(endpoint, bot.token, {});
+    if (res.status >= 200 && res.status < 300) {
+      return {
+        success: true,
+        detail: `Gathering ${res.data?.itemName || 'resources'} at ${res.data?.spotName || 'local spot'}`,
+        endpoint,
+      };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 3b. startGathering — OLD resource-based gathering (requires profession)
+// Kept as fallback for profession-specific gathering via /work/start
 // ---------------------------------------------------------------------------
 
 export async function startGathering(bot: BotState): Promise<ActionResult> {

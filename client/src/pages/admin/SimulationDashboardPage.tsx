@@ -80,6 +80,8 @@ interface SimulationStatus {
   dbTestPlayers: number;
   intelligence: number;
   gameDayOffset: number;
+  runProgress: { current: number; total: number } | null;
+  lastTickNumber: number;
   bots: BotSummary[];
   recentActivity: ActivityEntry[];
 }
@@ -363,6 +365,7 @@ export default function SimulationDashboardPage() {
   const [showBotRoster, setShowBotRoster] = useState(false);
   const [focusSystem, setFocusSystem] = useState<string>(FOCUS_SYSTEMS[0]);
   const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
+  const [isMultiTickRunning, setIsMultiTickRunning] = useState(false);
 
   // -- Queries --------------------------------------------------------------
 
@@ -377,7 +380,9 @@ export default function SimulationDashboardPage() {
     queryFn: async () => (await api.get('/admin/simulation/status')).data,
     refetchInterval: (query) => {
       const s = query.state.data?.status;
-      return s === 'running' ? 5000 : 30000;
+      if (s === 'running') return 5000;
+      if (isMultiTickRunning || query.state.data?.runProgress) return 3000;
+      return 30000;
     },
     retry: (failureCount, err: any) => {
       if (err?.response?.status === 429) return failureCount < 3;
@@ -523,15 +528,21 @@ export default function SimulationDashboardPage() {
   });
 
   const runMutation = useMutation({
-    mutationFn: async () =>
-      (await api.post('/admin/simulation/run', { ticks: runTickCount })).data,
+    mutationFn: async () => {
+      setIsMultiTickRunning(true);
+      return (await api.post('/admin/simulation/run', { ticks: runTickCount })).data;
+    },
     onSuccess: (data: { ticksRun: number; results: SimTickResult[] }) => {
+      setIsMultiTickRunning(false);
       const results = data.results;
       if (results.length > 0) setLastTickResult(results[results.length - 1]);
       toast.success(`Completed ${data.ticksRun} ticks`);
       queryClient.invalidateQueries({ queryKey: ['admin', 'simulation'] });
     },
-    onError: (err: any) => toast.error(err.response?.data?.error || 'Run failed'),
+    onError: (err: any) => {
+      setIsMultiTickRunning(false);
+      toast.error(err.response?.data?.error || 'Run failed');
+    },
   });
 
   const cleanupMutation = useMutation({
@@ -665,14 +676,25 @@ export default function SimulationDashboardPage() {
       {/* ================================================================= */}
       {/* 1. Header Row                                                     */}
       {/* ================================================================= */}
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4 pr-12">
         <h1 className="text-2xl font-display text-realm-gold-400">Simulation Dashboard</h1>
         <SimStatusBadge status={currentStatus} />
+        {status?.runProgress && (
+          <span className="inline-flex items-center gap-1.5 text-sm font-display text-realm-gold-400 bg-realm-gold-500/10 border border-realm-gold-500/30 px-3 py-1 rounded">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            Tick {status.runProgress.current} / {status.runProgress.total}
+          </span>
+        )}
         <div className="flex items-center gap-1.5 text-realm-text-muted text-sm ml-auto">
           <Clock className="w-4 h-4" />
           <span>
             Game Day: <span className="text-realm-gold-400 font-display">{lastTickResult?.gameDay ?? status?.gameDayOffset ?? 0}</span>
           </span>
+          {(status?.lastTickNumber ?? 0) > 0 && !status?.runProgress && (
+            <span className="ml-3">
+              Last Tick: <span className="text-realm-text-secondary font-medium">{status?.lastTickNumber}</span>
+            </span>
+          )}
           {status?.uptime ? (
             <span className="ml-3">
               Uptime: <span className="text-realm-text-secondary font-medium">{formatUptime(status.uptime)}</span>
@@ -1016,7 +1038,7 @@ export default function SimulationDashboardPage() {
         />
         <StatCard
           icon={<Gauge className="w-4 h-4 text-realm-gold-400" />}
-          label="Actions This Tick"
+          label={lastTickResult ? `Actions — Tick ${lastTickResult.tickNumber}` : 'Actions This Tick'}
           value={lastTickResult ? String(lastTickResult.botsProcessed) : '-'}
           sub={
             lastTickResult

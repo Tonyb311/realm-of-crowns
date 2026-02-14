@@ -49,6 +49,7 @@ function categorizeAction(endpoint: string): string {
   if (endpoint.includes('guild')) return 'guild';
   if (endpoint.includes('equip')) return 'equip';
   if (endpoint.includes('profession')) return 'profession';
+  if (endpoint.includes('parties') || endpoint.includes('party')) return 'party';
   if (endpoint === 'none') return 'idle';
   return 'other';
 }
@@ -67,6 +68,7 @@ class SimulationController {
   private singleTickCount: number = 0;   // sequential counter for runSingleTick
   private tickHistory: SimTickResult[] = [];
   private botDayLogs: BotDayLog[] = [];
+  private runProgress: { current: number; total: number } | null = null;
 
   // ---------------------------------------------------------------------------
   // Seed bots
@@ -611,9 +613,15 @@ class SimulationController {
   // ---------------------------------------------------------------------------
   async runTicks(n: number): Promise<SimTickResult[]> {
     const results: SimTickResult[] = [];
-    for (let i = 0; i < n; i++) {
-      const result = await this.runSingleTick();
-      results.push(result);
+    this.runProgress = { current: 0, total: n };
+    try {
+      for (let i = 0; i < n; i++) {
+        this.runProgress.current = i + 1;
+        const result = await this.runSingleTick();
+        results.push(result);
+      }
+    } finally {
+      this.runProgress = null;
     }
     return results;
   }
@@ -734,6 +742,8 @@ class SimulationController {
       recentActivity: getRecentActivity(50),
       intelligence: this.seedConfig.intelligence,
       gameDayOffset: getGameDayOffset(),
+      runProgress: this.runProgress,
+      lastTickNumber: this.singleTickCount,
     };
   }
 

@@ -141,6 +141,21 @@ const RESOURCE_MAP: Record<string, { item: GatheringItem; icon: string }> = {
   clay:     { item: CLAY,            icon: '\uD83C\uDFFA' },
 };
 
+/**
+ * Maps gathering spot resourceType to the profession that qualifies for the XP bonus.
+ * Used by daily tick to award +5 XP if the character has the matching profession.
+ */
+export const GATHER_SPOT_PROFESSION_MAP: Record<string, string> = {
+  orchard:  'FARMER',
+  fishing:  'FISHERMAN',
+  berry:    'HERBALIST',
+  herb:     'HERBALIST',
+  mine:     'MINER',
+  forest:   'LUMBERJACK',
+  quarry:   'MINER',
+  clay:     'MINER',
+};
+
 // ============================================================
 // HELPER TO BUILD SPOT DEFINITIONS
 // ============================================================

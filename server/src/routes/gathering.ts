@@ -122,6 +122,7 @@ router.post('/gather', authGuard, characterGuard, async (req: AuthenticatedReque
           type: 'town_gathering',
           townId: town.id,
           spotName: spot.name,
+          resourceType: spot.resourceType,
           itemName: spot.item.templateName,
           templateName: spot.item.templateName,
           itemType: spot.item.type === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL',

@@ -137,15 +137,22 @@ export const XP_TABLE: XpTableEntry[] = buildXpTable();
  */
 export const ACTION_XP = {
   // -- Gathering --
-  // Old: (10 + (tier-1)*5) / 2 = 5-12 per action (designed for many actions/day)
-  // New: 15-30 per action (one action per day must feel meaningful)
-  WORK_GATHER_BASE: 15,          // Base XP for a tier-1 gather
+  // Formula: base + professionBonus (if matching profession) + levelScaling (1 per level)
+  GATHER_BASE: 5,                // Base XP per gather action
+  GATHER_PROFESSION_BONUS: 5,    // +5 if character has a matching gathering profession
+  GATHER_LEVEL_SCALING: 1,       // +1 per character level
+
+  // Legacy gathering constants (used by resource-based gathering for profession XP calc)
+  WORK_GATHER_BASE: 15,          // Base profession XP for a tier-1 gather
   WORK_GATHER_PER_TIER: 5,       // +5 per tier above 1 (T1=15, T2=20, T3=25, T4=30)
 
   // -- Crafting --
-  // Old: recipe.xpReward directly (values vary 10-50)
-  // New: multiplier on recipe.xpReward to scale existing recipe definitions
-  // Recipes already have xpReward baked in; this multiplier adjusts them for daily pacing
+  // Formula: base + professionBonus (if matching profession) + levelScaling (1 per level)
+  CRAFT_BASE: 8,                 // Base XP per craft action (more than gathering — requires materials)
+  CRAFT_PROFESSION_BONUS: 5,     // +5 if character has a matching crafting profession
+  CRAFT_LEVEL_SCALING: 1,        // +1 per character level
+
+  // Legacy craft multiplier (used for profession XP calc)
   WORK_CRAFT_MULTIPLIER: 0.8,    // 80% of recipe.xpReward (recipes range 10-50, so 8-40 XP)
 
   // -- Travel --

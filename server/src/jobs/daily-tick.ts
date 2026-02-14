@@ -27,6 +27,7 @@ import { qualityRoll } from '@shared/utils/dice';
 import { getProficiencyBonus, getModifier as getStatModifier } from '@shared/utils/bounded-accuracy';
 import { getProfessionByType } from '@shared/data/professions';
 import { ACTION_XP } from '@shared/data/progression';
+import { GATHER_SPOT_PROFESSION_MAP } from '@shared/data/gathering';
 import {
   emitDailyReportReady,
   emitNotification,
@@ -989,8 +990,10 @@ async function processGatherAction(
   // Award profession XP
   await addProfessionXP(char.id, professionType, xpGained, `gathered_${resource.name.toLowerCase().replace(/\s+/g, '_')}`);
 
-  // Award character XP
-  const characterXpGain = Math.max(1, Math.floor(xpGained / 2));
+  // Award character XP: base + professionBonus (always has matching profession here) + levelScaling
+  const characterXpGain = ACTION_XP.GATHER_BASE
+    + ACTION_XP.GATHER_PROFESSION_BONUS
+    + (ACTION_XP.GATHER_LEVEL_SCALING * char.level);
   await prisma.character.update({
     where: { id: char.id },
     data: { xp: { increment: characterXpGain } },
@@ -1141,9 +1144,19 @@ async function processGatherSpotAction(
     });
   });
 
-  // Award character XP for gathering (base 15 XP, half goes to character)
-  const gatherXp = ACTION_XP.WORK_GATHER_BASE;
-  const characterXpGain = Math.max(1, Math.floor(gatherXp / 2));
+  // Award character XP for gathering: base + professionBonus + levelScaling
+  const resourceType = target.resourceType as string | undefined;
+  const matchingProfType = resourceType ? GATHER_SPOT_PROFESSION_MAP[resourceType] : undefined;
+  let hasProfessionBonus = false;
+  if (matchingProfType) {
+    const charProf = await prisma.playerProfession.findFirst({
+      where: { characterId: char.id, professionType: matchingProfType as any },
+    });
+    hasProfessionBonus = !!charProf;
+  }
+  const characterXpGain = ACTION_XP.GATHER_BASE
+    + (hasProfessionBonus ? ACTION_XP.GATHER_PROFESSION_BONUS : 0)
+    + (ACTION_XP.GATHER_LEVEL_SCALING * char.level);
   await prisma.character.update({
     where: { id: char.id },
     data: { xp: { increment: characterXpGain } },
@@ -1348,12 +1361,17 @@ async function processCraftAction(
     });
   });
 
-  // Award XP
-  const xpGain = recipe.xpReward;
-  await addProfessionXP(char.id, recipe.professionType, xpGain, `Crafted ${resultTemplate.name}`);
+  // Award profession XP (recipe-based)
+  const profXpGain = recipe.xpReward;
+  await addProfessionXP(char.id, recipe.professionType, profXpGain, `Crafted ${resultTemplate.name}`);
+
+  // Award character XP: base + professionBonus (always has matching profession here) + levelScaling
+  const characterXpGain = ACTION_XP.CRAFT_BASE
+    + ACTION_XP.CRAFT_PROFESSION_BONUS
+    + (ACTION_XP.CRAFT_LEVEL_SCALING * char.level);
   await prisma.character.update({
     where: { id: char.id },
-    data: { xp: { increment: xpGain } },
+    data: { xp: { increment: characterXpGain } },
   });
   await checkLevelUp(char.id);
 
@@ -1393,9 +1411,10 @@ async function processCraftAction(
     resultName: resultTemplate.name,
     quality,
     qualityRoll: { roll: diceRoll, total },
-    xpGained: xpGain,
+    xpGained: characterXpGain,
+    professionXpGained: profXpGain,
   };
-  results.xpEarned += xpGain;
+  results.xpEarned += characterXpGain;
 }
 
 // ---------------------------------------------------------------------------
