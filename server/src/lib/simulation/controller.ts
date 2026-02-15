@@ -554,11 +554,15 @@ class SimulationController {
   // Run N ticks sequentially
   // ---------------------------------------------------------------------------
   async runTicks(n: number): Promise<SimTickResult[]> {
+    if (this.runProgress) {
+      throw new Error('A simulation run is already in progress');
+    }
     const results: SimTickResult[] = [];
-    this.runProgress = { current: 0, total: n };
+    const progress = { current: 0, total: n };
+    this.runProgress = progress;
     try {
       for (let i = 0; i < n; i++) {
-        this.runProgress.current = i + 1;
+        progress.current = i + 1;
         const result = await this.runSingleTick();
         results.push(result);
       }

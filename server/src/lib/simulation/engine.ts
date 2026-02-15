@@ -65,13 +65,21 @@ function filterDailyWeights(
   bot?: BotState,
 ): Partial<Record<DailyActionKey, number>> {
   const filtered: Partial<Record<DailyActionKey, number>> = {};
-  if (enabled.gathering) filtered.gather = weights.gather;
+
+  // FARMER bots override weights: strongly prefer gathering/crafting over travel.
+  // Their ingredients (Apples, Wild Berries, Wild Herbs) are perishable (2-3 day shelf life),
+  // so they must gather frequently and craft quickly, not wander between towns.
+  const isFarmer = bot?.professions.some(p => p.toUpperCase() === 'FARMER') ?? false;
+  const effectiveWeights = isFarmer
+    ? { gather: 55, craft: 30, travel: 15 }
+    : weights;
+
+  if (enabled.gathering) filtered.gather = effectiveWeights.gather;
   if (enabled.crafting) {
-    // Only include craft if bot has a crafting profession
     const hasCraftingProf = bot?.professions.some(p => CRAFTING_PROFESSIONS.has(p.toUpperCase())) ?? true;
-    if (hasCraftingProf) filtered.craft = weights.craft;
+    if (hasCraftingProf) filtered.craft = effectiveWeights.craft;
   }
-  if (enabled.travel) filtered.travel = weights.travel;
+  if (enabled.travel) filtered.travel = effectiveWeights.travel;
   return filtered;
 }
 
