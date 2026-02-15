@@ -356,8 +356,32 @@ export async function decideBotAction(
     try { await timedFreeAction(() => actions.leaveParty(bot), bot, 'leave_party', logger, tick); } catch { /* ignore */ }
   }
 
-  // B4: Quest-guided daily action
-  if (activeQuest) {
+  // B3c: FARMER bots always prioritize gather → craft over quest-guided travel.
+  // Perishable ingredients (Apples 2d, Wild Berries 2d, Wild Herbs 3d) expire fast,
+  // so FARMER bots must stay in town gathering and crafting, not wander for quests.
+  const isFarmerBot = bot.professions.some(p => p.toUpperCase() === 'FARMER');
+  if (isFarmerBot) {
+    // Try gather first (restock ingredients)
+    if (config.enabledSystems.gathering) {
+      const { result: gatherResult, durationMs: gatherMs } = await executeDailyAction('gather', bot);
+      if (logger && tick != null) {
+        logger.logFromResult(bot, gatherResult, { tick, phase: 'daily', intent: 'farmer_gather_priority', attemptNumber: 1, durationMs: gatherMs, dailyActionUsed: false });
+      }
+      if (gatherResult.success) return gatherResult;
+    }
+    // Try craft second (use perishable ingredients before they expire)
+    if (config.enabledSystems.crafting) {
+      const { result: craftResult, durationMs: craftMs } = await executeDailyAction('craft', bot);
+      if (logger && tick != null) {
+        logger.logFromResult(bot, craftResult, { tick, phase: 'daily', intent: 'farmer_craft_priority', attemptNumber: 1, durationMs: craftMs, dailyActionUsed: false });
+      }
+      if (craftResult.success) return craftResult;
+    }
+    // Both failed — fall through to quest/weighted (may travel as last resort)
+  }
+
+  // B4: Quest-guided daily action (non-FARMER bots only, FARMER already handled above)
+  if (!isFarmerBot && activeQuest) {
     const firstIncomplete = activeQuest.objectives.findIndex(
       (obj: any, idx: number) => (activeQuest!.progress[String(idx)] || 0) < obj.quantity,
     );
@@ -380,19 +404,6 @@ export async function decideBotAction(
         }
       }
     }
-  }
-
-  // B4b: FARMER perishable-ingredient priority — try crafting first
-  // FARMER ingredients (Apples, Wild Berries, Wild Herbs) are perishable (2-3 day shelf life).
-  // If a FARMER bot doesn't craft immediately after gathering, ingredients expire.
-  // So always attempt crafting first — startCrafting() checks canCraft (returns fast if no ingredients).
-  if (config.enabledSystems.crafting && bot.professions.some(p => p.toUpperCase() === 'FARMER')) {
-    const { result: craftResult, durationMs: craftMs } = await executeDailyAction('craft', bot);
-    if (logger && tick != null) {
-      logger.logFromResult(bot, craftResult, { tick, phase: 'daily', intent: 'farmer_craft_priority', attemptNumber: 1, durationMs: craftMs, dailyActionUsed: false });
-    }
-    if (craftResult.success) return craftResult;
-    // No craftable ingredients — fall through to normal weighted selection
   }
 
   // B5: Profile-weighted daily action selection
@@ -418,8 +429,7 @@ export async function decideBotAction(
 
   // B6: FALLBACK — try each daily action in order until one works
   // FARMER bots prioritize gathering (to restock perishable ingredients) over travel
-  const hasFarmer = bot.professions.some(p => p.toUpperCase() === 'FARMER');
-  const fallbackOrder: DailyActionKey[] = hasFarmer
+  const fallbackOrder: DailyActionKey[] = isFarmerBot
     ? ['gather', 'craft', 'travel']
     : ['gather', 'travel', 'craft'];
   return tryDailyWithFallback(bot, fallbackOrder, config.enabledSystems, logger, tick);
