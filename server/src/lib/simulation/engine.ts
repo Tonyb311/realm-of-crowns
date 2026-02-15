@@ -374,6 +374,19 @@ export async function decideBotAction(
     }
   }
 
+  // B4b: FARMER perishable-ingredient priority — try crafting first
+  // FARMER ingredients (Apples, Wild Berries, Wild Herbs) are perishable (2-3 day shelf life).
+  // If a FARMER bot doesn't craft immediately after gathering, ingredients expire.
+  // So always attempt crafting first — startCrafting() checks canCraft (returns fast if no ingredients).
+  if (config.enabledSystems.crafting && bot.professions.some(p => p.toUpperCase() === 'FARMER')) {
+    const { result: craftResult, durationMs: craftMs } = await executeDailyAction('craft', bot);
+    if (logger && tick != null) {
+      logger.logFromResult(bot, craftResult, { tick, phase: 'daily', intent: 'farmer_craft_priority', attemptNumber: 1, durationMs: craftMs, dailyActionUsed: false });
+    }
+    if (craftResult.success) return craftResult;
+    // No craftable ingredients — fall through to normal weighted selection
+  }
+
   // B5: Profile-weighted daily action selection
   const profileWeights = DAILY_WEIGHTS[bot.profile] || DAILY_WEIGHTS.balanced;
   const filteredWeights = filterDailyWeights(profileWeights, config.enabledSystems, bot);
@@ -396,7 +409,12 @@ export async function decideBotAction(
   }
 
   // B6: FALLBACK — try each daily action in order until one works
-  return tryDailyWithFallback(bot, ['gather', 'travel', 'craft'], config.enabledSystems, logger, tick);
+  // FARMER bots prioritize gathering (to restock perishable ingredients) over travel
+  const hasFarmer = bot.professions.some(p => p.toUpperCase() === 'FARMER');
+  const fallbackOrder: DailyActionKey[] = hasFarmer
+    ? ['gather', 'craft', 'travel']
+    : ['gather', 'travel', 'craft'];
+  return tryDailyWithFallback(bot, fallbackOrder, config.enabledSystems, logger, tick);
 }
 
 // ---- Error storm: deliberately trigger invalid actions ----
