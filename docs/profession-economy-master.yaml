@@ -10,7 +10,7 @@
 # a raw gathered resource.
 #
 # LAST UPDATED: 2026-02-15
-# STATUS: FARMER + COOK fully designed. All others skeleton/planned.
+# STATUS: FARMER + COOK pipeline fully implemented and deployed. All others skeleton/planned.
 # =============================================================================
 
 
@@ -46,7 +46,7 @@ gathering_spot_types:
     edible: true
     hp_restore: 3
     description: "A handful of tart wild berries. Eat them fresh or bake them into something better."
-    gather_professions: [FARMER, HERBALIST]
+    gather_professions: [FARMER]             # UPDATED: 2026-02-15 — berry mapped to FARMER only
     craft_consumers: [COOK, BREWER, ALCHEMIST]
     regions: [Heartlands]
 
@@ -124,33 +124,21 @@ gathering_spot_types:
     craft_consumers: [MASON, ALCHEMIST]
     regions: [Ashenfang, Shadowmere, Suncoast]
 
-
-# =============================================================================
-# SECTION 2: NEW GATHERING SPOTS NEEDED
-# =============================================================================
-# The current 8 spot types don't cover all gathering professions.
-# These need to be added to complete the economy.
-# Priority: Add when implementing the paired crafting profession.
-# =============================================================================
-
-planned_gathering_spots:
-
+  # UPDATED: 2026-02-15 — Added with FARMER+COOK pipeline
   grain_field:
-    status: NEEDED_FOR_COOK          # Add when implementing COOK
     resource: Grain
     item_id: grain
     category: FOOD
     base_value: 3
     yield: 2-4
-    edible: false                    # Raw grain isn't edible — must be processed
+    edible: false
     description: "Golden stalks of wheat and barley. The foundation of bread and beer."
     gather_professions: [FARMER]
     craft_consumers: [COOK, BREWER]
-    assign_to_regions: [Heartlands, Crossroads, Suncoast]
-    notes: "Replace some orchard/berry spots OR add as second spot to farming towns"
+    regions: [Heartlands, Crossroads, Suncoast]
+    towns: [Millhaven, Greenhollow, Sandrift]
 
   vegetable_patch:
-    status: NEEDED_FOR_COOK
     resource: Vegetables
     item_id: vegetables
     category: FOOD
@@ -161,8 +149,19 @@ planned_gathering_spots:
     description: "Carrots, onions, and turnips pulled fresh from the earth."
     gather_professions: [FARMER]
     craft_consumers: [COOK]
-    assign_to_regions: [Heartlands, Crossroads]
-    notes: "Add to towns that currently have orchards — gives FARMER towns more variety"
+    regions: [Heartlands, Crossroads]
+    towns: [Whitefield, "Peddler's Rest"]
+
+
+# =============================================================================
+# SECTION 2: NEW GATHERING SPOTS NEEDED
+# UPDATED: 2026-02-15 — grain_field and vegetable_patch moved to Section 1 (now live)
+# =============================================================================
+# Remaining spots that still need to be added.
+# Priority: Add when implementing the paired crafting profession.
+# =============================================================================
+
+planned_gathering_spots:
 
   pasture:
     status: NEEDED_FOR_TANNER
@@ -263,7 +262,7 @@ professions:
     type: GATHERING
     unlock_level: 3
     description: "Forages for medicinal and magical herbs."
-    bonus_spots: [herb_garden, berry_thicket]
+    bonus_spots: [herb_garden]              # UPDATED: 2026-02-15 — berry_thicket reassigned to FARMER
     bonus_yield: "+50% quantity at specialty spots"
     feeds_into: [ALCHEMIST, COOK, BREWER]
     status: EXISTS_IN_GAME
@@ -292,7 +291,7 @@ professions:
     raw_inputs: [apple, wild_berries, wild_herbs, raw_fish, grain, vegetables, game_meat]
     intermediate_inputs: [flour]          # Things COOK makes and reuses
     output_categories: [FOOD, DRINK]
-    status: DESIGNING                     # ← FIRST CRAFTING PROF TO BUILD
+    status: EXISTS_IN_GAME                # UPDATED: 2026-02-15 — 15 recipes implemented and deployed
     # See SECTION 4 for full recipe tree
 
   BREWER:
@@ -955,16 +954,20 @@ economy_rules:
 
 implementation_order:
 
+  # UPDATED: 2026-02-15
   phase_1:
     name: "FARMER + COOK (Food Chain)"
-    status: IN_PROGRESS
+    status: COMPLETE
+    completed_date: 2026-02-15
     tasks:
-      - "Add grain_field and vegetable_patch gathering spots to farming-region towns"
-      - "Define all COOK recipe items in item registry"
-      - "Seed COOK recipes in database"
-      - "Verify crafting pipeline: ingredients → craft → item in inventory → XP"
-      - "Update sim bots: COOK bots gather ingredients then craft"
-      - "Verify in 30-tick simulation"
+      - "✓ Add grain_field and vegetable_patch gathering spots (3 grain, 2 vegetable towns)"
+      - "✓ Define all COOK recipe items in item registry (17 items)"
+      - "✓ Seed 15 COOK recipes in database (7 T1 + 5 T2 + 3 T3)"
+      - "✓ FARMER yield bonus: +50% at orchard, berry, grain_field, vegetable_patch"
+      - "✓ Daily tick reorder: crafting before auto-consumption"
+      - "✓ Update sim bots: COOK craft-first, FARMER gather-only"
+      - "✓ Verified in 40-tick simulation (25 bots, 1000 actions, 0 errors)"
+    notes: "COOK bot Henrik crafted Grilled Fish at ticks 20, 34, 37. All 4 COOKs properly prioritize crafting."
 
   phase_2:
     name: "MINER → SMELTER → BLACKSMITH (Metal Chain)"
