@@ -8,8 +8,9 @@
  * plus existing crafting recipes (blacksmith, armorer, leatherworker, alchemist, cook, brewer).
  */
 
-import { PrismaClient, ItemType, ItemRarity, ProfessionType, ProfessionTier } from '@prisma/client';
+import { PrismaClient, ItemType, ItemRarity, ProfessionType, ProfessionTier, Prisma } from '@prisma/client';
 import { ALL_PROCESSING_RECIPES } from '@shared/data/recipes';
+import { FARMER_RECIPES } from '@shared/data/recipes/farmer';
 
 // ============================================================
 // ITEM TEMPLATE DEFINITIONS
@@ -24,6 +25,11 @@ interface ItemTemplateDef {
   durability: number;
   professionRequired: ProfessionType | null;
   levelRequired: number;
+  isFood?: boolean;
+  foodBuff?: Prisma.InputJsonValue;
+  isPerishable?: boolean;
+  shelfLifeDays?: number;
+  isBeverage?: boolean;
 }
 
 const ITEM_TEMPLATES: ItemTemplateDef[] = [
@@ -295,6 +301,107 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'WOODWORKER',
     levelRequired: 40,
+  },
+
+  // --- FARMER Food Products ---
+  {
+    name: 'Baked Apples',
+    type: 'CONSUMABLE',
+    rarity: 'COMMON',
+    description: 'Warm, cinnamon-kissed baked apples. A simple but satisfying farm treat.',
+    stats: { healAmount: 15 },
+    durability: 1,
+    professionRequired: 'FARMER',
+    levelRequired: 1,
+    isFood: true,
+    foodBuff: { effect: 'heal_hp', magnitude: 15, duration: 0 },
+    isPerishable: true,
+    shelfLifeDays: 5,
+  },
+  {
+    name: 'Berry Jam',
+    type: 'CONSUMABLE',
+    rarity: 'COMMON',
+    description: 'Sweet jam made from wild berries. Spread it on bread or eat it straight from the jar.',
+    stats: { healAmount: 10, staminaRestore: 15 },
+    durability: 1,
+    professionRequired: 'FARMER',
+    levelRequired: 1,
+    isFood: true,
+    foodBuff: { effect: 'sustenance', magnitude: 10, duration: 0 },
+    isPerishable: true,
+    shelfLifeDays: 14,
+  },
+  {
+    name: 'Herbal Tea',
+    type: 'CONSUMABLE',
+    rarity: 'COMMON',
+    description: 'A soothing brew of wild herbs. Warms the body and eases aches.',
+    stats: { healAmount: 5, staminaRestore: 10 },
+    durability: 1,
+    professionRequired: 'FARMER',
+    levelRequired: 1,
+    isFood: true,
+    isBeverage: true,
+    foodBuff: { effect: 'hp_regen', magnitude: 5, duration: 30 },
+    isPerishable: true,
+    shelfLifeDays: 3,
+  },
+  {
+    name: 'Apple Pie',
+    type: 'CONSUMABLE',
+    rarity: 'FINE',
+    description: 'A golden-crusted pie filled with spiced apple slices. Beloved across all of Aethermere.',
+    stats: { healAmount: 30 },
+    durability: 1,
+    professionRequired: 'FARMER',
+    levelRequired: 11,
+    isFood: true,
+    foodBuff: { effect: 'heal_hp', magnitude: 30, duration: 0 },
+    isPerishable: true,
+    shelfLifeDays: 7,
+  },
+  {
+    name: 'Berry Tart',
+    type: 'CONSUMABLE',
+    rarity: 'FINE',
+    description: 'A flaky pastry filled with sweetened wild berries. A traveler\'s favorite.',
+    stats: { healAmount: 25, staminaRestore: 15 },
+    durability: 1,
+    professionRequired: 'FARMER',
+    levelRequired: 11,
+    isFood: true,
+    foodBuff: { effect: 'heal_hp', magnitude: 25, duration: 0 },
+    isPerishable: true,
+    shelfLifeDays: 7,
+  },
+  {
+    name: 'Vegetable Soup',
+    type: 'CONSUMABLE',
+    rarity: 'FINE',
+    description: 'A hearty soup of herbs and garden vegetables. Warms the soul and strengthens the body.',
+    stats: { healAmount: 20, staminaRestore: 20 },
+    durability: 1,
+    professionRequired: 'FARMER',
+    levelRequired: 11,
+    isFood: true,
+    foodBuff: { effect: 'buff_constitution', magnitude: 2, duration: 60 },
+    isPerishable: true,
+    shelfLifeDays: 3,
+  },
+  {
+    name: 'Hearty Feast',
+    type: 'CONSUMABLE',
+    rarity: 'SUPERIOR',
+    description: 'A lavish spread of baked apples, berry compote, and herb-roasted vegetables. Fit for a harvest celebration.',
+    stats: { healAmount: 50, staminaRestore: 30 },
+    durability: 1,
+    professionRequired: 'FARMER',
+    levelRequired: 26,
+    isFood: true,
+    foodBuff: { effect: 'buff_all_stats', magnitude: 1, duration: 60 },
+    isPerishable: true,
+    shelfLifeDays: 3,
   },
 
   // --- Weapons ---
@@ -630,6 +737,11 @@ export async function seedRecipes(prisma: PrismaClient) {
         durability: tmpl.durability,
         professionRequired: tmpl.professionRequired,
         levelRequired: tmpl.levelRequired,
+        ...(tmpl.isFood != null && { isFood: tmpl.isFood }),
+        ...(tmpl.foodBuff != null && { foodBuff: tmpl.foodBuff }),
+        ...(tmpl.isPerishable != null && { isPerishable: tmpl.isPerishable }),
+        ...(tmpl.shelfLifeDays != null && { shelfLifeDays: tmpl.shelfLifeDays }),
+        ...(tmpl.isBeverage != null && { isBeverage: tmpl.isBeverage }),
       },
       create: {
         id: stableId,
@@ -641,6 +753,11 @@ export async function seedRecipes(prisma: PrismaClient) {
         durability: tmpl.durability,
         professionRequired: tmpl.professionRequired,
         levelRequired: tmpl.levelRequired,
+        ...(tmpl.isFood != null && { isFood: tmpl.isFood }),
+        ...(tmpl.foodBuff != null && { foodBuff: tmpl.foodBuff }),
+        ...(tmpl.isPerishable != null && { isPerishable: tmpl.isPerishable }),
+        ...(tmpl.shelfLifeDays != null && { shelfLifeDays: tmpl.shelfLifeDays }),
+        ...(tmpl.isBeverage != null && { isBeverage: tmpl.isBeverage }),
       },
     });
     templateMap.set(tmpl.name, created.id);
@@ -697,6 +814,55 @@ export async function seedRecipes(prisma: PrismaClient) {
 
   console.log(`  Processing recipes: ${ALL_PROCESSING_RECIPES.length}`);
 
+  // ----- Seed FARMER Recipes (from shared data) -----
+  console.log('--- Seeding FARMER Recipes ---');
+
+  for (const recipe of FARMER_RECIPES) {
+    const ingredients = recipe.inputs.map((inp) => {
+      const templateId = templateMap.get(inp.itemName);
+      if (!templateId) {
+        throw new Error(`Item template not found for input: ${inp.itemName} (recipe: ${recipe.name})`);
+      }
+      return { itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity };
+    });
+
+    const output = recipe.outputs[0];
+    const resultId = templateMap.get(output.itemName);
+    if (!resultId) {
+      throw new Error(`Item template not found for output: ${output.itemName} (recipe: ${recipe.name})`);
+    }
+
+    const recipeId = `recipe-${recipe.recipeId}`;
+    const tier = levelToTier(recipe.levelRequired);
+
+    await prisma.recipe.upsert({
+      where: { id: recipeId },
+      update: {
+        name: recipe.name,
+        professionType: recipe.professionRequired as ProfessionType,
+        tier,
+        ingredients,
+        result: resultId,
+        craftTime: recipe.craftTime,
+        xpReward: recipe.xpReward,
+      },
+      create: {
+        id: recipeId,
+        name: recipe.name,
+        professionType: recipe.professionRequired as ProfessionType,
+        tier,
+        ingredients,
+        result: resultId,
+        craftTime: recipe.craftTime,
+        xpReward: recipe.xpReward,
+      },
+    });
+
+    console.log(`  + ${recipe.name} (FARMER Lvl ${recipe.levelRequired})`);
+  }
+
+  console.log(`  FARMER recipes: ${FARMER_RECIPES.length}`);
+
   // ----- Seed Crafting Recipes (non-processing) -----
   console.log('--- Seeding Crafting Recipes ---');
 
@@ -743,5 +909,5 @@ export async function seedRecipes(prisma: PrismaClient) {
   }
 
   console.log(`  Crafting recipes: ${CRAFTING_RECIPES.length}`);
-  console.log(`  Total recipes: ${ALL_PROCESSING_RECIPES.length + CRAFTING_RECIPES.length}`);
+  console.log(`  Total recipes: ${ALL_PROCESSING_RECIPES.length + FARMER_RECIPES.length + CRAFTING_RECIPES.length}`);
 }

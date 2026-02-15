@@ -246,9 +246,9 @@ export async function collectGathering(bot: BotState): Promise<ActionResult> {
 // ---------------------------------------------------------------------------
 
 export async function startCrafting(bot: BotState): Promise<ActionResult> {
-  const endpoint = '/crafting/start';
+  const endpoint = '/actions/lock-in';
   try {
-    // Fetch available recipes
+    // Fetch available recipes to find one the bot can craft
     const recipesRes = await get('/crafting/recipes', bot.token);
     if (recipesRes.status < 200 || recipesRes.status >= 300) {
       return {
@@ -277,19 +277,21 @@ export async function startCrafting(bot: BotState): Promise<ActionResult> {
     const recipe = pickRandom(craftable)!;
     const recipeId = recipe.id || recipe.recipeId;
 
-    const res = await post(endpoint, bot.token, { recipeId });
+    // Lock in a CRAFT DailyAction — resolved by processDailyTick
+    const body = { actionType: 'CRAFT', actionTarget: { recipeId } };
+    const res = await post(endpoint, bot.token, body);
     if (res.status >= 200 && res.status < 300) {
-      bot.pendingCrafting = true;
+      // DailyAction created — daily tick will resolve (no pendingCrafting needed)
       return {
         success: true,
-        detail: `Started crafting ${recipe.name || recipeId}`,
+        detail: `Locked in crafting ${recipe.name || recipeId}`,
         endpoint,
         httpStatus: res.status,
-        requestBody: { recipeId },
+        requestBody: body,
         responseBody: res.data,
       };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { recipeId }, responseBody: res.data };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: body, responseBody: res.data };
   } catch (err: any) {
     return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }

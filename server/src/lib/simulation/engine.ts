@@ -18,7 +18,7 @@ import { SimulationLogger, captureBotState } from './sim-logger';
 const CRAFTING_PROFESSIONS = new Set([
   'SMELTER', 'BLACKSMITH', 'ARMORER', 'WOODWORKER', 'TANNER', 'LEATHERWORKER',
   'TAILOR', 'ALCHEMIST', 'ENCHANTER', 'COOK', 'BREWER', 'JEWELER', 'FLETCHER',
-  'MASON', 'SCRIBE',
+  'MASON', 'SCRIBE', 'FARMER',
 ]);
 
 // ---- Daily action keys (the only actions that consume the daily action slot) ----
