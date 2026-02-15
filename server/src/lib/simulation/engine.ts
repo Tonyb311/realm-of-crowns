@@ -356,26 +356,27 @@ export async function decideBotAction(
     try { await timedFreeAction(() => actions.leaveParty(bot), bot, 'leave_party', logger, tick); } catch { /* ignore */ }
   }
 
-  // B3c: FARMER bots always prioritize gather → craft over quest-guided travel.
+  // B3c: FARMER bots always prioritize craft → gather over quest-guided travel.
   // Perishable ingredients (Apples 2d, Wild Berries 2d, Wild Herbs 3d) expire fast,
-  // so FARMER bots must stay in town gathering and crafting, not wander for quests.
+  // so FARMER bots must craft ASAP when they have ingredients, and gather when they don't.
+  // Order: craft first (consume perishables), gather second (restock if craft failed).
   const isFarmerBot = bot.professions.some(p => p.toUpperCase() === 'FARMER');
   if (isFarmerBot) {
-    // Try gather first (restock ingredients)
-    if (config.enabledSystems.gathering) {
-      const { result: gatherResult, durationMs: gatherMs } = await executeDailyAction('gather', bot);
-      if (logger && tick != null) {
-        logger.logFromResult(bot, gatherResult, { tick, phase: 'daily', intent: 'farmer_gather_priority', attemptNumber: 1, durationMs: gatherMs, dailyActionUsed: false });
-      }
-      if (gatherResult.success) return gatherResult;
-    }
-    // Try craft second (use perishable ingredients before they expire)
+    // Try craft first (use perishable ingredients before they expire)
     if (config.enabledSystems.crafting) {
       const { result: craftResult, durationMs: craftMs } = await executeDailyAction('craft', bot);
       if (logger && tick != null) {
         logger.logFromResult(bot, craftResult, { tick, phase: 'daily', intent: 'farmer_craft_priority', attemptNumber: 1, durationMs: craftMs, dailyActionUsed: false });
       }
       if (craftResult.success) return craftResult;
+    }
+    // No craftable ingredients — gather to restock
+    if (config.enabledSystems.gathering) {
+      const { result: gatherResult, durationMs: gatherMs } = await executeDailyAction('gather', bot);
+      if (logger && tick != null) {
+        logger.logFromResult(bot, gatherResult, { tick, phase: 'daily', intent: 'farmer_gather_priority', attemptNumber: 1, durationMs: gatherMs, dailyActionUsed: false });
+      }
+      if (gatherResult.success) return gatherResult;
     }
     // Both failed — fall through to quest/weighted (may travel as last resort)
   }
