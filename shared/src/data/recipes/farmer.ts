@@ -28,7 +28,7 @@ export const FARMER_RECIPES: RecipeDefinition[] = [
     name: 'Make Berry Jam',
     professionRequired: 'FARMER',
     levelRequired: 1,
-    inputs: [{ itemName: ITEMS.WILD_BERRIES, quantity: 3 }],
+    inputs: [{ itemName: ITEMS.WILD_BERRIES, quantity: 2 }],
     outputs: [{ itemName: ITEMS.BERRY_JAM, quantity: 1 }],
     craftTime: 10,
     xpReward: 8,

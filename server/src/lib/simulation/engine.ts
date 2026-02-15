@@ -207,40 +207,54 @@ export async function decideBotAction(
 
   const intelligence = bot.intelligence ?? 50;
 
+  // ---- Early detection: FARMER bots get special handling throughout ----
+  const isFarmerBot = bot.professions.some(p => p.toUpperCase() === 'FARMER');
+
   // ═══════════════════════════════════════════════════════════════════════════
   // Phase A: FREE side-effect actions (party, quest, equip)
   // These do NOT consume the daily action. Failures are silently ignored.
+  // FARMER bots skip party actions — they must stay in their town to farm.
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // A1: Party leader management (free)
+  // A1: Party leader management (free) — FARMER bots disband immediately
   if (bot.partyId && bot.partyRole === 'leader') {
-    bot.partyTicksRemaining--;
-
-    if (bot.partyTicksRemaining <= 0) {
-      // Time to disband
+    if (isFarmerBot) {
+      // FARMER bots should not be in parties — disband so they can farm
       try { await timedFreeAction(() => actions.disbandParty(bot), bot, 'disband_party', logger, tick); } catch { /* ignore */ }
     } else {
-      // Try to invite nearby partyless bots (if party < 3)
-      const partyMembers = allBots.filter(b => b.partyId === bot.partyId);
-      if (partyMembers.length < 3) {
-        const candidates = allBots.filter(
-          b => !b.partyId && b.currentTownId === bot.currentTownId && b.characterId !== bot.characterId,
-        );
-        if (candidates.length > 0) {
-          const target = candidates[Math.floor(Math.random() * candidates.length)];
-          try { await timedFreeAction(() => actions.inviteToParty(bot, target), bot, 'invite_to_party', logger, tick); } catch { /* ignore */ }
+      bot.partyTicksRemaining--;
+
+      if (bot.partyTicksRemaining <= 0) {
+        // Time to disband
+        try { await timedFreeAction(() => actions.disbandParty(bot), bot, 'disband_party', logger, tick); } catch { /* ignore */ }
+      } else {
+        // Try to invite nearby partyless bots (if party < 3)
+        const partyMembers = allBots.filter(b => b.partyId === bot.partyId);
+        if (partyMembers.length < 3) {
+          const candidates = allBots.filter(
+            b => !b.partyId && b.currentTownId === bot.currentTownId && b.characterId !== bot.characterId,
+          );
+          if (candidates.length > 0) {
+            const target = candidates[Math.floor(Math.random() * candidates.length)];
+            try { await timedFreeAction(() => actions.inviteToParty(bot, target), bot, 'invite_to_party', logger, tick); } catch { /* ignore */ }
+          }
         }
       }
     }
   }
 
-  // A2: Accept pending party invites (free)
-  if (!bot.partyId && bot.currentTownId) {
+  // A2: Accept pending party invites (free) — FARMER bots skip (stay in town)
+  if (!isFarmerBot && !bot.partyId && bot.currentTownId) {
     try { await timedFreeAction(() => actions.acceptPartyInvite(bot), bot, 'accept_party_invite', logger, tick); } catch { /* ignore */ }
   }
 
-  // A3: Party formation (free, 30% chance if not in a party)
-  if (!bot.partyId && bot.currentTownId && Math.random() < 0.3) {
+  // A2b: FARMER bots leave parties they got stuck in
+  if (isFarmerBot && bot.partyId && bot.partyRole !== 'leader') {
+    try { await timedFreeAction(() => actions.leaveParty(bot), bot, 'leave_party', logger, tick); } catch { /* ignore */ }
+  }
+
+  // A3: Party formation (free, 30% chance if not in a party) — FARMER bots skip
+  if (!isFarmerBot && !bot.partyId && bot.currentTownId && Math.random() < 0.3) {
     const nearbyPartyless = allBots.filter(
       b => !b.partyId && b.characterId !== bot.characterId && b.currentTownId === bot.currentTownId,
     );
@@ -340,27 +354,10 @@ export async function decideBotAction(
     return r;
   }
 
-  // B3: Party leader prefers group travel as daily action
-  if (bot.partyId && bot.partyRole === 'leader' && bot.partyTicksRemaining > 0) {
-    const start4 = Date.now();
-    const travelResult = await actions.partyTravel(bot);
-    if (logger && tick != null) {
-      logger.logFromResult(bot, travelResult, { tick, phase: 'daily', intent: 'party_travel', attemptNumber: 1, durationMs: Date.now() - start4, dailyActionUsed: false });
-    }
-    if (travelResult.success) return travelResult;
-    // Fall through if group travel failed
-  }
-
-  // B3b: Non-leader party members — leave party before acting (travel requires leader)
-  if (bot.partyId && bot.partyRole !== 'leader') {
-    try { await timedFreeAction(() => actions.leaveParty(bot), bot, 'leave_party', logger, tick); } catch { /* ignore */ }
-  }
-
-  // B3c: FARMER bots always prioritize craft → gather over quest-guided travel.
-  // Perishable ingredients (Apples 2d, Wild Berries 2d, Wild Herbs 3d) expire fast,
+  // B3: FARMER bots always prioritize craft → gather over party travel or quests.
+  // Perishable ingredients (Apples 3d, Wild Berries 2d, Wild Herbs 5d) expire fast,
   // so FARMER bots must craft ASAP when they have ingredients, and gather when they don't.
-  // Order: craft first (consume perishables), gather second (restock if craft failed).
-  const isFarmerBot = bot.professions.some(p => p.toUpperCase() === 'FARMER');
+  // This runs BEFORE party travel to prevent FARMER party leaders from traveling.
   if (isFarmerBot) {
     // Try craft first (use perishable ingredients before they expire)
     if (config.enabledSystems.crafting) {
@@ -379,6 +376,22 @@ export async function decideBotAction(
       if (gatherResult.success) return gatherResult;
     }
     // Both failed — fall through to quest/weighted (may travel as last resort)
+  }
+
+  // B3b: Party leader prefers group travel as daily action
+  if (bot.partyId && bot.partyRole === 'leader' && bot.partyTicksRemaining > 0) {
+    const start4 = Date.now();
+    const travelResult = await actions.partyTravel(bot);
+    if (logger && tick != null) {
+      logger.logFromResult(bot, travelResult, { tick, phase: 'daily', intent: 'party_travel', attemptNumber: 1, durationMs: Date.now() - start4, dailyActionUsed: false });
+    }
+    if (travelResult.success) return travelResult;
+    // Fall through if group travel failed
+  }
+
+  // B3c: Non-leader party members — leave party before acting (travel requires leader)
+  if (bot.partyId && bot.partyRole !== 'leader') {
+    try { await timedFreeAction(() => actions.leaveParty(bot), bot, 'leave_party', logger, tick); } catch { /* ignore */ }
   }
 
   // B4: Quest-guided daily action (non-FARMER bots only, FARMER already handled above)
