@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { z } from 'zod';
 import { DailyActionType, DailyActionStatus, CombatStance, Prisma } from '@prisma/client';
+import { getTodayTickDate } from '../lib/game-day';
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -23,8 +24,9 @@ export type CombatParams = z.infer<typeof combatParamsSchema>;
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getTickDate(): string {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+/** Use game-day-aware tick date so lock-in actions align with processDailyTick resolution. */
+function getTickDate(): Date {
+  return getTodayTickDate();
 }
 
 async function getCharacterWithLocation(characterId: string) {

@@ -39,6 +39,9 @@ import { SimulationLogger, captureBotState } from './sim-logger';
 function categorizeAction(endpoint: string): string {
   if (endpoint.includes('work') || endpoint.includes('gather')) return 'gather';
   if (endpoint.includes('craft')) return 'craft';
+  // lock-in actions carry the action type in their detail, but the endpoint
+  // is /actions/lock-in. Categorise them by checking the body was CRAFT.
+  if (endpoint.includes('lock-in')) return 'craft';
   if (endpoint.includes('market/buy') || endpoint.includes('buy')) return 'market_buy';
   if (endpoint.includes('market/list') || endpoint.includes('sell')) return 'market_list';
   if (endpoint.includes('market/browse')) return 'market_browse';

@@ -200,6 +200,7 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
       where: { id: req.character!.id },
       include: {
         currentTown: { select: { name: true } },
+        professions: { select: { professionType: true, tier: true, level: true, isActive: true } },
         inventory: {
           include: {
             item: {
@@ -223,7 +224,7 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
       return res.status(404).json({ error: 'Character not found' });
     }
 
-    const { currentTown, inventory, equipment, ...rest } = character;
+    const { currentTown, professions, inventory, equipment, ...rest } = character;
 
     // Transform inventory into frontend-friendly shape
     // Includes top-level aliases (name, type, rarity, templateName, itemId) for
@@ -304,6 +305,13 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
       maxHp: rest.maxHealth,
       status: rest.travelStatus === 'idle' || rest.travelStatus === 'arrived' ? 'idle' : 'traveling',
       currentTownName: currentTown?.name ?? null,
+      professions: (professions || []).map(p => ({
+        type: p.professionType,
+        professionType: p.professionType,
+        tier: p.tier,
+        level: p.level,
+        isActive: p.isActive,
+      })),
       inventory: inventoryItems,
       equipment: equipmentSlots,
     });
