@@ -24,8 +24,7 @@ export type CraftingProfession =
   | 'JEWELER'
   | 'FLETCHER'
   | 'SCRIBE'
-  | 'STABLE_MASTER'
-  | 'FARMER';
+  | 'STABLE_MASTER';
 
 export interface RecipeInput {
   itemName: ItemName;

@@ -27,7 +27,7 @@ import { ENCHANTMENT_RECIPES } from './enchantments';
 import { HOUSING_RECIPES } from './housing';
 import { MOUNT_GEAR_RECIPES } from './mount-gear';
 import { ARMORER_RECIPES, LEATHERWORKER_ARMOR_RECIPES, TAILOR_ARMOR_RECIPES, ALL_ARMOR_RECIPES } from './armor';
-import { FARMER_RECIPES } from './farmer';
+import { COOK_RECIPES } from './cook';
 
 export { SMELTER_RECIPES } from './smelter';
 export { TANNER_RECIPES } from './tanner';
@@ -49,10 +49,10 @@ export { ENCHANTMENT_RECIPES } from './enchantments';
 export { HOUSING_RECIPES } from './housing';
 export { MOUNT_GEAR_RECIPES } from './mount-gear';
 export { ARMORER_RECIPES, LEATHERWORKER_ARMOR_RECIPES, TAILOR_ARMOR_RECIPES, ALL_ARMOR_RECIPES } from './armor';
-export { FARMER_RECIPES } from './farmer';
+export { COOK_RECIPES } from './cook';
 
-/** All FARMER recipes (agricultural food production). */
-export const ALL_FARMER_RECIPES: RecipeDefinition[] = [...FARMER_RECIPES];
+/** All COOK recipes (food production from raw ingredients). */
+export const ALL_COOK_RECIPES: RecipeDefinition[] = [...COOK_RECIPES];
 
 /** All processing recipes across all professions. */
 export const ALL_PROCESSING_RECIPES: RecipeDefinition[] = [
@@ -75,7 +75,7 @@ export const ALL_ACCESSORY_RECIPES: RecipeDefinition[] = [
 const byId = new Map<string, RecipeDefinition>();
 const byProfession = new Map<CraftingProfession, RecipeDefinition[]>();
 
-for (const r of [...ALL_PROCESSING_RECIPES, ...ALL_ACCESSORY_RECIPES, ...ALL_FARMER_RECIPES]) {
+for (const r of [...ALL_PROCESSING_RECIPES, ...ALL_ACCESSORY_RECIPES, ...ALL_COOK_RECIPES]) {
   byId.set(r.recipeId, r);
   const list = byProfession.get(r.professionRequired) ?? [];
   list.push(r);

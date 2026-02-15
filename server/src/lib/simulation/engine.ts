@@ -18,7 +18,7 @@ import { SimulationLogger, captureBotState } from './sim-logger';
 const CRAFTING_PROFESSIONS = new Set([
   'SMELTER', 'BLACKSMITH', 'ARMORER', 'WOODWORKER', 'TANNER', 'LEATHERWORKER',
   'TAILOR', 'ALCHEMIST', 'ENCHANTER', 'COOK', 'BREWER', 'JEWELER', 'FLETCHER',
-  'MASON', 'SCRIBE', 'FARMER',
+  'MASON', 'SCRIBE',
 ]);
 
 // ---- Daily action keys (the only actions that consume the daily action slot) ----
@@ -66,12 +66,12 @@ function filterDailyWeights(
 ): Partial<Record<DailyActionKey, number>> {
   const filtered: Partial<Record<DailyActionKey, number>> = {};
 
-  // FARMER bots override weights: strongly prefer gathering/crafting over travel.
-  // Their ingredients (Apples, Wild Berries, Wild Herbs) are perishable (2-3 day shelf life),
-  // so they must gather frequently and craft quickly, not wander between towns.
   const isFarmer = bot?.professions.some(p => p.toUpperCase() === 'FARMER') ?? false;
+  const isCook = bot?.professions.some(p => p.toUpperCase() === 'COOK') ?? false;
   const effectiveWeights = isFarmer
-    ? { gather: 55, craft: 30, travel: 15 }
+    ? { gather: 80, craft: 0, travel: 20 }
+    : isCook
+    ? { gather: 30, craft: 55, travel: 15 }
     : weights;
 
   if (enabled.gathering) filtered.gather = effectiveWeights.gather;
@@ -209,6 +209,7 @@ export async function decideBotAction(
 
   // ---- Early detection: FARMER bots get special handling throughout ----
   const isFarmerBot = bot.professions.some(p => p.toUpperCase() === 'FARMER');
+  const isCookBot = bot.professions.some(p => p.toUpperCase() === 'COOK');
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Phase A: FREE side-effect actions (party, quest, equip)
@@ -298,13 +299,13 @@ export async function decideBotAction(
     } else {
       switch (bot.profile) {
         case 'gatherer':   profType = 'MINER';      break;
-        case 'crafter':    profType = 'BLACKSMITH';  break;
+        case 'crafter':    profType = 'COOK';       break;  // was BLACKSMITH
         case 'merchant':   profType = 'MERCHANT';    break;
         case 'warrior':    profType = 'MINER';       break;
         case 'politician': profType = 'FARMER';      break;
         case 'socialite':  profType = 'FARMER';      break;
         case 'explorer':   profType = 'HERBALIST';   break;
-        case 'balanced':   profType = 'MINER';       break;
+        case 'balanced':   profType = 'COOK';       break;  // was MINER
         default:           profType = 'FARMER';      break;
       }
     }
@@ -320,7 +321,7 @@ export async function decideBotAction(
     const fallbacks: string[] = [];
     switch (bot.profile) {
       case 'gatherer':  fallbacks.push('FARMER', 'LUMBERJACK'); break;
-      case 'crafter':   fallbacks.push('SMELTER', 'FARMER'); break;
+      case 'crafter':   fallbacks.push('COOK', 'FARMER'); break;  // was SMELTER, FARMER
       default:          fallbacks.push('FARMER', 'MINER'); break;
     }
     for (let i = 0; i < fallbacks.length; i++) {
@@ -354,28 +355,22 @@ export async function decideBotAction(
     return r;
   }
 
-  // B3: FARMER bots always prioritize craft → gather over party travel or quests.
-  // Perishable ingredients (Apples 3d, Wild Berries 2d, Wild Herbs 5d) expire fast,
-  // so FARMER bots must craft ASAP when they have ingredients, and gather when they don't.
-  // This runs BEFORE party travel to prevent FARMER party leaders from traveling.
+  // B3: FARMER bots — gathering only, never craft
   if (isFarmerBot) {
-    // Try craft first (use perishable ingredients before they expire)
+    return tryDailyWithFallback(bot, ['gather', 'travel'], config.enabledSystems, logger, tick);
+  }
+
+  // B3a: COOK bots — craft first (use ingredients before they expire), else gather
+  if (isCookBot) {
     if (config.enabledSystems.crafting) {
       const { result: craftResult, durationMs: craftMs } = await executeDailyAction('craft', bot);
       if (logger && tick != null) {
-        logger.logFromResult(bot, craftResult, { tick, phase: 'daily', intent: 'farmer_craft_priority', attemptNumber: 1, durationMs: craftMs, dailyActionUsed: false });
+        logger.logFromResult(bot, craftResult, { tick, phase: 'daily', intent: 'cook_craft_priority', attemptNumber: 1, durationMs: craftMs, dailyActionUsed: false });
       }
       if (craftResult.success) return craftResult;
     }
-    // No craftable ingredients — gather to restock
-    if (config.enabledSystems.gathering) {
-      const { result: gatherResult, durationMs: gatherMs } = await executeDailyAction('gather', bot);
-      if (logger && tick != null) {
-        logger.logFromResult(bot, gatherResult, { tick, phase: 'daily', intent: 'farmer_gather_priority', attemptNumber: 1, durationMs: gatherMs, dailyActionUsed: false });
-      }
-      if (gatherResult.success) return gatherResult;
-    }
-    // Both failed — fall through to quest/weighted (may travel as last resort)
+    // No craftable recipes — gather farming resources
+    return tryDailyWithFallback(bot, ['gather', 'travel'], config.enabledSystems, logger, tick);
   }
 
   // B3b: Party leader prefers group travel as daily action

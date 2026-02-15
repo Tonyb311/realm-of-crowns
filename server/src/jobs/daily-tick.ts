@@ -181,13 +181,96 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   const foodBuffs = new Map<string, Record<string, unknown> | null>();
 
   // -----------------------------------------------------------------------
-  // Step 1: Food Spoilage & Consumption
+  // Step 1: Food Spoilage (consumption moved to Step 4b, after crafting)
   // -----------------------------------------------------------------------
-  await runStep('Food Spoilage & Consumption', 1, async () => {
-    // Global spoilage
+  await runStep('Food Spoilage', 1, async () => {
     const spoilageResult = await processSpoilage();
     console.log(`[DailyTick]   Spoiled ${spoilageResult.spoiledCount} perishable items`);
+  });
 
+  // -----------------------------------------------------------------------
+  // Step 2: Travel Movement
+  // -----------------------------------------------------------------------
+  await runStep('Travel Movement', 2, async () => {
+    // Travel now handled by dedicated travel-tick.ts cron job
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 3: Node Encounter Detection & Combat Resolution
+  // -----------------------------------------------------------------------
+  await runStep('Node Encounters & Combat', 3, async () => {
+    // Node encounters temporarily disabled — pending new travel system encounter integration
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 4: Work Actions (Gathering & Crafting)
+  // -----------------------------------------------------------------------
+  await runStep('Work Actions', 4, async () => {
+    // --- Gathering ---
+    const gatherActions = await prisma.dailyAction.findMany({
+      where: {
+        tickDate: { gte: new Date(tickDateStr), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
+        actionType: 'GATHER',
+        status: 'LOCKED_IN',
+      },
+      include: {
+        character: {
+          select: {
+            id: true, race: true, subRace: true, level: true,
+            currentTownId: true, hungerState: true, stats: true,
+          },
+        },
+      },
+    });
+    gatherCount = gatherActions.length;
+
+    for (let i = 0; i < gatherActions.length; i += BATCH_SIZE) {
+      const batch = gatherActions.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(async (action) => {
+        try {
+          await processGatherAction(action, tickDateStr, hungerStates, foodBuffs, getResults);
+        } catch (err) {
+          console.error(`[DailyTick] Step 4 gather error for ${action.characterId}:`, err);
+          getResults(action.characterId).notifications.push('Gathering failed due to an error.');
+        }
+      }));
+    }
+
+    // --- Crafting ---
+    const craftActions = await prisma.dailyAction.findMany({
+      where: {
+        tickDate: { gte: new Date(tickDateStr), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
+        actionType: 'CRAFT',
+        status: 'LOCKED_IN',
+      },
+      include: {
+        character: {
+          select: {
+            id: true, race: true, subRace: true, level: true,
+            currentTownId: true, hungerState: true, stats: true,
+          },
+        },
+      },
+    });
+    craftCount = craftActions.length;
+
+    for (let i = 0; i < craftActions.length; i += BATCH_SIZE) {
+      const batch = craftActions.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(async (action) => {
+        try {
+          await processCraftAction(action, tickDateStr, hungerStates, foodBuffs, getResults);
+        } catch (err) {
+          console.error(`[DailyTick] Step 4 craft error for ${action.characterId}:`, err);
+          getResults(action.characterId).notifications.push('Crafting failed due to an error.');
+        }
+      }));
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 4b: Food Auto-Consumption (AFTER crafting to preserve ingredients)
+  // -----------------------------------------------------------------------
+  await runStep('Food Auto-Consumption', 4.5, async () => {
     // Per-character auto-consumption with cursor-based pagination
     let charCursor: string | undefined;
     let hasMoreChars = true;
@@ -294,89 +377,10 @@ export async function processDailyTick(): Promise<DailyTickResult> {
             }
           }
         } catch (err) {
-          console.error(`[DailyTick] Step 1 error for character ${char.id}:`, err);
+          console.error(`[DailyTick] Step 4b error for character ${char.id}:`, err);
         }
       }));
       }
-    }
-  });
-
-  // -----------------------------------------------------------------------
-  // Step 2: Travel Movement
-  // -----------------------------------------------------------------------
-  await runStep('Travel Movement', 2, async () => {
-    // Travel now handled by dedicated travel-tick.ts cron job
-  });
-
-  // -----------------------------------------------------------------------
-  // Step 3: Node Encounter Detection & Combat Resolution
-  // -----------------------------------------------------------------------
-  await runStep('Node Encounters & Combat', 3, async () => {
-    // Node encounters temporarily disabled — pending new travel system encounter integration
-  });
-
-  // -----------------------------------------------------------------------
-  // Step 4: Work Actions (Gathering & Crafting)
-  // -----------------------------------------------------------------------
-  await runStep('Work Actions', 4, async () => {
-    // --- Gathering ---
-    const gatherActions = await prisma.dailyAction.findMany({
-      where: {
-        tickDate: { gte: new Date(tickDateStr), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
-        actionType: 'GATHER',
-        status: 'LOCKED_IN',
-      },
-      include: {
-        character: {
-          select: {
-            id: true, race: true, subRace: true, level: true,
-            currentTownId: true, hungerState: true, stats: true,
-          },
-        },
-      },
-    });
-    gatherCount = gatherActions.length;
-
-    for (let i = 0; i < gatherActions.length; i += BATCH_SIZE) {
-      const batch = gatherActions.slice(i, i + BATCH_SIZE);
-      await Promise.all(batch.map(async (action) => {
-        try {
-          await processGatherAction(action, tickDateStr, hungerStates, foodBuffs, getResults);
-        } catch (err) {
-          console.error(`[DailyTick] Step 4 gather error for ${action.characterId}:`, err);
-          getResults(action.characterId).notifications.push('Gathering failed due to an error.');
-        }
-      }));
-    }
-
-    // --- Crafting ---
-    const craftActions = await prisma.dailyAction.findMany({
-      where: {
-        tickDate: { gte: new Date(tickDateStr), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
-        actionType: 'CRAFT',
-        status: 'LOCKED_IN',
-      },
-      include: {
-        character: {
-          select: {
-            id: true, race: true, subRace: true, level: true,
-            currentTownId: true, hungerState: true, stats: true,
-          },
-        },
-      },
-    });
-    craftCount = craftActions.length;
-
-    for (let i = 0; i < craftActions.length; i += BATCH_SIZE) {
-      const batch = craftActions.slice(i, i + BATCH_SIZE);
-      await Promise.all(batch.map(async (action) => {
-        try {
-          await processCraftAction(action, tickDateStr, hungerStates, foodBuffs, getResults);
-        } catch (err) {
-          console.error(`[DailyTick] Step 4 craft error for ${action.characterId}:`, err);
-          getResults(action.characterId).notifications.push('Crafting failed due to an error.');
-        }
-      }));
     }
   });
 
@@ -1084,6 +1088,19 @@ async function processGatherSpotAction(
   // Roll yield
   const quantity = Math.floor(Math.random() * (maxYield - minYield + 1)) + minYield;
 
+  // FARMER profession bonus: +50% yield at farming spots
+  const FARMING_SPOTS = new Set(['orchard', 'berry', 'grain_field', 'vegetable_patch']);
+  const resourceType = target.resourceType as string;
+  let finalQuantity = quantity;
+  if (FARMING_SPOTS.has(resourceType)) {
+    const farmerProf = await prisma.playerProfession.findFirst({
+      where: { characterId: char.id, professionType: 'FARMER' as any },
+    });
+    if (farmerProf) {
+      finalQuantity = Math.ceil(quantity * 1.5);
+    }
+  }
+
   // Create items in a transaction
   await prisma.$transaction(async (tx) => {
     // Find or create item template
@@ -1118,7 +1135,7 @@ async function processGatherSpotAction(
     if (existingSlot) {
       await tx.inventory.update({
         where: { id: existingSlot.id },
-        data: { quantity: existingSlot.quantity + quantity },
+        data: { quantity: existingSlot.quantity + finalQuantity },
       });
     } else {
       const item = await tx.item.create({
@@ -1130,7 +1147,7 @@ async function processGatherSpotAction(
         },
       });
       await tx.inventory.create({
-        data: { characterId: char.id, itemId: item.id, quantity },
+        data: { characterId: char.id, itemId: item.id, quantity: finalQuantity },
       });
     }
 
@@ -1139,13 +1156,12 @@ async function processGatherSpotAction(
       where: { id: action.id },
       data: {
         status: 'COMPLETED',
-        result: { item: templateName, quantity, spotName: target.spotName as string },
+        result: { item: templateName, quantity: finalQuantity, spotName: target.spotName as string },
       },
     });
   });
 
   // Award character XP for gathering: base + professionBonus + levelScaling
-  const resourceType = target.resourceType as string | undefined;
   const matchingProfType = resourceType ? GATHER_SPOT_PROFESSION_MAP[resourceType] : undefined;
   let hasProfessionBonus = false;
   if (matchingProfType) {
@@ -1169,11 +1185,11 @@ async function processGatherSpotAction(
     type: 'GATHER',
     resourceName: itemName,
     resourceType: 'town_gathering',
-    quantity,
+    quantity: finalQuantity,
     xpGained: characterXpGain,
   };
   results.xpEarned += characterXpGain;
-  results.notifications.push(`Gathered ${quantity}x ${itemName}.`);
+  results.notifications.push(`Gathered ${finalQuantity}x ${itemName}.`);
 }
 
 // ---------------------------------------------------------------------------

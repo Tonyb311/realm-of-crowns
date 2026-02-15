@@ -10,7 +10,7 @@
 
 import { PrismaClient, ItemType, ItemRarity, ProfessionType, ProfessionTier, Prisma } from '@prisma/client';
 import { ALL_PROCESSING_RECIPES } from '@shared/data/recipes';
-import { FARMER_RECIPES } from '@shared/data/recipes/farmer';
+import { COOK_RECIPES } from '@shared/data/recipes/cook';
 
 // ============================================================
 // ITEM TEMPLATE DEFINITIONS
@@ -303,7 +303,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     levelRequired: 40,
   },
 
-  // --- FARMER Food Products ---
+  // --- COOK Food Products ---
   {
     name: 'Baked Apples',
     type: 'CONSUMABLE',
@@ -311,7 +311,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     description: 'Warm, cinnamon-kissed baked apples. A simple but satisfying farm treat.',
     stats: { healAmount: 15 },
     durability: 1,
-    professionRequired: 'FARMER',
+    professionRequired: 'COOK',
     levelRequired: 1,
     isFood: true,
     foodBuff: { effect: 'heal_hp', magnitude: 15, duration: 0 },
@@ -325,7 +325,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     description: 'Sweet jam made from wild berries. Spread it on bread or eat it straight from the jar.',
     stats: { healAmount: 10, staminaRestore: 15 },
     durability: 1,
-    professionRequired: 'FARMER',
+    professionRequired: 'COOK',
     levelRequired: 1,
     isFood: true,
     foodBuff: { effect: 'sustenance', magnitude: 10, duration: 0 },
@@ -339,7 +339,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     description: 'A soothing brew of wild herbs. Warms the body and eases aches.',
     stats: { healAmount: 5, staminaRestore: 10 },
     durability: 1,
-    professionRequired: 'FARMER',
+    professionRequired: 'COOK',
     levelRequired: 1,
     isFood: true,
     isBeverage: true,
@@ -354,7 +354,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     description: 'A golden-crusted pie filled with spiced apple slices. Beloved across all of Aethermere.',
     stats: { healAmount: 30 },
     durability: 1,
-    professionRequired: 'FARMER',
+    professionRequired: 'COOK',
     levelRequired: 11,
     isFood: true,
     foodBuff: { effect: 'heal_hp', magnitude: 30, duration: 0 },
@@ -368,7 +368,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     description: 'A flaky pastry filled with sweetened wild berries. A traveler\'s favorite.',
     stats: { healAmount: 25, staminaRestore: 15 },
     durability: 1,
-    professionRequired: 'FARMER',
+    professionRequired: 'COOK',
     levelRequired: 11,
     isFood: true,
     foodBuff: { effect: 'heal_hp', magnitude: 25, duration: 0 },
@@ -382,7 +382,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     description: 'A hearty soup of herbs and garden vegetables. Warms the soul and strengthens the body.',
     stats: { healAmount: 20, staminaRestore: 20 },
     durability: 1,
-    professionRequired: 'FARMER',
+    professionRequired: 'COOK',
     levelRequired: 11,
     isFood: true,
     foodBuff: { effect: 'buff_constitution', magnitude: 2, duration: 60 },
@@ -396,7 +396,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     description: 'A lavish spread of baked apples, berry compote, and herb-roasted vegetables. Fit for a harvest celebration.',
     stats: { healAmount: 50, staminaRestore: 30 },
     durability: 1,
-    professionRequired: 'FARMER',
+    professionRequired: 'COOK',
     levelRequired: 26,
     isFood: true,
     foodBuff: { effect: 'buff_all_stats', magnitude: 1, duration: 60 },
@@ -814,10 +814,10 @@ export async function seedRecipes(prisma: PrismaClient) {
 
   console.log(`  Processing recipes: ${ALL_PROCESSING_RECIPES.length}`);
 
-  // ----- Seed FARMER Recipes (from shared data) -----
-  console.log('--- Seeding FARMER Recipes ---');
+  // ----- Seed COOK Recipes (from shared data) -----
+  console.log('--- Seeding COOK Recipes ---');
 
-  for (const recipe of FARMER_RECIPES) {
+  for (const recipe of COOK_RECIPES) {
     const ingredients = recipe.inputs.map((inp) => {
       const templateId = templateMap.get(inp.itemName);
       if (!templateId) {
@@ -858,10 +858,10 @@ export async function seedRecipes(prisma: PrismaClient) {
       },
     });
 
-    console.log(`  + ${recipe.name} (FARMER Lvl ${recipe.levelRequired})`);
+    console.log(`  + ${recipe.name} (COOK Lvl ${recipe.levelRequired})`);
   }
 
-  console.log(`  FARMER recipes: ${FARMER_RECIPES.length}`);
+  console.log(`  COOK recipes: ${COOK_RECIPES.length}`);
 
   // ----- Seed Crafting Recipes (non-processing) -----
   console.log('--- Seeding Crafting Recipes ---');
@@ -909,5 +909,5 @@ export async function seedRecipes(prisma: PrismaClient) {
   }
 
   console.log(`  Crafting recipes: ${CRAFTING_RECIPES.length}`);
-  console.log(`  Total recipes: ${ALL_PROCESSING_RECIPES.length + FARMER_RECIPES.length + CRAFTING_RECIPES.length}`);
+  console.log(`  Total recipes: ${ALL_PROCESSING_RECIPES.length + COOK_RECIPES.length + CRAFTING_RECIPES.length}`);
 }
