@@ -279,7 +279,7 @@ async function main() {
         name: 'Harvest Feast',
         type: 'CONSUMABLE',
         rarity: 'SUPERIOR',
-        description: 'A lavish spread of bread, baked apples, and herb-roasted delicacies. Fit for a harvest celebration.',
+        description: 'A lavish spread of bread, apple sauce, and herb-roasted delicacies. Fit for a harvest celebration.',
         stats: { hpRestore: 50 },
         durability: 1,
         professionRequired: 'COOK',

@@ -561,6 +561,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
 
       if (combatLogs.length > 0) {
         const combatData = combatLogs.map((log: any) => ({
+          CombatId: log.sessionId ?? '',
           Tick: log.simulationTick ?? '',
           Type: log.type,
           Character: log.characterName,
@@ -585,6 +586,38 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
     } catch (combatLogErr) {
       // Don't fail the entire export if combat logs fail
       console.error('Failed to add combat logs sheet:', combatLogErr);
+    }
+
+    // Sheet 13b: Combat Rounds — round-by-round detail for every combat encounter
+    try {
+      const combatRounds = simulationController.getCombatRounds();
+      if (combatRounds.length > 0) {
+        const roundData = combatRounds.map(r => ({
+          Tick: r.tick,
+          CombatId: r.combatId,
+          Round: r.round,
+          Attacker: r.attacker,
+          Defender: r.defender,
+          AttackRoll: r.attackRoll,
+          AttackModifiers: r.attackModifiers,
+          TotalAttack: r.totalAttack,
+          DefenseValue: r.defenseValue,
+          DefenseModifiers: r.defenseModifiers,
+          TotalDefense: r.totalDefense,
+          Hit: r.hit ? 'Yes' : 'No',
+          DamageRoll: r.damageRoll,
+          DamageModifiers: r.damageModifiers,
+          TotalDamage: r.totalDamage,
+          AttackerHPBefore: r.attackerHPBefore,
+          AttackerHPAfter: r.attackerHPAfter,
+          DefenderHPBefore: r.defenderHPBefore,
+          DefenderHPAfter: r.defenderHPAfter,
+          Notes: r.notes,
+        }));
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(roundData), 'Combat Rounds');
+      }
+    } catch (combatRoundErr) {
+      console.error('Failed to add combat rounds sheet:', combatRoundErr);
     }
 
     // Sheet 14: Market Transactions — one row per completed sale

@@ -3,6 +3,7 @@ import { logger } from './logger';
 import { resolveRoadEncounter, resolveGroupRoadEncounter } from './road-encounter';
 import { ACTION_XP } from '@shared/data/progression';
 import { checkLevelUp } from '../services/progression';
+import type { CombatRound } from './simulation/types';
 
 export interface TravelTickResult {
   soloMoved: number;
@@ -16,6 +17,7 @@ export interface TravelTickResult {
   groupEncounterWins: number;
   groupEncounterLosses: number;
   errors: number;
+  combatRounds: CombatRound[];
 }
 
 /**
@@ -43,6 +45,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
     groupEncounterWins: 0,
     groupEncounterLosses: 0,
     errors: 0,
+    combatRounds: [],
   };
 
   // -----------------------------------------------------------------------
@@ -114,6 +117,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
 
         if (encounter.encountered) {
           result.soloEncountered++;
+          if (encounter.combatRounds) result.combatRounds.push(...encounter.combatRounds);
 
           if (encounter.won) {
             // Won encounter: arrive at destination with combat + travel XP
@@ -260,6 +264,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
 
         if (encounter.encountered) {
           result.groupEncountered++;
+          if (encounter.combatRounds) result.combatRounds.push(...encounter.combatRounds);
 
           if (encounter.won) {
             // Won encounter: all members arrive at destination with travel XP

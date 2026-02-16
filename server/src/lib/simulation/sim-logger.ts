@@ -9,6 +9,7 @@ import {
   TickResolutionEntry,
   BotTimeline,
   ActionResult,
+  CombatRound,
 } from './types';
 
 // ---------------------------------------------------------------------------
@@ -34,6 +35,7 @@ export function captureBotState(bot: BotState, dailyActionUsed: boolean = false)
 export class SimulationLogger {
   private actionLog: BotActionEntry[] = [];
   private tickResolutions: TickResolutionEntry[] = [];
+  private combatRounds: CombatRound[] = [];
 
   // --- Log one API call ---
   logAction(entry: BotActionEntry): void {
@@ -73,6 +75,19 @@ export class SimulationLogger {
     });
   }
 
+  // --- Log combat rounds ---
+  logCombatRound(round: CombatRound): void {
+    this.combatRounds.push(round);
+  }
+
+  logCombatRounds(rounds: CombatRound[]): void {
+    this.combatRounds.push(...rounds);
+  }
+
+  getCombatRounds(): CombatRound[] {
+    return this.combatRounds;
+  }
+
   // --- Log tick resolution for one bot ---
   logTickResolution(entry: TickResolutionEntry): void {
     this.tickResolutions.push(entry);
@@ -106,15 +121,33 @@ export class SimulationLogger {
       const last = entries[entries.length - 1];
 
       const towns = new Set(entries.map(e => e.botState.town));
-      const successes = entries.filter(e => e.success && e.phase === 'daily');
-      const failures = entries.filter(e => !e.success && e.phase === 'daily');
+
+      // Bug 5 fix: Count success/failure per TICK, not per log entry.
+      // Each tick may produce multiple daily-phase entries (one per priority attempted).
+      // A tick counts as "committed" if ANY daily entry succeeded that tick.
+      // A tick counts as "failed" only if ALL daily entries that tick failed
+      // AND the bot actually attempted a real action (not travel_skip or free-only ticks).
+      const dailyEntries = entries.filter(e => e.phase === 'daily');
+      const byTick = new Map<number, BotActionEntry[]>();
+      for (const e of dailyEntries) {
+        if (!byTick.has(e.tick)) byTick.set(e.tick, []);
+        byTick.get(e.tick)!.push(e);
+      }
+
+      let committed = 0;
+      let failed = 0;
+      for (const [, tickEntries] of byTick) {
+        // Skip ticks where the only entry is travel_skip (bot in transit — not a failure)
+        const realEntries = tickEntries.filter(e => e.intent !== 'travel_skip');
+        if (realEntries.length === 0) continue;
+        const anySuccess = realEntries.some(e => e.success);
+        if (anySuccess) committed++;
+        else failed++;
+      }
 
       const gathered = entries.filter(e => e.intent.includes('gather') && e.success).length;
       const crafted = entries.filter(e => e.intent.includes('craft') && e.success).length;
       const quests = entries.filter(e => e.intent.includes('quest') && e.success).length;
-
-      // XP from tick resolutions
-      const resolutions = this.tickResolutions.filter(r => r.botId === botId);
 
       timelines.push({
         botName: first.botName,
@@ -129,8 +162,8 @@ export class SimulationLogger {
         endLevel: last.botState.level,
         startGold: first.botState.gold,
         endGold: last.botState.gold,
-        actionsCommitted: successes.length,
-        actionsFailed: failures.length,
+        actionsCommitted: committed,
+        actionsFailed: failed,
         resourcesGathered: gathered,
         itemsCrafted: crafted,
         questsCompleted: quests,
@@ -143,5 +176,6 @@ export class SimulationLogger {
   clear(): void {
     this.actionLog = [];
     this.tickResolutions = [];
+    this.combatRounds = [];
   }
 }

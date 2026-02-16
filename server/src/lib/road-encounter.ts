@@ -39,6 +39,8 @@ import { checkLevelUp } from '../services/progression';
 import { checkAchievements } from '../services/achievements';
 import { logPveCombat, COMBAT_LOGGING_ENABLED } from './combat-logger';
 import { getSimulationTick } from './simulation-context';
+import type { CombatRound } from './simulation/types';
+import type { AttackResult } from '@shared/types/combat';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -208,6 +210,68 @@ async function getEquippedWeapon(characterId: string): Promise<WeaponInfo> {
 }
 
 // ---------------------------------------------------------------------------
+// Combat Round Builder — converts combat-engine TurnLogEntry[] to CombatRound[]
+// ---------------------------------------------------------------------------
+
+function buildCombatRoundsFromLog(
+  sessionId: string,
+  combatState: CombatState,
+  tick: number | null,
+): CombatRound[] {
+  const rounds: CombatRound[] = [];
+  const nameMap = new Map(combatState.combatants.map(c => [c.id, c.name]));
+
+  // Track HP for each combatant starting at maxHp
+  const hpTracker = new Map(combatState.combatants.map(c => [c.id, c.maxHp]));
+
+  for (const entry of combatState.log) {
+    // Process status effect ticks to keep HP tracker accurate
+    for (const st of entry.statusTicks) {
+      hpTracker.set(st.combatantId, st.hpAfter);
+    }
+
+    if (entry.result.type !== 'attack') continue;
+    const atk = entry.result as AttackResult;
+
+    const attackerHPBefore = hpTracker.get(entry.actorId) ?? 0;
+
+    const notes: string[] = [];
+    if (atk.critical) notes.push('Critical hit!');
+    if (!atk.hit && (atk as any).negatedAttack) notes.push('Dodged!');
+    if (!atk.hit && !(atk as any).negatedAttack) notes.push('Miss!');
+    if (atk.targetKilled) notes.push('Killed!');
+
+    rounds.push({
+      tick: tick ?? 0,
+      combatId: sessionId,
+      round: entry.round,
+      attacker: nameMap.get(entry.actorId) ?? entry.actorId,
+      defender: nameMap.get(atk.targetId) ?? atk.targetId,
+      attackRoll: atk.attackRoll,
+      attackModifiers: (atk.attackModifiers || []).map(m => `${m.source}: ${m.value >= 0 ? '+' : ''}${m.value}`).join(', '),
+      totalAttack: atk.attackTotal,
+      defenseValue: atk.targetAC,
+      defenseModifiers: `AC ${atk.targetAC}`,
+      totalDefense: atk.targetAC,
+      hit: atk.hit,
+      damageRoll: atk.damageRoll ?? 0,
+      damageModifiers: (atk.damageModifiers || []).map(m => `${m.source}: ${m.value >= 0 ? '+' : ''}${m.value}`).join(', '),
+      totalDamage: atk.totalDamage,
+      attackerHPBefore,
+      attackerHPAfter: attackerHPBefore, // Attacker HP unchanged by their own attack
+      defenderHPBefore: atk.targetHpBefore ?? 0,
+      defenderHPAfter: atk.targetHpAfter ?? 0,
+      notes: notes.join(' '),
+    });
+
+    // Update defender HP in tracker
+    hpTracker.set(atk.targetId, atk.targetHpAfter);
+  }
+
+  return rounds;
+}
+
+// ---------------------------------------------------------------------------
 // Road Encounter Result
 // ---------------------------------------------------------------------------
 
@@ -228,6 +292,8 @@ export interface RoadEncounterResult {
   goldAwarded?: number;
   /** Total combat rounds. */
   totalRounds?: number;
+  /** Round-by-round combat detail for simulation export. */
+  combatRounds?: CombatRound[];
 }
 
 // ---------------------------------------------------------------------------
@@ -548,6 +614,9 @@ export async function resolveRoadEncounter(
     'Road encounter resolved',
   );
 
+  // Build round-by-round combat data for simulation export
+  const combatRounds = buildCombatRoundsFromLog(sessionId, combatState, getSimulationTick());
+
   return {
     encountered: true,
     won: playerWon,
@@ -557,6 +626,7 @@ export async function resolveRoadEncounter(
     xpAwarded,
     goldAwarded,
     totalRounds,
+    combatRounds,
   };
 }
 
@@ -583,6 +653,8 @@ export interface GroupRoadEncounterResult {
     goldAwarded: number;
     deathPenalty?: { goldLost: number; xpLost: number; durabilityDamage: number };
   }[];
+  /** Round-by-round combat detail for simulation export. */
+  combatRounds?: CombatRound[];
 }
 
 // ---------------------------------------------------------------------------
@@ -1012,6 +1084,9 @@ export async function resolveGroupRoadEncounter(
     'Group road encounter resolved',
   );
 
+  // Build round-by-round combat data for simulation export
+  const combatRounds = buildCombatRoundsFromLog(sessionId, combatState, getSimulationTick());
+
   return {
     encountered: true,
     won: partyWon,
@@ -1019,5 +1094,6 @@ export async function resolveGroupRoadEncounter(
     monsterLevel: monster.level,
     totalRounds,
     memberResults,
+    combatRounds,
   };
 }

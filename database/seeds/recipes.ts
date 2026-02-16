@@ -305,20 +305,6 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
 
   // --- COOK Food Products ---
   {
-    name: 'Baked Apples',
-    type: 'CONSUMABLE',
-    rarity: 'COMMON',
-    description: 'Warm, cinnamon-kissed baked apples. A simple but satisfying farm treat.',
-    stats: { healAmount: 15 },
-    durability: 1,
-    professionRequired: 'COOK',
-    levelRequired: 1,
-    isFood: true,
-    foodBuff: { effect: 'heal_hp', magnitude: 15, duration: 0 },
-    isPerishable: true,
-    shelfLifeDays: 5,
-  },
-  {
     name: 'Berry Jam',
     type: 'CONSUMABLE',
     rarity: 'COMMON',
@@ -393,7 +379,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     name: 'Hearty Feast',
     type: 'CONSUMABLE',
     rarity: 'SUPERIOR',
-    description: 'A lavish spread of baked apples, berry compote, and herb-roasted vegetables. Fit for a harvest celebration.',
+    description: 'A lavish spread of apple sauce, berry compote, and herb-roasted vegetables. Fit for a harvest celebration.',
     stats: { healAmount: 50, staminaRestore: 30 },
     durability: 1,
     professionRequired: 'COOK',

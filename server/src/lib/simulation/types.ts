@@ -330,3 +330,30 @@ export interface BotTimeline {
   itemsCrafted: number;
   questsCompleted: number;
 }
+
+// ---------------------------------------------------------------------------
+// Combat Round Logging (round-by-round detail for Excel export)
+// ---------------------------------------------------------------------------
+
+export interface CombatRound {
+  tick: number;
+  combatId: string;
+  round: number;
+  attacker: string;
+  defender: string;
+  attackRoll: number;
+  attackModifiers: string;
+  totalAttack: number;
+  defenseValue: number;
+  defenseModifiers: string;
+  totalDefense: number;
+  hit: boolean;
+  damageRoll: number;
+  damageModifiers: string;
+  totalDamage: number;
+  attackerHPBefore: number;
+  attackerHPAfter: number;
+  defenderHPBefore: number;
+  defenderHPAfter: number;
+  notes: string;
+}

@@ -428,21 +428,6 @@ export const COOK_CONSUMABLES: ConsumableRecipe[] = [
     description: 'A fresh loaf of crusty bread. Filling and nourishing.',
   },
   {
-    recipeId: 'cook-baked-apples',
-    name: 'Baked Apples',
-    professionRequired: 'COOK',
-    levelRequired: 1,
-    inputs: [
-      { itemName: 'Apples', quantity: 2 },
-    ],
-    output: { itemName: 'Baked Apples', quantity: 2 },
-    consumableStats: { effect: 'hp_regen', magnitude: 3, duration: 20, stackSize: 20 },
-    craftTime: 10,
-    xpReward: 8,
-    tier: 1,
-    description: 'Warm apples baked until soft and caramelized. A simple but satisfying treat.',
-  },
-  {
     recipeId: 'cook-rations',
     name: 'Rations',
     professionRequired: 'COOK',

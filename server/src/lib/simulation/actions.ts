@@ -1178,17 +1178,71 @@ export async function partyTravel(bot: BotState): Promise<ActionResult> {
 export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]> {
   const results: ActionResult[] = [];
 
-  // 1. List surplus items (if bot has non-equipped items)
+  // 1. List surplus items (keep items needed for crafting, sell the rest)
   try {
-    const listResult = await listOnMarket(bot);
-    if (listResult.success) results.push(listResult);
+    // Build set of item names the bot needs for crafting
+    const keepItems = new Set<string>();
+    try {
+      const recipesRes = await get('/crafting/recipes', bot.token);
+      if (recipesRes.status >= 200 && recipesRes.status < 300) {
+        const recipes: any[] = recipesRes.data?.recipes || recipesRes.data || [];
+        for (const r of recipes) {
+          for (const inp of (r.inputs || [])) {
+            keepItems.add(inp.itemName || inp.name || '');
+          }
+        }
+      }
+    } catch { /* ignore */ }
+
+    const listResults = await listSurplusOnMarket(bot, keepItems);
+    for (const lr of listResults) {
+      if (lr.success) results.push(lr);
+    }
   } catch { /* ignore market errors */ }
 
-  // 2. Browse and place buy orders on items we need
-  try {
-    const buyResult = await buyFromMarket(bot);
-    if (buyResult.success) results.push(buyResult);
-  } catch { /* ignore market errors */ }
+  // 2. Buy items needed for crafting (if bot has crafting profession)
+  const hasCrafting = bot.professions.some(p => {
+    const upper = p.toUpperCase();
+    return ['SMELTER', 'BLACKSMITH', 'ARMORER', 'WOODWORKER', 'TANNER', 'LEATHERWORKER',
+      'TAILOR', 'ALCHEMIST', 'ENCHANTER', 'COOK', 'BREWER', 'JEWELER', 'FLETCHER',
+      'MASON', 'SCRIBE'].includes(upper);
+  });
+
+  if (hasCrafting && bot.gold >= 10) {
+    try {
+      // Get recipes and inventory to find missing ingredients
+      const recipesRes = await get('/crafting/recipes', bot.token);
+      const invRes = await get('/items/inventory', bot.token);
+      if (recipesRes.status >= 200 && recipesRes.status < 300 &&
+          invRes.status >= 200 && invRes.status < 300) {
+        const recipes: any[] = recipesRes.data?.recipes || recipesRes.data || [];
+        const items: any[] = invRes.data?.items || invRes.data || [];
+        // Build inventory map
+        const invMap = new Map<string, number>();
+        for (const item of items) {
+          const name = item.templateName || item.name || 'Unknown';
+          invMap.set(name, (invMap.get(name) || 0) + (item.quantity || 1));
+        }
+        // Find missing ingredients from non-craftable recipes
+        const notCraftable = recipes.filter((r: any) => !r.canCraft);
+        const missing: string[] = [];
+        for (const r of notCraftable) {
+          for (const inp of (r.inputs || [])) {
+            const name = inp.itemName || inp.name || '';
+            const have = invMap.get(name) || 0;
+            if (have < (inp.quantity || 1) && !missing.includes(name)) {
+              missing.push(name);
+            }
+          }
+        }
+        // Try to buy first missing ingredient
+        if (missing.length > 0) {
+          const buyResult = await buySpecificItem(bot, missing[0]);
+          if (buyResult.success) results.push(buyResult);
+        }
+      }
+    } catch { /* ignore */ }
+  }
 
   return results;
 }

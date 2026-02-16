@@ -381,8 +381,8 @@ export async function decideBotAction(
     } catch { /* ignore */ }
   }
 
-  // A3: Buy assets (gathering profs with surplus gold, 50g buffer)
-  if (hasGathering && bot.gold >= 150 && config.enabledSystems.gathering) {
+  // A3: Buy assets (gathering profs with enough gold for cheapest field)
+  if (hasGathering && bot.gold >= 100 && config.enabledSystems.gathering) {
     try {
       const r = await timedFreeAction(() => actions.buyAsset(bot), bot, 'buy_asset', logger, tick);
       if (r.success) console.log(`[SIM] ${bot.characterName} bought asset: ${r.detail}`);
@@ -553,16 +553,7 @@ export async function decideBotAction(
       }
     }
 
-    // No specific travel reason — random exploration (only if nothing else worked)
-    const r = await timedDailyAction(
-      () => actions.travel(bot),
-      bot, 'travel_explore', 7, 'Exploring (no specific destination)',
-      logger, tick,
-    );
-    if (r.success) {
-      bot.lastTravelTick = currentTick;
-      return r;
-    }
+    // No specific travel reason — skip travel entirely (don't wander aimlessly)
   }
 
   // ── P8: Gather fallback ────────────────────────────────────────────

@@ -330,8 +330,12 @@ class SimulationController {
       if (travelResult.soloArrived > 0) {
         actionBreakdown['travel_arrived'] = (actionBreakdown['travel_arrived'] || 0) + travelResult.soloArrived;
       }
+      // Store round-by-round combat data for Excel export
+      if (travelResult.combatRounds.length > 0) {
+        this.simLogger.logCombatRounds(travelResult.combatRounds);
+      }
       logger.info(
-        { tick: this.singleTickCount + 1, ...travelResult },
+        { tick: this.singleTickCount + 1, soloMoved: travelResult.soloMoved, soloArrived: travelResult.soloArrived, soloEncountered: travelResult.soloEncountered, combatRoundsLogged: travelResult.combatRounds.length },
         'Travel tick processed within simulation',
       );
     } catch (err: any) {
@@ -662,6 +666,10 @@ class SimulationController {
 
   getBotTimelines(): BotTimeline[] {
     return this.simLogger.getBotTimelines(this.bots);
+  }
+
+  getCombatRounds(): import('./types').CombatRound[] {
+    return this.simLogger.getCombatRounds();
   }
 
   // ---------------------------------------------------------------------------
