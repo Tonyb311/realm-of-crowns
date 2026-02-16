@@ -85,7 +85,7 @@ gathering_spot_types:
     edible: false
     description: "Rough-cut timber. Used by woodworkers, fletchers, and builders."
     gather_professions: [LUMBERJACK]
-    craft_consumers: [WOODWORKER, FLETCHER, MASON, SCRIBE]
+    craft_consumers: [WOODWORKER, FLETCHER, MASON, SCRIBE, COOK]
     regions: [Silverwood, Crossroads, Frozen Reaches]
 
   mine:
@@ -246,7 +246,7 @@ professions:
     description: "Fells trees and prepares timber."
     bonus_spots: [forest]
     bonus_yield: "+50% quantity at specialty spots"
-    feeds_into: [WOODWORKER, FLETCHER, MASON, SCRIBE]
+    feeds_into: [WOODWORKER, FLETCHER, MASON, SCRIBE, COOK]
     status: EXISTS_IN_GAME
 
   MINER:
@@ -287,8 +287,8 @@ professions:
     type: CRAFTING
     unlock_level: 3
     description: "Transforms raw ingredients into meals that restore HP and grant buffs."
-    depends_on_gatherers: [FARMER, FISHERMAN, RANCHER, HUNTER, HERBALIST]
-    raw_inputs: [apple, wild_berries, wild_herbs, raw_fish, grain, vegetables, game_meat]
+    depends_on_gatherers: [FARMER, FISHERMAN, RANCHER, HUNTER, HERBALIST, LUMBERJACK]
+    raw_inputs: [apple, wild_berries, wild_herbs, raw_fish, grain, vegetables, game_meat, wood_logs]
     intermediate_inputs: [flour]          # Things COOK makes and reuses
     output_categories: [FOOD, DRINK]
     status: EXISTS_IN_GAME                # UPDATED: 2026-02-15 — 15 recipes implemented and deployed
@@ -523,6 +523,8 @@ cook_recipes:
     inputs:
       - item_id: grain
         quantity: 2
+      - item_id: wood_logs
+        quantity: 1
     outputs:
       - item_id: flour
         quantity: 1
@@ -544,6 +546,8 @@ cook_recipes:
     inputs:
       - item_id: apple
         quantity: 3
+      - item_id: wood_logs
+        quantity: 1
     outputs:
       - item_id: apple_sauce
         quantity: 1
@@ -564,6 +568,8 @@ cook_recipes:
     inputs:
       - item_id: grain
         quantity: 2
+      - item_id: wood_logs
+        quantity: 1
     outputs:
       - item_id: porridge
         quantity: 1
@@ -583,6 +589,8 @@ cook_recipes:
     inputs:
       - item_id: wild_berries
         quantity: 3
+      - item_id: wood_logs
+        quantity: 1
     outputs:
       - item_id: berry_jam
         quantity: 1
@@ -603,6 +611,8 @@ cook_recipes:
     inputs:
       - item_id: raw_fish
         quantity: 2
+      - item_id: wood_logs
+        quantity: 1
     outputs:
       - item_id: grilled_fish
         quantity: 1
@@ -622,6 +632,8 @@ cook_recipes:
     inputs:
       - item_id: wild_herbs
         quantity: 2
+      - item_id: wood_logs
+        quantity: 1
     outputs:
       - item_id: herbal_tea
         quantity: 1
@@ -644,6 +656,8 @@ cook_recipes:
     inputs:
       - item_id: vegetables
         quantity: 3
+      - item_id: wood_logs
+        quantity: 1
     outputs:
       - item_id: vegetable_stew
         quantity: 1
@@ -666,6 +680,8 @@ cook_recipes:
     inputs:
       - item_id: flour
         quantity: 2
+      - item_id: wood_logs
+        quantity: 1
     outputs:
       - item_id: bread_loaf
         quantity: 1
@@ -688,6 +704,8 @@ cook_recipes:
         quantity: 1
       - item_id: apple
         quantity: 3
+      - item_id: wood_logs
+        quantity: 1
     outputs:
       - item_id: apple_pie
         quantity: 1
@@ -709,6 +727,8 @@ cook_recipes:
       - item_id: raw_fish
         quantity: 2
       - item_id: wild_herbs
+        quantity: 1
+      - item_id: wood_logs
         quantity: 1
     outputs:
       - item_id: fish_stew
@@ -734,6 +754,8 @@ cook_recipes:
         quantity: 2
       - item_id: wild_herbs
         quantity: 1
+      - item_id: wood_logs
+        quantity: 1
     outputs:
       - item_id: seasoned_roast_vegetables
         quantity: 1
@@ -757,6 +779,8 @@ cook_recipes:
       - item_id: flour
         quantity: 1
       - item_id: berry_jam
+        quantity: 1
+      - item_id: wood_logs
         quantity: 1
     outputs:
       - item_id: berry_tart
@@ -785,6 +809,8 @@ cook_recipes:
         quantity: 2
       - item_id: wild_herbs
         quantity: 2
+      - item_id: wood_logs
+        quantity: 1
     outputs:
       - item_id: harvest_feast
         quantity: 1
@@ -811,6 +837,8 @@ cook_recipes:
       - item_id: bread_loaf
         quantity: 1
       - item_id: berry_jam
+        quantity: 1
+      - item_id: wood_logs
         quantity: 1
     outputs:
       - item_id: fisherman_banquet
@@ -839,6 +867,8 @@ cook_recipes:
         quantity: 2
       - item_id: berry_jam
         quantity: 1
+      - item_id: wood_logs
+        quantity: 1
     outputs:
       - item_id: spiced_pastry
         quantity: 1
@@ -857,27 +887,33 @@ cook_recipes:
 
 dependency_chains:
 
-  # --- FOOD CHAIN (FARMER + FISHERMAN + HERBALIST → COOK) ---
+  # --- FOOD CHAIN (FARMER + FISHERMAN + HERBALIST + LUMBERJACK → COOK) ---
+  # NOTE: All COOK recipes require 1× Wood Logs as fuel (LUMBERJACK dependency)
   basic_food:
-    Apple ──[COOK]──→ Apple Sauce
-    Grain ──[COOK]──→ Porridge
-    Grain ──[COOK]──→ Flour (intermediate)
-    Wild Berries ──[COOK]──→ Berry Jam (intermediate)
-    Raw Fish ──[COOK]──→ Grilled Fish
-    Wild Herbs ──[COOK]──→ Herbal Tea
-    Vegetables ──[COOK]──→ Vegetable Stew
+    Apple + Wood Logs ──[COOK]──→ Apple Sauce
+    Grain + Wood Logs ──[COOK]──→ Porridge
+    Grain + Wood Logs ──[COOK]──→ Flour (intermediate)
+    Wild Berries + Wood Logs ──[COOK]──→ Berry Jam (intermediate)
+    Raw Fish + Wood Logs ──[COOK]──→ Grilled Fish
+    Wild Herbs + Wood Logs ──[COOK]──→ Herbal Tea
+    Vegetables + Wood Logs ──[COOK]──→ Vegetable Stew
 
   advanced_food:
-    Flour ──[COOK]──→ Bread Loaf
-    Flour + Apple ──[COOK]──→ Apple Pie
-    Fish + Herbs ──[COOK]──→ Fish Stew
-    Vegetables + Herbs ──[COOK]──→ Seasoned Roast Vegetables
-    Flour + Berry Jam ──[COOK]──→ Berry Tart
+    Flour + Wood Logs ──[COOK]──→ Bread Loaf
+    Flour + Apple + Wood Logs ──[COOK]──→ Apple Pie
+    Fish + Herbs + Wood Logs ──[COOK]──→ Fish Stew
+    Vegetables + Herbs + Wood Logs ──[COOK]──→ Seasoned Roast Vegetables
+    Flour + Berry Jam + Wood Logs ──[COOK]──→ Berry Tart
 
   premium_food:
-    Bread + Apple + Herbs ──[COOK]──→ Harvest Feast
-    Grilled Fish + Bread + Berry Jam ──[COOK]──→ Fisherman's Banquet
-    Flour + Herbs + Berry Jam ──[COOK]──→ Spiced Pastry
+    Bread + Apple + Herbs + Wood Logs ──[COOK]──→ Harvest Feast
+    Grilled Fish + Bread + Berry Jam + Wood Logs ──[COOK]──→ Fisherman's Banquet
+    Flour + Herbs + Berry Jam + Wood Logs ──[COOK]──→ Spiced Pastry
+
+  # --- FUEL CHAIN (LUMBERJACK → COOK) ---
+  fuel:
+    Wood Logs ──[universal fuel]──→ All 15 COOK recipes require 1× Wood Logs
+    note: "COOKs in non-forest towns must trade for wood. Creates LUMBERJACK→COOK dependency."
 
   # --- METAL CHAIN (MINER → SMELTER → BLACKSMITH/ARMORER) ---
   metal_weapons:
@@ -927,6 +963,7 @@ economy_rules:
     principle: "Different towns produce different resources"
     rule: "No town has all resource types. Players must travel or trade."
     example: "Ironvault has mines but no orchards. Must buy food from Heartlands."
+    wood_scarcity: "COOKs in non-forest towns (no forest gathering spot) must buy Wood Logs from LUMBERJACKs or the marketplace. Creates cross-profession trade pressure."
 
   profession_limit:
     max_per_character: 3
