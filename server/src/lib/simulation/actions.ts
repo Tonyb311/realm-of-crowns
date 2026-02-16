@@ -1241,9 +1241,15 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
         if (missing.length > 0) {
           const buyResult = await buySpecificItem(bot, missing[0]);
           results.push(buyResult); // Log both success and failure
+        } else {
+          results.push({ success: false, detail: `[MarketBuy] ${bot.characterName}: has ${recipes.length} recipes, ${notCraftable.length} not craftable, but 0 missing ingredients`, endpoint: '/market/buy (direct DB)' });
         }
+      } else {
+        results.push({ success: false, detail: `[MarketBuy] ${bot.characterName}: recipe HTTP ${recipesRes.status}, inv HTTP ${invRes.status}`, endpoint: '/market/buy (direct DB)' });
       }
-    } catch { /* ignore */ }
+    } catch (err: any) {
+      results.push({ success: false, detail: `[MarketBuy] ${bot.characterName}: ERROR ${err.message}`, endpoint: '/market/buy (direct DB)' });
+    }
   }
 
   return results;
