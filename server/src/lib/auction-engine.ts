@@ -533,13 +533,15 @@ export async function resolveAllTownAuctions(): Promise<{
   transactionsCompleted: number;
   ordersProcessed: number;
 }> {
-  // Find all towns that have open cycles old enough to resolve
+  // Find all towns that have open cycles ready to resolve
+  // In simulation mode, skip the cycle age check — resolve immediately
+  const isSimulation = getSimulationTick() !== null;
   const cutoff = new Date(Date.now() - MARKET_CYCLE_DURATION_MS);
 
   const openCycles = await prisma.auctionCycle.findMany({
     where: {
       status: 'open',
-      startedAt: { lte: cutoff },
+      ...(isSimulation ? {} : { startedAt: { lte: cutoff } }),
     },
     select: { townId: true },
     distinct: ['townId'],

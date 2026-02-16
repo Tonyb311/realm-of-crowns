@@ -9,6 +9,8 @@ import { BotState, ActionResult } from './types';
 import { get, post } from './dispatcher';
 import { getResourcesByType } from './seed';
 import { TOWN_GATHERING_SPOTS } from '@shared/data/gathering';
+import { prisma } from '../../lib/prisma';
+import { getOrCreateOpenCycle } from '../auction-engine';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1238,7 +1240,7 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
         // Try to buy first missing ingredient
         if (missing.length > 0) {
           const buyResult = await buySpecificItem(bot, missing[0]);
-          if (buyResult.success) results.push(buyResult);
+          results.push(buyResult); // Log both success and failure
         }
       }
     } catch { /* ignore */ }
@@ -1752,47 +1754,89 @@ export async function travelHome(bot: BotState, reason: string): Promise<ActionR
 // ---------------------------------------------------------------------------
 
 export async function buySpecificItem(bot: BotState, itemName: string, maxPrice?: number): Promise<ActionResult> {
-  const endpoint = '/market/buy';
+  const endpoint = '/market/buy (direct DB)';
   try {
-    const browseRes = await get(`/market/browse?limit=50`, bot.token);
-    if (browseRes.status < 200 || browseRes.status >= 300) {
-      return { success: false, detail: browseRes.data?.error || `Failed to browse market`, endpoint, httpStatus: browseRes.status, requestBody: {}, responseBody: browseRes.data };
-    }
-
-    const listings: any[] = browseRes.data?.listings || browseRes.data || [];
+    // Global market search — find active listings across ALL towns
     const max = maxPrice ?? bot.gold * 0.5;
-
-    // Find listings matching the item name
-    const matching = listings.filter((l: any) => {
-      const name = (l.itemName || l.name || l.item?.name || '').toLowerCase();
-      const price = l.price || l.unitPrice || 0;
-      return name === itemName.toLowerCase() && price > 0 && price <= max;
+    const listings = await prisma.marketListing.findMany({
+      where: {
+        status: 'active',
+        itemName: { equals: itemName, mode: 'insensitive' },
+        price: { gt: 0, lte: Math.floor(max) },
+        sellerId: { not: bot.characterId }, // Don't buy own listings
+      },
+      orderBy: { price: 'asc' },
+      take: 5,
+      select: {
+        id: true,
+        price: true,
+        itemName: true,
+        quantity: true,
+        townId: true,
+        sellerId: true,
+        seller: { select: { name: true } },
+      },
     });
 
-    if (matching.length === 0) {
-      return { success: false, detail: `No affordable ${itemName} on market`, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: `No ${itemName} found` } };
+    if (listings.length === 0) {
+      return { success: false, detail: `No affordable ${itemName} on market (max ${Math.floor(max)}g)`, endpoint, httpStatus: 0, requestBody: { itemName, max }, responseBody: {} };
     }
 
-    // Pick cheapest
-    matching.sort((a: any, b: any) => (a.price || a.unitPrice || 0) - (b.price || b.unitPrice || 0));
-    const listing = matching[0];
-    const listingId = listing.id || listing.listingId;
-    const askingPrice = listing.price || listing.unitPrice || 0;
-    const bidPrice = Math.ceil(askingPrice * 1.1); // 10% above asking
+    const listing = listings[0];
+    const bidPrice = Math.ceil(listing.price * 1.1); // 10% above asking
 
-    const res = await post(endpoint, bot.token, { listingId, bidPrice });
-    if (res.status >= 200 && res.status < 300) {
-      bot.gold -= bidPrice;
-      return {
-        success: true,
-        detail: `Placed buy order for ${itemName} at ${bidPrice}g`,
-        endpoint,
-        httpStatus: res.status,
-        requestBody: { listingId, bidPrice },
-        responseBody: res.data,
-      };
+    // Check for duplicate order on this listing
+    const existingOrder = await prisma.marketBuyOrder.findUnique({
+      where: { buyerId_listingId: { buyerId: bot.characterId, listingId: listing.id } },
+    });
+    if (existingOrder) {
+      return { success: false, detail: `Already have order on ${itemName} listing`, endpoint, httpStatus: 0, requestBody: { listingId: listing.id }, responseBody: {} };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { listingId, bidPrice }, responseBody: res.data };
+
+    // Fresh gold check from DB
+    const freshChar = await prisma.character.findUnique({
+      where: { id: bot.characterId },
+      select: { gold: true, escrowedGold: true },
+    });
+    if (!freshChar) {
+      return { success: false, detail: 'Character not found in DB', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
+    }
+    const availableGold = freshChar.gold - freshChar.escrowedGold;
+    if (availableGold < bidPrice) {
+      return { success: false, detail: `Can't afford ${itemName}: need ${bidPrice}g, have ${availableGold}g available`, endpoint, httpStatus: 0, requestBody: { bidPrice, availableGold }, responseBody: {} };
+    }
+
+    // Get or create auction cycle for the listing's town
+    const cycle = await getOrCreateOpenCycle(listing.townId);
+
+    // Create buy order + escrow in transaction
+    const order = await prisma.$transaction(async (tx) => {
+      await tx.character.update({
+        where: { id: bot.characterId },
+        data: { escrowedGold: { increment: bidPrice } },
+      });
+      return tx.marketBuyOrder.create({
+        data: {
+          buyerId: bot.characterId,
+          listingId: listing.id,
+          bidPrice,
+          status: 'pending',
+          auctionCycleId: cycle.id,
+        },
+      });
+    });
+
+    // Update local bot state
+    bot.gold = freshChar.gold; // Sync to DB value (gold not deducted yet, just escrowed)
+
+    return {
+      success: true,
+      detail: `Placed buy order for ${listing.quantity}x ${listing.itemName} at ${bidPrice}g (asking ${listing.price}g) from ${listing.seller.name}`,
+      endpoint,
+      httpStatus: 201,
+      requestBody: { listingId: listing.id, bidPrice, townId: listing.townId },
+      responseBody: { orderId: order.id, cycleId: cycle.id },
+    };
   } catch (err: any) {
     return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
