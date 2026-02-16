@@ -13,9 +13,9 @@ export const ASSET_TIERS: Record<number, {
   maxYield: number;
   label: string;
 }> = {
-  1: { levelRequired: 3, baseCost: 100, growthTicks: 3, minYield: 3, maxYield: 5, label: 'Apprentice' },
-  2: { levelRequired: 5, baseCost: 200, growthTicks: 5, minYield: 5, maxYield: 8, label: 'Journeyman' },
-  3: { levelRequired: 7, baseCost: 300, growthTicks: 8, minYield: 8, maxYield: 12, label: 'Expert' },
+  1: { levelRequired: 1, baseCost: 100, growthTicks: 3, minYield: 3, maxYield: 5, label: 'Apprentice' },
+  2: { levelRequired: 3, baseCost: 200, growthTicks: 5, minYield: 5, maxYield: 8, label: 'Journeyman' },
+  3: { levelRequired: 5, baseCost: 300, growthTicks: 8, minYield: 8, maxYield: 12, label: 'Expert' },
 };
 
 export const MAX_SLOTS_PER_TIER = 3;
@@ -48,12 +48,7 @@ export const PROFESSION_ASSET_TYPES: Record<string, AssetTypeDefinition[]> = {
   HERBALIST: [
     { id: 'herb_garden_plot', name: 'Herb Garden Plot', spotType: 'herb' },
   ],
-  RANCHER: [
-    { id: 'pasture_lease', name: 'Pasture Lease', spotType: 'pasture' },
-  ],
-  HUNTER: [
-    { id: 'hunting_ground_rights', name: 'Hunting Ground Rights', spotType: 'hunting_ground' },
-  ],
+  // RANCHER and HUNTER omitted — pasture/hunting_ground not yet in RESOURCE_MAP
 };
 
 /** Calculate the purchase cost for an asset slot: baseCost * slotNumber */
