@@ -1006,6 +1006,44 @@ implementation_order:
       - "✓ Verified in 40-tick simulation (25 bots, 1000 actions, 0 errors)"
     notes: "COOK bot Henrik crafted Grilled Fish at ticks 20, 34, 37. All 4 COOKs properly prioritize crafting."
 
+  # UPDATED: 2026-02-16
+  simulation_intelligence_rewrite:
+    name: "Simulation Intelligence Rewrite"
+    status: COMPLETE
+    completed_date: 2026-02-16
+    description: "Full rewrite of bot decision engine with priority-based intelligence"
+    verification_run:
+      config: "25 bots, diverse L1-L7 start, 200g starting gold, 50 ticks"
+      total_actions: 1250
+      errors: 0
+      success_rate: "100%"
+      action_breakdown:
+        gather: "79.4%"
+        travel: "4.7%"
+        travel_in_transit: "7.2%"
+        craft: "1.0%"
+        profession: "1.9%"
+      true_idle_rate: "0% (all 'idle' entries were bots in transit, categorized correctly after fix)"
+      profession_distribution:
+        FARMER: 11
+        COOK: 5
+        MINER: 2
+        FISHERMAN: 2
+        LUMBERJACK: 2
+        HUNTER: 1
+        RANCHER: 1
+        HERBALIST: 1
+      cook_performance: "13 successful crafts, travel purposefully to ingredient/wood towns"
+      avg_level_after_50_ticks: 8.2
+      total_gold: "5013 across 25 bots (70g earned, 57g spent)"
+      decision_logging: "Priority-based decisions logged with P-numbers and reason strings"
+    tasks:
+      - "✓ Rewrote bot decision engine with priority-based intelligence"
+      - "✓ All 25 bots learned professions (11 FARMER, 5 COOK, 2 MINER, 2 FISHERMAN, 2 LUMBERJACK, 1 HUNTER, 1 RANCHER, 1 HERBALIST)"
+      - "✓ COOK bots travel purposefully to ingredient/wood towns, 13 successful crafts"
+      - "✓ True idle rate 0% — all bots active or correctly categorized as in-transit"
+      - "✓ Verified in 50-tick simulation (25 bots, 1250 actions, 0 errors, 100% success rate)"
+
   phase_2:
     name: "MINER → SMELTER → BLACKSMITH (Metal Chain)"
     status: PLANNED
