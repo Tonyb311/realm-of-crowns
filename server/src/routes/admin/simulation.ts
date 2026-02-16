@@ -24,7 +24,8 @@ const seedSchema = z.object({
   raceDistribution: z.enum(['even', 'realistic']).default('realistic'),
   classDistribution: z.enum(['even', 'realistic']).default('realistic'),
   professionDistribution: z.enum(['even', 'diverse']).default('diverse'),
-  startingLevel: z.number().int().min(1).max(10).default(1),
+  startingLevel: z.union([z.number().int().min(1).max(10), z.literal('diverse')]).default(1),
+  startingGold: z.number().int().min(0).max(1000).default(100),
   namePrefix: z.string().min(1).max(20).default('Bot'),
 });
 

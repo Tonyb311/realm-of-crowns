@@ -134,7 +134,8 @@ export interface SeedConfig {
   raceDistribution: 'even' | 'realistic';
   classDistribution: 'even' | 'realistic';
   professionDistribution: 'even' | 'diverse';
-  startingLevel: number; // 1-10
+  startingLevel: number | 'diverse'; // 1-10 or 'diverse' for L1-L7 spread
+  startingGold: number; // 0-1000
   namePrefix: string;
 }
 
@@ -146,6 +147,7 @@ export const DEFAULT_SEED_CONFIG: SeedConfig = {
   classDistribution: 'realistic',
   professionDistribution: 'diverse',
   startingLevel: 1,
+  startingGold: 100,
   namePrefix: 'Bot',
 };
 

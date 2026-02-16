@@ -163,12 +163,21 @@ export async function seedBots(config: SeedConfig): Promise<BotState[]> {
   }
   if (townPool.length === 0) throw new Error('No valid released towns found');
 
+  // Pre-compute per-bot levels for diverse mode
+  const diverseLevels: number[] = [];
+  if (config.startingLevel === 'diverse') {
+    for (let i = 0; i < config.count; i++) {
+      // Distribute evenly across L1-L7
+      diverseLevels.push((i % 7) + 1);
+    }
+  }
+
   for (let batchStart = 1; batchStart <= config.count; batchStart += batchSize) {
     const batchEnd = Math.min(batchStart + batchSize - 1, config.count);
     const batchIndices = Array.from({ length: batchEnd - batchStart + 1 }, (_, k) => batchStart + k);
 
     const batchResults = await Promise.all(
-      batchIndices.map((i) => createSingleBot(i, config, townPool, profiles, profileWeights, releasedRaceEnums)),
+      batchIndices.map((i) => createSingleBot(i, config, townPool, profiles, profileWeights, releasedRaceEnums, diverseLevels)),
     );
 
     bots.push(...batchResults);
@@ -186,6 +195,7 @@ async function createSingleBot(
   profiles: BotProfile[],
   profileWeights: number[],
   releasedRaceEnums: Race[] = ALL_RACES,
+  diverseLevels: number[] = [],
 ): Promise<BotState> {
   // 1. Assign profile
   const profile = weightedRandom(profiles, profileWeights);
@@ -275,8 +285,10 @@ async function createSingleBot(
     cha: baseStat + mods.cha,
   };
 
-  // 9. Starting level handling
-  const startLevel = Math.max(1, Math.min(10, config.startingLevel));
+  // 9. Starting level handling (uniform or diverse)
+  const startLevel = config.startingLevel === 'diverse'
+    ? (diverseLevels[index - 1] ?? 1)
+    : Math.max(1, Math.min(10, config.startingLevel));
 
   // Calculate accumulated XP for this level
   let accumulatedXP = 0;
@@ -292,20 +304,23 @@ async function createSingleBot(
   const conModifier = Math.floor((stats.con - 10) / 2);
   const maxHealth = (10 + conModifier + (CLASS_HP_MAP[charClass] || 6)) * startLevel;
 
-  // Gold by tier
+  // Gold — use admin-specified startingGold (falls back to GOLD_BY_TIER)
   const tier = raceDef?.tier ?? 'core';
-  const gold = GOLD_BY_TIER[tier] ?? 100;
+  const gold = config.startingGold ?? GOLD_BY_TIER[tier] ?? 100;
 
   // Skill points from leveling
   const unspentSkillPoints = startLevel - 1;
 
-  // 10. Starting profession (if professionDistribution is configured)
+  // 10. Starting profession (if professionDistribution is configured OR diverse level L3+)
   let startingProfession: string | null = null;
   if (config.professionDistribution === 'even') {
     // Round-robin through gathering professions
     startingProfession = GATHERING_PROFESSIONS[index % GATHERING_PROFESSIONS.length];
+  } else if (config.startingLevel === 'diverse' && startLevel >= 3) {
+    // Diverse mode: L3+ bots get a profession (engine would assign one anyway at L3)
+    startingProfession = GATHERING_PROFESSIONS[index % GATHERING_PROFESSIONS.length];
   }
-  // 'diverse' uses profile-based selection at runtime (existing engine logic)
+  // Otherwise 'diverse' uses profile-based selection at runtime (existing engine logic)
 
   // 11. Create Character
   const character = await prisma.character.create({

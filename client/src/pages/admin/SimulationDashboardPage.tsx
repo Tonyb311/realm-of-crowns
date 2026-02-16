@@ -356,7 +356,8 @@ export default function SimulationDashboardPage() {
   // -- Local state ----------------------------------------------------------
   const [botCount, setBotCount] = useState(25);
   const [intelligence, setIntelligence] = useState(50);
-  const [startingLevel, setStartingLevel] = useState(1);
+  const [startingLevel, setStartingLevel] = useState<number | 'diverse'>(1);
+  const [startingGold, setStartingGold] = useState(100);
   const [raceDistribution, setRaceDistribution] = useState<'even' | 'realistic'>('realistic');
   const [classDistribution, setClassDistribution] = useState<'even' | 'realistic'>('realistic');
   const [professionDistribution, setProfessionDistribution] = useState<'even' | 'diverse'>('diverse');
@@ -462,6 +463,7 @@ export default function SimulationDashboardPage() {
           count: botCount,
           intelligence,
           startingLevel,
+          startingGold,
           raceDistribution,
           classDistribution,
           professionDistribution,
@@ -743,12 +745,12 @@ export default function SimulationDashboardPage() {
           </div>
 
           {/* Intelligence Slider */}
-          <div className="space-y-1.5 min-w-[200px]">
+          <div className="space-y-1.5 min-w-[180px]">
             <label className="text-realm-text-muted text-xs font-display flex items-center gap-2">
               <Sliders className="w-3.5 h-3.5" />
-              Intelligence
+              Bot Intelligence
               <span className={`ml-auto font-bold ${intelligenceInfo.colorClass}`}>
-                {intelligence} - {intelligenceInfo.label}
+                {intelligence}
               </span>
             </label>
             <input
@@ -760,22 +762,47 @@ export default function SimulationDashboardPage() {
               className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-realm-bg-800 accent-realm-gold-500"
             />
             <div className="flex justify-between text-[10px] text-realm-text-muted">
-              <span>0</span>
-              <span>50</span>
-              <span>100</span>
+              <span>Random</span>
+              <span>Optimized</span>
             </div>
           </div>
 
           {/* Starting Level */}
           <div className="space-y-1.5">
             <label className="text-realm-text-muted text-xs font-display block">Starting Level</label>
+            <div className="flex gap-1">
+              {([1, 3, 5, 'diverse'] as const).map((opt) => (
+                <button
+                  key={String(opt)}
+                  onClick={() => setStartingLevel(opt === 'diverse' ? 'diverse' : opt)}
+                  className={`px-2.5 py-1.5 text-xs rounded border transition-colors ${
+                    startingLevel === opt
+                      ? 'bg-realm-gold-500/20 text-realm-gold-400 border-realm-gold-500/40'
+                      : 'bg-realm-bg-800 text-realm-text-muted border-realm-border hover:border-realm-gold-500/40 hover:text-realm-text-secondary'
+                  }`}
+                >
+                  {opt === 'diverse' ? 'Diverse' : `L${opt}`}
+                </button>
+              ))}
+            </div>
+            {startingLevel === 'diverse' && (
+              <p className="text-[10px] text-realm-gold-400">L1-L7 spread, L3+ get professions</p>
+            )}
+          </div>
+
+          {/* Starting Gold */}
+          <div className="space-y-1.5">
+            <label className="text-realm-text-muted text-xs font-display flex items-center gap-1.5">
+              <Coins className="w-3.5 h-3.5" />
+              Starting Gold
+            </label>
             <input
               type="number"
-              min={1}
-              max={10}
-              value={startingLevel}
+              min={0}
+              max={1000}
+              value={startingGold}
               onChange={(e) =>
-                setStartingLevel(Math.max(1, Math.min(10, parseInt(e.target.value, 10) || 1)))
+                setStartingGold(Math.max(0, Math.min(1000, parseInt(e.target.value, 10) || 0)))
               }
               className="w-20 bg-realm-bg-800 border border-realm-border rounded px-2 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
             />
