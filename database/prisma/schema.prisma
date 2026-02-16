@@ -306,6 +306,7 @@ enum DailyActionType {
   SERVICE
   COMBAT_PVE
   COMBAT_PVP
+  HARVEST
 }
 
 enum DailyActionStatus {
@@ -509,6 +510,9 @@ model Character {
   partyInvitationsReceived PartyInvitation[]      @relation("PartyInvitee")
   partyInvitationsSent    PartyInvitation[]       @relation("PartyInviter")
   marketBuyOrders         MarketBuyOrder[]
+  ownedAssets             OwnedAsset[]   @relation("OwnedAssets")
+  jobListingsOwned        JobListing[]   @relation("JobListingsOwned")
+  jobListingsWorking      JobListing[]   @relation("JobListingsWorking")
 
   @@index([userId])
   @@index([currentTownId])
@@ -662,6 +666,8 @@ model Town {
   npcs              Npc[]
   parties           Party[]
   auctionCycles     AuctionCycle[]
+  ownedAssets        OwnedAsset[] @relation("TownAssets")
+  jobListings        JobListing[] @relation("TownJobs")
 
   @@index([regionId])
   @@index([mayorId])
@@ -2196,4 +2202,56 @@ model ContentRelease {
   @@index([contentType])
   @@index([isReleased])
   @@map("content_releases")
+}
+
+// ---- Private Asset Ownership ----
+
+model OwnedAsset {
+  id             String   @id @default(uuid())
+  ownerId        String   @map("owner_id")
+  townId         String   @map("town_id")
+  professionType String   @map("profession_type")
+  spotType       String   @map("spot_type")
+  tier           Int      @default(1)
+  slotNumber     Int      @map("slot_number")
+  name           String
+  cropState      String   @default("EMPTY") @map("crop_state")
+  plantedAt      Int?     @map("planted_at")
+  readyAt        Int?     @map("ready_at")
+  witheringAt    Int?     @map("withering_at")
+  purchasePrice  Int      @map("purchase_price")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  owner      Character  @relation("OwnedAssets", fields: [ownerId], references: [id], onDelete: Cascade)
+  town       Town       @relation("TownAssets", fields: [townId], references: [id], onDelete: Cascade)
+  jobListing JobListing?
+
+  @@unique([ownerId, professionType, tier, slotNumber])
+  @@index([ownerId])
+  @@index([townId])
+  @@index([cropState])
+  @@map("owned_assets")
+}
+
+model JobListing {
+  id        String   @id @default(uuid())
+  assetId   String   @unique @map("asset_id")
+  ownerId   String   @map("owner_id")
+  townId    String   @map("town_id")
+  wage      Int
+  workerId  String?  @map("worker_id")
+  isOpen    Boolean  @default(true) @map("is_open")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  asset  OwnedAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  owner  Character  @relation("JobListingsOwned", fields: [ownerId], references: [id], onDelete: Cascade)
+  worker Character? @relation("JobListingsWorking", fields: [workerId], references: [id], onDelete: SetNull)
+  town   Town       @relation("TownJobs", fields: [townId], references: [id], onDelete: Cascade)
+
+  @@index([townId, isOpen])
+  @@index([ownerId])
+  @@index([workerId])
+  @@map("job_listings")
 }

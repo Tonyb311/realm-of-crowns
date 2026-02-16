@@ -1006,3 +1006,53 @@ implementation_order:
     status: PLANNED
     professions: [INNKEEPER, HEALER, STABLE_MASTER, BANKER, COURIER]
     notes: "Service profs interact with other systems (housing, travel, banking) — build after those systems exist"
+
+
+# =============================================================================
+# SECTION 8: PRIVATE ASSET OWNERSHIP
+# UPDATED: 2026-02-15
+# =============================================================================
+# Gathering professions can buy private production assets that produce
+# higher yields than public spots. Growth cycle, worker hiring, gold sinks.
+# =============================================================================
+
+asset_ownership:
+
+  overview:
+    status: EXISTS_IN_GAME
+    description: "Private fields, mines, and timber plots that gathering professions purchase and manage"
+    coexists_with: "Public gathering spots (both systems active)"
+
+  pricing:
+    formula: "baseCost * slotNumber"
+    max_slots_per_tier: 3
+    tiers:
+      T1: { level_required: 3, base_cost: 100, growth_ticks: 3, yield: "3-5" }
+      T2: { level_required: 5, base_cost: 200, growth_ticks: 5, yield: "5-8" }
+      T3: { level_required: 7, base_cost: 300, growth_ticks: 8, yield: "8-12" }
+
+  growth_cycle:
+    states: [EMPTY, GROWING, READY, WITHERED]
+    planting: "FREE — no daily action cost"
+    harvesting: "Costs 1 daily action"
+    wither_window: "3 ticks after READY"
+    items_go_to: "OWNER (even if worker harvests)"
+
+  worker_system:
+    job_posting: "Owner posts listing with wage per harvest"
+    job_acceptance: "Worker must be in same town"
+    wage_transfer: "Owner pays worker on each harvest"
+    worker_action: "Worker spends their daily action, owner spends nothing"
+
+  profession_assets:
+    FARMER: [grain_field, vegetable_patch, apple_orchard, berry_field]
+    MINER: [iron_mine_claim, quarry_claim, clay_pit_rights]
+    LUMBERJACK: [timber_plot]
+    FISHERMAN: [fishing_rights]
+    HERBALIST: [herb_garden_plot]
+    RANCHER: [pasture_lease]
+    HUNTER: [hunting_ground_rights]
+
+  residency_rules:
+    purchase: "Must be RESIDENT (homeTownId) of the town"
+    plant_harvest: "Must be PRESENT (currentTownId) in the town"

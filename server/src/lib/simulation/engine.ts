@@ -11,6 +11,7 @@
 
 import { BotState, BotProfile, SimulationConfig, ActionResult } from './types';
 import * as actions from './actions';
+import { buyAsset, plantAsset, harvestAsset, acceptJob } from './actions';
 import { PROFESSION_UNLOCK_LEVEL } from '@shared/data/progression/xp-curve';
 import { SimulationLogger, captureBotState } from './sim-logger';
 
@@ -22,11 +23,14 @@ const CRAFTING_PROFESSIONS = new Set([
 ]);
 
 // ---- Daily action keys (the only actions that consume the daily action slot) ----
-type DailyActionKey = 'gather' | 'craft' | 'travel';
+type DailyActionKey = 'gather' | 'craft' | 'travel' | 'harvest';
+
+// ---- Weight keys (subset used for profile-weighted random selection) ----
+type WeightedActionKey = 'gather' | 'craft' | 'travel';
 
 // ---- Per-profile daily action weight tables ----
-// Only gather, craft, travel — everything else is free.
-const DAILY_WEIGHTS: Record<BotProfile, Record<DailyActionKey, number>> = {
+// Only gather, craft, travel — harvest is priority-checked separately.
+const DAILY_WEIGHTS: Record<BotProfile, Record<WeightedActionKey, number>> = {
   gatherer:   { gather: 60, travel: 25, craft: 15 },
   crafter:    { craft: 50, gather: 30, travel: 20 },
   merchant:   { travel: 50, gather: 30, craft: 20 },
@@ -60,7 +64,7 @@ function weightedSelect(weights: Partial<Record<DailyActionKey, number>>): Daily
 
 // ---- Filter weights by enabled systems + bot capabilities ----
 function filterDailyWeights(
-  weights: Record<DailyActionKey, number>,
+  weights: Record<WeightedActionKey, number>,
   enabled: SimulationConfig['enabledSystems'],
   bot?: BotState,
 ): Partial<Record<DailyActionKey, number>> {
@@ -99,9 +103,10 @@ async function executeDailyAction(action: DailyActionKey, bot: BotState): Promis
   const start = Date.now();
   let result: ActionResult;
   switch (action) {
-    case 'gather': result = await actions.gatherFromSpot(bot); break;
-    case 'craft':  result = await actions.startCrafting(bot); break;
-    case 'travel': result = await actions.travel(bot); break;
+    case 'gather':  result = await actions.gatherFromSpot(bot); break;
+    case 'craft':   result = await actions.startCrafting(bot); break;
+    case 'travel':  result = await actions.travel(bot); break;
+    case 'harvest': result = await harvestAsset(bot); break;
   }
   return { result, durationMs: Date.now() - start };
 }
@@ -280,6 +285,42 @@ export async function decideBotAction(
     }
   }
 
+  // A5: Asset Management (free actions) — buy, plant, accept jobs
+  const ASSET_GATHERING_PROFESSIONS = new Set(['FARMER', 'MINER', 'LUMBERJACK', 'FISHERMAN', 'HERBALIST', 'RANCHER', 'HUNTER']);
+  const hasGatheringProf = bot.professions.some(p => ASSET_GATHERING_PROFESSIONS.has(p.toUpperCase()));
+
+  if (hasGatheringProf) {
+    // Buy assets if bot has enough gold (keep 50g buffer)
+    if (bot.gold > 150 && config.enabledSystems.gathering) {
+      try {
+        const buyResult = await timedFreeAction(() => buyAsset(bot), bot, 'buy_asset', logger, tick);
+        if (buyResult.success) {
+          console.log(`[SIM] ${bot.characterName} bought asset: ${buyResult.detail}`);
+        }
+      } catch { /* ignore buy failures */ }
+    }
+
+    // Plant crops on empty assets (free, no daily action)
+    if (config.enabledSystems.gathering) {
+      try {
+        const plantResult = await timedFreeAction(() => plantAsset(bot), bot, 'plant_asset', logger, tick);
+        if (plantResult.success) {
+          console.log(`[SIM] ${bot.characterName} planted: ${plantResult.detail}`);
+        }
+      } catch { /* ignore plant failures */ }
+    }
+
+    // Accept job listings if no assets to tend
+    if (config.enabledSystems.gathering) {
+      try {
+        const jobResult = await timedFreeAction(() => acceptJob(bot), bot, 'accept_job', logger, tick);
+        if (jobResult.success) {
+          console.log(`[SIM] ${bot.characterName} accepted job: ${jobResult.detail}`);
+        }
+      } catch { /* ignore job failures */ }
+    }
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // Phase B: MANDATORY daily action (exactly 1: gather, travel, or craft)
   // Every bot MUST commit a daily action. Fallback chain ensures this.
@@ -353,6 +394,19 @@ export async function decideBotAction(
       logger.logFromResult(bot, r, { tick, phase: 'daily', intent: 'collect_crafting', attemptNumber: 1, durationMs: Date.now() - start3, dailyActionUsed: false });
     }
     return r;
+  }
+
+  // B2b: Priority — Harvest READY assets before normal actions
+  if (hasGatheringProf && config.enabledSystems.gathering) {
+    try {
+      const { result: harvestResult, durationMs: harvestMs } = await executeDailyAction('harvest', bot);
+      if (harvestResult.success) {
+        if (logger && tick != null) {
+          logger.logFromResult(bot, harvestResult, { tick, phase: 'daily', intent: 'harvest_asset', attemptNumber: 1, durationMs: harvestMs, dailyActionUsed: true });
+        }
+        return harvestResult;
+      }
+    } catch { /* no READY assets, fall through to normal actions */ }
   }
 
   // B3: FARMER bots — gathering only, never craft

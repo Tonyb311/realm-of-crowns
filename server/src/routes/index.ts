@@ -41,6 +41,7 @@ import loanRouter from './loans';
 import gameRoutes from './game';
 import gatheringRouter from './gathering';
 import partiesRouter from './parties';
+import assetsRouter from './assets';
 
 const router = Router();
 
@@ -87,5 +88,6 @@ router.use('/service', serviceRouter);
 router.use('/loans', loanRouter);
 router.use('/game', gameRoutes);
 router.use('/parties', partiesRouter);
+router.use('/assets', assetsRouter);
 
 export default router;

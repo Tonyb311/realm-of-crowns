@@ -152,7 +152,7 @@ export const VEGETABLES: GatheringItem = {
 // RESOURCE TYPE -> ITEM + ICON MAPPING
 // ============================================================
 
-const RESOURCE_MAP: Record<string, { item: GatheringItem; icon: string }> = {
+export const RESOURCE_MAP: Record<string, { item: GatheringItem; icon: string }> = {
   orchard:  { item: APPLES,          icon: '\uD83C\uDF3E' },
   fishing:  { item: RAW_FISH,        icon: '\uD83C\uDFA3' },
   berry:    { item: WILD_BERRIES,    icon: '\uD83C\uDF53' },

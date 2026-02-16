@@ -1193,6 +1193,254 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
 }
 
 // ---------------------------------------------------------------------------
+// 29. buyAsset — purchase a private asset (free action)
+// ---------------------------------------------------------------------------
+
+export async function buyAsset(bot: BotState): Promise<ActionResult> {
+  const endpoint = '/assets/buy';
+  try {
+    // Pre-flight: fetch available asset types
+    const availRes = await get('/assets/available', bot.token);
+    if (availRes.status < 200 || availRes.status >= 300) {
+      return {
+        success: false,
+        detail: availRes.data?.error || `Failed to fetch available assets: HTTP ${availRes.status}`,
+        endpoint,
+        httpStatus: availRes.status,
+        requestBody: {},
+        responseBody: availRes.data,
+      };
+    }
+
+    const professions: any[] = availRes.data?.professions || [];
+    // Find the first purchasable slot: prefer T1, then T2, then T3
+    let bestAssetTypeId: string | null = null;
+    let bestTier = 0;
+    let bestCost = Infinity;
+    let bestName = '';
+
+    for (const prof of professions) {
+      const assetTypes: any[] = prof.assetTypes || [];
+      for (const at of assetTypes) {
+        const tiers: any[] = at.tiers || [];
+        // Sort by tier ascending to prefer cheapest
+        const sorted = [...tiers].sort((a: any, b: any) => a.tier - b.tier);
+        for (const t of sorted) {
+          if (t.locked) continue;
+          if (t.owned >= t.maxSlots) continue;
+          const cost = t.nextSlotCost || 0;
+          if (cost <= 0) continue;
+          if (cost > bot.gold - 50) continue; // keep 50g buffer
+          if (cost < bestCost) {
+            bestAssetTypeId = at.id;
+            bestTier = t.tier;
+            bestCost = cost;
+            bestName = at.name || at.spotType || 'asset';
+          }
+        }
+      }
+    }
+
+    if (!bestAssetTypeId) {
+      return {
+        success: false,
+        detail: 'No purchasable asset slots found',
+        endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: 'No purchasable asset slots found' },
+      };
+    }
+
+    const body = { assetTypeId: bestAssetTypeId, tier: bestTier };
+    const res = await post(endpoint, bot.token, body);
+    if (res.status >= 200 && res.status < 300) {
+      const purchasePrice = res.data?.asset?.purchasePrice || bestCost;
+      bot.gold -= purchasePrice;
+      return {
+        success: true,
+        detail: `Bought T${bestTier} ${bestName} for ${purchasePrice}g`,
+        endpoint,
+        httpStatus: res.status,
+        requestBody: body,
+        responseBody: res.data,
+      };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: body, responseBody: res.data };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 30. plantAsset — plant crops on an empty owned asset (free action)
+// ---------------------------------------------------------------------------
+
+export async function plantAsset(bot: BotState): Promise<ActionResult> {
+  const endpoint = '/assets/plant';
+  try {
+    // Pre-flight: fetch owned assets
+    const mineRes = await get('/assets/mine', bot.token);
+    if (mineRes.status < 200 || mineRes.status >= 300) {
+      return {
+        success: false,
+        detail: mineRes.data?.error || `Failed to fetch owned assets: HTTP ${mineRes.status}`,
+        endpoint,
+        httpStatus: mineRes.status,
+        requestBody: {},
+        responseBody: mineRes.data,
+      };
+    }
+
+    const assets: any[] = mineRes.data?.assets || [];
+    // Filter: assets in bot's current town with cropState === 'EMPTY'
+    const emptyAssets = assets.filter(
+      (a: any) => a.townId === bot.currentTownId && a.cropState === 'EMPTY',
+    );
+
+    if (emptyAssets.length === 0) {
+      return {
+        success: false,
+        detail: 'No empty assets to plant in current town',
+        endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: 'No empty assets to plant in current town' },
+      };
+    }
+
+    const asset = emptyAssets[0];
+    const plantEndpoint = `/assets/${asset.id}/plant`;
+    const res = await post(plantEndpoint, bot.token);
+    if (res.status >= 200 && res.status < 300) {
+      return {
+        success: true,
+        detail: `Planted crops in ${asset.name || 'asset'}`,
+        endpoint: plantEndpoint,
+        httpStatus: res.status,
+        requestBody: {},
+        responseBody: res.data,
+      };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint: plantEndpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 31. harvestAsset — harvest a READY owned asset (daily action)
+// ---------------------------------------------------------------------------
+
+export async function harvestAsset(bot: BotState): Promise<ActionResult> {
+  const endpoint = '/assets/harvest';
+  try {
+    // Pre-flight: fetch owned assets
+    const mineRes = await get('/assets/mine', bot.token);
+    if (mineRes.status < 200 || mineRes.status >= 300) {
+      return {
+        success: false,
+        detail: mineRes.data?.error || `Failed to fetch owned assets: HTTP ${mineRes.status}`,
+        endpoint,
+        httpStatus: mineRes.status,
+        requestBody: {},
+        responseBody: mineRes.data,
+      };
+    }
+
+    const assets: any[] = mineRes.data?.assets || [];
+    // Filter: assets in bot's current town with cropState === 'READY'
+    const readyAssets = assets.filter(
+      (a: any) => a.townId === bot.currentTownId && a.cropState === 'READY',
+    );
+
+    if (readyAssets.length === 0) {
+      return {
+        success: false,
+        detail: 'No READY assets to harvest in current town',
+        endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: 'No READY assets to harvest in current town' },
+      };
+    }
+
+    const asset = readyAssets[0];
+    const harvestEndpoint = `/assets/${asset.id}/harvest`;
+    const res = await post(harvestEndpoint, bot.token);
+    if (res.status >= 200 && res.status < 300) {
+      return {
+        success: true,
+        detail: `Harvesting ${asset.name || 'asset'}`,
+        endpoint: harvestEndpoint,
+        httpStatus: res.status,
+        requestBody: {},
+        responseBody: res.data,
+      };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint: harvestEndpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 32. acceptJob — accept a job listing on another player's asset (free action)
+// ---------------------------------------------------------------------------
+
+export async function acceptJob(bot: BotState): Promise<ActionResult> {
+  const endpoint = '/assets/jobs';
+  try {
+    // Pre-flight: fetch open jobs
+    const jobsRes = await get('/assets/jobs', bot.token);
+    if (jobsRes.status < 200 || jobsRes.status >= 300) {
+      return {
+        success: false,
+        detail: jobsRes.data?.error || `Failed to fetch jobs: HTTP ${jobsRes.status}`,
+        endpoint,
+        httpStatus: jobsRes.status,
+        requestBody: {},
+        responseBody: jobsRes.data,
+      };
+    }
+
+    const jobs: any[] = jobsRes.data?.jobs || [];
+    // Filter: jobs with wage > 0, then pick the highest-wage job
+    const paidJobs = jobs.filter((j: any) => (j.wage || 0) > 0);
+
+    if (paidJobs.length === 0) {
+      return {
+        success: false,
+        detail: 'No paid job listings available',
+        endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: 'No paid job listings available' },
+      };
+    }
+
+    // Pick the highest-wage job
+    paidJobs.sort((a: any, b: any) => (b.wage || 0) - (a.wage || 0));
+    const job = paidJobs[0];
+    const acceptEndpoint = `/assets/jobs/${job.id}/accept`;
+    const res = await post(acceptEndpoint, bot.token);
+    if (res.status >= 200 && res.status < 300) {
+      return {
+        success: true,
+        detail: `Accepted job at ${job.assetName || 'asset'} for ${job.wage}g/harvest`,
+        endpoint: acceptEndpoint,
+        httpStatus: res.status,
+        requestBody: {},
+        responseBody: res.data,
+      };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint: acceptEndpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 19. triggerInvalidAction
 // ---------------------------------------------------------------------------
 

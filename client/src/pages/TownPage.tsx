@@ -21,6 +21,8 @@ import { getSocket } from '../services/socket';
 import QuestDialog, { type QuestOffer } from '../components/QuestDialog';
 import { RealmPanel, RealmButton } from '../components/ui/realm-index';
 import PartyPanel from '../components/party/PartyPanel';
+import AssetPanel from '../components/assets/AssetPanel';
+import JobBoard from '../components/assets/JobBoard';
 import { ActionConfirmModal } from '../components/hud/ActionConfirmModal';
 
 // ---------------------------------------------------------------------------
@@ -543,6 +545,14 @@ export default function TownPage() {
                   </div>
                 )}
               </div>
+            )}
+
+            {/* Private Asset Ownership */}
+            {character && town && (
+              <>
+                <AssetPanel townId={town.id} characterId={character.id} />
+                <JobBoard townId={town.id} characterId={character.id} />
+              </>
             )}
 
             {/* Features */}

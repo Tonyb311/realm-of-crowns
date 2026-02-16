@@ -22,12 +22,13 @@ import { onResourceGather } from '../services/quest-triggers';
 import { processServiceNpcIncome } from './service-npc-income';
 import { processLoans } from './loan-processing';
 import { processReputationDecay } from './reputation-decay';
-import { getTodayTickDate, advanceGameDay } from '../lib/game-day';
+import { getTodayTickDate, advanceGameDay, getGameDay } from '../lib/game-day';
 import { qualityRoll } from '@shared/utils/dice';
 import { getProficiencyBonus, getModifier as getStatModifier } from '@shared/utils/bounded-accuracy';
 import { getProfessionByType } from '@shared/data/professions';
 import { ACTION_XP } from '@shared/data/progression';
-import { GATHER_SPOT_PROFESSION_MAP } from '@shared/data/gathering';
+import { GATHER_SPOT_PROFESSION_MAP, RESOURCE_MAP } from '@shared/data/gathering';
+import { ASSET_TIERS } from '@shared/data/assets';
 import {
   emitDailyReportReady,
   emitNotification,
@@ -138,6 +139,7 @@ export interface DailyTickResult {
   charactersProcessed: number;
   gatherActionsProcessed: number;
   craftActionsProcessed: number;
+  harvestActionsProcessed: number;
   restActionsProcessed: number;
   lawsProcessed: number;
   resourcesRestored: number;
@@ -153,6 +155,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   console.log(`[DailyTick] Starting tick for game day ${tickDateStr}`);
   let gatherCount = 0;
   let craftCount = 0;
+  let harvestCount = 0;
   let restCount = 0;
   let lawsCount = 0;
   let resourcesRestoredCount = 0;
@@ -262,6 +265,36 @@ export async function processDailyTick(): Promise<DailyTickResult> {
         } catch (err) {
           console.error(`[DailyTick] Step 4 craft error for ${action.characterId}:`, err);
           getResults(action.characterId).notifications.push('Crafting failed due to an error.');
+        }
+      }));
+    }
+
+    // --- Harvesting (private asset harvesting) ---
+    const harvestActions = await prisma.dailyAction.findMany({
+      where: {
+        tickDate: { gte: new Date(tickDateStr), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
+        actionType: 'HARVEST',
+        status: 'LOCKED_IN',
+      },
+      include: {
+        character: {
+          select: {
+            id: true, race: true, subRace: true, level: true,
+            currentTownId: true, hungerState: true, stats: true,
+          },
+        },
+      },
+    });
+    harvestCount = harvestActions.length;
+
+    for (let i = 0; i < harvestActions.length; i += BATCH_SIZE) {
+      const batch = harvestActions.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(async (action) => {
+        try {
+          await processHarvestAction(action, tickDateStr, hungerStates, foodBuffs, getResults);
+        } catch (err) {
+          console.error(`[DailyTick] Step 4 harvest error for ${action.characterId}:`, err);
+          getResults(action.characterId).notifications.push('Harvesting failed due to an error.');
         }
       }));
     }
@@ -381,6 +414,69 @@ export async function processDailyTick(): Promise<DailyTickResult> {
         }
       }));
       }
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 4c: Asset Growth Cycle
+  // -----------------------------------------------------------------------
+  await runStep('Asset Growth Cycle', 4.6, async () => {
+    const currentDay = getGameDay();
+
+    // 1. GROWING -> READY (crops that finished growing)
+    const newlyReady = await prisma.ownedAsset.findMany({
+      where: { cropState: 'GROWING', readyAt: { lte: currentDay } },
+      include: { owner: { select: { id: true, name: true } }, town: { select: { name: true } } },
+    });
+
+    if (newlyReady.length > 0) {
+      await prisma.ownedAsset.updateMany({
+        where: { id: { in: newlyReady.map(a => a.id) } },
+        data: { cropState: 'READY' },
+      });
+
+      // Notify owners
+      for (const asset of newlyReady) {
+        await prisma.notification.create({
+          data: {
+            characterId: asset.ownerId,
+            type: 'asset:crop_ready',
+            title: 'Crop Ready!',
+            message: `Your ${asset.name} in ${asset.town.name} is ready to harvest!`,
+            data: { assetId: asset.id, spotType: asset.spotType },
+          },
+        });
+      }
+
+      console.log(`[DailyTick]   ${newlyReady.length} asset(s) now READY for harvest`);
+    }
+
+    // 2. READY -> WITHERED (crops that spoiled — reset to EMPTY)
+    const witheredAssets = await prisma.ownedAsset.findMany({
+      where: { cropState: 'READY', witheringAt: { lte: currentDay } },
+      include: { owner: { select: { id: true, name: true } }, town: { select: { name: true } } },
+    });
+
+    if (witheredAssets.length > 0) {
+      await prisma.ownedAsset.updateMany({
+        where: { id: { in: witheredAssets.map(a => a.id) } },
+        data: { cropState: 'EMPTY', plantedAt: null, readyAt: null, witheringAt: null },
+      });
+
+      // Notify owners
+      for (const asset of witheredAssets) {
+        await prisma.notification.create({
+          data: {
+            characterId: asset.ownerId,
+            type: 'asset:crop_withered',
+            title: 'Crop Withered!',
+            message: `Your ${asset.name} in ${asset.town.name} withered! The crop was lost.`,
+            data: { assetId: asset.id, spotType: asset.spotType },
+          },
+        });
+      }
+
+      console.log(`[DailyTick]   ${witheredAssets.length} asset(s) WITHERED and reset to EMPTY`);
     }
   });
 
@@ -794,6 +890,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     charactersProcessed: characterResults.size,
     gatherActionsProcessed: gatherCount,
     craftActionsProcessed: craftCount,
+    harvestActionsProcessed: harvestCount,
     restActionsProcessed: restCount,
     lawsProcessed: lawsCount,
     resourcesRestored: resourcesRestoredCount,
@@ -1190,6 +1287,205 @@ async function processGatherSpotAction(
   };
   results.xpEarned += characterXpGain;
   results.notifications.push(`Gathered ${finalQuantity}x ${itemName}.`);
+}
+
+// ---------------------------------------------------------------------------
+// Harvest sub-processor (private asset harvesting)
+// ---------------------------------------------------------------------------
+
+async function processHarvestAction(
+  action: {
+    id: string;
+    characterId: string;
+    actionTarget: unknown;
+    character: {
+      id: string;
+      race: string;
+      subRace: unknown;
+      level: number;
+      currentTownId: string | null;
+      hungerState: string;
+    };
+  },
+  tickDateStr: string,
+  hungerStates: Map<string, HungerState>,
+  foodBuffs: Map<string, Record<string, unknown> | null>,
+  getResults: (id: string) => CharacterResults,
+): Promise<void> {
+  const char = action.character;
+  const target = action.actionTarget as Record<string, unknown>;
+
+  // 1. Look up the OwnedAsset
+  const asset = await prisma.ownedAsset.findUnique({
+    where: { id: target.assetId as string },
+    include: { jobListing: true },
+  });
+
+  if (!asset || asset.cropState !== 'READY') {
+    await prisma.dailyAction.update({
+      where: { id: action.id },
+      data: { status: 'FAILED', result: { error: 'Asset not ready for harvest' } },
+    });
+    return;
+  }
+
+  // 2. Determine yield from tier
+  const tierData = ASSET_TIERS[asset.tier as 1 | 2 | 3];
+  if (!tierData) {
+    await prisma.dailyAction.update({
+      where: { id: action.id },
+      data: { status: 'FAILED', result: { error: 'Invalid asset tier' } },
+    });
+    return;
+  }
+  const quantity = Math.floor(Math.random() * (tierData.maxYield - tierData.minYield + 1)) + tierData.minYield;
+
+  // 3. Look up the GatheringItem from RESOURCE_MAP
+  const resourceEntry = RESOURCE_MAP[asset.spotType];
+  if (!resourceEntry) {
+    await prisma.dailyAction.update({
+      where: { id: action.id },
+      data: { status: 'FAILED', result: { error: `Unknown spot type: ${asset.spotType}` } },
+    });
+    return;
+  }
+
+  const gatherItem = resourceEntry.item;
+  const itemName = gatherItem.templateName;
+  const itemType = gatherItem.type === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL';
+
+  // 4. Items ALWAYS go to the OWNER (even if a worker harvests)
+  const ownerId = asset.ownerId;
+  const isWorker = char.id !== ownerId;
+
+  // 5. Transaction: create items, update asset, transfer wage
+  await prisma.$transaction(async (tx) => {
+    // Find or create ItemTemplate (same pattern as processGatherSpotAction)
+    let template = await tx.itemTemplate.findFirst({ where: { name: itemName } });
+    if (!template) {
+      template = await tx.itemTemplate.create({
+        data: {
+          name: itemName,
+          type: itemType as any,
+          rarity: 'COMMON',
+          description: gatherItem.description,
+          stats: {},
+          durability: 0,
+          requirements: {},
+          isFood: gatherItem.isFood,
+          foodBuff: gatherItem.foodBuff ?? Prisma.JsonNull,
+          isPerishable: gatherItem.shelfLifeDays != null,
+          shelfLifeDays: gatherItem.shelfLifeDays,
+        },
+      });
+    }
+
+    // Find existing inventory stack with matching template (owned by asset owner)
+    const existingStack = await tx.inventory.findFirst({
+      where: {
+        characterId: ownerId,
+        item: { templateId: template.id },
+      },
+    });
+
+    if (existingStack) {
+      await tx.inventory.update({
+        where: { id: existingStack.id },
+        data: { quantity: { increment: quantity } },
+      });
+    } else {
+      // Create new item owned by asset owner
+      const item = await tx.item.create({
+        data: {
+          templateId: template.id,
+          ownerId: ownerId,
+          quality: 'COMMON',
+          currentDurability: 0,
+          enchantments: [],
+          daysRemaining: gatherItem.shelfLifeDays,
+        },
+      });
+      await tx.inventory.create({
+        data: {
+          characterId: ownerId,
+          itemId: item.id,
+          quantity: quantity,
+        },
+      });
+    }
+
+    // Transfer wage if worker
+    if (isWorker && asset.jobListing?.wage) {
+      const wage = asset.jobListing.wage;
+      const owner = await tx.character.findUnique({ where: { id: ownerId }, select: { gold: true } });
+      const actualWage = Math.min(wage, owner?.gold ?? 0);
+      if (actualWage > 0) {
+        await tx.character.update({ where: { id: ownerId }, data: { gold: { decrement: actualWage } } });
+        await tx.character.update({ where: { id: char.id }, data: { gold: { increment: actualWage } } });
+      }
+    }
+
+    // Reset asset to EMPTY
+    await tx.ownedAsset.update({
+      where: { id: asset.id },
+      data: {
+        cropState: 'EMPTY',
+        plantedAt: null,
+        readyAt: null,
+        witheringAt: null,
+      },
+    });
+
+    // Mark action COMPLETED
+    await tx.dailyAction.update({
+      where: { id: action.id },
+      data: {
+        status: 'COMPLETED',
+        result: {
+          type: 'private_asset_harvest',
+          itemName,
+          quantity,
+          tier: asset.tier,
+          assetName: asset.name,
+          isWorker,
+          wage: isWorker ? (asset.jobListing?.wage ?? 0) : 0,
+        },
+      },
+    });
+  });
+
+  // 6. Award XP to the HARVESTER (person who did the action)
+  const professionType = asset.professionType;
+  try {
+    const harvesterProf = await prisma.playerProfession.findFirst({
+      where: { characterId: char.id, professionType: professionType as any },
+    });
+    if (harvesterProf) {
+      const baseXp = 10 + (asset.tier * 5); // Higher tier = more XP
+      await addProfessionXP(char.id, professionType as any, baseXp, 'harvest');
+    }
+  } catch (e) {
+    // XP award failure shouldn't break the harvest
+  }
+
+  // 7. Add to tick results
+  const results = getResults(ownerId);
+  if (!results.action) {
+    results.action = {
+      type: 'HARVEST',
+      itemName,
+      quantity,
+      assetName: asset.name,
+      tier: asset.tier,
+      isWorker,
+      wage: isWorker ? (asset.jobListing?.wage ?? 0) : 0,
+    };
+  }
+  results.notifications.push(
+    isWorker
+      ? `Worker harvested ${quantity}x ${itemName} from ${asset.name}. Items delivered to owner.`
+      : `Harvested ${quantity}x ${itemName} from your ${asset.name}.`
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1872,6 +2168,8 @@ function buildReportSummary(results: CharacterResults): string {
     parts.push(`Gathered ${action.quantity}x ${action.resourceName}`);
   } else if (action?.type === 'CRAFT') {
     parts.push(`Crafted ${action.resultName} (${action.quality})`);
+  } else if (action?.type === 'HARVEST') {
+    parts.push(`Harvested ${action.quantity}x ${action.itemName} from ${action.assetName}`);
   } else if (action?.type === 'TRAVEL') {
     parts.push(action.success ? 'Traveled to new location' : 'Travel failed');
   } else if (action?.type === 'REST') {

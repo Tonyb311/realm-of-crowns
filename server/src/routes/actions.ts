@@ -25,7 +25,7 @@ const router = Router();
 // ---------------------------------------------------------------------------
 
 const lockInSchema = z.object({
-  actionType: z.enum(['GATHER', 'CRAFT', 'TRAVEL', 'GUARD', 'AMBUSH', 'ENLIST', 'PROPOSE_LAW', 'REST']),
+  actionType: z.enum(['GATHER', 'CRAFT', 'TRAVEL', 'GUARD', 'AMBUSH', 'ENLIST', 'PROPOSE_LAW', 'REST', 'HARVEST']),
   actionTarget: z.record(z.string(), z.unknown()).default({}),
   combatParams: combatParamsSchema.optional(),
 });
