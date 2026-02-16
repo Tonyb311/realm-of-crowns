@@ -1276,6 +1276,14 @@ async function processGatherSpotAction(
   });
   await checkLevelUp(char.id);
 
+  // Award profession XP (spot-based gathering)
+  let professionXpGained = 0;
+  if (matchingProfType && hasProfessionBonus) {
+    const profXp = 10; // base profession XP per gather (same as tier-1 resource)
+    await addProfessionXP(char.id, matchingProfType as ProfessionType, profXp, `gathered_${(itemName || templateName).toLowerCase().replace(/\s+/g, '_')}`);
+    professionXpGained = profXp;
+  }
+
   // Record results
   const results = getResults(char.id);
   results.action = {
@@ -1284,6 +1292,7 @@ async function processGatherSpotAction(
     resourceType: 'town_gathering',
     quantity: finalQuantity,
     xpGained: characterXpGain,
+    professionXpGained,
   };
   results.xpEarned += characterXpGain;
   results.notifications.push(`Gathered ${finalQuantity}x ${itemName}.`);
