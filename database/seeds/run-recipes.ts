@@ -449,6 +449,13 @@ async function main() {
     let orphanCount = 0;
     for (const dbRecipe of allDbCookRecipes) {
       if (!canonicalCookIds.has(dbRecipe.id)) {
+        // Delete referencing crafting_actions first (FK constraint)
+        const deletedActions = await prisma.craftingAction.deleteMany({
+          where: { recipeId: dbRecipe.id },
+        });
+        if (deletedActions.count > 0) {
+          console.log(`    Removed ${deletedActions.count} crafting actions for ${dbRecipe.name}`);
+        }
         await prisma.recipe.delete({ where: { id: dbRecipe.id } });
         console.log(`  ✗ Deleted orphaned recipe: ${dbRecipe.name} (${dbRecipe.id})`);
         orphanCount++;
