@@ -235,7 +235,7 @@ async function determineTravelReason(
   }
 
   // c. Own fields at home, currently elsewhere
-  if (bot.currentTownId !== bot.homeTownId) {
+  if (bot.homeTownId && bot.currentTownId !== bot.homeTownId) {
     return {
       reason: 'Traveling home to manage fields',
       execute: () => actions.travelHome(bot, 'returning home'),
@@ -509,11 +509,8 @@ export async function decideBotAction(
       gatherReason = 'Gathering (basic income)';
     }
 
-    // Gathering prof with no matching spot: still gather whatever is here
-    if (!shouldGather && hasGathering && currentSpotType) {
-      shouldGather = true;
-      gatherReason = `Gathering at ${currentSpotType} (no matching spot, gathering what's available)`;
-    }
+    // Gathering prof with no matching spot: fall through to P7 travel instead
+    // (removed catch-all that prevented bots from ever traveling)
 
     if (shouldGather) {
       const r = await timedDailyAction(

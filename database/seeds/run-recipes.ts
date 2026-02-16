@@ -436,6 +436,26 @@ async function main() {
       console.log(`  + ${recipe.name} (COOK ${tier}, Lvl ${recipe.levelRequired})`);
     }
 
+    // ---------------------------------------------------------------
+    // Step 4: Clean up orphaned recipes (Baked Apples, etc.)
+    // Any COOK recipe in the DB that's NOT in the canonical list gets deleted.
+    // ---------------------------------------------------------------
+    console.log('\n--- Cleaning orphaned COOK recipes ---');
+    const canonicalCookIds = new Set(RECIPES.map(r => `recipe-${r.recipeId}`));
+    const allDbCookRecipes = await prisma.recipe.findMany({
+      where: { professionType: 'COOK' },
+      select: { id: true, name: true },
+    });
+    let orphanCount = 0;
+    for (const dbRecipe of allDbCookRecipes) {
+      if (!canonicalCookIds.has(dbRecipe.id)) {
+        await prisma.recipe.delete({ where: { id: dbRecipe.id } });
+        console.log(`  ✗ Deleted orphaned recipe: ${dbRecipe.name} (${dbRecipe.id})`);
+        orphanCount++;
+      }
+    }
+    console.log(`  Orphaned recipes removed: ${orphanCount}`);
+
     console.log(`\n✅ COOK seed complete: ${COOK_ITEMS.length} items, ${RECIPES.length} recipes`);
   } catch (err) {
     console.error('❌ Seed failed:', err);

@@ -48,7 +48,12 @@ export const PROFESSION_ASSET_TYPES: Record<string, AssetTypeDefinition[]> = {
   HERBALIST: [
     { id: 'herb_garden_plot', name: 'Herb Garden Plot', spotType: 'herb' },
   ],
-  // RANCHER and HUNTER omitted — pasture/hunting_ground not yet in RESOURCE_MAP
+  RANCHER: [
+    { id: 'pasture_lease', name: 'Pasture Lease', spotType: 'pasture' },
+  ],
+  HUNTER: [
+    { id: 'hunting_ground_rights', name: 'Hunting Ground Rights', spotType: 'hunting_ground' },
+  ],
 };
 
 /** Calculate the purchase cost for an asset slot: baseCost * slotNumber */

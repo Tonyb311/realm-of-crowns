@@ -16,6 +16,7 @@ import {
 import { emitTradeCompleted } from '../socket/events';
 import { onMarketBuy, onMarketSell } from '../services/quest-triggers';
 import { getEffectiveTaxRate } from '../services/law-effects';
+import { getSimulationTick } from './simulation-context';
 
 // ---------------------------------------------------------------------------
 // getOrCreateOpenCycle — Return the current open cycle or create one
@@ -72,9 +73,13 @@ export async function resolveAuctionCycle(townId: string): Promise<{
   }
 
   // Check if cycle is old enough to resolve
-  const cycleAge = Date.now() - cycle.startedAt.getTime();
-  if (cycleAge < MARKET_CYCLE_DURATION_MS) {
-    return { ordersProcessed: 0, transactionsCompleted: 0 };
+  // In simulation mode, bypass the 15-minute waiting period so auctions resolve instantly
+  const isSimulation = getSimulationTick() !== null;
+  if (!isSimulation) {
+    const cycleAge = Date.now() - cycle.startedAt.getTime();
+    if (cycleAge < MARKET_CYCLE_DURATION_MS) {
+      return { ordersProcessed: 0, transactionsCompleted: 0 };
+    }
   }
 
   // 2. Mark cycle as processing

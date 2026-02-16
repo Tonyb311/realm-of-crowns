@@ -1297,13 +1297,35 @@ export async function buyAsset(bot: BotState): Promise<ActionResult> {
     }
 
     if (!bestAssetTypeId) {
+      // Build a detailed rejection reason for debugging
+      const reasons: string[] = [];
+      for (const prof of professions) {
+        const assetTypes: any[] = prof.assetTypes || [];
+        if (assetTypes.length === 0) {
+          reasons.push(`${prof.professionType}: no asset types defined`);
+          continue;
+        }
+        for (const at of assetTypes) {
+          const tiers: any[] = at.tiers || [];
+          for (const t of tiers) {
+            if (t.locked) {
+              reasons.push(`${at.name} T${t.tier}: locked (need prof L${t.levelRequired}, have L${prof.level || '?'})`);
+            } else if (t.owned >= t.maxSlots) {
+              reasons.push(`${at.name} T${t.tier}: max slots (${t.owned}/${t.maxSlots})`);
+            } else if ((t.nextSlotCost || 0) > bot.gold) {
+              reasons.push(`${at.name} T${t.tier}: too expensive (${t.nextSlotCost}g, have ${bot.gold}g)`);
+            }
+          }
+        }
+      }
+      const reasonStr = reasons.length > 0 ? reasons.slice(0, 3).join('; ') : 'no professions with asset types';
       return {
         success: false,
-        detail: 'No purchasable asset slots found',
+        detail: `No purchasable asset slots: ${reasonStr}`,
         endpoint,
         httpStatus: 0,
         requestBody: {},
-        responseBody: { error: 'No purchasable asset slots found' },
+        responseBody: { error: `No purchasable asset slots: ${reasonStr}` },
       };
     }
 
@@ -1788,33 +1810,47 @@ export async function listSurplusOnMarket(bot: BotState, keepItemNames?: Set<str
     if (invRes.status < 200 || invRes.status >= 300) return results;
 
     const items: any[] = invRes.data?.items || invRes.data || [];
-    const sellable = items.filter((i: any) => {
-      if (i.equipped) return false;
-      const name = i.templateName || i.name || '';
+    // Group by template name, sum quantities
+    const grouped = new Map<string, { name: string; totalQty: number; items: any[] }>();
+    for (const item of items) {
+      if (item.equipped) continue;
+      const name = item.templateName || item.name || '';
       // Keep items needed for crafting
-      if (keepItemNames && keepItemNames.has(name)) return false;
-      return true;
-    });
+      if (keepItemNames && keepItemNames.has(name)) continue;
+      const existing = grouped.get(name);
+      if (existing) {
+        existing.totalQty += (item.quantity || 1);
+        existing.items.push(item);
+      } else {
+        grouped.set(name, { name, totalQty: item.quantity || 1, items: [item] });
+      }
+    }
 
-    // Only list up to 3 items per tick to avoid spam
-    const toList = sellable.slice(0, 3);
-    for (const item of toList) {
+    // List surplus: items with quantity > 5, sell the excess (keep 5 for personal use)
+    let listed = 0;
+    for (const [, group] of grouped) {
+      if (listed >= 3) break; // max 3 listings per tick
+      if (group.totalQty <= 5) continue; // keep 5 for personal use
+
+      const surplusCount = group.totalQty - 5;
+      const item = group.items[0]; // pick first stack to get itemId/baseValue
       const itemId = item.id || item.itemId;
       const baseValue = item.baseValue || item.value || 10;
-      // Price: baseValue * 1.5 (markup) + random variance
-      const price = Math.max(5, Math.ceil(baseValue * 1.5 + Math.random() * 5));
+      const price = Math.max(5, Math.ceil(baseValue * 1.5));
+      const listQty = Math.min(surplusCount, item.quantity || 1); // list what's in this stack
 
       try {
-        const res = await post(endpoint, bot.token, { itemId, price, quantity: 1 });
+        const res = await post(endpoint, bot.token, { itemId, price, quantity: listQty });
         if (res.status >= 200 && res.status < 300) {
           results.push({
             success: true,
-            detail: `Listed ${item.name || item.templateName || itemId} for ${price}g`,
+            detail: `Listed ${listQty}x ${group.name} at ${price}g each (surplus: had ${group.totalQty}, keeping 5)`,
             endpoint,
             httpStatus: res.status,
-            requestBody: { itemId, price, quantity: 1 },
+            requestBody: { itemId, price, quantity: listQty },
             responseBody: res.data,
           });
+          listed++;
         }
       } catch { /* ignore individual listing failures */ }
     }
