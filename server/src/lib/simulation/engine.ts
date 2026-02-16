@@ -121,17 +121,27 @@ function getProfSpotTypes(profs: string[]): string[] {
 /** Find ingredients the bot is missing for its highest-tier non-craftable recipes */
 function getMissingIngredients(
   invMap: Map<string, number>,
-  recipes: { canCraft: boolean; tier: number; inputs: { itemName: string; quantity: number }[] }[],
+  recipes: { canCraft: boolean; tier: number; ingredients?: { itemName: string; quantity: number }[]; missingIngredients?: { itemName: string; needed: number; have: number }[]; inputs?: { itemName: string; quantity: number }[] }[],
 ): string[] {
   const missing: string[] = [];
   const notCraftable = recipes.filter(r => !r.canCraft);
-  notCraftable.sort((a, b) => b.tier - a.tier);
+  notCraftable.sort((a, b) => (b.tier ?? 0) - (a.tier ?? 0));
 
   for (const recipe of notCraftable) {
-    for (const input of recipe.inputs) {
-      const have = invMap.get(input.itemName) || 0;
-      if (have < input.quantity && !missing.includes(input.itemName)) {
-        missing.push(input.itemName);
+    // API returns missingIngredients (pre-computed) or ingredients; legacy code used inputs
+    if (recipe.missingIngredients && recipe.missingIngredients.length > 0) {
+      for (const mi of recipe.missingIngredients) {
+        if (mi.itemName && !missing.includes(mi.itemName)) {
+          missing.push(mi.itemName);
+        }
+      }
+    } else {
+      const ingredients = recipe.ingredients || recipe.inputs || [];
+      for (const input of ingredients) {
+        const have = invMap.get(input.itemName) || 0;
+        if (have < input.quantity && !missing.includes(input.itemName)) {
+          missing.push(input.itemName);
+        }
       }
     }
   }

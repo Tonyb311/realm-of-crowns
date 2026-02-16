@@ -1189,7 +1189,7 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
       if (recipesRes.status >= 200 && recipesRes.status < 300) {
         const recipes: any[] = recipesRes.data?.recipes || recipesRes.data || [];
         for (const r of recipes) {
-          for (const inp of (r.inputs || [])) {
+          for (const inp of (r.ingredients || r.inputs || [])) {
             keepItems.add(inp.itemName || inp.name || '');
           }
         }
@@ -1226,13 +1226,15 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
           invMap.set(name, (invMap.get(name) || 0) + (item.quantity || 1));
         }
         // Find missing ingredients from non-craftable recipes
+        // API returns: recipe.ingredients [{itemName, quantity}] and recipe.missingIngredients [{itemName, needed, have}]
         const notCraftable = recipes.filter((r: any) => !r.canCraft);
         const missing: string[] = [];
         for (const r of notCraftable) {
-          for (const inp of (r.inputs || [])) {
+          // Use missingIngredients if available (already computed by API), fallback to ingredients
+          const ingredients = r.missingIngredients || r.ingredients || r.inputs || [];
+          for (const inp of ingredients) {
             const name = inp.itemName || inp.name || '';
-            const have = invMap.get(name) || 0;
-            if (have < (inp.quantity || 1) && !missing.includes(name)) {
+            if (name && !missing.includes(name)) {
               missing.push(name);
             }
           }
@@ -1580,9 +1582,9 @@ export async function getCraftableRecipes(bot: BotState): Promise<{
       tier: r.tier || 1,
       professionRequired: r.professionRequired || '',
       levelRequired: r.levelRequired || 1,
-      inputs: (r.inputs || []).map((inp: any) => ({
+      inputs: (r.ingredients || r.inputs || []).map((inp: any) => ({
         itemName: inp.itemName || inp.name || '',
-        quantity: inp.quantity || 1,
+        quantity: inp.quantity || inp.needed || 1,
       })),
     }));
   } catch {
