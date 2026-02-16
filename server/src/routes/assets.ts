@@ -140,7 +140,7 @@ router.get('/available', authGuard, characterGuard, async (req: AuthenticatedReq
 // POST /api/assets/buy — Purchase a new asset
 // ============================================================
 
-router.post('/buy', authGuard, characterGuard, requireTown, validate(buySchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
     const { assetTypeId, tier } = req.body;

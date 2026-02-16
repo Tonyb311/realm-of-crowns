@@ -194,7 +194,19 @@ export async function decideBotAction(
     return { success: true, detail: 'Bot paused (cooldown)', endpoint: 'none' };
   }
 
-  // 0b. Skip bots that are currently traveling — they already committed travel
+  // 0b. Asset buying can happen while traveling (uses homeTownId, not currentTownId)
+  const ASSET_GATHERING_PROFESSIONS = new Set(['FARMER', 'MINER', 'LUMBERJACK', 'FISHERMAN', 'HERBALIST', 'RANCHER', 'HUNTER']);
+  const hasGatheringProf = bot.professions.some(p => ASSET_GATHERING_PROFESSIONS.has(p.toUpperCase()));
+  if (hasGatheringProf && bot.gold >= 100 && config.enabledSystems.gathering) {
+    try {
+      const buyResult = await timedFreeAction(() => buyAsset(bot), bot, 'buy_asset', logger, tick);
+      if (buyResult.success) {
+        console.log(`[SIM] ${bot.characterName} bought asset: ${buyResult.detail}`);
+      }
+    } catch { /* ignore buy failures */ }
+  }
+
+  // Skip bots that are currently traveling — they already committed travel
   if (bot.pendingTravel) {
     console.log(`[SIM] ${bot.characterName} skipping — currently traveling`);
     if (logger && tick != null) {
@@ -285,21 +297,9 @@ export async function decideBotAction(
     }
   }
 
-  // A5: Asset Management (free actions) — buy, plant, accept jobs
-  const ASSET_GATHERING_PROFESSIONS = new Set(['FARMER', 'MINER', 'LUMBERJACK', 'FISHERMAN', 'HERBALIST', 'RANCHER', 'HUNTER']);
-  const hasGatheringProf = bot.professions.some(p => ASSET_GATHERING_PROFESSIONS.has(p.toUpperCase()));
-
+  // A5: Asset Management (free actions) — plant, accept jobs
+  // Note: buying already happened before travel-skip check (uses homeTownId)
   if (hasGatheringProf) {
-    // Buy assets if bot has enough gold (keep 50g buffer)
-    if (bot.gold > 150 && config.enabledSystems.gathering) {
-      try {
-        const buyResult = await timedFreeAction(() => buyAsset(bot), bot, 'buy_asset', logger, tick);
-        if (buyResult.success) {
-          console.log(`[SIM] ${bot.characterName} bought asset: ${buyResult.detail}`);
-        }
-      } catch { /* ignore buy failures */ }
-    }
-
     // Plant crops on empty assets (free, no daily action)
     if (config.enabledSystems.gathering) {
       try {

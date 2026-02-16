@@ -1230,7 +1230,7 @@ export async function buyAsset(bot: BotState): Promise<ActionResult> {
           if (t.owned >= t.maxSlots) continue;
           const cost = t.nextSlotCost || 0;
           if (cost <= 0) continue;
-          if (cost > bot.gold - 50) continue; // keep 50g buffer
+          if (cost > bot.gold) continue; // buy if affordable
           if (cost < bestCost) {
             bestAssetTypeId = at.id;
             bestTier = t.tier;
