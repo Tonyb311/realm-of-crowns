@@ -416,7 +416,7 @@ export async function buyFromMarket(bot: BotState): Promise<ActionResult> {
 export async function listOnMarket(bot: BotState): Promise<ActionResult> {
   const endpoint = '/market/list';
   try {
-    const invRes = await get('/items/inventory', bot.token);
+    const invRes = await get('/characters/me/inventory', bot.token);
     if (invRes.status < 200 || invRes.status >= 300) {
       return {
         success: false,
@@ -897,7 +897,7 @@ export async function createGuild(bot: BotState): Promise<ActionResult> {
 export async function equipItem(bot: BotState): Promise<ActionResult> {
   const endpoint = '/equipment/equip';
   try {
-    const invRes = await get('/items/inventory', bot.token);
+    const invRes = await get('/characters/me/inventory', bot.token);
     if (invRes.status < 200 || invRes.status >= 300) {
       return {
         success: false,
@@ -1212,7 +1212,7 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
     try {
       // Get recipes and inventory to find missing ingredients
       const recipesRes = await get('/crafting/recipes', bot.token);
-      const invRes = await get('/items/inventory', bot.token);
+      const invRes = await get('/characters/me/inventory', bot.token);
       if (recipesRes.status >= 200 && recipesRes.status < 300 &&
           invRes.status >= 200 && invRes.status < 300) {
         const recipes: any[] = recipesRes.data?.recipes || recipesRes.data || [];
@@ -1523,7 +1523,7 @@ export async function acceptJob(bot: BotState): Promise<ActionResult> {
 
 export async function getInventory(bot: BotState): Promise<{ name: string; quantity: number; id: string; type?: string }[]> {
   try {
-    const res = await get('/items/inventory', bot.token);
+    const res = await get('/characters/me/inventory', bot.token);
     if (res.status < 200 || res.status >= 300) return [];
     const items: any[] = res.data?.items || res.data || [];
     // Group by template name, sum quantities
@@ -1806,7 +1806,7 @@ export async function listSurplusOnMarket(bot: BotState, keepItemNames?: Set<str
   const results: ActionResult[] = [];
   const endpoint = '/market/list';
   try {
-    const invRes = await get('/items/inventory', bot.token);
+    const invRes = await get('/characters/me/inventory', bot.token);
     if (invRes.status < 200 || invRes.status >= 300) return results;
 
     const items: any[] = invRes.data?.items || invRes.data || [];
