@@ -39,6 +39,8 @@ export interface BotState {
   partyId: string | null;       // Current party ID (null if not in a party)
   partyRole: string | null;     // 'leader' | 'member' | null
   partyTicksRemaining: number;  // Ticks until bot disbands the party (3-5)
+  homeTownId: string;           // Bot's home town (for "travel home" logic)
+  lastTravelTick: number;       // Last tick when bot traveled (for cooldown)
 }
 
 export interface SimulationConfig {

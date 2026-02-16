@@ -389,6 +389,8 @@ async function createSingleBot(
     partyId: null,
     partyRole: null,
     partyTicksRemaining: 0,
+    homeTownId: townId,
+    lastTravelTick: 0,
   };
 }
 

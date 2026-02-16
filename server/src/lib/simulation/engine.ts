@@ -1,164 +1,145 @@
 // ---------------------------------------------------------------------------
-// Bot Behavior Engine — Restructured: FREE actions + MANDATORY daily action
+// Bot Behavior Engine — Priority-Based, Profession-Aware Decision System
 // ---------------------------------------------------------------------------
 // Each tick, every bot:
-//   Phase A: FREE side-effect actions (party, quest accept, equip) — failures are OK
-//   Phase B: MANDATORY daily action (gather, travel, or craft) — must always commit one
-//
-// Daily action weights are per-profile. Fallback chain ensures every bot
-// always commits: preferred → gather → travel → craft → idle (last resort).
+//   Phase A: FREE actions (plant fields, accept jobs, buy assets, quest) — no daily cost
+//   Phase B: MANDATORY daily action — priority chain P1–P9, first match wins
+//     P1: Harvest READY fields (time-sensitive)
+//     P3: Craft (highest-tier, intermediates prioritized)
+//     P4: Gather (profession-aware, need-based)
+//     P5: Buy from market (need-based for crafting)
+//     P7: Travel (purposeful, with cooldown)
+//     P8: Gather fallback
+//     P9: Idle (should be rare)
 // ---------------------------------------------------------------------------
 
-import { BotState, BotProfile, SimulationConfig, ActionResult } from './types';
+import { BotState, SimulationConfig, ActionResult } from './types';
 import * as actions from './actions';
-import { buyAsset, plantAsset, harvestAsset, acceptJob } from './actions';
 import { PROFESSION_UNLOCK_LEVEL } from '@shared/data/progression/xp-curve';
-import { SimulationLogger, captureBotState } from './sim-logger';
+import { SimulationLogger } from './sim-logger';
+import { TOWN_GATHERING_SPOTS } from '@shared/data/gathering';
+import { prisma } from '../../lib/prisma';
 
-// ---- Crafting professions — bots need one of these to attempt crafting ----
+// ── Constants ─────────────────────────────────────────────────────────────
+
 const CRAFTING_PROFESSIONS = new Set([
   'SMELTER', 'BLACKSMITH', 'ARMORER', 'WOODWORKER', 'TANNER', 'LEATHERWORKER',
   'TAILOR', 'ALCHEMIST', 'ENCHANTER', 'COOK', 'BREWER', 'JEWELER', 'FLETCHER',
   'MASON', 'SCRIBE',
 ]);
 
-// ---- Daily action keys (the only actions that consume the daily action slot) ----
-type DailyActionKey = 'gather' | 'craft' | 'travel' | 'harvest';
+const GATHERING_PROF_SET = new Set([
+  'FARMER', 'MINER', 'LUMBERJACK', 'HERBALIST', 'FISHERMAN', 'HUNTER', 'RANCHER',
+]);
 
-// ---- Weight keys (subset used for profile-weighted random selection) ----
-type WeightedActionKey = 'gather' | 'craft' | 'travel';
-
-// ---- Per-profile daily action weight tables ----
-// Only gather, craft, travel — harvest is priority-checked separately.
-const DAILY_WEIGHTS: Record<BotProfile, Record<WeightedActionKey, number>> = {
-  gatherer:   { gather: 60, travel: 25, craft: 15 },
-  crafter:    { craft: 50, gather: 30, travel: 20 },
-  merchant:   { travel: 50, gather: 30, craft: 20 },
-  warrior:    { travel: 60, gather: 25, craft: 15 },
-  politician: { travel: 40, gather: 35, craft: 25 },
-  socialite:  { travel: 40, gather: 35, craft: 25 },
-  explorer:   { travel: 65, gather: 25, craft: 10 },
-  balanced:   { gather: 35, travel: 35, craft: 30 },
-};
-
-// ---- Gathering professions for random selection when learning ----
 const GATHERING_PROFESSIONS = ['MINER', 'FARMER', 'LUMBERJACK', 'HERBALIST', 'FISHERMAN', 'HUNTER', 'RANCHER'];
 
-// ---- Random pick helper ----
+const TRAVEL_COOLDOWN_TICKS = 3;
+
+// Recipes whose outputs are intermediates needed by higher-tier recipes
+const INTERMEDIATE_RECIPE_IDS = new Set([
+  'cook-flour',        // Flour → Bread, Apple Pie, Berry Tart, Harvest Feast, Spiced Pastry
+  'cook-berry-jam',    // Berry Jam → Berry Tart, Fisherman's Banquet, Spiced Pastry
+  'cook-grilled-fish', // Grilled Fish → Fisherman's Banquet
+  'cook-bread-loaf',   // Bread Loaf (T2) → Harvest Feast, Fisherman's Banquet
+]);
+
+// Gathering spot type → item name produced
+const SPOT_TO_ITEM: Record<string, string> = {
+  grain_field: 'Grain',
+  orchard: 'Apples',
+  fishing: 'Raw Fish',
+  berry: 'Wild Berries',
+  herb: 'Wild Herbs',
+  vegetable_patch: 'Vegetables',
+  forest: 'Wood Logs',
+  mine: 'Iron Ore Chunks',
+  quarry: 'Stone Blocks',
+  clay: 'Clay',
+};
+
+// Item name → spot type that produces it
+const ITEM_TO_SPOT_TYPE: Record<string, string> = {
+  'Grain': 'grain_field',
+  'Apples': 'orchard',
+  'Raw Fish': 'fishing',
+  'Wild Berries': 'berry',
+  'Wild Herbs': 'herb',
+  'Vegetables': 'vegetable_patch',
+  'Wood Logs': 'forest',
+  'Iron Ore Chunks': 'mine',
+  'Stone Blocks': 'quarry',
+  'Clay': 'clay',
+};
+
+// Profession → spot types where they get bonus yield
+const PROF_TO_SPOT_TYPES: Record<string, string[]> = {
+  FARMER: ['grain_field', 'vegetable_patch', 'orchard', 'berry'],
+  MINER: ['mine', 'quarry', 'clay'],
+  LUMBERJACK: ['forest'],
+  HERBALIST: ['herb'],
+  FISHERMAN: ['fishing'],
+  HUNTER: [],
+  RANCHER: [],
+};
+
+// ── Town Cache ────────────────────────────────────────────────────────────
+
+let _townCache: Map<string, { name: string; spotType: string }> | null = null;
+
+async function ensureTownCache(): Promise<Map<string, { name: string; spotType: string }>> {
+  if (_townCache) return _townCache;
+  _townCache = new Map();
+  try {
+    const towns = await prisma.town.findMany({ select: { id: true, name: true } });
+    for (const town of towns) {
+      const spot = TOWN_GATHERING_SPOTS[town.name];
+      if (spot) {
+        _townCache.set(town.id, { name: town.name, spotType: spot.resourceType });
+      }
+    }
+  } catch { /* ignore */ }
+  return _townCache;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+
 function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// ---- Weighted random selection ----
-function weightedSelect(weights: Partial<Record<DailyActionKey, number>>): DailyActionKey {
-  const entries = Object.entries(weights) as [DailyActionKey, number][];
-  const total = entries.reduce((sum, [, w]) => sum + w, 0);
-  if (total === 0) return 'gather'; // fallback
-  let rand = Math.random() * total;
-  for (const [key, weight] of entries) {
-    rand -= weight;
-    if (rand <= 0) return key;
+/** Get all spot types that give a profession bonus for the bot's professions */
+function getProfSpotTypes(profs: string[]): string[] {
+  const types: string[] = [];
+  for (const p of profs) {
+    const spots = PROF_TO_SPOT_TYPES[p];
+    if (spots) types.push(...spots);
   }
-  return entries[0][0];
+  return types;
 }
 
-// ---- Filter weights by enabled systems + bot capabilities ----
-function filterDailyWeights(
-  weights: Record<WeightedActionKey, number>,
-  enabled: SimulationConfig['enabledSystems'],
-  bot?: BotState,
-): Partial<Record<DailyActionKey, number>> {
-  const filtered: Partial<Record<DailyActionKey, number>> = {};
+/** Find ingredients the bot is missing for its highest-tier non-craftable recipes */
+function getMissingIngredients(
+  invMap: Map<string, number>,
+  recipes: { canCraft: boolean; tier: number; inputs: { itemName: string; quantity: number }[] }[],
+): string[] {
+  const missing: string[] = [];
+  const notCraftable = recipes.filter(r => !r.canCraft);
+  notCraftable.sort((a, b) => b.tier - a.tier);
 
-  const isFarmer = bot?.professions.some(p => p.toUpperCase() === 'FARMER') ?? false;
-  const isCook = bot?.professions.some(p => p.toUpperCase() === 'COOK') ?? false;
-  const effectiveWeights = isFarmer
-    ? { gather: 80, craft: 0, travel: 20 }
-    : isCook
-    ? { gather: 30, craft: 55, travel: 15 }
-    : weights;
-
-  if (enabled.gathering) filtered.gather = effectiveWeights.gather;
-  if (enabled.crafting) {
-    const hasCraftingProf = bot?.professions.some(p => CRAFTING_PROFESSIONS.has(p.toUpperCase())) ?? true;
-    if (hasCraftingProf) filtered.craft = effectiveWeights.craft;
-  }
-  if (enabled.travel) filtered.travel = effectiveWeights.travel;
-  return filtered;
-}
-
-// ---- Map quest objective type to a daily action ----
-function mapObjectiveToDailyAction(objectiveType: string): DailyActionKey | null {
-  switch (objectiveType) {
-    case 'KILL':    return 'travel'; // PvE combat occurs as road encounters during travel
-    case 'VISIT':   return 'travel';
-    case 'GATHER':  return 'gather';
-    case 'CRAFT':   return 'craft';
-    default:        return null;     // EQUIP, SELECT_PROFESSION, MARKET_* are free or N/A
-  }
-}
-
-// ---- Execute a daily action (with timing) ----
-async function executeDailyAction(action: DailyActionKey, bot: BotState): Promise<{ result: ActionResult; durationMs: number }> {
-  const start = Date.now();
-  let result: ActionResult;
-  switch (action) {
-    case 'gather':  result = await actions.gatherFromSpot(bot); break;
-    case 'craft':   result = await actions.startCrafting(bot); break;
-    case 'travel':  result = await actions.travel(bot); break;
-    case 'harvest': result = await harvestAsset(bot); break;
-  }
-  return { result, durationMs: Date.now() - start };
-}
-
-// ---- Try daily actions in fallback order until one succeeds ----
-async function tryDailyWithFallback(
-  bot: BotState,
-  order: DailyActionKey[],
-  enabled: SimulationConfig['enabledSystems'],
-  logger?: SimulationLogger,
-  tick?: number,
-): Promise<ActionResult> {
-  const failureReasons: string[] = [];
-  let attemptNumber = 0;
-  let lastFailReason = '';
-
-  for (const action of order) {
-    if (action === 'gather' && !enabled.gathering) { failureReasons.push(`${action}: disabled`); continue; }
-    if (action === 'craft' && !enabled.crafting) { failureReasons.push(`${action}: disabled`); continue; }
-    if (action === 'craft' && !bot.professions.some(p => CRAFTING_PROFESSIONS.has(p.toUpperCase()))) {
-      failureReasons.push(`${action}: no crafting profession`); continue;
+  for (const recipe of notCraftable) {
+    for (const input of recipe.inputs) {
+      const have = invMap.get(input.itemName) || 0;
+      if (have < input.quantity && !missing.includes(input.itemName)) {
+        missing.push(input.itemName);
+      }
     }
-    if (action === 'travel' && !enabled.travel) { failureReasons.push(`${action}: disabled`); continue; }
-
-    attemptNumber++;
-    const { result, durationMs } = await executeDailyAction(action, bot);
-
-    if (logger && tick != null) {
-      logger.logFromResult(bot, result, {
-        tick,
-        phase: 'daily',
-        intent: action,
-        attemptNumber,
-        fallbackReason: lastFailReason || undefined,
-        durationMs,
-        dailyActionUsed: false,
-      });
-    }
-
-    if (result.success) return result;
-
-    lastFailReason = `${action} failed (${result.httpStatus ?? '?'}): ${result.detail}`;
-    failureReasons.push(`${action}: ${result.detail} (${result.endpoint})`);
-    console.log(`[SIM] ${bot.characterName} ${action.toUpperCase()} FAILED: ${result.detail} [endpoint: ${result.endpoint}]`);
   }
-
-  const allReasons = failureReasons.join(' | ');
-  console.log(`[SIM] ${bot.characterName} ALL ACTIONS FAILED: ${allReasons}`);
-  return { success: false, detail: `All failed — ${allReasons}`, endpoint: 'none' };
+  return missing;
 }
 
-// ---- Timed free action helper ----
+// ── Timed free action helper ──────────────────────────────────────────────
+
 async function timedFreeAction(
   fn: () => Promise<ActionResult>,
   bot: BotState,
@@ -181,7 +162,170 @@ async function timedFreeAction(
   return result;
 }
 
-// ---- Main decision function ----
+/** Execute and log a daily action attempt */
+async function timedDailyAction(
+  fn: () => Promise<ActionResult>,
+  bot: BotState,
+  intent: string,
+  priority: number,
+  reason: string,
+  logger: SimulationLogger | undefined,
+  tick: number | undefined,
+): Promise<ActionResult> {
+  const start = Date.now();
+  const result = await fn();
+  if (logger && tick != null) {
+    logger.logFromResult(bot, result, {
+      tick,
+      phase: 'daily',
+      intent: `P${priority}_${intent}`,
+      attemptNumber: 1,
+      durationMs: Date.now() - start,
+      dailyActionUsed: result.success,
+    });
+  }
+  // Enrich detail with priority and reason
+  if (result.success) {
+    result.detail = `P${priority}: ${result.detail} — ${reason}`;
+  }
+  return result;
+}
+
+// ── Travel Reason Determination ───────────────────────────────────────────
+
+interface TravelPlan {
+  reason: string;
+  execute: () => Promise<ActionResult>;
+}
+
+async function determineTravelReason(
+  bot: BotState,
+  invMap: Map<string, number>,
+  recipes: { canCraft: boolean; tier: number; inputs: { itemName: string; quantity: number }[] }[],
+  profs: string[],
+  currentSpotType: string | null,
+): Promise<TravelPlan | null> {
+  const isCook = profs.includes('COOK');
+
+  // a. COOK missing ingredients → travel to town with needed resource
+  if (isCook && recipes.length > 0) {
+    const missing = getMissingIngredients(invMap, recipes);
+    if (missing.length > 0) {
+      const neededSpots = missing
+        .map(item => ITEM_TO_SPOT_TYPE[item])
+        .filter((s): s is string => !!s);
+
+      // Don't travel if current town already has a needed spot
+      if (neededSpots.length > 0 && !neededSpots.includes(currentSpotType || '')) {
+        return {
+          reason: `Need ${missing[0]}, traveling to ${neededSpots[0]} town`,
+          execute: () => actions.travelToResourceTown(bot, neededSpots, `need ${missing[0]}`),
+        };
+      }
+    }
+  }
+
+  // b. Gathering prof with no matching spot in current town
+  const profSpots = getProfSpotTypes(profs);
+  if (profSpots.length > 0 && currentSpotType && !profSpots.includes(currentSpotType)) {
+    return {
+      reason: `No ${profs.find(p => GATHERING_PROF_SET.has(p)) || 'gathering'} spot here, seeking matching town`,
+      execute: () => actions.travelToResourceTown(bot, profSpots, 'seeking matching gathering spot'),
+    };
+  }
+
+  // c. Own fields at home, currently elsewhere
+  if (bot.currentTownId !== bot.homeTownId) {
+    return {
+      reason: 'Traveling home to manage fields',
+      execute: () => actions.travelHome(bot, 'returning home'),
+    };
+  }
+
+  return null;
+}
+
+// ── Handle Pre-Profession Bots (L<3 or no profession at L3+) ─────────────
+
+async function handleNoProfession(
+  bot: BotState,
+  config: SimulationConfig,
+  logger: SimulationLogger | undefined,
+  tick: number | undefined,
+): Promise<ActionResult> {
+  const intelligence = bot.intelligence ?? 50;
+
+  if (bot.level < PROFESSION_UNLOCK_LEVEL) {
+    // Below L3: gather or travel to gain XP
+    const start = Date.now();
+    const gatherResult = await actions.gatherFromSpot(bot);
+    if (logger && tick != null) {
+      logger.logFromResult(bot, gatherResult, { tick, phase: 'daily', intent: 'pre_profession_gather', attemptNumber: 1, durationMs: Date.now() - start, dailyActionUsed: gatherResult.success });
+    }
+    if (gatherResult.success) return gatherResult;
+
+    // Fallback: travel
+    if (config.enabledSystems.travel) {
+      const tStart = Date.now();
+      const travelResult = await actions.travel(bot);
+      if (logger && tick != null) {
+        logger.logFromResult(bot, travelResult, { tick, phase: 'daily', intent: 'pre_profession_travel', attemptNumber: 2, durationMs: Date.now() - tStart, dailyActionUsed: travelResult.success });
+      }
+      if (travelResult.success) return travelResult;
+    }
+    return { success: false, detail: 'Pre-profession: no action available', endpoint: 'none' };
+  }
+
+  // L3+: learn a profession based on profile (intelligence-modulated)
+  let profType: string;
+  if (Math.random() * 100 > intelligence) {
+    profType = pickRandom(GATHERING_PROFESSIONS);
+  } else {
+    switch (bot.profile) {
+      case 'gatherer':   profType = 'FARMER';      break;
+      case 'crafter':    profType = 'COOK';        break;
+      case 'merchant':   profType = 'FARMER';      break;
+      case 'warrior':    profType = 'MINER';       break;
+      case 'politician': profType = 'FARMER';      break;
+      case 'socialite':  profType = 'HERBALIST';   break;
+      case 'explorer':   profType = 'LUMBERJACK';  break;
+      case 'balanced':   profType = 'COOK';        break;
+      default:           profType = 'FARMER';      break;
+    }
+  }
+
+  const start = Date.now();
+  const result = await actions.learnProfession(bot, profType);
+  if (logger && tick != null) {
+    logger.logFromResult(bot, result, { tick, phase: 'daily', intent: 'learn_profession', attemptNumber: 1, durationMs: Date.now() - start, dailyActionUsed: false });
+  }
+  if (result.success) return result;
+
+  // Fallback professions
+  const fallbacks = ['FARMER', 'MINER', 'LUMBERJACK'];
+  for (let i = 0; i < fallbacks.length; i++) {
+    if (fallbacks[i] === profType) continue;
+    const fbStart = Date.now();
+    const fbResult = await actions.learnProfession(bot, fallbacks[i]);
+    if (logger && tick != null) {
+      logger.logFromResult(bot, fbResult, { tick, phase: 'daily', intent: 'learn_profession', attemptNumber: i + 2, fallbackReason: `learn ${profType} failed`, durationMs: Date.now() - fbStart, dailyActionUsed: false });
+    }
+    if (fbResult.success) return fbResult;
+  }
+
+  // All profession learning failed → gather
+  const gStart = Date.now();
+  const gResult = await actions.gatherFromSpot(bot);
+  if (logger && tick != null) {
+    logger.logFromResult(bot, gResult, { tick, phase: 'daily', intent: 'learn_failed_gather', attemptNumber: 1, durationMs: Date.now() - gStart, dailyActionUsed: gResult.success });
+  }
+  return gResult;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Main Decision Function
+// ═══════════════════════════════════════════════════════════════════════════
+
 export async function decideBotAction(
   bot: BotState,
   allBots: BotState[],
@@ -189,316 +333,260 @@ export async function decideBotAction(
   logger?: SimulationLogger,
   tick?: number,
 ): Promise<ActionResult> {
-  // 0. Cooldown check
+  const currentTick = tick ?? 0;
+
+  // ── Skip: paused ──
   if (bot.pausedUntil > Date.now()) {
     return { success: true, detail: 'Bot paused (cooldown)', endpoint: 'none' };
   }
 
-  // 0b. Asset buying can happen while traveling (uses homeTownId, not currentTownId)
-  const ASSET_GATHERING_PROFESSIONS = new Set(['FARMER', 'MINER', 'LUMBERJACK', 'FISHERMAN', 'HERBALIST', 'RANCHER', 'HUNTER']);
-  const hasGatheringProf = bot.professions.some(p => ASSET_GATHERING_PROFESSIONS.has(p.toUpperCase()));
-  if (hasGatheringProf && bot.gold >= 100 && config.enabledSystems.gathering) {
-    try {
-      const buyResult = await timedFreeAction(() => buyAsset(bot), bot, 'buy_asset', logger, tick);
-      if (buyResult.success) {
-        console.log(`[SIM] ${bot.characterName} bought asset: ${buyResult.detail}`);
-      }
-    } catch { /* ignore buy failures */ }
-  }
-
-  // Skip bots that are currently traveling — they already committed travel
+  // ── Skip: traveling ──
   if (bot.pendingTravel) {
-    console.log(`[SIM] ${bot.characterName} skipping — currently traveling`);
     if (logger && tick != null) {
       logger.logFromResult(bot, { success: true, detail: 'Currently traveling (skipped)', endpoint: 'none' }, {
-        tick,
-        phase: 'daily',
-        intent: 'travel_skip',
-        attemptNumber: 0,
-        durationMs: 0,
-        dailyActionUsed: false,
+        tick, phase: 'daily', intent: 'travel_skip', attemptNumber: 0, durationMs: 0, dailyActionUsed: false,
       });
     }
     return { success: true, detail: 'Currently traveling (awaiting tick resolution)', endpoint: 'none' };
   }
 
-  const intelligence = bot.intelligence ?? 50;
+  // ── Profession detection ──
+  const profs = bot.professions.map(p => p.toUpperCase());
+  const hasGathering = profs.some(p => GATHERING_PROF_SET.has(p));
+  const hasCrafting = profs.some(p => CRAFTING_PROFESSIONS.has(p));
+  const isCook = profs.includes('COOK');
 
-  // ---- Early detection: FARMER bots get special handling throughout ----
-  const isFarmerBot = bot.professions.some(p => p.toUpperCase() === 'FARMER');
-  const isCookBot = bot.professions.some(p => p.toUpperCase() === 'COOK');
+  // ── Current town info ──
+  const townCache = await ensureTownCache();
+  const townInfo = townCache.get(bot.currentTownId);
+  const currentSpotType = townInfo?.spotType ?? null;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Phase A: FREE side-effect actions (party, quest, equip)
-  // These do NOT consume the daily action. Failures are silently ignored.
-  // FARMER bots skip party actions — they must stay in their town to farm.
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════
+  // Phase A: FREE ACTIONS (no daily action cost)
+  // ═══════════════════════════════════════════════════════════════════════
 
-  // A1: Party leader management (free) — FARMER bots disband immediately
-  if (bot.partyId && bot.partyRole === 'leader') {
-    if (isFarmerBot) {
-      // FARMER bots should not be in parties — disband so they can farm
-      try { await timedFreeAction(() => actions.disbandParty(bot), bot, 'disband_party', logger, tick); } catch { /* ignore */ }
-    } else {
-      bot.partyTicksRemaining--;
-
-      if (bot.partyTicksRemaining <= 0) {
-        // Time to disband
-        try { await timedFreeAction(() => actions.disbandParty(bot), bot, 'disband_party', logger, tick); } catch { /* ignore */ }
-      } else {
-        // Try to invite nearby partyless bots (if party < 3)
-        const partyMembers = allBots.filter(b => b.partyId === bot.partyId);
-        if (partyMembers.length < 3) {
-          const candidates = allBots.filter(
-            b => !b.partyId && b.currentTownId === bot.currentTownId && b.characterId !== bot.characterId,
-          );
-          if (candidates.length > 0) {
-            const target = candidates[Math.floor(Math.random() * candidates.length)];
-            try { await timedFreeAction(() => actions.inviteToParty(bot, target), bot, 'invite_to_party', logger, tick); } catch { /* ignore */ }
-          }
-        }
-      }
-    }
+  // A1: Plant empty fields (gathering profs)
+  if (hasGathering && config.enabledSystems.gathering) {
+    try {
+      const r = await timedFreeAction(() => actions.plantAsset(bot), bot, 'plant_asset', logger, tick);
+      if (r.success) console.log(`[SIM] ${bot.characterName} planted: ${r.detail}`);
+    } catch { /* ignore */ }
   }
 
-  // A2: Accept pending party invites (free) — FARMER bots skip (stay in town)
-  if (!isFarmerBot && !bot.partyId && bot.currentTownId) {
-    try { await timedFreeAction(() => actions.acceptPartyInvite(bot), bot, 'accept_party_invite', logger, tick); } catch { /* ignore */ }
+  // A2: Accept jobs (all bots — wage earners if no fields)
+  if (config.enabledSystems.gathering) {
+    try {
+      const r = await timedFreeAction(() => actions.acceptJob(bot), bot, 'accept_job', logger, tick);
+      if (r.success) console.log(`[SIM] ${bot.characterName} accepted job: ${r.detail}`);
+    } catch { /* ignore */ }
   }
 
-  // A2b: FARMER bots leave parties they got stuck in
-  if (isFarmerBot && bot.partyId && bot.partyRole !== 'leader') {
-    try { await timedFreeAction(() => actions.leaveParty(bot), bot, 'leave_party', logger, tick); } catch { /* ignore */ }
+  // A3: Buy assets (gathering profs with surplus gold, 50g buffer)
+  if (hasGathering && bot.gold >= 150 && config.enabledSystems.gathering) {
+    try {
+      const r = await timedFreeAction(() => actions.buyAsset(bot), bot, 'buy_asset', logger, tick);
+      if (r.success) console.log(`[SIM] ${bot.characterName} bought asset: ${r.detail}`);
+    } catch { /* ignore */ }
   }
 
-  // A3: Party formation (free, 30% chance if not in a party) — FARMER bots skip
-  if (!isFarmerBot && !bot.partyId && bot.currentTownId && Math.random() < 0.3) {
-    const nearbyPartyless = allBots.filter(
-      b => !b.partyId && b.characterId !== bot.characterId && b.currentTownId === bot.currentTownId,
-    );
-    if (nearbyPartyless.length > 0) {
-      try {
-        const createResult = await timedFreeAction(() => actions.createParty(bot), bot, 'create_party', logger, tick);
-        if (createResult.success) {
-          const target = nearbyPartyless[Math.floor(Math.random() * nearbyPartyless.length)];
-          try { await timedFreeAction(() => actions.inviteToParty(bot, target), bot, 'invite_to_party', logger, tick); } catch { /* ignore */ }
-        }
-      } catch { /* ignore */ }
-    }
-  }
-
-  // A4: Quest acceptance (free — does NOT consume the daily action)
-  let activeQuest: { questId: string; objectives: any[]; progress: Record<string, number>; type: string } | null = null;
+  // A4: Quest acceptance
   if (config.enabledSystems.quests) {
-    activeQuest = await actions.checkActiveQuest(bot);
+    const activeQuest = await actions.checkActiveQuest(bot);
     if (!activeQuest) {
       try { await timedFreeAction(() => actions.acceptQuest(bot), bot, 'accept_quest', logger, tick); } catch { /* ignore */ }
-      activeQuest = await actions.checkActiveQuest(bot);
     }
   }
 
-  // A5: Asset Management (free actions) — plant, accept jobs
-  // Note: buying already happened before travel-skip check (uses homeTownId)
-  if (hasGatheringProf) {
-    // Plant crops on empty assets (free, no daily action)
-    if (config.enabledSystems.gathering) {
-      try {
-        const plantResult = await timedFreeAction(() => plantAsset(bot), bot, 'plant_asset', logger, tick);
-        if (plantResult.success) {
-          console.log(`[SIM] ${bot.characterName} planted: ${plantResult.detail}`);
-        }
-      } catch { /* ignore plant failures */ }
-    }
-
-    // Accept job listings if no assets to tend
-    if (config.enabledSystems.gathering) {
-      try {
-        const jobResult = await timedFreeAction(() => acceptJob(bot), bot, 'accept_job', logger, tick);
-        if (jobResult.success) {
-          console.log(`[SIM] ${bot.characterName} accepted job: ${jobResult.detail}`);
-        }
-      } catch { /* ignore job failures */ }
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Phase B: MANDATORY daily action (exactly 1: gather, travel, or craft)
-  // Every bot MUST commit a daily action. Fallback chain ensures this.
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  // B1: Pre-profession bots — learn profession or grind XP
-  if (bot.professions.length === 0) {
-    if (bot.level < PROFESSION_UNLOCK_LEVEL) {
-      // Below level gate: gather from spot (no profession needed) or travel
-      return tryDailyWithFallback(bot, ['gather', 'travel', 'craft'], config.enabledSystems, logger, tick);
-    }
-
-    // Level 3+: learn a profession based on profile (or random for low intelligence)
-    let profType: string;
-    if (Math.random() * 100 > intelligence) {
-      profType = pickRandom(GATHERING_PROFESSIONS);
+  // A5: Party management (simplified — disband if in party to stay productive)
+  if (bot.partyId) {
+    if (bot.partyRole === 'leader') {
+      try { await timedFreeAction(() => actions.disbandParty(bot), bot, 'disband_party', logger, tick); } catch { /* ignore */ }
     } else {
-      switch (bot.profile) {
-        case 'gatherer':   profType = 'MINER';      break;
-        case 'crafter':    profType = 'COOK';       break;  // was BLACKSMITH
-        case 'merchant':   profType = 'MERCHANT';    break;
-        case 'warrior':    profType = 'MINER';       break;
-        case 'politician': profType = 'FARMER';      break;
-        case 'socialite':  profType = 'FARMER';      break;
-        case 'explorer':   profType = 'HERBALIST';   break;
-        case 'balanced':   profType = 'COOK';       break;  // was MINER
-        default:           profType = 'FARMER';      break;
-      }
+      try { await timedFreeAction(() => actions.leaveParty(bot), bot, 'leave_party', logger, tick); } catch { /* ignore */ }
     }
-
-    const start1 = Date.now();
-    const result = await actions.learnProfession(bot, profType);
-    if (logger && tick != null) {
-      logger.logFromResult(bot, result, { tick, phase: 'daily', intent: 'learn_profession', attemptNumber: 1, durationMs: Date.now() - start1, dailyActionUsed: false });
-    }
-    if (result.success) return result;
-
-    // Fallback professions
-    const fallbacks: string[] = [];
-    switch (bot.profile) {
-      case 'gatherer':  fallbacks.push('FARMER', 'LUMBERJACK'); break;
-      case 'crafter':   fallbacks.push('COOK', 'FARMER'); break;  // was SMELTER, FARMER
-      default:          fallbacks.push('FARMER', 'MINER'); break;
-    }
-    for (let i = 0; i < fallbacks.length; i++) {
-      const startFb = Date.now();
-      const fbResult = await actions.learnProfession(bot, fallbacks[i]);
-      if (logger && tick != null) {
-        logger.logFromResult(bot, fbResult, { tick, phase: 'daily', intent: 'learn_profession', attemptNumber: i + 2, fallbackReason: `learn ${profType} failed`, durationMs: Date.now() - startFb, dailyActionUsed: false });
-      }
-      if (fbResult.success) return fbResult;
-    }
-
-    // If learning still failed, gather or travel instead
-    return tryDailyWithFallback(bot, ['gather', 'travel'], config.enabledSystems, logger, tick);
   }
 
-  // B2: Pending collections
+  // ═══════════════════════════════════════════════════════════════════════
+  // Phase B: DAILY ACTION (priority chain — first match wins)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // B0: No profession yet
+  if (bot.professions.length === 0) {
+    return handleNoProfession(bot, config, logger, tick);
+  }
+
+  // B0b: Pending collections (must collect before committing new action)
   if (bot.pendingGathering) {
-    const start2 = Date.now();
+    const start = Date.now();
     const r = await actions.collectGathering(bot);
     if (logger && tick != null) {
-      logger.logFromResult(bot, r, { tick, phase: 'daily', intent: 'collect_gathering', attemptNumber: 1, durationMs: Date.now() - start2, dailyActionUsed: false });
+      logger.logFromResult(bot, r, { tick, phase: 'daily', intent: 'collect_gathering', attemptNumber: 1, durationMs: Date.now() - start, dailyActionUsed: false });
     }
     return r;
   }
   if (bot.pendingCrafting) {
-    const start3 = Date.now();
+    const start = Date.now();
     const r = await actions.collectCrafting(bot);
     if (logger && tick != null) {
-      logger.logFromResult(bot, r, { tick, phase: 'daily', intent: 'collect_crafting', attemptNumber: 1, durationMs: Date.now() - start3, dailyActionUsed: false });
+      logger.logFromResult(bot, r, { tick, phase: 'daily', intent: 'collect_crafting', attemptNumber: 1, durationMs: Date.now() - start, dailyActionUsed: false });
     }
     return r;
   }
 
-  // B2b: Priority — Harvest READY assets before normal actions
-  if (hasGatheringProf && config.enabledSystems.gathering) {
-    try {
-      const { result: harvestResult, durationMs: harvestMs } = await executeDailyAction('harvest', bot);
-      if (harvestResult.success) {
-        if (logger && tick != null) {
-          logger.logFromResult(bot, harvestResult, { tick, phase: 'daily', intent: 'harvest_asset', attemptNumber: 1, durationMs: harvestMs, dailyActionUsed: true });
-        }
-        return harvestResult;
-      }
-    } catch { /* no READY assets, fall through to normal actions */ }
+  // ── Pre-fetch inventory + recipes (used by multiple priorities) ──
+  const inventory = await actions.getInventory(bot);
+  const invMap = new Map(inventory.map(i => [i.name, i.quantity]));
+
+  type RecipeInfo = { id: string; name: string; canCraft: boolean; tier: number; professionRequired: string; levelRequired: number; inputs: { itemName: string; quantity: number }[] };
+  let recipes: RecipeInfo[] = [];
+  if (hasCrafting) {
+    recipes = await actions.getCraftableRecipes(bot);
   }
 
-  // B3: FARMER bots — gathering only, never craft
-  if (isFarmerBot) {
-    return tryDailyWithFallback(bot, ['gather', 'travel'], config.enabledSystems, logger, tick);
-  }
-
-  // B3a: COOK bots — craft first (use ingredients before they expire), else gather
-  if (isCookBot) {
-    if (config.enabledSystems.crafting) {
-      const { result: craftResult, durationMs: craftMs } = await executeDailyAction('craft', bot);
-      if (logger && tick != null) {
-        logger.logFromResult(bot, craftResult, { tick, phase: 'daily', intent: 'cook_craft_priority', attemptNumber: 1, durationMs: craftMs, dailyActionUsed: false });
-      }
-      if (craftResult.success) return craftResult;
-    }
-    // No craftable recipes — gather farming resources
-    return tryDailyWithFallback(bot, ['gather', 'travel'], config.enabledSystems, logger, tick);
-  }
-
-  // B3b: Party leader prefers group travel as daily action
-  if (bot.partyId && bot.partyRole === 'leader' && bot.partyTicksRemaining > 0) {
-    const start4 = Date.now();
-    const travelResult = await actions.partyTravel(bot);
-    if (logger && tick != null) {
-      logger.logFromResult(bot, travelResult, { tick, phase: 'daily', intent: 'party_travel', attemptNumber: 1, durationMs: Date.now() - start4, dailyActionUsed: false });
-    }
-    if (travelResult.success) return travelResult;
-    // Fall through if group travel failed
-  }
-
-  // B3c: Non-leader party members — leave party before acting (travel requires leader)
-  if (bot.partyId && bot.partyRole !== 'leader') {
-    try { await timedFreeAction(() => actions.leaveParty(bot), bot, 'leave_party', logger, tick); } catch { /* ignore */ }
-  }
-
-  // B4: Quest-guided daily action (non-FARMER bots only, FARMER already handled above)
-  if (!isFarmerBot && activeQuest) {
-    const firstIncomplete = activeQuest.objectives.findIndex(
-      (obj: any, idx: number) => (activeQuest!.progress[String(idx)] || 0) < obj.quantity,
+  // ── P1: Harvest READY fields (time-sensitive — crops wither) ────────
+  if (hasGathering && config.enabledSystems.gathering) {
+    const r = await timedDailyAction(
+      () => actions.harvestAsset(bot),
+      bot, 'harvest_own_field', 1, 'Crops READY — harvesting before wither',
+      logger, tick,
     );
+    if (r.success) return r;
+  }
 
-    if (firstIncomplete >= 0) {
-      const objType = activeQuest.objectives[firstIncomplete].type;
-      const questAction = mapObjectiveToDailyAction(objType);
+  // ── P3: Craft (highest-tier craftable recipe, intermediates preferred) ──
+  if (hasCrafting && config.enabledSystems.crafting) {
+    const craftable = recipes.filter(r => r.canCraft);
+    if (craftable.length > 0) {
+      // Sort: highest tier first; at same tier, prefer intermediates
+      craftable.sort((a, b) => {
+        if (b.tier !== a.tier) return b.tier - a.tier;
+        const aI = INTERMEDIATE_RECIPE_IDS.has(a.id) ? 1 : 0;
+        const bI = INTERMEDIATE_RECIPE_IDS.has(b.id) ? 1 : 0;
+        return bI - aI;
+      });
 
-      if (questAction) {
-        // For craft, ensure bot has a crafting profession
-        if (questAction === 'craft' && bot.professions.length === 0) {
-          // Can't craft yet — fall through to profile-weighted
-        } else {
-          const { result, durationMs } = await executeDailyAction(questAction, bot);
-          if (logger && tick != null) {
-            logger.logFromResult(bot, result, { tick, phase: 'daily', intent: `quest_${questAction}`, attemptNumber: 1, durationMs, dailyActionUsed: false });
-          }
-          if (result.success) return result;
-          // If quest-guided action failed, fall through to profile-weighted
-        }
+      const best = craftable[0];
+      const inputStr = best.inputs.map(i => `${i.quantity}x ${i.itemName}`).join(' + ');
+      const r = await timedDailyAction(
+        () => actions.craftSpecificRecipe(bot, best.id, best.name),
+        bot, 'craft', 3, `T${best.tier} ${best.name} (${inputStr})`,
+        logger, tick,
+      );
+      if (r.success) return r;
+    }
+  }
+
+  // ── P4: Gather (profession-aware, need-based) ──────────────────────
+  if (config.enabledSystems.gathering) {
+    let shouldGather = false;
+    let gatherReason = '';
+
+    // Gathering prof: gather if current town has a matching spot
+    if (hasGathering) {
+      const profSpots = getProfSpotTypes(profs);
+      if (currentSpotType && profSpots.includes(currentSpotType)) {
+        shouldGather = true;
+        gatherReason = `Gathering at ${currentSpotType} spot (profession bonus)`;
       }
     }
-  }
 
-  // B5: Profile-weighted daily action selection
-  const profileWeights = DAILY_WEIGHTS[bot.profile] || DAILY_WEIGHTS.balanced;
-  const filteredWeights = filterDailyWeights(profileWeights, config.enabledSystems, bot);
-
-  if (Object.keys(filteredWeights).length > 0) {
-    // Intelligence modulation: sometimes pick random instead of profile-based
-    let selected: DailyActionKey;
-    if (Math.random() * 100 > intelligence) {
-      const allKeys = Object.keys(filteredWeights) as DailyActionKey[];
-      selected = pickRandom(allKeys);
-    } else {
-      selected = weightedSelect(filteredWeights);
+    // COOK: gather if current town produces a needed ingredient
+    if (!shouldGather && isCook) {
+      const missing = getMissingIngredients(invMap, recipes);
+      const spotItem = SPOT_TO_ITEM[currentSpotType || ''];
+      if (spotItem && missing.includes(spotItem)) {
+        shouldGather = true;
+        gatherReason = `Gathering ${spotItem} (needed for cooking)`;
+      } else if (currentSpotType === 'forest' && missing.includes('Wood Logs')) {
+        shouldGather = true;
+        gatherReason = 'Gathering Wood Logs (fuel for cooking)';
+      }
     }
 
-    const { result, durationMs } = await executeDailyAction(selected, bot);
-    if (logger && tick != null) {
-      logger.logFromResult(bot, result, { tick, phase: 'daily', intent: selected, attemptNumber: 1, durationMs, dailyActionUsed: false });
+    // Non-crafting, non-gathering bots: always gather (basic income)
+    if (!shouldGather && !hasCrafting && !hasGathering) {
+      shouldGather = true;
+      gatherReason = 'Gathering (basic income)';
     }
-    if (result.success) return result;
+
+    // Gathering prof with no matching spot: still gather whatever is here
+    if (!shouldGather && hasGathering && currentSpotType) {
+      shouldGather = true;
+      gatherReason = `Gathering at ${currentSpotType} (no matching spot, gathering what's available)`;
+    }
+
+    if (shouldGather) {
+      const r = await timedDailyAction(
+        () => actions.gatherFromSpot(bot),
+        bot, 'gather', 4, gatherReason,
+        logger, tick,
+      );
+      if (r.success) return r;
+    }
   }
 
-  // B6: FALLBACK — try each daily action in order until one works
-  // FARMER bots prioritize gathering (to restock perishable ingredients) over travel
-  const fallbackOrder: DailyActionKey[] = isFarmerBot
-    ? ['gather', 'craft', 'travel']
-    : ['gather', 'travel', 'craft'];
-  return tryDailyWithFallback(bot, fallbackOrder, config.enabledSystems, logger, tick);
+  // ── P5: Buy from market (need-based for crafting ingredients) ───────
+  if (config.enabledSystems.market && hasCrafting && bot.gold >= 10) {
+    const missing = getMissingIngredients(invMap, recipes);
+    if (missing.length > 0) {
+      const r = await timedDailyAction(
+        () => actions.buySpecificItem(bot, missing[0]),
+        bot, 'market_buy', 5, `Buying ${missing[0]} from market`,
+        logger, tick,
+      );
+      if (r.success) return r;
+    }
+  }
+
+  // ── P7: Travel (purposeful, with cooldown) ─────────────────────────
+  if (config.enabledSystems.travel && (currentTick - bot.lastTravelTick) >= TRAVEL_COOLDOWN_TICKS) {
+    const travelPlan = await determineTravelReason(bot, invMap, recipes, profs, currentSpotType);
+    if (travelPlan) {
+      const r = await timedDailyAction(
+        travelPlan.execute,
+        bot, 'travel', 7, travelPlan.reason,
+        logger, tick,
+      );
+      if (r.success) {
+        bot.lastTravelTick = currentTick;
+        return r;
+      }
+    }
+
+    // No specific travel reason — random exploration (only if nothing else worked)
+    const r = await timedDailyAction(
+      () => actions.travel(bot),
+      bot, 'travel_explore', 7, 'Exploring (no specific destination)',
+      logger, tick,
+    );
+    if (r.success) {
+      bot.lastTravelTick = currentTick;
+      return r;
+    }
+  }
+
+  // ── P8: Gather fallback ────────────────────────────────────────────
+  if (config.enabledSystems.gathering) {
+    const r = await timedDailyAction(
+      () => actions.gatherFromSpot(bot),
+      bot, 'gather_fallback', 8, 'Gathering (fallback — nothing else available)',
+      logger, tick,
+    );
+    if (r.success) return r;
+  }
+
+  // ── P9: Idle (should be extremely rare) ────────────────────────────
+  console.warn(`[SIM] ${bot.characterName} IDLE — all priorities exhausted`);
+  if (logger && tick != null) {
+    logger.logFromResult(bot, { success: false, detail: 'P9: Idle — no valid action', endpoint: 'none' }, {
+      tick, phase: 'daily', intent: 'P9_idle', attemptNumber: 1, durationMs: 0, dailyActionUsed: false,
+    });
+  }
+  return { success: false, detail: 'P9: Idle — no valid action found', endpoint: 'none' };
 }
 
-// ---- Error storm: deliberately trigger invalid actions ----
+// ── Error storm: deliberately trigger invalid actions ──────────────────
+
 export async function errorStormAction(bot: BotState): Promise<ActionResult> {
   return actions.triggerInvalidAction(bot);
 }

@@ -8,6 +8,7 @@
 import { BotState, ActionResult } from './types';
 import { get, post } from './dispatcher';
 import { getResourcesByType } from './seed';
+import { TOWN_GATHERING_SPOTS } from '@shared/data/gathering';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1438,6 +1439,333 @@ export async function acceptJob(bot: BotState): Promise<ActionResult> {
   } catch (err: any) {
     return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
+}
+
+// ---------------------------------------------------------------------------
+// 33. getInventory — Fetch bot inventory with quantities
+// ---------------------------------------------------------------------------
+
+export async function getInventory(bot: BotState): Promise<{ name: string; quantity: number; id: string; type?: string }[]> {
+  try {
+    const res = await get('/items/inventory', bot.token);
+    if (res.status < 200 || res.status >= 300) return [];
+    const items: any[] = res.data?.items || res.data || [];
+    // Group by template name, sum quantities
+    const grouped = new Map<string, { name: string; quantity: number; id: string; type?: string }>();
+    for (const item of items) {
+      const name = item.templateName || item.name || 'Unknown';
+      const existing = grouped.get(name);
+      if (existing) {
+        existing.quantity += (item.quantity || 1);
+      } else {
+        grouped.set(name, {
+          name,
+          quantity: item.quantity || 1,
+          id: item.id || item.itemId,
+          type: item.type || item.itemType,
+        });
+      }
+    }
+    return Array.from(grouped.values());
+  } catch {
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 34. getCraftableRecipes — Get all recipes with canCraft status and ingredient details
+// ---------------------------------------------------------------------------
+
+export async function getCraftableRecipes(bot: BotState): Promise<{
+  id: string;
+  name: string;
+  canCraft: boolean;
+  tier: number;
+  professionRequired: string;
+  levelRequired: number;
+  inputs: { itemName: string; quantity: number }[];
+}[]> {
+  try {
+    const res = await get('/crafting/recipes', bot.token);
+    if (res.status < 200 || res.status >= 300) return [];
+    const recipes: any[] = res.data?.recipes || res.data || [];
+    return recipes.map((r: any) => ({
+      id: r.id || r.recipeId,
+      name: r.name || 'Unknown Recipe',
+      canCraft: r.canCraft === true,
+      tier: r.tier || 1,
+      professionRequired: r.professionRequired || '',
+      levelRequired: r.levelRequired || 1,
+      inputs: (r.inputs || []).map((inp: any) => ({
+        itemName: inp.itemName || inp.name || '',
+        quantity: inp.quantity || 1,
+      })),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 35. craftSpecificRecipe — Craft a specific recipe by ID
+// ---------------------------------------------------------------------------
+
+export async function craftSpecificRecipe(bot: BotState, recipeId: string, recipeName: string): Promise<ActionResult> {
+  const endpoint = '/actions/lock-in';
+  try {
+    const body = { actionType: 'CRAFT', actionTarget: { recipeId } };
+    const res = await post(endpoint, bot.token, body);
+    if (res.status >= 200 && res.status < 300) {
+      return {
+        success: true,
+        detail: `Locked in crafting ${recipeName}`,
+        endpoint,
+        httpStatus: res.status,
+        requestBody: body,
+        responseBody: res.data,
+      };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: body, responseBody: res.data };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 36. travelToResourceTown — Travel to a town that has a specific resource type
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a reverse map: resourceType -> list of town names that have that resource.
+ * Cached after first call.
+ */
+let _resourceTownMap: Map<string, string[]> | null = null;
+function getResourceTownMap(): Map<string, string[]> {
+  if (_resourceTownMap) return _resourceTownMap;
+  _resourceTownMap = new Map();
+  for (const [townName, spot] of Object.entries(TOWN_GATHERING_SPOTS)) {
+    const rt = spot.resourceType;
+    if (!_resourceTownMap.has(rt)) _resourceTownMap.set(rt, []);
+    _resourceTownMap.get(rt)!.push(townName);
+  }
+  return _resourceTownMap;
+}
+
+/**
+ * Travel to a town that has one of the target resource types.
+ * Checks available routes, picks one whose destination matches.
+ * If no direct route matches, picks a random route (exploration).
+ */
+export async function travelToResourceTown(
+  bot: BotState,
+  targetResourceTypes: string[],
+  reason: string,
+): Promise<ActionResult> {
+  const endpoint = '/travel/start';
+  try {
+    const routesRes = await get('/travel/routes', bot.token);
+    if (routesRes.status < 200 || routesRes.status >= 300) {
+      return { success: false, detail: routesRes.data?.error || `Failed to fetch routes: HTTP ${routesRes.status}`, endpoint, httpStatus: routesRes.status, requestBody: {}, responseBody: routesRes.data };
+    }
+
+    const routes: any[] = routesRes.data?.routes || routesRes.data || [];
+    if (routes.length === 0) {
+      return { success: false, detail: 'No travel routes available', endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: 'No routes' } };
+    }
+
+    // Build set of target town names
+    const rtMap = getResourceTownMap();
+    const targetTowns = new Set<string>();
+    for (const rt of targetResourceTypes) {
+      for (const tn of (rtMap.get(rt) || [])) {
+        targetTowns.add(tn.toLowerCase());
+      }
+    }
+
+    // Check routes for matching destinations
+    let bestRoute: any = null;
+    for (const route of routes) {
+      const destName = (route.destination?.name || route.name || '').toLowerCase();
+      if (targetTowns.has(destName)) {
+        bestRoute = route;
+        break;
+      }
+    }
+
+    // Fallback: random route (exploration)
+    if (!bestRoute) {
+      bestRoute = routes[Math.floor(Math.random() * routes.length)];
+    }
+
+    const routeId = bestRoute.id || bestRoute.routeId;
+    const destName = bestRoute.destination?.name || bestRoute.name || routeId;
+
+    const res = await post(endpoint, bot.token, { routeId });
+    if (res.status >= 200 && res.status < 300) {
+      bot.pendingTravel = true;
+      return {
+        success: true,
+        detail: `Traveling to ${destName} (${reason})`,
+        endpoint,
+        httpStatus: res.status,
+        requestBody: { routeId },
+        responseBody: res.data,
+      };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { routeId }, responseBody: res.data };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 37. travelHome — Travel back to home town
+// ---------------------------------------------------------------------------
+
+export async function travelHome(bot: BotState, reason: string): Promise<ActionResult> {
+  const endpoint = '/travel/start';
+  try {
+    const routesRes = await get('/travel/routes', bot.token);
+    if (routesRes.status < 200 || routesRes.status >= 300) {
+      return { success: false, detail: routesRes.data?.error || `Failed to fetch routes`, endpoint, httpStatus: routesRes.status, requestBody: {}, responseBody: routesRes.data };
+    }
+
+    const routes: any[] = routesRes.data?.routes || routesRes.data || [];
+    if (routes.length === 0) {
+      return { success: false, detail: 'No travel routes available', endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: 'No routes' } };
+    }
+
+    // Find route toward home town (may not be direct)
+    let bestRoute: any = null;
+    for (const route of routes) {
+      const destId = route.destination?.id || route.destinationTownId || '';
+      if (destId === bot.homeTownId) {
+        bestRoute = route;
+        break;
+      }
+    }
+
+    // Fallback: pick a random route (eventually we'll get home)
+    if (!bestRoute) {
+      bestRoute = routes[Math.floor(Math.random() * routes.length)];
+    }
+
+    const routeId = bestRoute.id || bestRoute.routeId;
+    const destName = bestRoute.destination?.name || bestRoute.name || routeId;
+
+    const res = await post(endpoint, bot.token, { routeId });
+    if (res.status >= 200 && res.status < 300) {
+      bot.pendingTravel = true;
+      return {
+        success: true,
+        detail: `Traveling to ${destName} (${reason})`,
+        endpoint,
+        httpStatus: res.status,
+        requestBody: { routeId },
+        responseBody: res.data,
+      };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { routeId }, responseBody: res.data };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 38. buySpecificItem — Buy a specific item from market by name
+// ---------------------------------------------------------------------------
+
+export async function buySpecificItem(bot: BotState, itemName: string, maxPrice?: number): Promise<ActionResult> {
+  const endpoint = '/market/buy';
+  try {
+    const browseRes = await get(`/market/browse?limit=50`, bot.token);
+    if (browseRes.status < 200 || browseRes.status >= 300) {
+      return { success: false, detail: browseRes.data?.error || `Failed to browse market`, endpoint, httpStatus: browseRes.status, requestBody: {}, responseBody: browseRes.data };
+    }
+
+    const listings: any[] = browseRes.data?.listings || browseRes.data || [];
+    const max = maxPrice ?? bot.gold * 0.5;
+
+    // Find listings matching the item name
+    const matching = listings.filter((l: any) => {
+      const name = (l.itemName || l.name || l.item?.name || '').toLowerCase();
+      const price = l.price || l.unitPrice || 0;
+      return name === itemName.toLowerCase() && price > 0 && price <= max;
+    });
+
+    if (matching.length === 0) {
+      return { success: false, detail: `No affordable ${itemName} on market`, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: `No ${itemName} found` } };
+    }
+
+    // Pick cheapest
+    matching.sort((a: any, b: any) => (a.price || a.unitPrice || 0) - (b.price || b.unitPrice || 0));
+    const listing = matching[0];
+    const listingId = listing.id || listing.listingId;
+    const askingPrice = listing.price || listing.unitPrice || 0;
+    const bidPrice = Math.ceil(askingPrice * 1.1); // 10% above asking
+
+    const res = await post(endpoint, bot.token, { listingId, bidPrice });
+    if (res.status >= 200 && res.status < 300) {
+      bot.gold -= bidPrice;
+      return {
+        success: true,
+        detail: `Placed buy order for ${itemName} at ${bidPrice}g`,
+        endpoint,
+        httpStatus: res.status,
+        requestBody: { listingId, bidPrice },
+        responseBody: res.data,
+      };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { listingId, bidPrice }, responseBody: res.data };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 39. listSurplusOnMarket — Smart market listing that keeps items needed for crafting
+// ---------------------------------------------------------------------------
+
+export async function listSurplusOnMarket(bot: BotState, keepItemNames?: Set<string>): Promise<ActionResult[]> {
+  const results: ActionResult[] = [];
+  const endpoint = '/market/list';
+  try {
+    const invRes = await get('/items/inventory', bot.token);
+    if (invRes.status < 200 || invRes.status >= 300) return results;
+
+    const items: any[] = invRes.data?.items || invRes.data || [];
+    const sellable = items.filter((i: any) => {
+      if (i.equipped) return false;
+      const name = i.templateName || i.name || '';
+      // Keep items needed for crafting
+      if (keepItemNames && keepItemNames.has(name)) return false;
+      return true;
+    });
+
+    // Only list up to 3 items per tick to avoid spam
+    const toList = sellable.slice(0, 3);
+    for (const item of toList) {
+      const itemId = item.id || item.itemId;
+      const baseValue = item.baseValue || item.value || 10;
+      // Price: baseValue * 1.5 (markup) + random variance
+      const price = Math.max(5, Math.ceil(baseValue * 1.5 + Math.random() * 5));
+
+      try {
+        const res = await post(endpoint, bot.token, { itemId, price, quantity: 1 });
+        if (res.status >= 200 && res.status < 300) {
+          results.push({
+            success: true,
+            detail: `Listed ${item.name || item.templateName || itemId} for ${price}g`,
+            endpoint,
+            httpStatus: res.status,
+            requestBody: { itemId, price, quantity: 1 },
+            responseBody: res.data,
+          });
+        }
+      } catch { /* ignore individual listing failures */ }
+    }
+  } catch { /* ignore */ }
+  return results;
 }
 
 // ---------------------------------------------------------------------------

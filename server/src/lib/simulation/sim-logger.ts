@@ -109,9 +109,9 @@ export class SimulationLogger {
       const successes = entries.filter(e => e.success && e.phase === 'daily');
       const failures = entries.filter(e => !e.success && e.phase === 'daily');
 
-      const gathered = entries.filter(e => e.intent === 'gather' && e.success).length;
-      const crafted = entries.filter(e => e.intent === 'craft' && e.success).length;
-      const quests = entries.filter(e => e.intent === 'complete_quest' && e.success).length;
+      const gathered = entries.filter(e => e.intent.includes('gather') && e.success).length;
+      const crafted = entries.filter(e => e.intent.includes('craft') && e.success).length;
+      const quests = entries.filter(e => e.intent.includes('quest') && e.success).length;
 
       // XP from tick resolutions
       const resolutions = this.tickResolutions.filter(r => r.botId === botId);
