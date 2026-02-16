@@ -1217,15 +1217,18 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
       const invRes = await get('/characters/me/inventory', bot.token);
       if (recipesRes.status >= 200 && recipesRes.status < 300 &&
           invRes.status >= 200 && invRes.status < 300) {
-        const recipes: any[] = recipesRes.data?.recipes || recipesRes.data || [];
+        const allRecipes: any[] = recipesRes.data?.recipes || recipesRes.data || [];
         const items: any[] = invRes.data?.items || invRes.data || [];
+        // Filter to only recipes for this bot's professions
+        const botProfs = new Set(bot.professions.map(p => p.toUpperCase()));
+        const recipes = allRecipes.filter((r: any) => botProfs.has((r.professionType || '').toUpperCase()));
         // Build inventory map
         const invMap = new Map<string, number>();
         for (const item of items) {
           const name = item.templateName || item.name || 'Unknown';
           invMap.set(name, (invMap.get(name) || 0) + (item.quantity || 1));
         }
-        // Find missing ingredients from non-craftable recipes
+        // Find missing ingredients from non-craftable recipes for bot's professions
         // API returns: recipe.ingredients [{itemName, quantity}] and recipe.missingIngredients [{itemName, needed, have}]
         const notCraftable = recipes.filter((r: any) => !r.canCraft);
         const missing: string[] = [];
@@ -1244,7 +1247,7 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
           const buyResult = await buySpecificItem(bot, missing[0]);
           results.push(buyResult); // Log both success and failure
         } else {
-          results.push({ success: false, detail: `[MarketBuy] ${bot.characterName}: has ${recipes.length} recipes, ${notCraftable.length} not craftable, but 0 missing ingredients`, endpoint: '/market/buy (direct DB)' });
+          results.push({ success: false, detail: `[MarketBuy] ${bot.characterName} (${[...botProfs].join('+')}): ${recipes.length} recipes, ${notCraftable.length} not craftable, 0 missing`, endpoint: '/market/buy (direct DB)' });
         }
       } else {
         results.push({ success: false, detail: `[MarketBuy] ${bot.characterName}: recipe HTTP ${recipesRes.status}, inv HTTP ${invRes.status}`, endpoint: '/market/buy (direct DB)' });
@@ -1580,7 +1583,7 @@ export async function getCraftableRecipes(bot: BotState): Promise<{
       name: r.name || 'Unknown Recipe',
       canCraft: r.canCraft === true,
       tier: r.tier || 1,
-      professionRequired: r.professionRequired || '',
+      professionRequired: r.professionType || r.professionRequired || '',
       levelRequired: r.levelRequired || 1,
       inputs: (r.ingredients || r.inputs || []).map((inp: any) => ({
         itemName: inp.itemName || inp.name || '',

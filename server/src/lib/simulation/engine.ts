@@ -450,7 +450,9 @@ export async function decideBotAction(
   type RecipeInfo = { id: string; name: string; canCraft: boolean; tier: number; professionRequired: string; levelRequired: number; inputs: { itemName: string; quantity: number }[] };
   let recipes: RecipeInfo[] = [];
   if (hasCrafting) {
-    recipes = await actions.getCraftableRecipes(bot);
+    const allRecipes = await actions.getCraftableRecipes(bot);
+    // Filter to only recipes for this bot's professions
+    recipes = allRecipes.filter(r => profs.includes(r.professionRequired.toUpperCase()));
   }
 
   // ── P1: Harvest READY fields (time-sensitive — crops wither) ────────
