@@ -65,4 +65,4 @@ RUN addgroup --system app && adduser --system --ingroup app app
 USER app
 
 WORKDIR /app/server
-CMD ["node", "-r", "tsconfig-paths/register", "dist/index.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=../database/prisma/schema.prisma && node -r tsconfig-paths/register dist/index.js"]
