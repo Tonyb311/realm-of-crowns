@@ -55,7 +55,7 @@ function getClassHpBonus(charClass: CharacterClass): number {
 }
 
 function getStartingGold(tier: 'core' | 'common' | 'exotic'): number {
-  return 100; // All characters start with 100 gold + 5 Basic Rations
+  return 0; // Characters start with 0 gold — earn first gold by gathering
 }
 
 // POST /api/characters/create
