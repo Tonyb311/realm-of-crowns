@@ -343,11 +343,11 @@ export async function decideBotAction(
   // ── Skip: traveling ──
   if (bot.pendingTravel) {
     if (logger && tick != null) {
-      logger.logFromResult(bot, { success: true, detail: 'Currently traveling (skipped)', endpoint: 'none' }, {
+      logger.logFromResult(bot, { success: true, detail: 'Currently traveling (skipped)', endpoint: 'travel/pending' }, {
         tick, phase: 'daily', intent: 'travel_skip', attemptNumber: 0, durationMs: 0, dailyActionUsed: false,
       });
     }
-    return { success: true, detail: 'Currently traveling (awaiting tick resolution)', endpoint: 'none' };
+    return { success: true, detail: 'Currently traveling (awaiting tick resolution)', endpoint: 'travel/pending' };
   }
 
   // ── Profession detection ──
