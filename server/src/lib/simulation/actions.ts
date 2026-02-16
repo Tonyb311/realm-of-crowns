@@ -1229,23 +1229,42 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
           invMap.set(name, (invMap.get(name) || 0) + (item.quantity || 1));
         }
         // Find missing ingredients from non-craftable recipes for bot's professions
-        // API returns: recipe.ingredients [{itemName, quantity}] and recipe.missingIngredients [{itemName, needed, have}]
+        // Prioritize raw materials (gatherable) over crafted intermediates
+        const RAW_MATERIALS = new Set([
+          'Grain', 'Apples', 'Wild Berries', 'Wild Herbs', 'Vegetables', 'Raw Fish',
+          'Wood Logs', 'Iron Ore Chunks', 'Stone Blocks', 'Clay', 'Salt', 'Spices',
+          'Wild Game Meat', 'Common Herbs', 'Mushrooms', 'Common Fish',
+        ]);
         const notCraftable = recipes.filter((r: any) => !r.canCraft);
-        const missing: string[] = [];
+        const rawMissing: string[] = [];
+        const craftedMissing: string[] = [];
         for (const r of notCraftable) {
-          // Use missingIngredients if available (already computed by API), fallback to ingredients
           const ingredients = r.missingIngredients || r.ingredients || r.inputs || [];
           for (const inp of ingredients) {
             const name = inp.itemName || inp.name || '';
-            if (name && !missing.includes(name)) {
-              missing.push(name);
+            if (!name || rawMissing.includes(name) || craftedMissing.includes(name)) continue;
+            if (RAW_MATERIALS.has(name)) {
+              rawMissing.push(name);
+            } else {
+              craftedMissing.push(name);
             }
           }
         }
-        // Try to buy first missing ingredient
+        const missing = [...rawMissing, ...craftedMissing];
+        // Try to buy missing ingredients — iterate until one succeeds or all fail
         if (missing.length > 0) {
-          const buyResult = await buySpecificItem(bot, missing[0]);
-          results.push(buyResult); // Log both success and failure
+          let bought = false;
+          for (const itemName of missing) {
+            const buyResult = await buySpecificItem(bot, itemName);
+            if (buyResult.success) {
+              results.push(buyResult);
+              bought = true;
+              break; // max 1 buy per bot per tick
+            }
+          }
+          if (!bought) {
+            results.push({ success: false, detail: `[MarketBuy] ${bot.characterName}: tried ${missing.length} items (${missing.slice(0, 3).join(', ')}${missing.length > 3 ? '...' : ''}) — none available`, endpoint: '/market/buy (direct DB)' });
+          }
         } else {
           results.push({ success: false, detail: `[MarketBuy] ${bot.characterName} (${[...botProfs].join('+')}): ${recipes.length} recipes, ${notCraftable.length} not craftable, 0 missing`, endpoint: '/market/buy (direct DB)' });
         }

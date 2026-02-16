@@ -118,34 +118,41 @@ function getProfSpotTypes(profs: string[]): string[] {
   return types;
 }
 
-/** Find ingredients the bot is missing for its highest-tier non-craftable recipes */
+/** Find ingredients the bot is missing, prioritizing raw materials over crafted intermediates */
 function getMissingIngredients(
   invMap: Map<string, number>,
   recipes: { canCraft: boolean; tier: number; ingredients?: { itemName: string; quantity: number }[]; missingIngredients?: { itemName: string; needed: number; have: number }[]; inputs?: { itemName: string; quantity: number }[] }[],
 ): string[] {
-  const missing: string[] = [];
+  const RAW_MATERIALS = new Set([
+    'Grain', 'Apples', 'Wild Berries', 'Wild Herbs', 'Vegetables', 'Raw Fish',
+    'Wood Logs', 'Iron Ore Chunks', 'Stone Blocks', 'Clay', 'Salt', 'Spices',
+    'Wild Game Meat', 'Common Herbs', 'Mushrooms', 'Common Fish',
+  ]);
+  const rawMissing: string[] = [];
+  const craftedMissing: string[] = [];
   const notCraftable = recipes.filter(r => !r.canCraft);
   notCraftable.sort((a, b) => (b.tier ?? 0) - (a.tier ?? 0));
 
   for (const recipe of notCraftable) {
-    // API returns missingIngredients (pre-computed) or ingredients; legacy code used inputs
     if (recipe.missingIngredients && recipe.missingIngredients.length > 0) {
       for (const mi of recipe.missingIngredients) {
-        if (mi.itemName && !missing.includes(mi.itemName)) {
-          missing.push(mi.itemName);
-        }
+        if (!mi.itemName || rawMissing.includes(mi.itemName) || craftedMissing.includes(mi.itemName)) continue;
+        if (RAW_MATERIALS.has(mi.itemName)) rawMissing.push(mi.itemName);
+        else craftedMissing.push(mi.itemName);
       }
     } else {
       const ingredients = recipe.ingredients || recipe.inputs || [];
       for (const input of ingredients) {
         const have = invMap.get(input.itemName) || 0;
-        if (have < input.quantity && !missing.includes(input.itemName)) {
-          missing.push(input.itemName);
+        if (have < input.quantity) {
+          if (rawMissing.includes(input.itemName) || craftedMissing.includes(input.itemName)) continue;
+          if (RAW_MATERIALS.has(input.itemName)) rawMissing.push(input.itemName);
+          else craftedMissing.push(input.itemName);
         }
       }
     }
   }
-  return missing;
+  return [...rawMissing, ...craftedMissing];
 }
 
 // ── Timed free action helper ──────────────────────────────────────────────
@@ -537,10 +544,10 @@ export async function decideBotAction(
   // ── P5: Buy from market (need-based for crafting ingredients) ───────
   if (config.enabledSystems.market && hasCrafting && bot.gold >= 10) {
     const missing = getMissingIngredients(invMap, recipes);
-    if (missing.length > 0) {
+    for (const itemName of missing) {
       const r = await timedDailyAction(
-        () => actions.buySpecificItem(bot, missing[0]),
-        bot, 'market_buy', 5, `Buying ${missing[0]} from market`,
+        () => actions.buySpecificItem(bot, itemName),
+        bot, 'market_buy', 5, `Buying ${itemName} from market`,
         logger, tick,
       );
       if (r.success) return r;
