@@ -457,7 +457,6 @@ async function main() {
         isPerishable: false,
         shelfLifeDays: null,
         isBeverage: false,
-        stackable: true,
       };
       const created = await prisma.itemTemplate.upsert({
         where: { id: res.id },
