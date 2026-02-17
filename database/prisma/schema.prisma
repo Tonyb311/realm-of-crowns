@@ -307,6 +307,7 @@ enum DailyActionType {
   COMBAT_PVE
   COMBAT_PVP
   HARVEST
+  JOB
 }
 
 enum DailyActionStatus {
@@ -440,6 +441,9 @@ model Character {
 
   // Travel status
   travelStatus String @default("idle") @map("travel_status") // idle, traveling_solo, traveling_group, arrived
+
+  // Relocation cooldown (game day number of last relocation)
+  lastRelocationGameDay Int? @map("last_relocation_game_day")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -2223,14 +2227,16 @@ model OwnedAsset {
   plantedAt      Int?     @map("planted_at")
   readyAt        Int?     @map("ready_at")
   witheringAt    Int?     @map("withering_at")
-  purchasePrice  Int      @map("purchase_price")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  purchasePrice     Int      @map("purchase_price")
+  pendingYield      Int      @default(0) @map("pending_yield")
+  pendingYieldSince Int?     @map("pending_yield_since")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
-  owner      Character  @relation("OwnedAssets", fields: [ownerId], references: [id], onDelete: Cascade)
-  town       Town       @relation("TownAssets", fields: [townId], references: [id], onDelete: Cascade)
-  jobListing JobListing?
-  livestock  Livestock[] @relation("BuildingLivestock")
+  owner       Character    @relation("OwnedAssets", fields: [ownerId], references: [id], onDelete: Cascade)
+  town        Town         @relation("TownAssets", fields: [townId], references: [id], onDelete: Cascade)
+  jobListings JobListing[]
+  livestock   Livestock[]  @relation("BuildingLivestock")
 
   @@unique([ownerId, professionType, tier, slotNumber])
   @@index([ownerId])
@@ -2266,24 +2272,30 @@ model Livestock {
 }
 
 model JobListing {
-  id        String   @id @default(uuid())
-  assetId   String   @unique @map("asset_id")
-  ownerId   String   @map("owner_id")
-  townId    String   @map("town_id")
-  wage      Int
-  workerId  String?  @map("worker_id")
-  isOpen    Boolean  @default(true) @map("is_open")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String    @id @default(uuid())
+  assetId      String    @map("asset_id")
+  ownerId      String    @map("owner_id")
+  townId       String    @map("town_id")
+  jobType      String    @map("job_type")
+  wage         Int
+  status       String    @default("OPEN")
+  workerId     String?   @map("worker_id")
+  autoPosted   Boolean   @default(false) @map("auto_posted")
+  productYield Json?     @map("product_yield")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  completedAt  DateTime? @map("completed_at")
+  expiresAt    Int?      @map("expires_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   asset  OwnedAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
   owner  Character  @relation("JobListingsOwned", fields: [ownerId], references: [id], onDelete: Cascade)
   worker Character? @relation("JobListingsWorking", fields: [workerId], references: [id], onDelete: SetNull)
   town   Town       @relation("TownJobs", fields: [townId], references: [id], onDelete: Cascade)
 
-  @@index([townId, isOpen])
+  @@index([townId, status])
   @@index([ownerId])
   @@index([workerId])
+  @@index([assetId])
   @@map("job_listings")
 }
 

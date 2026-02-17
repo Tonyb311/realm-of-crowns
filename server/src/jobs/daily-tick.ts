@@ -492,7 +492,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     const allLivestock = await prisma.livestock.findMany({
       where: { isAlive: true },
       include: {
-        building: { select: { id: true, spotType: true, townId: true } },
+        building: { select: { id: true, spotType: true, townId: true, pendingYieldSince: true } },
         owner: { select: { id: true, name: true } },
       },
     });
@@ -619,60 +619,17 @@ export async function processDailyTick(): Promise<DailyTickResult> {
           if (isFeedDay && newHunger < HUNGER_CONSTANTS.STARVING_THRESHOLD) {
             const yield_ = def.minYield + Math.floor(Math.random() * (def.maxYield - def.minYield + 1));
 
-            // Look up or create ItemTemplate for product
+            // Increment pending yield on the building (collection required)
             const resourceEntry = RESOURCE_MAP[animal.building.spotType];
             if (resourceEntry) {
-              const gatherItem = resourceEntry.item;
-              const itemName = gatherItem.templateName;
-              const itemType = gatherItem.type === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL';
-
-              let template = await tx.itemTemplate.findFirst({ where: { name: itemName } });
-              if (!template) {
-                template = await tx.itemTemplate.create({
-                  data: {
-                    name: itemName,
-                    type: itemType as any,
-                    rarity: 'COMMON',
-                    description: gatherItem.description,
-                    stats: {},
-                    durability: 0,
-                    requirements: {},
-                    isFood: gatherItem.isFood,
-                    foodBuff: gatherItem.foodBuff ?? Prisma.JsonNull,
-                    isPerishable: gatherItem.shelfLifeDays != null,
-                    shelfLifeDays: gatherItem.shelfLifeDays,
-                  },
-                });
-              }
-
-              // Find or create inventory stack for the owner
-              const existingStack = await tx.inventory.findFirst({
-                where: {
-                  characterId: ownerId,
-                  item: { templateId: template.id },
+              await tx.ownedAsset.update({
+                where: { id: animal.building.id },
+                data: {
+                  pendingYield: { increment: yield_ },
+                  // Only set pendingYieldSince if not already tracking
+                  ...(animal.building.pendingYieldSince == null ? { pendingYieldSince: currentDay } : {}),
                 },
               });
-
-              if (existingStack) {
-                await tx.inventory.update({
-                  where: { id: existingStack.id },
-                  data: { quantity: { increment: yield_ } },
-                });
-              } else {
-                const item = await tx.item.create({
-                  data: {
-                    templateId: template.id,
-                    ownerId,
-                    quality: 'COMMON',
-                    currentDurability: 0,
-                    enchantments: [],
-                    daysRemaining: gatherItem.shelfLifeDays,
-                  },
-                });
-                await tx.inventory.create({
-                  data: { characterId: ownerId, itemId: item.id, quantity: yield_ },
-                });
-              }
 
               produced += yield_;
               producedThisTick = true;
@@ -716,6 +673,27 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     }
 
     console.log(`[DailyTick]   Livestock: ${deaths} deaths, ${fed} fed, ${starved} missed feed, ${produced} items produced`);
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 4.8: Job Auto-Posting & Expiry
+  // -----------------------------------------------------------------------
+  await runStep('Job Auto-Posting & Expiry', 4.8, async () => {
+    const currentDay = getGameDay();
+
+    // 1. Expire old jobs
+    const expired = await prisma.jobListing.updateMany({
+      where: {
+        status: 'OPEN',
+        expiresAt: { not: null, lte: currentDay },
+      },
+      data: { status: 'EXPIRED' },
+    });
+    if (expired.count > 0) {
+      console.log(`[DailyTick]   Expired ${expired.count} job listings`);
+    }
+
+    // (Auto-posting removed — job posting is always a deliberate player/bot choice)
   });
 
   // -----------------------------------------------------------------------
@@ -1568,7 +1546,6 @@ async function processHarvestAction(
   // 1. Look up the OwnedAsset
   const asset = await prisma.ownedAsset.findUnique({
     where: { id: target.assetId as string },
-    include: { jobListing: true },
   });
 
   if (!asset || asset.cropState !== 'READY') {
@@ -1604,13 +1581,12 @@ async function processHarvestAction(
   const itemName = gatherItem.templateName;
   const itemType = gatherItem.type === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL';
 
-  // 4. Items ALWAYS go to the OWNER (even if a worker harvests)
+  // 4. Items go to OWNER's house storage
   const ownerId = asset.ownerId;
-  const isWorker = char.id !== ownerId;
 
-  // 5. Transaction: create items, update asset, transfer wage
+  // 5. Transaction: create items in house storage, update asset
   await prisma.$transaction(async (tx) => {
-    // Find or create ItemTemplate (same pattern as processGatherSpotAction)
+    // Find or create ItemTemplate
     let template = await tx.itemTemplate.findFirst({ where: { name: itemName } });
     if (!template) {
       template = await tx.itemTemplate.create({
@@ -1630,50 +1606,23 @@ async function processHarvestAction(
       });
     }
 
-    // Find existing inventory stack with matching template (owned by asset owner)
-    const existingStack = await tx.inventory.findFirst({
-      where: {
-        characterId: ownerId,
-        item: { templateId: template.id },
-      },
+    // Put items in owner's house storage (not inventory)
+    const house = await tx.house.findFirst({
+      where: { characterId: ownerId, townId: asset.townId },
     });
-
-    if (existingStack) {
-      await tx.inventory.update({
-        where: { id: existingStack.id },
-        data: { quantity: { increment: quantity } },
-      });
-    } else {
-      // Create new item owned by asset owner
-      const item = await tx.item.create({
-        data: {
-          templateId: template.id,
-          ownerId: ownerId,
-          quality: 'COMMON',
-          currentDurability: 0,
-          enchantments: [],
-          daysRemaining: gatherItem.shelfLifeDays,
-        },
-      });
-      await tx.inventory.create({
-        data: {
-          characterId: ownerId,
-          itemId: item.id,
-          quantity: quantity,
-        },
+    if (house) {
+      await tx.houseStorage.upsert({
+        where: { houseId_itemTemplateId: { houseId: house.id, itemTemplateId: template.id } },
+        update: { quantity: { increment: quantity } },
+        create: { houseId: house.id, itemTemplateId: template.id, quantity },
       });
     }
 
-    // Transfer wage if worker
-    if (isWorker && asset.jobListing?.wage) {
-      const wage = asset.jobListing.wage;
-      const owner = await tx.character.findUnique({ where: { id: ownerId }, select: { gold: true } });
-      const actualWage = Math.min(wage, owner?.gold ?? 0);
-      if (actualWage > 0) {
-        await tx.character.update({ where: { id: ownerId }, data: { gold: { decrement: actualWage } } });
-        await tx.character.update({ where: { id: char.id }, data: { gold: { increment: actualWage } } });
-      }
-    }
+    // Cancel any open job for this asset (owner harvested manually)
+    await tx.jobListing.updateMany({
+      where: { assetId: asset.id, status: 'OPEN' },
+      data: { status: 'CANCELLED' },
+    });
 
     // Reset asset to EMPTY
     await tx.ownedAsset.update({
@@ -1697,21 +1646,21 @@ async function processHarvestAction(
           quantity,
           tier: asset.tier,
           assetName: asset.name,
-          isWorker,
-          wage: isWorker ? (asset.jobListing?.wage ?? 0) : 0,
+          isWorker: false,
+          wage: 0,
         },
       },
     });
   });
 
-  // 6. Award XP to the HARVESTER (person who did the action)
+  // 6. Award XP to the harvester
   const professionType = asset.professionType;
   try {
     const harvesterProf = await prisma.playerProfession.findFirst({
       where: { characterId: char.id, professionType: professionType as any },
     });
     if (harvesterProf) {
-      const baseXp = 10 + (asset.tier * 5); // Higher tier = more XP
+      const baseXp = 10 + (asset.tier * 5);
       await addProfessionXP(char.id, professionType as any, baseXp, 'harvest');
     }
   } catch (e) {
@@ -1727,14 +1676,12 @@ async function processHarvestAction(
       quantity,
       assetName: asset.name,
       tier: asset.tier,
-      isWorker,
-      wage: isWorker ? (asset.jobListing?.wage ?? 0) : 0,
+      isWorker: false,
+      wage: 0,
     };
   }
   results.notifications.push(
-    isWorker
-      ? `Worker harvested ${quantity}x ${itemName} from ${asset.name}. Items delivered to owner.`
-      : `Harvested ${quantity}x ${itemName} from your ${asset.name}.`
+    `Harvested ${quantity}x ${itemName} from your ${asset.name}. Items stored in your house.`
   );
 }
 

@@ -12,8 +12,8 @@
 # LAST UPDATED: 2026-02-17
 # STATUS: All 7 gathering professions formalized and LIVE. RANCHER livestock system LIVE.
 # COOK recipes expanded: +3 livestock recipes.
-# Housing system LIVE — Tier 1 cottages with 20-slot storage, free at character creation,
-# 200g in other towns, remote market listing from storage (free action).
+# Single-town residency LIVE — one free cottage in home town, 500g relocation with 30-day
+# cooldown, building construction restricted to home town, remote market listing from storage.
 # Simulation verification: 50 bots, 17+ ticks, 1332 actions, 0 errors.
 # =============================================================================
 
@@ -1067,12 +1067,12 @@ economy_rules:
     grain_dependency: "RANCHERs must buy Grain from FARMERs or marketplace — creates cross-profession demand"
     risk: "Animals die from starvation, old age, disease, predator — ongoing investment needed"
 
-  # UPDATED: 2026-02-17 — Housing system gold sink
+  # UPDATED: 2026-02-17 — Single-town residency model
   housing_economy:
-    principle: "Housing is a gold sink and prerequisite for town storage and remote property management"
-    home_town: "Free Tier 1 cottage at character creation (auto-granted)"
-    other_towns: "200g per cottage — must be physically present to buy"
-    gold_sink: "200g per non-home-town house. Multi-town players need several houses."
+    principle: "Single-town residency — players own one home with storage in their resident town only"
+    home_town: "Free Tier 1 cottage at character creation (auto-granted via giveStarterHouse)"
+    multi_town: "REMOVED — players cannot buy houses in other towns"
+    relocation: "500g to change home town (must be physically present, 30 game-day cooldown, all old property lost)"
     storage: "20 slots per cottage (each unique item type = 1 slot, unlimited quantity per slot)"
     remote_listing: "Items in house storage can be listed on the town's market from anywhere (free action)"
     future: "Tier 2-4 upgrades (500g-5000g) will increase storage slots and add rooms"
@@ -1395,35 +1395,41 @@ implementation_order:
       old_spots: "0 references to removed public spots"
       errors: "0 errors across all 1332 actions"
 
-  # UPDATED: 2026-02-17 — Housing system
+  # UPDATED: 2026-02-17 — Single-town residency + relocation
   housing_system:
-    name: "Basic Housing System — Houses with Storage Rooms"
+    name: "Single-Town Residency — Houses with Storage Rooms"
     status: COMPLETE
     completed_date: 2026-02-17
-    description: "Tier 1 cottages with 20-slot storage. Free at character creation, 200g in other towns. Remote market listing from storage."
+    description: "Single-town residency model. One free Tier 1 cottage in home town only. 500g relocation to change home town (30-day cooldown, lose all old property)."
     changes:
       - "New Prisma models: House (@@unique characterId+townId), HouseStorage (normalized, @@unique houseId+itemTemplateId)"
       - "Free cottage granted at character creation and bot seed (giveStarterHouse helper)"
-      - "Buy cottage endpoint: POST /api/houses/buy (200g, must be in town)"
+      - "Multi-town house buying REMOVED — POST /api/houses/buy returns 410 Gone"
+      - "Building construction restricted to home town (POST /buildings/request-permit checks homeTownId)"
       - "Storage deposit/withdraw (in-town only) + remote market listing (from anywhere, free action)"
-      - "TownPage: housing tile shows owned cottage or buy prompt"
-      - "HousingPage: My Houses tab with storage view per house"
-      - "One-time migration seed grants houses to all existing characters"
+      - "Relocation system: POST /api/relocate/preview + POST /api/relocate/confirm"
+      - "Relocation: 500g cost, 30 game-day cooldown, deletes all old-town property atomically"
+      - "Character.lastRelocationGameDay field for cooldown tracking"
+      - "GET /characters/me now returns homeTownName"
+      - "TownPage: housing tile only shows for home town residents"
+      - "HousingPage: single-town 'My Home' command center (always accessible from sidebar)"
+      - "TownHallPage: relocation UI section for non-resident visitors"
     files_modified:
-      - "database/prisma/schema.prisma — House, HouseStorage models + relations"
-      - "server/src/lib/starting-house.ts — NEW: giveStarterHouse helper"
-      - "server/src/routes/houses.ts — NEW: 7 endpoints"
-      - "server/src/routes/index.ts — register houses router"
-      - "server/src/routes/characters.ts — call giveStarterHouse at creation"
-      - "server/src/lib/simulation/seed.ts — call giveStarterHouse at bot seed"
-      - "database/seeds/grant-houses.ts — NEW: migration seed"
-      - "client/src/pages/TownPage.tsx — housing tile"
-      - "client/src/pages/HousingPage.tsx — My Houses tab"
-      - "client/src/components/housing/HouseView.tsx — NEW: storage view component"
+      - "database/prisma/schema.prisma — House, HouseStorage models, lastRelocationGameDay on Character"
+      - "server/src/lib/starting-house.ts — giveStarterHouse helper"
+      - "server/src/routes/houses.ts — 6 endpoints (buy disabled as 410)"
+      - "server/src/routes/relocate.ts — NEW: preview + confirm relocation"
+      - "server/src/routes/buildings.ts — homeTownId residency check on request-permit"
+      - "server/src/routes/characters.ts — homeTown include, homeTownName in /me response"
+      - "server/src/routes/index.ts — register relocate router"
+      - "client/src/pages/TownPage.tsx — housing tile home-town only"
+      - "client/src/pages/HousingPage.tsx — single-town My Home view"
+      - "client/src/pages/TownHallPage.tsx — relocation UI for non-residents"
+      - "client/src/components/layout/Sidebar.tsx — Housing always accessible"
+      - "client/src/components/housing/HouseView.tsx — storage view component"
     future:
       - "Tier 2-4 upgrades (more storage, workshop room, display room)"
       - "Jobs Board integration (hired worker output → house storage)"
-      - "House sell/abandon feature"
 
   phase_2:
     name: "MINER → SMELTER → BLACKSMITH (Metal Chain)"
@@ -1527,13 +1533,39 @@ asset_ownership:
     planting: "FREE — no daily action cost"
     harvesting: "Costs 1 daily action"
     wither_window: "3 ticks after READY"
-    items_go_to: "OWNER (even if worker harvests)"
+    items_go_to: "Owner's house storage (both self-harvest and hired worker)"
 
-  worker_system:
-    job_posting: "Owner posts listing with wage per harvest"
-    job_acceptance: "Worker must be in same town"
-    wage_transfer: "Owner pays worker on each harvest"
-    worker_action: "Worker spends their daily action, owner spends nothing"
+  # UPDATED: 2026-02-18 — One-shot jobs board system (replaces permanent hire)
+  jobs_board:
+    overview: "One-shot task board. Accept = execute = complete instantly. No permanent employment."
+    lifecycle: "Owner posts job → worker accepts → execute + complete → gold + items + XP"
+    status_flow: "OPEN → COMPLETED | EXPIRED | CANCELLED"
+    posting:
+      action_cost: "FREE (no daily action consumed)"
+      remote: true
+      validation: "Owner must afford pay, asset must be ready/empty/pendingYield, no existing OPEN job"
+    acceptance:
+      action_cost: "1 daily action (consume slot)"
+      requires_presence: true  # Worker must be in same town
+      instant_execution: true  # Accept = execute = complete in one transaction
+    profession_bonus:
+      matching: "Full yield (100%), full XP (100%)"
+      non_matching: "Half yield (50%), half XP (50%)"
+    products_destination: "Owner's house storage (not inventory)"
+    gold_transfer: "Owner → worker on completion"
+    job_types:
+      harvest_field: "FARMER field with cropState=READY"
+      plant_field: "FARMER field with cropState=EMPTY"
+      gather_eggs: "RANCHER chicken_coop with pendingYield > 0"
+      milk_cows: "RANCHER dairy_barn with pendingYield > 0"
+      shear_sheep: "RANCHER sheep_pen with pendingYield > 0"
+    auto_posting: "REMOVED — job posting is always a deliberate player/bot choice"
+    endpoints:
+      post: "POST /api/jobs/post { assetId, jobType, pay }"
+      accept: "POST /api/jobs/:id/accept"
+      browse: "GET /api/jobs/town/:townId"
+      cancel: "POST /api/jobs/:id/cancel"
+      mine: "GET /api/jobs/mine"
 
   profession_assets:
     FARMER: [grain_field, vegetable_patch, apple_orchard, berry_field]
@@ -1548,9 +1580,9 @@ asset_ownership:
     purchase: "Must be RESIDENT (homeTownId) of the town"
     plant_harvest: "Must be PRESENT (currentTownId) in the town"
 
-  # UPDATED: 2026-02-17 — RANCHER livestock subsystem
+  # UPDATED: 2026-02-18 — RANCHER livestock subsystem (pendingYield model)
   rancher_livestock:
-    overview: "RANCHER buildings permanently READY (no plant/harvest cycle). Livestock are separate entities."
+    overview: "RANCHER buildings accumulate pendingYield from livestock. Manual collection required."
     building_types:
       chicken_coop: { baseCost: 100, levelRequired: 3, capacity: 5, animal: chicken }
       dairy_barn: { baseCost: 150, levelRequired: 3, capacity: 3, animal: cow }
@@ -1559,16 +1591,22 @@ asset_ownership:
       buy_building: "POST /api/assets/buy (sets cropState=READY permanently)"
       buy_animal: "POST /api/rancher/buy-livestock (NPC vendor, fixed price)"
       feed: "Auto in daily tick Step 4d (consumes Grain from owner's inventory)"
-      produce: "Auto in daily tick Step 4d (creates product items in owner's inventory)"
+      produce: "Auto in daily tick Step 4d (increments pendingYield on OwnedAsset)"
+      collect: "POST /api/assets/:id/collect (1 daily action, creates items in house storage)"
       death: "Auto in daily tick (starvation, old_age, disease, predator)"
+    pending_yield:
+      field: "OwnedAsset.pendingYield (integer count)"
+      since: "OwnedAsset.pendingYieldSince (game day when yield first accumulated)"
+      reset: "Set to 0 on collection"
+      auto_post_after: "REMOVED — no auto-posting; player/bot must post manually"
     daily_tick_step: "4d (after Step 4c asset growth, before Step 5)"
 
-  # UPDATED: 2026-02-17 — Housing system
+  # UPDATED: 2026-02-17 — Single-town residency model
   housing:
-    overview: "Basic Tier 1 housing with storage rooms. Free at character creation, 200g in other towns."
-    model: "House (separate from Building system — gold-only instant purchase, normalized HouseStorage table)"
+    overview: "Single-town residency. One free Tier 1 cottage in home town only. Relocation system to change home town."
+    model: "House (separate from Building system — auto-granted, normalized HouseStorage table)"
     tiers:
-      tier_1: { name: "Basic Cottage", cost: "FREE (home town) / 200g (other towns)", storage_slots: 20, status: IMPLEMENTED }
+      tier_1: { name: "Basic Cottage", cost: "FREE (home town only)", storage_slots: 20, status: IMPLEMENTED }
       tier_2: { name: "Improved House", cost: "500g upgrade", storage_slots: 40, status: PLANNED }
       tier_3: { name: "Manor", cost: "1500g upgrade", storage_slots: 80, status: PLANNED }
       tier_4: { name: "Estate", cost: "5000g upgrade", storage_slots: 150, status: PLANNED }
@@ -1577,15 +1615,24 @@ asset_ownership:
       deposit: "Must be physically in town (moves items from inventory → storage)"
       withdraw: "Must be physically in town (moves items from storage → inventory)"
       remote_list: "List items from storage on town market from ANYWHERE (free action, no daily action consumed)"
+    relocation:
+      cost: 500
+      cooldown_days: 30
+      requirement: "Must be physically present in target town"
+      losses: "All fields, rancher buildings, livestock, workshops, and house storage items in old home town are permanently deleted"
+      new_home: "Free starter cottage auto-created in new home town"
+      preview_endpoint: "POST /api/relocate/preview { targetTownId }"
+      confirm_endpoint: "POST /api/relocate/confirm { targetTownId }"
     endpoints:
       list_houses: "GET /api/houses/mine"
-      buy_house: "POST /api/houses/buy { townId }"
+      buy_house: "POST /api/houses/buy — DISABLED (returns 410 Gone)"
       view_storage: "GET /api/houses/:houseId/storage"
       deposit: "POST /api/houses/:houseId/storage/deposit { itemTemplateId, quantity }"
       withdraw: "POST /api/houses/:houseId/storage/withdraw { itemTemplateId, quantity }"
       list_on_market: "POST /api/houses/:houseId/storage/list { itemTemplateId, quantity, price }"
       check_town: "GET /api/houses/town/:townId"
     constraints:
-      one_per_town: "@@unique([characterId, townId]) — max one house per character per town"
+      one_per_character: "Single home town — one house per character (in their homeTownId town)"
+      building_residency: "POST /buildings/request-permit requires homeTownId match"
       no_sell: "Houses are permanent (no sell/abandon in Tier 1)"
       cascade_delete: "Character deletion cascades to houses and storage"

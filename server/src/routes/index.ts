@@ -44,6 +44,8 @@ import partiesRouter from './parties';
 import assetsRouter from './assets';
 import rancherRouter from './rancher';
 import housesRouter from './houses';
+import relocateRouter from './relocate';
+import jobsRouter from './jobs';
 
 const router = Router();
 
@@ -93,5 +95,7 @@ router.use('/parties', partiesRouter);
 router.use('/assets', assetsRouter);
 router.use('/rancher', rancherRouter);
 router.use('/houses', housesRouter);
+router.use('/relocate', relocateRouter);
+router.use('/jobs', jobsRouter);
 
 export default router;

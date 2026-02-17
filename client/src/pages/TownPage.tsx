@@ -17,7 +17,6 @@ import {
   CheckCircle,
   Home,
   Package,
-  Coins,
 } from 'lucide-react';
 import api from '../services/api';
 import { getSocket } from '../services/socket';
@@ -25,7 +24,6 @@ import QuestDialog, { type QuestOffer } from '../components/QuestDialog';
 import { RealmPanel, RealmButton } from '../components/ui/realm-index';
 import PartyPanel from '../components/party/PartyPanel';
 import AssetPanel from '../components/assets/AssetPanel';
-import JobBoard from '../components/assets/JobBoard';
 import { ActionConfirmModal } from '../components/hud/ActionConfirmModal';
 
 // ---------------------------------------------------------------------------
@@ -63,6 +61,7 @@ interface PlayerCharacter {
   id: string;
   name: string;
   currentTownId: string | null;
+  homeTownId: string | null;
   status: string;
 }
 
@@ -271,23 +270,12 @@ export default function TownPage() {
     refetchInterval: 60_000,
   });
 
-  // House in current town query
-  const { data: houseData, isLoading: houseLoading } = useQuery<{ hasHouse: boolean; house?: { id: string; name: string; storageSlots: number; storageUsed: number } }>({
+  // House in current town query (only fetch for home town)
+  const isHomeTown = !!character && !!townId && character.homeTownId === townId;
+  const { data: houseData, isLoading: houseLoading } = useQuery<{ hasHouse: boolean; isHomeTown?: boolean; house?: { id: string; name: string; storageSlots: number; storageUsed: number } }>({
     queryKey: ['houses', 'town', townId],
     queryFn: async () => (await api.get(`/houses/town/${townId}`)).data,
-    enabled: !!townId,
-  });
-
-  // Buy cottage mutation
-  const buyHouseMutation = useMutation({
-    mutationFn: async () => {
-      const res = await api.post('/houses/buy', { townId });
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['houses', 'town', townId] });
-      queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
-    },
+    enabled: !!townId && isHomeTown,
   });
 
   // Confirm modal state
@@ -571,10 +559,12 @@ export default function TownPage() {
 
             {/* Private Asset Ownership */}
             {character && town && (
-              <>
-                <AssetPanel townId={town.id} characterId={character.id} />
-                <JobBoard townId={town.id} characterId={character.id} />
-              </>
+              <AssetPanel
+                townId={town.id}
+                characterId={character.id}
+                isHomeTown={isHomeTown}
+                homeTownName={town.name}
+              />
             )}
 
             {/* Features */}
@@ -631,62 +621,33 @@ export default function TownPage() {
                 })}
               </div>
 
-              {/* Housing Tile */}
-              {!houseLoading && (
+              {/* Housing Tile — only in home town */}
+              {isHomeTown && !houseLoading && houseData?.hasHouse && (
                 <div className="mt-4">
-                  {houseData?.hasHouse ? (
-                    <Link
-                      to="/housing"
-                      className="group relative bg-realm-bg-700 border border-realm-gold-500/30 rounded-md p-5 transition-all hover:border-realm-gold-500/50 hover:bg-realm-bg-700/80 block"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-10 h-10 rounded bg-realm-gold-400/10 flex items-center justify-center">
-                          <Home className="w-5 h-5 text-realm-gold-400" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-display text-realm-gold-400 group-hover:text-realm-gold-300 transition-colors">
-                              {houseData.house?.name ?? 'Your Cottage'}
-                            </h3>
-                            <span className="text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-realm-success/10 border border-realm-success/30 text-realm-success">
-                              Owned
-                            </span>
-                          </div>
-                          <p className="text-xs text-realm-text-muted mt-1 flex items-center gap-1">
-                            <Package className="w-3 h-3" />
-                            Storage: {houseData.house?.storageUsed ?? 0}/{houseData.house?.storageSlots ?? 20} slots
-                          </p>
-                        </div>
+                  <Link
+                    to="/housing"
+                    className="group relative bg-realm-bg-700 border border-realm-gold-500/30 rounded-md p-5 transition-all hover:border-realm-gold-500/50 hover:bg-realm-bg-700/80 block"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-10 h-10 rounded bg-realm-gold-400/10 flex items-center justify-center">
+                        <Home className="w-5 h-5 text-realm-gold-400" />
                       </div>
-                    </Link>
-                  ) : (
-                    <div className="bg-realm-bg-700 border border-realm-border rounded-md p-5">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-10 h-10 rounded bg-realm-bg-600/40 flex items-center justify-center">
-                          <Home className="w-5 h-5 text-realm-text-muted" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-display text-realm-gold-400 group-hover:text-realm-gold-300 transition-colors">
+                            {houseData.house?.name ?? 'Your Cottage'}
+                          </h3>
+                          <span className="text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-realm-success/10 border border-realm-success/30 text-realm-success">
+                            Home
+                          </span>
                         </div>
-                        <div className="flex-1">
-                          <h3 className="font-display text-realm-text-secondary">No House</h3>
-                          <p className="text-xs text-realm-text-muted mt-1">
-                            Buy a cottage to store goods and manage property remotely.
-                          </p>
-                          <button
-                            onClick={() => buyHouseMutation.mutate()}
-                            disabled={buyHouseMutation.isPending}
-                            className="mt-3 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-                          >
-                            <Coins className="w-3.5 h-3.5" />
-                            {buyHouseMutation.isPending ? 'Buying...' : 'Buy Cottage — 200g'}
-                          </button>
-                          {buyHouseMutation.isError && (
-                            <p className="text-[11px] text-realm-danger mt-2">
-                              {(buyHouseMutation.error as any)?.response?.data?.error || 'Purchase failed.'}
-                            </p>
-                          )}
-                        </div>
+                        <p className="text-xs text-realm-text-muted mt-1 flex items-center gap-1">
+                          <Package className="w-3 h-3" />
+                          Storage: {houseData.house?.storageUsed ?? 0}/{houseData.house?.storageSlots ?? 20} slots
+                        </p>
                       </div>
                     </div>
-                  )}
+                  </Link>
                 </div>
               )}
             </section>

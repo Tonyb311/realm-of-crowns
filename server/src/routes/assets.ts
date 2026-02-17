@@ -32,9 +32,7 @@ const buySchema = z.object({
   tier: z.number().int().min(1).max(3),
 });
 
-const postJobSchema = z.object({
-  wage: z.number().int().min(1, 'Wage must be at least 1'),
-});
+// postJobSchema removed — job posting moved to /jobs router
 
 // ============================================================
 // GET /api/assets/mine — List character's owned assets
@@ -52,7 +50,7 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
       },
       include: {
         town: { select: { id: true, name: true } },
-        jobListing: true,
+        jobListings: { where: { status: 'OPEN' }, take: 1 },
       },
       orderBy: [{ tier: 'asc' }, { slotNumber: 'asc' }],
     });
@@ -334,18 +332,15 @@ router.post('/:id/harvest', authGuard, characterGuard, requireTown, async (req: 
     const character = req.character!;
     const { id } = req.params;
 
-    // 1. Find asset, include job listing
-    const asset = await prisma.ownedAsset.findUnique({
-      where: { id },
-      include: { jobListing: true },
-    });
+    // 1. Find asset
+    const asset = await prisma.ownedAsset.findUnique({ where: { id } });
     if (!asset) {
       return res.status(404).json({ error: 'Asset not found' });
     }
 
-    // 2. RANCHER buildings cannot be harvested — livestock produce automatically
+    // 2. RANCHER buildings cannot be harvested — use /assets/:id/collect instead
     if (asset.professionType === 'RANCHER') {
-      return res.status(400).json({ error: 'RANCHER buildings produce automatically via livestock. No manual harvest needed.' });
+      return res.status(400).json({ error: 'RANCHER buildings require collection, not harvest. Use the collect endpoint.' });
     }
 
     // 3. Check crop state
@@ -358,14 +353,12 @@ router.post('/:id/harvest', authGuard, characterGuard, requireTown, async (req: 
       return res.status(400).json({ error: 'You must be in the town where this asset is located' });
     }
 
-    // 4. Check character is owner or hired worker
-    const isOwner = asset.ownerId === character.id;
-    const isWorker = asset.jobListing?.workerId === character.id;
-    if (!isOwner && !isWorker) {
-      return res.status(403).json({ error: 'You must be the owner or hired worker to harvest this asset' });
+    // 5. Only owner can harvest directly (workers use jobs board)
+    if (asset.ownerId !== character.id) {
+      return res.status(403).json({ error: 'Only the owner can harvest directly. Workers should use the Jobs Board.' });
     }
 
-    // 5. Check no existing daily action for today
+    // 6. Check no existing daily action for today
     const todayTick = getTodayTickDate();
     const existingAction = await prisma.dailyAction.findFirst({
       where: { characterId: character.id, tickDate: todayTick },
@@ -378,7 +371,13 @@ router.post('/:id/harvest', authGuard, characterGuard, requireTown, async (req: 
       });
     }
 
-    // 6. Create daily action
+    // 7. Cancel any open job for this asset (owner harvesting manually)
+    await prisma.jobListing.updateMany({
+      where: { assetId: asset.id, status: 'OPEN' },
+      data: { status: 'CANCELLED' },
+    });
+
+    // 8. Create daily action
     await prisma.dailyAction.create({
       data: {
         characterId: character.id,
@@ -391,8 +390,8 @@ router.post('/:id/harvest', authGuard, characterGuard, requireTown, async (req: 
           spotType: asset.spotType,
           ownerId: asset.ownerId,
           harvesterId: character.id,
-          isWorker: character.id !== asset.ownerId,
-          wage: asset.jobListing?.wage || 0,
+          isWorker: false,
+          wage: 0,
           tier: asset.tier,
           assetName: asset.name,
         },
@@ -415,16 +414,15 @@ router.post('/:id/harvest', authGuard, characterGuard, requireTown, async (req: 
 });
 
 // ============================================================
-// POST /api/assets/:id/post-job — Post a job listing
+// POST /api/assets/:id/collect — Collect RANCHER building products (DAILY ACTION)
 // ============================================================
 
-router.post('/:id/post-job', authGuard, characterGuard, validate(postJobSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/collect', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
     const { id } = req.params;
-    const { wage } = req.body;
 
-    // 1. Find asset, check ownership
+    // 1. Find asset
     const asset = await prisma.ownedAsset.findUnique({ where: { id } });
     if (!asset) {
       return res.status(404).json({ error: 'Asset not found' });
@@ -432,203 +430,117 @@ router.post('/:id/post-job', authGuard, characterGuard, validate(postJobSchema),
     if (asset.ownerId !== character.id) {
       return res.status(403).json({ error: 'You do not own this asset' });
     }
+    if (asset.professionType !== 'RANCHER') {
+      return res.status(400).json({ error: 'Only RANCHER buildings have collectible products' });
+    }
+    if (asset.pendingYield <= 0) {
+      return res.status(400).json({ error: 'No products ready for collection' });
+    }
+    if (character.currentTownId !== asset.townId) {
+      return res.status(400).json({ error: 'You must be in the town where this asset is located' });
+    }
 
-    // 2. Check no existing job listing
-    const existingListing = await prisma.jobListing.findUnique({
-      where: { assetId: id },
+    // 2. Check daily action
+    const todayTick = getTodayTickDate();
+    const existingAction = await prisma.dailyAction.findFirst({
+      where: { characterId: character.id, tickDate: todayTick },
     });
-    if (existingListing) {
-      return res.status(400).json({ error: 'A job listing already exists for this asset' });
+    if (existingAction) {
+      return res.status(429).json({
+        error: 'Daily action already used',
+        actionType: existingAction.actionType,
+        resetsAt: getNextTickTime().toISOString(),
+      });
     }
 
-    // 3. Create job listing
-    const listing = await prisma.jobListing.create({
-      data: {
-        assetId: id,
-        ownerId: character.id,
-        townId: asset.townId,
-        wage,
-        isOpen: true,
-      },
-    });
-
-    return res.status(201).json({
-      success: true,
-      listing: {
-        id: listing.id,
-        assetId: listing.assetId,
-        wage: listing.wage,
-      },
-    });
-  } catch (error) {
-    if (handlePrismaError(error, res, 'assets-post-job', req)) return;
-    logRouteError(req, 500, 'Assets post-job error', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// ============================================================
-// POST /api/assets/:id/cancel-job — Cancel job / fire worker
-// ============================================================
-
-router.post('/:id/cancel-job', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const character = req.character!;
-    const { id } = req.params;
-
-    // 1. Find asset, check ownership
-    const asset = await prisma.ownedAsset.findUnique({ where: { id } });
-    if (!asset) {
-      return res.status(404).json({ error: 'Asset not found' });
-    }
-    if (asset.ownerId !== character.id) {
-      return res.status(403).json({ error: 'You do not own this asset' });
+    // 3. Collect in transaction
+    const resourceEntry = (await import('@shared/data/gathering')).RESOURCE_MAP[asset.spotType];
+    if (!resourceEntry) {
+      return res.status(500).json({ error: `Unknown spot type: ${asset.spotType}` });
     }
 
-    // 2. Delete the job listing for this asset
-    const listing = await prisma.jobListing.findUnique({
-      where: { assetId: id },
-    });
-    if (!listing) {
-      return res.status(404).json({ error: 'No job listing found for this asset' });
-    }
+    const gatherItem = resourceEntry.item;
+    const itemName = gatherItem.templateName;
+    const quantity = asset.pendingYield;
 
-    await prisma.jobListing.delete({ where: { id: listing.id } });
+    await prisma.$transaction(async (tx) => {
+      // Find/create template
+      let template = await tx.itemTemplate.findFirst({ where: { name: itemName } });
+      if (!template) {
+        const { Prisma: P } = await import('@prisma/client');
+        template = await tx.itemTemplate.create({
+          data: {
+            name: itemName,
+            type: (gatherItem.type === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL') as any,
+            rarity: 'COMMON',
+            description: gatherItem.description,
+            stats: {},
+            durability: 0,
+            requirements: {},
+            isFood: gatherItem.isFood,
+            foodBuff: gatherItem.foodBuff ?? P.JsonNull,
+            isPerishable: gatherItem.shelfLifeDays != null,
+            shelfLifeDays: gatherItem.shelfLifeDays,
+          },
+        });
+      }
 
-    return res.json({ success: true, message: 'Job listing cancelled.' });
-  } catch (error) {
-    if (handlePrismaError(error, res, 'assets-cancel-job', req)) return;
-    logRouteError(req, 500, 'Assets cancel-job error', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
+      // Put items in house storage
+      const house = await tx.house.findFirst({
+        where: { characterId: character.id, townId: asset.townId },
+      });
+      if (house) {
+        await tx.houseStorage.upsert({
+          where: { houseId_itemTemplateId: { houseId: house.id, itemTemplateId: template.id } },
+          update: { quantity: { increment: quantity } },
+          create: { houseId: house.id, itemTemplateId: template.id, quantity },
+        });
+      }
 
-// ============================================================
-// GET /api/assets/jobs — Browse open jobs in current town
-// ============================================================
+      // Reset pending yield
+      await tx.ownedAsset.update({
+        where: { id: asset.id },
+        data: { pendingYield: 0, pendingYieldSince: null },
+      });
 
-router.get('/jobs', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const character = req.character!;
+      // Cancel any open job for this asset
+      await tx.jobListing.updateMany({
+        where: { assetId: asset.id, status: 'OPEN' },
+        data: { status: 'CANCELLED' },
+      });
 
-    if (!character.currentTownId) {
-      return res.status(400).json({ error: 'You must be in a town to browse jobs' });
-    }
-
-    const jobs = await prisma.jobListing.findMany({
-      where: {
-        townId: character.currentTownId,
-        isOpen: true,
-        workerId: null,
-      },
-      include: {
-        asset: true,
-        owner: { select: { id: true, name: true } },
-      },
-    });
-
-    return res.json({
-      jobs: jobs.map((j) => ({
-        id: j.id,
-        wage: j.wage,
-        assetType: j.asset.spotType,
-        assetName: j.asset.name,
-        assetTier: j.asset.tier,
-        ownerName: j.owner.name,
-      })),
-    });
-  } catch (error) {
-    if (handlePrismaError(error, res, 'assets-jobs', req)) return;
-    logRouteError(req, 500, 'Assets jobs error', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// ============================================================
-// POST /api/assets/jobs/:id/accept — Accept a job
-// ============================================================
-
-router.post('/jobs/:id/accept', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const character = req.character!;
-    const { id } = req.params;
-
-    // 1. Find listing
-    const listing = await prisma.jobListing.findUnique({
-      where: { id },
-      include: { asset: true },
-    });
-    if (!listing) {
-      return res.status(404).json({ error: 'Job listing not found' });
-    }
-
-    // 2. Validations
-    if (!listing.isOpen) {
-      return res.status(400).json({ error: 'This job listing is no longer open' });
-    }
-    if (listing.workerId !== null) {
-      return res.status(400).json({ error: 'This job has already been filled' });
-    }
-    if (character.currentTownId !== listing.townId) {
-      return res.status(400).json({ error: 'You must be in the same town as the job' });
-    }
-
-    // 3. Accept the job
-    const updated = await prisma.jobListing.update({
-      where: { id },
-      data: {
-        workerId: character.id,
-        isOpen: false,
-      },
-      include: { asset: true },
+      // Create daily action
+      await tx.dailyAction.create({
+        data: {
+          characterId: character.id,
+          tickDate: todayTick,
+          actionType: 'HARVEST',
+          status: 'COMPLETED',
+          actionTarget: {
+            type: 'rancher_collection',
+            assetId: asset.id,
+            spotType: asset.spotType,
+          },
+          result: {
+            type: 'rancher_collection',
+            itemName,
+            quantity,
+            assetName: asset.name,
+          },
+        },
+      });
     });
 
     return res.json({
       success: true,
-      job: {
-        id: updated.id,
-        wage: updated.wage,
-        assetName: updated.asset.name,
-      },
-      message: `You've been hired to work at ${updated.asset.name} for ${updated.wage} gold per harvest.`,
+      collected: { itemName, quantity },
+      assetName: asset.name,
+      message: `Collected ${quantity}x ${itemName} from ${asset.name}. Items stored in your house.`,
+      resetsAt: getNextTickTime().toISOString(),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'assets-accept-job', req)) return;
-    logRouteError(req, 500, 'Assets accept-job error', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// ============================================================
-// POST /api/assets/jobs/quit — Quit current job
-// ============================================================
-
-router.post('/jobs/quit', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const character = req.character!;
-
-    // Find the job listing where this character is the worker
-    const listing = await prisma.jobListing.findFirst({
-      where: { workerId: character.id },
-      include: { asset: true },
-    });
-    if (!listing) {
-      return res.status(404).json({ error: 'You do not currently have a job' });
-    }
-
-    // Quit: clear worker, re-open listing
-    await prisma.jobListing.update({
-      where: { id: listing.id },
-      data: {
-        workerId: null,
-        isOpen: true,
-      },
-    });
-
-    return res.json({ success: true, message: 'You quit your job.' });
-  } catch (error) {
-    if (handlePrismaError(error, res, 'assets-quit-job', req)) return;
-    logRouteError(req, 500, 'Assets quit-job error', error);
+    if (handlePrismaError(error, res, 'assets-collect', req)) return;
+    logRouteError(req, 500, 'Assets collect error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

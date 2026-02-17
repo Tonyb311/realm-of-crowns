@@ -2,12 +2,14 @@
 // Bot Behavior Engine — Priority-Based, Profession-Aware Decision System
 // ---------------------------------------------------------------------------
 // Each tick, every bot:
-//   Phase A: FREE actions (plant fields, accept jobs, buy assets, quest) — no daily cost
+//   Phase A: FREE actions (plant, post jobs, buy assets, quest) — no daily cost
 //   Phase B: MANDATORY daily action — priority chain P1–P9, first match wins
 //     P1: Harvest READY fields (time-sensitive)
+//     P1.5: Collect RANCHER products
 //     P3: Craft (highest-tier, intermediates prioritized)
 //     P4: Gather (profession-aware, need-based)
 //     P5: Buy from market (need-based for crafting)
+//     P5.5: Accept job from board (one-shot, uses daily action)
 //     P7: Travel (purposeful, with cooldown)
 //     P8: Gather fallback
 //     P9: Idle (should be rare)
@@ -405,14 +407,6 @@ export async function decideBotAction(
     } catch { /* ignore */ }
   }
 
-  // A2: Accept jobs (all bots — wage earners if no fields)
-  if (config.enabledSystems.gathering) {
-    try {
-      const r = await timedFreeAction(() => actions.acceptJob(bot), bot, 'accept_job', logger, tick);
-      if (r.success) console.log(`[SIM] ${bot.characterName} accepted job: ${r.detail}`);
-    } catch { /* ignore */ }
-  }
-
   // A3: Buy assets (gathering profs with enough gold for cheapest field)
   if (hasGathering && bot.gold >= 100 && config.enabledSystems.gathering) {
     try {
@@ -444,6 +438,14 @@ export async function decideBotAction(
     } else {
       try { await timedFreeAction(() => actions.leaveParty(bot), bot, 'leave_party', logger, tick); } catch { /* ignore */ }
     }
+  }
+
+  // A6: Post jobs for ready assets when away from home (free action)
+  if (hasGathering && config.enabledSystems.gathering && bot.homeTownId && bot.currentTownId !== bot.homeTownId) {
+    try {
+      const r = await timedFreeAction(() => actions.postJob(bot), bot, 'post_job', logger, tick);
+      if (r.success) console.log(`[SIM] ${bot.characterName} posted job: ${r.detail}`);
+    } catch { /* ignore */ }
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -500,6 +502,16 @@ export async function decideBotAction(
     const r = await timedDailyAction(
       () => actions.harvestAsset(bot, 'RANCHER'),
       bot, 'harvest_own_field', 1, 'Crops READY — harvesting before wither',
+      logger, tick,
+    );
+    if (r.success) return r;
+  }
+
+  // ── P1.5: Collect RANCHER products (at home, before other actions) ────
+  if (profs.includes('RANCHER') && config.enabledSystems.gathering) {
+    const r = await timedDailyAction(
+      () => actions.collectRancherProducts(bot),
+      bot, 'collect_rancher', 1.5, 'RANCHER products ready — collecting',
       logger, tick,
     );
     if (r.success) return r;
@@ -604,6 +616,16 @@ export async function decideBotAction(
       );
       if (r.success) return r;
     }
+  }
+
+  // ── P5.5: Accept jobs from the board (daily action) ─────────────────
+  if (config.enabledSystems.gathering) {
+    const r = await timedDailyAction(
+      () => actions.acceptJob(bot),
+      bot, 'accept_job', 5.5, 'Accepting highest-paying job on the board',
+      logger, tick,
+    );
+    if (r.success) return r;
   }
 
   // ── P7: Travel (purposeful, with cooldown) ─────────────────────────

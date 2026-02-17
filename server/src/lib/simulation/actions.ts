@@ -1592,56 +1592,148 @@ export async function buyLivestock(bot: BotState): Promise<ActionResult> {
 }
 
 // ---------------------------------------------------------------------------
-// 32. acceptJob — accept a job listing on another player's asset (free action)
+// 32. acceptJob — accept a job on the jobs board (daily action, one-shot)
+// Uses new /jobs/town/:townId browse + /jobs/:id/accept endpoints
 // ---------------------------------------------------------------------------
 
 export async function acceptJob(bot: BotState): Promise<ActionResult> {
-  const endpoint = '/assets/jobs';
+  const browseEndpoint = `/jobs/town/${bot.currentTownId}`;
   try {
-    // Pre-flight: fetch open jobs
-    const jobsRes = await get('/assets/jobs', bot.token);
+    const jobsRes = await get(browseEndpoint, bot.token);
     if (jobsRes.status < 200 || jobsRes.status >= 300) {
-      return {
-        success: false,
-        detail: jobsRes.data?.error || `Failed to fetch jobs: HTTP ${jobsRes.status}`,
-        endpoint,
-        httpStatus: jobsRes.status,
-        requestBody: {},
-        responseBody: jobsRes.data,
-      };
+      return { success: false, detail: jobsRes.data?.error || `Failed to fetch jobs: HTTP ${jobsRes.status}`, endpoint: browseEndpoint, httpStatus: jobsRes.status, requestBody: {}, responseBody: jobsRes.data };
     }
 
     const jobs: any[] = jobsRes.data?.jobs || [];
-    // Filter: jobs with wage > 0, then pick the highest-wage job
-    const paidJobs = jobs.filter((j: any) => (j.wage || 0) > 0);
+    // Filter: paid jobs, exclude own jobs
+    const paidJobs = jobs.filter((j: any) => (j.pay || 0) > 0 && j.ownerId !== bot.characterId);
 
     if (paidJobs.length === 0) {
-      return {
-        success: false,
-        detail: 'No paid job listings available',
-        endpoint,
-        httpStatus: 0,
-        requestBody: {},
-        responseBody: { error: 'No paid job listings available' },
-      };
+      return { success: false, detail: 'No paid job listings available', endpoint: browseEndpoint, httpStatus: 0, requestBody: {}, responseBody: { error: 'No paid jobs' } };
     }
 
-    // Pick the highest-wage job
-    paidJobs.sort((a: any, b: any) => (b.wage || 0) - (a.wage || 0));
+    // Pick the highest-paying job
+    paidJobs.sort((a: any, b: any) => (b.pay || 0) - (a.pay || 0));
     const job = paidJobs[0];
-    const acceptEndpoint = `/assets/jobs/${job.id}/accept`;
+    const acceptEndpoint = `/jobs/${job.id}/accept`;
     const res = await post(acceptEndpoint, bot.token);
+    if (res.status >= 200 && res.status < 300) {
+      const reward = res.data?.reward;
+      let detail = `Accepted job: ${job.jobLabel || job.jobType} at ${job.assetName || 'asset'}`;
+      if (reward) {
+        detail += ` — earned ${reward.gold}g`;
+        if (reward.items) detail += ` + ${reward.items.quantity}x ${reward.items.name}`;
+        if (reward.xp > 0) detail += ` + ${reward.xp} XP`;
+        if (!reward.professionMatch) detail += ' (non-matching, 50%)';
+      }
+      return { success: true, detail, endpoint: acceptEndpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint: acceptEndpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint: browseEndpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 32b. postJob — post a job for a ready asset (free action, works remotely)
+// ---------------------------------------------------------------------------
+
+const RANCHER_SPOT_TO_JOB: Record<string, string> = {
+  chicken_coop: 'gather_eggs',
+  dairy_barn: 'milk_cows',
+  sheep_pen: 'shear_sheep',
+};
+
+export async function postJob(bot: BotState): Promise<ActionResult> {
+  const endpoint = '/jobs/post';
+  try {
+    const mineRes = await get('/assets/mine', bot.token);
+    if (mineRes.status < 200 || mineRes.status >= 300) {
+      return { success: false, detail: 'Failed to fetch assets', endpoint, httpStatus: mineRes.status, requestBody: {}, responseBody: mineRes.data };
+    }
+
+    const assets: any[] = mineRes.data?.assets || [];
+
+    for (const asset of assets) {
+      // Skip if already has an open job
+      const openJobs = asset.jobListings || [];
+      if (openJobs.length > 0) continue;
+
+      let jobType: string | null = null;
+
+      if (asset.professionType === 'RANCHER') {
+        if ((asset.pendingYield || 0) > 0) {
+          jobType = RANCHER_SPOT_TO_JOB[asset.spotType] || null;
+        }
+      } else {
+        if (asset.cropState === 'READY') jobType = 'harvest_field';
+        else if (asset.cropState === 'EMPTY') jobType = 'plant_field';
+      }
+
+      if (!jobType) continue;
+
+      // Pay: ~20% of expected yield value, scaled by tier
+      const pay = Math.max(1, Math.floor(5 * (asset.tier || 1)));
+      if (bot.gold < pay) continue;
+
+      const body = { assetId: asset.id, jobType, pay };
+      const res = await post(endpoint, bot.token, body);
+      if (res.status >= 200 && res.status < 300) {
+        return {
+          success: true,
+          detail: `Posted ${jobType} job for ${asset.name || 'asset'} at ${pay}g`,
+          endpoint,
+          httpStatus: res.status,
+          requestBody: body,
+          responseBody: res.data,
+        };
+      }
+    }
+
+    return { success: false, detail: 'No assets eligible for job posting', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 32c. collectRancherProducts — collect from RANCHER buildings (daily action)
+// ---------------------------------------------------------------------------
+
+export async function collectRancherProducts(bot: BotState): Promise<ActionResult> {
+  const endpoint = '/assets/collect';
+  try {
+    const mineRes = await get('/assets/mine', bot.token);
+    if (mineRes.status < 200 || mineRes.status >= 300) {
+      return { success: false, detail: 'Failed to fetch assets', endpoint, httpStatus: mineRes.status, requestBody: {}, responseBody: mineRes.data };
+    }
+
+    const assets: any[] = mineRes.data?.assets || [];
+    const collectible = assets.filter(
+      (a: any) => a.townId === bot.currentTownId && a.professionType === 'RANCHER' && (a.pendingYield || 0) > 0,
+    );
+
+    if (collectible.length === 0) {
+      return { success: false, detail: 'No RANCHER products to collect', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
+    }
+
+    // Pick building with most pending yield
+    collectible.sort((a: any, b: any) => (b.pendingYield || 0) - (a.pendingYield || 0));
+    const building = collectible[0];
+
+    const collectEndpoint = `/assets/${building.id}/collect`;
+    const res = await post(collectEndpoint, bot.token);
     if (res.status >= 200 && res.status < 300) {
       return {
         success: true,
-        detail: `Accepted job at ${job.assetName || 'asset'} for ${job.wage}g/harvest`,
-        endpoint: acceptEndpoint,
+        detail: `Collected ${building.pendingYield} products from ${building.name || 'building'}`,
+        endpoint: collectEndpoint,
         httpStatus: res.status,
         requestBody: {},
         responseBody: res.data,
       };
     }
-    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint: acceptEndpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint: collectEndpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
   } catch (err: any) {
     return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
