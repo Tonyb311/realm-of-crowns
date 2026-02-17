@@ -35,7 +35,7 @@ export interface GatheringSpotDef {
 }
 
 // ============================================================
-// 8 GATHERING ITEMS
+// 9 GATHERING ITEMS
 // ============================================================
 
 export const APPLES: GatheringItem = {
@@ -148,21 +148,35 @@ export const VEGETABLES: GatheringItem = {
   icon: '\uD83E\uDD55',
 };
 
+export const WILD_GAME_MEAT: GatheringItem = {
+  templateName: 'Wild Game Meat',
+  type: 'MATERIAL',
+  description: 'Venison, boar, and rabbit harvested from the wilds. Lean and flavorful.',
+  isFood: true,
+  shelfLifeDays: 2,
+  foodBuff: { stat: 'strength', value: 1 },
+  baseValue: 5,
+  icon: '\uD83C\uDF56',
+};
+
 // ============================================================
 // RESOURCE TYPE -> ITEM + ICON MAPPING
 // ============================================================
 
 export const RESOURCE_MAP: Record<string, { item: GatheringItem; icon: string }> = {
-  orchard:  { item: APPLES,          icon: '\uD83C\uDF3E' },
-  fishing:  { item: RAW_FISH,        icon: '\uD83C\uDFA3' },
-  berry:    { item: WILD_BERRIES,    icon: '\uD83C\uDF53' },
-  herb:     { item: WILD_HERBS,      icon: '\uD83C\uDF3F' },
-  mine:     { item: IRON_ORE_CHUNKS, icon: '\u26CF\uFE0F' },
-  forest:   { item: WOOD_LOGS,       icon: '\uD83C\uDF32' },
-  quarry:   { item: STONE_BLOCKS,    icon: '\u26F0\uFE0F' },
-  clay:     { item: CLAY,            icon: '\uD83C\uDFFA' },
-  grain_field:      { item: GRAIN,      icon: '\uD83C\uDF3E' },
-  vegetable_patch:  { item: VEGETABLES, icon: '\uD83E\uDD55' },
+  // Public gathering spots
+  orchard:         { item: APPLES,          icon: '\uD83C\uDF3E' },
+  fishing:         { item: RAW_FISH,        icon: '\uD83C\uDFA3' },
+  herb:            { item: WILD_HERBS,      icon: '\uD83C\uDF3F' },
+  mine:            { item: IRON_ORE_CHUNKS, icon: '\u26CF\uFE0F' },
+  forest:          { item: WOOD_LOGS,       icon: '\uD83C\uDF32' },
+  quarry:          { item: STONE_BLOCKS,    icon: '\u26F0\uFE0F' },
+  clay:            { item: CLAY,            icon: '\uD83C\uDFFA' },
+  hunting_ground:  { item: WILD_GAME_MEAT,  icon: '\uD83C\uDF56' },
+  // FARMER private fields only (no public spots use these)
+  grain_field:     { item: GRAIN,           icon: '\uD83C\uDF3E' },
+  vegetable_patch: { item: VEGETABLES,      icon: '\uD83E\uDD55' },
+  berry:           { item: WILD_BERRIES,    icon: '\uD83C\uDF53' },
 };
 
 /**
@@ -170,16 +184,14 @@ export const RESOURCE_MAP: Record<string, { item: GatheringItem; icon: string }>
  * Used by daily tick to award +5 XP if the character has the matching profession.
  */
 export const GATHER_SPOT_PROFESSION_MAP: Record<string, string> = {
-  orchard:  'FARMER',
-  fishing:  'FISHERMAN',
-  berry:    'FARMER',
-  herb:     'HERBALIST',
-  mine:     'MINER',
-  forest:   'LUMBERJACK',
-  quarry:   'MINER',
-  clay:     'MINER',
-  grain_field:      'FARMER',
-  vegetable_patch:  'FARMER',
+  orchard:         'FARMER',
+  fishing:         'FISHERMAN',
+  herb:            'HERBALIST',
+  mine:            'MINER',
+  forest:          'LUMBERJACK',
+  quarry:          'MINER',
+  clay:            'MINER',
+  hunting_ground:  'HUNTER',
 };
 
 // ============================================================
@@ -223,10 +235,10 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
     'You fill your satchel with crisp apples from the ancient trees, their sweet scent lingering on your fingers.',
   ),
   'Millhaven': spot(
-    'Millhaven Grain Fields',
-    'Golden fields of wheat and barley stretch beyond the millpond, the great waterwheel grinding grain as it has for generations.',
-    'grain_field',
-    'You cut sheaves of ripe grain from the sun-warmed fields, the rhythmic swish of your scythe keeping time with the mill.',
+    'Millhaven Millpond Orchard',
+    'Ancient apple trees line the gentle slopes beside the millpond, their boughs heavy with fruit nourished by the rich valley soil.',
+    'orchard',
+    'You pick apples from the trees beside the millpond, the splash of the waterwheel a soothing rhythm as you fill your satchel.',
   ),
   'Bridgewater': spot(
     'Bridgewater Fishing Pier',
@@ -241,10 +253,10 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
     'You chip away at the exposed iron seam, prying loose heavy chunks of raw ore that clang into your bucket.',
   ),
   'Whitefield': spot(
-    'Whitefield Garden Plots',
-    'Community garden plots along the chalk-white field edges, where root vegetables thrive in the chalky soil.',
-    'vegetable_patch',
-    'You pull plump turnips and bright carrots from the chalky earth, brushing off the pale soil to reveal their colours.',
+    'Whitefield Chalk Hill Orchard',
+    'Rows of apple trees climb the chalk-white hillside, their fruit crisp and sweet from the mineral-rich soil.',
+    'orchard',
+    'You twist apples from the chalk hill trees, their skin flushed red against the pale earth below.',
   ),
 
   // --------------------------------------------------------
@@ -309,10 +321,10 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
     'You pry loose blocks of crystalline stone from the quarry wall, each one catching the torchlight in dazzling facets.',
   ),
   'Alehearth': spot(
-    'Alehearth Highberry Slopes',
-    'Hardy berry bushes cling to the windswept slopes above Alehearth, their fruit the secret ingredient in the town\'s legendary ales.',
-    'berry',
-    'You brave the steep slopes and return with a sack of mountain berries, their tartness already making your mouth water.',
+    'Alehearth Mountain Game Trails',
+    'Narrow trails wind through the crags above Alehearth where mountain goats, hares, and wild boar roam between the rocky outcrops.',
+    'hunting_ground',
+    'You track game through the mountain crags above Alehearth, returning with fresh venison slung over your shoulder.',
   ),
 
   // --------------------------------------------------------
@@ -325,16 +337,16 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
     'You reach up on tiptoes and twist a perfect apple free from Old Mother Thornberry\'s finest tree.',
   ),
   'Greenhollow': spot(
-    'Greenhollow Hillside Fields',
-    'Terraced grain fields climb the gentle hillside in neat rows, golden heads of wheat nodding in the breeze.',
-    'grain_field',
-    'You harvest armfuls of ripe grain from the hillside terraces, the golden stalks rustling softly as you work.',
+    'Greenhollow Rolling Orchard',
+    'Apple trees dot the rolling green hills, tended by generations of halfling families who keep the boughs low and heavy with fruit.',
+    'orchard',
+    'You wander between the low-branched apple trees on the rolling hills, filling your basket with ease.',
   ),
   "Peddler's Rest": spot(
-    'Wayside Kitchen Gardens',
-    'Neat rows of vegetables tended by halfling families beside the main trade road, fed by a clever irrigation ditch.',
-    'vegetable_patch',
-    'You kneel between the garden rows and harvest crisp vegetables, the smell of fresh earth filling your nostrils.',
+    'Peddler\'s Roadside Orchard',
+    'A cheerful orchard flanking the trade road, where halfling families sell apples to passing merchants and travelers.',
+    'orchard',
+    'You pick apples from the roadside orchard while carts rattle past, the scent of blossoms mixing with dust.',
   ),
   'Bramblewood': spot(
     'Bramblewood Coppice',
@@ -427,10 +439,10 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
     'You heat your pick over a brazier and strike the permafrost, freeing chunks of ice-encrusted iron ore.',
   ),
   'Frostfang': spot(
-    'Frostfang Snowberry Fields',
-    'Hardy snowberry bushes grow in sheltered valleys between glacial ridges, their frost-kissed fruit a rare treat in the frozen north.',
-    'berry',
-    'You brush snow from the hardy bushes and pick clusters of frost-sweetened berries, their juice sharp and cold.',
+    'Frostfang Frozen Hunting Grounds',
+    'Icy tundra where arctic foxes, snow hares, and woolly elk roam between glacial ridges under pale skies.',
+    'hunting_ground',
+    'You stalk game across the frozen tundra, your breath crystallizing as you bring down a snow hare in the drifts.',
   ),
   'Emberpeak': spot(
     'Emberpeak Volcanic Seam',
@@ -467,10 +479,10 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
     'You wade into the warm tide pools and scoop up darting fish, their scales flashing coral pink and turquoise.',
   ),
   'Sandrift': spot(
-    'Sandrift Coastal Fields',
-    'Hardy grain fields sheltered behind the dunes, where salt-tolerant wheat varieties flourish in the coastal breeze.',
-    'grain_field',
-    'You harvest sun-bleached grain from the coastal fields, the sound of surf a constant companion to your labour.',
+    'Sandrift Dune Shore Fishery',
+    'Sheltered tidal pools and sandy shallows behind the dunes, where flounder and crabs gather as the tide recedes.',
+    'fishing',
+    'You wade into the warm shallows behind the dunes and scoop up darting fish trapped by the retreating tide.',
   ),
   'Libertad': spot(
     'Libertad River Clay Banks',
@@ -501,10 +513,10 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
     'You twist apples from the paired branches of the twin-trees, marveling at the half-elven grafting artistry.',
   ),
   'Harmony Point': spot(
-    'Harmony Point Hedgerow Berries',
-    'Wild berry hedgerows line the ancient boundary markers where Human and Elven lands once met in uneasy peace.',
-    'berry',
-    'You pick berries from the old boundary hedgerows, each sweet bite a testament to the harmony of two peoples.',
+    'Harmony Point Borderland Wilds',
+    'Dense woodlands along the old border where deer, pheasants, and wild boar thrive in the unclaimed no-man\'s land between territories.',
+    'hunting_ground',
+    'You track game through the borderland wilds, flushing pheasants and deer from the dense undergrowth.',
   ),
 
   // --------------------------------------------------------
@@ -705,10 +717,10 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
   // THE CROSSWINDS INN (Changeling) — Neutral Hub
   // --------------------------------------------------------
   'The Crosswinds Inn': spot(
-    'Crosswinds Roadside Berry Thicket',
-    'A wild berry thicket surrounding the famous Crosswinds Inn, where travelers of every guise stop to rest and pick a snack.',
-    'berry',
-    'You duck into the berry thicket beside the inn, picking sweet fruit while watching the endless parade of travelers pass.',
+    'Crosswinds Roadside Game Trail',
+    'A well-worn game trail through scrubland near the inn, where rabbits and quail are drawn to scraps left by travelers.',
+    'hunting_ground',
+    'You set snares along the game trail near the inn, returning with wild rabbit and quail before the next caravan arrives.',
   ),
 };
 

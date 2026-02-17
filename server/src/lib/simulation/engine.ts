@@ -47,40 +47,36 @@ const INTERMEDIATE_RECIPE_IDS = new Set([
 
 // Gathering spot type → item name produced
 const SPOT_TO_ITEM: Record<string, string> = {
-  grain_field: 'Grain',
   orchard: 'Apples',
   fishing: 'Raw Fish',
-  berry: 'Wild Berries',
   herb: 'Wild Herbs',
-  vegetable_patch: 'Vegetables',
   forest: 'Wood Logs',
   mine: 'Iron Ore Chunks',
   quarry: 'Stone Blocks',
   clay: 'Clay',
+  hunting_ground: 'Wild Game Meat',
 };
 
 // Item name → spot type that produces it
 const ITEM_TO_SPOT_TYPE: Record<string, string> = {
-  'Grain': 'grain_field',
   'Apples': 'orchard',
   'Raw Fish': 'fishing',
-  'Wild Berries': 'berry',
   'Wild Herbs': 'herb',
-  'Vegetables': 'vegetable_patch',
   'Wood Logs': 'forest',
   'Iron Ore Chunks': 'mine',
   'Stone Blocks': 'quarry',
   'Clay': 'clay',
+  'Wild Game Meat': 'hunting_ground',
 };
 
-// Profession → spot types where they get bonus yield
+// Profession → spot types where they get bonus yield (fallback when tier-unlocks returns empty)
 const PROF_TO_SPOT_TYPES: Record<string, string[]> = {
-  FARMER: ['grain_field', 'vegetable_patch', 'orchard', 'berry'],
+  FARMER: ['orchard'],
   MINER: ['mine', 'quarry', 'clay'],
   LUMBERJACK: ['forest'],
   HERBALIST: ['herb'],
   FISHERMAN: ['fishing'],
-  HUNTER: [],
+  HUNTER: ['hunting_ground'],
   RANCHER: [],
 };
 

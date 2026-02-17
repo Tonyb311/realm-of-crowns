@@ -9,19 +9,23 @@
 # input back to its source (gathered or crafted) → repeat until you hit
 # a raw gathered resource.
 #
-# LAST UPDATED: 2026-02-16
-# STATUS: FARMER + COOK pipeline fully implemented and deployed. All others skeleton/planned.
-# Market buying fix verified with 60-tick / 25-bot simulation (full economic loop working).
-# Universal profession tier system implemented — tier-scaled gathering yield + quality bonuses.
+# LAST UPDATED: 2026-02-17
+# STATUS: All 7 gathering professions formalized. FARMER, HUNTER, MINER, LUMBERJACK, HERBALIST,
+# FISHERMAN APPRENTICE tiers are fully live. RANCHER is asset-based (NOT_YET_IMPLEMENTED).
+# grain_field, vegetable_patch, berry removed as public spots → FARMER private fields only.
+# hunting_ground added (4 towns). COOK pipeline live. Universal tier system verified.
+# Simulation verification: 50 bots, 17+ ticks, 1332 actions, 0 errors.
 # =============================================================================
 
 
 # =============================================================================
-# SECTION 1: GATHERING SPOTS & RAW RESOURCES
+# SECTION 1: PUBLIC GATHERING SPOTS & RAW RESOURCES
 # =============================================================================
-# These are the 8 spot types that exist across 69 towns.
-# Every resource listed here can be gathered by ANY player (no profession req).
-# Gathering professions get BONUS YIELD at their specialty spots.
+# These are the 8 public spot types across 69 towns (after 2026-02-17 redesign).
+# Every resource can be gathered by ANY player (no profession req for public spots).
+# Gathering professions get TIER-SCALED BONUS YIELD at their specialty spots.
+# grain_field, vegetable_patch, berry are now FARMER PRIVATE FIELDS ONLY.
+# hunting_ground added as new public spot type (4 towns).
 # =============================================================================
 
 gathering_spot_types:
@@ -39,18 +43,8 @@ gathering_spot_types:
     craft_consumers: [COOK, BREWER]    # These professions use this as input
     regions: [Heartlands, Crossroads, Suncoast]
 
-  berry_thicket:
-    resource: Wild Berries
-    item_id: wild_berries
-    category: FOOD
-    base_value: 2
-    yield: 1-3
-    edible: true
-    hp_restore: 3
-    description: "A handful of tart wild berries. Eat them fresh or bake them into something better."
-    gather_professions: [FARMER]             # UPDATED: 2026-02-15 — berry mapped to FARMER only
-    craft_consumers: [COOK, BREWER, ALCHEMIST]
-    regions: [Heartlands]
+  # berry_thicket: REMOVED as public spot (2026-02-17)
+  # Wild Berries now produced by FARMER private fields (berry_field asset, T2)
 
   herb_garden:
     resource: Wild Herbs
@@ -61,7 +55,7 @@ gathering_spot_types:
     edible: true
     hp_restore: 3
     description: "Fragrant wild herbs. Used in cooking, brewing, and alchemy."
-    gather_professions: [HERBALIST, FARMER]
+    gather_professions: [HERBALIST]
     craft_consumers: [COOK, BREWER, ALCHEMIST]
     regions: [Heartlands, Silverwood, Crossroads, Shadowmere]
 
@@ -126,38 +120,32 @@ gathering_spot_types:
     craft_consumers: [MASON, ALCHEMIST]
     regions: [Ashenfang, Shadowmere, Suncoast]
 
-  # UPDATED: 2026-02-15 — Added with FARMER+COOK pipeline
-  grain_field:
-    resource: Grain
-    item_id: grain
+  hunting_ground:
+    resource: Wild Game Meat
+    item_id: wild_game_meat
     category: FOOD
-    base_value: 3
-    yield: 2-4
-    edible: false
-    description: "Golden stalks of wheat and barley. The foundation of bread and beer."
-    gather_professions: [FARMER]
-    craft_consumers: [COOK, BREWER]
-    regions: [Heartlands, Crossroads, Suncoast]
-    towns: [Millhaven, Greenhollow, Sandrift]
-
-  vegetable_patch:
-    resource: Vegetables
-    item_id: vegetables
-    category: FOOD
-    base_value: 3
+    base_value: 5
     yield: 1-3
     edible: true
-    hp_restore: 4
-    description: "Carrots, onions, and turnips pulled fresh from the earth."
-    gather_professions: [FARMER]
+    hp_restore: 8
+    description: "Venison, boar, and rabbit harvested from the wilds. Lean and flavorful."
+    gather_professions: [HUNTER]
     craft_consumers: [COOK]
-    regions: [Heartlands, Crossroads]
-    towns: [Whitefield, "Peddler's Rest"]
+    regions: [Ironvault, Frozen Reaches, Twilight March]
+    towns: [Alehearth, Frostfang, "Harmony Point", "The Crosswinds Inn"]
+    status: LIVE  # Added 2026-02-17
+
+  # --- FARMER PRIVATE FIELD ONLY (no public spots) ---
+  # grain_field: REMOVED as public spot (2026-02-17). Grain now FARMER-private-field only.
+  #   Towns reassigned: Millhaven→orchard, Greenhollow→orchard, Sandrift→fishing
+  # vegetable_patch: REMOVED as public spot (2026-02-17). Vegetables now FARMER-private-field only.
+  #   Towns reassigned: Whitefield→orchard, Peddler's Rest→orchard
 
 
 # =============================================================================
-# SECTION 2: NEW GATHERING SPOTS NEEDED
-# UPDATED: 2026-02-15 — grain_field and vegetable_patch moved to Section 1 (now live)
+# SECTION 2: PLANNED GATHERING SPOTS (NOT YET IMPLEMENTED)
+# UPDATED: 2026-02-17 — hunting_ground moved to Section 1 (now live)
+# grain_field, vegetable_patch now FARMER private fields only (not public spots)
 # =============================================================================
 # Remaining spots that still need to be added.
 # Priority: Add when implementing the paired crafting profession.
@@ -184,16 +172,7 @@ planned_gathering_spots:
   # - Milk/Eggs → COOK
   # For now, Raw Hide is the priority (enables armor crafting chain)
 
-  hunting_ground:
-    status: PLANNED
-    resource: Game Meat
-    item_id: game_meat
-    category: FOOD
-    base_value: 6
-    yield: 1-2
-    edible: true
-    hp_restore: 10
-    description: "Fresh venison from the hunt. Rich and hearty."
+  # hunting_ground: MOVED to Section 1 (2026-02-17) — now LIVE with 4 towns
     gather_professions: [HUNTER]
     craft_consumers: [COOK, TANNER]
     assign_to_regions: [Silverwood, Frozen Reaches]
@@ -1247,18 +1226,21 @@ implementation_order:
       - "✓ Added stopRequested flag to runTicks for graceful stop"
       - "✓ Verified 60-tick simulation: 25 bots, 2042 actions, full economic loop working"
 
-  # UPDATED: 2026-02-16
+  # UPDATED: 2026-02-16 (tiers), 2026-02-17 (gathering spot redesign)
   universal_tier_system:
-    name: "Universal Profession Tier System + FARMER Crop Gating"
+    name: "Universal Profession Tier System + All Gathering Professions"
     status: COMPLETE
-    completed_date: 2026-02-16
-    description: "Replaced flat +50% gathering bonus with tier-scaled yield system. Gated FARMER crops by tier. Aligned field assets with tiers. Updated codex, simulation."
+    completed_date: 2026-02-17
+    description: "Tier-scaled yield system. All 7 gathering professions formalized. grain_field/vegetable_patch/berry removed as public spots. hunting_ground added."
     changes:
       - "Profession tiers: APPRENTICE [3-4], JOURNEYMAN [5-6], CRAFTSMAN [7-8], EXPERT [9-10], MASTER [11-12], GRANDMASTER [13+]"
       - "Tier yield bonuses: +0%, +25%, +50%, +75%, +100%, +150%"
       - "Tier quality bonuses: +0, +1, +2, +3, +4, +5"
-      - "FARMER tier gating: APPRENTICE=grain_field/vegetable_patch, JOURNEYMAN=orchard/berry, CRAFTSMAN+=Coming Soon"
-      - "Other professions: all existing spots are APPRENTICE tier (no regression), higher tiers NOT_YET_IMPLEMENTED"
+      - "FARMER: APPRENTICE=orchard only, private fields for Grain/Vegetables/Berries"
+      - "HUNTER: APPRENTICE=hunting_ground (LIVE — no longer NOT_YET_IMPLEMENTED)"
+      - "RANCHER: asset-based (all tiers NOT_YET_IMPLEMENTED)"
+      - "MINER/LUMBERJACK/HERBALIST/FISHERMAN: APPRENTICE live, higher tiers NOT_YET_IMPLEMENTED"
+      - "9 towns reassigned: 4→orchard, 1→fishing, 4→hunting_ground"
       - "Asset tiers: T1=L3 (Apprentice), T2=L7 (Craftsman), T3=L11 (Master)"
       - "Simulation bots tier-aware: getProfSpotTypes uses getUnlockedSpotTypes()"
       - "Codex shows tier level ranges, yield bonus %, Coming Soon badges"
@@ -1278,9 +1260,20 @@ implementation_order:
       config: "20 bots, diverse L1-L7 start, 200g starting gold, 47 ticks"
       total_actions: 1380
       gathering_success_rate: "100% (434/434 gather actions)"
-      farmer_tier_gating: "P4 profession bonus only for grain_field/vegetable_patch (APPRENTICE). Orchard/berry via P8 fallback (bots haven't reached profession L5 yet)."
-      other_professions: "MINER 108/108, HERBALIST 45/45, COOK 59/59 — all 100% success"
-      errors: "237 total (all market_buy no-supply or idle — zero gathering errors)"
+      farmer_tier_gating: "FARMER P4 at orchards, MINER P4 at quarry/clay, COOK P4 at fishing (for ingredients)"
+      profession_travel: "HUNTER bots correctly seek hunting_ground towns, FARMER bots seek orchards"
+      old_spots_eliminated: "0 references to grain_field/vegetable_patch/berry as public spots"
+      other_professions: "MINER, HERBALIST, FISHERMAN, LUMBERJACK — all correct"
+      errors: "0 gathering errors across 1332 actions"
+    verification_ca52:
+      config: "50 bots, diverse L1 start, 0g starting gold, 17+ ticks"
+      total_actions: 1332
+      gathering_success_rate: "100% (760/760 gather actions)"
+      hunting_ground: "12 Wild Game Meat gathers at Alehearth Mountain Game Trails"
+      professions_learned: "FARMER, MINER, FISHERMAN, HERBALIST, LUMBERJACK, COOK, RANCHER, HUNTER — all 8 seen"
+      p4_examples: "FARMER→orchard, MINER→quarry/clay, COOK→fishing (ingredient-driven)"
+      old_spots: "0 references to removed public spots"
+      errors: "0 errors across all 1332 actions"
 
   phase_2:
     name: "MINER → SMELTER → BLACKSMITH (Metal Chain)"

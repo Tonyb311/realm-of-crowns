@@ -5,8 +5,9 @@
  * Used by the gathering system to gate bonus yields by profession level,
  * and by the codex to display tier progression.
  *
- * Only FARMER APPRENTICE/JOURNEYMAN are fully implemented with live spots.
- * All other tiers and professions are data-only frameworks for future content.
+ * FARMER APPRENTICE (orchard), HUNTER APPRENTICE (hunting_ground), and
+ * MINER/LUMBERJACK/HERBALIST/FISHERMAN APPRENTICE are fully live.
+ * Higher tiers and RANCHER are data-only frameworks for future content.
  */
 
 import { ProfessionTierName } from './types';
@@ -22,6 +23,7 @@ export interface TierUnlockEntry {
   spotTypes: string[];
   description: string;
   NOT_YET_IMPLEMENTED?: boolean;
+  assetBased?: boolean;
 }
 
 export type ProfessionTierUnlocks = Record<ProfessionTierName, TierUnlockEntry>;
@@ -55,15 +57,15 @@ const TIER_QUALITY_BONUS: Record<ProfessionTierName, number> = {
 export const FARMER_CROP_UNLOCKS: ProfessionTierUnlocks = {
   APPRENTICE: {
     tier: 1,
-    crops: ['Grain', 'Vegetables'],
-    spotTypes: ['grain_field', 'vegetable_patch'],
-    description: 'Basic staple crops that feed the common folk',
+    crops: ['Apples'],
+    spotTypes: ['orchard'],
+    description: 'Gather apples at orchards. Plant Grain and Vegetables in private T1 fields.',
   },
   JOURNEYMAN: {
     tier: 2,
-    crops: ['Apples', 'Wild Berries'],
-    spotTypes: ['orchard', 'berry'],
-    description: 'Fruits and berries for pies, jams, and fine cooking',
+    crops: [],
+    spotTypes: [],
+    description: 'No new public spots. +25% yield bonus at orchards. Private fields continue.',
   },
   CRAFTSMAN: {
     tier: 3,
@@ -294,9 +296,9 @@ export const FISHERMAN_FISH_UNLOCKS: ProfessionTierUnlocks = {
 export const RANCHER_ANIMAL_UNLOCKS: ProfessionTierUnlocks = {
   APPRENTICE: {
     tier: 1,
-    crops: ['Raw Hide'],
-    spotTypes: ['pasture'],
-    description: 'Basic animal husbandry',
+    crops: [],
+    spotTypes: [],
+    description: 'Raise livestock — requires building purchase + livestock. Asset-based profession.',
     NOT_YET_IMPLEMENTED: true,
   },
   JOURNEYMAN: {
@@ -343,10 +345,9 @@ export const RANCHER_ANIMAL_UNLOCKS: ProfessionTierUnlocks = {
 export const HUNTER_GAME_UNLOCKS: ProfessionTierUnlocks = {
   APPRENTICE: {
     tier: 1,
-    crops: ['Game Meat', 'Raw Leather'],
+    crops: ['Wild Game Meat'],
     spotTypes: ['hunting_ground'],
-    description: 'Basic game hunting',
-    NOT_YET_IMPLEMENTED: true,
+    description: 'Hunt wild game at hunting grounds for meat and hides.',
   },
   JOURNEYMAN: {
     tier: 2,
@@ -419,7 +420,7 @@ export function getTierQualityBonus(tierName: ProfessionTierName): number {
  *
  * @param profession - The profession type (e.g. 'FARMER', 'MINER')
  * @param professionLevel - The character's profession level
- * @param spotType - The gathering spot resource type (e.g. 'grain_field', 'mine')
+ * @param spotType - The gathering spot resource type (e.g. 'orchard', 'mine', 'hunting_ground')
  * @returns Yield bonus multiplier (0 = no bonus, 0.25 = +25%, etc.)
  */
 export function getGatheringBonus(profession: string, professionLevel: number, spotType: string): number {

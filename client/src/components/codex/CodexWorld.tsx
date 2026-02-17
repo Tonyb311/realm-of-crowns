@@ -100,12 +100,12 @@ function getBiomeVariant(biome?: string): 'common' | 'uncommon' | 'rare' | 'epic
 const RESOURCE_TYPE_LABELS: Record<string, string> = {
   orchard: 'Orchard',
   fishing: 'Fishing',
-  berry: 'Berry Patch',
   herb: 'Herb Garden',
   mine: 'Mine',
   forest: 'Forest',
   quarry: 'Quarry',
   clay: 'Clay Pit',
+  hunting_ground: 'Hunting Ground',
 };
 
 // ---------------------------------------------------------------------------
