@@ -43,6 +43,7 @@ import gatheringRouter from './gathering';
 import partiesRouter from './parties';
 import assetsRouter from './assets';
 import rancherRouter from './rancher';
+import housesRouter from './houses';
 
 const router = Router();
 
@@ -91,5 +92,6 @@ router.use('/game', gameRoutes);
 router.use('/parties', partiesRouter);
 router.use('/assets', assetsRouter);
 router.use('/rancher', rancherRouter);
+router.use('/houses', housesRouter);
 
 export default router;

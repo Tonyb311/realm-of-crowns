@@ -12,6 +12,7 @@ import { generateCharacterName, resetNameCounter } from './names';
 import { logger } from '../../lib/logger';
 import { giveStartingInventory } from '../../lib/starting-inventory';
 import { giveStarterWeapon, giveStarterArmor } from '../../lib/starting-weapons';
+import { giveStarterHouse } from '../../lib/starting-house';
 import { getReleasedRaceKeys, getReleasedTownIds } from '../../lib/content-release';
 
 // ---------------------------------------------------------------------------
@@ -352,6 +353,9 @@ async function createSingleBot(
 
   // 12c. Give starter armor (Rustic Leather Vest, +2 AC, equipped to CHEST)
   await giveStarterArmor(character.id);
+
+  // 12d. Give free cottage in home town
+  await giveStarterHouse(character.id, townId, character.name);
 
   // 13. Generate JWT
   const token = jwt.sign(

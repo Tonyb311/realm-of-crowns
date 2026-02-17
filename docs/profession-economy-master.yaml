@@ -10,13 +10,10 @@
 # a raw gathered resource.
 #
 # LAST UPDATED: 2026-02-17
-# STATUS: All 7 gathering professions formalized and LIVE. FARMER, HUNTER, MINER, LUMBERJACK,
-# HERBALIST, FISHERMAN APPRENTICE tiers fully live. RANCHER livestock system LIVE —
-# buildings (Chicken Coop, Dairy Barn, Sheep Pen), livestock purchase, auto feed/produce
-# in daily tick, animal death mechanics (starvation, old age, disease, predator).
-# COOK recipes expanded: +3 livestock recipes (Scrambled Eggs, Creamy Porridge, Farm Breakfast).
-# grain_field, vegetable_patch, berry removed as public spots → FARMER private fields only.
-# hunting_ground added (4 towns). Universal tier system verified.
+# STATUS: All 7 gathering professions formalized and LIVE. RANCHER livestock system LIVE.
+# COOK recipes expanded: +3 livestock recipes.
+# Housing system LIVE — Tier 1 cottages with 20-slot storage, free at character creation,
+# 200g in other towns, remote market listing from storage (free action).
 # Simulation verification: 50 bots, 17+ ticks, 1332 actions, 0 errors.
 # =============================================================================
 
@@ -1070,6 +1067,16 @@ economy_rules:
     grain_dependency: "RANCHERs must buy Grain from FARMERs or marketplace — creates cross-profession demand"
     risk: "Animals die from starvation, old age, disease, predator — ongoing investment needed"
 
+  # UPDATED: 2026-02-17 — Housing system gold sink
+  housing_economy:
+    principle: "Housing is a gold sink and prerequisite for town storage and remote property management"
+    home_town: "Free Tier 1 cottage at character creation (auto-granted)"
+    other_towns: "200g per cottage — must be physically present to buy"
+    gold_sink: "200g per non-home-town house. Multi-town players need several houses."
+    storage: "20 slots per cottage (each unique item type = 1 slot, unlimited quantity per slot)"
+    remote_listing: "Items in house storage can be listed on the town's market from anywhere (free action)"
+    future: "Tier 2-4 upgrades (500g-5000g) will increase storage slots and add rooms"
+
   scarcity_by_region:
     principle: "Different towns produce different resources"
     rule: "No town has all resource types. Players must travel or trade."
@@ -1388,6 +1395,36 @@ implementation_order:
       old_spots: "0 references to removed public spots"
       errors: "0 errors across all 1332 actions"
 
+  # UPDATED: 2026-02-17 — Housing system
+  housing_system:
+    name: "Basic Housing System — Houses with Storage Rooms"
+    status: COMPLETE
+    completed_date: 2026-02-17
+    description: "Tier 1 cottages with 20-slot storage. Free at character creation, 200g in other towns. Remote market listing from storage."
+    changes:
+      - "New Prisma models: House (@@unique characterId+townId), HouseStorage (normalized, @@unique houseId+itemTemplateId)"
+      - "Free cottage granted at character creation and bot seed (giveStarterHouse helper)"
+      - "Buy cottage endpoint: POST /api/houses/buy (200g, must be in town)"
+      - "Storage deposit/withdraw (in-town only) + remote market listing (from anywhere, free action)"
+      - "TownPage: housing tile shows owned cottage or buy prompt"
+      - "HousingPage: My Houses tab with storage view per house"
+      - "One-time migration seed grants houses to all existing characters"
+    files_modified:
+      - "database/prisma/schema.prisma — House, HouseStorage models + relations"
+      - "server/src/lib/starting-house.ts — NEW: giveStarterHouse helper"
+      - "server/src/routes/houses.ts — NEW: 7 endpoints"
+      - "server/src/routes/index.ts — register houses router"
+      - "server/src/routes/characters.ts — call giveStarterHouse at creation"
+      - "server/src/lib/simulation/seed.ts — call giveStarterHouse at bot seed"
+      - "database/seeds/grant-houses.ts — NEW: migration seed"
+      - "client/src/pages/TownPage.tsx — housing tile"
+      - "client/src/pages/HousingPage.tsx — My Houses tab"
+      - "client/src/components/housing/HouseView.tsx — NEW: storage view component"
+    future:
+      - "Tier 2-4 upgrades (more storage, workshop room, display room)"
+      - "Jobs Board integration (hired worker output → house storage)"
+      - "House sell/abandon feature"
+
   phase_2:
     name: "MINER → SMELTER → BLACKSMITH (Metal Chain)"
     status: PLANNED
@@ -1525,3 +1562,30 @@ asset_ownership:
       produce: "Auto in daily tick Step 4d (creates product items in owner's inventory)"
       death: "Auto in daily tick (starvation, old_age, disease, predator)"
     daily_tick_step: "4d (after Step 4c asset growth, before Step 5)"
+
+  # UPDATED: 2026-02-17 — Housing system
+  housing:
+    overview: "Basic Tier 1 housing with storage rooms. Free at character creation, 200g in other towns."
+    model: "House (separate from Building system — gold-only instant purchase, normalized HouseStorage table)"
+    tiers:
+      tier_1: { name: "Basic Cottage", cost: "FREE (home town) / 200g (other towns)", storage_slots: 20, status: IMPLEMENTED }
+      tier_2: { name: "Improved House", cost: "500g upgrade", storage_slots: 40, status: PLANNED }
+      tier_3: { name: "Manor", cost: "1500g upgrade", storage_slots: 80, status: PLANNED }
+      tier_4: { name: "Estate", cost: "5000g upgrade", storage_slots: 150, status: PLANNED }
+    storage_mechanics:
+      slot_system: "Each unique item template = 1 slot. Quantity unlimited per slot."
+      deposit: "Must be physically in town (moves items from inventory → storage)"
+      withdraw: "Must be physically in town (moves items from storage → inventory)"
+      remote_list: "List items from storage on town market from ANYWHERE (free action, no daily action consumed)"
+    endpoints:
+      list_houses: "GET /api/houses/mine"
+      buy_house: "POST /api/houses/buy { townId }"
+      view_storage: "GET /api/houses/:houseId/storage"
+      deposit: "POST /api/houses/:houseId/storage/deposit { itemTemplateId, quantity }"
+      withdraw: "POST /api/houses/:houseId/storage/withdraw { itemTemplateId, quantity }"
+      list_on_market: "POST /api/houses/:houseId/storage/list { itemTemplateId, quantity, price }"
+      check_town: "GET /api/houses/town/:townId"
+    constraints:
+      one_per_town: "@@unique([characterId, townId]) — max one house per character per town"
+      no_sell: "Houses are permanent (no sell/abandon in Tier 1)"
+      cascade_delete: "Character deletion cascades to houses and storage"

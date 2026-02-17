@@ -514,6 +514,7 @@ model Character {
   jobListingsOwned        JobListing[]   @relation("JobListingsOwned")
   jobListingsWorking      JobListing[]   @relation("JobListingsWorking")
   livestock               Livestock[]    @relation("CharacterLivestock")
+  houses                  House[]        @relation("CharacterHouses")
 
   @@index([userId])
   @@index([currentTownId])
@@ -669,6 +670,7 @@ model Town {
   auctionCycles     AuctionCycle[]
   ownedAssets        OwnedAsset[] @relation("TownAssets")
   jobListings        JobListing[] @relation("TownJobs")
+  houses             House[]      @relation("TownHouses")
 
   @@index([regionId])
   @@index([mayorId])
@@ -888,8 +890,9 @@ model ItemTemplate {
   createdAt          DateTime        @default(now()) @map("created_at")
   updatedAt          DateTime        @updatedAt @map("updated_at")
 
-  items          Item[]
-  priceHistories PriceHistory[]
+  items               Item[]
+  priceHistories      PriceHistory[]
+  houseStorageEntries HouseStorage[] @relation("HouseStorageTemplate")
 
   @@index([type])
   @@index([rarity])
@@ -2282,4 +2285,40 @@ model JobListing {
   @@index([ownerId])
   @@index([workerId])
   @@map("job_listings")
+}
+
+// ---- Housing System ----
+
+model House {
+  id           String   @id @default(uuid())
+  characterId  String   @map("character_id")
+  townId       String   @map("town_id")
+  tier         Int      @default(1)
+  name         String?
+  storageSlots Int      @default(20) @map("storage_slots")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  character Character @relation("CharacterHouses", fields: [characterId], references: [id], onDelete: Cascade)
+  town      Town      @relation("TownHouses", fields: [townId], references: [id], onDelete: Cascade)
+  storage   HouseStorage[]
+
+  @@unique([characterId, townId])
+  @@index([characterId])
+  @@index([townId])
+  @@map("houses")
+}
+
+model HouseStorage {
+  id             String @id @default(uuid())
+  houseId        String @map("house_id")
+  itemTemplateId String @map("item_template_id")
+  quantity       Int    @default(0)
+
+  house        House        @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  itemTemplate ItemTemplate @relation("HouseStorageTemplate", fields: [itemTemplateId], references: [id])
+
+  @@unique([houseId, itemTemplateId])
+  @@index([houseId])
+  @@map("house_storage")
 }

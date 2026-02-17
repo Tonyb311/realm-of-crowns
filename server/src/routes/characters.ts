@@ -15,6 +15,7 @@ import { isRaceReleased } from '../lib/content-release';
 import { assignStartingTown } from '../lib/starting-town';
 import { giveStartingInventory } from '../lib/starting-inventory';
 import { giveStarterWeapon, giveStarterArmor } from '../lib/starting-weapons';
+import { giveStarterHouse } from '../lib/starting-house';
 
 const router = Router();
 
@@ -178,6 +179,9 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
 
     // Give starter armor (Rustic Leather Vest, +2 AC, equipped to CHEST)
     await giveStarterArmor(character.id);
+
+    // Give free cottage in home town
+    await giveStarterHouse(character.id, startingTown.id, name);
 
     return res.status(201).json({
       character: {

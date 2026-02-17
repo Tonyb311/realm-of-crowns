@@ -7,6 +7,8 @@ import {
   Plus,
   Loader2,
   Hammer,
+  Package,
+  MapPin,
 } from 'lucide-react';
 import api from '../services/api';
 import { useBuildingEvents } from '../hooks/useBuildingEvents';
@@ -16,6 +18,7 @@ import ConstructionFlow from '../components/housing/ConstructionFlow';
 import BuildingInterior from '../components/housing/BuildingInterior';
 import WorkshopView from '../components/housing/WorkshopView';
 import ShopView from '../components/housing/ShopView';
+import HouseView from '../components/housing/HouseView';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -30,7 +33,18 @@ interface MyBuildingsResponse {
   buildings: MyBuilding[];
 }
 
-type Tab = 'my-properties' | 'town-buildings';
+type Tab = 'my-houses' | 'my-properties' | 'town-buildings';
+
+interface MyHouse {
+  id: string;
+  townId: string;
+  townName: string;
+  tier: number;
+  name: string;
+  storageSlots: number;
+  storageUsed: number;
+  isCurrentTown: boolean;
+}
 
 // ---------------------------------------------------------------------------
 // Workshop building types (for detecting which detail view to show)
@@ -49,7 +63,7 @@ const STORAGE_TYPES = ['HOUSE_SMALL', 'HOUSE_MEDIUM', 'HOUSE_LARGE', 'WAREHOUSE'
 export default function HousingPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<Tab>('my-properties');
+  const [activeTab, setActiveTab] = useState<Tab>('my-houses');
   const [showConstructionFlow, setShowConstructionFlow] = useState(false);
   const [selectedBuilding, setSelectedBuilding] = useState<BuildingData | null>(null);
   const [interiorBuildingId, setInteriorBuildingId] = useState<string | null>(null);
@@ -73,6 +87,18 @@ export default function HousingPage() {
 
   const townId = character?.currentTownId ?? '';
   const characterId = character?.id ?? '';
+
+  // Fetch my houses
+  const { data: myHousesData, isLoading: housesLoading } = useQuery<{ houses: MyHouse[] }>({
+    queryKey: ['houses', 'mine'],
+    queryFn: async () => (await api.get('/houses/mine')).data,
+  });
+
+  const myHouses = myHousesData?.houses ?? [];
+
+  // House view state
+  const [viewHouseId, setViewHouseId] = useState<string | null>(null);
+  const [viewHouseIsCurrentTown, setViewHouseIsCurrentTown] = useState(false);
 
   // Fetch my buildings
   const { data: myBuildingsData, isLoading: myBuildingsLoading } = useQuery<MyBuildingsResponse>({
@@ -169,9 +195,10 @@ export default function HousingPage() {
         {/* Tabs */}
         <div className="flex border-b border-realm-border mb-6">
           {([
-            { key: 'my-properties' as Tab, label: 'My Properties', icon: Home },
-            { key: 'town-buildings' as Tab, label: 'Town Buildings', icon: Building2 },
-          ]).map(({ key, label, icon: Icon }) => (
+            { key: 'my-houses' as Tab, label: 'My Houses', icon: Home, count: myHouses.length },
+            { key: 'my-properties' as Tab, label: 'Workshops', icon: Hammer, count: myBuildings.length },
+            { key: 'town-buildings' as Tab, label: 'Town Buildings', icon: Building2, count: 0 },
+          ]).map(({ key, label, icon: Icon, count }) => (
             <button
               key={key}
               onClick={() => setActiveTab(key)}
@@ -182,9 +209,9 @@ export default function HousingPage() {
             >
               <Icon className="w-4 h-4" />
               {label}
-              {key === 'my-properties' && myBuildings.length > 0 && (
+              {count > 0 && (
                 <span className="ml-1 px-1.5 py-0.5 text-[10px] font-display bg-realm-gold-500/20 text-realm-gold-400 rounded-full">
-                  {myBuildings.length}
+                  {count}
                 </span>
               )}
             </button>
@@ -192,6 +219,14 @@ export default function HousingPage() {
         </div>
 
         {/* Tab content */}
+        {activeTab === 'my-houses' && (
+          <MyHousesTab
+            houses={myHouses}
+            isLoading={housesLoading}
+            onViewHouse={(h) => { setViewHouseId(h.id); setViewHouseIsCurrentTown(h.isCurrentTown); }}
+          />
+        )}
+
         {activeTab === 'my-properties' && (
           <MyPropertiesTab
             buildings={myBuildings}
@@ -261,6 +296,14 @@ export default function HousingPage() {
           onClose={() => setShopBuildingId(null)}
         />
       )}
+
+      {viewHouseId && (
+        <HouseView
+          houseId={viewHouseId}
+          isCurrentTown={viewHouseIsCurrentTown}
+          onClose={() => setViewHouseId(null)}
+        />
+      )}
     </div>
   );
 }
@@ -276,6 +319,72 @@ interface MyPropertiesTabProps {
   hasTown: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// My Houses Tab
+// ---------------------------------------------------------------------------
+interface MyHousesTabProps {
+  houses: MyHouse[];
+  isLoading: boolean;
+  onViewHouse: (house: MyHouse) => void;
+}
+
+function MyHousesTab({ houses, isLoading, onViewHouse }: MyHousesTabProps) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
+      </div>
+    );
+  }
+
+  if (houses.length === 0) {
+    return (
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+        <Home className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
+        <p className="text-realm-text-muted text-sm mb-4">You don't own any houses yet.</p>
+        <p className="text-realm-text-muted text-xs">Visit a town to buy a cottage (200g).</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {houses.map(house => (
+        <button
+          key={house.id}
+          onClick={() => onViewHouse(house)}
+          className="text-left bg-realm-bg-700 border border-realm-border rounded-lg p-5 transition-all hover:border-realm-gold-500/50 hover:bg-realm-bg-700/80"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-10 h-10 rounded bg-realm-gold-400/10 flex items-center justify-center">
+              <Home className="w-5 h-5 text-realm-gold-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-display text-realm-gold-400 truncate">{house.name}</h3>
+              <p className="text-xs text-realm-text-muted flex items-center gap-1 mt-0.5">
+                <MapPin className="w-3 h-3" />
+                {house.townName}
+                {house.isCurrentTown && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-realm-success/10 border border-realm-success/30 text-realm-success ml-1">
+                    Here
+                  </span>
+                )}
+              </p>
+              <p className="text-xs text-realm-text-muted flex items-center gap-1 mt-1">
+                <Package className="w-3 h-3" />
+                Storage: {house.storageUsed}/{house.storageSlots}
+              </p>
+            </div>
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// My Properties Tab
+// ---------------------------------------------------------------------------
 function MyPropertiesTab({ buildings, isLoading, onBuildingClick, onBuildNew, hasTown }: MyPropertiesTabProps) {
   if (isLoading) {
     return (
