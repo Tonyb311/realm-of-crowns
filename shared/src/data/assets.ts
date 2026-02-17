@@ -14,8 +14,8 @@ export const ASSET_TIERS: Record<number, {
   label: string;
 }> = {
   1: { levelRequired: 3, baseCost: 100, growthTicks: 3, minYield: 3, maxYield: 5, label: 'Apprentice' },
-  2: { levelRequired: 5, baseCost: 200, growthTicks: 5, minYield: 5, maxYield: 8, label: 'Journeyman' },
-  3: { levelRequired: 7, baseCost: 300, growthTicks: 8, minYield: 8, maxYield: 12, label: 'Expert' },
+  2: { levelRequired: 7, baseCost: 200, growthTicks: 5, minYield: 5, maxYield: 8, label: 'Craftsman' },
+  3: { levelRequired: 11, baseCost: 300, growthTicks: 8, minYield: 8, maxYield: 12, label: 'Master' },
 };
 
 export const MAX_SLOTS_PER_TIER = 3;
@@ -85,3 +85,10 @@ export const CROP_STATES = {
 } as const;
 
 export type CropState = typeof CROP_STATES[keyof typeof CROP_STATES];
+
+/** Crops available per field tier. Future items marked in comments. */
+export const FIELD_TIER_CROPS: Record<number, { available: string[]; future: string[] }> = {
+  1: { available: ['Grain', 'Vegetables'], future: [] },
+  2: { available: ['Apples', 'Wild Berries'], future: ['Hops', 'Grapes'] },
+  3: { available: [], future: ['Rare Herbs', 'Exotic Fruits', 'Cotton', 'Flax'] },
+};

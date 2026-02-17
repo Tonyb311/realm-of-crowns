@@ -25,6 +25,7 @@ export interface BotState {
   xp: number;
   level: number;
   professions: string[];
+  professionLevels: Record<string, number>;  // profession name -> level
   lastActionAt: number;
   lastAction: string | null;
   actionsCompleted: number;

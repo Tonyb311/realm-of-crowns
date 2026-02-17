@@ -11,12 +11,12 @@ export const FARMER: ProfessionDefinition = {
   outputProducts: ['Wheat', 'Vegetables', 'Corn', 'Hops', 'Cotton', 'Flax', 'Apples', 'Grapes'],
   townTypeAffinity: ['plains', 'hills'],
   tierUnlocks: {
-    APPRENTICE: ['Wheat', 'Vegetables', 'Corn'],
-    JOURNEYMAN: ['Hops', 'Cotton', 'Flax'],
-    CRAFTSMAN: ['Apples', 'Grapes', 'Rare Herbs (minor)'],
-    EXPERT: ['Exotic Fruits', 'High-yield crops'],
-    MASTER: ['Magical Seedlings', 'Seasonal specialties'],
-    GRANDMASTER: ['Legendary Crops', 'Custom hybrid strains'],
+    APPRENTICE: ['Grain', 'Vegetables'],
+    JOURNEYMAN: ['Apples', 'Wild Berries'],
+    CRAFTSMAN: ['Hops (Coming Soon)', 'Grapes (Coming Soon)'],
+    EXPERT: ['Cotton (Coming Soon)', 'Flax (Coming Soon)'],
+    MASTER: ['Rare Herbs (Coming Soon)', 'Exotic Fruits (Coming Soon)'],
+    GRANDMASTER: ['Legendary Crops (Coming Soon)', 'Magical Seedlings (Coming Soon)'],
   },
 };
 

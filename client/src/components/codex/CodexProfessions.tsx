@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
-import { ALL_PROFESSIONS, getProfessionsByCategory } from '@shared/data/professions';
+import { ALL_PROFESSIONS, getProfessionsByCategory, PROFESSION_TIERS } from '@shared/data/professions';
 import type { ProfessionDefinition, ProfessionCategory } from '@shared/data/professions/types';
+import { PROFESSION_TIER_UNLOCKS } from '@shared/data/professions/tier-unlocks';
 import {
   ALL_PROCESSING_RECIPES,
   ALL_FINISHED_GOODS_RECIPES,
@@ -212,12 +213,28 @@ function RecipeRow({ recipe }: { recipe: NormalizedRecipe }) {
   );
 }
 
+const TIER_YIELD_BONUS: Record<string, string> = {
+  APPRENTICE: '+0%',
+  JOURNEYMAN: '+25%',
+  CRAFTSMAN: '+50%',
+  EXPERT: '+75%',
+  MASTER: '+100%',
+  GRANDMASTER: '+150%',
+};
+
 function TierUnlockSection({
   tierUnlocks,
+  professionType,
+  category,
 }: {
   tierUnlocks: Record<string, string[]>;
+  professionType: string;
+  category: string;
 }) {
   if (!tierUnlocks) return null;
+
+  const tierUnlockData = PROFESSION_TIER_UNLOCKS[professionType];
+  const isGathering = category === 'GATHERING';
 
   return (
     <div className="space-y-2">
@@ -226,24 +243,48 @@ function TierUnlockSection({
         {TIER_NAMES.map((tier) => {
           const unlocks = tierUnlocks[tier];
           if (!unlocks || unlocks.length === 0) return null;
+          const tierDef = PROFESSION_TIERS.find(t => t.tier === tier);
+          const tierEntry = tierUnlockData?.[tier];
+          const isComingSoon = !!tierEntry?.NOT_YET_IMPLEMENTED;
           return (
             <div
               key={tier}
-              className="bg-realm-bg-800 border border-realm-border rounded p-2"
+              className={`bg-realm-bg-800 border rounded p-2 ${
+                isComingSoon ? 'border-realm-border/50 opacity-60' : 'border-realm-border'
+              }`}
             >
-              <span className="font-display text-xs text-realm-text-primary">
-                {TIER_LABEL[tier] || tier}
-              </span>
-              <ul className="mt-1 space-y-0.5">
-                {unlocks.map((unlock, idx) => (
-                  <li
-                    key={idx}
-                    className="text-xs text-realm-text-secondary pl-2 before:content-['\2022'] before:mr-1.5 before:text-realm-text-muted"
-                  >
-                    {unlock}
-                  </li>
-                ))}
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-display text-xs text-realm-text-primary">
+                  {TIER_LABEL[tier] || tier}
+                </span>
+                {tierDef && (
+                  <span className="text-[10px] text-realm-text-muted">
+                    Lv. {tierDef.levelRange[0]}-{tierDef.levelRange[1] > 99 ? '99+' : tierDef.levelRange[1]}
+                  </span>
+                )}
+              </div>
+              <ul className="space-y-0.5">
+                {unlocks.map((unlock, idx) => {
+                  const comingTag = unlock.includes('Coming Soon');
+                  return (
+                    <li
+                      key={idx}
+                      className={`text-xs pl-2 before:content-['\\2022'] before:mr-1.5 ${
+                        comingTag
+                          ? 'text-realm-text-muted/60 before:text-realm-text-muted/40 italic'
+                          : 'text-realm-text-secondary before:text-realm-text-muted'
+                      }`}
+                    >
+                      {unlock}
+                    </li>
+                  );
+                })}
               </ul>
+              {isGathering && (
+                <div className="mt-1 text-[10px] text-realm-text-muted">
+                  Yield: {TIER_YIELD_BONUS[tier] || '+0%'}
+                </div>
+              )}
             </div>
           );
         })}
@@ -290,7 +331,11 @@ function ProfessionExpandedDetail({
       </div>
 
       {/* Tier unlocks */}
-      <TierUnlockSection tierUnlocks={profession.tierUnlocks} />
+      <TierUnlockSection
+        tierUnlocks={profession.tierUnlocks}
+        professionType={profession.type}
+        category={profession.category}
+      />
 
       {/* Recipes */}
       {recipes.length > 0 && (

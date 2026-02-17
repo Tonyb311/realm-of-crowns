@@ -13,6 +13,21 @@ export { CRAFTING_PROFESSIONS } from './crafting';
 export { SERVICE_PROFESSIONS } from './service';
 export { PROFESSION_TIERS, getTierByName } from './tiers';
 export { XP_CURVE, getXpForLevel, getCumulativeXpForLevel, getTierForLevel } from './xp-curve';
+export {
+  PROFESSION_TIER_UNLOCKS,
+  FARMER_CROP_UNLOCKS,
+  MINER_ORE_UNLOCKS,
+  LUMBERJACK_WOOD_UNLOCKS,
+  HERBALIST_HERB_UNLOCKS,
+  FISHERMAN_FISH_UNLOCKS,
+  RANCHER_ANIMAL_UNLOCKS,
+  HUNTER_GAME_UNLOCKS,
+  getTierYieldBonus,
+  getTierQualityBonus,
+  getGatheringBonus,
+  getUnlockedSpotTypes,
+} from './tier-unlocks';
+export type { TierUnlockEntry, ProfessionTierUnlocks } from './tier-unlocks';
 
 // Re-export individual professions for direct access
 export {

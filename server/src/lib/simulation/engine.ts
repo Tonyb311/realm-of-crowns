@@ -18,6 +18,7 @@ import * as actions from './actions';
 import { PROFESSION_UNLOCK_LEVEL } from '@shared/data/progression/xp-curve';
 import { SimulationLogger } from './sim-logger';
 import { TOWN_GATHERING_SPOTS } from '@shared/data/gathering';
+import { getUnlockedSpotTypes } from '@shared/data/professions/tier-unlocks';
 import { prisma } from '../../lib/prisma';
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -108,12 +109,19 @@ function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-/** Get all spot types that give a profession bonus for the bot's professions */
-function getProfSpotTypes(profs: string[]): string[] {
+/** Get all spot types that give a profession bonus for the bot's professions (tier-aware) */
+function getProfSpotTypes(profs: string[], profLevels: Record<string, number>): string[] {
   const types: string[] = [];
   for (const p of profs) {
-    const spots = PROF_TO_SPOT_TYPES[p];
-    if (spots) types.push(...spots);
+    const level = profLevels[p] || 1;
+    const unlocked = getUnlockedSpotTypes(p, level);
+    if (unlocked.length > 0) {
+      types.push(...unlocked);
+    } else {
+      // Fallback to full PROF_TO_SPOT_TYPES if profession has no tier unlock data
+      const spots = PROF_TO_SPOT_TYPES[p];
+      if (spots) types.push(...spots);
+    }
   }
   return types;
 }
@@ -243,7 +251,7 @@ async function determineTravelReason(
   }
 
   // b. Gathering prof with no matching spot in current town
-  const profSpots = getProfSpotTypes(profs);
+  const profSpots = getProfSpotTypes(profs, bot.professionLevels || {});
   if (profSpots.length > 0 && currentSpotType && !profSpots.includes(currentSpotType)) {
     return {
       reason: `No ${profs.find(p => GATHERING_PROF_SET.has(p)) || 'gathering'} spot here, seeking matching town`,
@@ -502,7 +510,7 @@ export async function decideBotAction(
 
     // Gathering prof: gather if current town has a matching spot
     if (hasGathering) {
-      const profSpots = getProfSpotTypes(profs);
+      const profSpots = getProfSpotTypes(profs, bot.professionLevels || {});
       if (currentSpotType && profSpots.includes(currentSpotType)) {
         shouldGather = true;
         gatherReason = `Gathering at ${currentSpotType} spot (profession bonus)`;

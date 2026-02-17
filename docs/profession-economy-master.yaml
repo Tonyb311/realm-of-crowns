@@ -12,6 +12,7 @@
 # LAST UPDATED: 2026-02-16
 # STATUS: FARMER + COOK pipeline fully implemented and deployed. All others skeleton/planned.
 # Market buying fix verified with 60-tick / 25-bot simulation (full economic loop working).
+# Universal profession tier system implemented — tier-scaled gathering yield + quality bonuses.
 # =============================================================================
 
 
@@ -216,67 +217,84 @@ professions:
   FARMER:
     type: GATHERING
     unlock_level: 3
-    description: "Tends crops and orchards. Bonus yield at agricultural gathering spots."
+    description: "Tends crops and orchards. Tier-scaled bonus yield at agricultural gathering spots."
     bonus_spots: [orchard, berry_thicket, grain_field, vegetable_patch]
-    bonus_yield: "+50% quantity at specialty spots"
+    tier_unlocks:
+      APPRENTICE: { level: "3-4", spots: [grain_field, vegetable_patch], yield_bonus: "+0%" }
+      JOURNEYMAN: { level: "5-6", spots: [orchard, berry], yield_bonus: "+25%" }
+      CRAFTSMAN: { level: "7-8", spots: [hops_field, vineyard], yield_bonus: "+50%", status: NOT_YET_IMPLEMENTED }
+      EXPERT: { level: "9-10", spots: [cotton_field, flax_field], yield_bonus: "+75%", status: NOT_YET_IMPLEMENTED }
+      MASTER: { level: "11-12", spots: [rare_herb, exotic_fruit], yield_bonus: "+100%", status: NOT_YET_IMPLEMENTED }
+      GRANDMASTER: { level: "13+", spots: [legendary_crop, magical_seedling], yield_bonus: "+150%", status: NOT_YET_IMPLEMENTED }
     feeds_into: [COOK, BREWER]
     status: EXISTS_IN_GAME
+    notes: "Tier-scaled bonus replaced flat +50%. APPRENTICE/JOURNEYMAN spots live; CRAFTSMAN+ Coming Soon."
 
   RANCHER:
     type: GATHERING
     unlock_level: 3
     description: "Raises livestock. Provides hides, wool, and animal products."
     bonus_spots: [pasture]
-    bonus_yield: "+50% quantity at specialty spots"
+    tier_unlocks:
+      APPRENTICE: { spots: [], status: NOT_YET_IMPLEMENTED, note: "No pasture spots exist yet" }
     feeds_into: [TANNER, TAILOR, COOK]
     status: EXISTS_IN_GAME
-    notes: "Pasture spots not yet created"
+    notes: "Pasture spots not yet created. Tier bonus framework in place."
 
   FISHERMAN:
     type: GATHERING
     unlock_level: 3
     description: "Catches fish from rivers, lakes, and the sea."
     bonus_spots: [fishing_pond]
-    bonus_yield: "+50% quantity at specialty spots"
+    tier_unlocks:
+      APPRENTICE: { level: "3-4", spots: [fishing], yield_bonus: "+0%" }
     feeds_into: [COOK]
     status: EXISTS_IN_GAME
+    notes: "Tier bonus active for fishing spots. Higher tiers NOT_YET_IMPLEMENTED."
 
   LUMBERJACK:
     type: GATHERING
     unlock_level: 3
     description: "Fells trees and prepares timber."
     bonus_spots: [forest]
-    bonus_yield: "+50% quantity at specialty spots"
+    tier_unlocks:
+      APPRENTICE: { level: "3-4", spots: [forest], yield_bonus: "+0%" }
     feeds_into: [WOODWORKER, FLETCHER, MASON, SCRIBE, COOK]
     status: EXISTS_IN_GAME
+    notes: "Tier bonus active for forest spots. Higher tiers NOT_YET_IMPLEMENTED."
 
   MINER:
     type: GATHERING
     unlock_level: 3
     description: "Extracts ore, stone, gems, and clay from the earth."
     bonus_spots: [mine, quarry, clay_pit]
-    bonus_yield: "+50% quantity at specialty spots"
+    tier_unlocks:
+      APPRENTICE: { level: "3-4", spots: [mine, quarry, clay], yield_bonus: "+0%" }
     feeds_into: [SMELTER, MASON, JEWELER]
     status: EXISTS_IN_GAME
+    notes: "Tier bonus active for mine/quarry/clay spots. Higher tiers NOT_YET_IMPLEMENTED."
 
   HERBALIST:
     type: GATHERING
     unlock_level: 3
     description: "Forages for medicinal and magical herbs."
     bonus_spots: [herb_garden]              # UPDATED: 2026-02-15 — berry_thicket reassigned to FARMER
-    bonus_yield: "+50% quantity at specialty spots"
+    tier_unlocks:
+      APPRENTICE: { level: "3-4", spots: [herb], yield_bonus: "+0%" }
     feeds_into: [ALCHEMIST, COOK, BREWER]
     status: EXISTS_IN_GAME
+    notes: "Tier bonus active for herb spots. Higher tiers NOT_YET_IMPLEMENTED."
 
   HUNTER:
     type: GATHERING
     unlock_level: 3
     description: "Tracks and hunts wild game for meat and pelts."
     bonus_spots: [hunting_ground]
-    bonus_yield: "+50% quantity at specialty spots"
+    tier_unlocks:
+      APPRENTICE: { spots: [], status: NOT_YET_IMPLEMENTED, note: "No hunting spots exist yet" }
     feeds_into: [COOK, TANNER, FLETCHER]
     status: PLANNED
-    notes: "Hunting grounds not yet created"
+    notes: "Hunting grounds not yet created. Tier bonus framework in place."
 
   # ---------------------------------------------------------------------------
   # CRAFTING PROFESSIONS (15)
@@ -980,10 +998,28 @@ economy_rules:
     buildings: "Require upkeep materials"
 
   quality_system:
-    formula: "d20 + (ProfessionLevel / 5) + ToolBonus + WorkshopBonus"
+    formula: "d20 + (ProfessionLevel / 5) + ToolBonus + WorkshopBonus + TierQualityBonus"
     tiers: [Poor, Common, Fine, Superior, Masterwork, Legendary]
     effect: "Higher quality = better stats/effects + higher sell value"
-    note: "Applies to crafting, not gathering. Gathering yield is quantity-based."
+    tier_quality_bonus:
+      APPRENTICE: 0
+      JOURNEYMAN: 1
+      CRAFTSMAN: 2
+      EXPERT: 3
+      MASTER: 4
+      GRANDMASTER: 5
+    note: "Applies to crafting. Gathering yield uses tier_yield_bonus instead."
+
+  tier_yield_bonus:
+    description: "Gathering professions get yield multiplier based on profession tier"
+    APPRENTICE: "+0% (base yield)"
+    JOURNEYMAN: "+25%"
+    CRAFTSMAN: "+50%"
+    EXPERT: "+75%"
+    MASTER: "+100%"
+    GRANDMASTER: "+150%"
+    formula: "finalQuantity = ceil(baseQuantity * (1 + tierBonus))"
+    note: "Only applies to unlocked spot types. Replaces old flat +50% bonus."
 
   # UPDATED: 2026-02-16 — Market buying fix
   simulation_market:
@@ -1211,6 +1247,41 @@ implementation_order:
       - "✓ Added stopRequested flag to runTicks for graceful stop"
       - "✓ Verified 60-tick simulation: 25 bots, 2042 actions, full economic loop working"
 
+  # UPDATED: 2026-02-16
+  universal_tier_system:
+    name: "Universal Profession Tier System + FARMER Crop Gating"
+    status: COMPLETE
+    completed_date: 2026-02-16
+    description: "Replaced flat +50% gathering bonus with tier-scaled yield system. Gated FARMER crops by tier. Aligned field assets with tiers. Updated codex, simulation."
+    changes:
+      - "Profession tiers: APPRENTICE [3-4], JOURNEYMAN [5-6], CRAFTSMAN [7-8], EXPERT [9-10], MASTER [11-12], GRANDMASTER [13+]"
+      - "Tier yield bonuses: +0%, +25%, +50%, +75%, +100%, +150%"
+      - "Tier quality bonuses: +0, +1, +2, +3, +4, +5"
+      - "FARMER tier gating: APPRENTICE=grain_field/vegetable_patch, JOURNEYMAN=orchard/berry, CRAFTSMAN+=Coming Soon"
+      - "Other professions: all existing spots are APPRENTICE tier (no regression), higher tiers NOT_YET_IMPLEMENTED"
+      - "Asset tiers: T1=L3 (Apprentice), T2=L7 (Craftsman), T3=L11 (Master)"
+      - "Simulation bots tier-aware: getProfSpotTypes uses getUnlockedSpotTypes()"
+      - "Codex shows tier level ranges, yield bonus %, Coming Soon badges"
+    files_modified:
+      - "shared/src/data/professions/tiers.ts — level ranges updated"
+      - "shared/src/data/professions/xp-curve.ts — getTierForLevel() updated"
+      - "shared/src/data/professions/tier-unlocks.ts — NEW: unlock tables + helpers"
+      - "shared/src/data/professions/gathering.ts — FARMER tierUnlocks updated"
+      - "shared/src/data/professions/index.ts — new exports"
+      - "shared/src/data/assets.ts — T2=L7, T3=L11, FIELD_TIER_CROPS"
+      - "server/src/jobs/daily-tick.ts — universal tier bonus via getGatheringBonus()"
+      - "server/src/lib/simulation/engine.ts — tier-aware getProfSpotTypes()"
+      - "server/src/lib/simulation/actions.ts — professionLevels populated"
+      - "server/src/lib/simulation/types.ts — professionLevels added to BotState"
+      - "client/src/components/codex/CodexProfessions.tsx — tier display enhanced"
+    verification_run:
+      config: "20 bots, diverse L1-L7 start, 200g starting gold, 47 ticks"
+      total_actions: 1380
+      gathering_success_rate: "100% (434/434 gather actions)"
+      farmer_tier_gating: "P4 profession bonus only for grain_field/vegetable_patch (APPRENTICE). Orchard/berry via P8 fallback (bots haven't reached profession L5 yet)."
+      other_professions: "MINER 108/108, HERBALIST 45/45, COOK 59/59 — all 100% success"
+      errors: "237 total (all market_buy no-supply or idle — zero gathering errors)"
+
   phase_2:
     name: "MINER → SMELTER → BLACKSMITH (Metal Chain)"
     status: PLANNED
@@ -1269,9 +1340,10 @@ asset_ownership:
     formula: "baseCost * slotNumber"
     max_slots_per_tier: 3
     tiers:
-      T1: { level_required: 3, base_cost: 100, growth_ticks: 3, yield: "3-5" }
-      T2: { level_required: 5, base_cost: 200, growth_ticks: 5, yield: "5-8" }
-      T3: { level_required: 7, base_cost: 300, growth_ticks: 8, yield: "8-12" }
+      T1: { level_required: 3, label: "Apprentice", base_cost: 100, growth_ticks: 3, yield: "3-5" }
+      T2: { level_required: 7, label: "Craftsman", base_cost: 200, growth_ticks: 5, yield: "5-8" }
+      T3: { level_required: 11, label: "Master", base_cost: 300, growth_ticks: 8, yield: "8-12" }
+    notes: "UPDATED 2026-02-16 — T2 raised from L5→L7 (Craftsman), T3 raised from L7→L11 (Master)"
 
   growth_cycle:
     states: [EMPTY, GROWING, READY, WITHERED]

@@ -375,6 +375,7 @@ async function createSingleBot(
     xp: accumulatedXP,
     level: startLevel,
     professions: startingProfession ? [startingProfession] : [],
+    professionLevels: startingProfession ? { [startingProfession.toUpperCase()]: 1 } : {},
     lastActionAt: Date.now(),
     lastAction: null,
     actionsCompleted: 0,

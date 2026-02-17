@@ -25,7 +25,8 @@ import { processReputationDecay } from './reputation-decay';
 import { getTodayTickDate, advanceGameDay, getGameDay } from '../lib/game-day';
 import { qualityRoll } from '@shared/utils/dice';
 import { getProficiencyBonus, getModifier as getStatModifier } from '@shared/utils/bounded-accuracy';
-import { getProfessionByType } from '@shared/data/professions';
+import { getProfessionByType, getTierQualityBonus, getTierForLevel } from '@shared/data/professions';
+import { getGatheringBonus } from '@shared/data/professions/tier-unlocks';
 import { ACTION_XP } from '@shared/data/progression';
 import { GATHER_SPOT_PROFESSION_MAP, RESOURCE_MAP } from '@shared/data/gathering';
 import { ASSET_TIERS } from '@shared/data/assets';
@@ -91,8 +92,8 @@ const PROFESSION_TIER_QUALITY_BONUS: Record<string, number> = {
   JOURNEYMAN: 1,
   CRAFTSMAN: 2,
   EXPERT: 3,
-  MASTER: 5,
-  GRANDMASTER: 7,
+  MASTER: 4,
+  GRANDMASTER: 5,
 };
 
 const BASE_PROPERTY_TAX_RATES: Record<string, number> = {
@@ -1185,16 +1186,19 @@ async function processGatherSpotAction(
   // Roll yield
   const quantity = Math.floor(Math.random() * (maxYield - minYield + 1)) + minYield;
 
-  // FARMER profession bonus: +50% yield at farming spots
-  const FARMING_SPOTS = new Set(['orchard', 'berry', 'grain_field', 'vegetable_patch']);
+  // Universal tier-based gathering bonus (replaces hardcoded FARMER +50%)
   const resourceType = target.resourceType as string;
   let finalQuantity = quantity;
-  if (FARMING_SPOTS.has(resourceType)) {
-    const farmerProf = await prisma.playerProfession.findFirst({
-      where: { characterId: char.id, professionType: 'FARMER' as any },
+  const matchingProfession = GATHER_SPOT_PROFESSION_MAP[resourceType];
+  if (matchingProfession) {
+    const prof = await prisma.playerProfession.findFirst({
+      where: { characterId: char.id, professionType: matchingProfession as any },
     });
-    if (farmerProf) {
-      finalQuantity = Math.ceil(quantity * 1.5);
+    if (prof) {
+      const bonus = getGatheringBonus(matchingProfession, prof.level, resourceType);
+      if (bonus > 0) {
+        finalQuantity = Math.ceil(quantity * (1 + bonus));
+      }
     }
   }
 

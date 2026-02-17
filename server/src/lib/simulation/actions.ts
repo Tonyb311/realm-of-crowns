@@ -61,6 +61,14 @@ export async function refreshBotState(bot: BotState): Promise<void> {
       bot.professions = d.professions.map((p: any) =>
         typeof p === 'string' ? p : p.type || p.professionType,
       );
+      // Populate profession levels map
+      bot.professionLevels = {};
+      for (const p of d.professions) {
+        if (typeof p === 'object' && p !== null) {
+          const name = (p.type || p.professionType || '').toUpperCase();
+          if (name && p.level != null) bot.professionLevels[name] = p.level;
+        }
+      }
     }
   }
 
@@ -117,6 +125,7 @@ export async function learnProfession(
       if (!bot.professions.includes(professionType)) {
         bot.professions.push(professionType);
       }
+      bot.professionLevels[professionType.toUpperCase()] = 1;
       return { success: true, detail: `Learned profession ${professionType}`, endpoint, httpStatus: res.status, requestBody: { professionType }, responseBody: res.data };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { professionType }, responseBody: res.data };

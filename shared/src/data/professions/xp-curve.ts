@@ -24,10 +24,10 @@ export function getCumulativeXpForLevel(level: number): number {
 }
 
 export function getTierForLevel(level: number): ProfessionTierName {
-  if (level <= 10) return 'APPRENTICE';
-  if (level <= 25) return 'JOURNEYMAN';
-  if (level <= 50) return 'CRAFTSMAN';
-  if (level <= 75) return 'EXPERT';
-  if (level <= 90) return 'MASTER';
-  return 'GRANDMASTER';
+  if (level >= 13) return 'GRANDMASTER';
+  if (level >= 11) return 'MASTER';
+  if (level >= 9) return 'EXPERT';
+  if (level >= 7) return 'CRAFTSMAN';
+  if (level >= 5) return 'JOURNEYMAN';
+  return 'APPRENTICE';
 }
