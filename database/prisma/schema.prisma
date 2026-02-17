@@ -513,6 +513,7 @@ model Character {
   ownedAssets             OwnedAsset[]   @relation("OwnedAssets")
   jobListingsOwned        JobListing[]   @relation("JobListingsOwned")
   jobListingsWorking      JobListing[]   @relation("JobListingsWorking")
+  livestock               Livestock[]    @relation("CharacterLivestock")
 
   @@index([userId])
   @@index([currentTownId])
@@ -2226,12 +2227,39 @@ model OwnedAsset {
   owner      Character  @relation("OwnedAssets", fields: [ownerId], references: [id], onDelete: Cascade)
   town       Town       @relation("TownAssets", fields: [townId], references: [id], onDelete: Cascade)
   jobListing JobListing?
+  livestock  Livestock[] @relation("BuildingLivestock")
 
   @@unique([ownerId, professionType, tier, slotNumber])
   @@index([ownerId])
   @@index([townId])
   @@index([cropState])
   @@map("owned_assets")
+}
+
+model Livestock {
+  id             String   @id @default(uuid())
+  buildingId     String   @map("building_id")
+  ownerId        String   @map("owner_id")
+  animalType     String   @map("animal_type")
+  name           String?
+  age            Int      @default(0)
+  hunger         Int      @default(0)
+  health         Int      @default(100)
+  lastFedAt      Int?     @map("last_fed_at")
+  lastProducedAt Int?     @map("last_produced_at")
+  isAlive        Boolean  @default(true) @map("is_alive")
+  deathCause     String?  @map("death_cause")
+  purchasedAt    Int      @map("purchased_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  building OwnedAsset @relation("BuildingLivestock", fields: [buildingId], references: [id], onDelete: Cascade)
+  owner    Character  @relation("CharacterLivestock", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([buildingId])
+  @@index([ownerId])
+  @@index([isAlive])
+  @@map("livestock")
 }
 
 model JobListing {

@@ -77,7 +77,7 @@ const PROF_TO_SPOT_TYPES: Record<string, string[]> = {
   HERBALIST: ['herb'],
   FISHERMAN: ['fishing'],
   HUNTER: ['hunting_ground'],
-  RANCHER: [],
+  RANCHER: [],  // Asset-based: buildings at home, no public gathering spots
 };
 
 // ── Town Cache ────────────────────────────────────────────────────────────
@@ -246,16 +246,27 @@ async function determineTravelReason(
     }
   }
 
-  // b. Gathering prof with no matching spot in current town
-  const profSpots = getProfSpotTypes(profs, bot.professionLevels || {});
-  if (profSpots.length > 0 && currentSpotType && !profSpots.includes(currentSpotType)) {
+  // b. RANCHER is asset-based — always go home to manage buildings, never seek public spots
+  const isRancher = profs.includes('RANCHER');
+  if (isRancher && bot.homeTownId && bot.currentTownId !== bot.homeTownId) {
     return {
-      reason: `No ${profs.find(p => GATHERING_PROF_SET.has(p)) || 'gathering'} spot here, seeking matching town`,
-      execute: () => actions.travelToResourceTown(bot, profSpots, 'seeking matching gathering spot'),
+      reason: 'RANCHER returning home to manage livestock buildings',
+      execute: () => actions.travelHome(bot, 'returning home for livestock'),
     };
   }
 
-  // c. Own fields at home, currently elsewhere
+  // c. Gathering prof with no matching spot in current town (skip RANCHER — no public spots)
+  if (!isRancher) {
+    const profSpots = getProfSpotTypes(profs, bot.professionLevels || {});
+    if (profSpots.length > 0 && currentSpotType && !profSpots.includes(currentSpotType)) {
+      return {
+        reason: `No ${profs.find(p => GATHERING_PROF_SET.has(p)) || 'gathering'} spot here, seeking matching town`,
+        execute: () => actions.travelToResourceTown(bot, profSpots, 'seeking matching gathering spot'),
+      };
+    }
+  }
+
+  // d. Own fields at home, currently elsewhere
   if (bot.homeTownId && bot.currentTownId !== bot.homeTownId) {
     return {
       reason: 'Traveling home to manage fields',
@@ -410,6 +421,14 @@ export async function decideBotAction(
     } catch { /* ignore */ }
   }
 
+  // A3b: Buy livestock (RANCHER bots with buildings that have room)
+  if (profs.includes('RANCHER') && bot.gold >= 30 && config.enabledSystems.gathering) {
+    try {
+      const r = await timedFreeAction(() => actions.buyLivestock(bot), bot, 'buy_livestock', logger, tick);
+      if (r.success) console.log(`[SIM] ${bot.characterName} bought livestock: ${r.detail}`);
+    } catch { /* ignore */ }
+  }
+
   // A4: Quest acceptance
   if (config.enabledSystems.quests) {
     const activeQuest = await actions.checkActiveQuest(bot);
@@ -467,9 +486,19 @@ export async function decideBotAction(
   }
 
   // ── P1: Harvest READY fields (time-sensitive — crops wither) ────────
-  if (hasGathering && config.enabledSystems.gathering) {
+  // RANCHER buildings produce automatically via livestock tick — skip harvest
+  if (hasGathering && config.enabledSystems.gathering && !profs.includes('RANCHER')) {
     const r = await timedDailyAction(
       () => actions.harvestAsset(bot),
+      bot, 'harvest_own_field', 1, 'Crops READY — harvesting before wither',
+      logger, tick,
+    );
+    if (r.success) return r;
+  }
+  // Multi-profession bots: if bot is RANCHER AND something else, still try harvest for non-RANCHER assets
+  if (hasGathering && config.enabledSystems.gathering && profs.includes('RANCHER') && profs.length > 1) {
+    const r = await timedDailyAction(
+      () => actions.harvestAsset(bot, 'RANCHER'),
       bot, 'harvest_own_field', 1, 'Crops READY — harvesting before wither',
       logger, tick,
     );
@@ -505,11 +534,17 @@ export async function decideBotAction(
     let gatherReason = '';
 
     // Gathering prof: gather if current town has a matching spot
+    // RANCHER is asset-based — gather from any spot for basic income/XP while at home
     if (hasGathering) {
-      const profSpots = getProfSpotTypes(profs, bot.professionLevels || {});
-      if (currentSpotType && profSpots.includes(currentSpotType)) {
+      if (profs.includes('RANCHER') && currentSpotType) {
         shouldGather = true;
-        gatherReason = `Gathering at ${currentSpotType} spot (profession bonus)`;
+        gatherReason = `RANCHER gathering at ${currentSpotType} (basic income while managing livestock)`;
+      } else {
+        const profSpots = getProfSpotTypes(profs, bot.professionLevels || {});
+        if (currentSpotType && profSpots.includes(currentSpotType)) {
+          shouldGather = true;
+          gatherReason = `Gathering at ${currentSpotType} spot (profession bonus)`;
+        }
       }
     }
 
@@ -552,6 +587,19 @@ export async function decideBotAction(
       const r = await timedDailyAction(
         () => actions.buySpecificItem(bot, itemName),
         bot, 'market_buy', 5, `Buying ${itemName} from market`,
+        logger, tick,
+      );
+      if (r.success) return r;
+    }
+  }
+
+  // ── P5b: RANCHER bots buy Grain if low inventory ──────────────────
+  if (config.enabledSystems.market && profs.includes('RANCHER') && bot.gold >= 10) {
+    const grainQty = invMap.get('Grain') || 0;
+    if (grainQty < 5) {
+      const r = await timedDailyAction(
+        () => actions.buySpecificItem(bot, 'Grain'),
+        bot, 'market_buy_grain', 5, 'RANCHER buying Grain for livestock feed',
         logger, tick,
       );
       if (r.success) return r;

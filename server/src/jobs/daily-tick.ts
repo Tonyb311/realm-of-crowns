@@ -29,7 +29,7 @@ import { getProfessionByType, getTierQualityBonus, getTierForLevel } from '@shar
 import { getGatheringBonus } from '@shared/data/professions/tier-unlocks';
 import { ACTION_XP } from '@shared/data/progression';
 import { GATHER_SPOT_PROFESSION_MAP, RESOURCE_MAP } from '@shared/data/gathering';
-import { ASSET_TIERS } from '@shared/data/assets';
+import { ASSET_TIERS, LIVESTOCK_DEFINITIONS, HUNGER_CONSTANTS } from '@shared/data/assets';
 import {
   emitDailyReportReady,
   emitNotification,
@@ -479,6 +479,243 @@ export async function processDailyTick(): Promise<DailyTickResult> {
 
       console.log(`[DailyTick]   ${witheredAssets.length} asset(s) WITHERED and reset to EMPTY`);
     }
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 4d: Livestock Processing (RANCHER buildings)
+  // -----------------------------------------------------------------------
+  await runStep('Livestock Processing', 4.7, async () => {
+    const currentDay = getGameDay();
+    const isFeedDay = currentDay % 3 === 0;
+
+    // Fetch all alive livestock grouped with building + owner info
+    const allLivestock = await prisma.livestock.findMany({
+      where: { isAlive: true },
+      include: {
+        building: { select: { id: true, spotType: true, townId: true } },
+        owner: { select: { id: true, name: true } },
+      },
+    });
+
+    if (allLivestock.length === 0) {
+      console.log('[DailyTick]   No alive livestock to process');
+      return;
+    }
+
+    let deaths = 0;
+    let fed = 0;
+    let produced = 0;
+    let starved = 0;
+
+    // Group by owner for efficient grain lookup
+    const byOwner = new Map<string, typeof allLivestock>();
+    for (const animal of allLivestock) {
+      const list = byOwner.get(animal.ownerId) || [];
+      list.push(animal);
+      byOwner.set(animal.ownerId, list);
+    }
+
+    for (const [ownerId, animals] of byOwner) {
+      await prisma.$transaction(async (tx) => {
+        // Look up owner's Grain inventory (for feeding)
+        let grainStack: { id: string; quantity: number; itemId: string } | null = null;
+        if (isFeedDay) {
+          grainStack = await tx.inventory.findFirst({
+            where: {
+              characterId: ownerId,
+              item: { template: { name: 'Grain' } },
+            },
+            select: { id: true, quantity: true, itemId: true },
+          });
+        }
+
+        for (const animal of animals) {
+          const def = LIVESTOCK_DEFINITIONS[animal.animalType];
+          if (!def) continue;
+
+          let isDead = false;
+          let deathCause: string | null = null;
+          let newHunger = animal.hunger;
+          let newHealth = animal.health;
+          const newAge = animal.age + 1;
+
+          // 1. Old age death
+          if (newAge >= def.maxAge) {
+            isDead = true;
+            deathCause = 'old_age';
+          }
+
+          // 2. Starvation death
+          if (!isDead && newHunger >= HUNGER_CONSTANTS.DEATH_THRESHOLD) {
+            isDead = true;
+            deathCause = 'starvation';
+          }
+
+          // 3. Random events (only if still alive)
+          if (!isDead) {
+            const predatorRoll = Math.random();
+            if (predatorRoll < HUNGER_CONSTANTS.PREDATOR_CHANCE) {
+              isDead = true;
+              deathCause = 'predator';
+            }
+          }
+          if (!isDead) {
+            const diseaseRoll = Math.random();
+            if (diseaseRoll < HUNGER_CONSTANTS.DISEASE_CHANCE) {
+              newHealth -= HUNGER_CONSTANTS.DISEASE_HEALTH_LOSS;
+              if (newHealth <= 0) {
+                isDead = true;
+                deathCause = 'disease';
+              }
+            }
+          }
+
+          // Handle death
+          if (isDead) {
+            await tx.livestock.update({
+              where: { id: animal.id },
+              data: { isAlive: false, deathCause, age: newAge, health: Math.max(0, newHealth) },
+            });
+            deaths++;
+
+            await tx.notification.create({
+              data: {
+                characterId: ownerId,
+                type: 'rancher:animal_died',
+                title: 'Animal Died',
+                message: `Your ${def.name} "${animal.name || def.name}" died (${deathCause}).`,
+                data: { livestockId: animal.id, animalType: animal.animalType, cause: deathCause },
+              },
+            });
+            continue;
+          }
+
+          // 4. Feeding (every 3 ticks)
+          if (isFeedDay) {
+            if (grainStack && grainStack.quantity >= def.feedCost) {
+              // Deduct grain
+              grainStack.quantity -= def.feedCost;
+              if (grainStack.quantity <= 0) {
+                await tx.inventory.delete({ where: { id: grainStack.id } });
+                await tx.item.delete({ where: { id: grainStack.itemId } });
+                grainStack = null;
+              } else {
+                await tx.inventory.update({
+                  where: { id: grainStack.id },
+                  data: { quantity: grainStack.quantity },
+                });
+              }
+              newHunger = 0;
+              fed++;
+            } else {
+              // Missed feed — hunger increases
+              newHunger = Math.min(newHunger + HUNGER_CONSTANTS.HUNGER_PER_MISSED_FEED, HUNGER_CONSTANTS.DEATH_THRESHOLD);
+              starved++;
+            }
+          }
+
+          // 5. Production (same cycle as feeding, only if not starving)
+          let producedThisTick = false;
+          if (isFeedDay && newHunger < HUNGER_CONSTANTS.STARVING_THRESHOLD) {
+            const yield_ = def.minYield + Math.floor(Math.random() * (def.maxYield - def.minYield + 1));
+
+            // Look up or create ItemTemplate for product
+            const resourceEntry = RESOURCE_MAP[animal.building.spotType];
+            if (resourceEntry) {
+              const gatherItem = resourceEntry.item;
+              const itemName = gatherItem.templateName;
+              const itemType = gatherItem.type === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL';
+
+              let template = await tx.itemTemplate.findFirst({ where: { name: itemName } });
+              if (!template) {
+                template = await tx.itemTemplate.create({
+                  data: {
+                    name: itemName,
+                    type: itemType as any,
+                    rarity: 'COMMON',
+                    description: gatherItem.description,
+                    stats: {},
+                    durability: 0,
+                    requirements: {},
+                    isFood: gatherItem.isFood,
+                    foodBuff: gatherItem.foodBuff ?? Prisma.JsonNull,
+                    isPerishable: gatherItem.shelfLifeDays != null,
+                    shelfLifeDays: gatherItem.shelfLifeDays,
+                  },
+                });
+              }
+
+              // Find or create inventory stack for the owner
+              const existingStack = await tx.inventory.findFirst({
+                where: {
+                  characterId: ownerId,
+                  item: { templateId: template.id },
+                },
+              });
+
+              if (existingStack) {
+                await tx.inventory.update({
+                  where: { id: existingStack.id },
+                  data: { quantity: { increment: yield_ } },
+                });
+              } else {
+                const item = await tx.item.create({
+                  data: {
+                    templateId: template.id,
+                    ownerId,
+                    quality: 'COMMON',
+                    currentDurability: 0,
+                    enchantments: [],
+                    daysRemaining: gatherItem.shelfLifeDays,
+                  },
+                });
+                await tx.inventory.create({
+                  data: { characterId: ownerId, itemId: item.id, quantity: yield_ },
+                });
+              }
+
+              produced += yield_;
+              producedThisTick = true;
+            }
+          }
+
+          // 6. Update animal state
+          await tx.livestock.update({
+            where: { id: animal.id },
+            data: {
+              age: newAge,
+              hunger: newHunger,
+              health: newHealth,
+              ...(isFeedDay && newHunger === 0 ? { lastFedAt: currentDay } : {}),
+              ...(producedThisTick ? { lastProducedAt: currentDay } : {}),
+            },
+          });
+
+          // 7. Award RANCHER XP for production
+          if (producedThisTick) {
+            await addProfessionXP(ownerId, 'RANCHER' as ProfessionType, 5, `livestock_${animal.animalType}_produce`);
+          }
+        }
+      });
+    }
+
+    // Low-feed warnings
+    if (starved > 0) {
+      for (const [ownerId] of byOwner) {
+        // Only warn once per owner
+        await prisma.notification.create({
+          data: {
+            characterId: ownerId,
+            type: 'rancher:low_feed',
+            title: 'Low Feed Warning',
+            message: 'Some of your animals missed their feeding. Stock up on Grain to keep them fed!',
+            data: {},
+          },
+        }).catch(() => {}); // Non-critical
+      }
+    }
+
+    console.log(`[DailyTick]   Livestock: ${deaths} deaths, ${fed} fed, ${starved} missed feed, ${produced} items produced`);
   });
 
   // -----------------------------------------------------------------------

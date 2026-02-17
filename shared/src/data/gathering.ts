@@ -159,6 +159,41 @@ export const WILD_GAME_MEAT: GatheringItem = {
   icon: '\uD83C\uDF56',
 };
 
+// --- RANCHER Livestock Products ---
+
+export const EGGS: GatheringItem = {
+  templateName: 'Eggs',
+  type: 'CONSUMABLE',
+  description: 'Fresh eggs collected from the chicken coop. Essential for cooking.',
+  isFood: true,
+  shelfLifeDays: 3,
+  foodBuff: { stat: 'constitution', value: 1 },
+  baseValue: 8,
+  icon: '\uD83E\uDD5A',
+};
+
+export const MILK: GatheringItem = {
+  templateName: 'Milk',
+  type: 'CONSUMABLE',
+  description: 'Rich, creamy milk from well-tended dairy cows. Prized by cooks and brewers.',
+  isFood: true,
+  shelfLifeDays: 2,
+  foodBuff: { stat: 'constitution', value: 1 },
+  baseValue: 12,
+  icon: '\uD83E\uDD5B',
+};
+
+export const WOOL_ITEM: GatheringItem = {
+  templateName: 'Wool',
+  type: 'MATERIAL',
+  description: 'Soft fleece sheared from healthy sheep. Used by tailors and weavers.',
+  isFood: false,
+  shelfLifeDays: null,
+  foodBuff: null,
+  baseValue: 15,
+  icon: '\uD83E\uDDF6',
+};
+
 // ============================================================
 // RESOURCE TYPE -> ITEM + ICON MAPPING
 // ============================================================
@@ -177,6 +212,10 @@ export const RESOURCE_MAP: Record<string, { item: GatheringItem; icon: string }>
   grain_field:     { item: GRAIN,           icon: '\uD83C\uDF3E' },
   vegetable_patch: { item: VEGETABLES,      icon: '\uD83E\uDD55' },
   berry:           { item: WILD_BERRIES,    icon: '\uD83C\uDF53' },
+  // RANCHER buildings (asset-based, not public spots)
+  chicken_coop:    { item: EGGS,            icon: '\uD83D\uDC14' },
+  dairy_barn:      { item: MILK,            icon: '\uD83D\uDC04' },
+  sheep_pen:       { item: WOOL_ITEM,       icon: '\uD83D\uDC11' },
 };
 
 /**
@@ -192,6 +231,10 @@ export const GATHER_SPOT_PROFESSION_MAP: Record<string, string> = {
   quarry:          'MINER',
   clay:            'MINER',
   hunting_ground:  'HUNTER',
+  // RANCHER buildings
+  chicken_coop:    'RANCHER',
+  dairy_barn:      'RANCHER',
+  sheep_pen:       'RANCHER',
 };
 
 // ============================================================

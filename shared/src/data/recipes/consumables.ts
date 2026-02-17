@@ -7,7 +7,7 @@
  *   BREWER    - Alcoholic beverages with morale/stat effects
  *   SCRIBE    - Spell scrolls, maps, identification scrolls
  *
- * 56 recipes total.
+ * 59 recipes total.
  */
 
 import { ConsumableRecipe } from './types';
@@ -408,7 +408,7 @@ export const ALCHEMIST_CONSUMABLES: ConsumableRecipe[] = [
 ];
 
 // ============================================================
-// COOK RECIPES (14)
+// COOK RECIPES (17)
 // ============================================================
 
 export const COOK_CONSUMABLES: ConsumableRecipe[] = [
@@ -655,6 +655,69 @@ export const COOK_CONSUMABLES: ConsumableRecipe[] = [
     xpReward: 15,
     tier: 2,
     description: 'A rich fish stew with herbs and root vegetables. Sharpens the senses.',
+  },
+  // --- RANCHER Product Recipes ---
+  {
+    recipeId: 'cook-scrambled-eggs',
+    name: 'Scrambled Eggs',
+    professionRequired: 'COOK',
+    levelRequired: 3,
+    inputs: [
+      { itemName: 'Eggs', quantity: 3 },
+    ],
+    output: { itemName: 'Scrambled Eggs', quantity: 2 },
+    consumableStats: { effect: 'hp_regen', magnitude: 3, duration: 30, stackSize: 20 },
+    craftTime: 10,
+    xpReward: 8,
+    tier: 1,
+    description: 'Fluffy scrambled eggs cooked over a low flame. Simple, hearty farm fare.',
+  },
+  {
+    recipeId: 'cook-creamy-porridge',
+    name: 'Creamy Porridge',
+    professionRequired: 'COOK',
+    levelRequired: 3,
+    inputs: [
+      { itemName: 'Grain', quantity: 2 },
+      { itemName: 'Milk', quantity: 1 },
+    ],
+    output: { itemName: 'Creamy Porridge', quantity: 2 },
+    consumableStats: {
+      effect: 'buff_constitution',
+      magnitude: 1,
+      duration: 45,
+      stackSize: 15,
+      secondaryEffect: 'hp_regen',
+      secondaryMagnitude: 2,
+    },
+    craftTime: 15,
+    xpReward: 10,
+    tier: 1,
+    description: 'Warm porridge made creamy with fresh milk. A farmer\'s breakfast that sticks to the ribs.',
+  },
+  {
+    recipeId: 'cook-farm-breakfast',
+    name: 'Farm Breakfast',
+    professionRequired: 'COOK',
+    levelRequired: 5,
+    inputs: [
+      { itemName: 'Eggs', quantity: 2 },
+      { itemName: 'Milk', quantity: 1 },
+      { itemName: 'Grain', quantity: 1 },
+    ],
+    output: { itemName: 'Farm Breakfast', quantity: 2 },
+    consumableStats: {
+      effect: 'buff_all_stats',
+      magnitude: 1,
+      duration: 60,
+      stackSize: 10,
+      secondaryEffect: 'hp_regen',
+      secondaryMagnitude: 3,
+    },
+    craftTime: 20,
+    xpReward: 14,
+    tier: 1,
+    description: 'A full country breakfast of eggs, toast, and warm milk. Fortifies body and spirit for the day ahead.',
   },
   {
     recipeId: 'cook-hearty-feast',

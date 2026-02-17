@@ -96,17 +96,20 @@ router.get('/available', authGuard, characterGuard, async (req: AuthenticatedReq
                     },
                   });
                   const nextSlotNumber = owned + 1;
-                  const locked = prof.level < tierData.levelRequired;
+                  const effectiveLevelReq = at.levelRequired ?? tierData.levelRequired;
+                  const locked = prof.level < effectiveLevelReq;
+                  const nextCost = owned < MAX_SLOTS_PER_TIER
+                    ? (at.baseCost ? at.baseCost * nextSlotNumber : getAssetPurchaseCost(tier, nextSlotNumber))
+                    : null;
 
                   return {
                     tier,
                     owned,
                     maxSlots: MAX_SLOTS_PER_TIER,
-                    nextSlotCost: owned < MAX_SLOTS_PER_TIER
-                      ? getAssetPurchaseCost(tier, nextSlotNumber)
-                      : null,
-                    levelRequired: tierData.levelRequired,
+                    nextSlotCost: nextCost,
+                    levelRequired: effectiveLevelReq,
                     locked,
+                    capacity: at.capacity ?? null,
                   };
                 }),
               );
@@ -173,9 +176,12 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
       return res.status(400).json({ error: `You do not have the ${professionType} profession` });
     }
 
-    if (profession.level < tierData.levelRequired) {
+    // Use asset-type-specific overrides if defined, otherwise fall back to tier defaults
+    const effectiveLevelRequired = assetTypeDef.levelRequired ?? tierData.levelRequired;
+
+    if (profession.level < effectiveLevelRequired) {
       return res.status(400).json({
-        error: `${professionType} level ${tierData.levelRequired} required for tier ${tier} assets. You are level ${profession.level}.`,
+        error: `${professionType} level ${effectiveLevelRequired} required for ${assetTypeDef.name}. You are level ${profession.level}.`,
       });
     }
 
@@ -200,9 +206,11 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
       });
     }
 
-    // 6. Calculate cost
+    // 6. Calculate cost (use asset-type-specific baseCost if defined)
     const slotNumber = existingCount + 1;
-    const cost = getAssetPurchaseCost(tier, slotNumber);
+    const cost = assetTypeDef.baseCost
+      ? assetTypeDef.baseCost * slotNumber
+      : getAssetPurchaseCost(tier, slotNumber);
 
     // 7. Check gold
     if (character.gold < cost) {
@@ -210,6 +218,9 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
         error: `Insufficient gold. Need ${cost}, have ${character.gold}.`,
       });
     }
+
+    // RANCHER buildings are permanent structures — set cropState to READY immediately
+    const isRancherBuilding = professionType === 'RANCHER';
 
     // Transaction: deduct gold + create asset
     const [asset] = await prisma.$transaction([
@@ -223,6 +234,7 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
           slotNumber,
           name: assetTypeDef.name,
           purchasePrice: cost,
+          ...(isRancherBuilding ? { cropState: 'READY' } : {}),
         },
       }),
       prisma.character.update({
@@ -331,12 +343,17 @@ router.post('/:id/harvest', authGuard, characterGuard, requireTown, async (req: 
       return res.status(404).json({ error: 'Asset not found' });
     }
 
-    // 2. Check crop state
+    // 2. RANCHER buildings cannot be harvested — livestock produce automatically
+    if (asset.professionType === 'RANCHER') {
+      return res.status(400).json({ error: 'RANCHER buildings produce automatically via livestock. No manual harvest needed.' });
+    }
+
+    // 3. Check crop state
     if (asset.cropState !== 'READY') {
       return res.status(400).json({ error: `Cannot harvest — crop state is ${asset.cropState}` });
     }
 
-    // 3. Must be present in the asset's town
+    // 4. Must be present in the asset's town
     if (character.currentTownId !== asset.townId) {
       return res.status(400).json({ error: 'You must be in the town where this asset is located' });
     }

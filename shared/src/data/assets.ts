@@ -25,6 +25,9 @@ export interface AssetTypeDefinition {
   id: string;
   name: string;
   spotType: string;  // Key into RESOURCE_MAP from gathering.ts
+  baseCost?: number;        // Override ASSET_TIERS[tier].baseCost
+  levelRequired?: number;   // Override ASSET_TIERS[tier].levelRequired
+  capacity?: number;        // For RANCHER: max animals per building
 }
 
 export const PROFESSION_ASSET_TYPES: Record<string, AssetTypeDefinition[]> = {
@@ -49,7 +52,9 @@ export const PROFESSION_ASSET_TYPES: Record<string, AssetTypeDefinition[]> = {
     { id: 'herb_garden_plot', name: 'Herb Garden Plot', spotType: 'herb' },
   ],
   RANCHER: [
-    { id: 'pasture_lease', name: 'Pasture Lease', spotType: 'pasture' },
+    { id: 'chicken_coop', name: 'Chicken Coop', spotType: 'chicken_coop', baseCost: 100, levelRequired: 1, capacity: 5 },
+    { id: 'dairy_barn', name: 'Dairy Barn', spotType: 'dairy_barn', baseCost: 150, levelRequired: 1, capacity: 3 },
+    { id: 'sheep_pen', name: 'Sheep Pen', spotType: 'sheep_pen', baseCost: 120, levelRequired: 5, capacity: 4 },
   ],
   HUNTER: [
     { id: 'hunting_ground_rights', name: 'Hunting Ground Rights', spotType: 'hunting_ground' },
@@ -92,3 +97,75 @@ export const FIELD_TIER_CROPS: Record<number, { available: string[]; future: str
   2: { available: ['Apples', 'Wild Berries'], future: ['Hops', 'Grapes'] },
   3: { available: [], future: ['Rare Herbs', 'Exotic Fruits', 'Cotton', 'Flax'] },
 };
+
+// =============================================================================
+// LIVESTOCK SYSTEM — Definitions & Constants
+// =============================================================================
+
+export interface LivestockDefinition {
+  animalType: string;
+  name: string;
+  price: number;
+  maxAge: number;           // ticks before old-age death
+  feedCost: number;         // Grain consumed per feed cycle
+  feedInterval: number;     // ticks between feed cycles
+  product: string;          // item template name produced
+  minYield: number;
+  maxYield: number;
+  buildingType: string;     // which building type houses this animal
+}
+
+export const LIVESTOCK_DEFINITIONS: Record<string, LivestockDefinition> = {
+  chicken: {
+    animalType: 'chicken',
+    name: 'Chicken',
+    price: 30,
+    maxAge: 120,
+    feedCost: 1,
+    feedInterval: 3,
+    product: 'Eggs',
+    minYield: 1,
+    maxYield: 2,
+    buildingType: 'chicken_coop',
+  },
+  cow: {
+    animalType: 'cow',
+    name: 'Cow',
+    price: 80,
+    maxAge: 180,
+    feedCost: 2,
+    feedInterval: 3,
+    product: 'Milk',
+    minYield: 1,
+    maxYield: 1,
+    buildingType: 'dairy_barn',
+  },
+  sheep: {
+    animalType: 'sheep',
+    name: 'Sheep',
+    price: 50,
+    maxAge: 150,
+    feedCost: 1,
+    feedInterval: 3,
+    product: 'Wool',
+    minYield: 1,
+    maxYield: 1,
+    buildingType: 'sheep_pen',
+  },
+};
+
+/** Maps building spotType to the animal types it can hold */
+export const BUILDING_ANIMAL_MAP: Record<string, string[]> = {
+  chicken_coop: ['chicken'],
+  dairy_barn: ['cow'],
+  sheep_pen: ['sheep'],
+};
+
+export const HUNGER_CONSTANTS = {
+  HUNGER_PER_MISSED_FEED: 25,
+  STARVING_THRESHOLD: 50,
+  DEATH_THRESHOLD: 100,
+  DISEASE_CHANCE: 0.01,
+  PREDATOR_CHANCE: 0.005,
+  DISEASE_HEALTH_LOSS: 25,
+} as const;

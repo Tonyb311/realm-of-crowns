@@ -106,6 +106,9 @@ const RESOURCE_TYPE_LABELS: Record<string, string> = {
   quarry: 'Quarry',
   clay: 'Clay Pit',
   hunting_ground: 'Hunting Ground',
+  chicken_coop: 'Chicken Coop',
+  dairy_barn: 'Dairy Barn',
+  sheep_pen: 'Sheep Pen',
 };
 
 // ---------------------------------------------------------------------------

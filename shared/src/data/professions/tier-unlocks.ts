@@ -296,17 +296,17 @@ export const FISHERMAN_FISH_UNLOCKS: ProfessionTierUnlocks = {
 export const RANCHER_ANIMAL_UNLOCKS: ProfessionTierUnlocks = {
   APPRENTICE: {
     tier: 1,
-    crops: [],
-    spotTypes: [],
-    description: 'Raise livestock — requires building purchase + livestock. Asset-based profession.',
-    NOT_YET_IMPLEMENTED: true,
+    crops: ['Eggs', 'Milk'],
+    spotTypes: ['chicken_coop', 'dairy_barn'],
+    description: 'Build a Chicken Coop or Dairy Barn, buy livestock, and produce Eggs or Milk.',
+    assetBased: true,
   },
   JOURNEYMAN: {
     tier: 2,
-    crops: ['Wool', 'Milk'],
+    crops: ['Wool'],
     spotTypes: ['sheep_pen'],
-    description: 'Sheep and dairy farming',
-    NOT_YET_IMPLEMENTED: true,
+    description: 'Build a Sheep Pen to raise sheep for Wool.',
+    assetBased: true,
   },
   CRAFTSMAN: {
     tier: 3,

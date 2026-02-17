@@ -31,12 +31,12 @@ export const RANCHER: ProfessionDefinition = {
   outputProducts: ['Beef', 'Sheep', 'Pork', 'Chicken', 'Horses', 'Wool', 'Milk', 'Eggs'], // Major-ECON-07: Renamed Cattle->Beef, Pigs->Pork, Chickens->Chicken to match resource names
   townTypeAffinity: ['plains', 'hills'],
   tierUnlocks: {
-    APPRENTICE: ['Chicken', 'Pork', 'Milk', 'Eggs'], // Major-ECON-07: Match resource names
-    JOURNEYMAN: ['Beef', 'Sheep', 'Wool'], // Major-ECON-07: Match resource names
-    CRAFTSMAN: ['Horses', 'Selective breeding'],
-    EXPERT: ['War Horse stock', 'Exotic livestock'],
-    MASTER: ['Prize breeding lines', 'Rare pelts'],
-    GRANDMASTER: ['Legendary mounts breeding', 'Custom breed creation'],
+    APPRENTICE: ['Chicken Coop → Eggs', 'Dairy Barn → Milk'],
+    JOURNEYMAN: ['Sheep Pen → Wool'],
+    CRAFTSMAN: ['Horses (Coming Soon)', 'Selective breeding (Coming Soon)'],
+    EXPERT: ['War Horse stock (Coming Soon)', 'Exotic livestock (Coming Soon)'],
+    MASTER: ['Prize breeding lines (Coming Soon)', 'Rare pelts (Coming Soon)'],
+    GRANDMASTER: ['Legendary mounts breeding (Coming Soon)', 'Custom breed creation (Coming Soon)'],
   },
 };
 

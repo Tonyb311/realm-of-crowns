@@ -9,6 +9,7 @@ import { BotState, ActionResult } from './types';
 import { get, post } from './dispatcher';
 import { getResourcesByType } from './seed';
 import { TOWN_GATHERING_SPOTS } from '@shared/data/gathering';
+import { BUILDING_ANIMAL_MAP } from '@shared/data/assets';
 import { prisma } from '../../lib/prisma';
 import { getOrCreateOpenCycle } from '../auction-engine';
 
@@ -1458,7 +1459,7 @@ export async function plantAsset(bot: BotState): Promise<ActionResult> {
 // 31. harvestAsset — harvest a READY owned asset (daily action)
 // ---------------------------------------------------------------------------
 
-export async function harvestAsset(bot: BotState): Promise<ActionResult> {
+export async function harvestAsset(bot: BotState, excludeProfession?: string): Promise<ActionResult> {
   const endpoint = '/assets/harvest';
   try {
     // Pre-flight: fetch owned assets
@@ -1476,8 +1477,11 @@ export async function harvestAsset(bot: BotState): Promise<ActionResult> {
 
     const assets: any[] = mineRes.data?.assets || [];
     // Filter: assets in bot's current town with cropState === 'READY'
+    // Exclude RANCHER buildings (they produce automatically via livestock tick)
     const readyAssets = assets.filter(
-      (a: any) => a.townId === bot.currentTownId && a.cropState === 'READY',
+      (a: any) => a.townId === bot.currentTownId && a.cropState === 'READY'
+        && a.professionType !== 'RANCHER'
+        && (!excludeProfession || a.professionType !== excludeProfession),
     );
 
     if (readyAssets.length === 0) {
@@ -1505,6 +1509,83 @@ export async function harvestAsset(bot: BotState): Promise<ActionResult> {
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint: harvestEndpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 31b. buyLivestock — purchase an animal for a RANCHER building (free action)
+// ---------------------------------------------------------------------------
+
+export async function buyLivestock(bot: BotState): Promise<ActionResult> {
+  const endpoint = '/rancher/buy-livestock';
+  try {
+    // Pre-flight: fetch RANCHER buildings with capacity info
+    const bldgRes = await get('/rancher/buildings', bot.token);
+    if (bldgRes.status < 200 || bldgRes.status >= 300) {
+      return {
+        success: false,
+        detail: bldgRes.data?.error || `Failed to fetch rancher buildings: HTTP ${bldgRes.status}`,
+        endpoint,
+        httpStatus: bldgRes.status,
+        requestBody: {},
+        responseBody: bldgRes.data,
+      };
+    }
+
+    const buildings: any[] = bldgRes.data?.buildings || [];
+    // Filter: buildings in bot's current town with available capacity
+    const available = buildings.filter(
+      (b: any) => b.town?.id === bot.currentTownId && b.aliveCount < b.capacity,
+    );
+
+    if (available.length === 0) {
+      return {
+        success: false,
+        detail: 'No RANCHER buildings with capacity in current town',
+        endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: 'No RANCHER buildings with capacity in current town' },
+      };
+    }
+
+    // Pick the building with the most remaining capacity
+    available.sort((a: any, b: any) => (b.capacity - b.aliveCount) - (a.capacity - a.aliveCount));
+    const building = available[0];
+
+    // Determine correct animal type from building spotType
+    const allowedAnimals = BUILDING_ANIMAL_MAP[building.spotType];
+    if (!allowedAnimals || allowedAnimals.length === 0) {
+      return {
+        success: false,
+        detail: `No animal types for building type ${building.spotType}`,
+        endpoint,
+        httpStatus: 0,
+        requestBody: {},
+        responseBody: { error: `No animal types for ${building.spotType}` },
+      };
+    }
+    const animalType = allowedAnimals[0];
+
+    const body = { buildingId: building.id, animalType };
+    const res = await post(endpoint, bot.token, body);
+    if (res.status >= 200 && res.status < 300) {
+      const price = res.data?.goldRemaining != null
+        ? bot.gold - res.data.goldRemaining
+        : 0;
+      if (price > 0) bot.gold -= price;
+      return {
+        success: true,
+        detail: `Bought ${animalType} for ${building.name}`,
+        endpoint,
+        httpStatus: res.status,
+        requestBody: body,
+        responseBody: res.data,
+      };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: body, responseBody: res.data };
   } catch (err: any) {
     return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }

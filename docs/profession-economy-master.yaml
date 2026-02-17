@@ -10,10 +10,13 @@
 # a raw gathered resource.
 #
 # LAST UPDATED: 2026-02-17
-# STATUS: All 7 gathering professions formalized. FARMER, HUNTER, MINER, LUMBERJACK, HERBALIST,
-# FISHERMAN APPRENTICE tiers are fully live. RANCHER is asset-based (NOT_YET_IMPLEMENTED).
+# STATUS: All 7 gathering professions formalized and LIVE. FARMER, HUNTER, MINER, LUMBERJACK,
+# HERBALIST, FISHERMAN APPRENTICE tiers fully live. RANCHER livestock system LIVE —
+# buildings (Chicken Coop, Dairy Barn, Sheep Pen), livestock purchase, auto feed/produce
+# in daily tick, animal death mechanics (starvation, old age, disease, predator).
+# COOK recipes expanded: +3 livestock recipes (Scrambled Eggs, Creamy Porridge, Farm Breakfast).
 # grain_field, vegetable_patch, berry removed as public spots → FARMER private fields only.
-# hunting_ground added (4 towns). COOK pipeline live. Universal tier system verified.
+# hunting_ground added (4 towns). Universal tier system verified.
 # Simulation verification: 50 bots, 17+ ticks, 1332 actions, 0 errors.
 # =============================================================================
 
@@ -166,11 +169,13 @@ planned_gathering_spots:
     craft_consumers: [TANNER]
     assign_to_regions: [Heartlands, Crossroads]
 
-  # RANCHER needs multiple products eventually:
-  # - Raw Hide → TANNER → LEATHERWORKER
-  # - Wool → TAILOR
-  # - Milk/Eggs → COOK
-  # For now, Raw Hide is the priority (enables armor crafting chain)
+  # RANCHER livestock products (auto-produced by animals in daily tick):
+  # - Eggs (chicken) → COOK (Scrambled Eggs, Farm Breakfast)
+  # - Milk (cow) → COOK (Creamy Porridge, Farm Breakfast)
+  # - Wool (sheep) → TAILOR (future textile chain)
+  # - Raw Hide → TANNER → LEATHERWORKER (future leather chain)
+  # RANCHER buildings: chicken_coop (cap 5), dairy_barn (cap 3), sheep_pen (cap 4)
+  # Livestock require Grain feed every 3 ticks. No feed → hunger → death.
 
   # hunting_ground: MOVED to Section 1 (2026-02-17) — now LIVE with 4 towns
     gather_professions: [HUNTER]
@@ -212,13 +217,36 @@ professions:
   RANCHER:
     type: GATHERING
     unlock_level: 3
-    description: "Raises livestock. Provides hides, wool, and animal products."
-    bonus_spots: [pasture]
+    description: "Raises livestock in buildings. Animals auto-produce Eggs, Milk, Wool every 3 ticks if fed Grain."
+    asset_based: true
+    buildings:
+      chicken_coop: { baseCost: 100, levelRequired: 3, capacity: 5, animal: chicken, product: Eggs }
+      dairy_barn: { baseCost: 150, levelRequired: 3, capacity: 3, animal: cow, product: Milk }
+      sheep_pen: { baseCost: 120, levelRequired: 5, capacity: 4, animal: sheep, product: Wool }
+    livestock:
+      chicken: { price: 30, maxAge: 120, feedCost: 1, product: Eggs, yield: "1-2" }
+      cow: { price: 80, maxAge: 180, feedCost: 2, product: Milk, yield: 1 }
+      sheep: { price: 50, maxAge: 150, feedCost: 1, product: Wool, yield: 1 }
+    feed_mechanics:
+      feed_interval: "every 3 ticks (currentDay % 3 === 0)"
+      feed_item: Grain
+      hunger_per_miss: 25
+      starving_threshold: 50   # Production halved
+      death_threshold: 100     # Animal dies
+    death_causes: [starvation, old_age, disease, predator]
+    random_events:
+      disease: { chance: "1%", health_loss: 25 }
+      predator: { chance: "0.5%", instant_kill: true }
     tier_unlocks:
-      APPRENTICE: { spots: [], status: NOT_YET_IMPLEMENTED, note: "No pasture spots exist yet" }
+      APPRENTICE: { level: "3-4", spots: [chicken_coop, dairy_barn], crops: [Eggs, Milk], assetBased: true }
+      JOURNEYMAN: { level: "5-6", spots: [sheep_pen], crops: [Wool], assetBased: true }
+      CRAFTSMAN: { status: NOT_YET_IMPLEMENTED }
+      EXPERT: { status: NOT_YET_IMPLEMENTED }
+      MASTER: { status: NOT_YET_IMPLEMENTED }
+      GRANDMASTER: { status: NOT_YET_IMPLEMENTED }
     feeds_into: [TANNER, TAILOR, COOK]
     status: EXISTS_IN_GAME
-    notes: "Pasture spots not yet created. Tier bonus framework in place."
+    notes: "APPRENTICE + JOURNEYMAN LIVE. Buildings as OwnedAsset (cropState=READY permanently). Livestock in separate Prisma model. Feed/produce automatic in daily tick Step 4d."
 
   FISHERMAN:
     type: GATHERING
@@ -286,10 +314,10 @@ professions:
     unlock_level: 3
     description: "Transforms raw ingredients into meals that restore HP and grant buffs."
     depends_on_gatherers: [FARMER, FISHERMAN, RANCHER, HUNTER, HERBALIST, LUMBERJACK]
-    raw_inputs: [apple, wild_berries, wild_herbs, raw_fish, grain, vegetables, game_meat, wood_logs]
+    raw_inputs: [apple, wild_berries, wild_herbs, raw_fish, grain, vegetables, game_meat, wood_logs, eggs, milk]
     intermediate_inputs: [flour]          # Things COOK makes and reuses
     output_categories: [FOOD, DRINK]
-    status: EXISTS_IN_GAME                # UPDATED: 2026-02-15 — 15 recipes implemented and deployed
+    status: EXISTS_IN_GAME                # UPDATED: 2026-02-17 — 18 recipes (15 original + 3 livestock)
     # See SECTION 4 for full recipe tree
 
   BREWER:
@@ -376,7 +404,7 @@ professions:
     intermediate_inputs: [wool_cloth]    # Eventually from RANCHER → TAILOR pipeline
     output_categories: [ARMOR, CLOTHING]
     status: PLANNED
-    notes: "Needs wool from RANCHER (not yet implemented as gathering resource)"
+    notes: "Wool now produced by RANCHER sheep. TAILOR recipes not yet implemented."
 
   ALCHEMIST:
     type: CRAFTING
@@ -875,6 +903,78 @@ cook_recipes:
     notes: "High sell value, moderate HP. Designed as a trade good — COOKs make these to sell, not eat."
     dependency_chain: "Grain →[COOK]→ Flour + Herbs + Berries →[COOK]→ Jam →[COOK]→ Spiced Pastry"
 
+  # --- LIVESTOCK RECIPES (RANCHER → COOK) --- ADDED 2026-02-17
+
+  scrambled_eggs:
+    id: cook-scrambled-eggs
+    name: Scrambled Eggs
+    description: "Fluffy scrambled eggs. Simple, nutritious farm food."
+    category: FOOD
+    base_value: 12
+    tier: 1
+    level_required: 3
+    profession: COOK
+    xp_reward: 10
+    inputs:
+      - item_id: eggs
+        quantity: 3
+    outputs:
+      - item_id: scrambled_eggs
+        quantity: 2
+    effects:
+      hp_regen: 3
+    dependency_chain: "Chicken →[RANCHER auto]→ Eggs →[COOK]→ Scrambled Eggs"
+
+  creamy_porridge:
+    id: cook-creamy-porridge
+    name: Creamy Porridge
+    description: "Rich porridge made with fresh milk. Hearty and warming."
+    category: FOOD
+    base_value: 15
+    tier: 1
+    level_required: 3
+    profession: COOK
+    xp_reward: 12
+    inputs:
+      - item_id: grain
+        quantity: 2
+      - item_id: milk
+        quantity: 1
+    outputs:
+      - item_id: creamy_porridge
+        quantity: 2
+    effects:
+      hp_regen: 2
+      buff: "constitution"
+      buff_value: 1
+    dependency_chain: "FARMER →[gather]→ Grain + Cow →[RANCHER auto]→ Milk →[COOK]→ Creamy Porridge"
+
+  farm_breakfast:
+    id: cook-farm-breakfast
+    name: Farm Breakfast
+    description: "A hearty farmer's breakfast — eggs, porridge, and fresh milk."
+    category: FOOD
+    base_value: 25
+    tier: 2
+    level_required: 5
+    profession: COOK
+    xp_reward: 18
+    inputs:
+      - item_id: eggs
+        quantity: 2
+      - item_id: milk
+        quantity: 1
+      - item_id: grain
+        quantity: 1
+    outputs:
+      - item_id: farm_breakfast
+        quantity: 2
+    effects:
+      hp_regen: 3
+      buff: "all_stats"
+      buff_value: 1
+    dependency_chain: "Chicken →[RANCHER auto]→ Eggs + Cow →[RANCHER auto]→ Milk + FARMER →[gather]→ Grain →[COOK]→ Farm Breakfast"
+
 
 # =============================================================================
 # SECTION 5: DEPENDENCY CHAINS (QUICK REFERENCE)
@@ -895,6 +995,11 @@ dependency_chains:
     Raw Fish + Wood Logs ──[COOK]──→ Grilled Fish
     Wild Herbs + Wood Logs ──[COOK]──→ Herbal Tea
     Vegetables + Wood Logs ──[COOK]──→ Vegetable Stew
+
+  livestock_food:
+    Eggs ──[COOK]──→ Scrambled Eggs
+    Grain + Milk ──[COOK]──→ Creamy Porridge
+    Eggs + Milk + Grain ──[COOK]──→ Farm Breakfast
 
   advanced_food:
     Flour + Wood Logs ──[COOK]──→ Bread Loaf
@@ -935,7 +1040,8 @@ dependency_chains:
 
   # --- TEXTILE CHAIN (RANCHER → TAILOR) ---
   clothing:
-    Wool ──[TAILOR]──→ Cloth ──[TAILOR]──→ Robes / Clothing
+    Sheep ──[RANCHER auto]──→ Wool ──[TAILOR]──→ Cloth ──[TAILOR]──→ Robes / Clothing
+    # Wool is now produced by RANCHER sheep. TAILOR recipes not yet implemented.
 
   # --- BUILDING CHAIN (MINER + LUMBERJACK → MASON) ---
   buildings:
@@ -956,6 +1062,13 @@ economy_rules:
     principle: "Each profession step adds value"
     example: "Apple (3g) → Apple Sauce (8g) → Apple Pie (18g) → Harvest Feast (35g)"
     rule: "Crafted output base_value > sum of input base_values"
+
+  rancher_economy:
+    principle: "RANCHER is a gold-sink profession that generates passive items via livestock"
+    chain: "FARMER →[gather]→ Grain →[RANCHER feed]→ Eggs/Milk/Wool →[COOK]→ meals"
+    gold_sinks: "Buildings (100-150g), livestock (30-80g), ongoing Grain feed"
+    grain_dependency: "RANCHERs must buy Grain from FARMERs or marketplace — creates cross-profession demand"
+    risk: "Animals die from starvation, old age, disease, predator — ongoing investment needed"
 
   scarcity_by_region:
     principle: "Different towns produce different resources"
@@ -1238,7 +1351,7 @@ implementation_order:
       - "Tier quality bonuses: +0, +1, +2, +3, +4, +5"
       - "FARMER: APPRENTICE=orchard only, private fields for Grain/Vegetables/Berries"
       - "HUNTER: APPRENTICE=hunting_ground (LIVE — no longer NOT_YET_IMPLEMENTED)"
-      - "RANCHER: asset-based (all tiers NOT_YET_IMPLEMENTED)"
+      - "RANCHER: APPRENTICE + JOURNEYMAN LIVE (buildings, livestock, feed/produce in daily tick)"
       - "MINER/LUMBERJACK/HERBALIST/FISHERMAN: APPRENTICE live, higher tiers NOT_YET_IMPLEMENTED"
       - "9 towns reassigned: 4→orchard, 1→fishing, 4→hunting_ground"
       - "Asset tiers: T1=L3 (Apprentice), T2=L7 (Craftsman), T3=L11 (Master)"
@@ -1285,11 +1398,45 @@ implementation_order:
       - "Weapons need: damage stats, durability, equipment slot"
       - "Requires: equipment system, combat integration"
 
+  rancher_livestock:
+    name: "RANCHER Livestock System"
+    status: COMPLETE
+    completed_date: 2026-02-17
+    description: "Full RANCHER livestock system — buildings, animals, feed/produce cycle, death mechanics, 3 COOK recipes, simulation bot support"
+    changes:
+      - "3 RANCHER buildings: Chicken Coop (100g, cap 5), Dairy Barn (150g, cap 3), Sheep Pen (120g, cap 4)"
+      - "3 livestock types: chicken (30g, Eggs), cow (80g, Milk), sheep (50g, Wool)"
+      - "Livestock Prisma model — individual animals with age, hunger, health, death tracking"
+      - "Daily tick Step 4d: auto feed (Grain), auto produce (Eggs/Milk/Wool), random events, death"
+      - "3 new COOK recipes: Scrambled Eggs (L3), Creamy Porridge (L3), Farm Breakfast (L5)"
+      - "5 new items: Eggs, Milk, Scrambled Eggs, Creamy Porridge, Farm Breakfast"
+      - "RANCHER bots in sim: buy buildings, buy livestock, buy Grain feed"
+      - "RANCHER APPRENTICE + JOURNEYMAN tiers activated"
+    files_modified:
+      - "shared/src/data/items/item-names.ts — 5 new items"
+      - "shared/src/data/assets.ts — RANCHER buildings, LIVESTOCK_DEFINITIONS, HUNGER_CONSTANTS"
+      - "shared/src/data/professions/tier-unlocks.ts — APPRENTICE/JOURNEYMAN activated"
+      - "shared/src/data/professions/gathering.ts — RANCHER tierUnlocks display"
+      - "shared/src/data/gathering.ts — EGGS/MILK/WOOL items, RESOURCE_MAP, PROFESSION_MAP"
+      - "shared/src/data/recipes/consumables.ts — 3 COOK recipes"
+      - "database/prisma/schema.prisma — Livestock model"
+      - "server/src/routes/rancher.ts — NEW: buy-livestock, buildings, livestock detail"
+      - "server/src/routes/assets.ts — RANCHER buy overrides, harvest guard"
+      - "server/src/jobs/daily-tick.ts — Step 4d livestock processing"
+      - "server/src/lib/simulation/engine.ts — RANCHER bot actions"
+      - "server/src/lib/simulation/actions.ts — buyLivestock, harvestAsset guard"
+      - "client/src/components/codex/CodexWorld.tsx — RESOURCE_TYPE_LABELS"
+    gold_sinks:
+      building_purchase: "100-150g per building (3 slots)"
+      livestock_purchase: "30-80g per animal"
+      grain_feed: "Ongoing — 1-2 Grain per animal every 3 ticks"
+      total_setup: "~400-600g for full 3-building RANCHER setup"
+
   phase_3:
     name: "RANCHER → TANNER → LEATHERWORKER (Leather Chain)"
     status: PLANNED
     tasks:
-      - "Add pasture gathering spots"
+      - "Raw Hide production from RANCHER (extend livestock or add butcher mechanic)"
       - "Create TANNER recipes (hide → leather)"
       - "Create LEATHERWORKER recipes (leather → armor/bags)"
       - "Requires: armor stats, equipment system"
@@ -1357,9 +1504,24 @@ asset_ownership:
     LUMBERJACK: [timber_plot]
     FISHERMAN: [fishing_rights]
     HERBALIST: [herb_garden_plot]
-    RANCHER: [pasture_lease]
+    RANCHER: [chicken_coop, dairy_barn, sheep_pen]
     HUNTER: [hunting_ground_rights]
 
   residency_rules:
     purchase: "Must be RESIDENT (homeTownId) of the town"
     plant_harvest: "Must be PRESENT (currentTownId) in the town"
+
+  # UPDATED: 2026-02-17 — RANCHER livestock subsystem
+  rancher_livestock:
+    overview: "RANCHER buildings permanently READY (no plant/harvest cycle). Livestock are separate entities."
+    building_types:
+      chicken_coop: { baseCost: 100, levelRequired: 3, capacity: 5, animal: chicken }
+      dairy_barn: { baseCost: 150, levelRequired: 3, capacity: 3, animal: cow }
+      sheep_pen: { baseCost: 120, levelRequired: 5, capacity: 4, animal: sheep }
+    lifecycle:
+      buy_building: "POST /api/assets/buy (sets cropState=READY permanently)"
+      buy_animal: "POST /api/rancher/buy-livestock (NPC vendor, fixed price)"
+      feed: "Auto in daily tick Step 4d (consumes Grain from owner's inventory)"
+      produce: "Auto in daily tick Step 4d (creates product items in owner's inventory)"
+      death: "Auto in daily tick (starvation, old_age, disease, predator)"
+    daily_tick_step: "4d (after Step 4c asset growth, before Step 5)"
