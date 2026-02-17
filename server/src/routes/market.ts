@@ -191,6 +191,7 @@ router.get('/browse', authGuard, characterGuard, cache(30), async (req: Authenti
     const maxPrice = req.query.maxPrice ? parseInt(req.query.maxPrice as string, 10) : undefined;
     const rarity = req.query.rarity as string | undefined;
     const search = req.query.search as string | undefined;
+    const isBeverage = req.query.isBeverage === 'true';
     const sort = (req.query.sort as string) || 'newest';
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
@@ -207,6 +208,7 @@ router.get('/browse', authGuard, characterGuard, cache(30), async (req: Authenti
           ...(type ? { type: type as any } : {}),
           ...(rarity ? { rarity: rarity as any } : {}),
           ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}),
+          ...(isBeverage ? { isBeverage: true } : {}),
         },
       },
       ...(minPrice !== undefined || maxPrice !== undefined

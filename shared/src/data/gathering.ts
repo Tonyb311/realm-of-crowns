@@ -159,6 +159,30 @@ export const WILD_GAME_MEAT: GatheringItem = {
   icon: '\uD83C\uDF56',
 };
 
+// --- FARMER T2 Field Crops (Hops, Grapes) ---
+
+export const HOPS: GatheringItem = {
+  templateName: 'Hops',
+  type: 'MATERIAL',
+  description: 'Aromatic hop flowers, essential for brewing fine beer.',
+  isFood: false,
+  shelfLifeDays: null,
+  foodBuff: null,
+  baseValue: 6,
+  icon: '\uD83C\uDF3F',
+};
+
+export const GRAPES: GatheringItem = {
+  templateName: 'Grapes',
+  type: 'MATERIAL',
+  description: 'Plump, juicy grapes, ready to be pressed into wine.',
+  isFood: false,
+  shelfLifeDays: null,
+  foodBuff: null,
+  baseValue: 6,
+  icon: '\uD83C\uDF47',
+};
+
 // --- RANCHER Livestock Products ---
 
 export const EGGS: GatheringItem = {
@@ -212,6 +236,9 @@ export const RESOURCE_MAP: Record<string, { item: GatheringItem; icon: string }>
   grain_field:     { item: GRAIN,           icon: '\uD83C\uDF3E' },
   vegetable_patch: { item: VEGETABLES,      icon: '\uD83E\uDD55' },
   berry:           { item: WILD_BERRIES,    icon: '\uD83C\uDF53' },
+  // FARMER T2 private fields
+  hop_field:       { item: HOPS,            icon: '\uD83C\uDF3F' },
+  vineyard:        { item: GRAPES,          icon: '\uD83C\uDF47' },
   // RANCHER buildings (asset-based, not public spots)
   chicken_coop:    { item: EGGS,            icon: '\uD83D\uDC14' },
   dairy_barn:      { item: MILK,            icon: '\uD83D\uDC04' },
@@ -231,6 +258,9 @@ export const GATHER_SPOT_PROFESSION_MAP: Record<string, string> = {
   quarry:          'MINER',
   clay:            'MINER',
   hunting_ground:  'HUNTER',
+  // FARMER T2 private fields
+  hop_field:       'FARMER',
+  vineyard:        'FARMER',
   // RANCHER buildings
   chicken_coop:    'RANCHER',
   dairy_barn:      'RANCHER',

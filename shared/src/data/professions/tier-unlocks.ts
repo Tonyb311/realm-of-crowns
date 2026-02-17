@@ -71,8 +71,7 @@ export const FARMER_CROP_UNLOCKS: ProfessionTierUnlocks = {
     tier: 3,
     crops: ['Hops', 'Grapes'],
     spotTypes: ['hop_field', 'vineyard'],
-    description: 'Brewing and winemaking ingredients — feeds the Brewer profession',
-    NOT_YET_IMPLEMENTED: true,
+    description: 'Hops and Grapes — feeds the Brewer profession. Grow in T2 private fields.',
   },
   EXPERT: {
     tier: 4,

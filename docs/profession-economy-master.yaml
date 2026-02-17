@@ -203,13 +203,13 @@ professions:
     tier_unlocks:
       APPRENTICE: { level: "3-4", spots: [grain_field, vegetable_patch], yield_bonus: "+0%" }
       JOURNEYMAN: { level: "5-6", spots: [orchard, berry], yield_bonus: "+25%" }
-      CRAFTSMAN: { level: "7-8", spots: [hops_field, vineyard], yield_bonus: "+50%", status: NOT_YET_IMPLEMENTED }
+      CRAFTSMAN: { level: "7-8", spots: [hop_field, vineyard], yield_bonus: "+50%", status: EXISTS_IN_GAME }
       EXPERT: { level: "9-10", spots: [cotton_field, flax_field], yield_bonus: "+75%", status: NOT_YET_IMPLEMENTED }
       MASTER: { level: "11-12", spots: [rare_herb, exotic_fruit], yield_bonus: "+100%", status: NOT_YET_IMPLEMENTED }
       GRANDMASTER: { level: "13+", spots: [legendary_crop, magical_seedling], yield_bonus: "+150%", status: NOT_YET_IMPLEMENTED }
     feeds_into: [COOK, BREWER]
     status: EXISTS_IN_GAME
-    notes: "Tier-scaled bonus replaced flat +50%. APPRENTICE/JOURNEYMAN spots live; CRAFTSMAN+ Coming Soon."
+    notes: "Tier-scaled bonus replaced flat +50%. APPRENTICE/JOURNEYMAN/CRAFTSMAN spots live; EXPERT+ Coming Soon."
 
   RANCHER:
     type: GATHERING
@@ -319,14 +319,28 @@ professions:
 
   BREWER:
     type: CRAFTING
-    unlock_level: 5
-    description: "Brews ale, wine, mead, and spirits from agricultural ingredients."
+    primary_stat: CON
+    unlock_level: 3
+    description: "Transforms grain, fruit, and herbs into ales, ciders, wines, and cordials. Beverages grant stat buffs."
     depends_on_gatherers: [FARMER, HERBALIST]
-    raw_inputs: [grain, wild_berries, wild_herbs, apple]
+    raw_inputs: [grain, apples, wild_berries, wild_herbs, hops, grapes]
     intermediate_inputs: []
     output_categories: [DRINK]
-    status: PLANNED
-    notes: "Second food-chain profession. Drinks provide buffs, not HP."
+    status: EXISTS_IN_GAME          # UPDATED: 2026-02-17 — 9 recipes (3 per tier)
+    recipes:
+      tier_1_apprentice:            # L3-L4
+        - { name: Ale, level: 3, inputs: "3x Grain", output: "2x Ale", buff: "+1 CON 30min" }
+        - { name: Apple Cider, level: 3, inputs: "3x Apples", output: "2x Apple Cider", buff: "+1 CHA 30min" }
+        - { name: Berry Cordial, level: 4, inputs: "3x Wild Berries + 1x Grain", output: "2x Berry Cordial", buff: "HP regen +2 30min" }
+      tier_2_journeyman:            # L5-L6
+        - { name: Strong Ale, level: 5, inputs: "4x Grain + 1x Wild Herbs", output: "2x Strong Ale", buff: "+2 STR 30min" }
+        - { name: Mulled Cider, level: 5, inputs: "3x Apples + 2x Wild Herbs", output: "2x Mulled Cider", buff: "+2 WIS 30min" }
+        - { name: Herbal Brew, level: 6, inputs: "3x Wild Herbs + 2x Grain", output: "2x Herbal Brew", buff: "HP regen +3 30min" }
+      tier_3_craftsman:             # L7-L8 (requires FARMER Craftsman Hops/Grapes)
+        - { name: Hopped Beer, level: 7, inputs: "3x Grain + 2x Hops", output: "2x Hopped Beer", buff: "+3 CON +1 STR 40min" }
+        - { name: Grape Wine, level: 7, inputs: "4x Grapes", output: "2x Grape Wine", buff: "+3 CHA +1 WIS 40min" }
+        - { name: Pale Ale, level: 8, inputs: "3x Grain + 2x Hops + 1x Wild Herbs", output: "2x Pale Ale", buff: "+2 STR +2 DEX 40min" }
+    economy_chain: "FARMER/HERBALIST gather ingredients -> BREWER crafts beverages -> Tavern/Market sells"
 
   SMELTER:
     type: CRAFTING

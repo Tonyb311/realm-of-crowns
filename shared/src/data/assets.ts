@@ -36,6 +36,8 @@ export const PROFESSION_ASSET_TYPES: Record<string, AssetTypeDefinition[]> = {
     { id: 'vegetable_patch', name: 'Vegetable Patch', spotType: 'vegetable_patch' },
     { id: 'apple_orchard', name: 'Apple Orchard', spotType: 'orchard' },
     { id: 'berry_field', name: 'Berry Field', spotType: 'berry' },
+    { id: 'hop_field', name: 'Hop Field', spotType: 'hop_field', levelRequired: 7 },
+    { id: 'vineyard', name: 'Vineyard', spotType: 'vineyard', levelRequired: 7 },
   ],
   MINER: [
     { id: 'iron_mine_claim', name: 'Iron Mine Claim', spotType: 'mine' },
@@ -94,7 +96,7 @@ export type CropState = typeof CROP_STATES[keyof typeof CROP_STATES];
 /** Crops available per field tier. Future items marked in comments. */
 export const FIELD_TIER_CROPS: Record<number, { available: string[]; future: string[] }> = {
   1: { available: ['Grain', 'Vegetables'], future: [] },
-  2: { available: ['Apples', 'Wild Berries'], future: ['Hops', 'Grapes'] },
+  2: { available: ['Apples', 'Wild Berries', 'Hops', 'Grapes'], future: [] },
   3: { available: [], future: ['Rare Herbs', 'Exotic Fruits', 'Cotton', 'Flax'] },
 };
 

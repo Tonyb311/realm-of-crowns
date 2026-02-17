@@ -55,6 +55,7 @@ const ALL_RACES = Object.values(Race);
 const ALL_CLASSES = ['warrior', 'mage', 'rogue', 'cleric', 'ranger', 'bard', 'psion'] as const;
 
 const GATHERING_PROFESSIONS = ['MINER', 'FARMER', 'LUMBERJACK', 'HERBALIST', 'FISHERMAN', 'HUNTER', 'RANCHER'];
+const ALL_SEED_PROFESSIONS = [...GATHERING_PROFESSIONS, 'COOK', 'BREWER'];
 
 const PROFILE_RACE_PREFERENCES: Record<BotProfile, Race[]> = {
   gatherer: [Race.HUMAN, Race.HARTHFOLK, Race.MOSSKIN, Race.ELF],
@@ -315,11 +316,11 @@ async function createSingleBot(
   // 10. Starting profession (if professionDistribution is configured OR diverse level L3+)
   let startingProfession: string | null = null;
   if (config.professionDistribution === 'even') {
-    // Round-robin through gathering professions
-    startingProfession = GATHERING_PROFESSIONS[index % GATHERING_PROFESSIONS.length];
+    // Round-robin through all professions (gathering + COOK + BREWER)
+    startingProfession = ALL_SEED_PROFESSIONS[index % ALL_SEED_PROFESSIONS.length];
   } else if (config.startingLevel === 'diverse' && startLevel >= 3) {
     // Diverse mode: L3+ bots get a profession (engine would assign one anyway at L3)
-    startingProfession = GATHERING_PROFESSIONS[index % GATHERING_PROFESSIONS.length];
+    startingProfession = ALL_SEED_PROFESSIONS[index % ALL_SEED_PROFESSIONS.length];
   }
   // Otherwise 'diverse' uses profile-based selection at runtime (existing engine logic)
 

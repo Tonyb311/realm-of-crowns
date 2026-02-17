@@ -41,6 +41,7 @@ const DiplomacyPage = React.lazy(() => import('./pages/DiplomacyPage'));
 const TravelPage = React.lazy(() => import('./pages/TravelPage'));
 const CodexPage = React.lazy(() => import('./pages/CodexPage'));
 const JobsBoardPage = React.lazy(() => import('./pages/JobsBoardPage'));
+const TavernPage = React.lazy(() => import('./pages/TavernPage'));
 
 // Landing page
 const LandingPage = React.lazy(() => import('./pages/LandingPage'));
@@ -102,6 +103,7 @@ function App() {
             <Route path="/diplomacy" element={<DiplomacyPage />} />
             <Route path="/travel" element={<TravelPage />} />
             <Route path="/jobs" element={<JobsBoardPage />} />
+            <Route path="/tavern" element={<TavernPage />} />
             <Route path="/codex" element={<CodexPage />} />
             <Route path="/codex/:section" element={<CodexPage />} />
           </Route>

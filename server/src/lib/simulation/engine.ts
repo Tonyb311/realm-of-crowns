@@ -317,13 +317,13 @@ async function handleNoProfession(
   } else {
     switch (bot.profile) {
       case 'gatherer':   profType = 'FARMER';      break;
-      case 'crafter':    profType = 'COOK';        break;
+      case 'crafter':    profType = Math.random() < 0.5 ? 'COOK' : 'BREWER'; break;
       case 'merchant':   profType = 'FARMER';      break;
       case 'warrior':    profType = 'MINER';       break;
       case 'politician': profType = 'FARMER';      break;
       case 'socialite':  profType = 'HERBALIST';   break;
       case 'explorer':   profType = 'LUMBERJACK';  break;
-      case 'balanced':   profType = 'COOK';        break;
+      case 'balanced':   profType = Math.random() < 0.5 ? 'COOK' : 'BREWER'; break;
       default:           profType = 'FARMER';      break;
     }
   }
@@ -389,6 +389,7 @@ export async function decideBotAction(
   const hasGathering = profs.some(p => GATHERING_PROF_SET.has(p));
   const hasCrafting = profs.some(p => CRAFTING_PROFESSIONS.has(p));
   const isCook = profs.includes('COOK');
+  const isBrewer = profs.includes('BREWER');
 
   // ── Current town info ──
   const townCache = await ensureTownCache();
@@ -570,6 +571,16 @@ export async function decideBotAction(
       } else if (currentSpotType === 'forest' && missing.includes('Wood Logs')) {
         shouldGather = true;
         gatherReason = 'Gathering Wood Logs (fuel for cooking)';
+      }
+    }
+
+    // BREWER: gather if current town produces a needed ingredient
+    if (!shouldGather && isBrewer) {
+      const missing = getMissingIngredients(invMap, recipes);
+      const spotItem = SPOT_TO_ITEM[currentSpotType || ''];
+      if (spotItem && missing.includes(spotItem)) {
+        shouldGather = true;
+        gatherReason = `Gathering ${spotItem} (needed for brewing)`;
       }
     }
 

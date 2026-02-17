@@ -11,6 +11,7 @@
 import { PrismaClient, ItemType, ItemRarity, ProfessionType, ProfessionTier, Prisma } from '@prisma/client';
 import { ALL_PROCESSING_RECIPES } from '@shared/data/recipes';
 import { COOK_RECIPES } from '@shared/data/recipes/cook';
+import { BREWER_CONSUMABLES } from '@shared/data/recipes/consumables';
 
 // ============================================================
 // ITEM TEMPLATE DEFINITIONS
@@ -475,15 +476,114 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'COOK',
     levelRequired: 1,
   },
+  // --- Brewer Beverages ---
   {
     name: 'Ale',
     type: 'CONSUMABLE',
     rarity: 'COMMON',
-    description: 'A hearty mug of ale. Boosts morale.',
-    stats: { staminaRestore: 20, moraleBoost: 5 },
+    description: 'A hearty mug of golden ale brewed from grain. Fortifies the body.',
+    stats: {},
     durability: 1,
     professionRequired: 'BREWER',
-    levelRequired: 1,
+    levelRequired: 3,
+    isBeverage: true,
+    foodBuff: { effect: 'buff_constitution', magnitude: 1, duration: 30 },
+  },
+  {
+    name: 'Apple Cider',
+    type: 'CONSUMABLE',
+    rarity: 'COMMON',
+    description: 'A crisp, amber cider pressed from ripe apples. Loosens tongues and lifts spirits.',
+    stats: {},
+    durability: 1,
+    professionRequired: 'BREWER',
+    levelRequired: 3,
+    isBeverage: true,
+    foodBuff: { effect: 'buff_charisma', magnitude: 1, duration: 30 },
+  },
+  {
+    name: 'Berry Cordial',
+    type: 'CONSUMABLE',
+    rarity: 'COMMON',
+    description: 'A sweet, ruby-hued cordial fermented from wild berries. Soothes wounds over time.',
+    stats: {},
+    durability: 1,
+    professionRequired: 'BREWER',
+    levelRequired: 4,
+    isBeverage: true,
+    foodBuff: { effect: 'hp_regen', magnitude: 2, duration: 30 },
+  },
+  {
+    name: 'Strong Ale',
+    type: 'CONSUMABLE',
+    rarity: 'FINE',
+    description: 'A potent double-brewed ale infused with wild herbs. A warrior\'s drink of choice.',
+    stats: {},
+    durability: 1,
+    professionRequired: 'BREWER',
+    levelRequired: 5,
+    isBeverage: true,
+    foodBuff: { effect: 'buff_strength', magnitude: 2, duration: 30 },
+  },
+  {
+    name: 'Mulled Cider',
+    type: 'CONSUMABLE',
+    rarity: 'FINE',
+    description: 'Warm spiced cider steeped with aromatic herbs. Sharpens the mind.',
+    stats: {},
+    durability: 1,
+    professionRequired: 'BREWER',
+    levelRequired: 5,
+    isBeverage: true,
+    foodBuff: { effect: 'buff_wisdom', magnitude: 2, duration: 30 },
+  },
+  {
+    name: 'Herbal Brew',
+    type: 'CONSUMABLE',
+    rarity: 'FINE',
+    description: 'A bitter, restorative brew of wild herbs and grain. Mends the body between battles.',
+    stats: {},
+    durability: 1,
+    professionRequired: 'BREWER',
+    levelRequired: 6,
+    isBeverage: true,
+    foodBuff: { effect: 'hp_regen', magnitude: 3, duration: 30 },
+  },
+  {
+    name: 'Hopped Beer',
+    type: 'CONSUMABLE',
+    rarity: 'SUPERIOR',
+    description: 'A complex, aromatic beer brewed with cultivated hops. Fortifies body and spirit alike.',
+    stats: {},
+    durability: 1,
+    professionRequired: 'BREWER',
+    levelRequired: 7,
+    isBeverage: true,
+    foodBuff: { effect: 'buff_constitution', magnitude: 3, duration: 40, secondaryEffect: 'buff_strength', secondaryMagnitude: 1 },
+  },
+  {
+    name: 'Grape Wine',
+    type: 'CONSUMABLE',
+    rarity: 'SUPERIOR',
+    description: 'A rich, fruity wine pressed from vineyard grapes. The drink of diplomats and scholars.',
+    stats: {},
+    durability: 1,
+    professionRequired: 'BREWER',
+    levelRequired: 7,
+    isBeverage: true,
+    foodBuff: { effect: 'buff_charisma', magnitude: 3, duration: 40, secondaryEffect: 'buff_wisdom', secondaryMagnitude: 1 },
+  },
+  {
+    name: 'Pale Ale',
+    type: 'CONSUMABLE',
+    rarity: 'SUPERIOR',
+    description: 'A light, crisp ale balanced with hops and herbs. Favoured by rangers and scouts.',
+    stats: {},
+    durability: 1,
+    professionRequired: 'BREWER',
+    levelRequired: 8,
+    isBeverage: true,
+    foodBuff: { effect: 'buff_strength', magnitude: 2, duration: 40, secondaryEffect: 'buff_dexterity', secondaryMagnitude: 2 },
   },
 ];
 
@@ -545,6 +645,8 @@ const RESOURCE_ITEMS: ResourceItemDef[] = [
   // Legacy references (used by non-processing recipes)
   { name: 'Herbs', type: 'MATERIAL', description: 'A bundle of gathered herbs with medicinal properties.' },
   { name: 'Grain', type: 'MATERIAL', description: 'Harvested grain, a staple crop.' },
+  { name: 'Hops', type: 'MATERIAL', description: 'Aromatic hop flowers, essential for brewing fine beer.' },
+  { name: 'Grapes', type: 'MATERIAL', description: 'Plump, juicy grapes, ready to be pressed into wine.' },
   { name: 'Fiber', type: 'MATERIAL', description: 'Plant fibers used for stringing bows and binding.' },
   { name: 'Lumber', type: 'MATERIAL', description: 'Cut and dried timber, ready for use.' },
   { name: 'Hide', type: 'MATERIAL', description: 'An animal hide, not yet tanned.' },
@@ -636,18 +738,7 @@ const CRAFTING_RECIPES: RecipeDef[] = [
     craftTime: 15,
     xpReward: 8,
   },
-  {
-    name: 'Brew Ale',
-    professionType: 'BREWER',
-    tier: 'APPRENTICE',
-    ingredients: [
-      { itemName: 'Grain', quantity: 2 },
-      { itemName: 'Herbs', quantity: 1 },
-    ],
-    resultName: 'Ale',
-    craftTime: 30,
-    xpReward: 15,
-  },
+  // (BREWER recipes now seeded from shared BREWER_CONSUMABLES data)
   {
     name: 'Craft Wooden Bow',
     professionType: 'WOODWORKER',
@@ -849,6 +940,54 @@ export async function seedRecipes(prisma: PrismaClient) {
 
   console.log(`  COOK recipes: ${COOK_RECIPES.length}`);
 
+  // ----- Seed BREWER Recipes (from shared data) -----
+  console.log('--- Seeding BREWER Recipes ---');
+
+  for (const recipe of BREWER_CONSUMABLES) {
+    const ingredients = recipe.inputs.map((inp) => {
+      const templateId = templateMap.get(inp.itemName);
+      if (!templateId) {
+        throw new Error(`Item template not found for input: ${inp.itemName} (recipe: ${recipe.name})`);
+      }
+      return { itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity };
+    });
+
+    const resultId = templateMap.get(recipe.output.itemName);
+    if (!resultId) {
+      throw new Error(`Item template not found for output: ${recipe.output.itemName} (recipe: ${recipe.name})`);
+    }
+
+    const recipeId = `recipe-${recipe.recipeId}`;
+    const tier = levelToTier(recipe.levelRequired);
+
+    await prisma.recipe.upsert({
+      where: { id: recipeId },
+      update: {
+        name: recipe.name,
+        professionType: recipe.professionRequired as ProfessionType,
+        tier,
+        ingredients,
+        result: resultId,
+        craftTime: recipe.craftTime,
+        xpReward: recipe.xpReward,
+      },
+      create: {
+        id: recipeId,
+        name: recipe.name,
+        professionType: recipe.professionRequired as ProfessionType,
+        tier,
+        ingredients,
+        result: resultId,
+        craftTime: recipe.craftTime,
+        xpReward: recipe.xpReward,
+      },
+    });
+
+    console.log(`  + ${recipe.name} (BREWER Lvl ${recipe.levelRequired})`);
+  }
+
+  console.log(`  BREWER recipes: ${BREWER_CONSUMABLES.length}`);
+
   // ----- Seed Crafting Recipes (non-processing) -----
   console.log('--- Seeding Crafting Recipes ---');
 
@@ -895,5 +1034,5 @@ export async function seedRecipes(prisma: PrismaClient) {
   }
 
   console.log(`  Crafting recipes: ${CRAFTING_RECIPES.length}`);
-  console.log(`  Total recipes: ${ALL_PROCESSING_RECIPES.length + COOK_RECIPES.length + CRAFTING_RECIPES.length}`);
+  console.log(`  Total recipes: ${ALL_PROCESSING_RECIPES.length + COOK_RECIPES.length + BREWER_CONSUMABLES.length + CRAFTING_RECIPES.length}`);
 }
