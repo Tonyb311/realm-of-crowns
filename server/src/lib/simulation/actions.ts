@@ -1180,15 +1180,19 @@ export async function partyTravel(bot: BotState): Promise<ActionResult> {
 export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]> {
   const results: ActionResult[] = [];
 
-  // 1. List surplus items (keep items needed for crafting, sell the rest)
+  // 1. List surplus items (keep items needed for THIS BOT's crafting, sell the rest)
   try {
-    // Build set of item names the bot needs for crafting
+    // Build set of item names the bot needs for its OWN professions' recipes
     const keepItems = new Set<string>();
     try {
       const recipesRes = await get('/crafting/recipes', bot.token);
       if (recipesRes.status >= 200 && recipesRes.status < 300) {
         const recipes: any[] = recipesRes.data?.recipes || recipesRes.data || [];
+        const botProfsUpper = new Set(bot.professions.map(p => p.toUpperCase()));
+        // Only keep ingredients for recipes this bot can actually craft
         for (const r of recipes) {
+          const rProf = (r.professionType || r.professionRequired || '').toUpperCase();
+          if (!botProfsUpper.has(rProf)) continue; // Skip recipes for other professions
           for (const inp of (r.ingredients || r.inputs || [])) {
             keepItems.add(inp.itemName || inp.name || '');
           }
@@ -1254,6 +1258,7 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
         // Try to buy missing ingredients — iterate until one succeeds or all fail
         if (missing.length > 0) {
           let bought = false;
+          const failReasons: string[] = [];
           for (const itemName of missing) {
             const buyResult = await buySpecificItem(bot, itemName);
             if (buyResult.success) {
@@ -1261,9 +1266,12 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
               bought = true;
               break; // max 1 buy per bot per tick
             }
+            failReasons.push(`${itemName}: ${buyResult.detail}`);
           }
           if (!bought) {
-            results.push({ success: false, detail: `[MarketBuy] ${bot.characterName}: tried ${missing.length} items (${missing.slice(0, 3).join(', ')}${missing.length > 3 ? '...' : ''}) — none available`, endpoint: '/market/buy (direct DB)' });
+            // Show first 3 failure reasons for diagnostics
+            const reasonStr = failReasons.slice(0, 3).join(' | ');
+            results.push({ success: false, detail: `[MarketBuy] ${bot.characterName}: tried ${missing.length} items — ${reasonStr}`, endpoint: '/market/buy (direct DB)' });
           }
         } else {
           results.push({ success: false, detail: `[MarketBuy] ${bot.characterName} (${[...botProfs].join('+')}): ${recipes.length} recipes, ${notCraftable.length} not craftable, 0 missing`, endpoint: '/market/buy (direct DB)' });
@@ -1809,7 +1817,7 @@ export async function buySpecificItem(bot: BotState, itemName: string, maxPrice?
     });
 
     if (listings.length === 0) {
-      return { success: false, detail: `No affordable ${itemName} on market (max ${Math.floor(max)}g)`, endpoint, httpStatus: 0, requestBody: { itemName, max }, responseBody: {} };
+      return { success: false, detail: `No ${itemName} on market (max ${Math.floor(max)}g)`, endpoint, httpStatus: 0, requestBody: { itemName, max }, responseBody: {} };
     }
 
     const listing = listings[0];

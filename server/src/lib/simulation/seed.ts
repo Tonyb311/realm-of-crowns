@@ -460,21 +460,29 @@ export async function cleanupBots(): Promise<{ deletedUsers: number; deletedChar
         where: { characterId: { in: charIds } },
       });
 
-      // ── Items (SetNull on ownerId/craftedById) ──
-      await tx.item.deleteMany({ where: { ownerId: { in: charIds } } });
-      await tx.item.updateMany({
-        where: { craftedById: { in: charIds } },
-        data: { craftedById: null },
-      });
-
-      // ── Market buy orders (Cascade on buyerId, but must clean before listings) ──
+      // ── Market buy orders (must clean before listings and items) ──
       await tx.marketBuyOrder.deleteMany({
         where: { buyer: { user: { isTestAccount: true } } },
       });
 
-      // ── Trade transactions (Restrict on buyerId/sellerId) ──
+      // ── Trade transactions (Restrict on buyerId/sellerId — must delete BEFORE items) ──
       await tx.tradeTransaction.deleteMany({
         where: { OR: [{ buyerId: { in: charIds } }, { sellerId: { in: charIds } }] },
+      });
+
+      // ── Market listings (references items — must delete BEFORE items) ──
+      await tx.marketListing.deleteMany({
+        where: { sellerId: { in: charIds } },
+      });
+
+      // ── Price history from test trades ──
+      // (PriceHistory doesn't reference characters so skip)
+
+      // ── Items (SetNull on ownerId/craftedById — after trade transactions + listings cleared) ──
+      await tx.item.deleteMany({ where: { ownerId: { in: charIds } } });
+      await tx.item.updateMany({
+        where: { craftedById: { in: charIds } },
+        data: { craftedById: null },
       });
 
       // ── Auction cycles (clean up orphaned cycles with no remaining listings/orders) ──

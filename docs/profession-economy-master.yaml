@@ -11,7 +11,7 @@
 #
 # LAST UPDATED: 2026-02-16
 # STATUS: FARMER + COOK pipeline fully implemented and deployed. All others skeleton/planned.
-# Round 2 bug fixes verified with 60-tick / 50-bot simulation (0 errors).
+# Market buying fix verified with 60-tick / 25-bot simulation (full economic loop working).
 # =============================================================================
 
 
@@ -985,6 +985,17 @@ economy_rules:
     effect: "Higher quality = better stats/effects + higher sell value"
     note: "Applies to crafting, not gathering. Gathering yield is quantity-based."
 
+  # UPDATED: 2026-02-16 — Market buying fix
+  simulation_market:
+    mode: "Auction-based (buy orders → auction resolution each tick)"
+    one_pass_cycle:
+      step_1: "All bots list surplus items (free action, items exceeding keepItems threshold)"
+      step_2: "All bots attempt one buy for missing crafting ingredients (free action)"
+      auction_resolution: "Phase 4 of tick resolves buy orders — winner gets item, loser refunded"
+    keepItems_logic: "Only keep items needed for THIS BOT's own profession recipes (not all recipes)"
+    buy_search: "Global market search (no town filter) — any bot can buy any listing"
+    pricing: "Sellers list at 15g flat. Buyers bid at asking + 15% (17g). Fee: 1g per transaction."
+
 
 # =============================================================================
 # SECTION 7: IMPLEMENTATION PRIORITY
@@ -1083,7 +1094,7 @@ implementation_order:
       market_verification:
         listings: 1489
         buys: 0
-        note: "Market infrastructure works. Zero buys because COOKs are self-sufficient (gather own ingredients). Non-bug behavioral pattern."
+        note: "Market infrastructure works. Zero buys due to keepItems bug (fixed in market_buy_fix phase)."
       travel_verification:
         total_travels: 455
         bots_multi_town: 22
@@ -1129,6 +1140,76 @@ implementation_order:
       - "✓ Fixed auction engine sim-mode timing bypass"
       - "✓ Added profession XP grant to processGatherSpotAction in daily-tick.ts"
       - "✓ Verified 60-tick simulation: 50 bots, 3000 actions, 0 errors"
+
+  # UPDATED: 2026-02-16
+  market_buy_fix:
+    name: "Market Buy Fix (Zero Purchases → Full Economic Loop)"
+    status: COMPLETE
+    completed_date: 2026-02-16
+    description: "Fixed 7 root causes preventing bot market purchases. Unlocked full economic loop: gather → list → buy → craft → sell."
+    bugs_fixed:
+      - "Root Cause 1: buySpecificItem used HTTP API (local, town-scoped) — rewrote to direct Prisma DB query (global market)"
+      - "Root Cause 2: resolveAllTownAuctions pre-filtered auction cycles by age in sim mode — fixed to check getSimulationTick()"
+      - "Root Cause 3: Field name mismatch (inputs vs ingredients) in recipe parsing — fixed in actions.ts and engine.ts"
+      - "Root Cause 4: No profession filter — /crafting/recipes returns ALL 161 recipes, COOK bot tried to buy SMELTER ingredients"
+      - "Root Cause 5: Only tried missing[0] — changed to iterate ALL missing items with raw material priority"
+      - "Root Cause 6: keepItems too broad — built from ALL profession recipes, blocking ALL raw materials from listings"
+      - "Root Cause 7: Cleanup FK constraint — reordered deletion (BuyOrders → TradeTransactions → MarketListings → Items)"
+    verification_run:
+      config: "25 bots, L1 start, 200g starting gold, 60 ticks"
+      total_actions: 2042
+      errors: 0
+      success_rate: "97.7% (46 expected buy failures — no supply for some items)"
+      action_breakdown:
+        gather: 1017
+        market_list: 453
+        market_buy: "90 (44 successful, 46 no-supply)"
+        market_auction: 16
+        craft: 72
+        travel: 373
+        travel_arrived: 126
+        road_encounter: 34
+        profession: 25
+      market_verification:
+        listings: 453
+        buy_attempts: 90
+        buy_success: 44
+        auction_resolutions: 16
+        unique_items_listed: 9
+        items_listed: [Apples, Vegetables, Grain, "Wood Logs", "Wild Herbs", "Iron Ore Chunks", "Stone Blocks", Clay, "Wild Berries"]
+        items_bought: [Apples, Vegetables, "Wild Herbs"]
+        gold_earned_by_sellers: 579
+        gold_spent_total: 1551
+      crafting_verification:
+        total_crafts: 72
+        cooks_crafting: 2
+        recipes_used: ["Apple Sauce", "Vegetable Stew", "Grill Fish"]
+      economic_loop_traced: "FARMER gathers Apples → lists on market → COOK buys → crafts Apple Sauce. Gold flows between bots."
+      level_distribution:
+        range: "L3-L9"
+        breakdown: { L3: 1, L4: 1, L5: 2, L6: 8, L7: 3, L8: 2, L9: 8 }
+      gold_distribution:
+        range: "12g-277g"
+        average: 162
+        total: 4056
+      profession_distribution:
+        FARMER: 9
+        COOK: 2
+        HERBALIST: 4
+        MINER: 2
+        LUMBERJACK: 4
+        FISHERMAN: 2
+        RANCHER: 2
+    tasks:
+      - "✓ Rewrote buySpecificItem to use direct Prisma DB query (global market search)"
+      - "✓ Fixed auction resolution timing for simulation mode"
+      - "✓ Fixed recipe field name mismatch (inputs/ingredients)"
+      - "✓ Added profession filter to buy logic (only buy ingredients for own recipes)"
+      - "✓ Iterate all missing ingredients, not just first"
+      - "✓ Scoped keepItems to bot's own profession recipes (ROOT CAUSE)"
+      - "✓ Fixed cleanup FK constraint ordering"
+      - "✓ Added stopRequested flag to runTicks for graceful stop"
+      - "✓ Verified 60-tick simulation: 25 bots, 2042 actions, full economic loop working"
 
   phase_2:
     name: "MINER → SMELTER → BLACKSMITH (Metal Chain)"

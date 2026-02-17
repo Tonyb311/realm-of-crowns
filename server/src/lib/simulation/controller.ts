@@ -76,6 +76,7 @@ class SimulationController {
   private tickHistory: SimTickResult[] = [];
   private botDayLogs: BotDayLog[] = [];
   private runProgress: { current: number; total: number } | null = null;
+  private stopRequested = false;
   private simLogger: SimulationLogger = new SimulationLogger();
 
   // ---------------------------------------------------------------------------
@@ -564,17 +565,23 @@ class SimulationController {
     if (this.runProgress) {
       throw new Error('A simulation run is already in progress');
     }
+    this.stopRequested = false;
     const results: SimTickResult[] = [];
     const progress = { current: 0, total: n };
     this.runProgress = progress;
     try {
       for (let i = 0; i < n; i++) {
+        if (this.stopRequested) {
+          logger.info(`Run stopped early at tick ${i}/${n}`);
+          break;
+        }
         progress.current = i + 1;
         const result = await this.runSingleTick();
         results.push(result);
       }
     } finally {
       this.runProgress = null;
+      this.stopRequested = false;
     }
     return results;
   }
@@ -634,10 +641,13 @@ class SimulationController {
 
   stop(): void {
     this.status = 'idle';
+    this.stopRequested = true;
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
+    // Clear run progress so a new run can start after stop
+    this.runProgress = null;
     logger.info('Simulation stopped');
   }
 
