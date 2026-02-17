@@ -109,17 +109,17 @@ export const MINER_ORE_UNLOCKS: ProfessionTierUnlocks = {
   },
   JOURNEYMAN: {
     tier: 2,
-    crops: ['Silver Ore'],
-    spotTypes: ['silver_vein'],
-    description: 'Precious metal deposits',
-    NOT_YET_IMPLEMENTED: true,
+    crops: ['Coal'],
+    spotTypes: ['coal_mine'],
+    description: 'Coal deposits — fuel for steel. Harvest from private coal mines (L5+).',
+    assetBased: true,
   },
   CRAFTSMAN: {
     tier: 3,
-    crops: ['Gold Ore'],
-    spotTypes: ['gold_vein'],
-    description: 'Deep precious metal mining',
-    NOT_YET_IMPLEMENTED: true,
+    crops: ['Silver Ore'],
+    spotTypes: ['silver_mine'],
+    description: 'Precious silver veins — feeds the Blacksmith. Mine from private claims (L7+).',
+    assetBased: true,
   },
   EXPERT: {
     tier: 4,
@@ -158,9 +158,9 @@ export const LUMBERJACK_WOOD_UNLOCKS: ProfessionTierUnlocks = {
   JOURNEYMAN: {
     tier: 2,
     crops: ['Hardwood'],
-    spotTypes: ['old_growth'],
-    description: 'Dense hardwood from mature trees',
-    NOT_YET_IMPLEMENTED: true,
+    spotTypes: ['hardwood_grove'],
+    description: 'Dense hardwood from old-growth trees. Harvest from private groves (L7+).',
+    assetBased: true,
   },
   CRAFTSMAN: {
     tier: 3,
@@ -212,10 +212,9 @@ export const HERBALIST_HERB_UNLOCKS: ProfessionTierUnlocks = {
   },
   CRAFTSMAN: {
     tier: 3,
-    crops: ['Rare Herbs', 'Spices'],
-    spotTypes: ['rare_herb_patch'],
-    description: 'Hard-to-find botanical specimens',
-    NOT_YET_IMPLEMENTED: true,
+    crops: ['Medicinal Herbs', 'Glowcap Mushrooms'],
+    spotTypes: ['herb'],
+    description: 'Medicinal herbs and luminescent fungi — feeds the Alchemist profession. L7+ at herb garden spots.',
   },
   EXPERT: {
     tier: 4,
@@ -260,10 +259,9 @@ export const FISHERMAN_FISH_UNLOCKS: ProfessionTierUnlocks = {
   },
   CRAFTSMAN: {
     tier: 3,
-    crops: ['Shellfish', 'Pearls'],
-    spotTypes: ['shellfish_bed'],
-    description: 'Shellfish harvesting and pearl diving',
-    NOT_YET_IMPLEMENTED: true,
+    crops: ['River Trout', 'Lake Perch'],
+    spotTypes: ['fishing'],
+    description: 'Skilled freshwater fishing for premium catch. +50% gathering bonus.',
   },
   EXPERT: {
     tier: 4,

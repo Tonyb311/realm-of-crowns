@@ -60,6 +60,28 @@ export const RAW_FISH: GatheringItem = {
   icon: '\uD83D\uDC1F',
 };
 
+export const RIVER_TROUT: GatheringItem = {
+  templateName: 'River Trout',
+  type: 'MATERIAL',
+  description: 'A prized freshwater fish with firm, flavorful flesh. Only skilled fishermen can consistently land these.',
+  isFood: false,
+  shelfLifeDays: null,
+  foodBuff: null,
+  baseValue: 22,
+  icon: '\uD83D\uDC1F',
+};
+
+export const LAKE_PERCH: GatheringItem = {
+  templateName: 'Lake Perch',
+  type: 'MATERIAL',
+  description: 'A large, meaty lake fish. Its delicate flavor makes it the centerpiece of fine cuisine.',
+  isFood: false,
+  shelfLifeDays: null,
+  foodBuff: null,
+  baseValue: 25,
+  icon: '\uD83D\uDC1F',
+};
+
 export const WILD_BERRIES: GatheringItem = {
   templateName: 'Wild Berries',
   type: 'CONSUMABLE',
@@ -183,6 +205,67 @@ export const GRAPES: GatheringItem = {
   icon: '\uD83C\uDF47',
 };
 
+// --- MINER T2/T3 Private Assets (Coal, Silver Ore) ---
+
+export const COAL: GatheringItem = {
+  templateName: 'Coal',
+  type: 'MATERIAL',
+  description: 'Dense black lumite fuel, essential for smelting steel and forging advanced metalwork.',
+  isFood: false,
+  shelfLifeDays: null,
+  foodBuff: null,
+  baseValue: 12,
+  icon: '\u26AB',
+};
+
+export const SILVER_ORE: GatheringItem = {
+  templateName: 'Silver Ore',
+  type: 'MATERIAL',
+  description: 'Lustrous silver-veined rock prized by blacksmiths and jewelers alike.',
+  isFood: false,
+  shelfLifeDays: null,
+  foodBuff: null,
+  baseValue: 30,
+  icon: '\uD83E\uDEA8',
+};
+
+// --- LUMBERJACK T2 Private Asset (Hardwood) ---
+
+export const HARDWOOD: GatheringItem = {
+  templateName: 'Hardwood',
+  type: 'MATERIAL',
+  description: 'Dense, slow-grown timber from old-growth trees. Superior for tool handles and shields.',
+  isFood: false,
+  shelfLifeDays: null,
+  foodBuff: null,
+  baseValue: 25,
+  icon: '\uD83E\uDEB5',
+};
+
+// --- HERBALIST T3 Resources (L7+ at herb spots) ---
+
+export const MEDICINAL_HERBS: GatheringItem = {
+  templateName: 'Medicinal Herbs',
+  type: 'MATERIAL',
+  description: 'Potent herbs with proven healing properties, identifiable only by skilled herbalists.',
+  isFood: false,
+  shelfLifeDays: null,
+  foodBuff: null,
+  baseValue: 28,
+  icon: '\uD83C\uDF3F',
+};
+
+export const GLOWCAP_MUSHROOMS: GatheringItem = {
+  templateName: 'Glowcap Mushrooms',
+  type: 'MATERIAL',
+  description: 'Luminescent fungi found in shaded groves, prized by alchemists for their arcane reagent properties.',
+  isFood: false,
+  shelfLifeDays: null,
+  foodBuff: null,
+  baseValue: 32,
+  icon: '\uD83C\uDF44',
+};
+
 // --- RANCHER Livestock Products ---
 
 export const EGGS: GatheringItem = {
@@ -239,6 +322,11 @@ export const RESOURCE_MAP: Record<string, { item: GatheringItem; icon: string }>
   // FARMER T2 private fields
   hop_field:       { item: HOPS,            icon: '\uD83C\uDF3F' },
   vineyard:        { item: GRAPES,          icon: '\uD83C\uDF47' },
+  // MINER T2/T3 private assets
+  coal_mine:       { item: COAL,            icon: '\u26AB' },
+  silver_mine:     { item: SILVER_ORE,      icon: '\uD83E\uDEA8' },
+  // LUMBERJACK T2 private asset
+  hardwood_grove:  { item: HARDWOOD,        icon: '\uD83E\uDEB5' },
   // RANCHER buildings (asset-based, not public spots)
   chicken_coop:    { item: EGGS,            icon: '\uD83D\uDC14' },
   dairy_barn:      { item: MILK,            icon: '\uD83D\uDC04' },
@@ -261,6 +349,11 @@ export const GATHER_SPOT_PROFESSION_MAP: Record<string, string> = {
   // FARMER T2 private fields
   hop_field:       'FARMER',
   vineyard:        'FARMER',
+  // MINER T2/T3 private assets
+  coal_mine:       'MINER',
+  silver_mine:     'MINER',
+  // LUMBERJACK T2 private asset
+  hardwood_grove:  'LUMBERJACK',
   // RANCHER buildings
   chicken_coop:    'RANCHER',
   dairy_barn:      'RANCHER',

@@ -26,6 +26,7 @@ export interface BotState {
   level: number;
   professions: string[];
   professionLevels: Record<string, number>;  // profession name -> level
+  professionSpecializations: Record<string, string>;  // profession name -> specialization (e.g. BLACKSMITH -> TOOLSMITH)
   lastActionAt: number;
   lastAction: string | null;
   actionsCompleted: number;

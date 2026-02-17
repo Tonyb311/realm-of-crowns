@@ -117,6 +117,7 @@ export interface FinishedGoodsRecipe {
   outputStats: WeaponStats | ArmorStats | ConsumableStats | Record<string, number>;
   equipSlot?: EquipSlot;
   classRestrictions?: string[];
+  specialization?: string | null;  // e.g. 'TOOLSMITH' | 'WEAPONSMITH' | 'ARMORER'
 }
 
 // --- Armor stats ---
@@ -161,6 +162,8 @@ export type ConsumableEffect =
   | 'damage_ice'
   | 'damage_lightning'
   | 'damage_healing'
+  | 'cure_all'
+  | 'poison_immunity'
   | 'sustenance';
 
 export interface ConsumableStats {

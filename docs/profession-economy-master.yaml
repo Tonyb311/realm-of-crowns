@@ -9,12 +9,16 @@
 # input back to its source (gathered or crafted) → repeat until you hit
 # a raw gathered resource.
 #
-# LAST UPDATED: 2026-02-17
+# LAST UPDATED: 2026-02-20
 # STATUS: All 7 gathering professions formalized and LIVE. RANCHER livestock system LIVE.
-# COOK recipes expanded: +3 livestock recipes.
+# COOK recipes expanded: +3 livestock recipes, +7 fish recipes (3 Journeyman, 4 Craftsman).
+# FISHERMAN Craftsman tier LIVE: River Trout (22g), Lake Perch (25g) at fishing spots for L7+.
 # Single-town residency LIVE — one free cottage in home town, 500g relocation with 30-day
 # cooldown, building construction restricted to home town, remote market listing from storage.
-# Simulation verification: 50 bots, 17+ ticks, 1332 actions, 0 errors.
+# EQUIPMENT SYSTEM LIVE — 6 slots (WEAPON, OFF_HAND, HEAD, BODY, LEGS, TOOL), dedicated
+# TOOL slot separate from weapons, tool yield bonus + bare-hands penalty on gathering,
+# equip/unequip free action, computed combat stats, simulation bot tool management.
+# BLACKSMITH specializations LIVE — Toolsmith, Weaponsmith, Armorer branches at L7.
 # =============================================================================
 
 
@@ -71,6 +75,24 @@ gathering_spot_types:
     gather_professions: [FISHERMAN]
     craft_consumers: [COOK]
     regions: [Crossroads, Shadowmere, Suncoast]
+    tiered_resources:  # UPDATED: 2026-02-20
+      L3-6: Raw Fish only
+      L7-8: { Raw Fish: 30%, River Trout: 35%, Lake Perch: 35% }
+    premium_resources:
+      river_trout:
+        name: River Trout
+        item_id: river_trout
+        category: MATERIAL
+        base_value: 22
+        description: "A prized freshwater fish with firm, flavorful flesh."
+        min_level: 7
+      lake_perch:
+        name: Lake Perch
+        item_id: lake_perch
+        category: MATERIAL
+        base_value: 25
+        description: "A large, meaty lake fish for fine cuisine."
+        min_level: 7
 
   forest:
     resource: Wood Logs
@@ -119,6 +141,75 @@ gathering_spot_types:
     gather_professions: [MINER]
     craft_consumers: [MASON, ALCHEMIST]
     regions: [Ashenfang, Shadowmere, Suncoast]
+
+  coal_mine:
+    resource: Coal
+    item_id: coal
+    category: MATERIAL
+    base_value: 12
+    yield: 1-2
+    edible: false
+    description: "Fuel for steel forging. Mined from private coal mines by MINER L5+."
+    gather_professions: [MINER]
+    craft_consumers: [BLACKSMITH]
+    asset_based: true
+    level_required: 5
+    status: LIVE
+
+  silver_mine:
+    resource: Silver Ore
+    item_id: silver_ore
+    category: MATERIAL
+    base_value: 30
+    yield: 1-2
+    edible: false
+    description: "Precious ore for advanced smithing. Mined from private claims by MINER L7+."
+    gather_professions: [MINER]
+    craft_consumers: [BLACKSMITH]
+    asset_based: true
+    level_required: 7
+    status: LIVE
+
+  hardwood_grove:
+    resource: Hardwood
+    item_id: hardwood
+    category: MATERIAL
+    base_value: 25
+    yield: 1-2
+    edible: false
+    description: "Dense old-growth timber. Harvested from private groves by LUMBERJACK L7+."
+    gather_professions: [LUMBERJACK]
+    craft_consumers: [BLACKSMITH]
+    asset_based: true
+    level_required: 7
+    status: LIVE
+
+  # --- HERBALIST T3 RESOURCES (L7+ at herb spots, weighted random) ---
+  medicinal_herbs:
+    resource: Medicinal Herbs
+    item_id: medicinal_herbs
+    category: MATERIAL
+    base_value: 28
+    yield: 1-3
+    edible: false
+    description: "Potent herbs with proven healing properties. Gathered by HERBALIST L7+ at herb spots (35% chance)."
+    gather_professions: [HERBALIST]
+    craft_consumers: [ALCHEMIST]
+    level_required: 7
+    status: LIVE
+
+  glowcap_mushrooms:
+    resource: Glowcap Mushrooms
+    item_id: glowcap_mushrooms
+    category: MATERIAL
+    base_value: 32
+    yield: 1-3
+    edible: false
+    description: "Luminescent fungi prized by alchemists. Gathered by HERBALIST L7+ at herb spots (35% chance)."
+    gather_professions: [HERBALIST]
+    craft_consumers: [ALCHEMIST]
+    level_required: 7
+    status: LIVE
 
   hunting_ground:
     resource: Wild Game Meat
@@ -250,33 +341,38 @@ professions:
     unlock_level: 3
     description: "Catches fish from rivers, lakes, and the sea."
     bonus_spots: [fishing_pond]
-    tier_unlocks:
-      APPRENTICE: { level: "3-4", spots: [fishing], yield_bonus: "+0%" }
+    tier_unlocks:  # UPDATED: 2026-02-20 — Craftsman tier LIVE
+      APPRENTICE: { level: "3-4", spots: [fishing], yield_bonus: "+0%", resources: [Raw Fish] }
+      JOURNEYMAN: { level: "5-6", spots: [fishing], yield_bonus: "+25%", resources: [Raw Fish] }
+      CRAFTSMAN: { level: "7-8", spots: [fishing], yield_bonus: "+50%", resources: [Raw Fish, River Trout, Lake Perch], weights: "30/35/35" }
     feeds_into: [COOK]
     status: EXISTS_IN_GAME
-    notes: "Tier bonus active for fishing spots. Higher tiers NOT_YET_IMPLEMENTED."
+    notes: "APPRENTICE through CRAFTSMAN LIVE. Craftsman unlocks River Trout (22g) and Lake Perch (25g) at fishing spots."
 
   LUMBERJACK:
     type: GATHERING
     unlock_level: 3
     description: "Fells trees and prepares timber."
-    bonus_spots: [forest]
+    bonus_spots: [forest, hardwood_grove]
     tier_unlocks:
-      APPRENTICE: { level: "3-4", spots: [forest], yield_bonus: "+0%" }
-    feeds_into: [WOODWORKER, FLETCHER, MASON, SCRIBE, COOK]
+      APPRENTICE: { level: "3-10", spots: [forest], yield_bonus: "+0%" }
+      JOURNEYMAN: { level: "11-25", spots: [hardwood_grove], yield_bonus: "+25%", asset_based: true }
+    feeds_into: [WOODWORKER, FLETCHER, MASON, SCRIBE, COOK, BLACKSMITH]
     status: EXISTS_IN_GAME
-    notes: "Tier bonus active for forest spots. Higher tiers NOT_YET_IMPLEMENTED."
+    notes: "Hardwood Grove (L7+ asset) now LIVE for BLACKSMITH supply chain."
 
   MINER:
     type: GATHERING
     unlock_level: 3
     description: "Extracts ore, stone, gems, and clay from the earth."
-    bonus_spots: [mine, quarry, clay_pit]
+    bonus_spots: [mine, quarry, clay_pit, coal_mine, silver_mine]
     tier_unlocks:
-      APPRENTICE: { level: "3-4", spots: [mine, quarry, clay], yield_bonus: "+0%" }
-    feeds_into: [SMELTER, MASON, JEWELER]
+      APPRENTICE: { level: "3-10", spots: [mine, quarry, clay], yield_bonus: "+0%" }
+      JOURNEYMAN: { level: "11-25", spots: [coal_mine], yield_bonus: "+25%", asset_based: true }
+      CRAFTSMAN: { level: "26+", spots: [silver_mine], yield_bonus: "+50%", asset_based: true }
+    feeds_into: [SMELTER, MASON, JEWELER, BLACKSMITH]
     status: EXISTS_IN_GAME
-    notes: "Tier bonus active for mine/quarry/clay spots. Higher tiers NOT_YET_IMPLEMENTED."
+    notes: "Coal Mine (L5+ asset), Silver Mine (L7+ asset) now LIVE for BLACKSMITH supply chain."
 
   HERBALIST:
     type: GATHERING
@@ -284,10 +380,12 @@ professions:
     description: "Forages for medicinal and magical herbs."
     bonus_spots: [herb_garden]              # UPDATED: 2026-02-15 — berry_thicket reassigned to FARMER
     tier_unlocks:
-      APPRENTICE: { level: "3-4", spots: [herb], yield_bonus: "+0%" }
+      APPRENTICE: { level: "3-4", spots: [herb], yield_bonus: "+0%", resource: "Wild Herbs" }
+      JOURNEYMAN: { level: "5-6", spots: [herb], yield_bonus: "+25%", resource: "Wild Herbs" }
+      CRAFTSMAN: { level: "7-8", spots: [herb], yield_bonus: "+50%", resources: ["Wild Herbs (30%)", "Medicinal Herbs (35%)", "Glowcap Mushrooms (35%)"] }
     feeds_into: [ALCHEMIST, COOK, BREWER]
     status: EXISTS_IN_GAME
-    notes: "Tier bonus active for herb spots. Higher tiers NOT_YET_IMPLEMENTED."
+    notes: "All tiers through CRAFTSMAN now LIVE. L7+ HERBALIST gathers tiered resources at herb spots (weighted random). Medicinal Herbs (28g) and Glowcap Mushrooms (32g) feed ALCHEMIST T3 recipes."
 
   HUNTER:
     type: GATHERING
@@ -309,12 +407,16 @@ professions:
   COOK:
     type: CRAFTING
     unlock_level: 3
-    description: "Transforms raw ingredients into meals that restore HP and grant buffs."
+    description: "Transforms raw ingredients into meals that restore HP and grant buffs. The most connected crafter — buys from FARMER, FISHERMAN, HERBALIST, LUMBERJACK, and RANCHER."
     depends_on_gatherers: [FARMER, FISHERMAN, RANCHER, HUNTER, HERBALIST, LUMBERJACK]
-    raw_inputs: [apple, wild_berries, wild_herbs, raw_fish, grain, vegetables, game_meat, wood_logs, eggs, milk]
+    raw_inputs: [apple, wild_berries, wild_herbs, raw_fish, river_trout, lake_perch, grain, vegetables, game_meat, wood_logs, eggs, milk]
     intermediate_inputs: [flour]          # Things COOK makes and reuses
     output_categories: [FOOD, DRINK]
-    status: EXISTS_IN_GAME                # UPDATED: 2026-02-17 — 18 recipes (15 original + 3 livestock)
+    status: EXISTS_IN_GAME                # UPDATED: 2026-02-20 — 25 recipes (15 original + 3 livestock + 7 fish)
+    tier_recipes:  # UPDATED: 2026-02-20
+      APPRENTICE: [Flour, Apple Sauce, Porridge, Berry Jam, Herbal Tea, Vegetable Stew, Scrambled Eggs, Creamy Porridge]
+      JOURNEYMAN: [Bread Loaf, Apple Pie, Grilled Fish, Fish Stew, Smoked Fish, Seasoned Roast Veg, Berry Tart, Farm Breakfast]
+      CRAFTSMAN: [Harvest Feast, "Fisherman's Banquet", Spiced Pastry, Pan-Seared Trout, Perch Feast, "Fisherman's Pie", Smoked Trout Rations]
     # See SECTION 4 for full recipe tree
 
   BREWER:
@@ -357,12 +459,35 @@ professions:
   BLACKSMITH:
     type: CRAFTING
     unlock_level: 5
-    description: "Forges weapons and metal tools from ingots."
-    depends_on_gatherers: []             # Doesn't use raw resources directly
-    intermediate_inputs: [iron_ingot]    # From SMELTER
-    output_categories: [WEAPON, TOOL]
-    status: PLANNED
-    notes: "Requires SMELTER output. Classic 3-step chain: MINER → SMELTER → BLACKSMITH"
+    primary_stat: STR
+    description: "Forges weapons, tools, and armor from raw ores and wood."
+    depends_on_gatherers: [MINER, LUMBERJACK]
+    raw_inputs: [Iron Ore Chunks, Coal, Silver Ore, Wood Logs, Hardwood]
+    intermediate_inputs: [iron_ingot]    # From SMELTER (for higher-level weapon recipes)
+    output_categories: [WEAPON, TOOL, ARMOR]
+    status: LIVE
+    has_specializations: true
+    specializations:
+      TOOLSMITH:
+        name: "Toolsmith"
+        description: "Craft premium gathering tools with higher durability and yield bonuses."
+        exclusive_recipes: [Silver Pickaxe, Hardwood Hatchet, Hunter's Knife, Reinforced Hoe]
+      WEAPONSMITH:
+        name: "Weaponsmith"
+        description: "Forge advanced weapons with superior damage stats."
+        exclusive_recipes: [Silver Longsword, Silver Dagger, Silver Battleaxe, War Pick]
+      ARMORER:
+        name: "Armorer"
+        description: "Craft heavy armor and shields for maximum protection."
+        exclusive_recipes: [Silver-Studded Plate, Silver Helm, Hardwood Tower Shield, Reinforced Chain Leggings]
+    specialization_level: 7
+    specialization_permanent: true
+    recipe_count: 28  # 16 shared + 12 branch-exclusive
+    recipe_tiers:
+      apprentice: "7 recipes (L3-L4) — shared, using Iron Ore Chunks + Wood Logs"
+      journeyman: "9 recipes (L5-L6) — shared, adding Coal as fuel"
+      specialist: "12 recipes (L7-L8) — 4 per branch, using Silver Ore + Hardwood"
+    notes: "Two pathways: (1) Raw-ore recipes (L3-L8) for early crafting, (2) Ingot-based weapon recipes (L1-L75) for endgame via SMELTER chain"
 
   ARMORER:
     type: CRAFTING
@@ -420,12 +545,18 @@ professions:
   ALCHEMIST:
     type: CRAFTING
     unlock_level: 5
-    description: "Brews potions, elixirs, and magical reagents."
-    depends_on_gatherers: [HERBALIST]
-    raw_inputs: [wild_herbs]
+    primary_stat: INT
+    description: "Brews potions, salves, and elixirs from herbs, berries, and minerals."
+    depends_on_gatherers: [HERBALIST, FARMER]
+    raw_inputs: [wild_herbs, wild_berries, clay, medicinal_herbs, glowcap_mushrooms]
     intermediate_inputs: []
-    output_categories: [POTION, REAGENT]
-    status: PLANNED
+    output_categories: [POTION]
+    tier_unlocks:
+      APPRENTICE: { level: "3-4", recipes: ["Minor Healing Potion", "Antidote", "Berry Salve"] }
+      JOURNEYMAN: { level: "5-6", recipes: ["Healing Potion", "Elixir of Strength", "Elixir of Wisdom", "Poison Resistance Tonic"] }
+      CRAFTSMAN: { level: "7-8", recipes: ["Greater Healing Potion", "Elixir of Fortitude", "Glowcap Extract", "Universal Antidote"] }
+    status: EXISTS_IN_GAME
+    notes: "11 recipes across 3 tiers. First dedicated HERBALIST consumer. Potions marked isPotion=true, sold at Apothecary building. Supply chain: HERBALIST/FARMER → ALCHEMIST → Market."
 
   ENCHANTER:
     type: CRAFTING
@@ -986,6 +1117,191 @@ cook_recipes:
       buff_value: 1
     dependency_chain: "Chicken →[RANCHER auto]→ Eggs + Cow →[RANCHER auto]→ Milk + FARMER →[gather]→ Grain →[COOK]→ Farm Breakfast"
 
+  # --- FISH RECIPES (FISHERMAN → COOK) --- ADDED 2026-02-20
+
+  # Journeyman Fish (L5-6) — use Raw Fish from FISHERMAN Apprentice
+
+  grilled_fish_v2:   # Updates existing cook-grilled-fish to L5 with herbs
+    id: cook-grilled-fish
+    name: Grilled Fish
+    description: "Fresh fish grilled with wild herbs. Simple, wholesome, and filling."
+    category: FOOD
+    base_value: 22
+    tier: 2
+    level_required: 5
+    profession: COOK
+    xp_reward: 12
+    inputs:
+      - item_id: raw_fish
+        quantity: 2
+      - item_id: wild_herbs
+        quantity: 1
+    outputs:
+      - item_id: grilled_fish
+        quantity: 2
+    effects:
+      hp_regen: 2
+      duration_ticks: 3
+    dependency_chain: "FISHERMAN →[gather]→ Raw Fish + HERBALIST →[gather]→ Wild Herbs →[COOK]→ Grilled Fish"
+
+  fish_stew_v2:   # Updates existing cook-fish-stew inputs
+    id: cook-fish-stew
+    name: Fish Stew
+    description: "A hearty stew of fish, grain, and herbs. Warms the bones on cold nights."
+    category: FOOD
+    base_value: 28
+    tier: 2
+    level_required: 5
+    profession: COOK
+    xp_reward: 15
+    inputs:
+      - item_id: raw_fish
+        quantity: 3
+      - item_id: grain
+        quantity: 1
+      - item_id: wild_herbs
+        quantity: 1
+    outputs:
+      - item_id: fish_stew
+        quantity: 2
+    effects:
+      buff: "constitution"
+      buff_value: 2
+      duration_ticks: 3
+    dependency_chain: "FISHERMAN → Raw Fish + FARMER → Grain + HERBALIST → Wild Herbs →[COOK]→ Fish Stew"
+
+  smoked_fish:
+    id: cook-smoked-fish
+    name: Smoked Fish
+    description: "Fish cured over a wood fire. Keeps for days on the road."
+    category: FOOD
+    base_value: 18
+    tier: 2
+    level_required: 6
+    profession: COOK
+    xp_reward: 15
+    inputs:
+      - item_id: raw_fish
+        quantity: 3
+      - item_id: wood_logs
+        quantity: 1
+    outputs:
+      - item_id: smoked_fish
+        quantity: 3
+    effects:
+      hp_regen: 1
+      duration_ticks: 5
+    dependency_chain: "FISHERMAN → Raw Fish + LUMBERJACK → Wood Logs →[COOK]→ Smoked Fish"
+
+  # Craftsman Fish (L7-8) — use River Trout/Lake Perch from FISHERMAN Craftsman
+
+  pan_seared_trout:
+    id: cook-pan-seared-trout
+    name: Pan-Seared Trout
+    description: "Trout seared to perfection with herbs and apple glaze."
+    category: FOOD
+    base_value: 40
+    tier: 3
+    level_required: 7
+    profession: COOK
+    xp_reward: 25
+    inputs:
+      - item_id: river_trout
+        quantity: 2
+      - item_id: wild_herbs
+        quantity: 1
+      - item_id: apples
+        quantity: 1
+    outputs:
+      - item_id: pan_seared_trout
+        quantity: 2
+    effects:
+      buff: "dexterity"
+      buff_value: 3
+      hp_regen: 2
+      duration_ticks: 4
+    dependency_chain: "FISHERMAN L7+ → River Trout + HERBALIST → Wild Herbs + FARMER → Apples →[COOK]→ Pan-Seared Trout"
+
+  perch_feast:
+    id: cook-perch-feast
+    name: Perch Feast
+    description: "Roasted perch with grain bread and herb butter."
+    category: FOOD
+    base_value: 48
+    tier: 3
+    level_required: 7
+    profession: COOK
+    xp_reward: 28
+    inputs:
+      - item_id: lake_perch
+        quantity: 3
+      - item_id: grain
+        quantity: 2
+      - item_id: wild_herbs
+        quantity: 1
+    outputs:
+      - item_id: perch_feast
+        quantity: 2
+    effects:
+      buff: "constitution"
+      buff_value: 3
+      secondary_buff: "strength"
+      secondary_value: 2
+      duration_ticks: 4
+    dependency_chain: "FISHERMAN L7+ → Lake Perch + FARMER → Grain + HERBALIST → Wild Herbs →[COOK]→ Perch Feast"
+
+  fishermans_pie:
+    id: cook-fishermans-pie
+    name: Fisherman's Pie
+    description: "Golden-crusted pie with two kinds of fish, grain, and eggs."
+    category: FOOD
+    base_value: 55
+    tier: 3
+    level_required: 8
+    profession: COOK
+    xp_reward: 30
+    inputs:
+      - item_id: river_trout
+        quantity: 2
+      - item_id: lake_perch
+        quantity: 2
+      - item_id: grain
+        quantity: 2
+      - item_id: eggs
+        quantity: 1
+    outputs:
+      - item_id: fishermans_pie
+        quantity: 2
+    effects:
+      buff: "constitution"
+      buff_value: 4
+      hp_regen: 3
+      duration_ticks: 4
+    dependency_chain: "FISHERMAN L7+ → River Trout + Lake Perch + FARMER → Grain + RANCHER → Eggs →[COOK]→ Fisherman's Pie"
+
+  smoked_trout_rations:
+    id: cook-smoked-trout-rations
+    name: Smoked Trout Rations
+    description: "Premium smoked trout. Stays fresh for long journeys."
+    category: FOOD
+    base_value: 25
+    tier: 3
+    level_required: 8
+    profession: COOK
+    xp_reward: 25
+    inputs:
+      - item_id: river_trout
+        quantity: 3
+      - item_id: wood_logs
+        quantity: 2
+    outputs:
+      - item_id: smoked_trout_rations
+        quantity: 4
+    effects:
+      hp_regen: 2
+      duration_ticks: 5
+    dependency_chain: "FISHERMAN L7+ → River Trout + LUMBERJACK → Wood Logs →[COOK]→ Smoked Trout Rations"
+
 
 # =============================================================================
 # SECTION 5: DEPENDENCY CHAINS (QUICK REFERENCE)
@@ -1015,23 +1331,36 @@ dependency_chains:
   advanced_food:
     Flour + Wood Logs ──[COOK]──→ Bread Loaf
     Flour + Apple + Wood Logs ──[COOK]──→ Apple Pie
-    Fish + Herbs + Wood Logs ──[COOK]──→ Fish Stew
+    Raw Fish + Grain + Herbs ──[COOK L5]──→ Fish Stew
     Vegetables + Herbs + Wood Logs ──[COOK]──→ Seasoned Roast Vegetables
     Flour + Berry Jam + Wood Logs ──[COOK]──→ Berry Tart
+    Raw Fish + Wild Herbs ──[COOK L5]──→ Grilled Fish           # UPDATED 2026-02-20
+    Raw Fish + Wood Logs ──[COOK L6]──→ Smoked Fish             # ADDED 2026-02-20
 
   premium_food:
     Bread + Apple + Herbs + Wood Logs ──[COOK]──→ Harvest Feast
     Grilled Fish + Bread + Berry Jam + Wood Logs ──[COOK]──→ Fisherman's Banquet
     Flour + Herbs + Berry Jam + Wood Logs ──[COOK]──→ Spiced Pastry
 
+  # --- FISH CHAIN (FISHERMAN L7+ → COOK L7-8) --- ADDED 2026-02-20
+  premium_fish_food:
+    River Trout + Wild Herbs + Apples ──[COOK L7]──→ Pan-Seared Trout
+    Lake Perch + Grain + Wild Herbs ──[COOK L7]──→ Perch Feast
+    River Trout + Lake Perch + Grain + Eggs ──[COOK L8]──→ Fisherman's Pie
+    River Trout + Wood Logs ──[COOK L8]──→ Smoked Trout Rations
+    note: "Requires L7+ FISHERMAN gathering River Trout (22g) and Lake Perch (25g). COOK is the ONLY consumer of fish resources — 5 suppliers total."
+
   # --- FUEL CHAIN (LUMBERJACK → COOK) ---
   fuel:
-    Wood Logs ──[universal fuel]──→ All 15 COOK recipes require 1× Wood Logs
     note: "COOKs in non-forest towns must trade for wood. Creates LUMBERJACK→COOK dependency."
 
   # --- METAL CHAIN (MINER → SMELTER → BLACKSMITH/ARMORER) ---
-  metal_weapons:
-    Iron Ore ──[SMELTER]──→ Iron Ingot ──[BLACKSMITH]──→ Iron Sword / Axe / Tools
+  metal_weapons_endgame:
+    Iron Ore ──[SMELTER]──→ Iron Ingot ──[BLACKSMITH]──→ Iron Sword / Axe / Tools (L1-L75 ingot recipes)
+  metal_weapons_earlygame:
+    Iron Ore Chunks + Wood Logs ──[BLACKSMITH]──→ Iron Tools / Weapons / Armor (L3-L8 raw-ore recipes)
+    Coal + Iron Ore Chunks ──[BLACKSMITH]──→ Steel Tools / Weapons / Armor (L5-L6, Coal from private mine)
+    Silver Ore + Hardwood ──[BLACKSMITH@L7]──→ Specialist gear (Toolsmith / Weaponsmith / Armorer branch)
   metal_armor:
     Iron Ore ──[SMELTER]──→ Iron Ingot ──[ARMORER]──→ Chain Mail / Shield
     Raw Hide ──[TANNER]──→ Leather ──[ARMORER]──→ Reinforced Armor (ingot + leather)
@@ -1047,7 +1376,9 @@ dependency_chains:
 
   # --- MAGIC CHAIN (HERBALIST → ALCHEMIST → ENCHANTER) ---
   magic_items:
-    Wild Herbs ──[ALCHEMIST]──→ Potions / Reagents ──[ENCHANTER]──→ Enchanted Items
+    Wild Herbs + Wild Berries + Clay ──[ALCHEMIST T1-T2]──→ Potions (heal, buff, cure)
+    Medicinal Herbs + Glowcap Mushrooms + Clay ──[ALCHEMIST T3]──→ Greater Potions / Elixirs
+    Potions / Reagents ──[ENCHANTER]──→ Enchanted Items (future)
 
   # --- TEXTILE CHAIN (RANCHER → TAILOR) ---
   clothing:
@@ -1107,8 +1438,35 @@ economy_rules:
     principle: "Items break or are consumed, creating perpetual demand"
     food: "Consumed on use — gone forever"
     equipment: "Has durability — breaks after use, needs repair or replacement"
+    tools: "50-200 durability (by tier). -1 per gather action. Break at 0. Creates constant demand for BLACKSMITH crafted tools."
     potions: "Single use"
     buildings: "Require upkeep materials"
+
+  equipment_system:
+    principle: "6 equipment slots with computed combat stats"
+    slots:
+      WEAPON: { db_slot: MAIN_HAND, accepts: WEAPON }
+      OFF_HAND: { db_slot: OFF_HAND, accepts: "WEAPON (shields) or ARMOR (shields)" }
+      HEAD: { db_slot: HEAD, accepts: ARMOR }
+      BODY: { db_slot: CHEST, accepts: ARMOR }
+      LEGS: { db_slot: LEGS, accepts: ARMOR }
+      TOOL: { db_slot: TOOL, accepts: TOOL }
+    equip_action: "FREE — no daily action consumed"
+    auto_swap: "Equipping to occupied slot automatically returns old item to inventory"
+    computed_stats:
+      totalDamage: "Sum of weapon damage stats"
+      totalAC: "Sum of armor defense stats"
+      totalStatBonuses: "Aggregated STR/DEX/CON/INT/WIS/CHA from equipment"
+    tool_mechanics:
+      yield_bonus: "Tools grant yieldBonus to matching profession gathering (5-25% by tier)"
+      bare_hands_penalty: "No tool equipped = -25% yield on profession gathering"
+      durability: "Tools lose 1 durability per gather action. Break at 0, auto-unequipped."
+      profession_match: "Tool must match the gathering profession (Pickaxe for MINER, Hoe for FARMER, etc.)"
+    bot_behavior:
+      free_action: "A2 in sim engine — bots auto-equip matching tool before gathering"
+      buy_from_market: "Bots buy tools from market if none in inventory (30% of gold max)"
+      tool_replacement: "Broken tools detected on next tick, replacement purchased automatically"
+    gold_sink: "Tool breakage creates ongoing demand for BLACKSMITH-crafted tools"
 
   quality_system:
     formula: "d20 + (ProfessionLevel / 5) + ToolBonus + WorkshopBonus + TierQualityBonus"
@@ -1444,6 +1802,35 @@ implementation_order:
     future:
       - "Tier 2-4 upgrades (more storage, workshop room, display room)"
       - "Jobs Board integration (hired worker output → house storage)"
+
+  equipment_system:
+    name: "Basic Equipment System — 6 Slots + Tool Integration"
+    status: COMPLETE
+    completed_date: 2026-02-19
+    description: "6-slot equipment system with dedicated TOOL slot, computed combat stats, tool yield bonuses, and simulation bot support."
+    changes:
+      - "New EquipSlot enum value: TOOL (separate from MAIN_HAND for weapons)"
+      - "ITEM_TYPE_SLOT_MAP: TOOL items → TOOL slot (not MAIN_HAND)"
+      - "Tool yield bonus integrated into spot-based gathering (processGatherSpotAction)"
+      - "Bare-hands penalty: -25% yield when no tool equipped for matching profession"
+      - "Tool durability decrement + break handling in spot-based gathering"
+      - "InventoryPage.tsx rewritten: real API endpoints, 6 primary equipment slots, equip confirmation, combat stats"
+      - "ProfilePage.tsx: equipment panel showing all 6 slots + combat stats (own profile only)"
+      - "Simulation: ensureToolEquipped action (check → inventory → market buy → equip)"
+      - "Simulation: A2 free action in engine — bots auto-equip matching tool before gathering"
+      - "BLACKSMITH tools listed on market via existing surplus-listing mechanism"
+    files_modified:
+      - "database/prisma/schema.prisma — TOOL added to EquipSlot enum"
+      - "database/prisma/migrations/20260219100000_add_tool_equip_slot — migration SQL"
+      - "server/src/routes/equipment.ts — TOOL slot mapping"
+      - "server/src/routes/tools.ts — TOOL slot (was MAIN_HAND)"
+      - "server/src/routes/work.ts — getEquippedTool uses TOOL slot"
+      - "server/src/routes/crafting.ts — craft tool bonus uses TOOL slot"
+      - "server/src/jobs/daily-tick.ts — spot-based tool integration + TOOL slot references"
+      - "server/src/lib/simulation/actions.ts — ensureToolEquipped, equipTool, checkEquippedTool"
+      - "server/src/lib/simulation/engine.ts — A2 free action for tool management"
+      - "client/src/pages/InventoryPage.tsx — full equipment UI rewrite"
+      - "client/src/pages/ProfilePage.tsx — equipment panel + combat stats"
 
   phase_2:
     name: "MINER → SMELTER → BLACKSMITH (Metal Chain)"

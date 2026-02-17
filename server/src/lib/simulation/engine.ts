@@ -2,7 +2,7 @@
 // Bot Behavior Engine — Priority-Based, Profession-Aware Decision System
 // ---------------------------------------------------------------------------
 // Each tick, every bot:
-//   Phase A: FREE actions (plant, post jobs, buy assets, quest) — no daily cost
+//   Phase A: FREE actions (plant, equip tool, buy assets, quest) — no daily cost
 //   Phase B: MANDATORY daily action — priority chain P1–P9, first match wins
 //     P1: Harvest READY fields (time-sensitive)
 //     P1.5: Collect RANCHER products
@@ -57,6 +57,9 @@ const SPOT_TO_ITEM: Record<string, string> = {
   quarry: 'Stone Blocks',
   clay: 'Clay',
   hunting_ground: 'Wild Game Meat',
+  coal_mine: 'Coal',
+  silver_mine: 'Silver Ore',
+  hardwood_grove: 'Hardwood',
 };
 
 // Item name → spot type that produces it
@@ -69,6 +72,13 @@ const ITEM_TO_SPOT_TYPE: Record<string, string> = {
   'Stone Blocks': 'quarry',
   'Clay': 'clay',
   'Wild Game Meat': 'hunting_ground',
+  'Coal': 'coal_mine',
+  'Silver Ore': 'silver_mine',
+  'Hardwood': 'hardwood_grove',
+  'Medicinal Herbs': 'herb',
+  'Glowcap Mushrooms': 'herb',
+  'River Trout': 'fishing',
+  'Lake Perch': 'fishing',
 };
 
 // Profession → spot types where they get bonus yield (fallback when tier-unlocks returns empty)
@@ -133,6 +143,9 @@ function getMissingIngredients(
     'Grain', 'Apples', 'Wild Berries', 'Wild Herbs', 'Vegetables', 'Raw Fish',
     'Wood Logs', 'Iron Ore Chunks', 'Stone Blocks', 'Clay', 'Salt', 'Spices',
     'Wild Game Meat', 'Common Herbs', 'Mushrooms', 'Common Fish',
+    'Coal', 'Silver Ore', 'Hardwood',
+    'Medicinal Herbs', 'Glowcap Mushrooms',
+    'River Trout', 'Lake Perch',
   ]);
   const rawMissing: string[] = [];
   const craftedMissing: string[] = [];
@@ -229,6 +242,8 @@ async function determineTravelReason(
   currentSpotType: string | null,
 ): Promise<TravelPlan | null> {
   const isCook = profs.includes('COOK');
+  const isBlacksmith = profs.includes('BLACKSMITH');
+  const isAlchemist = profs.includes('ALCHEMIST');
 
   // a. COOK missing ingredients → travel to town with needed resource
   if (isCook && recipes.length > 0) {
@@ -239,6 +254,40 @@ async function determineTravelReason(
         .filter((s): s is string => !!s);
 
       // Don't travel if current town already has a needed spot
+      if (neededSpots.length > 0 && !neededSpots.includes(currentSpotType || '')) {
+        return {
+          reason: `Need ${missing[0]}, traveling to ${neededSpots[0]} town`,
+          execute: () => actions.travelToResourceTown(bot, neededSpots, `need ${missing[0]}`),
+        };
+      }
+    }
+  }
+
+  // a2. BLACKSMITH missing ingredients → travel to mine/forest town
+  if (isBlacksmith && recipes.length > 0) {
+    const missing = getMissingIngredients(invMap, recipes);
+    if (missing.length > 0) {
+      const neededSpots = missing
+        .map(item => ITEM_TO_SPOT_TYPE[item])
+        .filter((s): s is string => !!s);
+
+      if (neededSpots.length > 0 && !neededSpots.includes(currentSpotType || '')) {
+        return {
+          reason: `Need ${missing[0]}, traveling to ${neededSpots[0]} town`,
+          execute: () => actions.travelToResourceTown(bot, neededSpots, `need ${missing[0]}`),
+        };
+      }
+    }
+  }
+
+  // a3. ALCHEMIST missing ingredients → travel to herb/orchard/clay town
+  if (isAlchemist && recipes.length > 0) {
+    const missing = getMissingIngredients(invMap, recipes);
+    if (missing.length > 0) {
+      const neededSpots = missing
+        .map(item => ITEM_TO_SPOT_TYPE[item])
+        .filter((s): s is string => !!s);
+
       if (neededSpots.length > 0 && !neededSpots.includes(currentSpotType || '')) {
         return {
           reason: `Need ${missing[0]}, traveling to ${neededSpots[0]} town`,
@@ -317,13 +366,21 @@ async function handleNoProfession(
   } else {
     switch (bot.profile) {
       case 'gatherer':   profType = 'FARMER';      break;
-      case 'crafter':    profType = Math.random() < 0.5 ? 'COOK' : 'BREWER'; break;
+      case 'crafter': {
+        const r = Math.random();
+        profType = r < 0.25 ? 'COOK' : r < 0.50 ? 'BREWER' : r < 0.75 ? 'BLACKSMITH' : 'ALCHEMIST';
+        break;
+      }
       case 'merchant':   profType = 'FARMER';      break;
       case 'warrior':    profType = 'MINER';       break;
       case 'politician': profType = 'FARMER';      break;
       case 'socialite':  profType = 'HERBALIST';   break;
       case 'explorer':   profType = 'LUMBERJACK';  break;
-      case 'balanced':   profType = Math.random() < 0.5 ? 'COOK' : 'BREWER'; break;
+      case 'balanced': {
+        const r = Math.random();
+        profType = r < 0.25 ? 'COOK' : r < 0.50 ? 'BREWER' : r < 0.75 ? 'BLACKSMITH' : 'ALCHEMIST';
+        break;
+      }
       default:           profType = 'FARMER';      break;
     }
   }
@@ -390,6 +447,8 @@ export async function decideBotAction(
   const hasCrafting = profs.some(p => CRAFTING_PROFESSIONS.has(p));
   const isCook = profs.includes('COOK');
   const isBrewer = profs.includes('BREWER');
+  const isBlacksmith = profs.includes('BLACKSMITH');
+  const isAlchemist = profs.includes('ALCHEMIST');
 
   // ── Current town info ──
   const townCache = await ensureTownCache();
@@ -406,6 +465,31 @@ export async function decideBotAction(
       const r = await timedFreeAction(() => actions.plantAsset(bot), bot, 'plant_asset', logger, tick);
       if (r.success) console.log(`[SIM] ${bot.characterName} planted: ${r.detail}`);
     } catch { /* ignore */ }
+  }
+
+  // A2: Equip tool (gathering profs — ensure matching tool before gathering)
+  if (hasGathering && config.enabledSystems.gathering) {
+    const gatherProfs = profs.filter(p => GATHERING_PROF_SET.has(p) && p !== 'RANCHER');
+    // Prefer the profession matching the current town's spot type
+    let targetProf: string | null = null;
+    if (currentSpotType) {
+      for (const prof of gatherProfs) {
+        const profSpots = getProfSpotTypes([prof], bot.professionLevels || {});
+        if (profSpots.includes(currentSpotType)) {
+          targetProf = prof;
+          break;
+        }
+      }
+    }
+    // Fallback: first gathering profession
+    if (!targetProf && gatherProfs.length > 0) targetProf = gatherProfs[0];
+
+    if (targetProf) {
+      try {
+        const r = await timedFreeAction(() => actions.ensureToolEquipped(bot, targetProf!), bot, 'equip_tool', logger, tick);
+        if (r.success) console.log(`[SIM] ${bot.characterName} equipped tool: ${r.detail}`);
+      } catch { /* ignore */ }
+    }
   }
 
   // A3: Buy assets (gathering profs with enough gold for cheapest field)
@@ -429,6 +513,23 @@ export async function decideBotAction(
     const activeQuest = await actions.checkActiveQuest(bot);
     if (!activeQuest) {
       try { await timedFreeAction(() => actions.acceptQuest(bot), bot, 'accept_quest', logger, tick); } catch { /* ignore */ }
+    }
+  }
+
+  // A4b: Specialize professions at L7 (free action — permanent choice)
+  for (const prof of profs) {
+    const level = bot.professionLevels[prof] || 1;
+    const specs = bot.professionSpecializations || {};
+    if (prof === 'BLACKSMITH' && level >= 7 && !specs[prof]) {
+      const branches = ['TOOLSMITH', 'WEAPONSMITH', 'ARMORER'];
+      const choice = pickRandom(branches);
+      try {
+        const r = await timedFreeAction(
+          () => actions.specialize(bot, prof, choice),
+          bot, 'specialize', logger, tick,
+        );
+        if (r.success) console.log(`[SIM] ${bot.characterName} specialized ${prof} as ${choice}`);
+      } catch { /* ignore */ }
     }
   }
 
@@ -581,6 +682,26 @@ export async function decideBotAction(
       if (spotItem && missing.includes(spotItem)) {
         shouldGather = true;
         gatherReason = `Gathering ${spotItem} (needed for brewing)`;
+      }
+    }
+
+    // BLACKSMITH: gather if current town produces a needed ingredient (ores, wood)
+    if (!shouldGather && isBlacksmith) {
+      const missing = getMissingIngredients(invMap, recipes);
+      const spotItem = SPOT_TO_ITEM[currentSpotType || ''];
+      if (spotItem && missing.includes(spotItem)) {
+        shouldGather = true;
+        gatherReason = `Gathering ${spotItem} (needed for smithing)`;
+      }
+    }
+
+    // ALCHEMIST: gather if current town produces a needed ingredient (herbs, clay, berries)
+    if (!shouldGather && isAlchemist) {
+      const missing = getMissingIngredients(invMap, recipes);
+      const spotItem = SPOT_TO_ITEM[currentSpotType || ''];
+      if (spotItem && missing.includes(spotItem)) {
+        shouldGather = true;
+        gatherReason = `Gathering ${spotItem} (needed for alchemy)`;
       }
     }
 

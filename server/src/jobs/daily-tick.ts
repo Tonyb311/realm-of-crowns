@@ -1398,11 +1398,77 @@ async function processGatherSpotAction(
     return;
   }
 
+  // Extract resourceType early (needed for tiered herb gathering check below)
+  const resourceType = target.resourceType as string;
+
+  // Tiered herb gathering: L7+ HERBALIST at herb spots gets random resource pool
+  let resolvedTemplateName = templateName;
+  let resolvedDescription = description;
+  let resolvedIsFood = isFood;
+  let resolvedShelfLifeDays = shelfLifeDays;
+  let resolvedFoodBuff = foodBuff;
+  let resolvedItemName = itemName;
+  if (resourceType === 'herb') {
+    const herbProf = await prisma.playerProfession.findFirst({
+      where: { characterId: char.id, professionType: 'HERBALIST' },
+    });
+    if (herbProf && herbProf.level >= 7) {
+      const roll = Math.random();
+      if (roll < 0.30) {
+        // 30% — Wild Herbs (default, no change)
+      } else if (roll < 0.65) {
+        // 35% — Medicinal Herbs
+        resolvedTemplateName = 'Medicinal Herbs';
+        resolvedItemName = 'Medicinal Herbs';
+        resolvedDescription = 'Potent herbs with proven healing properties, identifiable only by skilled herbalists.';
+        resolvedIsFood = false;
+        resolvedShelfLifeDays = null;
+        resolvedFoodBuff = null;
+      } else {
+        // 35% — Glowcap Mushrooms
+        resolvedTemplateName = 'Glowcap Mushrooms';
+        resolvedItemName = 'Glowcap Mushrooms';
+        resolvedDescription = 'Luminescent fungi found in shaded groves, prized by alchemists for their arcane reagent properties.';
+        resolvedIsFood = false;
+        resolvedShelfLifeDays = null;
+        resolvedFoodBuff = null;
+      }
+    }
+  }
+
+  // Tiered fishing gathering: L7+ FISHERMAN at fishing spots gets premium fish
+  if (resourceType === 'fishing') {
+    const fishProf = await prisma.playerProfession.findFirst({
+      where: { characterId: char.id, professionType: 'FISHERMAN' },
+    });
+    if (fishProf && fishProf.level >= 7) {
+      const roll = Math.random();
+      if (roll < 0.30) {
+        // 30% — Raw Fish (default, no change)
+      } else if (roll < 0.65) {
+        // 35% — River Trout
+        resolvedTemplateName = 'River Trout';
+        resolvedItemName = 'River Trout';
+        resolvedDescription = 'A prized freshwater fish with firm, flavorful flesh. Only skilled fishermen can consistently land these.';
+        resolvedIsFood = false;
+        resolvedShelfLifeDays = null;
+        resolvedFoodBuff = null;
+      } else {
+        // 35% — Lake Perch
+        resolvedTemplateName = 'Lake Perch';
+        resolvedItemName = 'Lake Perch';
+        resolvedDescription = 'A large, meaty lake fish. Its delicate flavor makes it the centerpiece of fine cuisine.';
+        resolvedIsFood = false;
+        resolvedShelfLifeDays = null;
+        resolvedFoodBuff = null;
+      }
+    }
+  }
+
   // Roll yield
   const quantity = Math.floor(Math.random() * (maxYield - minYield + 1)) + minYield;
 
   // Universal tier-based gathering bonus (replaces hardcoded FARMER +50%)
-  const resourceType = target.resourceType as string;
   let finalQuantity = quantity;
   const matchingProfession = GATHER_SPOT_PROFESSION_MAP[resourceType];
   if (matchingProfession) {
@@ -1417,23 +1483,32 @@ async function processGatherSpotAction(
     }
   }
 
+  // Tool yield bonus (or bare-hands penalty)
+  const spotProfession = matchingProfession as ProfessionType | undefined;
+  const spotTool = spotProfession ? await getEquippedTool(char.id, spotProfession) : null;
+  if (spotTool) {
+    finalQuantity = Math.max(1, Math.ceil(finalQuantity * (1 + spotTool.yieldBonus)));
+  } else if (spotProfession) {
+    finalQuantity = Math.max(1, Math.round(finalQuantity * (1 - BARE_HANDS_YIELD_PENALTY)));
+  }
+
   // Create items in a transaction
   await prisma.$transaction(async (tx) => {
     // Find or create item template
     let itemTemplate = await tx.itemTemplate.findFirst({
-      where: { name: templateName },
+      where: { name: resolvedTemplateName },
     });
     if (!itemTemplate) {
       itemTemplate = await tx.itemTemplate.create({
         data: {
-          name: templateName,
+          name: resolvedTemplateName,
           type: itemType === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL',
           rarity: 'COMMON',
-          description: description || `Raw ${templateName} gathered from the wilds.`,
-          isFood: isFood,
-          shelfLifeDays: shelfLifeDays,
-          isPerishable: shelfLifeDays != null,
-          foodBuff: foodBuff ?? Prisma.JsonNull,
+          description: resolvedDescription || `Raw ${resolvedTemplateName} gathered from the wilds.`,
+          isFood: resolvedIsFood,
+          shelfLifeDays: resolvedShelfLifeDays,
+          isPerishable: resolvedShelfLifeDays != null,
+          foodBuff: resolvedFoodBuff ?? Prisma.JsonNull,
           levelRequired: 1,
         },
       });
@@ -1459,7 +1534,7 @@ async function processGatherSpotAction(
           templateId: itemTemplate.id,
           ownerId: char.id,
           quality: 'COMMON',
-          daysRemaining: shelfLifeDays,
+          daysRemaining: resolvedShelfLifeDays,
         },
       });
       await tx.inventory.create({
@@ -1472,7 +1547,7 @@ async function processGatherSpotAction(
       where: { id: action.id },
       data: {
         status: 'COMPLETED',
-        result: { item: templateName, quantity: finalQuantity, spotName: target.spotName as string },
+        result: { item: resolvedTemplateName, quantity: finalQuantity, spotName: target.spotName as string },
       },
     });
   });
@@ -1499,22 +1574,44 @@ async function processGatherSpotAction(
   let professionXpGained = 0;
   if (matchingProfType && hasProfessionBonus) {
     const profXp = 10; // base profession XP per gather (same as tier-1 resource)
-    await addProfessionXP(char.id, matchingProfType as ProfessionType, profXp, `gathered_${(itemName || templateName).toLowerCase().replace(/\s+/g, '_')}`);
+    await addProfessionXP(char.id, matchingProfType as ProfessionType, profXp, `gathered_${(resolvedItemName || resolvedTemplateName).toLowerCase().replace(/\s+/g, '_')}`);
     professionXpGained = profXp;
+  }
+
+  // Decrement tool durability (spot-based gathering)
+  if (spotTool) {
+    const newDurability = spotTool.item.currentDurability - 1;
+    if (newDurability <= 0) {
+      await prisma.$transaction([
+        prisma.item.update({ where: { id: spotTool.item.id }, data: { currentDurability: 0 } }),
+        prisma.characterEquipment.delete({ where: { id: spotTool.equipmentId } }),
+      ]);
+      emitToolBroken(char.id, {
+        itemId: spotTool.item.id,
+        toolName: spotTool.template.name,
+        professionType: spotProfession!,
+      });
+      getResults(char.id).notifications.push(`Your ${spotTool.template.name} has broken!`);
+    } else {
+      await prisma.item.update({
+        where: { id: spotTool.item.id },
+        data: { currentDurability: newDurability },
+      });
+    }
   }
 
   // Record results
   const results = getResults(char.id);
   results.action = {
     type: 'GATHER',
-    resourceName: itemName,
+    resourceName: resolvedItemName,
     resourceType: 'town_gathering',
     quantity: finalQuantity,
     xpGained: characterXpGain,
     professionXpGained,
   };
   results.xpEarned += characterXpGain;
-  results.notifications.push(`Gathered ${finalQuantity}x ${itemName}.`);
+  results.notifications.push(`Gathered ${finalQuantity}x ${resolvedItemName}.`);
 }
 
 // ---------------------------------------------------------------------------
@@ -1886,7 +1983,7 @@ async function processCraftAction(
 
   // Decrement tool durability
   const equippedTool = await prisma.characterEquipment.findUnique({
-    where: { characterId_slot: { characterId: char.id, slot: 'MAIN_HAND' } },
+    where: { characterId_slot: { characterId: char.id, slot: 'TOOL' } },
     include: { item: { include: { template: true } } },
   });
   if (equippedTool && equippedTool.item.template.type === 'TOOL') {
@@ -1932,7 +2029,7 @@ async function processCraftAction(
 
 async function getEquippedTool(characterId: string, professionType: ProfessionType) {
   const equip = await prisma.characterEquipment.findUnique({
-    where: { characterId_slot: { characterId, slot: 'MAIN_HAND' } },
+    where: { characterId_slot: { characterId, slot: 'TOOL' } },
     include: { item: { include: { template: true } } },
   });
 
@@ -1952,7 +2049,7 @@ async function getEquippedTool(characterId: string, professionType: ProfessionTy
 
 async function getCraftToolBonus(characterId: string, professionType: ProfessionType): Promise<number> {
   const equip = await prisma.characterEquipment.findUnique({
-    where: { characterId_slot: { characterId, slot: 'MAIN_HAND' } },
+    where: { characterId_slot: { characterId, slot: 'TOOL' } },
     include: { item: { include: { template: true } } },
   });
 

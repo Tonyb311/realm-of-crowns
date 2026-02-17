@@ -28,6 +28,7 @@ import { HOUSING_RECIPES } from './housing';
 import { MOUNT_GEAR_RECIPES } from './mount-gear';
 import { ARMORER_RECIPES, LEATHERWORKER_ARMOR_RECIPES, TAILOR_ARMOR_RECIPES, ALL_ARMOR_RECIPES } from './armor';
 import { COOK_RECIPES } from './cook';
+import { BLACKSMITH_RECIPES } from './blacksmith';
 
 export { SMELTER_RECIPES } from './smelter';
 export { TANNER_RECIPES } from './tanner';
@@ -50,6 +51,7 @@ export { HOUSING_RECIPES } from './housing';
 export { MOUNT_GEAR_RECIPES } from './mount-gear';
 export { ARMORER_RECIPES, LEATHERWORKER_ARMOR_RECIPES, TAILOR_ARMOR_RECIPES, ALL_ARMOR_RECIPES } from './armor';
 export { COOK_RECIPES } from './cook';
+export { BLACKSMITH_RECIPES } from './blacksmith';
 
 /** All COOK recipes (food production from raw ingredients). */
 export const ALL_COOK_RECIPES: RecipeDefinition[] = [...COOK_RECIPES];
@@ -117,14 +119,18 @@ export const ALL_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
   ...RANGED_WEAPON_RECIPES,
 ];
 
+/** Blacksmith low-level recipes (tools, weapons, armor with specialization branches). */
+export const ALL_BLACKSMITH_RECIPES: FinishedGoodsRecipe[] = [...BLACKSMITH_RECIPES];
+
 // ============================================================
 // Armor Recipes (finished goods)
 // ============================================================
 
-/** All finished goods recipes (weapons + armor). */
+/** All finished goods recipes (weapons + armor + blacksmith tools/specialization). */
 export const ALL_FINISHED_GOODS_RECIPES: FinishedGoodsRecipe[] = [
   ...ALL_WEAPON_RECIPES,
   ...ALL_ARMOR_RECIPES,
+  ...ALL_BLACKSMITH_RECIPES,
 ];
 
 // Pre-build finished goods lookup maps

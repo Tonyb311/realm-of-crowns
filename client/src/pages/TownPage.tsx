@@ -17,6 +17,7 @@ import {
   CheckCircle,
   Home,
   Package,
+  FlaskConical,
 } from 'lucide-react';
 import api from '../services/api';
 import { getSocket } from '../services/socket';
@@ -130,6 +131,7 @@ interface BuildingDef {
 const BUILDINGS: BuildingDef[] = [
   { key: 'market', name: 'Market', description: 'Buy and sell goods', route: '/market', icon: Store, freeAction: true },
   { key: 'tavern', name: 'Tavern', description: 'Rest, recruit, hear rumors', route: '/tavern', icon: Beer, freeAction: true },
+  { key: 'apothecary', name: 'Apothecary', description: 'Buy potions and remedies', route: '/apothecary', icon: FlaskConical, freeAction: true },
   { key: 'blacksmith', name: 'Blacksmith', description: 'Forge weapons and armor', route: '/crafting', icon: Hammer },
   { key: 'town_hall', name: 'Town Hall', description: 'Governance and laws', route: '/town-hall', icon: Landmark, freeAction: true },
   { key: 'notice_board', name: 'Notice Board', description: 'Travel advisories and road reports', route: '/travel', icon: Swords },

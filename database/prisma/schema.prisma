@@ -190,6 +190,7 @@ enum EquipSlot {
   RING_2
   NECK
   BACK
+  TOOL
 }
 
 enum BuildingType {
@@ -891,6 +892,7 @@ model ItemTemplate {
   foodBuff           Json?           @map("food_buff")
   isPerishable       Boolean         @default(false) @map("is_perishable")
   isBeverage         Boolean         @default(false) @map("is_beverage")
+  isPotion           Boolean         @default(false) @map("is_potion")
   createdAt          DateTime        @default(now()) @map("created_at")
   updatedAt          DateTime        @updatedAt @map("updated_at")
 
@@ -942,6 +944,8 @@ model Recipe {
   result         String
   craftTime      Int            @default(60) @map("craft_time")
   xpReward       Int            @default(10) @map("xp_reward")
+  specialization String?
+  levelRequired  Int?           @map("level_required")
   createdAt      DateTime       @default(now()) @map("created_at")
   updatedAt      DateTime       @updatedAt @map("updated_at")
 

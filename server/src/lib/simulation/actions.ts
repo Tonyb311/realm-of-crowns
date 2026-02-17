@@ -62,12 +62,14 @@ export async function refreshBotState(bot: BotState): Promise<void> {
       bot.professions = d.professions.map((p: any) =>
         typeof p === 'string' ? p : p.type || p.professionType,
       );
-      // Populate profession levels map
+      // Populate profession levels + specializations maps
       bot.professionLevels = {};
+      bot.professionSpecializations = bot.professionSpecializations || {};
       for (const p of d.professions) {
         if (typeof p === 'object' && p !== null) {
           const name = (p.type || p.professionType || '').toUpperCase();
           if (name && p.level != null) bot.professionLevels[name] = p.level;
+          if (name && p.specialization) bot.professionSpecializations[name] = p.specialization;
         }
       }
     }
@@ -130,6 +132,29 @@ export async function learnProfession(
       return { success: true, detail: `Learned profession ${professionType}`, endpoint, httpStatus: res.status, requestBody: { professionType }, responseBody: res.data };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { professionType }, responseBody: res.data };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 2b. specialize — Choose a permanent specialization branch
+// ---------------------------------------------------------------------------
+
+export async function specialize(
+  bot: BotState,
+  professionType: string,
+  specialization: string,
+): Promise<ActionResult> {
+  const endpoint = '/professions/specialize';
+  try {
+    const res = await post(endpoint, bot.token, { professionType, specialization });
+    if (res.status >= 200 && res.status < 300) {
+      bot.professionSpecializations = bot.professionSpecializations || {};
+      bot.professionSpecializations[professionType.toUpperCase()] = specialization;
+      return { success: true, detail: `Specialized ${professionType} as ${specialization}`, endpoint, httpStatus: res.status, requestBody: { professionType, specialization }, responseBody: res.data };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { professionType, specialization }, responseBody: res.data };
   } catch (err: any) {
     return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
@@ -926,8 +951,9 @@ export async function equipItem(bot: BotState): Promise<ActionResult> {
       if (i.equipped) return false;
       const type = (i.type || i.itemType || '').toUpperCase();
       return (
-        type.includes('WEAPON') ||
-        type.includes('ARMOR') ||
+        type === 'WEAPON' ||
+        type === 'ARMOR' ||
+        type === 'TOOL' ||
         type.includes('SHIELD') ||
         type.includes('HELMET') ||
         type.includes('BOOTS') ||
@@ -952,11 +978,20 @@ export async function equipItem(bot: BotState): Promise<ActionResult> {
 
     // Determine slot based on item type
     let slot = 'MAIN_HAND';
-    if (type.includes('ARMOR') || type.includes('CHEST')) slot = 'CHEST';
-    else if (type.includes('HELMET') || type.includes('HEAD')) slot = 'HEAD';
-    else if (type.includes('BOOTS') || type.includes('FEET')) slot = 'FEET';
-    else if (type.includes('GLOVES') || type.includes('HANDS')) slot = 'HANDS';
-    else if (type.includes('SHIELD')) slot = 'OFF_HAND';
+    if (type === 'TOOL') slot = 'TOOL';
+    else if (type === 'ARMOR') {
+      const stats = item.stats || {};
+      const eqSlot = stats.equipSlot as string | undefined;
+      if (eqSlot) {
+        slot = eqSlot;
+      } else {
+        const name = (item.name || '').toLowerCase();
+        if (name.includes('helmet') || name.includes('helm')) slot = 'HEAD';
+        else if (name.includes('shield')) slot = 'OFF_HAND';
+        else if (name.includes('legging') || name.includes('greave') || name.includes('chain leggings')) slot = 'LEGS';
+        else slot = 'CHEST';
+      }
+    } else if (type.includes('SHIELD')) slot = 'OFF_HAND';
 
     const res = await post(endpoint, bot.token, { itemId, slot });
     if (res.status >= 200 && res.status < 300) {
@@ -970,6 +1005,181 @@ export async function equipItem(bot: BotState): Promise<ActionResult> {
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { itemId, slot }, responseBody: res.data };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 19b. equipTool — equip a specific tool for a profession
+// ---------------------------------------------------------------------------
+
+export async function equipTool(
+  bot: BotState,
+  itemId: string,
+  professionType: string,
+): Promise<ActionResult> {
+  const endpoint = '/tools/equip';
+  try {
+    const res = await post(endpoint, bot.token, { itemId, professionType });
+    if (res.status >= 200 && res.status < 300) {
+      return {
+        success: true,
+        detail: `Equipped tool for ${professionType}`,
+        endpoint,
+        httpStatus: res.status,
+        requestBody: { itemId, professionType },
+        responseBody: res.data,
+      };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { itemId, professionType }, responseBody: res.data };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 19c. checkEquippedTool — check if bot has a tool equipped
+// ---------------------------------------------------------------------------
+
+export async function checkEquippedTool(bot: BotState): Promise<{ equipped: boolean; professionType?: string; name?: string }> {
+  try {
+    const res = await get('/tools/equipped', bot.token);
+    if (res.status >= 200 && res.status < 300 && res.data?.equipped) {
+      return {
+        equipped: true,
+        professionType: res.data.equipped.professionType,
+        name: res.data.equipped.item?.name,
+      };
+    }
+    return { equipped: false };
+  } catch {
+    return { equipped: false };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 19d. ensureToolEquipped — check, find, buy, and equip a tool for a profession
+// ---------------------------------------------------------------------------
+
+const PROF_TO_TOOL_NAME: Record<string, string> = {
+  MINER: 'Pickaxe',
+  LUMBERJACK: 'Axe',
+  FARMER: 'Hoe',
+  FISHERMAN: 'Fishing Rod',
+  HERBALIST: 'Sickle',
+  HUNTER: 'Skinning Knife',
+};
+
+export async function ensureToolEquipped(
+  bot: BotState,
+  targetProfession: string,
+): Promise<ActionResult> {
+  const endpoint = '/tools/equip';
+  try {
+    // 1. Check currently equipped tool
+    const equipped = await checkEquippedTool(bot);
+    if (equipped.equipped && equipped.professionType === targetProfession) {
+      return { success: false, detail: `Already have ${equipped.name} equipped for ${targetProfession}`, endpoint: '/tools/equipped', httpStatus: 0, requestBody: {}, responseBody: {} };
+    }
+
+    // 2. Search tool inventory for matching tool with durability
+    const invRes = await get('/tools/inventory', bot.token);
+    if (invRes.status >= 200 && invRes.status < 300) {
+      const tools: any[] = invRes.data?.tools || [];
+      const matching = tools.filter(
+        (t: any) => t.stats?.professionType === targetProfession && t.currentDurability > 0,
+      );
+      // Prefer highest yield bonus (best tier)
+      matching.sort((a: any, b: any) => (b.stats?.yieldBonus || 0) - (a.stats?.yieldBonus || 0));
+
+      if (matching.length > 0) {
+        const tool = matching[0];
+        return await equipTool(bot, tool.itemId, targetProfession);
+      }
+    }
+
+    // 3. No tool in inventory — try to buy from market
+    const toolTypeName = PROF_TO_TOOL_NAME[targetProfession];
+    if (!toolTypeName) {
+      return { success: false, detail: `No tool type for ${targetProfession}`, endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
+    }
+
+    const maxPrice = Math.floor(bot.gold * 0.3);
+    if (maxPrice < 5) {
+      return { success: false, detail: `Not enough gold to buy a ${toolTypeName} (${bot.gold}g)`, endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
+    }
+
+    const listings = await prisma.marketListing.findMany({
+      where: {
+        status: 'active',
+        itemName: { contains: toolTypeName, mode: 'insensitive' },
+        price: { gt: 0, lte: maxPrice },
+        sellerId: { not: bot.characterId },
+      },
+      orderBy: { price: 'asc' },
+      take: 1,
+      select: {
+        id: true, price: true, itemName: true, quantity: true,
+        townId: true, sellerId: true,
+        seller: { select: { name: true } },
+      },
+    });
+
+    if (listings.length === 0) {
+      return { success: false, detail: `No ${toolTypeName} on market (max ${maxPrice}g)`, endpoint, httpStatus: 0, requestBody: { toolTypeName, maxPrice }, responseBody: {} };
+    }
+
+    const listing = listings[0];
+    const bidPrice = Math.ceil(listing.price * 1.1);
+
+    // Check for duplicate order
+    const existingOrder = await prisma.marketBuyOrder.findUnique({
+      where: { buyerId_listingId: { buyerId: bot.characterId, listingId: listing.id } },
+    });
+    if (existingOrder) {
+      return { success: false, detail: `Already have order for ${listing.itemName}`, endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
+    }
+
+    // Fresh gold check from DB
+    const freshChar = await prisma.character.findUnique({
+      where: { id: bot.characterId },
+      select: { gold: true, escrowedGold: true },
+    });
+    if (!freshChar) {
+      return { success: false, detail: 'Character not found', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
+    }
+    const availableGold = freshChar.gold - freshChar.escrowedGold;
+    if (availableGold < bidPrice) {
+      return { success: false, detail: `Can't afford ${listing.itemName}: need ${bidPrice}g, have ${availableGold}g`, endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
+    }
+
+    const cycle = await getOrCreateOpenCycle(listing.townId);
+    await prisma.$transaction(async (tx) => {
+      await tx.character.update({
+        where: { id: bot.characterId },
+        data: { escrowedGold: { increment: bidPrice } },
+      });
+      return tx.marketBuyOrder.create({
+        data: {
+          buyerId: bot.characterId,
+          listingId: listing.id,
+          bidPrice,
+          status: 'pending',
+          auctionCycleId: cycle.id,
+        },
+      });
+    });
+    bot.gold = freshChar.gold;
+
+    return {
+      success: true,
+      detail: `Ordered ${listing.itemName} from market at ${bidPrice}g (will equip next tick)`,
+      endpoint: '/market/buy (tool)',
+      httpStatus: 201,
+      requestBody: { listingId: listing.id, bidPrice },
+      responseBody: {},
+    };
   } catch (err: any) {
     return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
   }
