@@ -38,6 +38,9 @@ export interface Recipe {
   hasRequiredProfession: boolean;
   canCraft: boolean;
   missingIngredients: MissingIngredient[];
+  specialization?: string | null;
+  meetsSpecialization?: boolean;
+  playerSpecialization?: string | null;
 }
 
 const PROFESSION_LABELS: Record<string, string> = {
@@ -70,6 +73,16 @@ function professionLabel(type: string) {
 }
 
 const TIER_ORDER = ['APPRENTICE', 'JOURNEYMAN', 'CRAFTSMAN', 'EXPERT', 'MASTER', 'GRANDMASTER'];
+
+const SPECIALIZATION_LABELS: Record<string, string> = {
+  TOOLSMITH: 'Toolsmith',
+  WEAPONSMITH: 'Weaponsmith',
+  ARMORER: 'Armorer',
+};
+
+function specializationLabel(spec: string) {
+  return SPECIALIZATION_LABELS[spec] ?? spec.charAt(0) + spec.slice(1).toLowerCase();
+}
 
 function tierLabel(tier: string) {
   return tier.charAt(0) + tier.slice(1).toLowerCase();
@@ -228,8 +241,9 @@ export default function RecipeList({
                 batchMissing.push({ name: ing.itemName, need, have });
               }
             }
-            const canBatch = recipe.hasRequiredProfession && batchMissing.length === 0 && !isCrafting;
-            const isGreyedOut = !recipe.hasRequiredProfession;
+            const meetsSpec = recipe.meetsSpecialization !== false;
+            const canBatch = recipe.hasRequiredProfession && meetsSpec && batchMissing.length === 0 && !isCrafting;
+            const isGreyedOut = !recipe.hasRequiredProfession || !meetsSpec;
 
             return (
               <div
@@ -240,8 +254,17 @@ export default function RecipeList({
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <h4 className="font-display text-realm-gold-400">{recipe.name}</h4>
-                    <p className="text-[10px] text-realm-text-muted">
-                      {professionLabel(recipe.professionType)} - {tierLabel(recipe.tier)} (Lv.{recipe.levelRequired})
+                    <p className="text-[10px] text-realm-text-muted flex items-center gap-1.5 flex-wrap">
+                      <span>{professionLabel(recipe.professionType)} - {tierLabel(recipe.tier)} (Lv.{recipe.levelRequired})</span>
+                      {recipe.specialization && (
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-display border ${
+                          meetsSpec
+                            ? 'bg-realm-teal-300/15 text-realm-teal-300 border-realm-teal-300/30'
+                            : 'bg-realm-danger/15 text-realm-danger border-realm-danger/30'
+                        }`}>
+                          {specializationLabel(recipe.specialization)}
+                        </span>
+                      )}
                     </p>
                   </div>
                   <div className="text-right text-[10px] text-realm-text-muted">
@@ -342,19 +365,21 @@ export default function RecipeList({
                         onCraft(recipe.id);
                       }
                     }}
-                    disabled={!(batchCount > 1 ? canBatch : canCraftSingle) || isCraftStarting}
+                    disabled={!(batchCount > 1 ? canBatch : (canCraftSingle && meetsSpec)) || isCraftStarting}
                     className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded
                       hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {isCraftStarting
                       ? 'Starting...'
-                      : !recipe.hasRequiredProfession
-                        ? 'Level Too Low'
-                        : isCrafting
-                          ? 'Queue Full'
-                          : batchCount > 1
-                            ? `Craft ${batchCount}x ${recipe.result.itemName}`
-                            : 'Craft'}
+                      : !meetsSpec
+                        ? `Requires ${specializationLabel(recipe.specialization!)}`
+                        : !recipe.hasRequiredProfession
+                          ? 'Level Too Low'
+                          : isCrafting
+                            ? 'Queue Full'
+                            : batchCount > 1
+                              ? `Craft ${batchCount}x ${recipe.result.itemName}`
+                              : 'Craft'}
                   </button>
                 </div>
 

@@ -23,6 +23,9 @@
 # TOOL slot separate from weapons, tool yield bonus + bare-hands penalty on gathering,
 # equip/unequip free action, computed combat stats, simulation bot tool management.
 # BLACKSMITH specializations LIVE — Toolsmith, Weaponsmith, Armorer branches at L7.
+# TAILOR profession LIVE — 18 recipes (5 processing + 13 armor), cloth armor with magicResist.
+# RANCHER Craftsman tier LIVE: Fine Wool (L7+ Sheep Pen), Silkworm Cocoons (Silkworm House).
+# Armor triangle: BLACKSMITH (plate/STR) vs TANNER (leather/DEX) vs TAILOR (cloth/magicResist).
 # =============================================================================
 
 
@@ -286,9 +289,11 @@ planned_gathering_spots:
   # RANCHER livestock products (auto-produced by animals in daily tick):
   # - Eggs (chicken) → COOK (Scrambled Eggs, Farm Breakfast)
   # - Milk (cow) → COOK (Creamy Porridge, Farm Breakfast)
-  # - Wool (sheep) → TAILOR (future textile chain)
+  # - Wool (sheep) → TAILOR (Woven Cloth → cloth armor)
+  # - Fine Wool (sheep L7+) → TAILOR (Fine Cloth → superior cloth armor)
+  # - Silkworm Cocoons (silkworm_house) → TAILOR (Silk Fabric → top-tier cloth armor)
   # - Raw Hide → TANNER → LEATHERWORKER (future leather chain)
-  # RANCHER buildings: chicken_coop (cap 5), dairy_barn (cap 3), sheep_pen (cap 4)
+  # RANCHER buildings: chicken_coop (cap 5), dairy_barn (cap 3), sheep_pen (cap 4), silkworm_house (auto-producer)
   # Livestock require Grain feed every 3 ticks. No feed → hunger → death.
 
   # hunting_ground: MOVED to Section 1 (2026-02-17) — now LIVE with 4 towns
@@ -354,13 +359,16 @@ professions:
     tier_unlocks:
       APPRENTICE: { level: "3-4", spots: [chicken_coop, dairy_barn], crops: [Eggs, Milk], assetBased: true }
       JOURNEYMAN: { level: "5-6", spots: [sheep_pen], crops: [Wool], assetBased: true }
-      CRAFTSMAN: { status: NOT_YET_IMPLEMENTED }
+      CRAFTSMAN: { level: "7-8", spots: [sheep_pen, silkworm_house], crops: [Wool, "Fine Wool", "Silkworm Cocoons"], assetBased: true }
       EXPERT: { status: NOT_YET_IMPLEMENTED }
       MASTER: { status: NOT_YET_IMPLEMENTED }
       GRANDMASTER: { status: NOT_YET_IMPLEMENTED }
     feeds_into: [TANNER, TAILOR, COOK]
     status: EXISTS_IN_GAME
-    notes: "APPRENTICE + JOURNEYMAN LIVE. Buildings as OwnedAsset (cropState=READY permanently). Livestock in separate Prisma model. Feed/produce automatic in daily tick Step 4d."
+    craftsman_details:
+      fine_wool: "L7+ sheep at Sheep Pen produce Fine Wool alongside regular Wool (bonus product)"
+      silkworm_house: { baseCost: 250, levelRequired: 7, product: "Silkworm Cocoons", auto_producing: true, note: "Non-livestock building — no animals to buy/feed. Auto-produces Silkworm Cocoons every 3 ticks." }
+    notes: "APPRENTICE + JOURNEYMAN + CRAFTSMAN LIVE. Buildings as OwnedAsset (cropState=READY permanently). Livestock in separate Prisma model. Feed/produce automatic in daily tick Step 4d. Craftsman tier adds Fine Wool (sheep bonus) and Silkworm Cocoons (Silkworm House auto-producer)."
 
   FISHERMAN:
     type: GATHERING
@@ -568,14 +576,22 @@ professions:
 
   TAILOR:
     type: CRAFTING
+    primary_stat: CHA
     unlock_level: 3
-    description: "Weaves cloth and sews clothing and robes."
+    description: "Weaves cloth from wool and silk, then sews robes and garments. Cloth armor has low AC but high magicResist — the mage/healer/diplomat's choice."
     depends_on_gatherers: [RANCHER]
-    raw_inputs: []
-    intermediate_inputs: [wool_cloth]    # Eventually from RANCHER → TAILOR pipeline
-    output_categories: [ARMOR, CLOTHING]
-    status: PLANNED
-    notes: "Wool now produced by RANCHER sheep. TAILOR recipes not yet implemented."
+    related_professions: [RANCHER, TANNER]
+    raw_inputs: [wool, fine_wool, silkworm_cocoons, cotton]
+    intermediate_inputs: [woven_cloth, fine_cloth, silk_fabric, cloth, cloth_padding, cured_leather]
+    output_categories: [MATERIAL, ARMOR]
+    outputs_used_by: [ARMORER]
+    status: EXISTS_IN_GAME
+    tier_recipes:
+      APPRENTICE: ["Spin Cloth (legacy)", "Cloth Padding (legacy)", "Weave Cloth", "Cloth Hood", "Cloth Sash", "Cloth Robe", "Wool Trousers"]
+      JOURNEYMAN: ["Scholar's Robe", "Traveler's Cloak", "Merchant's Hat", "Herbalist's Apron"]
+      CRAFTSMAN: ["Weave Fine Cloth", "Process Silk", "Archmage's Robe", "Diplomat's Regalia", "Silk Hood of Insight", "Noble's Leggings", "Enchanted Cloak"]
+    recipe_count: 18  # 5 processing + 13 armor
+    notes: "Marketplace-dependent dual-supply crafter: buys Wool/Fine Wool/Silkworm Cocoons from RANCHER, buys Cured Leather from TANNER. Intermediates: Woven Cloth (T1), Fine Cloth (T3), Silk Fabric (T3). Legacy Cotton→Cloth→Cloth Padding kept for ARMORER chain. Armor triangle: BLACKSMITH (plate, high armor/STR) vs TANNER (leather, armor+DEX) vs TAILOR (cloth, low armor + high magicResist + INT/WIS/CHA)."
 
   ALCHEMIST:
     type: CRAFTING
@@ -1708,6 +1724,598 @@ tanner_recipes:
 
 
 # =============================================================================
+# SECTION 4C: TAILOR RECIPE TREE
+# =============================================================================
+# TAILOR is a marketplace-dependent dual-supply crafter:
+#   Supply 1: RANCHER provides Wool, Fine Wool, Silkworm Cocoons
+#   Supply 2: TANNER provides Cured Leather (for leather-trimmed cloth armor)
+#
+# Design principles:
+# - Cloth armor has LOW armor but HIGH magicResist — for mages, healers, diplomats
+# - Armor triangle: BLACKSMITH (plate, high armor/STR) vs TANNER (leather, armor+DEX)
+#   vs TAILOR (cloth, low armor + high magicResist + INT/WIS/CHA)
+# - Three intermediates: Woven Cloth (T1), Fine Cloth (T3), Silk Fabric (T3)
+# - Legacy spin-cloth and make-cloth-padding KEPT for existing ARMORER supply chain
+# - Silkworm House is a non-livestock auto-producing building (no animals to buy/feed)
+# - Fine Wool is a bonus product from L7+ RANCHER sheep (alongside regular Wool)
+# =============================================================================
+
+tailor_recipes:
+
+  # --- ITEMS (new materials and armor added by TAILOR) ---
+
+  tailor_items:
+    materials:
+      fine_wool:
+        name: Fine Wool
+        item_id: fine_wool
+        category: MATERIAL
+        quality: COMMON
+        base_value: 30
+        source: "RANCHER Craftsman (L7+ Sheep Pen bonus product)"
+        description: "Exceptionally soft wool from well-bred sheep. Spun into Fine Cloth by a Tailor."
+      silkworm_cocoons:
+        name: Silkworm Cocoons
+        item_id: silkworm_cocoons
+        category: MATERIAL
+        quality: COMMON
+        base_value: 38
+        source: "RANCHER Craftsman (Silkworm House, 250g auto-producer)"
+        description: "Delicate silk cocoons harvested from a Silkworm House. Processed into Silk Fabric."
+      woven_cloth:
+        name: Woven Cloth
+        item_id: woven_cloth
+        category: MATERIAL
+        quality: COMMON
+        base_value: 20
+        source: "TAILOR processing (Wool → Woven Cloth)"
+        description: "Sturdy woven cloth from raw wool. The foundation of all tailored goods."
+      fine_cloth:
+        name: Fine Cloth
+        item_id: fine_cloth
+        category: MATERIAL
+        quality: FINE
+        base_value: 38
+        source: "TAILOR processing (Fine Wool → Fine Cloth)"
+        description: "Luxurious fabric woven from fine wool. Used in superior garments."
+      silk_fabric:
+        name: Silk Fabric
+        item_id: silk_fabric
+        category: MATERIAL
+        quality: FINE
+        base_value: 45
+        source: "TAILOR processing (Silkworm Cocoons → Silk Fabric)"
+        description: "Shimmering silk fabric with natural magic affinity. The finest textile in Aethermere."
+    armor:
+      cloth_hood:
+        name: Cloth Hood
+        item_id: cloth_hood
+        category: ARMOR
+        slot: HEAD
+        quality: COMMON
+        base_value: 25
+        effects: { armor: 1, magicResist: 3 }
+      cloth_sash:
+        name: Cloth Sash
+        item_id: cloth_sash
+        category: ARMOR
+        slot: OFF_HAND
+        quality: COMMON
+        base_value: 20
+        effects: { armor: 1, magicResist: 2 }
+      cloth_robe:
+        name: Cloth Robe
+        item_id: cloth_robe
+        category: ARMOR
+        slot: CHEST
+        quality: COMMON
+        base_value: 45
+        effects: { armor: 2, magicResist: 5 }
+      wool_trousers:
+        name: Wool Trousers
+        item_id: wool_trousers
+        category: ARMOR
+        slot: LEGS
+        quality: COMMON
+        base_value: 30
+        effects: { armor: 1, magicResist: 3 }
+      scholars_robe:
+        name: "Scholar's Robe"
+        item_id: scholars_robe
+        category: ARMOR
+        slot: CHEST
+        quality: FINE
+        base_value: 70
+        effects: { armor: 3, magicResist: 8 }
+      travelers_cloak:
+        name: "Traveler's Cloak"
+        item_id: travelers_cloak
+        category: ARMOR
+        slot: CHEST
+        quality: FINE
+        base_value: 55
+        effects: { armor: 4, magicResist: 5 }
+      merchants_hat:
+        name: "Merchant's Hat"
+        item_id: merchants_hat
+        category: ARMOR
+        slot: HEAD
+        quality: FINE
+        base_value: 45
+        effects: { armor: 1, magicResist: 5 }
+      herbalists_apron:
+        name: "Herbalist's Apron"
+        item_id: herbalists_apron
+        category: ARMOR
+        slot: CHEST
+        quality: FINE
+        base_value: 50
+        effects: { armor: 2, magicResist: 4 }
+      archmages_robe:
+        name: "Archmage's Robe"
+        item_id: archmages_robe
+        category: ARMOR
+        slot: CHEST
+        quality: SUPERIOR
+        base_value: 150
+        effects: { armor: 4, magicResist: 14 }
+      diplomats_regalia:
+        name: "Diplomat's Regalia"
+        item_id: diplomats_regalia
+        category: ARMOR
+        slot: CHEST
+        quality: SUPERIOR
+        base_value: 140
+        effects: { armor: 3, magicResist: 12 }
+      silk_hood_of_insight:
+        name: "Silk Hood of Insight"
+        item_id: silk_hood_of_insight
+        category: ARMOR
+        slot: HEAD
+        quality: SUPERIOR
+        base_value: 90
+        effects: { armor: 2, magicResist: 10 }
+      nobles_leggings:
+        name: "Noble's Leggings"
+        item_id: nobles_leggings
+        category: ARMOR
+        slot: LEGS
+        quality: SUPERIOR
+        base_value: 95
+        effects: { armor: 4, magicResist: 8 }
+      enchanted_cloak:
+        name: "Enchanted Cloak"
+        item_id: enchanted_cloak
+        category: ARMOR
+        slot: CHEST
+        quality: SUPERIOR
+        base_value: 180
+        effects: { armor: 5, magicResist: 16 }
+
+  # --- PROCESSING RECIPES (5) ---
+
+  spin-cloth:
+    id: spin-cloth
+    name: Cloth
+    description: "Raw cotton spun into usable cloth. Legacy recipe kept for ARMORER supply chain."
+    category: MATERIAL
+    base_value: 8
+    tier: 1
+    level_required: 1
+    profession: TAILOR
+    xp_reward: 8
+    inputs:
+      - item_id: cotton
+        quantity: 3
+    outputs:
+      - item_id: cloth
+        quantity: 2
+    notes: "KEPT — legacy ARMORER chain. Cotton → Cloth → Cloth Padding for metal armor."
+    dependency_chain: "Cotton →[TAILOR]→ Cloth"
+
+  make-cloth-padding:
+    id: make-cloth-padding
+    name: Cloth Padding
+    description: "Layered cloth padding used as armor lining. Legacy recipe kept for ARMORER supply chain."
+    category: MATERIAL
+    base_value: 15
+    tier: 1
+    level_required: 3
+    profession: TAILOR
+    xp_reward: 10
+    inputs:
+      - item_id: cloth
+        quantity: 2
+    outputs:
+      - item_id: cloth_padding
+        quantity: 1
+    notes: "KEPT — legacy ARMORER chain. Cloth Padding is used in metal armor recipes."
+    dependency_chain: "Cotton →[TAILOR]→ Cloth →[TAILOR]→ Cloth Padding →[ARMORER]→ Metal Armor"
+
+  tai-weave-cloth:
+    id: tai-weave-cloth
+    name: Woven Cloth
+    description: "Sturdy woven cloth from raw wool. The foundation of all tailored goods."
+    category: MATERIAL
+    base_value: 20
+    tier: 1
+    level_required: 3
+    profession: TAILOR
+    xp_reward: 10
+    inputs:
+      - item_id: wool
+        quantity: 3
+    outputs:
+      - item_id: woven_cloth
+        quantity: 2
+    notes: "Core T1 intermediate. Used in all Apprentice and Journeyman cloth armor."
+    dependency_chain: "Sheep →[RANCHER]→ Wool →[TAILOR]→ Woven Cloth"
+
+  tai-weave-fine-cloth:
+    id: tai-weave-fine-cloth
+    name: Fine Cloth
+    description: "Luxurious fabric woven from fine wool. Used in superior garments."
+    category: MATERIAL
+    quality: FINE
+    base_value: 38
+    tier: 3
+    level_required: 7
+    profession: TAILOR
+    xp_reward: 18
+    inputs:
+      - item_id: fine_wool
+        quantity: 3
+    outputs:
+      - item_id: fine_cloth
+        quantity: 2
+    notes: "T3 intermediate. Fine Wool from L7+ RANCHER sheep (bonus product)."
+    dependency_chain: "Sheep (L7+) →[RANCHER]→ Fine Wool →[TAILOR L7]→ Fine Cloth"
+
+  tai-process-silk:
+    id: tai-process-silk
+    name: Silk Fabric
+    description: "Shimmering silk fabric with natural magic affinity. The finest textile in Aethermere."
+    category: MATERIAL
+    quality: FINE
+    base_value: 45
+    tier: 3
+    level_required: 7
+    profession: TAILOR
+    xp_reward: 20
+    inputs:
+      - item_id: silkworm_cocoons
+        quantity: 3
+    outputs:
+      - item_id: silk_fabric
+        quantity: 2
+    notes: "T3 intermediate. Silkworm Cocoons from RANCHER Silkworm House (250g auto-producer)."
+    dependency_chain: "Silkworm House →[RANCHER]→ Silkworm Cocoons →[TAILOR L7]→ Silk Fabric"
+
+  # --- TIER 1: APPRENTICE ARMOR (Level 3-4) ---
+
+  tai-cloth-hood:
+    id: tai-cloth-hood
+    name: Cloth Hood
+    description: "A simple cloth hood offering minor protection and some magical resistance."
+    category: ARMOR
+    slot: HEAD
+    base_value: 25
+    tier: 1
+    level_required: 3
+    profession: TAILOR
+    xp_reward: 12
+    inputs:
+      - item_id: woven_cloth
+        quantity: 2
+    outputs:
+      - item_id: cloth_hood
+        quantity: 1
+    effects:
+      armor: 1
+      magicResist: 3
+    dependency_chain: "Wool →[TAILOR]→ Woven Cloth →[TAILOR]→ Cloth Hood"
+
+  tai-cloth-sash:
+    id: tai-cloth-sash
+    name: Cloth Sash
+    description: "A reinforced cloth sash with leather backing. Worn on the off hand for magical protection."
+    category: ARMOR
+    slot: OFF_HAND
+    base_value: 20
+    tier: 1
+    level_required: 3
+    profession: TAILOR
+    xp_reward: 10
+    inputs:
+      - item_id: woven_cloth
+        quantity: 1
+      - item_id: cured_leather
+        quantity: 1
+    outputs:
+      - item_id: cloth_sash
+        quantity: 1
+    effects:
+      armor: 1
+      magicResist: 2
+    dependency_chain: "Wool →[TAILOR]→ Woven Cloth + Animal Pelts →[TANNER]→ Cured Leather →[TAILOR]→ Cloth Sash"
+
+  tai-cloth-robe:
+    id: tai-cloth-robe
+    name: Cloth Robe
+    description: "A basic cloth robe offering modest physical protection and decent magical resistance."
+    category: ARMOR
+    slot: CHEST
+    base_value: 45
+    tier: 1
+    level_required: 4
+    profession: TAILOR
+    xp_reward: 15
+    inputs:
+      - item_id: woven_cloth
+        quantity: 4
+      - item_id: cured_leather
+        quantity: 1
+    outputs:
+      - item_id: cloth_robe
+        quantity: 1
+    effects:
+      armor: 2
+      magicResist: 5
+    dependency_chain: "Wool →[TAILOR]→ Woven Cloth + Cured Leather →[TAILOR]→ Cloth Robe"
+
+  tai-wool-trousers:
+    id: tai-wool-trousers
+    name: Wool Trousers
+    description: "Warm, sturdy woolen trousers. Practical and lightly enchantment-friendly."
+    category: ARMOR
+    slot: LEGS
+    base_value: 30
+    tier: 1
+    level_required: 4
+    profession: TAILOR
+    xp_reward: 12
+    inputs:
+      - item_id: woven_cloth
+        quantity: 3
+    outputs:
+      - item_id: wool_trousers
+        quantity: 1
+    effects:
+      armor: 1
+      magicResist: 3
+    dependency_chain: "Wool →[TAILOR]→ Woven Cloth →[TAILOR]→ Wool Trousers"
+
+  # --- TIER 2: JOURNEYMAN ARMOR (Level 5-6) ---
+
+  tai-scholars-robe:
+    id: tai-scholars-robe
+    name: "Scholar's Robe"
+    description: "An elegant robe favored by academics and hedge mages. Strong magical resistance."
+    category: ARMOR
+    slot: CHEST
+    base_value: 70
+    tier: 2
+    level_required: 5
+    profession: TAILOR
+    xp_reward: 22
+    inputs:
+      - item_id: woven_cloth
+        quantity: 5
+      - item_id: cured_leather
+        quantity: 2
+    outputs:
+      - item_id: scholars_robe
+        quantity: 1
+    effects:
+      armor: 3
+      magicResist: 8
+    dependency_chain: "Wool →[TAILOR]→ Woven Cloth + Cured Leather →[TAILOR]→ Scholar's Robe"
+
+  tai-travelers-cloak:
+    id: tai-travelers-cloak
+    name: "Traveler's Cloak"
+    description: "A road-worn cloak with leather reinforcement. Balanced protection for the wanderer."
+    category: ARMOR
+    slot: CHEST
+    base_value: 55
+    tier: 2
+    level_required: 5
+    profession: TAILOR
+    xp_reward: 20
+    inputs:
+      - item_id: woven_cloth
+        quantity: 3
+      - item_id: cured_leather
+        quantity: 2
+    outputs:
+      - item_id: travelers_cloak
+        quantity: 1
+    effects:
+      armor: 4
+      magicResist: 5
+    dependency_chain: "Wool →[TAILOR]→ Woven Cloth + Cured Leather →[TAILOR]→ Traveler's Cloak"
+
+  tai-merchants-hat:
+    id: tai-merchants-hat
+    name: "Merchant's Hat"
+    description: "A fashionable hat that marks one as a person of commerce. Subtly warded."
+    category: ARMOR
+    slot: HEAD
+    base_value: 45
+    tier: 2
+    level_required: 6
+    profession: TAILOR
+    xp_reward: 18
+    inputs:
+      - item_id: woven_cloth
+        quantity: 2
+      - item_id: cured_leather
+        quantity: 1
+    outputs:
+      - item_id: merchants_hat
+        quantity: 1
+    effects:
+      armor: 1
+      magicResist: 5
+    dependency_chain: "Wool →[TAILOR]→ Woven Cloth + Cured Leather →[TAILOR]→ Merchant's Hat"
+
+  tai-herbalists-apron:
+    id: tai-herbalists-apron
+    name: "Herbalist's Apron"
+    description: "A leather-trimmed cloth apron with herb-stained pockets. Practical for fieldwork."
+    category: ARMOR
+    slot: CHEST
+    base_value: 50
+    tier: 2
+    level_required: 6
+    profession: TAILOR
+    xp_reward: 20
+    inputs:
+      - item_id: woven_cloth
+        quantity: 3
+      - item_id: cured_leather
+        quantity: 2
+    outputs:
+      - item_id: herbalists_apron
+        quantity: 1
+    effects:
+      armor: 2
+      magicResist: 4
+    dependency_chain: "Wool →[TAILOR]→ Woven Cloth + Cured Leather →[TAILOR]→ Herbalist's Apron"
+
+  # --- TIER 3: CRAFTSMAN ARMOR (Level 7-8) ---
+
+  tai-archmages-robe:
+    id: tai-archmages-robe
+    name: "Archmage's Robe"
+    description: "A magnificent robe of silk and fine cloth, thrumming with latent magical energy. The pinnacle of mage attire."
+    category: ARMOR
+    slot: CHEST
+    base_value: 150
+    tier: 3
+    level_required: 7
+    profession: TAILOR
+    xp_reward: 35
+    inputs:
+      - item_id: fine_cloth
+        quantity: 4
+      - item_id: silk_fabric
+        quantity: 2
+      - item_id: wolf_leather
+        quantity: 1
+    outputs:
+      - item_id: archmages_robe
+        quantity: 1
+    effects:
+      armor: 4
+      magicResist: 14
+    dependency_chain: "Fine Wool →[TAILOR]→ Fine Cloth + Silkworm Cocoons →[TAILOR]→ Silk Fabric + Wolf Pelts →[TANNER]→ Wolf Leather →[TAILOR]→ Archmage's Robe"
+
+  tai-diplomats-regalia:
+    id: tai-diplomats-regalia
+    name: "Diplomat's Regalia"
+    description: "Resplendent formal attire threaded with silver. Commands respect in any court."
+    category: ARMOR
+    slot: CHEST
+    base_value: 140
+    tier: 3
+    level_required: 7
+    profession: TAILOR
+    xp_reward: 32
+    inputs:
+      - item_id: silk_fabric
+        quantity: 3
+      - item_id: fine_cloth
+        quantity: 2
+      - item_id: silver_ore
+        quantity: 1
+    outputs:
+      - item_id: diplomats_regalia
+        quantity: 1
+    effects:
+      armor: 3
+      magicResist: 12
+    dependency_chain: "Silkworm Cocoons →[TAILOR]→ Silk Fabric + Fine Wool →[TAILOR]→ Fine Cloth + Silver Ore →[TAILOR]→ Diplomat's Regalia"
+
+  tai-silk-hood-insight:
+    id: tai-silk-hood-insight
+    name: "Silk Hood of Insight"
+    description: "A gossamer silk hood that sharpens the mind and shields it from magical intrusion."
+    category: ARMOR
+    slot: HEAD
+    base_value: 90
+    tier: 3
+    level_required: 7
+    profession: TAILOR
+    xp_reward: 28
+    inputs:
+      - item_id: silk_fabric
+        quantity: 2
+      - item_id: fine_cloth
+        quantity: 1
+    outputs:
+      - item_id: silk_hood_of_insight
+        quantity: 1
+    effects:
+      armor: 2
+      magicResist: 10
+    dependency_chain: "Silkworm Cocoons →[TAILOR]→ Silk Fabric + Fine Wool →[TAILOR]→ Fine Cloth →[TAILOR]→ Silk Hood of Insight"
+
+  tai-nobles-leggings:
+    id: tai-nobles-leggings
+    name: "Noble's Leggings"
+    description: "Fine cloth trousers reinforced with wolf leather. Fit for nobility."
+    category: ARMOR
+    slot: LEGS
+    base_value: 95
+    tier: 3
+    level_required: 8
+    profession: TAILOR
+    xp_reward: 28
+    inputs:
+      - item_id: fine_cloth
+        quantity: 3
+      - item_id: wolf_leather
+        quantity: 2
+    outputs:
+      - item_id: nobles_leggings
+        quantity: 1
+    effects:
+      armor: 4
+      magicResist: 8
+    dependency_chain: "Fine Wool →[TAILOR]→ Fine Cloth + Wolf Pelts →[TANNER]→ Wolf Leather →[TAILOR]→ Noble's Leggings"
+
+  tai-enchanted-cloak:
+    id: tai-enchanted-cloak
+    name: "Enchanted Cloak"
+    description: "A cloak of layered silk, fine cloth, and bear leather, infused with glowcap essence. The most powerful wearable ward in Aethermere."
+    category: ARMOR
+    slot: CHEST
+    base_value: 180
+    tier: 3
+    level_required: 8
+    profession: TAILOR
+    xp_reward: 40
+    inputs:
+      - item_id: silk_fabric
+        quantity: 3
+      - item_id: fine_cloth
+        quantity: 3
+      - item_id: bear_leather
+        quantity: 2
+      - item_id: glowcap_mushrooms
+        quantity: 1
+    outputs:
+      - item_id: enchanted_cloak
+        quantity: 1
+    effects:
+      armor: 5
+      magicResist: 16
+    dependency_chain: "Silkworm Cocoons →[TAILOR]→ Silk Fabric + Fine Wool →[TAILOR]→ Fine Cloth + Bear Hides →[TANNER]→ Bear Leather + Glowcap Mushrooms →[TAILOR]→ Enchanted Cloak"
+    notes: "Top-tier TAILOR item. Requires inputs from RANCHER (silk, fine wool), TANNER (bear leather), and HERBALIST (glowcap mushrooms) — 4-profession supply chain."
+
+
+# =============================================================================
 # SECTION 5: DEPENDENCY CHAINS (QUICK REFERENCE)
 # =============================================================================
 # Read these bottom-to-top: raw resource → ... → final product
@@ -1809,9 +2417,31 @@ dependency_chains:
     Potions / Reagents ──[ENCHANTER]──→ Enchanted Items (future)
 
   # --- TEXTILE CHAIN (RANCHER → TAILOR) ---
-  clothing:
-    Sheep ──[RANCHER auto]──→ Wool ──[TAILOR]──→ Cloth ──[TAILOR]──→ Robes / Clothing
-    # Wool is now produced by RANCHER sheep. TAILOR recipes not yet implemented.
+  # UPDATED: TAILOR profession LIVE — full textile chain implemented
+  textile_processing:
+    Sheep ──[RANCHER auto]──→ Wool ──[TAILOR L3]──→ Woven Cloth (core T1 intermediate)
+    Sheep (L7+) ──[RANCHER]──→ Fine Wool ──[TAILOR L7]──→ Fine Cloth (T3 intermediate)
+    Silkworm House ──[RANCHER auto]──→ Silkworm Cocoons ──[TAILOR L7]──→ Silk Fabric (T3 intermediate)
+    Cotton ──[TAILOR L1]──→ Cloth ──[TAILOR L3]──→ Cloth Padding ──[ARMORER]──→ Metal Armor (legacy chain)
+
+  textile_apprentice_goods:
+    Woven Cloth ──[TAILOR L3]──→ Cloth Hood (HEAD, 25g, armor:1 magicResist:3)
+    Woven Cloth + Cured Leather ──[TAILOR L3]──→ Cloth Sash (OFF_HAND, 20g, armor:1 magicResist:2)
+    Woven Cloth + Cured Leather ──[TAILOR L4]──→ Cloth Robe (CHEST, 45g, armor:2 magicResist:5)
+    Woven Cloth ──[TAILOR L4]──→ Wool Trousers (LEGS, 30g, armor:1 magicResist:3)
+
+  textile_journeyman_goods:
+    Woven Cloth + Cured Leather ──[TAILOR L5]──→ Scholar's Robe (CHEST, 70g, armor:3 magicResist:8)
+    Woven Cloth + Cured Leather ──[TAILOR L5]──→ Traveler's Cloak (CHEST, 55g, armor:4 magicResist:5)
+    Woven Cloth + Cured Leather ──[TAILOR L6]──→ Merchant's Hat (HEAD, 45g, armor:1 magicResist:5)
+    Woven Cloth + Cured Leather ──[TAILOR L6]──→ Herbalist's Apron (CHEST, 50g, armor:2 magicResist:4)
+
+  textile_craftsman_goods:
+    Fine Cloth + Silk Fabric + Wolf Leather ──[TAILOR L7]──→ Archmage's Robe (CHEST, 150g, armor:4 magicResist:14)
+    Silk Fabric + Fine Cloth + Silver Ore ──[TAILOR L7]──→ Diplomat's Regalia (CHEST, 140g, armor:3 magicResist:12)
+    Silk Fabric + Fine Cloth ──[TAILOR L7]──→ Silk Hood of Insight (HEAD, 90g, armor:2 magicResist:10)
+    Fine Cloth + Wolf Leather ──[TAILOR L8]──→ Noble's Leggings (LEGS, 95g, armor:4 magicResist:8)
+    Silk Fabric + Fine Cloth + Bear Leather + Glowcap Mushrooms ──[TAILOR L8]──→ Enchanted Cloak (CHEST, 180g, armor:5 magicResist:16)
 
   # --- BUILDING CHAIN (MINER + LUMBERJACK → MASON) ---
   buildings:
@@ -1857,6 +2487,32 @@ economy_rules:
     player_choice: "Leather armor offers less raw defense (AC) than equivalent metal armor, but grants DEX bonuses. Players choose based on build: heavy fighters prefer BLACKSMITH plate, rogues and rangers prefer TANNER leather."
     economic_chain: "HUNTER → TANNER → Market. HUNTERs sell pelts to TANNERs. TANNERs sell Cured Leather to TAILORs and finished leather goods to players. Quiver/Ranger's Quiver create a TANNER→HUNTER feedback loop (tools that boost the gatherer who supplies the crafter)."
     tool_feedback: "Quiver (+25% hunting yield, 35 dur) and Ranger's Quiver (+40% hunting yield, 50 dur) are TANNER-crafted TOOL items that equip in the HUNTER's TOOL slot. This creates circular demand: HUNTER needs TANNER tools, TANNER needs HUNTER pelts."
+
+  tailor_economy:
+    principle: "TAILOR is a marketplace-dependent dual-supply crafter — buys from RANCHER + TANNER"
+    chain: "RANCHER →[auto-produce]→ Wool / Fine Wool / Silkworm Cocoons →[TAILOR process]→ Woven Cloth / Fine Cloth / Silk Fabric →[TAILOR craft]→ Cloth Armor →[Market]"
+    dual_supply: "TAILOR requires Wool from RANCHER AND Cured Leather from TANNER for most recipes. This creates demand on two separate profession chains simultaneously."
+    intermediates:
+      woven_cloth: "T1 intermediate (20g) — used in all Apprentice and Journeyman armor. From Wool."
+      fine_cloth: "T3 intermediate (38g) — used in all Craftsman armor. From Fine Wool (RANCHER L7+ sheep bonus)."
+      silk_fabric: "T3 intermediate (45g) — used in top-tier armor. From Silkworm Cocoons (RANCHER Silkworm House)."
+    armor_triangle:
+      principle: "Three armor crafters serve different builds"
+      BLACKSMITH: "Plate armor — highest AC, STR focus, heavy and expensive"
+      TANNER: "Leather armor — moderate AC + DEX bonuses, balanced weight"
+      TAILOR: "Cloth armor — lowest AC but highest magicResist, for mages/healers/diplomats (INT/WIS/CHA builds)"
+    silkworm_house:
+      principle: "Non-livestock auto-producing building — no animals to buy or feed"
+      cost: 250
+      level_required: 7
+      product: "Silkworm Cocoons (38g)"
+      note: "Gold sink for RANCHER Craftsman tier. Auto-produces cocoons every 3 ticks without livestock management overhead."
+    fine_wool:
+      principle: "Bonus product from L7+ RANCHER sheep alongside regular Wool"
+      source: "Sheep Pen (L7+ RANCHER)"
+      value: 30
+      note: "Incentivizes RANCHER to level up — higher-level sheep produce both Wool and Fine Wool."
+    player_choice: "Cloth armor has the lowest physical defense but highest magicResist. Mages, clerics, and diplomats prefer cloth. Warriors and rogues prefer plate or leather. This creates three distinct armor demand markets."
 
   scarcity_by_region:
     principle: "Different towns produce different resources"
@@ -2334,6 +2990,29 @@ implementation_order:
       - "✓ Updated HUNTER tiers: Apprentice/Journeyman/Craftsman all LIVE"
       - "✓ TANNER profession fully defined with DEX primary stat, CRAFTING type"
 
+  phase_3b:
+    name: "RANCHER → TAILOR (Textile Chain)"
+    status: COMPLETE
+    completed_date: 2026-02-17
+    description: "Full TAILOR profession — 18 recipes (5 processing + 13 armor). Cloth armor with low AC + high magicResist. RANCHER Craftsman tier expanded with Fine Wool and Silkworm Cocoons."
+    changes:
+      - "RANCHER Craftsman tier: Fine Wool (L7+ sheep bonus), Silkworm Cocoons (Silkworm House 250g auto-producer)"
+      - "5 processing recipes: Spin Cloth (legacy), Cloth Padding (legacy), Weave Cloth (L3), Fine Cloth (L7), Silk Fabric (L7)"
+      - "4 Apprentice armor: Cloth Hood (HEAD), Cloth Sash (OFF_HAND), Cloth Robe (CHEST), Wool Trousers (LEGS)"
+      - "4 Journeyman armor: Scholar's Robe (CHEST), Traveler's Cloak (CHEST), Merchant's Hat (HEAD), Herbalist's Apron (CHEST)"
+      - "5 Craftsman armor: Archmage's Robe (CHEST), Diplomat's Regalia (CHEST), Silk Hood of Insight (HEAD), Noble's Leggings (LEGS), Enchanted Cloak (CHEST)"
+      - "5 new material items: Fine Wool (30g), Silkworm Cocoons (38g), Woven Cloth (20g), Fine Cloth (38g), Silk Fabric (45g)"
+      - "13 new armor items with magicResist stat (25g-180g range)"
+      - "Armor triangle established: BLACKSMITH (plate/STR) vs TANNER (leather/DEX) vs TAILOR (cloth/magicResist)"
+      - "Dual-supply crafter pattern: TAILOR buys Wool from RANCHER + Cured Leather from TANNER"
+    tasks:
+      - "✓ Added Fine Wool (30g) and Silkworm Cocoons (38g) to RANCHER Craftsman tier"
+      - "✓ Added Woven Cloth, Fine Cloth, Silk Fabric processing intermediates"
+      - "✓ Created 13 TAILOR cloth armor recipes (all with magicResist stat)"
+      - "✓ Updated RANCHER Craftsman tier from NOT_YET_IMPLEMENTED to LIVE"
+      - "✓ TAILOR profession fully defined with CHA primary stat, CRAFTING type"
+      - "✓ Legacy spin-cloth and cloth-padding recipes KEPT for ARMORER supply chain"
+
   phase_4:
     name: "HERBALIST → ALCHEMIST (Potion Chain)"
     status: PLANNED
@@ -2345,7 +3024,7 @@ implementation_order:
   phase_5:
     name: "Remaining Crafting Professions"
     status: PLANNED
-    professions: [BREWER, WOODWORKER, FLETCHER, TAILOR, MASON, SCRIBE, ENCHANTER, JEWELER, ARMORER]
+    professions: [BREWER, WOODWORKER, FLETCHER, MASON, SCRIBE, ENCHANTER, JEWELER, ARMORER]
 
   phase_6:
     name: "Service Professions"
@@ -2423,7 +3102,7 @@ asset_ownership:
     LUMBERJACK: [timber_plot]
     FISHERMAN: [fishing_rights]
     HERBALIST: [herb_garden_plot]
-    RANCHER: [chicken_coop, dairy_barn, sheep_pen]
+    RANCHER: [chicken_coop, dairy_barn, sheep_pen, silkworm_house]
     HUNTER: [hunting_ground_rights]
 
   residency_rules:
@@ -2432,11 +3111,12 @@ asset_ownership:
 
   # UPDATED: 2026-02-18 — RANCHER livestock subsystem (pendingYield model)
   rancher_livestock:
-    overview: "RANCHER buildings accumulate pendingYield from livestock. Manual collection required."
+    overview: "RANCHER buildings accumulate pendingYield from livestock. Manual collection required. Silkworm House is a non-livestock auto-producer."
     building_types:
       chicken_coop: { baseCost: 100, levelRequired: 3, capacity: 5, animal: chicken }
       dairy_barn: { baseCost: 150, levelRequired: 3, capacity: 3, animal: cow }
       sheep_pen: { baseCost: 120, levelRequired: 5, capacity: 4, animal: sheep }
+      silkworm_house: { baseCost: 250, levelRequired: 7, capacity: 0, animal: none, product: "Silkworm Cocoons", note: "Non-livestock auto-producer. No animals to buy/feed. Auto-produces every 3 ticks." }
     lifecycle:
       buy_building: "POST /api/assets/buy (sets cropState=READY permanently)"
       buy_animal: "POST /api/rancher/buy-livestock (NPC vendor, fixed price)"

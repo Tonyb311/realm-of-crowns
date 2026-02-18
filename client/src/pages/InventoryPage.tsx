@@ -7,9 +7,7 @@ import {
   Swords,
   Crown,
   Shirt,
-  Hand,
-  Footprints,
-  Gem,
+  Wrench,
   Coins,
   X,
   ChevronRight,
@@ -27,7 +25,7 @@ interface ItemTemplate {
   type: string;
   rarity: string;
   description: string;
-  stats: Record<string, number> | null;
+  stats: Record<string, unknown> | null;
   durability: number;
 }
 
@@ -43,16 +41,26 @@ interface InventoryItem {
   enchantments: string[];
 }
 
-interface EquipmentSlots {
-  head: InventoryItem | null;
-  chest: InventoryItem | null;
-  hands: InventoryItem | null;
-  legs: InventoryItem | null;
-  feet: InventoryItem | null;
-  mainHand: InventoryItem | null;
-  offHand: InventoryItem | null;
-  accessory1: InventoryItem | null;
-  accessory2: InventoryItem | null;
+interface EquippedItemData {
+  slot: string;
+  item: {
+    id: string;
+    name: string;
+    type: string;
+    quality: string;
+    currentDurability: number;
+    maxDurability: number;
+    stats: Record<string, unknown>;
+    baseStats?: Record<string, unknown>;
+  };
+}
+
+interface EquipmentStats {
+  totalAC: number;
+  totalDamage: number;
+  totalStatBonuses: Record<string, number>;
+  totalResistances: Record<string, number>;
+  equippedCount: number;
 }
 
 interface CharacterData {
@@ -60,7 +68,6 @@ interface CharacterData {
   name: string;
   gold: number;
   inventory: InventoryItem[];
-  equipment: EquipmentSlots;
 }
 
 // ---------------------------------------------------------------------------
@@ -69,7 +76,8 @@ interface CharacterData {
 const TYPE_ICONS: Record<string, typeof Package> = {
   WEAPON: Swords,
   ARMOR: Shield,
-  CONSUMABLE: Gem,
+  TOOL: Wrench,
+  CONSUMABLE: Package,
   MATERIAL: Package,
 };
 
@@ -78,25 +86,58 @@ function getTypeIcon(type: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Equipment slot definitions
+// Equipment slot definitions (6 primary slots from prompt)
 // ---------------------------------------------------------------------------
 interface SlotDef {
-  key: keyof EquipmentSlots;
+  key: string;    // DB EquipSlot value
   label: string;
   icon: typeof Shield;
 }
 
-const EQUIPMENT_SLOTS: SlotDef[] = [
-  { key: 'head',      label: 'Head',      icon: Crown },
-  { key: 'chest',     label: 'Chest',     icon: Shirt },
-  { key: 'hands',     label: 'Hands',     icon: Hand },
-  { key: 'legs',      label: 'Legs',      icon: Shirt },
-  { key: 'feet',      label: 'Feet',      icon: Footprints },
-  { key: 'mainHand',  label: 'Main Hand', icon: Swords },
-  { key: 'offHand',   label: 'Off Hand',  icon: Shield },
-  { key: 'accessory1', label: 'Accessory', icon: Gem },
-  { key: 'accessory2', label: 'Accessory', icon: Gem },
+const PRIMARY_SLOTS: SlotDef[] = [
+  { key: 'MAIN_HAND', label: 'Weapon',   icon: Swords },
+  { key: 'OFF_HAND',  label: 'Off Hand', icon: Shield },
+  { key: 'HEAD',      label: 'Head',     icon: Crown },
+  { key: 'CHEST',     label: 'Body',     icon: Shirt },
+  { key: 'LEGS',      label: 'Legs',     icon: Shirt },
+  { key: 'TOOL',      label: 'Tool',     icon: Wrench },
 ];
+
+// ---------------------------------------------------------------------------
+// Auto-detect equipment slot from item type + stats
+// ---------------------------------------------------------------------------
+function detectSlot(item: InventoryItem): string | null {
+  const type = item.template.type;
+  const stats = item.template.stats as Record<string, unknown> | null;
+  const equipSlot = stats?.equipSlot as string | undefined;
+
+  if (type === 'WEAPON') return 'MAIN_HAND';
+  if (type === 'TOOL') return 'TOOL';
+  if (type === 'ARMOR') {
+    // Use equipSlot from stats JSON if set by BLACKSMITH recipes
+    if (equipSlot) {
+      const slotMap: Record<string, string> = {
+        HEAD: 'HEAD', CHEST: 'CHEST', LEGS: 'LEGS',
+        FEET: 'FEET', HANDS: 'HANDS', BACK: 'BACK', OFF_HAND: 'OFF_HAND',
+      };
+      return slotMap[equipSlot] ?? 'CHEST';
+    }
+    // Guess from name
+    const name = item.template.name.toLowerCase();
+    if (name.includes('helmet') || name.includes('helm') || name.includes('hat') || name.includes('crown')) return 'HEAD';
+    if (name.includes('shield')) return 'OFF_HAND';
+    if (name.includes('legging') || name.includes('greave') || name.includes('legs') || name.includes('pants')) return 'LEGS';
+    if (name.includes('boots') || name.includes('shoes')) return 'FEET';
+    if (name.includes('gloves') || name.includes('gauntlet')) return 'HANDS';
+    if (name.includes('cape') || name.includes('cloak')) return 'BACK';
+    return 'CHEST'; // default armor → body
+  }
+  return null;
+}
+
+function isEquippable(item: InventoryItem): boolean {
+  return detectSlot(item) !== null;
+}
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -105,12 +146,13 @@ export default function InventoryPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [confirmEquip, setConfirmEquip] = useState<{ item: InventoryItem; slot: string; replacing: EquippedItemData | null } | null>(null);
 
-  // Fetch character data
+  // Fetch character data (inventory + gold)
   const {
     data: character,
-    isLoading,
-    error,
+    isLoading: charLoading,
+    error: charError,
   } = useQuery<CharacterData>({
     queryKey: ['character', 'me'],
     queryFn: async () => {
@@ -119,31 +161,80 @@ export default function InventoryPage() {
     },
   });
 
-  // Equip / Unequip mutations (placeholder APIs)
+  // Fetch equipped items separately from the real equipment API
+  const { data: equippedData } = useQuery<{ equipped: EquippedItemData[] }>({
+    queryKey: ['equipment', 'equipped'],
+    queryFn: async () => {
+      const res = await api.get('/equipment/equipped');
+      return res.data;
+    },
+    enabled: !!character,
+  });
+
+  // Fetch equipment stats
+  const { data: eqStats } = useQuery<EquipmentStats>({
+    queryKey: ['equipment', 'stats'],
+    queryFn: async () => {
+      const res = await api.get('/equipment/stats');
+      return res.data;
+    },
+    enabled: !!character,
+  });
+
+  const equippedItems = equippedData?.equipped ?? [];
+
+  // Equip mutation — uses real equipment API
   const equipMutation = useMutation({
-    mutationFn: async (itemId: string) => {
-      await api.post(`/characters/me/equip`, { itemId });
+    mutationFn: async ({ itemId, slot }: { itemId: string; slot: string }) => {
+      await api.post('/equipment/equip', { itemId, slot });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
       setSelectedItem(null);
+      setConfirmEquip(null);
     },
   });
 
+  // Unequip mutation — uses real equipment API
   const unequipMutation = useMutation({
     mutationFn: async (slot: string) => {
-      await api.post(`/characters/me/unequip`, { slot });
+      await api.post('/equipment/unequip', { slot });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
       setSelectedItem(null);
     },
   });
 
   // -------------------------------------------------------------------------
-  // Loading / Error states
+  // Helpers
   // -------------------------------------------------------------------------
-  if (isLoading) {
+  function getEquippedInSlot(slot: string): EquippedItemData | null {
+    return equippedItems.find((e) => e.slot === slot) ?? null;
+  }
+
+  function isItemEquippedSlot(item: InventoryItem): string | null {
+    const eq = equippedItems.find((e) => e.item.id === item.id);
+    return eq ? eq.slot : null;
+  }
+
+  function handleEquipClick(item: InventoryItem) {
+    const slot = detectSlot(item);
+    if (!slot) return;
+    const existing = getEquippedInSlot(slot);
+    if (existing) {
+      setConfirmEquip({ item, slot, replacing: existing });
+    } else {
+      equipMutation.mutate({ itemId: item.id, slot });
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Loading / Error
+  // -------------------------------------------------------------------------
+  if (charLoading) {
     return (
       <div className="space-y-6">
         <div className="h-32 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
@@ -159,16 +250,12 @@ export default function InventoryPage() {
     );
   }
 
-  if (error || !character) {
+  if (charError || !character) {
     return (
       <div className="flex flex-col items-center justify-center py-20 p-8">
         <h2 className="text-2xl font-display text-realm-gold-400 mb-4">No Character Found</h2>
         <p className="text-realm-text-secondary mb-6">You need a character to view your inventory.</p>
-        <RealmButton
-          variant="primary"
-          size="lg"
-          onClick={() => navigate('/create-character')}
-        >
+        <RealmButton variant="primary" size="lg" onClick={() => navigate('/create-character')}>
           Create Character
         </RealmButton>
       </div>
@@ -176,26 +263,6 @@ export default function InventoryPage() {
   }
 
   const inventory: InventoryItem[] = character.inventory ?? [];
-  const equipment: EquipmentSlots = character.equipment ?? {
-    head: null,
-    chest: null,
-    hands: null,
-    legs: null,
-    feet: null,
-    mainHand: null,
-    offHand: null,
-    accessory1: null,
-    accessory2: null,
-  };
-
-  // Check if an item is currently equipped
-  const isItemEquipped = (item: InventoryItem): string | null => {
-    for (const slot of EQUIPMENT_SLOTS) {
-      const equipped = equipment[slot.key];
-      if (equipped && equipped.id === item.id) return slot.key;
-    }
-    return null;
-  };
 
   // -------------------------------------------------------------------------
   // Render
@@ -211,7 +278,6 @@ export default function InventoryPage() {
               <p className="text-realm-text-muted text-sm mt-1">{character.name}</p>
             </div>
             <div className="flex items-center gap-4">
-              {/* Gold balance */}
               <div className="flex items-center gap-2 bg-realm-bg-700 border border-realm-gold-500/30 rounded-lg px-4 py-2">
                 <Coins className="w-5 h-5 text-realm-gold-400" />
                 <span className="font-display text-xl text-realm-gold-400">
@@ -219,11 +285,7 @@ export default function InventoryPage() {
                 </span>
                 <span className="text-realm-text-muted text-xs">gold</span>
               </div>
-              <RealmButton
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/town')}
-              >
+              <RealmButton variant="ghost" size="sm" onClick={() => navigate('/town')}>
                 Back to Town
               </RealmButton>
             </div>
@@ -232,29 +294,60 @@ export default function InventoryPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {/* Equipment Slots */}
+        {/* Equipment Slots (6 primary) */}
         <section className="mb-8">
           <h2 className="text-xl font-display text-realm-text-primary mb-4">Equipment</h2>
-          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-3">
-            {EQUIPMENT_SLOTS.map((slot, idx) => {
-              const equipped = equipment[slot.key];
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+            {PRIMARY_SLOTS.map((slot) => {
+              const equipped = getEquippedInSlot(slot.key);
               const Icon = slot.icon;
-              const rarityStyle = equipped ? getRarityStyle(equipped.quality || equipped.template.rarity) : null;
+              const rarityStyle = equipped ? getRarityStyle(equipped.item.quality) : null;
+              const isTool = slot.key === 'TOOL' && equipped;
+              const durPct = isTool && equipped.item.maxDurability > 0
+                ? equipped.item.currentDurability / equipped.item.maxDurability
+                : null;
 
               return (
                 <button
-                  key={`${slot.key}-${idx}`}
-                  onClick={() => equipped && setSelectedItem(equipped)}
-                  className={`relative flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all min-h-[80px]
+                  key={slot.key}
+                  onClick={() => {
+                    if (equipped) {
+                      // Find matching inventory item to select it
+                      const invItem = inventory.find((i) => i.id === equipped.item.id);
+                      if (invItem) setSelectedItem(invItem);
+                    }
+                  }}
+                  className={`relative flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all min-h-[90px]
                     ${equipped
                       ? `${rarityStyle!.border} ${rarityStyle!.bg} hover:brightness-110`
                       : 'border-realm-border border-dashed bg-realm-bg-700/50 hover:border-realm-border/80'}`}
                 >
                   <Icon className={`w-5 h-5 mb-1 ${equipped ? rarityStyle!.text : 'text-realm-text-muted/40'}`} />
                   {equipped ? (
-                    <span className={`text-[10px] text-center leading-tight ${rarityStyle!.text}`}>
-                      {equipped.template.name}
-                    </span>
+                    <>
+                      <span className={`text-[10px] text-center leading-tight ${rarityStyle!.text}`}>
+                        {equipped.item.name}
+                      </span>
+                      {/* Stats summary */}
+                      {equipped.item.stats && (
+                        <span className="text-[9px] text-realm-text-muted mt-0.5">
+                          {typeof equipped.item.stats.damage === 'number' && `+${Math.round(equipped.item.stats.damage as number)} ATK`}
+                          {typeof equipped.item.stats.armor === 'number' && `+${Math.round(equipped.item.stats.armor as number)} DEF`}
+                          {typeof equipped.item.stats.yieldBonus === 'number' && `+${Math.round((equipped.item.stats.yieldBonus as number) * 100)}%`}
+                        </span>
+                      )}
+                      {/* Tool durability bar */}
+                      {durPct !== null && (
+                        <div className="w-full mt-1 h-1.5 bg-realm-bg-900 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              durPct > 0.5 ? 'bg-realm-success' : durPct > 0.25 ? 'bg-realm-gold-400' : 'bg-realm-danger'
+                            }`}
+                            style={{ width: `${durPct * 100}%` }}
+                          />
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <span className="text-[10px] text-realm-text-muted/40">{slot.label}</span>
                   )}
@@ -262,6 +355,24 @@ export default function InventoryPage() {
               );
             })}
           </div>
+
+          {/* Combat Stats Summary */}
+          {eqStats && (eqStats.totalDamage > 0 || eqStats.totalAC > 0) && (
+            <div className="flex gap-4 mt-3">
+              {eqStats.totalDamage > 0 && (
+                <span className="text-xs text-realm-text-secondary">
+                  <Swords className="w-3 h-3 inline mr-1 text-realm-danger" />
+                  Attack: <span className="text-realm-text-primary font-semibold">{eqStats.totalDamage}</span>
+                </span>
+              )}
+              {eqStats.totalAC > 0 && (
+                <span className="text-xs text-realm-text-secondary">
+                  <Shield className="w-3 h-3 inline mr-1 text-realm-teal-300" />
+                  Defense: <span className="text-realm-text-primary font-semibold">{eqStats.totalAC}</span>
+                </span>
+              )}
+            </div>
+          )}
         </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -276,12 +387,7 @@ export default function InventoryPage() {
               <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
                 <Package className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-3" />
                 <p className="text-realm-text-muted text-sm">Your inventory is empty.</p>
-                <RealmButton
-                  variant="secondary"
-                  size="sm"
-                  className="mt-4"
-                  onClick={() => navigate('/crafting')}
-                >
+                <RealmButton variant="secondary" size="sm" className="mt-4" onClick={() => navigate('/crafting')}>
                   Start Crafting
                 </RealmButton>
               </div>
@@ -291,7 +397,7 @@ export default function InventoryPage() {
                   const rarityStyle = getRarityStyle(item.quality || item.template.rarity);
                   const TypeIcon = getTypeIcon(item.template.type);
                   const isSelected = selectedItem?.id === item.id;
-                  const equippedSlot = isItemEquipped(item);
+                  const equippedSlot = isItemEquippedSlot(item);
 
                   return (
                     <button
@@ -335,9 +441,9 @@ export default function InventoryPage() {
             {selectedItem ? (
               <ItemDetailPanel
                 item={selectedItem}
-                equippedSlot={isItemEquipped(selectedItem)}
+                equippedSlot={isItemEquippedSlot(selectedItem)}
                 onClose={() => setSelectedItem(null)}
-                onEquip={() => equipMutation.mutate(selectedItem.id)}
+                onEquip={() => handleEquipClick(selectedItem)}
                 onUnequip={(slot) => unequipMutation.mutate(slot)}
                 isEquipping={equipMutation.isPending}
                 isUnequipping={unequipMutation.isPending}
@@ -351,6 +457,33 @@ export default function InventoryPage() {
           </aside>
         </div>
       </div>
+
+      {/* Equip Confirmation Modal */}
+      {confirmEquip && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6 max-w-sm mx-4">
+            <h3 className="text-lg font-display text-realm-gold-400 mb-3">Replace Equipment?</h3>
+            <p className="text-sm text-realm-text-secondary mb-4">
+              Replace <span className="text-realm-text-primary font-semibold">{confirmEquip.replacing?.item.name}</span> with{' '}
+              <span className="text-realm-text-primary font-semibold">{confirmEquip.item.template.name}</span>?
+              The old item will return to your inventory.
+            </p>
+            <div className="flex gap-2">
+              <RealmButton
+                variant="primary"
+                className="flex-1"
+                onClick={() => equipMutation.mutate({ itemId: confirmEquip.item.id, slot: confirmEquip.slot })}
+                disabled={equipMutation.isPending}
+              >
+                {equipMutation.isPending ? 'Equipping...' : 'Replace'}
+              </RealmButton>
+              <RealmButton variant="ghost" className="flex-1" onClick={() => setConfirmEquip(null)}>
+                Cancel
+              </RealmButton>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -383,6 +516,13 @@ function ItemDetailPanel({
   const durPct = item.template.durability > 0 ? item.currentDurability / item.template.durability : 1;
   const durColor = durPct > 0.5 ? 'bg-realm-success' : durPct > 0.25 ? 'bg-realm-gold-400' : 'bg-realm-danger';
 
+  // Filter out non-display stats from the stats block
+  const displayStats = item.template.stats
+    ? Object.entries(item.template.stats).filter(
+        ([key]) => !['equipSlot', 'professionType', 'toolType', 'tier'].includes(key),
+      )
+    : [];
+
   return (
     <div className={`bg-realm-bg-700 border-2 ${rarityStyle.border} rounded-lg p-5 sticky top-8`}>
       {/* Header */}
@@ -414,18 +554,23 @@ function ItemDetailPanel({
       )}
 
       {/* Stats */}
-      {item.template.stats && Object.keys(item.template.stats).length > 0 && (
+      {displayStats.length > 0 && (
         <div className="mb-4">
           <span className="text-xs text-realm-text-muted uppercase tracking-wider">Stats</span>
           <div className="mt-1 space-y-1">
-            {Object.entries(item.template.stats).map(([stat, value]) => (
-              <div key={stat} className="flex justify-between text-xs">
-                <span className="text-realm-text-secondary capitalize">{stat.replace(/_/g, ' ')}</span>
-                <span className={value > 0 ? 'text-realm-success' : 'text-realm-danger'}>
-                  {value > 0 ? '+' : ''}{value}
-                </span>
-              </div>
-            ))}
+            {displayStats.map(([stat, value]) => {
+              const numVal = typeof value === 'number' ? value : 0;
+              const isPercentage = stat === 'yieldBonus' || stat === 'speedBonus';
+              const displayVal = isPercentage ? `${numVal > 0 ? '+' : ''}${Math.round(numVal * 100)}%` : `${numVal > 0 ? '+' : ''}${numVal}`;
+              return (
+                <div key={stat} className="flex justify-between text-xs">
+                  <span className="text-realm-text-secondary capitalize">{stat.replace(/([A-Z])/g, ' $1').trim()}</span>
+                  <span className={numVal > 0 ? 'text-realm-success' : numVal < 0 ? 'text-realm-danger' : 'text-realm-text-secondary'}>
+                    {displayVal}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -438,9 +583,7 @@ function ItemDetailPanel({
             <div className="flex-1 h-2 bg-realm-bg-900 rounded-full overflow-hidden">
               <div
                 className={`h-full ${durColor} rounded-full transition-all`}
-                style={{
-                  width: `${durPct * 100}%`,
-                }}
+                style={{ width: `${durPct * 100}%` }}
               />
             </div>
             <span className="text-xs text-realm-text-secondary">
@@ -478,14 +621,14 @@ function ItemDetailPanel({
             {isUnequipping ? 'Unequipping...' : 'Unequip'}
           </RealmButton>
         ) : (
-          (item.template.type === 'WEAPON' || item.template.type === 'ARMOR') && (
+          isEquippable({ ...item }) && (
             <RealmButton
               variant="primary"
               className="w-full"
               onClick={onEquip}
-              disabled={isEquipping}
+              disabled={isEquipping || item.currentDurability <= 0}
             >
-              {isEquipping ? 'Equipping...' : 'Equip'}
+              {isEquipping ? 'Equipping...' : item.currentDurability <= 0 ? 'Broken' : 'Equip'}
             </RealmButton>
           )
         )}

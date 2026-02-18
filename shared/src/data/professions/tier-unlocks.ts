@@ -307,10 +307,10 @@ export const RANCHER_ANIMAL_UNLOCKS: ProfessionTierUnlocks = {
   },
   CRAFTSMAN: {
     tier: 3,
-    crops: ['Horses'],
-    spotTypes: ['horse_paddock'],
-    description: 'Horse breeding and training',
-    NOT_YET_IMPLEMENTED: true,
+    crops: ['Fine Wool', 'Silkworm Cocoons'],
+    spotTypes: ['sheep_pen', 'silkworm_house'],
+    description: 'L7+ Sheep Pens produce Fine Wool. Build a Silkworm House to produce Silkworm Cocoons.',
+    assetBased: true,
   },
   EXPERT: {
     tier: 4,

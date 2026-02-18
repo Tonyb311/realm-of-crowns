@@ -48,6 +48,9 @@ const INTERMEDIATE_RECIPE_IDS = new Set([
   'tan-cure-leather',  // Cured Leather → all TANNER finished goods
   'tan-wolf-leather',  // Wolf Leather → Wolf Leather Armor, Wolf Leather Hood, Ranger's Quiver
   'tan-bear-leather',  // Bear Leather → Bear Hide Cuirass, Ranger's Quiver
+  'tai-weave-cloth',   // Woven Cloth → all TAILOR finished goods (Apprentice/Journeyman)
+  'tai-weave-fine-cloth', // Fine Cloth → TAILOR Craftsman finished goods
+  'tai-process-silk',  // Silk Fabric → TAILOR Craftsman finished goods
 ]);
 
 // Gathering spot type → item name produced
@@ -153,6 +156,7 @@ function getMissingIngredients(
     'Medicinal Herbs', 'Glowcap Mushrooms',
     'River Trout', 'Lake Perch',
     'Animal Pelts', 'Wolf Pelts', 'Bear Hides',
+    'Wool', 'Fine Wool', 'Silkworm Cocoons',
   ]);
   const rawMissing: string[] = [];
   const craftedMissing: string[] = [];
@@ -252,6 +256,7 @@ async function determineTravelReason(
   const isBlacksmith = profs.includes('BLACKSMITH');
   const isAlchemist = profs.includes('ALCHEMIST');
   const isTanner = profs.includes('TANNER');
+  const isTailor = profs.includes('TAILOR');
 
   // a. COOK missing ingredients → travel to town with needed resource
   if (isCook && recipes.length > 0) {
@@ -307,6 +312,23 @@ async function determineTravelReason(
 
   // a4. TANNER missing ingredients → travel to hunting_ground/mine/silver town
   if (isTanner && recipes.length > 0) {
+    const missing = getMissingIngredients(invMap, recipes);
+    if (missing.length > 0) {
+      const neededSpots = missing
+        .map(item => ITEM_TO_SPOT_TYPE[item])
+        .filter((s): s is string => !!s);
+
+      if (neededSpots.length > 0 && !neededSpots.includes(currentSpotType || '')) {
+        return {
+          reason: `Need ${missing[0]}, traveling to ${neededSpots[0]} town`,
+          execute: () => actions.travelToResourceTown(bot, neededSpots, `need ${missing[0]}`),
+        };
+      }
+    }
+  }
+
+  // a5. TAILOR missing ingredients → travel to silver_mine/herb town
+  if (isTailor && recipes.length > 0) {
     const missing = getMissingIngredients(invMap, recipes);
     if (missing.length > 0) {
       const neededSpots = missing
@@ -393,7 +415,7 @@ async function handleNoProfession(
       case 'gatherer':   profType = 'FARMER';      break;
       case 'crafter': {
         const r = Math.random();
-        profType = r < 0.20 ? 'COOK' : r < 0.40 ? 'BREWER' : r < 0.60 ? 'BLACKSMITH' : r < 0.80 ? 'ALCHEMIST' : 'TANNER';
+        profType = r < 0.17 ? 'COOK' : r < 0.33 ? 'BREWER' : r < 0.50 ? 'BLACKSMITH' : r < 0.67 ? 'ALCHEMIST' : r < 0.83 ? 'TANNER' : 'TAILOR';
         break;
       }
       case 'merchant':   profType = 'FARMER';      break;
@@ -403,7 +425,7 @@ async function handleNoProfession(
       case 'explorer':   profType = 'LUMBERJACK';  break;
       case 'balanced': {
         const r = Math.random();
-        profType = r < 0.20 ? 'COOK' : r < 0.40 ? 'BREWER' : r < 0.60 ? 'BLACKSMITH' : r < 0.80 ? 'ALCHEMIST' : 'TANNER';
+        profType = r < 0.17 ? 'COOK' : r < 0.33 ? 'BREWER' : r < 0.50 ? 'BLACKSMITH' : r < 0.67 ? 'ALCHEMIST' : r < 0.83 ? 'TANNER' : 'TAILOR';
         break;
       }
       default:           profType = 'FARMER';      break;
@@ -475,6 +497,7 @@ export async function decideBotAction(
   const isBlacksmith = profs.includes('BLACKSMITH');
   const isAlchemist = profs.includes('ALCHEMIST');
   const isTanner = profs.includes('TANNER');
+  const isTailor = profs.includes('TAILOR');
 
   // ── Current town info ──
   const townCache = await ensureTownCache();
@@ -738,6 +761,16 @@ export async function decideBotAction(
       if (spotItem && missing.includes(spotItem)) {
         shouldGather = true;
         gatherReason = `Gathering ${spotItem} (needed for tanning)`;
+      }
+    }
+
+    // TAILOR: gather if current town produces a needed ingredient (silver ore, glowcap mushrooms)
+    if (!shouldGather && isTailor) {
+      const missing = getMissingIngredients(invMap, recipes);
+      const spotItem = SPOT_TO_ITEM[currentSpotType || ''];
+      if (spotItem && missing.includes(spotItem)) {
+        shouldGather = true;
+        gatherReason = `Gathering ${spotItem} (needed for tailoring)`;
       }
     }
 

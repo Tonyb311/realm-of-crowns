@@ -529,6 +529,21 @@ export async function processDailyTick(): Promise<DailyTickResult> {
           });
         }
 
+        // Cache owner's RANCHER level for Fine Wool bonus
+        let rancherLevel = 0;
+        const rancherProf = await tx.playerProfession.findFirst({
+          where: { characterId: ownerId, professionType: 'RANCHER' },
+          select: { level: true },
+        });
+        if (rancherProf) rancherLevel = rancherProf.level;
+
+        // Pre-fetch Fine Wool template for L7+ sheep bonus
+        let fineWoolTemplateId: string | null = null;
+        if (rancherLevel >= 7) {
+          const fwt = await tx.itemTemplate.findFirst({ where: { name: 'Fine Wool' } });
+          if (fwt) fineWoolTemplateId = fwt.id;
+        }
+
         for (const animal of animals) {
           const def = LIVESTOCK_DEFINITIONS[animal.animalType];
           if (!def) continue;
@@ -633,6 +648,16 @@ export async function processDailyTick(): Promise<DailyTickResult> {
 
               produced += yield_;
               producedThisTick = true;
+
+              // 5b. Fine Wool bonus — L7+ RANCHER sheep produce Fine Wool alongside Wool
+              if (animal.animalType === 'sheep' && fineWoolTemplateId) {
+                const fwItem = await tx.item.create({
+                  data: { templateId: fineWoolTemplateId, quality: 'COMMON' },
+                });
+                await tx.inventory.create({
+                  data: { characterId: ownerId, itemId: fwItem.id, quantity: 1 },
+                });
+              }
             }
           }
 
@@ -654,6 +679,36 @@ export async function processDailyTick(): Promise<DailyTickResult> {
           }
         }
       });
+    }
+
+    // Silkworm House auto-production (non-livestock building, increments pendingYield on feed days)
+    if (isFeedDay) {
+      const silkwormHouses = await prisma.ownedAsset.findMany({
+        where: { spotType: 'silkworm_house' },
+      });
+
+      let silkwormProduced = 0;
+      for (const house of silkwormHouses) {
+        // Check owner has RANCHER L7+
+        const ownerRancherProf = await prisma.playerProfession.findFirst({
+          where: { characterId: house.ownerId, professionType: 'RANCHER' },
+          select: { level: true },
+        });
+        if (!ownerRancherProf || ownerRancherProf.level < 7) continue;
+
+        await prisma.ownedAsset.update({
+          where: { id: house.id },
+          data: {
+            pendingYield: { increment: 1 },
+            ...(house.pendingYieldSince == null ? { pendingYieldSince: currentDay } : {}),
+          },
+        });
+        silkwormProduced++;
+      }
+      if (silkwormProduced > 0) {
+        produced += silkwormProduced;
+        console.log(`[DailyTick]   Silkworm Houses: ${silkwormProduced} cocoon yield(s) added`);
+      }
     }
 
     // Low-feed warnings

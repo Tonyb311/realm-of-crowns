@@ -35,4 +35,6 @@ export interface ProfessionDefinition {
   outputProducts: string[];
   townTypeAffinity: string[];
   tierUnlocks: Record<ProfessionTierName, string[]>;
+  hasSpecializations?: boolean;
+  specializations?: Array<{ id: string; name: string; description: string }>;
 }

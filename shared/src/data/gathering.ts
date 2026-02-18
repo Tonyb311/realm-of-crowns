@@ -336,6 +336,28 @@ export const WOOL_ITEM: GatheringItem = {
   icon: '\uD83E\uDDF6',
 };
 
+export const FINE_WOOL: GatheringItem = {
+  templateName: 'Fine Wool',
+  type: 'MATERIAL',
+  description: 'Exceptionally soft, high-grade wool from carefully bred sheep. The foundation of luxury garments.',
+  isFood: false,
+  shelfLifeDays: null,
+  foodBuff: null,
+  baseValue: 30,
+  icon: '\uD83E\uDDF6',
+};
+
+export const SILKWORM_COCOONS: GatheringItem = {
+  templateName: 'Silkworm Cocoons',
+  type: 'MATERIAL',
+  description: 'Delicate cocoons spun by silkworms raised alongside livestock. Their threads produce fabric of extraordinary quality.',
+  isFood: false,
+  shelfLifeDays: null,
+  foodBuff: null,
+  baseValue: 38,
+  icon: '\uD83D\uDC1B',
+};
+
 // ============================================================
 // RESOURCE TYPE -> ITEM + ICON MAPPING
 // ============================================================
@@ -366,6 +388,8 @@ export const RESOURCE_MAP: Record<string, { item: GatheringItem; icon: string }>
   chicken_coop:    { item: EGGS,            icon: '\uD83D\uDC14' },
   dairy_barn:      { item: MILK,            icon: '\uD83D\uDC04' },
   sheep_pen:       { item: WOOL_ITEM,       icon: '\uD83D\uDC11' },
+  // RANCHER T3 Craftsman building (no livestock — auto-produces)
+  silkworm_house:  { item: SILKWORM_COCOONS, icon: '\uD83D\uDC1B' },
 };
 
 /**

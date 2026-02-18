@@ -9,6 +9,7 @@ import {
   Hammer,
   Package,
   MapPin,
+  AlertTriangle,
 } from 'lucide-react';
 import api from '../services/api';
 import { useBuildingEvents } from '../hooks/useBuildingEvents';
@@ -33,7 +34,7 @@ interface MyBuildingsResponse {
   buildings: MyBuilding[];
 }
 
-type Tab = 'my-houses' | 'my-properties' | 'town-buildings';
+type Tab = 'my-home' | 'workshops' | 'town-buildings';
 
 interface MyHouse {
   id: string;
@@ -63,7 +64,7 @@ const STORAGE_TYPES = ['HOUSE_SMALL', 'HOUSE_MEDIUM', 'HOUSE_LARGE', 'WAREHOUSE'
 export default function HousingPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<Tab>('my-houses');
+  const [activeTab, setActiveTab] = useState<Tab>('my-home');
   const [showConstructionFlow, setShowConstructionFlow] = useState(false);
   const [selectedBuilding, setSelectedBuilding] = useState<BuildingData | null>(null);
   const [interiorBuildingId, setInteriorBuildingId] = useState<string | null>(null);
@@ -76,8 +77,13 @@ export default function HousingPage() {
   // Socket events
   useBuildingEvents();
 
-  // Fetch character (for townId and characterId)
-  const { data: character } = useQuery<{ id: string; currentTownId?: string }>({
+  // Fetch character (for townId, homeTownId, characterId)
+  const { data: character } = useQuery<{
+    id: string;
+    currentTownId?: string;
+    homeTownId?: string;
+    homeTownName?: string;
+  }>({
     queryKey: ['character', 'me'],
     queryFn: async () => {
       const res = await api.get('/characters/me');
@@ -86,15 +92,18 @@ export default function HousingPage() {
   });
 
   const townId = character?.currentTownId ?? '';
+  const homeTownId = character?.homeTownId ?? '';
+  const homeTownName = character?.homeTownName ?? '';
   const characterId = character?.id ?? '';
+  const isHome = !!townId && townId === homeTownId;
 
-  // Fetch my houses
+  // Fetch my houses (will be 0 or 1)
   const { data: myHousesData, isLoading: housesLoading } = useQuery<{ houses: MyHouse[] }>({
     queryKey: ['houses', 'mine'],
     queryFn: async () => (await api.get('/houses/mine')).data,
   });
 
-  const myHouses = myHousesData?.houses ?? [];
+  const myHouse = (myHousesData?.houses ?? [])[0] ?? null;
 
   // House view state
   const [viewHouseId, setViewHouseId] = useState<string | null>(null);
@@ -168,36 +177,60 @@ export default function HousingPage() {
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-display text-realm-gold-400">Housing</h1>
-              <p className="text-realm-text-muted text-sm mt-1">Build, manage, and upgrade your properties</p>
+              <h1 className="text-4xl font-display text-realm-gold-400">My Home</h1>
+              <p className="text-realm-text-muted text-sm mt-1 flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5" />
+                {homeTownName || 'Loading...'}
+                {isHome && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-realm-success/10 border border-realm-success/30 text-realm-success ml-1">
+                    You are here
+                  </span>
+                )}
+              </p>
             </div>
             <div className="flex gap-3">
-              <button
-                onClick={() => setShowConstructionFlow(true)}
-                disabled={!townId}
-                className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Build New
-              </button>
-              <button
-                onClick={() => navigate('/town')}
-                className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-              >
-                Back to Town
-              </button>
+              {isHome && (
+                <button
+                  onClick={() => setShowConstructionFlow(true)}
+                  className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Build New
+                </button>
+              )}
+              {townId && (
+                <button
+                  onClick={() => navigate('/town')}
+                  className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                >
+                  Back to Town
+                </button>
+              )}
             </div>
           </div>
         </div>
       </header>
 
+      {/* Away from home banner */}
+      {character && !isHome && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+          <div className="bg-realm-warning/10 border border-realm-warning/30 rounded-lg px-4 py-3 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-realm-warning flex-shrink-0" />
+            <p className="text-sm text-realm-warning">
+              You are away from home. Physical actions (deposit, withdraw, harvest, build) are unavailable until you return to {homeTownName}.
+              Remote actions (list on market) still work.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Tabs */}
         <div className="flex border-b border-realm-border mb-6">
           {([
-            { key: 'my-houses' as Tab, label: 'My Houses', icon: Home, count: myHouses.length },
-            { key: 'my-properties' as Tab, label: 'Workshops', icon: Hammer, count: myBuildings.length },
-            { key: 'town-buildings' as Tab, label: 'Town Buildings', icon: Building2, count: 0 },
+            { key: 'my-home' as Tab, label: 'My Home', icon: Home },
+            { key: 'workshops' as Tab, label: 'Workshops', icon: Hammer, count: myBuildings.length },
+            { key: 'town-buildings' as Tab, label: 'Town Buildings', icon: Building2 },
           ]).map(({ key, label, icon: Icon, count }) => (
             <button
               key={key}
@@ -209,7 +242,7 @@ export default function HousingPage() {
             >
               <Icon className="w-4 h-4" />
               {label}
-              {count > 0 && (
+              {count != null && count > 0 && (
                 <span className="ml-1 px-1.5 py-0.5 text-[10px] font-display bg-realm-gold-500/20 text-realm-gold-400 rounded-full">
                   {count}
                 </span>
@@ -219,21 +252,23 @@ export default function HousingPage() {
         </div>
 
         {/* Tab content */}
-        {activeTab === 'my-houses' && (
-          <MyHousesTab
-            houses={myHouses}
+        {activeTab === 'my-home' && (
+          <MyHomeTab
+            house={myHouse}
             isLoading={housesLoading}
+            isHome={isHome}
+            homeTownName={homeTownName}
             onViewHouse={(h) => { setViewHouseId(h.id); setViewHouseIsCurrentTown(h.isCurrentTown); }}
           />
         )}
 
-        {activeTab === 'my-properties' && (
+        {activeTab === 'workshops' && (
           <MyPropertiesTab
             buildings={myBuildings}
             isLoading={myBuildingsLoading}
             onBuildingClick={handleBuildingClick}
             onBuildNew={() => setShowConstructionFlow(true)}
-            hasTown={!!townId}
+            hasTown={isHome}
           />
         )}
 
@@ -255,16 +290,16 @@ export default function HousingPage() {
       </div>
 
       {/* Modals */}
-      {showConstructionFlow && townId && (
+      {showConstructionFlow && homeTownId && (
         <ConstructionFlow
-          townId={townId}
+          townId={homeTownId}
           onClose={() => setShowConstructionFlow(false)}
         />
       )}
 
       {constructionBuildingId && (
         <ConstructionFlow
-          townId={townId}
+          townId={homeTownId || townId}
           existingBuildingId={constructionBuildingId}
           onClose={() => {
             setConstructionBuildingId(null);
@@ -309,7 +344,87 @@ export default function HousingPage() {
 }
 
 // ---------------------------------------------------------------------------
-// My Properties Tab
+// My Home Tab — single cottage with storage overview
+// ---------------------------------------------------------------------------
+interface MyHomeTabProps {
+  house: MyHouse | null;
+  isLoading: boolean;
+  isHome: boolean;
+  homeTownName: string;
+  onViewHouse: (house: MyHouse) => void;
+}
+
+function MyHomeTab({ house, isLoading, isHome, homeTownName, onViewHouse }: MyHomeTabProps) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!house) {
+    return (
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
+        <Home className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
+        <p className="text-realm-text-muted text-sm mb-2">No house found.</p>
+        <p className="text-realm-text-muted text-xs">Your free cottage should have been created automatically. Try refreshing.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Cottage card */}
+      <button
+        onClick={() => onViewHouse(house)}
+        className="w-full text-left bg-realm-bg-700 border border-realm-gold-500/30 rounded-lg p-6 transition-all hover:border-realm-gold-500/50 hover:bg-realm-bg-700/80"
+      >
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-realm-gold-400/10 flex items-center justify-center">
+            <Home className="w-6 h-6 text-realm-gold-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="font-display text-lg text-realm-gold-400">{house.name}</h3>
+              <span className="text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-realm-gold-500/20 text-realm-gold-400">
+                Tier {house.tier}
+              </span>
+            </div>
+            <p className="text-xs text-realm-text-muted flex items-center gap-1 mt-1">
+              <MapPin className="w-3 h-3" />
+              {house.townName}
+              {isHome && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-realm-success/10 border border-realm-success/30 text-realm-success ml-1">
+                  Here
+                </span>
+              )}
+            </p>
+            <div className="mt-3 flex items-center gap-3">
+              <div className="flex items-center gap-1.5 text-sm text-realm-text-secondary">
+                <Package className="w-4 h-4" />
+                Storage: {house.storageUsed}/{house.storageSlots} slots
+              </div>
+              {/* Progress bar */}
+              <div className="flex-1 max-w-[200px] h-1.5 bg-realm-bg-600 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-realm-gold-500 rounded-full transition-all"
+                  style={{ width: `${Math.min(100, (house.storageUsed / house.storageSlots) * 100)}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <p className="text-xs text-realm-text-muted mt-3 italic">
+          Click to manage storage — {isHome ? 'deposit, withdraw, or list items on the market' : 'list items on the market remotely'}
+        </p>
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// My Properties Tab (Workshops)
 // ---------------------------------------------------------------------------
 interface MyPropertiesTabProps {
   buildings: BuildingData[];
@@ -319,72 +434,6 @@ interface MyPropertiesTabProps {
   hasTown: boolean;
 }
 
-// ---------------------------------------------------------------------------
-// My Houses Tab
-// ---------------------------------------------------------------------------
-interface MyHousesTabProps {
-  houses: MyHouse[];
-  isLoading: boolean;
-  onViewHouse: (house: MyHouse) => void;
-}
-
-function MyHousesTab({ houses, isLoading, onViewHouse }: MyHousesTabProps) {
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
-      </div>
-    );
-  }
-
-  if (houses.length === 0) {
-    return (
-      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
-        <Home className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
-        <p className="text-realm-text-muted text-sm mb-4">You don't own any houses yet.</p>
-        <p className="text-realm-text-muted text-xs">Visit a town to buy a cottage (200g).</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {houses.map(house => (
-        <button
-          key={house.id}
-          onClick={() => onViewHouse(house)}
-          className="text-left bg-realm-bg-700 border border-realm-border rounded-lg p-5 transition-all hover:border-realm-gold-500/50 hover:bg-realm-bg-700/80"
-        >
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-10 h-10 rounded bg-realm-gold-400/10 flex items-center justify-center">
-              <Home className="w-5 h-5 text-realm-gold-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-display text-realm-gold-400 truncate">{house.name}</h3>
-              <p className="text-xs text-realm-text-muted flex items-center gap-1 mt-0.5">
-                <MapPin className="w-3 h-3" />
-                {house.townName}
-                {house.isCurrentTown && (
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-realm-success/10 border border-realm-success/30 text-realm-success ml-1">
-                    Here
-                  </span>
-                )}
-              </p>
-              <p className="text-xs text-realm-text-muted flex items-center gap-1 mt-1">
-                <Package className="w-3 h-3" />
-                Storage: {house.storageUsed}/{house.storageSlots}
-              </p>
-            </div>
-          </div>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// My Properties Tab
-// ---------------------------------------------------------------------------
 function MyPropertiesTab({ buildings, isLoading, onBuildingClick, onBuildNew, hasTown }: MyPropertiesTabProps) {
   if (isLoading) {
     return (

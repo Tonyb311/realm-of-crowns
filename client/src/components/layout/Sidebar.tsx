@@ -56,7 +56,7 @@ const NAV_SECTIONS: NavSection[] = [
       { icon: Store, label: 'Market', route: '/market', townOnly: true },
       { icon: Truck, label: 'Trade', route: '/trade', townOnly: true },
       { icon: Hammer, label: 'Professions', route: '/professions', townOnly: true },
-      { icon: Building2, label: 'Housing', route: '/housing', townOnly: true },
+      { icon: Building2, label: 'Housing', route: '/housing' },
     ],
   },
   {

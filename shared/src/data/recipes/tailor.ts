@@ -1,6 +1,7 @@
 import { RecipeDefinition } from './types';
 
 export const TAILOR_RECIPES: RecipeDefinition[] = [
+  // ---- KEPT: Legacy processing for ARMORER chain ----
   {
     recipeId: 'spin-cloth',
     name: 'Spin Cloth',
@@ -13,42 +14,6 @@ export const TAILOR_RECIPES: RecipeDefinition[] = [
     tier: 1,
   },
   {
-    recipeId: 'weave-linen',
-    name: 'Weave Linen',
-    professionRequired: 'TAILOR',
-    levelRequired: 5,
-    inputs: [{ itemName: 'Flax', quantity: 3 }],
-    outputs: [{ itemName: 'Linen', quantity: 2 }],
-    craftTime: 25,
-    xpReward: 12,
-    tier: 1,
-  },
-  {
-    recipeId: 'weave-wool',
-    name: 'Weave Wool',
-    professionRequired: 'TAILOR',
-    levelRequired: 10,
-    inputs: [{ itemName: 'Wool', quantity: 2 }],
-    outputs: [{ itemName: 'Woven Wool', quantity: 1 }],
-    craftTime: 30,
-    xpReward: 15,
-    tier: 1,
-  },
-  {
-    recipeId: 'spin-silk-thread',
-    name: 'Spin Silk Thread',
-    professionRequired: 'TAILOR',
-    levelRequired: 25,
-    inputs: [
-      { itemName: 'Wool', quantity: 2 },
-      { itemName: 'Flowers', quantity: 1 },
-    ],
-    outputs: [{ itemName: 'Silk Thread', quantity: 2 }],
-    craftTime: 40,
-    xpReward: 25,
-    tier: 2,
-  }, // P1 #14b: Added Silk Thread recipe — previously no source existed, blocking Silk Cloth
-  {
     recipeId: 'make-cloth-padding',
     name: 'Make Cloth Padding',
     professionRequired: 'TAILOR',
@@ -58,16 +23,42 @@ export const TAILOR_RECIPES: RecipeDefinition[] = [
     craftTime: 15,
     xpReward: 8,
     tier: 1,
-  }, // Major-ECON-06: Added Cloth Padding recipe — needed by Armorer for plate armor
+  }, // Major-ECON-06: Cloth Padding — needed by Armorer for plate armor
+
+  // ---- NEW: TAILOR Apprentice processing ----
   {
-    recipeId: 'weave-silk',
-    name: 'Weave Silk',
+    recipeId: 'tai-weave-cloth',
+    name: 'Weave Cloth',
     professionRequired: 'TAILOR',
-    levelRequired: 40,
-    inputs: [{ itemName: 'Silk Thread', quantity: 3 }],
-    outputs: [{ itemName: 'Silk Cloth', quantity: 1 }],
-    craftTime: 60,
-    xpReward: 45,
+    levelRequired: 3,
+    inputs: [{ itemName: 'Wool', quantity: 3 }],
+    outputs: [{ itemName: 'Woven Cloth', quantity: 2 }],
+    craftTime: 20,
+    xpReward: 12,
+    tier: 1,
+  },
+
+  // ---- NEW: TAILOR Craftsman processing ----
+  {
+    recipeId: 'tai-weave-fine-cloth',
+    name: 'Weave Fine Cloth',
+    professionRequired: 'TAILOR',
+    levelRequired: 7,
+    inputs: [{ itemName: 'Fine Wool', quantity: 3 }],
+    outputs: [{ itemName: 'Fine Cloth', quantity: 2 }],
+    craftTime: 35,
+    xpReward: 25,
+    tier: 3,
+  },
+  {
+    recipeId: 'tai-process-silk',
+    name: 'Process Silk',
+    professionRequired: 'TAILOR',
+    levelRequired: 7,
+    inputs: [{ itemName: 'Silkworm Cocoons', quantity: 3 }],
+    outputs: [{ itemName: 'Silk Fabric', quantity: 2 }],
+    craftTime: 40,
+    xpReward: 28,
     tier: 3,
   },
 ];

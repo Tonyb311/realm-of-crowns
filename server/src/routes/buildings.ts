@@ -126,6 +126,11 @@ router.post('/request-permit', authGuard, characterGuard, requireTown, validate(
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
+    // Residency check — can only build in your home town
+    if (character.homeTownId !== townId) {
+      return res.status(400).json({ error: 'You must be a resident of this town to build here.' });
+    }
+
     // Check town exists
     const town = await prisma.town.findUnique({
       where: { id: townId },

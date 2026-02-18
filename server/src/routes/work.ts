@@ -103,13 +103,13 @@ function getRacialXpBonus(race: Race, professionType: ProfessionType): number {
 }
 
 /**
- * Look up the tool equipped in the MAIN_HAND slot. Returns null if no tool
+ * Look up the tool equipped in the TOOL slot. Returns null if no tool
  * is equipped or if the equipped tool doesn't match the given profession.
  */
 async function getEquippedTool(characterId: string, professionType: ProfessionType) {
   const equip = await prisma.characterEquipment.findUnique({
     where: {
-      characterId_slot: { characterId, slot: 'MAIN_HAND' },
+      characterId_slot: { characterId, slot: 'TOOL' },
     },
     include: { item: { include: { template: true } } },
   });

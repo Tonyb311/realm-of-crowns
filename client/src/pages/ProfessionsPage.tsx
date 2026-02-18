@@ -10,6 +10,7 @@ import {
   BookOpen,
   User,
   Lock,
+  GitBranch,
 } from 'lucide-react';
 import api from '../services/api';
 import { useCharacter } from '../hooks/useCharacter';
@@ -32,6 +33,9 @@ interface MyProfession {
   category: string;
   description: string;
   racialBonuses?: string[];
+  specialization?: string | null;
+  hasSpecializations?: boolean;
+  specializations?: Array<{ id: string; name: string; description: string }>;
 }
 
 interface AvailableProfession {
@@ -49,6 +53,9 @@ interface AvailableProfession {
   tier?: string;
   xp?: number;
   xpToNextLevel?: number;
+  specialization?: string | null;
+  hasSpecializations?: boolean;
+  specializations?: Array<{ id: string; name: string; description: string }>;
   limits?: {
     totalUsed: number;
     totalMax: number;
@@ -173,6 +180,31 @@ export default function ProfessionsPage() {
     },
   });
 
+  // Specialization state
+  const [specTarget, setSpecTarget] = useState<MyProfession | null>(null);
+  const [specError, setSpecError] = useState<string | null>(null);
+
+  const specializeMutation = useMutation({
+    mutationFn: async ({ professionType, specialization }: { professionType: string; specialization: string }) => {
+      const res = await api.post('/professions/specialize', { professionType, specialization });
+      return res.data;
+    },
+    onSuccess: () => {
+      setSpecTarget(null);
+      setSpecError(null);
+      queryClient.invalidateQueries({ queryKey: ['professions'] });
+      queryClient.invalidateQueries({ queryKey: ['recipes'] });
+    },
+    onError: (err: any) => {
+      setSpecError(err.response?.data?.error ?? err.message ?? 'Failed to specialize');
+    },
+  });
+
+  // Check which professions need specialization prompts (L7+ BLACKSMITH with no spec)
+  const professionNeedingSpec = myProfessions?.find(
+    (p) => p.hasSpecializations && !p.specialization && p.level >= 7
+  ) ?? null;
+
   // -----------------------------------------------------------------------
   // Filter professions by category tab
   // -----------------------------------------------------------------------
@@ -199,6 +231,7 @@ export default function ProfessionsPage() {
       outputProducts: p.outputProducts,
       townTypeAffinity: p.townTypeAffinity,
       racialBonuses: p.racialBonuses,
+      specialization: p.specialization,
     };
   }
 
@@ -215,6 +248,7 @@ export default function ProfessionsPage() {
       xp: p.xp,
       xpToNextLevel: p.xpToNextLevel,
       racialBonuses: p.racialBonuses,
+      specialization: p.specialization,
     };
   }
 
@@ -383,6 +417,27 @@ export default function ProfessionsPage() {
            * My Professions mode
            * ---------------------------------------------------------------- */
           <div>
+            {/* Specialization prompt banner */}
+            {professionNeedingSpec && (
+              <div className="mb-6 flex items-center gap-3 rounded-lg border border-realm-teal-300/30 bg-realm-teal-300/5 px-5 py-3">
+                <GitBranch className="w-5 h-5 text-realm-teal-300 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm text-realm-teal-300 font-display">
+                    Choose your {professionNeedingSpec.professionType.charAt(0) + professionNeedingSpec.professionType.slice(1).toLowerCase()} Specialization
+                  </p>
+                  <p className="text-xs text-realm-text-muted">
+                    You've reached Level 7 — unlock exclusive recipes by choosing a permanent branch.
+                  </p>
+                </div>
+                <button
+                  onClick={() => { setSpecTarget(professionNeedingSpec); setSpecError(null); }}
+                  className="px-4 py-1.5 bg-realm-teal-300 text-realm-bg-900 font-display text-xs rounded hover:bg-realm-teal-300/80 transition-colors flex-shrink-0"
+                >
+                  Choose
+                </button>
+              </div>
+            )}
+
             {!myProfessions || myProfessions.length === 0 ? (
               <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
                 <BookOpen className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
@@ -463,6 +518,57 @@ export default function ProfessionsPage() {
           isLoading={learnMutation.isPending}
           error={learnError}
         />
+      )}
+
+      {/* Specialization choice modal */}
+      {specTarget && specTarget.specializations && specTarget.specializations.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70" onClick={() => { setSpecTarget(null); setSpecError(null); }} />
+          <div className="relative bg-realm-bg-800 border border-realm-border rounded-lg max-w-lg w-full p-6">
+            <div className="flex items-start gap-3 mb-5">
+              <GitBranch className="w-6 h-6 text-realm-teal-300 flex-shrink-0" />
+              <div>
+                <h3 className="font-display text-lg text-realm-teal-300">Choose Specialization</h3>
+                <p className="text-sm text-realm-text-secondary mt-1">
+                  {specTarget.professionType.charAt(0) + specTarget.professionType.slice(1).toLowerCase()} Level {specTarget.level} — pick a permanent branch.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 mb-5">
+              {specTarget.specializations.map((spec) => (
+                <button
+                  key={spec.id}
+                  onClick={() => specializeMutation.mutate({ professionType: specTarget.professionType, specialization: spec.id })}
+                  disabled={specializeMutation.isPending}
+                  className="w-full text-left p-4 bg-realm-bg-700 border border-realm-border rounded-lg hover:border-realm-teal-300/40 transition-all group disabled:opacity-50"
+                >
+                  <h4 className="font-display text-sm text-realm-text-primary group-hover:text-realm-teal-300 transition-colors">
+                    {spec.name}
+                  </h4>
+                  <p className="text-xs text-realm-text-muted mt-1">{spec.description}</p>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2 p-3 bg-realm-danger/10 border border-realm-danger/30 rounded mb-4">
+              <AlertTriangle className="w-4 h-4 text-realm-danger flex-shrink-0" />
+              <p className="text-xs text-realm-danger">This choice is permanent and cannot be changed.</p>
+            </div>
+
+            {specError && (
+              <p className="text-sm text-realm-danger mb-4">{specError}</p>
+            )}
+
+            <button
+              onClick={() => { setSpecTarget(null); setSpecError(null); }}
+              disabled={specializeMutation.isPending}
+              className="w-full py-2 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Abandon confirmation modal */}

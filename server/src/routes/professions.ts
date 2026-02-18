@@ -294,6 +294,7 @@ router.get('/mine', authGuard, characterGuard, requireTown, async (req: Authenti
 
       return {
         type: p.professionType,
+        professionType: p.professionType,
         name: def?.name ?? p.professionType,
         category: def?.category ?? 'GATHERING',
         description: def?.description ?? '',
@@ -301,6 +302,9 @@ router.get('/mine', authGuard, characterGuard, requireTown, async (req: Authenti
         level: p.level,
         xp: p.xp,
         xpToNextLevel: p.level >= 100 ? 0 : getXpForLevel(p.level) - p.xp,
+        specialization: p.specialization ?? null,
+        hasSpecializations: def?.hasSpecializations ?? false,
+        specializations: def?.specializations ?? [],
         racialBonus: racialBonus
           ? {
               speedBonus: racialBonus.speedBonus,
@@ -356,6 +360,7 @@ router.get('/info/:type', authGuard, characterGuard, requireTown, async (req: Au
           xp: prof.xp,
           xpToNextLevel: prof.level >= 100 ? 0 : getXpForLevel(prof.level) - prof.xp,
           isActive: prof.isActive,
+          specialization: prof.specialization ?? null,
         };
       }
     }
@@ -463,6 +468,9 @@ router.get('/available', authGuard, characterGuard, requireTown, async (req: Aut
         lockReason,
         level: existing?.level ?? null,
         tier: existing?.tier ?? null,
+        specialization: existing?.specialization ?? null,
+        hasSpecializations: def.hasSpecializations ?? false,
+        specializations: def.specializations ?? [],
         racialBonus: racialBonus
           ? {
               speedBonus: racialBonus.speedBonus,
@@ -489,6 +497,99 @@ router.get('/available', authGuard, characterGuard, requireTown, async (req: Aut
   } catch (error) {
     if (handlePrismaError(error, res, 'available professions', req)) return;
     logRouteError(req, 500, 'Available professions error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/professions/specialize — Permanently choose a specialization branch
+// ---------------------------------------------------------------------------
+
+const VALID_SPECIALIZATIONS: Record<string, string[]> = {
+  BLACKSMITH: ['TOOLSMITH', 'WEAPONSMITH', 'ARMORER'],
+};
+
+const SPECIALIZATION_LEVEL_REQUIRED = 7;
+
+const specializeSchema = z.object({
+  professionType: z.enum(VALID_PROFESSION_TYPES as [string, ...string[]], {
+    errorMap: () => ({ message: `Invalid profession type` }),
+  }),
+  specialization: z.string().min(1, 'Specialization is required'),
+});
+
+router.post('/specialize', authGuard, characterGuard, requireTown, validate(specializeSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { professionType, specialization } = req.body;
+    const profEnum = professionType as ProfessionType;
+    const character = req.character!;
+
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
+    }
+
+    // Validate this profession supports specializations
+    const validSpecs = VALID_SPECIALIZATIONS[profEnum];
+    if (!validSpecs) {
+      return res.status(400).json({ error: `${profEnum} does not have specializations` });
+    }
+
+    // Validate the chosen specialization
+    if (!validSpecs.includes(specialization)) {
+      return res.status(400).json({
+        error: `Invalid specialization '${specialization}' for ${profEnum}. Valid: ${validSpecs.join(', ')}`,
+      });
+    }
+
+    // Check character has this profession and it's active
+    const profession = await prisma.playerProfession.findUnique({
+      where: {
+        characterId_professionType: {
+          characterId: character.id,
+          professionType: profEnum,
+        },
+      },
+    });
+
+    if (!profession || !profession.isActive) {
+      return res.status(400).json({ error: `You do not have an active ${profEnum} profession` });
+    }
+
+    // Check level requirement
+    if (profession.level < SPECIALIZATION_LEVEL_REQUIRED) {
+      return res.status(400).json({
+        error: `Requires level ${SPECIALIZATION_LEVEL_REQUIRED} in ${profEnum}, you are level ${profession.level}`,
+      });
+    }
+
+    // Check not already specialized (permanent choice)
+    if (profession.specialization) {
+      return res.status(400).json({
+        error: `You have already specialized as ${profession.specialization}. This choice is permanent.`,
+      });
+    }
+
+    // Apply specialization
+    const updated = await prisma.playerProfession.update({
+      where: { id: profession.id },
+      data: { specialization },
+    });
+
+    const profDef = getProfessionByType(profEnum);
+
+    return res.json({
+      profession: {
+        type: updated.professionType,
+        name: profDef?.name ?? updated.professionType,
+        specialization: updated.specialization,
+        level: updated.level,
+        tier: updated.tier,
+      },
+      message: `You have permanently specialized as a ${specialization}. New exclusive recipes are now available!`,
+    });
+  } catch (error) {
+    if (handlePrismaError(error, res, 'specialize profession', req)) return;
+    logRouteError(req, 500, 'Specialize profession error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

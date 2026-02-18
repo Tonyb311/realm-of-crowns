@@ -27,6 +27,7 @@ export interface ProfessionCardData {
   outputProducts?: string[];
   townTypeAffinity?: string[];
   racialBonuses?: string[];
+  specialization?: string | null;
 }
 
 interface ProfessionCardProps {
@@ -117,6 +118,11 @@ export default function ProfessionCard({
             {isLearned && profession.tier && (
               <span className={`text-[10px] font-display ${TIER_COLORS[profession.tier] ?? 'text-realm-text-muted'}`}>
                 {tierLabel(profession.tier)}
+              </span>
+            )}
+            {isLearned && profession.specialization && (
+              <span className="text-[10px] font-display px-1.5 py-0.5 rounded bg-realm-teal-300/15 text-realm-teal-300 border border-realm-teal-300/30">
+                {profession.specialization.charAt(0) + profession.specialization.slice(1).toLowerCase()}
               </span>
             )}
           </div>

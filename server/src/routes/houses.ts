@@ -16,13 +16,7 @@ import { invalidateCache } from '../lib/redis';
 
 const router = Router();
 
-const COTTAGE_COST = 200;
-
 // --- Zod schemas ---
-
-const buySchema = z.object({
-  townId: z.string().min(1, 'townId is required'),
-});
 
 const depositSchema = z.object({
   itemTemplateId: z.string().min(1, 'itemTemplateId is required'),
@@ -99,6 +93,7 @@ router.get('/town/:townId', authGuard, characterGuard, async (req: Authenticated
 
     return res.json({
       hasHouse: true,
+      isHomeTown: character.homeTownId === townId,
       house: {
         id: house.id,
         townId: house.town.id,
@@ -117,76 +112,13 @@ router.get('/town/:townId', authGuard, characterGuard, async (req: Authenticated
 });
 
 // ============================================================
-// POST /api/houses/buy — Buy a cottage for 200g
+// POST /api/houses/buy — DISABLED (single-town residency model)
 // ============================================================
 
-router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const character = req.character!;
-    const { townId } = req.body;
-
-    if (character.travelStatus !== 'idle') {
-      return res.status(400).json({ error: 'You cannot do this while traveling.' });
-    }
-
-    if (character.currentTownId !== townId) {
-      return res.status(400).json({ error: 'You must be in this town to buy a cottage.' });
-    }
-
-    // Check if already owns house in this town
-    const existing = await prisma.house.findUnique({
-      where: { characterId_townId: { characterId: character.id, townId } },
-    });
-    if (existing) {
-      return res.status(400).json({ error: 'You already own a house in this town.' });
-    }
-
-    if (character.gold < COTTAGE_COST) {
-      return res.status(400).json({ error: `Not enough gold. Need ${COTTAGE_COST}g, have ${character.gold}g.` });
-    }
-
-    // Fetch character name for the cottage name
-    const charData = await prisma.character.findUnique({
-      where: { id: character.id },
-      select: { name: true },
-    });
-
-    const [house] = await prisma.$transaction([
-      prisma.house.create({
-        data: {
-          characterId: character.id,
-          townId,
-          tier: 1,
-          name: `${charData?.name ?? 'Adventurer'}'s Cottage`,
-          storageSlots: 20,
-        },
-        include: {
-          town: { select: { id: true, name: true } },
-        },
-      }),
-      prisma.character.update({
-        where: { id: character.id },
-        data: { gold: { decrement: COTTAGE_COST } },
-      }),
-    ]);
-
-    return res.status(201).json({
-      house: {
-        id: house.id,
-        townId: house.town.id,
-        townName: house.town.name,
-        tier: house.tier,
-        name: house.name,
-        storageSlots: house.storageSlots,
-        storageUsed: 0,
-      },
-      goldRemaining: character.gold - COTTAGE_COST,
-    });
-  } catch (error) {
-    if (handlePrismaError(error, res, 'houses-buy', req)) return;
-    logRouteError(req, 500, 'Buy house error', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
+router.post('/buy', authGuard, characterGuard, async (_req: AuthenticatedRequest, res: Response) => {
+  return res.status(410).json({
+    error: 'House purchasing has been removed. You get a free house in your home town. Use the relocation system to change your resident town.',
+  });
 });
 
 // ============================================================

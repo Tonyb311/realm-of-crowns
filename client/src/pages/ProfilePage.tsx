@@ -11,8 +11,12 @@ import {
   UserPlus,
   MessageSquare,
   ArrowLeft,
+  Crown,
+  Shirt,
+  Wrench,
 } from 'lucide-react';
 import api from '../services/api';
+import { getRarityStyle } from '../constants';
 import { RealmPanel, RealmButton, RealmBadge, RealmProgress } from '../components/ui/realm-index';
 
 interface CharacterProfile {
@@ -46,6 +50,35 @@ const STAT_CONFIG = [
   { key: 'charisma', label: 'CHA', icon: User, color: 'text-realm-bronze-400' },
 ] as const;
 
+interface EquippedItemData {
+  slot: string;
+  item: {
+    id: string;
+    name: string;
+    type: string;
+    quality: string;
+    currentDurability: number;
+    maxDurability: number;
+    stats: Record<string, unknown>;
+  };
+}
+
+interface EquipmentStats {
+  totalAC: number;
+  totalDamage: number;
+  totalStatBonuses: Record<string, number>;
+  equippedCount: number;
+}
+
+const SLOT_DISPLAY: Record<string, { label: string; icon: typeof Shield }> = {
+  MAIN_HAND: { label: 'Weapon', icon: Swords },
+  OFF_HAND: { label: 'Off Hand', icon: Shield },
+  HEAD: { label: 'Head', icon: Crown },
+  CHEST: { label: 'Body', icon: Shirt },
+  LEGS: { label: 'Legs', icon: Shirt },
+  TOOL: { label: 'Tool', icon: Wrench },
+};
+
 export default function ProfilePage() {
   const { characterId: paramId } = useParams<{ characterId: string }>();
   const navigate = useNavigate();
@@ -74,6 +107,19 @@ export default function ProfilePage() {
   });
 
   const isOwnProfile = myChar?.id === characterId;
+
+  // Equipment data (own profile only)
+  const { data: equippedData } = useQuery<{ equipped: EquippedItemData[] }>({
+    queryKey: ['equipment', 'equipped'],
+    queryFn: async () => (await api.get('/equipment/equipped')).data,
+    enabled: isOwnProfile,
+  });
+
+  const { data: eqStats } = useQuery<EquipmentStats>({
+    queryKey: ['equipment', 'stats'],
+    queryFn: async () => (await api.get('/equipment/stats')).data,
+    enabled: isOwnProfile,
+  });
 
   if (isLoading) {
     return (
@@ -195,6 +241,57 @@ export default function ProfilePage() {
                       </span>
                     ))}
                   </div>
+                </RealmPanel>
+              </div>
+            )}
+
+            {/* Equipment (own profile only) */}
+            {isOwnProfile && equippedData && (
+              <div className="mt-6">
+                <RealmPanel title="Equipment">
+                  <div className="space-y-2">
+                    {Object.entries(SLOT_DISPLAY).map(([slotKey, slotDef]) => {
+                      const eq = equippedData.equipped.find((e) => e.slot === slotKey);
+                      const Icon = slotDef.icon;
+                      const rarityStyle = eq ? getRarityStyle(eq.item.quality) : null;
+
+                      return (
+                        <div key={slotKey} className="flex items-center gap-3 py-1.5">
+                          <Icon className={`w-4 h-4 flex-shrink-0 ${eq ? (rarityStyle?.text ?? 'text-realm-text-primary') : 'text-realm-text-muted/40'}`} />
+                          <span className="text-xs text-realm-text-muted w-16 flex-shrink-0">{slotDef.label}</span>
+                          {eq ? (
+                            <span className={`text-xs font-semibold ${rarityStyle?.text ?? 'text-realm-text-primary'}`}>
+                              {eq.item.name}
+                              {typeof eq.item.stats?.damage === 'number' && (
+                                <span className="text-realm-text-muted ml-1">+{Math.round(eq.item.stats.damage as number)} ATK</span>
+                              )}
+                              {typeof eq.item.stats?.armor === 'number' && (
+                                <span className="text-realm-text-muted ml-1">+{Math.round(eq.item.stats.armor as number)} DEF</span>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-realm-text-muted/40 italic">Empty</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Combat Stats */}
+                  {eqStats && (eqStats.totalDamage > 0 || eqStats.totalAC > 0) && (
+                    <div className="mt-4 pt-3 border-t border-realm-border/50 flex gap-6">
+                      <div className="text-center">
+                        <Swords className="w-4 h-4 mx-auto text-realm-danger mb-0.5" />
+                        <div className="text-lg font-display text-realm-text-primary">{eqStats.totalDamage}</div>
+                        <div className="text-[10px] text-realm-text-muted uppercase">Attack</div>
+                      </div>
+                      <div className="text-center">
+                        <Shield className="w-4 h-4 mx-auto text-realm-teal-300 mb-0.5" />
+                        <div className="text-lg font-display text-realm-text-primary">{eqStats.totalAC}</div>
+                        <div className="text-[10px] text-realm-text-muted uppercase">Defense</div>
+                      </div>
+                    </div>
+                  )}
                 </RealmPanel>
               </div>
             )}

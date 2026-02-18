@@ -43,9 +43,12 @@ export const PROFESSION_ASSET_TYPES: Record<string, AssetTypeDefinition[]> = {
     { id: 'iron_mine_claim', name: 'Iron Mine Claim', spotType: 'mine' },
     { id: 'quarry_claim', name: 'Quarry Claim', spotType: 'quarry' },
     { id: 'clay_pit_rights', name: 'Clay Pit Rights', spotType: 'clay' },
+    { id: 'coal_mine', name: 'Coal Mine', spotType: 'coal_mine', levelRequired: 5 },
+    { id: 'silver_mine', name: 'Silver Mine', spotType: 'silver_mine', levelRequired: 7 },
   ],
   LUMBERJACK: [
     { id: 'timber_plot', name: 'Timber Plot', spotType: 'forest' },
+    { id: 'hardwood_grove', name: 'Hardwood Grove', spotType: 'hardwood_grove', levelRequired: 7 },
   ],
   FISHERMAN: [
     { id: 'fishing_rights', name: 'Fishing Rights', spotType: 'fishing' },
@@ -57,6 +60,7 @@ export const PROFESSION_ASSET_TYPES: Record<string, AssetTypeDefinition[]> = {
     { id: 'chicken_coop', name: 'Chicken Coop', spotType: 'chicken_coop', baseCost: 100, levelRequired: 1, capacity: 5 },
     { id: 'dairy_barn', name: 'Dairy Barn', spotType: 'dairy_barn', baseCost: 150, levelRequired: 1, capacity: 3 },
     { id: 'sheep_pen', name: 'Sheep Pen', spotType: 'sheep_pen', baseCost: 120, levelRequired: 5, capacity: 4 },
+    { id: 'silkworm_house', name: 'Silkworm House', spotType: 'silkworm_house', baseCost: 250, levelRequired: 7, capacity: 0 },
   ],
   HUNTER: [
     { id: 'hunting_ground_rights', name: 'Hunting Ground Rights', spotType: 'hunting_ground' },
@@ -161,6 +165,7 @@ export const BUILDING_ANIMAL_MAP: Record<string, string[]> = {
   chicken_coop: ['chicken'],
   dairy_barn: ['cow'],
   sheep_pen: ['sheep'],
+  silkworm_house: [],
 };
 
 export const HUNGER_CONSTANTS = {

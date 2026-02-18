@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Landmark,
   Crown,
@@ -9,10 +10,14 @@ import {
   Loader2,
   Vote,
   Gavel,
+  MapPin,
+  AlertTriangle,
+  ArrowRight,
 } from 'lucide-react';
 import api from '../services/api';
 import GoldAmount from '../components/shared/GoldAmount';
 import CountdownTimer from '../components/shared/CountdownTimer';
+import { RealmModal } from '../components/ui/RealmModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,7 +25,32 @@ import CountdownTimer from '../components/shared/CountdownTimer';
 interface PlayerCharacter {
   id: string;
   name: string;
+  gold: number;
   currentTownId: string | null;
+  homeTownId: string | null;
+  homeTownName: string | null;
+}
+
+interface RelocationPreview {
+  canRelocate: boolean;
+  cost: number;
+  cooldownDays: number;
+  currentHomeTown: { id: string; name: string } | null;
+  targetTown: { id: string; name: string };
+  losses: {
+    storageItems: { itemTemplateId: string; itemName: string; quantity: number }[];
+    assets: { id: string; spotType: string; tier: number; professionType: string | null }[];
+    livestock: { id: string; animalType: string; name: string }[];
+    buildings: { id: string; type: string; name: string; level: number }[];
+  };
+  warnings: string[];
+}
+
+interface RelocationResult {
+  success: boolean;
+  newHomeTown: { id: string; name: string };
+  goldRemaining: number;
+  newHouse: { id: string; name: string } | null;
 }
 
 interface TownInfo {
@@ -78,6 +108,12 @@ const PHASE_COLORS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 export default function TownHallPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const [showRelocateModal, setShowRelocateModal] = useState(false);
+  const [relocatePreview, setRelocatePreview] = useState<RelocationPreview | null>(null);
+  const [relocateError, setRelocateError] = useState<string | null>(null);
+  const [relocateSuccess, setRelocateSuccess] = useState<RelocationResult | null>(null);
 
   const { data: character, isLoading: charLoading } = useQuery<PlayerCharacter>({
     queryKey: ['character', 'me'],
@@ -85,6 +121,7 @@ export default function TownHallPage() {
   });
 
   const townId = character?.currentTownId;
+  const isHomeTown = !!townId && townId === character?.homeTownId;
 
   const { data: townData, isLoading: townLoading } = useQuery<{ town: TownInfo }>({
     queryKey: ['governance', 'town-info', townId],
@@ -96,6 +133,46 @@ export default function TownHallPage() {
     queryKey: ['elections', 'current'],
     queryFn: async () => (await api.get('/elections/current')).data,
     enabled: !!townId,
+  });
+
+  // -------------------------------------------------------------------------
+  // Relocation mutations
+  // -------------------------------------------------------------------------
+  const previewMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/relocate/preview', { targetTownId: townId });
+      return res.data as RelocationPreview;
+    },
+    onSuccess: (data) => {
+      setRelocatePreview(data);
+      setRelocateError(null);
+      setShowRelocateModal(true);
+    },
+    onError: (err: any) => {
+      setRelocateError(err?.response?.data?.error ?? 'Failed to preview relocation.');
+      setRelocatePreview(null);
+    },
+  });
+
+  const confirmMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/relocate/confirm', { targetTownId: townId });
+      return res.data as RelocationResult;
+    },
+    onSuccess: (data) => {
+      setRelocateSuccess(data);
+      setShowRelocateModal(false);
+      setRelocatePreview(null);
+      // Invalidate all relevant queries so the UI reflects the new home
+      queryClient.invalidateQueries({ queryKey: ['character'] });
+      queryClient.invalidateQueries({ queryKey: ['houses'] });
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ['buildings'] });
+      queryClient.invalidateQueries({ queryKey: ['governance'] });
+    },
+    onError: (err: any) => {
+      setRelocateError(err?.response?.data?.error ?? 'Relocation failed.');
+    },
   });
 
   // -------------------------------------------------------------------------
@@ -352,7 +429,227 @@ export default function TownHallPage() {
             </div>
           </div>
         )}
+
+        {/* ================================================================ */}
+        {/* Relocation Section — only when visiting a non-resident town      */}
+        {/* ================================================================ */}
+        {town && !isHomeTown && (
+          <section className="mt-10 border-t border-realm-border pt-8">
+            <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-realm-gold-400" />
+              Relocate Here
+            </h2>
+
+            {/* Success banner */}
+            {relocateSuccess && (
+              <div className="bg-realm-success/10 border border-realm-success/30 rounded-lg p-5 mb-4">
+                <h3 className="font-display text-realm-success text-sm mb-2">Relocation Complete!</h3>
+                <p className="text-realm-text-secondary text-sm">
+                  You are now a resident of <span className="text-realm-text-primary font-semibold">{relocateSuccess.newHomeTown.name}</span>.
+                  {relocateSuccess.newHouse && (
+                    <> A new cottage ({relocateSuccess.newHouse.name}) has been prepared for you.</>
+                  )}
+                </p>
+                <p className="text-realm-text-muted text-xs mt-2">
+                  Gold remaining: {relocateSuccess.goldRemaining.toLocaleString()}g
+                </p>
+                <button
+                  onClick={() => navigate('/housing')}
+                  className="mt-3 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
+                >
+                  View My Home
+                </button>
+              </div>
+            )}
+
+            {!relocateSuccess && (
+              <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+                <p className="text-realm-text-secondary text-sm mb-4">
+                  Make <span className="text-realm-text-primary font-semibold">{town.name}</span> your new home town.
+                  {character?.homeTownName && (
+                    <> Your current home is <span className="text-realm-text-primary font-semibold">{character.homeTownName}</span>.</>
+                  )}
+                </p>
+                <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                  <div className="bg-realm-bg-800 rounded p-3">
+                    <p className="text-realm-text-muted text-xs">Cost</p>
+                    <GoldAmount amount={500} className="text-realm-gold-400 font-display text-lg" />
+                  </div>
+                  <div className="bg-realm-bg-800 rounded p-3">
+                    <p className="text-realm-text-muted text-xs">Cooldown</p>
+                    <p className="text-realm-gold-400 font-display text-lg">30 days</p>
+                  </div>
+                </div>
+                <div className="bg-realm-danger/5 border border-realm-danger/20 rounded p-3 mb-4">
+                  <p className="text-realm-danger text-xs flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                    Warning: All fields, rancher buildings, workshops, livestock, and house storage items in your current home town will be permanently lost.
+                  </p>
+                </div>
+
+                {relocateError && (
+                  <div className="bg-realm-danger/10 border border-realm-danger/30 rounded p-3 mb-4">
+                    <p className="text-realm-danger text-sm">{relocateError}</p>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => {
+                    setRelocateError(null);
+                    previewMutation.mutate();
+                  }}
+                  disabled={previewMutation.isPending}
+                  className="w-full px-5 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {previewMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Previewing...
+                    </>
+                  ) : (
+                    <>
+                      Preview Relocation
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </section>
+        )}
       </div>
+
+      {/* ================================================================ */}
+      {/* Relocation Confirmation Modal                                    */}
+      {/* ================================================================ */}
+      <RealmModal
+        isOpen={showRelocateModal}
+        onClose={() => { setShowRelocateModal(false); setRelocateError(null); }}
+        title="Confirm Relocation"
+      >
+        {relocatePreview && (
+          <div className="space-y-4">
+            {/* Route summary */}
+            <div className="flex items-center gap-3 text-sm">
+              <div className="bg-realm-bg-800 rounded px-3 py-2 flex-1 text-center">
+                <p className="text-realm-text-muted text-xs">From</p>
+                <p className="text-realm-text-primary font-semibold">{relocatePreview.currentHomeTown?.name ?? 'None'}</p>
+              </div>
+              <ArrowRight className="w-5 h-5 text-realm-gold-400 flex-shrink-0" />
+              <div className="bg-realm-bg-800 rounded px-3 py-2 flex-1 text-center">
+                <p className="text-realm-text-muted text-xs">To</p>
+                <p className="text-realm-gold-400 font-semibold">{relocatePreview.targetTown.name}</p>
+              </div>
+            </div>
+
+            {/* Cost */}
+            <div className="flex items-center justify-between bg-realm-bg-800 rounded p-3 text-sm">
+              <span className="text-realm-text-muted">Relocation cost</span>
+              <GoldAmount amount={relocatePreview.cost} className="text-realm-gold-400 font-semibold" />
+            </div>
+
+            {/* Warnings */}
+            {relocatePreview.warnings.length > 0 && (
+              <div className="bg-realm-danger/10 border border-realm-danger/30 rounded p-3 space-y-2">
+                <p className="text-realm-danger text-xs font-semibold flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Property Losses
+                </p>
+                {relocatePreview.warnings.map((w, i) => (
+                  <p key={i} className="text-realm-danger/80 text-xs pl-5">{w}</p>
+                ))}
+              </div>
+            )}
+
+            {/* Detailed losses */}
+            {relocatePreview.losses.storageItems.length > 0 && (
+              <div className="bg-realm-bg-800 rounded p-3">
+                <p className="text-realm-text-muted text-xs font-semibold mb-2">Storage items that will be LOST:</p>
+                <div className="space-y-1">
+                  {relocatePreview.losses.storageItems.map((item, i) => (
+                    <p key={i} className="text-realm-danger text-xs">
+                      {item.itemName} x{item.quantity}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {relocatePreview.losses.assets.length > 0 && (
+              <div className="bg-realm-bg-800 rounded p-3">
+                <p className="text-realm-text-muted text-xs font-semibold mb-2">Fields/rancher buildings that will be LOST:</p>
+                <div className="space-y-1">
+                  {relocatePreview.losses.assets.map((a, i) => (
+                    <p key={i} className="text-realm-danger text-xs">
+                      {a.professionType ?? a.spotType} (Tier {a.tier})
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {relocatePreview.losses.livestock.length > 0 && (
+              <div className="bg-realm-bg-800 rounded p-3">
+                <p className="text-realm-text-muted text-xs font-semibold mb-2">Livestock that will be LOST:</p>
+                <div className="space-y-1">
+                  {relocatePreview.losses.livestock.map((l, i) => (
+                    <p key={i} className="text-realm-danger text-xs">
+                      {l.name} ({l.animalType})
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {relocatePreview.losses.buildings.length > 0 && (
+              <div className="bg-realm-bg-800 rounded p-3">
+                <p className="text-realm-text-muted text-xs font-semibold mb-2">Workshops that will be LOST:</p>
+                <div className="space-y-1">
+                  {relocatePreview.losses.buildings.map((b, i) => (
+                    <p key={i} className="text-realm-danger text-xs">
+                      {b.name} (Lv. {b.level})
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Error in modal */}
+            {relocateError && (
+              <div className="bg-realm-danger/10 border border-realm-danger/30 rounded p-3">
+                <p className="text-realm-danger text-sm">{relocateError}</p>
+              </div>
+            )}
+
+            {/* Confirm / Cancel */}
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => { setShowRelocateModal(false); setRelocateError(null); }}
+                className="flex-1 px-4 py-2.5 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setRelocateError(null);
+                  confirmMutation.mutate();
+                }}
+                disabled={confirmMutation.isPending}
+                className="flex-1 px-4 py-2.5 bg-realm-danger text-white font-display text-sm rounded hover:bg-realm-danger/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {confirmMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Relocating...
+                  </>
+                ) : (
+                  'Confirm Relocation'
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+      </RealmModal>
     </div>
   );
 }

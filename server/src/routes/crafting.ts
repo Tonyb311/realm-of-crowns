@@ -264,12 +264,19 @@ router.get('/recipes', authGuard, characterGuard, requireTown, async (req: Authe
       const ingredients = recipe.ingredients as Array<{ itemTemplateId: string; quantity: number }>;
       const prof = profMap.get(recipe.professionType);
       const hasRequiredProfession = prof ? tierIndex(prof.tier) >= tierIndex(recipe.tier) : false;
-      const levelRequired = getLevelRequired(recipe.tier);
+      // Per-recipe levelRequired overrides tier-based level if set
+      const recipeLevelRequired = (recipe as any).levelRequired as number | null;
+      const levelRequired = recipeLevelRequired ?? getLevelRequired(recipe.tier);
       const meetsLevelRequirement = prof ? prof.level >= levelRequired : false;
+
+      // Specialization gating
+      const recipeSpecialization = (recipe as any).specialization as string | null;
+      const playerSpecialization = prof?.specialization ?? null;
+      const meetsSpecialization = !recipeSpecialization || recipeSpecialization === playerSpecialization;
 
       // canCraft: check if player has all ingredients in sufficient quantities
       const missingIngredients: Array<{ itemTemplateId: string; itemName: string; needed: number; have: number }> = [];
-      let canCraft = hasRequiredProfession && meetsLevelRequirement;
+      let canCraft = hasRequiredProfession && meetsLevelRequirement && meetsSpecialization;
 
       for (const ing of ingredients) {
         const available = inventoryByTemplate.get(ing.itemTemplateId)?.total ?? 0;
@@ -290,6 +297,9 @@ router.get('/recipes', authGuard, characterGuard, requireTown, async (req: Authe
         professionType: recipe.professionType,
         tier: recipe.tier,
         levelRequired,
+        specialization: recipeSpecialization,
+        meetsSpecialization,
+        playerSpecialization,
         ingredients: ingredients.map(ing => ({
           itemTemplateId: ing.itemTemplateId,
           itemName: templateMap.get(ing.itemTemplateId)?.name ?? 'Unknown',
@@ -353,8 +363,9 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startCraf
       return res.status(400).json({ error: `You do not have the ${recipe.professionType} profession` });
     }
 
-    // Level-based gating (computed from tier)
-    const levelRequired = getLevelRequired(recipe.tier);
+    // Level-based gating: per-recipe levelRequired overrides tier-based
+    const recipeLevelRequired = (recipe as any).levelRequired as number | null;
+    const levelRequired = recipeLevelRequired ?? getLevelRequired(recipe.tier);
     if (profession.level < levelRequired) {
       return res.status(400).json({
         error: `Requires level ${levelRequired} in ${recipe.professionType}, you are level ${profession.level}`,
@@ -364,6 +375,14 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startCraf
     if (tierIndex(profession.tier) < tierIndex(recipe.tier)) {
       return res.status(400).json({
         error: `Requires ${recipe.tier} tier in ${recipe.professionType}, you are ${profession.tier}`,
+      });
+    }
+
+    // Specialization gating
+    const recipeSpecialization = (recipe as any).specialization as string | null;
+    if (recipeSpecialization && profession.specialization !== recipeSpecialization) {
+      return res.status(400).json({
+        error: `Requires ${recipeSpecialization} specialization in ${recipe.professionType}`,
       });
     }
 
@@ -576,7 +595,7 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
     // Get equipped tool bonus
     const equippedTool = await prisma.characterEquipment.findUnique({
       where: {
-        characterId_slot: { characterId: character.id, slot: 'MAIN_HAND' },
+        characterId_slot: { characterId: character.id, slot: 'TOOL' },
       },
       include: { item: { include: { template: true } } },
     });
@@ -759,7 +778,9 @@ router.post('/queue', authGuard, characterGuard, requireTown, validate(queueCraf
       return res.status(400).json({ error: `You do not have the ${recipe.professionType} profession` });
     }
 
-    const levelRequired = getLevelRequired(recipe.tier);
+    // Level-based gating: per-recipe levelRequired overrides tier-based
+    const recipeLevelRequired = (recipe as any).levelRequired as number | null;
+    const levelRequired = recipeLevelRequired ?? getLevelRequired(recipe.tier);
     if (profession.level < levelRequired) {
       return res.status(400).json({
         error: `Requires level ${levelRequired} in ${recipe.professionType}, you are level ${profession.level}`,
@@ -769,6 +790,14 @@ router.post('/queue', authGuard, characterGuard, requireTown, validate(queueCraf
     if (tierIndex(profession.tier) < tierIndex(recipe.tier)) {
       return res.status(400).json({
         error: `Requires ${recipe.tier} tier in ${recipe.professionType}, you are ${profession.tier}`,
+      });
+    }
+
+    // Specialization gating
+    const recipeSpecialization = (recipe as any).specialization as string | null;
+    if (recipeSpecialization && profession.specialization !== recipeSpecialization) {
+      return res.status(400).json({
+        error: `Requires ${recipeSpecialization} specialization in ${recipe.professionType}`,
       });
     }
 

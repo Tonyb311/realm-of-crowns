@@ -69,22 +69,15 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
       return res.status(400).json({ error: 'This tool is broken and cannot be equipped' });
     }
 
-    // Use MAIN_HAND slot — each profession maps to a separate "equipped tool" record
-    // We store profession type in a custom approach: one equipment row per profession tool
-    // by using a convention: slot MAIN_HAND for the currently active gathering tool.
-    // To support multiple profession tools simultaneously, we use a JSON approach:
-    // store equipped tools as character equipment with metadata.
-
-    // For simplicity, use the existing CharacterEquipment with MAIN_HAND slot.
-    // Only one tool can be in MAIN_HAND at a time.
+    // Use dedicated TOOL slot — one tool at a time, separate from MAIN_HAND (weapon).
     // We track which profession it's for via the item template's stats.professionType.
 
-    // Unequip any existing MAIN_HAND tool first
+    // Unequip any existing TOOL first
     const existingEquip = await prisma.characterEquipment.findUnique({
       where: {
         characterId_slot: {
           characterId: character.id,
-          slot: 'MAIN_HAND',
+          slot: 'TOOL',
         },
       },
     });
@@ -99,7 +92,7 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
     const equipment = await prisma.characterEquipment.create({
       data: {
         characterId: character.id,
-        slot: 'MAIN_HAND',
+        slot: 'TOOL',
         itemId: item.id,
       },
     });
@@ -107,7 +100,7 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
     return res.json({
       equipped: {
         id: equipment.id,
-        slot: 'MAIN_HAND',
+        slot: 'TOOL',
         item: {
           id: item.id,
           name: item.template.name,
@@ -136,7 +129,7 @@ router.post('/unequip', authGuard, characterGuard, validate(unequipSchema), asyn
       where: {
         characterId_slot: {
           characterId: character.id,
-          slot: 'MAIN_HAND',
+          slot: 'TOOL',
         },
       },
       include: {
@@ -184,7 +177,7 @@ router.get('/equipped', authGuard, characterGuard, async (req: AuthenticatedRequ
       where: {
         characterId_slot: {
           characterId: character.id,
-          slot: 'MAIN_HAND',
+          slot: 'TOOL',
         },
       },
       include: {
@@ -201,7 +194,7 @@ router.get('/equipped', authGuard, characterGuard, async (req: AuthenticatedRequ
     return res.json({
       equipped: {
         id: equipped.id,
-        slot: 'MAIN_HAND',
+        slot: 'TOOL',
         item: {
           id: equipped.item.id,
           name: equipped.item.template.name,
