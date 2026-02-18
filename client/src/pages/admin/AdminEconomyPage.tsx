@@ -9,6 +9,7 @@ import {
   CircleDollarSign,
   TrendingUp,
   BarChart3,
+  GitBranch,
 } from 'lucide-react';
 import {
   LineChart,
@@ -22,6 +23,7 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import ErrorMessage from '../../components/ui/ErrorMessage';
+import SupplyChainView from './SupplyChainView';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -68,7 +70,7 @@ interface EconomyOverview {
   transactionVolume: { date: string; count: number; value: number }[];
 }
 
-type Tab = 'listings' | 'transactions' | 'overview';
+type Tab = 'listings' | 'transactions' | 'overview' | 'supply-chain';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -79,6 +81,7 @@ const TABS: { key: Tab; label: string; icon: typeof Store }[] = [
   { key: 'listings', label: 'Active Listings', icon: Store },
   { key: 'transactions', label: 'Transactions', icon: TrendingUp },
   { key: 'overview', label: 'Overview', icon: BarChart3 },
+  { key: 'supply-chain', label: 'Supply Chain', icon: GitBranch },
 ];
 
 // ---------------------------------------------------------------------------
@@ -525,6 +528,9 @@ export default function AdminEconomyPage() {
           ) : null}
         </div>
       )}
+
+      {/* Supply Chain Tab */}
+      {activeTab === 'supply-chain' && <SupplyChainView />}
     </div>
   );
 }
