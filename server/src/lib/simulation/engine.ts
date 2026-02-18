@@ -68,7 +68,7 @@ const SPOT_TO_ITEM: Record<string, string> = {
   hardwood_grove: 'Hardwood',
 };
 
-// Item name → spot type that produces it
+// Item name → spot type that produces it (or nearest supply-chain equivalent for travel AI)
 const ITEM_TO_SPOT_TYPE: Record<string, string> = {
   'Apples': 'orchard',
   'Raw Fish': 'fishing',
@@ -88,6 +88,23 @@ const ITEM_TO_SPOT_TYPE: Record<string, string> = {
   'Animal Pelts': 'hunting_ground',
   'Wolf Pelts': 'hunting_ground',
   'Bear Hides': 'hunting_ground',
+  // FARMER asset products — travel to farming towns (orchard regions)
+  'Grain': 'orchard',
+  'Vegetables': 'orchard',
+  'Wild Berries': 'orchard',
+  'Cotton': 'orchard',
+  // RANCHER asset products — travel to farming regions where ranchers operate
+  'Wool': 'orchard',
+  'Fine Wool': 'orchard',
+  'Silkworm Cocoons': 'orchard',
+  // TANNER intermediates — travel to hunting regions where supply chain starts
+  'Cured Leather': 'hunting_ground',
+  'Wolf Leather': 'hunting_ground',
+  'Bear Leather': 'hunting_ground',
+  // TAILOR intermediates — travel to farming regions where Wool supply chain starts
+  'Woven Cloth': 'orchard',
+  'Fine Cloth': 'orchard',
+  'Silk Fabric': 'orchard',
 };
 
 // Profession → spot types where they get bonus yield (fallback when tier-unlocks returns empty)

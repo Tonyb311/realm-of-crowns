@@ -208,6 +208,9 @@ class SimulationController {
       if (result.success) {
         successes++;
         bot.consecutiveErrors = 0;
+      } else if (actionType === 'idle') {
+        // Idle (no valid action) is neutral — not a failure
+        successes++;
       } else {
         failures++;
         bot.consecutiveErrors++;
@@ -264,8 +267,15 @@ class SimulationController {
           for (const mr of marketResults) {
             const marketAction = categorizeAction(mr.endpoint);
             actionBreakdown[marketAction] = (actionBreakdown[marketAction] || 0) + 1;
-            if (mr.success) successes++;
-            else failures++;
+            if (mr.success) {
+              successes++;
+            } else if (mr.detail?.includes('Already have order')) {
+              // Expected auction behavior — don't count as failure
+              successes++;
+            } else {
+              failures++;
+              if (mr.detail) errors.push(`${bot.characterName}: ${mr.detail}`);
+            }
 
             // Track per-bot market action counts
             if (mr.success) {

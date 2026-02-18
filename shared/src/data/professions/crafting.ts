@@ -134,7 +134,7 @@ export const TAILOR: ProfessionDefinition = {
   primaryStat: 'CHA',
   relatedProfessions: ['RANCHER', 'TANNER'],
   inputResources: ['Wool', 'Fine Wool', 'Silkworm Cocoons', 'Cured Leather', 'Wolf Leather', 'Bear Leather'],
-  outputProducts: ['Woven Cloth', 'Fine Cloth', 'Silk Fabric', 'Robes', 'Cloaks', 'Hoods', 'Garments', 'Cloth Padding'],
+  outputProducts: ['Woven Cloth', 'Fine Cloth', 'Silk Fabric', 'Robes', 'Cloaks', 'Hoods', 'Garments'],
   townTypeAffinity: ['plains', 'trade', 'urban'],
   tierUnlocks: {
     APPRENTICE: ['Woven Cloth', 'Cloth Hood', 'Cloth Robe', 'Wool Trousers', 'Cloth Sash'],

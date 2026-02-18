@@ -26,15 +26,8 @@ export async function checkAchievements(
   category: string,
   data: Record<string, unknown>,
 ): Promise<AchievementCheckResult> {
-  // Get all achievements in this category
-  const achievements = await prisma.achievement.findMany({
-    where: {
-      criteria: {
-        path: ['type'],
-        not: undefined,
-      },
-    },
-  });
+  // Get all achievements (isCriteriaCategoryMatch filters by category downstream)
+  const achievements = await prisma.achievement.findMany();
 
   // Get already earned achievements
   const earned = await prisma.playerAchievement.findMany({

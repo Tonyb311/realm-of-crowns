@@ -174,12 +174,36 @@ export async function seedBots(config: SeedConfig): Promise<BotState[]> {
     }
   }
 
+  // Pre-compute profession assignments ensuring min 2 per profession
+  // Only L3+ bots get professions, so build assignment array for those indices only
+  const profAssignments = new Map<number, string>(); // 1-based bot index → profession
+  if (config.professionDistribution === 'even' || config.startingLevel === 'diverse') {
+    const eligibleIndices: number[] = [];
+    for (let i = 1; i <= config.count; i++) {
+      const level = diverseLevels.length > 0 ? diverseLevels[i - 1] : 3;
+      if (level >= 3 || config.professionDistribution === 'even') {
+        eligibleIndices.push(i);
+      }
+    }
+    // Guarantee 2 of each profession first, then round-robin remainder
+    const guaranteed: string[] = [];
+    for (const prof of ALL_SEED_PROFESSIONS) {
+      guaranteed.push(prof, prof);
+    }
+    for (let j = 0; j < eligibleIndices.length; j++) {
+      const prof = j < guaranteed.length
+        ? guaranteed[j]
+        : ALL_SEED_PROFESSIONS[j % ALL_SEED_PROFESSIONS.length];
+      profAssignments.set(eligibleIndices[j], prof);
+    }
+  }
+
   for (let batchStart = 1; batchStart <= config.count; batchStart += batchSize) {
     const batchEnd = Math.min(batchStart + batchSize - 1, config.count);
     const batchIndices = Array.from({ length: batchEnd - batchStart + 1 }, (_, k) => batchStart + k);
 
     const batchResults = await Promise.all(
-      batchIndices.map((i) => createSingleBot(i, config, townPool, profiles, profileWeights, releasedRaceEnums, diverseLevels)),
+      batchIndices.map((i) => createSingleBot(i, config, townPool, profiles, profileWeights, releasedRaceEnums, diverseLevels, profAssignments)),
     );
 
     bots.push(...batchResults);
@@ -198,6 +222,7 @@ async function createSingleBot(
   profileWeights: number[],
   releasedRaceEnums: Race[] = ALL_RACES,
   diverseLevels: number[] = [],
+  profAssignments: Map<number, string> = new Map(),
 ): Promise<BotState> {
   // 1. Assign profile
   const profile = weightedRandom(profiles, profileWeights);
@@ -313,16 +338,8 @@ async function createSingleBot(
   // Skill points from leveling
   const unspentSkillPoints = startLevel - 1;
 
-  // 10. Starting profession (if professionDistribution is configured OR diverse level L3+)
-  let startingProfession: string | null = null;
-  if (config.professionDistribution === 'even') {
-    // Round-robin through all professions (gathering + COOK + BREWER)
-    startingProfession = ALL_SEED_PROFESSIONS[index % ALL_SEED_PROFESSIONS.length];
-  } else if (config.startingLevel === 'diverse' && startLevel >= 3) {
-    // Diverse mode: L3+ bots get a profession (engine would assign one anyway at L3)
-    startingProfession = ALL_SEED_PROFESSIONS[index % ALL_SEED_PROFESSIONS.length];
-  }
-  // Otherwise 'diverse' uses profile-based selection at runtime (existing engine logic)
+  // 10. Starting profession — use pre-computed assignment map (guarantees min 2 per profession)
+  let startingProfession: string | null = profAssignments.get(index) || null;
 
   // 11. Create Character
   const character = await prisma.character.create({
@@ -357,6 +374,22 @@ async function createSingleBot(
 
   // 12d. Give free cottage in home town
   await giveStarterHouse(character.id, townId, character.name);
+
+  // 12e. Persist starting profession to DB (so refreshBotState picks it up)
+  if (startingProfession) {
+    try {
+      await prisma.playerProfession.create({
+        data: {
+          characterId: character.id,
+          professionType: startingProfession as any,
+          level: 1,
+          xp: 0,
+          tier: 'APPRENTICE',
+          isActive: true,
+        },
+      });
+    } catch { /* ignore duplicate */ }
+  }
 
   // 13. Generate JWT
   const token = jwt.sign(

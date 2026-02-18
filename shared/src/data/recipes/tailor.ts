@@ -13,17 +13,7 @@ export const TAILOR_RECIPES: RecipeDefinition[] = [
     xpReward: 10,
     tier: 1,
   },
-  {
-    recipeId: 'make-cloth-padding',
-    name: 'Make Cloth Padding',
-    professionRequired: 'TAILOR',
-    levelRequired: 3,
-    inputs: [{ itemName: 'Cloth', quantity: 2 }],
-    outputs: [{ itemName: 'Cloth Padding', quantity: 1 }],
-    craftTime: 15,
-    xpReward: 8,
-    tier: 1,
-  }, // Major-ECON-06: Cloth Padding — needed by Armorer for plate armor
+  // make-cloth-padding removed: Cloth Padding is unused by any recipe
 
   // ---- NEW: TAILOR Apprentice processing ----
   {

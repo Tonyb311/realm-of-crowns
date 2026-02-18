@@ -213,7 +213,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     // --- Gathering ---
     const gatherActions = await prisma.dailyAction.findMany({
       where: {
-        tickDate: { gte: new Date(tickDateStr), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
+        tickDate: { gte: new Date(tickDateStr + 'T00:00:00.000Z'), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
         actionType: 'GATHER',
         status: 'LOCKED_IN',
       },
@@ -243,7 +243,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     // --- Crafting ---
     const craftActions = await prisma.dailyAction.findMany({
       where: {
-        tickDate: { gte: new Date(tickDateStr), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
+        tickDate: { gte: new Date(tickDateStr + 'T00:00:00.000Z'), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
         actionType: 'CRAFT',
         status: 'LOCKED_IN',
       },
@@ -273,7 +273,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     // --- Harvesting (private asset harvesting) ---
     const harvestActions = await prisma.dailyAction.findMany({
       where: {
-        tickDate: { gte: new Date(tickDateStr), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
+        tickDate: { gte: new Date(tickDateStr + 'T00:00:00.000Z'), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
         actionType: 'HARVEST',
         status: 'LOCKED_IN',
       },
@@ -758,7 +758,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     // Innkeepers earn from resting characters in their town
     const restingActions = await prisma.dailyAction.findMany({
       where: {
-        tickDate: { gte: new Date(tickDateStr), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
+        tickDate: { gte: new Date(tickDateStr + 'T00:00:00.000Z'), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
         actionType: 'REST',
         status: 'LOCKED_IN',
       },
@@ -942,7 +942,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     // Find characters with REST actions or no locked action for today
     const restActions = await prisma.dailyAction.findMany({
       where: {
-        tickDate: { gte: new Date(tickDateStr), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
+        tickDate: { gte: new Date(tickDateStr + 'T00:00:00.000Z'), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
         actionType: 'REST',
         status: 'LOCKED_IN',
       },
@@ -955,7 +955,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     // Characters with NO action default to rest
     const allActive = await prisma.dailyAction.findMany({
       where: {
-        tickDate: { gte: new Date(tickDateStr), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
+        tickDate: { gte: new Date(tickDateStr + 'T00:00:00.000Z'), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
         status: 'LOCKED_IN',
       },
       select: { characterId: true },
@@ -1114,7 +1114,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     // Mark all LOCKED_IN DailyActions as COMPLETED (or FAILED if they failed)
     await prisma.dailyAction.updateMany({
       where: {
-        tickDate: { gte: new Date(tickDateStr), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
+        tickDate: { gte: new Date(tickDateStr + 'T00:00:00.000Z'), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
         status: 'LOCKED_IN',
       },
       data: { status: 'COMPLETED' },

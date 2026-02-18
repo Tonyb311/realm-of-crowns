@@ -423,7 +423,7 @@ async function main() {
     // Step 2: Load existing resource templates (gathering ingredients)
     // ---------------------------------------------------------------
     const resourceNames = [
-      'Cotton', 'Cloth', 'Cloth Padding',         // Legacy processing chain
+      'Cotton', 'Cloth',                             // Legacy processing chain (spin-cloth kept for housing-bed)
       'Wool',                                       // RANCHER T1
       'Cured Leather', 'Wolf Leather', 'Bear Leather',  // TANNER outputs
       'Silver Ore', 'Glowcap Mushrooms',            // Craftsman recipe inputs
@@ -454,9 +454,8 @@ async function main() {
       xpReward: number;
       craftTime: number;
     }> = [
-      // Legacy processing (kept for ARMORER chain)
+      // Legacy processing (spin-cloth kept for housing-bed Woodworker recipe)
       { recipeId: 'spin-cloth', name: 'Spin Cloth', levelRequired: 1, tier: 1, inputs: [{ itemName: 'Cotton', quantity: 3 }], outputName: 'Cloth', xpReward: 10, craftTime: 20 },
-      { recipeId: 'make-cloth-padding', name: 'Make Cloth Padding', levelRequired: 3, tier: 1, inputs: [{ itemName: 'Cloth', quantity: 2 }], outputName: 'Cloth Padding', xpReward: 8, craftTime: 15 },
       // New processing — Apprentice (L3)
       { recipeId: 'tai-weave-cloth', name: 'Weave Cloth', levelRequired: 3, tier: 1, inputs: [{ itemName: 'Wool', quantity: 3 }], outputName: 'Woven Cloth', xpReward: 12, craftTime: 20 },
       // New processing — Craftsman (L7)
