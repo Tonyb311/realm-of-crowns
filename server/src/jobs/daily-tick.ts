@@ -1465,6 +1465,53 @@ async function processGatherSpotAction(
     }
   }
 
+  // Tiered hunting gathering: L3+ HUNTER at hunting_ground gets Animal Pelts
+  // L7+ HUNTER gets premium pelts: 30% Animal Pelts, 35% Wolf Pelts, 35% Bear Hides
+  if (resourceType === 'hunting_ground') {
+    const huntProf = await prisma.playerProfession.findFirst({
+      where: { characterId: char.id, professionType: 'HUNTER' },
+    });
+    if (huntProf && huntProf.level >= 3) {
+      if (huntProf.level >= 7) {
+        const roll = Math.random();
+        if (roll < 0.30) {
+          // 30% — Animal Pelts
+          resolvedTemplateName = 'Animal Pelts';
+          resolvedItemName = 'Animal Pelts';
+          resolvedDescription = 'Rough animal pelts stripped from hunted game. Essential for leatherworking.';
+          resolvedIsFood = false;
+          resolvedShelfLifeDays = null;
+          resolvedFoodBuff = null;
+        } else if (roll < 0.65) {
+          // 35% — Wolf Pelts
+          resolvedTemplateName = 'Wolf Pelts';
+          resolvedItemName = 'Wolf Pelts';
+          resolvedDescription = 'Thick, durable pelts from wolves. Their natural toughness makes superior leather for armor.';
+          resolvedIsFood = false;
+          resolvedShelfLifeDays = null;
+          resolvedFoodBuff = null;
+        } else {
+          // 35% — Bear Hides
+          resolvedTemplateName = 'Bear Hides';
+          resolvedItemName = 'Bear Hides';
+          resolvedDescription = 'Massive hides from bears. Incredibly dense and durable — the finest material for heavy leather armor.';
+          resolvedIsFood = false;
+          resolvedShelfLifeDays = null;
+          resolvedFoodBuff = null;
+        }
+      } else {
+        // L3-6: always Animal Pelts
+        resolvedTemplateName = 'Animal Pelts';
+        resolvedItemName = 'Animal Pelts';
+        resolvedDescription = 'Rough animal pelts stripped from hunted game. Essential for leatherworking.';
+        resolvedIsFood = false;
+        resolvedShelfLifeDays = null;
+        resolvedFoodBuff = null;
+      }
+    }
+    // Non-HUNTER or <L3 HUNTER: keeps default Wild Game Meat
+  }
+
   // Roll yield
   const quantity = Math.floor(Math.random() * (maxYield - minYield + 1)) + minYield;
 

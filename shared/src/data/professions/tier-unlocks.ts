@@ -342,23 +342,21 @@ export const RANCHER_ANIMAL_UNLOCKS: ProfessionTierUnlocks = {
 export const HUNTER_GAME_UNLOCKS: ProfessionTierUnlocks = {
   APPRENTICE: {
     tier: 1,
-    crops: ['Wild Game Meat'],
+    crops: ['Wild Game Meat', 'Animal Pelts'],
     spotTypes: ['hunting_ground'],
-    description: 'Hunt wild game at hunting grounds for meat and hides.',
+    description: 'Hunt wild game at hunting grounds for meat and pelts.',
   },
   JOURNEYMAN: {
     tier: 2,
-    crops: ['Pelts', 'Bone', 'Feathers'],
-    spotTypes: ['deep_forest'],
-    description: 'Tracking larger game',
-    NOT_YET_IMPLEMENTED: true,
+    crops: ['Animal Pelts'],
+    spotTypes: ['hunting_ground'],
+    description: 'Improved hunting technique with better pelt yield.',
   },
   CRAFTSMAN: {
     tier: 3,
-    crops: ['Fine Pelts', 'Antlers'],
-    spotTypes: ['trophy_grounds'],
-    description: 'Trophy hunting',
-    NOT_YET_IMPLEMENTED: true,
+    crops: ['Wolf Pelts', 'Bear Hides'],
+    spotTypes: ['hunting_ground'],
+    description: 'Tracking wolves and bears for premium pelts and hides.',
   },
   EXPERT: {
     tier: 4,

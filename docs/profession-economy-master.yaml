@@ -9,10 +9,14 @@
 # input back to its source (gathered or crafted) → repeat until you hit
 # a raw gathered resource.
 #
-# LAST UPDATED: 2026-02-20
+# LAST UPDATED: 2026-02-17
 # STATUS: All 7 gathering professions formalized and LIVE. RANCHER livestock system LIVE.
 # COOK recipes expanded: +3 livestock recipes, +7 fish recipes (3 Journeyman, 4 Craftsman).
 # FISHERMAN Craftsman tier LIVE: River Trout (22g), Lake Perch (25g) at fishing spots for L7+.
+# TANNER profession LIVE — 15 recipes (3 processing + 12 finished goods), two-step pipeline
+# (pelts → leather → goods). HUNTER tiers expanded: Apprentice+Journeyman+Craftsman all LIVE,
+# Animal Pelts (L3+), Wolf Pelts + Bear Hides (L7+). Cured Leather shared intermediate for TAILOR.
+# Quiver/Ranger's Quiver create TANNER→HUNTER feedback loop (tools boost pelt gatherer).
 # Single-town residency LIVE — one free cottage in home town, 500g relocation with 30-day
 # cooldown, building construction restricted to home town, remote market listing from storage.
 # EQUIPMENT SYSTEM LIVE — 6 slots (WEAPON, OFF_HAND, HEAD, BODY, LEGS, TOOL), dedicated
@@ -221,10 +225,38 @@ gathering_spot_types:
     hp_restore: 8
     description: "Venison, boar, and rabbit harvested from the wilds. Lean and flavorful."
     gather_professions: [HUNTER]
-    craft_consumers: [COOK]
+    craft_consumers: [COOK, TANNER]
     regions: [Ironvault, Frozen Reaches, Twilight March]
     towns: [Alehearth, Frostfang, "Harmony Point", "The Crosswinds Inn"]
     status: LIVE  # Added 2026-02-17
+    tiered_resources:  # ADDED: HUNTER tiered pelts
+      L3-6: "Wild Game Meat only + Animal Pelts (bonus drop)"
+      L7-8: { "Wild Game Meat": "40%", "Animal Pelts": "20%", "Wolf Pelts": "20%", "Bear Hides": "20%" }
+    premium_resources:
+      animal_pelts:
+        name: Animal Pelts
+        item_id: animal_pelts
+        category: MATERIAL
+        base_value: 8
+        description: "Common animal pelts. Cured into leather by a Tanner."
+        min_level: 3
+        craft_consumers: [TANNER]
+      wolf_pelts:
+        name: Wolf Pelts
+        item_id: wolf_pelts
+        category: MATERIAL
+        base_value: 28
+        description: "Thick, durable wolf pelts. Prized by Tanners for superior leather."
+        min_level: 7
+        craft_consumers: [TANNER]
+      bear_hides:
+        name: Bear Hides
+        item_id: bear_hides
+        category: MATERIAL
+        base_value: 35
+        description: "Massive bear hides. Only the most skilled Tanners can work these."
+        min_level: 7
+        craft_consumers: [TANNER]
 
   # --- FARMER PRIVATE FIELD ONLY (no public spots) ---
   # grain_field: REMOVED as public spot (2026-02-17). Grain now FARMER-private-field only.
@@ -245,17 +277,11 @@ gathering_spot_types:
 planned_gathering_spots:
 
   pasture:
-    status: NEEDED_FOR_TANNER
-    resource: Raw Hide
-    item_id: raw_hide
-    category: MATERIAL
-    base_value: 5
-    yield: 1-2
-    edible: false
-    description: "Untreated animal hide. Must be tanned before leatherworking."
-    gather_professions: [RANCHER]
+    status: SUPERSEDED
+    note: "TANNER now sources pelts from HUNTER (Animal Pelts, Wolf Pelts, Bear Hides) not RANCHER Raw Hide. Pasture as public spot no longer needed for TANNER."
+    original_resource: Raw Hide
     craft_consumers: [TANNER]
-    assign_to_regions: [Heartlands, Crossroads]
+    replacement: "HUNTER hunting_ground tiered resources (L3+ Animal Pelts, L7+ Wolf Pelts / Bear Hides)"
 
   # RANCHER livestock products (auto-produced by animals in daily tick):
   # - Eggs (chicken) → COOK (Scrambled Eggs, Farm Breakfast)
@@ -266,9 +292,9 @@ planned_gathering_spots:
   # Livestock require Grain feed every 3 ticks. No feed → hunger → death.
 
   # hunting_ground: MOVED to Section 1 (2026-02-17) — now LIVE with 4 towns
-    gather_professions: [HUNTER]
-    craft_consumers: [COOK, TANNER]
-    assign_to_regions: [Silverwood, Frozen Reaches]
+  #   gather_professions: [HUNTER]
+  #   craft_consumers: [COOK, TANNER]
+  #   assign_to_regions: [Silverwood, Frozen Reaches]
 
 
 # =============================================================================
@@ -393,10 +419,12 @@ professions:
     description: "Tracks and hunts wild game for meat and pelts."
     bonus_spots: [hunting_ground]
     tier_unlocks:
-      APPRENTICE: { spots: [], status: NOT_YET_IMPLEMENTED, note: "No hunting spots exist yet" }
+      APPRENTICE: { level: "3-4", spots: [hunting_ground], yield_bonus: "+0%", resources: ["Wild Game Meat", "Animal Pelts"] }
+      JOURNEYMAN: { level: "5-6", spots: [hunting_ground], yield_bonus: "+25%", resources: ["Wild Game Meat", "Animal Pelts"] }
+      CRAFTSMAN: { level: "7-8", spots: [hunting_ground], yield_bonus: "+50%", resources: ["Wild Game Meat", "Animal Pelts", "Wolf Pelts", "Bear Hides"], weights: "40/20/20/20" }
     feeds_into: [COOK, TANNER, FLETCHER]
-    status: PLANNED
-    notes: "Hunting grounds not yet created. Tier bonus framework in place."
+    status: EXISTS_IN_GAME
+    notes: "All tiers through CRAFTSMAN LIVE. Apprentice gathers Wild Game Meat + Animal Pelts (8g). Craftsman unlocks Wolf Pelts (28g) and Bear Hides (35g) at hunting grounds. Pelts feed TANNER leather pipeline."
 
   # ---------------------------------------------------------------------------
   # CRAFTING PROFESSIONS (15)
@@ -512,15 +540,22 @@ professions:
 
   TANNER:
     type: CRAFTING
+    primary_stat: DEX
     unlock_level: 3
-    description: "Processes raw hides into workable leather."
-    depends_on_gatherers: [RANCHER, HUNTER]
-    raw_inputs: [raw_hide]
-    intermediate_inputs: []
-    output_categories: [MATERIAL]
+    description: "Cures pelts into leather and crafts leather goods. Two-step pipeline: pelts → leather → finished goods."
+    depends_on_gatherers: [HUNTER]
+    related_professions: [HUNTER]
+    raw_inputs: [animal_pelts, wolf_pelts, bear_hides]
+    intermediate_inputs: [cured_leather, wolf_leather, bear_leather]
+    output_categories: [MATERIAL, ARMOR, TOOL, CONSUMABLE]
     outputs_used_by: [LEATHERWORKER, ARMORER, TAILOR]
-    status: PLANNED
-    notes: "Bottleneck like SMELTER — multiple professions need leather"
+    status: EXISTS_IN_GAME
+    tier_recipes:
+      APPRENTICE: ["Cured Leather", "Leather Cap", "Leather Satchel"]
+      JOURNEYMAN: ["Leather Vest", "Leather Belt", "Leather Armor", "Leather Bracers"]
+      CRAFTSMAN: ["Leather Greaves", "Quiver", "Wolf Leather (processing)", "Bear Leather (processing)", "Wolf Leather Armor", "Wolf Leather Hood", "Bear Hide Cuirass", "Ranger's Quiver"]
+    recipe_count: 15  # 3 processing + 4 apprentice + 4 journeyman + 4 craftsman
+    notes: "Two-step pipeline: HUNTER pelts → TANNER cures into leather → TANNER crafts into goods. Cured Leather is shared intermediate (TAILOR will buy). Leather armor offers less defense than metal but grants DEX bonuses — player choice."
 
   LEATHERWORKER:
     type: CRAFTING
@@ -1304,6 +1339,375 @@ cook_recipes:
 
 
 # =============================================================================
+# SECTION 4B: TANNER RECIPE TREE
+# =============================================================================
+# TANNER is a two-step pipeline profession:
+#   Step 1: Cure raw pelts into workable leather (processing)
+#   Step 2: Craft leather into armor, tools, and goods
+#
+# Design principles:
+# - HUNTER provides all raw pelts (Animal Pelts L3+, Wolf Pelts / Bear Hides L7+)
+# - Cured Leather is a shared intermediate — TAILOR will also buy it
+# - Leather armor is lighter than metal: less AC but grants DEX bonuses
+# - Quiver / Ranger's Quiver are TOOL items that boost HUNTER yield
+# =============================================================================
+
+tanner_recipes:
+
+  # --- PROCESSING RECIPES (pelts → leather) ---
+
+  tan-cure-leather:
+    id: tan-cure-leather
+    name: Cured Leather
+    description: "Animal pelts cured and treated into supple, workable leather."
+    category: MATERIAL
+    base_value: 18
+    tier: 1
+    level_required: 3
+    profession: TANNER
+    xp_reward: 10
+    inputs:
+      - item_id: animal_pelts
+        quantity: 3
+    outputs:
+      - item_id: cured_leather
+        quantity: 2
+    notes: "Core intermediate. Used in all Apprentice/Journeyman leather goods. TAILOR will also buy."
+    dependency_chain: "HUNTER →[gather]→ Animal Pelts →[TANNER]→ Cured Leather"
+
+  tan-wolf-leather:
+    id: tan-wolf-leather
+    name: Wolf Leather
+    description: "Thick, supple leather cured from wolf pelts. Prized for its durability."
+    category: MATERIAL
+    base_value: 35
+    tier: 3
+    level_required: 7
+    profession: TANNER
+    xp_reward: 20
+    inputs:
+      - item_id: wolf_pelts
+        quantity: 2
+    outputs:
+      - item_id: wolf_leather
+        quantity: 1
+    notes: "Premium intermediate for Craftsman-tier leather armor."
+    dependency_chain: "HUNTER L7+ →[gather]→ Wolf Pelts →[TANNER L7]→ Wolf Leather"
+
+  tan-bear-leather:
+    id: tan-bear-leather
+    name: Bear Leather
+    description: "Heavy, rugged leather cured from bear hides. Nearly as tough as chainmail."
+    category: MATERIAL
+    base_value: 42
+    tier: 3
+    level_required: 7
+    profession: TANNER
+    xp_reward: 22
+    inputs:
+      - item_id: bear_hides
+        quantity: 2
+    outputs:
+      - item_id: bear_leather
+        quantity: 1
+    notes: "Premium intermediate for top-tier leather armor."
+    dependency_chain: "HUNTER L7+ →[gather]→ Bear Hides →[TANNER L7]→ Bear Leather"
+
+  # --- TIER 1: APPRENTICE GOODS (Level 3-4) ---
+
+  tan-leather-cap:
+    id: tan-leather-cap
+    name: Leather Cap
+    description: "A simple leather cap offering basic head protection."
+    category: ARMOR
+    slot: HEAD
+    base_value: 30
+    tier: 1
+    level_required: 3
+    profession: TANNER
+    xp_reward: 12
+    inputs:
+      - item_id: cured_leather
+        quantity: 2
+    outputs:
+      - item_id: leather_cap
+        quantity: 1
+    effects:
+      defense: 2
+      dexterity_bonus: 0
+    dependency_chain: "Animal Pelts →[TANNER]→ Cured Leather →[TANNER]→ Leather Cap"
+
+  tan-leather-satchel:
+    id: tan-leather-satchel
+    name: Leather Satchel
+    description: "A sturdy leather satchel that enhances nimbleness on the road."
+    category: CONSUMABLE
+    base_value: 35
+    tier: 1
+    level_required: 3
+    profession: TANNER
+    xp_reward: 14
+    inputs:
+      - item_id: cured_leather
+        quantity: 2
+      - item_id: animal_pelts
+        quantity: 1
+    outputs:
+      - item_id: leather_satchel
+        quantity: 1
+    effects:
+      buff: "dexterity"
+      buff_value: 1
+      duration_ticks: 5
+      buff_description: "+1 DEX for 5 ticks"
+    dependency_chain: "Animal Pelts →[TANNER]→ Cured Leather + Animal Pelts →[TANNER]→ Leather Satchel"
+
+  tan-leather-vest:
+    id: tan-leather-vest
+    name: Leather Vest
+    description: "A fitted leather vest providing decent torso protection."
+    category: ARMOR
+    slot: CHEST
+    base_value: 45
+    tier: 1
+    level_required: 4
+    profession: TANNER
+    xp_reward: 15
+    inputs:
+      - item_id: cured_leather
+        quantity: 3
+    outputs:
+      - item_id: leather_vest
+        quantity: 1
+    effects:
+      defense: 3
+      dexterity_bonus: 0
+    dependency_chain: "Animal Pelts →[TANNER]→ Cured Leather →[TANNER]→ Leather Vest"
+
+  tan-leather-belt:
+    id: tan-leather-belt
+    name: Leather Belt
+    description: "A reinforced leather belt that protects the waist and hips."
+    category: ARMOR
+    slot: LEGS
+    base_value: 25
+    tier: 1
+    level_required: 4
+    profession: TANNER
+    xp_reward: 12
+    inputs:
+      - item_id: cured_leather
+        quantity: 2
+    outputs:
+      - item_id: leather_belt
+        quantity: 1
+    effects:
+      defense: 1
+      dexterity_bonus: 0
+    dependency_chain: "Animal Pelts →[TANNER]→ Cured Leather →[TANNER]→ Leather Belt"
+
+  # --- TIER 2: JOURNEYMAN GOODS (Level 5-6) ---
+
+  tan-leather-armor:
+    id: tan-leather-armor
+    name: Leather Armor
+    description: "Full leather armor covering the torso. Light and flexible."
+    category: ARMOR
+    slot: CHEST
+    base_value: 65
+    tier: 2
+    level_required: 5
+    profession: TANNER
+    xp_reward: 20
+    inputs:
+      - item_id: cured_leather
+        quantity: 4
+      - item_id: animal_pelts
+        quantity: 2
+    outputs:
+      - item_id: leather_armor
+        quantity: 1
+    effects:
+      defense: 5
+      dexterity_bonus: 1
+    dependency_chain: "Animal Pelts →[TANNER]→ Cured Leather + Animal Pelts →[TANNER]→ Leather Armor"
+
+  tan-leather-bracers:
+    id: tan-leather-bracers
+    name: Leather Bracers
+    description: "Reinforced leather arm guards. Favored by archers and rogues."
+    category: ARMOR
+    slot: OFF_HAND
+    base_value: 40
+    tier: 2
+    level_required: 5
+    profession: TANNER
+    xp_reward: 18
+    inputs:
+      - item_id: cured_leather
+        quantity: 3
+    outputs:
+      - item_id: leather_bracers
+        quantity: 1
+    effects:
+      defense: 3
+      dexterity_bonus: 1
+    dependency_chain: "Animal Pelts →[TANNER]→ Cured Leather →[TANNER]→ Leather Bracers"
+
+  tan-leather-greaves:
+    id: tan-leather-greaves
+    name: Leather Greaves
+    description: "Sturdy leather leg armor for protection without sacrificing speed."
+    category: ARMOR
+    slot: LEGS
+    base_value: 50
+    tier: 2
+    level_required: 6
+    profession: TANNER
+    xp_reward: 20
+    inputs:
+      - item_id: cured_leather
+        quantity: 3
+      - item_id: animal_pelts
+        quantity: 1
+    outputs:
+      - item_id: leather_greaves
+        quantity: 1
+    effects:
+      defense: 4
+      dexterity_bonus: 1
+    dependency_chain: "Animal Pelts →[TANNER]→ Cured Leather + Animal Pelts →[TANNER]→ Leather Greaves"
+
+  tan-quiver:
+    id: tan-quiver
+    name: Quiver
+    description: "A well-crafted leather quiver. Improves hunting efficiency."
+    category: TOOL
+    base_value: 55
+    tier: 2
+    level_required: 6
+    profession: TANNER
+    xp_reward: 22
+    durability: 35
+    inputs:
+      - item_id: cured_leather
+        quantity: 3
+      - item_id: animal_pelts
+        quantity: 2
+    outputs:
+      - item_id: quiver
+        quantity: 1
+    effects:
+      yield_bonus: "+25% hunting yield"
+      profession_match: HUNTER
+    dependency_chain: "Animal Pelts →[TANNER]→ Cured Leather + Animal Pelts →[TANNER]→ Quiver"
+    notes: "TOOL item — equips in TOOL slot. +25% hunting yield for HUNTER profession."
+
+  # --- TIER 3: CRAFTSMAN GOODS (Level 7-8) ---
+
+  tan-wolf-leather-armor:
+    id: tan-wolf-leather-armor
+    name: Wolf Leather Armor
+    description: "Superior armor crafted from wolf leather. Tough yet agile."
+    category: ARMOR
+    slot: CHEST
+    base_value: 120
+    tier: 3
+    level_required: 7
+    profession: TANNER
+    xp_reward: 30
+    inputs:
+      - item_id: wolf_leather
+        quantity: 3
+      - item_id: cured_leather
+        quantity: 2
+    outputs:
+      - item_id: wolf_leather_armor
+        quantity: 1
+    effects:
+      defense: 8
+      dexterity_bonus: 2
+    dependency_chain: "Wolf Pelts →[TANNER]→ Wolf Leather + Animal Pelts →[TANNER]→ Cured Leather →[TANNER]→ Wolf Leather Armor"
+
+  tan-wolf-leather-hood:
+    id: tan-wolf-leather-hood
+    name: Wolf Leather Hood
+    description: "A wolf-leather hood with a fierce silhouette. Shields the head and sharpens the senses."
+    category: ARMOR
+    slot: HEAD
+    base_value: 75
+    tier: 3
+    level_required: 7
+    profession: TANNER
+    xp_reward: 25
+    inputs:
+      - item_id: wolf_leather
+        quantity: 2
+      - item_id: cured_leather
+        quantity: 1
+    outputs:
+      - item_id: wolf_leather_hood
+        quantity: 1
+    effects:
+      defense: 5
+      dexterity_bonus: 2
+    dependency_chain: "Wolf Pelts →[TANNER]→ Wolf Leather + Cured Leather →[TANNER]→ Wolf Leather Hood"
+
+  tan-bear-hide-cuirass:
+    id: tan-bear-hide-cuirass
+    name: Bear Hide Cuirass
+    description: "A massive chest piece of layered bear leather. Rivals chainmail in protection."
+    category: ARMOR
+    slot: CHEST
+    base_value: 155
+    tier: 3
+    level_required: 8
+    profession: TANNER
+    xp_reward: 35
+    inputs:
+      - item_id: bear_leather
+        quantity: 3
+      - item_id: cured_leather
+        quantity: 2
+      - item_id: animal_pelts
+        quantity: 1
+    outputs:
+      - item_id: bear_hide_cuirass
+        quantity: 1
+    effects:
+      defense: 10
+      dexterity_bonus: 2
+    dependency_chain: "Bear Hides →[TANNER]→ Bear Leather + Animal Pelts →[TANNER]→ Cured Leather →[TANNER]→ Bear Hide Cuirass"
+
+  tan-rangers-quiver:
+    id: tan-rangers-quiver
+    name: "Ranger's Quiver"
+    description: "A masterwork quiver of layered wolf leather. The ranger's most prized tool."
+    category: TOOL
+    base_value: 105
+    tier: 3
+    level_required: 8
+    profession: TANNER
+    xp_reward: 30
+    durability: 50
+    inputs:
+      - item_id: wolf_leather
+        quantity: 2
+      - item_id: cured_leather
+        quantity: 2
+      - item_id: bear_hides
+        quantity: 1
+    outputs:
+      - item_id: rangers_quiver
+        quantity: 1
+    effects:
+      yield_bonus: "+40% hunting yield"
+      profession_match: HUNTER
+    dependency_chain: "Wolf Pelts →[TANNER]→ Wolf Leather + Animal Pelts →[TANNER]→ Cured Leather + Bear Hides →[TANNER]→ Ranger's Quiver"
+    notes: "TOOL item — equips in TOOL slot. +40% hunting yield for HUNTER profession. Upgraded Quiver."
+
+
+# =============================================================================
 # SECTION 5: DEPENDENCY CHAINS (QUICK REFERENCE)
 # =============================================================================
 # Read these bottom-to-top: raw resource → ... → final product
@@ -1365,9 +1769,33 @@ dependency_chains:
     Iron Ore ──[SMELTER]──→ Iron Ingot ──[ARMORER]──→ Chain Mail / Shield
     Raw Hide ──[TANNER]──→ Leather ──[ARMORER]──→ Reinforced Armor (ingot + leather)
 
-  # --- LEATHER CHAIN (RANCHER/HUNTER → TANNER → LEATHERWORKER/ARMORER) ---
-  leather_goods:
-    Raw Hide ──[TANNER]──→ Leather ──[LEATHERWORKER]──→ Leather Armor / Bags / Belts
+  # --- LEATHER CHAIN (HUNTER → TANNER → goods / LEATHERWORKER / ARMORER) ---
+  leather_processing:
+    Animal Pelts ──[TANNER L3]──→ Cured Leather (shared intermediate — also sold to TAILOR)
+    Wolf Pelts ──[TANNER L7]──→ Wolf Leather
+    Bear Hides ──[TANNER L7]──→ Bear Leather
+
+  leather_apprentice_goods:
+    Cured Leather ──[TANNER L3]──→ Leather Cap (HEAD, 30g)
+    Cured Leather + Animal Pelts ──[TANNER L3]──→ Leather Satchel (CONSUMABLE, +1 DEX/5 ticks)
+    Cured Leather ──[TANNER L4]──→ Leather Vest (CHEST, 45g)
+    Cured Leather ──[TANNER L4]──→ Leather Belt (LEGS, 25g)
+
+  leather_journeyman_goods:
+    Cured Leather + Animal Pelts ──[TANNER L5]──→ Leather Armor (CHEST, 65g)
+    Cured Leather ──[TANNER L5]──→ Leather Bracers (OFF_HAND, 40g)
+    Cured Leather + Animal Pelts ──[TANNER L6]──→ Leather Greaves (LEGS, 50g)
+    Cured Leather + Animal Pelts ──[TANNER L6]──→ Quiver (TOOL, +25% hunting yield, 35 dur)
+
+  leather_craftsman_goods:
+    Wolf Leather + Cured Leather ──[TANNER L7]──→ Wolf Leather Armor (CHEST, 120g)
+    Wolf Leather + Cured Leather ──[TANNER L7]──→ Wolf Leather Hood (HEAD, 75g)
+    Bear Leather + Cured Leather + Animal Pelts ──[TANNER L8]──→ Bear Hide Cuirass (CHEST, 155g)
+    Wolf Leather + Cured Leather + Bear Hides ──[TANNER L8]──→ Ranger's Quiver (TOOL, +40% hunting yield, 50 dur)
+
+  leather_future:
+    Cured Leather ──[LEATHERWORKER]──→ Leather Bags / Accessories (future)
+    Cured Leather ──[ARMORER]──→ Reinforced Armor (ingot + leather, future)
 
   # --- WOOD CHAIN (LUMBERJACK → WOODWORKER → FLETCHER) ---
   wood_goods:
@@ -1421,6 +1849,14 @@ economy_rules:
     storage: "20 slots per cottage (each unique item type = 1 slot, unlimited quantity per slot)"
     remote_listing: "Items in house storage can be listed on the town's market from anywhere (free action)"
     future: "Tier 2-4 upgrades (500g-5000g) will increase storage slots and add rooms"
+
+  tanner_economy:
+    principle: "TANNER is a two-step pipeline profession: pelts → leather → goods"
+    chain: "HUNTER →[gather]→ Animal Pelts / Wolf Pelts / Bear Hides →[TANNER cure]→ Cured Leather / Wolf Leather / Bear Leather →[TANNER craft]→ Armor / Tools / Goods →[Market]"
+    shared_intermediate: "Cured Leather is a shared intermediate — TAILOR will buy Cured Leather for cloth-leather hybrid gear. This creates cross-profession demand beyond TANNER's own recipes."
+    player_choice: "Leather armor offers less raw defense (AC) than equivalent metal armor, but grants DEX bonuses. Players choose based on build: heavy fighters prefer BLACKSMITH plate, rogues and rangers prefer TANNER leather."
+    economic_chain: "HUNTER → TANNER → Market. HUNTERs sell pelts to TANNERs. TANNERs sell Cured Leather to TAILORs and finished leather goods to players. Quiver/Ranger's Quiver create a TANNER→HUNTER feedback loop (tools that boost the gatherer who supplies the crafter)."
+    tool_feedback: "Quiver (+25% hunting yield, 35 dur) and Ranger's Quiver (+40% hunting yield, 50 dur) are TANNER-crafted TOOL items that equip in the HUNTER's TOOL slot. This creates circular demand: HUNTER needs TANNER tools, TANNER needs HUNTER pelts."
 
   scarcity_by_region:
     principle: "Different towns produce different resources"
@@ -1877,13 +2313,26 @@ implementation_order:
       total_setup: "~400-600g for full 3-building RANCHER setup"
 
   phase_3:
-    name: "RANCHER → TANNER → LEATHERWORKER (Leather Chain)"
-    status: PLANNED
+    name: "HUNTER → TANNER (Leather Chain)"
+    status: COMPLETE
+    completed_date: 2026-02-17
+    description: "Full TANNER profession — 15 recipes across 3 tiers. Two-step pipeline: pelts → leather → goods. HUNTER tiers expanded with pelt drops."
+    changes:
+      - "HUNTER tiers expanded: Apprentice (Wild Game Meat + Animal Pelts), Journeyman (+25% yield), Craftsman (Wolf Pelts + Bear Hides)"
+      - "3 processing recipes: Cured Leather (L3), Wolf Leather (L7), Bear Leather (L7)"
+      - "4 Apprentice goods: Leather Cap (HEAD), Leather Vest (CHEST), Leather Belt (LEGS), Leather Satchel (CONSUMABLE +1 DEX)"
+      - "4 Journeyman goods: Leather Armor (CHEST), Leather Bracers (OFF_HAND), Leather Greaves (LEGS), Quiver (TOOL +25% hunting)"
+      - "4 Craftsman goods: Wolf Leather Armor (CHEST), Wolf Leather Hood (HEAD), Bear Hide Cuirass (CHEST), Ranger's Quiver (TOOL +40% hunting)"
+      - "6 new raw/intermediate items: Animal Pelts, Wolf Pelts, Bear Hides, Cured Leather, Wolf Leather, Bear Leather"
+      - "12 new finished items: Leather Cap, Leather Vest, Leather Belt, Leather Satchel, Leather Armor, Leather Bracers, Leather Greaves, Quiver, Wolf Leather Armor, Wolf Leather Hood, Bear Hide Cuirass, Ranger's Quiver"
+      - "Cured Leather as shared intermediate (future TAILOR cross-demand)"
+      - "Quiver/Ranger's Quiver create TANNER→HUNTER feedback loop"
     tasks:
-      - "Raw Hide production from RANCHER (extend livestock or add butcher mechanic)"
-      - "Create TANNER recipes (hide → leather)"
-      - "Create LEATHERWORKER recipes (leather → armor/bags)"
-      - "Requires: armor stats, equipment system"
+      - "✓ Added Animal Pelts (8g), Wolf Pelts (28g), Bear Hides (35g) to HUNTER gathering"
+      - "✓ Added Cured Leather (18g), Wolf Leather (35g), Bear Leather (42g) processing recipes"
+      - "✓ Created 12 TANNER finished goods recipes (armor, tools, consumable)"
+      - "✓ Updated HUNTER tiers: Apprentice/Journeyman/Craftsman all LIVE"
+      - "✓ TANNER profession fully defined with DEX primary stat, CRAFTING type"
 
   phase_4:
     name: "HERBALIST → ALCHEMIST (Potion Chain)"

@@ -1805,6 +1805,254 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
 ];
 
 // ============================================================
+// TANNER RECIPES - Leather Armor & Tools (light armor, dex bonus)
+// ============================================================
+
+export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
+  // ---- APPRENTICE (Tier 1, Level 3-4) ----
+  {
+    recipeId: 'tan-leather-cap',
+    name: 'Craft Leather Cap',
+    professionRequired: 'TANNER',
+    levelRequired: 3,
+    inputs: [
+      { itemName: 'Cured Leather', quantity: 2 },
+    ],
+    outputs: [{ itemName: 'Leather Cap', quantity: 1 }],
+    craftTime: 20,
+    xpReward: 12,
+    tier: 1,
+    outputItemType: 'ARMOR',
+    equipSlot: 'HEAD',
+    outputStats: {
+      armor: 2,
+      durability: 80,
+      levelToEquip: 3,
+      dexBonus: 1,
+    },
+  },
+  {
+    recipeId: 'tan-leather-vest',
+    name: 'Craft Leather Vest',
+    professionRequired: 'TANNER',
+    levelRequired: 4,
+    inputs: [
+      { itemName: 'Cured Leather', quantity: 4 },
+    ],
+    outputs: [{ itemName: 'Leather Vest', quantity: 1 }],
+    craftTime: 30,
+    xpReward: 18,
+    tier: 1,
+    outputItemType: 'ARMOR',
+    equipSlot: 'CHEST',
+    outputStats: {
+      armor: 3,
+      durability: 100,
+      levelToEquip: 4,
+      dexBonus: 2,
+    },
+  },
+  {
+    recipeId: 'tan-leather-belt',
+    name: 'Craft Leather Belt',
+    professionRequired: 'TANNER',
+    levelRequired: 4,
+    inputs: [
+      { itemName: 'Cured Leather', quantity: 2 },
+      { itemName: 'Iron Ore Chunks', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Leather Belt', quantity: 1 }],
+    craftTime: 20,
+    xpReward: 14,
+    tier: 1,
+    outputItemType: 'ARMOR',
+    equipSlot: 'LEGS',
+    outputStats: {
+      armor: 1,
+      durability: 80,
+      levelToEquip: 4,
+      dexBonus: 1,
+    },
+  },
+  // ---- JOURNEYMAN (Tier 2, Level 5-6) ----
+  {
+    recipeId: 'tan-leather-armor',
+    name: 'Craft Leather Armor',
+    professionRequired: 'TANNER',
+    levelRequired: 5,
+    inputs: [
+      { itemName: 'Cured Leather', quantity: 5 },
+      { itemName: 'Iron Ore Chunks', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Leather Armor', quantity: 1 }],
+    craftTime: 40,
+    xpReward: 25,
+    tier: 2,
+    outputItemType: 'ARMOR',
+    equipSlot: 'CHEST',
+    outputStats: {
+      armor: 5,
+      durability: 120,
+      levelToEquip: 5,
+      dexBonus: 3,
+    },
+  },
+  {
+    recipeId: 'tan-leather-bracers',
+    name: 'Craft Leather Bracers',
+    professionRequired: 'TANNER',
+    levelRequired: 5,
+    inputs: [
+      { itemName: 'Cured Leather', quantity: 2 },
+      { itemName: 'Iron Ore Chunks', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Leather Bracers', quantity: 1 }],
+    craftTime: 25,
+    xpReward: 18,
+    tier: 2,
+    outputItemType: 'ARMOR',
+    equipSlot: 'OFF_HAND',
+    outputStats: {
+      armor: 2,
+      durability: 90,
+      levelToEquip: 5,
+      dexBonus: 2,
+    },
+  },
+  {
+    recipeId: 'tan-leather-greaves',
+    name: 'Craft Leather Greaves',
+    professionRequired: 'TANNER',
+    levelRequired: 6,
+    inputs: [
+      { itemName: 'Cured Leather', quantity: 3 },
+      { itemName: 'Iron Ore Chunks', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Leather Greaves', quantity: 1 }],
+    craftTime: 30,
+    xpReward: 20,
+    tier: 2,
+    outputItemType: 'ARMOR',
+    equipSlot: 'LEGS',
+    outputStats: {
+      armor: 3,
+      durability: 100,
+      levelToEquip: 6,
+      dexBonus: 2,
+    },
+  },
+  {
+    recipeId: 'tan-quiver',
+    name: 'Craft Quiver',
+    professionRequired: 'TANNER',
+    levelRequired: 6,
+    inputs: [
+      { itemName: 'Cured Leather', quantity: 3 },
+      { itemName: 'Wood Logs', quantity: 2 },
+    ],
+    outputs: [{ itemName: 'Quiver', quantity: 1 }],
+    craftTime: 30,
+    xpReward: 22,
+    tier: 2,
+    outputItemType: 'TOOL',
+    outputStats: {
+      durability: 35,
+      yieldBonus: 25,
+    },
+  },
+  // ---- CRAFTSMAN (Tier 3, Level 7-8) ----
+  {
+    recipeId: 'tan-wolf-leather-armor',
+    name: 'Craft Wolf Leather Armor',
+    professionRequired: 'TANNER',
+    levelRequired: 7,
+    inputs: [
+      { itemName: 'Wolf Leather', quantity: 4 },
+      { itemName: 'Cured Leather', quantity: 2 },
+      { itemName: 'Silver Ore', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Wolf Leather Armor', quantity: 1 }],
+    craftTime: 50,
+    xpReward: 35,
+    tier: 3,
+    outputItemType: 'ARMOR',
+    equipSlot: 'CHEST',
+    outputStats: {
+      armor: 8,
+      durability: 150,
+      levelToEquip: 7,
+      dexBonus: 4,
+    },
+  },
+  {
+    recipeId: 'tan-wolf-leather-hood',
+    name: 'Craft Wolf Leather Hood',
+    professionRequired: 'TANNER',
+    levelRequired: 7,
+    inputs: [
+      { itemName: 'Wolf Leather', quantity: 2 },
+      { itemName: 'Cured Leather', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Wolf Leather Hood', quantity: 1 }],
+    craftTime: 30,
+    xpReward: 28,
+    tier: 3,
+    outputItemType: 'ARMOR',
+    equipSlot: 'HEAD',
+    outputStats: {
+      armor: 4,
+      durability: 120,
+      levelToEquip: 7,
+      dexBonus: 3,
+    },
+  },
+  {
+    recipeId: 'tan-bear-hide-cuirass',
+    name: 'Craft Bear Hide Cuirass',
+    professionRequired: 'TANNER',
+    levelRequired: 8,
+    inputs: [
+      { itemName: 'Bear Leather', quantity: 5 },
+      { itemName: 'Cured Leather', quantity: 2 },
+      { itemName: 'Silver Ore', quantity: 2 },
+    ],
+    outputs: [{ itemName: 'Bear Hide Cuirass', quantity: 1 }],
+    craftTime: 60,
+    xpReward: 45,
+    tier: 3,
+    outputItemType: 'ARMOR',
+    equipSlot: 'CHEST',
+    outputStats: {
+      armor: 10,
+      durability: 180,
+      levelToEquip: 8,
+      dexBonus: 3,
+      conBonus: 2,
+    },
+  },
+  {
+    recipeId: 'tan-rangers-quiver',
+    name: "Craft Ranger's Quiver",
+    professionRequired: 'TANNER',
+    levelRequired: 8,
+    inputs: [
+      { itemName: 'Wolf Leather', quantity: 2 },
+      { itemName: 'Bear Leather', quantity: 1 },
+      { itemName: 'Hardwood', quantity: 1 },
+    ],
+    outputs: [{ itemName: "Ranger's Quiver", quantity: 1 }],
+    craftTime: 45,
+    xpReward: 40,
+    tier: 3,
+    outputItemType: 'TOOL',
+    outputStats: {
+      durability: 50,
+      yieldBonus: 40,
+    },
+  },
+];
+
+// ============================================================
 // Combined export
 // ============================================================
 
@@ -1812,4 +2060,5 @@ export const ALL_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
   ...ARMORER_RECIPES,
   ...LEATHERWORKER_ARMOR_RECIPES,
   ...TAILOR_ARMOR_RECIPES,
+  ...TANNER_ARMOR_RECIPES,
 ];

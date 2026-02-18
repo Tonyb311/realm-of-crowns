@@ -175,7 +175,7 @@ export interface ConsumableStats {
   secondaryMagnitude?: number;
 }
 
-export type ConsumableProfession = 'ALCHEMIST' | 'COOK' | 'BREWER' | 'SCRIBE' | 'SMELTER';
+export type ConsumableProfession = 'ALCHEMIST' | 'COOK' | 'BREWER' | 'SCRIBE' | 'SMELTER' | 'TANNER';
 
 export interface ConsumableRecipe {
   recipeId: string;

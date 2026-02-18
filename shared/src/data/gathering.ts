@@ -181,6 +181,41 @@ export const WILD_GAME_MEAT: GatheringItem = {
   icon: '\uD83C\uDF56',
 };
 
+// --- HUNTER Tiered Gathering Resources ---
+
+export const ANIMAL_PELTS: GatheringItem = {
+  templateName: 'Animal Pelts',
+  type: 'MATERIAL',
+  description: 'Rough animal pelts stripped from hunted game. Essential for leatherworking.',
+  isFood: false,
+  shelfLifeDays: null,
+  foodBuff: null,
+  baseValue: 8,
+  icon: '\uD83E\uDDE4',
+};
+
+export const WOLF_PELTS: GatheringItem = {
+  templateName: 'Wolf Pelts',
+  type: 'MATERIAL',
+  description: 'Thick, durable pelts from wolves. Their natural toughness makes superior leather for armor.',
+  isFood: false,
+  shelfLifeDays: null,
+  foodBuff: null,
+  baseValue: 28,
+  icon: '\uD83D\uDC3A',
+};
+
+export const BEAR_HIDES: GatheringItem = {
+  templateName: 'Bear Hides',
+  type: 'MATERIAL',
+  description: 'Massive hides from bears. Incredibly dense and durable — the finest material for heavy leather armor.',
+  isFood: false,
+  shelfLifeDays: null,
+  foodBuff: null,
+  baseValue: 35,
+  icon: '\uD83D\uDC3B',
+};
+
 // --- FARMER T2 Field Crops (Hops, Grapes) ---
 
 export const HOPS: GatheringItem = {

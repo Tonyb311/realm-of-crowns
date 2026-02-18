@@ -1086,6 +1086,28 @@ export const SMELTER_CONSUMABLES: ConsumableRecipe[] = [
 ];
 
 // ============================================================
+// TANNER RECIPES (1) — Leather Satchel
+// ============================================================
+
+export const TANNER_CONSUMABLES: ConsumableRecipe[] = [
+  {
+    recipeId: 'tan-leather-satchel',
+    name: 'Craft Leather Satchel',
+    professionRequired: 'TANNER',
+    levelRequired: 3,
+    inputs: [
+      { itemName: 'Cured Leather', quantity: 3 },
+    ],
+    output: { itemName: 'Leather Satchel', quantity: 1 },
+    consumableStats: { effect: 'buff_dexterity', magnitude: 1, duration: 5, stackSize: 5 },
+    craftTime: 25,
+    xpReward: 12,
+    tier: 1,
+    description: 'A durable leather satchel for carrying supplies. Expands what you can carry on the road.',
+  },
+];
+
+// ============================================================
 // COMBINED EXPORTS
 // ============================================================
 
@@ -1095,4 +1117,5 @@ export const ALL_CONSUMABLE_RECIPES: ConsumableRecipe[] = [
   ...BREWER_CONSUMABLES,
   ...SCRIBE_CONSUMABLES,
   ...SMELTER_CONSUMABLES,
+  ...TANNER_CONSUMABLES,
 ];

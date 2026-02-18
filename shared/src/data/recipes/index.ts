@@ -20,13 +20,14 @@ import {
   BREWER_CONSUMABLES,
   SCRIBE_CONSUMABLES,
   SMELTER_CONSUMABLES,
+  TANNER_CONSUMABLES,
   ALL_CONSUMABLE_RECIPES,
 } from './consumables';
 import { ACCESSORY_RECIPES } from './accessories';
 import { ENCHANTMENT_RECIPES } from './enchantments';
 import { HOUSING_RECIPES } from './housing';
 import { MOUNT_GEAR_RECIPES } from './mount-gear';
-import { ARMORER_RECIPES, LEATHERWORKER_ARMOR_RECIPES, TAILOR_ARMOR_RECIPES, ALL_ARMOR_RECIPES } from './armor';
+import { ARMORER_RECIPES, LEATHERWORKER_ARMOR_RECIPES, TAILOR_ARMOR_RECIPES, TANNER_ARMOR_RECIPES, ALL_ARMOR_RECIPES } from './armor';
 import { COOK_RECIPES } from './cook';
 import { BLACKSMITH_RECIPES } from './blacksmith';
 
@@ -43,13 +44,14 @@ export {
   BREWER_CONSUMABLES,
   SCRIBE_CONSUMABLES,
   SMELTER_CONSUMABLES,
+  TANNER_CONSUMABLES,
   ALL_CONSUMABLE_RECIPES,
 } from './consumables';
 export { ACCESSORY_RECIPES } from './accessories';
 export { ENCHANTMENT_RECIPES } from './enchantments';
 export { HOUSING_RECIPES } from './housing';
 export { MOUNT_GEAR_RECIPES } from './mount-gear';
-export { ARMORER_RECIPES, LEATHERWORKER_ARMOR_RECIPES, TAILOR_ARMOR_RECIPES, ALL_ARMOR_RECIPES } from './armor';
+export { ARMORER_RECIPES, LEATHERWORKER_ARMOR_RECIPES, TAILOR_ARMOR_RECIPES, TANNER_ARMOR_RECIPES, ALL_ARMOR_RECIPES } from './armor';
 export { COOK_RECIPES } from './cook';
 export { BLACKSMITH_RECIPES } from './blacksmith';
 
@@ -126,7 +128,7 @@ export const ALL_BLACKSMITH_RECIPES: FinishedGoodsRecipe[] = [...BLACKSMITH_RECI
 // Armor Recipes (finished goods)
 // ============================================================
 
-/** All finished goods recipes (weapons + armor + blacksmith tools/specialization). */
+/** All finished goods recipes (weapons + armor + blacksmith tools/specialization + tanner). */
 export const ALL_FINISHED_GOODS_RECIPES: FinishedGoodsRecipe[] = [
   ...ALL_WEAPON_RECIPES,
   ...ALL_ARMOR_RECIPES,
