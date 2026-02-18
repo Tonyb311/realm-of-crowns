@@ -574,6 +574,14 @@ export async function decideBotAction(
     } catch { /* ignore */ }
   }
 
+  // A3c: Withdraw Grain from house storage for animal feed (RANCHER)
+  if (profs.includes('RANCHER') && config.enabledSystems.gathering) {
+    try {
+      const r = await timedFreeAction(() => actions.withdrawGrainForFeed(bot), bot, 'withdraw_grain', logger, tick);
+      if (r.success) console.log(`[SIM] ${bot.characterName} withdrew grain: ${r.detail}`);
+    } catch { /* ignore */ }
+  }
+
   // A4: Quest acceptance
   if (config.enabledSystems.quests) {
     const activeQuest = await actions.checkActiveQuest(bot);

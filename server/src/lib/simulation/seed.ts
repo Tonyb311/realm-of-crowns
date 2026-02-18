@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { Race, DragonBloodline, BeastClan, ElementalType } from '@prisma/client';
 import { getRace } from '@shared/data/races';
+import { getTierForLevel, getCumulativeXpForLevel } from '@shared/data/professions/xp-curve';
 import { BotState, BotProfile, SeedConfig, DEFAULT_CONFIG, BOT_PROFILES } from './types';
 import { generateCharacterName, resetNameCounter } from './names';
 import { logger } from '../../lib/logger';
@@ -376,15 +377,23 @@ async function createSingleBot(
   await giveStarterHouse(character.id, townId, character.name);
 
   // 12e. Persist starting profession to DB (so refreshBotState picks it up)
+  // In diverse mode, scale profession level with character level so higher-level
+  // bots can immediately use tier-gated features (e.g., FARMER L3+ buys T1 fields)
+  const profLevel = config.startingLevel === 'diverse'
+    ? Math.max(1, Math.min(startLevel, 10))
+    : 1;
+  const profXp = profLevel > 1 ? getCumulativeXpForLevel(profLevel - 1) : 0;
+  const profTier = getTierForLevel(profLevel);
+
   if (startingProfession) {
     try {
       await prisma.playerProfession.create({
         data: {
           characterId: character.id,
           professionType: startingProfession as any,
-          level: 1,
-          xp: 0,
-          tier: 'APPRENTICE',
+          level: profLevel,
+          xp: profXp,
+          tier: profTier as any,
           isActive: true,
         },
       });
@@ -413,7 +422,7 @@ async function createSingleBot(
     xp: accumulatedXP,
     level: startLevel,
     professions: startingProfession ? [startingProfession] : [],
-    professionLevels: startingProfession ? { [startingProfession.toUpperCase()]: 1 } : {},
+    professionLevels: startingProfession ? { [startingProfession.toUpperCase()]: profLevel } : {},
     professionSpecializations: {},
     lastActionAt: Date.now(),
     lastAction: null,

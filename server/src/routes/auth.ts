@@ -70,7 +70,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
         role: user.role,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     if (handlePrismaError(error, res, 'register', req)) return;
     logRouteError(req, 500, 'Registration error', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -105,7 +105,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
         role: user.role,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     logRouteError(req, 500, 'Login error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

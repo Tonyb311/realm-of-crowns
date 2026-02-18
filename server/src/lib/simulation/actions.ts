@@ -1401,9 +1401,9 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
   const results: ActionResult[] = [];
 
   // 1. List surplus items (keep items needed for THIS BOT's crafting, sell the rest)
+  let keepItems = new Set<string>();
   try {
     // Build set of item names the bot needs for its OWN professions' recipes
-    const keepItems = new Set<string>();
     try {
       const recipesRes = await get('/crafting/recipes', bot.token);
       if (recipesRes.status >= 200 && recipesRes.status < 300) {
@@ -1425,6 +1425,14 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
       if (lr.success) results.push(lr);
     }
   } catch { /* ignore market errors */ }
+
+  // 1b. List items from house storage (harvested crops, collected rancher products)
+  try {
+    const storageResults = await listStorageOnMarket(bot, keepItems);
+    for (const sr of storageResults) {
+      if (sr.success) results.push(sr);
+    }
+  } catch { /* ignore storage listing errors */ }
 
   // 2. Buy items needed for crafting (if bot has crafting profession)
   const hasCrafting = bot.professions.some(p => {
@@ -2330,6 +2338,125 @@ export async function listSurplusOnMarket(bot: BotState, keepItemNames?: Set<str
     }
   } catch { /* ignore */ }
   return results;
+}
+
+// ---------------------------------------------------------------------------
+// 40. listStorageOnMarket — List items from house storage onto market
+// ---------------------------------------------------------------------------
+// Items from FARMER harvest and RANCHER collection go to HouseStorage.
+// This function bridges the gap by listing them directly from storage.
+
+export async function listStorageOnMarket(bot: BotState, keepItemNames?: Set<string>): Promise<ActionResult[]> {
+  const results: ActionResult[] = [];
+  try {
+    // 1. Find bot's house in current town
+    const housesRes = await get('/houses/mine', bot.token);
+    if (housesRes.status < 200 || housesRes.status >= 300) return results;
+
+    const houses: any[] = housesRes.data?.houses || [];
+    const localHouse = houses.find((h: any) => h.townId === bot.currentTownId);
+    if (!localHouse || localHouse.storageUsed === 0) return results;
+
+    // 2. Fetch storage contents
+    const storageRes = await get(`/houses/${localHouse.id}/storage`, bot.token);
+    if (storageRes.status < 200 || storageRes.status >= 300) return results;
+
+    const storageItems: any[] = storageRes.data?.storage?.items || [];
+    if (storageItems.length === 0) return results;
+
+    // 3. List items from storage (keep 1 of each for personal use, sell rest)
+    let listed = 0;
+    for (const item of storageItems) {
+      if (listed >= 5) break; // max 5 storage listings per tick
+      if (keepItemNames && keepItemNames.has(item.itemName)) continue;
+      if (item.quantity <= 1) continue; // keep 1
+
+      const listQty = item.quantity - 1;
+      // Determine price: use a reasonable markup
+      const STORAGE_ITEM_PRICES: Record<string, number> = {
+        // FARMER crops
+        'Grain': 12, 'Vegetables': 10, 'Wild Berries': 8, 'Apples': 6, 'Cotton': 10,
+        'Hops': 12, 'Grapes': 15,
+        // RANCHER products
+        'Eggs': 10, 'Milk': 15, 'Wool': 18, 'Fine Wool': 45, 'Silkworm Cocoons': 55,
+        // MINER resources
+        'Iron Ore Chunks': 8, 'Stone Blocks': 6, 'Clay': 5, 'Coal': 10, 'Silver Ore': 20,
+        // Other gathering
+        'Wood Logs': 6, 'Hardwood': 18, 'Wild Herbs': 8, 'Raw Fish': 6,
+        'Wild Game Meat': 8, 'Animal Pelts': 12,
+      };
+      const price = STORAGE_ITEM_PRICES[item.itemName] || 10;
+
+      try {
+        const body = { itemTemplateId: item.itemTemplateId, quantity: listQty, price };
+        const res = await post(`/houses/${localHouse.id}/storage/list`, bot.token, body);
+        if (res.status >= 200 && res.status < 300) {
+          results.push({
+            success: true,
+            detail: `[StorageList] Listed ${listQty}x ${item.itemName} from house storage at ${price}g each`,
+            endpoint: `/houses/${localHouse.id}/storage/list`,
+            httpStatus: res.status,
+            requestBody: body,
+            responseBody: res.data,
+          });
+          listed++;
+        }
+      } catch { /* ignore individual listing failures */ }
+    }
+  } catch { /* ignore */ }
+  return results;
+}
+
+// ---------------------------------------------------------------------------
+// 41. withdrawGrainForFeed — RANCHER bots pull Grain from house storage to inventory
+// ---------------------------------------------------------------------------
+
+export async function withdrawGrainForFeed(bot: BotState): Promise<ActionResult> {
+  const endpoint = '/houses/storage/withdraw';
+  try {
+    // 1. Find bot's house in current town
+    const housesRes = await get('/houses/mine', bot.token);
+    if (housesRes.status < 200 || housesRes.status >= 300) {
+      return { success: false, detail: 'No houses found', endpoint, httpStatus: housesRes.status, requestBody: {}, responseBody: housesRes.data };
+    }
+
+    const houses: any[] = housesRes.data?.houses || [];
+    const localHouse = houses.find((h: any) => h.townId === bot.currentTownId);
+    if (!localHouse || localHouse.storageUsed === 0) {
+      return { success: false, detail: 'No house with storage in current town', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
+    }
+
+    // 2. Check storage for Grain
+    const storageRes = await get(`/houses/${localHouse.id}/storage`, bot.token);
+    if (storageRes.status < 200 || storageRes.status >= 300) {
+      return { success: false, detail: 'Failed to read storage', endpoint, httpStatus: storageRes.status, requestBody: {}, responseBody: storageRes.data };
+    }
+
+    const storageItems: any[] = storageRes.data?.storage?.items || [];
+    const grainEntry = storageItems.find((s: any) => s.itemName === 'Grain');
+    if (!grainEntry || grainEntry.quantity <= 0) {
+      return { success: false, detail: 'No Grain in house storage', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
+    }
+
+    // 3. Withdraw up to 10 Grain
+    const qty = Math.min(grainEntry.quantity, 10);
+    const withdrawEndpoint = `/houses/${localHouse.id}/storage/withdraw`;
+    const body = { itemTemplateId: grainEntry.itemTemplateId, quantity: qty };
+    const res = await post(withdrawEndpoint, bot.token, body);
+    if (res.status >= 200 && res.status < 300) {
+      return {
+        success: true,
+        detail: `Withdrew ${qty}x Grain from house storage for animal feed`,
+        endpoint: withdrawEndpoint,
+        httpStatus: res.status,
+        requestBody: body,
+        responseBody: res.data,
+      };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint: withdrawEndpoint, httpStatus: res.status, requestBody: body, responseBody: res.data };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  }
 }
 
 // ---------------------------------------------------------------------------

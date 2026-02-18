@@ -101,6 +101,7 @@ app.get('/api/health', async (_req, res) => {
     ...(dailyTickStale && { warnings: ['Daily tick has not run in over 25 hours'] }),
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
+    build: 'v3',
   });
 });
 
