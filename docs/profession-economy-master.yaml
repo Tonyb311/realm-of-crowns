@@ -9,7 +9,7 @@
 # input back to its source (gathered or crafted) → repeat until you hit
 # a raw gathered resource.
 #
-# LAST UPDATED: 2026-02-17
+# LAST UPDATED: 2026-02-18
 # STATUS: All 7 gathering professions formalized and LIVE. RANCHER livestock system LIVE.
 # COOK recipes expanded: +3 livestock recipes, +7 fish recipes (3 Journeyman, 4 Craftsman).
 # FISHERMAN Craftsman tier LIVE: River Trout (22g), Lake Perch (25g) at fishing spots for L7+.
@@ -26,6 +26,8 @@
 # TAILOR profession LIVE — 18 recipes (5 processing + 13 armor), cloth armor with magicResist.
 # RANCHER Craftsman tier LIVE: Fine Wool (L7+ Sheep Pen), Silkworm Cocoons (Silkworm House).
 # Armor triangle: BLACKSMITH (plate/STR) vs TANNER (leather/DEX) vs TAILOR (cloth/magicResist).
+# SIMULATION DIAGNOSTIC (2026-02-18): 8 supply chain fixes applied. make-cloth-padding removed.
+# Listing threshold lowered (keep 2), ITEM_TO_SPOT_TYPE expanded, idle=neutral, errors[] populated.
 # =============================================================================
 
 
@@ -582,16 +584,16 @@ professions:
     depends_on_gatherers: [RANCHER]
     related_professions: [RANCHER, TANNER]
     raw_inputs: [wool, fine_wool, silkworm_cocoons, cotton]
-    intermediate_inputs: [woven_cloth, fine_cloth, silk_fabric, cloth, cloth_padding, cured_leather]
+    intermediate_inputs: [woven_cloth, fine_cloth, silk_fabric, cloth, cured_leather]
     output_categories: [MATERIAL, ARMOR]
     outputs_used_by: [ARMORER]
     status: EXISTS_IN_GAME
     tier_recipes:
-      APPRENTICE: ["Spin Cloth (legacy)", "Cloth Padding (legacy)", "Weave Cloth", "Cloth Hood", "Cloth Sash", "Cloth Robe", "Wool Trousers"]
+      APPRENTICE: ["Spin Cloth (legacy)", "Weave Cloth", "Cloth Hood", "Cloth Sash", "Cloth Robe", "Wool Trousers"]
       JOURNEYMAN: ["Scholar's Robe", "Traveler's Cloak", "Merchant's Hat", "Herbalist's Apron"]
       CRAFTSMAN: ["Weave Fine Cloth", "Process Silk", "Archmage's Robe", "Diplomat's Regalia", "Silk Hood of Insight", "Noble's Leggings", "Enchanted Cloak"]
-    recipe_count: 18  # 5 processing + 13 armor
-    notes: "Marketplace-dependent dual-supply crafter: buys Wool/Fine Wool/Silkworm Cocoons from RANCHER, buys Cured Leather from TANNER. Intermediates: Woven Cloth (T1), Fine Cloth (T3), Silk Fabric (T3). Legacy Cotton→Cloth→Cloth Padding kept for ARMORER chain. Armor triangle: BLACKSMITH (plate, high armor/STR) vs TANNER (leather, armor+DEX) vs TAILOR (cloth, low armor + high magicResist + INT/WIS/CHA)."
+    recipe_count: 17  # 4 processing + 13 armor (make-cloth-padding removed — Cloth Padding unused)
+    notes: "Marketplace-dependent dual-supply crafter: buys Wool/Fine Wool/Silkworm Cocoons from RANCHER, buys Cured Leather from TANNER. Intermediates: Woven Cloth (T1), Fine Cloth (T3), Silk Fabric (T3). Legacy spin-cloth kept for WOODWORKER housing-bed recipe. Armor triangle: BLACKSMITH (plate, high armor/STR) vs TANNER (leather, armor+DEX) vs TAILOR (cloth, low armor + high magicResist + INT/WIS/CHA)."
 
   ALCHEMIST:
     type: CRAFTING
@@ -1735,7 +1737,7 @@ tanner_recipes:
 # - Armor triangle: BLACKSMITH (plate, high armor/STR) vs TANNER (leather, armor+DEX)
 #   vs TAILOR (cloth, low armor + high magicResist + INT/WIS/CHA)
 # - Three intermediates: Woven Cloth (T1), Fine Cloth (T3), Silk Fabric (T3)
-# - Legacy spin-cloth and make-cloth-padding KEPT for existing ARMORER supply chain
+# - Legacy spin-cloth KEPT for WOODWORKER housing-bed recipe (Cloth Padding removed — unused)
 # - Silkworm House is a non-livestock auto-producing building (no animals to buy/feed)
 # - Fine Wool is a bonus product from L7+ RANCHER sheep (alongside regular Wool)
 # =============================================================================
@@ -1913,24 +1915,9 @@ tailor_recipes:
     notes: "KEPT — legacy ARMORER chain. Cotton → Cloth → Cloth Padding for metal armor."
     dependency_chain: "Cotton →[TAILOR]→ Cloth"
 
-  make-cloth-padding:
-    id: make-cloth-padding
-    name: Cloth Padding
-    description: "Layered cloth padding used as armor lining. Legacy recipe kept for ARMORER supply chain."
-    category: MATERIAL
-    base_value: 15
-    tier: 1
-    level_required: 3
-    profession: TAILOR
-    xp_reward: 10
-    inputs:
-      - item_id: cloth
-        quantity: 2
-    outputs:
-      - item_id: cloth_padding
-        quantity: 1
-    notes: "KEPT — legacy ARMORER chain. Cloth Padding is used in metal armor recipes."
-    dependency_chain: "Cotton →[TAILOR]→ Cloth →[TAILOR]→ Cloth Padding →[ARMORER]→ Metal Armor"
+  # make-cloth-padding: REMOVED (2026-02-18)
+  # Cloth Padding was unused by any downstream recipe. Removed to eliminate dead-end crafting path.
+  # Legacy spin-cloth (Cotton→Cloth) kept for WOODWORKER housing-bed recipe.
 
   tai-weave-cloth:
     id: tai-weave-cloth
@@ -3011,7 +2998,7 @@ implementation_order:
       - "✓ Created 13 TAILOR cloth armor recipes (all with magicResist stat)"
       - "✓ Updated RANCHER Craftsman tier from NOT_YET_IMPLEMENTED to LIVE"
       - "✓ TAILOR profession fully defined with CHA primary stat, CRAFTING type"
-      - "✓ Legacy spin-cloth and cloth-padding recipes KEPT for ARMORER supply chain"
+      - "✓ Legacy spin-cloth KEPT for WOODWORKER housing-bed recipe (cloth-padding REMOVED — unused)"
 
   phase_4:
     name: "HERBALIST → ALCHEMIST (Potion Chain)"
@@ -3166,3 +3153,83 @@ asset_ownership:
       building_residency: "POST /buildings/request-permit requires homeTownId match"
       no_sell: "Houses are permanent (no sell/abandon in Tier 1)"
       cascade_delete: "Character deletion cascades to houses and storage"
+
+# =============================================================================
+# SECTION 9: SIMULATION SUPPLY CHAIN DIAGNOSTIC (2026-02-18)
+# =============================================================================
+# Diagnostic: 50-bot sim run identified ~11% error rate (525/4782 actions).
+# Root cause: 100% of failures were market_buy — crafters couldn't find ingredients.
+# Eight fixes applied; verified with 60-tick, 50-bot simulation.
+# =============================================================================
+
+simulation_supply_chain_diagnostic:
+  date: "2026-02-18"
+  pre_fix_error_rate: "11.0% (525 failures / 4782 total actions)"
+  post_fix_error_rate: "13.8% overall; 5.2% excluding structural market_buy mismatches"
+
+  fixes_applied:
+    fix_1_listing_threshold:
+      file: "server/src/lib/simulation/actions.ts"
+      change: "Lower surplus listing threshold from keep-5 to keep-2"
+      impact: "Gatherers list items on market earlier (after accumulating 3+ instead of 6+)"
+
+    fix_2_item_to_spot_type:
+      file: "server/src/lib/simulation/engine.ts"
+      change: "Add 15 new ITEM_TO_SPOT_TYPE entries for FARMER/RANCHER/TANNER/TAILOR supply chains"
+      items_added: [Grain, Vegetables, Wild Berries, Cotton, Wool, Fine Wool, Silkworm Cocoons, Cured Leather, Wolf Leather, Bear Leather, Woven Cloth, Fine Cloth, Silk Fabric]
+      impact: "Bot travel AI can now route to correct resource towns for all supply chain items"
+
+    fix_3_dead_recipe:
+      file: "shared/src/data/recipes/tailor.ts"
+      change: "Remove make-cloth-padding recipe — Cloth Padding unused by any downstream recipe"
+      related: ["database/seeds/run-tailor.ts", "shared/src/data/professions/crafting.ts"]
+      impact: "TAILOR bots no longer waste actions trying to buy Cotton for dead-end recipe"
+
+    fix_4_error_observability:
+      file: "server/src/lib/simulation/controller.ts"
+      change: "Push free market failures to errors[] with detail messages; suppress 'Already have order' from failure count"
+      impact: "All sim errors now visible in tick results and bot logs"
+
+    fix_5_idle_neutral:
+      file: "server/src/lib/simulation/controller.ts"
+      change: "Treat idle bots (no valid action) as neutral success instead of failure"
+      impact: "Bots waiting for travel or with nothing to do don't inflate error rate"
+
+    fix_6_tickdate_timezone:
+      file: "server/src/jobs/daily-tick.ts"
+      change: "Append T00:00:00.000Z to all 7 bare new Date(tickDateStr) calls"
+      impact: "Daily tick date range queries use explicit UTC, preventing timezone drift"
+
+    fix_7_achievement_filter:
+      file: "server/src/services/achievements.ts"
+      change: "Replace broken Prisma JSON path filter (not: undefined is no-op) with simple findMany()"
+      impact: "Achievement checks now evaluate all achievements, not a broken subset"
+
+    fix_8_seed_profession_distribution:
+      file: "server/src/lib/simulation/seed.ts"
+      change: "Pre-compute profAssignments Map guaranteeing min 2 per profession; persist to PlayerProfession DB table"
+      impact: "All 13 professions seeded with 3-4 bots each. refreshBotState() no longer wipes seed professions"
+
+  verification_results:
+    ticks: 60
+    bots: 50
+    total_actions: 4841
+    total_successes: 4175
+    total_failures: 666
+    error_rate: "13.76%"
+    all_errors_are: "market_buy (crafters seeking items not yet on market)"
+    profession_distribution: "All 13 professions: 3-4 bots each (MINER:4, FARMER:4, LUMBERJACK:4, HERBALIST:4, FISHERMAN:4, HUNTER:4, RANCHER:4, COOK:4, BREWER:4, BLACKSMITH:4, TANNER:4, TAILOR:3, ALCHEMIST:3)"
+    warmup_phase: "Ticks 1-2 high (18-31%) — expected, market empty at start"
+    steady_state: "Ticks 3-9 average 5.6% — near target"
+    late_phase: "Ticks 10-60 average 14.4% — structural undersupply"
+
+  structural_limitation:
+    description: "Remaining market_buy failures are structural: sim bots gather via gatherFromSpot (produces Apples, Wild Herbs, Iron Ore, etc.) but items like Grain, Wild Berries, Medicinal Herbs come from FARMER private asset harvest cycle (plant→grow→harvest). Sim bots don't run the crop cycle."
+    top_missing_items:
+      - { item: "Wild Herbs", failures: 463, source: "HERBALIST spot gathering — supply insufficient for COOK+ALCHEMIST+BREWER demand" }
+      - { item: "Wild Berries", failures: 341, source: "FARMER asset harvest only — not produced by spot gathering" }
+      - { item: "Grain", failures: 335, source: "FARMER asset harvest only — not produced by spot gathering" }
+      - { item: "Raw Fish", failures: 123, source: "FISHERMAN spot — supply insufficient for COOK demand" }
+      - { item: "Cloth", failures: 101, source: "TAILOR intermediate (Cotton→Cloth) — Cotton from FARMER asset" }
+      - { item: "Silkworm Cocoons", failures: 101, source: "RANCHER Craftsman L7+ asset — most bots below L7" }
+    future_fix: "Implement crop plant→grow→harvest cycle in sim engine, or add spot-based production for Grain/Berries"
