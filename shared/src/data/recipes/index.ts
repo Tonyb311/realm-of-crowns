@@ -11,7 +11,7 @@ import { SMELTER_RECIPES } from './smelter';
 import { TANNER_RECIPES } from './tanner';
 import { TAILOR_RECIPES } from './tailor';
 import { MASON_RECIPES } from './mason';
-import { WOODWORKER_RECIPES } from './woodworker';
+import { WOODWORKER_RECIPES, WOODWORKER_FINISHED_GOODS } from './woodworker';
 import { BLACKSMITH_WEAPON_RECIPES } from './weapons';
 import { RANGED_WEAPON_RECIPES } from './ranged-weapons';
 import {
@@ -35,7 +35,7 @@ export { SMELTER_RECIPES } from './smelter';
 export { TANNER_RECIPES } from './tanner';
 export { TAILOR_RECIPES } from './tailor';
 export { MASON_RECIPES } from './mason';
-export { WOODWORKER_RECIPES } from './woodworker';
+export { WOODWORKER_RECIPES, WOODWORKER_FINISHED_GOODS } from './woodworker';
 export { BLACKSMITH_WEAPON_RECIPES } from './weapons';
 export { RANGED_WEAPON_RECIPES } from './ranged-weapons';
 export {
@@ -133,6 +133,7 @@ export const ALL_FINISHED_GOODS_RECIPES: FinishedGoodsRecipe[] = [
   ...ALL_WEAPON_RECIPES,
   ...ALL_ARMOR_RECIPES,
   ...ALL_BLACKSMITH_RECIPES,
+  ...WOODWORKER_FINISHED_GOODS,
 ];
 
 // Pre-build finished goods lookup maps

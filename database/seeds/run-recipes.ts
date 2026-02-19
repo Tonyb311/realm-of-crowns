@@ -1120,6 +1120,152 @@ async function main() {
     console.log(`  Orphaned BLACKSMITH recipes removed: ${bsOrphanCount}`);
 
     console.log(`\n✅ BLACKSMITH seed complete: ${BLACKSMITH_ITEMS.length} items, ${BS_RECIPES.length} recipes`);
+
+    // ---------------------------------------------------------------
+    // Step 9: Seed WOODWORKER finished goods item templates
+    // ---------------------------------------------------------------
+    console.log('\n--- Seeding WOODWORKER Item Templates ---');
+
+    const WOODWORKER_ITEMS: Array<{
+      id: string;
+      name: string;
+      type: string;
+      rarity: string;
+      description: string;
+      stats: Record<string, unknown>;
+      durability: number;
+      professionRequired: string;
+      levelRequired: number;
+      equipSlot?: string;
+    }> = [
+      // Intermediate materials
+      { id: 'crafted-wooden-dowels', name: 'Wooden Dowels', type: 'MATERIAL', rarity: 'COMMON', description: 'Thin wooden pegs used to join furniture and tools.', stats: {}, durability: 0, professionRequired: 'WOODWORKER', levelRequired: 3 },
+      { id: 'crafted-wooden-handle', name: 'Wooden Handle', type: 'MATERIAL', rarity: 'COMMON', description: 'A shaped hardwood handle for tools and weapons.', stats: {}, durability: 0, professionRequired: 'WOODWORKER', levelRequired: 5 },
+      { id: 'crafted-bow-stave', name: 'Bow Stave', type: 'MATERIAL', rarity: 'COMMON', description: 'A carefully shaped stave of hardwood, ready to be strung into a bow.', stats: {}, durability: 0, professionRequired: 'WOODWORKER', levelRequired: 8 },
+      { id: 'crafted-wooden-frame', name: 'Wooden Frame', type: 'MATERIAL', rarity: 'COMMON', description: 'A sturdy wooden frame used as the skeleton for furniture and crates.', stats: {}, durability: 0, professionRequired: 'WOODWORKER', levelRequired: 12 },
+      // Tools
+      { id: 'crafted-wooden-pickaxe', name: 'Wooden Pickaxe', type: 'TOOL', rarity: 'POOR', description: 'A crude wooden pickaxe. Better than nothing for a novice miner.', stats: { durability: 10, yieldBonus: 5, professionType: 'MINER' }, durability: 25, professionRequired: 'WOODWORKER', levelRequired: 3 },
+      { id: 'crafted-fishing-rod', name: 'Fishing Rod', type: 'TOOL', rarity: 'COMMON', description: 'A flexible softwood fishing rod with a simple line and hook.', stats: { durability: 15, yieldBonus: 10, professionType: 'FISHERMAN' }, durability: 35, professionRequired: 'WOODWORKER', levelRequired: 5 },
+      { id: 'crafted-carving-knife', name: 'Carving Knife', type: 'TOOL', rarity: 'COMMON', description: 'A precision woodworking knife with a sharpened spike blade.', stats: { durability: 15, yieldBonus: 10, professionType: 'WOODWORKER' }, durability: 35, professionRequired: 'WOODWORKER', levelRequired: 8 },
+      { id: 'crafted-tanning-rack', name: 'Tanning Rack', type: 'TOOL', rarity: 'FINE', description: 'A sturdy wooden rack for stretching and curing hides.', stats: { durability: 25, yieldBonus: 15, professionType: 'TANNER' }, durability: 60, professionRequired: 'WOODWORKER', levelRequired: 12 },
+      { id: 'crafted-fine-fishing-rod', name: 'Fine Fishing Rod', type: 'TOOL', rarity: 'FINE', description: 'A well-crafted hardwood fishing rod with superior flexibility and control.', stats: { durability: 25, yieldBonus: 20, professionType: 'FISHERMAN' }, durability: 60, professionRequired: 'WOODWORKER', levelRequired: 15 },
+      // Furniture / Housing
+      { id: 'crafted-wooden-chair', name: 'Wooden Chair', type: 'MATERIAL', rarity: 'COMMON', description: 'A simple but comfortable wooden chair for any home.', stats: {}, durability: 0, professionRequired: 'WOODWORKER', levelRequired: 7 },
+      { id: 'crafted-wooden-table', name: 'Wooden Table', type: 'MATERIAL', rarity: 'COMMON', description: 'A solid wooden table with a smooth hardwood surface.', stats: {}, durability: 0, professionRequired: 'WOODWORKER', levelRequired: 14 },
+      { id: 'crafted-wooden-bed-frame', name: 'Wooden Bed Frame', type: 'MATERIAL', rarity: 'COMMON', description: 'A sturdy bed frame built from heavy beams and planks.', stats: {}, durability: 0, professionRequired: 'WOODWORKER', levelRequired: 18 },
+      { id: 'crafted-wooden-shelf', name: 'Wooden Shelf', type: 'MATERIAL', rarity: 'FINE', description: 'An elegant shelf crafted from exotic wood.', stats: {}, durability: 0, professionRequired: 'WOODWORKER', levelRequired: 28 },
+      { id: 'crafted-reinforced-crate', name: 'Reinforced Crate', type: 'MATERIAL', rarity: 'FINE', description: 'A heavy-duty crate reinforced with beams and extra nails.', stats: {}, durability: 0, professionRequired: 'WOODWORKER', levelRequired: 30 },
+      // Armor (shields)
+      { id: 'crafted-ww-wooden-shield', name: 'Wooden Shield', type: 'ARMOR', rarity: 'COMMON', description: 'A sturdy wooden shield held together with hardwood planks and nails.', stats: { armor: 5, durability: 60, levelToEquip: 5, movementPenalty: 0, stealthPenalty: 0 }, durability: 60, professionRequired: 'WOODWORKER', levelRequired: 12, equipSlot: 'OFF_HAND' },
+      { id: 'crafted-ww-hardwood-tower-shield', name: 'Hardwood Tower Shield', type: 'ARMOR', rarity: 'FINE', description: 'A massive tower shield built from heavy hardwood planks and beams.', stats: { armor: 10, durability: 100, levelToEquip: 15, requiredStr: 8, movementPenalty: 1, stealthPenalty: 1 }, durability: 100, professionRequired: 'WOODWORKER', levelRequired: 35, equipSlot: 'OFF_HAND' },
+      // Weapon
+      { id: 'crafted-practice-bow', name: 'Practice Bow', type: 'WEAPON', rarity: 'COMMON', description: 'A basic training bow. Functional but no match for a real fletcher\'s work.', stats: { baseDamage: 5, damageType: 'bludgeoning', speed: 8, requiredStr: 3, requiredDex: 5, durability: 60, levelToEquip: 10, twoHanded: true, range: 20 }, durability: 60, professionRequired: 'WOODWORKER', levelRequired: 30, equipSlot: 'MAIN_HAND' },
+    ];
+
+    for (const item of WOODWORKER_ITEMS) {
+      const statsWithSlot = item.equipSlot
+        ? { ...item.stats, equipSlot: item.equipSlot }
+        : item.stats;
+
+      const data: Record<string, unknown> = {
+        name: item.name,
+        type: item.type,
+        rarity: item.rarity,
+        description: item.description,
+        stats: statsWithSlot,
+        durability: item.durability,
+        professionRequired: item.professionRequired,
+        levelRequired: item.levelRequired,
+      };
+
+      const created = await prisma.itemTemplate.upsert({
+        where: { id: item.id },
+        update: data,
+        create: { id: item.id, ...data } as any,
+      });
+      templateMap.set(item.name, created.id);
+      console.log(`  + ${item.name} (${item.type} / ${item.rarity})`);
+    }
+
+    // ---------------------------------------------------------------
+    // Step 10: Seed 18 WOODWORKER finished goods + processing recipes
+    // ---------------------------------------------------------------
+    console.log('\n--- Seeding WOODWORKER Recipes ---');
+
+    const WW_RECIPES = [
+      // Processing — new recipes only (original 7 are seeded elsewhere)
+      { recipeId: 'ww-carve-wooden-dowels', name: 'Carve Wooden Dowels', levelRequired: 3, inputs: [{ itemName: 'Softwood Planks', quantity: 1 }], outputName: 'Wooden Dowels', xpReward: 5, craftTime: 10, specialization: null as string | null },
+      { recipeId: 'ww-shape-wooden-handle', name: 'Shape Wooden Handle', levelRequired: 5, inputs: [{ itemName: 'Hardwood', quantity: 1 }, { itemName: 'Rough Planks', quantity: 1 }], outputName: 'Wooden Handle', xpReward: 8, craftTime: 15, specialization: null },
+      { recipeId: 'ww-carve-bow-stave', name: 'Carve Bow Stave', levelRequired: 8, inputs: [{ itemName: 'Hardwood', quantity: 2 }], outputName: 'Bow Stave', xpReward: 12, craftTime: 20, specialization: null },
+      { recipeId: 'ww-craft-wooden-frame', name: 'Craft Wooden Frame', levelRequired: 12, inputs: [{ itemName: 'Hardwood Planks', quantity: 2 }, { itemName: 'Nails', quantity: 4 }], outputName: 'Wooden Frame', xpReward: 15, craftTime: 20, specialization: null },
+      // Finished goods — Tools
+      { recipeId: 'ww-wooden-pickaxe', name: 'Craft Wooden Pickaxe', levelRequired: 3, inputs: [{ itemName: 'Wood Logs', quantity: 2 }, { itemName: 'Wooden Dowels', quantity: 2 }], outputName: 'Wooden Pickaxe', xpReward: 10, craftTime: 15, specialization: null },
+      { recipeId: 'ww-fishing-rod', name: 'Craft Fishing Rod', levelRequired: 5, inputs: [{ itemName: 'Softwood', quantity: 2 }, { itemName: 'Wooden Handle', quantity: 1 }, { itemName: 'Wooden Dowels', quantity: 3 }], outputName: 'Fishing Rod', xpReward: 12, craftTime: 20, specialization: null },
+      { recipeId: 'ww-carving-knife', name: 'Craft Carving Knife', levelRequired: 8, inputs: [{ itemName: 'Wooden Handle', quantity: 1 }, { itemName: 'Nails', quantity: 2 }], outputName: 'Carving Knife', xpReward: 10, craftTime: 15, specialization: null },
+      { recipeId: 'ww-tanning-rack', name: 'Craft Tanning Rack', levelRequired: 12, inputs: [{ itemName: 'Beams', quantity: 3 }, { itemName: 'Wooden Handle', quantity: 2 }, { itemName: 'Nails', quantity: 6 }], outputName: 'Tanning Rack', xpReward: 20, craftTime: 35, specialization: null },
+      { recipeId: 'ww-fine-fishing-rod', name: 'Craft Fine Fishing Rod', levelRequired: 15, inputs: [{ itemName: 'Hardwood', quantity: 2 }, { itemName: 'Wooden Handle', quantity: 1 }, { itemName: 'Wooden Dowels', quantity: 4 }], outputName: 'Fine Fishing Rod', xpReward: 20, craftTime: 30, specialization: null },
+      // Finished goods — Furniture
+      { recipeId: 'ww-wooden-chair', name: 'Build Wooden Chair', levelRequired: 7, inputs: [{ itemName: 'Softwood Planks', quantity: 3 }, { itemName: 'Wooden Dowels', quantity: 4 }, { itemName: 'Nails', quantity: 4 }], outputName: 'Wooden Chair', xpReward: 12, craftTime: 25, specialization: null },
+      { recipeId: 'ww-wooden-table', name: 'Build Wooden Table', levelRequired: 14, inputs: [{ itemName: 'Hardwood Planks', quantity: 4 }, { itemName: 'Wooden Frame', quantity: 1 }, { itemName: 'Nails', quantity: 8 }], outputName: 'Wooden Table', xpReward: 20, craftTime: 40, specialization: null },
+      { recipeId: 'ww-storage-chest', name: 'Build Storage Chest', levelRequired: 16, inputs: [{ itemName: 'Hardwood Planks', quantity: 4 }, { itemName: 'Wooden Frame', quantity: 2 }, { itemName: 'Nails', quantity: 10 }], outputName: 'Storage Chest', xpReward: 22, craftTime: 45, specialization: null },
+      { recipeId: 'ww-wooden-bed-frame', name: 'Build Wooden Bed Frame', levelRequired: 18, inputs: [{ itemName: 'Beams', quantity: 4 }, { itemName: 'Hardwood Planks', quantity: 6 }, { itemName: 'Nails', quantity: 12 }], outputName: 'Wooden Bed Frame', xpReward: 25, craftTime: 50, specialization: null },
+      { recipeId: 'ww-wooden-shelf', name: 'Build Wooden Shelf', levelRequired: 28, inputs: [{ itemName: 'Exotic Planks', quantity: 3 }, { itemName: 'Wooden Frame', quantity: 2 }, { itemName: 'Nails', quantity: 8 }], outputName: 'Wooden Shelf', xpReward: 35, craftTime: 45, specialization: null },
+      { recipeId: 'ww-reinforced-crate', name: 'Build Reinforced Crate', levelRequired: 30, inputs: [{ itemName: 'Hardwood Planks', quantity: 4 }, { itemName: 'Beams', quantity: 2 }, { itemName: 'Nails', quantity: 15 }], outputName: 'Reinforced Crate', xpReward: 30, craftTime: 40, specialization: null },
+      // Finished goods — Shields
+      { recipeId: 'ww-wooden-shield', name: 'Craft Wooden Shield', levelRequired: 12, inputs: [{ itemName: 'Hardwood Planks', quantity: 3 }, { itemName: 'Wooden Handle', quantity: 1 }, { itemName: 'Nails', quantity: 6 }], outputName: 'Wooden Shield', xpReward: 18, craftTime: 30, specialization: null },
+      { recipeId: 'ww-hardwood-tower-shield', name: 'Craft Hardwood Tower Shield', levelRequired: 35, inputs: [{ itemName: 'Hardwood Planks', quantity: 6 }, { itemName: 'Beams', quantity: 2 }, { itemName: 'Wooden Handle', quantity: 1 }, { itemName: 'Nails', quantity: 15 }], outputName: 'Hardwood Tower Shield', xpReward: 40, craftTime: 55, specialization: null },
+      // Finished goods — Weapon
+      { recipeId: 'ww-practice-bow', name: 'Craft Practice Bow', levelRequired: 30, inputs: [{ itemName: 'Bow Stave', quantity: 1 }, { itemName: 'Wooden Handle', quantity: 1 }], outputName: 'Practice Bow', xpReward: 30, craftTime: 35, specialization: null },
+    ];
+
+    for (const recipe of WW_RECIPES) {
+      const ingredients = recipe.inputs.map((inp) => {
+        const templateId = templateMap.get(inp.itemName);
+        if (!templateId) {
+          throw new Error(`Item template not found for input: ${inp.itemName} (recipe: ${recipe.name})`);
+        }
+        return { itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity };
+      });
+
+      const resultId = templateMap.get(recipe.outputName);
+      if (!resultId) {
+        throw new Error(`Item template not found for output: ${recipe.outputName} (recipe: ${recipe.name})`);
+      }
+
+      const recipeId = `recipe-${recipe.recipeId}`;
+      const tier = levelToTier(recipe.levelRequired);
+
+      await prisma.recipe.upsert({
+        where: { id: recipeId },
+        update: {
+          name: recipe.name,
+          professionType: 'WOODWORKER' as ProfessionType,
+          tier,
+          ingredients,
+          result: resultId,
+          craftTime: recipe.craftTime,
+          xpReward: recipe.xpReward,
+          specialization: recipe.specialization,
+          levelRequired: recipe.levelRequired,
+        },
+        create: {
+          id: recipeId,
+          name: recipe.name,
+          professionType: 'WOODWORKER' as ProfessionType,
+          tier,
+          ingredients,
+          result: resultId,
+          craftTime: recipe.craftTime,
+          xpReward: recipe.xpReward,
+          specialization: recipe.specialization,
+          levelRequired: recipe.levelRequired,
+        },
+      });
+
+      console.log(`  + ${recipe.name} (WOODWORKER ${tier}, Lvl ${recipe.levelRequired})`);
+    }
+
+    console.log(`\n✅ WOODWORKER seed complete: ${WOODWORKER_ITEMS.length} items, ${WW_RECIPES.length} recipes`);
   } catch (err) {
     console.error('❌ Seed failed:', err);
     process.exit(1);

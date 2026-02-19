@@ -2,6 +2,8 @@ import { RecipeDefinition } from './types';
 
 export const HOUSING_RECIPES: RecipeDefinition[] = [
   // ── Wooden Furniture (WOODWORKER) ──────────────────────────
+  // NOTE: Storage Chest moved to woodworker.ts (ww-storage-chest) as of 2026-02-19
+  // Remaining housing recipes kept for items not yet covered by woodworker finished goods
   {
     recipeId: 'housing-bed',
     name: 'Craft Bed',
@@ -43,21 +45,6 @@ export const HOUSING_RECIPES: RecipeDefinition[] = [
     outputs: [{ itemName: 'Chairs', quantity: 2 }],
     craftTime: 25,
     xpReward: 12,
-    tier: 1,
-  },
-  {
-    recipeId: 'housing-storage-chest',
-    name: 'Craft Storage Chest',
-    professionRequired: 'WOODWORKER',
-    levelRequired: 10,
-    inputs: [
-      { itemName: 'Hardwood Planks', quantity: 4 },
-      { itemName: 'Iron Ingot', quantity: 1 },
-      { itemName: 'Nails', quantity: 10 },
-    ],
-    outputs: [{ itemName: 'Storage Chest', quantity: 1 }],
-    craftTime: 40,
-    xpReward: 18,
     tier: 1,
   },
   {

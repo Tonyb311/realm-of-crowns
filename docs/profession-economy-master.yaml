@@ -9,7 +9,7 @@
 # input back to its source (gathered or crafted) → repeat until you hit
 # a raw gathered resource.
 #
-# LAST UPDATED: 2026-02-18
+# LAST UPDATED: 2026-02-19
 # STATUS: All 7 gathering professions formalized and LIVE. RANCHER livestock system LIVE.
 # COOK recipes expanded: +3 livestock recipes, +7 fish recipes (3 Journeyman, 4 Craftsman).
 # FISHERMAN Craftsman tier LIVE: River Trout (22g), Lake Perch (25g) at fishing spots for L7+.
@@ -538,15 +538,31 @@ professions:
     notes: "Cross-chain: needs both SMELTER and TANNER outputs"
 
   WOODWORKER:
+    # WOODWORKER profession LIVE — 25 recipes (11 processing + 14 finished goods)
+    # UPDATED: 2026-02-19 — WOODWORKER implemented with full recipe tree (25 recipes)
     type: CRAFTING
     unlock_level: 3
-    description: "Shapes timber into furniture, tools, and building components."
+    description: "Shapes timber into furniture, tools, shields, and building components. Central processing hub of the wood economy."
     depends_on_gatherers: [LUMBERJACK]
-    raw_inputs: [wood_logs]
-    intermediate_inputs: []
-    output_categories: [TOOL, FURNITURE, MATERIAL]
-    outputs_used_by: [FLETCHER]
-    status: PLANNED
+    raw_inputs: [wood_logs, softwood, hardwood, exotic_wood]
+    intermediate_inputs: [nails]
+    output_categories: [TOOL, FURNITURE, MATERIAL, ARMOR, WEAPON]
+    outputs_used_by: [FLETCHER, MINER, FISHERMAN, TANNER, BLACKSMITH]
+    status: EXISTS_IN_GAME
+    recipe_count: 25
+    tier_recipes:
+      apprentice:
+        level_range: "3-10"
+        processing: ["saw-rough-planks", "mill-softwood", "ww-carve-wooden-dowels", "ww-shape-wooden-handle", "ww-carve-bow-stave"]
+        finished_goods: ["ww-wooden-pickaxe", "ww-fishing-rod", "ww-carving-knife", "ww-wooden-chair"]
+      journeyman:
+        level_range: "11-25"
+        processing: ["mill-hardwood", "shape-beams", "make-barrel", "make-furniture", "ww-craft-wooden-frame"]
+        finished_goods: ["ww-tanning-rack", "ww-fine-fishing-rod", "ww-wooden-table", "ww-storage-chest", "ww-wooden-bed-frame", "ww-wooden-shield"]
+      craftsman:
+        level_range: "26-50"
+        processing: ["mill-exotic"]
+        finished_goods: ["ww-wooden-shelf", "ww-reinforced-crate", "ww-hardwood-tower-shield", "ww-practice-bow"]
 
   TANNER:
     type: CRAFTING
