@@ -816,14 +816,30 @@ professions:
     notes: "12 recipes (8 processing + 4 housing). Stone Slab and Clay Pot templates added. Only 3 towns have MASON_YARD."
 
   SCRIBE:
+    # SCRIBE profession LIVE — 7 recipes, scrolls & maps (2026-02-19)
     type: CRAFTING
     unlock_level: 5
+    primary_stat: INT
     description: "Creates scrolls, books, maps, and written works."
     depends_on_gatherers: [LUMBERJACK, HERBALIST]
-    raw_inputs: [wood_logs, wild_herbs]   # Wood→paper, herbs→ink
-    intermediate_inputs: []
-    output_categories: [SCROLL, BOOK, MAP]
-    status: PLANNED
+    depends_on_crafters: [WOODWORKER]
+    intermediate_inputs: [Softwood Planks, Common Herbs, Medicinal Herbs, Flowers, Arcane Reagents]
+    output_categories: [SCROLL, MAP]
+    workshop: SCRIBE_STUDY
+    recipe_count: 7
+    status: EXISTS_IN_GAME
+    tier_recipes:
+      apprentice:
+        - { id: scribe-area-map, level: 5, output: Area Map }
+      journeyman:
+        - { id: scribe-scroll-fire, level: 10, output: Scroll of Fire }
+        - { id: scribe-identification-scroll, level: 10, output: Identification Scroll }
+        - { id: scribe-scroll-ice, level: 15, output: Scroll of Ice }
+        - { id: scribe-scroll-healing, level: 20, output: Scroll of Healing }
+        - { id: scribe-dungeon-map, level: 20, output: Dungeon Map }
+        - { id: scribe-scroll-lightning, level: 25, output: Scroll of Lightning }
+    supply_chain: "HERBALIST → herbs/reagents; LUMBERJACK → WOODWORKER → Softwood Planks → SCRIBE"
+    notes: "7 consumable recipes (3 offensive scrolls, 1 healing scroll, 2 maps, 1 utility). 10 towns have SCRIBE_STUDY."
 
   # ---------------------------------------------------------------------------
   # SERVICE PROFESSIONS (6)
