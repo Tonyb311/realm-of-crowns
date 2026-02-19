@@ -784,15 +784,36 @@ professions:
     damage_progression: "Practice Bow (5, WW) → Shortbow (6) → Hunting Bow (8) → Longbow (14) → War Bow (16) → Composite Bow (22) → Ranger's Longbow (26)"
 
   MASON:
+    # MASON profession LIVE — 12 recipes, stone processing + housing (2026-02-19)
     type: CRAFTING
     unlock_level: 5
+    primary_stat: STR
     description: "Works stone into building materials and structures."
-    depends_on_gatherers: [MINER, LUMBERJACK]
-    raw_inputs: [stone_blocks, wood_logs, clay]
-    intermediate_inputs: []
-    output_categories: [BUILDING_MATERIAL]
-    status: PLANNED
-    notes: "Feeds into Housing system (player-owned buildings)"
+    depends_on_gatherers: [MINER]
+    depends_on_crafters: [SMELTER]
+    intermediate_inputs: [Raw Stone, Stone Blocks, Sandstone, Clay, Coal, Marble, Iron Ingot]
+    output_categories: [BUILDING_MATERIAL, HOUSING]
+    workshop: MASON_YARD
+    recipe_count: 12
+    status: EXISTS_IN_GAME
+    tier_recipes:
+      apprentice:
+        - { id: cut-stone, level: 1, output: Cut Stone }
+        - { id: cut-stone-blocks, level: 3, output: Cut Stone }
+        - { id: cut-sandstone, level: 5, output: Cut Sandstone }
+        - { id: fire-clay, level: 5, output: Bricks }
+        - { id: carve-stone-slab, level: 8, output: Stone Slab }
+      journeyman:
+        - { id: fire-bricks, level: 10, output: Bricks }
+        - { id: housing-stone-hearth, level: 10, output: Stone Hearth }
+        - { id: shape-clay-pot, level: 12, output: Clay Pot }
+        - { id: housing-brick-oven, level: 15, output: Brick Oven }
+        - { id: housing-stone-fountain, level: 25, output: Stone Fountain }
+      craftsman:
+        - { id: polish-marble, level: 30, output: Polished Marble }
+        - { id: housing-marble-statue, level: 35, output: Marble Statue }
+    supply_chain: "MINER → Raw Stone/Clay/Marble → MASON → Cut Stone/Bricks/Polished Marble → Housing items"
+    notes: "12 recipes (8 processing + 4 housing). Stone Slab and Clay Pot templates added. Only 3 towns have MASON_YARD."
 
   SCRIBE:
     type: CRAFTING

@@ -271,6 +271,26 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'MASON',
     levelRequired: 5,
   },
+  {
+    name: 'Stone Slab',
+    type: 'MATERIAL',
+    rarity: 'COMMON',
+    description: 'A smooth stone slab carved from raw blocks. Used in flooring and construction.',
+    stats: {},
+    durability: 100,
+    professionRequired: 'MASON',
+    levelRequired: 8,
+  },
+  {
+    name: 'Clay Pot',
+    type: 'MATERIAL',
+    rarity: 'COMMON',
+    description: 'A fired clay pot. Used for storage, decoration, and alchemy.',
+    stats: {},
+    durability: 80,
+    professionRequired: 'MASON',
+    levelRequired: 12,
+  },
 
   // --- Processed Materials: Woodworker ---
   {
