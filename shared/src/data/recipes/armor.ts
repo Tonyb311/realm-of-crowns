@@ -3,18 +3,19 @@
  *
  * Three crafting professions produce armor:
  *   ARMORER     - Metal plate/mail armor (heavy, high AC, movement penalty)
- *   LEATHERWORKER - Leather armor (medium, balanced, stealth-friendly)
+ *   LEATHERWORKER - Leather accessories, gloves, boots, bags, utility (DEX-focused)
+ *   TANNER      - Leather armor (caps, vests, armor, bracers, greaves — DEX/stealth)
  *   TAILOR      - Cloth armor (light, magic resist, no penalties)
  *
  * Material tiers:
  *   Metal:   Copper (1) -> Iron (10) -> Steel (30) -> Mithril (55) -> Adamantine (75)
- *   Leather: Soft (1) -> Hard (15) -> Studded (30) -> Exotic (50) -> Dragonscale (80)
+ *   Leather: Cured (1) -> Wolf (12) -> Bear (28) (LEATHERWORKER uses TANNER outputs)
  *   Cloth:   Cloth (1) -> Linen (5) -> Woven Wool (10) -> Silk (40) -> Enchanted Silk (70)
  *
  * Slots: HEAD, CHEST, HANDS, LEGS, FEET, OFF_HAND (shields), BACK (cloaks)
  */
 
-import { FinishedGoodsRecipe } from './types';
+import { ITEMS, FinishedGoodsRecipe } from './types';
 
 // ============================================================
 // ARMORER RECIPES - Metal Armor (plate/mail)
@@ -673,606 +674,321 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
 ];
 
 // ============================================================
-// LEATHERWORKER RECIPES - Leather Armor
+// LEATHERWORKER RECIPES — Leather Accessories, Boots, Gloves & Utility
+// Supply chain: TANNER (Cured/Wolf/Bear Leather) + WOODWORKER (Frame, Handle, Nails)
+// Niche: HANDS, FEET, BACK slots + TOOL/CONSUMABLE utility items
+// Does NOT duplicate TANNER armor (HEAD, CHEST, LEGS, OFF_HAND)
 // ============================================================
 
 export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
-  // ---- SOFT LEATHER ARMOR (Tier 1, Level 1) ----
+  // ============================================================
+  // APPRENTICE TIER (L1-L10) — 4 recipes
+  // ============================================================
+
+  // Leather Gloves — basic hand protection
   {
-    recipeId: 'craft-leather-cap',
-    name: 'Craft Leather Cap',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 1,
-    inputs: [
-      { itemName: 'Soft Leather', quantity: 2 },
-      { itemName: 'Linen', quantity: 1 },
-    ],
-    outputs: [{ itemName: 'Leather Cap', quantity: 1 }],
-    craftTime: 15,
-    xpReward: 10,
-    tier: 1,
-    outputItemType: 'ARMOR',
-    equipSlot: 'HEAD',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 2,
-      durability: 50,
-      levelToEquip: 1,
-    },
-  },
-  {
-    recipeId: 'craft-leather-vest',
-    name: 'Craft Leather Vest',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 1,
-    inputs: [
-      { itemName: 'Soft Leather', quantity: 4 },
-      { itemName: 'Linen', quantity: 1 },
-    ],
-    outputs: [{ itemName: 'Leather Vest', quantity: 1 }],
-    craftTime: 25,
-    xpReward: 15,
-    tier: 1,
-    outputItemType: 'ARMOR',
-    equipSlot: 'CHEST',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 5,
-      durability: 60,
-      levelToEquip: 1,
-    },
-  },
-  {
-    recipeId: 'craft-leather-gloves',
+    recipeId: 'lw-leather-gloves',
     name: 'Craft Leather Gloves',
     professionRequired: 'LEATHERWORKER',
     levelRequired: 1,
     inputs: [
-      { itemName: 'Soft Leather', quantity: 1 },
-      { itemName: 'Linen', quantity: 1 },
+      { itemName: ITEMS.CURED_LEATHER, quantity: 2 },
     ],
-    outputs: [{ itemName: 'Leather Gloves', quantity: 1 }],
+    outputs: [{ itemName: ITEMS.LEATHER_GLOVES, quantity: 1 }],
     craftTime: 12,
     xpReward: 8,
     tier: 1,
     outputItemType: 'ARMOR',
     equipSlot: 'HANDS',
-    classRestrictions: ['Rogue', 'Ranger'],
     outputStats: {
       armor: 1,
+      dexBonus: 1,
       durability: 45,
       levelToEquip: 1,
     },
   },
+
+  // Leather Boots — basic foot protection
   {
-    recipeId: 'craft-leather-boots',
+    recipeId: 'lw-leather-boots',
     name: 'Craft Leather Boots',
     professionRequired: 'LEATHERWORKER',
-    levelRequired: 1,
+    levelRequired: 3,
     inputs: [
-      { itemName: 'Soft Leather', quantity: 2 },
-      { itemName: 'Linen', quantity: 1 },
+      { itemName: ITEMS.CURED_LEATHER, quantity: 3 },
     ],
-    outputs: [{ itemName: 'Leather Boots', quantity: 1 }],
-    craftTime: 15,
+    outputs: [{ itemName: ITEMS.LEATHER_BOOTS, quantity: 1 }],
+    craftTime: 18,
     xpReward: 10,
     tier: 1,
     outputItemType: 'ARMOR',
     equipSlot: 'FEET',
-    classRestrictions: ['Rogue', 'Ranger'],
     outputStats: {
       armor: 2,
+      dexBonus: 1,
       durability: 50,
       levelToEquip: 1,
     },
   },
+
+  // Leather Backpack — inventory expansion accessory
   {
-    recipeId: 'craft-leather-bracers',
-    name: 'Craft Leather Bracers',
+    recipeId: 'lw-leather-backpack',
+    name: 'Craft Leather Backpack',
     professionRequired: 'LEATHERWORKER',
-    levelRequired: 1,
+    levelRequired: 5,
     inputs: [
-      { itemName: 'Soft Leather', quantity: 2 },
+      { itemName: ITEMS.CURED_LEATHER, quantity: 4 },
+      { itemName: ITEMS.WOODEN_FRAME, quantity: 1 },
     ],
-    outputs: [{ itemName: 'Leather Bracers', quantity: 1 }],
-    craftTime: 12,
-    xpReward: 8,
+    outputs: [{ itemName: ITEMS.LEATHER_BACKPACK, quantity: 1 }],
+    craftTime: 25,
+    xpReward: 14,
     tier: 1,
-    outputItemType: 'ARMOR',
-    equipSlot: 'OFF_HAND',
-    classRestrictions: ['Rogue', 'Ranger'],
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'BACK',
     outputStats: {
-      armor: 2,
-      durability: 45,
+      durability: 60,
+      levelToEquip: 3,
+    },
+  },
+
+  // Leather Waterskin — consumable utility item
+  {
+    recipeId: 'lw-leather-waterskin',
+    name: 'Craft Leather Waterskin',
+    professionRequired: 'LEATHERWORKER',
+    levelRequired: 8,
+    inputs: [
+      { itemName: ITEMS.CURED_LEATHER, quantity: 2 },
+    ],
+    outputs: [{ itemName: ITEMS.LEATHER_WATERSKIN, quantity: 3 }],
+    craftTime: 15,
+    xpReward: 10,
+    tier: 1,
+    outputItemType: 'CONSUMABLE',
+    outputStats: {
+      durability: 1,
       levelToEquip: 1,
     },
   },
 
-  // ---- HARD LEATHER ARMOR (Tier 2, Level 15) ----
+  // ============================================================
+  // JOURNEYMAN TIER (L11-L25) — 5 recipes
+  // ============================================================
+
+  // Wolf Leather Gloves — upgraded hand armor with DEX
   {
-    recipeId: 'craft-hard-leather-cap',
-    name: 'Craft Hard Leather Cap',
+    recipeId: 'lw-wolf-leather-gloves',
+    name: 'Craft Wolf Leather Gloves',
     professionRequired: 'LEATHERWORKER',
-    levelRequired: 15,
+    levelRequired: 12,
     inputs: [
-      { itemName: 'Hard Leather', quantity: 2 },
-      { itemName: 'Linen', quantity: 1 },
+      { itemName: ITEMS.WOLF_LEATHER, quantity: 2 },
+      { itemName: ITEMS.CURED_LEATHER, quantity: 1 },
     ],
-    outputs: [{ itemName: 'Hard Leather Cap', quantity: 1 }],
-    craftTime: 25,
-    xpReward: 18,
-    tier: 2,
-    outputItemType: 'ARMOR',
-    equipSlot: 'HEAD',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 5,
-      durability: 90,
-      levelToEquip: 15,
-      requiredStr: 4,
-    },
-  },
-  {
-    recipeId: 'craft-hard-leather-vest',
-    name: 'Craft Hard Leather Vest',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 15,
-    inputs: [
-      { itemName: 'Hard Leather', quantity: 4 },
-      { itemName: 'Linen', quantity: 2 },
-    ],
-    outputs: [{ itemName: 'Hard Leather Vest', quantity: 1 }],
-    craftTime: 40,
-    xpReward: 25,
-    tier: 2,
-    outputItemType: 'ARMOR',
-    equipSlot: 'CHEST',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 10,
-      durability: 110,
-      levelToEquip: 15,
-      requiredStr: 6,
-    },
-  },
-  {
-    recipeId: 'craft-hard-leather-gloves',
-    name: 'Craft Hard Leather Gloves',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 15,
-    inputs: [
-      { itemName: 'Hard Leather', quantity: 1 },
-      { itemName: 'Linen', quantity: 1 },
-    ],
-    outputs: [{ itemName: 'Hard Leather Gloves', quantity: 1 }],
-    craftTime: 20,
-    xpReward: 14,
+    outputs: [{ itemName: ITEMS.WOLF_LEATHER_GLOVES, quantity: 1 }],
+    craftTime: 30,
+    xpReward: 20,
     tier: 2,
     outputItemType: 'ARMOR',
     equipSlot: 'HANDS',
-    classRestrictions: ['Rogue', 'Ranger'],
     outputStats: {
-      armor: 4,
+      armor: 3,
+      dexBonus: 2,
       durability: 80,
-      levelToEquip: 15,
-      requiredStr: 3,
-    },
-  },
-  {
-    recipeId: 'craft-hard-leather-boots',
-    name: 'Craft Hard Leather Boots',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 15,
-    inputs: [
-      { itemName: 'Hard Leather', quantity: 2 },
-      { itemName: 'Linen', quantity: 1 },
-    ],
-    outputs: [{ itemName: 'Hard Leather Boots', quantity: 1 }],
-    craftTime: 25,
-    xpReward: 18,
-    tier: 2,
-    outputItemType: 'ARMOR',
-    equipSlot: 'FEET',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 5,
-      durability: 90,
-      levelToEquip: 15,
-      requiredStr: 4,
-    },
-  },
-  {
-    recipeId: 'craft-hard-leather-bracers',
-    name: 'Craft Hard Leather Bracers',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 15,
-    inputs: [
-      { itemName: 'Hard Leather', quantity: 2 },
-    ],
-    outputs: [{ itemName: 'Hard Leather Bracers', quantity: 1 }],
-    craftTime: 20,
-    xpReward: 14,
-    tier: 2,
-    outputItemType: 'ARMOR',
-    equipSlot: 'OFF_HAND',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 4,
-      durability: 85,
-      levelToEquip: 15,
-      requiredStr: 3,
+      levelToEquip: 10,
     },
   },
 
-  // ---- STUDDED LEATHER ARMOR (Tier 3, Level 30) ----
+  // Wolf Leather Boots — upgraded footwear
   {
-    recipeId: 'craft-studded-leather-cap',
-    name: 'Craft Studded Leather Cap',
+    recipeId: 'lw-wolf-leather-boots',
+    name: 'Craft Wolf Leather Boots',
     professionRequired: 'LEATHERWORKER',
-    levelRequired: 30,
+    levelRequired: 15,
     inputs: [
-      { itemName: 'Hard Leather', quantity: 2 },
-      { itemName: 'Nails', quantity: 10 },
-      { itemName: 'Linen', quantity: 1 },
+      { itemName: ITEMS.WOLF_LEATHER, quantity: 2 },
+      { itemName: ITEMS.CURED_LEATHER, quantity: 1 },
+      { itemName: ITEMS.NAILS, quantity: 4 },
     ],
-    outputs: [{ itemName: 'Studded Leather Cap', quantity: 1 }],
+    outputs: [{ itemName: ITEMS.WOLF_LEATHER_BOOTS, quantity: 1 }],
     craftTime: 35,
-    xpReward: 30,
-    tier: 3,
+    xpReward: 24,
+    tier: 2,
     outputItemType: 'ARMOR',
-    equipSlot: 'HEAD',
-    classRestrictions: ['Rogue', 'Ranger'],
+    equipSlot: 'FEET',
     outputStats: {
-      armor: 8,
-      durability: 150,
-      levelToEquip: 30,
-      requiredStr: 6,
-      stealthPenalty: 1,
+      armor: 4,
+      dexBonus: 2,
+      durability: 90,
+      levelToEquip: 12,
     },
   },
+
+  // Toolbelt — crafting utility accessory
   {
-    recipeId: 'craft-studded-leather-vest',
-    name: 'Craft Studded Leather Vest',
+    recipeId: 'lw-toolbelt',
+    name: 'Craft Toolbelt',
     professionRequired: 'LEATHERWORKER',
-    levelRequired: 30,
+    levelRequired: 18,
     inputs: [
-      { itemName: 'Hard Leather', quantity: 4 },
-      { itemName: 'Nails', quantity: 20 },
-      { itemName: 'Linen', quantity: 2 },
+      { itemName: ITEMS.CURED_LEATHER, quantity: 3 },
+      { itemName: ITEMS.WOLF_LEATHER, quantity: 1 },
+      { itemName: ITEMS.NAILS, quantity: 6 },
     ],
-    outputs: [{ itemName: 'Studded Leather Vest', quantity: 1 }],
-    craftTime: 55,
-    xpReward: 45,
-    tier: 3,
-    outputItemType: 'ARMOR',
-    equipSlot: 'CHEST',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 16,
-      durability: 180,
-      levelToEquip: 30,
-      requiredStr: 8,
-      stealthPenalty: 1,
-    },
-  },
-  {
-    recipeId: 'craft-studded-leather-gloves',
-    name: 'Craft Studded Leather Gloves',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 30,
-    inputs: [
-      { itemName: 'Hard Leather', quantity: 1 },
-      { itemName: 'Nails', quantity: 8 },
-      { itemName: 'Linen', quantity: 1 },
-    ],
-    outputs: [{ itemName: 'Studded Leather Gloves', quantity: 1 }],
+    outputs: [{ itemName: ITEMS.TOOLBELT, quantity: 1 }],
     craftTime: 30,
-    xpReward: 25,
+    xpReward: 22,
+    tier: 2,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'NECK',
+    outputStats: {
+      durability: 80,
+      levelToEquip: 10,
+    },
+  },
+
+  // Leather Repair Kit — restores durability to leather items
+  {
+    recipeId: 'lw-leather-repair-kit',
+    name: 'Craft Leather Repair Kit',
+    professionRequired: 'LEATHERWORKER',
+    levelRequired: 20,
+    inputs: [
+      { itemName: ITEMS.CURED_LEATHER, quantity: 3 },
+      { itemName: ITEMS.WOLF_LEATHER, quantity: 1 },
+      { itemName: ITEMS.WOODEN_HANDLE, quantity: 1 },
+    ],
+    outputs: [{ itemName: ITEMS.LEATHER_REPAIR_KIT, quantity: 1 }],
+    craftTime: 25,
+    xpReward: 18,
+    tier: 2,
+    outputItemType: 'TOOL',
+    outputStats: {
+      durability: 25,
+      yieldBonus: 15,
+    },
+  },
+
+  // Ranger's Pack — upgraded backpack
+  {
+    recipeId: 'lw-rangers-pack',
+    name: "Craft Ranger's Pack",
+    professionRequired: 'LEATHERWORKER',
+    levelRequired: 22,
+    inputs: [
+      { itemName: ITEMS.WOLF_LEATHER, quantity: 3 },
+      { itemName: ITEMS.CURED_LEATHER, quantity: 2 },
+      { itemName: ITEMS.WOODEN_FRAME, quantity: 1 },
+    ],
+    outputs: [{ itemName: ITEMS.RANGERS_PACK, quantity: 1 }],
+    craftTime: 45,
+    xpReward: 30,
+    tier: 2,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'BACK',
+    outputStats: {
+      durability: 100,
+      levelToEquip: 15,
+    },
+  },
+
+  // ============================================================
+  // CRAFTSMAN TIER (L26-L50) — 4 recipes
+  // ============================================================
+
+  // Bear Hide Vambraces — best leather hand armor
+  {
+    recipeId: 'lw-bear-hide-vambraces',
+    name: 'Craft Bear Hide Vambraces',
+    professionRequired: 'LEATHERWORKER',
+    levelRequired: 28,
+    inputs: [
+      { itemName: ITEMS.BEAR_LEATHER, quantity: 2 },
+      { itemName: ITEMS.WOLF_LEATHER, quantity: 1 },
+    ],
+    outputs: [{ itemName: ITEMS.BEAR_HIDE_VAMBRACES, quantity: 1 }],
+    craftTime: 50,
+    xpReward: 38,
     tier: 3,
     outputItemType: 'ARMOR',
     equipSlot: 'HANDS',
-    classRestrictions: ['Rogue', 'Ranger'],
+    outputStats: {
+      armor: 5,
+      dexBonus: 3,
+      durability: 120,
+      levelToEquip: 25,
+    },
+  },
+
+  // Bear Leather Boots — top-tier leather footwear
+  {
+    recipeId: 'lw-bear-leather-boots',
+    name: 'Craft Bear Leather Boots',
+    professionRequired: 'LEATHERWORKER',
+    levelRequired: 32,
+    inputs: [
+      { itemName: ITEMS.BEAR_LEATHER, quantity: 2 },
+      { itemName: ITEMS.WOLF_LEATHER, quantity: 1 },
+      { itemName: ITEMS.CURED_LEATHER, quantity: 1 },
+    ],
+    outputs: [{ itemName: ITEMS.BEAR_LEATHER_BOOTS, quantity: 1 }],
+    craftTime: 55,
+    xpReward: 42,
+    tier: 3,
+    outputItemType: 'ARMOR',
+    equipSlot: 'FEET',
     outputStats: {
       armor: 6,
+      dexBonus: 3,
       durability: 130,
-      levelToEquip: 30,
-      requiredStr: 5,
+      levelToEquip: 25,
     },
   },
+
+  // Hunter's Kit — tracking/gathering utility tool
   {
-    recipeId: 'craft-studded-leather-boots',
-    name: 'Craft Studded Leather Boots',
+    recipeId: 'lw-hunters-kit',
+    name: "Craft Hunter's Kit",
     professionRequired: 'LEATHERWORKER',
-    levelRequired: 30,
+    levelRequired: 36,
     inputs: [
-      { itemName: 'Hard Leather', quantity: 2 },
-      { itemName: 'Nails', quantity: 10 },
-      { itemName: 'Linen', quantity: 1 },
+      { itemName: ITEMS.BEAR_LEATHER, quantity: 2 },
+      { itemName: ITEMS.WOLF_LEATHER, quantity: 1 },
+      { itemName: ITEMS.WOODEN_HANDLE, quantity: 1 },
     ],
-    outputs: [{ itemName: 'Studded Leather Boots', quantity: 1 }],
-    craftTime: 35,
-    xpReward: 30,
+    outputs: [{ itemName: ITEMS.HUNTERS_KIT, quantity: 1 }],
+    craftTime: 40,
+    xpReward: 35,
     tier: 3,
-    outputItemType: 'ARMOR',
-    equipSlot: 'FEET',
-    classRestrictions: ['Rogue', 'Ranger'],
+    outputItemType: 'TOOL',
     outputStats: {
-      armor: 8,
+      durability: 40,
+      yieldBonus: 25,
+    },
+  },
+
+  // Explorer's Pack — top-tier backpack accessory
+  {
+    recipeId: 'lw-explorers-pack',
+    name: "Craft Explorer's Pack",
+    professionRequired: 'LEATHERWORKER',
+    levelRequired: 40,
+    inputs: [
+      { itemName: ITEMS.BEAR_LEATHER, quantity: 3 },
+      { itemName: ITEMS.WOLF_LEATHER, quantity: 2 },
+      { itemName: ITEMS.WOODEN_FRAME, quantity: 1 },
+    ],
+    outputs: [{ itemName: ITEMS.EXPLORERS_PACK, quantity: 1 }],
+    craftTime: 70,
+    xpReward: 50,
+    tier: 3,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'BACK',
+    outputStats: {
       durability: 150,
       levelToEquip: 30,
-      requiredStr: 6,
-      stealthPenalty: 1,
-    },
-  },
-  {
-    recipeId: 'craft-studded-leather-bracers',
-    name: 'Craft Studded Leather Bracers',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 30,
-    inputs: [
-      { itemName: 'Hard Leather', quantity: 2 },
-      { itemName: 'Nails', quantity: 8 },
-    ],
-    outputs: [{ itemName: 'Studded Leather Bracers', quantity: 1 }],
-    craftTime: 30,
-    xpReward: 25,
-    tier: 3,
-    outputItemType: 'ARMOR',
-    equipSlot: 'OFF_HAND',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 7,
-      durability: 140,
-      levelToEquip: 30,
-      requiredStr: 5,
-      stealthPenalty: 1,
-    },
-  },
-
-  // ---- EXOTIC LEATHER ARMOR (Tier 4, Level 50) ----
-  {
-    recipeId: 'craft-exotic-leather-cap',
-    name: 'Craft Exotic Leather Cap',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 50,
-    inputs: [
-      { itemName: 'Exotic Leather', quantity: 2 },
-      { itemName: 'Silk Cloth', quantity: 1 },
-    ],
-    outputs: [{ itemName: 'Exotic Leather Cap', quantity: 1 }],
-    craftTime: 50,
-    xpReward: 50,
-    tier: 4,
-    outputItemType: 'ARMOR',
-    equipSlot: 'HEAD',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 14,
-      magicResist: 3,
-      durability: 240,
-      levelToEquip: 50,
-      requiredStr: 7,
-    },
-  },
-  {
-    recipeId: 'craft-exotic-leather-vest',
-    name: 'Craft Exotic Leather Vest',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 50,
-    inputs: [
-      { itemName: 'Exotic Leather', quantity: 4 },
-      { itemName: 'Silk Cloth', quantity: 2 },
-    ],
-    outputs: [{ itemName: 'Exotic Leather Vest', quantity: 1 }],
-    craftTime: 80,
-    xpReward: 75,
-    tier: 4,
-    outputItemType: 'ARMOR',
-    equipSlot: 'CHEST',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 24,
-      magicResist: 6,
-      durability: 300,
-      levelToEquip: 50,
-      requiredStr: 10,
-    },
-  },
-  {
-    recipeId: 'craft-exotic-leather-gloves',
-    name: 'Craft Exotic Leather Gloves',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 50,
-    inputs: [
-      { itemName: 'Exotic Leather', quantity: 1 },
-      { itemName: 'Silk Cloth', quantity: 1 },
-    ],
-    outputs: [{ itemName: 'Exotic Leather Gloves', quantity: 1 }],
-    craftTime: 40,
-    xpReward: 42,
-    tier: 4,
-    outputItemType: 'ARMOR',
-    equipSlot: 'HANDS',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 10,
-      magicResist: 2,
-      durability: 210,
-      levelToEquip: 50,
-      requiredStr: 5,
-    },
-  },
-  {
-    recipeId: 'craft-exotic-leather-boots',
-    name: 'Craft Exotic Leather Boots',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 50,
-    inputs: [
-      { itemName: 'Exotic Leather', quantity: 2 },
-      { itemName: 'Silk Cloth', quantity: 1 },
-    ],
-    outputs: [{ itemName: 'Exotic Leather Boots', quantity: 1 }],
-    craftTime: 50,
-    xpReward: 50,
-    tier: 4,
-    outputItemType: 'ARMOR',
-    equipSlot: 'FEET',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 14,
-      magicResist: 3,
-      durability: 240,
-      levelToEquip: 50,
-      requiredStr: 7,
-    },
-  },
-  {
-    recipeId: 'craft-exotic-leather-bracers',
-    name: 'Craft Exotic Leather Bracers',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 50,
-    inputs: [
-      { itemName: 'Exotic Leather', quantity: 2 },
-    ],
-    outputs: [{ itemName: 'Exotic Leather Bracers', quantity: 1 }],
-    craftTime: 45,
-    xpReward: 45,
-    tier: 4,
-    outputItemType: 'ARMOR',
-    equipSlot: 'OFF_HAND',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 12,
-      magicResist: 3,
-      durability: 220,
-      levelToEquip: 50,
-      requiredStr: 6,
-    },
-  },
-
-  // ---- DRAGONSCALE ARMOR (Tier 5, Level 80) ----
-  {
-    recipeId: 'craft-dragonscale-helm',
-    name: 'Craft Dragonscale Helm',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 80,
-    inputs: [
-      { itemName: 'Dragonscale Leather', quantity: 2 },
-      { itemName: 'Silk Cloth', quantity: 1 },
-      { itemName: 'Arcane Reagents', quantity: 1 },
-    ],
-    outputs: [{ itemName: 'Dragonscale Helm', quantity: 1 }],
-    craftTime: 90,
-    xpReward: 100,
-    tier: 5,
-    outputItemType: 'ARMOR',
-    equipSlot: 'HEAD',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 24,
-      magicResist: 10,
-      durability: 400,
-      levelToEquip: 80,
-      requiredStr: 10,
-    },
-  },
-  {
-    recipeId: 'craft-dragonscale-vest',
-    name: 'Craft Dragonscale Vest',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 80,
-    inputs: [
-      { itemName: 'Dragonscale Leather', quantity: 4 },
-      { itemName: 'Silk Cloth', quantity: 2 },
-      { itemName: 'Arcane Reagents', quantity: 2 },
-    ],
-    outputs: [{ itemName: 'Dragonscale Vest', quantity: 1 }],
-    craftTime: 140,
-    xpReward: 160,
-    tier: 5,
-    outputItemType: 'ARMOR',
-    equipSlot: 'CHEST',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 40,
-      magicResist: 16,
-      durability: 500,
-      levelToEquip: 80,
-      requiredStr: 14,
-    },
-  },
-  {
-    recipeId: 'craft-dragonscale-gloves',
-    name: 'Craft Dragonscale Gloves',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 80,
-    inputs: [
-      { itemName: 'Dragonscale Leather', quantity: 1 },
-      { itemName: 'Silk Cloth', quantity: 1 },
-      { itemName: 'Arcane Reagents', quantity: 1 },
-    ],
-    outputs: [{ itemName: 'Dragonscale Gloves', quantity: 1 }],
-    craftTime: 80,
-    xpReward: 85,
-    tier: 5,
-    outputItemType: 'ARMOR',
-    equipSlot: 'HANDS',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 18,
-      magicResist: 8,
-      durability: 360,
-      levelToEquip: 80,
-      requiredStr: 8,
-    },
-  },
-  {
-    recipeId: 'craft-dragonscale-boots',
-    name: 'Craft Dragonscale Boots',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 80,
-    inputs: [
-      { itemName: 'Dragonscale Leather', quantity: 2 },
-      { itemName: 'Silk Cloth', quantity: 1 },
-      { itemName: 'Arcane Reagents', quantity: 1 },
-    ],
-    outputs: [{ itemName: 'Dragonscale Boots', quantity: 1 }],
-    craftTime: 90,
-    xpReward: 100,
-    tier: 5,
-    outputItemType: 'ARMOR',
-    equipSlot: 'FEET',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 24,
-      magicResist: 10,
-      durability: 400,
-      levelToEquip: 80,
-      requiredStr: 10,
-    },
-  },
-  {
-    recipeId: 'craft-dragonscale-bracers',
-    name: 'Craft Dragonscale Bracers',
-    professionRequired: 'LEATHERWORKER',
-    levelRequired: 80,
-    inputs: [
-      { itemName: 'Dragonscale Leather', quantity: 2 },
-      { itemName: 'Arcane Reagents', quantity: 1 },
-    ],
-    outputs: [{ itemName: 'Dragonscale Bracers', quantity: 1 }],
-    craftTime: 80,
-    xpReward: 90,
-    tier: 5,
-    outputItemType: 'ARMOR',
-    equipSlot: 'OFF_HAND',
-    classRestrictions: ['Rogue', 'Ranger'],
-    outputStats: {
-      armor: 20,
-      magicResist: 8,
-      durability: 380,
-      levelToEquip: 80,
-      requiredStr: 8,
     },
   },
 ];

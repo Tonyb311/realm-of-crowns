@@ -71,6 +71,7 @@ const PROFESSION_WORKSHOP_MAP: Partial<Record<ProfessionType, BuildingType>> = {
   BREWER: 'BREWERY',
   JEWELER: 'JEWELER_WORKSHOP',
   FLETCHER: 'FLETCHER_BENCH',
+  LEATHERWORKER: 'TANNERY',
 };
 
 // Quality bonus values for cascading quality

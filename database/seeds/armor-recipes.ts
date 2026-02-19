@@ -3,7 +3,7 @@
  *
  * Seeds item templates and recipes for all armor types:
  *   - ARMORER: Metal plate armor (Copper -> Iron -> Steel -> Mithril -> Adamantine)
- *   - LEATHERWORKER: Leather armor (Soft -> Hard -> Studded -> Exotic -> Dragonscale)
+ *   - LEATHERWORKER: Leather accessories, boots, gloves, bags & utility (Cured -> Wolf -> Bear)
  *   - TAILOR: Cloth armor (Cloth -> Linen -> Woven Wool -> Silk -> Enchanted Silk)
  *
  * Depends on: seedRecipes() having already created material templates (ingots, leather, cloth).
@@ -62,40 +62,24 @@ const ARMOR_TEMPLATES: ArmorTemplateDef[] = [
   { name: 'Adamantine Greaves', type: 'ARMOR', rarity: 'LEGENDARY', description: 'Leg armor of pure adamantine, impervious to all but the mightiest blows.', stats: { armor: 40, magicResist: 10 }, durability: 520, professionRequired: 'ARMORER', levelRequired: 75 },
   { name: 'Adamantine Shield', type: 'ARMOR', rarity: 'LEGENDARY', description: 'A fortress in one arm. This shield has never been breached.', stats: { armor: 44, magicResist: 12 }, durability: 550, professionRequired: 'ARMORER', levelRequired: 75 },
 
-  // --- LEATHERWORKER: Soft Leather ---
-  { name: 'Leather Cap', type: 'ARMOR', rarity: 'COMMON', description: 'A simple leather skullcap offering minimal protection.', stats: { armor: 2 }, durability: 50, professionRequired: 'LEATHERWORKER', levelRequired: 1 },
-  { name: 'Leather Vest', type: 'ARMOR', rarity: 'COMMON', description: 'A flexible leather vest that does not hinder movement.', stats: { armor: 5 }, durability: 60, professionRequired: 'LEATHERWORKER', levelRequired: 1 },
-  { name: 'Leather Gloves', type: 'ARMOR', rarity: 'COMMON', description: 'Supple leather gloves, perfect for nimble fingers.', stats: { armor: 1 }, durability: 45, professionRequired: 'LEATHERWORKER', levelRequired: 1 },
-  { name: 'Leather Boots', type: 'ARMOR', rarity: 'COMMON', description: 'Sturdy leather boots with soft soles for quiet movement.', stats: { armor: 2 }, durability: 50, professionRequired: 'LEATHERWORKER', levelRequired: 1 },
-  { name: 'Leather Bracers', type: 'ARMOR', rarity: 'COMMON', description: 'Simple leather wrist guards.', stats: { armor: 2 }, durability: 45, professionRequired: 'LEATHERWORKER', levelRequired: 1 },
+  // --- LEATHERWORKER: Apprentice (Cured Leather) ---
+  { name: 'Leather Gloves', type: 'ARMOR', rarity: 'COMMON', description: 'Supple leather gloves, perfect for nimble fingers.', stats: { armor: 1, dexBonus: 1 }, durability: 45, professionRequired: 'LEATHERWORKER', levelRequired: 1 },
+  { name: 'Leather Boots', type: 'ARMOR', rarity: 'COMMON', description: 'Sturdy leather boots with soft soles for quiet movement.', stats: { armor: 2, dexBonus: 1 }, durability: 50, professionRequired: 'LEATHERWORKER', levelRequired: 3 },
+  { name: 'Leather Backpack', type: 'ACCESSORY', rarity: 'COMMON', description: 'A roomy leather backpack supported by a wooden frame.', stats: {}, durability: 60, professionRequired: 'LEATHERWORKER', levelRequired: 5 },
+  { name: 'Leather Waterskin', type: 'CONSUMABLE', rarity: 'COMMON', description: 'A sealed leather waterskin for long journeys.', stats: {}, durability: 1, professionRequired: 'LEATHERWORKER', levelRequired: 8 },
 
-  // --- LEATHERWORKER: Hard Leather ---
-  { name: 'Hard Leather Cap', type: 'ARMOR', rarity: 'FINE', description: 'A boiled leather cap hardened against blows.', stats: { armor: 5 }, durability: 90, professionRequired: 'LEATHERWORKER', levelRequired: 15 },
-  { name: 'Hard Leather Vest', type: 'ARMOR', rarity: 'FINE', description: 'Molded hard leather offering improved protection.', stats: { armor: 10 }, durability: 110, professionRequired: 'LEATHERWORKER', levelRequired: 15 },
-  { name: 'Hard Leather Gloves', type: 'ARMOR', rarity: 'FINE', description: 'Stiffened leather gloves with reinforced palms.', stats: { armor: 4 }, durability: 80, professionRequired: 'LEATHERWORKER', levelRequired: 15 },
-  { name: 'Hard Leather Boots', type: 'ARMOR', rarity: 'FINE', description: 'Thick-soled hard leather boots for rough terrain.', stats: { armor: 5 }, durability: 90, professionRequired: 'LEATHERWORKER', levelRequired: 15 },
-  { name: 'Hard Leather Bracers', type: 'ARMOR', rarity: 'FINE', description: 'Hard leather forearm guards with buckle clasps.', stats: { armor: 4 }, durability: 85, professionRequired: 'LEATHERWORKER', levelRequired: 15 },
+  // --- LEATHERWORKER: Journeyman (Wolf Leather) ---
+  { name: 'Wolf Leather Gloves', type: 'ARMOR', rarity: 'FINE', description: 'Tough wolf leather gloves with reinforced palms for a sure grip.', stats: { armor: 3, dexBonus: 2 }, durability: 80, professionRequired: 'LEATHERWORKER', levelRequired: 12 },
+  { name: 'Wolf Leather Boots', type: 'ARMOR', rarity: 'FINE', description: 'Wolf leather boots with iron-studded soles for grip on any terrain.', stats: { armor: 4, dexBonus: 2 }, durability: 90, professionRequired: 'LEATHERWORKER', levelRequired: 15 },
+  { name: 'Toolbelt', type: 'ACCESSORY', rarity: 'FINE', description: 'A sturdy toolbelt with loops and pouches for crafting implements.', stats: {}, durability: 80, professionRequired: 'LEATHERWORKER', levelRequired: 18 },
+  { name: 'Leather Repair Kit', type: 'TOOL', rarity: 'FINE', description: 'Leather patches, needles, and wax for repairing leather goods.', stats: { yieldBonus: 15 }, durability: 25, professionRequired: 'LEATHERWORKER', levelRequired: 20 },
+  { name: "Ranger's Pack", type: 'ACCESSORY', rarity: 'FINE', description: 'A wolf leather pack built for long wilderness expeditions.', stats: {}, durability: 100, professionRequired: 'LEATHERWORKER', levelRequired: 22 },
 
-  // --- LEATHERWORKER: Studded Leather ---
-  { name: 'Studded Leather Cap', type: 'ARMOR', rarity: 'FINE', description: 'A leather cap studded with iron rivets.', stats: { armor: 8 }, durability: 150, professionRequired: 'LEATHERWORKER', levelRequired: 30 },
-  { name: 'Studded Leather Vest', type: 'ARMOR', rarity: 'FINE', description: 'Hard leather reinforced with iron studs.', stats: { armor: 16 }, durability: 180, professionRequired: 'LEATHERWORKER', levelRequired: 30 },
-  { name: 'Studded Leather Gloves', type: 'ARMOR', rarity: 'FINE', description: 'Leather gloves with iron-studded knuckles.', stats: { armor: 6 }, durability: 130, professionRequired: 'LEATHERWORKER', levelRequired: 30 },
-  { name: 'Studded Leather Boots', type: 'ARMOR', rarity: 'FINE', description: 'Iron-studded boots that can deliver a punishing kick.', stats: { armor: 8 }, durability: 150, professionRequired: 'LEATHERWORKER', levelRequired: 30 },
-  { name: 'Studded Leather Bracers', type: 'ARMOR', rarity: 'FINE', description: 'Studded forearm guards useful for parrying.', stats: { armor: 7 }, durability: 140, professionRequired: 'LEATHERWORKER', levelRequired: 30 },
-
-  // --- LEATHERWORKER: Exotic Leather ---
-  { name: 'Exotic Leather Cap', type: 'ARMOR', rarity: 'SUPERIOR', description: 'A sleek cap of rare exotic leather, supple yet tough.', stats: { armor: 14, magicResist: 3 }, durability: 240, professionRequired: 'LEATHERWORKER', levelRequired: 50 },
-  { name: 'Exotic Leather Vest', type: 'ARMOR', rarity: 'SUPERIOR', description: 'A vest crafted from exotic beast hide. Light and resilient.', stats: { armor: 24, magicResist: 6 }, durability: 300, professionRequired: 'LEATHERWORKER', levelRequired: 50 },
-  { name: 'Exotic Leather Gloves', type: 'ARMOR', rarity: 'SUPERIOR', description: 'Gloves of exotic leather that seem to anticipate the wearer\'s grip.', stats: { armor: 10, magicResist: 2 }, durability: 210, professionRequired: 'LEATHERWORKER', levelRequired: 50 },
-  { name: 'Exotic Leather Boots', type: 'ARMOR', rarity: 'SUPERIOR', description: 'Silent boots of exotic leather, prized by scouts.', stats: { armor: 14, magicResist: 3 }, durability: 240, professionRequired: 'LEATHERWORKER', levelRequired: 50 },
-  { name: 'Exotic Leather Bracers', type: 'ARMOR', rarity: 'SUPERIOR', description: 'Exotic leather wrist guards with faint magical shimmer.', stats: { armor: 12, magicResist: 3 }, durability: 220, professionRequired: 'LEATHERWORKER', levelRequired: 50 },
-
-  // --- LEATHERWORKER: Dragonscale ---
-  { name: 'Dragonscale Helm', type: 'ARMOR', rarity: 'LEGENDARY', description: 'A helm forged from overlapping dragon scales. Fireproof.', stats: { armor: 24, magicResist: 10 }, durability: 400, professionRequired: 'LEATHERWORKER', levelRequired: 80 },
-  { name: 'Dragonscale Vest', type: 'ARMOR', rarity: 'LEGENDARY', description: 'Dragon scale armor that rivals plate in protection while remaining flexible.', stats: { armor: 40, magicResist: 16 }, durability: 500, professionRequired: 'LEATHERWORKER', levelRequired: 80 },
-  { name: 'Dragonscale Gloves', type: 'ARMOR', rarity: 'LEGENDARY', description: 'Dragonscale gauntlets that radiate warmth and power.', stats: { armor: 18, magicResist: 8 }, durability: 360, professionRequired: 'LEATHERWORKER', levelRequired: 80 },
-  { name: 'Dragonscale Boots', type: 'ARMOR', rarity: 'LEGENDARY', description: 'Boots of dragonscale that leave scorch marks on stone.', stats: { armor: 24, magicResist: 10 }, durability: 400, professionRequired: 'LEATHERWORKER', levelRequired: 80 },
-  { name: 'Dragonscale Bracers', type: 'ARMOR', rarity: 'LEGENDARY', description: 'Bracers of interlocking dragon scales, warm to the touch.', stats: { armor: 20, magicResist: 8 }, durability: 380, professionRequired: 'LEATHERWORKER', levelRequired: 80 },
+  // --- LEATHERWORKER: Craftsman (Bear Leather) ---
+  { name: 'Bear Hide Vambraces', type: 'ARMOR', rarity: 'SUPERIOR', description: 'Thick bear hide forearm guards that shrug off blows.', stats: { armor: 5, dexBonus: 3 }, durability: 120, professionRequired: 'LEATHERWORKER', levelRequired: 28 },
+  { name: 'Bear Leather Boots', type: 'ARMOR', rarity: 'SUPERIOR', description: 'Heavy bear leather boots reinforced with layered hide.', stats: { armor: 6, dexBonus: 3 }, durability: 130, professionRequired: 'LEATHERWORKER', levelRequired: 32 },
+  { name: "Hunter's Kit", type: 'TOOL', rarity: 'SUPERIOR', description: 'A comprehensive kit of tracking tools, snares, and field supplies.', stats: { yieldBonus: 25 }, durability: 40, professionRequired: 'LEATHERWORKER', levelRequired: 36 },
+  { name: "Explorer's Pack", type: 'ACCESSORY', rarity: 'SUPERIOR', description: 'The finest leather backpack, reinforced with bear hide and a hardwood frame.', stats: {}, durability: 150, professionRequired: 'LEATHERWORKER', levelRequired: 40 },
 
   // --- TAILOR: Cloth ---
   { name: 'Cloth Hood', type: 'ARMOR', rarity: 'COMMON', description: 'A simple cotton hood favored by apprentice mages.', stats: { magicResist: 2 }, durability: 35, professionRequired: 'TAILOR', levelRequired: 1 },

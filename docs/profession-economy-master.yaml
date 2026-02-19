@@ -583,14 +583,24 @@ professions:
     recipe_count: 15  # 3 processing + 4 apprentice + 4 journeyman + 4 craftsman
     notes: "Two-step pipeline: HUNTER pelts → TANNER cures into leather → TANNER crafts into goods. Cured Leather is shared intermediate (TAILOR will buy). Leather armor offers less defense than metal but grants DEX bonuses — player choice."
 
+  # LEATHERWORKER profession LIVE — 13 recipes (2026-02-19)
   LEATHERWORKER:
     type: CRAFTING
     unlock_level: 5
-    description: "Crafts leather armor, bags, belts, and accessories."
+    primary_stat: DEX
+    description: "Crafts leather accessories, gloves, boots, bags, and utility items. Uses TANNER outputs (Cured/Wolf/Bear Leather) + WOODWORKER parts (Wooden Frame, Handle, Nails). Covers HANDS, FEET, BACK slots — does NOT duplicate TANNER armor (HEAD, CHEST, LEGS, OFF_HAND)."
     depends_on_gatherers: []
-    intermediate_inputs: [leather]       # From TANNER
-    output_categories: [ARMOR, ACCESSORY, CONTAINER]
-    status: PLANNED
+    depends_on_crafters: [TANNER, WOODWORKER]
+    intermediate_inputs: [cured_leather, wolf_leather, bear_leather, wooden_frame, wooden_handle, nails]
+    output_categories: [ARMOR, ACCESSORY, TOOL, CONSUMABLE]
+    workshop: TANNERY  # shared with TANNER
+    status: EXISTS_IN_GAME
+    tier_recipes:
+      APPRENTICE: ["Leather Gloves", "Leather Boots", "Leather Backpack", "Leather Waterskin"]
+      JOURNEYMAN: ["Wolf Leather Gloves", "Wolf Leather Boots", "Toolbelt", "Leather Repair Kit", "Ranger's Pack"]
+      CRAFTSMAN: ["Bear Hide Vambraces", "Bear Leather Boots", "Hunter's Kit", "Explorer's Pack"]
+    recipe_count: 13
+    notes: "Fills the gaps TANNER doesn't cover. Armor values intentionally lower than TANNER — LEATHERWORKER makes utility, not defense. DEX bonuses on all armor pieces (leather stat identity). Supply chain: HUNTER → TANNER → LEATHERWORKER. Workshop: TANNERY (shared, no new building needed)."
 
   TAILOR:
     type: CRAFTING
@@ -647,15 +657,31 @@ professions:
     output_categories: [ACCESSORY, TRADE_GOOD]
     status: PLANNED
 
+  # FLETCHER profession LIVE — 13 recipes (2026-02-19)
   FLETCHER:
     type: CRAFTING
+    primary_stat: DEX
     unlock_level: 5
-    description: "Crafts bows, crossbows, and ammunition."
+    description: "Crafts bows, arrows, and quivers. Supply chain: WOODWORKER (Bow Stave, Planks, Dowels) + TANNER (Cured/Wolf/Bear Leather)."
     depends_on_gatherers: [LUMBERJACK, HUNTER]
-    raw_inputs: [wood_logs]
-    intermediate_inputs: [leather]       # From TANNER (bowstrings, grips)
-    output_categories: [WEAPON, AMMO]
-    status: PLANNED
+    depends_on_crafters: [WOODWORKER, TANNER]
+    raw_inputs: [softwood_planks, hardwood_planks, wooden_dowels, wooden_handle, bow_stave]
+    intermediate_inputs: [cured_leather, wolf_leather, bear_leather, bowstring]
+    output_categories: [WEAPON, AMMO, ACCESSORY]
+    workshops: [Thornwatch, Thornden, Bonepile, Windbreak]
+    status: EXISTS_IN_GAME
+    recipe_count: 13
+    tier_recipes:
+      apprentice:
+        level_range: "1-10"
+        recipes: ["fletch-bowstring", "fletch-arrows", "fletch-shortbow", "fletch-hunting-bow"]
+      journeyman:
+        level_range: "11-25"
+        recipes: ["fletch-longbow", "fletch-war-arrows", "fletch-war-bow", "fletch-quiver"]
+      craftsman:
+        level_range: "26-50"
+        recipes: ["fletch-barbed-arrows", "fletch-composite-bow", "fletch-rangers-quiver", "fletch-flight-arrows", "fletch-rangers-longbow"]
+    damage_progression: "Practice Bow (5, WW) → Shortbow (6) → Hunting Bow (8) → Longbow (14) → War Bow (16) → Composite Bow (22) → Ranger's Longbow (26)"
 
   MASON:
     type: CRAFTING
@@ -2404,8 +2430,12 @@ dependency_chains:
     Bear Leather + Cured Leather + Animal Pelts ──[TANNER L8]──→ Bear Hide Cuirass (CHEST, 155g)
     Wolf Leather + Cured Leather + Bear Hides ──[TANNER L8]──→ Ranger's Quiver (TOOL, +40% hunting yield, 50 dur)
 
+  leatherworker_goods:
+    Cured Leather ──[LEATHERWORKER L1-L8]──→ Leather Gloves (HANDS) / Boots (FEET) / Backpack (BACK) / Waterskin
+    Wolf Leather + Cured Leather ──[LEATHERWORKER L12-L22]──→ Wolf Leather Gloves / Boots / Toolbelt / Repair Kit / Ranger's Pack
+    Bear Leather + Wolf Leather ──[LEATHERWORKER L28-L40]──→ Bear Hide Vambraces / Bear Leather Boots / Hunter's Kit / Explorer's Pack
+
   leather_future:
-    Cured Leather ──[LEATHERWORKER]──→ Leather Bags / Accessories (future)
     Cured Leather ──[ARMORER]──→ Reinforced Armor (ingot + leather, future)
 
   # --- WOOD CHAIN (LUMBERJACK → WOODWORKER → FLETCHER) ---
