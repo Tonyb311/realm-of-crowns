@@ -706,14 +706,37 @@ professions:
     notes: "End-of-chain. Takes finished items + reagents → enchanted items"
 
   JEWELER:
+    # JEWELER profession LIVE — 12 recipes, jewelry & accessories (2026-02-19)
     type: CRAFTING
     unlock_level: 5
-    description: "Cuts gems and crafts jewelry and accessories."
+    primary_stat: DEX
+    description: "Cuts gems and crafts jewelry, rings, necklaces, circlets, and brooches."
     depends_on_gatherers: [MINER]
-    raw_inputs: [stone_blocks]           # Eventually needs gems (new resource)
-    intermediate_inputs: [iron_ingot]    # For settings
-    output_categories: [ACCESSORY, TRADE_GOOD]
-    status: PLANNED
+    depends_on_crafters: [SMELTER]
+    intermediate_inputs: [Copper Ingot, Iron Ingot, Silver Ingot, Gold Ingot, Mithril Ingot, Gemstones, Arcane Reagents]
+    output_categories: [ACCESSORY]
+    workshop: JEWELER_WORKSHOP
+    recipe_count: 12
+    status: EXISTS_IN_GAME
+    tier_recipes:
+      apprentice:
+        - { id: jewel-copper-ring, level: 1, output: Copper Ring }
+        - { id: jewel-copper-necklace, level: 1, output: Copper Necklace }
+      journeyman:
+        - { id: jewel-iron-ring, level: 10, output: Iron Ring }
+        - { id: jewel-brooch-protection, level: 15, output: Brooch of Protection }
+        - { id: jewel-silver-ring, level: 20, output: Silver Ring }
+        - { id: jewel-silver-necklace, level: 20, output: Silver Necklace }
+        - { id: jewel-circlet-focus, level: 25, output: Circlet of Focus }
+      craftsman:
+        - { id: jewel-gold-ring, level: 30, output: Gold Ring }
+        - { id: jewel-gold-necklace, level: 30, output: Gold Necklace }
+        - { id: jewel-brooch-speed, level: 30, output: Brooch of Speed }
+      expert:
+        - { id: jewel-crown-wisdom, level: 50, output: Crown of Wisdom }
+        - { id: jewel-mithril-ring, level: 55, output: Mithril Ring }
+    supply_chain: "MINER → SMELTER → JEWELER (ingots + gems)"
+    notes: "Full set of rings, necklaces, circlets, and brooches. Uses Gemstones from MINER + ingots from SMELTER."
 
   # FLETCHER profession LIVE — 13 recipes (2026-02-19)
   FLETCHER:
