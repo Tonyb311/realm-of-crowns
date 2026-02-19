@@ -696,14 +696,33 @@ professions:
     notes: "11 recipes across 3 tiers. First dedicated HERBALIST consumer. Potions marked isPotion=true, sold at Apothecary building. Supply chain: HERBALIST/FARMER → ALCHEMIST → Market."
 
   ENCHANTER:
+    # ENCHANTER profession LIVE — 9 recipes, enchantment scrolls (2026-02-19)
     type: CRAFTING
     unlock_level: 7
-    description: "Imbues items with magical properties."
-    depends_on_gatherers: []
-    intermediate_inputs: [reagent]       # From ALCHEMIST
+    primary_stat: INT
+    description: "Imbues items with magical properties via enchantment scrolls."
+    depends_on_gatherers: [MINER, HERBALIST]
+    depends_on_crafters: [SMELTER, ALCHEMIST]
+    intermediate_inputs: [Arcane Reagents, Coal, Gemstones, Rare Herbs, Silver Ingot, Iron Ingot]
     output_categories: [ENCHANTMENT]
-    status: PLANNED
-    notes: "End-of-chain. Takes finished items + reagents → enchanted items"
+    workshop: ENCHANTING_TOWER
+    recipe_count: 9
+    status: EXISTS_IN_GAME
+    tier_recipes:
+      apprentice:
+        - { id: ench-fortified, level: 5, output: Fortified Enchantment Scroll }
+      journeyman:
+        - { id: ench-flaming, level: 10, output: Flaming Enchantment Scroll }
+        - { id: ench-frost, level: 10, output: Frost Enchantment Scroll }
+        - { id: ench-lightning, level: 15, output: Lightning Enchantment Scroll }
+        - { id: ench-swift, level: 15, output: Swift Enchantment Scroll }
+        - { id: ench-poisoned, level: 20, output: Poisoned Enchantment Scroll }
+        - { id: ench-warding, level: 20, output: Warding Enchantment Scroll }
+      craftsman:
+        - { id: ench-holy, level: 30, output: Holy Enchantment Scroll }
+        - { id: ench-shadow, level: 30, output: Shadow Enchantment Scroll }
+    supply_chain: "HERBALIST → Arcane Reagents; MINER → Coal/Gemstones; SMELTER → Ingots → ENCHANTER"
+    notes: "9 enchantment scrolls (6 offensive, 3 utility). Scroll application to equipment is a separate future feature."
 
   JEWELER:
     # JEWELER profession LIVE — 12 recipes, jewelry & accessories (2026-02-19)
