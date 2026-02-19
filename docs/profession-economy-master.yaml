@@ -483,16 +483,37 @@ professions:
     economy_chain: "FARMER/HERBALIST gather ingredients -> BREWER crafts beverages -> Tavern/Market sells"
 
   SMELTER:
+    # SMELTER profession LIVE — 11 recipes, ore→ingot processing (2026-02-19)
     type: CRAFTING
     unlock_level: 3
+    primary_stat: CON
     description: "Smelts raw ore into usable metal ingots and alloys."
     depends_on_gatherers: [MINER]
-    raw_inputs: [iron_ore]
+    raw_inputs: [Copper Ore, Iron Ore, Iron Ore Chunks, Silver Ore, Gold Ore, Mithril Ore, Adamantine Ore, Silite Sand, Coal, Arcane Reagents]
     intermediate_inputs: []
     output_categories: [MATERIAL]
-    outputs_used_by: [BLACKSMITH, ARMORER, JEWELER]
-    status: PLANNED
-    notes: "Bottleneck profession — BLACKSMITH and ARMORER both need ingots"
+    outputs_used_by: [BLACKSMITH, ARMORER, JEWELER, WOODWORKER, MASON]
+    workshop: SMELTERY
+    recipe_count: 11
+    status: EXISTS_IN_GAME
+    tier_recipes:
+      apprentice:
+        - { id: smelt-copper, level: 1, inputs: "3x Copper Ore + 1x Coal", output: "2x Copper Ingot" }
+        - { id: smelt-ore-chunks, level: 3, inputs: "4x Iron Ore Chunks + 2x Coal", output: "1x Iron Ingot" }
+        - { id: forge-nails, level: 5, inputs: "1x Copper Ingot", output: "50x Nails" }
+        - { id: forge-iron-fittings, level: 8, inputs: "3x Iron Ore Chunks + 1x Coal", output: "4x Iron Fittings" }
+        - { id: smelt-iron, level: 10, inputs: "3x Iron Ore + 2x Coal", output: "2x Iron Ingot" }
+      journeyman:
+        - { id: smelt-glass, level: 15, inputs: "5x Silite Sand", output: "3x Glass" }
+        - { id: smelt-silver, level: 20, inputs: "3x Silver Ore + 1x Coal", output: "2x Silver Ingot" }
+        - { id: smelt-gold, level: 25, inputs: "3x Gold Ore + 1x Coal", output: "1x Gold Ingot" }
+      craftsman:
+        - { id: smelt-steel, level: 30, inputs: "2x Iron Ingot + 3x Coal", output: "1x Steel Ingot" }
+      expert:
+        - { id: smelt-mithril, level: 55, inputs: "5x Mithril Ore + 3x Coal", output: "1x Mithril Ingot" }
+      master:
+        - { id: smelt-adamantine, level: 75, inputs: "8x Adamantine Ore + 5x Coal + 1x Arcane Reagents", output: "1x Adamantine Ingot" }
+    notes: "Critical bottleneck — BLACKSMITH, ARMORER, and JEWELER all need ingots from SMELTER"
 
   BLACKSMITH:
     type: CRAFTING

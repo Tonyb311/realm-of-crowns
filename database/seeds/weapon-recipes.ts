@@ -69,18 +69,29 @@ export async function seedWeaponRecipes(prisma: PrismaClient) {
     const stats = recipe.outputStats as WeaponStats;
 
     // Determine item type from recipe
-    const itemType = recipe.outputItemType === 'CONSUMABLE' ? 'CONSUMABLE' : 'WEAPON';
+    const itemType = (recipe.outputItemType === 'CONSUMABLE' ? 'CONSUMABLE'
+      : recipe.outputItemType === 'TOOL' ? 'TOOL'
+      : recipe.outputItemType === 'ACCESSORY' ? 'ACCESSORY'
+      : 'WEAPON') as 'WEAPON' | 'CONSUMABLE' | 'TOOL' | 'ACCESSORY';
     const rarity = tierToRarity(recipe.tier);
 
     // Build description from stats
-    const dmgLabel = `${stats.baseDamage} ${stats.damageType}`;
-    const speedLabel = `Speed ${stats.speed}`;
-    const twoHandLabel = stats.twoHanded ? ', two-handed' : '';
-    const rangeLabel = stats.range ? `, range ${stats.range}` : '';
-    const description =
-      itemType === 'CONSUMABLE'
-        ? `Ammunition: ${dmgLabel} damage bonus${rangeLabel}.`
-        : `${dmgLabel} damage, ${speedLabel}${twoHandLabel}${rangeLabel}. Requires Str ${stats.requiredStr}, Dex ${stats.requiredDex}.`;
+    let description: string;
+    if (itemType === 'TOOL' || (stats.baseDamage === undefined && !stats.damageType)) {
+      description = `Crafting component produced by ${recipe.professionRequired}.`;
+    } else if (itemType === 'ACCESSORY') {
+      const armorLabel = stats.armor ? `Armor ${stats.armor}` : '';
+      description = `${armorLabel} accessory. Durability ${stats.durability}.`.trim();
+    } else {
+      const dmgLabel = `${stats.baseDamage} ${stats.damageType}`;
+      const speedLabel = `Speed ${stats.speed}`;
+      const twoHandLabel = stats.twoHanded ? ', two-handed' : '';
+      const rangeLabel = stats.range ? `, range ${stats.range}` : '';
+      description =
+        itemType === 'CONSUMABLE'
+          ? `Ammunition: ${dmgLabel} damage bonus${rangeLabel}.`
+          : `${dmgLabel} damage, ${speedLabel}${twoHandLabel}${rangeLabel}. Requires Str ${stats.requiredStr}, Dex ${stats.requiredDex}.`;
+    }
 
     // Upsert the item template
     const stableId = `weapon-${outputName.toLowerCase().replace(/\s+/g, '-')}`;

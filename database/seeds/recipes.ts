@@ -125,6 +125,16 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'SMELTER',
     levelRequired: 5,
   },
+  {
+    name: 'Iron Fittings',
+    type: 'MATERIAL',
+    rarity: 'COMMON',
+    description: 'Sturdy iron brackets and fittings. Essential for construction and woodworking.',
+    stats: {},
+    durability: 100,
+    professionRequired: 'SMELTER',
+    levelRequired: 8,
+  },
 
   // --- Processed Materials: Tanner ---
   {
