@@ -28,6 +28,9 @@
 # Armor triangle: BLACKSMITH (plate/STR) vs TANNER (leather/DEX) vs TAILOR (cloth/magicResist).
 # SIMULATION DIAGNOSTIC (2026-02-18): 8 supply chain fixes applied. make-cloth-padding removed.
 # Listing threshold lowered (keep 2), ITEM_TO_SPOT_TYPE expanded, idle=neutral, errors[] populated.
+# P0 SUPPLY CHAIN FIX (2026-02-19): Cotton gathering source added for FARMER→TAILOR chain.
+# 28 recipe rows seeded: 4 TAILOR processing + 15 COOK + 9 BREWER. 38 item templates upserted
+# (11 resources, 3 TAILOR outputs, 15 COOK outputs, 9 BREWER outputs). Fixes 35% crafter blockage.
 # =============================================================================
 
 
@@ -328,12 +331,12 @@ professions:
       APPRENTICE: { level: "3-4", spots: [grain_field, vegetable_patch], yield_bonus: "+0%" }
       JOURNEYMAN: { level: "5-6", spots: [orchard, berry], yield_bonus: "+25%" }
       CRAFTSMAN: { level: "7-8", spots: [hop_field, vineyard], yield_bonus: "+50%", status: EXISTS_IN_GAME }
-      EXPERT: { level: "9-10", spots: [cotton_field, flax_field], yield_bonus: "+75%", status: NOT_YET_IMPLEMENTED }
+      EXPERT: { level: "9-10", spots: [cotton_field, flax_field], yield_bonus: "+75%", status: "cotton_field LIVE (2026-02-19), flax_field NOT_YET" }
       MASTER: { level: "11-12", spots: [rare_herb, exotic_fruit], yield_bonus: "+100%", status: NOT_YET_IMPLEMENTED }
       GRANDMASTER: { level: "13+", spots: [legendary_crop, magical_seedling], yield_bonus: "+150%", status: NOT_YET_IMPLEMENTED }
     feeds_into: [COOK, BREWER]
     status: EXISTS_IN_GAME
-    notes: "Tier-scaled bonus replaced flat +50%. APPRENTICE/JOURNEYMAN/CRAFTSMAN spots live; EXPERT+ Coming Soon."
+    notes: "Tier-scaled bonus replaced flat +50%. APPRENTICE/JOURNEYMAN/CRAFTSMAN spots live. EXPERT cotton_field added 2026-02-19 (TAILOR supply chain P0 fix)."
 
   RANCHER:
     type: GATHERING
@@ -450,7 +453,7 @@ professions:
     raw_inputs: [apple, wild_berries, wild_herbs, raw_fish, river_trout, lake_perch, grain, vegetables, game_meat, wood_logs, eggs, milk]
     intermediate_inputs: [flour]          # Things COOK makes and reuses
     output_categories: [FOOD, DRINK]
-    status: EXISTS_IN_GAME                # UPDATED: 2026-02-20 — 25 recipes (15 original + 3 livestock + 7 fish)
+    status: EXISTS_IN_GAME                # UPDATED: 2026-02-20 — 25 recipes (15 original + 3 livestock + 7 fish). Recipe rows + output templates seeded 2026-02-19 (P0 supply chain fix).
     tier_recipes:  # UPDATED: 2026-02-20
       APPRENTICE: [Flour, Apple Sauce, Porridge, Berry Jam, Herbal Tea, Vegetable Stew, Scrambled Eggs, Creamy Porridge]
       JOURNEYMAN: [Bread Loaf, Apple Pie, Grilled Fish, Fish Stew, Smoked Fish, Seasoned Roast Veg, Berry Tart, Farm Breakfast]
@@ -466,7 +469,7 @@ professions:
     raw_inputs: [grain, apples, wild_berries, wild_herbs, hops, grapes]
     intermediate_inputs: []
     output_categories: [DRINK]
-    status: EXISTS_IN_GAME          # UPDATED: 2026-02-17 — 9 recipes (3 per tier)
+    status: EXISTS_IN_GAME          # UPDATED: 2026-02-17 — 9 recipes (3 per tier). Recipe rows + output templates seeded 2026-02-19 (P0 supply chain fix).
     recipes:
       tier_1_apprentice:            # L3-L4
         - { name: Ale, level: 3, inputs: "3x Grain", output: "2x Ale", buff: "+1 CON 30min" }
@@ -677,7 +680,7 @@ professions:
       JOURNEYMAN: ["Scholar's Robe", "Traveler's Cloak", "Merchant's Hat", "Herbalist's Apron"]
       CRAFTSMAN: ["Weave Fine Cloth", "Process Silk", "Archmage's Robe", "Diplomat's Regalia", "Silk Hood of Insight", "Noble's Leggings", "Enchanted Cloak"]
     recipe_count: 17  # 4 processing + 13 armor (make-cloth-padding removed — Cloth Padding unused)
-    notes: "Marketplace-dependent dual-supply crafter: buys Wool/Fine Wool/Silkworm Cocoons from RANCHER, buys Cured Leather from TANNER. Intermediates: Woven Cloth (T1), Fine Cloth (T3), Silk Fabric (T3). Legacy spin-cloth kept for WOODWORKER housing-bed recipe. Armor triangle: BLACKSMITH (plate, high armor/STR) vs TANNER (leather, armor+DEX) vs TAILOR (cloth, low armor + high magicResist + INT/WIS/CHA)."
+    notes: "Marketplace-dependent dual-supply crafter: buys Wool/Fine Wool/Silkworm Cocoons from RANCHER, buys Cured Leather from TANNER, buys Cotton from FARMER. Intermediates: Woven Cloth (T1), Fine Cloth (T3), Silk Fabric (T3). Legacy spin-cloth kept for WOODWORKER housing-bed recipe. Cotton gathering source added 2026-02-19 (P0 fix). 4 processing recipe rows + 3 output templates seeded 2026-02-19."
 
   ALCHEMIST:
     type: CRAFTING

@@ -240,6 +240,19 @@ export const GRAPES: GatheringItem = {
   icon: '\uD83C\uDF47',
 };
 
+// --- FARMER T2 Cotton Field ---
+
+export const COTTON: GatheringItem = {
+  templateName: 'Cotton',
+  type: 'MATERIAL',
+  description: 'Fluffy cotton bolls harvested from cultivated fields. Essential for spinning cloth.',
+  isFood: false,
+  shelfLifeDays: null,
+  foodBuff: null,
+  baseValue: 4,
+  icon: '☁️',
+};
+
 // --- MINER T2/T3 Private Assets (Coal, Silver Ore) ---
 
 export const COAL: GatheringItem = {
@@ -379,6 +392,7 @@ export const RESOURCE_MAP: Record<string, { item: GatheringItem; icon: string }>
   // FARMER T2 private fields
   hop_field:       { item: HOPS,            icon: '\uD83C\uDF3F' },
   vineyard:        { item: GRAPES,          icon: '\uD83C\uDF47' },
+  cotton_field:    { item: COTTON,          icon: '☁️' },
   // MINER T2/T3 private assets
   coal_mine:       { item: COAL,            icon: '\u26AB' },
   silver_mine:     { item: SILVER_ORE,      icon: '\uD83E\uDEA8' },
@@ -408,6 +422,7 @@ export const GATHER_SPOT_PROFESSION_MAP: Record<string, string> = {
   // FARMER T2 private fields
   hop_field:       'FARMER',
   vineyard:        'FARMER',
+  cotton_field:    'FARMER',
   // MINER T2/T3 private assets
   coal_mine:       'MINER',
   silver_mine:     'MINER',

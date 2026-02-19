@@ -230,6 +230,38 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     levelRequired: 40,
   },
 
+  // --- Processed Materials: Tailor (recipe outputs with different names from above) ---
+  {
+    name: 'Woven Cloth',
+    type: 'MATERIAL',
+    rarity: 'COMMON',
+    description: 'Sturdy fabric woven from raw wool. Warm and durable, ideal for everyday garments.',
+    stats: {},
+    durability: 90,
+    professionRequired: 'TAILOR',
+    levelRequired: 3,
+  },
+  {
+    name: 'Fine Cloth',
+    type: 'MATERIAL',
+    rarity: 'FINE',
+    description: 'Exquisitely soft fabric woven from fine wool. Favored for noble attire and enchanted robes.',
+    stats: {},
+    durability: 80,
+    professionRequired: 'TAILOR',
+    levelRequired: 7,
+  },
+  {
+    name: 'Silk Fabric',
+    type: 'MATERIAL',
+    rarity: 'SUPERIOR',
+    description: 'Shimmering fabric processed from silkworm cocoons. Lightweight yet resilient, prized by master tailors.',
+    stats: {},
+    durability: 70,
+    professionRequired: 'TAILOR',
+    levelRequired: 7,
+  },
+
   // --- Processed Materials: Mason ---
   {
     name: 'Cut Stone',
