@@ -172,3 +172,12 @@ Update `docs/profession-economy-master.yaml`:
 - Add crossbows (they need Iron Ingot from SMELTER — save for later)
 - Touch WOODWORKER's Practice Bow recipe — that stays as-is
 - Over-engineer with specialization branches — FLETCHER is straightforward, no branches
+
+### Final Step: Deploy to Production
+
+After ALL implementation steps are complete and verified locally:
+
+1. **Git commit & push**: `git add -A && git commit -m "feat: implement FLETCHER profession with ranged weapon recipes" && git push`
+2. **Deploy to Azure**: Run the Azure deployment (e.g., `az webapp up` or the project's deploy script)
+3. **Run database seed in production**: Execute the seed script against the production database so all new items, recipes, and buildings are live. Use the same seed command used locally but pointed at the production connection string.
+4. **Verify**: Confirm FLETCHER recipes appear in the crafting UI in production.

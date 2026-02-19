@@ -30,7 +30,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 1,
     inputs: [
       { itemName: 'Copper Ingot', quantity: 2 },
-      { itemName: 'Soft Leather', quantity: 1 },
+      { itemName: 'Cured Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Copper Helm', quantity: 1 }],
     craftTime: 20,
@@ -55,7 +55,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 1,
     inputs: [
       { itemName: 'Copper Ingot', quantity: 4 },
-      { itemName: 'Soft Leather', quantity: 2 },
+      { itemName: 'Cured Leather', quantity: 2 },
     ],
     outputs: [{ itemName: 'Copper Chestplate', quantity: 1 }],
     craftTime: 35,
@@ -80,7 +80,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 1,
     inputs: [
       { itemName: 'Copper Ingot', quantity: 1 },
-      { itemName: 'Soft Leather', quantity: 1 },
+      { itemName: 'Cured Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Copper Gauntlets', quantity: 1 }],
     craftTime: 15,
@@ -105,7 +105,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 1,
     inputs: [
       { itemName: 'Copper Ingot', quantity: 3 },
-      { itemName: 'Soft Leather', quantity: 1 },
+      { itemName: 'Cured Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Copper Greaves', quantity: 1 }],
     craftTime: 25,
@@ -157,7 +157,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 10,
     inputs: [
       { itemName: 'Iron Ingot', quantity: 2 },
-      { itemName: 'Soft Leather', quantity: 1 },
+      { itemName: 'Cured Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Iron Helm', quantity: 1 }],
     craftTime: 30,
@@ -182,7 +182,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 10,
     inputs: [
       { itemName: 'Iron Ingot', quantity: 5 },
-      { itemName: 'Soft Leather', quantity: 2 },
+      { itemName: 'Cured Leather', quantity: 2 },
     ],
     outputs: [{ itemName: 'Iron Chestplate', quantity: 1 }],
     craftTime: 50,
@@ -207,7 +207,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 10,
     inputs: [
       { itemName: 'Iron Ingot', quantity: 2 },
-      { itemName: 'Soft Leather', quantity: 1 },
+      { itemName: 'Cured Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Iron Gauntlets', quantity: 1 }],
     craftTime: 25,
@@ -232,7 +232,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 10,
     inputs: [
       { itemName: 'Iron Ingot', quantity: 3 },
-      { itemName: 'Soft Leather', quantity: 1 },
+      { itemName: 'Cured Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Iron Greaves', quantity: 1 }],
     craftTime: 35,
@@ -284,7 +284,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 30,
     inputs: [
       { itemName: 'Steel Ingot', quantity: 2 },
-      { itemName: 'Soft Leather', quantity: 1 },
+      { itemName: 'Cured Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Steel Helm', quantity: 1 }],
     craftTime: 45,
@@ -309,7 +309,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 30,
     inputs: [
       { itemName: 'Steel Ingot', quantity: 5 },
-      { itemName: 'Soft Leather', quantity: 2 },
+      { itemName: 'Cured Leather', quantity: 2 },
     ],
     outputs: [{ itemName: 'Steel Chestplate', quantity: 1 }],
     craftTime: 75,
@@ -334,7 +334,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 30,
     inputs: [
       { itemName: 'Steel Ingot', quantity: 2 },
-      { itemName: 'Soft Leather', quantity: 1 },
+      { itemName: 'Cured Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Steel Gauntlets', quantity: 1 }],
     craftTime: 40,
@@ -359,7 +359,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 30,
     inputs: [
       { itemName: 'Steel Ingot', quantity: 3 },
-      { itemName: 'Soft Leather', quantity: 1 },
+      { itemName: 'Cured Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Steel Greaves', quantity: 1 }],
     craftTime: 55,
@@ -411,7 +411,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 55,
     inputs: [
       { itemName: 'Mithril Ingot', quantity: 2 },
-      { itemName: 'Exotic Leather', quantity: 1 },
+      { itemName: 'Bear Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Mithril Helm', quantity: 1 }],
     craftTime: 70,
@@ -437,7 +437,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 55,
     inputs: [
       { itemName: 'Mithril Ingot', quantity: 5 },
-      { itemName: 'Exotic Leather', quantity: 2 },
+      { itemName: 'Bear Leather', quantity: 2 },
     ],
     outputs: [{ itemName: 'Mithril Chestplate', quantity: 1 }],
     craftTime: 110,
@@ -463,7 +463,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 55,
     inputs: [
       { itemName: 'Mithril Ingot', quantity: 2 },
-      { itemName: 'Exotic Leather', quantity: 1 },
+      { itemName: 'Bear Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Mithril Gauntlets', quantity: 1 }],
     craftTime: 60,
@@ -489,7 +489,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 55,
     inputs: [
       { itemName: 'Mithril Ingot', quantity: 3 },
-      { itemName: 'Exotic Leather', quantity: 1 },
+      { itemName: 'Bear Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Mithril Greaves', quantity: 1 }],
     craftTime: 80,
@@ -543,7 +543,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 75,
     inputs: [
       { itemName: 'Adamantine Ingot', quantity: 2 },
-      { itemName: 'Exotic Leather', quantity: 1 },
+      { itemName: 'Bear Leather', quantity: 1 },
       { itemName: 'Arcane Reagents', quantity: 1 },
     ],
     outputs: [{ itemName: 'Adamantine Helm', quantity: 1 }],
@@ -570,7 +570,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 75,
     inputs: [
       { itemName: 'Adamantine Ingot', quantity: 6 },
-      { itemName: 'Exotic Leather', quantity: 2 },
+      { itemName: 'Bear Leather', quantity: 2 },
       { itemName: 'Arcane Reagents', quantity: 2 },
     ],
     outputs: [{ itemName: 'Adamantine Chestplate', quantity: 1 }],
@@ -597,7 +597,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 75,
     inputs: [
       { itemName: 'Adamantine Ingot', quantity: 2 },
-      { itemName: 'Exotic Leather', quantity: 1 },
+      { itemName: 'Bear Leather', quantity: 1 },
       { itemName: 'Arcane Reagents', quantity: 1 },
     ],
     outputs: [{ itemName: 'Adamantine Gauntlets', quantity: 1 }],
@@ -624,7 +624,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 75,
     inputs: [
       { itemName: 'Adamantine Ingot', quantity: 3 },
-      { itemName: 'Exotic Leather', quantity: 1 },
+      { itemName: 'Bear Leather', quantity: 1 },
       { itemName: 'Arcane Reagents', quantity: 1 },
     ],
     outputs: [{ itemName: 'Adamantine Greaves', quantity: 1 }],

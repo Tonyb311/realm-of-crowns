@@ -549,14 +549,51 @@ professions:
     notes: "Two pathways: (1) Raw-ore recipes (L3-L8) for early crafting, (2) Ingot-based weapon recipes (L1-L75) for endgame via SMELTER chain"
 
   ARMORER:
+    # ARMORER profession LIVE — 25 recipes, metal plate armor (2026-02-19)
     type: CRAFTING
     unlock_level: 5
-    description: "Crafts metal armor and shields."
+    primary_stat: STR
+    description: "Crafts metal armor and shields from ingots and leather."
     depends_on_gatherers: []
-    intermediate_inputs: [iron_ingot, leather]  # SMELTER + TANNER
-    output_categories: [ARMOR, SHIELD]
-    status: PLANNED
-    notes: "Cross-chain: needs both SMELTER and TANNER outputs"
+    depends_on_crafters: [SMELTER, TANNER]
+    intermediate_inputs: [Copper Ingot, Iron Ingot, Steel Ingot, Mithril Ingot, Adamantine Ingot, Cured Leather, Bear Leather]
+    output_categories: [ARMOR]
+    workshop: SMITHY (shared with BLACKSMITH)
+    recipe_count: 25
+    status: EXISTS_IN_GAME
+    tier_recipes:
+      apprentice:
+        - { id: craft-copper-helm, level: 1, slot: HEAD }
+        - { id: craft-copper-chestplate, level: 1, slot: CHEST }
+        - { id: craft-copper-gauntlets, level: 1, slot: HANDS }
+        - { id: craft-copper-greaves, level: 1, slot: LEGS }
+        - { id: craft-copper-shield, level: 1, slot: OFF_HAND }
+      journeyman:
+        - { id: craft-iron-helm, level: 10, slot: HEAD }
+        - { id: craft-iron-chestplate, level: 10, slot: CHEST }
+        - { id: craft-iron-gauntlets, level: 10, slot: HANDS }
+        - { id: craft-iron-greaves, level: 10, slot: LEGS }
+        - { id: craft-iron-shield, level: 10, slot: OFF_HAND }
+      craftsman:
+        - { id: craft-steel-helm, level: 30, slot: HEAD }
+        - { id: craft-steel-chestplate, level: 30, slot: CHEST }
+        - { id: craft-steel-gauntlets, level: 30, slot: HANDS }
+        - { id: craft-steel-greaves, level: 30, slot: LEGS }
+        - { id: craft-steel-shield, level: 30, slot: OFF_HAND }
+      expert:
+        - { id: craft-mithril-helm, level: 55, slot: HEAD }
+        - { id: craft-mithril-chestplate, level: 55, slot: CHEST }
+        - { id: craft-mithril-gauntlets, level: 55, slot: HANDS }
+        - { id: craft-mithril-greaves, level: 55, slot: LEGS }
+        - { id: craft-mithril-shield, level: 55, slot: OFF_HAND }
+      master:
+        - { id: craft-adamantine-helm, level: 75, slot: HEAD }
+        - { id: craft-adamantine-chestplate, level: 75, slot: CHEST }
+        - { id: craft-adamantine-gauntlets, level: 75, slot: HANDS }
+        - { id: craft-adamantine-greaves, level: 75, slot: LEGS }
+        - { id: craft-adamantine-shield, level: 75, slot: OFF_HAND }
+    supply_chain: "MINER → SMELTER → ARMORER, HUNTER → TANNER → ARMORER"
+    notes: "Shares SMITHY workshop with BLACKSMITH. Uses Cured Leather (T1-3) and Bear Leather (T4-5) as secondary inputs."
 
   WOODWORKER:
     # WOODWORKER profession LIVE — 25 recipes (11 processing + 14 finished goods)

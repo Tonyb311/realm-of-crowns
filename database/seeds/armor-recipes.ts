@@ -40,6 +40,7 @@ const ARMOR_TEMPLATES: ArmorTemplateDef[] = [
   { name: 'Iron Chestplate', type: 'ARMOR', rarity: 'COMMON', description: 'Thick iron plate armor covering the torso.', stats: { armor: 16 }, durability: 150, professionRequired: 'ARMORER', levelRequired: 10 },
   { name: 'Iron Gauntlets', type: 'ARMOR', rarity: 'COMMON', description: 'Articulated iron gauntlets for battle.', stats: { armor: 6 }, durability: 110, professionRequired: 'ARMORER', levelRequired: 10 },
   { name: 'Iron Greaves', type: 'ARMOR', rarity: 'COMMON', description: 'Iron leg plates that protect from knee to ankle.', stats: { armor: 10 }, durability: 130, professionRequired: 'ARMORER', levelRequired: 10 },
+  { name: 'Iron Shield', type: 'ARMOR', rarity: 'COMMON', description: 'A sturdy iron kite shield.', stats: { armor: 12 }, durability: 140, professionRequired: 'ARMORER', levelRequired: 10 },
 
   // --- ARMORER: Steel ---
   { name: 'Steel Helm', type: 'ARMOR', rarity: 'FINE', description: 'A polished steel helm with a visor.', stats: { armor: 14 }, durability: 200, professionRequired: 'ARMORER', levelRequired: 30 },
