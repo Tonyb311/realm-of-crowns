@@ -952,10 +952,41 @@ professions:
     specialization_level: 7
     specialization_permanent: true
     recipe_count: 28  # 16 shared + 12 branch-exclusive
-    recipe_tiers:
-      apprentice: "7 recipes (L3-L4) — shared, using Iron Ore Chunks + Wood Logs"
-      journeyman: "9 recipes (L5-L6) — shared, adding Coal as fuel"
-      specialist: "12 recipes (L7-L8) — 4 per branch, using Silver Ore + Hardwood"
+    # UPDATED: Economy pricing pass — 28 structured recipe entries with inputs + BVs
+    tier_recipes:
+      apprentice:
+        - { id: bs-iron-pickaxe, level: 3, inputs: "2x Iron Ore Chunks + 1x Wood Logs", output: "Iron Pickaxe", base_value: 18 }
+        - { id: bs-iron-hatchet, level: 3, inputs: "2x Iron Ore Chunks + 1x Wood Logs", output: "Iron Hatchet", base_value: 18 }
+        - { id: bs-iron-dagger, level: 3, inputs: "2x Iron Ore Chunks + 1x Wood Logs", output: "Iron Dagger", base_value: 17 }
+        - { id: bs-iron-sword, level: 4, inputs: "3x Iron Ore Chunks + 1x Wood Logs", output: "Iron Sword", base_value: 23 }
+        - { id: bs-iron-shield, level: 4, inputs: "2x Iron Ore Chunks + 2x Wood Logs", output: "Iron Shield", base_value: 25 }
+        - { id: bs-iron-helm, level: 4, inputs: "2x Iron Ore Chunks + 1x Wood Logs", output: "Iron Helm", base_value: 20 }
+        - { id: bs-copper-hoe, level: 3, inputs: "2x Copper Ore + 1x Wood Logs", output: "Copper Hoe", base_value: 17 }
+      journeyman:
+        - { id: bs-steel-pickaxe, level: 5, inputs: "2x Iron Ore Chunks + 1x Coal + 1x Wood Logs", output: "Steel Pickaxe", base_value: 38 }
+        - { id: bs-steel-hatchet, level: 5, inputs: "2x Iron Ore Chunks + 1x Coal + 1x Wood Logs", output: "Steel Hatchet", base_value: 38 }
+        - { id: bs-steel-dagger, level: 5, inputs: "1x Iron Ore Chunks + 1x Coal + 1x Wood Logs", output: "Steel Dagger", base_value: 32 }
+        - { id: bs-steel-sword, level: 5, inputs: "3x Iron Ore Chunks + 1x Coal + 1x Wood Logs", output: "Steel Sword", base_value: 45 }
+        - { id: bs-iron-battleaxe, level: 5, inputs: "3x Iron Ore Chunks + 1x Coal + 1x Wood Logs", output: "Iron Battleaxe", base_value: 42 }
+        - { id: bs-reinforced-shield, level: 6, inputs: "2x Iron Ore Chunks + 1x Coal + 2x Wood Logs", output: "Reinforced Shield", base_value: 42 }
+        - { id: bs-iron-chainmail, level: 6, inputs: "4x Iron Ore Chunks + 1x Coal + 1x Wood Logs", output: "Iron Chainmail", base_value: 48 }
+        - { id: bs-iron-fishing-spear, level: 5, inputs: "1x Iron Ore Chunks + 1x Coal + 1x Wood Logs", output: "Iron Fishing Spear", base_value: 30 }
+        - { id: bs-reinforced-helm, level: 6, inputs: "2x Iron Ore Chunks + 1x Coal + 1x Wood Logs", output: "Reinforced Helm", base_value: 35 }
+      specialist_toolsmith:
+        - { id: bs-silver-pickaxe, level: 7, inputs: "1x Silver Ore + 2x Iron Ore Chunks + 1x Coal + 1x Wood Logs", output: "Silver Pickaxe", base_value: 95, specialization: TOOLSMITH }
+        - { id: bs-hardwood-hatchet, level: 7, inputs: "2x Iron Ore Chunks + 1x Coal + 1x Hardwood", output: "Hardwood Hatchet", base_value: 80, specialization: TOOLSMITH }
+        - { id: bs-hunters-knife, level: 8, inputs: "1x Silver Ore + 1x Iron Ore Chunks + 1x Coal + 1x Wood Logs", output: "Hunter's Knife", base_value: 85, specialization: TOOLSMITH }
+        - { id: bs-reinforced-hoe, level: 8, inputs: "2x Iron Ore Chunks + 1x Coal + 1x Hardwood", output: "Reinforced Hoe", base_value: 75, specialization: TOOLSMITH }
+      specialist_weaponsmith:
+        - { id: bs-silver-longsword, level: 7, inputs: "2x Silver Ore + 1x Coal + 1x Wood Logs", output: "Silver Longsword", base_value: 120, specialization: WEAPONSMITH }
+        - { id: bs-silver-dagger, level: 7, inputs: "1x Silver Ore + 1x Iron Ore Chunks + 1x Coal + 1x Wood Logs", output: "Silver Dagger", base_value: 90, specialization: WEAPONSMITH }
+        - { id: bs-silver-battleaxe, level: 8, inputs: "2x Silver Ore + 1x Iron Ore Chunks + 1x Coal + 1x Wood Logs", output: "Silver Battleaxe", base_value: 125, specialization: WEAPONSMITH }
+        - { id: bs-war-pick, level: 8, inputs: "1x Silver Ore + 2x Iron Ore Chunks + 1x Coal + 1x Wood Logs", output: "War Pick", base_value: 100, specialization: WEAPONSMITH }
+      specialist_armorer:
+        - { id: bs-silver-studded-plate, level: 7, inputs: "2x Silver Ore + 2x Iron Ore Chunks + 1x Coal + 1x Wood Logs", output: "Silver-Studded Plate", base_value: 130, specialization: ARMORER }
+        - { id: bs-silver-helm, level: 7, inputs: "1x Silver Ore + 2x Iron Ore Chunks + 1x Coal + 1x Wood Logs", output: "Silver Helm", base_value: 95, specialization: ARMORER }
+        - { id: bs-hardwood-tower-shield, level: 8, inputs: "2x Iron Ore Chunks + 1x Coal + 2x Hardwood", output: "Hardwood Tower Shield", base_value: 108, specialization: ARMORER }
+        - { id: bs-reinforced-chain-leggings, level: 8, inputs: "1x Silver Ore + 3x Iron Ore Chunks + 1x Coal + 1x Wood Logs", output: "Reinforced Chain Leggings", base_value: 105, specialization: ARMORER }
     notes: "Two pathways: (1) Raw-ore recipes (L3-L8) for early crafting, (2) Ingot-based weapon recipes (L1-L75) for endgame via SMELTER chain"
 
   ARMORER:
@@ -971,37 +1002,38 @@ professions:
     workshop: SMITHY (shared with BLACKSMITH)
     recipe_count: 25
     status: EXISTS_IN_GAME
+    # UPDATED: Economy pricing pass — inputs added for all 25 recipes + 6 BV fixes
     tier_recipes:
       apprentice:
-        - { id: craft-copper-helm, level: 1, slot: HEAD, base_value: 45 }
-        - { id: craft-copper-chestplate, level: 1, slot: CHEST, base_value: 90 }
-        - { id: craft-copper-gauntlets, level: 1, slot: HANDS, base_value: 40 }
-        - { id: craft-copper-greaves, level: 1, slot: LEGS, base_value: 55 }
-        - { id: craft-copper-shield, level: 1, slot: OFF_HAND, base_value: 55 }
+        - { id: craft-copper-helm, level: 1, slot: HEAD, inputs: "2x Copper Ingot + 2x Nails", base_value: 45 }
+        - { id: craft-copper-chestplate, level: 1, slot: CHEST, inputs: "3x Copper Ingot + 1x Cured Leather", base_value: 90 }
+        - { id: craft-copper-gauntlets, level: 1, slot: HANDS, inputs: "1x Copper Ingot + 1x Cured Leather", base_value: 45 }
+        - { id: craft-copper-greaves, level: 1, slot: LEGS, inputs: "2x Copper Ingot + 5x Nails", base_value: 55 }
+        - { id: craft-copper-shield, level: 1, slot: OFF_HAND, inputs: "2x Copper Ingot + 5x Nails", base_value: 55 }
       journeyman:
-        - { id: craft-iron-helm, level: 10, slot: HEAD, base_value: 130 }
-        - { id: craft-iron-chestplate, level: 10, slot: CHEST, base_value: 250 }
-        - { id: craft-iron-gauntlets, level: 10, slot: HANDS, base_value: 110 }
-        - { id: craft-iron-greaves, level: 10, slot: LEGS, base_value: 160 }
-        - { id: craft-iron-shield, level: 10, slot: OFF_HAND, base_value: 150 }
+        - { id: craft-iron-helm, level: 10, slot: HEAD, inputs: "1x Iron Ingot + 1x Cured Leather + 2x Iron Fittings", base_value: 130 }
+        - { id: craft-iron-chestplate, level: 10, slot: CHEST, inputs: "3x Iron Ingot + 1x Cured Leather", base_value: 250 }
+        - { id: craft-iron-gauntlets, level: 10, slot: HANDS, inputs: "1x Iron Ingot + 1x Cured Leather", base_value: 110 }
+        - { id: craft-iron-greaves, level: 10, slot: LEGS, inputs: "2x Iron Ingot + 1x Cured Leather", base_value: 175 }
+        - { id: craft-iron-shield, level: 10, slot: OFF_HAND, inputs: "1x Iron Ingot + 1x Cured Leather + 3x Iron Fittings", base_value: 150 }
       craftsman:
-        - { id: craft-steel-helm, level: 30, slot: HEAD, base_value: 500 }
-        - { id: craft-steel-chestplate, level: 30, slot: CHEST, base_value: 950 }
-        - { id: craft-steel-gauntlets, level: 30, slot: HANDS, base_value: 420 }
-        - { id: craft-steel-greaves, level: 30, slot: LEGS, base_value: 600 }
-        - { id: craft-steel-shield, level: 30, slot: OFF_HAND, base_value: 550 }
+        - { id: craft-steel-helm, level: 30, slot: HEAD, inputs: "1x Steel Ingot + 2x Cured Leather + 4x Iron Fittings", base_value: 500 }
+        - { id: craft-steel-chestplate, level: 30, slot: CHEST, inputs: "3x Steel Ingot + 2x Cured Leather", base_value: 1000 }
+        - { id: craft-steel-gauntlets, level: 30, slot: HANDS, inputs: "1x Steel Ingot + 1x Cured Leather + 2x Iron Fittings", base_value: 420 }
+        - { id: craft-steel-greaves, level: 30, slot: LEGS, inputs: "2x Steel Ingot + 1x Cured Leather + 2x Iron Fittings", base_value: 700 }
+        - { id: craft-steel-shield, level: 30, slot: OFF_HAND, inputs: "1x Steel Ingot + 1x Iron Ingot + 2x Cured Leather", base_value: 550 }
       expert:
-        - { id: craft-mithril-helm, level: 55, slot: HEAD, base_value: 1800 }
-        - { id: craft-mithril-chestplate, level: 55, slot: CHEST, base_value: 3500 }
-        - { id: craft-mithril-gauntlets, level: 55, slot: HANDS, base_value: 1500 }
-        - { id: craft-mithril-greaves, level: 55, slot: LEGS, base_value: 2200 }
-        - { id: craft-mithril-shield, level: 55, slot: OFF_HAND, base_value: 2000 }
+        - { id: craft-mithril-helm, level: 55, slot: HEAD, inputs: "1x Mithril Ingot + 1x Bear Leather + 1x Steel Ingot", base_value: 1800 }
+        - { id: craft-mithril-chestplate, level: 55, slot: CHEST, inputs: "2x Mithril Ingot + 1x Bear Leather + 2x Steel Ingot", base_value: 3500 }
+        - { id: craft-mithril-gauntlets, level: 55, slot: HANDS, inputs: "1x Mithril Ingot + 1x Bear Leather", base_value: 1500 }
+        - { id: craft-mithril-greaves, level: 55, slot: LEGS, inputs: "1x Mithril Ingot + 1x Bear Leather + 2x Steel Ingot", base_value: 2200 }
+        - { id: craft-mithril-shield, level: 55, slot: OFF_HAND, inputs: "1x Mithril Ingot + 1x Bear Leather + 1x Steel Ingot", base_value: 2000 }
       master:
-        - { id: craft-adamantine-helm, level: 75, slot: HEAD, base_value: 6000 }
-        - { id: craft-adamantine-chestplate, level: 75, slot: CHEST, base_value: 12000 }
-        - { id: craft-adamantine-gauntlets, level: 75, slot: HANDS, base_value: 5000 }
-        - { id: craft-adamantine-greaves, level: 75, slot: LEGS, base_value: 7500 }
-        - { id: craft-adamantine-shield, level: 75, slot: OFF_HAND, base_value: 7000 }
+        - { id: craft-adamantine-helm, level: 75, slot: HEAD, inputs: "1x Adamantine Ingot + 1x Bear Leather + 1x Mithril Ingot", base_value: 6000 }
+        - { id: craft-adamantine-chestplate, level: 75, slot: CHEST, inputs: "2x Adamantine Ingot + 1x Bear Leather + 2x Mithril Ingot", base_value: 12000 }
+        - { id: craft-adamantine-gauntlets, level: 75, slot: HANDS, inputs: "1x Adamantine Ingot + 1x Bear Leather + 1x Steel Ingot", base_value: 5000 }
+        - { id: craft-adamantine-greaves, level: 75, slot: LEGS, inputs: "2x Adamantine Ingot + 1x Bear Leather", base_value: 8000 }
+        - { id: craft-adamantine-shield, level: 75, slot: OFF_HAND, inputs: "2x Adamantine Ingot + 1x Bear Leather + 1x Steel Ingot", base_value: 8500 }
     supply_chain: "MINER → SMELTER → ARMORER, HUNTER → TANNER → ARMORER"
     notes: "Shares SMITHY workshop with BLACKSMITH. Uses Cured Leather (T1-3) and Bear Leather (T4-5) as secondary inputs."
 
@@ -1018,19 +1050,39 @@ professions:
     outputs_used_by: [FLETCHER, MINER, FISHERMAN, TANNER, BLACKSMITH]
     status: EXISTS_IN_GAME
     recipe_count: 25
+    # UPDATED: Economy pricing pass — 25 structured recipe entries with inputs + BVs
     tier_recipes:
-      apprentice:
-        level_range: "3-10"
-        processing: ["saw-rough-planks", "mill-softwood", "ww-carve-wooden-dowels", "ww-shape-wooden-handle", "ww-carve-bow-stave"]
-        finished_goods: ["ww-wooden-pickaxe", "ww-fishing-rod", "ww-carving-knife", "ww-wooden-chair"]
-      journeyman:
-        level_range: "11-25"
-        processing: ["mill-hardwood", "shape-beams", "make-barrel", "make-furniture", "ww-craft-wooden-frame"]
-        finished_goods: ["ww-tanning-rack", "ww-fine-fishing-rod", "ww-wooden-table", "ww-storage-chest", "ww-wooden-bed-frame", "ww-wooden-shield"]
-      craftsman:
-        level_range: "26-50"
-        processing: ["mill-exotic"]
-        finished_goods: ["ww-wooden-shelf", "ww-reinforced-crate", "ww-hardwood-tower-shield", "ww-practice-bow"]
+      apprentice_processing:
+        - { id: saw-rough-planks, level: 3, inputs: "1x Wood Logs", output: "2x Rough Planks", base_value: 4 }
+        - { id: mill-softwood, level: 3, inputs: "1x Softwood", output: "2x Softwood Planks", base_value: 3 }
+        - { id: ww-carve-wooden-dowels, level: 5, inputs: "1x Softwood + 1x Wood Logs", output: "3x Wooden Dowels", base_value: 4 }
+        - { id: ww-shape-wooden-handle, level: 5, inputs: "1x Wood Logs + 2x Nails", output: "2x Wooden Handle", base_value: 5 }
+        - { id: ww-carve-bow-stave, level: 8, inputs: "1x Wood Logs + 1x Softwood", output: "Bow Stave", base_value: 11 }
+      apprentice_finished:
+        - { id: ww-wooden-pickaxe, level: 3, inputs: "2x Wood Logs + 4x Nails", output: "Wooden Pickaxe", base_value: 19 }
+        - { id: ww-fishing-rod, level: 3, inputs: "1x Softwood + 1x Wood Logs + 2x Nails", output: "Fishing Rod", base_value: 14 }
+        - { id: ww-carving-knife, level: 5, inputs: "1x Wood Logs + 1x Iron Ore Chunks", output: "Carving Knife", base_value: 12 }
+        - { id: ww-wooden-chair, level: 8, inputs: "2x Wood Logs + 4x Nails", output: "Wooden Chair", base_value: 19 }
+      journeyman_processing:
+        - { id: mill-hardwood, level: 11, inputs: "1x Hardwood", output: "2x Hardwood Planks", base_value: 18 }
+        - { id: shape-beams, level: 12, inputs: "2x Wood Logs + 2x Nails", output: "Wooden Beams", base_value: 17 }
+        - { id: make-barrel, level: 15, inputs: "3x Wood Logs + 6x Nails + 2x Iron Fittings", output: "Barrel", base_value: 55 }
+        - { id: make-furniture, level: 15, inputs: "2x Hardwood Planks + 6x Nails", output: "Furniture", base_value: 63 }
+        - { id: ww-craft-wooden-frame, level: 18, inputs: "2x Wood Logs + 1x Hardwood + 4x Nails", output: "Wooden Frame", base_value: 58 }
+      journeyman_finished:
+        - { id: ww-tanning-rack, level: 11, inputs: "2x Wood Logs + 1x Hardwood + 4x Nails", output: "Tanning Rack", base_value: 58 }
+        - { id: ww-fine-fishing-rod, level: 15, inputs: "1x Hardwood + 1x Softwood + 4x Nails", output: "Fine Fishing Rod", base_value: 45 }
+        - { id: ww-wooden-table, level: 18, inputs: "2x Hardwood Planks + 6x Nails + 2x Wood Logs", output: "Wooden Table", base_value: 78 }
+        - { id: ww-storage-chest, level: 20, inputs: "3x Hardwood Planks + 8x Nails + 2x Iron Fittings", output: "Storage Chest", base_value: 117 }
+        - { id: ww-wooden-bed-frame, level: 22, inputs: "2x Hardwood Planks + 2x Wooden Beams + 8x Nails", output: "Wooden Bed Frame", base_value: 110 }
+        - { id: ww-wooden-shield, level: 25, inputs: "2x Hardwood Planks + 4x Nails + 1x Cured Leather", output: "Wooden Shield", base_value: 87 }
+      craftsman_processing:
+        - { id: mill-exotic, level: 30, inputs: "1x Exotic Wood", output: "2x Exotic Planks", base_value: 40 }
+      craftsman_finished:
+        - { id: ww-wooden-shelf, level: 30, inputs: "2x Hardwood Planks + 4x Nails + 1x Iron Fittings", output: "Wooden Shelf", base_value: 75 }
+        - { id: ww-reinforced-crate, level: 35, inputs: "3x Hardwood Planks + 8x Nails + 3x Iron Fittings", output: "Reinforced Crate", base_value: 130 }
+        - { id: ww-hardwood-tower-shield, level: 40, inputs: "2x Exotic Planks + 1x Iron Ingot + 1x Cured Leather", output: "Hardwood Tower Shield", base_value: 230 }
+        - { id: ww-practice-bow, level: 30, inputs: "1x Bow Stave + 1x Bowstring + 1x Softwood", output: "Practice Bow", base_value: 45 }
 
   TANNER:
     type: CRAFTING
@@ -1063,11 +1115,25 @@ professions:
     output_categories: [ARMOR, ACCESSORY, TOOL, CONSUMABLE]
     workshop: TANNERY  # shared with TANNER
     status: EXISTS_IN_GAME
-    tier_recipes:
-      APPRENTICE: ["Leather Gloves", "Leather Boots", "Leather Backpack", "Leather Waterskin"]
-      JOURNEYMAN: ["Wolf Leather Gloves", "Wolf Leather Boots", "Toolbelt", "Leather Repair Kit", "Ranger's Pack"]
-      CRAFTSMAN: ["Bear Hide Vambraces", "Bear Leather Boots", "Hunter's Kit", "Explorer's Pack"]
     recipe_count: 13
+    # UPDATED: Economy pricing pass — structured recipe entries with inputs + BVs
+    tier_recipes:
+      apprentice:
+        - { id: lw-leather-gloves, level: 5, inputs: "2x Cured Leather + 1x Animal Pelts", output: "Leather Gloves", base_value: 58 }
+        - { id: lw-leather-boots, level: 5, inputs: "2x Cured Leather + 1x Animal Pelts", output: "Leather Boots", base_value: 58 }
+        - { id: lw-leather-backpack, level: 8, inputs: "3x Cured Leather + 4x Nails", output: "Leather Backpack", base_value: 78 }
+        - { id: lw-leather-waterskin, level: 5, inputs: "1x Cured Leather + 1x Animal Pelts", output: "Leather Waterskin", base_value: 35 }
+      journeyman:
+        - { id: lw-wolf-gloves, level: 12, inputs: "1x Wolf Leather + 1x Cured Leather", output: "Wolf Leather Gloves", base_value: 145 }
+        - { id: lw-wolf-boots, level: 12, inputs: "1x Wolf Leather + 1x Cured Leather", output: "Wolf Leather Boots", base_value: 145 }
+        - { id: lw-toolbelt, level: 15, inputs: "2x Cured Leather + 1x Wooden Frame + 4x Nails", output: "Toolbelt", base_value: 140 }
+        - { id: lw-repair-kit, level: 15, inputs: "2x Cured Leather + 10x Nails", output: "Leather Repair Kit", base_value: 80 }
+        - { id: lw-rangers-pack, level: 20, inputs: "1x Wolf Leather + 2x Cured Leather + 1x Wooden Frame", output: "Ranger's Pack", base_value: 240 }
+      craftsman:
+        - { id: lw-bear-vambraces, level: 30, inputs: "2x Bear Leather + 1x Cured Leather", output: "Bear Hide Vambraces", base_value: 310 }
+        - { id: lw-bear-boots, level: 30, inputs: "1x Bear Leather + 1x Wolf Leather", output: "Bear Leather Boots", base_value: 260 }
+        - { id: lw-hunters-kit, level: 35, inputs: "1x Wolf Leather + 1x Bear Leather + 10x Nails", output: "Hunter's Kit", base_value: 280 }
+        - { id: lw-explorers-pack, level: 40, inputs: "2x Bear Leather + 1x Wolf Leather + 1x Wooden Frame", output: "Explorer's Pack", base_value: 480 }
     notes: "Fills the gaps TANNER doesn't cover. Armor values intentionally lower than TANNER — LEATHERWORKER makes utility, not defense. DEX bonuses on all armor pieces (leather stat identity). Supply chain: HUNTER → TANNER → LEATHERWORKER. Workshop: TANNERY (shared, no new building needed)."
 
   TAILOR:
@@ -1098,11 +1164,23 @@ professions:
     raw_inputs: [wild_herbs, wild_berries, clay, medicinal_herbs, glowcap_mushrooms]
     intermediate_inputs: []
     output_categories: [POTION]
-    tier_unlocks:
-      APPRENTICE: { level: "3-4", recipes: ["Minor Healing Potion", "Antidote", "Berry Salve"] }
-      JOURNEYMAN: { level: "5-6", recipes: ["Healing Potion", "Elixir of Strength", "Elixir of Wisdom", "Poison Resistance Tonic"] }
-      CRAFTSMAN: { level: "7-8", recipes: ["Greater Healing Potion", "Elixir of Fortitude", "Glowcap Extract", "Universal Antidote"] }
     status: EXISTS_IN_GAME
+    # UPDATED: Economy pricing pass — structured recipe entries with inputs + BVs
+    tier_recipes:
+      apprentice:
+        - { id: alch-minor-healing, level: 3, inputs: "2x Wild Herbs + 1x Clay", output: "Minor Healing Potion", base_value: 19 }
+        - { id: alch-antidote, level: 3, inputs: "2x Wild Herbs", output: "Antidote", base_value: 14 }
+        - { id: alch-berry-salve, level: 4, inputs: "2x Wild Berries + 1x Wild Herbs", output: "Berry Salve", base_value: 15 }
+      journeyman:
+        - { id: alch-healing, level: 5, inputs: "3x Wild Herbs + 1x Clay", output: "Healing Potion", base_value: 27 }
+        - { id: alch-elixir-strength, level: 5, inputs: "2x Wild Herbs + 1x Medicinal Herbs", output: "Elixir of Strength", base_value: 55 }
+        - { id: alch-elixir-wisdom, level: 6, inputs: "2x Wild Herbs + 1x Medicinal Herbs", output: "Elixir of Wisdom", base_value: 55 }
+        - { id: alch-poison-tonic, level: 6, inputs: "2x Wild Herbs + 1x Wild Berries", output: "Poison Resistance Tonic", base_value: 20 }
+      craftsman:
+        - { id: alch-greater-healing, level: 7, inputs: "2x Medicinal Herbs + 1x Clay", output: "Greater Healing Potion", base_value: 85 }
+        - { id: alch-elixir-fortitude, level: 7, inputs: "1x Medicinal Herbs + 1x Glowcap Mushrooms + 1x Clay", output: "Elixir of Fortitude", base_value: 95 }
+        - { id: alch-glowcap-extract, level: 8, inputs: "2x Glowcap Mushrooms", output: "Glowcap Extract", base_value: 95 }
+        - { id: alch-universal-antidote, level: 8, inputs: "1x Medicinal Herbs + 1x Glowcap Mushrooms + 1x Wild Herbs", output: "Universal Antidote", base_value: 100 }
     notes: "11 recipes across 3 tiers. First dedicated HERBALIST consumer. Potions marked isPotion=true, sold at Apothecary building. Supply chain: HERBALIST/FARMER → ALCHEMIST → Market."
 
   ENCHANTER:
@@ -1122,19 +1200,20 @@ professions:
     workshop: ENCHANTING_TOWER
     recipe_count: 13
     status: EXISTS_IN_GAME
+    # UPDATED: Economy pricing pass — mundane_inputs added to 9 original recipes + 6 BV fixes
     tier_recipes:
       apprentice:
-        - { id: ench-fortified, level: 5, output: Fortified Enchantment Scroll, base_value: 80, magical_inputs: "2x Living Bark" }
+        - { id: ench-fortified, level: 5, output: Fortified Enchantment Scroll, base_value: 110, magical_inputs: "2x Living Bark", mundane_inputs: "1x Iron Ingot + 1x Coal" }
       journeyman:
-        - { id: ench-flaming, level: 10, output: Flaming Enchantment Scroll, base_value: 130, magical_inputs: "2x Ember Core" }
-        - { id: ench-frost, level: 10, output: Frost Enchantment Scroll, base_value: 130, magical_inputs: "2x Frost Essence" }
-        - { id: ench-lightning, level: 15, output: Lightning Enchantment Scroll, base_value: 175, magical_inputs: "2x Storm Feather" }
-        - { id: ench-swift, level: 15, output: Swift Enchantment Scroll, base_value: 160, magical_inputs: "1x Ogre Sinew + 1x Wind Mote" }
-        - { id: ench-poisoned, level: 20, output: Poisoned Enchantment Scroll, base_value: 200, magical_inputs: "3x Spider Venom" }
-        - { id: ench-warding, level: 20, output: Warding Enchantment Scroll, base_value: 210, magical_inputs: "1x Basilisk Scale" }
+        - { id: ench-flaming, level: 10, output: Flaming Enchantment Scroll, base_value: 155, magical_inputs: "2x Ember Core", mundane_inputs: "1x Iron Ingot + 2x Coal" }
+        - { id: ench-frost, level: 10, output: Frost Enchantment Scroll, base_value: 155, magical_inputs: "2x Frost Essence", mundane_inputs: "1x Iron Ingot + 2x Coal" }
+        - { id: ench-lightning, level: 15, output: Lightning Enchantment Scroll, base_value: 175, magical_inputs: "2x Storm Feather", mundane_inputs: "1x Silver Ingot + 1x Coal" }
+        - { id: ench-swift, level: 15, output: Swift Enchantment Scroll, base_value: 195, magical_inputs: "1x Ogre Sinew + 1x Wind Mote", mundane_inputs: "1x Silver Ingot + 1x Arcane Reagents" }
+        - { id: ench-poisoned, level: 20, output: Poisoned Enchantment Scroll, base_value: 200, magical_inputs: "3x Spider Venom", mundane_inputs: "1x Iron Ingot + 1x Arcane Reagents" }
+        - { id: ench-warding, level: 20, output: Warding Enchantment Scroll, base_value: 210, magical_inputs: "1x Basilisk Scale", mundane_inputs: "1x Silver Ingot + 1x Arcane Reagents + 1x Coal" }
       craftsman:
-        - { id: ench-holy, level: 30, output: Holy Enchantment Scroll, base_value: 450, magical_inputs: "2x Fey Tear" }
-        - { id: ench-shadow, level: 30, output: Shadow Enchantment Scroll, base_value: 450, magical_inputs: "2x Shadow Essence" }
+        - { id: ench-holy, level: 30, output: Holy Enchantment Scroll, base_value: 340, magical_inputs: "2x Fey Tear", mundane_inputs: "1x Silver Ingot + 1x Arcane Reagents + 2x Coal" }
+        - { id: ench-shadow, level: 30, output: Shadow Enchantment Scroll, base_value: 330, magical_inputs: "2x Shadow Essence", mundane_inputs: "1x Silver Ingot + 1x Arcane Reagents + 1x Gemstones" }
         - { id: ench-earthen, level: 35, output: Earthen Enchantment Scroll, base_value: 250, magical_inputs: "3x Earth Crystal", mundane_inputs: "1x Iron Ingot + 1x Arcane Reagents + 2x Coal" }
         - { id: ench-vitality, level: 35, output: Vitality Enchantment Scroll, base_value: 220, magical_inputs: "2x Heartwood Sap + 1x Troll Blood", mundane_inputs: "1x Arcane Reagents + 1x Silver Ingot" }
       expert:
@@ -1156,23 +1235,24 @@ professions:
     workshop: JEWELER_WORKSHOP
     recipe_count: 12
     status: EXISTS_IN_GAME
+    # UPDATED: Economy pricing pass — inputs added for all 12 recipes + 8 BV fixes
     tier_recipes:
       apprentice:
-        - { id: jewel-copper-ring, level: 1, output: Copper Ring, base_value: 50 }
-        - { id: jewel-copper-necklace, level: 1, output: Copper Necklace, base_value: 60 }
+        - { id: jewel-copper-ring, level: 1, inputs: "1x Copper Ingot + 1x Gemstones", output: "Copper Ring", base_value: 55 }
+        - { id: jewel-copper-necklace, level: 1, inputs: "2x Copper Ingot + 1x Gemstones", output: "Copper Necklace", base_value: 75 }
       journeyman:
-        - { id: jewel-iron-ring, level: 10, output: Iron Ring, base_value: 120 }
-        - { id: jewel-brooch-protection, level: 15, output: Brooch of Protection, base_value: 170 }
-        - { id: jewel-silver-ring, level: 20, output: Silver Ring, base_value: 200 }
-        - { id: jewel-silver-necklace, level: 20, output: Silver Necklace, base_value: 250 }
-        - { id: jewel-circlet-focus, level: 25, output: Circlet of Focus, base_value: 350 }
+        - { id: jewel-iron-ring, level: 10, inputs: "1x Iron Ingot + 1x Gemstones", output: "Iron Ring", base_value: 120 }
+        - { id: jewel-brooch-protection, level: 15, inputs: "1x Silver Ingot + 2x Gemstones", output: "Brooch of Protection", base_value: 180 }
+        - { id: jewel-silver-ring, level: 20, inputs: "1x Silver Ingot + 1x Gemstones", output: "Silver Ring", base_value: 155 }
+        - { id: jewel-silver-necklace, level: 20, inputs: "2x Silver Ingot + 2x Gemstones", output: "Silver Necklace", base_value: 290 }
+        - { id: jewel-circlet-focus, level: 25, inputs: "2x Silver Ingot + 2x Gemstones + 1x Arcane Reagents", output: "Circlet of Focus", base_value: 350 }
       craftsman:
-        - { id: jewel-gold-ring, level: 30, output: Gold Ring, base_value: 450 }
-        - { id: jewel-gold-necklace, level: 30, output: Gold Necklace, base_value: 550 }
-        - { id: jewel-brooch-speed, level: 30, output: Brooch of Speed, base_value: 400 }
+        - { id: jewel-gold-ring, level: 30, inputs: "1x Gold Ingot + 2x Gemstones", output: "Gold Ring", base_value: 380 }
+        - { id: jewel-gold-necklace, level: 30, inputs: "2x Gold Ingot + 2x Gemstones", output: "Gold Necklace", base_value: 650 }
+        - { id: jewel-brooch-speed, level: 30, inputs: "1x Gold Ingot + 2x Gemstones + 1x Wind Mote", output: "Brooch of Speed", base_value: 400 }
       expert:
-        - { id: jewel-crown-wisdom, level: 50, output: Crown of Wisdom, base_value: 2000 }
-        - { id: jewel-mithril-ring, level: 55, output: Mithril Ring, base_value: 2500 }
+        - { id: jewel-crown-wisdom, level: 50, inputs: "3x Gold Ingot + 4x Gemstones + 2x Fey Tear + 1x Arcane Reagents + 1x Silk Fabric", output: "Crown of Wisdom", base_value: 1500 }
+        - { id: jewel-mithril-ring, level: 55, inputs: "2x Mithril Ingot + 3x Gemstones + 1x Wyvern Scale", output: "Mithril Ring", base_value: 2500 }
     supply_chain: "MINER → SMELTER → JEWELER (ingots + gems)"
     notes: "Full set of rings, necklaces, circlets, and brooches. Uses Gemstones from MINER + ingots from SMELTER."
 
@@ -1190,16 +1270,24 @@ professions:
     workshops: [Thornwatch, Thornden, Bonepile, Windbreak]
     status: EXISTS_IN_GAME
     recipe_count: 13
+    # UPDATED: Economy pricing pass — 13 structured recipe entries with inputs + BVs
     tier_recipes:
       apprentice:
-        level_range: "1-10"
-        recipes: ["fletch-bowstring", "fletch-arrows", "fletch-shortbow", "fletch-hunting-bow"]
+        - { id: fletch-bowstring, level: 1, inputs: "1x Cured Leather", output: "Bowstring", base_value: 24 }
+        - { id: fletch-arrows, level: 3, inputs: "2x Softwood Planks + 1x Iron Ore Chunks", output: "10x Arrows", base_value: 2 }
+        - { id: fletch-shortbow, level: 5, inputs: "1x Bow Stave + 1x Bowstring", output: "Shortbow", base_value: 46 }
+        - { id: fletch-hunting-bow, level: 8, inputs: "1x Bow Stave + 1x Bowstring + 1x Cured Leather", output: "Hunting Bow", base_value: 70 }
       journeyman:
-        level_range: "11-25"
-        recipes: ["fletch-longbow", "fletch-war-arrows", "fletch-war-bow", "fletch-quiver"]
+        - { id: fletch-longbow, level: 12, inputs: "1x Hardwood Planks + 1x Bowstring + 1x Cured Leather", output: "Longbow", base_value: 85 }
+        - { id: fletch-war-arrows, level: 15, inputs: "2x Hardwood Planks + 2x Iron Ore Chunks", output: "10x War Arrows", base_value: 7 }
+        - { id: fletch-war-bow, level: 20, inputs: "1x Hardwood Planks + 1x Bow Stave + 1x Bowstring + 1x Wolf Leather", output: "War Bow", base_value: 180 }
+        - { id: fletch-quiver, level: 15, inputs: "1x Cured Leather + 2x Wooden Dowels + 4x Nails", output: "Quiver", base_value: 45 }
       craftsman:
-        level_range: "26-50"
-        recipes: ["fletch-barbed-arrows", "fletch-composite-bow", "fletch-rangers-quiver", "fletch-flight-arrows", "fletch-rangers-longbow"]
+        - { id: fletch-barbed-arrows, level: 30, inputs: "2x Hardwood Planks + 2x Iron Fittings", output: "10x Barbed Arrows", base_value: 8 }
+        - { id: fletch-composite-bow, level: 35, inputs: "1x Exotic Planks + 1x Bow Stave + 1x Bowstring + 1x Wolf Leather", output: "Composite Bow", base_value: 225 }
+        - { id: fletch-rangers-quiver, level: 35, inputs: "1x Wolf Leather + 2x Hardwood Planks + 4x Nails", output: "Ranger's Quiver", base_value: 175 }
+        - { id: fletch-flight-arrows, level: 30, inputs: "2x Softwood Planks + 1x Spider Silk", output: "10x Flight Arrows", base_value: 2 }
+        - { id: fletch-rangers-longbow, level: 45, inputs: "1x Exotic Planks + 1x Bow Stave + 1x Bowstring + 1x Bear Leather + 1x Bear Claw", output: "Ranger's Longbow", base_value: 260 }
     damage_progression: "Practice Bow (5, WW) → Shortbow (6) → Hunting Bow (8) → Longbow (14) → War Bow (16) → Composite Bow (22) → Ranger's Longbow (26)"
 
   MASON:
@@ -1215,22 +1303,23 @@ professions:
     workshop: MASON_YARD
     recipe_count: 12
     status: EXISTS_IN_GAME
+    # UPDATED: Economy pricing pass — 11 BV fixes + inputs added for all 12 recipes
     tier_recipes:
       apprentice:
-        - { id: cut-stone, level: 1, output: Cut Stone, base_value: 12 }
-        - { id: cut-stone-blocks, level: 3, output: Cut Stone, base_value: 15 }
-        - { id: cut-sandstone, level: 5, output: Cut Sandstone, base_value: 18 }
-        - { id: fire-clay, level: 5, output: Bricks, base_value: 15 }
-        - { id: carve-stone-slab, level: 8, output: Stone Slab, base_value: 25 }
+        - { id: cut-stone, level: 1, inputs: "2x Stone Blocks", output: "Cut Stone", base_value: 19 }
+        - { id: cut-stone-blocks, level: 3, inputs: "3x Stone Blocks", output: "Cut Stone", base_value: 28 }
+        - { id: cut-sandstone, level: 5, inputs: "3x Stone Blocks + 1x Coal", output: "Cut Sandstone", base_value: 50 }
+        - { id: fire-clay, level: 5, inputs: "3x Clay + 1x Coal", output: "Bricks", base_value: 33 }
+        - { id: carve-stone-slab, level: 8, inputs: "4x Stone Blocks + 1x Coal", output: "Stone Slab", base_value: 55 }
       journeyman:
-        - { id: fire-bricks, level: 10, output: Bricks, base_value: 20 }
-        - { id: housing-stone-hearth, level: 10, output: Stone Hearth, base_value: 60 }
-        - { id: shape-clay-pot, level: 12, output: Clay Pot, base_value: 30 }
-        - { id: housing-brick-oven, level: 15, output: Brick Oven, base_value: 90 }
-        - { id: housing-stone-fountain, level: 25, output: Stone Fountain, base_value: 200 }
+        - { id: fire-bricks, level: 10, inputs: "5x Clay + 2x Coal", output: "Bricks", base_value: 65 }
+        - { id: housing-stone-hearth, level: 10, inputs: "4x Stone Blocks + 2x Iron Fittings + 1x Coal", output: "Stone Hearth", base_value: 82 }
+        - { id: shape-clay-pot, level: 12, inputs: "2x Clay + 1x Coal", output: "Clay Pot", base_value: 30 }
+        - { id: housing-brick-oven, level: 15, inputs: "8x Clay + 3x Iron Fittings + 2x Coal", output: "Brick Oven", base_value: 120 }
+        - { id: housing-stone-fountain, level: 25, inputs: "8x Stone Blocks + 2x Iron Ingot + 3x Coal", output: "Stone Fountain", base_value: 295 }
       craftsman:
-        - { id: polish-marble, level: 30, output: Polished Marble, base_value: 50 }
-        - { id: housing-marble-statue, level: 35, output: Marble Statue, base_value: 350 }
+        - { id: polish-marble, level: 30, inputs: "2x Marble + 1x Coal", output: "Polished Marble", base_value: 65 }
+        - { id: housing-marble-statue, level: 35, inputs: "6x Marble + 2x Iron Fittings + 3x Coal + 1x Gemstones", output: "Marble Statue", base_value: 280 }
     supply_chain: "MINER → Raw Stone/Clay/Marble → MASON → Cut Stone/Bricks/Polished Marble → Housing items"
     notes: "12 recipes (8 processing + 4 housing). Stone Slab and Clay Pot templates added. Only 3 towns have MASON_YARD."
 
@@ -1251,16 +1340,17 @@ professions:
     workshop: SCRIBE_STUDY
     recipe_count: 11
     status: EXISTS_IN_GAME
+    # UPDATED: Economy pricing pass — mundane_inputs added to 7 original recipes + 5 BV fixes
     tier_recipes:
       apprentice:
-        - { id: scribe-area-map, level: 5, output: Area Map, base_value: 20 }
+        - { id: scribe-area-map, level: 5, output: Area Map, base_value: 15, inputs: "2x Softwood Planks + 1x Wild Herbs" }
       journeyman:
-        - { id: scribe-scroll-fire, level: 10, output: Scroll of Fire, base_value: 60, magical_inputs: "1x Ember Core" }
-        - { id: scribe-identification-scroll, level: 10, output: Identification Scroll, base_value: 50, magical_inputs: "1x Wisp Mote" }
-        - { id: scribe-scroll-ice, level: 15, output: Scroll of Ice, base_value: 80, magical_inputs: "1x Frost Essence" }
-        - { id: scribe-scroll-healing, level: 20, output: Scroll of Healing, base_value: 100, magical_inputs: "1x Troll Blood" }
-        - { id: scribe-dungeon-map, level: 20, output: Dungeon Map, base_value: 80, magical_inputs: "1x Spectral Dust" }
-        - { id: scribe-scroll-lightning, level: 25, output: Scroll of Lightning, base_value: 120, magical_inputs: "1x Storm Feather" }
+        - { id: scribe-scroll-fire, level: 10, output: Scroll of Fire, base_value: 82, magical_inputs: "1x Ember Core", mundane_inputs: "2x Softwood Planks + 1x Arcane Reagents" }
+        - { id: scribe-identification-scroll, level: 10, output: Identification Scroll, base_value: 28, magical_inputs: "1x Wisp Mote", mundane_inputs: "2x Softwood Planks + 1x Wild Herbs" }
+        - { id: scribe-scroll-ice, level: 15, output: Scroll of Ice, base_value: 80, magical_inputs: "1x Frost Essence", mundane_inputs: "2x Softwood Planks + 1x Arcane Reagents" }
+        - { id: scribe-scroll-healing, level: 20, output: Scroll of Healing, base_value: 75, magical_inputs: "1x Troll Blood", mundane_inputs: "2x Softwood Planks + 1x Medicinal Herbs" }
+        - { id: scribe-dungeon-map, level: 20, output: Dungeon Map, base_value: 80, magical_inputs: "1x Spectral Dust", mundane_inputs: "2x Softwood Planks + 1x Arcane Reagents" }
+        - { id: scribe-scroll-lightning, level: 25, output: Scroll of Lightning, base_value: 85, magical_inputs: "1x Storm Feather", mundane_inputs: "2x Softwood Planks + 1x Arcane Reagents" }
       craftsman:
         - { id: scribe-scroll-stone-skin, level: 30, output: Scroll of Stone Skin, base_value: 90, magical_inputs: "1x Earth Crystal", mundane_inputs: "1x Arcane Reagents + 2x Softwood Planks" }
         - { id: scribe-scroll-might, level: 30, output: Scroll of Might, base_value: 85, magical_inputs: "1x Ogre Sinew", mundane_inputs: "1x Arcane Reagents + 2x Softwood Planks" }
@@ -1366,7 +1456,7 @@ cook_recipes:
     name: Apple Sauce
     description: "Sweet stewed apples. Simple comfort food."
     category: FOOD
-    base_value: 8
+    base_value: 19
     tier: 1
     level_required: 3
     profession: COOK
@@ -1388,7 +1478,7 @@ cook_recipes:
     name: Porridge
     description: "Thick, hearty grain porridge. Keeps you going all day."
     category: FOOD
-    base_value: 7
+    base_value: 15
     tier: 1
     level_required: 3
     profession: COOK
@@ -1431,7 +1521,7 @@ cook_recipes:
     name: Grilled Fish
     description: "Simply grilled over an open flame. Much better than raw."
     category: FOOD
-    base_value: 10
+    base_value: 17
     tier: 1
     level_required: 3
     profession: COOK
@@ -1452,7 +1542,7 @@ cook_recipes:
     name: Herbal Tea
     description: "A soothing brew of wild herbs. Restores body and spirit."
     category: DRINK
-    base_value: 10
+    base_value: 20
     tier: 1
     level_required: 3
     profession: COOK
@@ -1476,7 +1566,7 @@ cook_recipes:
     name: Vegetable Stew
     description: "A thick, warming stew of root vegetables."
     category: FOOD
-    base_value: 8
+    base_value: 19
     tier: 1
     level_required: 3
     profession: COOK
@@ -1500,7 +1590,7 @@ cook_recipes:
     name: Bread Loaf
     description: "A crusty golden loaf. The staff of life."
     category: FOOD
-    base_value: 12
+    base_value: 20
     tier: 2
     level_required: 5
     profession: COOK
@@ -1522,7 +1612,7 @@ cook_recipes:
     name: Apple Pie
     description: "Warm apple pie with a flaky crust. A countryside classic."
     category: FOOD
-    base_value: 18
+    base_value: 27
     tier: 2
     level_required: 5
     profession: COOK
@@ -1546,7 +1636,7 @@ cook_recipes:
     name: Fish Stew
     description: "A hearty chowder with fresh fish and herbs."
     category: FOOD
-    base_value: 16
+    base_value: 25
     tier: 2
     level_required: 5
     profession: COOK
@@ -1572,7 +1662,7 @@ cook_recipes:
     name: Seasoned Roast Vegetables
     description: "Roasted roots glazed with herbal seasoning."
     category: FOOD
-    base_value: 14
+    base_value: 23
     tier: 2
     level_required: 5
     profession: COOK
@@ -1598,7 +1688,7 @@ cook_recipes:
     name: Berry Tart
     description: "A crisp pastry shell filled with sweet berry jam."
     category: FOOD
-    base_value: 16
+    base_value: 23
     tier: 2
     level_required: 5
     profession: COOK
@@ -1625,7 +1715,7 @@ cook_recipes:
     name: Harvest Feast
     description: "A grand platter of bread, roasted fruit, and herbed vegetables. Fit for a lord."
     category: FOOD
-    base_value: 35
+    base_value: 60
     tier: 3
     level_required: 7
     profession: COOK
@@ -1654,7 +1744,7 @@ cook_recipes:
     name: Fisherman's Banquet
     description: "Grilled fish on herb bread with berry glaze. A coastal delicacy."
     category: FOOD
-    base_value: 32
+    base_value: 72
     tier: 3
     level_required: 7
     profession: COOK
@@ -1887,7 +1977,7 @@ cook_recipes:
     name: Perch Feast
     description: "Roasted perch with grain bread and herb butter."
     category: FOOD
-    base_value: 48
+    base_value: 65
     tier: 3
     level_required: 7
     profession: COOK
@@ -1915,7 +2005,7 @@ cook_recipes:
     name: Fisherman's Pie
     description: "Golden-crusted pie with two kinds of fish, grain, and eggs."
     category: FOOD
-    base_value: 55
+    base_value: 79
     tier: 3
     level_required: 8
     profession: COOK
@@ -1944,7 +2034,7 @@ cook_recipes:
     name: Smoked Trout Rations
     description: "Premium smoked trout. Stays fresh for long journeys."
     category: FOOD
-    base_value: 25
+    base_value: 30
     tier: 3
     level_required: 8
     profession: COOK
@@ -3869,17 +3959,17 @@ base_value_reference:
     apprentice:
       - { name: Iron Pickaxe, base_value: 18 }
       - { name: Iron Hatchet, base_value: 18 }
-      - { name: Iron Dagger, base_value: 15 }
-      - { name: Iron Sword, base_value: 22 }
+      - { name: Iron Dagger, base_value: 17 }           # was 15; input 13g → 1.31×
+      - { name: Iron Sword, base_value: 23 }             # was 22; input 17g → 1.35×
       - { name: Iron Shield, base_value: 25 }
       - { name: Iron Helm, base_value: 20 }
-      - { name: Copper Hoe, base_value: 14 }
+      - { name: Copper Hoe, base_value: 17 }             # was 14; input 13g → 1.31×
     journeyman:
       - { name: Steel Pickaxe, base_value: 38 }
       - { name: Steel Hatchet, base_value: 38 }
       - { name: Steel Dagger, base_value: 32 }
       - { name: Steel Sword, base_value: 45 }
-      - { name: Iron Battleaxe, base_value: 40 }
+      - { name: Iron Battleaxe, base_value: 42 }         # was 40; input 29g → 1.45×
       - { name: Reinforced Shield, base_value: 42 }
       - { name: Iron Chainmail, base_value: 48 }
       - { name: Iron Fishing Spear, base_value: 30 }
@@ -3890,71 +3980,73 @@ base_value_reference:
       - { name: "Hunter's Knife", base_value: 85 }
       - { name: Reinforced Hoe, base_value: 75 }
     specialist_weaponsmith:
-      - { name: Silver Longsword, base_value: 110 }
+      - { name: Silver Longsword, base_value: 120 }      # was 110; input 77g → 1.56×
       - { name: Silver Dagger, base_value: 90 }
-      - { name: Silver Battleaxe, base_value: 120 }
+      - { name: Silver Battleaxe, base_value: 125 }      # was 120; input 81g → 1.54×
       - { name: War Pick, base_value: 100 }
     specialist_armorer:
       - { name: Silver-Studded Plate, base_value: 130 }
       - { name: Silver Helm, base_value: 95 }
-      - { name: Hardwood Tower Shield, base_value: 100 }
+      - { name: Hardwood Tower Shield, base_value: 108 }  # was 100; input 70g → 1.54×
       - { name: Reinforced Chain Leggings, base_value: 105 }
 
   WOODWORKER:
     # 25 recipes: 9 Apprentice (L3-10), 11 Journeyman (L11-25), 5 Craftsman (L26-50)
     # Input costs: Wood Logs (5g), Softwood (3g), Hardwood (25g), Nails (1g), Exotic Wood (50g)
+    # UPDATED: Economy pricing pass — 16 BV fixes (all underwater recipes corrected)
     apprentice_processing:
-      - { name: Rough Planks, base_value: 4 }       # per plank (bulk output)
-      - { name: Softwood Planks, base_value: 3 }    # per plank (bulk output)
-      - { name: Wooden Dowels, base_value: 4 }
-      - { name: Wooden Handle, base_value: 5 }
-      - { name: Bow Stave, base_value: 8 }
+      - { name: Rough Planks, base_value: 4 }       # per plank (bulk output, 2 per craft)
+      - { name: Softwood Planks, base_value: 3 }    # per plank (bulk output, 2 per craft)
+      - { name: Wooden Dowels, base_value: 4 }      # 3 per craft from SW+WL
+      - { name: Wooden Handle, base_value: 5 }      # 2 per craft from WL+Nails
+      - { name: Bow Stave, base_value: 11 }         # was 8; input 8g → 1.38×
     apprentice_finished:
-      - { name: Wooden Pickaxe, base_value: 12 }
+      - { name: Wooden Pickaxe, base_value: 19 }    # was 12; input 14g → 1.36×
       - { name: Fishing Rod, base_value: 14 }
-      - { name: Carving Knife, base_value: 10 }
-      - { name: Wooden Chair, base_value: 15 }
+      - { name: Carving Knife, base_value: 12 }     # was 10; input 9g → 1.33×
+      - { name: Wooden Chair, base_value: 19 }      # was 15; input 14g → 1.36×
     journeyman_processing:
-      - { name: Hardwood Planks, base_value: 18 }   # per plank
-      - { name: Wooden Beams, base_value: 12 }
-      - { name: Barrel, base_value: 25 }
-      - { name: Wooden Frame, base_value: 20 }
+      - { name: Hardwood Planks, base_value: 18 }   # per plank (2 per craft from 25g Hardwood = 1.44×)
+      - { name: Wooden Beams, base_value: 17 }      # was 12; input 12g → 1.42×
+      - { name: Barrel, base_value: 55 }            # was 25; input 37g → 1.49×
+      - { name: Wooden Frame, base_value: 58 }      # was 20; input 39g → 1.49×
     journeyman_finished:
-      - { name: Tanning Rack, base_value: 35 }
-      - { name: Fine Fishing Rod, base_value: 40 }
-      - { name: Wooden Table, base_value: 30 }
-      - { name: Storage Chest, base_value: 45 }
-      - { name: Wooden Bed Frame, base_value: 50 }
-      - { name: Wooden Shield, base_value: 35 }
-      - { name: Furniture, base_value: 40 }
+      - { name: Tanning Rack, base_value: 58 }      # was 35; input 39g → 1.49×
+      - { name: Fine Fishing Rod, base_value: 45 }  # was 40; input 32g → 1.41×
+      - { name: Wooden Table, base_value: 78 }      # was 30; input 52g → 1.50×
+      - { name: Storage Chest, base_value: 117 }    # was 45; input 78g → 1.50×
+      - { name: Wooden Bed Frame, base_value: 110 } # was 50; input 78g (WB@17) → 1.41×
+      - { name: Wooden Shield, base_value: 87 }     # was 35; input 58g → 1.50×
+      - { name: Furniture, base_value: 63 }         # was 40; input 42g → 1.50×
     craftsman_processing:
-      - { name: Exotic Planks, base_value: 40 }     # per plank
+      - { name: Exotic Planks, base_value: 40 }     # per plank (2 per craft, 1.60×)
     craftsman_finished:
-      - { name: Wooden Shelf, base_value: 55 }
-      - { name: Reinforced Crate, base_value: 65 }
-      - { name: Hardwood Tower Shield, base_value: 80 }
-      - { name: Practice Bow, base_value: 45 }
+      - { name: Wooden Shelf, base_value: 75 }      # was 55; input 48g → 1.56×
+      - { name: Reinforced Crate, base_value: 130 } # was 65; input 86g → 1.51×
+      - { name: Hardwood Tower Shield, base_value: 230 } # was 80; input 150g → 1.53×
+      - { name: Practice Bow, base_value: 45 }      # input 17g → 2.65× (starter bow, cheap mats)
 
   LEATHERWORKER:
     # 13 recipes using TANNER outputs + WOODWORKER parts
     # Input costs: Cured Leather (18g), Wolf Leather (73g), Bear Leather (91g),
-    #              Wooden Frame (20g), Wooden Handle (5g), Nails (1g)
+    #              Wooden Frame (58g), Wooden Handle (5g), Nails (1g), Animal Pelts (8g)
+    # UPDATED: Economy pricing pass — 10 BV fixes (WF cascade 20→58 corrected)
     apprentice:
-      - { name: Leather Gloves, base_value: 52 }     # 2×CL+1×AP = 44g × 1.3 = 57 → hands slot, utility lower
-      - { name: Leather Boots, base_value: 52 }      # 2×CL+1×AP = 44g × 1.3
-      - { name: Leather Backpack, base_value: 60 }   # 3×CL = 54g × 1.3 = 70 → utility item
-      - { name: Leather Waterskin, base_value: 30 }   # 1×CL+1×AP = 26g × 1.3
+      - { name: Leather Gloves, base_value: 58 }     # was 52; input 2×CL+1×AP=44g → 1.32×
+      - { name: Leather Boots, base_value: 58 }      # was 52; input 2×CL+1×AP=44g → 1.32×
+      - { name: Leather Backpack, base_value: 78 }   # was 60; input 3×CL+4×Nails=58g → 1.34×
+      - { name: Leather Waterskin, base_value: 35 }   # was 30; input 1×CL+1×AP=26g → 1.35×
     journeyman:
-      - { name: Wolf Leather Gloves, base_value: 145 }  # 1×WL+1×CL = 91g × 1.5
-      - { name: Wolf Leather Boots, base_value: 145 }   # 1×WL+1×CL = 91g × 1.5
-      - { name: Toolbelt, base_value: 130 }             # 2×CL+1×WF = 56g × 1.5 → utility boost
-      - { name: Leather Repair Kit, base_value: 80 }    # 2×CL+nails = ~37g × 1.5 → consumable
-      - { name: "Ranger's Pack", base_value: 180 }      # 1×WL+2×CL+1×WF = 129g × 1.4
+      - { name: Wolf Leather Gloves, base_value: 145 }  # input 1×WL+1×CL=91g → 1.59×
+      - { name: Wolf Leather Boots, base_value: 145 }   # input 1×WL+1×CL=91g → 1.59×
+      - { name: Toolbelt, base_value: 140 }             # was 130; input 2×CL+1×WF(58)+4×Nails=98g → 1.43×
+      - { name: Leather Repair Kit, base_value: 80 }    # input 2×CL+10×Nails=46g → 1.74×
+      - { name: "Ranger's Pack", base_value: 240 }      # was 180; input 1×WL+2×CL+1×WF(58)=167g → 1.44×
     craftsman:
-      - { name: Bear Hide Vambraces, base_value: 250 }  # 2×BL+1×CL = 200g × 1.5
-      - { name: Bear Leather Boots, base_value: 230 }   # 1×BL+1×WL = 164g × 1.5
-      - { name: "Hunter's Kit", base_value: 200 }       # 1×WL+1×BL+nails = 165g × 1.5 → consumable/tool
-      - { name: "Explorer's Pack", base_value: 320 }    # 2×BL+1×WL+1×WF = 275g × 1.5
+      - { name: Bear Hide Vambraces, base_value: 310 }  # was 250; input 2×BL+1×CL=200g → 1.55×
+      - { name: Bear Leather Boots, base_value: 260 }   # was 230; input 1×BL+1×WL=164g → 1.59×
+      - { name: "Hunter's Kit", base_value: 280 }       # was 200; input 1×WL+1×BL+10×Nails=174g → 1.61×
+      - { name: "Explorer's Pack", base_value: 480 }    # was 320; input 2×BL+1×WL+1×WF(58)=313g → 1.53×
 
   ALCHEMIST:
     # 11 recipes: 3 Apprentice, 4 Journeyman, 4 Craftsman
@@ -3962,37 +4054,38 @@ base_value_reference:
     #              Medicinal Herbs (28g), Glowcap Mushrooms (32g)
     # Consumable potions — lower base_value per Rule 3 (utility in repeat demand)
     apprentice:
-      - { name: Minor Healing Potion, base_value: 12 }   # 2×WH+1×Clay = 14g × 1.3 → consumable
-      - { name: Antidote, base_value: 10 }               # 2×WH = 10g × 1.3 → consumable
-      - { name: Berry Salve, base_value: 10 }            # 2×WB+1×WH = 11g × 1.3 → consumable
+      - { name: Minor Healing Potion, base_value: 19 }   # was 12; input 14g → 1.36×
+      - { name: Antidote, base_value: 14 }               # was 10; input 10g → 1.40×
+      - { name: Berry Salve, base_value: 15 }            # was 10; input 11g → 1.36×
     journeyman:
-      - { name: Healing Potion, base_value: 22 }         # 3×WH+1×Clay = 19g × 1.4
-      - { name: Elixir of Strength, base_value: 25 }     # 2×WH+1×MH = 38g → buff potion
-      - { name: Elixir of Wisdom, base_value: 25 }       # 2×WH+1×MH = 38g → buff potion
-      - { name: Poison Resistance Tonic, base_value: 20 } # 2×WH+1×WB = 13g × 1.5
+      - { name: Healing Potion, base_value: 27 }         # was 22; input 19g → 1.42×
+      - { name: Elixir of Strength, base_value: 55 }     # was 25; input 38g → 1.45×
+      - { name: Elixir of Wisdom, base_value: 55 }       # was 25; input 38g → 1.45×
+      - { name: Poison Resistance Tonic, base_value: 20 } # input 13g → 1.54× ✅ unchanged
     craftsman:
-      - { name: Greater Healing Potion, base_value: 55 }  # 2×MH+1×Clay = 60g → premium consumable
-      - { name: Elixir of Fortitude, base_value: 60 }     # 1×MH+1×GM+1×Clay = 64g → premium buff
-      - { name: Glowcap Extract, base_value: 50 }         # 2×GM = 64g → utility extract
-      - { name: Universal Antidote, base_value: 65 }      # 1×MH+1×GM+1×WH = 65g × 1.5
+      - { name: Greater Healing Potion, base_value: 85 }  # was 55; input 60g → 1.42×
+      - { name: Elixir of Fortitude, base_value: 95 }     # was 60; input 64g → 1.48×
+      - { name: Glowcap Extract, base_value: 95 }         # was 50; input 64g → 1.48×
+      - { name: Universal Antidote, base_value: 100 }     # was 65; input 65g → 1.54×
 
   FLETCHER:
     # 13 recipes: 4 Apprentice, 4 Journeyman, 5 Craftsman
-    # Input costs: Softwood Planks (3g), Wooden Dowels (4g), Bow Stave (8g),
-    #              Cured Leather (18g), Wolf Leather (73g), Bear Leather (91g)
+    # Input costs: Softwood Planks (3g), Wooden Dowels (4g), Bow Stave (11g),
+    #              Bowstring (24g), Cured Leather (18g), Wolf Leather (73g), Bear Leather (91g)
+    # UPDATED: Economy pricing pass — 10 BV fixes (Bowstring+Bow Stave cascade corrected)
     apprentice:
-      - { name: Bowstring, base_value: 6 }         # intermediate (CL strip)
-      - { name: Arrows, base_value: 2 }            # per arrow (bulk, ammo consumable)
-      - { name: Shortbow, base_value: 20 }         # Bow Stave + Bowstring = ~14g × 1.4
-      - { name: Hunting Bow, base_value: 30 }      # upgraded shortbow
+      - { name: Bowstring, base_value: 24 }         # was 6; input 1×CL(18) → 1.33×
+      - { name: Arrows, base_value: 2 }            # per arrow ×10 (bulk ammo, 2.00×)
+      - { name: Shortbow, base_value: 46 }         # was 20; input BS(11)+Bowstring(24)=35g → 1.31×
+      - { name: Hunting Bow, base_value: 70 }      # was 30; input BS(11)+Bow(24)+CL(18)=53g → 1.32×
     journeyman:
-      - { name: Longbow, base_value: 55 }          # hardwood + WL components
-      - { name: War Arrows, base_value: 5 }        # per arrow (improved ammo)
-      - { name: War Bow, base_value: 70 }          # premium journeyman weapon
-      - { name: Quiver, base_value: 45 }           # leather + wood quiver (FLETCHER variant, lighter than TANNER)
+      - { name: Longbow, base_value: 85 }          # was 55; input HP(18)+Bow(24)+CL(18)=60g → 1.42×
+      - { name: War Arrows, base_value: 7 }        # was 5; per arrow ×10, input 44g → 1.59×
+      - { name: War Bow, base_value: 180 }         # was 70; input HP(18)+BS(11)+Bow(24)+WL(73)=126g → 1.43×
+      - { name: Quiver, base_value: 45 }           # input CL(18)+2×WD(8)+4×Nails(4)=30g → 1.50×
     craftsman:
-      - { name: Barbed Arrows, base_value: 8 }     # per arrow (top-tier ammo)
-      - { name: Composite Bow, base_value: 150 }   # exotic materials
-      - { name: "Ranger's Quiver", base_value: 120 } # premium quiver
-      - { name: Flight Arrows, base_value: 6 }     # specialty arrows
-      - { name: "Ranger's Longbow", base_value: 200 } # top-tier ranged weapon
+      - { name: Barbed Arrows, base_value: 8 }     # per arrow ×10, input 52g → 1.54×
+      - { name: Composite Bow, base_value: 225 }   # was 150; input EP(40)+BS(11)+Bow(24)+WL(73)=148g → 1.52×
+      - { name: "Ranger's Quiver", base_value: 175 } # was 120; input WL(73)+2×HP(36)+4×Nails(4)=113g → 1.55×
+      - { name: Flight Arrows, base_value: 2 }     # was 6; per arrow ×10, input 12g → 1.67×
+      - { name: "Ranger's Longbow", base_value: 260 } # was 200; input EP(40)+BS(11)+Bow(24)+BL(91)+BearClaw(6)=172g → 1.51×
