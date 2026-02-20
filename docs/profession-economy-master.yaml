@@ -480,6 +480,199 @@ gathering_spot_types:
     craft_consumers: [WOODWORKER]
     status: PLANNED
 
+  # --- MAGICAL CRAFTING COMPONENTS (Phase 2 — Monster Encounter Drops) ---
+  # These components come ONLY from killing specific monsters. No gathering
+  # profession collects them. Fighters sell on market → ENCHANTER/SCRIBE buy.
+  # Added 2026-02-20 per magical-components-design.md
+
+  # Elemental School
+  ember_core:
+    resource: Ember Core
+    item_id: ember_core
+    category: MAGICAL_COMPONENT
+    base_value: 15
+    source: "Fire Elemental (encounter, L12 High)"
+    description: "A fist-sized sphere of solidified flame, warm to the touch and faintly glowing. Harvested from the chest cavity of slain fire elementals."
+    magical_school: Elemental (Fire)
+    craft_consumers: [ENCHANTER, SCRIBE]
+
+  frost_essence:
+    resource: Frost Essence
+    item_id: frost_essence
+    category: MAGICAL_COMPONENT
+    base_value: 15
+    source: "Ice Wraith (encounter, L10 Medium)"
+    description: "A crystalline shard of pure cold, perpetually rimmed in ice. Condenses from the remains of destroyed ice wraiths."
+    magical_school: Elemental (Ice)
+    craft_consumers: [ENCHANTER, SCRIBE]
+
+  storm_feather:
+    resource: Storm Feather
+    item_id: storm_feather
+    category: MAGICAL_COMPONENT
+    base_value: 15
+    source: "Storm Hawk (encounter, L6 Low)"
+    description: "An iridescent feather that crackles with static. Plucked from the wings of storm hawks after they fall."
+    magical_school: Elemental (Lightning)
+    craft_consumers: [ENCHANTER, SCRIBE]
+
+  earth_crystal:
+    resource: Earth Crystal
+    item_id: earth_crystal
+    category: MAGICAL_COMPONENT
+    base_value: 12
+    source: "Stone Golem (encounter, L10 Medium)"
+    description: "A dense, geometric crystal that hums when struck. Found in the rubble of shattered stone golems."
+    magical_school: Elemental (Earth)
+    craft_consumers: [ENCHANTER, SCRIBE]
+
+  # Life School
+  troll_blood:
+    resource: Troll Blood
+    item_id: troll_blood
+    category: MAGICAL_COMPONENT
+    base_value: 15
+    source: "Troll (encounter, L10 Medium)"
+    description: "Thick, dark-green ichor that writhes and tries to congeal. Must be bottled quickly before it regenerates back toward the corpse."
+    magical_school: Life (Regeneration)
+    craft_consumers: [SCRIBE]
+
+  fey_tear:
+    resource: Fey Tear
+    item_id: fey_tear
+    category: MAGICAL_COMPONENT
+    base_value: 35
+    source: "Corrupted Dryad (encounter, L13 High)"
+    description: "A single luminous droplet, cool as spring water, that falls from a corrupted dryad's eyes upon death. Radiates gentle warmth."
+    magical_school: Life (Holy/Healing)
+    craft_consumers: [ENCHANTER, SCRIBE]
+
+  heartwood_sap:
+    resource: Heartwood Sap
+    item_id: heartwood_sap
+    category: MAGICAL_COMPONENT
+    base_value: 10
+    source: "Treant (encounter, L8 Medium)"
+    description: "Amber-gold sap that seeps from treant heartwood. Smells of deep forest and old growth. Sticky, warm, faintly alive."
+    magical_school: Life (Vitality)
+    craft_consumers: [ENCHANTER]
+
+  # Protection School
+  basilisk_scale:
+    resource: Basilisk Scale
+    item_id: basilisk_scale
+    category: MAGICAL_COMPONENT
+    base_value: 25
+    source: "Basilisk (encounter, L13 High)"
+    description: "A thick, stone-grey scale with a pearlescent sheen. Unnervingly heavy for its size. Retains the creature's petrifying resilience."
+    magical_school: Protection (Fortification)
+    craft_consumers: [ENCHANTER]
+
+  wyvern_scale:
+    resource: Wyvern Scale
+    item_id: wyvern_scale
+    category: MAGICAL_COMPONENT
+    base_value: 45
+    source: "Wyvern (encounter, L16 Elite)"
+    description: "A broad, iridescent scale from the underbelly of a wyvern. Tough as steel, light as leather. The gold standard of protective components."
+    magical_school: Protection (Warding)
+    craft_consumers: [ENCHANTER]
+
+  # Enhancement School
+  ogre_sinew:
+    resource: Ogre Sinew
+    item_id: ogre_sinew
+    category: MAGICAL_COMPONENT
+    base_value: 12
+    source: "Ogre (encounter, L9 Medium)"
+    description: "A thick, fibrous tendon strip from an ogre's arm. Impossibly strong — a single strand can support a man's weight."
+    magical_school: Enhancement (Strength)
+    craft_consumers: [ENCHANTER, SCRIBE]
+
+  wind_mote:
+    resource: Wind Mote
+    item_id: wind_mote
+    category: MAGICAL_COMPONENT
+    base_value: 12
+    source: "Storm Hawk (encounter, L6 Low)"
+    description: "A captured wisp of living wind, bottled from the updraft left by a storm hawk's death spiral. Trembles and tries to escape its container."
+    magical_school: Enhancement (Speed)
+    craft_consumers: [ENCHANTER]
+
+  basilisk_eye:
+    resource: Basilisk Eye
+    item_id: basilisk_eye
+    category: MAGICAL_COMPONENT
+    base_value: 20
+    source: "Basilisk (encounter, L13 High)"
+    description: "The petrifying eye of a basilisk, carefully extracted and preserved in oil. Still seems to watch you."
+    magical_school: Enhancement (Perception)
+    craft_consumers: [ENCHANTER, SCRIBE]
+
+  # Shadow & Arcane School
+  shadow_essence:
+    resource: Shadow Essence
+    item_id: shadow_essence
+    category: MAGICAL_COMPONENT
+    base_value: 30
+    source: "Shadow Stalker (encounter, L14 High)"
+    description: "A vial of liquid darkness that absorbs light around it. Extracted from the dissipating form of a slain shadow stalker."
+    magical_school: Shadow (Stealth)
+    craft_consumers: [ENCHANTER]
+
+  wisp_mote:
+    resource: Wisp Mote
+    item_id: wisp_mote
+    category: MAGICAL_COMPONENT
+    base_value: 8
+    source: "Will-o'-Wisp (encounter, L7 Low)"
+    description: "A faintly glowing orb no larger than a marble. Captured from the remnants of a will-o'-wisp. Flickers between visible and invisible."
+    magical_school: Arcane (Illusion)
+    craft_consumers: [SCRIBE]
+
+  spectral_dust:
+    resource: Spectral Dust
+    item_id: spectral_dust
+    category: MAGICAL_COMPONENT
+    base_value: 10
+    source: "Grave Wight (encounter, L11 Medium)"
+    description: "Fine, silvery powder that shimmers with faint ghostly light. Scraped from the armor of a destroyed grave wight."
+    magical_school: Arcane (Divination)
+    craft_consumers: [SCRIBE]
+
+  # Nature School
+  living_bark:
+    resource: Living Bark
+    item_id: living_bark
+    category: MAGICAL_COMPONENT
+    base_value: 8
+    source: "Treant (encounter, L8 Medium)"
+    description: "A section of bark that still pulses with green energy. Slowly tries to grow roots if left on soil."
+    magical_school: Nature (Shield)
+    craft_consumers: [ENCHANTER, SCRIBE]
+
+  dryad_blossom:
+    resource: Dryad Blossom
+    item_id: dryad_blossom
+    category: MAGICAL_COMPONENT
+    base_value: 15
+    source: "Corrupted Dryad (encounter, L13 High)"
+    description: "A dark flower with petals that shift between purple and green. Beautiful but unsettling — smells of wildflowers and decay."
+    magical_school: Nature (Growth)
+    craft_consumers: [SCRIBE]
+
+  # Phase 1 Promotion — Spider Venom (dual-use: ALCHEMIST + ENCHANTER)
+  spider_venom:
+    resource: Spider Venom
+    item_id: spider_venom
+    category: MAGICAL_COMPONENT
+    base_value: 12
+    source: "Giant Spider (encounter, L7 Low — Phase 1 existing)"
+    description: "Viscous green liquid with paralytic properties. Already drops from Phase 1 Giant Spiders. Promoted to dual-use."
+    magical_school: Poison
+    craft_consumers: [ALCHEMIST, ENCHANTER]
+    notes: "Phase 1 material promoted. No changes to Giant Spider loot table — just expanding consumer professions."
+
   # --- FARMER PRIVATE FIELD ONLY (no public spots) ---
   # grain_field: REMOVED as public spot (2026-02-17). Grain now FARMER-private-field only.
   #   Towns reassigned: Millhaven→orchard, Greenhollow→orchard, Sandrift→fishing
@@ -913,33 +1106,42 @@ professions:
     notes: "11 recipes across 3 tiers. First dedicated HERBALIST consumer. Potions marked isPotion=true, sold at Apothecary building. Supply chain: HERBALIST/FARMER → ALCHEMIST → Market."
 
   ENCHANTER:
-    # ENCHANTER profession LIVE — 9 recipes, enchantment scrolls (2026-02-19)
+    # ENCHANTER profession LIVE — 13 recipes (9 original + 4 new), enchantment scrolls
+    # UPDATED: 2026-02-20 — Added magical component inputs to all 9 existing recipes.
+    # Added 4 new Expert-tier recipes (Earthen, Vitality, Nature's Ward, True Sight).
+    # Per magical-components-design.md Section 7.
     type: CRAFTING
     unlock_level: 7
     primary_stat: INT
-    description: "Imbues items with magical properties via enchantment scrolls."
+    description: "Imbues items with magical properties via enchantment scrolls. Requires magical components from monster encounters."
     depends_on_gatherers: [MINER, HERBALIST]
     depends_on_crafters: [SMELTER, ALCHEMIST]
     intermediate_inputs: [Arcane Reagents, Coal, Gemstones, Rare Herbs, Silver Ingot, Iron Ingot]
+    magical_component_inputs: [Living Bark, Ember Core, Frost Essence, Storm Feather, Ogre Sinew, Wind Mote, Spider Venom, Basilisk Scale, Fey Tear, Shadow Essence, Heartwood Sap, Earth Crystal, Basilisk Eye, Wyvern Scale]
     output_categories: [ENCHANTMENT]
     workshop: ENCHANTING_TOWER
-    recipe_count: 9
+    recipe_count: 13
     status: EXISTS_IN_GAME
     tier_recipes:
       apprentice:
-        - { id: ench-fortified, level: 5, output: Fortified Enchantment Scroll, base_value: 80 }
+        - { id: ench-fortified, level: 5, output: Fortified Enchantment Scroll, base_value: 80, magical_inputs: "2x Living Bark" }
       journeyman:
-        - { id: ench-flaming, level: 10, output: Flaming Enchantment Scroll, base_value: 130 }
-        - { id: ench-frost, level: 10, output: Frost Enchantment Scroll, base_value: 130 }
-        - { id: ench-lightning, level: 15, output: Lightning Enchantment Scroll, base_value: 175 }
-        - { id: ench-swift, level: 15, output: Swift Enchantment Scroll, base_value: 160 }
-        - { id: ench-poisoned, level: 20, output: Poisoned Enchantment Scroll, base_value: 200 }
-        - { id: ench-warding, level: 20, output: Warding Enchantment Scroll, base_value: 210 }
+        - { id: ench-flaming, level: 10, output: Flaming Enchantment Scroll, base_value: 130, magical_inputs: "2x Ember Core" }
+        - { id: ench-frost, level: 10, output: Frost Enchantment Scroll, base_value: 130, magical_inputs: "2x Frost Essence" }
+        - { id: ench-lightning, level: 15, output: Lightning Enchantment Scroll, base_value: 175, magical_inputs: "2x Storm Feather" }
+        - { id: ench-swift, level: 15, output: Swift Enchantment Scroll, base_value: 160, magical_inputs: "1x Ogre Sinew + 1x Wind Mote" }
+        - { id: ench-poisoned, level: 20, output: Poisoned Enchantment Scroll, base_value: 200, magical_inputs: "3x Spider Venom" }
+        - { id: ench-warding, level: 20, output: Warding Enchantment Scroll, base_value: 210, magical_inputs: "1x Basilisk Scale" }
       craftsman:
-        - { id: ench-holy, level: 30, output: Holy Enchantment Scroll, base_value: 450 }
-        - { id: ench-shadow, level: 30, output: Shadow Enchantment Scroll, base_value: 450 }
-    supply_chain: "HERBALIST → Arcane Reagents; MINER → Coal/Gemstones; SMELTER → Ingots → ENCHANTER"
-    notes: "9 enchantment scrolls (6 offensive, 3 utility). Scroll application to equipment is a separate future feature."
+        - { id: ench-holy, level: 30, output: Holy Enchantment Scroll, base_value: 450, magical_inputs: "2x Fey Tear" }
+        - { id: ench-shadow, level: 30, output: Shadow Enchantment Scroll, base_value: 450, magical_inputs: "2x Shadow Essence" }
+        - { id: ench-earthen, level: 35, output: Earthen Enchantment Scroll, base_value: 250, magical_inputs: "3x Earth Crystal", mundane_inputs: "1x Iron Ingot + 1x Arcane Reagents + 2x Coal" }
+        - { id: ench-vitality, level: 35, output: Vitality Enchantment Scroll, base_value: 220, magical_inputs: "2x Heartwood Sap + 1x Troll Blood", mundane_inputs: "1x Arcane Reagents + 1x Silver Ingot" }
+      expert:
+        - { id: ench-natures-ward, level: 40, output: "Nature's Ward Enchantment Scroll", base_value: 300, magical_inputs: "2x Living Bark + 1x Heartwood Sap + 1x Fey Tear", mundane_inputs: "1x Arcane Reagents + 1x Silver Ingot" }
+        - { id: ench-true-sight, level: 45, output: True Sight Enchantment Scroll, base_value: 350, magical_inputs: "2x Basilisk Eye", mundane_inputs: "1x Gemstones + 1x Arcane Reagents + 1x Silver Ingot + 2x Coal" }
+    supply_chain: "HERBALIST → Arcane Reagents; MINER → Coal/Gemstones; SMELTER → Ingots; Monster Encounters → Magical Components → ENCHANTER"
+    notes: "13 enchantment scrolls (9 original + 4 new). All recipes now require magical components from monster encounters. Component cost = 20-40% of total input. Scroll application to equipment is a separate future feature."
 
   JEWELER:
     # JEWELER profession LIVE — 12 recipes, jewelry & accessories (2026-02-19)
@@ -1033,30 +1235,39 @@ professions:
     notes: "12 recipes (8 processing + 4 housing). Stone Slab and Clay Pot templates added. Only 3 towns have MASON_YARD."
 
   SCRIBE:
-    # SCRIBE profession LIVE — 7 recipes, scrolls & maps (2026-02-19)
+    # SCRIBE profession LIVE — 11 recipes (7 original + 4 new), scrolls & maps
+    # UPDATED: 2026-02-20 — Added magical component inputs to 6 existing recipes (Area Map stays mundane).
+    # Added 4 new Craftsman-tier recipes (Stone Skin, Might, Entangle, Restoration).
+    # Per magical-components-design.md Section 7.
     type: CRAFTING
     unlock_level: 5
     primary_stat: INT
-    description: "Creates scrolls, books, maps, and written works."
+    description: "Creates scrolls, books, maps, and written works. Magical scrolls require components from monster encounters."
     depends_on_gatherers: [LUMBERJACK, HERBALIST]
     depends_on_crafters: [WOODWORKER]
     intermediate_inputs: [Softwood Planks, Common Herbs, Medicinal Herbs, Flowers, Arcane Reagents]
+    magical_component_inputs: [Ember Core, Frost Essence, Storm Feather, Troll Blood, Spectral Dust, Wisp Mote, Earth Crystal, Ogre Sinew, Living Bark, Dryad Blossom, Fey Tear]
     output_categories: [SCROLL, MAP]
     workshop: SCRIBE_STUDY
-    recipe_count: 7
+    recipe_count: 11
     status: EXISTS_IN_GAME
     tier_recipes:
       apprentice:
         - { id: scribe-area-map, level: 5, output: Area Map, base_value: 20 }
       journeyman:
-        - { id: scribe-scroll-fire, level: 10, output: Scroll of Fire, base_value: 60 }
-        - { id: scribe-identification-scroll, level: 10, output: Identification Scroll, base_value: 50 }
-        - { id: scribe-scroll-ice, level: 15, output: Scroll of Ice, base_value: 80 }
-        - { id: scribe-scroll-healing, level: 20, output: Scroll of Healing, base_value: 100 }
-        - { id: scribe-dungeon-map, level: 20, output: Dungeon Map, base_value: 80 }
-        - { id: scribe-scroll-lightning, level: 25, output: Scroll of Lightning, base_value: 120 }
-    supply_chain: "HERBALIST → herbs/reagents; LUMBERJACK → WOODWORKER → Softwood Planks → SCRIBE"
-    notes: "7 consumable recipes (3 offensive scrolls, 1 healing scroll, 2 maps, 1 utility). 10 towns have SCRIBE_STUDY."
+        - { id: scribe-scroll-fire, level: 10, output: Scroll of Fire, base_value: 60, magical_inputs: "1x Ember Core" }
+        - { id: scribe-identification-scroll, level: 10, output: Identification Scroll, base_value: 50, magical_inputs: "1x Wisp Mote" }
+        - { id: scribe-scroll-ice, level: 15, output: Scroll of Ice, base_value: 80, magical_inputs: "1x Frost Essence" }
+        - { id: scribe-scroll-healing, level: 20, output: Scroll of Healing, base_value: 100, magical_inputs: "1x Troll Blood" }
+        - { id: scribe-dungeon-map, level: 20, output: Dungeon Map, base_value: 80, magical_inputs: "1x Spectral Dust" }
+        - { id: scribe-scroll-lightning, level: 25, output: Scroll of Lightning, base_value: 120, magical_inputs: "1x Storm Feather" }
+      craftsman:
+        - { id: scribe-scroll-stone-skin, level: 30, output: Scroll of Stone Skin, base_value: 90, magical_inputs: "1x Earth Crystal", mundane_inputs: "1x Arcane Reagents + 2x Softwood Planks" }
+        - { id: scribe-scroll-might, level: 30, output: Scroll of Might, base_value: 85, magical_inputs: "1x Ogre Sinew", mundane_inputs: "1x Arcane Reagents + 2x Softwood Planks" }
+        - { id: scribe-scroll-entangle, level: 35, output: Scroll of Entangle, base_value: 100, magical_inputs: "1x Living Bark + 1x Dryad Blossom", mundane_inputs: "1x Medicinal Herbs + 1x Softwood Planks" }
+        - { id: scribe-scroll-restoration, level: 35, output: Scroll of Restoration, base_value: 130, magical_inputs: "1x Fey Tear + 1x Troll Blood", mundane_inputs: "1x Medicinal Herbs + 1x Softwood Planks" }
+    supply_chain: "HERBALIST → herbs/reagents; LUMBERJACK → WOODWORKER → Softwood Planks; Monster Encounters → Magical Components → SCRIBE"
+    notes: "11 recipes (7 original + 4 new). Area Map stays mundane (no component). All magical scrolls require 1x component from monster encounters. Craftsman-tier scrolls are single-use combat buffs. 10 towns have SCRIBE_STUDY."
 
   # ---------------------------------------------------------------------------
   # SERVICE PROFESSIONS (6)
