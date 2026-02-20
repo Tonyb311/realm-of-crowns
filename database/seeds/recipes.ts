@@ -795,7 +795,9 @@ const RESOURCE_ITEMS: ResourceItemDef[] = [
   { name: 'Bark', type: 'MATERIAL', description: 'Stripped bark used in tanning and potion-making.', baseValue: 3 },
   // Animal products
   { name: 'Raw Leather', type: 'MATERIAL', description: 'Untanned hides from common game.', baseValue: 8 },
-  { name: 'Pelts', type: 'MATERIAL', description: 'Fur-bearing animal pelts from wolves, foxes, and bears.', baseValue: 8 },
+  { name: 'Animal Pelts', type: 'MATERIAL', description: 'Fur-bearing animal pelts from wolves, foxes, and bears.', baseValue: 8 },
+  { name: 'Wolf Pelts', type: 'MATERIAL', description: 'Thick pelts from wild wolves. Prized by tanners for durable leather.', baseValue: 14 },
+  { name: 'Bear Hides', type: 'MATERIAL', description: 'Heavy hides from bears. Exceptionally tough when tanned.', baseValue: 18 },
   { name: 'Exotic Hide', type: 'MATERIAL', description: 'Tough hide from exotic and dangerous beasts.', baseValue: 50 },
   { name: 'Dragon Hide', type: 'MATERIAL', description: 'Scaled hide stripped from a slain dragon. Nearly indestructible.', baseValue: 200 },
   // Fibers
@@ -948,6 +950,40 @@ export async function seedRecipes(prisma: PrismaClient) {
 
   const templateMap = new Map<string, string>(); // name -> id
 
+  // Pre-load ALL existing templates from DB so recipes can reference them
+  const existingTemplates = await prisma.itemTemplate.findMany({ select: { id: true, name: true } });
+  for (const t of existingTemplates) {
+    templateMap.set(t.name, t.id);
+  }
+  console.log(`  Pre-loaded ${existingTemplates.length} existing templates from DB`);
+
+  // Helper: auto-create a template if it doesn't exist yet
+  async function ensureTemplate(itemName: string, context: string): Promise<string> {
+    const existing = templateMap.get(itemName);
+    if (existing) return existing;
+
+    const stableId = `auto-${itemName.toLowerCase().replace(/\s+/g, '-')}`;
+    const created = await prisma.itemTemplate.upsert({
+      where: { id: stableId },
+      update: { name: itemName },
+      create: {
+        id: stableId,
+        name: itemName,
+        type: 'MATERIAL',
+        rarity: 'COMMON',
+        description: `${itemName} (auto-created by seed)`,
+        stats: {},
+        durability: 100,
+        professionRequired: null,
+        levelRequired: 1,
+        baseValue: 0,
+      },
+    });
+    templateMap.set(itemName, created.id);
+    console.log(`  ⚠ Auto-created template: ${itemName} (needed by ${context})`);
+    return created.id;
+  }
+
   // Seed resource item templates (raw materials)
   for (const res of RESOURCE_ITEMS) {
     const stableId = `resource-${res.name.toLowerCase().replace(/\s+/g, '-')}`;
@@ -1024,19 +1060,14 @@ export async function seedRecipes(prisma: PrismaClient) {
   console.log('--- Seeding Processing Recipes ---');
 
   for (const recipe of ALL_PROCESSING_RECIPES) {
-    const ingredients = recipe.inputs.map((inp) => {
-      const templateId = templateMap.get(inp.itemName);
-      if (!templateId) {
-        throw new Error(`Item template not found for input: ${inp.itemName} (recipe: ${recipe.name})`);
-      }
-      return { itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity };
-    });
+    const ingredients: { itemTemplateId: string; itemName: string; quantity: number }[] = [];
+    for (const inp of recipe.inputs) {
+      const templateId = await ensureTemplate(inp.itemName, recipe.name);
+      ingredients.push({ itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity });
+    }
 
     const output = recipe.outputs[0];
-    const resultId = templateMap.get(output.itemName);
-    if (!resultId) {
-      throw new Error(`Item template not found for output: ${output.itemName} (recipe: ${recipe.name})`);
-    }
+    const resultId = await ensureTemplate(output.itemName, recipe.name);
 
     const recipeId = `recipe-${recipe.recipeId}`;
     const tier = levelToTier(recipe.levelRequired);
@@ -1073,19 +1104,14 @@ export async function seedRecipes(prisma: PrismaClient) {
   console.log('--- Seeding COOK Recipes ---');
 
   for (const recipe of COOK_RECIPES) {
-    const ingredients = recipe.inputs.map((inp) => {
-      const templateId = templateMap.get(inp.itemName);
-      if (!templateId) {
-        throw new Error(`Item template not found for input: ${inp.itemName} (recipe: ${recipe.name})`);
-      }
-      return { itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity };
-    });
+    const ingredients: { itemTemplateId: string; itemName: string; quantity: number }[] = [];
+    for (const inp of recipe.inputs) {
+      const templateId = await ensureTemplate(inp.itemName, recipe.name);
+      ingredients.push({ itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity });
+    }
 
     const output = recipe.outputs[0];
-    const resultId = templateMap.get(output.itemName);
-    if (!resultId) {
-      throw new Error(`Item template not found for output: ${output.itemName} (recipe: ${recipe.name})`);
-    }
+    const resultId = await ensureTemplate(output.itemName, recipe.name);
 
     const recipeId = `recipe-${recipe.recipeId}`;
     const tier = levelToTier(recipe.levelRequired);
@@ -1122,18 +1148,13 @@ export async function seedRecipes(prisma: PrismaClient) {
   console.log('--- Seeding BREWER Recipes ---');
 
   for (const recipe of BREWER_CONSUMABLES) {
-    const ingredients = recipe.inputs.map((inp) => {
-      const templateId = templateMap.get(inp.itemName);
-      if (!templateId) {
-        throw new Error(`Item template not found for input: ${inp.itemName} (recipe: ${recipe.name})`);
-      }
-      return { itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity };
-    });
-
-    const resultId = templateMap.get(recipe.output.itemName);
-    if (!resultId) {
-      throw new Error(`Item template not found for output: ${recipe.output.itemName} (recipe: ${recipe.name})`);
+    const ingredients: { itemTemplateId: string; itemName: string; quantity: number }[] = [];
+    for (const inp of recipe.inputs) {
+      const templateId = await ensureTemplate(inp.itemName, recipe.name);
+      ingredients.push({ itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity });
     }
+
+    const resultId = await ensureTemplate(recipe.output.itemName, recipe.name);
 
     const recipeId = `recipe-${recipe.recipeId}`;
     const tier = levelToTier(recipe.levelRequired);
@@ -1170,18 +1191,13 @@ export async function seedRecipes(prisma: PrismaClient) {
   console.log('--- Seeding Crafting Recipes ---');
 
   for (const recipe of CRAFTING_RECIPES) {
-    const ingredients = recipe.ingredients.map((ing) => {
-      const templateId = templateMap.get(ing.itemName);
-      if (!templateId) {
-        throw new Error(`Item template not found for ingredient: ${ing.itemName} (recipe: ${recipe.name})`);
-      }
-      return { itemTemplateId: templateId, itemName: ing.itemName, quantity: ing.quantity };
-    });
-
-    const resultId = templateMap.get(recipe.resultName);
-    if (!resultId) {
-      throw new Error(`Item template not found for result: ${recipe.resultName} (recipe: ${recipe.name})`);
+    const ingredients: { itemTemplateId: string; itemName: string; quantity: number }[] = [];
+    for (const ing of recipe.ingredients) {
+      const templateId = await ensureTemplate(ing.itemName, recipe.name);
+      ingredients.push({ itemTemplateId: templateId, itemName: ing.itemName, quantity: ing.quantity });
     }
+
+    const resultId = await ensureTemplate(recipe.resultName, recipe.name);
 
     const recipeId = `recipe-${recipe.name.toLowerCase().replace(/\s+/g, '-')}`;
 

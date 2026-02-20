@@ -476,6 +476,21 @@ export async function seedAccessoryRecipes(prisma: PrismaClient) {
     templateMap.set(t.name, t.id);
   }
 
+  // Helper: auto-create a template if it doesn't exist yet
+  async function ensureTemplate(itemName: string, context: string): Promise<string> {
+    const existing2 = templateMap.get(itemName);
+    if (existing2) return existing2;
+    const stableId = `auto-${itemName.toLowerCase().replace(/\s+/g, '-')}`;
+    const created = await prisma.itemTemplate.upsert({
+      where: { id: stableId },
+      update: { name: itemName },
+      create: { id: stableId, name: itemName, type: 'MATERIAL', rarity: 'COMMON', description: `${itemName} (auto-created by seed)`, stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 0 },
+    });
+    templateMap.set(itemName, created.id);
+    console.log(`  ⚠ Auto-created template: ${itemName} (needed by ${context})`);
+    return created.id;
+  }
+
   // Seed new resource item templates (e.g. Gemstones if not yet present)
   for (const res of NEW_RESOURCE_ITEMS) {
     if (templateMap.has(res.name)) continue;
@@ -545,19 +560,14 @@ export async function seedAccessoryRecipes(prisma: PrismaClient) {
   ];
 
   for (const recipe of allRecipes) {
-    const ingredients = recipe.inputs.map((inp) => {
-      const templateId = templateMap.get(inp.itemName);
-      if (!templateId) {
-        throw new Error(`Item template not found for input: ${inp.itemName} (recipe: ${recipe.name})`);
-      }
-      return { itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity };
-    });
+    const ingredients: { itemTemplateId: string; itemName: string; quantity: number }[] = [];
+    for (const inp of recipe.inputs) {
+      const templateId = await ensureTemplate(inp.itemName, recipe.name);
+      ingredients.push({ itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity });
+    }
 
     const output = recipe.outputs[0];
-    const resultId = templateMap.get(output.itemName);
-    if (!resultId) {
-      throw new Error(`Item template not found for output: ${output.itemName} (recipe: ${recipe.name})`);
-    }
+    const resultId = await ensureTemplate(output.itemName, recipe.name);
 
     const recipeId = `recipe-${recipe.recipeId}`;
     const tier = levelToTier(recipe.levelRequired);

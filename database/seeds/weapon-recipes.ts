@@ -60,6 +60,21 @@ export async function seedWeaponRecipes(prisma: PrismaClient) {
     templateMap.set(t.name, t.id);
   }
 
+  // Helper: auto-create a template if it doesn't exist yet
+  async function ensureTemplate(itemName: string, context: string): Promise<string> {
+    const existing = templateMap.get(itemName);
+    if (existing) return existing;
+    const stableId = `auto-${itemName.toLowerCase().replace(/\s+/g, '-')}`;
+    const created = await prisma.itemTemplate.upsert({
+      where: { id: stableId },
+      update: { name: itemName },
+      create: { id: stableId, name: itemName, type: 'MATERIAL', rarity: 'COMMON', description: `${itemName} (auto-created by seed)`, stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 0 },
+    });
+    templateMap.set(itemName, created.id);
+    console.log(`  ⚠ Auto-created template: ${itemName} (needed by ${context})`);
+    return created.id;
+  }
+
   // Track newly created weapon templates
   let templatesCreated = 0;
   let recipesCreated = 0;
@@ -123,21 +138,13 @@ export async function seedWeaponRecipes(prisma: PrismaClient) {
     templatesCreated++;
 
     // Now upsert the recipe
-    const ingredients = recipe.inputs.map((inp) => {
-      const templateId = templateMap.get(inp.itemName);
-      if (!templateId) {
-        throw new Error(
-          `Item template not found for input: ${inp.itemName} (recipe: ${recipe.name}). ` +
-          `Ensure seedRecipes() runs before seedWeaponRecipes().`
-        );
-      }
-      return { itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity };
-    });
-
-    const resultId = templateMap.get(outputName);
-    if (!resultId) {
-      throw new Error(`Item template not found for output: ${outputName} (recipe: ${recipe.name})`);
+    const ingredients: { itemTemplateId: string; itemName: string; quantity: number }[] = [];
+    for (const inp of recipe.inputs) {
+      const templateId = await ensureTemplate(inp.itemName, recipe.name);
+      ingredients.push({ itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity });
     }
+
+    const resultId = templateMap.get(outputName)!;
 
     const recipeId = `recipe-${recipe.recipeId}`;
     const tier = levelToTier(recipe.levelRequired);
