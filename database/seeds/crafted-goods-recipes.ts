@@ -97,19 +97,16 @@ export async function seedCraftedGoodsRecipes(prisma: PrismaClient) {
     templateMap.set(t.name, t.id);
   }
 
-  // Helper: auto-create a template if it doesn't exist yet
-  async function ensureTemplate(itemName: string, context: string): Promise<string> {
-    const existing = templateMap.get(itemName);
-    if (existing) return existing;
-    const stableId = `auto-${itemName.toLowerCase().replace(/\s+/g, '-')}`;
-    const created = await prisma.itemTemplate.upsert({
-      where: { id: stableId },
-      update: { name: itemName },
-      create: { id: stableId, name: itemName, type: 'MATERIAL', rarity: 'COMMON', description: `${itemName} (auto-created by seed)`, stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 0 },
-    });
-    templateMap.set(itemName, created.id);
-    console.log(`  ⚠ Auto-created template: ${itemName} (needed by ${context})`);
-    return created.id;
+  // Helper: resolve template or fail loudly
+  function ensureTemplate(itemName: string, context: string): string {
+    const id = templateMap.get(itemName);
+    if (!id) {
+      throw new Error(
+        `Recipe references unknown item template "${itemName}" (recipe: ${context}). ` +
+        `Add it to ITEM_TEMPLATES in database/seeds/recipes.ts first.`
+      );
+    }
+    return id;
   }
 
   let templatesCreated = 0;
@@ -157,7 +154,7 @@ export async function seedCraftedGoodsRecipes(prisma: PrismaClient) {
     // Upsert the recipe
     const ingredients: { itemTemplateId: string; itemName: string; quantity: number }[] = [];
     for (const inp of recipe.inputs) {
-      const templateId = await ensureTemplate(inp.itemName, recipe.name);
+      const templateId = ensureTemplate(inp.itemName, recipe.name);
       ingredients.push({ itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity });
     }
 

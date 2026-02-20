@@ -12,5 +12,5 @@
       "@shared/*": ["../shared/src/*"]
     }
   },
-  "include": ["seeds", "prisma"]
+  "include": ["seeds", "prisma", "scripts"]
 }

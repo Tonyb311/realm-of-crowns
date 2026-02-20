@@ -454,6 +454,278 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     baseValue: 58,
   },
 
+  // --- Woodworker Finished Materials ---
+  {
+    name: 'Rough Planks',
+    type: 'MATERIAL',
+    rarity: 'COMMON',
+    description: 'Roughly sawn planks from raw logs. Cheap and basic, used in bulk construction.',
+    stats: {},
+    durability: 80,
+    professionRequired: 'WOODWORKER',
+    levelRequired: 1,
+    baseValue: 4,
+  },
+  {
+    name: 'Barrel',
+    type: 'MATERIAL',
+    rarity: 'COMMON',
+    description: 'A sturdy wooden barrel bound with iron hoops, used for storing goods and liquids.',
+    stats: {},
+    durability: 100,
+    professionRequired: 'WOODWORKER',
+    levelRequired: 15,
+    baseValue: 55,
+  },
+  {
+    name: 'Furniture',
+    type: 'MATERIAL',
+    rarity: 'COMMON',
+    description: 'Assembled wooden furniture crafted from hardwood planks. Used in housing and shops.',
+    stats: {},
+    durability: 100,
+    professionRequired: 'WOODWORKER',
+    levelRequired: 15,
+    baseValue: 63,
+  },
+
+  // --- Fletcher Materials (animal drops) ---
+  {
+    name: 'Spider Silk',
+    type: 'MATERIAL',
+    rarity: 'FINE',
+    description: 'Strong, lightweight silk harvested from giant spiders. Prized by fletchers for bowstrings and arrow fletching.',
+    stats: {},
+    durability: 100,
+    professionRequired: null,
+    levelRequired: 1,
+    baseValue: 18,
+  },
+  {
+    name: 'Bear Claw',
+    type: 'MATERIAL',
+    rarity: 'FINE',
+    description: 'A large, curved claw from a bear. Used as a decorative and functional component in high-end bows.',
+    stats: {},
+    durability: 100,
+    professionRequired: null,
+    levelRequired: 1,
+    baseValue: 15,
+  },
+
+  // --- Magical Components (monster encounter drops) ---
+  {
+    name: 'Ember Core',
+    type: 'MATERIAL',
+    rarity: 'FINE',
+    description: 'A fist-sized sphere of solidified flame, warm to the touch and faintly glowing. Harvested from slain fire elementals.',
+    stats: {},
+    durability: 100,
+    professionRequired: null,
+    levelRequired: 1,
+    baseValue: 15,
+  },
+  {
+    name: 'Frost Essence',
+    type: 'MATERIAL',
+    rarity: 'FINE',
+    description: 'A crystalline shard of pure cold, perpetually rimmed in ice. Condenses from the remains of destroyed ice wraiths.',
+    stats: {},
+    durability: 100,
+    professionRequired: null,
+    levelRequired: 1,
+    baseValue: 15,
+  },
+  {
+    name: 'Storm Feather',
+    type: 'MATERIAL',
+    rarity: 'FINE',
+    description: 'An iridescent feather that crackles with static. Plucked from the wings of storm hawks after they fall.',
+    stats: {},
+    durability: 100,
+    professionRequired: null,
+    levelRequired: 1,
+    baseValue: 15,
+  },
+  {
+    name: 'Earth Crystal',
+    type: 'MATERIAL',
+    rarity: 'COMMON',
+    description: 'A dense, geometric crystal that hums when struck. Found in the rubble of shattered stone golems.',
+    stats: {},
+    durability: 100,
+    professionRequired: null,
+    levelRequired: 1,
+    baseValue: 12,
+  },
+  {
+    name: 'Troll Blood',
+    type: 'MATERIAL',
+    rarity: 'FINE',
+    description: 'Thick, dark-green ichor that writhes and tries to congeal. Must be bottled quickly before it regenerates.',
+    stats: {},
+    durability: 100,
+    professionRequired: null,
+    levelRequired: 1,
+    baseValue: 15,
+  },
+  {
+    name: 'Fey Tear',
+    type: 'MATERIAL',
+    rarity: 'SUPERIOR',
+    description: 'A single luminous droplet, cool as spring water, that falls from a corrupted dryad upon death. Radiates gentle warmth.',
+    stats: {},
+    durability: 100,
+    professionRequired: null,
+    levelRequired: 1,
+    baseValue: 35,
+  },
+  {
+    name: 'Heartwood Sap',
+    type: 'MATERIAL',
+    rarity: 'COMMON',
+    description: 'Amber-gold sap that seeps from treant heartwood. Smells of deep forest and old growth. Sticky, warm, faintly alive.',
+    stats: {},
+    durability: 100,
+    professionRequired: null,
+    levelRequired: 1,
+    baseValue: 10,
+  },
+  {
+    name: 'Basilisk Scale',
+    type: 'MATERIAL',
+    rarity: 'FINE',
+    description: 'A thick, stone-grey scale with a pearlescent sheen. Unnervingly heavy for its size. Retains petrifying resilience.',
+    stats: {},
+    durability: 100,
+    professionRequired: null,
+    levelRequired: 1,
+    baseValue: 25,
+  },
+  {
+    name: 'Wyvern Scale',
+    type: 'MATERIAL',
+    rarity: 'SUPERIOR',
+    description: 'A broad, iridescent scale from the underbelly of a wyvern. Tough as steel, light as leather.',
+    stats: {},
+    durability: 100,
+    professionRequired: null,
+    levelRequired: 1,
+    baseValue: 45,
+  },
+  {
+    name: 'Ogre Sinew',
+    type: 'MATERIAL',
+    rarity: 'COMMON',
+    description: 'A thick, fibrous tendon strip from an ogre. Impossibly strong — a single strand can support a man\'s weight.',
+    stats: {},
+    durability: 100,
+    professionRequired: null,
+    levelRequired: 1,
+    baseValue: 12,
+  },
+  {
+    name: 'Wind Mote',
+    type: 'MATERIAL',
+    rarity: 'COMMON',
+    description: 'A captured wisp of living wind, bottled from a storm hawk\'s death spiral. Trembles and tries to escape its container.',
+    stats: {},
+    durability: 100,
+    professionRequired: null,
+    levelRequired: 1,
+    baseValue: 12,
+  },
+  {
+    name: 'Basilisk Eye',
+    type: 'MATERIAL',
+    rarity: 'FINE',
+    description: 'The petrifying eye of a basilisk, carefully extracted and preserved in oil. Still seems to watch you.',
+    stats: {},
+    durability: 100,
+    professionRequired: null,
+    levelRequired: 1,
+    baseValue: 20,
+  },
+  {
+    name: 'Shadow Essence',
+    type: 'MATERIAL',
+    rarity: 'SUPERIOR',
+    description: 'A vial of liquid darkness that absorbs light around it. Extracted from the dissipating form of a slain shadow stalker.',
+    stats: {},
+    durability: 100,
+    professionRequired: null,
+    levelRequired: 1,
+    baseValue: 30,
+  },
+  {
+    name: 'Spider Venom',
+    type: 'MATERIAL',
+    rarity: 'COMMON',
+    description: 'Viscous green liquid with paralytic properties. Harvested from giant spiders.',
+    stats: {},
+    durability: 100,
+    professionRequired: null,
+    levelRequired: 1,
+    baseValue: 12,
+  },
+  {
+    name: 'Living Bark',
+    type: 'MATERIAL',
+    rarity: 'COMMON',
+    description: 'A section of bark that still pulses with green energy. Slowly tries to grow roots if left on soil.',
+    stats: {},
+    durability: 100,
+    professionRequired: null,
+    levelRequired: 1,
+    baseValue: 8,
+  },
+
+  // --- Enchantment Scrolls (ENCHANTER outputs) ---
+  {
+    name: 'Earthen Enchantment Scroll',
+    type: 'CONSUMABLE',
+    rarity: 'FINE',
+    description: 'An enchantment scroll imbued with the resilience of stone. Apply to equipment for earth-aspected protection.',
+    stats: {},
+    durability: 1,
+    professionRequired: 'ENCHANTER',
+    levelRequired: 35,
+    baseValue: 250,
+  },
+  {
+    name: 'Vitality Enchantment Scroll',
+    type: 'CONSUMABLE',
+    rarity: 'FINE',
+    description: 'An enchantment scroll pulsing with life energy. Apply to equipment for vitality enhancement.',
+    stats: {},
+    durability: 1,
+    professionRequired: 'ENCHANTER',
+    levelRequired: 35,
+    baseValue: 220,
+  },
+  {
+    name: "Nature's Ward Enchantment Scroll",
+    type: 'CONSUMABLE',
+    rarity: 'SUPERIOR',
+    description: 'An enchantment scroll woven with primal nature magic. Apply to equipment for natural ward protection.',
+    stats: {},
+    durability: 1,
+    professionRequired: 'ENCHANTER',
+    levelRequired: 40,
+    baseValue: 300,
+  },
+  {
+    name: 'True Sight Enchantment Scroll',
+    type: 'CONSUMABLE',
+    rarity: 'SUPERIOR',
+    description: 'An enchantment scroll infused with basilisk perception. Apply to equipment to pierce illusions and invisibility.',
+    stats: {},
+    durability: 1,
+    professionRequired: 'ENCHANTER',
+    levelRequired: 45,
+    baseValue: 350,
+  },
+
   // --- COOK Food Products ---
   {
     name: 'Berry Jam',
@@ -796,8 +1068,8 @@ const RESOURCE_ITEMS: ResourceItemDef[] = [
   // Animal products
   { name: 'Raw Leather', type: 'MATERIAL', description: 'Untanned hides from common game.', baseValue: 8 },
   { name: 'Animal Pelts', type: 'MATERIAL', description: 'Fur-bearing animal pelts from wolves, foxes, and bears.', baseValue: 8 },
-  { name: 'Wolf Pelts', type: 'MATERIAL', description: 'Thick pelts from wild wolves. Prized by tanners for durable leather.', baseValue: 14 },
-  { name: 'Bear Hides', type: 'MATERIAL', description: 'Heavy hides from bears. Exceptionally tough when tanned.', baseValue: 18 },
+  { name: 'Wolf Pelts', type: 'MATERIAL', description: 'Thick pelts from wild wolves. Prized by tanners for durable leather.', baseValue: 28 },
+  { name: 'Bear Hides', type: 'MATERIAL', description: 'Heavy hides from bears. Exceptionally tough when tanned.', baseValue: 35 },
   { name: 'Exotic Hide', type: 'MATERIAL', description: 'Tough hide from exotic and dangerous beasts.', baseValue: 50 },
   { name: 'Dragon Hide', type: 'MATERIAL', description: 'Scaled hide stripped from a slain dragon. Nearly indestructible.', baseValue: 200 },
   // Fibers
@@ -957,31 +1229,16 @@ export async function seedRecipes(prisma: PrismaClient) {
   }
   console.log(`  Pre-loaded ${existingTemplates.length} existing templates from DB`);
 
-  // Helper: auto-create a template if it doesn't exist yet
-  async function ensureTemplate(itemName: string, context: string): Promise<string> {
-    const existing = templateMap.get(itemName);
-    if (existing) return existing;
-
-    const stableId = `auto-${itemName.toLowerCase().replace(/\s+/g, '-')}`;
-    const created = await prisma.itemTemplate.upsert({
-      where: { id: stableId },
-      update: { name: itemName },
-      create: {
-        id: stableId,
-        name: itemName,
-        type: 'MATERIAL',
-        rarity: 'COMMON',
-        description: `${itemName} (auto-created by seed)`,
-        stats: {},
-        durability: 100,
-        professionRequired: null,
-        levelRequired: 1,
-        baseValue: 0,
-      },
-    });
-    templateMap.set(itemName, created.id);
-    console.log(`  ⚠ Auto-created template: ${itemName} (needed by ${context})`);
-    return created.id;
+  // Helper: resolve template or fail loudly
+  function ensureTemplate(itemName: string, context: string): string {
+    const id = templateMap.get(itemName);
+    if (!id) {
+      throw new Error(
+        `Recipe references unknown item template "${itemName}" (recipe: ${context}). ` +
+        `Add it to ITEM_TEMPLATES in database/seeds/recipes.ts first.`
+      );
+    }
+    return id;
   }
 
   // Seed resource item templates (raw materials)
@@ -1062,12 +1319,12 @@ export async function seedRecipes(prisma: PrismaClient) {
   for (const recipe of ALL_PROCESSING_RECIPES) {
     const ingredients: { itemTemplateId: string; itemName: string; quantity: number }[] = [];
     for (const inp of recipe.inputs) {
-      const templateId = await ensureTemplate(inp.itemName, recipe.name);
+      const templateId = ensureTemplate(inp.itemName, recipe.name);
       ingredients.push({ itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity });
     }
 
     const output = recipe.outputs[0];
-    const resultId = await ensureTemplate(output.itemName, recipe.name);
+    const resultId = ensureTemplate(output.itemName, recipe.name);
 
     const recipeId = `recipe-${recipe.recipeId}`;
     const tier = levelToTier(recipe.levelRequired);
@@ -1106,12 +1363,12 @@ export async function seedRecipes(prisma: PrismaClient) {
   for (const recipe of COOK_RECIPES) {
     const ingredients: { itemTemplateId: string; itemName: string; quantity: number }[] = [];
     for (const inp of recipe.inputs) {
-      const templateId = await ensureTemplate(inp.itemName, recipe.name);
+      const templateId = ensureTemplate(inp.itemName, recipe.name);
       ingredients.push({ itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity });
     }
 
     const output = recipe.outputs[0];
-    const resultId = await ensureTemplate(output.itemName, recipe.name);
+    const resultId = ensureTemplate(output.itemName, recipe.name);
 
     const recipeId = `recipe-${recipe.recipeId}`;
     const tier = levelToTier(recipe.levelRequired);
@@ -1150,11 +1407,11 @@ export async function seedRecipes(prisma: PrismaClient) {
   for (const recipe of BREWER_CONSUMABLES) {
     const ingredients: { itemTemplateId: string; itemName: string; quantity: number }[] = [];
     for (const inp of recipe.inputs) {
-      const templateId = await ensureTemplate(inp.itemName, recipe.name);
+      const templateId = ensureTemplate(inp.itemName, recipe.name);
       ingredients.push({ itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity });
     }
 
-    const resultId = await ensureTemplate(recipe.output.itemName, recipe.name);
+    const resultId = ensureTemplate(recipe.output.itemName, recipe.name);
 
     const recipeId = `recipe-${recipe.recipeId}`;
     const tier = levelToTier(recipe.levelRequired);
@@ -1193,11 +1450,11 @@ export async function seedRecipes(prisma: PrismaClient) {
   for (const recipe of CRAFTING_RECIPES) {
     const ingredients: { itemTemplateId: string; itemName: string; quantity: number }[] = [];
     for (const ing of recipe.ingredients) {
-      const templateId = await ensureTemplate(ing.itemName, recipe.name);
+      const templateId = ensureTemplate(ing.itemName, recipe.name);
       ingredients.push({ itemTemplateId: templateId, itemName: ing.itemName, quantity: ing.quantity });
     }
 
-    const resultId = await ensureTemplate(recipe.resultName, recipe.name);
+    const resultId = ensureTemplate(recipe.resultName, recipe.name);
 
     const recipeId = `recipe-${recipe.name.toLowerCase().replace(/\s+/g, '-')}`;
 
