@@ -1,335 +1,261 @@
-# Profession Audit Report: Complete 29-Profession Audit
+# Profession Audit Report (Team Audit v2)
 
-**Report Date**: 2026-02-20
-**Status**: AUDIT COMPLETE - All Professions Verified
-**Author**: recipe-auditor Team
+Generated: 2026-02-20
+Audited by: yaml-analyst, seed-auditor, recipe-auditor, team-lead
 
-## Executive Summary
+## Data Sources Cross-Referenced
 
-This comprehensive audit cross-references all **29 professions** against:
-1. YAML source of truth (game design)
-2. Database seed pipeline (implementation)
-3. Shared code recipes (codebase)
+| Source | Description | Records |
+|--------|-------------|---------|
+| `docs/profession-economy-master.yaml` | YAML source of truth (2999 lines) | 29 professions, ~201 recipes, 150+ items |
+| `shared/src/data/recipes/*.ts` | 16 recipe definition files | 287 unique recipeIds |
+| `database/seeds/*.ts` | 12 seed files (8 main pipeline + 4 standalone) | ~344 templates, ~250+ recipes (main) |
 
-### Key Audit Metrics
+## Summary
 
-| Metric | Count | Status |
-|--------|-------|--------|
-| Total professions | 29 (7 gathering, 15 crafting, 7 service) | ✅ All accounted for |
-| Professions with recipes | 16 crafting/processing | ✅ 100% complete |
-| Recipes in shared code | 299 across 15 files | ✅ All functional |
-| Unique recipe IDs | 287 | ✅ Valid (6 acceptable duplicates) |
-| Orphaned recipes | 0 | ✅ None found |
-| Item template gaps | 0 | ✅ All inputs/outputs exist |
-| Supply chain gaps | 0 | ✅ All dependencies functional |
-| Fresh-DB seed compatibility | ✅ YES | All recipes seed correctly |
+| Metric | Count |
+|--------|-------|
+| Total professions | 29 (7 gathering, 15 crafting, 7 service) |
+| Total YAML recipes | ~201 (across 15 crafting professions) |
+| Total code recipes | 287 unique recipeIds |
+| Total seeded in production | All 287 (via main pipeline + standalone scripts) |
+| In main seed pipeline (`index.ts`) | 26/29 professions fully covered |
+| Depend on standalone scripts | 3 (TANNER, LEATHERWORKER, WOODWORKER) |
+| Standalone scripts not in pipeline | 4 (`run-tanner.ts`, `run-tailor.ts`, `run-recipes.ts`, `seed-supply-chain.ts`) |
+| Duplicate recipeIds (cross-file) | 6 COOK IDs duplicated between `cook.ts` and `consumables.ts` |
+| Duplicate recipeIds (intra-file) | 2 COOK IDs duplicated WITHIN `consumables.ts` (`cook-grilled-fish`, `cook-fish-stew`) |
+| Missing from main pipeline templates | 7 (3 TANNER + 4 WOODWORKER intermediates) |
+| Missing from main pipeline recipes | 14 WOODWORKER finished goods |
+| Fresh-DB `npm run seed` would fail | **YES** — at step 5 (seedRecipes) |
+| Fully functional in production | 29/29 |
 
 ## Priority Tiers
 
 ### P0 — Completely Broken
-**None.** All professions are functional in production. One-time standalone seed scripts (`run-tanner.ts`, `run-recipes.ts`) were executed against the production DB to fill gaps.
+**None.** All 29 professions are functional in production. Standalone seed scripts were executed against the production DB to fill gaps.
 
-### P1 — Main Seed Pipeline Gap (would break on fresh DB)
+### P1 — Main Seed Pipeline Gap (fresh DB would break)
 
-**WOODWORKER** — 14 finished goods recipes + 4 intermediate templates only in `database/seeds/run-recipes.ts` (standalone, not in `index.ts`). Fresh `npm run seed` would fail when ALL_PROCESSING_RECIPES tries to resolve Woodworker intermediate outputs (Wooden Dowels, Wooden Handle, Bow Stave, Wooden Frame).
+**TANNER** — 3 intermediate output templates (Cured Leather, Wolf Leather, Bear Leather) exist ONLY in `database/seeds/run-tanner.ts` (standalone). `ITEM_TEMPLATES` in `recipes.ts` has "Soft Leather" but TANNER_RECIPES outputs "Cured Leather". Fresh `npm run seed` → step 5 `seedRecipes()` → template not found → **FAIL**.
 
-**TANNER** — 3 intermediate output templates (Cured Leather, Wolf Leather, Bear Leather) only in `database/seeds/run-tanner.ts` (standalone). Fresh seed would throw `"Item template not found for output: Cured Leather"` when processing TANNER_RECIPES.
+**WOODWORKER** — 4 intermediate templates (Wooden Dowels, Wooden Handle, Bow Stave, Wooden Frame) + 14 finished goods recipes exist ONLY in `database/seeds/run-recipes.ts` (standalone). `WOODWORKER_FINISHED_GOODS` is exported from `shared/src/data/recipes/woodworker.ts` but no seed function in `index.ts` imports it. Fresh seed → intermediate output templates missing → **FAIL**.
 
-**LEATHERWORKER** — Depends on TANNER intermediate templates (Cured Leather, Wolf Leather, Bear Leather) as recipe inputs. If TANNER templates are missing, LEATHERWORKER armor recipes fail too.
+**LEATHERWORKER** — Depends on TANNER intermediate templates (Cured Leather, Wolf Leather, Bear Leather) + WOODWORKER intermediates (Wooden Frame, Wooden Handle) as recipe inputs. If TANNER + WOODWORKER fixes land, LEATHERWORKER works automatically.
 
-### P2 — Functional but Quirky
+### P2 — Functional but Data Integrity Issues
 
-**COOK** — Has duplicate recipeIds across two recipe sources:
-- `COOK_RECIPES` (15, RecipeDefinition format in `cook.ts`) — seeded by `seedRecipes()`
-- `COOK_CONSUMABLES` (17, ConsumableRecipe format in `consumables.ts`) — seeded by `seedConsumableRecipes()`
-- Overlapping IDs: `cook-grilled-fish`, `cook-berry-jam`, `cook-fish-stew`, `cook-herbal-tea` — last writer wins (seedConsumableRecipes runs after seedRecipes)
-- Different input lists per format (e.g., Grilled Fish: COOK_RECIPES uses Wood Logs, COOK_CONSUMABLES uses Salt)
+**COOK** — 6 duplicate recipeIds across `cook.ts` (RecipeDefinition) and `consumables.ts` (ConsumableRecipe):
 
-**TAILOR** — Template name divergence between legacy seeds and recipe outputs:
-- Seeds have: `Woven Wool`, `Silk Cloth` (original template names)
-- Recipes output: `Woven Cloth`, `Silk Fabric` (recipe-matching names)
-- Both template sets exist in DB (P0 fix added recipe-matching names), but the divergence is confusing
+| recipeId | cook.ts | consumables.ts (1st) | consumables.ts (2nd) |
+|----------|---------|---------------------|---------------------|
+| `cook-grilled-fish` | line 59 | line 299 | line 582 |
+| `cook-fish-stew` | line 120 | line 442 | line 598 |
+| `cook-berry-jam` | line 48 | line 315 | — |
+| `cook-herbal-tea` | line 70 | line 331 | — |
+| `cook-apple-pie` | line 105 | line 371 | — |
+| `cook-berry-tart` | line 150 | line 394 | — |
 
-### P3 — Fully Functional
+`cook-grilled-fish` and `cook-fish-stew` each appear **3 times** total. Different input lists per definition — e.g., Grilled Fish uses Wood Logs in cook.ts vs Salt in consumables.ts:299 vs Wild Herbs in consumables.ts:582. Last writer wins via upsert.
 
-All remaining professions: SMELTER, BLACKSMITH, ARMORER, BREWER, ALCHEMIST, ENCHANTER, JEWELER, FLETCHER, MASON, SCRIBE, FARMER, RANCHER, FISHERMAN, LUMBERJACK, MINER, HERBALIST, HUNTER, STABLE_MASTER, MERCHANT, INNKEEPER, HEALER, BANKER, COURIER, MERCENARY_CAPTAIN
+**TAILOR** — Legacy template name divergence in `ITEM_TEMPLATES`:
+- "Woven Wool" (line ~211, legacy) AND "Woven Cloth" (line 235, recipe-matching) — both exist
+- "Silk Cloth" (line ~221, legacy) AND "Silk Fabric" (line 255, recipe-matching) — both exist
+- TAILOR_RECIPES correctly output "Woven Cloth" and "Silk Fabric". Legacy names are orphaned (no recipe references them).
+- Also has standalone `run-tailor.ts` that duplicates what the main pipeline already covers.
+
+### P3 — Fully Functional (24 professions)
+
+**Gathering (7):** FARMER, RANCHER, FISHERMAN, LUMBERJACK, MINER, HERBALIST, HUNTER
+**Crafting (10):** SMELTER, BLACKSMITH, ARMORER, ALCHEMIST, ENCHANTER, BREWER, JEWELER, FLETCHER, MASON, SCRIBE
+**Service (7):** MERCHANT, INNKEEPER, HEALER, STABLE_MASTER, BANKER, COURIER, MERCENARY_CAPTAIN
 
 ---
 
 ## Per-Profession Detail
 
-### FARMER
-- Type: GATHERING
-- YAML recipes: 0 (gathering only)
-- Seeded recipes: N/A
-- Missing: None
-- Tiers live: APPRENTICE through EXPERT (cotton_field added 2026-02-19)
-- Status: **P3**
-- Notes: Private fields (grain_field, vegetable_patch, berry_field, hop_field, vineyard, cotton_field). Feeds COOK, BREWER, TAILOR.
+### GATHERING PROFESSIONS (7)
 
-### RANCHER
+#### FARMER
 - Type: GATHERING
-- YAML recipes: 0 (asset-based livestock)
-- Seeded recipes: N/A
-- Missing: None
-- Tiers live: APPRENTICE through CRAFTSMAN
+- YAML: 7 gathering spots (grain_field, vegetable_patch, berry_field, hop_field, vineyard, cotton_field, apple_orchard)
+- Code: All spots in `gathering.ts` RESOURCE_MAP + GATHER_SPOT_PROFESSION_MAP
+- Seeded: All resource templates exist
+- Tiers: APPRENTICE → EXPERT
 - Status: **P3**
-- Notes: Buildings (chicken_coop, dairy_barn, sheep_pen, silkworm_house). Produces Eggs, Milk, Wool, Fine Wool, Silkworm Cocoons.
+- Notes: Feeds COOK, BREWER, TAILOR. Cotton field added 2026-02-19.
 
-### FISHERMAN
-- Type: GATHERING
-- YAML recipes: 0
-- Seeded recipes: N/A
-- Missing: None
-- Tiers live: APPRENTICE through CRAFTSMAN (River Trout, Lake Perch at L7+)
+#### RANCHER
+- Type: GATHERING (asset-based)
+- YAML: 4 buildings (chicken_coop, dairy_barn, sheep_pen, silkworm_house)
+- Code: Buildings in `gathering.ts`
+- Seeded: All output templates exist (Eggs, Milk, Wool, Fine Wool, Silkworm Cocoons)
+- Tiers: APPRENTICE → CRAFTSMAN
 - Status: **P3**
 
-### LUMBERJACK
+#### FISHERMAN
 - Type: GATHERING
-- YAML recipes: 0
-- Seeded recipes: N/A
-- Missing: None
-- Tiers live: APPRENTICE through JOURNEYMAN (Hardwood Grove)
+- YAML: 3 tiers (Raw Fish L1+, River Trout L7+, Lake Perch L7+)
+- Seeded: All templates exist
 - Status: **P3**
 
-### MINER
+#### LUMBERJACK
 - Type: GATHERING
-- YAML recipes: 0
-- Seeded recipes: N/A
-- Missing: None
-- Tiers live: APPRENTICE through CRAFTSMAN (Coal Mine L5+, Silver Mine L7+)
+- YAML: 3 tiers (Wood Logs/Softwood L1+, Hardwood L7+, Exotic Wood L15+)
+- Seeded: All templates exist
 - Status: **P3**
 
-### HERBALIST
+#### MINER
 - Type: GATHERING
-- YAML recipes: 0
-- Seeded recipes: N/A
-- Missing: None
-- Tiers live: APPRENTICE through CRAFTSMAN (Medicinal Herbs, Glowcap Mushrooms at L7+)
+- YAML: 11+ resources (all ores, stone, clay, coal, silite sand)
+- Seeded: All templates exist
+- Tiers: APPRENTICE → MASTER
 - Status: **P3**
 
-### HUNTER
+#### HERBALIST
 - Type: GATHERING
-- YAML recipes: 0
-- Seeded recipes: N/A
-- Missing: None
-- Tiers live: APPRENTICE through CRAFTSMAN (Wolf Pelts, Bear Hides at L7+)
+- YAML: 3 tiers (Wild Herbs L1+, Medicinal Herbs L7+, Glowcap Mushrooms L7+)
+- Seeded: All templates exist
+- Status: **P3**
+
+#### HUNTER
+- Type: GATHERING
+- YAML: 5 outputs (Wild Game Meat, Animal Pelts, Wolf Pelts L7+, Bear Hides L7+, Exotic Hide L15+)
+- Seeded: All templates exist
 - Status: **P3**
 
 ---
 
-### SMELTER
-- Type: CRAFTING
-- YAML recipes: 11 processing + 2 consumables = 13
-- Seeded recipes: 13
-- Missing recipes: None
-- Missing items: None
-- Seed path: `seedRecipes()` → ALL_PROCESSING_RECIPES (11) + `seedConsumableRecipes()` → SMELTER_CONSUMABLES (2)
+### CRAFTING PROFESSIONS (15)
+
+#### SMELTER
+- YAML: 11 processing + 2 consumables = 13
+- Code: 11 in `smelter.ts` + 2 in `consumables.ts` = 13
+- Seeded: 13 (main pipeline)
+- Missing: None
 - Status: **P3**
-- Notes: Core bottleneck profession. All ore→ingot recipes live. Maintenance Kit and Precision Maintenance Kit for Warforged.
 
-### BLACKSMITH
-- Type: CRAFTING
-- YAML recipes: 28 (16 shared + 12 branch-exclusive across Toolsmith/Weaponsmith/Armorer)
-- Seeded recipes: 28 (via `run-recipes.ts` standalone) + 34 weapon recipes (via `seedWeaponRecipes()`)
-- Missing recipes: None
-- Missing items: None
-- Seed path: `seedWeaponRecipes()` → BLACKSMITH_WEAPON_RECIPES (34) + standalone `run-recipes.ts` (28 specialization recipes)
+#### BLACKSMITH
+- YAML: 28 shared/specialization + 33 melee weapons = 61
+- Code: 28 in `blacksmith.ts` + 33 in `weapons.ts` = 61
+- Seeded: 33 weapons (main via `seedWeaponRecipes()`) + 28 specialization (standalone `run-recipes.ts`)
+- Missing from main pipeline: 28 specialization recipes
+- Status: **P3** (core weapons in main pipeline; specialization recipes additive)
+
+#### ARMORER
+- YAML: 25 (5 tiers × 5 armor pieces)
+- Code: 25 in `armor.ts`
+- Seeded: 25 (main pipeline)
+- Missing: None
 - Status: **P3**
-- Notes: 3 specialization branches at L7. Toolsmith/Weaponsmith/Armorer recipes in standalone script but also covered by weapon-recipes seed.
 
-### ARMORER
-- Type: CRAFTING
-- YAML recipes: 25 (5 metal tiers × 5 armor pieces)
-- Seeded recipes: 25
-- Missing recipes: None
-- Missing items: None
-- Seed path: `seedArmorRecipes()` → ALL_ARMOR_RECIPES
-- Status: **P3**
-- Notes: Full tier coverage: Copper → Iron → Steel → Mithril → Adamantine.
+#### WOODWORKER
+- YAML: 11 processing + 14 finished goods + 7 housing = 32
+- Code: 11 + 14 in `woodworker.ts` + 7 in `housing.ts` = 32
+- Seeded: 11 processing + 7 housing (main) + 14 finished goods (standalone ONLY)
+- **Missing from main pipeline:**
+  - 4 templates: Wooden Dowels, Wooden Handle, Bow Stave, Wooden Frame (`run-recipes.ts` lines 1142-1145)
+  - 14 finished goods recipes (`run-recipes.ts` lines 1197-1218)
+- Status: **P1**
 
-### WOODWORKER
-- Type: CRAFTING
-- YAML recipes: 25 (11 processing + 14 finished goods) + 7 housing
-- Seeded recipes: 11 processing (main pipeline) + 7 housing (main pipeline) + 14 finished goods (standalone only)
-- Missing from main pipeline: **14 finished goods + 4 intermediate templates**
-- Missing items from main pipeline:
-  - Templates: Wooden Dowels, Wooden Handle, Bow Stave, Wooden Frame
-  - Finished goods: Wooden Pickaxe, Fishing Rod, Carving Knife, Wooden Chair, Tanning Rack, Fine Fishing Rod, Wooden Shield, Wooden Table, Storage Chest, Wooden Bed Frame, Wooden Shelf, Reinforced Crate, Practice Bow, Hardwood Tower Shield
-- Seed path:
-  - Main: `seedRecipes()` → 11 processing + `seedAccessoryRecipes()` → 7 housing
-  - Standalone: `run-recipes.ts` → 14 finished goods + 4 intermediate templates
-- Status: **P1** (functional in production, would break on fresh DB)
-- Notes: `WOODWORKER_FINISHED_GOODS` is exported from `shared/src/data/recipes/woodworker.ts` but no seed function in `index.ts` imports it. Only `run-recipes.ts` (standalone) handles these.
+#### TANNER
+- YAML: 3 processing + 11 armor + 1 consumable = 15
+- Code: 3 in `tanner.ts` + 11 in `armor.ts` + 1 in `consumables.ts` = 15
+- Seeded: 15 (main + standalone)
+- **Missing from main pipeline:** 3 output templates (Cured Leather, Wolf Leather, Bear Leather) — only in `run-tanner.ts` lines 112/129/146
+- Status: **P1**
 
-### TANNER
-- Type: CRAFTING
-- YAML recipes: 3 processing + 11 armor goods + 1 consumable = 15
-- Seeded recipes: 15
-- Missing from main pipeline: **3 intermediate output templates** (Cured Leather, Wolf Leather, Bear Leather)
-- Seed path:
-  - Main: `seedRecipes()` → 3 processing (TANNER_RECIPES) + `seedArmorRecipes()` → 11 armor + `seedConsumableRecipes()` → 1 consumable
-  - Standalone: `run-tanner.ts` → intermediate templates + all tanner recipes
-- Status: **P1** (functional in production; fresh seed would fail at TANNER_RECIPES)
-- Notes: `seedRecipes()` tries to seed TANNER_RECIPES but "Cured Leather" output template only exists if `run-tanner.ts` was run first. ITEM_TEMPLATES has "Soft Leather" but TANNER_RECIPES outputs "Cured Leather" — name mismatch.
+#### LEATHERWORKER
+- YAML: 13
+- Code: 13 in `armor.ts` (LEATHERWORKER section)
+- Seeded: 13 (main pipeline, IF TANNER + WOODWORKER templates exist)
+- **Missing from main pipeline:** Transitive — needs Cured/Wolf/Bear Leather (TANNER) + Wooden Frame/Handle (WOODWORKER)
+- Status: **P1**
 
-### LEATHERWORKER
-- Type: CRAFTING
-- YAML recipes: 13-14
-- Seeded recipes: 13-14
-- Missing from main pipeline: Depends on TANNER intermediate templates
-- Seed path: `seedArmorRecipes()` → ALL_ARMOR_RECIPES (LEATHERWORKER section)
-- Status: **P1** (depends on TANNER templates from standalone script)
-- Notes: Uses Cured Leather, Wolf Leather, Bear Leather as inputs. If those templates don't exist, recipes fail.
+#### TAILOR
+- YAML: 4 processing + 13 armor = 17
+- Code: 4 in `tailor.ts` + armor section in `armor.ts` = ~28
+- Seeded: 4 processing + 24 armor = 28 (main pipeline)
+- Missing: None — Woven Cloth, Fine Cloth, Silk Fabric ARE in `ITEM_TEMPLATES` (lines 235-263)
+- Status: **P2** (orphaned legacy template names "Woven Wool", "Silk Cloth")
 
-### TAILOR
-- Type: CRAFTING
-- YAML recipes: 4 processing + 13-15 armor = 17-19
-- Seeded recipes: 4 processing + 24 armor = 28
-- Missing recipes: None
-- Missing items: None (P0 fix added Cotton gathering + Woven Cloth/Fine Cloth/Silk Fabric templates)
-- Seed path: `seedRecipes()` → 4 processing + `seedArmorRecipes()` → 24 armor
-- Status: **P3**
-- Notes: P0 supply chain fix (2026-02-19) unblocked this profession. Armor seed has 5 cloth tiers (Cloth, Linen, Woven Wool, Silk, Enchanted Silk) with 4-5 pieces each.
+#### ALCHEMIST
+- YAML: 11 | Code: 11 in `consumables.ts` | Seeded: 11 (main) | Status: **P3**
 
-### ALCHEMIST
-- Type: CRAFTING
-- YAML recipes: 11
-- Seeded recipes: 11
-- Missing recipes: None
-- Missing items: None
-- Seed path: `seedConsumableRecipes()` → ALL_CONSUMABLE_RECIPES (ALCHEMIST_CONSUMABLES)
-- Status: **P3**
-- Notes: 3 tiers (Minor Healing → Healing → Greater Healing + elixirs). Uses Wild Herbs, Medicinal Herbs, Glowcap Mushrooms, Clay.
+#### ENCHANTER
+- YAML: 9 | Code: 9 in `enchantments.ts` | Seeded: 9 (main) | Status: **P3**
 
-### ENCHANTER
-- Type: CRAFTING
-- YAML recipes: 9
-- Seeded recipes: 9
-- Missing recipes: None
-- Missing items: None
-- Seed path: `seedAccessoryRecipes()` → ENCHANTMENT_RECIPES
-- Status: **P3**
-- Notes: 9 enchantment scrolls (Flaming, Frost, Lightning, Poisoned, Holy, Shadow, Fortified, Swift, Warding).
+#### COOK
+- YAML: 25 recipes
+- Code: 15 in `cook.ts` (RecipeDefinition) + 24 in `consumables.ts` (ConsumableRecipe) = 39 entries, **33 unique** after dedup
+- Seeded: All (main pipeline), but 6 recipeIds silently overwritten by later seed step
+- **6 duplicate recipeIds** (see P2 section above)
+- Status: **P2**
 
-### COOK
-- Type: CRAFTING
-- YAML recipes: ~25 (including Fisherman + Rancher recipes)
-- Seeded recipes: 15 (COOK_RECIPES) + 17 (COOK_CONSUMABLES) = ~32 (with overlaps)
-- Missing recipes: None
-- Missing items: None (P0 fix added all output templates)
-- Seed path: `seedRecipes()` → COOK_RECIPES (15) + `seedConsumableRecipes()` → COOK_CONSUMABLES (17)
-- Status: **P2** (functional but has duplicate recipeId conflicts)
-- Notes: Duplicate IDs between COOK_RECIPES and COOK_CONSUMABLES (cook-grilled-fish, cook-berry-jam, etc.) with different input lists. The ConsumableRecipe version wins since seedConsumableRecipes runs later.
+#### BREWER
+- YAML: 9 | Code: 9 in `consumables.ts` | Seeded: 9 (main) | Status: **P3**
 
-### BREWER
-- Type: CRAFTING
-- YAML recipes: 9
-- Seeded recipes: 9
-- Missing recipes: None
-- Missing items: None (P0 fix added Hops, Grapes templates)
-- Seed path: `seedRecipes()` → BREWER_CONSUMABLES (9) + `seedConsumableRecipes()` → BREWER_CONSUMABLES (9, same data, upsert)
-- Status: **P3**
-- Notes: Seeded by both seed functions (no conflict, both upsert same data). 3 tiers × 3 recipes.
+#### JEWELER
+- YAML: 12 | Code: 12 in `accessories.ts` | Seeded: 12 (main) | Status: **P3**
 
-### JEWELER
-- Type: CRAFTING
-- YAML recipes: 12
-- Seeded recipes: 12
-- Missing recipes: None
-- Missing items: None
-- Seed path: `seedAccessoryRecipes()` → ACCESSORY_RECIPES (JEWELER section)
-- Status: **P3**
-- Notes: Rings (5 metals), Necklaces (3 metals), Brooches (2), Circlet of Focus, Crown of Wisdom.
+#### FLETCHER
+- YAML: 13 | Code: 14 in `ranged-weapons.ts` | Seeded: 14 (main) | Status: **P3**
+- Notes: Depends on WOODWORKER intermediates (Bow Stave, Wooden Dowels) — works in prod but would fail on fresh DB.
 
-### FLETCHER
-- Type: CRAFTING
-- YAML recipes: 13
-- Seeded recipes: 13
-- Missing recipes: None
-- Missing items: None
-- Seed path: `seedWeaponRecipes()` → RANGED_WEAPON_RECIPES
-- Status: **P3**
-- Notes: Bows (Shortbow → Hunting → Longbow → War → Composite → Ranger's Longbow), Arrows (3 types), Quivers. Depends on WOODWORKER intermediates (Bow Stave, Wooden Dowels).
+#### MASON
+- YAML: 8 + 4 = 12 | Code: 8 in `mason.ts` + 4 in `housing.ts` | Seeded: 12 (main) | Status: **P3**
 
-### MASON
-- Type: CRAFTING
-- YAML recipes: 8 processing + 4 housing = 12
-- Seeded recipes: 12
-- Missing recipes: None
-- Missing items: None
-- Seed path: `seedRecipes()` → 8 processing + `seedAccessoryRecipes()` → 4 housing
-- Status: **P3**
-- Notes: Cut Stone, Bricks, Polished Marble, Cut Sandstone, Stone Slab, Clay Pot + Stone Hearth, Brick Oven, Stone Fountain, Marble Statue.
-
-### SCRIBE
-- Type: CRAFTING
-- YAML recipes: 7
-- Seeded recipes: 7
-- Missing recipes: None
-- Missing items: None
-- Seed path: `seedConsumableRecipes()` → ALL_CONSUMABLE_RECIPES (SCRIBE_CONSUMABLES)
-- Status: **P3**
-- Notes: Spell scrolls (Fire, Ice, Lightning, Healing) + maps (Area, Dungeon) + Identification Scroll.
+#### SCRIBE
+- YAML: 7 | Code: 7 in `consumables.ts` | Seeded: 7 (main) | Status: **P3**
 
 ---
 
-### SERVICE PROFESSIONS
+### SERVICE PROFESSIONS (7)
 
-### MERCHANT
-- Type: SERVICE
-- Recipes: None (service actions via `service.ts` routes)
-- Status: **P3**
-
-### INNKEEPER
-- Type: SERVICE
-- Recipes: None
-- Status: **P3**
-
-### HEALER
-- Type: SERVICE
-- Recipes: None
-- Status: **P3**
-
-### STABLE_MASTER
-- Type: SERVICE
-- YAML recipes: 6 (mount gear)
-- Seeded recipes: 6
-- Missing: None
-- Seed path: `seedAccessoryRecipes()` → MOUNT_GEAR_RECIPES
-- Status: **P3**
-- Notes: Saddle, Horseshoes, Saddlebags, Horse Armor, War Saddle, Mithril Horseshoes.
-
-### BANKER
-- Type: SERVICE
-- Recipes: None
-- Status: **P3**
-
-### COURIER
-- Type: SERVICE
-- Recipes: None
-- Status: **P3**
-
-### MERCENARY_CAPTAIN
-- Type: SERVICE
-- Recipes: None
-- Status: **P3**
+| Profession | Recipes | Seed Path | Status |
+|-----------|---------|-----------|--------|
+| MERCHANT | None (service actions) | — | **P3** |
+| INNKEEPER | None (service actions) | — | **P3** |
+| HEALER | None (service actions) | — | **P3** |
+| STABLE_MASTER | 6 mount gear | `seedAccessoryRecipes()` → MOUNT_GEAR_RECIPES | **P3** |
+| BANKER | None (loan system) | — | **P3** |
+| COURIER | None (delivery actions) | — | **P3** |
+| MERCENARY_CAPTAIN | None (combat services) | — | **P3** |
 
 ---
 
 ## Recommended Fix Order
 
-### Fix 1: Fold `run-tanner.ts` templates into main pipeline
-Add Cured Leather, Wolf Leather, Bear Leather templates to `ITEM_TEMPLATES` in `database/seeds/recipes.ts`. This unblocks TANNER and LEATHERWORKER on fresh DB seeds.
+### Fix 1: TANNER — Add 3 intermediate templates to `ITEM_TEMPLATES`
+**Priority:** P1 | **Unblocks:** TANNER, LEATHERWORKER, FLETCHER (via TANNER inputs)
+**File:** `database/seeds/recipes.ts`
+**Action:** Add Cured Leather, Wolf Leather, Bear Leather (copy from `run-tanner.ts` lines 112-146)
 
-### Fix 2: Fold `run-recipes.ts` templates and recipes into main pipeline
-Add Wooden Dowels, Wooden Handle, Bow Stave, Wooden Frame templates to `ITEM_TEMPLATES` in `database/seeds/recipes.ts`. Add WOODWORKER_FINISHED_GOODS to a seed function (either extend `seedRecipes()` or create a new `seedWoodworkerGoods()`).
+### Fix 2: WOODWORKER — Add 4 templates + wire finished goods into pipeline
+**Priority:** P1 | **Unblocks:** WOODWORKER finished goods, FLETCHER (via Bow Stave/Dowels)
+**Files:** `database/seeds/recipes.ts` + `database/seeds/index.ts`
+**Action:**
+1. Add Wooden Dowels, Wooden Handle, Bow Stave, Wooden Frame to `ITEM_TEMPLATES` (from `run-recipes.ts` lines 1142-1145)
+2. Import `WOODWORKER_FINISHED_GOODS` into a seed function and create 14 finished goods recipes
 
-### Fix 3: Resolve COOK duplicate recipeIds
-Deduplicate cook-grilled-fish, cook-berry-jam, cook-fish-stew, cook-herbal-tea between COOK_RECIPES and COOK_CONSUMABLES. Either unify into one format or use unique IDs (e.g., `cook-v2-grilled-fish` for the ConsumableRecipe version).
+### Fix 3: COOK — Deduplicate 6+2 recipe IDs
+**Priority:** P2 | **Impact:** Eliminates silent data overwrite
+**Files:** `shared/src/data/recipes/cook.ts` + `consumables.ts`
+**Action:**
+- Remove 6 duplicate IDs from COOK_RECIPES in `cook.ts` (ConsumableRecipe versions in `consumables.ts` are canonical — they have consumableStats)
+- Fix 2 intra-file duplicates in `consumables.ts` (`cook-grilled-fish` at L299+L582, `cook-fish-stew` at L442+L598)
 
-### Fix 4: Clean up TAILOR template name divergence
-Decide canonical names for TAILOR intermediates: either "Woven Wool" or "Woven Cloth" (currently both exist). Same for "Silk Cloth" vs "Silk Fabric". Remove duplicates and update recipes to use one name.
+### Fix 4: TAILOR — Remove orphaned legacy templates
+**Priority:** P2 | **Impact:** DB cleanup
+**File:** `database/seeds/recipes.ts`
+**Action:** Remove "Woven Wool" and "Silk Cloth" from `ITEM_TEMPLATES` (orphaned, no recipe uses them)
+
+### Fix 5: BLACKSMITH — Fold specialization recipes into main pipeline
+**Priority:** P3 | **Impact:** Main pipeline completeness
+**Action:** Import 28 `blacksmith.ts` recipes into a seed function
+
+### Fix 6: Deprecate standalone scripts
+**Priority:** P3 | **Impact:** Code hygiene
+**Action:** After Fixes 1-5, mark `run-tanner.ts`, `run-tailor.ts`, `run-recipes.ts`, `seed-supply-chain.ts` as deprecated
 
 ---
 
@@ -337,78 +263,90 @@ Decide canonical names for TAILOR intermediates: either "Woven Wool" or "Woven C
 
 ```
 TIER 1 — Raw Resource Providers (no crafting dependencies)
-├── FARMER    → Grain, Vegetables, Berries, Hops, Grapes, Cotton, Apples
+├── FARMER    → Grain, Vegetables, Wild Berries, Hops, Grapes, Cotton, Apples
 ├── RANCHER   → Eggs, Milk, Wool, Fine Wool, Silkworm Cocoons
 ├── FISHERMAN → Raw Fish, River Trout, Lake Perch
-├── LUMBERJACK → Wood Logs, Hardwood
-├── MINER     → Iron Ore, Stone, Clay, Coal, Silver Ore, Gold Ore, Mithril, Adamantine
+├── LUMBERJACK → Wood Logs, Softwood, Hardwood, Exotic Wood
+├── MINER     → Iron Ore, Copper Ore, Coal, Silver Ore, Gold Ore, Mithril, Adamantine, Stone, Clay
 ├── HERBALIST → Wild Herbs, Medicinal Herbs, Glowcap Mushrooms
 └── HUNTER    → Wild Game Meat, Animal Pelts, Wolf Pelts, Bear Hides
 
-TIER 2 — Primary Processors (depend on Tier 1 outputs only)
-├── SMELTER   → Copper/Iron/Steel/Silver/Gold/Mithril/Adamantine Ingots, Glass, Nails
-├── TANNER    → Cured Leather, Wolf Leather, Bear Leather + armor
-├── TAILOR    → Cloth, Woven Cloth, Fine Cloth, Silk Fabric (processing)
-├── MASON     → Cut Stone, Bricks, Sandstone, Stone Slab, Clay Pot
-├── WOODWORKER → Softwood/Hardwood Planks, Beams, Dowels, Handles, Bow Staves, Frames
-├── COOK      → Flour, meals, feasts (uses Tier 1 directly)
-├── BREWER    → Ales, ciders, wines (uses Tier 1 directly)
-└── ALCHEMIST → Potions, elixirs (uses Tier 1 directly)
+TIER 2 — Primary Processors (Tier 1 inputs only)
+├── SMELTER    → Ingots (7 metals), Glass, Nails, Iron Fittings
+├── TANNER     → Cured Leather, Wolf Leather, Bear Leather + basic armor
+├── TAILOR     → Cloth, Woven Cloth, Fine Cloth, Silk Fabric
+├── MASON      → Cut Stone, Bricks, Polished Marble, Sandstone, Stone Slab, Clay Pot
+├── WOODWORKER → Planks, Beams, Dowels, Handles, Bow Staves, Frames + furniture
+├── COOK       → Flour + 24 meals (direct Tier 1)
+├── BREWER     → 9 beverages (direct Tier 1)
+└── ALCHEMIST  → 11 potions (direct Tier 1)
 
-TIER 3 — Secondary Crafters (depend on Tier 2 processed materials)
-├── BLACKSMITH  → Weapons + tools (needs SMELTER ingots + WOODWORKER planks + TANNER leather)
-├── ARMORER     → Plate armor (needs SMELTER ingots + TANNER leather + WOODWORKER planks)
-├── LEATHERWORKER → Leather goods (needs TANNER leather + WOODWORKER frames)
-├── TAILOR      → Cloth armor (needs own cloth + TANNER leather + SMELTER silver)
-├── FLETCHER    → Bows + arrows (needs WOODWORKER staves/dowels + TANNER leather)
-└── SCRIBE      → Scrolls + maps (needs WOODWORKER planks + HERBALIST herbs)
+TIER 3 — Secondary Crafters (Tier 2 processed materials)
+├── BLACKSMITH   → 61 weapons/tools (SMELTER + WOODWORKER + TANNER)
+├── ARMORER      → 25 plate armor (SMELTER + TANNER)
+├── LEATHERWORKER → 13 leather gear (TANNER + WOODWORKER)
+├── TAILOR       → 24 cloth armor (own cloth + TANNER + SMELTER)
+├── FLETCHER     → 14 ranged weapons (WOODWORKER + TANNER)
+└── SCRIBE       → 7 scrolls/maps (WOODWORKER + HERBALIST)
 
-TIER 4 — Advanced/Luxury Crafters (depend on multiple tiers)
-├── ENCHANTER → Enchantment scrolls (needs SMELTER ingots + JEWELER gems + HERBALIST herbs)
-├── JEWELER   → Accessories (needs SMELTER ingots + gathered gems)
-└── MASON     → Housing items (needs own stone + SMELTER ingots)
+TIER 4 — Advanced/Luxury (multiple tier dependencies)
+├── ENCHANTER → 9 scrolls (Arcane Reagents + SMELTER + Gemstones)
+├── JEWELER   → 12 accessories (SMELTER + Gemstones)
+└── MASON     → 4 housing items (own stone + SMELTER)
 
-SERVICE — No crafting dependencies
-├── STABLE_MASTER → Mount gear (needs TANNER leather + SMELTER ingots)
-├── MERCHANT, INNKEEPER, HEALER, BANKER, COURIER, MERCENARY_CAPTAIN
+SERVICE
+├── STABLE_MASTER → 6 mount gear (TANNER + SMELTER)
+└── MERCHANT, INNKEEPER, HEALER, BANKER, COURIER, MERCENARY_CAPTAIN
 ```
 
 ---
 
 ## Seed Pipeline Architecture
 
-### Main Pipeline (`database/seeds/index.ts` — runs via `npm run seed`)
+### Main Pipeline (`database/seeds/index.ts` — 18 functions via `npm run seed`)
 
-| Order | Function | Templates | Recipes | Source |
-|-------|----------|-----------|---------|--------|
-| 1 | seedAdmin | 0 | 0 | — |
+| # | Function | Templates | Recipes | Notes |
+|---|----------|-----------|---------|-------|
+| 1 | seedAdmin | 0 | 0 | Admin account |
 | 2 | seedWorld | 0 | 0 | 21 regions, 68 towns |
 | 3 | seedKingdoms | 0 | 0 | 8 kingdoms |
-| 4 | seedResources | ~51 | 0 | Base gathering resources |
+| 4 | seedResources | ~51 | 0 | Gathering metadata |
 | 5 | seedRecipes | ~105 | ~82 | Materials + processing + COOK + BREWER + legacy |
 | 6 | seedMonsters | 0 | 0 | PvE encounters |
 | 7 | seedQuests | 0 | 0 | 49 quests |
-| 8 | seedTools | 36 | 0 | 6 types × 6 tiers |
+| 8 | seedTools | 36 | 0 | 6 types x 6 tiers |
 | 9 | seedTownResources | 0 | 0 | Biome assignments |
-| 10 | seedConsumableRecipes | ~40 | ~47 | ALCH + COOK + BREW + SCRIBE + SMELT + TAN |
-| 11 | seedArmorRecipes | ~75 | ~75 | ARMORER + LW + TAILOR + TANNER armor |
+| 10 | seedConsumableRecipes | ~40 | ~54 | ALCH+COOK+BREW+SCRIBE+SMELT+TAN |
+| 11 | seedArmorRecipes | ~75 | ~62 | ARMORER+LW+TAILOR+TANNER armor |
 | 12 | seedDiplomacy | 0 | 0 | 190 racial relations |
 | 13 | seedNodes | 0 | 0 | Travel nodes |
-| 14 | seedFoodItems | 32 | 0 | Food templates |
+| 14 | seedFoodItems | ~35 | 0 | Food/beverage templates |
 | 15 | seedWeaponRecipes | ~50 | ~47 | BS weapons + Fletcher ranged |
-| 16 | seedAccessoryRecipes | ~70 | ~34 | Jeweler + Enchanter + Housing + Mount |
-| 17 | seedAbilities | 0 | 0 | 7 classes × 3 specs |
+| 16 | seedAccessoryRecipes | ~43 | ~34 | Jeweler+Enchanter+Housing+Mount |
+| 17 | seedAbilities | 0 | 0 | 7 classes x 3 specs |
 | 18 | seedAchievements | 0 | 0 | 27 achievements |
 
-### Standalone Scripts (NOT in main pipeline — must be run manually)
+### Standalone Scripts (NOT in main pipeline)
 
-| Script | Templates | Recipes | Professions Affected |
-|--------|-----------|---------|---------------------|
-| `run-tanner.ts` | 3 (Cured/Wolf/Bear Leather) + armor templates | 15 | TANNER, LEATHERWORKER |
-| `run-recipes.ts` | 4 intermediates + 14 finished goods | 28+ (BS specializations + WW finished) | WOODWORKER, BLACKSMITH |
-| `seed-supply-chain.ts` | 38 (resources + COOK/BREWER outputs) | 28 (TAILOR + COOK + BREWER) | TAILOR, COOK, BREWER |
+| Script | What it creates | Status |
+|--------|----------------|--------|
+| `run-tanner.ts` | 3 leather templates + 15 TANNER recipes | **Required for fresh DB** |
+| `run-tailor.ts` | TAILOR items + RANCHER Craftsman resources | Redundant (main pipeline covers) |
+| `run-recipes.ts` | 4 WW templates + 14 WW goods + 28 BS specs | **Required for fresh DB** |
+| `seed-supply-chain.ts` | 38 templates + 28 recipes (P0 fix) | Partially redundant |
 
-### Key Risk
-Running `npm run seed` on a fresh database **will fail** at step 5 (seedRecipes) because:
-- TANNER_RECIPES references "Cured Leather" output → template doesn't exist in ITEM_TEMPLATES
-- WOODWORKER_RECIPES references "Wooden Dowels" output → template doesn't exist in ITEM_TEMPLATES
+### Fresh DB Failure Chain
+
+```
+npm run seed
+  → Step 5: seedRecipes()
+    → ALL_PROCESSING_RECIPES includes TANNER_RECIPES
+    → tan-cure-leather outputs "Cured Leather" → template NOT in ITEM_TEMPLATES → FAIL
+    → ww-carve-wooden-dowels outputs "Wooden Dowels" → template NOT in ITEM_TEMPLATES → FAIL
+  → Step 11: seedArmorRecipes() (if step 5 didn't halt)
+    → LEATHERWORKER recipes need Cured Leather input → FAIL
+  → Step 15: seedWeaponRecipes()
+    → FLETCHER recipes need Bow Stave, Wooden Dowels → FAIL
+```
+
+**Impact:** 4 professions broken (TANNER, WOODWORKER, LEATHERWORKER, FLETCHER). 25 other professions seed correctly.
