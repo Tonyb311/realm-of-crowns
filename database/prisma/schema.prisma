@@ -887,6 +887,7 @@ model ItemTemplate {
   requirements       Json            @default("{}")
   professionRequired ProfessionType? @map("profession_required")
   levelRequired      Int             @default(1) @map("level_required")
+  baseValue          Int             @default(0) @map("base_value")
   shelfLifeDays      Int?            @map("shelf_life_days")
   isFood             Boolean         @default(false) @map("is_food")
   foodBuff           Json?           @map("food_buff")

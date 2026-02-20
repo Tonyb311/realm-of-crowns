@@ -26,6 +26,7 @@ interface ItemTemplateDef {
   durability: number;
   professionRequired: ProfessionType | null;
   levelRequired: number;
+  baseValue: number;
   isFood?: boolean;
   foodBuff?: Prisma.InputJsonValue;
   isPerishable?: boolean;
@@ -44,6 +45,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'SMELTER',
     levelRequired: 1,
+    baseValue: 16,
   },
   {
     name: 'Iron Ingot',
@@ -54,6 +56,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'SMELTER',
     levelRequired: 10,
+    baseValue: 52,
   },
   {
     name: 'Steel Ingot',
@@ -64,6 +67,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'SMELTER',
     levelRequired: 30,
+    baseValue: 210,
   },
   {
     name: 'Silver Ingot',
@@ -74,6 +78,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'SMELTER',
     levelRequired: 20,
+    baseValue: 72,
   },
   {
     name: 'Gold Ingot',
@@ -84,6 +89,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'SMELTER',
     levelRequired: 25,
+    baseValue: 185,
   },
   {
     name: 'Mithril Ingot',
@@ -94,6 +100,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'SMELTER',
     levelRequired: 55,
+    baseValue: 700,
   },
   {
     name: 'Adamantine Ingot',
@@ -104,6 +111,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'SMELTER',
     levelRequired: 75,
+    baseValue: 2350,
   },
   {
     name: 'Glass',
@@ -114,6 +122,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 50,
     professionRequired: 'SMELTER',
     levelRequired: 15,
+    baseValue: 12,
   },
   {
     name: 'Nails',
@@ -124,6 +133,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'SMELTER',
     levelRequired: 5,
+    baseValue: 1,
   },
   {
     name: 'Iron Fittings',
@@ -134,6 +144,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'SMELTER',
     levelRequired: 8,
+    baseValue: 8,
   },
 
   // --- Processed Materials: Tanner ---
@@ -146,6 +157,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'TANNER',
     levelRequired: 1,
+    baseValue: 14,
   },
   {
     name: 'Hard Leather',
@@ -156,6 +168,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'TANNER',
     levelRequired: 15,
+    baseValue: 24,
   },
   {
     name: 'Fur Leather',
@@ -166,6 +179,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'TANNER',
     levelRequired: 10,
+    baseValue: 18,
   },
   {
     name: 'Exotic Leather',
@@ -176,6 +190,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'TANNER',
     levelRequired: 50,
+    baseValue: 120,
   },
   {
     name: 'Dragonscale Leather',
@@ -186,6 +201,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'TANNER',
     levelRequired: 80,
+    baseValue: 300,
   },
   {
     name: 'Cured Leather',
@@ -196,6 +212,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'TANNER',
     levelRequired: 3,
+    baseValue: 18,
   },
   {
     name: 'Wolf Leather',
@@ -206,6 +223,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'TANNER',
     levelRequired: 7,
+    baseValue: 73,
   },
   {
     name: 'Bear Leather',
@@ -216,6 +234,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'TANNER',
     levelRequired: 7,
+    baseValue: 91,
   },
 
   // --- Processed Materials: Tailor ---
@@ -228,6 +247,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 80,
     professionRequired: 'TAILOR',
     levelRequired: 1,
+    baseValue: 8,
   },
   {
     name: 'Linen',
@@ -238,6 +258,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 80,
     professionRequired: 'TAILOR',
     levelRequired: 5,
+    baseValue: 8,
   },
 
   // --- Processed Materials: Tailor (recipe outputs with different names from above) ---
@@ -250,6 +271,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 90,
     professionRequired: 'TAILOR',
     levelRequired: 3,
+    baseValue: 20,
   },
   {
     name: 'Fine Cloth',
@@ -260,6 +282,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 80,
     professionRequired: 'TAILOR',
     levelRequired: 7,
+    baseValue: 59,
   },
   {
     name: 'Silk Fabric',
@@ -270,6 +293,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 70,
     professionRequired: 'TAILOR',
     levelRequired: 7,
+    baseValue: 75,
   },
 
   // --- Processed Materials: Mason ---
@@ -282,6 +306,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'MASON',
     levelRequired: 1,
+    baseValue: 19,
   },
   {
     name: 'Bricks',
@@ -292,6 +317,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'MASON',
     levelRequired: 10,
+    baseValue: 33,
   },
   {
     name: 'Polished Marble',
@@ -302,6 +328,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'MASON',
     levelRequired: 30,
+    baseValue: 65,
   },
   {
     name: 'Cut Sandstone',
@@ -312,6 +339,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'MASON',
     levelRequired: 5,
+    baseValue: 50,
   },
   {
     name: 'Stone Slab',
@@ -322,6 +350,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'MASON',
     levelRequired: 8,
+    baseValue: 55,
   },
   {
     name: 'Clay Pot',
@@ -332,6 +361,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 80,
     professionRequired: 'MASON',
     levelRequired: 12,
+    baseValue: 30,
   },
 
   // --- Processed Materials: Woodworker ---
@@ -344,6 +374,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 80,
     professionRequired: 'WOODWORKER',
     levelRequired: 1,
+    baseValue: 3,
   },
   {
     name: 'Hardwood Planks',
@@ -354,6 +385,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'WOODWORKER',
     levelRequired: 10,
+    baseValue: 18,
   },
   {
     name: 'Beams',
@@ -364,6 +396,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'WOODWORKER',
     levelRequired: 15,
+    baseValue: 17,
   },
   {
     name: 'Exotic Planks',
@@ -374,6 +407,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'WOODWORKER',
     levelRequired: 40,
+    baseValue: 40,
   },
   {
     name: 'Wooden Dowels',
@@ -384,6 +418,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'WOODWORKER',
     levelRequired: 3,
+    baseValue: 4,
   },
   {
     name: 'Wooden Handle',
@@ -394,6 +429,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'WOODWORKER',
     levelRequired: 5,
+    baseValue: 5,
   },
   {
     name: 'Bow Stave',
@@ -404,6 +440,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'WOODWORKER',
     levelRequired: 8,
+    baseValue: 11,
   },
   {
     name: 'Wooden Frame',
@@ -414,6 +451,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'WOODWORKER',
     levelRequired: 12,
+    baseValue: 58,
   },
 
   // --- COOK Food Products ---
@@ -426,6 +464,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'COOK',
     levelRequired: 1,
+    baseValue: 6,
     isFood: true,
     foodBuff: { effect: 'sustenance', magnitude: 10, duration: 0 },
     isPerishable: true,
@@ -440,6 +479,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'COOK',
     levelRequired: 1,
+    baseValue: 20,
     isFood: true,
     isBeverage: true,
     foodBuff: { effect: 'hp_regen', magnitude: 5, duration: 30 },
@@ -455,6 +495,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'COOK',
     levelRequired: 11,
+    baseValue: 27,
     isFood: true,
     foodBuff: { effect: 'heal_hp', magnitude: 30, duration: 0 },
     isPerishable: true,
@@ -469,6 +510,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'COOK',
     levelRequired: 11,
+    baseValue: 23,
     isFood: true,
     foodBuff: { effect: 'heal_hp', magnitude: 25, duration: 0 },
     isPerishable: true,
@@ -483,6 +525,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'COOK',
     levelRequired: 11,
+    baseValue: 19,
     isFood: true,
     foodBuff: { effect: 'buff_constitution', magnitude: 2, duration: 60 },
     isPerishable: true,
@@ -497,6 +540,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'COOK',
     levelRequired: 26,
+    baseValue: 60,
     isFood: true,
     foodBuff: { effect: 'buff_all_stats', magnitude: 1, duration: 60 },
     isPerishable: true,
@@ -513,6 +557,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 150,
     professionRequired: 'BLACKSMITH',
     levelRequired: 1,
+    baseValue: 23,
   },
   {
     name: 'Wooden Bow',
@@ -523,6 +568,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 120,
     professionRequired: 'WOODWORKER',
     levelRequired: 1,
+    baseValue: 45,
   },
   {
     name: 'Oak Staff',
@@ -533,6 +579,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 130,
     professionRequired: 'WOODWORKER',
     levelRequired: 1,
+    baseValue: 15,
   },
 
   // --- Armor ---
@@ -545,6 +592,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 180,
     professionRequired: 'BLACKSMITH',
     levelRequired: 1,
+    baseValue: 25,
   },
   {
     name: 'Iron Chainmail',
@@ -555,6 +603,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 200,
     professionRequired: 'ARMORER',
     levelRequired: 1,
+    baseValue: 48,
   },
   {
     name: 'Leather Armor',
@@ -565,6 +614,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 140,
     professionRequired: 'LEATHERWORKER',
     levelRequired: 1,
+    baseValue: 30,
   },
 
   // --- Consumables ---
@@ -577,6 +627,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'ALCHEMIST',
     levelRequired: 1,
+    baseValue: 27,
   },
   {
     name: 'Bread',
@@ -587,6 +638,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'COOK',
     levelRequired: 1,
+    baseValue: 20,
   },
   // --- Brewer Beverages ---
   {
@@ -598,6 +650,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'BREWER',
     levelRequired: 3,
+    baseValue: 6,
     isBeverage: true,
     foodBuff: { effect: 'buff_constitution', magnitude: 1, duration: 30 },
   },
@@ -610,6 +663,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'BREWER',
     levelRequired: 3,
+    baseValue: 6,
     isBeverage: true,
     foodBuff: { effect: 'buff_charisma', magnitude: 1, duration: 30 },
   },
@@ -622,6 +676,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'BREWER',
     levelRequired: 4,
+    baseValue: 8,
     isBeverage: true,
     foodBuff: { effect: 'hp_regen', magnitude: 2, duration: 30 },
   },
@@ -634,6 +689,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'BREWER',
     levelRequired: 5,
+    baseValue: 12,
     isBeverage: true,
     foodBuff: { effect: 'buff_strength', magnitude: 2, duration: 30 },
   },
@@ -646,6 +702,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'BREWER',
     levelRequired: 5,
+    baseValue: 14,
     isBeverage: true,
     foodBuff: { effect: 'buff_wisdom', magnitude: 2, duration: 30 },
   },
@@ -658,6 +715,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'BREWER',
     levelRequired: 6,
+    baseValue: 15,
     isBeverage: true,
     foodBuff: { effect: 'hp_regen', magnitude: 3, duration: 30 },
   },
@@ -670,6 +728,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'BREWER',
     levelRequired: 7,
+    baseValue: 15,
     isBeverage: true,
     foodBuff: { effect: 'buff_constitution', magnitude: 3, duration: 40, secondaryEffect: 'buff_strength', secondaryMagnitude: 1 },
   },
@@ -682,6 +741,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'BREWER',
     levelRequired: 7,
+    baseValue: 15,
     isBeverage: true,
     foodBuff: { effect: 'buff_charisma', magnitude: 3, duration: 40, secondaryEffect: 'buff_wisdom', secondaryMagnitude: 1 },
   },
@@ -694,6 +754,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'BREWER',
     levelRequired: 8,
+    baseValue: 18,
     isBeverage: true,
     foodBuff: { effect: 'buff_strength', magnitude: 2, duration: 40, secondaryEffect: 'buff_dexterity', secondaryMagnitude: 2 },
   },
@@ -710,59 +771,60 @@ interface ResourceItemDef {
   name: string;
   type: ItemType;
   description: string;
+  baseValue: number;
 }
 
 const RESOURCE_ITEMS: ResourceItemDef[] = [
   // Ores & minerals
-  { name: 'Copper Ore', type: 'MATERIAL', description: 'Common copper ore found in hillside deposits.' },
-  { name: 'Iron Ore', type: 'MATERIAL', description: 'Raw iron ore mined from the earth.' },
-  { name: 'Coal', type: 'MATERIAL', description: 'Black coal used as fuel for smelting and forging.' },
-  { name: 'Silver Ore', type: 'MATERIAL', description: 'Gleaming silver ore from deep rock veins.' },
-  { name: 'Gold Ore', type: 'MATERIAL', description: 'Precious gold ore mined from mountain caves.' },
-  { name: 'Mithril Ore', type: 'MATERIAL', description: 'Legendary silvery-blue ore from the deepest mines.' },
-  { name: 'Adamantine Ore', type: 'MATERIAL', description: 'The hardest metal ore, found only in extreme depths.' },
-  { name: 'Silite Sand', type: 'MATERIAL', description: 'Fine crystalline sand used in glassmaking.' },
+  { name: 'Copper Ore', type: 'MATERIAL', description: 'Common copper ore found in hillside deposits.', baseValue: 4 },
+  { name: 'Iron Ore', type: 'MATERIAL', description: 'Raw iron ore mined from the earth.', baseValue: 6 },
+  { name: 'Coal', type: 'MATERIAL', description: 'Black coal used as fuel for smelting and forging.', baseValue: 12 },
+  { name: 'Silver Ore', type: 'MATERIAL', description: 'Gleaming silver ore from deep rock veins.', baseValue: 30 },
+  { name: 'Gold Ore', type: 'MATERIAL', description: 'Precious gold ore mined from mountain caves.', baseValue: 40 },
+  { name: 'Mithril Ore', type: 'MATERIAL', description: 'Legendary silvery-blue ore from the deepest mines.', baseValue: 80 },
+  { name: 'Adamantine Ore', type: 'MATERIAL', description: 'The hardest metal ore, found only in extreme depths.', baseValue: 150 },
+  { name: 'Silite Sand', type: 'MATERIAL', description: 'Fine crystalline sand used in glassmaking.', baseValue: 5 },
   // Stone
-  { name: 'Raw Stone', type: 'MATERIAL', description: 'Rough-hewn stone blocks quarried from mountainsides.' },
-  { name: 'Sandstone', type: 'MATERIAL', description: 'Warm-colored sandstone from arid regions.' },
-  { name: 'Marble', type: 'MATERIAL', description: 'Polished white marble veined with color.' },
+  { name: 'Raw Stone', type: 'MATERIAL', description: 'Rough-hewn stone blocks quarried from mountainsides.', baseValue: 7 },
+  { name: 'Sandstone', type: 'MATERIAL', description: 'Warm-colored sandstone from arid regions.', baseValue: 7 },
+  { name: 'Marble', type: 'MATERIAL', description: 'Polished white marble veined with color.', baseValue: 15 },
   // Wood
-  { name: 'Softwood', type: 'MATERIAL', description: 'Common softwood lumber from pine and fir trees.' },
-  { name: 'Hardwood', type: 'MATERIAL', description: 'Dense hardwood from ancient oaks and elms.' },
-  { name: 'Exotic Wood', type: 'MATERIAL', description: 'Rare timber from ancient or magical trees.' },
-  { name: 'Bark', type: 'MATERIAL', description: 'Stripped bark used in tanning and potion-making.' },
+  { name: 'Softwood', type: 'MATERIAL', description: 'Common softwood lumber from pine and fir trees.', baseValue: 3 },
+  { name: 'Hardwood', type: 'MATERIAL', description: 'Dense hardwood from ancient oaks and elms.', baseValue: 25 },
+  { name: 'Exotic Wood', type: 'MATERIAL', description: 'Rare timber from ancient or magical trees.', baseValue: 50 },
+  { name: 'Bark', type: 'MATERIAL', description: 'Stripped bark used in tanning and potion-making.', baseValue: 3 },
   // Animal products
-  { name: 'Raw Leather', type: 'MATERIAL', description: 'Untanned hides from common game.' },
-  { name: 'Pelts', type: 'MATERIAL', description: 'Fur-bearing animal pelts from wolves, foxes, and bears.' },
-  { name: 'Exotic Hide', type: 'MATERIAL', description: 'Tough hide from exotic and dangerous beasts.' },
-  { name: 'Dragon Hide', type: 'MATERIAL', description: 'Scaled hide stripped from a slain dragon. Nearly indestructible.' },
+  { name: 'Raw Leather', type: 'MATERIAL', description: 'Untanned hides from common game.', baseValue: 8 },
+  { name: 'Pelts', type: 'MATERIAL', description: 'Fur-bearing animal pelts from wolves, foxes, and bears.', baseValue: 8 },
+  { name: 'Exotic Hide', type: 'MATERIAL', description: 'Tough hide from exotic and dangerous beasts.', baseValue: 50 },
+  { name: 'Dragon Hide', type: 'MATERIAL', description: 'Scaled hide stripped from a slain dragon. Nearly indestructible.', baseValue: 200 },
   // Fibers
-  { name: 'Cotton', type: 'MATERIAL', description: 'Raw cotton fibers, ready for spinning.' },
-  { name: 'Flax', type: 'MATERIAL', description: 'Flax stalks processed into linen thread.' },
-  { name: 'Wool', type: 'MATERIAL', description: 'Sheared sheep wool, the warmest natural fiber.' },
-  { name: 'Silk Thread', type: 'MATERIAL', description: 'Delicate silk thread harvested from giant silkworms. Rare and valuable.' },
+  { name: 'Cotton', type: 'MATERIAL', description: 'Raw cotton fibers, ready for spinning.', baseValue: 4 },
+  { name: 'Flax', type: 'MATERIAL', description: 'Flax stalks processed into linen thread.', baseValue: 4 },
+  { name: 'Wool', type: 'MATERIAL', description: 'Sheared sheep wool, the warmest natural fiber.', baseValue: 10 },
+  { name: 'Silk Thread', type: 'MATERIAL', description: 'Delicate silk thread harvested from giant silkworms. Rare and valuable.', baseValue: 38 },
   // Other inputs
-  { name: 'Salt', type: 'MATERIAL', description: 'Sea salt harvested from tidal pools. Essential for preservation.' },
-  { name: 'Rare Herbs', type: 'MATERIAL', description: 'Elusive plants that grow only in specific conditions.' },
-  { name: 'Arcane Reagents', type: 'MATERIAL', description: 'Volatile magical substances harvested from places of power.' },
+  { name: 'Salt', type: 'MATERIAL', description: 'Sea salt harvested from tidal pools. Essential for preservation.', baseValue: 3 },
+  { name: 'Rare Herbs', type: 'MATERIAL', description: 'Elusive plants that grow only in specific conditions.', baseValue: 28 },
+  { name: 'Arcane Reagents', type: 'MATERIAL', description: 'Volatile magical substances harvested from places of power.', baseValue: 35 },
   // Town gathering spot items
-  { name: 'Apples', type: 'MATERIAL', description: 'Crisp apples picked from the royal orchards.' },
-  { name: 'Raw Fish', type: 'MATERIAL', description: 'Fresh fish caught from nearby waters.' },
-  { name: 'Wild Berries', type: 'MATERIAL', description: 'A handful of wild berries foraged from the bushes.' },
-  { name: 'Wild Herbs', type: 'MATERIAL', description: 'Fragrant herbs gathered from the wild.' },
-  { name: 'Iron Ore Chunks', type: 'MATERIAL', description: 'Rough chunks of iron ore from the mines.' },
-  { name: 'Wood Logs', type: 'MATERIAL', description: 'Freshly felled timber logs.' },
-  { name: 'Stone Blocks', type: 'MATERIAL', description: 'Rough-hewn stone blocks from the quarry.' },
-  { name: 'Clay', type: 'MATERIAL', description: 'Wet clay dug from river banks.' },
+  { name: 'Apples', type: 'MATERIAL', description: 'Crisp apples picked from the royal orchards.', baseValue: 3 },
+  { name: 'Raw Fish', type: 'MATERIAL', description: 'Fresh fish caught from nearby waters.', baseValue: 4 },
+  { name: 'Wild Berries', type: 'MATERIAL', description: 'A handful of wild berries foraged from the bushes.', baseValue: 3 },
+  { name: 'Wild Herbs', type: 'MATERIAL', description: 'Fragrant herbs gathered from the wild.', baseValue: 5 },
+  { name: 'Iron Ore Chunks', type: 'MATERIAL', description: 'Rough chunks of iron ore from the mines.', baseValue: 4 },
+  { name: 'Wood Logs', type: 'MATERIAL', description: 'Freshly felled timber logs.', baseValue: 5 },
+  { name: 'Stone Blocks', type: 'MATERIAL', description: 'Rough-hewn stone blocks from the quarry.', baseValue: 7 },
+  { name: 'Clay', type: 'MATERIAL', description: 'Wet clay dug from river banks.', baseValue: 4 },
   // Legacy references (used by non-processing recipes)
-  { name: 'Herbs', type: 'MATERIAL', description: 'A bundle of gathered herbs with medicinal properties.' },
-  { name: 'Grain', type: 'MATERIAL', description: 'Harvested grain, a staple crop.' },
-  { name: 'Hops', type: 'MATERIAL', description: 'Aromatic hop flowers, essential for brewing fine beer.' },
-  { name: 'Grapes', type: 'MATERIAL', description: 'Plump, juicy grapes, ready to be pressed into wine.' },
-  { name: 'Fiber', type: 'MATERIAL', description: 'Plant fibers used for stringing bows and binding.' },
-  { name: 'Lumber', type: 'MATERIAL', description: 'Cut and dried timber, ready for use.' },
-  { name: 'Hide', type: 'MATERIAL', description: 'An animal hide, not yet tanned.' },
-  { name: 'Arcane Reagent', type: 'MATERIAL', description: 'A shimmering reagent infused with magical energy.' },
+  { name: 'Herbs', type: 'MATERIAL', description: 'A bundle of gathered herbs with medicinal properties.', baseValue: 5 },
+  { name: 'Grain', type: 'MATERIAL', description: 'Harvested grain, a staple crop.', baseValue: 3 },
+  { name: 'Hops', type: 'MATERIAL', description: 'Aromatic hop flowers, essential for brewing fine beer.', baseValue: 5 },
+  { name: 'Grapes', type: 'MATERIAL', description: 'Plump, juicy grapes, ready to be pressed into wine.', baseValue: 4 },
+  { name: 'Fiber', type: 'MATERIAL', description: 'Plant fibers used for stringing bows and binding.', baseValue: 3 },
+  { name: 'Lumber', type: 'MATERIAL', description: 'Cut and dried timber, ready for use.', baseValue: 5 },
+  { name: 'Hide', type: 'MATERIAL', description: 'An animal hide, not yet tanned.', baseValue: 8 },
+  { name: 'Arcane Reagent', type: 'MATERIAL', description: 'A shimmering reagent infused with magical energy.', baseValue: 35 },
 ];
 
 // ============================================================
@@ -895,6 +957,7 @@ export async function seedRecipes(prisma: PrismaClient) {
         name: res.name,
         type: res.type,
         description: res.description,
+        baseValue: res.baseValue,
       },
       create: {
         id: stableId,
@@ -906,6 +969,7 @@ export async function seedRecipes(prisma: PrismaClient) {
         durability: 100,
         professionRequired: null,
         levelRequired: 1,
+        baseValue: res.baseValue,
       },
     });
     templateMap.set(res.name, created.id);
@@ -926,6 +990,7 @@ export async function seedRecipes(prisma: PrismaClient) {
         durability: tmpl.durability,
         professionRequired: tmpl.professionRequired,
         levelRequired: tmpl.levelRequired,
+        baseValue: tmpl.baseValue,
         ...(tmpl.isFood != null && { isFood: tmpl.isFood }),
         ...(tmpl.foodBuff != null && { foodBuff: tmpl.foodBuff }),
         ...(tmpl.isPerishable != null && { isPerishable: tmpl.isPerishable }),
@@ -942,6 +1007,7 @@ export async function seedRecipes(prisma: PrismaClient) {
         durability: tmpl.durability,
         professionRequired: tmpl.professionRequired,
         levelRequired: tmpl.levelRequired,
+        baseValue: tmpl.baseValue,
         ...(tmpl.isFood != null && { isFood: tmpl.isFood }),
         ...(tmpl.foodBuff != null && { foodBuff: tmpl.foodBuff }),
         ...(tmpl.isPerishable != null && { isPerishable: tmpl.isPerishable }),

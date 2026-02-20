@@ -5,7 +5,7 @@
   "scripts": {
     "migrate": "prisma migrate dev",
     "generate": "prisma generate",
-    "seed": "tsx seeds/index.ts",
+    "seed": "tsx --require tsconfig-paths/register seeds/index.ts",
     "studio": "prisma studio",
     "reset": "prisma migrate reset"
   },
@@ -14,10 +14,11 @@
   },
   "devDependencies": {
     "prisma": "5.22.0",
+    "tsconfig-paths": "^4.2.0",
     "tsx": "^4.15.0",
     "typescript": "^5.4.0"
   },
   "prisma": {
-    "seed": "tsx seeds/index.ts"
+    "seed": "tsx --require tsconfig-paths/register seeds/index.ts"
   }
 }

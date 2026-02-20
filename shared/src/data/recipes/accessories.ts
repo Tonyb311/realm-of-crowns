@@ -9,6 +9,7 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     levelRequired: 1,
     inputs: [
       { itemName: 'Copper Ingot', quantity: 1 },
+      { itemName: 'Gemstones', quantity: 1 },
     ],
     outputs: [{ itemName: 'Copper Ring', quantity: 1 }],
     craftTime: 20,
@@ -22,6 +23,7 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     levelRequired: 10,
     inputs: [
       { itemName: 'Iron Ingot', quantity: 1 },
+      { itemName: 'Gemstones', quantity: 1 },
     ],
     outputs: [{ itemName: 'Iron Ring', quantity: 1 }],
     craftTime: 25,
@@ -62,8 +64,9 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     professionRequired: 'JEWELER',
     levelRequired: 55,
     inputs: [
-      { itemName: 'Mithril Ingot', quantity: 1 },
+      { itemName: 'Mithril Ingot', quantity: 2 },
       { itemName: 'Gemstones', quantity: 3 },
+      { itemName: 'Wyvern Scale', quantity: 1 },
     ],
     outputs: [{ itemName: 'Mithril Ring', quantity: 1 }],
     craftTime: 90,
@@ -79,6 +82,7 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     levelRequired: 1,
     inputs: [
       { itemName: 'Copper Ingot', quantity: 2 },
+      { itemName: 'Gemstones', quantity: 1 },
     ],
     outputs: [{ itemName: 'Copper Necklace', quantity: 1 }],
     craftTime: 25,
@@ -92,7 +96,7 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     levelRequired: 20,
     inputs: [
       { itemName: 'Silver Ingot', quantity: 2 },
-      { itemName: 'Gemstones', quantity: 1 },
+      { itemName: 'Gemstones', quantity: 2 },
     ],
     outputs: [{ itemName: 'Silver Necklace', quantity: 1 }],
     craftTime: 45,
@@ -138,7 +142,9 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     inputs: [
       { itemName: 'Gold Ingot', quantity: 3 },
       { itemName: 'Gemstones', quantity: 4 },
-      { itemName: 'Arcane Reagents', quantity: 2 },
+      { itemName: 'Fey Tear', quantity: 2 },
+      { itemName: 'Arcane Reagents', quantity: 1 },
+      { itemName: 'Silk Fabric', quantity: 1 },
     ],
     outputs: [{ itemName: 'Crown of Wisdom', quantity: 1 }],
     craftTime: 120,
@@ -153,8 +159,8 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     professionRequired: 'JEWELER',
     levelRequired: 15,
     inputs: [
-      { itemName: 'Iron Ingot', quantity: 1 },
-      { itemName: 'Gemstones', quantity: 1 },
+      { itemName: 'Silver Ingot', quantity: 1 },
+      { itemName: 'Gemstones', quantity: 2 },
     ],
     outputs: [{ itemName: 'Brooch of Protection', quantity: 1 }],
     craftTime: 35,
@@ -169,7 +175,7 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     inputs: [
       { itemName: 'Gold Ingot', quantity: 1 },
       { itemName: 'Gemstones', quantity: 2 },
-      { itemName: 'Arcane Reagents', quantity: 1 },
+      { itemName: 'Wind Mote', quantity: 1 },
     ],
     outputs: [{ itemName: 'Brooch of Speed', quantity: 1 }],
     craftTime: 55,

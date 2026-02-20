@@ -164,7 +164,9 @@ export type ConsumableEffect =
   | 'damage_healing'
   | 'cure_all'
   | 'poison_immunity'
-  | 'sustenance';
+  | 'sustenance'
+  | 'buff_armor'
+  | 'stun';
 
 export interface ConsumableStats {
   effect: ConsumableEffect;

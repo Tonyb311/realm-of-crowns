@@ -25,10 +25,9 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'FLETCHER',
     levelRequired: 1,
     inputs: [
-      { itemName: ITEMS.CURED_LEATHER, quantity: 2 },
-      { itemName: ITEMS.WOODEN_DOWELS, quantity: 1 },
+      { itemName: ITEMS.CURED_LEATHER, quantity: 1 },
     ],
-    outputs: [{ itemName: ITEMS.BOWSTRING, quantity: 2 }],
+    outputs: [{ itemName: ITEMS.BOWSTRING, quantity: 1 }],
     craftTime: 10,
     xpReward: 6,
     tier: 1,
@@ -41,12 +40,12 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     recipeId: 'fletch-arrows',
     name: 'Fletch Arrows',
     professionRequired: 'FLETCHER',
-    levelRequired: 1,
+    levelRequired: 3,
     inputs: [
-      { itemName: ITEMS.SOFTWOOD_PLANKS, quantity: 1 },
-      { itemName: ITEMS.WOODEN_DOWELS, quantity: 1 },
+      { itemName: ITEMS.SOFTWOOD_PLANKS, quantity: 2 },
+      { itemName: ITEMS.IRON_ORE_CHUNKS, quantity: 1 },
     ],
-    outputs: [{ itemName: ITEMS.ARROWS, quantity: 20 }],
+    outputs: [{ itemName: ITEMS.ARROWS, quantity: 10 }],
     craftTime: 15,
     xpReward: 8,
     tier: 1,
@@ -62,14 +61,14 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     },
   },
 
-  // Shortbow — starter bow, no Bow Stave needed
+  // Shortbow — starter bow using Bow Stave
   {
     recipeId: 'fletch-shortbow',
     name: 'Craft Shortbow',
     professionRequired: 'FLETCHER',
-    levelRequired: 3,
+    levelRequired: 5,
     inputs: [
-      { itemName: ITEMS.SOFTWOOD_PLANKS, quantity: 2 },
+      { itemName: ITEMS.BOW_STAVE, quantity: 1 },
       { itemName: ITEMS.BOWSTRING, quantity: 1 },
     ],
     outputs: [{ itemName: ITEMS.SHORTBOW, quantity: 1 }],
@@ -122,7 +121,7 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
   },
 
   // ============================================================
-  // JOURNEYMAN TIER (L11-L25) — 4 recipes
+  // JOURNEYMAN TIER (L12-L20) — 4 recipes
   // ============================================================
 
   // Longbow — long range, moderate damage
@@ -132,9 +131,9 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'FLETCHER',
     levelRequired: 12,
     inputs: [
-      { itemName: ITEMS.BOW_STAVE, quantity: 1 },
+      { itemName: ITEMS.HARDWOOD_PLANKS, quantity: 1 },
       { itemName: ITEMS.BOWSTRING, quantity: 1 },
-      { itemName: ITEMS.HARDWOOD_PLANKS, quantity: 2 },
+      { itemName: ITEMS.CURED_LEATHER, quantity: 1 },
     ],
     outputs: [{ itemName: ITEMS.LONGBOW, quantity: 1 }],
     craftTime: 50,
@@ -162,10 +161,10 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'FLETCHER',
     levelRequired: 15,
     inputs: [
-      { itemName: ITEMS.HARDWOOD_PLANKS, quantity: 1 },
-      { itemName: ITEMS.WOODEN_DOWELS, quantity: 2 },
+      { itemName: ITEMS.HARDWOOD_PLANKS, quantity: 2 },
+      { itemName: ITEMS.IRON_ORE_CHUNKS, quantity: 2 },
     ],
-    outputs: [{ itemName: ITEMS.WAR_ARROWS, quantity: 20 }],
+    outputs: [{ itemName: ITEMS.WAR_ARROWS, quantity: 10 }],
     craftTime: 20,
     xpReward: 15,
     tier: 2,
@@ -186,12 +185,12 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     recipeId: 'fletch-war-bow',
     name: 'Craft War Bow',
     professionRequired: 'FLETCHER',
-    levelRequired: 18,
+    levelRequired: 20,
     inputs: [
-      { itemName: ITEMS.BOW_STAVE, quantity: 2 },
+      { itemName: ITEMS.HARDWOOD_PLANKS, quantity: 1 },
+      { itemName: ITEMS.BOW_STAVE, quantity: 1 },
       { itemName: ITEMS.BOWSTRING, quantity: 1 },
       { itemName: ITEMS.WOLF_LEATHER, quantity: 1 },
-      { itemName: ITEMS.WOODEN_HANDLE, quantity: 1 },
     ],
     outputs: [{ itemName: ITEMS.WAR_BOW, quantity: 1 }],
     craftTime: 60,
@@ -217,11 +216,11 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     recipeId: 'fletch-quiver',
     name: 'Craft Quiver',
     professionRequired: 'FLETCHER',
-    levelRequired: 22,
+    levelRequired: 15,
     inputs: [
-      { itemName: ITEMS.CURED_LEATHER, quantity: 3 },
-      { itemName: ITEMS.WOLF_LEATHER, quantity: 1 },
+      { itemName: ITEMS.CURED_LEATHER, quantity: 1 },
       { itemName: ITEMS.WOODEN_DOWELS, quantity: 2 },
+      { itemName: ITEMS.NAILS, quantity: 4 },
     ],
     outputs: [{ itemName: ITEMS.QUIVER, quantity: 1 }],
     craftTime: 40,
@@ -237,21 +236,20 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
   },
 
   // ============================================================
-  // CRAFTSMAN TIER (L26-L50) — 5 recipes
+  // CRAFTSMAN TIER (L30-L45) — 5 recipes
   // ============================================================
 
-  // Barbed Arrows — wolf leather barbs, higher damage
+  // Barbed Arrows — iron fittings for barbs, higher damage
   {
     recipeId: 'fletch-barbed-arrows',
     name: 'Fletch Barbed Arrows',
     professionRequired: 'FLETCHER',
-    levelRequired: 28,
+    levelRequired: 30,
     inputs: [
-      { itemName: ITEMS.HARDWOOD_PLANKS, quantity: 1 },
-      { itemName: ITEMS.WOODEN_DOWELS, quantity: 2 },
-      { itemName: ITEMS.WOLF_LEATHER, quantity: 1 },
+      { itemName: ITEMS.HARDWOOD_PLANKS, quantity: 2 },
+      { itemName: ITEMS.IRON_FITTINGS, quantity: 2 },
     ],
-    outputs: [{ itemName: ITEMS.BARBED_ARROWS, quantity: 20 }],
+    outputs: [{ itemName: ITEMS.BARBED_ARROWS, quantity: 10 }],
     craftTime: 25,
     xpReward: 22,
     tier: 3,
@@ -272,12 +270,12 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     recipeId: 'fletch-composite-bow',
     name: 'Craft Composite Bow',
     professionRequired: 'FLETCHER',
-    levelRequired: 30,
+    levelRequired: 35,
     inputs: [
-      { itemName: ITEMS.BOW_STAVE, quantity: 2 },
-      { itemName: ITEMS.BEAR_LEATHER, quantity: 1 },
-      { itemName: ITEMS.BOWSTRING, quantity: 2 },
-      { itemName: ITEMS.HARDWOOD_PLANKS, quantity: 1 },
+      { itemName: ITEMS.EXOTIC_PLANKS, quantity: 1 },
+      { itemName: ITEMS.BOW_STAVE, quantity: 1 },
+      { itemName: ITEMS.BOWSTRING, quantity: 1 },
+      { itemName: ITEMS.WOLF_LEATHER, quantity: 1 },
     ],
     outputs: [{ itemName: ITEMS.COMPOSITE_BOW, quantity: 1 }],
     craftTime: 80,
@@ -305,9 +303,9 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'FLETCHER',
     levelRequired: 35,
     inputs: [
-      { itemName: ITEMS.BEAR_LEATHER, quantity: 2 },
       { itemName: ITEMS.WOLF_LEATHER, quantity: 1 },
-      { itemName: ITEMS.CURED_LEATHER, quantity: 2 },
+      { itemName: ITEMS.HARDWOOD_PLANKS, quantity: 2 },
+      { itemName: ITEMS.NAILS, quantity: 4 },
     ],
     outputs: [{ itemName: ITEMS.RANGERS_QUIVER, quantity: 1 }],
     craftTime: 55,
@@ -322,18 +320,17 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     },
   },
 
-  // Flight Arrows — bear leather fletching, premium ammo
+  // Flight Arrows — spider silk fletching, premium ammo
   {
     recipeId: 'fletch-flight-arrows',
     name: 'Fletch Flight Arrows',
     professionRequired: 'FLETCHER',
-    levelRequired: 38,
+    levelRequired: 30,
     inputs: [
-      { itemName: ITEMS.HARDWOOD_PLANKS, quantity: 2 },
-      { itemName: ITEMS.WOODEN_DOWELS, quantity: 2 },
-      { itemName: ITEMS.BEAR_LEATHER, quantity: 1 },
+      { itemName: ITEMS.SOFTWOOD_PLANKS, quantity: 2 },
+      { itemName: ITEMS.SPIDER_SILK, quantity: 1 },
     ],
-    outputs: [{ itemName: ITEMS.FLIGHT_ARROWS, quantity: 20 }],
+    outputs: [{ itemName: ITEMS.FLIGHT_ARROWS, quantity: 10 }],
     craftTime: 30,
     xpReward: 30,
     tier: 3,
@@ -354,12 +351,13 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     recipeId: 'fletch-rangers-longbow',
     name: "Craft Ranger's Longbow",
     professionRequired: 'FLETCHER',
-    levelRequired: 40,
+    levelRequired: 45,
     inputs: [
-      { itemName: ITEMS.BOW_STAVE, quantity: 2 },
-      { itemName: ITEMS.WOLF_LEATHER, quantity: 2 },
+      { itemName: ITEMS.EXOTIC_PLANKS, quantity: 1 },
+      { itemName: ITEMS.BOW_STAVE, quantity: 1 },
+      { itemName: ITEMS.BOWSTRING, quantity: 1 },
       { itemName: ITEMS.BEAR_LEATHER, quantity: 1 },
-      { itemName: ITEMS.BOWSTRING, quantity: 2 },
+      { itemName: ITEMS.BEAR_CLAW, quantity: 1 },
     ],
     outputs: [{ itemName: ITEMS.RANGERS_LONGBOW, quantity: 1 }],
     craftTime: 100,

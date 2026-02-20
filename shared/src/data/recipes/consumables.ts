@@ -7,7 +7,7 @@
  *   BREWER    - Alcoholic beverages with morale/stat effects
  *   SCRIBE    - Spell scrolls, maps, identification scrolls
  *
- * 59 recipes total.
+ * 56 recipes total.
  */
 
 import { ConsumableRecipe } from './types';
@@ -24,7 +24,8 @@ export const ALCHEMIST_CONSUMABLES: ConsumableRecipe[] = [
     professionRequired: 'ALCHEMIST',
     levelRequired: 3,
     inputs: [
-      { itemName: 'Wild Herbs', quantity: 3 },
+      { itemName: 'Wild Herbs', quantity: 2 },
+      { itemName: 'Clay', quantity: 1 },
     ],
     output: { itemName: 'Minor Healing Potion', quantity: 2 },
     consumableStats: { effect: 'heal_hp', magnitude: 15, duration: 0, stackSize: 20 },
@@ -40,7 +41,6 @@ export const ALCHEMIST_CONSUMABLES: ConsumableRecipe[] = [
     levelRequired: 3,
     inputs: [
       { itemName: 'Wild Herbs', quantity: 2 },
-      { itemName: 'Wild Berries', quantity: 1 },
     ],
     output: { itemName: 'Antidote', quantity: 2 },
     consumableStats: { effect: 'cure_poison', magnitude: 1, duration: 0, stackSize: 20 },
@@ -56,7 +56,7 @@ export const ALCHEMIST_CONSUMABLES: ConsumableRecipe[] = [
     levelRequired: 4,
     inputs: [
       { itemName: 'Wild Berries', quantity: 2 },
-      { itemName: 'Wild Herbs', quantity: 2 },
+      { itemName: 'Wild Herbs', quantity: 1 },
     ],
     output: { itemName: 'Berry Salve', quantity: 2 },
     consumableStats: { effect: 'hp_regen', magnitude: 8, duration: 3, stackSize: 20 },
@@ -73,7 +73,7 @@ export const ALCHEMIST_CONSUMABLES: ConsumableRecipe[] = [
     professionRequired: 'ALCHEMIST',
     levelRequired: 5,
     inputs: [
-      { itemName: 'Wild Herbs', quantity: 4 },
+      { itemName: 'Wild Herbs', quantity: 3 },
       { itemName: 'Clay', quantity: 1 },
     ],
     output: { itemName: 'Healing Potion', quantity: 2 },
@@ -89,9 +89,8 @@ export const ALCHEMIST_CONSUMABLES: ConsumableRecipe[] = [
     professionRequired: 'ALCHEMIST',
     levelRequired: 5,
     inputs: [
-      { itemName: 'Wild Herbs', quantity: 3 },
-      { itemName: 'Wild Berries', quantity: 2 },
-      { itemName: 'Clay', quantity: 1 },
+      { itemName: 'Wild Herbs', quantity: 2 },
+      { itemName: 'Medicinal Herbs', quantity: 1 },
     ],
     output: { itemName: 'Elixir of Strength', quantity: 1 },
     consumableStats: { effect: 'buff_strength', magnitude: 3, duration: 5, stackSize: 10 },
@@ -104,10 +103,10 @@ export const ALCHEMIST_CONSUMABLES: ConsumableRecipe[] = [
     recipeId: 'alch-elixir-of-wisdom',
     name: 'Elixir of Wisdom',
     professionRequired: 'ALCHEMIST',
-    levelRequired: 5,
+    levelRequired: 6,
     inputs: [
-      { itemName: 'Wild Herbs', quantity: 4 },
-      { itemName: 'Clay', quantity: 1 },
+      { itemName: 'Wild Herbs', quantity: 2 },
+      { itemName: 'Medicinal Herbs', quantity: 1 },
     ],
     output: { itemName: 'Elixir of Wisdom', quantity: 1 },
     consumableStats: { effect: 'buff_wisdom', magnitude: 3, duration: 5, stackSize: 10 },
@@ -122,9 +121,8 @@ export const ALCHEMIST_CONSUMABLES: ConsumableRecipe[] = [
     professionRequired: 'ALCHEMIST',
     levelRequired: 6,
     inputs: [
-      { itemName: 'Wild Herbs', quantity: 3 },
-      { itemName: 'Wild Berries', quantity: 2 },
-      { itemName: 'Clay', quantity: 1 },
+      { itemName: 'Wild Herbs', quantity: 2 },
+      { itemName: 'Wild Berries', quantity: 1 },
     ],
     output: { itemName: 'Poison Resistance Tonic', quantity: 2 },
     consumableStats: { effect: 'poison_immunity', magnitude: 1, duration: 5, stackSize: 15 },
@@ -141,8 +139,8 @@ export const ALCHEMIST_CONSUMABLES: ConsumableRecipe[] = [
     professionRequired: 'ALCHEMIST',
     levelRequired: 7,
     inputs: [
-      { itemName: 'Medicinal Herbs', quantity: 3 },
-      { itemName: 'Clay', quantity: 2 },
+      { itemName: 'Medicinal Herbs', quantity: 2 },
+      { itemName: 'Clay', quantity: 1 },
     ],
     output: { itemName: 'Greater Healing Potion', quantity: 2 },
     consumableStats: { effect: 'heal_hp', magnitude: 60, duration: 0, stackSize: 15 },
@@ -157,8 +155,8 @@ export const ALCHEMIST_CONSUMABLES: ConsumableRecipe[] = [
     professionRequired: 'ALCHEMIST',
     levelRequired: 7,
     inputs: [
-      { itemName: 'Medicinal Herbs', quantity: 2 },
-      { itemName: 'Glowcap Mushrooms', quantity: 2 },
+      { itemName: 'Medicinal Herbs', quantity: 1 },
+      { itemName: 'Glowcap Mushrooms', quantity: 1 },
       { itemName: 'Clay', quantity: 1 },
     ],
     output: { itemName: 'Elixir of Fortitude', quantity: 1 },
@@ -175,10 +173,9 @@ export const ALCHEMIST_CONSUMABLES: ConsumableRecipe[] = [
     recipeId: 'alch-glowcap-extract',
     name: 'Glowcap Extract',
     professionRequired: 'ALCHEMIST',
-    levelRequired: 7,
+    levelRequired: 8,
     inputs: [
-      { itemName: 'Glowcap Mushrooms', quantity: 4 },
-      { itemName: 'Clay', quantity: 1 },
+      { itemName: 'Glowcap Mushrooms', quantity: 2 },
     ],
     output: { itemName: 'Glowcap Extract', quantity: 2 },
     consumableStats: {
@@ -196,10 +193,9 @@ export const ALCHEMIST_CONSUMABLES: ConsumableRecipe[] = [
     professionRequired: 'ALCHEMIST',
     levelRequired: 8,
     inputs: [
-      { itemName: 'Medicinal Herbs', quantity: 3 },
-      { itemName: 'Glowcap Mushrooms', quantity: 2 },
-      { itemName: 'Wild Herbs', quantity: 2 },
-      { itemName: 'Clay', quantity: 1 },
+      { itemName: 'Medicinal Herbs', quantity: 1 },
+      { itemName: 'Glowcap Mushrooms', quantity: 1 },
+      { itemName: 'Wild Herbs', quantity: 1 },
     ],
     output: { itemName: 'Universal Antidote', quantity: 2 },
     consumableStats: {
@@ -883,7 +879,7 @@ export const BREWER_CONSUMABLES: ConsumableRecipe[] = [
 ];
 
 // ============================================================
-// SCRIBE RECIPES (7)
+// SCRIBE RECIPES (11)
 // ============================================================
 
 export const SCRIBE_CONSUMABLES: ConsumableRecipe[] = [
@@ -893,9 +889,9 @@ export const SCRIBE_CONSUMABLES: ConsumableRecipe[] = [
     professionRequired: 'SCRIBE',
     levelRequired: 10,
     inputs: [
-      { itemName: 'Softwood Planks', quantity: 1 },
-      { itemName: 'Common Herbs', quantity: 1 },
+      { itemName: 'Softwood Planks', quantity: 2 },
       { itemName: 'Arcane Reagents', quantity: 1 },
+      { itemName: 'Ember Core', quantity: 1 },
     ],
     output: { itemName: 'Scroll of Fire', quantity: 1 },
     consumableStats: { effect: 'damage_fire', magnitude: 40, duration: 0, stackSize: 10 },
@@ -910,9 +906,9 @@ export const SCRIBE_CONSUMABLES: ConsumableRecipe[] = [
     professionRequired: 'SCRIBE',
     levelRequired: 15,
     inputs: [
-      { itemName: 'Softwood Planks', quantity: 1 },
-      { itemName: 'Flowers', quantity: 1 },
+      { itemName: 'Softwood Planks', quantity: 2 },
       { itemName: 'Arcane Reagents', quantity: 1 },
+      { itemName: 'Frost Essence', quantity: 1 },
     ],
     output: { itemName: 'Scroll of Ice', quantity: 1 },
     consumableStats: { effect: 'damage_ice', magnitude: 35, duration: 0, stackSize: 10 },
@@ -927,8 +923,9 @@ export const SCRIBE_CONSUMABLES: ConsumableRecipe[] = [
     professionRequired: 'SCRIBE',
     levelRequired: 25,
     inputs: [
-      { itemName: 'Softwood Planks', quantity: 1 },
-      { itemName: 'Arcane Reagents', quantity: 2 },
+      { itemName: 'Softwood Planks', quantity: 2 },
+      { itemName: 'Arcane Reagents', quantity: 1 },
+      { itemName: 'Storm Feather', quantity: 1 },
     ],
     output: { itemName: 'Scroll of Lightning', quantity: 1 },
     consumableStats: { effect: 'damage_lightning', magnitude: 50, duration: 0, stackSize: 10 },
@@ -943,9 +940,9 @@ export const SCRIBE_CONSUMABLES: ConsumableRecipe[] = [
     professionRequired: 'SCRIBE',
     levelRequired: 20,
     inputs: [
-      { itemName: 'Softwood Planks', quantity: 1 },
-      { itemName: 'Medicinal Herbs', quantity: 2 },
-      { itemName: 'Arcane Reagents', quantity: 1 },
+      { itemName: 'Softwood Planks', quantity: 2 },
+      { itemName: 'Medicinal Herbs', quantity: 1 },
+      { itemName: 'Troll Blood', quantity: 1 },
     ],
     output: { itemName: 'Scroll of Healing', quantity: 1 },
     consumableStats: { effect: 'damage_healing', magnitude: 60, duration: 0, stackSize: 10 },
@@ -960,8 +957,8 @@ export const SCRIBE_CONSUMABLES: ConsumableRecipe[] = [
     professionRequired: 'SCRIBE',
     levelRequired: 5,
     inputs: [
-      { itemName: 'Softwood Planks', quantity: 1 },
-      { itemName: 'Common Herbs', quantity: 1 },
+      { itemName: 'Softwood Planks', quantity: 2 },
+      { itemName: 'Wild Herbs', quantity: 1 },
     ],
     output: { itemName: 'Area Map', quantity: 1 },
     consumableStats: { effect: 'reveal_map', magnitude: 1, duration: 0, stackSize: 10 },
@@ -976,9 +973,9 @@ export const SCRIBE_CONSUMABLES: ConsumableRecipe[] = [
     professionRequired: 'SCRIBE',
     levelRequired: 20,
     inputs: [
-      { itemName: 'Softwood Planks', quantity: 1 },
-      { itemName: 'Common Herbs', quantity: 1 },
+      { itemName: 'Softwood Planks', quantity: 2 },
       { itemName: 'Arcane Reagents', quantity: 1 },
+      { itemName: 'Spectral Dust', quantity: 1 },
     ],
     output: { itemName: 'Dungeon Map', quantity: 1 },
     consumableStats: { effect: 'reveal_map', magnitude: 3, duration: 0, stackSize: 5 },
@@ -993,8 +990,9 @@ export const SCRIBE_CONSUMABLES: ConsumableRecipe[] = [
     professionRequired: 'SCRIBE',
     levelRequired: 10,
     inputs: [
-      { itemName: 'Softwood Planks', quantity: 1 },
-      { itemName: 'Arcane Reagents', quantity: 1 },
+      { itemName: 'Softwood Planks', quantity: 2 },
+      { itemName: 'Wild Herbs', quantity: 1 },
+      { itemName: 'Wisp Mote', quantity: 1 },
     ],
     output: { itemName: 'Identification Scroll', quantity: 1 },
     consumableStats: { effect: 'identify', magnitude: 1, duration: 0, stackSize: 20 },
@@ -1002,6 +1000,77 @@ export const SCRIBE_CONSUMABLES: ConsumableRecipe[] = [
     xpReward: 12,
     tier: 1,
     description: 'A divination scroll that reveals the true properties of an unidentified item.',
+  },
+  // --- Tier 3: Craftsman ---
+  {
+    recipeId: 'scribe-scroll-stone-skin',
+    name: 'Scroll of Stone Skin',
+    professionRequired: 'SCRIBE',
+    levelRequired: 30,
+    inputs: [
+      { itemName: 'Softwood Planks', quantity: 2 },
+      { itemName: 'Arcane Reagents', quantity: 1 },
+      { itemName: 'Earth Crystal', quantity: 1 },
+    ],
+    output: { itemName: 'Scroll of Stone Skin', quantity: 1 },
+    consumableStats: { effect: 'buff_armor', magnitude: 8, duration: 3, stackSize: 10 },
+    craftTime: 45,
+    xpReward: 30,
+    tier: 3,
+    description: 'A scroll that hardens the reader\'s skin to the resilience of stone.',
+  },
+  {
+    recipeId: 'scribe-scroll-might',
+    name: 'Scroll of Might',
+    professionRequired: 'SCRIBE',
+    levelRequired: 30,
+    inputs: [
+      { itemName: 'Softwood Planks', quantity: 2 },
+      { itemName: 'Arcane Reagents', quantity: 1 },
+      { itemName: 'Ogre Sinew', quantity: 1 },
+    ],
+    output: { itemName: 'Scroll of Might', quantity: 1 },
+    consumableStats: { effect: 'buff_strength', magnitude: 6, duration: 3, stackSize: 10 },
+    craftTime: 45,
+    xpReward: 30,
+    tier: 3,
+    description: 'A scroll that grants the reader immense physical power for a short time.',
+  },
+  {
+    recipeId: 'scribe-scroll-entangle',
+    name: 'Scroll of Entangle',
+    professionRequired: 'SCRIBE',
+    levelRequired: 35,
+    inputs: [
+      { itemName: 'Softwood Planks', quantity: 1 },
+      { itemName: 'Medicinal Herbs', quantity: 1 },
+      { itemName: 'Living Bark', quantity: 1 },
+      { itemName: 'Dryad Blossom', quantity: 1 },
+    ],
+    output: { itemName: 'Scroll of Entangle', quantity: 1 },
+    consumableStats: { effect: 'stun', magnitude: 2, duration: 2, stackSize: 10 },
+    craftTime: 50,
+    xpReward: 35,
+    tier: 3,
+    description: 'A scroll that summons grasping vines to immobilize enemies.',
+  },
+  {
+    recipeId: 'scribe-scroll-restoration',
+    name: 'Scroll of Restoration',
+    professionRequired: 'SCRIBE',
+    levelRequired: 35,
+    inputs: [
+      { itemName: 'Softwood Planks', quantity: 1 },
+      { itemName: 'Medicinal Herbs', quantity: 1 },
+      { itemName: 'Fey Tear', quantity: 1 },
+      { itemName: 'Troll Blood', quantity: 1 },
+    ],
+    output: { itemName: 'Scroll of Restoration', quantity: 1 },
+    consumableStats: { effect: 'heal_hp', magnitude: 100, duration: 0, stackSize: 10 },
+    craftTime: 55,
+    xpReward: 40,
+    tier: 3,
+    description: 'A powerful healing scroll that mends even grievous wounds. The rarest of written magic.',
   },
 ];
 
