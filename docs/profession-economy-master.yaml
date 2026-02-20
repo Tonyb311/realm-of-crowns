@@ -266,6 +266,220 @@ gathering_spot_types:
         min_level: 7
         craft_consumers: [TANNER]
 
+  # --- PRIVATE FIELD, LIVESTOCK & OTHER RAW RESOURCES (base_values) ---
+  # These resources are produced by FARMER private fields, RANCHER livestock,
+  # or higher-tier gathering assets. Formalized with base_values 2026-02-20
+  # for economy audit completeness.
+
+  grain:
+    resource: Grain
+    item_id: grain
+    category: FOOD
+    base_value: 3
+    source: "FARMER private field (grain_field asset, T1)"
+    edible: true
+    hp_restore: 2
+    description: "Harvested grain. Used in bread, porridge, ale, and livestock feed."
+    craft_consumers: [COOK, BREWER, RANCHER]
+    notes: "RANCHER feed item — consumed by livestock every 3 ticks."
+
+  vegetables:
+    resource: Vegetables
+    item_id: vegetables
+    category: FOOD
+    base_value: 3
+    source: "FARMER private field (vegetable_patch asset, T1)"
+    edible: true
+    hp_restore: 3
+    description: "Fresh root vegetables. Simple fare, but filling."
+    craft_consumers: [COOK]
+
+  wild_berries:
+    resource: Wild Berries
+    item_id: wild_berries
+    category: FOOD
+    base_value: 3
+    source: "FARMER private field (berry_field asset, T2)"
+    edible: true
+    hp_restore: 3
+    description: "Tart wild berries. Used in jams, tarts, and cordials."
+    craft_consumers: [COOK, BREWER, ALCHEMIST]
+
+  eggs:
+    resource: Eggs
+    item_id: eggs
+    category: FOOD
+    base_value: 5
+    source: "RANCHER chicken_coop (auto-produced every 3 ticks)"
+    edible: true
+    hp_restore: 4
+    description: "Fresh eggs from the coop. Nutritious and versatile."
+    craft_consumers: [COOK]
+
+  milk:
+    resource: Milk
+    item_id: milk
+    category: FOOD
+    base_value: 6
+    source: "RANCHER dairy_barn (auto-produced every 3 ticks)"
+    edible: true
+    hp_restore: 4
+    description: "Rich cow's milk. Used in porridge, baking, and cheese."
+    craft_consumers: [COOK]
+
+  wool:
+    resource: Wool
+    item_id: wool
+    category: MATERIAL
+    base_value: 10
+    source: "RANCHER sheep_pen (auto-produced every 3 ticks)"
+    description: "Raw wool sheared from sheep. Spun into cloth by a Tailor."
+    craft_consumers: [TAILOR]
+    notes: "Set at 10g (not v3 estimate of 15g) so TAILOR Woven Cloth processing is margin-positive."
+
+  cotton:
+    resource: Cotton
+    item_id: cotton
+    category: MATERIAL
+    base_value: 4
+    source: "FARMER Expert field (cotton_field asset, L9+)"
+    description: "Raw cotton. Spun into basic cloth by a Tailor."
+    craft_consumers: [TAILOR]
+    notes: "Added 2026-02-19 as P0 TAILOR supply chain fix."
+
+  copper_ore:
+    resource: Copper Ore
+    item_id: copper_ore
+    category: MATERIAL
+    base_value: 4
+    yield: 1-2
+    source: "MINER at mine (public spot, same as Iron Ore)"
+    description: "Soft copper ore. The most basic smelting material."
+    craft_consumers: [SMELTER]
+
+  iron_ore_chunks:
+    resource: Iron Ore Chunks
+    item_id: iron_ore_chunks
+    category: MATERIAL
+    base_value: 4
+    yield: 1-2
+    source: "MINER at mine (public spot, raw unprocessed ore)"
+    description: "Rough iron ore chunks. Can be worked directly by a Blacksmith or smelted."
+    craft_consumers: [SMELTER, BLACKSMITH]
+
+  hops:
+    resource: Hops
+    item_id: hops
+    category: MATERIAL
+    base_value: 5
+    source: "FARMER Craftsman field (hop_field asset, L7+)"
+    description: "Aromatic hop flowers. Essential for brewing proper beer and ale."
+    craft_consumers: [BREWER]
+    notes: "No public gathering source — FARMER Craftsman asset only."
+
+  grapes:
+    resource: Grapes
+    item_id: grapes
+    category: MATERIAL
+    base_value: 4
+    source: "FARMER Craftsman field (vineyard asset, L7+)"
+    edible: true
+    hp_restore: 3
+    description: "Sweet wine grapes from the vineyard. Used exclusively by Brewers."
+    craft_consumers: [BREWER]
+    notes: "No public gathering source — FARMER Craftsman asset only."
+
+  # --- Additional raw materials needed by higher-tier recipes ---
+
+  gold_ore:
+    resource: Gold Ore
+    item_id: gold_ore
+    category: MATERIAL
+    base_value: 40
+    source: "MINER Expert+ tier (future)"
+    description: "Precious gold ore. Smelted into Gold Ingots."
+    craft_consumers: [SMELTER]
+    status: PLANNED
+
+  mithril_ore:
+    resource: Mithril Ore
+    item_id: mithril_ore
+    category: MATERIAL
+    base_value: 80
+    source: "MINER Expert+ tier (future, Deep Mines exclusive zone)"
+    description: "Rare magical ore. Lightweight yet incredibly strong."
+    craft_consumers: [SMELTER]
+    status: PLANNED
+
+  adamantine_ore:
+    resource: Adamantine Ore
+    item_id: adamantine_ore
+    category: MATERIAL
+    base_value: 150
+    source: "MINER Master tier (future, Deep Mines exclusive zone)"
+    description: "The hardest ore known. Nigh indestructible when forged."
+    craft_consumers: [SMELTER]
+    status: PLANNED
+
+  arcane_reagents:
+    resource: Arcane Reagents
+    item_id: arcane_reagents
+    category: MATERIAL
+    base_value: 35
+    source: "HERBALIST Expert+ tier (future)"
+    description: "Concentrated magical essence. Used in enchanting and master-tier smelting."
+    craft_consumers: [SMELTER, ENCHANTER]
+    status: PLANNED
+
+  gemstones:
+    resource: Gemstones
+    item_id: gemstones
+    category: MATERIAL
+    base_value: 25
+    source: "MINER Expert+ tier (future)"
+    description: "Cut-quality gemstones. Used in jewelry and enchanting."
+    craft_consumers: [JEWELER, ENCHANTER]
+    status: PLANNED
+
+  silite_sand:
+    resource: Silite Sand
+    item_id: silite_sand
+    category: MATERIAL
+    base_value: 5
+    source: "Coastal gathering (future)"
+    description: "Fine silica sand from coastal regions. Smelted into glass."
+    craft_consumers: [SMELTER]
+    status: PLANNED
+
+  marble:
+    resource: Marble
+    item_id: marble
+    category: MATERIAL
+    base_value: 15
+    source: "MINER Craftsman+ (quarry variant, future)"
+    description: "Fine-grained marble. Polished by Masons into decorative stone."
+    craft_consumers: [MASON]
+    status: PLANNED
+
+  softwood:
+    resource: Softwood
+    item_id: softwood
+    category: MATERIAL
+    base_value: 3
+    source: "LUMBERJACK at forest (public spot, common wood)"
+    description: "Soft, workable timber. Easy to shape but less durable."
+    craft_consumers: [WOODWORKER]
+
+  exotic_wood:
+    resource: Exotic Wood
+    item_id: exotic_wood
+    category: MATERIAL
+    base_value: 50
+    source: "LUMBERJACK Master tier (future, Silverwood exclusive)"
+    description: "Rare, magically-infused timber from ancient forests."
+    craft_consumers: [WOODWORKER]
+    status: PLANNED
+
   # --- FARMER PRIVATE FIELD ONLY (no public spots) ---
   # grain_field: REMOVED as public spot (2026-02-17). Grain now FARMER-private-field only.
   #   Towns reassigned: Millhaven→orchard, Greenhollow→orchard, Sandrift→fishing
@@ -472,17 +686,17 @@ professions:
     status: EXISTS_IN_GAME          # UPDATED: 2026-02-17 — 9 recipes (3 per tier). Recipe rows + output templates seeded 2026-02-19 (P0 supply chain fix).
     recipes:
       tier_1_apprentice:            # L3-L4
-        - { name: Ale, level: 3, inputs: "3x Grain", output: "2x Ale", buff: "+1 CON 30min" }
-        - { name: Apple Cider, level: 3, inputs: "3x Apples", output: "2x Apple Cider", buff: "+1 CHA 30min" }
-        - { name: Berry Cordial, level: 4, inputs: "3x Wild Berries + 1x Grain", output: "2x Berry Cordial", buff: "HP regen +2 30min" }
+        - { name: Ale, level: 3, inputs: "3x Grain", output: "2x Ale", base_value: 6, buff: "+1 CON 30min" }
+        - { name: Apple Cider, level: 3, inputs: "3x Apples", output: "2x Apple Cider", base_value: 6, buff: "+1 CHA 30min" }
+        - { name: Berry Cordial, level: 4, inputs: "3x Wild Berries + 1x Grain", output: "2x Berry Cordial", base_value: 8, buff: "HP regen +2 30min" }
       tier_2_journeyman:            # L5-L6
-        - { name: Strong Ale, level: 5, inputs: "4x Grain + 1x Wild Herbs", output: "2x Strong Ale", buff: "+2 STR 30min" }
-        - { name: Mulled Cider, level: 5, inputs: "3x Apples + 2x Wild Herbs", output: "2x Mulled Cider", buff: "+2 WIS 30min" }
-        - { name: Herbal Brew, level: 6, inputs: "3x Wild Herbs + 2x Grain", output: "2x Herbal Brew", buff: "HP regen +3 30min" }
+        - { name: Strong Ale, level: 5, inputs: "4x Grain + 1x Wild Herbs", output: "2x Strong Ale", base_value: 12, buff: "+2 STR 30min" }
+        - { name: Mulled Cider, level: 5, inputs: "3x Apples + 2x Wild Herbs", output: "2x Mulled Cider", base_value: 14, buff: "+2 WIS 30min" }
+        - { name: Herbal Brew, level: 6, inputs: "3x Wild Herbs + 2x Grain", output: "2x Herbal Brew", base_value: 15, buff: "HP regen +3 30min" }
       tier_3_craftsman:             # L7-L8 (requires FARMER Craftsman Hops/Grapes)
-        - { name: Hopped Beer, level: 7, inputs: "3x Grain + 2x Hops", output: "2x Hopped Beer", buff: "+3 CON +1 STR 40min" }
-        - { name: Grape Wine, level: 7, inputs: "4x Grapes", output: "2x Grape Wine", buff: "+3 CHA +1 WIS 40min" }
-        - { name: Pale Ale, level: 8, inputs: "3x Grain + 2x Hops + 1x Wild Herbs", output: "2x Pale Ale", buff: "+2 STR +2 DEX 40min" }
+        - { name: Hopped Beer, level: 7, inputs: "3x Grain + 2x Hops", output: "2x Hopped Beer", base_value: 15, buff: "+3 CON +1 STR 40min" }
+        - { name: Grape Wine, level: 7, inputs: "4x Grapes", output: "2x Grape Wine", base_value: 15, buff: "+3 CHA +1 WIS 40min" }
+        - { name: Pale Ale, level: 8, inputs: "3x Grain + 2x Hops + 1x Wild Herbs", output: "2x Pale Ale", base_value: 18, buff: "+2 STR +2 DEX 40min" }
     economy_chain: "FARMER/HERBALIST gather ingredients -> BREWER crafts beverages -> Tavern/Market sells"
 
   SMELTER:
@@ -501,21 +715,21 @@ professions:
     status: EXISTS_IN_GAME
     tier_recipes:
       apprentice:
-        - { id: smelt-copper, level: 1, inputs: "3x Copper Ore + 1x Coal", output: "2x Copper Ingot" }
-        - { id: smelt-ore-chunks, level: 3, inputs: "4x Iron Ore Chunks + 2x Coal", output: "1x Iron Ingot" }
-        - { id: forge-nails, level: 5, inputs: "1x Copper Ingot", output: "50x Nails" }
-        - { id: forge-iron-fittings, level: 8, inputs: "3x Iron Ore Chunks + 1x Coal", output: "4x Iron Fittings" }
-        - { id: smelt-iron, level: 10, inputs: "3x Iron Ore + 2x Coal", output: "2x Iron Ingot" }
+        - { id: smelt-copper, level: 1, inputs: "3x Copper Ore + 1x Coal", output: "2x Copper Ingot", base_value: 16 }
+        - { id: smelt-ore-chunks, level: 3, inputs: "4x Iron Ore Chunks + 2x Coal", output: "1x Iron Ingot", base_value: 52 }
+        - { id: forge-nails, level: 5, inputs: "1x Copper Ingot", output: "50x Nails", base_value: 1 }
+        - { id: forge-iron-fittings, level: 8, inputs: "3x Iron Ore Chunks + 1x Coal", output: "4x Iron Fittings", base_value: 8 }
+        - { id: smelt-iron, level: 10, inputs: "3x Iron Ore + 2x Coal", output: "2x Iron Ingot", base_value: 52 }
       journeyman:
-        - { id: smelt-glass, level: 15, inputs: "5x Silite Sand", output: "3x Glass" }
-        - { id: smelt-silver, level: 20, inputs: "3x Silver Ore + 1x Coal", output: "2x Silver Ingot" }
-        - { id: smelt-gold, level: 25, inputs: "3x Gold Ore + 1x Coal", output: "1x Gold Ingot" }
+        - { id: smelt-glass, level: 15, inputs: "5x Silite Sand", output: "3x Glass", base_value: 12 }
+        - { id: smelt-silver, level: 20, inputs: "3x Silver Ore + 1x Coal", output: "2x Silver Ingot", base_value: 72 }
+        - { id: smelt-gold, level: 25, inputs: "3x Gold Ore + 1x Coal", output: "1x Gold Ingot", base_value: 185 }
       craftsman:
-        - { id: smelt-steel, level: 30, inputs: "2x Iron Ingot + 3x Coal", output: "1x Steel Ingot" }
+        - { id: smelt-steel, level: 30, inputs: "2x Iron Ingot + 3x Coal", output: "1x Steel Ingot", base_value: 210 }
       expert:
-        - { id: smelt-mithril, level: 55, inputs: "5x Mithril Ore + 3x Coal", output: "1x Mithril Ingot" }
+        - { id: smelt-mithril, level: 55, inputs: "5x Mithril Ore + 3x Coal", output: "1x Mithril Ingot", base_value: 700 }
       master:
-        - { id: smelt-adamantine, level: 75, inputs: "8x Adamantine Ore + 5x Coal + 1x Arcane Reagents", output: "1x Adamantine Ingot" }
+        - { id: smelt-adamantine, level: 75, inputs: "8x Adamantine Ore + 5x Coal + 1x Arcane Reagents", output: "1x Adamantine Ingot", base_value: 2350 }
     notes: "Critical bottleneck — BLACKSMITH, ARMORER, and JEWELER all need ingots from SMELTER"
 
   BLACKSMITH:
@@ -566,35 +780,35 @@ professions:
     status: EXISTS_IN_GAME
     tier_recipes:
       apprentice:
-        - { id: craft-copper-helm, level: 1, slot: HEAD }
-        - { id: craft-copper-chestplate, level: 1, slot: CHEST }
-        - { id: craft-copper-gauntlets, level: 1, slot: HANDS }
-        - { id: craft-copper-greaves, level: 1, slot: LEGS }
-        - { id: craft-copper-shield, level: 1, slot: OFF_HAND }
+        - { id: craft-copper-helm, level: 1, slot: HEAD, base_value: 45 }
+        - { id: craft-copper-chestplate, level: 1, slot: CHEST, base_value: 90 }
+        - { id: craft-copper-gauntlets, level: 1, slot: HANDS, base_value: 40 }
+        - { id: craft-copper-greaves, level: 1, slot: LEGS, base_value: 55 }
+        - { id: craft-copper-shield, level: 1, slot: OFF_HAND, base_value: 55 }
       journeyman:
-        - { id: craft-iron-helm, level: 10, slot: HEAD }
-        - { id: craft-iron-chestplate, level: 10, slot: CHEST }
-        - { id: craft-iron-gauntlets, level: 10, slot: HANDS }
-        - { id: craft-iron-greaves, level: 10, slot: LEGS }
-        - { id: craft-iron-shield, level: 10, slot: OFF_HAND }
+        - { id: craft-iron-helm, level: 10, slot: HEAD, base_value: 130 }
+        - { id: craft-iron-chestplate, level: 10, slot: CHEST, base_value: 250 }
+        - { id: craft-iron-gauntlets, level: 10, slot: HANDS, base_value: 110 }
+        - { id: craft-iron-greaves, level: 10, slot: LEGS, base_value: 160 }
+        - { id: craft-iron-shield, level: 10, slot: OFF_HAND, base_value: 150 }
       craftsman:
-        - { id: craft-steel-helm, level: 30, slot: HEAD }
-        - { id: craft-steel-chestplate, level: 30, slot: CHEST }
-        - { id: craft-steel-gauntlets, level: 30, slot: HANDS }
-        - { id: craft-steel-greaves, level: 30, slot: LEGS }
-        - { id: craft-steel-shield, level: 30, slot: OFF_HAND }
+        - { id: craft-steel-helm, level: 30, slot: HEAD, base_value: 500 }
+        - { id: craft-steel-chestplate, level: 30, slot: CHEST, base_value: 950 }
+        - { id: craft-steel-gauntlets, level: 30, slot: HANDS, base_value: 420 }
+        - { id: craft-steel-greaves, level: 30, slot: LEGS, base_value: 600 }
+        - { id: craft-steel-shield, level: 30, slot: OFF_HAND, base_value: 550 }
       expert:
-        - { id: craft-mithril-helm, level: 55, slot: HEAD }
-        - { id: craft-mithril-chestplate, level: 55, slot: CHEST }
-        - { id: craft-mithril-gauntlets, level: 55, slot: HANDS }
-        - { id: craft-mithril-greaves, level: 55, slot: LEGS }
-        - { id: craft-mithril-shield, level: 55, slot: OFF_HAND }
+        - { id: craft-mithril-helm, level: 55, slot: HEAD, base_value: 1800 }
+        - { id: craft-mithril-chestplate, level: 55, slot: CHEST, base_value: 3500 }
+        - { id: craft-mithril-gauntlets, level: 55, slot: HANDS, base_value: 1500 }
+        - { id: craft-mithril-greaves, level: 55, slot: LEGS, base_value: 2200 }
+        - { id: craft-mithril-shield, level: 55, slot: OFF_HAND, base_value: 2000 }
       master:
-        - { id: craft-adamantine-helm, level: 75, slot: HEAD }
-        - { id: craft-adamantine-chestplate, level: 75, slot: CHEST }
-        - { id: craft-adamantine-gauntlets, level: 75, slot: HANDS }
-        - { id: craft-adamantine-greaves, level: 75, slot: LEGS }
-        - { id: craft-adamantine-shield, level: 75, slot: OFF_HAND }
+        - { id: craft-adamantine-helm, level: 75, slot: HEAD, base_value: 6000 }
+        - { id: craft-adamantine-chestplate, level: 75, slot: CHEST, base_value: 12000 }
+        - { id: craft-adamantine-gauntlets, level: 75, slot: HANDS, base_value: 5000 }
+        - { id: craft-adamantine-greaves, level: 75, slot: LEGS, base_value: 7500 }
+        - { id: craft-adamantine-shield, level: 75, slot: OFF_HAND, base_value: 7000 }
     supply_chain: "MINER → SMELTER → ARMORER, HUNTER → TANNER → ARMORER"
     notes: "Shares SMITHY workshop with BLACKSMITH. Uses Cured Leather (T1-3) and Bear Leather (T4-5) as secondary inputs."
 
@@ -713,17 +927,17 @@ professions:
     status: EXISTS_IN_GAME
     tier_recipes:
       apprentice:
-        - { id: ench-fortified, level: 5, output: Fortified Enchantment Scroll }
+        - { id: ench-fortified, level: 5, output: Fortified Enchantment Scroll, base_value: 80 }
       journeyman:
-        - { id: ench-flaming, level: 10, output: Flaming Enchantment Scroll }
-        - { id: ench-frost, level: 10, output: Frost Enchantment Scroll }
-        - { id: ench-lightning, level: 15, output: Lightning Enchantment Scroll }
-        - { id: ench-swift, level: 15, output: Swift Enchantment Scroll }
-        - { id: ench-poisoned, level: 20, output: Poisoned Enchantment Scroll }
-        - { id: ench-warding, level: 20, output: Warding Enchantment Scroll }
+        - { id: ench-flaming, level: 10, output: Flaming Enchantment Scroll, base_value: 130 }
+        - { id: ench-frost, level: 10, output: Frost Enchantment Scroll, base_value: 130 }
+        - { id: ench-lightning, level: 15, output: Lightning Enchantment Scroll, base_value: 175 }
+        - { id: ench-swift, level: 15, output: Swift Enchantment Scroll, base_value: 160 }
+        - { id: ench-poisoned, level: 20, output: Poisoned Enchantment Scroll, base_value: 200 }
+        - { id: ench-warding, level: 20, output: Warding Enchantment Scroll, base_value: 210 }
       craftsman:
-        - { id: ench-holy, level: 30, output: Holy Enchantment Scroll }
-        - { id: ench-shadow, level: 30, output: Shadow Enchantment Scroll }
+        - { id: ench-holy, level: 30, output: Holy Enchantment Scroll, base_value: 450 }
+        - { id: ench-shadow, level: 30, output: Shadow Enchantment Scroll, base_value: 450 }
     supply_chain: "HERBALIST → Arcane Reagents; MINER → Coal/Gemstones; SMELTER → Ingots → ENCHANTER"
     notes: "9 enchantment scrolls (6 offensive, 3 utility). Scroll application to equipment is a separate future feature."
 
@@ -742,21 +956,21 @@ professions:
     status: EXISTS_IN_GAME
     tier_recipes:
       apprentice:
-        - { id: jewel-copper-ring, level: 1, output: Copper Ring }
-        - { id: jewel-copper-necklace, level: 1, output: Copper Necklace }
+        - { id: jewel-copper-ring, level: 1, output: Copper Ring, base_value: 50 }
+        - { id: jewel-copper-necklace, level: 1, output: Copper Necklace, base_value: 60 }
       journeyman:
-        - { id: jewel-iron-ring, level: 10, output: Iron Ring }
-        - { id: jewel-brooch-protection, level: 15, output: Brooch of Protection }
-        - { id: jewel-silver-ring, level: 20, output: Silver Ring }
-        - { id: jewel-silver-necklace, level: 20, output: Silver Necklace }
-        - { id: jewel-circlet-focus, level: 25, output: Circlet of Focus }
+        - { id: jewel-iron-ring, level: 10, output: Iron Ring, base_value: 120 }
+        - { id: jewel-brooch-protection, level: 15, output: Brooch of Protection, base_value: 170 }
+        - { id: jewel-silver-ring, level: 20, output: Silver Ring, base_value: 200 }
+        - { id: jewel-silver-necklace, level: 20, output: Silver Necklace, base_value: 250 }
+        - { id: jewel-circlet-focus, level: 25, output: Circlet of Focus, base_value: 350 }
       craftsman:
-        - { id: jewel-gold-ring, level: 30, output: Gold Ring }
-        - { id: jewel-gold-necklace, level: 30, output: Gold Necklace }
-        - { id: jewel-brooch-speed, level: 30, output: Brooch of Speed }
+        - { id: jewel-gold-ring, level: 30, output: Gold Ring, base_value: 450 }
+        - { id: jewel-gold-necklace, level: 30, output: Gold Necklace, base_value: 550 }
+        - { id: jewel-brooch-speed, level: 30, output: Brooch of Speed, base_value: 400 }
       expert:
-        - { id: jewel-crown-wisdom, level: 50, output: Crown of Wisdom }
-        - { id: jewel-mithril-ring, level: 55, output: Mithril Ring }
+        - { id: jewel-crown-wisdom, level: 50, output: Crown of Wisdom, base_value: 2000 }
+        - { id: jewel-mithril-ring, level: 55, output: Mithril Ring, base_value: 2500 }
     supply_chain: "MINER → SMELTER → JEWELER (ingots + gems)"
     notes: "Full set of rings, necklaces, circlets, and brooches. Uses Gemstones from MINER + ingots from SMELTER."
 
@@ -801,20 +1015,20 @@ professions:
     status: EXISTS_IN_GAME
     tier_recipes:
       apprentice:
-        - { id: cut-stone, level: 1, output: Cut Stone }
-        - { id: cut-stone-blocks, level: 3, output: Cut Stone }
-        - { id: cut-sandstone, level: 5, output: Cut Sandstone }
-        - { id: fire-clay, level: 5, output: Bricks }
-        - { id: carve-stone-slab, level: 8, output: Stone Slab }
+        - { id: cut-stone, level: 1, output: Cut Stone, base_value: 12 }
+        - { id: cut-stone-blocks, level: 3, output: Cut Stone, base_value: 15 }
+        - { id: cut-sandstone, level: 5, output: Cut Sandstone, base_value: 18 }
+        - { id: fire-clay, level: 5, output: Bricks, base_value: 15 }
+        - { id: carve-stone-slab, level: 8, output: Stone Slab, base_value: 25 }
       journeyman:
-        - { id: fire-bricks, level: 10, output: Bricks }
-        - { id: housing-stone-hearth, level: 10, output: Stone Hearth }
-        - { id: shape-clay-pot, level: 12, output: Clay Pot }
-        - { id: housing-brick-oven, level: 15, output: Brick Oven }
-        - { id: housing-stone-fountain, level: 25, output: Stone Fountain }
+        - { id: fire-bricks, level: 10, output: Bricks, base_value: 20 }
+        - { id: housing-stone-hearth, level: 10, output: Stone Hearth, base_value: 60 }
+        - { id: shape-clay-pot, level: 12, output: Clay Pot, base_value: 30 }
+        - { id: housing-brick-oven, level: 15, output: Brick Oven, base_value: 90 }
+        - { id: housing-stone-fountain, level: 25, output: Stone Fountain, base_value: 200 }
       craftsman:
-        - { id: polish-marble, level: 30, output: Polished Marble }
-        - { id: housing-marble-statue, level: 35, output: Marble Statue }
+        - { id: polish-marble, level: 30, output: Polished Marble, base_value: 50 }
+        - { id: housing-marble-statue, level: 35, output: Marble Statue, base_value: 350 }
     supply_chain: "MINER → Raw Stone/Clay/Marble → MASON → Cut Stone/Bricks/Polished Marble → Housing items"
     notes: "12 recipes (8 processing + 4 housing). Stone Slab and Clay Pot templates added. Only 3 towns have MASON_YARD."
 
@@ -833,14 +1047,14 @@ professions:
     status: EXISTS_IN_GAME
     tier_recipes:
       apprentice:
-        - { id: scribe-area-map, level: 5, output: Area Map }
+        - { id: scribe-area-map, level: 5, output: Area Map, base_value: 20 }
       journeyman:
-        - { id: scribe-scroll-fire, level: 10, output: Scroll of Fire }
-        - { id: scribe-identification-scroll, level: 10, output: Identification Scroll }
-        - { id: scribe-scroll-ice, level: 15, output: Scroll of Ice }
-        - { id: scribe-scroll-healing, level: 20, output: Scroll of Healing }
-        - { id: scribe-dungeon-map, level: 20, output: Dungeon Map }
-        - { id: scribe-scroll-lightning, level: 25, output: Scroll of Lightning }
+        - { id: scribe-scroll-fire, level: 10, output: Scroll of Fire, base_value: 60 }
+        - { id: scribe-identification-scroll, level: 10, output: Identification Scroll, base_value: 50 }
+        - { id: scribe-scroll-ice, level: 15, output: Scroll of Ice, base_value: 80 }
+        - { id: scribe-scroll-healing, level: 20, output: Scroll of Healing, base_value: 100 }
+        - { id: scribe-dungeon-map, level: 20, output: Dungeon Map, base_value: 80 }
+        - { id: scribe-scroll-lightning, level: 25, output: Scroll of Lightning, base_value: 120 }
     supply_chain: "HERBALIST → herbs/reagents; LUMBERJACK → WOODWORKER → Softwood Planks → SCRIBE"
     notes: "7 consumable recipes (3 offensive scrolls, 1 healing scroll, 2 maps, 1 utility). 10 towns have SCRIBE_STUDY."
 
@@ -1580,7 +1794,7 @@ tanner_recipes:
     name: Wolf Leather
     description: "Thick, supple leather cured from wolf pelts. Prized for its durability."
     category: MATERIAL
-    base_value: 35
+    base_value: 73
     tier: 3
     level_required: 7
     profession: TANNER
@@ -1591,7 +1805,7 @@ tanner_recipes:
     outputs:
       - item_id: wolf_leather
         quantity: 1
-    notes: "Premium intermediate for Craftsman-tier leather armor."
+    notes: "Premium intermediate for Craftsman-tier leather armor. FIX: was 35g (value-destructive, 2×28g=56g input). Now 73g (1.30× input)."
     dependency_chain: "HUNTER L7+ →[gather]→ Wolf Pelts →[TANNER L7]→ Wolf Leather"
 
   tan-bear-leather:
@@ -1599,7 +1813,7 @@ tanner_recipes:
     name: Bear Leather
     description: "Heavy, rugged leather cured from bear hides. Nearly as tough as chainmail."
     category: MATERIAL
-    base_value: 42
+    base_value: 91
     tier: 3
     level_required: 7
     profession: TANNER
@@ -1610,7 +1824,7 @@ tanner_recipes:
     outputs:
       - item_id: bear_leather
         quantity: 1
-    notes: "Premium intermediate for top-tier leather armor."
+    notes: "Premium intermediate for top-tier leather armor. FIX: was 42g (value-destructive, 2×35g=70g input). Now 91g (1.30× input)."
     dependency_chain: "HUNTER L7+ →[gather]→ Bear Hides →[TANNER L7]→ Bear Leather"
 
   # --- TIER 1: APPRENTICE GOODS (Level 3-4) ---
@@ -1621,7 +1835,7 @@ tanner_recipes:
     description: "A simple leather cap offering basic head protection."
     category: ARMOR
     slot: HEAD
-    base_value: 30
+    base_value: 47
     tier: 1
     level_required: 3
     profession: TANNER
@@ -1642,7 +1856,7 @@ tanner_recipes:
     name: Leather Satchel
     description: "A sturdy leather satchel that enhances nimbleness on the road."
     category: CONSUMABLE
-    base_value: 35
+    base_value: 58
     tier: 1
     level_required: 3
     profession: TANNER
@@ -1668,7 +1882,7 @@ tanner_recipes:
     description: "A fitted leather vest providing decent torso protection."
     category: ARMOR
     slot: CHEST
-    base_value: 45
+    base_value: 71
     tier: 1
     level_required: 4
     profession: TANNER
@@ -1690,7 +1904,7 @@ tanner_recipes:
     description: "A reinforced leather belt that protects the waist and hips."
     category: ARMOR
     slot: LEGS
-    base_value: 25
+    base_value: 47
     tier: 1
     level_required: 4
     profession: TANNER
@@ -1714,7 +1928,7 @@ tanner_recipes:
     description: "Full leather armor covering the torso. Light and flexible."
     category: ARMOR
     slot: CHEST
-    base_value: 65
+    base_value: 124
     tier: 2
     level_required: 5
     profession: TANNER
@@ -1738,7 +1952,7 @@ tanner_recipes:
     description: "Reinforced leather arm guards. Favored by archers and rogues."
     category: ARMOR
     slot: OFF_HAND
-    base_value: 40
+    base_value: 76
     tier: 2
     level_required: 5
     profession: TANNER
@@ -1760,7 +1974,7 @@ tanner_recipes:
     description: "Sturdy leather leg armor for protection without sacrificing speed."
     category: ARMOR
     slot: LEGS
-    base_value: 50
+    base_value: 87
     tier: 2
     level_required: 6
     profession: TANNER
@@ -1783,7 +1997,7 @@ tanner_recipes:
     name: Quiver
     description: "A well-crafted leather quiver. Improves hunting efficiency."
     category: TOOL
-    base_value: 55
+    base_value: 98
     tier: 2
     level_required: 6
     profession: TANNER
@@ -1811,7 +2025,7 @@ tanner_recipes:
     description: "Superior armor crafted from wolf leather. Tough yet agile."
     category: ARMOR
     slot: CHEST
-    base_value: 120
+    base_value: 383
     tier: 3
     level_required: 7
     profession: TANNER
@@ -1835,7 +2049,7 @@ tanner_recipes:
     description: "A wolf-leather hood with a fierce silhouette. Shields the head and sharpens the senses."
     category: ARMOR
     slot: HEAD
-    base_value: 75
+    base_value: 246
     tier: 3
     level_required: 7
     profession: TANNER
@@ -1859,7 +2073,7 @@ tanner_recipes:
     description: "A massive chest piece of layered bear leather. Rivals chainmail in protection."
     category: ARMOR
     slot: CHEST
-    base_value: 155
+    base_value: 476
     tier: 3
     level_required: 8
     profession: TANNER
@@ -1884,7 +2098,7 @@ tanner_recipes:
     name: "Ranger's Quiver"
     description: "A masterwork quiver of layered wolf leather. The ranger's most prized tool."
     category: TOOL
-    base_value: 105
+    base_value: 326
     tier: 3
     level_required: 8
     profession: TANNER
@@ -1959,7 +2173,7 @@ tailor_recipes:
         item_id: fine_cloth
         category: MATERIAL
         quality: FINE
-        base_value: 38
+        base_value: 59
         source: "TAILOR processing (Fine Wool → Fine Cloth)"
         description: "Luxurious fabric woven from fine wool. Used in superior garments."
       silk_fabric:
@@ -1967,7 +2181,7 @@ tailor_recipes:
         item_id: silk_fabric
         category: MATERIAL
         quality: FINE
-        base_value: 45
+        base_value: 75
         source: "TAILOR processing (Silkworm Cocoons → Silk Fabric)"
         description: "Shimmering silk fabric with natural magic affinity. The finest textile in Aethermere."
     armor:
@@ -1977,7 +2191,7 @@ tailor_recipes:
         category: ARMOR
         slot: HEAD
         quality: COMMON
-        base_value: 25
+        base_value: 52
         effects: { armor: 1, magicResist: 3 }
       cloth_sash:
         name: Cloth Sash
@@ -1985,7 +2199,7 @@ tailor_recipes:
         category: ARMOR
         slot: OFF_HAND
         quality: COMMON
-        base_value: 20
+        base_value: 50
         effects: { armor: 1, magicResist: 2 }
       cloth_robe:
         name: Cloth Robe
@@ -1993,7 +2207,7 @@ tailor_recipes:
         category: ARMOR
         slot: CHEST
         quality: COMMON
-        base_value: 45
+        base_value: 128
         effects: { armor: 2, magicResist: 5 }
       wool_trousers:
         name: Wool Trousers
@@ -2001,7 +2215,7 @@ tailor_recipes:
         category: ARMOR
         slot: LEGS
         quality: COMMON
-        base_value: 30
+        base_value: 78
         effects: { armor: 1, magicResist: 3 }
       scholars_robe:
         name: "Scholar's Robe"
@@ -2009,7 +2223,7 @@ tailor_recipes:
         category: ARMOR
         slot: CHEST
         quality: FINE
-        base_value: 70
+        base_value: 191
         effects: { armor: 3, magicResist: 8 }
       travelers_cloak:
         name: "Traveler's Cloak"
@@ -2017,7 +2231,7 @@ tailor_recipes:
         category: ARMOR
         slot: CHEST
         quality: FINE
-        base_value: 55
+        base_value: 135
         effects: { armor: 4, magicResist: 5 }
       merchants_hat:
         name: "Merchant's Hat"
@@ -2025,7 +2239,7 @@ tailor_recipes:
         category: ARMOR
         slot: HEAD
         quality: FINE
-        base_value: 45
+        base_value: 82
         effects: { armor: 1, magicResist: 5 }
       herbalists_apron:
         name: "Herbalist's Apron"
@@ -2033,7 +2247,7 @@ tailor_recipes:
         category: ARMOR
         slot: CHEST
         quality: FINE
-        base_value: 50
+        base_value: 135
         effects: { armor: 2, magicResist: 4 }
       archmages_robe:
         name: "Archmage's Robe"
@@ -2041,7 +2255,7 @@ tailor_recipes:
         category: ARMOR
         slot: CHEST
         quality: SUPERIOR
-        base_value: 150
+        base_value: 689
         effects: { armor: 4, magicResist: 14 }
       diplomats_regalia:
         name: "Diplomat's Regalia"
@@ -2049,7 +2263,7 @@ tailor_recipes:
         category: ARMOR
         slot: CHEST
         quality: SUPERIOR
-        base_value: 140
+        base_value: 560
         effects: { armor: 3, magicResist: 12 }
       silk_hood_of_insight:
         name: "Silk Hood of Insight"
@@ -2057,7 +2271,7 @@ tailor_recipes:
         category: ARMOR
         slot: HEAD
         quality: SUPERIOR
-        base_value: 90
+        base_value: 314
         effects: { armor: 2, magicResist: 10 }
       nobles_leggings:
         name: "Noble's Leggings"
@@ -2065,7 +2279,7 @@ tailor_recipes:
         category: ARMOR
         slot: LEGS
         quality: SUPERIOR
-        base_value: 95
+        base_value: 485
         effects: { armor: 4, magicResist: 8 }
       enchanted_cloak:
         name: "Enchanted Cloak"
@@ -2073,7 +2287,7 @@ tailor_recipes:
         category: ARMOR
         slot: CHEST
         quality: SUPERIOR
-        base_value: 180
+        base_value: 986
         effects: { armor: 5, magicResist: 16 }
 
   # --- PROCESSING RECIPES (5) ---
@@ -2126,7 +2340,7 @@ tailor_recipes:
     description: "Luxurious fabric woven from fine wool. Used in superior garments."
     category: MATERIAL
     quality: FINE
-    base_value: 38
+    base_value: 59
     tier: 3
     level_required: 7
     profession: TAILOR
@@ -2137,7 +2351,7 @@ tailor_recipes:
     outputs:
       - item_id: fine_cloth
         quantity: 2
-    notes: "T3 intermediate. Fine Wool from L7+ RANCHER sheep (bonus product)."
+    notes: "T3 intermediate. Fine Wool from L7+ RANCHER sheep (bonus product). FIX: was 38g (value-destructive, 3×30g=90g / 2 outputs = 45g cost each). Now 59g (1.31× per-unit input)."
     dependency_chain: "Sheep (L7+) →[RANCHER]→ Fine Wool →[TAILOR L7]→ Fine Cloth"
 
   tai-process-silk:
@@ -2146,7 +2360,7 @@ tailor_recipes:
     description: "Shimmering silk fabric with natural magic affinity. The finest textile in Aethermere."
     category: MATERIAL
     quality: FINE
-    base_value: 45
+    base_value: 75
     tier: 3
     level_required: 7
     profession: TAILOR
@@ -2157,7 +2371,7 @@ tailor_recipes:
     outputs:
       - item_id: silk_fabric
         quantity: 2
-    notes: "T3 intermediate. Silkworm Cocoons from RANCHER Silkworm House (250g auto-producer)."
+    notes: "T3 intermediate. Silkworm Cocoons from RANCHER Silkworm House (250g auto-producer). FIX: was 45g (value-destructive, 3×38g=114g / 2 = 57g cost each). Now 75g (1.32× per-unit input)."
     dependency_chain: "Silkworm House →[RANCHER]→ Silkworm Cocoons →[TAILOR L7]→ Silk Fabric"
 
   # --- TIER 1: APPRENTICE ARMOR (Level 3-4) ---
@@ -2168,7 +2382,7 @@ tailor_recipes:
     description: "A simple cloth hood offering minor protection and some magical resistance."
     category: ARMOR
     slot: HEAD
-    base_value: 25
+    base_value: 52
     tier: 1
     level_required: 3
     profession: TAILOR
@@ -2190,7 +2404,7 @@ tailor_recipes:
     description: "A reinforced cloth sash with leather backing. Worn on the off hand for magical protection."
     category: ARMOR
     slot: OFF_HAND
-    base_value: 20
+    base_value: 50
     tier: 1
     level_required: 3
     profession: TAILOR
@@ -2214,7 +2428,7 @@ tailor_recipes:
     description: "A basic cloth robe offering modest physical protection and decent magical resistance."
     category: ARMOR
     slot: CHEST
-    base_value: 45
+    base_value: 128
     tier: 1
     level_required: 4
     profession: TAILOR
@@ -2238,7 +2452,7 @@ tailor_recipes:
     description: "Warm, sturdy woolen trousers. Practical and lightly enchantment-friendly."
     category: ARMOR
     slot: LEGS
-    base_value: 30
+    base_value: 78
     tier: 1
     level_required: 4
     profession: TAILOR
@@ -2262,7 +2476,7 @@ tailor_recipes:
     description: "An elegant robe favored by academics and hedge mages. Strong magical resistance."
     category: ARMOR
     slot: CHEST
-    base_value: 70
+    base_value: 191
     tier: 2
     level_required: 5
     profession: TAILOR
@@ -2286,7 +2500,7 @@ tailor_recipes:
     description: "A road-worn cloak with leather reinforcement. Balanced protection for the wanderer."
     category: ARMOR
     slot: CHEST
-    base_value: 55
+    base_value: 135
     tier: 2
     level_required: 5
     profession: TAILOR
@@ -2310,7 +2524,7 @@ tailor_recipes:
     description: "A fashionable hat that marks one as a person of commerce. Subtly warded."
     category: ARMOR
     slot: HEAD
-    base_value: 45
+    base_value: 82
     tier: 2
     level_required: 6
     profession: TAILOR
@@ -2334,7 +2548,7 @@ tailor_recipes:
     description: "A leather-trimmed cloth apron with herb-stained pockets. Practical for fieldwork."
     category: ARMOR
     slot: CHEST
-    base_value: 50
+    base_value: 135
     tier: 2
     level_required: 6
     profession: TAILOR
@@ -2360,7 +2574,7 @@ tailor_recipes:
     description: "A magnificent robe of silk and fine cloth, thrumming with latent magical energy. The pinnacle of mage attire."
     category: ARMOR
     slot: CHEST
-    base_value: 150
+    base_value: 689
     tier: 3
     level_required: 7
     profession: TAILOR
@@ -2386,7 +2600,7 @@ tailor_recipes:
     description: "Resplendent formal attire threaded with silver. Commands respect in any court."
     category: ARMOR
     slot: CHEST
-    base_value: 140
+    base_value: 560
     tier: 3
     level_required: 7
     profession: TAILOR
@@ -2412,7 +2626,7 @@ tailor_recipes:
     description: "A gossamer silk hood that sharpens the mind and shields it from magical intrusion."
     category: ARMOR
     slot: HEAD
-    base_value: 90
+    base_value: 314
     tier: 3
     level_required: 7
     profession: TAILOR
@@ -2436,7 +2650,7 @@ tailor_recipes:
     description: "Fine cloth trousers reinforced with wolf leather. Fit for nobility."
     category: ARMOR
     slot: LEGS
-    base_value: 95
+    base_value: 485
     tier: 3
     level_required: 8
     profession: TAILOR
@@ -2460,7 +2674,7 @@ tailor_recipes:
     description: "A cloak of layered silk, fine cloth, and bear leather, infused with glowcap essence. The most powerful wearable ward in Aethermere."
     category: ARMOR
     slot: CHEST
-    base_value: 180
+    base_value: 986
     tier: 3
     level_required: 8
     profession: TAILOR
@@ -3419,3 +3633,155 @@ simulation_supply_chain_diagnostic:
       - { item: "Cloth", failures: 101, source: "TAILOR intermediate (Cotton→Cloth) — Cotton from FARMER asset" }
       - { item: "Silkworm Cocoons", failures: 101, source: "RANCHER Craftsman L7+ asset — most bots below L7" }
     future_fix: "Implement crop plant→grow→harvest cycle in sim engine, or add spot-based production for Grain/Berries"
+
+
+# =============================================================================
+# SECTION 10: BASE VALUE REFERENCE — STRING-ARRAY PROFESSIONS
+# =============================================================================
+# These professions list recipes as string arrays (not inline objects), so
+# base_values are provided here as a companion reference. Added 2026-02-20
+# during the base-value-completion pass.
+#
+# PRICING METHODOLOGY:
+#   Apprentice: 1.3-1.5× input cost
+#   Journeyman: 1.4-1.6× input cost
+#   Craftsman:  1.5-1.8× input cost
+#   Expert:     1.6-2.0× input cost
+#   Master:     1.8-2.0× input cost
+# =============================================================================
+
+base_value_reference:
+
+  BLACKSMITH:
+    # 28 recipes: 7 Apprentice (raw-ore, L3-L4), 9 Journeyman (coal, L5-L6), 12 Specialist (L7-L8)
+    # Input costs: Iron Ore Chunks (4g), Wood Logs (5g), Coal (12g), Silver Ore (30g), Hardwood (25g)
+    apprentice:
+      - { name: Iron Pickaxe, base_value: 18 }
+      - { name: Iron Hatchet, base_value: 18 }
+      - { name: Iron Dagger, base_value: 15 }
+      - { name: Iron Sword, base_value: 22 }
+      - { name: Iron Shield, base_value: 25 }
+      - { name: Iron Helm, base_value: 20 }
+      - { name: Copper Hoe, base_value: 14 }
+    journeyman:
+      - { name: Steel Pickaxe, base_value: 38 }
+      - { name: Steel Hatchet, base_value: 38 }
+      - { name: Steel Dagger, base_value: 32 }
+      - { name: Steel Sword, base_value: 45 }
+      - { name: Iron Battleaxe, base_value: 40 }
+      - { name: Reinforced Shield, base_value: 42 }
+      - { name: Iron Chainmail, base_value: 48 }
+      - { name: Iron Fishing Spear, base_value: 30 }
+      - { name: Reinforced Helm, base_value: 35 }
+    specialist_toolsmith:
+      - { name: Silver Pickaxe, base_value: 95 }
+      - { name: Hardwood Hatchet, base_value: 80 }
+      - { name: "Hunter's Knife", base_value: 85 }
+      - { name: Reinforced Hoe, base_value: 75 }
+    specialist_weaponsmith:
+      - { name: Silver Longsword, base_value: 110 }
+      - { name: Silver Dagger, base_value: 90 }
+      - { name: Silver Battleaxe, base_value: 120 }
+      - { name: War Pick, base_value: 100 }
+    specialist_armorer:
+      - { name: Silver-Studded Plate, base_value: 130 }
+      - { name: Silver Helm, base_value: 95 }
+      - { name: Hardwood Tower Shield, base_value: 100 }
+      - { name: Reinforced Chain Leggings, base_value: 105 }
+
+  WOODWORKER:
+    # 25 recipes: 9 Apprentice (L3-10), 11 Journeyman (L11-25), 5 Craftsman (L26-50)
+    # Input costs: Wood Logs (5g), Softwood (3g), Hardwood (25g), Nails (1g), Exotic Wood (50g)
+    apprentice_processing:
+      - { name: Rough Planks, base_value: 4 }       # per plank (bulk output)
+      - { name: Softwood Planks, base_value: 3 }    # per plank (bulk output)
+      - { name: Wooden Dowels, base_value: 4 }
+      - { name: Wooden Handle, base_value: 5 }
+      - { name: Bow Stave, base_value: 8 }
+    apprentice_finished:
+      - { name: Wooden Pickaxe, base_value: 12 }
+      - { name: Fishing Rod, base_value: 14 }
+      - { name: Carving Knife, base_value: 10 }
+      - { name: Wooden Chair, base_value: 15 }
+    journeyman_processing:
+      - { name: Hardwood Planks, base_value: 18 }   # per plank
+      - { name: Wooden Beams, base_value: 12 }
+      - { name: Barrel, base_value: 25 }
+      - { name: Wooden Frame, base_value: 20 }
+    journeyman_finished:
+      - { name: Tanning Rack, base_value: 35 }
+      - { name: Fine Fishing Rod, base_value: 40 }
+      - { name: Wooden Table, base_value: 30 }
+      - { name: Storage Chest, base_value: 45 }
+      - { name: Wooden Bed Frame, base_value: 50 }
+      - { name: Wooden Shield, base_value: 35 }
+      - { name: Furniture, base_value: 40 }
+    craftsman_processing:
+      - { name: Exotic Planks, base_value: 40 }     # per plank
+    craftsman_finished:
+      - { name: Wooden Shelf, base_value: 55 }
+      - { name: Reinforced Crate, base_value: 65 }
+      - { name: Hardwood Tower Shield, base_value: 80 }
+      - { name: Practice Bow, base_value: 45 }
+
+  LEATHERWORKER:
+    # 13 recipes using TANNER outputs + WOODWORKER parts
+    # Input costs: Cured Leather (18g), Wolf Leather (73g), Bear Leather (91g),
+    #              Wooden Frame (20g), Wooden Handle (5g), Nails (1g)
+    apprentice:
+      - { name: Leather Gloves, base_value: 52 }     # 2×CL+1×AP = 44g × 1.3 = 57 → hands slot, utility lower
+      - { name: Leather Boots, base_value: 52 }      # 2×CL+1×AP = 44g × 1.3
+      - { name: Leather Backpack, base_value: 60 }   # 3×CL = 54g × 1.3 = 70 → utility item
+      - { name: Leather Waterskin, base_value: 30 }   # 1×CL+1×AP = 26g × 1.3
+    journeyman:
+      - { name: Wolf Leather Gloves, base_value: 145 }  # 1×WL+1×CL = 91g × 1.5
+      - { name: Wolf Leather Boots, base_value: 145 }   # 1×WL+1×CL = 91g × 1.5
+      - { name: Toolbelt, base_value: 130 }             # 2×CL+1×WF = 56g × 1.5 → utility boost
+      - { name: Leather Repair Kit, base_value: 80 }    # 2×CL+nails = ~37g × 1.5 → consumable
+      - { name: "Ranger's Pack", base_value: 180 }      # 1×WL+2×CL+1×WF = 129g × 1.4
+    craftsman:
+      - { name: Bear Hide Vambraces, base_value: 250 }  # 2×BL+1×CL = 200g × 1.5
+      - { name: Bear Leather Boots, base_value: 230 }   # 1×BL+1×WL = 164g × 1.5
+      - { name: "Hunter's Kit", base_value: 200 }       # 1×WL+1×BL+nails = 165g × 1.5 → consumable/tool
+      - { name: "Explorer's Pack", base_value: 320 }    # 2×BL+1×WL+1×WF = 275g × 1.5
+
+  ALCHEMIST:
+    # 11 recipes: 3 Apprentice, 4 Journeyman, 4 Craftsman
+    # Input costs: Wild Herbs (5g), Wild Berries (3g), Clay (4g),
+    #              Medicinal Herbs (28g), Glowcap Mushrooms (32g)
+    # Consumable potions — lower base_value per Rule 3 (utility in repeat demand)
+    apprentice:
+      - { name: Minor Healing Potion, base_value: 12 }   # 2×WH+1×Clay = 14g × 1.3 → consumable
+      - { name: Antidote, base_value: 10 }               # 2×WH = 10g × 1.3 → consumable
+      - { name: Berry Salve, base_value: 10 }            # 2×WB+1×WH = 11g × 1.3 → consumable
+    journeyman:
+      - { name: Healing Potion, base_value: 22 }         # 3×WH+1×Clay = 19g × 1.4
+      - { name: Elixir of Strength, base_value: 25 }     # 2×WH+1×MH = 38g → buff potion
+      - { name: Elixir of Wisdom, base_value: 25 }       # 2×WH+1×MH = 38g → buff potion
+      - { name: Poison Resistance Tonic, base_value: 20 } # 2×WH+1×WB = 13g × 1.5
+    craftsman:
+      - { name: Greater Healing Potion, base_value: 55 }  # 2×MH+1×Clay = 60g → premium consumable
+      - { name: Elixir of Fortitude, base_value: 60 }     # 1×MH+1×GM+1×Clay = 64g → premium buff
+      - { name: Glowcap Extract, base_value: 50 }         # 2×GM = 64g → utility extract
+      - { name: Universal Antidote, base_value: 65 }      # 1×MH+1×GM+1×WH = 65g × 1.5
+
+  FLETCHER:
+    # 13 recipes: 4 Apprentice, 4 Journeyman, 5 Craftsman
+    # Input costs: Softwood Planks (3g), Wooden Dowels (4g), Bow Stave (8g),
+    #              Cured Leather (18g), Wolf Leather (73g), Bear Leather (91g)
+    apprentice:
+      - { name: Bowstring, base_value: 6 }         # intermediate (CL strip)
+      - { name: Arrows, base_value: 2 }            # per arrow (bulk, ammo consumable)
+      - { name: Shortbow, base_value: 20 }         # Bow Stave + Bowstring = ~14g × 1.4
+      - { name: Hunting Bow, base_value: 30 }      # upgraded shortbow
+    journeyman:
+      - { name: Longbow, base_value: 55 }          # hardwood + WL components
+      - { name: War Arrows, base_value: 5 }        # per arrow (improved ammo)
+      - { name: War Bow, base_value: 70 }          # premium journeyman weapon
+      - { name: Quiver, base_value: 45 }           # leather + wood quiver (FLETCHER variant, lighter than TANNER)
+    craftsman:
+      - { name: Barbed Arrows, base_value: 8 }     # per arrow (top-tier ammo)
+      - { name: Composite Bow, base_value: 150 }   # exotic materials
+      - { name: "Ranger's Quiver", base_value: 120 } # premium quiver
+      - { name: Flight Arrows, base_value: 6 }     # specialty arrows
+      - { name: "Ranger's Longbow", base_value: 200 } # top-tier ranged weapon
