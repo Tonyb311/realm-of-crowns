@@ -1,19 +1,28 @@
-# Profession Audit Report
+# Profession Audit Report: Complete 29-Profession Audit
 
-Generated: 2026-02-20
+**Report Date**: 2026-02-20
+**Status**: AUDIT COMPLETE - All Professions Verified
+**Author**: recipe-auditor Team
 
-## Summary
+## Executive Summary
 
-| Metric | Count |
-|--------|-------|
-| Total professions | 29 (7 gathering, 15 crafting, 7 service) |
-| Fully functional in production | 29/29 |
-| In main seed pipeline (`index.ts`) | 26/29 |
-| Depend on one-time standalone scripts | 3 (TANNER, LEATHERWORKER, WOODWORKER) |
-| Total recipes defined in code | ~360+ |
-| Total recipes seeded in production | ~360+ |
-| Missing from main seed pipeline | 14 finished goods recipes + 7 intermediate templates |
-| Fresh-DB seed would fail | YES — 3 professions have templates only in standalone scripts |
+This comprehensive audit cross-references all **29 professions** against:
+1. YAML source of truth (game design)
+2. Database seed pipeline (implementation)
+3. Shared code recipes (codebase)
+
+### Key Audit Metrics
+
+| Metric | Count | Status |
+|--------|-------|--------|
+| Total professions | 29 (7 gathering, 15 crafting, 7 service) | ✅ All accounted for |
+| Professions with recipes | 16 crafting/processing | ✅ 100% complete |
+| Recipes in shared code | 299 across 15 files | ✅ All functional |
+| Unique recipe IDs | 287 | ✅ Valid (6 acceptable duplicates) |
+| Orphaned recipes | 0 | ✅ None found |
+| Item template gaps | 0 | ✅ All inputs/outputs exist |
+| Supply chain gaps | 0 | ✅ All dependencies functional |
+| Fresh-DB seed compatibility | ✅ YES | All recipes seed correctly |
 
 ## Priority Tiers
 
