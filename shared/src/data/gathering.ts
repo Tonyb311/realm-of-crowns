@@ -323,7 +323,7 @@ export const EGGS: GatheringItem = {
   isFood: true,
   shelfLifeDays: 3,
   foodBuff: { stat: 'constitution', value: 1 },
-  baseValue: 8,
+  baseValue: 5,
   icon: '\uD83E\uDD5A',
 };
 
@@ -334,7 +334,7 @@ export const MILK: GatheringItem = {
   isFood: true,
   shelfLifeDays: 2,
   foodBuff: { stat: 'constitution', value: 1 },
-  baseValue: 12,
+  baseValue: 6,
   icon: '\uD83E\uDD5B',
 };
 
