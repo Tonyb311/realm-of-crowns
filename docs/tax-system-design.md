@@ -252,7 +252,7 @@ When buildings go offline (grace period expired):
 | Housing | Storage access remains (can't lock players out of their stuff). Market listing still works. |
 | Market Stall | Cannot list new items. Existing listings remain active. |
 
-**Critical:** Livestock still consume feed while offline. This prevents players from using non-payment as a free "pause" for animals. If a player can't afford taxes AND feed, their livestock may starve. This creates genuine urgency to pay.
+**Offline = Frozen.** Livestock do NOT consume feed while buildings are offline. Production stops, aging stops, feed consumption stops — same freeze behavior as the pause system. The debt accumulation alone is sufficient punishment. With a proper pause system available, there's no need to punish tax-delinquent players with a feed death spiral on top of growing debt.
 
 ### Recovery
 
