@@ -296,22 +296,6 @@ export const COOK_CONSUMABLES: ConsumableRecipe[] = [
     description: 'A hearty bowl of vegetable soup that warms body and spirit.',
   },
   {
-    recipeId: 'cook-grilled-fish',
-    name: 'Grilled Fish',
-    professionRequired: 'COOK',
-    levelRequired: 3,
-    inputs: [
-      { itemName: 'Raw Fish', quantity: 2 },
-      { itemName: 'Salt', quantity: 1 },
-    ],
-    output: { itemName: 'Grilled Fish', quantity: 2 },
-    consumableStats: { effect: 'hp_regen', magnitude: 3, duration: 30, stackSize: 15 },
-    craftTime: 15,
-    xpReward: 8,
-    tier: 1,
-    description: 'Fish seared over hot coals until the skin crisps golden. Simple, satisfying fare.',
-  },
-  {
     recipeId: 'cook-berry-jam',
     name: 'Berry Jam',
     professionRequired: 'COOK',
@@ -437,30 +421,6 @@ export const COOK_CONSUMABLES: ConsumableRecipe[] = [
     xpReward: 18,
     tier: 2,
     description: 'Fish fillets dressed with aromatic spices and fresh herbs. Sharpens the senses beautifully.',
-  },
-  {
-    recipeId: 'cook-fish-stew',
-    name: 'Fish Stew',
-    professionRequired: 'COOK',
-    levelRequired: 10,
-    inputs: [
-      { itemName: 'Common Fish', quantity: 2 },
-      { itemName: 'Vegetables', quantity: 1 },
-      { itemName: 'Spices', quantity: 1 },
-    ],
-    output: { itemName: 'Fish Stew', quantity: 2 },
-    consumableStats: {
-      effect: 'buff_wisdom',
-      magnitude: 2,
-      duration: 60,
-      stackSize: 10,
-      secondaryEffect: 'hp_regen',
-      secondaryMagnitude: 3,
-    },
-    craftTime: 30,
-    xpReward: 15,
-    tier: 2,
-    description: 'A rich fish stew with herbs and root vegetables. Sharpens the senses.',
   },
   // --- RANCHER Product Recipes ---
   {

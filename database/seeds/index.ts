@@ -25,6 +25,7 @@ import { seedKingdoms } from './kingdoms';
 import { seedAbilities } from './abilities';
 import { seedAchievements } from './achievements';
 import { seedWeaponRecipes } from './weapon-recipes';
+import { seedCraftedGoodsRecipes } from './crafted-goods-recipes';
 import { seedAccessoryRecipes } from './accessory-recipes';
 
 const prisma = new PrismaClient();
@@ -104,6 +105,9 @@ async function main() {
 
   // Weapon recipes: blacksmith and fletcher weapon item templates + recipes (MINOR-07)
   await seedWeaponRecipes(prisma);
+
+  // Crafted goods: woodworker finished goods (14) + blacksmith specializations (28)
+  await seedCraftedGoodsRecipes(prisma);
 
   // Accessory recipes: accessories, enchantments, housing, mount gear (MINOR-07)
   await seedAccessoryRecipes(prisma);
