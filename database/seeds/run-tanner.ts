@@ -12,9 +12,7 @@ function levelToTier(level: number): ProfessionTier {
   return 'APPRENTICE';
 }
 
-async function main() {
-  const prisma = new PrismaClient();
-  try {
+export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
     // ---------------------------------------------------------------
     // Step 0: Remove old TANNER recipes from DB
     // ---------------------------------------------------------------
@@ -514,10 +512,12 @@ async function main() {
     }
 
     console.log(`\nTANNER seed complete: ${TANNER_ITEMS.length} items, ${RECIPES.length} recipes`);
-  } catch (error) {
-    console.error('Seed failed:', error);
-    process.exit(1);
-  }
 }
 
-main();
+// Standalone execution support
+if (require.main === module) {
+  const prisma = new PrismaClient();
+  seedTannerRecipes(prisma)
+    .catch((e) => { console.error('Seed failed:', e); process.exit(1); })
+    .finally(() => prisma.$disconnect());
+}

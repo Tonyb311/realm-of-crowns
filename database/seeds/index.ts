@@ -28,6 +28,7 @@ import { seedWeaponRecipes } from './weapon-recipes';
 import { seedCraftedGoodsRecipes } from './crafted-goods-recipes';
 import { seedAccessoryRecipes } from './accessory-recipes';
 import { seedBaseValuePropagation } from './base-value-propagation';
+import { seedTannerRecipes } from './run-tanner';
 
 const prisma = new PrismaClient();
 
@@ -124,6 +125,9 @@ async function main() {
 
   // Accessory recipes: accessories, enchantments, housing, mount gear (MINOR-07)
   if (!await runSeed('accessoryRecipes', () => seedAccessoryRecipes(prisma))) failed++;
+
+  // TANNER recipes: 16 recipes (Soft Leather, Cured Leather, armor, tools)
+  if (!await runSeed('tannerRecipes', () => seedTannerRecipes(prisma))) failed++;
 
   // Class abilities: 7 classes x 3 specs = 21 skill trees (P1 #17 / MAJOR-05)
   if (!await runSeed('abilities', () => seedAbilities(prisma))) failed++;
