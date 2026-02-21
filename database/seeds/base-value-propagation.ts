@@ -578,6 +578,23 @@ const BASE_VALUES: Record<string, number> = {
   // ── FOOD ITEMS (food-items.ts) ──
   'Raw Meat': 3,
   'Fresh Vegetables': 3,
+
+  // ── STARTER ITEMS (starting-weapons.ts, created at runtime) ──
+  'Rustic Shortsword': 5,
+  'Rustic Shortbow': 5,
+  'Rustic Dagger': 3,
+  'Rustic Staff': 4,
+  'Rustic Crystal Focus': 4,
+  'Rustic Lute Blade': 5,
+  'Rustic Mace': 4,
+  'Rustic Leather Vest': 8,
+
+  // ── DUPLICATE/ALTERNATE NAMES (catch production variants) ──
+  'Raw Leather': 6,
+  'Basic Rations': 3,
+  'Iron Chain Shirt': 28,
+  'Wooden Beams': 17,
+  'Leather Waterskin': 35,
 };
 
 export async function seedBaseValuePropagation(prisma: PrismaClient): Promise<void> {

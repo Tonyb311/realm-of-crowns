@@ -2,6 +2,16 @@ import { prisma } from './prisma';
 import { logger } from './logger';
 import { STARTER_WEAPONS, FALLBACK_STARTER_WEAPON, StarterWeaponDef, STARTER_ARMOR } from '@shared/data/starter-weapons';
 
+const STARTER_WEAPON_BASE_VALUES: Record<string, number> = {
+  'Rustic Shortsword': 5,
+  'Rustic Shortbow': 5,
+  'Rustic Dagger': 3,
+  'Rustic Staff': 4,
+  'Rustic Crystal Focus': 4,
+  'Rustic Lute Blade': 5,
+  'Rustic Mace': 4,
+};
+
 let templatesEnsured = false;
 
 /**
@@ -12,9 +22,10 @@ export async function ensureStarterWeaponTemplates(): Promise<void> {
   if (templatesEnsured) return;
 
   for (const def of Object.values(STARTER_WEAPONS)) {
+    const baseValue = STARTER_WEAPON_BASE_VALUES[def.name] ?? 5;
     await prisma.itemTemplate.upsert({
       where: { id: def.templateId },
-      update: {},
+      update: { baseValue },
       create: {
         id: def.templateId,
         name: def.name,
@@ -24,6 +35,7 @@ export async function ensureStarterWeaponTemplates(): Promise<void> {
         durability: 100,
         levelRequired: 1,
         stats: def.stats,
+        baseValue,
       },
     });
   }
@@ -31,7 +43,7 @@ export async function ensureStarterWeaponTemplates(): Promise<void> {
   // Ensure starter armor template exists
   await prisma.itemTemplate.upsert({
     where: { id: STARTER_ARMOR.templateId },
-    update: {},
+    update: { baseValue: 8 },
     create: {
       id: STARTER_ARMOR.templateId,
       name: STARTER_ARMOR.name,
@@ -41,6 +53,7 @@ export async function ensureStarterWeaponTemplates(): Promise<void> {
       durability: 100,
       levelRequired: 1,
       stats: STARTER_ARMOR.stats,
+      baseValue: 8,
     },
   });
 
