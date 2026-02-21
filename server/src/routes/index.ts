@@ -46,6 +46,7 @@ import rancherRouter from './rancher';
 import housesRouter from './houses';
 import relocateRouter from './relocate';
 import jobsRouter from './jobs';
+import codexRouter from './codex';
 
 const router = Router();
 
@@ -97,5 +98,6 @@ router.use('/rancher', rancherRouter);
 router.use('/houses', housesRouter);
 router.use('/relocate', relocateRouter);
 router.use('/jobs', jobsRouter);
+router.use('/codex', codexRouter);
 
 export default router;

@@ -1,250 +1,184 @@
 import { useMemo, useState } from 'react';
-import { ITEMS } from '@shared/data/items/item-names';
-import {
-  ALL_PROCESSING_RECIPES,
-  ALL_FINISHED_GOODS_RECIPES,
-  ALL_CONSUMABLE_RECIPES,
-  ALL_ACCESSORY_RECIPES,
-} from '@shared/data/recipes';
-import type { RecipeDefinition, FinishedGoodsRecipe, ConsumableRecipe } from '@shared/data/recipes/types';
+import { useQuery } from '@tanstack/react-query';
 import { RealmCard } from '../ui/RealmCard';
 import { RealmBadge } from '../ui/RealmBadge';
+import api from '../../services/api';
 
 interface CodexItemsProps {
   searchQuery: string;
 }
 
-type CategoryName =
-  | 'Gathered Resources'
-  | 'Processed Materials'
-  | 'Weapons'
-  | 'Armor'
-  | 'Consumables'
-  | 'Accessories & Misc'
-  | 'Raw Materials';
+// ---------------------------------------------------------------------------
+// Types (match API response shape)
+// ---------------------------------------------------------------------------
 
-const CATEGORY_ORDER: CategoryName[] = [
-  'Gathered Resources',
-  'Processed Materials',
-  'Weapons',
-  'Armor',
-  'Consumables',
-  'Accessories & Misc',
-  'Raw Materials',
-];
-
-const CATEGORY_ICONS: Record<CategoryName, string> = {
-  'Gathered Resources': '\u{1F33E}',
-  'Processed Materials': '\u{2699}',
-  'Weapons': '\u{2694}',
-  'Armor': '\u{1F6E1}',
-  'Consumables': '\u{1F9EA}',
-  'Accessories & Misc': '\u{1F48D}',
-  'Raw Materials': '\u{1FAA8}',
-};
-
-interface RecipeReference {
-  recipeId: string;
+interface ItemTemplate {
+  id: string;
   name: string;
-  profession: string;
-  role: 'input' | 'output';
+  type: string;
+  rarity: string;
+  description: string | null;
+  stats: any;
+  durability: number | null;
+  baseValue: number | null;
+  professionRequired: string | null;
+  levelRequired: number | null;
 }
 
+interface RecipeEntry {
+  id: string;
+  name: string;
+  professionType: string;
+  tier: string;
+  ingredients: any;
+  result: string;
+  craftTime: number;
+  xpReward: number;
+  specialization: string | null;
+  levelRequired: number | null;
+}
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const TYPE_ORDER = ['WEAPON', 'ARMOR', 'CONSUMABLE', 'TOOL', 'MATERIAL', 'ACCESSORY', 'HOUSING', 'RESOURCE'];
+
+const TYPE_LABELS: Record<string, string> = {
+  WEAPON: 'Weapons',
+  ARMOR: 'Armor',
+  CONSUMABLE: 'Consumables',
+  TOOL: 'Tools',
+  MATERIAL: 'Materials',
+  ACCESSORY: 'Accessories',
+  HOUSING: 'Housing',
+  RESOURCE: 'Resources',
+};
+
+const RARITY_COLORS: Record<string, string> = {
+  POOR: 'text-realm-text-muted',
+  COMMON: 'text-realm-text-secondary',
+  FINE: 'text-realm-success',
+  SUPERIOR: 'text-realm-teal-300',
+  MASTERWORK: 'text-realm-purple-300',
+  LEGENDARY: 'text-realm-gold-400',
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function formatProfession(profession: string): string {
+  return profession
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function formatRarity(rarity: string): string {
+  return rarity.charAt(0) + rarity.slice(1).toLowerCase();
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
 export default function CodexItems({ searchQuery }: CodexItemsProps) {
-  const [activeCategory, setActiveCategory] = useState<'All' | CategoryName>('All');
+  const [activeType, setActiveType] = useState<'All' | string>('All');
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
 
-  // Build categorized item lists and recipe lookup maps
-  const { categories, recipesByItem } = useMemo(() => {
-    const allItemNames = Object.values(ITEMS);
+  const { data: itemsData, isLoading: itemsLoading } = useQuery<{ items: ItemTemplate[]; total: number }>({
+    queryKey: ['codex', 'items'],
+    queryFn: async () => (await api.get('/codex/items')).data,
+    staleTime: 5 * 60 * 1000,
+  });
 
-    const gatheringItems = new Set([
-      'Apples', 'Raw Fish', 'Wild Berries', 'Wild Herbs',
-      'Iron Ore Chunks', 'Wood Logs', 'Stone Blocks', 'Clay',
-    ]);
+  const { data: recipesData } = useQuery<{ recipes: RecipeEntry[]; total: number }>({
+    queryKey: ['codex', 'recipes'],
+    queryFn: async () => (await api.get('/codex/recipes')).data,
+    staleTime: 5 * 60 * 1000,
+  });
 
-    // Collect processing recipe outputs
-    const processingOutputs = new Set<string>();
-    for (const r of (ALL_PROCESSING_RECIPES || [])) {
-      for (const o of (r.outputs || [])) {
-        processingOutputs.add(o.itemName);
-      }
-    }
+  const items = itemsData?.items ?? [];
+  const recipes = recipesData?.recipes ?? [];
 
-    // Collect weapon and armor outputs from finished goods
-    const weaponOutputs = new Set<string>();
-    const armorOutputs = new Set<string>();
-    for (const r of (ALL_FINISHED_GOODS_RECIPES || [])) {
-      for (const o of (r.outputs || [])) {
-        if (r.outputItemType === 'WEAPON') weaponOutputs.add(o.itemName);
-        else if (r.outputItemType === 'ARMOR') armorOutputs.add(o.itemName);
-      }
-    }
+  // Build recipe cross-references (what produces/uses each item)
+  const { recipesByItem } = useMemo(() => {
+    const refs = new Map<string, { name: string; profession: string; role: 'input' | 'output' }[]>();
 
-    // Collect consumable outputs
-    const consumableOutputs = new Set<string>();
-    for (const r of (ALL_CONSUMABLE_RECIPES || [])) {
-      if (r.output) consumableOutputs.add(r.output.itemName);
-    }
-
-    // Collect accessory outputs
-    const accessoryOutputs = new Set<string>();
-    for (const r of (ALL_ACCESSORY_RECIPES || [])) {
-      for (const o of (r.outputs || [])) {
-        accessoryOutputs.add(o.itemName);
-      }
-    }
-
-    // Categorize each item
-    const cats: Record<CategoryName, string[]> = {
-      'Gathered Resources': [],
-      'Processed Materials': [],
-      'Weapons': [],
-      'Armor': [],
-      'Consumables': [],
-      'Accessories & Misc': [],
-      'Raw Materials': [],
-    };
-
-    const assigned = new Set<string>();
-    for (const name of allItemNames) {
-      if (gatheringItems.has(name)) {
-        cats['Gathered Resources'].push(name);
-        assigned.add(name);
-      } else if (weaponOutputs.has(name)) {
-        cats['Weapons'].push(name);
-        assigned.add(name);
-      } else if (armorOutputs.has(name)) {
-        cats['Armor'].push(name);
-        assigned.add(name);
-      } else if (consumableOutputs.has(name)) {
-        cats['Consumables'].push(name);
-        assigned.add(name);
-      } else if (accessoryOutputs.has(name)) {
-        cats['Accessories & Misc'].push(name);
-        assigned.add(name);
-      } else if (processingOutputs.has(name)) {
-        cats['Processed Materials'].push(name);
-        assigned.add(name);
-      }
-    }
-    // Everything else -> Raw Materials
-    for (const name of allItemNames) {
-      if (!assigned.has(name)) {
-        cats['Raw Materials'].push(name);
-      }
-    }
-
-    // Sort each category alphabetically
-    for (const key of CATEGORY_ORDER) {
-      cats[key].sort((a, b) => a.localeCompare(b));
-    }
-
-    // Build recipe references for each item (used-in / produced-by)
-    const refs = new Map<string, RecipeReference[]>();
-
-    const addRef = (itemName: string, ref: RecipeReference) => {
+    const addRef = (itemName: string, ref: { name: string; profession: string; role: 'input' | 'output' }) => {
       const list = refs.get(itemName) ?? [];
       list.push(ref);
       refs.set(itemName, list);
     };
 
-    // Processing recipes (RecipeDefinition)
-    for (const r of (ALL_PROCESSING_RECIPES || [])) {
-      for (const inp of (r.inputs || [])) {
-        addRef(inp.itemName, { recipeId: r.recipeId, name: r.name, profession: r.professionRequired, role: 'input' });
+    for (const r of recipes) {
+      const ingredients = Array.isArray(r.ingredients) ? r.ingredients : [];
+      for (const inp of ingredients) {
+        if (inp.itemName) {
+          addRef(inp.itemName, { name: r.name, profession: r.professionType, role: 'input' });
+        }
       }
-      for (const out of (r.outputs || [])) {
-        addRef(out.itemName, { recipeId: r.recipeId, name: r.name, profession: r.professionRequired, role: 'output' });
-      }
-    }
-
-    // Finished goods recipes (FinishedGoodsRecipe)
-    for (const r of (ALL_FINISHED_GOODS_RECIPES || [])) {
-      for (const inp of (r.inputs || [])) {
-        addRef(inp.itemName, { recipeId: r.recipeId, name: r.name, profession: r.professionRequired, role: 'input' });
-      }
-      for (const out of (r.outputs || [])) {
-        addRef(out.itemName, { recipeId: r.recipeId, name: r.name, profession: r.professionRequired, role: 'output' });
+      if (r.result) {
+        addRef(r.result, { name: r.name, profession: r.professionType, role: 'output' });
       }
     }
 
-    // Consumable recipes (ConsumableRecipe -- single output)
-    for (const r of (ALL_CONSUMABLE_RECIPES || [])) {
-      for (const inp of (r.inputs || [])) {
-        addRef(inp.itemName, { recipeId: r.recipeId, name: r.name, profession: r.professionRequired, role: 'input' });
-      }
-      if (r.output) {
-        addRef(r.output.itemName, { recipeId: r.recipeId, name: r.name, profession: r.professionRequired, role: 'output' });
-      }
+    return { recipesByItem: refs };
+  }, [recipes]);
+
+  // Group items by type
+  const itemsByType = useMemo(() => {
+    const grouped = new Map<string, ItemTemplate[]>();
+    for (const item of items) {
+      const list = grouped.get(item.type) ?? [];
+      list.push(item);
+      grouped.set(item.type, list);
     }
+    return grouped;
+  }, [items]);
 
-    // Accessory recipes (RecipeDefinition)
-    for (const r of (ALL_ACCESSORY_RECIPES || [])) {
-      for (const inp of (r.inputs || [])) {
-        addRef(inp.itemName, { recipeId: r.recipeId, name: r.name, profession: r.professionRequired, role: 'input' });
-      }
-      for (const out of (r.outputs || [])) {
-        addRef(out.itemName, { recipeId: r.recipeId, name: r.name, profession: r.professionRequired, role: 'output' });
-      }
-    }
-
-    return { categories: cats, recipesByItem: refs };
-  }, []);
-
-  // Determine which category an item belongs to
-  const getCategoryForItem = (itemName: string): CategoryName => {
-    for (const cat of CATEGORY_ORDER) {
-      if ((categories[cat] || []).includes(itemName)) return cat;
-    }
-    return 'Raw Materials';
-  };
-
-  // Filter items by search query
-  const filteredCategories = useMemo(() => {
+  // Filter by search query
+  const filteredItemsByType = useMemo(() => {
     const query = (searchQuery || '').trim().toLowerCase();
-    const result: Record<CategoryName, string[]> = {
-      'Gathered Resources': [],
-      'Processed Materials': [],
-      'Weapons': [],
-      'Armor': [],
-      'Consumables': [],
-      'Accessories & Misc': [],
-      'Raw Materials': [],
-    };
+    const result = new Map<string, ItemTemplate[]>();
 
-    for (const cat of CATEGORY_ORDER) {
-      result[cat] = (categories[cat] || []).filter((name) =>
-        name.toLowerCase().includes(query)
+    for (const [type, typeItems] of itemsByType) {
+      const filtered = typeItems.filter(item =>
+        item.name.toLowerCase().includes(query) ||
+        (item.description || '').toLowerCase().includes(query)
       );
+      if (filtered.length > 0) {
+        result.set(type, filtered);
+      }
     }
 
     return result;
-  }, [categories, searchQuery]);
+  }, [itemsByType, searchQuery]);
 
-  // Compute total counts
-  const totalItemCount = Object.values(ITEMS).length;
-  const filteredTotalCount = CATEGORY_ORDER.reduce(
-    (sum, cat) => sum + (filteredCategories[cat]?.length ?? 0),
-    0
-  );
+  // Compute counts
+  const totalCount = items.length;
+  const filteredCount = Array.from(filteredItemsByType.values()).reduce((sum, arr) => sum + arr.length, 0);
 
-  // Categories to display
-  const displayCategories =
-    activeCategory === 'All'
-      ? CATEGORY_ORDER
-      : [activeCategory];
+  // Types to display
+  const displayTypes = activeType === 'All'
+    ? TYPE_ORDER.filter(t => filteredItemsByType.has(t))
+    : filteredItemsByType.has(activeType) ? [activeType] : [];
 
-  const handleItemClick = (itemName: string) => {
-    setExpandedItem((prev) => (prev === itemName ? null : itemName));
+  const handleItemClick = (itemId: string) => {
+    setExpandedItem((prev) => (prev === itemId ? null : itemId));
   };
 
-  const formatProfession = (profession: string): string => {
-    return profession
-      .split('_')
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-      .join(' ');
-  };
+  if (itemsLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="flex items-center gap-3 text-realm-text-muted">
+          <div className="w-5 h-5 border-2 border-realm-gold-400/50 border-t-realm-gold-400 rounded-full animate-spin" />
+          <span className="font-body text-sm">Loading items...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -254,44 +188,45 @@ export default function CodexItems({ searchQuery }: CodexItemsProps) {
           Items Encyclopedia
         </h2>
         <span className="text-sm text-realm-text-muted">
-          {filteredTotalCount === totalItemCount
-            ? `${totalItemCount} items`
-            : `${filteredTotalCount} of ${totalItemCount} items`}
+          {filteredCount === totalCount
+            ? `${totalCount} items`
+            : `${filteredCount} of ${totalCount} items`}
         </span>
       </div>
 
-      {/* Category filter tabs */}
+      {/* Type filter tabs */}
       <div className="flex flex-wrap gap-2">
         <button
-          onClick={() => setActiveCategory('All')}
+          onClick={() => setActiveType('All')}
           className={`px-3 py-1.5 rounded text-sm font-body transition-colors ${
-            activeCategory === 'All'
+            activeType === 'All'
               ? 'bg-realm-gold-400/20 text-realm-gold-400 border border-realm-gold-400/40'
               : 'bg-realm-bg-700 text-realm-text-secondary border border-realm-border hover:border-realm-border-strong hover:text-realm-text-primary'
           }`}
         >
-          All ({filteredTotalCount})
+          All ({filteredCount})
         </button>
-        {CATEGORY_ORDER.map((cat) => {
-          const count = filteredCategories[cat]?.length ?? 0;
+        {TYPE_ORDER.map((type) => {
+          const count = filteredItemsByType.get(type)?.length ?? 0;
+          if (count === 0 && !itemsByType.has(type)) return null;
           return (
             <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
+              key={type}
+              onClick={() => setActiveType(type)}
               className={`px-3 py-1.5 rounded text-sm font-body transition-colors ${
-                activeCategory === cat
+                activeType === type
                   ? 'bg-realm-gold-400/20 text-realm-gold-400 border border-realm-gold-400/40'
                   : 'bg-realm-bg-700 text-realm-text-secondary border border-realm-border hover:border-realm-border-strong hover:text-realm-text-primary'
               }`}
             >
-              {cat} ({count})
+              {TYPE_LABELS[type] || type} ({count})
             </button>
           );
         })}
       </div>
 
-      {/* Item grid by category */}
-      {filteredTotalCount === 0 ? (
+      {/* Items grid by type */}
+      {filteredCount === 0 ? (
         <div className="text-center py-12">
           <p className="text-realm-text-muted text-lg font-body">
             No items match your search.
@@ -301,53 +236,50 @@ export default function CodexItems({ searchQuery }: CodexItemsProps) {
           </p>
         </div>
       ) : (
-        displayCategories.map((cat) => {
-          const items = filteredCategories[cat] ?? [];
-          if (items.length === 0) return null;
+        displayTypes.map((type) => {
+          const typeItems = filteredItemsByType.get(type) ?? [];
+          if (typeItems.length === 0) return null;
 
           return (
-            <div key={cat} className="space-y-3">
-              {/* Category header */}
+            <div key={type} className="space-y-3">
+              {/* Type header */}
               <div className="flex items-center gap-2 border-b border-realm-border pb-2">
-                <span className="text-lg" role="img" aria-label={cat}>
-                  {CATEGORY_ICONS[cat]}
-                </span>
                 <h3 className="font-display text-lg text-realm-text-primary">
-                  {cat}
+                  {TYPE_LABELS[type] || type}
                 </h3>
                 <span className="text-sm text-realm-text-muted ml-auto">
-                  {items.length} {items.length === 1 ? 'item' : 'items'}
+                  {typeItems.length} {typeItems.length === 1 ? 'item' : 'items'}
                 </span>
               </div>
 
               {/* Items grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {items.map((itemName) => {
-                  const isExpanded = expandedItem === itemName;
-                  const refs = recipesByItem.get(itemName) ?? [];
+                {typeItems.map((item) => {
+                  const isExpanded = expandedItem === item.id;
+                  const refs = recipesByItem.get(item.name) ?? [];
                   const producedBy = refs.filter((r) => r.role === 'output');
                   const usedIn = refs.filter((r) => r.role === 'input');
 
                   return (
                     <RealmCard
-                      key={itemName}
-                      onClick={() => handleItemClick(itemName)}
+                      key={item.id}
+                      onClick={() => handleItemClick(item.id)}
                       selected={isExpanded}
                       className={`flex flex-col min-h-[100px] ${isExpanded ? 'col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4' : ''}`}
                     >
-                      {/* Item name and category badge */}
+                      {/* Item name and rarity */}
                       <div className="flex items-start justify-between gap-2">
-                        <h4 className="font-display text-sm text-realm-text-primary leading-tight">
-                          {itemName}
+                        <h4 className={`font-display text-sm leading-tight ${RARITY_COLORS[item.rarity] || 'text-realm-text-primary'}`}>
+                          {item.name}
                         </h4>
                         {!isExpanded && (
                           <RealmBadge variant="default" className="shrink-0 text-[10px]">
-                            {getCategoryForItem(itemName)}
+                            {formatRarity(item.rarity)}
                           </RealmBadge>
                         )}
                       </div>
 
-                      {/* Recipe connection summary (collapsed) — flex-grow fills space */}
+                      {/* Recipe connection summary (collapsed) */}
                       {!isExpanded && (
                         <p className="text-xs text-realm-text-muted font-body truncate mt-2 flex-grow">
                           {producedBy.length > 0 && (
@@ -364,77 +296,86 @@ export default function CodexItems({ searchQuery }: CodexItemsProps) {
                       )}
 
                       {/* Expanded details */}
-                        {isExpanded && (
-                          <div className="mt-3 space-y-4 border-t border-realm-border pt-3">
-                            {/* Category */}
-                            <div>
-                              <span className="text-xs uppercase tracking-wider text-realm-text-muted font-display">
-                                Category
-                              </span>
-                              <div className="mt-1">
-                                <RealmBadge variant="default">
-                                  {getCategoryForItem(itemName)}
-                                </RealmBadge>
-                              </div>
-                            </div>
-
-                            {/* Produced by (OUTPUT recipes) */}
-                            <div>
-                              <span className="text-xs uppercase tracking-wider text-realm-text-muted font-display">
-                                Produced By
-                              </span>
-                              {producedBy.length === 0 ? (
-                                <p className="text-sm text-realm-text-muted/60 mt-1 font-body">
-                                  Not produced by any known recipe (gathered or dropped).
-                                </p>
-                              ) : (
-                                <div className="mt-1 space-y-1">
-                                  {producedBy.map((ref) => (
-                                    <div
-                                      key={ref.recipeId}
-                                      className="flex items-center gap-2 bg-realm-bg-800 rounded px-3 py-1.5"
-                                    >
-                                      <span className="text-sm text-realm-text-primary font-body">
-                                        {ref.name}
-                                      </span>
-                                      <RealmBadge variant="uncommon" className="text-[10px]">
-                                        {formatProfession(ref.profession)}
-                                      </RealmBadge>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Used in (INPUT recipes) */}
-                            <div>
-                              <span className="text-xs uppercase tracking-wider text-realm-text-muted font-display">
-                                Used In
-                              </span>
-                              {usedIn.length === 0 ? (
-                                <p className="text-sm text-realm-text-muted/60 mt-1 font-body">
-                                  Not used as an ingredient in any known recipe.
-                                </p>
-                              ) : (
-                                <div className="mt-1 space-y-1">
-                                  {usedIn.map((ref) => (
-                                    <div
-                                      key={ref.recipeId}
-                                      className="flex items-center gap-2 bg-realm-bg-800 rounded px-3 py-1.5"
-                                    >
-                                      <span className="text-sm text-realm-text-primary font-body">
-                                        {ref.name}
-                                      </span>
-                                      <RealmBadge variant="rare" className="text-[10px]">
-                                        {formatProfession(ref.profession)}
-                                      </RealmBadge>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
+                      {isExpanded && (
+                        <div className="mt-3 space-y-4 border-t border-realm-border pt-3">
+                          {/* Rarity & Type */}
+                          <div className="flex flex-wrap gap-2">
+                            <RealmBadge variant="default">{formatRarity(item.rarity)}</RealmBadge>
+                            <RealmBadge variant="default">{TYPE_LABELS[item.type] || item.type}</RealmBadge>
+                            {item.professionRequired && (
+                              <RealmBadge variant="rare">{formatProfession(item.professionRequired)}</RealmBadge>
+                            )}
                           </div>
-                        )}
+
+                          {/* Description */}
+                          {item.description && (
+                            <p className="text-sm text-realm-text-secondary font-body">{item.description}</p>
+                          )}
+
+                          {/* Stats */}
+                          <div className="flex flex-wrap gap-4 text-xs text-realm-text-muted">
+                            {item.baseValue != null && item.baseValue > 0 && <span>Value: {item.baseValue}g</span>}
+                            {item.durability != null && <span>Durability: {item.durability}</span>}
+                            {item.levelRequired != null && item.levelRequired > 1 && <span>Lv. {item.levelRequired}</span>}
+                          </div>
+
+                          {/* Produced by */}
+                          <div>
+                            <span className="text-xs uppercase tracking-wider text-realm-text-muted font-display">
+                              Produced By
+                            </span>
+                            {producedBy.length === 0 ? (
+                              <p className="text-sm text-realm-text-muted/60 mt-1 font-body">
+                                Not produced by any known recipe (gathered or dropped).
+                              </p>
+                            ) : (
+                              <div className="mt-1 space-y-1">
+                                {producedBy.map((ref, i) => (
+                                  <div
+                                    key={i}
+                                    className="flex items-center gap-2 bg-realm-bg-800 rounded px-3 py-1.5"
+                                  >
+                                    <span className="text-sm text-realm-text-primary font-body">
+                                      {ref.name}
+                                    </span>
+                                    <RealmBadge variant="uncommon" className="text-[10px]">
+                                      {formatProfession(ref.profession)}
+                                    </RealmBadge>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Used in */}
+                          <div>
+                            <span className="text-xs uppercase tracking-wider text-realm-text-muted font-display">
+                              Used In
+                            </span>
+                            {usedIn.length === 0 ? (
+                              <p className="text-sm text-realm-text-muted/60 mt-1 font-body">
+                                Not used as an ingredient in any known recipe.
+                              </p>
+                            ) : (
+                              <div className="mt-1 space-y-1">
+                                {usedIn.map((ref, i) => (
+                                  <div
+                                    key={i}
+                                    className="flex items-center gap-2 bg-realm-bg-800 rounded px-3 py-1.5"
+                                  >
+                                    <span className="text-sm text-realm-text-primary font-body">
+                                      {ref.name}
+                                    </span>
+                                    <RealmBadge variant="rare" className="text-[10px]">
+                                      {formatProfession(ref.profession)}
+                                    </RealmBadge>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </RealmCard>
                   );
                 })}

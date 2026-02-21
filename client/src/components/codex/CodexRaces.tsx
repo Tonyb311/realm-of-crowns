@@ -1,12 +1,64 @@
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RealmCard } from '../ui/RealmCard';
-import type { RaceDefinition, RacialAbility, SubRaceOption, StatModifiers } from '@shared/types/race';
-import { getRacesByTier } from '@shared/data/races';
+import api from '../../services/api';
 
 // ---------------------------------------------------------------------------
-// Types
+// Types (match API response shape)
 // ---------------------------------------------------------------------------
+interface StatModifiers {
+  str: number;
+  dex: number;
+  con: number;
+  int: number;
+  wis: number;
+  cha: number;
+}
+
+interface RacialAbility {
+  name: string;
+  type: 'active' | 'passive';
+  description: string;
+  levelRequired: number;
+  cooldownSeconds?: number;
+  duration?: number;
+}
+
+interface SubRaceOption {
+  id: string;
+  name: string;
+  bonusStat?: string;
+  bonusValue?: number;
+  description: string;
+  element?: string;
+  resistance?: string;
+  specialPerk?: string;
+}
+
+interface ProfessionBonus {
+  professionType: string;
+  speedBonus?: number;
+  qualityBonus?: number;
+  yieldBonus?: number;
+  xpBonus?: number;
+}
+
+interface RaceDefinition {
+  id: string;
+  name: string;
+  tier: string;
+  lore: string;
+  trait: { name: string; description: string };
+  statModifiers: StatModifiers;
+  abilities: RacialAbility[];
+  subRaces?: SubRaceOption[];
+  professionBonuses?: ProfessionBonus[];
+  startingTowns?: string[];
+  homelandRegion?: string;
+  exclusiveZone?: string;
+}
+
 const STAT_KEYS: (keyof StatModifiers)[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
 
 // ---------------------------------------------------------------------------
@@ -173,7 +225,7 @@ function SubRacesSection({ subRaces, raceName }: { subRaces: SubRaceOption[]; ra
   );
 }
 
-function ProfessionBonusesSection({ bonuses }: { bonuses: RaceDefinition['professionBonuses'] }) {
+function ProfessionBonusesSection({ bonuses }: { bonuses?: ProfessionBonus[] }) {
   if (!bonuses || bonuses.length === 0) return null;
 
   return (
@@ -301,17 +353,33 @@ interface CodexRacesProps {
 export default function CodexRaces({ searchQuery }: CodexRacesProps) {
   const [expandedRaceId, setExpandedRaceId] = useState<string | null>(null);
 
-  // Only show released (core) races
-  const releasedRaces = useMemo(() => (getRacesByTier('core') || []), []);
+  const { data, isLoading } = useQuery<{ races: RaceDefinition[] }>({
+    queryKey: ['codex', 'races'],
+    queryFn: async () => (await api.get('/codex/races')).data,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const races = data?.races ?? [];
 
   // Filter by search query
   const filteredRaces = useMemo(() => {
-    if (!searchQuery) return releasedRaces;
-    return (releasedRaces || []).filter(race => matchesSearch(race, searchQuery));
-  }, [releasedRaces, searchQuery]);
+    if (!searchQuery) return races;
+    return races.filter(race => matchesSearch(race, searchQuery));
+  }, [races, searchQuery]);
 
   function handleCardClick(raceId: string) {
     setExpandedRaceId(prev => (prev === raceId ? null : raceId));
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="flex items-center gap-3 text-realm-text-muted">
+          <div className="w-5 h-5 border-2 border-realm-gold-400/50 border-t-realm-gold-400 rounded-full animate-spin" />
+          <span className="font-body text-sm">Loading races...</span>
+        </div>
+      </div>
+    );
   }
 
   return (

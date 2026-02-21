@@ -9,6 +9,7 @@ import {
   Globe,
   ScrollText,
   Search,
+  Skull,
 } from 'lucide-react';
 import { RealmInput } from '../components/ui/RealmInput';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -20,12 +21,14 @@ const CodexProfessions = lazy(() => import('../components/codex/CodexProfessions
 const CodexItems = lazy(() => import('../components/codex/CodexItems'));
 const CodexWorld = lazy(() => import('../components/codex/CodexWorld'));
 const CodexMechanics = lazy(() => import('../components/codex/CodexMechanics'));
+const CodexMonsters = lazy(() => import('../components/codex/CodexMonsters'));
 
 const SECTIONS = [
   { id: 'races', label: 'Races', icon: Users, description: '20 playable races' },
   { id: 'classes', label: 'Classes', icon: Swords, description: '7 classes, 21 specs' },
   { id: 'professions', label: 'Professions', icon: Hammer, description: '29 professions' },
   { id: 'items', label: 'Items', icon: Package, description: '288+ items' },
+  { id: 'monsters', label: 'Monsters', icon: Skull, description: 'Creatures & beasts' },
   { id: 'world', label: 'World', icon: Globe, description: 'Regions & towns' },
   { id: 'mechanics', label: 'Mechanics', icon: ScrollText, description: 'Game systems' },
 ] as const;
@@ -123,6 +126,7 @@ export default function CodexPage() {
             {activeSection === 'classes' && <CodexClasses searchQuery={searchQuery} />}
             {activeSection === 'professions' && <CodexProfessions searchQuery={searchQuery} />}
             {activeSection === 'items' && <CodexItems searchQuery={searchQuery} />}
+            {activeSection === 'monsters' && <CodexMonsters searchQuery={searchQuery} />}
             {activeSection === 'world' && <CodexWorld searchQuery={searchQuery} />}
             {activeSection === 'mechanics' && <CodexMechanics searchQuery={searchQuery} />}
           </Suspense>

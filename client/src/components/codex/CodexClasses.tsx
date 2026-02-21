@@ -1,14 +1,31 @@
 import { useState, useMemo } from 'react';
-import { VALID_CLASSES, SPECIALIZATIONS, ABILITIES_BY_CLASS } from '@shared/data/skills';
-import type { AbilityDefinition } from '@shared/data/skills/types';
+import { useQuery } from '@tanstack/react-query';
 import { RealmCard } from '../ui/RealmCard';
 import { RealmBadge } from '../ui/RealmBadge';
+import api from '../../services/api';
 
 // ---------------------------------------------------------------------------
-// Types
+// Types (match API response shape)
 // ---------------------------------------------------------------------------
 interface CodexClassesProps {
   searchQuery: string;
+}
+
+interface AbilityDefinition {
+  id: string;
+  name: string;
+  description: string;
+  specialization: string;
+  tier: number;
+  levelRequired: number;
+  cooldown: number;
+  effects?: { type: 'passive' | 'active' };
+}
+
+interface ClassData {
+  name: string;
+  specializations: string[];
+  abilities: AbilityDefinition[];
 }
 
 // ---------------------------------------------------------------------------
@@ -46,7 +63,6 @@ function formatCooldown(ability: AbilityDefinition): string {
   if (ability.cooldown === 0) {
     const effectType = ability.effects?.type;
     if (effectType === 'passive') return 'Passive';
-    // Some tier-5 or special abilities have cooldown 0 but are not passive
     return 'No CD';
   }
   return `${ability.cooldown} rounds`;
@@ -63,41 +79,44 @@ function matchesSearch(query: string, ...values: string[]): boolean {
 export default function CodexClasses({ searchQuery }: CodexClassesProps) {
   const [expandedClass, setExpandedClass] = useState<string | null>(null);
 
+  const { data, isLoading } = useQuery<{ classes: ClassData[] }>({
+    queryKey: ['codex', 'classes'],
+    queryFn: async () => (await api.get('/codex/classes')).data,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const allClasses = data?.classes ?? [];
+
   // ---- Filter classes based on search query ----
   const filteredClasses = useMemo(() => {
-    if (!searchQuery.trim()) return [...VALID_CLASSES];
+    if (!searchQuery.trim()) return allClasses;
 
-    return (VALID_CLASSES || []).filter((cls) => {
+    return allClasses.filter((classData) => {
+      const cls = classData.name;
       const info = CLASS_INFO[cls];
-      const specs = SPECIALIZATIONS?.[cls] || [];
-      const abilities = ABILITIES_BY_CLASS?.[cls] || [];
+      const specs = classData.specializations;
+      const abilities = classData.abilities;
 
-      // Match on class name
       if (matchesSearch(searchQuery, cls, info?.description || '', info?.role || '')) {
         return true;
       }
-
-      // Match on specialization name
       if (specs.some((spec) => matchesSearch(searchQuery, spec))) {
         return true;
       }
-
-      // Match on ability name or description
       if (abilities.some((a) => matchesSearch(searchQuery, a.name, a.description))) {
         return true;
       }
-
       return false;
     });
-  }, [searchQuery]);
+  }, [allClasses, searchQuery]);
 
   // ---- Build abilities grouped by specialization for expanded class ----
-  const getAbilitiesBySpec = (cls: string, spec: string): AbilityDefinition[] => {
-    return (ABILITIES_BY_CLASS?.[cls] || [])
+  const getAbilitiesBySpec = (classData: ClassData, spec: string): AbilityDefinition[] => {
+    return classData.abilities
       .filter((a) => a.specialization === spec)
       .filter((a) => {
         if (!searchQuery.trim()) return true;
-        // When searching, only show abilities that match (or if the class/spec itself matched)
+        const cls = classData.name;
         const classInfo = CLASS_INFO[cls];
         if (matchesSearch(searchQuery, cls, classInfo?.description || '', classInfo?.role || '')) {
           return true;
@@ -115,6 +134,17 @@ export default function CodexClasses({ searchQuery }: CodexClassesProps) {
     setExpandedClass((prev) => (prev === cls ? null : cls));
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="flex items-center gap-3 text-realm-text-muted">
+          <div className="w-5 h-5 border-2 border-realm-gold-400/50 border-t-realm-gold-400 rounded-full animate-spin" />
+          <span className="font-body text-sm">Loading classes...</span>
+        </div>
+      </div>
+    );
+  }
+
   // ---- Empty state ----
   if (filteredClasses.length === 0) {
     return (
@@ -130,10 +160,11 @@ export default function CodexClasses({ searchQuery }: CodexClassesProps) {
     <div className="space-y-4">
       {/* Class card grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filteredClasses.map((cls) => {
+        {filteredClasses.map((classData) => {
+          const cls = classData.name;
           const info = CLASS_INFO[cls] || { description: '', primaryStat: '?', role: '?' };
-          const specs = SPECIALIZATIONS?.[cls] || [];
-          const abilities = ABILITIES_BY_CLASS?.[cls] || [];
+          const specs = classData.specializations;
+          const abilities = classData.abilities;
           const isExpanded = expandedClass === cls;
 
           return (
@@ -179,73 +210,78 @@ export default function CodexClasses({ searchQuery }: CodexClassesProps) {
       </div>
 
       {/* Expanded class detail */}
-      {expandedClass && (
-        <div className="bg-realm-bg-800 border border-realm-border rounded-md p-6 space-y-6">
-          <h2 className="font-display text-2xl text-realm-gold-400">
-            {capitalize(expandedClass)} Specializations
-          </h2>
+      {expandedClass && (() => {
+        const classData = allClasses.find(c => c.name === expandedClass);
+        if (!classData) return null;
 
-          {(SPECIALIZATIONS?.[expandedClass] || []).map((spec) => {
-            const specAbilities = getAbilitiesBySpec(expandedClass, spec);
+        return (
+          <div className="bg-realm-bg-800 border border-realm-border rounded-md p-6 space-y-6">
+            <h2 className="font-display text-2xl text-realm-gold-400">
+              {capitalize(expandedClass)} Specializations
+            </h2>
 
-            return (
-              <div key={spec} className="space-y-3">
-                {/* Specialization header */}
-                <h3 className="font-display text-lg text-realm-text-primary border-b border-realm-border pb-1">
-                  {capitalize(spec)}
-                </h3>
+            {classData.specializations.map((spec) => {
+              const specAbilities = getAbilitiesBySpec(classData, spec);
 
-                {specAbilities.length === 0 ? (
-                  <p className="text-realm-text-muted text-sm font-body py-2">
-                    No abilities match your search in this specialization.
-                  </p>
-                ) : (
-                  /* Ability table */
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm font-body">
-                      <thead>
-                        <tr className="text-left text-realm-text-muted border-b border-realm-bg-600">
-                          <th className="py-2 pr-3 w-20">Tier</th>
-                          <th className="py-2 pr-3 w-48">Name</th>
-                          <th className="py-2 pr-3">Description</th>
-                          <th className="py-2 pr-3 w-20 text-center">Level</th>
-                          <th className="py-2 w-24 text-center">Cooldown</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {specAbilities.map((ability) => (
-                          <tr
-                            key={ability.id}
-                            className="border-b border-realm-bg-700 hover:bg-realm-bg-700/50 transition-colors"
-                          >
-                            <td className="py-2 pr-3">
-                              <RealmBadge variant={TIER_VARIANT[ability.tier] || 'default'}>
-                                T{ability.tier}
-                              </RealmBadge>
-                            </td>
-                            <td className="py-2 pr-3 text-realm-text-primary font-medium">
-                              {ability.name}
-                            </td>
-                            <td className="py-2 pr-3 text-realm-text-secondary">
-                              {ability.description}
-                            </td>
-                            <td className="py-2 pr-3 text-center text-realm-text-muted">
-                              {ability.levelRequired}
-                            </td>
-                            <td className="py-2 text-center text-realm-text-muted">
-                              {formatCooldown(ability)}
-                            </td>
+              return (
+                <div key={spec} className="space-y-3">
+                  {/* Specialization header */}
+                  <h3 className="font-display text-lg text-realm-text-primary border-b border-realm-border pb-1">
+                    {capitalize(spec)}
+                  </h3>
+
+                  {specAbilities.length === 0 ? (
+                    <p className="text-realm-text-muted text-sm font-body py-2">
+                      No abilities match your search in this specialization.
+                    </p>
+                  ) : (
+                    /* Ability table */
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm font-body">
+                        <thead>
+                          <tr className="text-left text-realm-text-muted border-b border-realm-bg-600">
+                            <th className="py-2 pr-3 w-20">Tier</th>
+                            <th className="py-2 pr-3 w-48">Name</th>
+                            <th className="py-2 pr-3">Description</th>
+                            <th className="py-2 pr-3 w-20 text-center">Level</th>
+                            <th className="py-2 w-24 text-center">Cooldown</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+                        </thead>
+                        <tbody>
+                          {specAbilities.map((ability) => (
+                            <tr
+                              key={ability.id}
+                              className="border-b border-realm-bg-700 hover:bg-realm-bg-700/50 transition-colors"
+                            >
+                              <td className="py-2 pr-3">
+                                <RealmBadge variant={TIER_VARIANT[ability.tier] || 'default'}>
+                                  T{ability.tier}
+                                </RealmBadge>
+                              </td>
+                              <td className="py-2 pr-3 text-realm-text-primary font-medium">
+                                {ability.name}
+                              </td>
+                              <td className="py-2 pr-3 text-realm-text-secondary">
+                                {ability.description}
+                              </td>
+                              <td className="py-2 pr-3 text-center text-realm-text-muted">
+                                {ability.levelRequired}
+                              </td>
+                              <td className="py-2 text-center text-realm-text-muted">
+                                {formatCooldown(ability)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
     </div>
   );
 }

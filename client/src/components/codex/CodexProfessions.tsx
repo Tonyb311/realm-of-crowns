@@ -1,55 +1,65 @@
 import { useState, useMemo } from 'react';
-import { ALL_PROFESSIONS, getProfessionsByCategory, PROFESSION_TIERS } from '@shared/data/professions';
-import type { ProfessionDefinition, ProfessionCategory } from '@shared/data/professions/types';
-import { PROFESSION_TIER_UNLOCKS } from '@shared/data/professions/tier-unlocks';
-import {
-  ALL_PROCESSING_RECIPES,
-  ALL_FINISHED_GOODS_RECIPES,
-  ALL_CONSUMABLE_RECIPES,
-  ALL_ACCESSORY_RECIPES,
-} from '@shared/data/recipes';
-import type { RecipeDefinition, FinishedGoodsRecipe, ConsumableRecipe } from '@shared/data/recipes/types';
+import { useQuery } from '@tanstack/react-query';
 import { RealmCard } from '../ui/RealmCard';
 import { RealmBadge } from '../ui/RealmBadge';
+import api from '../../services/api';
 
 // ---------------------------------------------------------------------------
-// Types
+// Types (match API response shape)
 // ---------------------------------------------------------------------------
 
 interface CodexProfessionsProps {
   searchQuery: string;
 }
 
+type ProfessionCategory = 'GATHERING' | 'CRAFTING' | 'SERVICE';
 type CategoryFilter = 'ALL' | ProfessionCategory;
 
-interface NormalizedRecipe {
-  recipeId: string;
+interface ProfessionData {
+  type: string;
   name: string;
-  levelRequired: number;
-  tier: number;
-  inputs: { itemName: string; quantity: number }[];
-  outputs: { itemName: string; quantity: number }[];
+  category: ProfessionCategory;
+  description: string;
+  primaryStat: string;
+  relatedProfessions: string[];
+  tierUnlocks: Record<string, string[]>;
+  recipes: RecipeData[];
+}
+
+interface RecipeData {
+  id: string;
+  name: string;
+  tier: string;
+  levelRequired: number | null;
+  ingredients: any;
+  result: string;
   craftTime: number;
   xpReward: number;
-  description?: string;
+  specialization: string | null;
+}
+
+interface TierDefinition {
+  tier: string;
+  levelRange: [number, number];
+}
+
+interface ProfessionsResponse {
+  professions: ProfessionData[];
+  tiers: TierDefinition[];
+  tierUnlocks: Record<string, any>;
+  total: number;
 }
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const CATEGORY_TABS: { key: CategoryFilter; label: string; count?: number }[] = [
+const CATEGORY_TABS: { key: CategoryFilter; label: string }[] = [
   { key: 'ALL', label: 'All' },
   { key: 'GATHERING', label: 'Gathering' },
   { key: 'CRAFTING', label: 'Crafting' },
   { key: 'SERVICE', label: 'Service' },
 ];
-
-const CATEGORY_COLORS: Record<ProfessionCategory, string> = {
-  GATHERING: 'text-realm-success',
-  CRAFTING: 'text-realm-gold-400',
-  SERVICE: 'text-realm-teal-300',
-};
 
 const CATEGORY_BG_COLORS: Record<ProfessionCategory, string> = {
   GATHERING: 'bg-realm-success/10 border-realm-success/30 text-realm-success',
@@ -84,73 +94,18 @@ const STAT_LABELS: Record<string, string> = {
   CHA: 'Charisma',
 };
 
+const TIER_YIELD_BONUS: Record<string, string> = {
+  APPRENTICE: '+0%',
+  JOURNEYMAN: '+25%',
+  CRAFTSMAN: '+50%',
+  EXPERT: '+75%',
+  MASTER: '+100%',
+  GRANDMASTER: '+150%',
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/** Normalize any recipe type into a common shape for display. */
-function normalizeRecipe(
-  recipe: RecipeDefinition | FinishedGoodsRecipe | ConsumableRecipe,
-): NormalizedRecipe {
-  const base = {
-    recipeId: recipe.recipeId,
-    name: recipe.name,
-    levelRequired: recipe.levelRequired,
-    tier: recipe.tier,
-    inputs: (recipe.inputs || []).map((i) => ({
-      itemName: String(i.itemName),
-      quantity: i.quantity,
-    })),
-    craftTime: recipe.craftTime,
-    xpReward: recipe.xpReward,
-  };
-
-  // ConsumableRecipe uses singular `output` instead of `outputs`
-  if ('output' in recipe && recipe.output) {
-    const cr = recipe as ConsumableRecipe;
-    return {
-      ...base,
-      outputs: [{ itemName: String(cr.output.itemName), quantity: cr.output.quantity }],
-      description: cr.description,
-    };
-  }
-
-  // RecipeDefinition / FinishedGoodsRecipe use `outputs` array
-  const r = recipe as RecipeDefinition;
-  return {
-    ...base,
-    outputs: (r.outputs || []).map((o) => ({
-      itemName: String(o.itemName),
-      quantity: o.quantity,
-    })),
-  };
-}
-
-/** Build a map of profession type -> normalized recipes. */
-function buildRecipeMap(): Map<string, NormalizedRecipe[]> {
-  const map = new Map<string, NormalizedRecipe[]>();
-
-  const addRecipe = (profType: string, recipe: NormalizedRecipe) => {
-    const list = map.get(profType) ?? [];
-    list.push(recipe);
-    map.set(profType, list);
-  };
-
-  for (const r of ALL_PROCESSING_RECIPES || []) {
-    addRecipe(r.professionRequired, normalizeRecipe(r));
-  }
-  for (const r of ALL_FINISHED_GOODS_RECIPES || []) {
-    addRecipe(r.professionRequired, normalizeRecipe(r));
-  }
-  for (const r of ALL_ACCESSORY_RECIPES || []) {
-    addRecipe(r.professionRequired, normalizeRecipe(r));
-  }
-  for (const r of ALL_CONSUMABLE_RECIPES || []) {
-    addRecipe(r.professionRequired, normalizeRecipe(r));
-  }
-
-  return map;
-}
 
 function formatCraftTime(minutes: number): string {
   if (minutes < 60) return `${minutes}m`;
@@ -168,17 +123,19 @@ function truncate(text: string, maxLength: number): string {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function RecipeRow({ recipe }: { recipe: NormalizedRecipe }) {
+function RecipeRow({ recipe }: { recipe: RecipeData }) {
+  const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
+
   return (
     <div className="bg-realm-bg-800 border border-realm-border rounded p-3">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <span className="font-display text-sm text-realm-text-primary">{recipe.name}</span>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-realm-text-muted">
-            Lvl {recipe.levelRequired}
+            Lvl {recipe.levelRequired ?? '?'}
           </span>
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-realm-bg-700 text-realm-text-muted border border-realm-border">
-            T{recipe.tier}
+            {TIER_LABEL[recipe.tier] || recipe.tier}
           </span>
         </div>
       </div>
@@ -187,53 +144,44 @@ function RecipeRow({ recipe }: { recipe: NormalizedRecipe }) {
         <div>
           <span className="text-realm-text-muted">Inputs: </span>
           <span className="text-realm-text-secondary">
-            {(recipe.inputs || []).length > 0
-              ? recipe.inputs.map((i) => `${i.itemName} x${i.quantity}`).join(', ')
+            {ingredients.length > 0
+              ? ingredients.map((i: any) => `${i.itemName} x${i.quantity}`).join(', ')
               : 'None'}
           </span>
         </div>
-        {/* Outputs */}
+        {/* Output */}
         <div>
-          <span className="text-realm-text-muted">Outputs: </span>
-          <span className="text-realm-text-secondary">
-            {(recipe.outputs || []).length > 0
-              ? recipe.outputs.map((o) => `${o.itemName} x${o.quantity}`).join(', ')
-              : 'None'}
-          </span>
+          <span className="text-realm-text-muted">Output: </span>
+          <span className="text-realm-text-secondary">{recipe.result}</span>
         </div>
       </div>
       <div className="flex flex-wrap gap-3 mt-2 text-[10px] text-realm-text-muted">
         <span>Time: {formatCraftTime(recipe.craftTime)}</span>
         <span>XP: {recipe.xpReward}</span>
-        {recipe.description && (
-          <span className="italic text-realm-text-muted/70">{truncate(recipe.description, 80)}</span>
+        {recipe.specialization && (
+          <span className="text-realm-teal-300">Spec: {recipe.specialization}</span>
         )}
       </div>
     </div>
   );
 }
 
-const TIER_YIELD_BONUS: Record<string, string> = {
-  APPRENTICE: '+0%',
-  JOURNEYMAN: '+25%',
-  CRAFTSMAN: '+50%',
-  EXPERT: '+75%',
-  MASTER: '+100%',
-  GRANDMASTER: '+150%',
-};
-
 function TierUnlockSection({
   tierUnlocks,
   professionType,
   category,
+  tiers,
+  tierUnlockData,
 }: {
   tierUnlocks: Record<string, string[]>;
   professionType: string;
   category: string;
+  tiers: TierDefinition[];
+  tierUnlockData: Record<string, any>;
 }) {
   if (!tierUnlocks) return null;
 
-  const tierUnlockData = PROFESSION_TIER_UNLOCKS[professionType];
+  const profTierUnlock = tierUnlockData?.[professionType];
   const isGathering = category === 'GATHERING';
 
   return (
@@ -243,8 +191,8 @@ function TierUnlockSection({
         {TIER_NAMES.map((tier) => {
           const unlocks = tierUnlocks[tier];
           if (!unlocks || unlocks.length === 0) return null;
-          const tierDef = PROFESSION_TIERS.find(t => t.tier === tier);
-          const tierEntry = tierUnlockData?.[tier];
+          const tierDef = tiers.find(t => t.tier === tier);
+          const tierEntry = profTierUnlock?.[tier];
           const isComingSoon = !!tierEntry?.NOT_YET_IMPLEMENTED;
           return (
             <div
@@ -295,10 +243,14 @@ function TierUnlockSection({
 
 function ProfessionExpandedDetail({
   profession,
-  recipes,
+  tiers,
+  tierUnlockData,
+  allProfessions,
 }: {
-  profession: ProfessionDefinition;
-  recipes: NormalizedRecipe[];
+  profession: ProfessionData;
+  tiers: TierDefinition[];
+  tierUnlockData: Record<string, any>;
+  allProfessions: ProfessionData[];
 }) {
   return (
     <div className="mt-4 pt-4 border-t border-realm-border space-y-4">
@@ -321,7 +273,7 @@ function ProfessionExpandedDetail({
             <span className="text-xs text-realm-text-secondary">
               {profession.relatedProfessions
                 .map((rp) => {
-                  const found = (ALL_PROFESSIONS || []).find((p) => p.type === rp);
+                  const found = allProfessions.find((p) => p.type === rp);
                   return found?.name || String(rp).charAt(0) + String(rp).slice(1).toLowerCase().replace(/_/g, ' ');
                 })
                 .join(', ')}
@@ -335,25 +287,27 @@ function ProfessionExpandedDetail({
         tierUnlocks={profession.tierUnlocks}
         professionType={profession.type}
         category={profession.category}
+        tiers={tiers}
+        tierUnlockData={tierUnlockData}
       />
 
       {/* Recipes */}
-      {recipes.length > 0 && (
+      {profession.recipes.length > 0 && (
         <div className="space-y-2">
           <h4 className="font-display text-sm text-realm-gold-400">
-            Recipes ({recipes.length})
+            Recipes ({profession.recipes.length})
           </h4>
           <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-            {recipes
-              .sort((a, b) => a.levelRequired - b.levelRequired || a.tier - b.tier)
+            {[...profession.recipes]
+              .sort((a, b) => (a.levelRequired ?? 0) - (b.levelRequired ?? 0))
               .map((recipe) => (
-                <RecipeRow key={recipe.recipeId} recipe={recipe} />
+                <RecipeRow key={recipe.id} recipe={recipe} />
               ))}
           </div>
         </div>
       )}
 
-      {recipes.length === 0 && profession.category !== 'GATHERING' && profession.category !== 'SERVICE' && (
+      {profession.recipes.length === 0 && profession.category !== 'GATHERING' && profession.category !== 'SERVICE' && (
         <p className="text-xs text-realm-text-muted italic">
           No crafting recipes found for this profession.
         </p>
@@ -370,20 +324,27 @@ export default function CodexProfessions({ searchQuery }: CodexProfessionsProps)
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('ALL');
   const [expandedProfession, setExpandedProfession] = useState<string | null>(null);
 
-  // Build recipe lookup once
-  const recipeMap = useMemo(() => buildRecipeMap(), []);
+  const { data, isLoading } = useQuery<ProfessionsResponse>({
+    queryKey: ['codex', 'professions'],
+    queryFn: async () => (await api.get('/codex/professions')).data,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const allProfessions = data?.professions ?? [];
+  const tiers = data?.tiers ?? [];
+  const tierUnlockData = data?.tierUnlocks ?? {};
 
   // Build a lookup of recipe names per profession type for search matching
   const recipeNamesByProfession = useMemo(() => {
     const map = new Map<string, string[]>();
-    for (const [profType, recipes] of recipeMap.entries()) {
+    for (const prof of allProfessions) {
       map.set(
-        profType,
-        recipes.map((r) => r.name.toLowerCase()),
+        prof.type,
+        prof.recipes.map((r) => r.name.toLowerCase()),
       );
     }
     return map;
-  }, [recipeMap]);
+  }, [allProfessions]);
 
   // Filter professions by category and search query
   const filteredProfessions = useMemo(() => {
@@ -391,8 +352,8 @@ export default function CodexProfessions({ searchQuery }: CodexProfessionsProps)
 
     let professions =
       categoryFilter === 'ALL'
-        ? [...(ALL_PROFESSIONS || [])]
-        : getProfessionsByCategory(categoryFilter) || [];
+        ? [...allProfessions]
+        : allProfessions.filter(p => p.category === categoryFilter);
 
     if (query) {
       professions = professions.filter((p) => {
@@ -405,12 +366,12 @@ export default function CodexProfessions({ searchQuery }: CodexProfessionsProps)
     }
 
     return professions;
-  }, [categoryFilter, searchQuery, recipeNamesByProfession]);
+  }, [allProfessions, categoryFilter, searchQuery, recipeNamesByProfession]);
 
   // Category counts
   const categoryCounts = useMemo(() => {
     const query = (searchQuery || '').trim().toLowerCase();
-    const countFor = (profs: ProfessionDefinition[]): number => {
+    const countFor = (profs: ProfessionData[]): number => {
       if (!query) return profs.length;
       return profs.filter((p) => {
         const nameMatch = (p.name || '').toLowerCase().includes(query);
@@ -421,16 +382,27 @@ export default function CodexProfessions({ searchQuery }: CodexProfessionsProps)
       }).length;
     };
     return {
-      ALL: countFor(ALL_PROFESSIONS || []),
-      GATHERING: countFor(getProfessionsByCategory('GATHERING') || []),
-      CRAFTING: countFor(getProfessionsByCategory('CRAFTING') || []),
-      SERVICE: countFor(getProfessionsByCategory('SERVICE') || []),
+      ALL: countFor(allProfessions),
+      GATHERING: countFor(allProfessions.filter(p => p.category === 'GATHERING')),
+      CRAFTING: countFor(allProfessions.filter(p => p.category === 'CRAFTING')),
+      SERVICE: countFor(allProfessions.filter(p => p.category === 'SERVICE')),
     };
-  }, [searchQuery, recipeNamesByProfession]);
+  }, [allProfessions, searchQuery, recipeNamesByProfession]);
 
   const toggleExpand = (profType: string) => {
     setExpandedProfession((prev) => (prev === profType ? null : profType));
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="flex items-center gap-3 text-realm-text-muted">
+          <div className="w-5 h-5 border-2 border-realm-gold-400/50 border-t-realm-gold-400 rounded-full animate-spin" />
+          <span className="font-body text-sm">Loading professions...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -467,7 +439,6 @@ export default function CodexProfessions({ searchQuery }: CodexProfessionsProps)
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredProfessions.map((profession) => {
             const isExpanded = expandedProfession === profession.type;
-            const recipes = recipeMap.get(profession.type) || [];
 
             return (
               <RealmCard
@@ -489,10 +460,9 @@ export default function CodexProfessions({ searchQuery }: CodexProfessionsProps)
                         {profession.category}
                       </span>
                     </div>
-                    {/* Description — flex-grow pushes stats to bottom */}
                     <p className="text-xs text-realm-text-muted mt-1 font-body flex-grow">
                       {isExpanded
-                        ? '' /* Full description shown in expanded detail */
+                        ? ''
                         : truncate(profession.description, 120)}
                     </p>
                   </div>
@@ -500,9 +470,9 @@ export default function CodexProfessions({ searchQuery }: CodexProfessionsProps)
                     <RealmBadge variant="default">
                       {profession.primaryStat}
                     </RealmBadge>
-                    {recipes.length > 0 && (
+                    {profession.recipes.length > 0 && (
                       <span className="text-[10px] text-realm-text-muted">
-                        {recipes.length} recipe{recipes.length !== 1 ? 's' : ''}
+                        {profession.recipes.length} recipe{profession.recipes.length !== 1 ? 's' : ''}
                       </span>
                     )}
                   </div>
@@ -512,7 +482,9 @@ export default function CodexProfessions({ searchQuery }: CodexProfessionsProps)
                 {isExpanded && (
                   <ProfessionExpandedDetail
                     profession={profession}
-                    recipes={recipes}
+                    tiers={tiers}
+                    tierUnlockData={tierUnlockData}
+                    allProfessions={allProfessions}
                   />
                 )}
               </RealmCard>
