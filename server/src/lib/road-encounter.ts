@@ -489,6 +489,7 @@ export async function resolveRoadEncounter(
 
   let xpAwarded = 0;
   let goldAwarded = 0;
+  let droppedItems: { name: string; quantity: number; templateId: string }[] = [];
 
   // 8. Apply outcomes within a transaction
   await prisma.$transaction(async (tx) => {
@@ -504,7 +505,13 @@ export async function resolveRoadEncounter(
       }
 
       // Process item drops (arcane reagents, etc.)
-      await processItemDrops(tx, characterId, lootTable);
+      droppedItems = await processItemDrops(tx, characterId, lootTable);
+      if (droppedItems.length > 0) {
+        logger.info(
+          { characterId, monster: monster.name, items: droppedItems },
+          '[LOOT] Items dropped from road encounter victory',
+        );
+      }
 
       await tx.character.update({
         where: { id: characterId },
@@ -554,6 +561,9 @@ export async function resolveRoadEncounter(
     }
   });
 
+  // Build loot description from dropped items (for combat log)
+  const lootDescription = droppedItems.map(d => `${d.quantity}x ${d.name}`).join(', ');
+
   // 9. Post-transaction side effects (quest triggers, level up, achievements)
   //    Wrapped in try/catch so the encounter result is returned even if
   //    a side-effect (e.g. achievement JSON path) errors.
@@ -595,7 +605,7 @@ export async function resolveRoadEncounter(
       opponentWeapon: monsterResult?.weapon?.name ?? 'Natural Attack',
       xpAwarded,
       goldAwarded,
-      lootDropped: '',
+      lootDropped: lootDescription,
       outcome,
       triggerSource: 'road_encounter',
       originTownId,

@@ -77,8 +77,7 @@ const MONSTERS: MonsterDef[] = [
       str: 12, dex: 14, con: 12, int: 3, wis: 12, cha: 6,
     },
     lootTable: [
-      { dropChance: 0.6, minQty: 1, maxQty: 3, gold: 2 },
-      { dropChance: 0.3, minQty: 1, maxQty: 1, gold: 0 },
+      { dropChance: 0.6, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Animal Pelts' },
     ],
   },
   {
@@ -108,7 +107,7 @@ const MONSTERS: MonsterDef[] = [
       str: 6, dex: 14, con: 8, int: 2, wis: 10, cha: 4,
     },
     lootTable: [
-      { dropChance: 0.5, minQty: 1, maxQty: 2, gold: 1 },
+      { dropChance: 0.5, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
     ],
   },
   {
@@ -123,8 +122,7 @@ const MONSTERS: MonsterDef[] = [
       str: 12, dex: 4, con: 16, int: 1, wis: 6, cha: 1,
     },
     lootTable: [
-      { dropChance: 0.4, minQty: 1, maxQty: 2, gold: 2 },
-      { dropChance: 0.1, minQty: 1, maxQty: 1, gold: 0 },
+      { dropChance: 0.4, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
     ],
   },
 
@@ -167,8 +165,7 @@ const MONSTERS: MonsterDef[] = [
       str: 14, dex: 16, con: 12, int: 2, wis: 12, cha: 4,
     },
     lootTable: [
-      { dropChance: 0.6, minQty: 2, maxQty: 8, gold: 6 },
-      { dropChance: 0.3, minQty: 1, maxQty: 2, gold: 0 },
+      { dropChance: 0.6, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
     ],
   },
   {
@@ -181,8 +178,7 @@ const MONSTERS: MonsterDef[] = [
       str: 16, dex: 14, con: 14, int: 3, wis: 12, cha: 6,
     },
     lootTable: [
-      { dropChance: 0.7, minQty: 3, maxQty: 8, gold: 10 },
-      { dropChance: 0.25, minQty: 1, maxQty: 1, gold: 0 },
+      { dropChance: 0.7, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Animal Pelts' },
     ],
   },
   {
@@ -255,8 +251,8 @@ const MONSTERS: MonsterDef[] = [
       str: 20, dex: 10, con: 20, int: 4, wis: 10, cha: 6,
     },
     lootTable: [
-      { dropChance: 1.0, minQty: 15, maxQty: 50, gold: 40 },
-      { dropChance: 0.3, minQty: 1, maxQty: 2, gold: 0 },
+      { dropChance: 1.0, minQty: 15, maxQty: 50, gold: 0 },
+      { dropChance: 0.3, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Bones' },
     ],
   },
   {
@@ -269,9 +265,8 @@ const MONSTERS: MonsterDef[] = [
       str: 22, dex: 6, con: 20, int: 3, wis: 8, cha: 1,
     },
     lootTable: [
-      { dropChance: 1.0, minQty: 10, maxQty: 40, gold: 30 },
-      { dropChance: 0.4, minQty: 1, maxQty: 3, gold: 0 },
-      { dropChance: 0.1, minQty: 1, maxQty: 1, gold: 0 },
+      { dropChance: 1.0, minQty: 10, maxQty: 40, gold: 0 },
+      { dropChance: 0.4, minQty: 1, maxQty: 3, gold: 0, itemTemplateName: 'Bones' },
     ],
   },
 
@@ -290,7 +285,6 @@ const MONSTERS: MonsterDef[] = [
       str: 3, dex: 16, con: 8, int: 14, wis: 12, cha: 10,
     },
     lootTable: [
-      { dropChance: 0.7, minQty: 1, maxQty: 3, gold: 2 },
       { dropChance: 0.35, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Arcane Reagents' },
     ],
   },
@@ -305,7 +299,6 @@ const MONSTERS: MonsterDef[] = [
       str: 6, dex: 14, con: 12, int: 12, wis: 14, cha: 8,
     },
     lootTable: [
-      { dropChance: 0.8, minQty: 1, maxQty: 4, gold: 3 },
       { dropChance: 0.30, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Arcane Reagents' },
     ],
   },
@@ -322,7 +315,6 @@ const MONSTERS: MonsterDef[] = [
       str: 10, dex: 12, con: 14, int: 18, wis: 14, cha: 10,
     },
     lootTable: [
-      { dropChance: 0.8, minQty: 3, maxQty: 10, gold: 8 },
       { dropChance: 0.45, minQty: 1, maxQty: 3, gold: 0, itemTemplateName: 'Arcane Reagents' },
     ],
   },
@@ -337,7 +329,6 @@ const MONSTERS: MonsterDef[] = [
       str: 8, dex: 16, con: 12, int: 16, wis: 16, cha: 14,
     },
     lootTable: [
-      { dropChance: 0.8, minQty: 4, maxQty: 12, gold: 10 },
       { dropChance: 0.40, minQty: 2, maxQty: 3, gold: 0, itemTemplateName: 'Arcane Reagents' },
     ],
   },
@@ -354,7 +345,6 @@ const MONSTERS: MonsterDef[] = [
       str: 16, dex: 18, con: 16, int: 16, wis: 14, cha: 6,
     },
     lootTable: [
-      { dropChance: 1.0, minQty: 10, maxQty: 30, gold: 25 },
       { dropChance: 0.55, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Arcane Reagents' },
     ],
   },
@@ -369,7 +359,6 @@ const MONSTERS: MonsterDef[] = [
       str: 14, dex: 16, con: 16, int: 20, wis: 18, cha: 18,
     },
     lootTable: [
-      { dropChance: 1.0, minQty: 15, maxQty: 40, gold: 35 },
       { dropChance: 0.60, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Arcane Reagents' },
     ],
   },

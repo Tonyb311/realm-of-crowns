@@ -184,8 +184,10 @@ export async function seedBots(config: SeedConfig): Promise<BotState[]> {
     }
   }
 
-  // Pre-compute profession assignments ensuring min 2 per profession
-  // Only L3+ bots get professions, so build assignment array for those indices only
+  // Pre-compute profession assignments ensuring ALL professions are represented.
+  // Algorithm: 1 of each profession first (22 slots), then fill remaining with
+  // weighted duplicates favoring gathering professions that feed the most chains.
+  // Only L3+ bots get professions, so build assignment array for those indices only.
   const profAssignments = new Map<number, string>(); // 1-based bot index → profession
   if (config.professionDistribution === 'even' || config.startingLevel === 'diverse') {
     const eligibleIndices: number[] = [];
@@ -195,16 +197,39 @@ export async function seedBots(config: SeedConfig): Promise<BotState[]> {
         eligibleIndices.push(i);
       }
     }
-    // Guarantee 2 of each profession first, then round-robin remainder
-    const guaranteed: string[] = [];
-    for (const prof of ALL_SEED_PROFESSIONS) {
-      guaranteed.push(prof, prof);
+
+    // Pass 1: Guarantee exactly 1 of each profession (22 slots)
+    const pass1 = [...ALL_SEED_PROFESSIONS]; // 22 professions
+
+    // Pass 2: Fill remaining slots with weighted distribution
+    // Gathering professions that feed the most crafting chains get more weight
+    const WEIGHTED_EXTRAS: [string, number][] = [
+      ['FARMER', 5], ['MINER', 5], ['HERBALIST', 4], ['LUMBERJACK', 4],
+      ['HUNTER', 3], ['RANCHER', 3], ['FISHERMAN', 2],
+      ['SMELTER', 2], ['TANNER', 2], ['WOODWORKER', 2],
+      ['COOK', 2], ['BREWER', 2], ['ALCHEMIST', 2],
+      ['BLACKSMITH', 1], ['ARMORER', 1], ['LEATHERWORKER', 1], ['TAILOR', 1],
+      ['JEWELER', 1], ['FLETCHER', 1], ['MASON', 1],
+      ['ENCHANTER', 1], ['SCRIBE', 1],
+    ];
+    const extraProfs = WEIGHTED_EXTRAS.map(([p]) => p);
+    const extraWeights = WEIGHTED_EXTRAS.map(([, w]) => w);
+    const totalWeight = extraWeights.reduce((s, w) => s + w, 0);
+
+    const remainingSlots = Math.max(0, eligibleIndices.length - pass1.length);
+    const pass2: string[] = [];
+    for (let r = 0; r < remainingSlots; r++) {
+      let roll = Math.random() * totalWeight;
+      for (let k = 0; k < extraProfs.length; k++) {
+        roll -= extraWeights[k];
+        if (roll <= 0) { pass2.push(extraProfs[k]); break; }
+      }
+      if (pass2.length <= r) pass2.push(extraProfs[extraProfs.length - 1]);
     }
+
+    const allAssignments = [...pass1, ...pass2];
     for (let j = 0; j < eligibleIndices.length; j++) {
-      const prof = j < guaranteed.length
-        ? guaranteed[j]
-        : ALL_SEED_PROFESSIONS[j % ALL_SEED_PROFESSIONS.length];
-      profAssignments.set(eligibleIndices[j], prof);
+      profAssignments.set(eligibleIndices[j], allAssignments[j]);
     }
   }
 
