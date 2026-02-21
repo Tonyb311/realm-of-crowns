@@ -42,6 +42,7 @@ import {
   createRacialCombatTracker,
   type RacialCombatTracker,
 } from './racial-combat-abilities';
+import { processItemDrops } from '../lib/loot-items';
 
 // ---- Constants ----
 
@@ -408,12 +409,15 @@ export async function resolveNodePvE(
   if (playerSurvived) {
     // Player won
     xpReward = getMonsterKillXp(monster.level);
-    const lootTable = monster.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number }[];
+    const lootTable = monster.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number; itemTemplateName?: string }[];
     for (const entry of lootTable) {
       if (Math.random() <= entry.dropChance) {
         goldReward += entry.gold * (Math.floor(Math.random() * (entry.maxQty - entry.minQty + 1)) + entry.minQty);
       }
     }
+
+    // Process item drops (arcane reagents, etc.)
+    await processItemDrops(prisma, characterId, lootTable);
 
     // Apply rewards
     await prisma.character.update({

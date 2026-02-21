@@ -30,6 +30,7 @@ import { ACTION_XP, DEATH_PENALTY, getMonsterKillXp, getDeathXpPenalty } from '@
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
 import { logPveCombat, COMBAT_LOGGING_ENABLED } from '../lib/combat-logger';
+import { processItemDrops } from '../lib/loot-items';
 
 const router = Router();
 
@@ -481,7 +482,7 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
 
         if (monster) {
           const xpReward = getMonsterKillXp(monster.level);
-          const lootTable = monster.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number }[];
+          const lootTable = monster.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number; itemTemplateName?: string }[];
 
           let totalGold = 0;
           for (const entry of lootTable) {
@@ -489,6 +490,9 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
               totalGold += entry.gold * (Math.floor(Math.random() * (entry.maxQty - entry.minQty + 1)) + entry.minQty);
             }
           }
+
+          // Process item drops (arcane reagents, etc.)
+          const droppedItems = await processItemDrops(tx, playerId, lootTable);
 
           await tx.character.update({
             where: { id: playerId },

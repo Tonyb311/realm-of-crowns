@@ -41,6 +41,7 @@ import { logPveCombat, COMBAT_LOGGING_ENABLED } from './combat-logger';
 import { getSimulationTick } from './simulation-context';
 import type { CombatRound } from './simulation/types';
 import type { AttackResult } from '@shared/types/combat';
+import { processItemDrops } from './loot-items';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -494,13 +495,16 @@ export async function resolveRoadEncounter(
     if (playerWon) {
       // Win: award XP (front-loaded for low-tier monsters) and gold
       xpAwarded = getMonsterKillXp(monster.level);
-      const lootTable = monster.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number }[];
+      const lootTable = monster.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number; itemTemplateName?: string }[];
 
       for (const entry of lootTable) {
         if (Math.random() <= entry.dropChance) {
           goldAwarded += entry.gold * (Math.floor(Math.random() * (entry.maxQty - entry.minQty + 1)) + entry.minQty);
         }
       }
+
+      // Process item drops (arcane reagents, etc.)
+      await processItemDrops(tx, characterId, lootTable);
 
       await tx.character.update({
         where: { id: characterId },

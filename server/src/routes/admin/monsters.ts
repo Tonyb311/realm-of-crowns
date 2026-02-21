@@ -20,11 +20,12 @@ router.get('/', async (_req: AuthenticatedRequest, res: Response) => {
     // Compute XP reward: 5 * monster.level (ACTION_XP.PVE_WIN_PER_MONSTER_LEVEL = 5)
     const enriched = monsters.map(m => {
       const stats = m.stats as Record<string, any>;
-      const lootTable = m.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number }[];
+      const lootTable = m.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number; itemTemplateName?: string }[];
 
       // Calculate min/max gold from loot table
       let minGold = 0;
       let maxGold = 0;
+      const itemDrops: { name: string; dropChance: number; minQty: number; maxQty: number }[] = [];
       for (const entry of lootTable) {
         // Min gold: sum of (base * minQty) for guaranteed drops (100% chance)
         if (entry.dropChance >= 1) {
@@ -32,6 +33,15 @@ router.get('/', async (_req: AuthenticatedRequest, res: Response) => {
         }
         // Max gold: sum of all possible (base * maxQty)
         maxGold += entry.gold * entry.maxQty;
+        // Collect item drops
+        if (entry.itemTemplateName) {
+          itemDrops.push({
+            name: entry.itemTemplateName,
+            dropChance: entry.dropChance,
+            minQty: entry.minQty,
+            maxQty: entry.maxQty,
+          });
+        }
       }
 
       return {
@@ -59,6 +69,7 @@ router.get('/', async (_req: AuthenticatedRequest, res: Response) => {
         rewards: {
           xp: 5 * m.level,
           goldRange: { min: minGold, max: maxGold },
+          itemDrops,
         },
         createdAt: m.createdAt,
       };

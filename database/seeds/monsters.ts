@@ -1,14 +1,16 @@
 /**
  * Monster Seed Data for Realm of Crowns
  *
- * 15 monsters across 3 tiers:
- *   Tier 1 (lvl 1-5): Goblin, Wolf, Bandit, Giant Rat, Slime
- *   Tier 2 (lvl 5-10): Orc Warrior, Skeleton Warrior, Giant Spider, Dire Wolf, Troll
- *   Tier 3 (lvl 10-20): Young Dragon, Lich, Demon, Hydra, Ancient Golem
+ * 21 monsters across 3 tiers:
+ *   Tier 1 (lvl 1-5): Goblin, Wolf, Bandit, Giant Rat, Slime, Mana Wisp, Bog Wraith
+ *   Tier 2 (lvl 5-10): Orc Warrior, Skeleton Warrior, Giant Spider, Dire Wolf, Troll, Arcane Elemental, Shadow Wraith
+ *   Tier 3 (lvl 10-20): Young Dragon, Lich, Demon, Hydra, Ancient Golem, Void Stalker, Elder Fey Guardian
+ *
+ * Arcane monsters (6) drop Arcane Reagents via itemTemplateName loot entries.
  *
  * Each monster is seeded with the region whose biome matches best.
  * Stats JSON: { hp, ac, attack, damage, speed, str, dex, con, int, wis, cha }
- * LootTable JSON: array of { dropChance, minQty, maxQty, gold }
+ * LootTable JSON: array of { dropChance, minQty, maxQty, gold, itemTemplateName? }
  */
 
 import { PrismaClient, BiomeType } from '@prisma/client';
@@ -36,6 +38,7 @@ interface MonsterDef {
     minQty: number;
     maxQty: number;
     gold: number;
+    itemTemplateName?: string; // if present, drop this item from ItemTemplate
   }[];
 }
 
@@ -269,6 +272,105 @@ const MONSTERS: MonsterDef[] = [
       { dropChance: 1.0, minQty: 10, maxQty: 40, gold: 30 },
       { dropChance: 0.4, minQty: 1, maxQty: 3, gold: 0 },
       { dropChance: 0.1, minQty: 1, maxQty: 1, gold: 0 },
+    ],
+  },
+
+  // ---- Arcane Monsters (drop Arcane Reagents) ----
+
+  // Tier 1 — accessible from early game
+  {
+    name: 'Mana Wisp',
+    level: 3,
+    biome: 'SWAMP',
+    regionName: 'Shadowmere Marshes',
+    // Fragile arcane creature — low HP/AC but erratic, moderate magic damage.
+    // Players fight these primarily for Arcane Reagent drops.
+    stats: {
+      hp: 16, ac: 13, attack: 3, damage: '1d6+1', speed: 40,
+      str: 3, dex: 16, con: 8, int: 14, wis: 12, cha: 10,
+    },
+    lootTable: [
+      { dropChance: 0.7, minQty: 1, maxQty: 3, gold: 2 },
+      { dropChance: 0.35, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Bog Wraith',
+    level: 4,
+    biome: 'SWAMP',
+    regionName: 'Ashenmoor',
+    // Undead spirit infused with swamp magic. Tougher than Mana Wisp.
+    stats: {
+      hp: 22, ac: 12, attack: 4, damage: '1d6+2', speed: 25,
+      str: 6, dex: 14, con: 12, int: 12, wis: 14, cha: 8,
+    },
+    lootTable: [
+      { dropChance: 0.8, minQty: 1, maxQty: 4, gold: 3 },
+      { dropChance: 0.30, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+
+  // Tier 2 — mid-game arcane sources
+  {
+    name: 'Arcane Elemental',
+    level: 7,
+    biome: 'VOLCANIC',
+    regionName: 'The Confluence',
+    // Living convergence of elemental magic. High INT, moderate combat stats.
+    stats: {
+      hp: 48, ac: 14, attack: 6, damage: '1d10+3', speed: 30,
+      str: 10, dex: 12, con: 14, int: 18, wis: 14, cha: 10,
+    },
+    lootTable: [
+      { dropChance: 0.8, minQty: 3, maxQty: 10, gold: 8 },
+      { dropChance: 0.45, minQty: 1, maxQty: 3, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Shadow Wraith',
+    level: 9,
+    biome: 'UNDERGROUND',
+    regionName: "Vel'Naris Underdark",
+    // Ancient underdark spirit. High evasion, hits hard with necrotic magic.
+    stats: {
+      hp: 55, ac: 15, attack: 7, damage: '2d6+3', speed: 35,
+      str: 8, dex: 16, con: 12, int: 16, wis: 16, cha: 14,
+    },
+    lootTable: [
+      { dropChance: 0.8, minQty: 4, maxQty: 12, gold: 10 },
+      { dropChance: 0.40, minQty: 2, maxQty: 3, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+
+  // Tier 3 — endgame arcane sources (generous drops)
+  {
+    name: 'Void Stalker',
+    level: 13,
+    biome: 'UNDERGROUND',
+    regionName: "Vel'Naris Underdark",
+    // Alien predator from beyond the material plane. Very dangerous.
+    stats: {
+      hp: 110, ac: 17, attack: 9, damage: '2d8+5', speed: 40,
+      str: 16, dex: 18, con: 16, int: 16, wis: 14, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 1.0, minQty: 10, maxQty: 30, gold: 25 },
+      { dropChance: 0.55, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Elder Fey Guardian',
+    level: 16,
+    biome: 'FOREST',
+    regionName: 'Silverwood Forest',
+    // Ancient fey protector corrupted by wild magic. Boss-tier arcane source.
+    stats: {
+      hp: 135, ac: 17, attack: 10, damage: '2d10+5', speed: 35,
+      str: 14, dex: 16, con: 16, int: 20, wis: 18, cha: 18,
+    },
+    lootTable: [
+      { dropChance: 1.0, minQty: 15, maxQty: 40, gold: 35 },
+      { dropChance: 0.60, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Arcane Reagents' },
     ],
   },
 ];

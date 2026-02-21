@@ -152,8 +152,12 @@ router.get('/monsters', cache(300), async (req: Request, res: Response) => {
 
       // Only expose gold range, not exact drop rates
       let maxGold = 0;
+      const possibleItemDrops: string[] = [];
       for (const entry of lootTable) {
         maxGold += (entry.gold ?? 0) * (entry.maxQty ?? 1);
+        if (entry.itemTemplateName) {
+          possibleItemDrops.push(entry.itemTemplateName);
+        }
       }
 
       return {
@@ -169,6 +173,7 @@ router.get('/monsters', cache(300), async (req: Request, res: Response) => {
         },
         resistances: (stats.resistances as string[]) || [],
         goldRange: maxGold > 0 ? `Up to ${maxGold}g` : 'None',
+        itemDrops: possibleItemDrops,
       };
     });
 
