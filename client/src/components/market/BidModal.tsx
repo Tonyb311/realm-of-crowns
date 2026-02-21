@@ -58,7 +58,7 @@ export default function BidModal({ listing, onClose, onSuccess }: BidModalProps)
 
   const { data: character } = useQuery<CharacterData>({
     queryKey: ['characters', 'current'],
-    queryFn: async () => (await api.get('/characters/current')).data,
+    queryFn: async () => (await api.get('/characters/me')).data,
   });
 
   const gold = character?.gold ?? 0;

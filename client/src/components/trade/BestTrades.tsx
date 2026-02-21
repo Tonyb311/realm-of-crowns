@@ -8,6 +8,7 @@ import {
   MapPin,
 } from 'lucide-react';
 import api from '../../services/api';
+import { RARITY_TEXT_COLORS } from '../../constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -30,17 +31,6 @@ interface BestRoutesResponse {
 interface BestTradesProps {
   onStartTrade?: (fromTownId: string, toTownId: string) => void;
 }
-
-// ---------------------------------------------------------------------------
-// Rarity color helper
-// ---------------------------------------------------------------------------
-const RARITY_COLORS: Record<string, string> = {
-  COMMON: 'text-realm-text-secondary',
-  UNCOMMON: 'text-realm-success',
-  RARE: 'text-realm-teal-300',
-  EPIC: 'text-realm-purple-300',
-  LEGENDARY: 'text-realm-gold-400',
-};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -92,7 +82,7 @@ export default function BestTrades({ onStartTrade }: BestTradesProps) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-realm-text-muted/60 text-[10px] font-display">#{index + 1}</span>
-                <span className={`font-display text-sm truncate ${RARITY_COLORS[route.item.rarity] ?? 'text-realm-text-primary'}`}>
+                <span className={`font-display text-sm truncate ${RARITY_TEXT_COLORS[route.item.rarity] ?? 'text-realm-text-primary'}`}>
                   {route.item.name}
                 </span>
                 <span className="text-realm-text-muted/60 text-[10px]">

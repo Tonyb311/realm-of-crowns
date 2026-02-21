@@ -26,6 +26,11 @@ export interface TownResource {
   resourceType: string;
   resourceName: string;
   abundance: string;
+  tier?: number;
+  rarity?: string;
+  baseGatherTime?: number;
+  baseYield?: number;
+  description?: string;
 }
 
 export interface Profession {

@@ -9,6 +9,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import api from '../../services/api';
+import { RARITY_TEXT_COLORS } from '../../constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -36,17 +37,6 @@ interface PriceResult {
 interface SearchResult {
   items: Array<{ id: string; name: string; type: string; rarity: string }>;
 }
-
-// ---------------------------------------------------------------------------
-// Rarity color helper
-// ---------------------------------------------------------------------------
-const RARITY_COLORS: Record<string, string> = {
-  COMMON: 'text-realm-text-secondary',
-  UNCOMMON: 'text-realm-success',
-  RARE: 'text-realm-teal-300',
-  EPIC: 'text-realm-purple-300',
-  LEGENDARY: 'text-realm-gold-400',
-};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -158,7 +148,7 @@ export default function PriceCompare() {
                   }}
                   className="w-full text-left px-4 py-2.5 hover:bg-realm-bg-800 transition-colors border-b border-realm-border last:border-b-0"
                 >
-                  <span className={`text-sm ${RARITY_COLORS[item.rarity] ?? 'text-realm-text-primary'}`}>
+                  <span className={`text-sm ${RARITY_TEXT_COLORS[item.rarity] ?? 'text-realm-text-primary'}`}>
                     {item.name}
                   </span>
                   <span className="text-realm-text-muted/60 text-[10px] ml-2">
@@ -188,7 +178,7 @@ export default function PriceCompare() {
           <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden">
             {priceData?.itemTemplate && (
               <div className="px-4 py-3 border-b border-realm-border">
-                <h3 className={`font-display text-sm ${RARITY_COLORS[priceData.itemTemplate.rarity] ?? 'text-realm-text-primary'}`}>
+                <h3 className={`font-display text-sm ${RARITY_TEXT_COLORS[priceData.itemTemplate.rarity] ?? 'text-realm-text-primary'}`}>
                   {priceData.itemTemplate.name}
                 </h3>
                 <p className="text-realm-text-muted text-[10px]">

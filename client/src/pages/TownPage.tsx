@@ -40,7 +40,7 @@ interface TownResource {
 interface Town {
   id: string;
   name: string;
-  region: { id: string; name: string; biome: string } | string;
+  region: { id: string; name: string; biome: string };
   population: number;
   biome: string;
   description: string;

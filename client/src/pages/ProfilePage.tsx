@@ -27,12 +27,12 @@ interface CharacterProfile {
   experience: number;
   bio?: string;
   stats: {
-    strength: number;
-    dexterity: number;
-    constitution: number;
-    intelligence: number;
-    wisdom: number;
-    charisma: number;
+    str: number;
+    dex: number;
+    con: number;
+    int: number;
+    wis: number;
+    cha: number;
   };
   professions?: string[];
   guildId?: string;
@@ -42,12 +42,12 @@ interface CharacterProfile {
 }
 
 const STAT_CONFIG = [
-  { key: 'strength', label: 'STR', icon: Swords, color: 'text-realm-danger' },
-  { key: 'dexterity', label: 'DEX', icon: Eye, color: 'text-realm-success' },
-  { key: 'constitution', label: 'CON', icon: Heart, color: 'text-realm-gold-400' },
-  { key: 'intelligence', label: 'INT', icon: Brain, color: 'text-realm-teal-300' },
-  { key: 'wisdom', label: 'WIS', icon: Sparkles, color: 'text-realm-purple-300' },
-  { key: 'charisma', label: 'CHA', icon: User, color: 'text-realm-bronze-400' },
+  { key: 'str', label: 'STR', icon: Swords, color: 'text-realm-danger' },
+  { key: 'dex', label: 'DEX', icon: Eye, color: 'text-realm-success' },
+  { key: 'con', label: 'CON', icon: Heart, color: 'text-realm-gold-400' },
+  { key: 'int', label: 'INT', icon: Brain, color: 'text-realm-teal-300' },
+  { key: 'wis', label: 'WIS', icon: Sparkles, color: 'text-realm-purple-300' },
+  { key: 'cha', label: 'CHA', icon: User, color: 'text-realm-bronze-400' },
 ] as const;
 
 interface EquippedItemData {

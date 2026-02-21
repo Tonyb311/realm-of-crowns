@@ -66,6 +66,13 @@ const PROFESSION_LABELS: Record<string, string> = {
   MINER: 'Miner',
   HERBALIST: 'Herbalist',
   HUNTER: 'Hunter',
+  MERCHANT: 'Merchant',
+  INNKEEPER: 'Innkeeper',
+  HEALER: 'Healer',
+  STABLE_MASTER: 'Stable Master',
+  BANKER: 'Banker',
+  COURIER: 'Courier',
+  MERCENARY_CAPTAIN: 'Mercenary Captain',
 };
 
 function professionLabel(type: string) {

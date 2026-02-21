@@ -63,27 +63,22 @@ export function useProgressionEvents({
       });
     };
 
-    const handleProfessionLevelUp = (payload: ProfessionLevelUpPayload) => {
-      if (characterId && payload.characterId !== characterId) return;
+    const handleNotification = (payload: { type: string; data?: Record<string, unknown> }) => {
+      if (payload.type !== 'profession:level-up') return;
+      const d = payload.data as ProfessionLevelUpPayload | undefined;
+      if (!d) return;
+      if (characterId && d.characterId !== characterId) return;
       queryClient.invalidateQueries({ queryKey: ['professions'] });
-      const profName = payload.professionType.charAt(0) + payload.professionType.slice(1).toLowerCase().replace(/_/g, ' ');
-      const msg = payload.newTier
-        ? `${profName} reached level ${payload.newLevel} - ${payload.newTier} tier!`
-        : `${profName} reached level ${payload.newLevel}!`;
-      toast(msg, {
-        duration: 5000,
-        style: TOAST_STYLE,
-      });
     };
 
     socket.on('player:level-up', handleLevelUp);
     socket.on('achievement:unlocked', handleAchievement);
-    socket.on('profession:level-up', handleProfessionLevelUp);
+    socket.on('notification:new', handleNotification);
 
     return () => {
       socket.off('player:level-up', handleLevelUp);
       socket.off('achievement:unlocked', handleAchievement);
-      socket.off('profession:level-up', handleProfessionLevelUp);
+      socket.off('notification:new', handleNotification);
     };
   }, [isAuthenticated, characterId, queryClient]);
 

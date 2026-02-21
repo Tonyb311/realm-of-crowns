@@ -80,7 +80,8 @@ export interface PresencePayload {
 export interface PlayerTownPayload {
   characterId: string;
   characterName: string;
-  townId: string;
+  townId?: string;
+  destinationTownId?: string;
 }
 
 export interface GuildMemberEventPayload {
@@ -107,9 +108,10 @@ export interface CombatResultPayload {
 }
 
 export interface TradeCompletedPayload {
-  listingId: string;
-  buyerName: string;
+  buyerId: string;
   itemName: string;
+  quantity: number;
+  price: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -139,7 +141,7 @@ export interface SocialEvents {
   'chat:message': (payload: ChatMessagePayload) => void;
   'presence:online': (payload: PresencePayload) => void;
   'presence:offline': (payload: PresencePayload) => void;
-  'presence:friends-online': (payload: PresencePayload) => void;
+  'presence:friends-online': (payload: { friends: PresencePayload[] }) => void;
   'player:enter-town': (payload: PlayerTownPayload) => void;
   'player:leave-town': (payload: PlayerTownPayload) => void;
   'guild:member-joined': (payload: GuildMemberEventPayload) => void;

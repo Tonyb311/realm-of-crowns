@@ -20,7 +20,8 @@ interface PresencePayload {
 interface PlayerTownPayload {
   characterId: string;
   characterName: string;
-  townId: string;
+  townId?: string;
+  destinationTownId?: string;
 }
 
 interface GuildMemberPayload {
@@ -47,9 +48,10 @@ interface CombatResultPayload {
 }
 
 interface TradeCompletedPayload {
-  listingId: string;
-  buyerName: string;
+  buyerId: string;
   itemName: string;
+  quantity: number;
+  price: number;
 }
 
 interface UseSocialEventsOptions {
@@ -95,12 +97,16 @@ export function useSocialEvents({
     };
 
     const handlePlayerEnterTown = (payload: PlayerTownPayload) => {
-      queryClient.invalidateQueries({ queryKey: ['town', payload.townId, 'characters'] });
+      // Server emits to town room without townId — invalidate broadly
+      queryClient.invalidateQueries({ queryKey: ['town'] });
       onPlayerTown?.(payload, true);
     };
 
     const handlePlayerLeaveTown = (payload: PlayerTownPayload) => {
-      queryClient.invalidateQueries({ queryKey: ['town', payload.townId, 'characters'] });
+      // Server sends destinationTownId, not townId
+      const tid = payload.townId ?? payload.destinationTownId;
+      if (tid) queryClient.invalidateQueries({ queryKey: ['town', tid, 'characters'] });
+      else queryClient.invalidateQueries({ queryKey: ['town'] });
       onPlayerTown?.(payload, false);
     };
 
@@ -141,16 +147,21 @@ export function useSocialEvents({
     const handleTradeCompleted = (payload: TradeCompletedPayload) => {
       queryClient.invalidateQueries({ queryKey: ['market'] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      toast(`${payload.buyerName} purchased ${payload.itemName}`, {
+      toast(`Sold ${payload.quantity}x ${payload.itemName} for ${payload.price}g`, {
         duration: 4000,
         style: TOAST_STYLE,
       });
     };
 
     socket.on('chat:message', handleChatMessage);
+    const handleFriendsOnline = (payload: { friends: PresencePayload[] }) => {
+      queryClient.invalidateQueries({ queryKey: ['friends'] });
+      payload.friends?.forEach((f) => onPresenceChange?.(f, true));
+    };
+
     socket.on('presence:online', handlePresenceOnline);
     socket.on('presence:offline', handlePresenceOffline);
-    socket.on('presence:friends-online', handlePresenceOnline);
+    socket.on('presence:friends-online', handleFriendsOnline);
     socket.on('player:enter-town', handlePlayerEnterTown);
     socket.on('player:leave-town', handlePlayerLeaveTown);
     socket.on('guild:member-joined', handleGuildMemberJoined);
@@ -164,7 +175,7 @@ export function useSocialEvents({
       socket.off('chat:message', handleChatMessage);
       socket.off('presence:online', handlePresenceOnline);
       socket.off('presence:offline', handlePresenceOffline);
-      socket.off('presence:friends-online', handlePresenceOnline);
+      socket.off('presence:friends-online', handleFriendsOnline);
       socket.off('player:enter-town', handlePlayerEnterTown);
       socket.off('player:leave-town', handlePlayerLeaveTown);
       socket.off('guild:member-joined', handleGuildMemberJoined);
