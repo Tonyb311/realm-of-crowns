@@ -55,8 +55,12 @@ COPY --from=builder /app/client/dist/ ./client/dist/
 # Copy tsconfig for tsconfig-paths runtime resolution
 COPY server/tsconfig.production.json ./server/tsconfig.json
 
-# Copy seeds for db:seed support in container
+# Copy seeds and production tsconfig for db:seed support in container
 COPY database/seeds/ ./database/seeds/
+COPY database/tsconfig.production.json ./database/tsconfig.json
+
+# Install tsx globally for running TypeScript seeds at startup
+RUN npm install -g tsx
 
 ENV NODE_ENV=production
 EXPOSE 4000
@@ -65,4 +69,4 @@ RUN addgroup --system app && adduser --system --ingroup app app
 USER app
 
 WORKDIR /app/server
-CMD ["sh", "-c", "npx prisma migrate deploy --schema=../database/prisma/schema.prisma && node -r tsconfig-paths/register dist/index.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=../database/prisma/schema.prisma && cd /app/database && tsx --require tsconfig-paths/register seeds/index.ts && cd /app/server && node -r tsconfig-paths/register dist/index.js"]
