@@ -48,14 +48,19 @@ const BASE_VALUE_MAP: Record<string, number> = {
   'Poison Resistance Tonic': 20,
   'Greater Healing Potion': 85, 'Elixir of Fortitude': 95, 'Glowcap Extract': 95,
   'Universal Antidote': 100,
-  // COOK
-  'Flour': 5, 'Apple Sauce': 19, 'Porridge': 15, 'Berry Jam': 6,
-  'Grilled Fish': 17, 'Herbal Tea': 20, 'Vegetable Stew': 19,
-  'Bread Loaf': 20, 'Apple Pie': 27, 'Fish Stew': 25,
-  'Seasoned Roast Vegetables': 23, 'Berry Tart': 23,
-  'Harvest Feast': 60, "Fisherman's Banquet": 72, 'Spiced Pastry': 40,
-  'Scrambled Eggs': 12, 'Creamy Porridge': 15, 'Farm Breakfast': 25,
-  'Smoked Trout Rations': 30,
+  // COOK (cook.ts processing recipes)
+  'Flour': 8, 'Apple Sauce': 9, 'Porridge': 8, 'Vegetable Stew': 10,
+  'Bread Loaf': 15, 'Seasoned Roast Vegetables': 14,
+  'Harvest Feast': 40, "Fisherman's Banquet": 42, 'Spiced Pastry': 35,
+  // COOK (consumables.ts recipes)
+  'Bread': 5, 'Rations': 3, 'Roast Meat': 12, 'Vegetable Soup': 8,
+  'Berry Jam': 8, 'Herbal Tea': 10, 'Smoked Meat': 12,
+  'Apple Pie': 14, 'Berry Tart': 18, 'Seasoned Fish Platter': 20,
+  'Scrambled Eggs': 8, 'Creamy Porridge': 8, 'Farm Breakfast': 12,
+  'Hearty Feast': 55, 'Royal Banquet': 120,
+  'Grilled Fish': 12, 'Fish Stew': 15, 'Smoked Fish': 10,
+  'Pan-Seared Trout': 40, 'Perch Feast': 50,
+  "Fisherman's Pie": 60, 'Smoked Trout Rations': 25,
   // BREWER
   'Ale': 6, 'Apple Cider': 6, 'Berry Cordial': 8,
   'Strong Ale': 12, 'Mulled Cider': 14, 'Herbal Brew': 15,

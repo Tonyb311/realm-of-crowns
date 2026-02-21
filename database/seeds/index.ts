@@ -27,6 +27,7 @@ import { seedAchievements } from './achievements';
 import { seedWeaponRecipes } from './weapon-recipes';
 import { seedCraftedGoodsRecipes } from './crafted-goods-recipes';
 import { seedAccessoryRecipes } from './accessory-recipes';
+import { seedBaseValuePropagation } from './base-value-propagation';
 
 const prisma = new PrismaClient();
 
@@ -129,6 +130,10 @@ async function main() {
 
   // Achievements: combat, crafting, social, exploration, economy (P1 #17 / MAJOR-05)
   if (!await runSeed('achievements', () => seedAchievements(prisma))) failed++;
+
+  // Base value propagation: catch-all pass that prices ANY remaining zero-value items
+  // Must run LAST — after all other seeds have created their templates
+  if (!await runSeed('baseValuePropagation', () => seedBaseValuePropagation(prisma))) failed++;
 
   console.log('');
   if (failed > 0) {

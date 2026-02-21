@@ -43,16 +43,37 @@ function tierToRarity(tier: number): ItemRarity {
 // BASE VALUES: lookup map from YAML profession-economy-master.yaml
 // ============================================================
 
-// Base values from YAML profession-economy-master.yaml
+// Base values from YAML profession-economy-master.yaml + zero-value-items-pricing.md
 const BASE_VALUE_MAP: Record<string, number> = {
-  // BLACKSMITH weapons
-  'Iron Pickaxe': 18, 'Iron Hatchet': 18, 'Iron Dagger': 17, 'Iron Sword': 23,
-  'Iron Shield': 25, 'Iron Helm': 20, 'Copper Hoe': 17,
-  'Steel Pickaxe': 38, 'Steel Hatchet': 38, 'Steel Dagger': 32, 'Steel Sword': 45,
-  'Iron Battleaxe': 42, 'Reinforced Shield': 42, 'Iron Chainmail': 48,
-  'Iron Fishing Spear': 30, 'Reinforced Helm': 35,
+  // BLACKSMITH weapon recipes (weapons.ts) — Copper T1
+  'Copper Dagger': 20, 'Copper Sword': 28, 'Copper Mace': 28,
+  'Copper Axe': 28, 'Copper Spear': 22,
+  // Iron T2
+  'Iron Dagger': 48, 'Iron Sword': 60, 'Iron Longsword': 75,
+  'Iron Axe': 55, 'Iron Battleaxe': 85, 'Iron Mace': 55,
+  'Iron Warhammer': 90, 'Iron Spear': 50,
+  // Steel T3
+  'Steel Dagger': 150, 'Steel Sword': 200, 'Steel Longsword': 250,
+  'Steel Greatsword': 350, 'Steel Axe': 190, 'Steel Battleaxe': 310,
+  'Steel Mace': 190, 'Steel Warhammer': 320, 'Steel Halberd': 300, 'Steel Spear': 160,
+  // Mithril T4
+  'Mithril Sword': 750, 'Mithril Longsword': 900, 'Mithril Greatsword': 1200,
+  'Mithril Battleaxe': 1100, 'Mithril Warhammer': 1100, 'Mithril Halberd': 1000,
+  // Adamantine T5
+  'Adamantine Greatsword': 2500, 'Adamantine Battleaxe': 2200,
+  'Adamantine Warhammer': 2200, 'Adamantine Halberd': 2000,
+  // BLACKSMITH crafted (blacksmith.ts) — Apprentice
+  'Iron Pickaxe': 18, 'Iron Hatchet': 18, 'Iron Hoe': 17,
+  'Iron Chain Shirt': 28, 'Wooden Shield': 22,
+  // Journeyman
+  'Steel Pickaxe': 38, 'Steel Hatchet': 38, 'Steel Hoe': 38,
+  "Herbalist's Sickle": 30, 'Fishing Hook Set': 25,
+  'Steel Chain Mail': 48, 'Steel Helmet': 35,
+  // Specialist — Toolsmith
   'Silver Pickaxe': 95, 'Hardwood Hatchet': 80, "Hunter's Knife": 85, 'Reinforced Hoe': 75,
+  // Specialist — Weaponsmith
   'Silver Longsword': 120, 'Silver Dagger': 90, 'Silver Battleaxe': 125, 'War Pick': 100,
+  // Specialist — Armorer
   'Silver-Studded Plate': 130, 'Silver Helm': 95, 'Hardwood Tower Shield': 108,
   'Reinforced Chain Leggings': 105,
   // FLETCHER ranged weapons
