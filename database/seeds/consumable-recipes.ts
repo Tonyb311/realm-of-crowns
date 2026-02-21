@@ -37,6 +37,45 @@ function levelToRarity(level: number): ItemRarity {
 }
 
 // ============================================================
+// BASE VALUES: lookup map from YAML profession-economy-master.yaml
+// ============================================================
+
+// Base values from YAML profession-economy-master.yaml
+const BASE_VALUE_MAP: Record<string, number> = {
+  // ALCHEMIST
+  'Minor Healing Potion': 19, 'Antidote': 14, 'Berry Salve': 15,
+  'Healing Potion': 27, 'Elixir of Strength': 55, 'Elixir of Wisdom': 55,
+  'Poison Resistance Tonic': 20,
+  'Greater Healing Potion': 85, 'Elixir of Fortitude': 95, 'Glowcap Extract': 95,
+  'Universal Antidote': 100,
+  // COOK
+  'Flour': 5, 'Apple Sauce': 19, 'Porridge': 15, 'Berry Jam': 6,
+  'Grilled Fish': 17, 'Herbal Tea': 20, 'Vegetable Stew': 19,
+  'Bread Loaf': 20, 'Apple Pie': 27, 'Fish Stew': 25,
+  'Seasoned Roast Vegetables': 23, 'Berry Tart': 23,
+  'Harvest Feast': 60, "Fisherman's Banquet": 72, 'Spiced Pastry': 40,
+  'Scrambled Eggs': 12, 'Creamy Porridge': 15, 'Farm Breakfast': 25,
+  'Smoked Trout Rations': 30,
+  // BREWER
+  'Ale': 6, 'Apple Cider': 6, 'Berry Cordial': 8,
+  'Strong Ale': 12, 'Mulled Cider': 14, 'Herbal Brew': 15,
+  'Hopped Beer': 15, 'Grape Wine': 15, 'Pale Ale': 18,
+  // SCRIBE
+  'Area Map': 15, 'Scroll of Fire': 82, 'Identification Scroll': 28,
+  'Scroll of Ice': 80, 'Scroll of Healing': 75, 'Dungeon Map': 80,
+  'Scroll of Lightning': 85, 'Scroll of Stone Skin': 90, 'Scroll of Might': 85,
+  'Scroll of Entangle': 100, 'Scroll of Restoration': 130,
+  // ENCHANTER
+  'Fortified Enchantment Scroll': 110, 'Flaming Enchantment Scroll': 155,
+  'Frost Enchantment Scroll': 155, 'Lightning Enchantment Scroll': 175,
+  'Swift Enchantment Scroll': 195, 'Poisoned Enchantment Scroll': 200,
+  'Warding Enchantment Scroll': 210, 'Holy Enchantment Scroll': 340,
+  'Shadow Enchantment Scroll': 330, 'Earthen Enchantment Scroll': 250,
+  'Vitality Enchantment Scroll': 220, "Nature's Ward Enchantment Scroll": 300,
+  'True Sight Enchantment Scroll': 350,
+};
+
+// ============================================================
 // CONSUMABLE ITEM TEMPLATES
 // Generated from recipe outputs + consumableStats
 // ============================================================
@@ -52,12 +91,15 @@ function buildConsumableTemplates(recipes: ConsumableRecipe[]) {
     durability: number;
     professionRequired: ProfessionType;
     levelRequired: number;
+    baseValue: number;
   }> = [];
 
   for (const recipe of recipes) {
     const name = recipe.output.itemName;
     if (seen.has(name)) continue;
     seen.add(name);
+
+    const baseValue = BASE_VALUE_MAP[name] ?? 0;
 
     templates.push({
       name,
@@ -79,6 +121,7 @@ function buildConsumableTemplates(recipes: ConsumableRecipe[]) {
       durability: 1,
       professionRequired: recipe.professionRequired,
       levelRequired: recipe.levelRequired,
+      baseValue,
     });
   }
 
@@ -108,6 +151,7 @@ export async function seedConsumableRecipes(prisma: PrismaClient) {
         durability: tmpl.durability,
         professionRequired: tmpl.professionRequired,
         levelRequired: tmpl.levelRequired,
+        baseValue: tmpl.baseValue,
       },
       create: {
         id: stableId,
@@ -119,6 +163,7 @@ export async function seedConsumableRecipes(prisma: PrismaClient) {
         durability: tmpl.durability,
         professionRequired: tmpl.professionRequired,
         levelRequired: tmpl.levelRequired,
+        baseValue: tmpl.baseValue,
       },
     });
     templateMap.set(tmpl.name, created.id);

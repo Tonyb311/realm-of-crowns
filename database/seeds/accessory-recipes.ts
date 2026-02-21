@@ -24,6 +24,7 @@ interface ItemTemplateDef {
   durability: number;
   professionRequired: ProfessionType | null;
   levelRequired: number;
+  baseValue: number;
 }
 
 const ACCESSORY_ITEM_TEMPLATES: ItemTemplateDef[] = [
@@ -37,6 +38,7 @@ const ACCESSORY_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 80,
     professionRequired: 'JEWELER',
     levelRequired: 1,
+    baseValue: 55,
   },
   {
     name: 'Iron Ring',
@@ -47,6 +49,7 @@ const ACCESSORY_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'JEWELER',
     levelRequired: 10,
+    baseValue: 120,
   },
   {
     name: 'Silver Ring',
@@ -57,6 +60,7 @@ const ACCESSORY_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 90,
     professionRequired: 'JEWELER',
     levelRequired: 20,
+    baseValue: 155,
   },
   {
     name: 'Gold Ring',
@@ -67,6 +71,7 @@ const ACCESSORY_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 90,
     professionRequired: 'JEWELER',
     levelRequired: 30,
+    baseValue: 380,
   },
   {
     name: 'Mithril Ring',
@@ -77,6 +82,7 @@ const ACCESSORY_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 150,
     professionRequired: 'JEWELER',
     levelRequired: 55,
+    baseValue: 2500,
   },
 
   // ── Necklaces ──────────────────────────────────────────────
@@ -89,6 +95,7 @@ const ACCESSORY_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 80,
     professionRequired: 'JEWELER',
     levelRequired: 1,
+    baseValue: 75,
   },
   {
     name: 'Silver Necklace',
@@ -99,6 +106,7 @@ const ACCESSORY_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 90,
     professionRequired: 'JEWELER',
     levelRequired: 20,
+    baseValue: 290,
   },
   {
     name: 'Gold Necklace',
@@ -109,6 +117,7 @@ const ACCESSORY_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 90,
     professionRequired: 'JEWELER',
     levelRequired: 30,
+    baseValue: 650,
   },
 
   // ── Circlets & Crowns ──────────────────────────────────────
@@ -121,6 +130,7 @@ const ACCESSORY_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'JEWELER',
     levelRequired: 25,
+    baseValue: 350,
   },
   {
     name: 'Crown of Wisdom',
@@ -131,6 +141,7 @@ const ACCESSORY_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 120,
     professionRequired: 'JEWELER',
     levelRequired: 50,
+    baseValue: 1500,
   },
 
   // ── Brooches ───────────────────────────────────────────────
@@ -143,6 +154,7 @@ const ACCESSORY_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'JEWELER',
     levelRequired: 15,
+    baseValue: 180,
   },
   {
     name: 'Brooch of Speed',
@@ -153,6 +165,7 @@ const ACCESSORY_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 100,
     professionRequired: 'JEWELER',
     levelRequired: 30,
+    baseValue: 400,
   },
 ];
 
@@ -166,6 +179,7 @@ const ENCHANTMENT_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'ENCHANTER',
     levelRequired: 10,
+    baseValue: 155,
   },
   {
     name: 'Frost Enchantment Scroll',
@@ -176,6 +190,7 @@ const ENCHANTMENT_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'ENCHANTER',
     levelRequired: 10,
+    baseValue: 155,
   },
   {
     name: 'Lightning Enchantment Scroll',
@@ -186,6 +201,7 @@ const ENCHANTMENT_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'ENCHANTER',
     levelRequired: 15,
+    baseValue: 175,
   },
   {
     name: 'Poisoned Enchantment Scroll',
@@ -196,6 +212,7 @@ const ENCHANTMENT_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'ENCHANTER',
     levelRequired: 20,
+    baseValue: 200,
   },
   {
     name: 'Holy Enchantment Scroll',
@@ -206,6 +223,7 @@ const ENCHANTMENT_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'ENCHANTER',
     levelRequired: 30,
+    baseValue: 340,
   },
   {
     name: 'Shadow Enchantment Scroll',
@@ -216,6 +234,7 @@ const ENCHANTMENT_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'ENCHANTER',
     levelRequired: 30,
+    baseValue: 330,
   },
   {
     name: 'Fortified Enchantment Scroll',
@@ -226,6 +245,7 @@ const ENCHANTMENT_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'ENCHANTER',
     levelRequired: 5,
+    baseValue: 110,
   },
   {
     name: 'Swift Enchantment Scroll',
@@ -236,6 +256,7 @@ const ENCHANTMENT_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'ENCHANTER',
     levelRequired: 15,
+    baseValue: 195,
   },
   {
     name: 'Warding Enchantment Scroll',
@@ -246,6 +267,7 @@ const ENCHANTMENT_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 1,
     professionRequired: 'ENCHANTER',
     levelRequired: 20,
+    baseValue: 210,
   },
 ];
 
@@ -259,6 +281,7 @@ const HOUSING_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 200,
     professionRequired: 'WOODWORKER',
     levelRequired: 5,
+    baseValue: 40,
   },
   {
     name: 'Table',
@@ -269,6 +292,7 @@ const HOUSING_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 200,
     professionRequired: 'WOODWORKER',
     levelRequired: 5,
+    baseValue: 78,
   },
   {
     name: 'Chairs',
@@ -279,6 +303,7 @@ const HOUSING_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 150,
     professionRequired: 'WOODWORKER',
     levelRequired: 5,
+    baseValue: 19,
   },
   {
     name: 'Storage Chest',
@@ -289,6 +314,7 @@ const HOUSING_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 250,
     professionRequired: 'WOODWORKER',
     levelRequired: 10,
+    baseValue: 117,
   },
   {
     name: 'Bookshelf',
@@ -299,6 +325,7 @@ const HOUSING_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 180,
     professionRequired: 'WOODWORKER',
     levelRequired: 15,
+    baseValue: 75,
   },
   {
     name: 'Weapon Rack',
@@ -309,6 +336,7 @@ const HOUSING_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 180,
     professionRequired: 'WOODWORKER',
     levelRequired: 15,
+    baseValue: 55,
   },
   {
     name: 'Armor Stand',
@@ -319,6 +347,7 @@ const HOUSING_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 150,
     professionRequired: 'WOODWORKER',
     levelRequired: 15,
+    baseValue: 50,
   },
   {
     name: 'Alchemy Table',
@@ -329,6 +358,7 @@ const HOUSING_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 200,
     professionRequired: 'WOODWORKER',
     levelRequired: 20,
+    baseValue: 100,
   },
   {
     name: 'Stone Hearth',
@@ -339,6 +369,7 @@ const HOUSING_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 500,
     professionRequired: 'MASON',
     levelRequired: 10,
+    baseValue: 82,
   },
   {
     name: 'Stone Fountain',
@@ -349,6 +380,7 @@ const HOUSING_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 500,
     professionRequired: 'MASON',
     levelRequired: 25,
+    baseValue: 295,
   },
   {
     name: 'Brick Oven',
@@ -359,6 +391,7 @@ const HOUSING_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 400,
     professionRequired: 'MASON',
     levelRequired: 15,
+    baseValue: 120,
   },
   {
     name: 'Marble Statue',
@@ -369,6 +402,7 @@ const HOUSING_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 500,
     professionRequired: 'MASON',
     levelRequired: 35,
+    baseValue: 365,
   },
 ];
 
@@ -382,6 +416,7 @@ const MOUNT_GEAR_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 150,
     professionRequired: 'STABLE_MASTER',
     levelRequired: 1,
+    baseValue: 50,
   },
   {
     name: 'Horseshoes',
@@ -392,6 +427,7 @@ const MOUNT_GEAR_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 200,
     professionRequired: 'STABLE_MASTER',
     levelRequired: 5,
+    baseValue: 30,
   },
   {
     name: 'Saddlebags',
@@ -402,6 +438,7 @@ const MOUNT_GEAR_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 150,
     professionRequired: 'STABLE_MASTER',
     levelRequired: 10,
+    baseValue: 60,
   },
   {
     name: 'Horse Armor',
@@ -412,6 +449,7 @@ const MOUNT_GEAR_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 200,
     professionRequired: 'STABLE_MASTER',
     levelRequired: 20,
+    baseValue: 150,
   },
   {
     name: 'War Saddle',
@@ -422,6 +460,7 @@ const MOUNT_GEAR_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 200,
     professionRequired: 'STABLE_MASTER',
     levelRequired: 30,
+    baseValue: 200,
   },
   {
     name: 'Mithril Horseshoes',
@@ -432,6 +471,7 @@ const MOUNT_GEAR_ITEM_TEMPLATES: ItemTemplateDef[] = [
     durability: 500,
     professionRequired: 'STABLE_MASTER',
     levelRequired: 50,
+    baseValue: 1500,
   },
 ];
 
@@ -531,6 +571,7 @@ export async function seedAccessoryRecipes(prisma: PrismaClient) {
         durability: tmpl.durability,
         professionRequired: tmpl.professionRequired,
         levelRequired: tmpl.levelRequired,
+        baseValue: tmpl.baseValue,
       },
       create: {
         id: stableId,
@@ -542,6 +583,7 @@ export async function seedAccessoryRecipes(prisma: PrismaClient) {
         durability: tmpl.durability,
         professionRequired: tmpl.professionRequired,
         levelRequired: tmpl.levelRequired,
+        baseValue: tmpl.baseValue,
       },
     });
     templateMap.set(tmpl.name, created.id);

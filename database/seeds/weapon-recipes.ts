@@ -40,6 +40,29 @@ function tierToRarity(tier: number): ItemRarity {
 }
 
 // ============================================================
+// BASE VALUES: lookup map from YAML profession-economy-master.yaml
+// ============================================================
+
+// Base values from YAML profession-economy-master.yaml
+const BASE_VALUE_MAP: Record<string, number> = {
+  // BLACKSMITH weapons
+  'Iron Pickaxe': 18, 'Iron Hatchet': 18, 'Iron Dagger': 17, 'Iron Sword': 23,
+  'Iron Shield': 25, 'Iron Helm': 20, 'Copper Hoe': 17,
+  'Steel Pickaxe': 38, 'Steel Hatchet': 38, 'Steel Dagger': 32, 'Steel Sword': 45,
+  'Iron Battleaxe': 42, 'Reinforced Shield': 42, 'Iron Chainmail': 48,
+  'Iron Fishing Spear': 30, 'Reinforced Helm': 35,
+  'Silver Pickaxe': 95, 'Hardwood Hatchet': 80, "Hunter's Knife": 85, 'Reinforced Hoe': 75,
+  'Silver Longsword': 120, 'Silver Dagger': 90, 'Silver Battleaxe': 125, 'War Pick': 100,
+  'Silver-Studded Plate': 130, 'Silver Helm': 95, 'Hardwood Tower Shield': 108,
+  'Reinforced Chain Leggings': 105,
+  // FLETCHER ranged weapons
+  'Bowstring': 24, 'Arrows': 2, 'Shortbow': 46, 'Hunting Bow': 70,
+  'Longbow': 85, 'War Arrows': 7, 'War Bow': 180, 'Quiver': 45,
+  'Barbed Arrows': 8, 'Composite Bow': 225, "Ranger's Quiver": 175,
+  'Flight Arrows': 2, "Ranger's Longbow": 260,
+};
+
+// ============================================================
 // SEED FUNCTION
 // ============================================================
 
@@ -107,6 +130,7 @@ export async function seedWeaponRecipes(prisma: PrismaClient) {
 
     // Upsert the item template
     const stableId = `weapon-${outputName.toLowerCase().replace(/\s+/g, '-')}`;
+    const baseValue = BASE_VALUE_MAP[outputName] ?? 0;
     const created = await prisma.itemTemplate.upsert({
       where: { id: stableId },
       update: {
@@ -118,6 +142,7 @@ export async function seedWeaponRecipes(prisma: PrismaClient) {
         durability: stats.durability,
         professionRequired: recipe.professionRequired as ProfessionType,
         levelRequired: recipe.levelRequired,
+        baseValue,
       },
       create: {
         id: stableId,
@@ -129,6 +154,7 @@ export async function seedWeaponRecipes(prisma: PrismaClient) {
         durability: stats.durability,
         professionRequired: recipe.professionRequired as ProfessionType,
         levelRequired: recipe.levelRequired,
+        baseValue,
       },
     });
     templateMap.set(outputName, created.id);

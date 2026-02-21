@@ -1319,7 +1319,7 @@ professions:
         - { id: housing-stone-fountain, level: 25, inputs: "8x Stone Blocks + 2x Iron Ingot + 3x Coal", output: "Stone Fountain", base_value: 295 }
       craftsman:
         - { id: polish-marble, level: 30, inputs: "2x Marble + 1x Coal", output: "Polished Marble", base_value: 65 }
-        - { id: housing-marble-statue, level: 35, inputs: "6x Marble + 2x Iron Fittings + 3x Coal + 1x Gemstones", output: "Marble Statue", base_value: 280 }
+        - { id: housing-marble-statue, level: 35, inputs: "6x Marble + 2x Iron Fittings + 3x Coal + 1x Gemstones", output: "Marble Statue", base_value: 365 }
     supply_chain: "MINER → Raw Stone/Clay/Marble → MASON → Cut Stone/Bricks/Polished Marble → Housing items"
     notes: "12 recipes (8 processing + 4 housing). Stone Slab and Clay Pot templates added. Only 3 towns have MASON_YARD."
 

@@ -77,6 +77,30 @@ function buildDescription(recipe: FinishedGoodsRecipe): string {
 }
 
 // ============================================================
+// BASE VALUES: lookup map from YAML profession-economy-master.yaml
+// ============================================================
+
+// Base values from YAML profession-economy-master.yaml
+const BASE_VALUE_MAP: Record<string, number> = {
+  // WOODWORKER finished goods
+  'Wooden Pickaxe': 19, 'Fishing Rod': 14, 'Carving Knife': 12, 'Wooden Chair': 19,
+  'Tanning Rack': 58, 'Fine Fishing Rod': 45, 'Wooden Table': 78,
+  'Storage Chest': 117, 'Wooden Bed Frame': 110, 'Wooden Shield': 87,
+  'Furniture': 63, 'Wooden Shelf': 75, 'Reinforced Crate': 130,
+  'Hardwood Tower Shield': 230, 'Practice Bow': 45,
+  // BLACKSMITH specialization recipes
+  'Iron Pickaxe': 18, 'Iron Hatchet': 18, 'Iron Dagger': 17, 'Iron Sword': 23,
+  'Iron Shield': 25, 'Iron Helm': 20, 'Copper Hoe': 17,
+  'Steel Pickaxe': 38, 'Steel Hatchet': 38, 'Steel Dagger': 32, 'Steel Sword': 45,
+  'Iron Battleaxe': 42, 'Reinforced Shield': 42, 'Iron Chainmail': 48,
+  'Iron Fishing Spear': 30, 'Reinforced Helm': 35,
+  'Silver Pickaxe': 95, 'Hardwood Hatchet': 80, "Hunter's Knife": 85, 'Reinforced Hoe': 75,
+  'Silver Longsword': 120, 'Silver Dagger': 90, 'Silver Battleaxe': 125, 'War Pick': 100,
+  'Silver-Studded Plate': 130, 'Silver Helm': 95, 'Hardwood Tower Shield': 108,
+  'Reinforced Chain Leggings': 105,
+};
+
+// ============================================================
 // SEED FUNCTION
 // ============================================================
 
@@ -124,6 +148,7 @@ export async function seedCraftedGoodsRecipes(prisma: PrismaClient) {
 
     // Upsert the item template
     const stableId = `crafted-${outputName.toLowerCase().replace(/\s+/g, '-')}`;
+    const baseValue = BASE_VALUE_MAP[outputName] ?? 0;
     const created = await prisma.itemTemplate.upsert({
       where: { id: stableId },
       update: {
@@ -135,6 +160,7 @@ export async function seedCraftedGoodsRecipes(prisma: PrismaClient) {
         durability,
         professionRequired: recipe.professionRequired as ProfessionType,
         levelRequired: recipe.levelRequired,
+        baseValue,
       },
       create: {
         id: stableId,
@@ -146,6 +172,7 @@ export async function seedCraftedGoodsRecipes(prisma: PrismaClient) {
         durability,
         professionRequired: recipe.professionRequired as ProfessionType,
         levelRequired: recipe.levelRequired,
+        baseValue,
       },
     });
     templateMap.set(outputName, created.id);
