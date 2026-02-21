@@ -593,10 +593,7 @@ export async function seedBaseValuePropagation(prisma: PrismaClient): Promise<vo
     const result = await prisma.itemTemplate.updateMany({
       where: {
         name,
-        OR: [
-          { baseValue: 0 },
-          { baseValue: null },
-        ],
+        baseValue: 0,
       },
       data: { baseValue },
     });
@@ -619,12 +616,7 @@ export async function seedBaseValuePropagation(prisma: PrismaClient): Promise<vo
 
   // Count remaining zeros
   const remaining = await prisma.itemTemplate.count({
-    where: {
-      OR: [
-        { baseValue: 0 },
-        { baseValue: null },
-      ],
-    },
+    where: { baseValue: 0 },
   });
 
   console.log(`  Updated ${updated} item template(s) with base values`);
