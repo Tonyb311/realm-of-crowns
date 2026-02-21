@@ -56,7 +56,16 @@ const ALL_RACES = Object.values(Race);
 const ALL_CLASSES = ['warrior', 'mage', 'rogue', 'cleric', 'ranger', 'bard', 'psion'] as const;
 
 const GATHERING_PROFESSIONS = ['MINER', 'FARMER', 'LUMBERJACK', 'HERBALIST', 'FISHERMAN', 'HUNTER', 'RANCHER'];
-const ALL_SEED_PROFESSIONS = [...GATHERING_PROFESSIONS, 'COOK', 'BREWER', 'BLACKSMITH', 'TANNER', 'TAILOR', 'ALCHEMIST'];
+const ALL_SEED_PROFESSIONS = [
+  ...GATHERING_PROFESSIONS,
+  // Processing (intermediates)
+  'SMELTER', 'WOODWORKER', 'TANNER',
+  // Crafting (finished goods)
+  'BLACKSMITH', 'ARMORER', 'LEATHERWORKER', 'TAILOR',
+  'ALCHEMIST', 'COOK', 'BREWER',
+  'JEWELER', 'FLETCHER', 'MASON',
+  'ENCHANTER', 'SCRIBE',
+];
 
 const PROFILE_RACE_PREFERENCES: Record<BotProfile, Race[]> = {
   gatherer: [Race.HUMAN, Race.HARTHFOLK, Race.MOSSKIN, Race.ELF],

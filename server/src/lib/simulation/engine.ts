@@ -41,13 +41,24 @@ const TRAVEL_COOLDOWN_TICKS = 3;
 
 // Recipes whose outputs are intermediates needed by higher-tier recipes
 const INTERMEDIATE_RECIPE_IDS = new Set([
+  // SMELTER intermediates (ingots → consumed by BLACKSMITH, ARMORER, JEWELER, FLETCHER)
+  'smelt-copper', 'smelt-iron', 'smelt-steel', 'smelt-silver', 'smelt-gold',
+  'smelt-mithril', 'smelt-adamantine', 'smelt-ore-chunks', 'smelt-glass',
+  'forge-iron-fittings', 'forge-nails',
+  // WOODWORKER intermediates (planks, handles, staves → consumed by FLETCHER, MASON, BLACKSMITH)
+  'saw-rough-planks', 'mill-softwood', 'mill-hardwood', 'mill-exotic',
+  'ww-carve-wooden-dowels', 'ww-shape-wooden-handle', 'ww-carve-bow-stave',
+  'ww-craft-wooden-frame', 'shape-beams',
+  // COOK intermediates
   'cook-flour',        // Flour → Bread, Apple Pie, Berry Tart, Harvest Feast, Spiced Pastry
   'cook-berry-jam',    // Berry Jam → Berry Tart, Fisherman's Banquet, Spiced Pastry
   'cook-grilled-fish', // Grilled Fish → Fisherman's Banquet
   'cook-bread-loaf',   // Bread Loaf (T2) → Harvest Feast, Fisherman's Banquet
+  // TANNER intermediates
   'tan-cure-leather',  // Cured Leather → all TANNER finished goods
   'tan-wolf-leather',  // Wolf Leather → Wolf Leather Armor, Wolf Leather Hood, Ranger's Quiver
   'tan-bear-leather',  // Bear Leather → Bear Hide Cuirass, Ranger's Quiver
+  // TAILOR intermediates
   'tai-weave-cloth',   // Woven Cloth → all TAILOR finished goods (Apprentice/Journeyman)
   'tai-weave-fine-cloth', // Fine Cloth → TAILOR Craftsman finished goods
   'tai-process-silk',  // Silk Fabric → TAILOR Craftsman finished goods
@@ -105,6 +116,42 @@ const ITEM_TO_SPOT_TYPE: Record<string, string> = {
   'Woven Cloth': 'orchard',
   'Fine Cloth': 'orchard',
   'Silk Fabric': 'orchard',
+  // SMELTER inputs — travel to mining towns for ores
+  'Copper Ore': 'mine',
+  'Gold Ore': 'mine',
+  'Mithril Ore': 'mine',
+  'Adamantine Ore': 'mine',
+  // SMELTER intermediates — travel to mining towns (where smelters operate)
+  'Copper Ingot': 'mine',
+  'Iron Ingot': 'mine',
+  'Steel Ingot': 'mine',
+  'Silver Ingot': 'silver_mine',
+  'Gold Ingot': 'mine',
+  'Mithril Ingot': 'mine',
+  'Adamantine Ingot': 'mine',
+  'Iron Fittings': 'mine',
+  'Nails': 'mine',
+  'Glass': 'mine',
+  // WOODWORKER intermediates — travel to forest towns
+  'Rough Planks': 'forest',
+  'Softwood Planks': 'forest',
+  'Hardwood Planks': 'hardwood_grove',
+  'Exotic Planks': 'forest',
+  'Wooden Dowels': 'forest',
+  'Wooden Handle': 'forest',
+  'Bow Stave': 'forest',
+  'Wooden Frame': 'forest',
+  'Beams': 'forest',
+  // JEWELER inputs — ingots + gemstones
+  'Gemstones': 'mine',
+  // FLETCHER inputs — bow staves + leather
+  'Bowstring': 'orchard',
+  // MASON inputs — stone, marble
+  'Marble': 'quarry',
+  // ENCHANTER/SCRIBE inputs — arcane reagents from herbalists
+  'Arcane Reagents': 'herb',
+  'Ink': 'herb',
+  'Paper': 'forest',
 };
 
 // Profession → spot types where they get bonus yield (fallback when tier-unlocks returns empty)
@@ -269,14 +316,9 @@ async function determineTravelReason(
   profs: string[],
   currentSpotType: string | null,
 ): Promise<TravelPlan | null> {
-  const isCook = profs.includes('COOK');
-  const isBlacksmith = profs.includes('BLACKSMITH');
-  const isAlchemist = profs.includes('ALCHEMIST');
-  const isTanner = profs.includes('TANNER');
-  const isTailor = profs.includes('TAILOR');
-
-  // a. COOK missing ingredients → travel to town with needed resource
-  if (isCook && recipes.length > 0) {
+  // a. ANY crafting profession missing ingredients → travel to town with needed resource
+  const hasCraftingProf = profs.some(p => CRAFTING_PROFESSIONS.has(p));
+  if (hasCraftingProf && recipes.length > 0) {
     const missing = getMissingIngredients(invMap, recipes);
     if (missing.length > 0) {
       const neededSpots = missing
@@ -284,74 +326,6 @@ async function determineTravelReason(
         .filter((s): s is string => !!s);
 
       // Don't travel if current town already has a needed spot
-      if (neededSpots.length > 0 && !neededSpots.includes(currentSpotType || '')) {
-        return {
-          reason: `Need ${missing[0]}, traveling to ${neededSpots[0]} town`,
-          execute: () => actions.travelToResourceTown(bot, neededSpots, `need ${missing[0]}`),
-        };
-      }
-    }
-  }
-
-  // a2. BLACKSMITH missing ingredients → travel to mine/forest town
-  if (isBlacksmith && recipes.length > 0) {
-    const missing = getMissingIngredients(invMap, recipes);
-    if (missing.length > 0) {
-      const neededSpots = missing
-        .map(item => ITEM_TO_SPOT_TYPE[item])
-        .filter((s): s is string => !!s);
-
-      if (neededSpots.length > 0 && !neededSpots.includes(currentSpotType || '')) {
-        return {
-          reason: `Need ${missing[0]}, traveling to ${neededSpots[0]} town`,
-          execute: () => actions.travelToResourceTown(bot, neededSpots, `need ${missing[0]}`),
-        };
-      }
-    }
-  }
-
-  // a3. ALCHEMIST missing ingredients → travel to herb/orchard/clay town
-  if (isAlchemist && recipes.length > 0) {
-    const missing = getMissingIngredients(invMap, recipes);
-    if (missing.length > 0) {
-      const neededSpots = missing
-        .map(item => ITEM_TO_SPOT_TYPE[item])
-        .filter((s): s is string => !!s);
-
-      if (neededSpots.length > 0 && !neededSpots.includes(currentSpotType || '')) {
-        return {
-          reason: `Need ${missing[0]}, traveling to ${neededSpots[0]} town`,
-          execute: () => actions.travelToResourceTown(bot, neededSpots, `need ${missing[0]}`),
-        };
-      }
-    }
-  }
-
-  // a4. TANNER missing ingredients → travel to hunting_ground/mine/silver town
-  if (isTanner && recipes.length > 0) {
-    const missing = getMissingIngredients(invMap, recipes);
-    if (missing.length > 0) {
-      const neededSpots = missing
-        .map(item => ITEM_TO_SPOT_TYPE[item])
-        .filter((s): s is string => !!s);
-
-      if (neededSpots.length > 0 && !neededSpots.includes(currentSpotType || '')) {
-        return {
-          reason: `Need ${missing[0]}, traveling to ${neededSpots[0]} town`,
-          execute: () => actions.travelToResourceTown(bot, neededSpots, `need ${missing[0]}`),
-        };
-      }
-    }
-  }
-
-  // a5. TAILOR missing ingredients → travel to silver_mine/herb town
-  if (isTailor && recipes.length > 0) {
-    const missing = getMissingIngredients(invMap, recipes);
-    if (missing.length > 0) {
-      const neededSpots = missing
-        .map(item => ITEM_TO_SPOT_TYPE[item])
-        .filter((s): s is string => !!s);
-
       if (neededSpots.length > 0 && !neededSpots.includes(currentSpotType || '')) {
         return {
           reason: `Need ${missing[0]}, traveling to ${neededSpots[0]} town`,
@@ -509,12 +483,7 @@ export async function decideBotAction(
   const profs = bot.professions.map(p => p.toUpperCase());
   const hasGathering = profs.some(p => GATHERING_PROF_SET.has(p));
   const hasCrafting = profs.some(p => CRAFTING_PROFESSIONS.has(p));
-  const isCook = profs.includes('COOK');
-  const isBrewer = profs.includes('BREWER');
-  const isBlacksmith = profs.includes('BLACKSMITH');
-  const isAlchemist = profs.includes('ALCHEMIST');
-  const isTanner = profs.includes('TANNER');
-  const isTailor = profs.includes('TAILOR');
+  // (individual profession checks removed — travel/gather logic is now generic)
 
   // ── Current town info ──
   const townCache = await ensureTownCache();
@@ -736,66 +705,14 @@ export async function decideBotAction(
       }
     }
 
-    // COOK: gather if current town produces a needed ingredient
-    if (!shouldGather && isCook) {
+    // ANY crafting profession: gather if current town produces a needed ingredient
+    if (!shouldGather && hasCrafting) {
       const missing = getMissingIngredients(invMap, recipes);
       const spotItem = SPOT_TO_ITEM[currentSpotType || ''];
       if (spotItem && missing.includes(spotItem)) {
+        const craftProf = profs.find(p => CRAFTING_PROFESSIONS.has(p)) || 'crafting';
         shouldGather = true;
-        gatherReason = `Gathering ${spotItem} (needed for cooking)`;
-      } else if (currentSpotType === 'forest' && missing.includes('Wood Logs')) {
-        shouldGather = true;
-        gatherReason = 'Gathering Wood Logs (fuel for cooking)';
-      }
-    }
-
-    // BREWER: gather if current town produces a needed ingredient
-    if (!shouldGather && isBrewer) {
-      const missing = getMissingIngredients(invMap, recipes);
-      const spotItem = SPOT_TO_ITEM[currentSpotType || ''];
-      if (spotItem && missing.includes(spotItem)) {
-        shouldGather = true;
-        gatherReason = `Gathering ${spotItem} (needed for brewing)`;
-      }
-    }
-
-    // BLACKSMITH: gather if current town produces a needed ingredient (ores, wood)
-    if (!shouldGather && isBlacksmith) {
-      const missing = getMissingIngredients(invMap, recipes);
-      const spotItem = SPOT_TO_ITEM[currentSpotType || ''];
-      if (spotItem && missing.includes(spotItem)) {
-        shouldGather = true;
-        gatherReason = `Gathering ${spotItem} (needed for smithing)`;
-      }
-    }
-
-    // ALCHEMIST: gather if current town produces a needed ingredient (herbs, clay, berries)
-    if (!shouldGather && isAlchemist) {
-      const missing = getMissingIngredients(invMap, recipes);
-      const spotItem = SPOT_TO_ITEM[currentSpotType || ''];
-      if (spotItem && missing.includes(spotItem)) {
-        shouldGather = true;
-        gatherReason = `Gathering ${spotItem} (needed for alchemy)`;
-      }
-    }
-
-    // TANNER: gather if current town produces a needed ingredient (pelts, ores)
-    if (!shouldGather && isTanner) {
-      const missing = getMissingIngredients(invMap, recipes);
-      const spotItem = SPOT_TO_ITEM[currentSpotType || ''];
-      if (spotItem && missing.includes(spotItem)) {
-        shouldGather = true;
-        gatherReason = `Gathering ${spotItem} (needed for tanning)`;
-      }
-    }
-
-    // TAILOR: gather if current town produces a needed ingredient (silver ore, glowcap mushrooms)
-    if (!shouldGather && isTailor) {
-      const missing = getMissingIngredients(invMap, recipes);
-      const spotItem = SPOT_TO_ITEM[currentSpotType || ''];
-      if (spotItem && missing.includes(spotItem)) {
-        shouldGather = true;
-        gatherReason = `Gathering ${spotItem} (needed for tailoring)`;
+        gatherReason = `Gathering ${spotItem} (needed for ${craftProf.toLowerCase()})`;
       }
     }
 
