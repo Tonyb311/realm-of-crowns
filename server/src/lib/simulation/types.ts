@@ -43,6 +43,8 @@ export interface BotState {
   partyTicksRemaining: number;  // Ticks until bot disbands the party (3-5)
   homeTownId: string;           // Bot's home town (for "travel home" logic)
   lastTravelTick: number;       // Last tick when bot traveled (for cooldown)
+  p6ConsecutiveTrips: number;   // Consecutive ticks bot chose P6 combat travel
+  p6BackoffUntilTick: number;   // Tick until which P6 is forced-skipped (backoff)
 }
 
 export interface SimulationConfig {

@@ -509,6 +509,95 @@ export async function listOnMarket(bot: BotState): Promise<ActionResult> {
 }
 
 // ---------------------------------------------------------------------------
+// 9b. listUnwantedItems — List combat drops the bot can't use in any recipe
+// ---------------------------------------------------------------------------
+
+export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
+  const endpoint = '/market/list';
+  try {
+    // 1. Fetch raw inventory (need equipped flag and baseValue)
+    const invRes = await get('/characters/me/inventory', bot.token);
+    if (invRes.status < 200 || invRes.status >= 300) {
+      return { success: false, detail: 'Failed to fetch inventory', endpoint, httpStatus: invRes.status ?? 0, requestBody: {}, responseBody: invRes.data };
+    }
+    const items: any[] = invRes.data?.items || invRes.data || [];
+    if (items.length === 0) {
+      return { success: false, detail: 'Empty inventory', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
+    }
+
+    // 2. Build set of all item names this bot needs for its recipes
+    const recipesRes = await get('/crafting/recipes', bot.token);
+    const recipes: any[] = (recipesRes.status >= 200 && recipesRes.status < 300)
+      ? (recipesRes.data?.recipes || recipesRes.data || [])
+      : [];
+
+    const neededItems = new Set<string>();
+    for (const r of recipes) {
+      const inputs = r.ingredients || r.inputs || [];
+      for (const inp of inputs) {
+        const name = inp.itemName || inp.name;
+        if (name) neededItems.add(name);
+      }
+    }
+
+    // 3. Items to always keep (food, gold-related, basic staples)
+    const KEEP_ITEMS = new Set([
+      'Basic Rations', 'Gold Coins', 'Grain',
+    ]);
+
+    // 4. Find unwanted items: not equipped, not a recipe input, not in keep list
+    const unwanted: { id: string; name: string; quantity: number; baseValue: number }[] = [];
+    for (const item of items) {
+      if (item.equipped) continue;
+      const name = item.templateName || item.name || '';
+      if (!name) continue;
+      if (neededItems.has(name)) continue;
+      if (KEEP_ITEMS.has(name)) continue;
+      unwanted.push({
+        id: item.id || item.itemId,
+        name,
+        quantity: item.quantity || 1,
+        baseValue: item.baseValue || item.value || 10,
+      });
+    }
+
+    if (unwanted.length === 0) {
+      return { success: false, detail: 'No unwanted items to list', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
+    }
+
+    // 5. List up to 3 unwanted items at base value price
+    let listed = 0;
+    const listedNames: string[] = [];
+    for (const item of unwanted) {
+      if (listed >= 3) break;
+      const price = Math.max(5, Math.ceil(item.baseValue * 1.2));
+      try {
+        const res = await post(endpoint, bot.token, { itemId: item.id, price, quantity: item.quantity });
+        if (res.status >= 200 && res.status < 300) {
+          listed++;
+          listedNames.push(`${item.quantity}x ${item.name} @${price}g`);
+        }
+      } catch { /* ignore individual failures */ }
+    }
+
+    if (listed === 0) {
+      return { success: false, detail: 'Failed to list any unwanted items', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
+    }
+
+    return {
+      success: true,
+      detail: `Listed ${listed} unwanted item(s): ${listedNames.join(', ')}`,
+      endpoint,
+      httpStatus: 200,
+      requestBody: { count: listed },
+      responseBody: { listed: listedNames },
+    };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 10. startCombat — REMOVED (dead code)
 // ---------------------------------------------------------------------------
 // The /combat/pve/start endpoint is DISABLED (returns 400). Combat ONLY

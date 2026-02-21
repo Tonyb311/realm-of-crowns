@@ -40,6 +40,8 @@ const GATHERING_PROFESSIONS = ['MINER', 'FARMER', 'LUMBERJACK', 'HERBALIST', 'FI
 
 const TRAVEL_COOLDOWN_TICKS = 3;
 const COMBAT_TRAVEL_COOLDOWN_TICKS = 1;
+const P6_MAX_CONSECUTIVE = 3;   // P6 trips before forced backoff
+const P6_BACKOFF_TICKS = 5;     // Ticks to skip P6 after hitting max
 
 // Items obtainable ONLY (or primarily) from monster drops.
 // Maps item name → biomes where monsters drop it + minimum monster level.
@@ -601,6 +603,14 @@ export async function decideBotAction(
     } catch { /* ignore */ }
   }
 
+  // A7: List unwanted items on market (combat drops the bot can't use)
+  if (config.enabledSystems.market) {
+    try {
+      const r = await timedFreeAction(() => actions.listUnwantedItems(bot), bot, 'list_unwanted', logger, tick);
+      if (r.success) console.log(`[SIM] ${bot.characterName} listed unwanted items: ${r.detail}`);
+    } catch { /* ignore */ }
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
   // Phase B: DAILY ACTION (priority chain — first match wins)
   // ═══════════════════════════════════════════════════════════════════════
@@ -689,7 +699,10 @@ export async function decideBotAction(
         bot, 'craft', 3, `T${best.tier} ${best.name} (${inputStr})`,
         logger, tick,
       );
-      if (r.success) return r;
+      if (r.success) {
+        bot.p6ConsecutiveTrips = 0; // Successful craft — reset P6 backoff counter
+        return r;
+      }
     }
   }
 
@@ -752,7 +765,10 @@ export async function decideBotAction(
         bot, 'market_buy', 5, `Buying ${itemName} from market`,
         logger, tick,
       );
-      if (r.success) return r;
+      if (r.success) {
+        bot.p6ConsecutiveTrips = 0; // Got ingredient from market — reset P6 backoff counter
+        return r;
+      }
     }
   }
 
@@ -782,20 +798,34 @@ export async function decideBotAction(
   // ── P6: Combat Travel (dangerous routes for monster-drop items) ─────
   // Triggers when bot needs items obtainable from monster drops, can't buy
   // them (P5 failed), and is high enough level. Uses reduced cooldown.
+  // Backoff: after P6_MAX_CONSECUTIVE consecutive P6 trips, force the bot
+  // to skip P6 for P6_BACKOFF_TICKS so it falls through to P7/P8 and
+  // actually gathers/crafts/buys instead of looping forever.
   if (config.enabledSystems.travel && hasCrafting && (currentTick - bot.lastTravelTick) >= COMBAT_TRAVEL_COOLDOWN_TICKS) {
-    const missing = getMissingIngredients(invMap, recipes);
-    for (const itemName of missing) {
-      const dropInfo = MONSTER_DROP_ITEMS[itemName];
-      if (!dropInfo) continue;
-      if (bot.level < dropInfo.minLevel) continue;
-      const r = await timedDailyAction(
-        () => actions.travelForCombatDrops(bot, dropInfo.biomes, `farming ${itemName}`),
-        bot, 'combat_travel', 6, `Need ${itemName} — traveling dangerous routes for monster drops`,
-        logger, tick,
-      );
-      if (r.success) {
-        bot.lastTravelTick = currentTick;
-        return r;
+    // Skip P6 if in backoff period
+    if (currentTick < bot.p6BackoffUntilTick) {
+      // Fall through to P7
+    } else {
+      const missing = getMissingIngredients(invMap, recipes);
+      for (const itemName of missing) {
+        const dropInfo = MONSTER_DROP_ITEMS[itemName];
+        if (!dropInfo) continue;
+        if (bot.level < dropInfo.minLevel) continue;
+        const r = await timedDailyAction(
+          () => actions.travelForCombatDrops(bot, dropInfo.biomes, `farming ${itemName}`),
+          bot, 'combat_travel', 6, `Need ${itemName} — traveling dangerous routes for monster drops`,
+          logger, tick,
+        );
+        if (r.success) {
+          bot.lastTravelTick = currentTick;
+          bot.p6ConsecutiveTrips++;
+          if (bot.p6ConsecutiveTrips >= P6_MAX_CONSECUTIVE) {
+            bot.p6BackoffUntilTick = currentTick + P6_BACKOFF_TICKS;
+            bot.p6ConsecutiveTrips = 0;
+            console.log(`[SIM] ${bot.characterName} P6 backoff: ${P6_MAX_CONSECUTIVE} consecutive trips, skipping P6 until tick ${bot.p6BackoffUntilTick}`);
+          }
+          return r;
+        }
       }
     }
   }
