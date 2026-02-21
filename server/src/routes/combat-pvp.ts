@@ -363,7 +363,7 @@ router.post(
           str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10,
         };
 
-        return createCharacterCombatant(
+        const combatant = createCharacterCombatant(
           p.characterId,
           p.character.name,
           p.team,
@@ -376,6 +376,10 @@ router.post(
           {}, // spellSlots
           getProficiencyBonus(p.character.level),
         );
+        // Set race for racial ability resolution
+        (combatant as any).race = p.character.race.toLowerCase();
+        (combatant as any).subRace = p.character.subRace ?? null;
+        return combatant;
       });
 
       // Create combat state and roll initiative
@@ -1168,7 +1172,7 @@ router.post(
           str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10,
         };
 
-        return createCharacterCombatant(
+        const combatant = createCharacterCombatant(
           p.characterId,
           p.character.name,
           p.team,
@@ -1181,6 +1185,10 @@ router.post(
           {},
           getProficiencyBonus(p.character.level),
         );
+        // Set race for racial ability resolution
+        (combatant as any).race = p.character.race.toLowerCase();
+        (combatant as any).subRace = p.character.subRace ?? null;
+        return combatant;
       });
 
       // Create combat state and roll initiative (use 'DUEL' engine type — DB tracks SPAR separately)

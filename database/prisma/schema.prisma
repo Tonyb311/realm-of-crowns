@@ -766,8 +766,8 @@ model DiplomacyEvent {
   timestamp   DateTime            @default(now())
   createdAt   DateTime            @default(now()) @map("created_at")
 
-  initiator Character @relation("DiplomacyInitiator", fields: [initiatorId], references: [id])
-  target    Character @relation("DiplomacyTarget", fields: [targetId], references: [id])
+  initiator Character @relation("DiplomacyInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+  target    Character @relation("DiplomacyTarget", fields: [targetId], references: [id], onDelete: Cascade)
 
   @@index([initiatorId])
   @@index([targetId])
@@ -1058,7 +1058,7 @@ model MarketListing {
 
   seller    Character       @relation(fields: [sellerId], references: [id], onDelete: Cascade)
   item      Item            @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  town      Town            @relation(fields: [townId], references: [id])
+  town      Town            @relation(fields: [townId], references: [id], onDelete: Cascade)
   cycle     AuctionCycle?   @relation(fields: [auctionCycleId], references: [id])
   buyOrders MarketBuyOrder[]
 
@@ -1087,10 +1087,10 @@ model TradeTransaction {
   timestamp      DateTime @default(now())
   createdAt      DateTime @default(now()) @map("created_at")
 
-  buyer  Character     @relation("Buyer", fields: [buyerId], references: [id])
-  seller Character     @relation("Seller", fields: [sellerId], references: [id])
-  item   Item          @relation(fields: [itemId], references: [id])
-  town   Town          @relation(fields: [townId], references: [id])
+  buyer  Character     @relation("Buyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller Character     @relation("Seller", fields: [sellerId], references: [id], onDelete: Cascade)
+  item   Item          @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  town   Town          @relation(fields: [townId], references: [id], onDelete: Cascade)
   cycle  AuctionCycle? @relation(fields: [auctionCycleId], references: [id])
 
   @@index([buyerId])
@@ -1181,8 +1181,8 @@ model Caravan {
   updatedAt  DateTime     @updatedAt @map("updated_at")
 
   owner    Character @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  fromTown Town      @relation("CaravanFrom", fields: [fromTownId], references: [id])
-  toTown   Town      @relation("CaravanTo", fields: [toTownId], references: [id])
+  fromTown Town      @relation("CaravanFrom", fields: [fromTownId], references: [id], onDelete: Cascade)
+  toTown   Town      @relation("CaravanTo", fields: [toTownId], references: [id], onDelete: Cascade)
 
   @@index([ownerId])
   @@index([status])
@@ -1321,7 +1321,7 @@ model Law {
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   kingdom   Kingdom   @relation(fields: [kingdomId], references: [id], onDelete: Cascade)
-  enactedBy Character @relation(fields: [enactedById], references: [id])
+  enactedBy Character @relation(fields: [enactedById], references: [id], onDelete: Cascade)
   lawVotes  LawVote[]
 
   @@index([kingdomId])
@@ -1335,8 +1335,8 @@ model LawVote {
   characterId String    @map("character_id")
   vote        String // 'FOR' or 'AGAINST'
   createdAt   DateTime  @default(now()) @map("created_at")
-  law         Law       @relation(fields: [lawId], references: [id])
-  character   Character @relation(fields: [characterId], references: [id])
+  law         Law       @relation(fields: [lawId], references: [id], onDelete: Cascade)
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 
   @@unique([lawId, characterId])
   @@map("law_votes")
@@ -1760,7 +1760,7 @@ model CouncilMember {
   kingdom     Kingdom?  @relation("KingdomCouncil", fields: [kingdomId], references: [id], onDelete: Cascade)
   town        Town?     @relation("TownCouncil", fields: [townId], references: [id], onDelete: Cascade)
   character   Character @relation("CouncilCharacter", fields: [characterId], references: [id], onDelete: Cascade)
-  appointedBy Character @relation("CouncilAppointer", fields: [appointedById], references: [id])
+  appointedBy Character @relation("CouncilAppointer", fields: [appointedById], references: [id], onDelete: Cascade)
 
   @@index([kingdomId])
   @@index([townId])
@@ -1939,7 +1939,7 @@ model Party {
   createdAt   DateTime  @default(now()) @map("created_at")
   disbandedAt DateTime? @map("disbanded_at")
 
-  leader      Character           @relation("PartyLeader", fields: [leaderId], references: [id])
+  leader      Character           @relation("PartyLeader", fields: [leaderId], references: [id], onDelete: Cascade)
   town        Town                @relation(fields: [townId], references: [id])
   members     PartyMember[]
   invitations PartyInvitation[]
@@ -1997,7 +1997,7 @@ model TravelGroup {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  leader      Character           @relation("TravelGroupLeader", fields: [leaderId], references: [id])
+  leader      Character           @relation("TravelGroupLeader", fields: [leaderId], references: [id], onDelete: Cascade)
   party       Party?              @relation(fields: [partyId], references: [id], onDelete: SetNull)
   members     TravelGroupMember[]
   travelState GroupTravelState?

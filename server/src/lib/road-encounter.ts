@@ -331,6 +331,8 @@ export async function resolveRoadEncounter(
       stats: true,
       gold: true,
       xp: true,
+      race: true,
+      subRace: true,
     },
   });
 
@@ -442,6 +444,10 @@ export async function resolveRoadEncounter(
     buildMonsterWeapon(monsterStats),
     0,
   );
+
+  // Set race for racial ability resolution
+  (playerCombatant as any).race = character.race.toLowerCase();
+  (playerCombatant as any).subRace = character.subRace ?? null;
 
   let combatState = createCombatState(sessionId, 'PVE', [playerCombatant, monsterCombatant]);
 
@@ -704,6 +710,8 @@ export async function resolveGroupRoadEncounter(
       stats: true,
       gold: true,
       xp: true,
+      race: true,
+      subRace: true,
     },
   });
 
@@ -796,8 +804,7 @@ export async function resolveGroupRoadEncounter(
 
     playerWeapons[char.id] = playerWeapon;
 
-    combatants.push(
-      createCharacterCombatant(
+    const combatant = createCharacterCombatant(
         char.id,
         char.name,
         0, // team 0 = players
@@ -809,8 +816,11 @@ export async function resolveGroupRoadEncounter(
         playerWeapon,
         {},
         getProficiencyBonus(char.level),
-      ),
     );
+    // Set race for racial ability resolution
+    (combatant as any).race = char.race.toLowerCase();
+    (combatant as any).subRace = char.subRace ?? null;
+    combatants.push(combatant);
   }
 
   const monsterCombatant = createMonsterCombatant(
