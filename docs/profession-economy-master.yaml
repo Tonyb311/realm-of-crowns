@@ -1092,16 +1092,16 @@ professions:
     depends_on_gatherers: [HUNTER]
     related_professions: [HUNTER]
     raw_inputs: [animal_pelts, wolf_pelts, bear_hides]
-    intermediate_inputs: [cured_leather, wolf_leather, bear_leather]
+    intermediate_inputs: [soft_leather, cured_leather, wolf_leather, bear_leather]
     output_categories: [MATERIAL, ARMOR, TOOL, CONSUMABLE]
-    outputs_used_by: [LEATHERWORKER, ARMORER, TAILOR]
+    outputs_used_by: [BLACKSMITH, LEATHERWORKER, ARMORER, TAILOR, STABLE_MASTER]
     status: EXISTS_IN_GAME
     tier_recipes:
-      APPRENTICE: ["Cured Leather", "Leather Cap", "Leather Satchel"]
+      APPRENTICE: ["Soft Leather (L1 processing)", "Cured Leather", "Leather Cap", "Leather Satchel"]
       JOURNEYMAN: ["Leather Vest", "Leather Belt", "Leather Armor", "Leather Bracers"]
       CRAFTSMAN: ["Leather Greaves", "Quiver", "Wolf Leather (processing)", "Bear Leather (processing)", "Wolf Leather Armor", "Wolf Leather Hood", "Bear Hide Cuirass", "Ranger's Quiver"]
-    recipe_count: 15  # 3 processing + 4 apprentice + 4 journeyman + 4 craftsman
-    notes: "Two-step pipeline: HUNTER pelts → TANNER cures into leather → TANNER crafts into goods. Cured Leather is shared intermediate (TAILOR will buy). Leather armor offers less defense than metal but grants DEX bonuses — player choice."
+    recipe_count: 16  # 4 processing + 4 apprentice + 4 journeyman + 4 craftsman
+    notes: "Two-step pipeline: HUNTER pelts → TANNER processes into leather → TANNER crafts into goods. Soft Leather (L1, 1 pelt) for weapon grips/padding; Cured Leather (L3, 2 pelts) for armor. Both are shared intermediates — BLACKSMITH/STABLE_MASTER buy Soft Leather, TAILOR buys Cured Leather."
 
   # LEATHERWORKER profession LIVE — 13 recipes (2026-02-19)
   LEATHERWORKER:

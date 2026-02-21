@@ -108,6 +108,23 @@ async function main() {
 
       // -- Intermediate materials (TANNER processing) --
       {
+        id: 'material-soft_leather',
+        name: 'Soft Leather',
+        type: 'MATERIAL',
+        rarity: 'COMMON',
+        description: 'Supple tanned leather, ideal for weapon grips, satchels, and light padding.',
+        stats: {},
+        durability: 100,
+        professionRequired: 'TANNER',
+        levelRequired: 1,
+        isFood: false,
+        foodBuff: null,
+        isPerishable: false,
+        shelfLifeDays: null,
+        isBeverage: false,
+        baseValue: 12,
+      },
+      {
         id: 'material-cured_leather',
         name: 'Cured Leather',
         type: 'MATERIAL',
@@ -428,6 +445,8 @@ async function main() {
       xpReward: number;
       craftTime: number;
     }> = [
+      // Processing — Apprentice (L1)
+      { recipeId: 'tan-soft-leather', name: 'Tan Soft Leather', levelRequired: 1, tier: 1, inputs: [{ itemName: 'Animal Pelts', quantity: 1 }], outputName: 'Soft Leather', xpReward: 8, craftTime: 15 },
       // Processing — Apprentice (L3)
       { recipeId: 'tan-cure-leather', name: 'Cure Leather', levelRequired: 3, tier: 1, inputs: [{ itemName: 'Animal Pelts', quantity: 2 }], outputName: 'Cured Leather', xpReward: 10, craftTime: 20 },
       // Consumable — Apprentice (L3)
