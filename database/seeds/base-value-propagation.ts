@@ -595,6 +595,32 @@ const BASE_VALUES: Record<string, number> = {
   'Iron Chain Shirt': 28,
   'Wooden Beams': 17,
   'Leather Waterskin': 35,
+
+  // ── CRUDE STARTER TOOLS (from tools.ts) ──
+  'Crude Pickaxe': 2,
+  'Crude Axe': 2,
+  'Crude Hoe': 2,
+  'Crude Fishing Rod': 2,
+  'Crude Sickle': 2,
+  'Crude Skinning Knife': 2,
+
+  // ── HOE TIERS (from tools.ts, not in original map) ──
+  'Copper Hoe': 12,
+  'Mithril Hoe': 350,
+  'Adamantine Hoe': 900,
+
+  // ── MANA POTIONS (ALCHEMIST consumable recipes) ──
+  'Minor Mana Potion': 19,
+  'Mana Potion': 27,
+  'Greater Mana Potion': 85,
+  'Supreme Mana Potion': 200,
+
+  // ── COOK: Additional items ──
+  'Baked Apples': 6,
+
+  // ── TAILOR/TANNER processing intermediates ──
+  'Leather': 12,
+  'Linen Cloth': 10,
 };
 
 export async function seedBaseValuePropagation(prisma: PrismaClient): Promise<void> {
