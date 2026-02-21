@@ -631,13 +631,20 @@ export async function seedBaseValuePropagation(prisma: PrismaClient): Promise<vo
     }
   }
 
-  // Count remaining zeros
-  const remaining = await prisma.itemTemplate.count({
+  // Count remaining zeros and log their names
+  const remainingItems = await prisma.itemTemplate.findMany({
     where: { baseValue: 0 },
+    select: { id: true, name: true, type: true },
+    orderBy: { name: 'asc' },
   });
 
   console.log(`  Updated ${updated} item template(s) with base values`);
   console.log(`  Skipped ${skipped} (already had non-zero values)`);
   console.log(`  Not found ${notFound} (not yet in DB)`);
-  console.log(`  Remaining zero-value items: ${remaining}`);
+  console.log(`  Remaining zero-value items: ${remainingItems.length}`);
+  if (remainingItems.length > 0 && remainingItems.length <= 50) {
+    for (const item of remainingItems) {
+      console.log(`    - ${item.name} (${item.type}, id: ${item.id})`);
+    }
+  }
 }
