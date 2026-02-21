@@ -8,7 +8,7 @@
 import { PrismaClient, NpcRole } from '@prisma/client';
 
 // Quest data imported from shared (already compiled)
-import { TUTORIAL_QUESTS } from '../../shared/src/data/quests';
+import { TUTORIAL_QUESTS } from '@shared/data/quests';
 
 export async function seedQuests(prisma: PrismaClient): Promise<void> {
   console.log('--- Seeding Quests (clean slate) ---');

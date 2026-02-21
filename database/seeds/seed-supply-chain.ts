@@ -9,9 +9,9 @@
  *   DATABASE_URL=... npx tsx database/seeds/seed-supply-chain.ts
  */
 import { PrismaClient, ProfessionType, ProfessionTier } from '@prisma/client';
-import { TAILOR_RECIPES } from '../../shared/src/data/recipes/tailor';
-import { COOK_RECIPES } from '../../shared/src/data/recipes/cook';
-import { BREWER_CONSUMABLES } from '../../shared/src/data/recipes/consumables';
+import { TAILOR_RECIPES } from '@shared/data/recipes/tailor';
+import { COOK_RECIPES } from '@shared/data/recipes/cook';
+import { BREWER_CONSUMABLES } from '@shared/data/recipes/consumables';
 
 function levelToTier(level: number): ProfessionTier {
   if (level >= 75) return 'MASTER';
