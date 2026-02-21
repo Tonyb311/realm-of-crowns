@@ -10,6 +10,7 @@
 //     P4: Gather (profession-aware, need-based)
 //     P5: Buy from market (need-based for crafting)
 //     P5.5: Accept job from board (one-shot, uses daily action)
+//     P6: Combat travel (dangerous routes for monster-drop items)
 //     P7: Travel (purposeful, with cooldown)
 //     P8: Gather fallback
 //     P9: Idle (should be rare)
@@ -38,6 +39,13 @@ const GATHERING_PROF_SET = new Set([
 const GATHERING_PROFESSIONS = ['MINER', 'FARMER', 'LUMBERJACK', 'HERBALIST', 'FISHERMAN', 'HUNTER', 'RANCHER'];
 
 const TRAVEL_COOLDOWN_TICKS = 3;
+const COMBAT_TRAVEL_COOLDOWN_TICKS = 1;
+
+// Items obtainable ONLY (or primarily) from monster drops.
+// Maps item name → biomes where monsters drop it + minimum monster level.
+const MONSTER_DROP_ITEMS: Record<string, { biomes: string[]; minLevel: number }> = {
+  'Arcane Reagents': { biomes: ['SWAMP', 'VOLCANIC', 'UNDERGROUND', 'FOREST'], minLevel: 3 },
+};
 
 // Recipes whose outputs are intermediates needed by higher-tier recipes
 const INTERMEDIATE_RECIPE_IDS = new Set([
@@ -769,6 +777,27 @@ export async function decideBotAction(
       logger, tick,
     );
     if (r.success) return r;
+  }
+
+  // ── P6: Combat Travel (dangerous routes for monster-drop items) ─────
+  // Triggers when bot needs items obtainable from monster drops, can't buy
+  // them (P5 failed), and is high enough level. Uses reduced cooldown.
+  if (config.enabledSystems.travel && hasCrafting && (currentTick - bot.lastTravelTick) >= COMBAT_TRAVEL_COOLDOWN_TICKS) {
+    const missing = getMissingIngredients(invMap, recipes);
+    for (const itemName of missing) {
+      const dropInfo = MONSTER_DROP_ITEMS[itemName];
+      if (!dropInfo) continue;
+      if (bot.level < dropInfo.minLevel) continue;
+      const r = await timedDailyAction(
+        () => actions.travelForCombatDrops(bot, dropInfo.biomes, `farming ${itemName}`),
+        bot, 'combat_travel', 6, `Need ${itemName} — traveling dangerous routes for monster drops`,
+        logger, tick,
+      );
+      if (r.success) {
+        bot.lastTravelTick = currentTick;
+        return r;
+      }
+    }
   }
 
   // ── P7: Travel (purposeful, with cooldown) ─────────────────────────

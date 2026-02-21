@@ -509,117 +509,12 @@ export async function listOnMarket(bot: BotState): Promise<ActionResult> {
 }
 
 // ---------------------------------------------------------------------------
-// 10. startCombat
+// 10. startCombat — REMOVED (dead code)
 // ---------------------------------------------------------------------------
-
-export async function startCombat(bot: BotState): Promise<ActionResult> {
-  const endpoint = '/combat/pve/start';
-  try {
-    const startRes = await post(endpoint, bot.token, {
-      characterId: bot.characterId,
-    });
-    if (startRes.status < 200 || startRes.status >= 300) {
-      return {
-        success: false,
-        detail: startRes.data?.error || `Failed to start combat: HTTP ${startRes.status}`,
-        endpoint,
-        httpStatus: startRes.status,
-        requestBody: { characterId: bot.characterId },
-        responseBody: startRes.data,
-      };
-    }
-
-    const sessionId =
-      startRes.data?.sessionId ||
-      startRes.data?.session?.id ||
-      startRes.data?.id;
-
-    if (!sessionId) {
-      return {
-        success: false,
-        detail: 'No sessionId returned from combat start',
-        endpoint,
-        httpStatus: startRes.status,
-        requestBody: { characterId: bot.characterId },
-        responseBody: startRes.data,
-      };
-    }
-
-    let outcome = 'UNKNOWN';
-    let playerSurvived = false;
-    const actionEndpoint = '/combat/pve/action';
-    const MAX_TURNS = 20;
-
-    for (let turn = 0; turn < MAX_TURNS; turn++) {
-      const actionRes = await post(actionEndpoint, bot.token, {
-        sessionId,
-        action: { type: 'attack' },
-      });
-
-      if (actionRes.status < 200 || actionRes.status >= 300) {
-        outcome = 'ERROR';
-        break;
-      }
-
-      const status =
-        actionRes.data?.status ||
-        actionRes.data?.combat?.status ||
-        actionRes.data?.state?.status;
-
-      if (
-        status === 'VICTORY' ||
-        status === 'DEFEAT' ||
-        status === 'FLED' ||
-        status === 'COMPLETED'
-      ) {
-        outcome = status;
-
-        // Check combatant isAlive to determine if player actually won
-        const combatants: any[] =
-          actionRes.data?.combat?.combatants ||
-          actionRes.data?.combatants ||
-          [];
-        const playerCombatant = combatants.find(
-          (c: any) => c.entityType !== 'monster',
-        );
-        playerSurvived = playerCombatant?.isAlive === true;
-        break;
-      }
-    }
-
-    // Determine true win vs loss based on player survival
-    const isWin = playerSurvived && (outcome === 'VICTORY' || outcome === 'COMPLETED');
-    const isFled = outcome === 'FLED';
-
-    let detail: string;
-    let resultEndpoint: string;
-
-    if (isWin) {
-      detail = `Combat victory (${outcome})`;
-      resultEndpoint = '/combat/pve/win';
-    } else if (isFled) {
-      detail = `Combat fled`;
-      resultEndpoint = '/combat/pve/loss';
-    } else if (outcome === 'COMPLETED' || outcome === 'DEFEAT') {
-      detail = `Combat defeat (died)`;
-      resultEndpoint = '/combat/pve/loss';
-    } else {
-      detail = `Combat ended: ${outcome}`;
-      resultEndpoint = '/combat/pve/loss';
-    }
-
-    return {
-      success: isWin,
-      detail,
-      endpoint: resultEndpoint,
-      httpStatus: startRes.status,
-      requestBody: { characterId: bot.characterId },
-      responseBody: startRes.data,
-    };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
-  }
-}
+// The /combat/pve/start endpoint is DISABLED (returns 400). Combat ONLY
+// occurs as road encounters during travel (see road-encounter.ts).
+// Bots acquire combat loot passively via the travel → tick → encounter pipeline.
+// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // 11. acceptQuest
@@ -2175,6 +2070,89 @@ export async function travelHome(bot: BotState, reason: string): Promise<ActionR
       return {
         success: true,
         detail: `Traveling to ${destName} (${reason})`,
+        endpoint,
+        httpStatus: res.status,
+        requestBody: { routeId },
+        responseBody: res.data,
+      };
+    }
+    return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { routeId }, responseBody: res.data };
+  } catch (err: any) {
+    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 37b. travelForCombatDrops — Travel through dangerous routes for monster loot
+// ---------------------------------------------------------------------------
+
+/** Terrain keywords that map to each biome type (mirrors road-encounter.ts TERRAIN_TO_BIOME) */
+const BIOME_TERRAIN_KEYWORDS: Record<string, string[]> = {
+  SWAMP: ['swamp', 'marsh', 'bog', 'mist', 'blighted', 'cursed'],
+  VOLCANIC: ['volcanic', 'ember', 'lava', 'scorched'],
+  UNDERGROUND: ['underdark', 'subterranean', 'underground'],
+  FOREST: ['forest', 'wood', 'grove', 'glade', 'silverwood'],
+  FEYWILD: ['fey', 'feywild', 'glimmer', 'moonpetal'],
+  MOUNTAIN: ['mountain', 'peak', 'mine', 'cavern', 'tunnel'],
+  BADLANDS: ['badland', 'waste', 'war', 'lawless', 'frontier', 'hostile'],
+};
+
+function routeMatchesBiomes(terrain: string, targetBiomes: string[]): boolean {
+  const t = terrain.toLowerCase();
+  for (const biome of targetBiomes) {
+    const keywords = BIOME_TERRAIN_KEYWORDS[biome];
+    if (keywords && keywords.some(kw => t.includes(kw))) return true;
+  }
+  return false;
+}
+
+export async function travelForCombatDrops(
+  bot: BotState,
+  targetBiomes: string[],
+  reason: string,
+): Promise<ActionResult> {
+  const endpoint = '/travel/start';
+  try {
+    const routesRes = await get('/travel/routes', bot.token);
+    if (routesRes.status < 200 || routesRes.status >= 300) {
+      return { success: false, detail: routesRes.data?.error || `Failed to fetch routes`, endpoint, httpStatus: routesRes.status, requestBody: {}, responseBody: routesRes.data };
+    }
+
+    const routes: any[] = routesRes.data?.routes || routesRes.data || [];
+    if (routes.length === 0) {
+      return { success: false, detail: 'No travel routes available', endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: 'No routes' } };
+    }
+
+    // Score each route: biome match (10pts) + danger level (1-7pts)
+    let bestRoute: any = null;
+    let bestScore = -1;
+    for (const route of routes) {
+      const terrain: string = route.terrain || '';
+      const danger: number = route.dangerLevel || 1;
+      let score = danger; // base: prefer dangerous routes
+      if (routeMatchesBiomes(terrain, targetBiomes)) {
+        score += 10; // strong preference for biome match
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestRoute = route;
+      }
+    }
+
+    if (!bestRoute) {
+      bestRoute = routes[Math.floor(Math.random() * routes.length)];
+    }
+
+    const routeId = bestRoute.id || bestRoute.routeId;
+    const destName = bestRoute.destination?.name || bestRoute.name || routeId;
+    const terrain = bestRoute.terrain || 'unknown';
+
+    const res = await post(endpoint, bot.token, { routeId });
+    if (res.status >= 200 && res.status < 300) {
+      bot.pendingTravel = true;
+      return {
+        success: true,
+        detail: `Combat travel to ${destName} via ${terrain} terrain (${reason})`,
         endpoint,
         httpStatus: res.status,
         requestBody: { routeId },
