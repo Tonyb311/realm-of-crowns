@@ -2363,13 +2363,13 @@ export async function listSurplusOnMarket(bot: BotState, keepItemNames?: Set<str
       }
     }
 
-    // List surplus: items with quantity > 2, sell the excess (keep 2 for personal use)
+    // List surplus: items with quantity > 1, sell the excess (keep 1 for personal use)
     let listed = 0;
     for (const [, group] of grouped) {
       if (listed >= 3) break; // max 3 listings per tick
-      if (group.totalQty <= 2) continue; // keep 2 for personal use
+      if (group.totalQty <= 1) continue; // keep 1 for personal use
 
-      const surplusCount = group.totalQty - 2;
+      const surplusCount = group.totalQty - 1;
       const item = group.items[0]; // pick first stack to get itemId/baseValue
       const itemId = item.id || item.itemId;
       const baseValue = item.baseValue || item.value || 10;
@@ -2381,7 +2381,7 @@ export async function listSurplusOnMarket(bot: BotState, keepItemNames?: Set<str
         if (res.status >= 200 && res.status < 300) {
           results.push({
             success: true,
-            detail: `Listed ${listQty}x ${group.name} at ${price}g each (surplus: had ${group.totalQty}, keeping 2)`,
+            detail: `Listed ${listQty}x ${group.name} at ${price}g each (surplus: had ${group.totalQty}, keeping 1)`,
             endpoint,
             httpStatus: res.status,
             requestBody: { itemId, price, quantity: listQty },

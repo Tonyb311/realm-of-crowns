@@ -177,6 +177,17 @@ const PROF_TO_SPOT_TYPES: Record<string, string[]> = {
   RANCHER: [],  // Asset-based: buildings at home, no public gathering spots
 };
 
+// Crafting professions that gather their own raw materials
+// (recipe-independent fallback — ensures gathering even when recipe API returns empty)
+const CRAFTING_PROF_GATHER_SPOTS: Record<string, string[]> = {
+  SMELTER: ['coal_mine', 'mine'],
+  WOODWORKER: ['softwood_grove', 'hardwood_grove', 'forest'],
+  TANNER: ['hunting_ground'],
+  ALCHEMIST: ['herb'],
+  COOK: ['orchard', 'fishing', 'herb'],
+  BREWER: ['orchard'],
+};
+
 // ── Town Cache ────────────────────────────────────────────────────────────
 
 let _townCache: Map<string, { name: string; spotType: string }> | null = null;
@@ -347,6 +358,21 @@ async function determineTravelReason(
     }
   }
 
+  // a2. Crafting prof with raw-material spots: travel if not at one
+  if (hasCraftingProf) {
+    const craftGatherSpots: string[] = [];
+    for (const p of profs) {
+      const spots = CRAFTING_PROF_GATHER_SPOTS[p];
+      if (spots) craftGatherSpots.push(...spots);
+    }
+    if (craftGatherSpots.length > 0 && (!currentSpotType || !craftGatherSpots.includes(currentSpotType))) {
+      return {
+        reason: `${profs.find(p => CRAFTING_PROFESSIONS.has(p))} seeking raw material spot`,
+        execute: () => actions.travelToResourceTown(bot, craftGatherSpots, 'seeking raw material spot'),
+      };
+    }
+  }
+
   // b. RANCHER is asset-based — always go home to manage buildings, never seek public spots
   const isRancher = profs.includes('RANCHER');
   if (isRancher && bot.homeTownId && bot.currentTownId !== bot.homeTownId) {
@@ -359,7 +385,7 @@ async function determineTravelReason(
   // c. Gathering prof with no matching spot in current town (skip RANCHER — no public spots)
   if (!isRancher) {
     const profSpots = getProfSpotTypes(profs, bot.professionLevels || {});
-    if (profSpots.length > 0 && currentSpotType && !profSpots.includes(currentSpotType)) {
+    if (profSpots.length > 0 && (!currentSpotType || !profSpots.includes(currentSpotType))) {
       return {
         reason: `No ${profs.find(p => GATHERING_PROF_SET.has(p)) || 'gathering'} spot here, seeking matching town`,
         execute: () => actions.travelToResourceTown(bot, profSpots, 'seeking matching gathering spot'),
@@ -723,7 +749,13 @@ export async function decideBotAction(
         const profSpots = getProfSpotTypes(profs, bot.professionLevels || {});
         if (currentSpotType && profSpots.includes(currentSpotType)) {
           shouldGather = true;
-          gatherReason = `Gathering at ${currentSpotType} spot (profession bonus)`;
+          const matchingProf = profs.find(p => {
+            const level = (bot.professionLevels || {})[p] || 1;
+            const unlocked = getUnlockedSpotTypes(p, level);
+            const spots = unlocked.length > 0 ? unlocked : (PROF_TO_SPOT_TYPES[p] || []);
+            return spots.includes(currentSpotType!);
+          }) || 'gathering';
+          gatherReason = `${matchingProf} gathering at ${currentSpotType} spot (profession bonus)`;
         }
       }
     }
@@ -736,6 +768,18 @@ export async function decideBotAction(
         const craftProf = profs.find(p => CRAFTING_PROFESSIONS.has(p)) || 'crafting';
         shouldGather = true;
         gatherReason = `Gathering ${spotItem} (needed for ${craftProf.toLowerCase()})`;
+      }
+    }
+
+    // Crafting prof at a relevant raw-material spot: gather even if recipe list is empty
+    if (!shouldGather && hasCrafting && currentSpotType) {
+      for (const p of profs) {
+        const spots = CRAFTING_PROF_GATHER_SPOTS[p];
+        if (spots && spots.includes(currentSpotType)) {
+          shouldGather = true;
+          gatherReason = `${p} gathering at ${currentSpotType} (raw material for crafting)`;
+          break;
+        }
       }
     }
 
