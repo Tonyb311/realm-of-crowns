@@ -216,21 +216,37 @@ export async function seedBots(config: SeedConfig): Promise<BotState[]> {
   }
 
   // Pre-compute profession assignments ensuring ALL professions are represented.
-  // Algorithm: 1 of each profession first (22 slots), then fill remaining with
-  // weighted duplicates favoring gathering professions that feed the most chains.
-  // Only L3+ bots get professions, so build assignment array for those indices only.
+  // Always runs (not gated by config) to guarantee economy role balance.
+  // Algorithm: guaranteed minimums for processing profs first, then 1 of each
+  // remaining profession, then fill extras with weighted random.
   const profAssignments = new Map<number, string>(); // 1-based bot index → profession
-  if (config.professionDistribution === 'even' || config.startingLevel === 'diverse') {
+  {
+    // All seeded bots get professions (inserted directly to DB, bypasses API level check)
     const eligibleIndices: number[] = [];
     for (let i = 1; i <= config.count; i++) {
-      const level = diverseLevels.length > 0 ? diverseLevels[i - 1] : 3;
-      if (level >= 3 || config.professionDistribution === 'even') {
-        eligibleIndices.push(i);
-      }
+      eligibleIndices.push(i);
     }
 
-    // Pass 1: Guarantee exactly 1 of each profession (22 slots)
-    const pass1 = [...ALL_SEED_PROFESSIONS]; // 22 professions
+    // Guaranteed minimum counts for processing/finisher professions.
+    // These professions are NEVER learned at runtime, so seeds must provide them.
+    const GUARANTEED_MINIMUMS: [string, number][] = [
+      ['SMELTER', 3],        // Iron Ore + Coal → Iron Ingots (critical bottleneck)
+      ['WOODWORKER', 3],     // Softwood/Hardwood → Planks/Beams (critical bottleneck)
+      ['LEATHERWORKER', 2],  // Cured Leather → Leather gear
+      ['ENCHANTER', 1],      // End-of-chain, needs many intermediates
+      ['FLETCHER', 1],       // Bow Staves + Leather → Ranged weapons
+      ['MASON', 1],          // Stone + Beams → Buildings
+    ];
+    const guaranteedProfs = new Set(GUARANTEED_MINIMUMS.map(([p]) => p));
+
+    // Pass 1: Guaranteed minimums + 1 of each remaining profession
+    const pass1: string[] = [];
+    for (const [prof, count] of GUARANTEED_MINIMUMS) {
+      for (let n = 0; n < count; n++) pass1.push(prof);
+    }
+    for (const prof of ALL_SEED_PROFESSIONS) {
+      if (!guaranteedProfs.has(prof)) pass1.push(prof);
+    }
 
     // Pass 2: Fill remaining slots with weighted distribution
     // Gathering professions that feed the most crafting chains get more weight
@@ -444,9 +460,11 @@ async function createSingleBot(
   // 12e. Persist starting profession to DB (so refreshBotState picks it up)
   // In diverse mode, scale profession level with character level so higher-level
   // bots can immediately use tier-gated features (e.g., FARMER L3+ buys T1 fields)
+  // Minimum level 3 so bots can immediately craft apprentice-tier recipes.
+  // Level 1 creates a catch-22: bots can't craft (recipes need L3+) but need crafting for XP.
   const profLevel = config.startingLevel === 'diverse'
-    ? Math.max(1, Math.min(startLevel, 10))
-    : 1;
+    ? Math.max(3, Math.min(startLevel, 10))
+    : 3;
   const profXp = profLevel > 1 ? getCumulativeXpForLevel(profLevel - 1) : 0;
   const profTier = getTierForLevel(profLevel);
 
