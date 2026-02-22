@@ -128,7 +128,10 @@ export async function learnProfession(
       if (!bot.professions.includes(professionType)) {
         bot.professions.push(professionType);
       }
-      bot.professionLevels[professionType.toUpperCase()] = 1;
+      // Start at level 3 (minimum for apprentice-tier recipes).
+      // Level 1 creates a catch-22: bot can't craft (recipes need L3+) but needs
+      // crafting to gain profession XP. Level 3 lets bots craft immediately.
+      bot.professionLevels[professionType.toUpperCase()] = 3;
       return { success: true, detail: `Learned profession ${professionType}`, endpoint, httpStatus: res.status, requestBody: { professionType }, responseBody: res.data };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { professionType }, responseBody: res.data };

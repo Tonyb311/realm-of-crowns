@@ -182,7 +182,8 @@ const PROF_TO_SPOT_TYPES: Record<string, string[]> = {
 const CRAFTING_PROF_GATHER_SPOTS: Record<string, string[]> = {
   SMELTER: ['coal_mine', 'mine'],
   WOODWORKER: ['softwood_grove', 'hardwood_grove', 'forest'],
-  TANNER: ['hunting_ground'],
+  // TANNER removed — hunting_ground produces Wild Game Meat, not Animal Pelts.
+  // TANNER needs Animal Pelts (from HUNTER L3+ tiered gathering) via market.
   ALCHEMIST: ['herb'],
   COOK: ['orchard', 'fishing', 'herb'],
   BREWER: ['orchard'],
@@ -359,7 +360,11 @@ async function determineTravelReason(
   }
 
   // a2. Crafting prof with raw-material spots: travel if not at one
-  if (hasCraftingProf) {
+  // Only fire when recipe list is empty (API failure fallback). When recipes exist,
+  // case (a) handles ingredient-based travel. Without this guard, case (a2) sends
+  // bots BACK to raw-material spots even when they just arrived at a spot needed
+  // for a different ingredient (e.g., COOK at forest for Wood Logs → sent back to orchard).
+  if (hasCraftingProf && recipes.length === 0) {
     const craftGatherSpots: string[] = [];
     for (const p of profs) {
       const spots = CRAFTING_PROF_GATHER_SPOTS[p];
@@ -771,8 +776,11 @@ export async function decideBotAction(
       }
     }
 
-    // Crafting prof at a relevant raw-material spot: gather even if recipe list is empty
-    if (!shouldGather && hasCrafting && currentSpotType) {
+    // Crafting prof at a relevant raw-material spot: gather ONLY when recipe list is empty
+    // (API failure fallback). When recipes exist, the second P4 check above handles
+    // needed-ingredient gathering. Without this guard, bots get trapped gathering
+    // one resource forever and never travel for other missing ingredients.
+    if (!shouldGather && hasCrafting && currentSpotType && recipes.length === 0) {
       for (const p of profs) {
         const spots = CRAFTING_PROF_GATHER_SPOTS[p];
         if (spots && spots.includes(currentSpotType)) {
