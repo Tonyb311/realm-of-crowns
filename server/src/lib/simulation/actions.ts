@@ -525,20 +525,8 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
       return { success: false, detail: 'Empty inventory', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
     }
 
-    // 2. Build set of all item names this bot needs for its recipes
-    const recipesRes = await get('/crafting/recipes', bot.token);
-    const recipes: any[] = (recipesRes.status >= 200 && recipesRes.status < 300)
-      ? (recipesRes.data?.recipes || recipesRes.data || [])
-      : [];
-
-    const neededItems = new Set<string>();
-    for (const r of recipes) {
-      const inputs = r.ingredients || r.inputs || [];
-      for (const inp of inputs) {
-        const name = inp.itemName || inp.name;
-        if (name) neededItems.add(name);
-      }
-    }
+    // 2. Use cached neededItemNames (built at seed time from bot's own profession recipes)
+    const neededItems = bot.neededItemNames;
 
     // 3. Items to always keep (food, gold-related, basic staples)
     const KEEP_ITEMS = new Set([

@@ -9,6 +9,11 @@ import { Race, DragonBloodline, BeastClan, ElementalType } from '@prisma/client'
 import { getRace } from '@shared/data/races';
 import { getTierForLevel, getCumulativeXpForLevel } from '@shared/data/professions/xp-curve';
 import { BotState, BotProfile, SeedConfig, DEFAULT_CONFIG, BOT_PROFILES } from './types';
+import {
+  getRecipesByProfession,
+  getFinishedGoodsByProfession,
+  getConsumableRecipesByProfession,
+} from '@shared/data/recipes';
 import { generateCharacterName, resetNameCounter } from './names';
 import { logger } from '../../lib/logger';
 import { giveStartingInventory } from '../../lib/starting-inventory';
@@ -122,6 +127,32 @@ const CLASS_PRIMARY_STAT: Record<string, string> = {
   bard: 'cha',
   psion: 'int',
 };
+
+// ---------------------------------------------------------------------------
+// buildNeededItemNames — extract all recipe input names for a set of professions
+// ---------------------------------------------------------------------------
+
+function buildNeededItemNames(professions: string[]): Set<string> {
+  const names = new Set<string>();
+  for (const prof of professions) {
+    const upper = prof.toUpperCase() as any;
+    // Processing + crafting recipes (RecipeDefinition)
+    for (const r of getRecipesByProfession(upper)) {
+      for (const inp of r.inputs) names.add(inp.itemName);
+    }
+    // Finished goods recipes (FinishedGoodsRecipe — weapons, armor, blacksmith, woodworker)
+    for (const r of getFinishedGoodsByProfession(upper)) {
+      for (const inp of r.inputs) names.add(inp.itemName);
+    }
+    // Consumable recipes (ConsumableRecipe — potions, food buffs, scrolls)
+    try {
+      for (const r of getConsumableRecipesByProfession(upper as any)) {
+        for (const inp of r.inputs) names.add(inp.itemName);
+      }
+    } catch { /* profession not a consumable profession — skip */ }
+  }
+  return names;
+}
 
 // ---------------------------------------------------------------------------
 // seedBots
@@ -476,6 +507,7 @@ async function createSingleBot(
     lastTravelTick: 0,
     p6ConsecutiveTrips: 0,
     p6BackoffUntilTick: 0,
+    neededItemNames: buildNeededItemNames(startingProfession ? [startingProfession] : []),
   };
 }
 

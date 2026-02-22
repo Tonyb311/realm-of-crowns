@@ -45,6 +45,7 @@ export interface BotState {
   lastTravelTick: number;       // Last tick when bot traveled (for cooldown)
   p6ConsecutiveTrips: number;   // Consecutive ticks bot chose P6 combat travel
   p6BackoffUntilTick: number;   // Tick until which P6 is forced-skipped (backoff)
+  neededItemNames: Set<string>;  // Cached recipe input names for bot's own professions (built at seed time)
 }
 
 export interface SimulationConfig {
