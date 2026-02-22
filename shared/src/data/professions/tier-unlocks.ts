@@ -103,16 +103,15 @@ export const FARMER_CROP_UNLOCKS: ProfessionTierUnlocks = {
 export const MINER_ORE_UNLOCKS: ProfessionTierUnlocks = {
   APPRENTICE: {
     tier: 1,
-    crops: ['Iron Ore Chunks', 'Stone Blocks', 'Clay'],
-    spotTypes: ['mine', 'quarry', 'clay'],
-    description: 'Basic ore and stone extraction',
+    crops: ['Iron Ore Chunks', 'Stone Blocks', 'Clay', 'Coal'],
+    spotTypes: ['mine', 'quarry', 'clay', 'coal_mine'],
+    description: 'Basic ore, stone, and coal extraction from public mines',
   },
   JOURNEYMAN: {
     tier: 2,
     crops: ['Coal'],
     spotTypes: ['coal_mine'],
-    description: 'Coal deposits — fuel for steel. Harvest from private coal mines (L5+).',
-    assetBased: true,
+    description: 'Coal deposits — improved yield at coal mines. Private coal mine assets (L5+).',
   },
   CRAFTSMAN: {
     tier: 3,
@@ -151,16 +150,15 @@ export const MINER_ORE_UNLOCKS: ProfessionTierUnlocks = {
 export const LUMBERJACK_WOOD_UNLOCKS: ProfessionTierUnlocks = {
   APPRENTICE: {
     tier: 1,
-    crops: ['Wood Logs'],
-    spotTypes: ['forest'],
-    description: 'Common timber harvesting',
+    crops: ['Wood Logs', 'Softwood'],
+    spotTypes: ['forest', 'softwood_grove'],
+    description: 'Common timber and softwood harvesting from public groves',
   },
   JOURNEYMAN: {
     tier: 2,
     crops: ['Hardwood'],
     spotTypes: ['hardwood_grove'],
-    description: 'Dense hardwood from old-growth trees. Harvest from private groves (L7+).',
-    assetBased: true,
+    description: 'Dense hardwood from old-growth trees. Public groves and private assets (L5+).',
   },
   CRAFTSMAN: {
     tier: 3,

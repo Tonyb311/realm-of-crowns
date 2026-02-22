@@ -277,7 +277,18 @@ export const SILVER_ORE: GatheringItem = {
   icon: '\uD83E\uDEA8',
 };
 
-// --- LUMBERJACK T2 Private Asset (Hardwood) ---
+// --- LUMBERJACK T2 Private Asset (Hardwood) + Public Softwood ---
+
+export const SOFTWOOD: GatheringItem = {
+  templateName: 'Softwood',
+  type: 'MATERIAL',
+  description: 'Light, fast-growing timber from pine and fir. Easy to work and ideal for planks and parchment.',
+  isFood: false,
+  shelfLifeDays: null,
+  foodBuff: null,
+  baseValue: 3,
+  icon: '\uD83E\uDEB5',
+};
 
 export const HARDWOOD: GatheringItem = {
   templateName: 'Hardwood',
@@ -396,7 +407,8 @@ export const RESOURCE_MAP: Record<string, { item: GatheringItem; icon: string }>
   // MINER T2/T3 private assets
   coal_mine:       { item: COAL,            icon: '\u26AB' },
   silver_mine:     { item: SILVER_ORE,      icon: '\uD83E\uDEA8' },
-  // LUMBERJACK T2 private asset
+  // LUMBERJACK resources (public spots + private assets)
+  softwood_grove:  { item: SOFTWOOD,        icon: '\uD83E\uDEB5' },
   hardwood_grove:  { item: HARDWOOD,        icon: '\uD83E\uDEB5' },
   // RANCHER buildings (asset-based, not public spots)
   chicken_coop:    { item: EGGS,            icon: '\uD83D\uDC14' },
@@ -426,7 +438,8 @@ export const GATHER_SPOT_PROFESSION_MAP: Record<string, string> = {
   // MINER T2/T3 private assets
   coal_mine:       'MINER',
   silver_mine:     'MINER',
-  // LUMBERJACK T2 private asset
+  // LUMBERJACK resources (public spots + private assets)
+  softwood_grove:  'LUMBERJACK',
   hardwood_grove:  'LUMBERJACK',
   // RANCHER buildings
   chicken_coop:    'RANCHER',
@@ -527,10 +540,10 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
     'You gather lengths of silvery willow wood, each piece smooth and fragrant with the scent of water and starlight.',
   ),
   'Eldergrove': spot(
-    'The Elder Timber Hollow',
-    'The heart of Silverwood, where ancient trees shed massive branches naturally. The elves permit careful gathering of these gifts.',
-    'forest',
-    'You collect a bounty of elderwood logs from the forest floor, their grain so tight they ring like bells when struck.',
+    'The Elder Hardwood Hollow',
+    'The heart of Silverwood, where ancient hardwood trees shed massive branches naturally. The dense, slow-grown timber is prized by woodworkers.',
+    'hardwood_grove',
+    'You collect a bounty of dense elder hardwood from the forest floor, their grain so tight they ring like bells when struck.',
   ),
 
   // --------------------------------------------------------
@@ -543,10 +556,10 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
     'You descend into the Public Delving and hack at the glittering walls until your pack is heavy with raw ore.',
   ),
   'Deepvein': spot(
-    'The Fissure Mines',
-    'Deep natural fissures in the mountain expose rich iron deposits, their dark mouths breathing cold mineral air.',
-    'mine',
-    'You squeeze into the fissure and chip away at the exposed veins, the ring of metal on stone echoing endlessly.',
+    'The Fissure Coal Seams',
+    'Deep natural fissures in the mountain expose rich coal seams alongside veins of black ore, their dark mouths breathing warm mineral air.',
+    'coal_mine',
+    'You squeeze into the fissure and pry loose dense chunks of coal from the seam, the black dust coating your hands.',
   ),
   'Hammerfall': spot(
     'Hammerfall Stone Quarry',
@@ -589,10 +602,10 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
     'You pick apples from the roadside orchard while carts rattle past, the scent of blossoms mixing with dust.',
   ),
   'Bramblewood': spot(
-    'Bramblewood Coppice',
-    'A managed woodland where halflings harvest timber from fast-growing coppiced trees, always replanting what they take.',
-    'forest',
-    'You select a sturdy coppiced trunk and saw through it cleanly, adding another fine log to your growing pile.',
+    'Bramblewood Softwood Coppice',
+    'A managed woodland where halflings harvest softwood from fast-growing coppiced pines and firs, always replanting what they take.',
+    'softwood_grove',
+    'You select a sturdy coppiced pine and saw through it cleanly, the fresh resinous softwood light in your arms.',
   ),
   'Riverside': spot(
     'Riverside Lazy Bend',
@@ -657,10 +670,10 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
     'You gather steaming herbs from the vapour fields, their leaves warm to the touch and fragrant with mineral essence.',
   ),
   'Cinderkeep': spot(
-    'Cinderkeep Slag Mine',
-    'An old mine beneath the keep where veins of iron run through layers of volcanic slag and hardened brimstone.',
-    'mine',
-    'You chip through layers of sulphurous slag to reach the iron veins beneath, each strike releasing a plume of acrid dust.',
+    'Cinderkeep Coal Pits',
+    'Ancient coal deposits beneath the keep where layers of compressed peat and volcanic cinder have hardened into rich fuel over millennia.',
+    'coal_mine',
+    'You hack into the cinder-streaked walls and pry loose slabs of dense black coal, the acrid smell of brimstone lingering in the air.',
   ),
   'Whispering Docks': spot(
     'The Whispering Shallows',
@@ -911,10 +924,10 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
     'You gather spirit-touched herbs from the misty gardens, whispering thanks to the unseen caretakers among the roots.',
   ),
   'Rootholme': spot(
-    'Rootholme Ancient Coppice',
-    'A grove of impossibly old trees that the Firbolg harvest with reverent care, taking only what the forest offers willingly.',
-    'forest',
-    'You accept the forest\'s gift of fallen timber from the ancient coppice, each log warm as a living thing.',
+    'Rootholme Ancient Heartwood',
+    'A grove of impossibly old trees whose dense heartwood the Firbolg harvest with reverent care. The hardwood is warm to the touch and stronger than iron.',
+    'hardwood_grove',
+    'You accept the forest\'s gift of ancient hardwood from the heartwood grove, each piece warm as a living thing.',
   ),
 
   // --------------------------------------------------------

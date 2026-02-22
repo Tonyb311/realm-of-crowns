@@ -52,26 +52,26 @@ const MONSTER_DROP_ITEMS: Record<string, { biomes: string[]; minLevel: number }>
 // Recipes whose outputs are intermediates needed by higher-tier recipes
 const INTERMEDIATE_RECIPE_IDS = new Set([
   // SMELTER intermediates (ingots → consumed by BLACKSMITH, ARMORER, JEWELER, FLETCHER)
-  'smelt-copper', 'smelt-iron', 'smelt-steel', 'smelt-silver', 'smelt-gold',
-  'smelt-mithril', 'smelt-adamantine', 'smelt-ore-chunks', 'smelt-glass',
-  'forge-iron-fittings', 'forge-nails',
+  'recipe-smelt-copper', 'recipe-smelt-iron', 'recipe-smelt-steel', 'recipe-smelt-silver', 'recipe-smelt-gold',
+  'recipe-smelt-mithril', 'recipe-smelt-adamantine', 'recipe-smelt-ore-chunks', 'recipe-smelt-glass',
+  'recipe-forge-iron-fittings', 'recipe-forge-nails',
   // WOODWORKER intermediates (planks, handles, staves → consumed by FLETCHER, MASON, BLACKSMITH)
-  'saw-rough-planks', 'mill-softwood', 'mill-hardwood', 'mill-exotic',
-  'ww-carve-wooden-dowels', 'ww-shape-wooden-handle', 'ww-carve-bow-stave',
-  'ww-craft-wooden-frame', 'shape-beams',
+  'recipe-saw-rough-planks', 'recipe-mill-softwood', 'recipe-mill-hardwood', 'recipe-mill-exotic',
+  'recipe-ww-carve-wooden-dowels', 'recipe-ww-shape-wooden-handle', 'recipe-ww-carve-bow-stave',
+  'recipe-ww-craft-wooden-frame', 'recipe-shape-beams',
   // COOK intermediates
-  'cook-flour',        // Flour → Bread, Apple Pie, Berry Tart, Harvest Feast, Spiced Pastry
-  'cook-berry-jam',    // Berry Jam → Berry Tart, Fisherman's Banquet, Spiced Pastry
-  'cook-grilled-fish', // Grilled Fish → Fisherman's Banquet
-  'cook-bread-loaf',   // Bread Loaf (T2) → Harvest Feast, Fisherman's Banquet
+  'recipe-cook-flour',        // Flour → Bread, Apple Pie, Berry Tart, Harvest Feast, Spiced Pastry
+  'recipe-cook-berry-jam',    // Berry Jam → Berry Tart, Fisherman's Banquet, Spiced Pastry
+  'recipe-cook-grilled-fish', // Grilled Fish → Fisherman's Banquet
+  'recipe-cook-bread-loaf',   // Bread Loaf (T2) → Harvest Feast, Fisherman's Banquet
   // TANNER intermediates
-  'tan-cure-leather',  // Cured Leather → all TANNER finished goods
-  'tan-wolf-leather',  // Wolf Leather → Wolf Leather Armor, Wolf Leather Hood, Ranger's Quiver
-  'tan-bear-leather',  // Bear Leather → Bear Hide Cuirass, Ranger's Quiver
+  'recipe-tan-cure-leather',  // Cured Leather → all TANNER finished goods
+  'recipe-tan-wolf-leather',  // Wolf Leather → Wolf Leather Armor, Wolf Leather Hood, Ranger's Quiver
+  'recipe-tan-bear-leather',  // Bear Leather → Bear Hide Cuirass, Ranger's Quiver
   // TAILOR intermediates
-  'tai-weave-cloth',   // Woven Cloth → all TAILOR finished goods (Apprentice/Journeyman)
-  'tai-weave-fine-cloth', // Fine Cloth → TAILOR Craftsman finished goods
-  'tai-process-silk',  // Silk Fabric → TAILOR Craftsman finished goods
+  'recipe-tai-weave-cloth',   // Woven Cloth → all TAILOR finished goods (Apprentice/Journeyman)
+  'recipe-tai-weave-fine-cloth', // Fine Cloth → TAILOR Craftsman finished goods
+  'recipe-tai-process-silk',  // Silk Fabric → TAILOR Craftsman finished goods
 ]);
 
 // Gathering spot type → item name produced
@@ -86,6 +86,7 @@ const SPOT_TO_ITEM: Record<string, string> = {
   hunting_ground: 'Wild Game Meat',
   coal_mine: 'Coal',
   silver_mine: 'Silver Ore',
+  softwood_grove: 'Softwood',
   hardwood_grove: 'Hardwood',
 };
 
@@ -101,6 +102,7 @@ const ITEM_TO_SPOT_TYPE: Record<string, string> = {
   'Wild Game Meat': 'hunting_ground',
   'Coal': 'coal_mine',
   'Silver Ore': 'silver_mine',
+  'Softwood': 'softwood_grove',
   'Hardwood': 'hardwood_grove',
   'Medicinal Herbs': 'herb',
   'Glowcap Mushrooms': 'herb',
@@ -167,8 +169,8 @@ const ITEM_TO_SPOT_TYPE: Record<string, string> = {
 // Profession → spot types where they get bonus yield (fallback when tier-unlocks returns empty)
 const PROF_TO_SPOT_TYPES: Record<string, string[]> = {
   FARMER: ['orchard'],
-  MINER: ['mine', 'quarry', 'clay'],
-  LUMBERJACK: ['forest'],
+  MINER: ['mine', 'quarry', 'clay', 'coal_mine'],
+  LUMBERJACK: ['forest', 'softwood_grove', 'hardwood_grove'],
   HERBALIST: ['herb'],
   FISHERMAN: ['fishing'],
   HUNTER: ['hunting_ground'],
@@ -226,7 +228,7 @@ function getMissingIngredients(
     'Grain', 'Apples', 'Wild Berries', 'Wild Herbs', 'Vegetables', 'Raw Fish',
     'Wood Logs', 'Iron Ore Chunks', 'Stone Blocks', 'Clay', 'Salt', 'Spices',
     'Wild Game Meat', 'Common Herbs', 'Mushrooms', 'Common Fish',
-    'Coal', 'Silver Ore', 'Hardwood',
+    'Coal', 'Silver Ore', 'Softwood', 'Hardwood',
     'Medicinal Herbs', 'Glowcap Mushrooms',
     'River Trout', 'Lake Perch',
     'Animal Pelts', 'Wolf Pelts', 'Bear Hides',
