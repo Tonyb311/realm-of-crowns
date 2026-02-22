@@ -773,6 +773,11 @@ export async function decideBotAction(
         const craftProf = profs.find(p => CRAFTING_PROFESSIONS.has(p)) || 'crafting';
         shouldGather = true;
         gatherReason = `Gathering ${spotItem} (needed for ${craftProf.toLowerCase()})`;
+        // Diagnostic: log other missing ingredients so we can trace supply chain gaps
+        const otherMissing = missing.filter(m => m !== spotItem);
+        if (otherMissing.length > 0) {
+          console.log(`[SIM] ${bot.characterName} ${craftProf} gathering ${spotItem} at ${bot.currentTownId} — still needs: ${otherMissing.join(', ')} (will buy/travel next tick)`);
+        }
       }
     }
 

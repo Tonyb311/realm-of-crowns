@@ -506,10 +506,10 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
     'You chip away at the exposed iron seam, prying loose heavy chunks of raw ore that clang into your bucket.',
   ),
   'Whitefield': spot(
-    'Whitefield Chalk Hill Orchard',
-    'Rows of apple trees climb the chalk-white hillside, their fruit crisp and sweet from the mineral-rich soil.',
-    'orchard',
-    'You twist apples from the chalk hill trees, their skin flushed red against the pale earth below.',
+    'Whitefield Chalk Hill Coal Seams',
+    'Beneath the pale chalk hills, dark seams of coal run deep where ancient forests were buried and compressed over millennia.',
+    'coal_mine',
+    'You crack open the chalk hillside and pry loose dense chunks of coal from the dark seams below the white earth.',
   ),
 
   // --------------------------------------------------------
@@ -624,10 +624,10 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
     'You swing your pick into the blackened rock face and wrench free jagged blocks of volcanic stone.',
   ),
   'Bonepile': spot(
-    'Bonepile Ridge Quarry',
-    'A wind-scoured ridgeline where ancient lava flows hardened into layers of useful building stone, named for the fossils within.',
-    'quarry',
-    'You crack apart layers of hardened lava rock, each slab revealing the ghostly imprints of creatures long dead.',
+    'Bonepile Cinder Pits',
+    'Ancient lava flows left behind vast deposits of coal and cinder in the volcanic badlands, easy to dig from the scorched earth.',
+    'coal_mine',
+    'You dig through layers of volcanic ash and cinder, unearthing chunks of coal blackened by the fires of a long-dead eruption.',
   ),
   'Ironfist Hold': spot(
     'Ironfist Bloodstone Mine',
@@ -698,10 +698,10 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
     'You stalk game across the frozen tundra, your breath crystallizing as you bring down a snow hare in the drifts.',
   ),
   'Emberpeak': spot(
-    'Emberpeak Volcanic Seam',
-    'Where fire meets ice, a volcanic vent exposes rich iron deposits heated by the earth\'s own forge.',
-    'mine',
-    'You work the volcanic seam where ore glows faintly with geothermal heat, each chunk warm in your gloved hands.',
+    'Emberpeak Volcanic Coal Vents',
+    'Where fire meets ice, volcanic vents have baked ancient peat into rich coal deposits that smoulder faintly in the frozen air.',
+    'coal_mine',
+    'You pry smouldering coal from the volcanic vents, each chunk radiating warmth against the bitter arctic wind.',
   ),
   'Scalehaven': spot(
     'Scalehaven Ice Fishing Holes',
@@ -788,10 +788,10 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
     'You cast your line into the roaring fork beneath the bridge and wrestle a thick catfish to the bank.',
   ),
   'Proving Grounds': spot(
-    'Proving Grounds War-Stone Quarry',
-    'A quarry where aspiring warriors cut stone to build their own shelters, the labour itself considered part of their trials.',
-    'quarry',
-    'You cut stone from the war-quarry until your arms burn, earning both building material and the respect of onlookers.',
+    'Proving Grounds War-Coal Excavation',
+    'Old siege excavations exposed coal seams beneath the battlefield ruins, now mined to fuel the war forges of the frontier.',
+    'coal_mine',
+    'You dig coal from the trenches of old battlefields, each seam exposed by the siege works of wars long past.',
   ),
 
   // --------------------------------------------------------
@@ -892,10 +892,10 @@ export const TOWN_GATHERING_SPOTS: Record<string, GatheringSpotDef> = {
     'You swing your pick at dizzying altitude, the thin air burning in your lungs as sky-laced ore clatters into your pack.',
   ),
   'Windbreak': spot(
-    'Windbreak Cliff-Face Quarry',
-    'A quarry cut into sheer cliff faces battered by eternal winds, where only Goliath strength can work the stone.',
-    'quarry',
-    'You brace against the screaming wind and pry enormous stone blocks from the cliff face with raw, Goliath might.',
+    'Windbreak Cliff-Face Coal Seams',
+    'High mountain coal seams jut from the sheer cliff faces, exposed by millennia of howling wind stripping away the softer rock.',
+    'coal_mine',
+    'You brace against the screaming wind and hack coal from the exposed cliff-face seams with raw, Goliath might.',
   ),
 
   // --------------------------------------------------------
