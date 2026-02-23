@@ -1596,10 +1596,17 @@ async function processGatherSpotAction(
 
   // Create items in a transaction
   await prisma.$transaction(async (tx) => {
-    // Find or create item template
-    let itemTemplate = await tx.itemTemplate.findFirst({
-      where: { name: resolvedTemplateName },
+    // Find item template — prefer stable-ID pattern (matches recipe ingredient templateIds)
+    const stableId = `resource-${resolvedTemplateName.toLowerCase().replace(/\s+/g, '-')}`;
+    let itemTemplate = await tx.itemTemplate.findUnique({
+      where: { id: stableId },
     });
+    if (!itemTemplate) {
+      // Fallback: name-based lookup (for templates without stable IDs)
+      itemTemplate = await tx.itemTemplate.findFirst({
+        where: { name: resolvedTemplateName },
+      });
+    }
     if (!itemTemplate) {
       itemTemplate = await tx.itemTemplate.create({
         data: {

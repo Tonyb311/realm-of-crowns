@@ -719,6 +719,12 @@ export async function decideBotAction(
 
   // ── P3: Craft (highest-tier craftable recipe, intermediates preferred) ──
   if (hasCrafting && config.enabledSystems.crafting) {
+    // DIAG: SMELTER P3 diagnostic (first 5 ticks only)
+    if (profs.includes('SMELTER') && tick != null && tick <= 5) {
+      const craftable = recipes.filter(r => r.canCraft);
+      const invStr = [...invMap.entries()].filter(([,q]) => q > 0).map(([n,q]) => `${q}x${n}`).join(',');
+      console.log(`[DIAG] ${bot.characterName} SMELTER P3: profLevel=${(bot.professionLevels || {})['SMELTER'] || '?'}, inv=[${invStr}], recipes=${recipes.length}, craftable=[${craftable.map(r => r.name).join(',')}]`);
+    }
     const craftable = recipes.filter(r => r.canCraft);
     if (craftable.length > 0) {
       // Sort: highest tier first; at same tier, prefer intermediates

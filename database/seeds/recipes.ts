@@ -1315,6 +1315,30 @@ export async function seedRecipes(prisma: PrismaClient) {
   }
   console.log(`  Resource templates: ${RESOURCE_ITEMS.length}`);
 
+  // Deduplicate: remove random-UUID templates when stable-ID versions exist.
+  // This fixes a bug where daily-tick.ts findFirst({ name }) could auto-create
+  // templates with random UUIDs, causing templateId mismatch with recipe ingredients.
+  for (const res of RESOURCE_ITEMS) {
+    const stableId = `resource-${res.name.toLowerCase().replace(/\s+/g, '-')}`;
+    const duplicates = await prisma.itemTemplate.findMany({
+      where: { name: res.name, id: { not: stableId } },
+      select: { id: true },
+    });
+    if (duplicates.length > 0) {
+      const dupIds = duplicates.map(d => d.id);
+      // Re-point items from duplicate templates to the stable template
+      await prisma.item.updateMany({
+        where: { templateId: { in: dupIds } },
+        data: { templateId: stableId },
+      });
+      // Delete duplicate templates
+      await prisma.itemTemplate.deleteMany({
+        where: { id: { in: dupIds } },
+      });
+      console.log(`  Dedup: merged ${duplicates.length} duplicate "${res.name}" templates into ${stableId}`);
+    }
+  }
+
   // Seed crafted item templates
   for (const tmpl of ITEM_TEMPLATES) {
     const stableId = `crafted-${tmpl.name.toLowerCase().replace(/\s+/g, '-')}`;
@@ -1357,6 +1381,27 @@ export async function seedRecipes(prisma: PrismaClient) {
     templateMap.set(tmpl.name, created.id);
   }
   console.log(`  Crafted templates: ${ITEM_TEMPLATES.length}`);
+
+  // Deduplicate crafted templates (same pattern as resource templates above)
+  for (const tmpl of ITEM_TEMPLATES) {
+    const stableId = `crafted-${tmpl.name.toLowerCase().replace(/\s+/g, '-')}`;
+    const duplicates = await prisma.itemTemplate.findMany({
+      where: { name: tmpl.name, id: { not: stableId } },
+      select: { id: true },
+    });
+    if (duplicates.length > 0) {
+      const dupIds = duplicates.map(d => d.id);
+      await prisma.item.updateMany({
+        where: { templateId: { in: dupIds } },
+        data: { templateId: stableId },
+      });
+      await prisma.itemTemplate.deleteMany({
+        where: { id: { in: dupIds } },
+      });
+      console.log(`  Dedup: merged ${duplicates.length} duplicate "${tmpl.name}" templates into ${stableId}`);
+    }
+  }
+
   console.log(`  Total templates: ${templateMap.size}`);
 
   // ----- Seed Processing Recipes (from shared data) -----
@@ -1385,6 +1430,7 @@ export async function seedRecipes(prisma: PrismaClient) {
         result: resultId,
         craftTime: recipe.craftTime,
         xpReward: recipe.xpReward,
+        levelRequired: recipe.levelRequired,
       },
       create: {
         id: recipeId,
@@ -1395,6 +1441,7 @@ export async function seedRecipes(prisma: PrismaClient) {
         result: resultId,
         craftTime: recipe.craftTime,
         xpReward: recipe.xpReward,
+        levelRequired: recipe.levelRequired,
       },
     });
 
@@ -1429,6 +1476,7 @@ export async function seedRecipes(prisma: PrismaClient) {
         result: resultId,
         craftTime: recipe.craftTime,
         xpReward: recipe.xpReward,
+        levelRequired: recipe.levelRequired,
       },
       create: {
         id: recipeId,
@@ -1439,6 +1487,7 @@ export async function seedRecipes(prisma: PrismaClient) {
         result: resultId,
         craftTime: recipe.craftTime,
         xpReward: recipe.xpReward,
+        levelRequired: recipe.levelRequired,
       },
     });
 
@@ -1472,6 +1521,7 @@ export async function seedRecipes(prisma: PrismaClient) {
         result: resultId,
         craftTime: recipe.craftTime,
         xpReward: recipe.xpReward,
+        levelRequired: recipe.levelRequired,
       },
       create: {
         id: recipeId,
@@ -1482,6 +1532,7 @@ export async function seedRecipes(prisma: PrismaClient) {
         result: resultId,
         craftTime: recipe.craftTime,
         xpReward: recipe.xpReward,
+        levelRequired: recipe.levelRequired,
       },
     });
 

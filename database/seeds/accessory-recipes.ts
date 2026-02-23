@@ -621,6 +621,7 @@ export async function seedAccessoryRecipes(prisma: PrismaClient) {
         result: resultId,
         craftTime: recipe.craftTime,
         xpReward: recipe.xpReward,
+        levelRequired: recipe.levelRequired,
       },
       create: {
         id: recipeId,
@@ -631,6 +632,7 @@ export async function seedAccessoryRecipes(prisma: PrismaClient) {
         result: resultId,
         craftTime: recipe.craftTime,
         xpReward: recipe.xpReward,
+        levelRequired: recipe.levelRequired,
       },
     });
 

@@ -495,6 +495,7 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
           result: resultId,
           craftTime: recipe.craftTime,
           xpReward: recipe.xpReward,
+          levelRequired: recipe.levelRequired,
         },
         create: {
           id: recipeId,
@@ -505,6 +506,7 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
           result: resultId,
           craftTime: recipe.craftTime,
           xpReward: recipe.xpReward,
+          levelRequired: recipe.levelRequired,
         },
       });
 

@@ -506,6 +506,7 @@ async function main() {
           result: resultId,
           craftTime: recipe.craftTime,
           xpReward: recipe.xpReward,
+          levelRequired: recipe.levelRequired,
         },
         create: {
           id: recipeId,
@@ -516,6 +517,7 @@ async function main() {
           result: resultId,
           craftTime: recipe.craftTime,
           xpReward: recipe.xpReward,
+          levelRequired: recipe.levelRequired,
         },
       });
 

@@ -203,6 +203,7 @@ export async function seedWeaponRecipes(prisma: PrismaClient) {
         result: resultId,
         craftTime: recipe.craftTime,
         xpReward: recipe.xpReward,
+        levelRequired: recipe.levelRequired,
       },
       create: {
         id: recipeId,
@@ -213,6 +214,7 @@ export async function seedWeaponRecipes(prisma: PrismaClient) {
         result: resultId,
         craftTime: recipe.craftTime,
         xpReward: recipe.xpReward,
+        levelRequired: recipe.levelRequired,
       },
     });
 
