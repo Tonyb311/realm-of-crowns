@@ -5,7 +5,7 @@ export const SMELTER_RECIPES: RecipeDefinition[] = [
     recipeId: 'smelt-copper',
     name: 'Smelt Copper',
     professionRequired: 'SMELTER',
-    levelRequired: 1,
+    levelRequired: 5,  // Raised from 1: no copper_mine spots exist yet, so L3 bots can't see this unobtainable recipe
     inputs: [
       { itemName: 'Copper Ore', quantity: 3 },
       { itemName: 'Coal', quantity: 1 },

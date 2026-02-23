@@ -671,6 +671,19 @@ export async function decideBotAction(
     return r;
   }
 
+  // ── Refresh profession levels from DB (levels change from crafting/gathering XP) ──
+  try {
+    const profRecords = await prisma.playerProfession.findMany({
+      where: { characterId: bot.characterId },
+      select: { professionType: true, level: true },
+    });
+    const freshLevels: Record<string, number> = {};
+    for (const pr of profRecords) {
+      freshLevels[pr.professionType.toUpperCase()] = pr.level;
+    }
+    bot.professionLevels = freshLevels;
+  } catch { /* keep stale levels on error */ }
+
   // ── Pre-fetch inventory + recipes (used by multiple priorities) ──
   const inventory = await actions.getInventory(bot);
   const invMap = new Map(inventory.map(i => [i.name, i.quantity]));
@@ -719,11 +732,19 @@ export async function decideBotAction(
 
   // ── P3: Craft (highest-tier craftable recipe, intermediates preferred) ──
   if (hasCrafting && config.enabledSystems.crafting) {
-    // DIAG: SMELTER P3 diagnostic (first 5 ticks only)
-    if (profs.includes('SMELTER') && tick != null && tick <= 5) {
-      const craftable = recipes.filter(r => r.canCraft);
-      const invStr = [...invMap.entries()].filter(([,q]) => q > 0).map(([n,q]) => `${q}x${n}`).join(',');
-      console.log(`[DIAG] ${bot.characterName} SMELTER P3: profLevel=${(bot.professionLevels || {})['SMELTER'] || '?'}, inv=[${invStr}], recipes=${recipes.length}, craftable=[${craftable.map(r => r.name).join(',')}]`);
+    // DIAG: SMELTER P3 diagnostic (ALL ticks until first successful craft)
+    if (profs.includes('SMELTER') && tick != null) {
+      const allRecipesForDiag = await actions.getCraftableRecipes(bot);
+      const smelterRecipes = allRecipesForDiag.filter(r => r.professionRequired.toUpperCase() === 'SMELTER');
+      const levelFiltered = smelterRecipes.filter(r => r.levelRequired <= ((bot.professionLevels || {})['SMELTER'] || 1));
+      const craftable = levelFiltered.filter(r => r.canCraft);
+      console.log(`[DIAG-SMELTER] T${tick} ${bot.characterName}: ` +
+        `profLevel=${(bot.professionLevels || {})['SMELTER']}, ` +
+        `allSmelterRecipes=${smelterRecipes.length}, ` +
+        `afterLevelFilter=${levelFiltered.length}, ` +
+        `craftable=${craftable.map(r => `${r.name}(L${r.levelRequired})`).join(',') || 'NONE'}, ` +
+        `inv=[${[...invMap.entries()].filter(([,q]) => q > 0).map(([n,q]) => `${q}x${n}`).join(',')}]`
+      );
     }
     const craftable = recipes.filter(r => r.canCraft);
     if (craftable.length > 0) {
