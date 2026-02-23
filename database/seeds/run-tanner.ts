@@ -419,7 +419,12 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
     const resourceNames = ['Iron Ore Chunks', 'Silver Ore', 'Wood Logs', 'Hardwood'];
     for (const name of resourceNames) {
       if (templateMap.has(name)) continue;
-      const tmpl = await prisma.itemTemplate.findFirst({ where: { name } });
+      // Prefer stable-ID pattern (matches ingredient templateIds used by daily-tick.ts)
+      const stableId = `resource-${name.toLowerCase().replace(/\s+/g, '-')}`;
+      let tmpl = await prisma.itemTemplate.findUnique({ where: { id: stableId } });
+      if (!tmpl) {
+        tmpl = await prisma.itemTemplate.findFirst({ where: { name } });
+      }
       if (tmpl) {
         templateMap.set(name, tmpl.id);
         console.log(`  Found resource: ${name} (${tmpl.id})`);

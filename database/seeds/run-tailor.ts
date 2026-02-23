@@ -430,7 +430,17 @@ async function main() {
     ];
     for (const name of resourceNames) {
       if (templateMap.has(name)) continue;
-      const tmpl = await prisma.itemTemplate.findFirst({ where: { name } });
+      // Prefer stable-ID pattern (matches ingredient templateIds used by daily-tick.ts)
+      const stableId = `resource-${name.toLowerCase().replace(/\s+/g, '-')}`;
+      let tmpl = await prisma.itemTemplate.findUnique({ where: { id: stableId } });
+      if (!tmpl) {
+        // Try crafted-* stable ID pattern (for processed intermediates)
+        const craftedId = `crafted-${name.toLowerCase().replace(/\s+/g, '-')}`;
+        tmpl = await prisma.itemTemplate.findUnique({ where: { id: craftedId } });
+      }
+      if (!tmpl) {
+        tmpl = await prisma.itemTemplate.findFirst({ where: { name } });
+      }
       if (tmpl) {
         templateMap.set(name, tmpl.id);
         console.log(`  Found resource: ${name} (${tmpl.id})`);

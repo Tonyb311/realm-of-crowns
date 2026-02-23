@@ -510,10 +510,14 @@ export async function seedAccessoryRecipes(prisma: PrismaClient) {
 
   const templateMap = new Map<string, string>(); // name -> id
 
-  // Pull existing item templates into the map so recipe inputs resolve
+  // Pull existing item templates into the map so recipe inputs resolve.
+  // When duplicates exist, prefer stable-ID templates (resource-* / crafted-*).
   const existing = await prisma.itemTemplate.findMany({ select: { id: true, name: true } });
   for (const t of existing) {
-    templateMap.set(t.name, t.id);
+    const current = templateMap.get(t.name);
+    if (!current || t.id.startsWith('resource-') || t.id.startsWith('crafted-')) {
+      templateMap.set(t.name, t.id);
+    }
   }
 
   // Helper: resolve template or fail loudly

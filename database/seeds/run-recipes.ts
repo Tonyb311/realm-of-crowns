@@ -473,7 +473,12 @@ async function main() {
     const resourceNames = ['Apples', 'Wild Berries', 'Wild Herbs', 'Raw Fish', 'Grain', 'Vegetables', 'Wood Logs', 'Eggs'];
     for (const name of resourceNames) {
       if (templateMap.has(name)) continue; // already loaded from COOK_ITEMS
-      const tmpl = await prisma.itemTemplate.findFirst({ where: { name } });
+      // Prefer stable-ID pattern (matches ingredient templateIds used by daily-tick.ts)
+      const stableId = `resource-${name.toLowerCase().replace(/\s+/g, '-')}`;
+      let tmpl = await prisma.itemTemplate.findUnique({ where: { id: stableId } });
+      if (!tmpl) {
+        tmpl = await prisma.itemTemplate.findFirst({ where: { name } });
+      }
       if (tmpl) {
         templateMap.set(name, tmpl.id);
         console.log(`  ✓ Found resource: ${name} (${tmpl.id})`);
@@ -609,14 +614,18 @@ async function main() {
 
     // Also ensure Grain is in templateMap (it should be from COOK step)
     if (!templateMap.has('Grain')) {
-      const grainTmpl = await prisma.itemTemplate.findFirst({ where: { name: 'Grain' } });
+      const stableGrain = `resource-grain`;
+      let grainTmpl = await prisma.itemTemplate.findUnique({ where: { id: stableGrain } });
+      if (!grainTmpl) grainTmpl = await prisma.itemTemplate.findFirst({ where: { name: 'Grain' } });
       if (grainTmpl) templateMap.set('Grain', grainTmpl.id);
     }
 
     // Load Wild Herbs, Apples, Wild Berries if not already in map
     for (const name of ['Wild Herbs', 'Apples', 'Wild Berries']) {
       if (!templateMap.has(name)) {
-        const tmpl = await prisma.itemTemplate.findFirst({ where: { name } });
+        const stableId = `resource-${name.toLowerCase().replace(/\s+/g, '-')}`;
+        let tmpl = await prisma.itemTemplate.findUnique({ where: { id: stableId } });
+        if (!tmpl) tmpl = await prisma.itemTemplate.findFirst({ where: { name } });
         if (tmpl) templateMap.set(name, tmpl.id);
       }
     }
@@ -770,7 +779,9 @@ async function main() {
     // Ensure Clay, Wild Herbs, Wild Berries are in templateMap
     for (const name of ['Clay', 'Wild Herbs', 'Wild Berries', 'Medicinal Herbs', 'Glowcap Mushrooms']) {
       if (!templateMap.has(name)) {
-        const tmpl = await prisma.itemTemplate.findFirst({ where: { name } });
+        const stableId = `resource-${name.toLowerCase().replace(/\s+/g, '-')}`;
+        let tmpl = await prisma.itemTemplate.findUnique({ where: { id: stableId } });
+        if (!tmpl) tmpl = await prisma.itemTemplate.findFirst({ where: { name } });
         if (tmpl) templateMap.set(name, tmpl.id);
       }
     }

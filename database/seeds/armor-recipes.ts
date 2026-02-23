@@ -143,7 +143,10 @@ export async function seedArmorRecipes(prisma: PrismaClient) {
     select: { id: true, name: true },
   });
   for (const t of existingTemplates) {
-    templateMap.set(t.name, t.id);
+    const current = templateMap.get(t.name);
+    if (!current || t.id.startsWith('resource-') || t.id.startsWith('crafted-')) {
+      templateMap.set(t.name, t.id);
+    }
   }
   console.log(`  Loaded ${existingTemplates.length} existing templates`);
 

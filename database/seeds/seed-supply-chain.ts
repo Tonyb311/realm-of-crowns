@@ -172,7 +172,10 @@ async function main() {
     });
     const templateMap = new Map<string, string>();
     for (const t of allTemplates) {
-      templateMap.set(t.name, t.id);
+      const current = templateMap.get(t.name);
+      if (!current || t.id.startsWith('resource-') || t.id.startsWith('crafted-')) {
+        templateMap.set(t.name, t.id);
+      }
     }
     console.log(`  Found ${templateMap.size} templates in DB`);
 

@@ -101,7 +101,10 @@ export async function seedWeaponRecipes(prisma: PrismaClient) {
   });
   const templateMap = new Map<string, string>();
   for (const t of existingTemplates) {
-    templateMap.set(t.name, t.id);
+    const current = templateMap.get(t.name);
+    if (!current || t.id.startsWith('resource-') || t.id.startsWith('crafted-')) {
+      templateMap.set(t.name, t.id);
+    }
   }
 
   // Helper: resolve template or fail loudly

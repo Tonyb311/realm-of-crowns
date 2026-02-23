@@ -1268,10 +1268,14 @@ export async function seedRecipes(prisma: PrismaClient) {
 
   const templateMap = new Map<string, string>(); // name -> id
 
-  // Pre-load ALL existing templates from DB so recipes can reference them
+  // Pre-load ALL existing templates from DB so recipes can reference them.
+  // When duplicates exist, prefer stable-ID templates (resource-* / crafted-*).
   const existingTemplates = await prisma.itemTemplate.findMany({ select: { id: true, name: true } });
   for (const t of existingTemplates) {
-    templateMap.set(t.name, t.id);
+    const current = templateMap.get(t.name);
+    if (!current || t.id.startsWith('resource-') || t.id.startsWith('crafted-')) {
+      templateMap.set(t.name, t.id);
+    }
   }
   console.log(`  Pre-loaded ${existingTemplates.length} existing templates from DB`);
 

@@ -182,7 +182,8 @@ export async function seedConsumableRecipes(prisma: PrismaClient) {
     select: { id: true, name: true },
   });
   for (const t of existingTemplates) {
-    if (!templateMap.has(t.name)) {
+    const current = templateMap.get(t.name);
+    if (!current || t.id.startsWith('resource-') || t.id.startsWith('crafted-')) {
       templateMap.set(t.name, t.id);
     }
   }
