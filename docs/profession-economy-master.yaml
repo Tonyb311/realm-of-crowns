@@ -909,7 +909,7 @@ professions:
     tier_recipes:
       apprentice:
         - { id: smelt-copper, level: 1, inputs: "3x Copper Ore + 1x Coal", output: "2x Copper Ingot", base_value: 16 }
-        - { id: smelt-ore-chunks, level: 3, inputs: "4x Iron Ore Chunks + 2x Coal", output: "1x Iron Ingot", base_value: 52 }
+        - { id: smelt-ore-chunks, level: 3, inputs: "2x Iron Ore Chunks + 1x Coal", output: "1x Iron Ingot", base_value: 52 }
         - { id: forge-nails, level: 5, inputs: "1x Copper Ingot", output: "50x Nails", base_value: 1 }
         - { id: forge-iron-fittings, level: 8, inputs: "3x Iron Ore Chunks + 1x Coal", output: "4x Iron Fittings", base_value: 8 }
         - { id: smelt-iron, level: 10, inputs: "3x Iron Ore + 2x Coal", output: "2x Iron Ingot", base_value: 52 }

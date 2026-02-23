@@ -128,8 +128,8 @@ export const SMELTER_RECIPES: RecipeDefinition[] = [
     professionRequired: 'SMELTER',
     levelRequired: 3,
     inputs: [
-      { itemName: 'Iron Ore Chunks', quantity: 4 },
-      { itemName: 'Coal', quantity: 2 },
+      { itemName: 'Iron Ore Chunks', quantity: 2 },
+      { itemName: 'Coal', quantity: 1 },
     ],
     outputs: [{ itemName: 'Iron Ingot', quantity: 1 }],
     craftTime: 25,

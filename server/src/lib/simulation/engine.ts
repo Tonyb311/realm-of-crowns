@@ -679,8 +679,12 @@ export async function decideBotAction(
   let recipes: RecipeInfo[] = [];
   if (hasCrafting) {
     const allRecipes = await actions.getCraftableRecipes(bot);
-    // Filter to only recipes for this bot's professions
-    recipes = allRecipes.filter(r => profs.includes(r.professionRequired.toUpperCase()));
+    // Filter to only recipes for this bot's professions AND within level range
+    recipes = allRecipes.filter(r => {
+      if (!profs.includes(r.professionRequired.toUpperCase())) return false;
+      const profLevel = (bot.professionLevels || {})[r.professionRequired.toUpperCase()] || 1;
+      return r.levelRequired <= profLevel;
+    });
   }
 
   // ── P1: Harvest READY fields (time-sensitive — crops wither) ────────
