@@ -830,6 +830,40 @@ export async function decideBotAction(
       );
       if (r.success) {
         bot.p6ConsecutiveTrips = 0; // Got ingredient from market — reset P6 backoff counter
+
+        // ── P5.1: Post-buy craft re-check ────────────────────────────────
+        // Re-fetch inventory + recipes from DB (not stale invMap) to see if
+        // this purchase completed a recipe's requirements. If so, craft as a
+        // combo action within the same tick.
+        if (config.enabledSystems.crafting) {
+          const freshRecipes = await actions.getCraftableRecipes(bot);
+          const filteredFresh = freshRecipes.filter(fr => {
+            if (!profs.includes(fr.professionRequired.toUpperCase())) return false;
+            const profLevel = (bot.professionLevels || {})[fr.professionRequired.toUpperCase()] || 1;
+            return fr.levelRequired <= profLevel;
+          });
+          const nowCraftable = filteredFresh.filter(fr => fr.canCraft);
+          if (nowCraftable.length > 0) {
+            nowCraftable.sort((a, b) => {
+              if (b.tier !== a.tier) return b.tier - a.tier;
+              const aI = INTERMEDIATE_RECIPE_IDS.has(a.id) ? 1 : 0;
+              const bI = INTERMEDIATE_RECIPE_IDS.has(b.id) ? 1 : 0;
+              return bI - aI;
+            });
+            const best = nowCraftable[0];
+            const inputStr = best.inputs.map(i => `${i.quantity}x ${i.itemName}`).join(' + ');
+            const cr = await timedDailyAction(
+              () => actions.craftSpecificRecipe(bot, best.id, best.name),
+              bot, 'craft_post_buy', 5.1, `P5.1 post-buy craft: T${best.tier} ${best.name} (${inputStr})`,
+              logger, tick,
+            );
+            if (cr.success) {
+              bot.p6ConsecutiveTrips = 0;
+              return cr;
+            }
+          }
+        }
+
         return r;
       }
     }
@@ -896,6 +930,12 @@ export async function decideBotAction(
   // ── P7: Travel (purposeful, with cooldown) ─────────────────────────
   if (config.enabledSystems.travel && (currentTick - bot.lastTravelTick) >= TRAVEL_COOLDOWN_TICKS) {
     const travelPlan = await determineTravelReason(bot, invMap, recipes, profs, currentSpotType);
+    // Diagnostic: trace why SMELTER bots don't travel when expected
+    if (!travelPlan && profs.includes('SMELTER')) {
+      const missing = getMissingIngredients(invMap, recipes);
+      const neededSpots = missing.map(item => ITEM_TO_SPOT_TYPE[item]).filter(Boolean);
+      console.log(`[SIM] ${bot.characterName} SMELTER P7 no travel plan — recipes:${recipes.length}, missing:[${missing.join(',')}], neededSpots:[${neededSpots.join(',')}], currentSpot:${currentSpotType}, inv:[${[...invMap.entries()].filter(([,q]) => q > 0).map(([n,q]) => `${q}x${n}`).join(',')}]`);
+    }
     if (travelPlan) {
       const r = await timedDailyAction(
         travelPlan.execute,
