@@ -1335,10 +1335,28 @@ export async function seedRecipes(prisma: PrismaClient) {
         where: { templateId: { in: dupIds } },
         data: { templateId: stableId },
       });
-      // Delete duplicate templates
-      await prisma.itemTemplate.deleteMany({
-        where: { id: { in: dupIds } },
-      });
+      // Re-point price_histories and house_storage before deleting
+      try {
+        await prisma.priceHistory.updateMany({
+          where: { itemTemplateId: { in: dupIds } },
+          data: { itemTemplateId: stableId },
+        });
+      } catch { /* FK table may not have entries */ }
+      try {
+        await prisma.houseStorage.updateMany({
+          where: { itemTemplateId: { in: dupIds } },
+          data: { itemTemplateId: stableId },
+        });
+      } catch { /* FK table may not have entries */ }
+      // Delete duplicate templates (skip if remaining FK constraints)
+      try {
+        await prisma.itemTemplate.deleteMany({
+          where: { id: { in: dupIds } },
+        });
+      } catch {
+        console.log(`  Dedup: re-pointed ${duplicates.length} duplicate "${res.name}" items (could not delete old templates — FK constraint)`);
+        continue;
+      }
       console.log(`  Dedup: merged ${duplicates.length} duplicate "${res.name}" templates into ${stableId}`);
     }
   }
@@ -1399,9 +1417,28 @@ export async function seedRecipes(prisma: PrismaClient) {
         where: { templateId: { in: dupIds } },
         data: { templateId: stableId },
       });
-      await prisma.itemTemplate.deleteMany({
-        where: { id: { in: dupIds } },
-      });
+      // Re-point price_histories and house_storage before deleting
+      try {
+        await prisma.priceHistory.updateMany({
+          where: { itemTemplateId: { in: dupIds } },
+          data: { itemTemplateId: stableId },
+        });
+      } catch { /* FK table may not have entries */ }
+      try {
+        await prisma.houseStorage.updateMany({
+          where: { itemTemplateId: { in: dupIds } },
+          data: { itemTemplateId: stableId },
+        });
+      } catch { /* FK table may not have entries */ }
+      // Delete duplicate templates (skip if remaining FK constraints)
+      try {
+        await prisma.itemTemplate.deleteMany({
+          where: { id: { in: dupIds } },
+        });
+      } catch {
+        console.log(`  Dedup: re-pointed ${duplicates.length} duplicate "${tmpl.name}" items (could not delete old templates — FK constraint)`);
+        continue;
+      }
       console.log(`  Dedup: merged ${duplicates.length} duplicate "${tmpl.name}" templates into ${stableId}`);
     }
   }
