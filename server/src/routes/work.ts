@@ -435,16 +435,21 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
     const xpGained = Math.round(baseXp * (1 + racialXpBonus));
 
     // Find or create an ItemTemplate for this resource material
-    let itemTemplate = await prisma.itemTemplate.findFirst({
-      where: {
-        name: activeGathering.resource.name,
-        type: 'MATERIAL',
-      },
+    // Prefer stable-ID pattern so gathered items match recipe ingredient templateIds
+    const stableResId = `resource-${activeGathering.resource.name.toLowerCase().replace(/\s+/g, '-')}`;
+    let itemTemplate = await prisma.itemTemplate.findUnique({
+      where: { id: stableResId },
     });
+    if (!itemTemplate) {
+      itemTemplate = await prisma.itemTemplate.findFirst({
+        where: { name: activeGathering.resource.name, type: 'MATERIAL' },
+      });
+    }
 
     if (!itemTemplate) {
       itemTemplate = await prisma.itemTemplate.create({
         data: {
+          id: stableResId,
           name: activeGathering.resource.name,
           type: 'MATERIAL',
           rarity: activeGathering.resource.tier <= 2 ? 'COMMON' : activeGathering.resource.tier <= 3 ? 'FINE' : 'SUPERIOR',

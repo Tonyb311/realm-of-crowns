@@ -59,7 +59,7 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
     }> = [
       // -- Raw resources (HUNTER gathering) --
       {
-        id: 'resource-animal_pelts',
+        id: 'resource-animal-pelts',
         name: 'Animal Pelts',
         type: 'MATERIAL',
         rarity: 'COMMON',
@@ -74,7 +74,7 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
         baseValue: 8,
       },
       {
-        id: 'resource-wolf_pelts',
+        id: 'resource-wolf-pelts',
         name: 'Wolf Pelts',
         type: 'MATERIAL',
         rarity: 'FINE',
@@ -89,7 +89,7 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
         baseValue: 28,
       },
       {
-        id: 'resource-bear_hides',
+        id: 'resource-bear-hides',
         name: 'Bear Hides',
         type: 'MATERIAL',
         rarity: 'FINE',
@@ -106,7 +106,7 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
 
       // -- Intermediate materials (TANNER processing) --
       {
-        id: 'material-soft_leather',
+        id: 'material-soft-leather',
         name: 'Soft Leather',
         type: 'MATERIAL',
         rarity: 'COMMON',
@@ -123,7 +123,7 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
         baseValue: 12,
       },
       {
-        id: 'material-cured_leather',
+        id: 'material-cured-leather',
         name: 'Cured Leather',
         type: 'MATERIAL',
         rarity: 'COMMON',
@@ -140,7 +140,7 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
         baseValue: 18,
       },
       {
-        id: 'material-wolf_leather',
+        id: 'material-wolf-leather',
         name: 'Wolf Leather',
         type: 'MATERIAL',
         rarity: 'FINE',
@@ -157,7 +157,7 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
         baseValue: 35,
       },
       {
-        id: 'material-bear_leather',
+        id: 'material-bear-leather',
         name: 'Bear Leather',
         type: 'MATERIAL',
         rarity: 'FINE',

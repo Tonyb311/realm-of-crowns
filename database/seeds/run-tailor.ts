@@ -61,7 +61,7 @@ async function main() {
     }> = [
       // -- RANCHER Craftsman resources --
       {
-        id: 'resource-fine_wool',
+        id: 'resource-fine-wool',
         name: 'Fine Wool',
         type: 'MATERIAL',
         rarity: 'COMMON',
@@ -76,7 +76,7 @@ async function main() {
         baseValue: 30,
       },
       {
-        id: 'resource-silkworm_cocoons',
+        id: 'resource-silkworm-cocoons',
         name: 'Silkworm Cocoons',
         type: 'MATERIAL',
         rarity: 'COMMON',
@@ -93,7 +93,7 @@ async function main() {
 
       // -- Legacy intermediate (ARMORER chain) --
       {
-        id: 'material-cloth_padding',
+        id: 'material-cloth-padding',
         name: 'Cloth Padding',
         type: 'MATERIAL',
         rarity: 'COMMON',
@@ -112,7 +112,7 @@ async function main() {
 
       // -- Intermediate materials (TAILOR processing) --
       {
-        id: 'material-woven_cloth',
+        id: 'material-woven-cloth',
         name: 'Woven Cloth',
         type: 'MATERIAL',
         rarity: 'COMMON',
@@ -129,7 +129,7 @@ async function main() {
         baseValue: 20,
       },
       {
-        id: 'material-fine_cloth',
+        id: 'material-fine-cloth',
         name: 'Fine Cloth',
         type: 'MATERIAL',
         rarity: 'FINE',
@@ -146,7 +146,7 @@ async function main() {
         baseValue: 38,
       },
       {
-        id: 'material-silk_fabric',
+        id: 'material-silk-fabric',
         name: 'Silk Fabric',
         type: 'MATERIAL',
         rarity: 'FINE',

@@ -10,10 +10,15 @@ let basicRationsTemplateId: string | null = null;
 export async function ensureBasicRationsTemplate(): Promise<string> {
   if (basicRationsTemplateId) return basicRationsTemplateId;
 
-  // Try to find existing
-  let template = await prisma.itemTemplate.findFirst({
-    where: { name: 'Basic Rations' },
+  // Try to find existing — prefer stable ID
+  let template = await prisma.itemTemplate.findUnique({
+    where: { id: 'consumable-basic-rations' },
   });
+  if (!template) {
+    template = await prisma.itemTemplate.findFirst({
+      where: { name: 'Basic Rations' },
+    });
+  }
 
   if (!template) {
     // Create it

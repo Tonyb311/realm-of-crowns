@@ -518,7 +518,7 @@ export async function listOnMarket(bot: BotState): Promise<ActionResult> {
 export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
   const endpoint = '/market/list';
   try {
-    // 1. Fetch raw inventory (need equipped flag and baseValue)
+    // 1. Fetch raw inventory
     const invRes = await get('/characters/me/inventory', bot.token);
     if (invRes.status < 200 || invRes.status >= 300) {
       return { success: false, detail: 'Failed to fetch inventory', endpoint, httpStatus: invRes.status ?? 0, requestBody: {}, responseBody: invRes.data };
@@ -528,39 +528,64 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
       return { success: false, detail: 'Empty inventory', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
     }
 
-    // 2. Use cached neededItemNames (built at seed time from bot's own profession recipes)
+    // 2. Compute max needed quantity per item across all bot's recipes
+    //    A SMELTER needs max(2 Iron Ore, 2 Copper Ore) = keep 2 of each, sell the rest
+    const maxNeeded = new Map<string, number>();
     const neededItems = bot.neededItemNames;
+    // Fetch current recipes to get real quantities
+    let recipes: { inputs: { itemName: string; quantity: number }[] }[] = [];
+    try {
+      recipes = await getCraftableRecipes(bot);
+    } catch { /* if recipe fetch fails, fall back to neededItemNames */ }
+    for (const recipe of recipes) {
+      for (const inp of recipe.inputs) {
+        const current = maxNeeded.get(inp.itemName) || 0;
+        if (inp.quantity > current) maxNeeded.set(inp.itemName, inp.quantity);
+      }
+    }
 
-    // 3. Items to always keep (food, gold-related, basic staples)
-    const KEEP_ITEMS = new Set([
-      'Basic Rations', 'Gold Coins', 'Grain',
-    ]);
+    // 3. Items to always keep
+    const KEEP_ITEMS = new Set(['Gold Coins']);
 
-    // 4. Find unwanted items: not equipped, not a recipe input, not in keep list
-    const unwanted: { id: string; name: string; quantity: number; baseValue: number }[] = [];
+    // 4. Build list of items to sell: unwanted + surplus of needed items
+    const toList: { id: string; name: string; quantity: number; baseValue: number }[] = [];
     for (const item of items) {
       if (item.equipped) continue;
       const name = item.templateName || item.name || '';
       if (!name) continue;
-      if (neededItems.has(name)) continue;
       if (KEEP_ITEMS.has(name)) continue;
-      unwanted.push({
-        id: item.id || item.itemId,
-        name,
-        quantity: item.quantity || 1,
-        baseValue: item.baseValue || item.value || 10,
-      });
+      const qty = item.quantity || 1;
+      const needed = maxNeeded.get(name) || 0;
+
+      if (needed > 0 && qty > needed) {
+        // Surplus: list excess beyond what the most demanding recipe needs
+        toList.push({
+          id: item.id || item.itemId,
+          name,
+          quantity: qty - needed,
+          baseValue: item.baseValue || item.value || 10,
+        });
+      } else if (!neededItems.has(name) && needed === 0) {
+        // Completely unwanted: not a recipe input at all — list everything
+        toList.push({
+          id: item.id || item.itemId,
+          name,
+          quantity: qty,
+          baseValue: item.baseValue || item.value || 10,
+        });
+      }
     }
 
-    if (unwanted.length === 0) {
-      return { success: false, detail: 'No unwanted items to list', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
+    if (toList.length === 0) {
+      return { success: false, detail: 'No surplus items to list', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
     }
 
-    // 5. List up to 3 unwanted items at base value price
+    // 5. List up to 5 items (surplus + unwanted) at 120% base value
     let listed = 0;
     const listedNames: string[] = [];
-    for (const item of unwanted) {
-      if (listed >= 3) break;
+    for (const item of toList) {
+      if (listed >= 5) break;
+      if (item.quantity <= 0) continue;
       const price = Math.max(5, Math.ceil(item.baseValue * 1.2));
       try {
         const res = await post(endpoint, bot.token, { itemId: item.id, price, quantity: item.quantity });
@@ -572,12 +597,12 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
     }
 
     if (listed === 0) {
-      return { success: false, detail: 'Failed to list any unwanted items', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
+      return { success: false, detail: 'Failed to list any items', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
     }
 
     return {
       success: true,
-      detail: `Listed ${listed} unwanted item(s): ${listedNames.join(', ')}`,
+      detail: `Listed ${listed} item(s): ${listedNames.join(', ')}`,
       endpoint,
       httpStatus: 200,
       requestBody: { count: listed },

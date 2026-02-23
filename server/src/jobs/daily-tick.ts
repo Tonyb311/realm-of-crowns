@@ -1313,13 +1313,20 @@ async function processGatherAction(
 
   // Execute in transaction
   await prisma.$transaction(async (tx) => {
-    // Find or create item template
-    let itemTemplate = await tx.itemTemplate.findFirst({
-      where: { name: resource.name, type: 'MATERIAL' },
+    // Find or create item template — prefer stable-ID pattern (matches recipe ingredient templateIds)
+    const stableResId = `resource-${resource.name.toLowerCase().replace(/\s+/g, '-')}`;
+    let itemTemplate = await tx.itemTemplate.findUnique({
+      where: { id: stableResId },
     });
+    if (!itemTemplate) {
+      itemTemplate = await tx.itemTemplate.findFirst({
+        where: { name: resource.name, type: 'MATERIAL' },
+      });
+    }
     if (!itemTemplate) {
       itemTemplate = await tx.itemTemplate.create({
         data: {
+          id: stableResId,
           name: resource.name,
           type: 'MATERIAL',
           rarity: resource.tier <= 2 ? 'COMMON' : resource.tier <= 3 ? 'FINE' : 'SUPERIOR',
@@ -1792,11 +1799,16 @@ async function processHarvestAction(
 
   // 5. Transaction: create items in house storage, update asset
   await prisma.$transaction(async (tx) => {
-    // Find or create ItemTemplate
-    let template = await tx.itemTemplate.findFirst({ where: { name: itemName } });
+    // Find or create ItemTemplate — prefer stable-ID pattern (matches recipe ingredient templateIds)
+    const stableResId = `resource-${itemName.toLowerCase().replace(/\s+/g, '-')}`;
+    let template = await tx.itemTemplate.findUnique({ where: { id: stableResId } });
+    if (!template) {
+      template = await tx.itemTemplate.findFirst({ where: { name: itemName } });
+    }
     if (!template) {
       template = await tx.itemTemplate.create({
         data: {
+          id: stableResId,
           name: itemName,
           type: itemType as any,
           rarity: 'COMMON',
