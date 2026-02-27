@@ -1445,6 +1445,15 @@ export async function seedRecipes(prisma: PrismaClient) {
 
   console.log(`  Total templates: ${templateMap.size}`);
 
+  // ----- v20: Remove orphaned processing recipes no longer in shared data -----
+  const REMOVED_PROCESSING_RECIPES = ['recipe-smelt-copper'];
+  for (const id of REMOVED_PROCESSING_RECIPES) {
+    try {
+      await prisma.recipe.delete({ where: { id } });
+      console.log(`  ✗ Removed orphaned recipe: ${id}`);
+    } catch { /* doesn't exist — fine */ }
+  }
+
   // ----- Seed Processing Recipes (from shared data) -----
   console.log('--- Seeding Processing Recipes ---');
 
