@@ -46,6 +46,7 @@ export interface BotState {
   p6ConsecutiveTrips: number;   // Consecutive ticks bot chose P6 combat travel
   p6BackoffUntilTick: number;   // Tick until which P6 is forced-skipped (backoff)
   neededItemNames: Set<string>;  // Cached recipe input names for bot's own professions (built at seed time)
+  buyFailCooldowns: Map<string, number>;  // v20: itemName → tick when cooldown expires (skip buy attempts for 5 ticks after failure)
 }
 
 export interface SimulationConfig {

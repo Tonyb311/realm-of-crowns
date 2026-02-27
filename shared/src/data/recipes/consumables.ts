@@ -1085,7 +1085,7 @@ export const SMELTER_CONSUMABLES: ConsumableRecipe[] = [
     professionRequired: 'SMELTER',
     levelRequired: 1,
     inputs: [
-      { itemName: 'Copper Ore', quantity: 2 },
+      { itemName: 'Iron Ore Chunks', quantity: 2 }, // v20: Changed from Copper Ore — no copper_mine spots exist
       { itemName: 'Raw Stone', quantity: 1 },
     ],
     output: { itemName: 'Maintenance Kit', quantity: 1 },

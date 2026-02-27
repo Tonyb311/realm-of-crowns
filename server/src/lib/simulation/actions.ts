@@ -528,17 +528,23 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
       return { success: false, detail: 'Empty inventory', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
     }
 
-    // 2. Compute max needed quantity per item across all bot's recipes
-    //    A SMELTER needs max(2 Iron Ore, 2 Copper Ore) = keep 2 of each, sell the rest
+    // 2. Compute max needed quantity per item across recipes the bot can CURRENTLY craft
+    //    Only keep inputs for recipes within the bot's profession level — don't hoard
+    //    items for L30 recipes when the bot is L5 (v20 fix: crafted items were never listed)
     const maxNeeded = new Map<string, number>();
-    const neededItems = bot.neededItemNames;
-    // Fetch current recipes to get real quantities
-    let recipes: { inputs: { itemName: string; quantity: number }[] }[] = [];
+    const reachableNeeded = new Set<string>();  // replaces bot.neededItemNames for listing
+    let recipes: { inputs: { itemName: string; quantity: number }[]; professionRequired: string; levelRequired: number }[] = [];
     try {
       recipes = await getCraftableRecipes(bot);
-    } catch { /* if recipe fetch fails, fall back to neededItemNames */ }
+    } catch { /* if recipe fetch fails, fall back to empty — will list everything as unwanted */ }
+    // Filter to recipes the bot can actually craft at current level
+    const profLevels = bot.professionLevels || {};
     for (const recipe of recipes) {
+      const profKey = recipe.professionRequired.toUpperCase();
+      const profLevel = profLevels[profKey] || 1;
+      if (recipe.levelRequired > profLevel) continue;  // skip unreachable recipes
       for (const inp of recipe.inputs) {
+        reachableNeeded.add(inp.itemName);
         const current = maxNeeded.get(inp.itemName) || 0;
         if (inp.quantity > current) maxNeeded.set(inp.itemName, inp.quantity);
       }
@@ -565,8 +571,8 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
           quantity: qty - needed,
           baseValue: item.baseValue || item.value || 10,
         });
-      } else if (!neededItems.has(name) && needed === 0) {
-        // Completely unwanted: not a recipe input at all — list everything
+      } else if (!reachableNeeded.has(name) && needed === 0) {
+        // Not needed by any currently-craftable recipe — list everything (v20: was bot.neededItemNames)
         toList.push({
           id: item.id || item.itemId,
           name,

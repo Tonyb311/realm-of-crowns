@@ -526,6 +526,7 @@ async function createSingleBot(
     p6ConsecutiveTrips: 0,
     p6BackoffUntilTick: 0,
     neededItemNames: buildNeededItemNames(startingProfession ? [startingProfession] : []),
+    buyFailCooldowns: new Map(),
   };
 }
 

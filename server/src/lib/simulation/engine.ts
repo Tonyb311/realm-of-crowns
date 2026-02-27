@@ -342,12 +342,23 @@ async function determineTravelReason(
 ): Promise<TravelPlan | null> {
   // a. ANY crafting profession missing ingredients → travel to town with needed resource
   const hasCraftingProf = profs.some(p => CRAFTING_PROFESSIONS.has(p));
+  let atNeededSpot = false;  // v20: track if bot is already at a supply-chain town
   if (hasCraftingProf && recipes.length > 0) {
     const missing = getMissingIngredients(invMap, recipes);
     if (missing.length > 0) {
+      // v20: Build set of spots this bot can actually gather at
+      // (prevents TANNER from traveling to hunting_ground it can't use — market is global)
+      const botGatherableSpots = new Set<string>();
+      for (const p of profs) {
+        const gatherSpots = PROF_TO_SPOT_TYPES[p];
+        if (gatherSpots) gatherSpots.forEach(s => botGatherableSpots.add(s));
+        const craftSpots = CRAFTING_PROF_GATHER_SPOTS[p];
+        if (craftSpots) craftSpots.forEach(s => botGatherableSpots.add(s));
+      }
+
       const neededSpots = missing
         .map(item => ITEM_TO_SPOT_TYPE[item])
-        .filter((s): s is string => !!s);
+        .filter((s): s is string => !!s && botGatherableSpots.has(s));  // v20: only spots the bot can use
 
       // Don't travel if current town already has a needed spot
       if (neededSpots.length > 0 && !neededSpots.includes(currentSpotType || '')) {
@@ -355,6 +366,10 @@ async function determineTravelReason(
           reason: `Need ${missing[0]}, traveling to ${neededSpots[0]} town`,
           execute: () => actions.travelToResourceTown(bot, neededSpots, `need ${missing[0]}`),
         };
+      }
+      // v20: Bot is at a town with a needed supply-chain spot — stay here to buy from market
+      if (neededSpots.length > 0 && neededSpots.includes(currentSpotType || '')) {
+        atNeededSpot = true;
       }
     }
   }
@@ -399,7 +414,9 @@ async function determineTravelReason(
   }
 
   // d. Own fields at home, currently elsewhere
-  if (bot.homeTownId && bot.currentTownId !== bot.homeTownId) {
+  // v20: Don't drag the bot home if it's at a supply-chain town waiting for market
+  // (fixes TANNER ping-pong: home → hunting_ground → home → hunting_ground)
+  if (bot.homeTownId && bot.currentTownId !== bot.homeTownId && !atNeededSpot) {
     return {
       reason: 'Traveling home to manage fields',
       execute: () => actions.travelHome(bot, 'returning home'),
@@ -850,12 +867,17 @@ export async function decideBotAction(
   if (config.enabledSystems.market && hasCrafting && bot.gold >= 10) {
     const missing = getMissingIngredients(invMap, recipes);
     for (const itemName of missing) {
+      // v20: Skip items on buy-fail cooldown (5 ticks) to reduce wasted attempts
+      const cooldownExpiry = bot.buyFailCooldowns.get(itemName);
+      if (cooldownExpiry && currentTick < cooldownExpiry) continue;
+
       const r = await timedDailyAction(
         () => actions.buySpecificItem(bot, itemName),
         bot, 'market_buy', 5, `Buying ${itemName} from market`,
         logger, tick,
       );
       if (r.success) {
+        bot.buyFailCooldowns.delete(itemName);  // v20: clear cooldown on success
         bot.p6ConsecutiveTrips = 0; // Got ingredient from market — reset P6 backoff counter
 
         // ── P5.1: Post-buy craft re-check ────────────────────────────────
@@ -893,6 +915,8 @@ export async function decideBotAction(
 
         return r;
       }
+      // v20: Buy failed — cooldown this item for 5 ticks to reduce wasted attempts
+      bot.buyFailCooldowns.set(itemName, currentTick + 5);
     }
   }
 

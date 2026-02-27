@@ -1,20 +1,7 @@
 import { RecipeDefinition } from './types';
 
 export const SMELTER_RECIPES: RecipeDefinition[] = [
-  {
-    recipeId: 'smelt-copper',
-    name: 'Smelt Copper',
-    professionRequired: 'SMELTER',
-    levelRequired: 5,  // Raised from 1: no copper_mine spots exist yet, so L3 bots can't see this unobtainable recipe
-    inputs: [
-      { itemName: 'Copper Ore', quantity: 3 },
-      { itemName: 'Coal', quantity: 1 },
-    ],
-    outputs: [{ itemName: 'Copper Ingot', quantity: 2 }],
-    craftTime: 20,
-    xpReward: 10,
-    tier: 1,
-  },
+  // REMOVED: Smelt Copper — no copper_mine spots exist in game world, recipe trapped bots in infinite chase loop (v20)
   {
     recipeId: 'smelt-iron',
     name: 'Smelt Iron',
@@ -116,7 +103,7 @@ export const SMELTER_RECIPES: RecipeDefinition[] = [
     name: 'Forge Nails',
     professionRequired: 'SMELTER',
     levelRequired: 5,
-    inputs: [{ itemName: 'Copper Ingot', quantity: 1 }], // P1 #14a: Changed from Iron Ingot (L10) to Copper Ingot (L1) so Nails are craftable at Smelter L5
+    inputs: [{ itemName: 'Iron Ingot', quantity: 1 }], // v20: Reverted from Copper Ingot — no Copper Ore in game world, so Copper Ingot uncraftable
     outputs: [{ itemName: 'Nails', quantity: 50 }],
     craftTime: 15,
     xpReward: 8,
