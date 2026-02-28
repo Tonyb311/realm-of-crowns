@@ -1401,12 +1401,36 @@ export async function seedRecipes(prisma: PrismaClient) {
   console.log(`  Total templates: ${templateMap.size}`);
 
   // ----- v20: Remove orphaned processing recipes no longer in shared data -----
-  const REMOVED_PROCESSING_RECIPES = ['recipe-smelt-copper', 'recipe-craft-leather-armor', 'recipe-craft-chainmail', 'recipe-tan-soft-leather', 'recipe-forge-iron-sword'];
+  // v28: Added 5 legacy LEATHERWORKER recipes that still reference Soft Leather
+  const REMOVED_PROCESSING_RECIPES = [
+    'recipe-smelt-copper', 'recipe-craft-leather-armor', 'recipe-craft-chainmail',
+    'recipe-tan-soft-leather', 'recipe-forge-iron-sword',
+    // v28: Legacy Soft Leather LEATHERWORKER recipes (orphaned from old seed runs)
+    'recipe-craft-leather-boots', 'recipe-craft-leather-bracers', 'recipe-craft-leather-cap',
+    'recipe-craft-leather-gloves', 'recipe-craft-leather-vest',
+  ];
   for (const id of REMOVED_PROCESSING_RECIPES) {
     try {
       await prisma.recipe.delete({ where: { id } });
       console.log(`  ✗ Removed orphaned recipe: ${id}`);
     } catch { /* doesn't exist — fine */ }
+  }
+
+  // v28: Nuclear cleanup — delete ANY recipe whose ingredients JSON contains "Soft Leather"
+  // Safety net for orphaned recipes from old seed runs that aren't in the explicit list above
+  try {
+    const softLeatherRecipes = await prisma.$queryRawUnsafe<{ id: string; name: string }[]>(
+      `SELECT id, name FROM recipes WHERE ingredients::text ILIKE '%Soft Leather%'`
+    );
+    for (const r of softLeatherRecipes) {
+      await prisma.recipe.delete({ where: { id: r.id } });
+      console.log(`  ✗ Removed Soft Leather recipe: ${r.id} (${r.name})`);
+    }
+    if (softLeatherRecipes.length > 0) {
+      console.log(`  ✗ Total Soft Leather recipes purged: ${softLeatherRecipes.length}`);
+    }
+  } catch (err: any) {
+    console.log(`  ⚠ Soft Leather cleanup query failed: ${err.message}`);
   }
 
   // ----- Seed Processing Recipes (from shared data) -----
