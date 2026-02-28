@@ -874,7 +874,10 @@ export async function decideBotAction(
 
       // v22: Skip if bot already has plenty of this ingredient
       const currentStock = invMap.get(itemName) || 0;
-      if (currentStock >= MAX_INGREDIENT_STOCK) continue;
+      if (currentStock >= MAX_INGREDIENT_STOCK) {
+        console.log(`[BUY-CAP] ${bot.characterName} (${bot.professions[0]}): BLOCKED ${itemName} — already has ${currentStock}/${MAX_INGREDIENT_STOCK}`);
+        continue;
+      }
 
       const r = await timedDailyAction(
         () => actions.buySpecificItem(bot, itemName),
@@ -882,6 +885,7 @@ export async function decideBotAction(
         logger, tick,
       );
       if (r.success) {
+        console.log(`[BUY-CAP] ${bot.characterName} (${bot.professions[0]}): BOUGHT ${itemName} — stock was ${currentStock}/${MAX_INGREDIENT_STOCK}`);
         bot.buyFailCooldowns.delete(itemName);  // v20: clear cooldown on success
         bot.p6ConsecutiveTrips = 0; // Got ingredient from market — reset P6 backoff counter
         invMap.set(itemName, (invMap.get(itemName) || 0) + 1);  // v23: update invMap so cap check stays current

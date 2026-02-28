@@ -227,15 +227,29 @@ export async function seedBots(config: SeedConfig): Promise<BotState[]> {
       eligibleIndices.push(i);
     }
 
-    // Guaranteed minimum counts for processing/finisher professions.
-    // These professions are NEVER learned at runtime, so seeds must provide them.
+    // Guaranteed minimum counts for all supply chain roles.
+    // v24: expanded from 6 entries to cover full chain — gatherers, processors, and crafters.
     const GUARANTEED_MINIMUMS: [string, number][] = [
-      ['SMELTER', 3],        // Iron Ore + Coal → Iron Ingots (critical bottleneck)
-      ['WOODWORKER', 3],     // Softwood/Hardwood → Planks/Beams (critical bottleneck)
-      ['LEATHERWORKER', 2],  // Cured Leather → Leather gear
-      ['ENCHANTER', 1],      // End-of-chain, needs many intermediates
-      ['FLETCHER', 1],       // Bow Staves + Leather → Ranged weapons
-      ['MASON', 1],          // Stone + Beams → Buildings
+      // Processing (intermediate goods — critical bottlenecks)
+      ['SMELTER', 3],        // Iron Ore + Coal → Iron Ingots
+      ['WOODWORKER', 3],     // Softwood/Hardwood → Planks/Beams
+      ['TANNER', 3],         // Animal Pelts → Cured Leather (was 1, critical gap)
+      // Gathering (feed processing chains)
+      ['MINER', 3],          // Iron Ore, Coal, Stone — feeds SMELTER + MASON
+      ['HUNTER', 3],         // Animal Pelts — feeds TANNER → LEATHERWORKER chain
+      ['LUMBERJACK', 2],     // Wood Logs, Softwood, Hardwood — feeds WOODWORKER
+      ['HERBALIST', 2],      // Wild Herbs, Medicinal Herbs — feeds ALCHEMIST
+      ['FARMER', 2],         // Grain, Vegetables — feeds COOK, BREWER
+      // Crafting (finished goods)
+      ['LEATHERWORKER', 2],  // Cured Leather → armor pieces
+      ['ALCHEMIST', 2],      // Herbs → potions (was 1)
+      ['COOK', 2],           // Food ingredients → food buffs (was 1)
+      ['BREWER', 2],         // Grain/Fruit → drinks (was 1)
+      ['BLACKSMITH', 1],     // Iron Ingots + Wood → weapons
+      ['ARMORER', 1],        // Iron Ingots + Leather → armor
+      ['ENCHANTER', 1],      // End-of-chain
+      ['FLETCHER', 1],       // Bow Staves + Leather → ranged weapons
+      ['MASON', 1],          // Stone + Beams → buildings
     ];
     const guaranteedProfs = new Set(GUARANTEED_MINIMUMS.map(([p]) => p));
 
@@ -250,10 +264,11 @@ export async function seedBots(config: SeedConfig): Promise<BotState[]> {
 
     // Pass 2: Fill remaining slots with weighted distribution
     // Gathering professions that feed the most crafting chains get more weight
+    // v24: increased TANNER (2→3) and HUNTER (3→4) to support leather supply chain
     const WEIGHTED_EXTRAS: [string, number][] = [
       ['FARMER', 5], ['MINER', 5], ['HERBALIST', 4], ['LUMBERJACK', 4],
-      ['HUNTER', 3], ['RANCHER', 3], ['FISHERMAN', 2],
-      ['SMELTER', 2], ['TANNER', 2], ['WOODWORKER', 2],
+      ['HUNTER', 4], ['RANCHER', 3], ['FISHERMAN', 2],
+      ['SMELTER', 2], ['TANNER', 3], ['WOODWORKER', 2],
       ['COOK', 2], ['BREWER', 2], ['ALCHEMIST', 2],
       ['BLACKSMITH', 1], ['ARMORER', 1], ['LEATHERWORKER', 1], ['TAILOR', 1],
       ['JEWELER', 1], ['FLETCHER', 1], ['MASON', 1],
@@ -278,6 +293,17 @@ export async function seedBots(config: SeedConfig): Promise<BotState[]> {
     for (let j = 0; j < eligibleIndices.length; j++) {
       profAssignments.set(eligibleIndices[j], allAssignments[j]);
     }
+
+    // v24: Log profession distribution for supply chain validation
+    const profCounts = new Map<string, number>();
+    for (const [, prof] of profAssignments) {
+      profCounts.set(prof, (profCounts.get(prof) || 0) + 1);
+    }
+    const distStr = [...profCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([p, c]) => `${p}:${c}`)
+      .join(', ');
+    console.log(`[SEED] Profession distribution (${config.count} bots): ${distStr}`);
   }
 
   for (let batchStart = 1; batchStart <= config.count; batchStart += batchSize) {

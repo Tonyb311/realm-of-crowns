@@ -1491,9 +1491,16 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
           invRes.status >= 200 && invRes.status < 300) {
         const allRecipes: any[] = recipesRes.data?.recipes || recipesRes.data || [];
         const items: any[] = invRes.data?.items || invRes.data || [];
-        // Filter to only recipes for this bot's professions
+        // Filter to only recipes for this bot's professions AND within level range
+        // v24: added level filter — without it, L3 SMELTER sees smelt-steel (L30) and buys Iron Ingots it can't use
         const botProfs = new Set(bot.professions.map(p => p.toUpperCase()));
-        const recipes = allRecipes.filter((r: any) => botProfs.has((r.professionType || '').toUpperCase()));
+        const profLevels = bot.professionLevels || {};
+        const recipes = allRecipes.filter((r: any) => {
+          const profType = (r.professionType || '').toUpperCase();
+          if (!botProfs.has(profType)) return false;
+          const profLevel = profLevels[profType] || 1;
+          return (r.levelRequired || 1) <= profLevel;
+        });
         // Build inventory map
         const invMap = new Map<string, number>();
         for (const item of items) {
@@ -1531,9 +1538,13 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
           for (const itemName of missing) {
             // v22: Skip if bot already has plenty of this ingredient
             const currentStock = invMap.get(itemName) || 0;
-            if (currentStock >= MAX_INGREDIENT_STOCK) continue;
+            if (currentStock >= MAX_INGREDIENT_STOCK) {
+              console.log(`[BUY-CAP] ${bot.characterName} (${bot.professions[0]}): BLOCKED ${itemName} — already has ${currentStock}/${MAX_INGREDIENT_STOCK} [P5b]`);
+              continue;
+            }
             const buyResult = await buySpecificItem(bot, itemName);
             if (buyResult.success) {
+              console.log(`[BUY-CAP] ${bot.characterName} (${bot.professions[0]}): BOUGHT ${itemName} — stock was ${currentStock}/${MAX_INGREDIENT_STOCK} [P5b]`);
               results.push(buyResult);
               invMap.set(itemName, (invMap.get(itemName) || 0) + 1);  // v23: update invMap so cap check stays current
               bought = true;
