@@ -106,25 +106,8 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
 
       // -- Intermediate materials (TANNER processing) --
       {
-        id: 'material-soft-leather',
-        name: 'Soft Leather',
-        type: 'MATERIAL',
-        rarity: 'COMMON',
-        description: 'Supple tanned leather, ideal for weapon grips, satchels, and light padding.',
-        stats: {},
-        durability: 100,
-        professionRequired: 'TANNER',
-        levelRequired: 1,
-        isFood: false,
-        foodBuff: null,
-        isPerishable: false,
-        shelfLifeDays: null,
-        isBeverage: false,
-        baseValue: 12,
-      },
-      {
-        id: 'material-cured-leather',
-        name: 'Cured Leather',
+        id: 'material-leather',
+        name: 'Leather',
         type: 'MATERIAL',
         rarity: 'COMMON',
         description: 'Animal pelts that have been cleaned, stretched, and treated. The foundation of all leather goods.',
@@ -449,27 +432,25 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
       craftTime: number;
     }> = [
       // Processing — Apprentice (L1)
-      { recipeId: 'tan-soft-leather', name: 'Tan Soft Leather', levelRequired: 1, tier: 1, inputs: [{ itemName: 'Animal Pelts', quantity: 1 }], outputName: 'Soft Leather', xpReward: 8, craftTime: 15 },
-      // Processing — Apprentice (L3)
-      { recipeId: 'tan-cure-leather', name: 'Cure Leather', levelRequired: 3, tier: 1, inputs: [{ itemName: 'Animal Pelts', quantity: 2 }], outputName: 'Cured Leather', xpReward: 10, craftTime: 20 },
+      { recipeId: 'tan-cure-leather', name: 'Cure Leather', levelRequired: 3, tier: 1, inputs: [{ itemName: 'Animal Pelts', quantity: 2 }], outputName: 'Leather', xpReward: 10, craftTime: 20 },
       // Consumable — Apprentice (L3)
-      { recipeId: 'tan-leather-satchel', name: 'Craft Leather Satchel', levelRequired: 3, tier: 1, inputs: [{ itemName: 'Cured Leather', quantity: 3 }], outputName: 'Leather Satchel', xpReward: 12, craftTime: 25 },
+      { recipeId: 'tan-leather-satchel', name: 'Craft Leather Satchel', levelRequired: 3, tier: 1, inputs: [{ itemName: 'Leather', quantity: 3 }], outputName: 'Leather Satchel', xpReward: 12, craftTime: 25 },
       // Equipment — Apprentice (L3-4)
-      { recipeId: 'tan-leather-cap', name: 'Craft Leather Cap', levelRequired: 3, tier: 1, inputs: [{ itemName: 'Cured Leather', quantity: 2 }], outputName: 'Leather Cap', xpReward: 12, craftTime: 20 },
-      { recipeId: 'tan-leather-vest', name: 'Craft Leather Vest', levelRequired: 4, tier: 1, inputs: [{ itemName: 'Cured Leather', quantity: 4 }], outputName: 'Leather Vest', xpReward: 18, craftTime: 30 },
-      { recipeId: 'tan-leather-belt', name: 'Craft Leather Belt', levelRequired: 4, tier: 1, inputs: [{ itemName: 'Cured Leather', quantity: 2 }, { itemName: 'Iron Ore Chunks', quantity: 1 }], outputName: 'Leather Belt', xpReward: 14, craftTime: 20 },
+      { recipeId: 'tan-leather-cap', name: 'Craft Leather Cap', levelRequired: 3, tier: 1, inputs: [{ itemName: 'Leather', quantity: 2 }], outputName: 'Leather Cap', xpReward: 12, craftTime: 20 },
+      { recipeId: 'tan-leather-vest', name: 'Craft Leather Vest', levelRequired: 4, tier: 1, inputs: [{ itemName: 'Leather', quantity: 4 }], outputName: 'Leather Vest', xpReward: 18, craftTime: 30 },
+      { recipeId: 'tan-leather-belt', name: 'Craft Leather Belt', levelRequired: 4, tier: 1, inputs: [{ itemName: 'Leather', quantity: 2 }, { itemName: 'Iron Ore Chunks', quantity: 1 }], outputName: 'Leather Belt', xpReward: 14, craftTime: 20 },
       // Equipment — Journeyman (L5-6)
-      { recipeId: 'tan-leather-armor', name: 'Craft Leather Armor', levelRequired: 5, tier: 2, inputs: [{ itemName: 'Cured Leather', quantity: 5 }, { itemName: 'Iron Ore Chunks', quantity: 1 }], outputName: 'Leather Armor', xpReward: 25, craftTime: 40 },
-      { recipeId: 'tan-leather-bracers', name: 'Craft Leather Bracers', levelRequired: 5, tier: 2, inputs: [{ itemName: 'Cured Leather', quantity: 2 }, { itemName: 'Iron Ore Chunks', quantity: 1 }], outputName: 'Leather Bracers', xpReward: 18, craftTime: 25 },
-      { recipeId: 'tan-leather-greaves', name: 'Craft Leather Greaves', levelRequired: 6, tier: 2, inputs: [{ itemName: 'Cured Leather', quantity: 3 }, { itemName: 'Iron Ore Chunks', quantity: 1 }], outputName: 'Leather Greaves', xpReward: 20, craftTime: 30 },
-      { recipeId: 'tan-quiver', name: 'Craft Quiver', levelRequired: 6, tier: 2, inputs: [{ itemName: 'Cured Leather', quantity: 3 }, { itemName: 'Wood Logs', quantity: 2 }], outputName: 'Quiver', xpReward: 22, craftTime: 30 },
+      { recipeId: 'tan-leather-armor', name: 'Craft Leather Armor', levelRequired: 5, tier: 2, inputs: [{ itemName: 'Leather', quantity: 5 }, { itemName: 'Iron Ore Chunks', quantity: 1 }], outputName: 'Leather Armor', xpReward: 25, craftTime: 40 },
+      { recipeId: 'tan-leather-bracers', name: 'Craft Leather Bracers', levelRequired: 5, tier: 2, inputs: [{ itemName: 'Leather', quantity: 2 }, { itemName: 'Iron Ore Chunks', quantity: 1 }], outputName: 'Leather Bracers', xpReward: 18, craftTime: 25 },
+      { recipeId: 'tan-leather-greaves', name: 'Craft Leather Greaves', levelRequired: 6, tier: 2, inputs: [{ itemName: 'Leather', quantity: 3 }, { itemName: 'Iron Ore Chunks', quantity: 1 }], outputName: 'Leather Greaves', xpReward: 20, craftTime: 30 },
+      { recipeId: 'tan-quiver', name: 'Craft Quiver', levelRequired: 6, tier: 2, inputs: [{ itemName: 'Leather', quantity: 3 }, { itemName: 'Wood Logs', quantity: 2 }], outputName: 'Quiver', xpReward: 22, craftTime: 30 },
       // Processing — Craftsman (L7)
       { recipeId: 'tan-wolf-leather', name: 'Tan Wolf Leather', levelRequired: 7, tier: 3, inputs: [{ itemName: 'Wolf Pelts', quantity: 2 }], outputName: 'Wolf Leather', xpReward: 25, craftTime: 35 },
       { recipeId: 'tan-bear-leather', name: 'Tan Bear Leather', levelRequired: 7, tier: 3, inputs: [{ itemName: 'Bear Hides', quantity: 2 }], outputName: 'Bear Leather', xpReward: 28, craftTime: 40 },
       // Equipment — Craftsman (L7-8)
-      { recipeId: 'tan-wolf-leather-armor', name: 'Craft Wolf Leather Armor', levelRequired: 7, tier: 3, inputs: [{ itemName: 'Wolf Leather', quantity: 4 }, { itemName: 'Cured Leather', quantity: 2 }, { itemName: 'Silver Ore', quantity: 1 }], outputName: 'Wolf Leather Armor', xpReward: 35, craftTime: 50 },
-      { recipeId: 'tan-wolf-leather-hood', name: 'Craft Wolf Leather Hood', levelRequired: 7, tier: 3, inputs: [{ itemName: 'Wolf Leather', quantity: 2 }, { itemName: 'Cured Leather', quantity: 1 }], outputName: 'Wolf Leather Hood', xpReward: 28, craftTime: 30 },
-      { recipeId: 'tan-bear-hide-cuirass', name: 'Craft Bear Hide Cuirass', levelRequired: 8, tier: 3, inputs: [{ itemName: 'Bear Leather', quantity: 5 }, { itemName: 'Cured Leather', quantity: 2 }, { itemName: 'Silver Ore', quantity: 2 }], outputName: 'Bear Hide Cuirass', xpReward: 45, craftTime: 60 },
+      { recipeId: 'tan-wolf-leather-armor', name: 'Craft Wolf Leather Armor', levelRequired: 7, tier: 3, inputs: [{ itemName: 'Wolf Leather', quantity: 4 }, { itemName: 'Leather', quantity: 2 }, { itemName: 'Silver Ore', quantity: 1 }], outputName: 'Wolf Leather Armor', xpReward: 35, craftTime: 50 },
+      { recipeId: 'tan-wolf-leather-hood', name: 'Craft Wolf Leather Hood', levelRequired: 7, tier: 3, inputs: [{ itemName: 'Wolf Leather', quantity: 2 }, { itemName: 'Leather', quantity: 1 }], outputName: 'Wolf Leather Hood', xpReward: 28, craftTime: 30 },
+      { recipeId: 'tan-bear-hide-cuirass', name: 'Craft Bear Hide Cuirass', levelRequired: 8, tier: 3, inputs: [{ itemName: 'Bear Leather', quantity: 5 }, { itemName: 'Leather', quantity: 2 }, { itemName: 'Silver Ore', quantity: 2 }], outputName: 'Bear Hide Cuirass', xpReward: 45, craftTime: 60 },
       { recipeId: 'tan-rangers-quiver', name: "Craft Ranger's Quiver", levelRequired: 8, tier: 3, inputs: [{ itemName: 'Wolf Leather', quantity: 2 }, { itemName: 'Bear Leather', quantity: 1 }, { itemName: 'Hardwood', quantity: 1 }], outputName: "Ranger's Quiver", xpReward: 40, craftTime: 45 },
     ];
 

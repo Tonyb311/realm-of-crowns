@@ -360,7 +360,7 @@ const BASE_VALUES: Record<string, number> = {
   'Silk Fabric': 75,
 
   // ── TANNER: Processing ──
-  'Cured Leather': 18,
+  'Leather': 18,
   'Wolf Leather': 73,
   'Bear Leather': 91,
 
@@ -444,7 +444,6 @@ const BASE_VALUES: Record<string, number> = {
   'Cloth Boots': 15,
   'Cloth Gloves': 12,
   'Cloth Robes': 20,
-  'Soft Leather': 14,
 
   // ── PROGRESSION: Hard Leather Set (L15, T2) ──
   'Hard Leather': 24,

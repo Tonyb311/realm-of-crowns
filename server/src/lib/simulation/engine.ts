@@ -52,7 +52,7 @@ const MONSTER_DROP_ITEMS: Record<string, { biomes: string[]; minLevel: number }>
 // Recipes whose outputs are intermediates needed by higher-tier recipes
 const INTERMEDIATE_RECIPE_IDS = new Set([
   // SMELTER intermediates (ingots → consumed by BLACKSMITH, ARMORER, JEWELER, FLETCHER)
-  'recipe-smelt-copper', 'recipe-smelt-iron', 'recipe-smelt-steel', 'recipe-smelt-silver', 'recipe-smelt-gold',
+  'recipe-smelt-iron', 'recipe-smelt-steel', 'recipe-smelt-silver', 'recipe-smelt-gold',
   'recipe-smelt-mithril', 'recipe-smelt-adamantine', 'recipe-smelt-ore-chunks', 'recipe-smelt-glass',
   'recipe-forge-iron-fittings', 'recipe-forge-nails',
   // WOODWORKER intermediates (planks, handles, staves → consumed by FLETCHER, MASON, BLACKSMITH)
@@ -65,13 +65,15 @@ const INTERMEDIATE_RECIPE_IDS = new Set([
   'recipe-cook-grilled-fish', // Grilled Fish → Fisherman's Banquet
   'recipe-cook-bread-loaf',   // Bread Loaf (T2) → Harvest Feast, Fisherman's Banquet
   // TANNER intermediates
-  'recipe-tan-cure-leather',  // Cured Leather → all TANNER finished goods
+  'recipe-tan-cure-leather',  // Leather → all TANNER finished goods
   'recipe-tan-wolf-leather',  // Wolf Leather → Wolf Leather Armor, Wolf Leather Hood, Ranger's Quiver
   'recipe-tan-bear-leather',  // Bear Leather → Bear Hide Cuirass, Ranger's Quiver
   // TAILOR intermediates
   'recipe-tai-weave-cloth',   // Woven Cloth → all TAILOR finished goods (Apprentice/Journeyman)
   'recipe-tai-weave-fine-cloth', // Fine Cloth → TAILOR Craftsman finished goods
   'recipe-tai-process-silk',  // Silk Fabric → TAILOR Craftsman finished goods
+  // FLETCHER intermediates
+  'recipe-fletch-bowstring',  // Bowstring → all bow recipes
 ]);
 
 // Gathering spot type → item name produced
@@ -115,13 +117,8 @@ const ITEM_TO_SPOT_TYPE: Record<string, string> = {
   'Grain': 'orchard',
   'Vegetables': 'orchard',
   'Wild Berries': 'orchard',
-  'Cotton': 'orchard',
-  // RANCHER asset products — travel to farming regions where ranchers operate
-  'Wool': 'orchard',
-  'Fine Wool': 'orchard',
-  'Silkworm Cocoons': 'orchard',
   // TANNER intermediates — travel to hunting regions where supply chain starts
-  'Cured Leather': 'hunting_ground',
+  'Leather': 'hunting_ground',
   'Wolf Leather': 'hunting_ground',
   'Bear Leather': 'hunting_ground',
   // TAILOR intermediates — travel to farming regions where Wool supply chain starts
@@ -129,12 +126,10 @@ const ITEM_TO_SPOT_TYPE: Record<string, string> = {
   'Fine Cloth': 'orchard',
   'Silk Fabric': 'orchard',
   // SMELTER inputs — travel to mining towns for ores
-  'Copper Ore': 'mine',
   'Gold Ore': 'mine',
   'Mithril Ore': 'mine',
   'Adamantine Ore': 'mine',
   // SMELTER intermediates — travel to mining towns (where smelters operate)
-  'Copper Ingot': 'mine',
   'Iron Ingot': 'mine',
   'Steel Ingot': 'mine',
   'Silver Ingot': 'silver_mine',

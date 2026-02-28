@@ -566,6 +566,25 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
       }
     }
 
+    // v26: Cap maxNeeded for intermediate items so processors list surplus for downstream crafters.
+    // TANNER makes Leather (qty 2) and needs Leather for own finished goods (qty 2-5).
+    // Without cap, TANNER hoards all Leather. Cap at 2 so surplus flows to FLETCHER/LEATHERWORKER.
+    const INTERMEDIATE_ITEMS = new Set([
+      'Leather', 'Wolf Leather', 'Bear Leather',     // TANNER → LEATHERWORKER, FLETCHER, TAILOR
+      'Iron Ingot', 'Steel Ingot', 'Silver Ingot',   // SMELTER → BLACKSMITH, ARMORER, JEWELER
+      'Softwood Planks', 'Rough Planks',              // WOODWORKER → FLETCHER, MASON, BLACKSMITH
+      'Wooden Dowels', 'Wooden Handle', 'Bow Stave',  // WOODWORKER → FLETCHER, BLACKSMITH
+      'Woven Cloth',                                   // TAILOR intermediate
+      'Cut Stone',                                     // MASON intermediate
+      'Flour', 'Berry Jam',                            // COOK intermediates
+    ]);
+    const INTERMEDIATE_KEEP_CAP = 2;  // Keep at most 2 of any intermediate, list the rest
+    for (const [itemName, needed] of maxNeeded) {
+      if (INTERMEDIATE_ITEMS.has(itemName) && needed > INTERMEDIATE_KEEP_CAP) {
+        maxNeeded.set(itemName, INTERMEDIATE_KEEP_CAP);
+      }
+    }
+
     // Diagnostic: log recipe needs
     const neededStr = [...maxNeeded.entries()].map(([n, q]) => `${n}:${q}`).join(', ');
     console.log(`${diagTag} Recipes: ${recipes.length} total, ${reachableCount} reachable. Needed: [${neededStr}]`);

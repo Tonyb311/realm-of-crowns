@@ -149,15 +149,15 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
 
   // --- Processed Materials: Tanner ---
   {
-    name: 'Soft Leather',
+    name: 'Leather',
     type: 'MATERIAL',
     rarity: 'COMMON',
-    description: 'Supple tanned leather, ideal for light armor and clothing.',
+    description: 'Animal pelts that have been cleaned, stretched, and treated. The foundation of all leather goods.',
     stats: {},
     durability: 100,
     professionRequired: 'TANNER',
-    levelRequired: 1,
-    baseValue: 14,
+    levelRequired: 3,
+    baseValue: 18,
   },
   {
     name: 'Hard Leather',
@@ -202,17 +202,6 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'TANNER',
     levelRequired: 80,
     baseValue: 300,
-  },
-  {
-    name: 'Cured Leather',
-    type: 'MATERIAL',
-    rarity: 'COMMON',
-    description: 'Animal pelts that have been cleaned, stretched, and treated. The foundation of all leather goods.',
-    stats: {},
-    durability: 100,
-    professionRequired: 'TANNER',
-    levelRequired: 3,
-    baseValue: 18,
   },
   {
     name: 'Wolf Leather',
@@ -1446,7 +1435,7 @@ export async function seedRecipes(prisma: PrismaClient) {
   console.log(`  Total templates: ${templateMap.size}`);
 
   // ----- v20: Remove orphaned processing recipes no longer in shared data -----
-  const REMOVED_PROCESSING_RECIPES = ['recipe-smelt-copper'];
+  const REMOVED_PROCESSING_RECIPES = ['recipe-smelt-copper', 'recipe-craft-leather-armor', 'recipe-craft-chainmail', 'recipe-tan-soft-leather'];
   for (const id of REMOVED_PROCESSING_RECIPES) {
     try {
       await prisma.recipe.delete({ where: { id } });

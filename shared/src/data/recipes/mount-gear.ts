@@ -7,7 +7,7 @@ export const MOUNT_GEAR_RECIPES: RecipeDefinition[] = [
     professionRequired: 'STABLE_MASTER',
     levelRequired: 1,
     inputs: [
-      { itemName: 'Soft Leather', quantity: 4 },
+      { itemName: 'Leather', quantity: 4 },
       { itemName: 'Hardwood Planks', quantity: 1 },
       { itemName: 'Iron Ingot', quantity: 1 },
     ],
@@ -51,7 +51,7 @@ export const MOUNT_GEAR_RECIPES: RecipeDefinition[] = [
     inputs: [
       { itemName: 'Hard Leather', quantity: 4 },
       { itemName: 'Iron Ingot', quantity: 4 },
-      { itemName: 'Soft Leather', quantity: 2 },
+      { itemName: 'Leather', quantity: 2 },
     ],
     outputs: [{ itemName: 'Horse Armor', quantity: 1 }],
     craftTime: 90,
@@ -66,7 +66,7 @@ export const MOUNT_GEAR_RECIPES: RecipeDefinition[] = [
     inputs: [
       { itemName: 'Hard Leather', quantity: 5 },
       { itemName: 'Steel Ingot', quantity: 2 },
-      { itemName: 'Soft Leather', quantity: 2 },
+      { itemName: 'Leather', quantity: 2 },
     ],
     outputs: [{ itemName: 'War Saddle', quantity: 1 }],
     craftTime: 75,

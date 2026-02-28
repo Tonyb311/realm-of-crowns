@@ -6,9 +6,9 @@ export const ENCHANTMENT_RECIPES: RecipeDefinition[] = [
     recipeId: 'enchant-fortified',
     name: 'Enchant: Fortified',
     professionRequired: 'ENCHANTER',
-    levelRequired: 5,
+    levelRequired: 3,
     inputs: [
-      { itemName: 'Living Bark', quantity: 2 },
+      { itemName: 'Wild Herbs', quantity: 2 },
       { itemName: 'Iron Ingot', quantity: 1 },
       { itemName: 'Coal', quantity: 1 },
     ],

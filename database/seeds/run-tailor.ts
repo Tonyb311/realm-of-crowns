@@ -467,20 +467,20 @@ async function main() {
       // Legacy processing (spin-cloth kept for housing-bed Woodworker recipe)
       { recipeId: 'spin-cloth', name: 'Spin Cloth', levelRequired: 1, tier: 1, inputs: [{ itemName: 'Cotton', quantity: 3 }], outputName: 'Cloth', xpReward: 10, craftTime: 20 },
       // New processing — Apprentice (L3)
-      { recipeId: 'tai-weave-cloth', name: 'Weave Cloth', levelRequired: 3, tier: 1, inputs: [{ itemName: 'Wool', quantity: 3 }], outputName: 'Woven Cloth', xpReward: 12, craftTime: 20 },
+      { recipeId: 'tai-weave-cloth', name: 'Weave Cloth', levelRequired: 3, tier: 1, inputs: [{ itemName: 'Cotton', quantity: 3 }], outputName: 'Woven Cloth', xpReward: 12, craftTime: 20 },
       // New processing — Craftsman (L7)
       { recipeId: 'tai-weave-fine-cloth', name: 'Weave Fine Cloth', levelRequired: 7, tier: 3, inputs: [{ itemName: 'Fine Wool', quantity: 3 }], outputName: 'Fine Cloth', xpReward: 25, craftTime: 35 },
       { recipeId: 'tai-process-silk', name: 'Process Silk', levelRequired: 7, tier: 3, inputs: [{ itemName: 'Silkworm Cocoons', quantity: 3 }], outputName: 'Silk Fabric', xpReward: 28, craftTime: 40 },
       // Apprentice armor (L3-4)
       { recipeId: 'tai-cloth-hood', name: 'Sew Cloth Hood', levelRequired: 3, tier: 1, inputs: [{ itemName: 'Woven Cloth', quantity: 2 }], outputName: 'Cloth Hood', xpReward: 8, craftTime: 10 },
-      { recipeId: 'tai-cloth-sash', name: 'Sew Cloth Sash', levelRequired: 3, tier: 1, inputs: [{ itemName: 'Woven Cloth', quantity: 1 }, { itemName: 'Cured Leather', quantity: 1 }], outputName: 'Cloth Sash', xpReward: 7, craftTime: 8 },
-      { recipeId: 'tai-cloth-robe', name: 'Sew Cloth Robe', levelRequired: 4, tier: 1, inputs: [{ itemName: 'Woven Cloth', quantity: 4 }, { itemName: 'Cured Leather', quantity: 1 }], outputName: 'Cloth Robe', xpReward: 12, craftTime: 20 },
+      { recipeId: 'tai-cloth-sash', name: 'Sew Cloth Sash', levelRequired: 3, tier: 1, inputs: [{ itemName: 'Woven Cloth', quantity: 1 }, { itemName: 'Leather', quantity: 1 }], outputName: 'Cloth Sash', xpReward: 7, craftTime: 8 },
+      { recipeId: 'tai-cloth-robe', name: 'Sew Cloth Robe', levelRequired: 4, tier: 1, inputs: [{ itemName: 'Woven Cloth', quantity: 4 }, { itemName: 'Leather', quantity: 1 }], outputName: 'Cloth Robe', xpReward: 12, craftTime: 20 },
       { recipeId: 'tai-wool-trousers', name: 'Sew Wool Trousers', levelRequired: 4, tier: 1, inputs: [{ itemName: 'Woven Cloth', quantity: 3 }], outputName: 'Wool Trousers', xpReward: 10, craftTime: 15 },
       // Journeyman armor (L5-6)
-      { recipeId: 'tai-scholars-robe', name: "Sew Scholar's Robe", levelRequired: 5, tier: 2, inputs: [{ itemName: 'Woven Cloth', quantity: 5 }, { itemName: 'Cured Leather', quantity: 2 }], outputName: "Scholar's Robe", xpReward: 18, craftTime: 30 },
-      { recipeId: 'tai-travelers-cloak', name: "Sew Traveler's Cloak", levelRequired: 5, tier: 2, inputs: [{ itemName: 'Woven Cloth', quantity: 3 }, { itemName: 'Cured Leather', quantity: 2 }], outputName: "Traveler's Cloak", xpReward: 15, craftTime: 25 },
-      { recipeId: 'tai-merchants-hat', name: "Sew Merchant's Hat", levelRequired: 6, tier: 2, inputs: [{ itemName: 'Woven Cloth', quantity: 2 }, { itemName: 'Cured Leather', quantity: 1 }], outputName: "Merchant's Hat", xpReward: 12, craftTime: 15 },
-      { recipeId: 'tai-herbalists-apron', name: "Sew Herbalist's Apron", levelRequired: 6, tier: 2, inputs: [{ itemName: 'Woven Cloth', quantity: 3 }, { itemName: 'Cured Leather', quantity: 2 }], outputName: "Herbalist's Apron", xpReward: 14, craftTime: 25 },
+      { recipeId: 'tai-scholars-robe', name: "Sew Scholar's Robe", levelRequired: 5, tier: 2, inputs: [{ itemName: 'Woven Cloth', quantity: 5 }, { itemName: 'Leather', quantity: 2 }], outputName: "Scholar's Robe", xpReward: 18, craftTime: 30 },
+      { recipeId: 'tai-travelers-cloak', name: "Sew Traveler's Cloak", levelRequired: 5, tier: 2, inputs: [{ itemName: 'Woven Cloth', quantity: 3 }, { itemName: 'Leather', quantity: 2 }], outputName: "Traveler's Cloak", xpReward: 15, craftTime: 25 },
+      { recipeId: 'tai-merchants-hat', name: "Sew Merchant's Hat", levelRequired: 6, tier: 2, inputs: [{ itemName: 'Woven Cloth', quantity: 2 }, { itemName: 'Leather', quantity: 1 }], outputName: "Merchant's Hat", xpReward: 12, craftTime: 15 },
+      { recipeId: 'tai-herbalists-apron', name: "Sew Herbalist's Apron", levelRequired: 6, tier: 2, inputs: [{ itemName: 'Woven Cloth', quantity: 3 }, { itemName: 'Leather', quantity: 2 }], outputName: "Herbalist's Apron", xpReward: 14, craftTime: 25 },
       // Craftsman armor (L7-8)
       { recipeId: 'tai-archmages-robe', name: "Sew Archmage's Robe", levelRequired: 7, tier: 3, inputs: [{ itemName: 'Fine Cloth', quantity: 4 }, { itemName: 'Silk Fabric', quantity: 2 }, { itemName: 'Wolf Leather', quantity: 1 }], outputName: "Archmage's Robe", xpReward: 35, craftTime: 50 },
       { recipeId: 'tai-diplomats-regalia', name: "Sew Diplomat's Regalia", levelRequired: 7, tier: 3, inputs: [{ itemName: 'Silk Fabric', quantity: 3 }, { itemName: 'Fine Cloth', quantity: 2 }, { itemName: 'Silver Ore', quantity: 1 }], outputName: "Diplomat's Regalia", xpReward: 35, craftTime: 50 },

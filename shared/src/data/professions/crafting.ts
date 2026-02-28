@@ -94,10 +94,10 @@ export const TANNER: ProfessionDefinition = {
   primaryStat: 'DEX',
   relatedProfessions: ['HUNTER'],
   inputResources: ['Animal Pelts', 'Wolf Pelts', 'Bear Hides', 'Iron Ore Chunks', 'Silver Ore'],
-  outputProducts: ['Cured Leather', 'Wolf Leather', 'Bear Leather', 'Leather Armor', 'Bear Hide Cuirass'],
+  outputProducts: ['Leather', 'Wolf Leather', 'Bear Leather', 'Leather Armor', 'Bear Hide Cuirass'],
   townTypeAffinity: ['forest', 'plains'],
   tierUnlocks: {
-    APPRENTICE: ['Cured Leather', 'Leather Cap', 'Leather Vest', 'Leather Belt', 'Leather Satchel'],
+    APPRENTICE: ['Leather', 'Leather Cap', 'Leather Vest', 'Leather Belt', 'Leather Satchel'],
     JOURNEYMAN: ['Leather Armor', 'Leather Bracers', 'Leather Greaves', 'Quiver'],
     CRAFTSMAN: ['Wolf Leather', 'Bear Leather', 'Wolf Leather Armor', 'Bear Hide Cuirass', 'Wolf Leather Hood', "Ranger's Quiver"],
     EXPERT: ['Dragonhide Armor', 'Shadow Cloak', 'Master Quiver'],
@@ -113,7 +113,7 @@ export const LEATHERWORKER: ProfessionDefinition = {
   description: 'Leatherworkers craft finished goods from tanned leather: armor, boots, belts, bags, quivers, and saddles. They are essential suppliers for adventurers who prefer agility over heavy plate.',
   primaryStat: 'DEX',
   relatedProfessions: ['TANNER', 'HUNTER', 'STABLE_MASTER', 'ENCHANTER'],
-  inputResources: ['Soft Leather', 'Hard Leather', 'Studded Leather', 'Buckles', 'Thread'],
+  inputResources: ['Leather', 'Hard Leather', 'Studded Leather', 'Buckles', 'Thread'],
   outputProducts: ['Leather Armor', 'Boots', 'Belts', 'Bags', 'Saddles', 'Quivers', 'Gloves'],
   townTypeAffinity: ['forest', 'plains', 'trade'],
   tierUnlocks: {
@@ -133,7 +133,7 @@ export const TAILOR: ProfessionDefinition = {
   description: 'Tailors weave wool and leather into robes, cloaks, and enchanted garments. Their creations enhance the mind, bolster charisma, and channel magical energies — the attire of mages, priests, and nobility.',
   primaryStat: 'CHA',
   relatedProfessions: ['RANCHER', 'TANNER'],
-  inputResources: ['Wool', 'Fine Wool', 'Silkworm Cocoons', 'Cured Leather', 'Wolf Leather', 'Bear Leather'],
+  inputResources: ['Cotton', 'Fine Wool', 'Silkworm Cocoons', 'Leather', 'Wolf Leather', 'Bear Leather'],
   outputProducts: ['Woven Cloth', 'Fine Cloth', 'Silk Fabric', 'Robes', 'Cloaks', 'Hoods', 'Garments'],
   townTypeAffinity: ['plains', 'trade', 'urban'],
   tierUnlocks: {

@@ -10,7 +10,7 @@ export const TANNER_RECIPES: RecipeDefinition[] = [
     inputs: [
       { itemName: 'Animal Pelts', quantity: 2 },
     ],
-    outputs: [{ itemName: 'Cured Leather', quantity: 2 }],
+    outputs: [{ itemName: 'Leather', quantity: 2 }],
     craftTime: 20,
     xpReward: 10,
     tier: 1,

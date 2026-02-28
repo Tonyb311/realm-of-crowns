@@ -233,7 +233,7 @@ export async function seedBots(config: SeedConfig): Promise<BotState[]> {
       // Processing (intermediate goods — critical bottlenecks)
       ['SMELTER', 3],        // Iron Ore + Coal → Iron Ingots
       ['WOODWORKER', 3],     // Softwood/Hardwood → Planks/Beams
-      ['TANNER', 3],         // Animal Pelts → Cured Leather (was 1, critical gap)
+      ['TANNER', 3],         // Animal Pelts → Leather
       // Gathering (feed processing chains)
       ['MINER', 3],          // Iron Ore, Coal, Stone — feeds SMELTER + MASON
       ['HUNTER', 3],         // Animal Pelts — feeds TANNER → LEATHERWORKER chain
@@ -241,7 +241,7 @@ export async function seedBots(config: SeedConfig): Promise<BotState[]> {
       ['HERBALIST', 2],      // Wild Herbs, Medicinal Herbs — feeds ALCHEMIST
       ['FARMER', 2],         // Grain, Vegetables — feeds COOK, BREWER
       // Crafting (finished goods)
-      ['LEATHERWORKER', 2],  // Cured Leather → armor pieces
+      ['LEATHERWORKER', 2],  // Leather → armor pieces
       ['ALCHEMIST', 2],      // Herbs → potions (was 1)
       ['COOK', 2],           // Food ingredients → food buffs (was 1)
       ['BREWER', 2],         // Grain/Fruit → drinks (was 1)
@@ -319,6 +319,53 @@ export async function seedBots(config: SeedConfig): Promise<BotState[]> {
   }
 
   logger.info({ count: bots.length }, 'All bots seeded');
+
+  // ── Seed Cotton on the market (NPC supply for TAILOR bots) ──
+  // Cotton comes from a private FARMER asset (cotton_field) that bots can't operate.
+  // Seed 100x Cotton as market listings so TAILOR bots can buy it.
+  try {
+    const cottonTemplate = await prisma.itemTemplate.findFirst({
+      where: { name: { equals: 'Cotton', mode: 'insensitive' } },
+    });
+    if (cottonTemplate && bots.length > 0) {
+      const cottonPrice = 4; // base_value from YAML
+      const listingsToCreate = 10; // 10 listings × 10 qty = 100 total
+      const qtyPerListing = 10;
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30); // 30-day expiry
+
+      // Spread listings across different bot sellers in different towns
+      for (let i = 0; i < listingsToCreate; i++) {
+        const seller = bots[i % bots.length];
+        // Create an Item instance for the listing
+        const item = await prisma.item.create({
+          data: {
+            templateId: cottonTemplate.id,
+            ownerId: seller.characterId,
+          },
+        });
+        await prisma.marketListing.create({
+          data: {
+            sellerId: seller.characterId,
+            itemId: item.id,
+            itemTemplateId: cottonTemplate.id,
+            itemName: 'Cotton',
+            price: cottonPrice,
+            quantity: qtyPerListing,
+            townId: seller.currentTownId,
+            status: 'active',
+            expiresAt,
+          },
+        });
+      }
+      logger.info({ total: listingsToCreate * qtyPerListing, price: cottonPrice }, 'Seeded Cotton market listings for TAILOR supply');
+    } else {
+      logger.warn('Cotton ItemTemplate not found or no bots — skipping Cotton market seeding');
+    }
+  } catch (err: any) {
+    logger.warn({ error: err.message }, 'Failed to seed Cotton market listings (non-fatal)');
+  }
+
   return bots;
 }
 

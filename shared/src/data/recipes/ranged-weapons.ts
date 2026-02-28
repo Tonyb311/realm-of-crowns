@@ -2,7 +2,7 @@
  * FLETCHER Ranged Weapon & Ammunition Recipes — 13 recipes across 3 tiers
  *
  * Supply chain: WOODWORKER (Bow Stave, Planks, Dowels, Handle) +
- *               TANNER (Cured Leather, Wolf Leather, Bear Leather)
+ *               TANNER (Leather, Wolf Leather, Bear Leather)
  *
  * Damage progression:
  *   Practice Bow (5, WOODWORKER) → Shortbow (6) → Hunting Bow (8) →
@@ -25,7 +25,7 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'FLETCHER',
     levelRequired: 1,
     inputs: [
-      { itemName: ITEMS.CURED_LEATHER, quantity: 1 },
+      { itemName: ITEMS.LEATHER, quantity: 1 },
     ],
     outputs: [{ itemName: ITEMS.BOWSTRING, quantity: 1 }],
     craftTime: 10,
@@ -99,7 +99,7 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     inputs: [
       { itemName: ITEMS.BOW_STAVE, quantity: 1 },
       { itemName: ITEMS.BOWSTRING, quantity: 1 },
-      { itemName: ITEMS.CURED_LEATHER, quantity: 1 },
+      { itemName: ITEMS.LEATHER, quantity: 1 },
     ],
     outputs: [{ itemName: ITEMS.HUNTING_BOW, quantity: 1 }],
     craftTime: 35,
@@ -133,7 +133,7 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     inputs: [
       { itemName: ITEMS.HARDWOOD_PLANKS, quantity: 1 },
       { itemName: ITEMS.BOWSTRING, quantity: 1 },
-      { itemName: ITEMS.CURED_LEATHER, quantity: 1 },
+      { itemName: ITEMS.LEATHER, quantity: 1 },
     ],
     outputs: [{ itemName: ITEMS.LONGBOW, quantity: 1 }],
     craftTime: 50,
@@ -218,7 +218,7 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'FLETCHER',
     levelRequired: 15,
     inputs: [
-      { itemName: ITEMS.CURED_LEATHER, quantity: 1 },
+      { itemName: ITEMS.LEATHER, quantity: 1 },
       { itemName: ITEMS.WOODEN_DOWELS, quantity: 2 },
       { itemName: ITEMS.NAILS, quantity: 4 },
     ],
@@ -388,7 +388,7 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 10,
     inputs: [
       { itemName: ITEMS.IRON_INGOT, quantity: 2 },
-      { itemName: ITEMS.SOFT_LEATHER, quantity: 1 },
+      { itemName: ITEMS.LEATHER, quantity: 1 },
     ],
     outputs: [{ itemName: ITEMS.THROWING_KNIVES, quantity: 10 }],
     craftTime: 25,

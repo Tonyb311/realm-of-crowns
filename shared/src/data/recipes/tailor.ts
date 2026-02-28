@@ -21,7 +21,7 @@ export const TAILOR_RECIPES: RecipeDefinition[] = [
     name: 'Weave Cloth',
     professionRequired: 'TAILOR',
     levelRequired: 3,
-    inputs: [{ itemName: 'Wool', quantity: 3 }],
+    inputs: [{ itemName: 'Cotton', quantity: 3 }],
     outputs: [{ itemName: 'Woven Cloth', quantity: 2 }],
     craftTime: 20,
     xpReward: 12,

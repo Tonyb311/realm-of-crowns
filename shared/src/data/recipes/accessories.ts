@@ -8,8 +8,8 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     professionRequired: 'JEWELER',
     levelRequired: 1,
     inputs: [
-      { itemName: 'Copper Ingot', quantity: 1 },
-      { itemName: 'Gemstones', quantity: 1 },
+      { itemName: 'Iron Ingot', quantity: 1 },
+      { itemName: 'Cut Stone', quantity: 1 },
     ],
     outputs: [{ itemName: 'Copper Ring', quantity: 1 }],
     craftTime: 20,
@@ -81,8 +81,8 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     professionRequired: 'JEWELER',
     levelRequired: 1,
     inputs: [
-      { itemName: 'Copper Ingot', quantity: 2 },
-      { itemName: 'Gemstones', quantity: 1 },
+      { itemName: 'Iron Ingot', quantity: 2 },
+      { itemName: 'Cut Stone', quantity: 1 },
     ],
     outputs: [{ itemName: 'Copper Necklace', quantity: 1 }],
     craftTime: 25,

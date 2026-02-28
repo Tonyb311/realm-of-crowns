@@ -955,7 +955,7 @@ export const SCRIBE_CONSUMABLES: ConsumableRecipe[] = [
     recipeId: 'scribe-area-map',
     name: 'Area Map',
     professionRequired: 'SCRIBE',
-    levelRequired: 5,
+    levelRequired: 3,
     inputs: [
       { itemName: 'Softwood Planks', quantity: 2 },
       { itemName: 'Wild Herbs', quantity: 1 },
@@ -1125,7 +1125,7 @@ export const TANNER_CONSUMABLES: ConsumableRecipe[] = [
     professionRequired: 'TANNER',
     levelRequired: 3,
     inputs: [
-      { itemName: 'Cured Leather', quantity: 3 },
+      { itemName: 'Leather', quantity: 3 },
     ],
     output: { itemName: 'Leather Satchel', quantity: 1 },
     consumableStats: { effect: 'buff_dexterity', magnitude: 1, duration: 5, stackSize: 5 },

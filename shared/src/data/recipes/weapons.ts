@@ -18,7 +18,7 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 1,
     inputs: [
       { itemName: 'Copper Ingot', quantity: 1 },
-      { itemName: 'Soft Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Copper Dagger', quantity: 1 }],
     craftTime: 15,
@@ -43,7 +43,7 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 1,
     inputs: [
       { itemName: 'Copper Ingot', quantity: 2 },
-      { itemName: 'Soft Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Copper Sword', quantity: 1 }],
     craftTime: 20,
@@ -147,7 +147,7 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 10,
     inputs: [
       { itemName: 'Iron Ingot', quantity: 1 },
-      { itemName: 'Soft Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Iron Dagger', quantity: 1 }],
     craftTime: 25,
@@ -172,7 +172,7 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 10,
     inputs: [
       { itemName: 'Iron Ingot', quantity: 3 },
-      { itemName: 'Soft Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
       { itemName: 'Hardwood Planks', quantity: 1 },
     ],
     outputs: [{ itemName: 'Iron Sword', quantity: 1 }],
@@ -198,7 +198,7 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 10,
     inputs: [
       { itemName: 'Iron Ingot', quantity: 4 },
-      { itemName: 'Soft Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Iron Longsword', quantity: 1 }],
     craftTime: 50,
@@ -354,7 +354,7 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 30,
     inputs: [
       { itemName: 'Steel Ingot', quantity: 1 },
-      { itemName: 'Soft Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Steel Dagger', quantity: 1 }],
     craftTime: 35,
@@ -379,7 +379,7 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 30,
     inputs: [
       { itemName: 'Steel Ingot', quantity: 3 },
-      { itemName: 'Soft Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
       { itemName: 'Hardwood Planks', quantity: 1 },
     ],
     outputs: [{ itemName: 'Steel Sword', quantity: 1 }],
@@ -405,7 +405,7 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 30,
     inputs: [
       { itemName: 'Steel Ingot', quantity: 4 },
-      { itemName: 'Soft Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Steel Longsword', quantity: 1 }],
     craftTime: 75,
@@ -430,7 +430,7 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 30,
     inputs: [
       { itemName: 'Steel Ingot', quantity: 6 },
-      { itemName: 'Soft Leather', quantity: 2 },
+      { itemName: 'Leather', quantity: 2 },
     ],
     outputs: [{ itemName: 'Steel Greatsword', quantity: 1 }],
     craftTime: 90,

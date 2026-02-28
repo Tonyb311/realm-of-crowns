@@ -29,7 +29,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'ARMORER',
     levelRequired: 1,
     inputs: [
-      { itemName: 'Copper Ingot', quantity: 2 },
+      { itemName: 'Iron Ingot', quantity: 2 },
       { itemName: 'Nails', quantity: 2 },
     ],
     outputs: [{ itemName: 'Copper Helm', quantity: 1 }],
@@ -54,8 +54,8 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'ARMORER',
     levelRequired: 1,
     inputs: [
-      { itemName: 'Copper Ingot', quantity: 3 },
-      { itemName: 'Cured Leather', quantity: 1 },
+      { itemName: 'Iron Ingot', quantity: 3 },
+      { itemName: 'Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Copper Chestplate', quantity: 1 }],
     craftTime: 35,
@@ -79,8 +79,8 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'ARMORER',
     levelRequired: 1,
     inputs: [
-      { itemName: 'Copper Ingot', quantity: 1 },
-      { itemName: 'Cured Leather', quantity: 1 },
+      { itemName: 'Iron Ingot', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Copper Gauntlets', quantity: 1 }],
     craftTime: 15,
@@ -104,7 +104,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'ARMORER',
     levelRequired: 1,
     inputs: [
-      { itemName: 'Copper Ingot', quantity: 2 },
+      { itemName: 'Iron Ingot', quantity: 2 },
       { itemName: 'Nails', quantity: 5 },
     ],
     outputs: [{ itemName: 'Copper Greaves', quantity: 1 }],
@@ -129,7 +129,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'ARMORER',
     levelRequired: 1,
     inputs: [
-      { itemName: 'Copper Ingot', quantity: 2 },
+      { itemName: 'Iron Ingot', quantity: 2 },
       { itemName: 'Nails', quantity: 5 },
     ],
     outputs: [{ itemName: 'Copper Shield', quantity: 1 }],
@@ -157,7 +157,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 10,
     inputs: [
       { itemName: 'Iron Ingot', quantity: 1 },
-      { itemName: 'Cured Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
       { itemName: 'Iron Fittings', quantity: 2 },
     ],
     outputs: [{ itemName: 'Iron Helm', quantity: 1 }],
@@ -183,7 +183,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 10,
     inputs: [
       { itemName: 'Iron Ingot', quantity: 3 },
-      { itemName: 'Cured Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Iron Chestplate', quantity: 1 }],
     craftTime: 50,
@@ -208,7 +208,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 10,
     inputs: [
       { itemName: 'Iron Ingot', quantity: 1 },
-      { itemName: 'Cured Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Iron Gauntlets', quantity: 1 }],
     craftTime: 25,
@@ -233,7 +233,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 10,
     inputs: [
       { itemName: 'Iron Ingot', quantity: 2 },
-      { itemName: 'Cured Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Iron Greaves', quantity: 1 }],
     craftTime: 35,
@@ -258,7 +258,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 10,
     inputs: [
       { itemName: 'Iron Ingot', quantity: 1 },
-      { itemName: 'Cured Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
       { itemName: 'Iron Fittings', quantity: 3 },
     ],
     outputs: [{ itemName: 'Iron Shield', quantity: 1 }],
@@ -286,7 +286,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 30,
     inputs: [
       { itemName: 'Steel Ingot', quantity: 1 },
-      { itemName: 'Cured Leather', quantity: 2 },
+      { itemName: 'Leather', quantity: 2 },
       { itemName: 'Iron Fittings', quantity: 4 },
     ],
     outputs: [{ itemName: 'Steel Helm', quantity: 1 }],
@@ -312,7 +312,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 30,
     inputs: [
       { itemName: 'Steel Ingot', quantity: 3 },
-      { itemName: 'Cured Leather', quantity: 2 },
+      { itemName: 'Leather', quantity: 2 },
     ],
     outputs: [{ itemName: 'Steel Chestplate', quantity: 1 }],
     craftTime: 75,
@@ -337,7 +337,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 30,
     inputs: [
       { itemName: 'Steel Ingot', quantity: 1 },
-      { itemName: 'Cured Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
       { itemName: 'Iron Fittings', quantity: 2 },
     ],
     outputs: [{ itemName: 'Steel Gauntlets', quantity: 1 }],
@@ -363,7 +363,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 30,
     inputs: [
       { itemName: 'Steel Ingot', quantity: 2 },
-      { itemName: 'Cured Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
       { itemName: 'Iron Fittings', quantity: 2 },
     ],
     outputs: [{ itemName: 'Steel Greaves', quantity: 1 }],
@@ -390,7 +390,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
     inputs: [
       { itemName: 'Steel Ingot', quantity: 1 },
       { itemName: 'Iron Ingot', quantity: 1 },
-      { itemName: 'Cured Leather', quantity: 2 },
+      { itemName: 'Leather', quantity: 2 },
     ],
     outputs: [{ itemName: 'Steel Shield', quantity: 1 }],
     craftTime: 50,
@@ -699,9 +699,9 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     recipeId: 'lw-leather-gloves',
     name: 'Craft Leather Gloves',
     professionRequired: 'LEATHERWORKER',
-    levelRequired: 5,
+    levelRequired: 3,
     inputs: [
-      { itemName: ITEMS.CURED_LEATHER, quantity: 2 },
+      { itemName: ITEMS.LEATHER, quantity: 2 },
       { itemName: ITEMS.ANIMAL_PELTS, quantity: 1 },
     ],
     outputs: [{ itemName: ITEMS.LEATHER_GLOVES, quantity: 1 }],
@@ -723,9 +723,9 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     recipeId: 'lw-leather-boots',
     name: 'Craft Leather Boots',
     professionRequired: 'LEATHERWORKER',
-    levelRequired: 5,
+    levelRequired: 3,
     inputs: [
-      { itemName: ITEMS.CURED_LEATHER, quantity: 2 },
+      { itemName: ITEMS.LEATHER, quantity: 2 },
       { itemName: ITEMS.ANIMAL_PELTS, quantity: 1 },
     ],
     outputs: [{ itemName: ITEMS.LEATHER_BOOTS, quantity: 1 }],
@@ -749,7 +749,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'LEATHERWORKER',
     levelRequired: 8,
     inputs: [
-      { itemName: ITEMS.CURED_LEATHER, quantity: 3 },
+      { itemName: ITEMS.LEATHER, quantity: 3 },
       { itemName: ITEMS.NAILS, quantity: 4 },
     ],
     outputs: [{ itemName: ITEMS.LEATHER_BACKPACK, quantity: 1 }],
@@ -769,9 +769,9 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     recipeId: 'lw-leather-waterskin',
     name: 'Craft Leather Waterskin',
     professionRequired: 'LEATHERWORKER',
-    levelRequired: 5,
+    levelRequired: 1,
     inputs: [
-      { itemName: ITEMS.CURED_LEATHER, quantity: 1 },
+      { itemName: ITEMS.LEATHER, quantity: 1 },
       { itemName: ITEMS.ANIMAL_PELTS, quantity: 1 },
     ],
     outputs: [{ itemName: ITEMS.LEATHER_WATERSKIN, quantity: 1 }],
@@ -797,7 +797,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 12,
     inputs: [
       { itemName: ITEMS.WOLF_LEATHER, quantity: 1 },
-      { itemName: ITEMS.CURED_LEATHER, quantity: 1 },
+      { itemName: ITEMS.LEATHER, quantity: 1 },
     ],
     outputs: [{ itemName: ITEMS.WOLF_LEATHER_GLOVES, quantity: 1 }],
     craftTime: 30,
@@ -821,7 +821,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 12,
     inputs: [
       { itemName: ITEMS.WOLF_LEATHER, quantity: 1 },
-      { itemName: ITEMS.CURED_LEATHER, quantity: 1 },
+      { itemName: ITEMS.LEATHER, quantity: 1 },
     ],
     outputs: [{ itemName: ITEMS.WOLF_LEATHER_BOOTS, quantity: 1 }],
     craftTime: 35,
@@ -844,7 +844,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'LEATHERWORKER',
     levelRequired: 15,
     inputs: [
-      { itemName: ITEMS.CURED_LEATHER, quantity: 2 },
+      { itemName: ITEMS.LEATHER, quantity: 2 },
       { itemName: ITEMS.WOODEN_FRAME, quantity: 1 },
       { itemName: ITEMS.NAILS, quantity: 4 },
     ],
@@ -867,7 +867,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'LEATHERWORKER',
     levelRequired: 15,
     inputs: [
-      { itemName: ITEMS.CURED_LEATHER, quantity: 2 },
+      { itemName: ITEMS.LEATHER, quantity: 2 },
       { itemName: ITEMS.NAILS, quantity: 10 },
     ],
     outputs: [{ itemName: ITEMS.LEATHER_REPAIR_KIT, quantity: 1 }],
@@ -889,7 +889,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 20,
     inputs: [
       { itemName: ITEMS.WOLF_LEATHER, quantity: 1 },
-      { itemName: ITEMS.CURED_LEATHER, quantity: 2 },
+      { itemName: ITEMS.LEATHER, quantity: 2 },
       { itemName: ITEMS.WOODEN_FRAME, quantity: 1 },
     ],
     outputs: [{ itemName: ITEMS.RANGERS_PACK, quantity: 1 }],
@@ -916,7 +916,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 30,
     inputs: [
       { itemName: ITEMS.BEAR_LEATHER, quantity: 2 },
-      { itemName: ITEMS.CURED_LEATHER, quantity: 1 },
+      { itemName: ITEMS.LEATHER, quantity: 1 },
     ],
     outputs: [{ itemName: ITEMS.BEAR_HIDE_VAMBRACES, quantity: 1 }],
     craftTime: 50,
@@ -1037,7 +1037,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 3,
     inputs: [
       { itemName: 'Woven Cloth', quantity: 1 },
-      { itemName: 'Cured Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Cloth Sash', quantity: 1 }],
     craftTime: 8,
@@ -1059,7 +1059,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 4,
     inputs: [
       { itemName: 'Woven Cloth', quantity: 4 },
-      { itemName: 'Cured Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Cloth Robe', quantity: 1 }],
     craftTime: 20,
@@ -1104,7 +1104,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 5,
     inputs: [
       { itemName: 'Woven Cloth', quantity: 5 },
-      { itemName: 'Cured Leather', quantity: 2 },
+      { itemName: 'Leather', quantity: 2 },
     ],
     outputs: [{ itemName: "Scholar's Robe", quantity: 1 }],
     craftTime: 30,
@@ -1126,7 +1126,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 5,
     inputs: [
       { itemName: 'Woven Cloth', quantity: 3 },
-      { itemName: 'Cured Leather', quantity: 2 },
+      { itemName: 'Leather', quantity: 2 },
     ],
     outputs: [{ itemName: "Traveler's Cloak", quantity: 1 }],
     craftTime: 25,
@@ -1148,7 +1148,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 6,
     inputs: [
       { itemName: 'Woven Cloth', quantity: 2 },
-      { itemName: 'Cured Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
     ],
     outputs: [{ itemName: "Merchant's Hat", quantity: 1 }],
     craftTime: 15,
@@ -1170,7 +1170,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 6,
     inputs: [
       { itemName: 'Woven Cloth', quantity: 3 },
-      { itemName: 'Cured Leather', quantity: 2 },
+      { itemName: 'Leather', quantity: 2 },
     ],
     outputs: [{ itemName: "Herbalist's Apron", quantity: 1 }],
     craftTime: 25,
@@ -1315,7 +1315,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'TANNER',
     levelRequired: 3,
     inputs: [
-      { itemName: 'Cured Leather', quantity: 2 },
+      { itemName: 'Leather', quantity: 2 },
     ],
     outputs: [{ itemName: 'Leather Cap', quantity: 1 }],
     craftTime: 20,
@@ -1336,7 +1336,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'TANNER',
     levelRequired: 4,
     inputs: [
-      { itemName: 'Cured Leather', quantity: 4 },
+      { itemName: 'Leather', quantity: 4 },
     ],
     outputs: [{ itemName: 'Leather Vest', quantity: 1 }],
     craftTime: 30,
@@ -1357,7 +1357,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'TANNER',
     levelRequired: 4,
     inputs: [
-      { itemName: 'Cured Leather', quantity: 2 },
+      { itemName: 'Leather', quantity: 2 },
       { itemName: 'Iron Ore Chunks', quantity: 1 },
     ],
     outputs: [{ itemName: 'Leather Belt', quantity: 1 }],
@@ -1380,7 +1380,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'TANNER',
     levelRequired: 5,
     inputs: [
-      { itemName: 'Cured Leather', quantity: 5 },
+      { itemName: 'Leather', quantity: 5 },
       { itemName: 'Iron Ore Chunks', quantity: 1 },
     ],
     outputs: [{ itemName: 'Leather Armor', quantity: 1 }],
@@ -1402,7 +1402,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'TANNER',
     levelRequired: 5,
     inputs: [
-      { itemName: 'Cured Leather', quantity: 2 },
+      { itemName: 'Leather', quantity: 2 },
       { itemName: 'Iron Ore Chunks', quantity: 1 },
     ],
     outputs: [{ itemName: 'Leather Bracers', quantity: 1 }],
@@ -1424,7 +1424,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'TANNER',
     levelRequired: 6,
     inputs: [
-      { itemName: 'Cured Leather', quantity: 3 },
+      { itemName: 'Leather', quantity: 3 },
       { itemName: 'Iron Ore Chunks', quantity: 1 },
     ],
     outputs: [{ itemName: 'Leather Greaves', quantity: 1 }],
@@ -1446,7 +1446,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'TANNER',
     levelRequired: 6,
     inputs: [
-      { itemName: 'Cured Leather', quantity: 3 },
+      { itemName: 'Leather', quantity: 3 },
       { itemName: 'Wood Logs', quantity: 2 },
     ],
     outputs: [{ itemName: 'Quiver', quantity: 1 }],
@@ -1467,7 +1467,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 7,
     inputs: [
       { itemName: 'Wolf Leather', quantity: 4 },
-      { itemName: 'Cured Leather', quantity: 2 },
+      { itemName: 'Leather', quantity: 2 },
       { itemName: 'Silver Ore', quantity: 1 },
     ],
     outputs: [{ itemName: 'Wolf Leather Armor', quantity: 1 }],
@@ -1490,7 +1490,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 7,
     inputs: [
       { itemName: 'Wolf Leather', quantity: 2 },
-      { itemName: 'Cured Leather', quantity: 1 },
+      { itemName: 'Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Wolf Leather Hood', quantity: 1 }],
     craftTime: 30,
@@ -1512,7 +1512,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     levelRequired: 8,
     inputs: [
       { itemName: 'Bear Leather', quantity: 5 },
-      { itemName: 'Cured Leather', quantity: 2 },
+      { itemName: 'Leather', quantity: 2 },
       { itemName: 'Silver Ore', quantity: 2 },
     ],
     outputs: [{ itemName: 'Bear Hide Cuirass', quantity: 1 }],
