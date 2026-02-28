@@ -884,6 +884,7 @@ export async function decideBotAction(
       if (r.success) {
         bot.buyFailCooldowns.delete(itemName);  // v20: clear cooldown on success
         bot.p6ConsecutiveTrips = 0; // Got ingredient from market — reset P6 backoff counter
+        invMap.set(itemName, (invMap.get(itemName) || 0) + 1);  // v23: update invMap so cap check stays current
 
         // ── P5.1: Post-buy craft re-check ────────────────────────────────
         // Re-fetch inventory + recipes from DB (not stale invMap) to see if

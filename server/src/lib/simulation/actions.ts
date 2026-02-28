@@ -1535,6 +1535,7 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
             const buyResult = await buySpecificItem(bot, itemName);
             if (buyResult.success) {
               results.push(buyResult);
+              invMap.set(itemName, (invMap.get(itemName) || 0) + 1);  // v23: update invMap so cap check stays current
               bought = true;
               break; // max 1 buy per bot per tick
             }
@@ -2604,21 +2605,36 @@ export async function listSurplusOnMarket(bot: BotState, keepItemNames?: Set<str
 
 export async function listStorageOnMarket(bot: BotState, keepItemNames?: Set<string>): Promise<ActionResult[]> {
   const results: ActionResult[] = [];
+  const diagTag = `[STORAGE-DIAG] ${bot.characterName}`;
   try {
     // 1. Find bot's house in current town
     const housesRes = await get('/houses/mine', bot.token);
-    if (housesRes.status < 200 || housesRes.status >= 300) return results;
+    if (housesRes.status < 200 || housesRes.status >= 300) {
+      console.log(`${diagTag}: houses API failed (${housesRes.status})`);
+      return results;
+    }
 
     const houses: any[] = housesRes.data?.houses || [];
     const localHouse = houses.find((h: any) => h.townId === bot.currentTownId);
-    if (!localHouse || localHouse.storageUsed === 0) return results;
+    if (!localHouse || localHouse.storageUsed === 0) {
+      console.log(`${diagTag}: no local house or empty storage (houses=${houses.length}, local=${!!localHouse}, used=${localHouse?.storageUsed || 0})`);
+      return results;
+    }
 
     // 2. Fetch storage contents
     const storageRes = await get(`/houses/${localHouse.id}/storage`, bot.token);
-    if (storageRes.status < 200 || storageRes.status >= 300) return results;
+    if (storageRes.status < 200 || storageRes.status >= 300) {
+      console.log(`${diagTag}: storage API failed (${storageRes.status})`);
+      return results;
+    }
 
     const storageItems: any[] = storageRes.data?.storage?.items || [];
-    if (storageItems.length === 0) return results;
+    if (storageItems.length === 0) {
+      console.log(`${diagTag}: storage empty (storageUsed=${localHouse.storageUsed} but 0 items)`);
+      return results;
+    }
+    const itemSummary = storageItems.map((i: any) => `${i.quantity}x ${i.itemName}`).join(', ');
+    console.log(`${diagTag}: ${storageItems.length} items in storage: [${itemSummary}]`);
 
     // 3. List items from storage (keep 1 of each for personal use, sell rest)
     let listed = 0;

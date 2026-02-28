@@ -329,6 +329,29 @@ class SimulationController {
     }
 
     // -----------------------------------------------------------------------
+    // Phase 2b: Post-craft listing pass — list freshly crafted outputs
+    // (v23: A7 in Phase 1 runs before crafting; this catches crafted items)
+    // -----------------------------------------------------------------------
+    if (this.config.enabledSystems.market) {
+      for (const bot of activeBots) {
+        if (!bot.isActive || !bot.currentTownId || bot.pendingTravel) continue;
+        try {
+          const { listUnwantedItems } = await import('./actions');
+          const listResult = await listUnwantedItems(bot);
+          if (listResult.success) {
+            console.log(`[SIM][Phase2b] ${bot.characterName} listed: ${listResult.detail}`);
+            successes++;
+            actionBreakdown['market_list_postcraft'] = (actionBreakdown['market_list_postcraft'] || 0) + 1;
+          }
+        } catch { /* ignore listing errors */ }
+      }
+      const postCraftListings = actionBreakdown['market_list_postcraft'] || 0;
+      if (postCraftListings > 0) {
+        console.log(`[SIM][Phase2b] Post-craft listings: ${postCraftListings} bots listed items`);
+      }
+    }
+
+    // -----------------------------------------------------------------------
     // Phase 3: Process travel tick — advance travelers and resolve road encounters
     // -----------------------------------------------------------------------
     try {
