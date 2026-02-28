@@ -36,6 +36,19 @@ import { SimulationLogger, captureBotState } from './sim-logger';
 // Helpers
 // ---------------------------------------------------------------------------
 
+const SIM_BATCH_SIZE = 10;
+
+async function processBatch<T>(
+  items: T[],
+  batchSize: number,
+  processor: (item: T) => Promise<void>,
+): Promise<void> {
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    await Promise.all(batch.map(processor));
+  }
+}
+
 function categorizeAction(endpoint: string): string {
   if (endpoint.includes('work') || endpoint.includes('gather')) return 'gather';
   if (endpoint.includes('craft')) return 'craft';
@@ -135,6 +148,7 @@ class SimulationController {
   // ---------------------------------------------------------------------------
   async runSingleTick(): Promise<SimTickResult> {
     const startTime = Date.now();
+    const phaseTiming: Record<string, number> = {};
     const actionBreakdown: Record<string, number> = {};
     let successes = 0;
     let failures = 0;
@@ -155,9 +169,11 @@ class SimulationController {
     const activeBots = this.bots.filter((b) => b.isActive);
 
     // -----------------------------------------------------------------------
-    // Phase 1: Bot action loop — each bot commits exactly 1 daily action
-    // (plus free side-effects handled inside decideBotAction).
+    // Phase 1: Bot action loop — batched concurrency (SIM_BATCH_SIZE bots at a time)
+    // Each bot commits exactly 1 daily action + free side-effects.
     // -----------------------------------------------------------------------
+    const p1Start = Date.now();
+
     const botGoldBefore = new Map<string, number>();
     const botXpBefore = new Map<string, number>();
     const botTownBefore = new Map<string, string>();
@@ -173,25 +189,35 @@ class SimulationController {
     const botMarketItemsListedMap = new Map<string, number>();
     const botMarketOrdersPlacedMap = new Map<string, number>();
 
-    for (const bot of activeBots) {
+    // Per-bot results collected concurrently, aggregated after
+    interface BotPhase1Result {
+      characterId: string;
+      success: boolean;
+      actionType: string;
+      actions: Array<{ order: number; type: string; detail: string; success: boolean; goldDelta: number; error?: string }>;
+      goldBefore: number;
+      xpBefore: number;
+      townBefore: string;
+      levelBefore: number;
+      error?: string;
+      marketItemsListed: number;
+      marketOrdersPlaced: number;
+      freeMarketActions: Array<{ actionType: string; success: boolean; detail: string; isAlreadyOrder: boolean }>;
+    }
+
+    const botResults: BotPhase1Result[] = [];
+
+    await processBatch(activeBots, SIM_BATCH_SIZE, async (bot) => {
       // Refresh state before the action
       try { await refreshBotState(bot); } catch { /* ignore */ }
 
       // Record state before action
       const goldBefore = bot.gold;
-      botGoldBefore.set(bot.characterId, goldBefore);
-      botXpBefore.set(bot.characterId, bot.xp);
-      botTownBefore.set(bot.characterId, bot.currentTownId);
-      botLevelBefore.set(bot.characterId, bot.level);
+      const xpBefore = bot.xp;
+      const townBefore = bot.currentTownId;
+      const levelBefore = bot.level;
 
-      const botActions: Array<{
-        order: number;
-        type: string;
-        detail: string;
-        success: boolean;
-        goldDelta: number;
-        error?: string;
-      }> = [];
+      const botActions: BotPhase1Result['actions'] = [];
 
       // --- Single call to decideBotAction (handles free + daily action) ---
       const goldBeforeAction = bot.gold;
@@ -203,19 +229,14 @@ class SimulationController {
       }
 
       const actionType = categorizeAction(result.endpoint);
-      actionBreakdown[actionType] = (actionBreakdown[actionType] || 0) + 1;
 
       if (result.success) {
-        successes++;
         bot.consecutiveErrors = 0;
       } else if (actionType === 'idle') {
-        // Idle (no valid action) is neutral — not a failure
-        successes++;
+        // Idle is neutral
       } else {
-        failures++;
         bot.consecutiveErrors++;
         bot.errorsTotal++;
-        if (result.detail) errors.push(`${bot.characterName}: ${result.detail}`);
         if (bot.consecutiveErrors > 10) {
           bot.isActive = false;
         } else if (bot.consecutiveErrors > 5) {
@@ -256,6 +277,8 @@ class SimulationController {
       // Free market actions (don't consume action slots)
       let botMarketItemsListed = 0;
       let botMarketOrdersPlaced = 0;
+      const freeMarketActions: BotPhase1Result['freeMarketActions'] = [];
+
       if (this.config.enabledSystems.market && bot.currentTownId && bot.isActive && !bot.pendingTravel) {
         try {
           const { doFreeMarketActions } = await import('./actions');
@@ -266,16 +289,14 @@ class SimulationController {
 
           for (const mr of marketResults) {
             const marketAction = categorizeAction(mr.endpoint);
-            actionBreakdown[marketAction] = (actionBreakdown[marketAction] || 0) + 1;
-            if (mr.success) {
-              successes++;
-            } else if (mr.detail?.includes('Already have order')) {
-              // Expected auction behavior — don't count as failure
-              successes++;
-            } else {
-              failures++;
-              if (mr.detail) errors.push(`${bot.characterName}: ${mr.detail}`);
-            }
+            const isAlreadyOrder = !!mr.detail?.includes('Already have order');
+
+            freeMarketActions.push({
+              actionType: marketAction,
+              success: mr.success,
+              detail: mr.detail,
+              isAlreadyOrder,
+            });
 
             // Track per-bot market action counts
             if (mr.success) {
@@ -316,25 +337,76 @@ class SimulationController {
         } catch { /* ignore market errors */ }
       }
 
-      botActionsList.set(bot.characterId, botActions);
-      botMarketItemsListedMap.set(bot.characterId, botMarketItemsListed);
-      botMarketOrdersPlacedMap.set(bot.characterId, botMarketOrdersPlaced);
+      botResults.push({
+        characterId: bot.characterId,
+        success: result.success,
+        actionType,
+        actions: botActions,
+        goldBefore,
+        xpBefore,
+        townBefore,
+        levelBefore,
+        error: result.success ? undefined : result.detail,
+        marketItemsListed: botMarketItemsListed,
+        marketOrdersPlaced: botMarketOrdersPlaced,
+        freeMarketActions,
+      });
+    });
+
+    // Aggregate Phase 1 results
+    for (const r of botResults) {
+      botGoldBefore.set(r.characterId, r.goldBefore);
+      botXpBefore.set(r.characterId, r.xpBefore);
+      botTownBefore.set(r.characterId, r.townBefore);
+      botLevelBefore.set(r.characterId, r.levelBefore);
+      botActionsList.set(r.characterId, r.actions);
+      botMarketItemsListedMap.set(r.characterId, r.marketItemsListed);
+      botMarketOrdersPlacedMap.set(r.characterId, r.marketOrdersPlaced);
+
+      // Daily action counts
+      actionBreakdown[r.actionType] = (actionBreakdown[r.actionType] || 0) + 1;
+      if (r.success) {
+        successes++;
+      } else if (r.actionType === 'idle') {
+        successes++;
+      } else {
+        failures++;
+        if (r.error) errors.push(r.error);
+      }
+
+      // Free market action counts
+      for (const fma of r.freeMarketActions) {
+        actionBreakdown[fma.actionType] = (actionBreakdown[fma.actionType] || 0) + 1;
+        if (fma.success) {
+          successes++;
+        } else if (fma.isAlreadyOrder) {
+          successes++;
+        } else {
+          failures++;
+          if (fma.detail) errors.push(fma.detail);
+        }
+      }
     }
+
+    phaseTiming['phase1_bot_actions'] = Date.now() - p1Start;
 
     // -----------------------------------------------------------------------
     // Phase 2: Run daily tick (resolves LOCKED_IN gather/craft actions from Phase 1)
     // -----------------------------------------------------------------------
+    const p2Start = Date.now();
     try { await processDailyTick(); } catch (err: any) {
       errors.push(`Daily tick error: ${err.message}`);
     }
+    phaseTiming['phase2_daily_tick'] = Date.now() - p2Start;
 
     // -----------------------------------------------------------------------
-    // Phase 2b: Post-craft listing pass — list freshly crafted outputs
+    // Phase 2b: Post-craft listing pass — batched concurrency
     // (v23: A7 in Phase 1 runs before crafting; this catches crafted items)
     // -----------------------------------------------------------------------
+    const p2bStart = Date.now();
     if (this.config.enabledSystems.market) {
-      for (const bot of activeBots) {
-        if (!bot.isActive || !bot.currentTownId || bot.pendingTravel) continue;
+      const listableBots = activeBots.filter(b => b.isActive && b.currentTownId && !b.pendingTravel);
+      await processBatch(listableBots, SIM_BATCH_SIZE, async (bot) => {
         try {
           const { listUnwantedItems } = await import('./actions');
           const listResult = await listUnwantedItems(bot);
@@ -344,16 +416,18 @@ class SimulationController {
             actionBreakdown['market_list_postcraft'] = (actionBreakdown['market_list_postcraft'] || 0) + 1;
           }
         } catch { /* ignore listing errors */ }
-      }
+      });
       const postCraftListings = actionBreakdown['market_list_postcraft'] || 0;
       if (postCraftListings > 0) {
         console.log(`[SIM][Phase2b] Post-craft listings: ${postCraftListings} bots listed items`);
       }
     }
+    phaseTiming['phase2b_post_craft'] = Date.now() - p2bStart;
 
     // -----------------------------------------------------------------------
     // Phase 3: Process travel tick — advance travelers and resolve road encounters
     // -----------------------------------------------------------------------
+    const p3Start = Date.now();
     try {
       const travelResult = await processTravelTick();
       if (travelResult.soloEncountered > 0) {
@@ -375,10 +449,12 @@ class SimulationController {
     } catch (err: any) {
       errors.push(`Travel tick error: ${err.message}`);
     }
+    phaseTiming['phase3_travel'] = Date.now() - p3Start;
 
     // -----------------------------------------------------------------------
     // Phase 4: Resolve market auctions for all towns with pending orders
     // -----------------------------------------------------------------------
+    const p4Start = Date.now();
     const auctionResolvedBefore = new Date();
     try {
       const { resolveAllTownAuctions } = await import('../auction-engine');
@@ -394,64 +470,71 @@ class SimulationController {
       errors.push(`Market auction error: ${err.message}`);
     }
     const auctionResolvedAfter = new Date();
+    phaseTiming['phase4_auctions'] = Date.now() - p4Start;
 
     // -----------------------------------------------------------------------
-    // Phase 5: Per-bot auction result queries + gold tracking + day logs
-    // (now AFTER market resolution so auction results are available)
+    // Phase 5: Bulk auction result queries + gold tracking + day logs
+    // Uses 4 bulk groupBy queries instead of 250 individual per-bot queries.
     // -----------------------------------------------------------------------
+    const p5Start = Date.now();
+
+    const allBotIds = activeBots.map(b => b.characterId);
+
+    // 1. Bulk auction wins by buyer
+    let winsMap = new Map<string, number>();
+    let lossesMap = new Map<string, number>();
+    let spentMap = new Map<string, number>();
+    let earnedMap = new Map<string, number>();
+    try {
+      const auctionWins = await prisma.marketBuyOrder.groupBy({
+        by: ['buyerId'],
+        where: { buyerId: { in: allBotIds }, status: 'won', resolvedAt: { gte: auctionResolvedBefore, lte: auctionResolvedAfter } },
+        _count: true,
+      });
+      winsMap = new Map(auctionWins.map(r => [r.buyerId, r._count]));
+
+      // 2. Bulk auction losses by buyer
+      const auctionLosses = await prisma.marketBuyOrder.groupBy({
+        by: ['buyerId'],
+        where: { buyerId: { in: allBotIds }, status: 'lost', resolvedAt: { gte: auctionResolvedBefore, lte: auctionResolvedAfter } },
+        _count: true,
+      });
+      lossesMap = new Map(auctionLosses.map(r => [r.buyerId, r._count]));
+
+      // 3. Bulk gold spent (as buyer)
+      const goldSpent = await prisma.tradeTransaction.groupBy({
+        by: ['buyerId'],
+        where: { buyerId: { in: allBotIds }, createdAt: { gte: auctionResolvedBefore, lte: auctionResolvedAfter } },
+        _sum: { price: true },
+      });
+      spentMap = new Map(goldSpent.map(r => [r.buyerId, r._sum.price ?? 0]));
+
+      // 4. Bulk gold earned (as seller)
+      const goldEarned = await prisma.tradeTransaction.groupBy({
+        by: ['sellerId'],
+        where: { sellerId: { in: allBotIds }, createdAt: { gte: auctionResolvedBefore, lte: auctionResolvedAfter } },
+        _sum: { sellerNet: true },
+      });
+      earnedMap = new Map(goldEarned.map(r => [r.sellerId, r._sum.sellerNet ?? 0]));
+    } catch { /* ignore bulk query errors */ }
+
+    // 5. Batch refresh all bot states concurrently
+    await processBatch(activeBots, SIM_BATCH_SIZE, async (bot) => {
+      try { await refreshBotState(bot); } catch { /* ignore */ }
+    });
+
+    // Now loop through bots using the maps (pure in-memory, no DB calls)
     for (const bot of activeBots) {
       const goldBefore = botGoldBefore.get(bot.characterId) ?? bot.gold;
       const botActions = botActionsList.get(bot.characterId) ?? [];
       const botMarketItemsListed = botMarketItemsListedMap.get(bot.characterId) ?? 0;
       const botMarketOrdersPlaced = botMarketOrdersPlacedMap.get(bot.characterId) ?? 0;
 
-      // Query per-bot auction results from the cycles resolved this tick
-      let botAuctionsWon = 0;
-      let botAuctionsLost = 0;
-      let botMarketGoldSpent = 0;
-      let botMarketGoldEarned = 0;
-      try {
-        // Count buy orders resolved in this tick's auction resolution
-        const wonOrders = await prisma.marketBuyOrder.count({
-          where: {
-            buyerId: bot.characterId,
-            status: 'won',
-            resolvedAt: { gte: auctionResolvedBefore, lte: auctionResolvedAfter },
-          },
-        });
-        const lostOrders = await prisma.marketBuyOrder.count({
-          where: {
-            buyerId: bot.characterId,
-            status: 'lost',
-            resolvedAt: { gte: auctionResolvedBefore, lte: auctionResolvedAfter },
-          },
-        });
-        botAuctionsWon = wonOrders;
-        botAuctionsLost = lostOrders;
+      const botAuctionsWon = winsMap.get(bot.characterId) ?? 0;
+      const botAuctionsLost = lossesMap.get(bot.characterId) ?? 0;
+      const botMarketGoldSpent = spentMap.get(bot.characterId) ?? 0;
+      const botMarketGoldEarned = earnedMap.get(bot.characterId) ?? 0;
 
-        // Sum gold spent on won auctions (as buyer)
-        const wonTransactions = await prisma.tradeTransaction.aggregate({
-          where: {
-            buyerId: bot.characterId,
-            createdAt: { gte: auctionResolvedBefore, lte: auctionResolvedAfter },
-          },
-          _sum: { price: true },
-        });
-        botMarketGoldSpent = wonTransactions._sum.price ?? 0;
-
-        // Sum gold earned from sales (as seller)
-        const sellTransactions = await prisma.tradeTransaction.aggregate({
-          where: {
-            sellerId: bot.characterId,
-            createdAt: { gte: auctionResolvedBefore, lte: auctionResolvedAfter },
-          },
-          _sum: { sellerNet: true },
-        });
-        botMarketGoldEarned = sellTransactions._sum.sellerNet ?? 0;
-      } catch { /* ignore query errors */ }
-
-      // Final state refresh to get accurate gold
-      try { await refreshBotState(bot); } catch { /* ignore */ }
       const goldAfter = bot.gold;
       const goldDelta = goldAfter - goldBefore;
 
@@ -547,6 +630,7 @@ class SimulationController {
       };
       this.botDayLogs.push(botLog);
     }
+    phaseTiming['phase5_logging'] = Date.now() - p5Start;
 
     // -----------------------------------------------------------------------
     // Phase 6: Advance game day (AFTER resolution so bots commit against
@@ -571,6 +655,9 @@ class SimulationController {
       topEarners,
     };
 
+    const totalMs = Date.now() - startTime;
+    console.log(`[SIM][Tick ${this.singleTickCount}] Total: ${totalMs}ms | ${Object.entries(phaseTiming).map(([k, v]) => `${k}: ${v}ms`).join(' | ')}`);
+
     const tickResult: SimTickResult = {
       tickNumber: this.singleTickCount,
       botsProcessed,
@@ -578,7 +665,7 @@ class SimulationController {
       successes,
       failures,
       errors: errors.slice(0, 20), // cap at 20
-      durationMs: Date.now() - startTime,
+      durationMs: totalMs,
       goldStats,
       gameDay: getGameDay(),
     };
