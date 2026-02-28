@@ -555,7 +555,8 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
     let reachableCount = 0;
     for (const recipe of recipes) {
       const profKey = recipe.professionRequired.toUpperCase();
-      const profLevel = profLevels[profKey] || 1;
+      if (!(profKey in profLevels)) continue;  // v22: skip recipes for professions this bot doesn't have
+      const profLevel = profLevels[profKey];
       if (recipe.levelRequired > profLevel) continue;  // skip unreachable recipes
       reachableCount++;
       for (const inp of recipe.inputs) {
@@ -576,7 +577,7 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
     const toList: { id: string; name: string; quantity: number; baseValue: number }[] = [];
     const keptItems: string[] = [];
     for (const item of items) {
-      if (item.equipped) continue;
+      if (item.equipped || item.isEquipped || item.slot) continue;  // v22: broaden equipped check
       const name = item.templateName || item.name || '';
       if (!name) continue;
       if (KEEP_ITEMS.has(name)) continue;
@@ -1521,12 +1522,16 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
             }
           }
         }
+        const MAX_INGREDIENT_STOCK = 10;  // v22: don't hoard more than 10 of any ingredient
         const missing = [...rawMissing, ...craftedMissing];
         // Try to buy missing ingredients — iterate until one succeeds or all fail
         if (missing.length > 0) {
           let bought = false;
           const failReasons: string[] = [];
           for (const itemName of missing) {
+            // v22: Skip if bot already has plenty of this ingredient
+            const currentStock = invMap.get(itemName) || 0;
+            if (currentStock >= MAX_INGREDIENT_STOCK) continue;
             const buyResult = await buySpecificItem(bot, itemName);
             if (buyResult.success) {
               results.push(buyResult);

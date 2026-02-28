@@ -865,11 +865,16 @@ export async function decideBotAction(
 
   // ── P5: Buy from market (need-based for crafting ingredients) ───────
   if (config.enabledSystems.market && hasCrafting && bot.gold >= 10) {
+    const MAX_INGREDIENT_STOCK = 10;  // v22: don't hoard more than 10 of any ingredient
     const missing = getMissingIngredients(invMap, recipes);
     for (const itemName of missing) {
       // v20: Skip items on buy-fail cooldown (5 ticks) to reduce wasted attempts
       const cooldownExpiry = bot.buyFailCooldowns.get(itemName);
       if (cooldownExpiry && currentTick < cooldownExpiry) continue;
+
+      // v22: Skip if bot already has plenty of this ingredient
+      const currentStock = invMap.get(itemName) || 0;
+      if (currentStock >= MAX_INGREDIENT_STOCK) continue;
 
       const r = await timedDailyAction(
         () => actions.buySpecificItem(bot, itemName),
