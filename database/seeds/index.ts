@@ -126,7 +126,7 @@ async function main() {
   // Accessory recipes: accessories, enchantments, housing, mount gear (MINOR-07)
   if (!await runSeed('accessoryRecipes', () => seedAccessoryRecipes(prisma))) failed++;
 
-  // TANNER recipes: 16 recipes (Soft Leather, Cured Leather, armor, tools)
+  // TANNER recipes: 16 recipes (Cured Leather, armor, tools)
   if (!await runSeed('tannerRecipes', () => seedTannerRecipes(prisma))) failed++;
 
   // Class abilities: 7 classes x 3 specs = 21 skill trees (P1 #17 / MAJOR-05)

@@ -155,6 +155,58 @@ function buildNeededItemNames(professions: string[]): Set<string> {
 }
 
 // ---------------------------------------------------------------------------
+// seedMarketItem — seed an item on the marketplace across bot sellers
+// ---------------------------------------------------------------------------
+
+async function seedMarketItem(
+  name: string,
+  totalQty: number,
+  qtyPerListing: number,
+  price: number,
+  bots: BotState[],
+): Promise<void> {
+  try {
+    const template = await prisma.itemTemplate.findFirst({
+      where: { name: { equals: name, mode: 'insensitive' } },
+    });
+    if (!template || bots.length === 0) {
+      logger.warn(`${name} ItemTemplate not found or no bots — skipping market seeding`);
+      return;
+    }
+
+    const listingsToCreate = Math.ceil(totalQty / qtyPerListing);
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+
+    for (let i = 0; i < listingsToCreate; i++) {
+      const seller = bots[i % bots.length];
+      const item = await prisma.item.create({
+        data: {
+          templateId: template.id,
+          ownerId: seller.characterId,
+        },
+      });
+      await prisma.marketListing.create({
+        data: {
+          sellerId: seller.characterId,
+          itemId: item.id,
+          itemTemplateId: template.id,
+          itemName: name,
+          price,
+          quantity: qtyPerListing,
+          townId: seller.currentTownId,
+          status: 'active',
+          expiresAt,
+        },
+      });
+    }
+    logger.info({ item: name, total: listingsToCreate * qtyPerListing, price }, 'Seeded market listings');
+  } catch (err: any) {
+    logger.warn({ item: name, error: err.message }, 'Failed to seed market listings (non-fatal)');
+  }
+}
+
+// ---------------------------------------------------------------------------
 // seedBots
 // ---------------------------------------------------------------------------
 
@@ -320,50 +372,21 @@ export async function seedBots(config: SeedConfig): Promise<BotState[]> {
 
   logger.info({ count: bots.length }, 'All bots seeded');
 
-  // ── Seed Cotton on the market (NPC supply for TAILOR bots) ──
-  // Cotton comes from a private FARMER asset (cotton_field) that bots can't operate.
-  // Seed 100x Cotton as market listings so TAILOR bots can buy it.
-  try {
-    const cottonTemplate = await prisma.itemTemplate.findFirst({
-      where: { name: { equals: 'Cotton', mode: 'insensitive' } },
-    });
-    if (cottonTemplate && bots.length > 0) {
-      const cottonPrice = 4; // base_value from YAML
-      const listingsToCreate = 10; // 10 listings × 10 qty = 100 total
-      const qtyPerListing = 10;
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30); // 30-day expiry
+  // ── Seed intermediate items on the market (NPC supply for crafting bots) ──
+  // v27: Refactored into helper. Seeds items that bots can't produce fast enough
+  // (or at all) to unblock downstream crafting professions.
+  const MARKET_SEEDS: { name: string; totalQty: number; qtyPerListing: number; price: number }[] = [
+    { name: 'Cotton',          totalQty: 100, qtyPerListing: 10, price: 4 },   // TAILOR (v26)
+    { name: 'Iron Ingot',      totalQty: 100, qtyPerListing: 10, price: 12 },  // BLACKSMITH, ARMORER
+    { name: 'Leather',         totalQty: 100, qtyPerListing: 10, price: 18 },  // ARMORER, LEATHERWORKER, FLETCHER
+    { name: 'Softwood Planks', totalQty: 80,  qtyPerListing: 8,  price: 10 },  // BLACKSMITH, SCRIBE
+    { name: 'Nails',           totalQty: 50,  qtyPerListing: 5,  price: 6 },   // ARMORER (helm, greaves, shield)
+    { name: 'Bow Stave',       totalQty: 40,  qtyPerListing: 4,  price: 15 },  // FLETCHER (shortbow L5+)
+    { name: 'Wooden Handle',   totalQty: 50,  qtyPerListing: 5,  price: 8 },   // BLACKSMITH (various)
+  ];
 
-      // Spread listings across different bot sellers in different towns
-      for (let i = 0; i < listingsToCreate; i++) {
-        const seller = bots[i % bots.length];
-        // Create an Item instance for the listing
-        const item = await prisma.item.create({
-          data: {
-            templateId: cottonTemplate.id,
-            ownerId: seller.characterId,
-          },
-        });
-        await prisma.marketListing.create({
-          data: {
-            sellerId: seller.characterId,
-            itemId: item.id,
-            itemTemplateId: cottonTemplate.id,
-            itemName: 'Cotton',
-            price: cottonPrice,
-            quantity: qtyPerListing,
-            townId: seller.currentTownId,
-            status: 'active',
-            expiresAt,
-          },
-        });
-      }
-      logger.info({ total: listingsToCreate * qtyPerListing, price: cottonPrice }, 'Seeded Cotton market listings for TAILOR supply');
-    } else {
-      logger.warn('Cotton ItemTemplate not found or no bots — skipping Cotton market seeding');
-    }
-  } catch (err: any) {
-    logger.warn({ error: err.message }, 'Failed to seed Cotton market listings (non-fatal)');
+  for (const seed of MARKET_SEEDS) {
+    await seedMarketItem(seed.name, seed.totalQty, seed.qtyPerListing, seed.price, bots);
   }
 
   return bots;

@@ -1151,19 +1151,9 @@ interface RecipeDef {
 }
 
 const CRAFTING_RECIPES: RecipeDef[] = [
-  {
-    name: 'Forge Iron Sword',
-    professionType: 'BLACKSMITH',
-    tier: 'JOURNEYMAN',
-    ingredients: [
-      { itemName: 'Iron Ingot', quantity: 3 },
-      { itemName: 'Soft Leather', quantity: 1 },
-      { itemName: 'Hardwood Planks', quantity: 1 },
-    ],
-    resultName: 'Iron Sword',
-    craftTime: 60,
-    xpReward: 30,
-  },
+  // v27: Removed "Forge Iron Sword" (overwrote shared data version with Soft Leather),
+  //      "Craft Chainmail" (Soft Leather), "Craft Leather Armor" (Soft Leather).
+  //      These are now seeded from shared data or cleaned up by REMOVED_PROCESSING_RECIPES.
   {
     name: 'Forge Iron Shield',
     professionType: 'BLACKSMITH',
@@ -1175,30 +1165,6 @@ const CRAFTING_RECIPES: RecipeDef[] = [
     resultName: 'Iron Shield',
     craftTime: 45,
     xpReward: 20,
-  },
-  {
-    name: 'Craft Chainmail',
-    professionType: 'ARMORER',
-    tier: 'JOURNEYMAN',
-    ingredients: [
-      { itemName: 'Iron Ingot', quantity: 5 },
-      { itemName: 'Soft Leather', quantity: 1 },
-    ],
-    resultName: 'Iron Chainmail',
-    craftTime: 90,
-    xpReward: 40,
-  },
-  {
-    name: 'Craft Leather Armor',
-    professionType: 'LEATHERWORKER',
-    tier: 'APPRENTICE',
-    ingredients: [
-      { itemName: 'Soft Leather', quantity: 4 },
-      { itemName: 'Linen', quantity: 1 },
-    ],
-    resultName: 'Leather Armor',
-    craftTime: 60,
-    xpReward: 25,
   },
   {
     name: 'Brew Healing Potion',
@@ -1435,7 +1401,7 @@ export async function seedRecipes(prisma: PrismaClient) {
   console.log(`  Total templates: ${templateMap.size}`);
 
   // ----- v20: Remove orphaned processing recipes no longer in shared data -----
-  const REMOVED_PROCESSING_RECIPES = ['recipe-smelt-copper', 'recipe-craft-leather-armor', 'recipe-craft-chainmail', 'recipe-tan-soft-leather'];
+  const REMOVED_PROCESSING_RECIPES = ['recipe-smelt-copper', 'recipe-craft-leather-armor', 'recipe-craft-chainmail', 'recipe-tan-soft-leather', 'recipe-forge-iron-sword'];
   for (const id of REMOVED_PROCESSING_RECIPES) {
     try {
       await prisma.recipe.delete({ where: { id } });

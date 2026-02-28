@@ -1,5 +1,119 @@
 # Realm of Crowns -- Claude Code Project Context
 
+## ⚠️ CRITICAL RULES — Read These First
+
+### Deployment
+- **Azure Container Apps will NOT pull a new image if the tag hasn't changed.** Always use a unique tag: timestamp (`202602211159`) or commit hash. NEVER use `latest` or reuse a previous tag.
+- **Database seeds run on container startup.** After deploying a new image, seeds execute automatically. If you change seed data (monsters, items, towns, routes), it updates on deploy.
+- **Standard deploy workflow:** `git commit` → `git push` → `docker build -t rocregistry.azurecr.io/realm-of-crowns:<UNIQUE_TAG>` → `docker push` → `az containerapp update` → verify health.
+
+### Economy Changes — YAML First
+- `docs/profession-economy-master.yaml` is the **single source of truth** for all professions, recipes, and economy data.
+- **Any economy change requires this workflow:** (1) Audit the YAML first, (2) Create prompt from audit findings, (3) Implement code changes, (4) Update YAML after implementation.
+- Skipping this workflow causes naming mismatches between YAML definitions and seed files, which previously left hundreds of items with incorrect pricing.
+
+### Simulation Rules
+- **Never run a simulation unless explicitly told to.** Deploy and seed only unless instructed otherwise.
+- Simulation prompts are saved to `prompts/` directory for reuse.
+- Simulation exports go to Excel. Write analysis to markdown files, keep chat responses minimal.
+- Limit to one major task per conversation to prevent context overflow.
+
+### Monster & Combat Design Rules
+- **PvE combat ONLY occurs via road encounters during travel.** The `/combat/pve/start` endpoint is disabled (returns 400). There is no direct combat initiation.
+- **Combat flow:** POST /travel/start → tick → resolveRoadEncounter() → auto-combat → processItemDrops()
+- **No gold from non-sentient monsters.** Only humanoids/sentient creatures (Bandit, Goblin, Orc Warrior, Skeleton Warrior, Troll, Young Dragon, Demon, Lich) drop gold. Animals, elementals, constructs, and magical entities drop materials instead (Animal Pelts, Bones, Arcane Reagents, etc.).
+- **Monsters must only exist in reachable biomes.** Route terrain strings → TERRAIN_TO_BIOME regex → BiomeType → monster query. If no route produces a BiomeType, monsters in that biome never spawn. Currently RIVER and UNDERWATER have no routes (unreleased).
+- **Biome mapping lives in:** `server/src/lib/road-encounter.ts` (TERRAIN_TO_BIOME, ~line 75)
+- **Route terrain strings live in:** `database/seeds/world.ts` (lines ~1048-1139)
+
+### Bot Simulation Architecture
+- Bot priority chain (in `server/src/lib/simulation/engine.ts`):
+  - P1: Harvest READY fields
+  - P1.5: Collect RANCHER products
+  - P3: Craft (highest-tier, intermediates prioritized)
+  - P4: Gather (profession-aware, need-based)
+  - P5: Buy from market
+  - P5.5: Accept job from board
+  - P6: Combat travel (farm monster drops for crafting ingredients, cooldown 1 tick)
+  - P7: General travel (cooldown 3 ticks)
+  - P8: Gather fallback
+  - P9: Idle
+- `MONSTER_DROP_ITEMS` map in engine.ts controls which items trigger P6 combat travel and which biomes bots target.
+
+### Operating Mode — Virtual Team Lead
+You operate as a **Team Lead** who dynamically creates virtual teammates for complex tasks. For simple tasks, handle them yourself directly.
+
+**When given a complex task:**
+1. Assess scope and determine which disciplines are needed
+2. Create the minimum teammates needed — each gets a name, role title, and specialty
+3. Delegate work items, presenting each teammate's contribution under their name/role header
+4. Integrate all outputs into a cohesive deliverable with a Team Lead Summary
+
+**Common roles** (only create what's needed): Game Designer, Narrative Designer, Frontend Developer, Backend Developer, UX/UI Designer, Systems Architect, QA Tester, Art Director.
+
+**Rules:**
+- Teammates have complementary, non-overlapping skills
+- Don't pad the team — if one person can handle it, do it yourself as Team Lead
+- Player experience is paramount in every decision
+- Keep scope realistic for a browser game — no AAA-scale solutions
+- Always end with a clear summary of what was delivered and what needs user input
+- Be a truth-seeking collaborator: challenge flawed premises, flag scope creep, point out overcomplication, highlight glossed-over trade-offs. Accuracy > agreement.
+
+### Workflow Discipline
+
+**Plan before building:**
+- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions).
+- If something goes sideways mid-execution, STOP and re-plan. Don't keep pushing a broken approach.
+- Write detailed specs upfront to reduce ambiguity.
+
+**Subagent strategy:**
+- Use subagents to keep the main context window clean.
+- Offload research, exploration, and parallel analysis to subagents.
+- One task per subagent for focused execution.
+
+**Verify before declaring done:**
+- Never mark a task complete without proving it works.
+- Run the test. Check the log. Verify the mapping. Demonstrate correctness.
+- Diff behavior between main and your changes when relevant.
+
+**Diagnosis and fixing are separate steps:**
+- When a prompt says "diagnosis only" — do NOT make code changes. Report findings only.
+- Fix prompts come after diagnosis is reviewed and approved.
+- Exception: obvious one-line typos or naming mismatches can be called out but still not committed.
+
+**Autonomous bug fixing (when authorized to fix):**
+- When given a bug to fix: just fix it. Don't ask for hand-holding.
+- Point at logs, errors, failing tests — then resolve them.
+- Zero context switching required from the user.
+
+**Self-correction:**
+- After any correction from the user, update this CLAUDE.md with the learned pattern.
+- Write rules that prevent the same mistake from recurring.
+
+### Code Style
+- **Simplicity first.** Make every change as simple as possible. Impact minimal code.
+- Prefer surgical, minimal changes over broad refactoring.
+- Find root causes. No temporary fixes. Senior developer standards.
+- Search the codebase before writing anything — find existing patterns and work within them.
+- Never hardcode game values in server or client — always reference shared data in `/shared/src/data/`.
+- Add diagnostic logging when debugging pipeline issues before making fixes.
+- For non-trivial architectural changes: pause and ask "is there a more elegant way?" Skip this for simple, obvious fixes.
+
+### Key Files for Active Work
+| File | Purpose |
+|------|---------|
+| `docs/profession-economy-master.yaml` | Economy source of truth |
+| `server/src/lib/simulation/engine.ts` | Bot AI priority chain |
+| `server/src/lib/simulation/actions.ts` | Bot actions (travel, craft, gather, combat) |
+| `server/src/lib/simulation/seed.ts` | Bot seeding and profession assignment |
+| `server/src/lib/road-encounter.ts` | Road encounter resolution, biome mapping, loot |
+| `server/src/lib/loot-items.ts` | Item drop processing after combat |
+| `database/seeds/monsters.ts` | Monster definitions, biomes, loot tables, gold |
+| `database/seeds/world.ts` | Routes, terrain strings, towns |
+| `prompts/` | All Claude Code task prompts (save new ones here) |
+
+---
+
 ## Game Overview
 Browser-based fantasy MMORPG. Renaissance Kingdoms meets D&D.
 20 playable races, 29 professions, 68 towns, player-driven everything.

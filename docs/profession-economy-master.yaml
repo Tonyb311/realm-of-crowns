@@ -37,6 +37,10 @@
 # JEWELER L1 Gemstones → Cut Stone. ENCHANTER Fortified level 5→3, Living Bark → Wild Herbs.
 # SCRIBE Area Map level 5→3. LEATHERWORKER Waterskin L1, Gloves/Boots L3. Wool marked DEFERRED.
 # FLETCHER Bowstring marked as intermediate recipe. TANNER feeds FLETCHER + LEATHERWORKER.
+# V27 INTERMEDIATE SUPPLY FIX (2026-02-28): BLACKSMITH L1 weapons Copper Ingot → Iron Ingot
+# (Copper Ore not in game world). Removed 3 legacy DB seed recipes with Soft Leather.
+# Market-seeded intermediates for sim: Cotton, Iron Ingot, Leather, Softwood Planks, Nails,
+# Bow Stave, Wooden Handle. Target: 15/15 crafting professions active.
 # =============================================================================
 
 
@@ -939,7 +943,7 @@ professions:
     description: "Forges weapons, tools, and armor from raw ores and wood."
     depends_on_gatherers: [MINER, LUMBERJACK]
     raw_inputs: [Iron Ore Chunks, Coal, Silver Ore, Wood Logs, Hardwood]
-    intermediate_inputs: [iron_ingot]    # From SMELTER (for higher-level weapon recipes)
+    intermediate_inputs: [iron_ingot, leather, softwood_planks]  # Iron Ingot from SMELTER, Leather from TANNER, Softwood Planks from WOODWORKER (v27: L1 weapons use Iron Ingot not Copper)
     output_categories: [WEAPON, TOOL, ARMOR]
     status: LIVE
     has_specializations: true

@@ -17,7 +17,7 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'BLACKSMITH',
     levelRequired: 1,
     inputs: [
-      { itemName: 'Copper Ingot', quantity: 1 },
+      { itemName: 'Iron Ingot', quantity: 1 },
       { itemName: 'Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Copper Dagger', quantity: 1 }],
@@ -42,7 +42,7 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'BLACKSMITH',
     levelRequired: 1,
     inputs: [
-      { itemName: 'Copper Ingot', quantity: 2 },
+      { itemName: 'Iron Ingot', quantity: 2 },
       { itemName: 'Leather', quantity: 1 },
     ],
     outputs: [{ itemName: 'Copper Sword', quantity: 1 }],
@@ -67,7 +67,7 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'BLACKSMITH',
     levelRequired: 1,
     inputs: [
-      { itemName: 'Copper Ingot', quantity: 2 },
+      { itemName: 'Iron Ingot', quantity: 2 },
       { itemName: 'Softwood Planks', quantity: 1 }, // Major-ECON-04: Changed from Hardwood Planks (Woodworker L10) to Softwood Planks (L1)
     ],
     outputs: [{ itemName: 'Copper Mace', quantity: 1 }],
@@ -92,7 +92,7 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'BLACKSMITH',
     levelRequired: 1,
     inputs: [
-      { itemName: 'Copper Ingot', quantity: 2 },
+      { itemName: 'Iron Ingot', quantity: 2 },
       { itemName: 'Softwood Planks', quantity: 1 }, // Major-ECON-04: Changed from Hardwood Planks (Woodworker L10) to Softwood Planks (L1)
     ],
     outputs: [{ itemName: 'Copper Axe', quantity: 1 }],
@@ -117,7 +117,7 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     professionRequired: 'BLACKSMITH',
     levelRequired: 1,
     inputs: [
-      { itemName: 'Copper Ingot', quantity: 1 },
+      { itemName: 'Iron Ingot', quantity: 1 },
       { itemName: 'Softwood Planks', quantity: 2 }, // Major-ECON-04: Changed from Hardwood Planks (Woodworker L10) to Softwood Planks (L1)
     ],
     outputs: [{ itemName: 'Copper Spear', quantity: 1 }],

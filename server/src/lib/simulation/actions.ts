@@ -577,6 +577,8 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
       'Woven Cloth',                                   // TAILOR intermediate
       'Cut Stone',                                     // MASON intermediate
       'Flour', 'Berry Jam',                            // COOK intermediates
+      'Nails', 'Iron Fittings',                        // BLACKSMITH intermediates → ARMORER
+      'Bowstring',                                     // FLETCHER intermediate
     ]);
     const INTERMEDIATE_KEEP_CAP = 2;  // Keep at most 2 of any intermediate, list the rest
     for (const [itemName, needed] of maxNeeded) {
