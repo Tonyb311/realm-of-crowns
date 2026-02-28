@@ -12,6 +12,9 @@ import { TOWN_GATHERING_SPOTS } from '@shared/data/gathering';
 import { BUILDING_ANIMAL_MAP } from '@shared/data/assets';
 import { prisma } from '../../lib/prisma';
 import { getOrCreateOpenCycle } from '../auction-engine';
+import { getSimulationTick } from '../simulation-context';
+import { getEffectiveTaxRate } from '../../services/law-effects';
+import { STANDARD_FEE_RATE } from '@shared/data/market';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -517,6 +520,7 @@ export async function listOnMarket(bot: BotState): Promise<ActionResult> {
 
 export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
   const endpoint = '/market/list';
+  const diagTag = `[LIST-DIAG] ${bot.characterName}`;
   try {
     // 1. Fetch raw inventory
     const invRes = await get('/characters/me/inventory', bot.token);
@@ -525,24 +529,35 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
     }
     const items: any[] = invRes.data?.items || invRes.data || [];
     if (items.length === 0) {
+      console.log(`${diagTag}: Empty inventory — nothing to list`);
       return { success: false, detail: 'Empty inventory', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
     }
+
+    // Diagnostic: log inventory summary
+    const invSummary = items
+      .filter((i: any) => !i.equipped)
+      .map((i: any) => `${i.quantity || 1}x ${i.templateName || i.name || '?'}`)
+      .join(', ');
+    const profKeys = Object.keys(bot.professionLevels || {}).map(k => `${k}:L${(bot.professionLevels || {})[k]}`).join(', ');
+    console.log(`${diagTag} Prof=[${profKeys}] Inventory(${items.length}): ${invSummary}`);
 
     // 2. Compute max needed quantity per item across recipes the bot can CURRENTLY craft
     //    Only keep inputs for recipes within the bot's profession level — don't hoard
     //    items for L30 recipes when the bot is L5 (v20 fix: crafted items were never listed)
     const maxNeeded = new Map<string, number>();
     const reachableNeeded = new Set<string>();  // replaces bot.neededItemNames for listing
-    let recipes: { inputs: { itemName: string; quantity: number }[]; professionRequired: string; levelRequired: number }[] = [];
+    let recipes: { inputs: { itemName: string; quantity: number }[]; professionRequired: string; levelRequired: number; name?: string }[] = [];
     try {
       recipes = await getCraftableRecipes(bot);
     } catch { /* if recipe fetch fails, fall back to empty — will list everything as unwanted */ }
     // Filter to recipes the bot can actually craft at current level
     const profLevels = bot.professionLevels || {};
+    let reachableCount = 0;
     for (const recipe of recipes) {
       const profKey = recipe.professionRequired.toUpperCase();
       const profLevel = profLevels[profKey] || 1;
       if (recipe.levelRequired > profLevel) continue;  // skip unreachable recipes
+      reachableCount++;
       for (const inp of recipe.inputs) {
         reachableNeeded.add(inp.itemName);
         const current = maxNeeded.get(inp.itemName) || 0;
@@ -550,11 +565,16 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
       }
     }
 
+    // Diagnostic: log recipe needs
+    const neededStr = [...maxNeeded.entries()].map(([n, q]) => `${n}:${q}`).join(', ');
+    console.log(`${diagTag} Recipes: ${recipes.length} total, ${reachableCount} reachable. Needed: [${neededStr}]`);
+
     // 3. Items to always keep
     const KEEP_ITEMS = new Set(['Gold Coins']);
 
     // 4. Build list of items to sell: unwanted + surplus of needed items
     const toList: { id: string; name: string; quantity: number; baseValue: number }[] = [];
+    const keptItems: string[] = [];
     for (const item of items) {
       if (item.equipped) continue;
       const name = item.templateName || item.name || '';
@@ -579,8 +599,16 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
           quantity: qty,
           baseValue: item.baseValue || item.value || 10,
         });
+      } else {
+        // Keeping this item (needed for recipes, within threshold)
+        keptItems.push(`${qty}x ${name} (need ${needed})`);
       }
     }
+
+    // Diagnostic: log surplus/unwanted/kept
+    const surplusStr = toList.map(i => `${i.quantity}x ${i.name}`).join(', ');
+    const keptStr = keptItems.join(', ');
+    console.log(`${diagTag} To-list(${toList.length}): [${surplusStr}] | Kept(${keptItems.length}): [${keptStr}]`);
 
     if (toList.length === 0) {
       return { success: false, detail: 'No surplus items to list', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
@@ -598,14 +626,19 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
         if (res.status >= 200 && res.status < 300) {
           listed++;
           listedNames.push(`${item.quantity}x ${item.name} @${price}g`);
+        } else {
+          console.log(`${diagTag} LIST-FAIL: ${item.quantity}x ${item.name} — HTTP ${res.status}: ${res.data?.error || 'unknown'}`);
         }
-      } catch { /* ignore individual failures */ }
+      } catch (e: any) {
+        console.log(`${diagTag} LIST-ERROR: ${item.quantity}x ${item.name} — ${e.message}`);
+      }
     }
 
     if (listed === 0) {
       return { success: false, detail: 'Failed to list any items', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
     }
 
+    console.log(`${diagTag} Listed ${listed}: ${listedNames.join(', ')}`);
     return {
       success: true,
       detail: `Listed ${listed} item(s): ${listedNames.join(', ')}`,
@@ -2298,6 +2331,8 @@ export async function buySpecificItem(bot: BotState, itemName: string, maxPrice?
         id: true,
         price: true,
         itemName: true,
+        itemId: true,
+        itemTemplateId: true,
         quantity: true,
         townId: true,
         sellerId: true,
@@ -2312,14 +2347,6 @@ export async function buySpecificItem(bot: BotState, itemName: string, maxPrice?
     const listing = listings[0];
     const bidPrice = Math.ceil(listing.price * 1.1); // 10% above asking
 
-    // Check for duplicate order on this listing
-    const existingOrder = await prisma.marketBuyOrder.findUnique({
-      where: { buyerId_listingId: { buyerId: bot.characterId, listingId: listing.id } },
-    });
-    if (existingOrder) {
-      return { success: false, detail: `Already have order on ${itemName} listing`, endpoint, httpStatus: 0, requestBody: { listingId: listing.id }, responseBody: {} };
-    }
-
     // Fresh gold check from DB
     const freshChar = await prisma.character.findUnique({
       where: { id: bot.characterId },
@@ -2331,6 +2358,141 @@ export async function buySpecificItem(bot: BotState, itemName: string, maxPrice?
     const availableGold = freshChar.gold - freshChar.escrowedGold;
     if (availableGold < bidPrice) {
       return { success: false, detail: `Can't afford ${itemName}: need ${bidPrice}g, have ${availableGold}g available`, endpoint, httpStatus: 0, requestBody: { bidPrice, availableGold }, responseBody: {} };
+    }
+
+    // ── Sim-mode instant-fulfill: bypass auction, transfer immediately ───
+    // In simulation mode, crafting bots starve when auctions delay material
+    // delivery. Instant-fulfill lets items land in inventory during Phase 1
+    // so crafting can happen in Phase 2 of the SAME tick.
+    const isSimulation = getSimulationTick() !== null;
+    if (isSimulation) {
+      const fee = Math.floor(bidPrice * STANDARD_FEE_RATE);
+      const sellerNet = bidPrice - fee;
+      const taxRate = await getEffectiveTaxRate(listing.townId);
+      const townTax = Math.floor(bidPrice * taxRate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      await prisma.$transaction(async (tx) => {
+        // Deduct gold from buyer (direct, no escrow)
+        await tx.character.update({
+          where: { id: bot.characterId },
+          data: { gold: { decrement: bidPrice } },
+        });
+
+        // Credit seller
+        await tx.character.update({
+          where: { id: listing.sellerId },
+          data: { gold: { increment: sellerNet } },
+        });
+
+        // Transfer item to buyer inventory
+        const existingInv = await tx.inventory.findFirst({
+          where: { characterId: bot.characterId, itemId: listing.itemId },
+        });
+        if (existingInv) {
+          await tx.inventory.update({
+            where: { id: existingInv.id },
+            data: { quantity: { increment: listing.quantity } },
+          });
+        } else {
+          await tx.inventory.create({
+            data: {
+              characterId: bot.characterId,
+              itemId: listing.itemId,
+              quantity: listing.quantity,
+            },
+          });
+        }
+
+        // Mark listing as sold
+        await tx.marketListing.update({
+          where: { id: listing.id },
+          data: {
+            status: 'sold',
+            soldAt: new Date(),
+            soldTo: bot.characterId,
+            soldPrice: bidPrice,
+          },
+        });
+
+        // Create TradeTransaction
+        await tx.tradeTransaction.create({
+          data: {
+            buyerId: bot.characterId,
+            sellerId: listing.sellerId,
+            itemId: listing.itemId,
+            price: bidPrice,
+            quantity: listing.quantity,
+            townId: listing.townId,
+            sellerFee: fee,
+            sellerNet,
+            numBidders: 1,
+            contested: false,
+            allBidders: [],
+          },
+        });
+
+        // Update PriceHistory
+        const existingHistory = await tx.priceHistory.findUnique({
+          where: {
+            itemTemplateId_townId_date: {
+              itemTemplateId: listing.itemTemplateId,
+              townId: listing.townId,
+              date: today,
+            },
+          },
+        });
+        if (existingHistory) {
+          const newVolume = existingHistory.volume + listing.quantity;
+          const newAvgPrice =
+            (existingHistory.avgPrice * existingHistory.volume + bidPrice * listing.quantity) / newVolume;
+          await tx.priceHistory.update({
+            where: { id: existingHistory.id },
+            data: { avgPrice: newAvgPrice, volume: newVolume },
+          });
+        } else {
+          await tx.priceHistory.create({
+            data: {
+              itemTemplateId: listing.itemTemplateId,
+              townId: listing.townId,
+              avgPrice: bidPrice,
+              volume: listing.quantity,
+              date: today,
+            },
+          });
+        }
+
+        // Deposit town tax
+        if (townTax > 0) {
+          await tx.townTreasury.upsert({
+            where: { townId: listing.townId },
+            update: { balance: { increment: townTax } },
+            create: { townId: listing.townId, balance: townTax },
+          });
+        }
+      });
+
+      // Update local bot state
+      bot.gold = freshChar.gold - bidPrice;
+
+      return {
+        success: true,
+        detail: `[INSTANT] Bought ${listing.quantity}x ${listing.itemName} for ${bidPrice}g (asking ${listing.price}g) from ${listing.seller.name}`,
+        endpoint,
+        httpStatus: 200,
+        requestBody: { listingId: listing.id, bidPrice, townId: listing.townId, instant: true },
+        responseBody: { instant: true },
+      };
+    }
+
+    // ── Normal auction path (non-simulation) ────────────────────────────
+    // Check for duplicate order on this listing
+    const existingOrder = await prisma.marketBuyOrder.findUnique({
+      where: { buyerId_listingId: { buyerId: bot.characterId, listingId: listing.id } },
+    });
+    if (existingOrder) {
+      return { success: false, detail: `Already have order on ${itemName} listing`, endpoint, httpStatus: 0, requestBody: { listingId: listing.id }, responseBody: {} };
     }
 
     // Get or create auction cycle for the listing's town
