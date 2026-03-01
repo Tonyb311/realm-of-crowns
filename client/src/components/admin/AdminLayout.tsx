@@ -11,6 +11,7 @@ import {
   Bot,
   Layers,
   Skull,
+  Swords,
   ArrowLeft,
   Menu,
   X,
@@ -28,6 +29,7 @@ const ADMIN_NAV = [
   { path: '/admin/simulation', label: 'Simulation', icon: Bot },
   { path: '/admin/content-release', label: 'Content Release', icon: Layers },
   { path: '/admin/monsters', label: 'Monsters', icon: Skull },
+  { path: '/admin/combat', label: 'Combat', icon: Swords },
 ];
 
 function isNavActive(itemPath: string, currentPath: string, exact?: boolean): boolean {

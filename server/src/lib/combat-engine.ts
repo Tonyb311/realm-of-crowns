@@ -95,7 +95,7 @@ interface StatusEffectDef {
   saveModifier: number;
 }
 
-const STATUS_EFFECT_DEFS: Record<StatusEffectName, StatusEffectDef> = {
+export const STATUS_EFFECT_DEFS: Record<StatusEffectName, StatusEffectDef> = {
   poisoned: {
     preventsAction: false,
     dotDamage: (e) => e.damagePerRound ?? 3,

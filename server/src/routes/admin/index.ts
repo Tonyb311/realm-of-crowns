@@ -13,6 +13,7 @@ import travelRouter from './travel';
 import populationRouter from './population';
 import monstersRouter from './monsters';
 import marketRouter from './market';
+import combatRouter from './combat';
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use('/travel', travelRouter);
 router.use('/population', populationRouter);
 router.use('/monsters', monstersRouter);
 router.use('/market', marketRouter);
+router.use('/combat', combatRouter);
 
 export default router;
