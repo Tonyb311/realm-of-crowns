@@ -654,10 +654,6 @@ export async function decideBotAction(
       const r = await timedFreeAction(() => actions.listUnwantedItems(bot), bot, 'list_unwanted', logger, tick);
       if (r.success) {
         console.log(`[SIM] ${bot.characterName} listed unwanted items: ${r.detail}`);
-        // DIAG: flag if A7 listed crafting ingredients for LEATHERWORKER bots
-        if (profs.includes('LEATHERWORKER') && tick != null && tick <= 15) {
-          console.log(`[A7-LW] T${tick} ${bot.characterName}: A7 LISTED items: ${r.detail}`);
-        }
       }
     } catch { /* ignore */ }
   }
@@ -750,18 +746,6 @@ export async function decideBotAction(
 
   // ── P3: Craft (highest-tier craftable recipe, intermediates preferred) ──
   if (hasCrafting && config.enabledSystems.crafting) {
-    // DIAG: P3 diagnostic using the SAME recipes variable that P3 uses
-    if (profs.includes('LEATHERWORKER') && tick != null && tick <= 15) {
-      const lwRecipes = recipes.filter(r => r.professionRequired.toUpperCase() === 'LEATHERWORKER');
-      const lwCraftable = lwRecipes.filter(r => r.canCraft);
-      console.log(`[P3-LW] T${tick} ${bot.characterName}: ` +
-        `recipes.length=${recipes.length}, lwRecipes=${lwRecipes.length}, ` +
-        `lwCraftable=${lwCraftable.map(r => `${r.name}(cc=${r.canCraft},L${r.levelRequired})`).join(',') || 'NONE'}, ` +
-        `allCraftable=${recipes.filter(r => r.canCraft).length}, ` +
-        `profLevels=${JSON.stringify(bot.professionLevels)}, ` +
-        `inv=[${[...invMap.entries()].filter(([,q]) => q > 0).map(([n,q]) => `${q}x${n}`).join(',')}]`
-      );
-    }
     const craftable = recipes.filter(r => r.canCraft);
     if (craftable.length > 0) {
       // Sort: highest tier first; at same tier, prefer intermediates

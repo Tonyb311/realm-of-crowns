@@ -166,9 +166,13 @@ async function seedMarketItem(
   bots: BotState[],
 ): Promise<void> {
   try {
-    const template = await prisma.itemTemplate.findFirst({
-      where: { name: { equals: name, mode: 'insensitive' } },
-    });
+    // v28: Prefer stable-ID templates to avoid mismatch with recipe ingredients.
+    // Templates use 'crafted-' for processed materials or 'resource-' for raw.
+    const hyphenName = name.toLowerCase().replace(/\s+/g, '-');
+    const template =
+      await prisma.itemTemplate.findUnique({ where: { id: `crafted-${hyphenName}` } }) ??
+      await prisma.itemTemplate.findUnique({ where: { id: `resource-${hyphenName}` } }) ??
+      await prisma.itemTemplate.findFirst({ where: { name: { equals: name, mode: 'insensitive' } } });
     if (!template || bots.length === 0) {
       logger.warn(`${name} ItemTemplate not found or no bots — skipping market seeding`);
       return;

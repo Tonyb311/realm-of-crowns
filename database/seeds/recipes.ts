@@ -1290,7 +1290,7 @@ export async function seedRecipes(prisma: PrismaClient) {
         where: { templateId: { in: dupIds } },
         data: { templateId: stableId },
       });
-      // Re-point price_histories and house_storage before deleting
+      // Re-point price_histories, house_storage, and market_listings before deleting
       try {
         await prisma.priceHistory.updateMany({
           where: { itemTemplateId: { in: dupIds } },
@@ -1303,6 +1303,13 @@ export async function seedRecipes(prisma: PrismaClient) {
           data: { itemTemplateId: stableId },
         });
       } catch { /* FK table may not have entries */ }
+      // v28: Also re-point market listings (no FK but affects what bots buy)
+      try {
+        await prisma.marketListing.updateMany({
+          where: { itemTemplateId: { in: dupIds } },
+          data: { itemTemplateId: stableId },
+        });
+      } catch { /* non-critical */ }
       // Delete duplicate templates (skip if remaining FK constraints)
       try {
         await prisma.itemTemplate.deleteMany({
@@ -1372,7 +1379,7 @@ export async function seedRecipes(prisma: PrismaClient) {
         where: { templateId: { in: dupIds } },
         data: { templateId: stableId },
       });
-      // Re-point price_histories and house_storage before deleting
+      // Re-point price_histories, house_storage, and market_listings before deleting
       try {
         await prisma.priceHistory.updateMany({
           where: { itemTemplateId: { in: dupIds } },
@@ -1385,6 +1392,13 @@ export async function seedRecipes(prisma: PrismaClient) {
           data: { itemTemplateId: stableId },
         });
       } catch { /* FK table may not have entries */ }
+      // v28: Also re-point market listings (no FK but affects what bots buy)
+      try {
+        await prisma.marketListing.updateMany({
+          where: { itemTemplateId: { in: dupIds } },
+          data: { itemTemplateId: stableId },
+        });
+      } catch { /* non-critical */ }
       // Delete duplicate templates (skip if remaining FK constraints)
       try {
         await prisma.itemTemplate.deleteMany({

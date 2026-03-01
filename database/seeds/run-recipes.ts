@@ -441,8 +441,8 @@ async function main() {
     // ---------------------------------------------------------------
     console.log('\n--- Seeding FISHERMAN Craftsman resources ---');
     const FISHERMAN_RESOURCES = [
-      { id: 'resource-river_trout', name: 'River Trout', description: 'A prized freshwater fish with firm, flavorful flesh. Only skilled fishermen can consistently land these.', baseValue: 22 },
-      { id: 'resource-lake_perch', name: 'Lake Perch', description: 'A large, meaty lake fish. Its delicate flavor makes it the centerpiece of fine cuisine.', baseValue: 25 },
+      { id: 'resource-river-trout', name: 'River Trout', description: 'A prized freshwater fish with firm, flavorful flesh. Only skilled fishermen can consistently land these.', baseValue: 22 },
+      { id: 'resource-lake-perch', name: 'Lake Perch', description: 'A large, meaty lake fish. Its delicate flavor makes it the centerpiece of fine cuisine.', baseValue: 25 },
     ];
     for (const res of FISHERMAN_RESOURCES) {
       const data = {

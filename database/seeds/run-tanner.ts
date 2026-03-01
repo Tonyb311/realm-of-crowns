@@ -106,7 +106,7 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
 
       // -- Intermediate materials (TANNER processing) --
       {
-        id: 'material-leather',
+        id: 'crafted-leather',
         name: 'Leather',
         type: 'MATERIAL',
         rarity: 'COMMON',
@@ -123,7 +123,7 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
         baseValue: 18,
       },
       {
-        id: 'material-wolf-leather',
+        id: 'crafted-wolf-leather',
         name: 'Wolf Leather',
         type: 'MATERIAL',
         rarity: 'FINE',
@@ -140,7 +140,7 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
         baseValue: 35,
       },
       {
-        id: 'material-bear-leather',
+        id: 'crafted-bear-leather',
         name: 'Bear Leather',
         type: 'MATERIAL',
         rarity: 'FINE',
