@@ -1687,6 +1687,9 @@ export function resolvePsionAbility(
     }
 
     case 'psi-see-5': { // Temporal Echo - repeat last action
+      // NOTE: freeAction in ability data is intentionally NOT implemented.
+      // Echo replaying a full psion ability (Psychic Crush, Dominate, etc.) as a free action
+      // would be extremely overpowered. Temporal Echo is balanced as a turn-consuming replay.
       if (!updatedActor.lastAction) {
         return {
           state: current,
@@ -1853,9 +1856,18 @@ export function resolvePsionAbility(
           },
         };
       } else {
-        // Ally target: both get +2 AC for 1 round (shielded)
-        updatedTarget = applyStatusEffect(updatedTarget, 'shielded', 1, actorId);
-        updatedActor = applyStatusEffect(updatedActor, 'shielded', 1, actorId);
+        // Phase 7 MISMATCH-2: Ally target — +2 AC via ActiveBuff (not shielded +4).
+        // Ability data says acBonus: 2. Using a custom buff keeps shielded status intact for other uses.
+        const translocBuff = {
+          sourceAbilityId: abilityId,
+          name: 'Translocation Shield',
+          roundsRemaining: 1,
+          acMod: 2,
+        };
+        const targetBuffs = [...(updatedTarget.activeBuffs ?? []), translocBuff];
+        updatedTarget = { ...updatedTarget, activeBuffs: targetBuffs };
+        const actorBuffs = [...(updatedActor.activeBuffs ?? []), translocBuff];
+        updatedActor = { ...updatedActor, activeBuffs: actorBuffs };
 
         current = {
           ...current,
@@ -1871,8 +1883,7 @@ export function resolvePsionAbility(
           result: {
             type: 'psion_ability', actorId, abilityName: abilityDef.name, abilityId,
             targetId, saveRequired: false,
-            statusApplied: 'shielded', statusDuration: 1,
-            description: `${updatedActor.name} and ${target.name} swap positions, both gaining +4 AC for 1 round.`,
+            description: `${updatedActor.name} and ${target.name} swap positions, both gaining +2 AC for 1 round.`,
           },
         };
       }
@@ -1922,7 +1933,22 @@ export function resolvePsionAbility(
     }
 
     case 'psi-nom-6': { // Banishment - INT save at -2, banish 3 rounds or 2d6 psychic + slowed
+      // NOTE: Damage dice, duration, and effects are hard-coded since psi-nom-6 is the only
+      // banish ability. If additional banish abilities are added, refactor to read from abilityDef.effects.
       const target = current.combatants.find((c) => c.id === targetId)!;
+
+      // Phase 7 BUG-3: noDuplicateBanish — cannot re-banish an already banished target
+      if (target.banishedUntilRound != null) {
+        return {
+          state: current,
+          result: {
+            type: 'psion_ability', actorId, targetId, abilityName: abilityDef.name, abilityId,
+            saveRequired: false,
+            description: `${abilityDef.name}: Target is already banished — cannot re-banish.`,
+          },
+        };
+      }
+
       const targetSaveMod = getModifier(target.stats.int) + target.proficiencyBonus - 2;
       let totalSaveMod = targetSaveMod;
       for (const eff of target.statusEffects) {
@@ -2324,13 +2350,16 @@ export function resolveTurn(
         const psi = resolvePsionAbility(current, actorId, action.psionAbilityId, action.targetId);
         current = psi.state;
         result = psi.result;
-        // Track lastAction for Temporal Echo
-        current = {
-          ...current,
-          combatants: current.combatants.map((c) =>
-            c.id === actorId ? { ...c, lastAction: action } : c
-          ),
-        };
+        // Track lastAction for Temporal Echo — skip echo itself to prevent
+        // infinite recursion (echo replaying echo replaying echo...)
+        if (action.psionAbilityId !== 'psi-see-5') {
+          current = {
+            ...current,
+            combatants: current.combatants.map((c) =>
+              c.id === actorId ? { ...c, lastAction: action } : c
+            ),
+          };
+        }
         break;
       }
 

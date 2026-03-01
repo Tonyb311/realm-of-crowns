@@ -564,6 +564,19 @@ const handleCleanse: EffectHandler = (state, actor, _target, _enemies, abilityDe
 };
 
 const handleFleeAbility: EffectHandler = (state, actor, _target, enemies, abilityDef, effects) => {
+  // Phase 7 BUG-1: Taunted combatants cannot flee — taunt forces them to stay and fight
+  const isTaunted = actor.statusEffects.some(e => e.name === 'taunt');
+  if (isTaunted) {
+    return {
+      state,
+      result: {
+        fleeAttempt: true,
+        fleeSuccess: false,
+        description: `${abilityDef.name}: Cannot flee while taunted!`,
+      },
+    };
+  }
+
   // BUG-FIX 3: successChance is a fraction (0.9 = 90%), multiply by 100 for percentile comparison
   const successChance = (effects.successChance as number) ?? 0.9;
 
@@ -590,18 +603,25 @@ const handleAoeDebuff: EffectHandler = (state, actor, _target, enemies, abilityD
   const duration = (effects.duration as number) ?? 2;
 
   let affected = 0;
+  let immune = 0;
   for (const enemy of enemies) {
+    // Phase 7 BUG-2: Skip enemies with immuneBlinded (Third Eye Psion passive)
+    if (enemy.immuneBlinded) {
+      immune++;
+      continue;
+    }
     state = applyStatusEffectToState(state, enemy.id, 'blinded', duration, actor.id);
     affected++;
   }
 
+  const immuneNote = immune > 0 ? ` (${immune} immune)` : '';
   return {
     state,
     result: {
-      targetIds: enemies.map(e => e.id),
+      targetIds: enemies.filter(e => !e.immuneBlinded).map(e => e.id),
       debuffApplied: `accuracy -${accuracyReduction}`,
       debuffDuration: duration,
-      description: `${abilityDef.name}: -${accuracyReduction} accuracy on ${affected} enemies for ${duration} rounds`,
+      description: `${abilityDef.name}: -${accuracyReduction} accuracy on ${affected} enemies for ${duration} rounds${immuneNote}`,
     },
   };
 };

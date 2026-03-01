@@ -57,6 +57,8 @@ export interface AbilityQueueEntry {
   priority: number;
   useWhen?: 'always' | 'low_hp' | 'high_hp' | 'first_round' | 'outnumbered' | 'has_companion';
   hpThreshold?: number;
+  /** Target an ally instead of an enemy (e.g., Translocation ally shield) */
+  targetAlly?: boolean;
 }
 
 export interface ItemUsageRule {
@@ -3340,6 +3342,347 @@ const hunterMarkAdvantage: ScenarioDef = {
   ],
 };
 
+// ---- Phase 7 Scenarios: 5 Previously Untested Handlers (S59-S65) ----
+
+// S59: Temporal Echo replays a psion ability
+const echoReplay: ScenarioDef = {
+  name: 'echo-replay',
+  description: 'L28 Psion/Seer — Foresight → Mind Spike → Temporal Echo (replays Mind Spike)',
+  type: 'DUEL',
+  combatants: [
+    {
+      id: 'seer-echo',
+      name: 'Chronos Veil',
+      entityType: 'character',
+      team: 0,
+      stats: { str: 8, dex: 14, con: 12, int: 20, wis: 18, cha: 10 },
+      level: 28,
+      hp: 65,
+      maxHp: 65,
+      ac: 13,
+      weapon: makeWeapon('Staff', 1, 6, 'str', 0, 0, 'BLUDGEONING'),
+      race: 'elf',
+      characterClass: 'Psion',
+      specialization: 'Seer',
+      unlockedAbilityIds: ['psi-tel-1', 'psi-see-5'],
+      abilityQueue: [
+        // Round 1: Mind Spike fires (sets lastAction for echo)
+        { abilityId: 'psi-tel-1', abilityName: 'Mind Spike', priority: 1, useWhen: 'first_round' },
+        // Round 2+: Temporal Echo replays Mind Spike
+        { abilityId: 'psi-see-5', abilityName: 'Temporal Echo', priority: 2, useWhen: 'always' },
+      ],
+      neverRetreat: true,
+    },
+    {
+      id: 'dummy-echo',
+      name: 'Training Dummy',
+      entityType: 'monster',
+      team: 1,
+      stats: { str: 10, dex: 10, con: 18, int: 6, wis: 8, cha: 6 },
+      level: 20,
+      hp: 200,
+      maxHp: 200,
+      ac: 8,
+      weapon: makeWeapon('Slam', 1, 4, 'str'),
+      neverRetreat: true,
+    },
+  ],
+};
+
+// S60: Temporal Echo with no prior action (edge case — no-op)
+const echoNoPrevious: ScenarioDef = {
+  name: 'echo-no-previous',
+  description: 'L28 Psion/Seer — Temporal Echo as first action (no previous action to repeat)',
+  type: 'DUEL',
+  combatants: [
+    {
+      id: 'seer-echo-noop',
+      name: 'Hasty Oracle',
+      entityType: 'character',
+      team: 0,
+      stats: { str: 8, dex: 14, con: 12, int: 20, wis: 18, cha: 10 },
+      level: 28,
+      hp: 65,
+      maxHp: 65,
+      ac: 13,
+      weapon: makeWeapon('Staff', 1, 6, 'str', 0, 0, 'BLUDGEONING'),
+      race: 'elf',
+      characterClass: 'Psion',
+      specialization: 'Seer',
+      unlockedAbilityIds: ['psi-see-5'],
+      abilityQueue: [
+        { abilityId: 'psi-see-5', abilityName: 'Temporal Echo', priority: 1, useWhen: 'first_round' },
+      ],
+      neverRetreat: true,
+    },
+    {
+      id: 'dummy-echo-noop',
+      name: 'Training Dummy',
+      entityType: 'monster',
+      team: 1,
+      stats: { str: 10, dex: 10, con: 18, int: 6, wis: 8, cha: 6 },
+      level: 20,
+      hp: 200,
+      maxHp: 200,
+      ac: 8,
+      weapon: makeWeapon('Slam', 1, 4, 'str'),
+      neverRetreat: true,
+    },
+  ],
+};
+
+// S61: Translocation vs enemy — INT save, stun on fail
+const swapEnemyStun: ScenarioDef = {
+  name: 'swap-enemy-stun',
+  description: 'L18 Psion/Nomad — Translocation vs enemy (INT save, stunned 1 round on fail)',
+  type: 'DUEL',
+  combatants: [
+    {
+      id: 'nomad-swap',
+      name: 'Warp Strider',
+      entityType: 'character',
+      team: 0,
+      stats: { str: 8, dex: 16, con: 12, int: 20, wis: 14, cha: 10 },
+      level: 18,
+      hp: 50,
+      maxHp: 50,
+      ac: 14,
+      weapon: makeWeapon('Short Sword', 1, 6, 'dex'),
+      race: 'gnome',
+      characterClass: 'Psion',
+      specialization: 'Nomad',
+      unlockedAbilityIds: ['psi-nom-1', 'psi-nom-4'],
+      abilityQueue: [
+        { abilityId: 'psi-nom-4', abilityName: 'Translocation', priority: 1, useWhen: 'first_round' },
+        { abilityId: 'psi-nom-1', abilityName: 'Blink Strike', priority: 2, useWhen: 'always' },
+      ],
+      neverRetreat: true,
+    },
+    {
+      id: 'orc-swap-enemy',
+      name: 'Orc Brute',
+      entityType: 'monster',
+      team: 1,
+      stats: { str: 18, dex: 10, con: 16, int: 7, wis: 10, cha: 8 },
+      level: 18,
+      hp: 80,
+      maxHp: 80,
+      ac: 14,
+      weapon: makeWeapon('Greataxe', 1, 12, 'str', 4),
+      stance: 'AGGRESSIVE',
+      neverRetreat: true,
+    },
+  ],
+};
+
+// S62: Translocation with ally — both caster and ally get +2 AC buff
+const swapAllyShield: ScenarioDef = {
+  name: 'swap-ally-shield',
+  description: '2v1: L18 Psion/Nomad + L18 Warrior vs L20 Orc — Translocation ally gives +2 AC buff',
+  type: 'ARENA',
+  combatants: [
+    {
+      id: 'nomad-swap-ally',
+      name: 'Warp Guardian',
+      entityType: 'character',
+      team: 0,
+      stats: { str: 8, dex: 16, con: 12, int: 20, wis: 14, cha: 10 },
+      level: 18,
+      hp: 50,
+      maxHp: 50,
+      ac: 14,
+      weapon: makeWeapon('Short Sword', 1, 6, 'dex'),
+      race: 'gnome',
+      characterClass: 'Psion',
+      specialization: 'Nomad',
+      unlockedAbilityIds: ['psi-nom-1', 'psi-nom-4'],
+      abilityQueue: [
+        { abilityId: 'psi-nom-4', abilityName: 'Translocation', priority: 1, useWhen: 'first_round', targetAlly: true },
+        { abilityId: 'psi-nom-1', abilityName: 'Blink Strike', priority: 2, useWhen: 'always' },
+      ],
+      neverRetreat: true,
+    },
+    {
+      id: 'warrior-swap-ally',
+      name: 'Shield Bearer',
+      entityType: 'character',
+      team: 0,
+      stats: { str: 18, dex: 12, con: 16, int: 10, wis: 12, cha: 10 },
+      level: 18,
+      hp: 90,
+      maxHp: 90,
+      ac: 18,
+      weapon: makeWeapon('Longsword', 1, 8, 'str', 4),
+      neverRetreat: true,
+    },
+    {
+      id: 'orc-swap-ally',
+      name: 'Orc Warlord',
+      entityType: 'monster',
+      team: 1,
+      stats: { str: 20, dex: 10, con: 18, int: 8, wis: 10, cha: 8 },
+      level: 20,
+      hp: 100,
+      maxHp: 100,
+      ac: 15,
+      weapon: makeWeapon('Warhammer', 1, 10, 'str', 5),
+      stance: 'AGGRESSIVE',
+      neverRetreat: true,
+    },
+  ],
+};
+
+// S63: Banishment full cycle — banish 3 rounds, return with damage + stun
+const banishFullCycle: ScenarioDef = {
+  name: 'banish-full-cycle',
+  description: 'L40 Psion/Nomad — Banishment vs L35 Orc (3 round void, return 4d6 + stunned)',
+  type: 'DUEL',
+  combatants: [
+    {
+      id: 'nomad-banish',
+      name: 'Void Caller',
+      entityType: 'character',
+      team: 0,
+      stats: { str: 8, dex: 16, con: 14, int: 22, wis: 16, cha: 10 },
+      level: 40,
+      hp: 85,
+      maxHp: 85,
+      ac: 15,
+      weapon: makeWeapon('Crystal Blade', 1, 6, 'dex', 3),
+      race: 'gnome',
+      characterClass: 'Psion',
+      specialization: 'Nomad',
+      unlockedAbilityIds: ['psi-nom-1', 'psi-nom-6'],
+      abilityQueue: [
+        { abilityId: 'psi-nom-6', abilityName: 'Banishment', priority: 1, useWhen: 'first_round' },
+        { abilityId: 'psi-nom-1', abilityName: 'Blink Strike', priority: 2, useWhen: 'always' },
+      ],
+      neverRetreat: true,
+    },
+    {
+      id: 'orc-banish-target',
+      name: 'Orc Chieftain',
+      entityType: 'monster',
+      team: 1,
+      stats: { str: 20, dex: 10, con: 18, int: 7, wis: 10, cha: 8 },
+      level: 35,
+      hp: 130,
+      maxHp: 130,
+      ac: 15,
+      weapon: makeWeapon('Greataxe', 1, 12, 'str', 5),
+      stance: 'AGGRESSIVE',
+      neverRetreat: true,
+    },
+  ],
+};
+
+// S64: Thief Disengage flee (90% success)
+const fleeDisengage: ScenarioDef = {
+  name: 'flee-disengage',
+  description: 'L22 Rogue/Thief — Disengage flee attempt (90% success), hasFled removes from combat',
+  type: 'PVE',
+  combatants: [
+    {
+      id: 'thief-flee',
+      name: 'Shadow Runner',
+      entityType: 'character',
+      team: 0,
+      stats: { str: 10, dex: 18, con: 12, int: 14, wis: 12, cha: 10 },
+      level: 22,
+      hp: 55,
+      maxHp: 55,
+      ac: 15,
+      weapon: makeWeapon('Dagger', 1, 4, 'dex', 4),
+      race: 'halfling',
+      characterClass: 'Rogue',
+      specialization: 'Thief',
+      unlockedAbilityIds: ['rog-thi-1', 'rog-thi-2', 'rog-thi-4'],
+      abilityQueue: [
+        { abilityId: 'rog-thi-4', abilityName: 'Disengage', priority: 1, useWhen: 'always' },
+      ],
+      neverRetreat: true, // Let the ability handle flee, not the retreat system
+    },
+    {
+      id: 'orc-flee-test',
+      name: 'Orc Pursuer',
+      entityType: 'monster',
+      team: 1,
+      stats: { str: 18, dex: 10, con: 16, int: 7, wis: 10, cha: 8 },
+      level: 20,
+      hp: 80,
+      maxHp: 80,
+      ac: 14,
+      weapon: makeWeapon('Greataxe', 1, 12, 'str', 4),
+      stance: 'AGGRESSIVE',
+      neverRetreat: true,
+    },
+  ],
+};
+
+// S65: Smoke Bomb AoE debuff — applies blinded to all enemies + immuneBlinded immunity test
+const smokeBombAoe: ScenarioDef = {
+  name: 'smoke-bomb-aoe',
+  description: '1v2: L14 Rogue/Thief Smoke Bomb — blinded on normal enemy, blocked by immuneBlinded Psion',
+  type: 'PVE',
+  combatants: [
+    {
+      id: 'thief-smoke',
+      name: 'Smoke Artist',
+      entityType: 'character',
+      team: 0,
+      stats: { str: 10, dex: 18, con: 12, int: 14, wis: 12, cha: 10 },
+      level: 14,
+      hp: 40,
+      maxHp: 40,
+      ac: 15,
+      weapon: makeWeapon('Dagger', 1, 4, 'dex', 4),
+      race: 'halfling',
+      characterClass: 'Rogue',
+      specialization: 'Thief',
+      unlockedAbilityIds: ['rog-thi-1', 'rog-thi-2'],
+      abilityQueue: [
+        { abilityId: 'rog-thi-2', abilityName: 'Smoke Bomb', priority: 1, useWhen: 'first_round' },
+      ],
+      neverRetreat: true,
+    },
+    {
+      id: 'orc-smoke-1',
+      name: 'Orc Grunt',
+      entityType: 'monster',
+      team: 1,
+      stats: { str: 16, dex: 10, con: 14, int: 7, wis: 10, cha: 8 },
+      level: 14,
+      hp: 55,
+      maxHp: 55,
+      ac: 13,
+      weapon: makeWeapon('Handaxe', 1, 6, 'str', 3),
+      stance: 'AGGRESSIVE',
+      neverRetreat: true,
+    },
+    {
+      id: 'psion-smoke-immune',
+      name: 'Third Eye Psion',
+      entityType: 'character',
+      team: 1,
+      stats: { str: 8, dex: 14, con: 12, int: 18, wis: 16, cha: 10 },
+      level: 18,
+      hp: 50,
+      maxHp: 50,
+      ac: 13,
+      weapon: makeWeapon('Staff', 1, 6, 'str', 0, 0, 'BLUDGEONING'),
+      race: 'elf',
+      characterClass: 'Psion',
+      specialization: 'Seer',
+      // Third Eye passive grants immuneBlinded
+      unlockedAbilityIds: ['psi-see-1', 'psi-see-4'],
+      abilityQueue: [
+        { abilityId: 'psi-see-1', abilityName: 'Foresight', priority: 1, useWhen: 'first_round' },
+      ],
+      neverRetreat: true,
+    },
+  ],
+};
+
 // ---- Scenario Registry ----
 
 export const SCENARIOS: Record<string, ScenarioDef> = {
@@ -3403,6 +3746,14 @@ export const SCENARIOS: Record<string, ScenarioDef> = {
   'poison-stealth-chain': poisonStealthChain,
   'paladin-holy-kit': paladinHolyKit,
   'hunter-mark-advantage': hunterMarkAdvantage,
+  // Phase 7 scenarios — 5 untested handlers
+  'echo-replay': echoReplay,
+  'echo-no-previous': echoNoPrevious,
+  'swap-enemy-stun': swapEnemyStun,
+  'swap-ally-shield': swapAllyShield,
+  'banish-full-cycle': banishFullCycle,
+  'flee-disengage': fleeDisengage,
+  'smoke-bomb-aoe': smokeBombAoe,
   custom,
 };
 

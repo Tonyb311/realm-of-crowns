@@ -250,12 +250,18 @@ function simDecideAction(
 
         // Psion abilities need psion_ability dispatch (different resolver path)
         if (entry.abilityId.startsWith('psi-')) {
+          // Support ally targeting (e.g., Translocation ally shield)
+          let psiTargetId = target?.id;
+          if (entry.targetAlly) {
+            const ally = allies.find(a => a.id !== actorId);
+            if (ally) psiTargetId = ally.id;
+          }
           return {
             action: {
               type: 'psion_ability',
               actorId,
               psionAbilityId: entry.abilityId,
-              targetId: target?.id,
+              targetId: psiTargetId,
               targetIds: enemies.map(e => e.id),
             },
             context: {},
