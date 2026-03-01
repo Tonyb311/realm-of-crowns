@@ -771,6 +771,7 @@ model DiplomacyEvent {
 
   @@index([initiatorId])
   @@index([targetId])
+  @@index([timestamp])
   @@map("diplomacy_events")
 }
 
