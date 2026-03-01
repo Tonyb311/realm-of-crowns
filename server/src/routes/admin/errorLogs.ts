@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma';
 import { validate } from '../../middleware/validate';
 import { AuthenticatedRequest } from '../../types/express';
 import { Prisma, LogLevel } from '@prisma/client';
+import { logRouteError } from '../../lib/error-logger';
 
 const router = Router();
 
@@ -68,7 +69,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    console.error('Error logs list error:', error);
+    logRouteError(req, 500, 'Error logs list error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -77,7 +78,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
 // GET /api/admin/error-logs/stats — Dashboard summary
 // ---------------------------------------------------------------------------
 
-router.get('/stats', async (_req: AuthenticatedRequest, res: Response) => {
+router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const now = new Date();
     const day1 = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -122,7 +123,7 @@ router.get('/stats', async (_req: AuthenticatedRequest, res: Response) => {
       hourlyTrend,
     });
   } catch (error) {
-    console.error('Error logs stats error:', error);
+    logRouteError(req, 500, 'Error logs stats error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -137,7 +138,7 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
     if (!log) return res.status(404).json({ error: 'Error log not found' });
     return res.json({ log });
   } catch (error) {
-    console.error('Error log detail error:', error);
+    logRouteError(req, 500, 'Error log detail error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -163,7 +164,7 @@ router.patch('/:id/resolve', validate(resolveSchema), async (req: AuthenticatedR
     });
     return res.json({ log });
   } catch (error) {
-    console.error('Resolve error log error:', error);
+    logRouteError(req, 500, 'Resolve error log error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -184,7 +185,7 @@ router.patch('/:id/unresolve', async (req: AuthenticatedRequest, res: Response) 
     });
     return res.json({ log });
   } catch (error) {
-    console.error('Unresolve error log error:', error);
+    logRouteError(req, 500, 'Unresolve error log error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -208,7 +209,7 @@ router.delete('/purge', validate(purgeSchema), async (req: AuthenticatedRequest,
 
     return res.json({ deleted: result.count, olderThan: cutoff.toISOString() });
   } catch (error) {
-    console.error('Purge error logs error:', error);
+    logRouteError(req, 500, 'Purge error logs error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
