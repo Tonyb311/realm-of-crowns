@@ -389,6 +389,9 @@ export async function seedBots(config: SeedConfig): Promise<BotState[]> {
     { name: 'Wooden Handle',   totalQty: 50,  qtyPerListing: 5,  price: 8 },   // BLACKSMITH (various)
     // v28: Animal Pelts — HUNTER gathers Wild Game Meat not Animal Pelts; TANNER+LEATHERWORKER need this
     { name: 'Animal Pelts',    totalQty: 100, qtyPerListing: 10, price: 8 },   // TANNER (Cure Leather), LEATHERWORKER (Gloves/Boots/Waterskin)
+    // v28b: Raw materials for last 2 non-producing professions
+    { name: 'Iron Ore Chunks', totalQty: 80,  qtyPerListing: 8,  price: 6 },   // SMELTER (Smelt Iron Ingot)
+    { name: 'Grain',           totalQty: 60,  qtyPerListing: 6,  price: 4 },   // COOK (Bake Bread, Cook Stew)
   ];
 
   for (const seed of MARKET_SEEDS) {
