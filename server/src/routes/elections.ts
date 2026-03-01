@@ -52,7 +52,7 @@ router.post('/nominate', authGuard, characterGuard, validate(nominateSchema), as
 
     const election = await prisma.election.findUnique({
       where: { id: electionId },
-      include: { town: true },
+      include: { town: { select: { id: true, name: true } } },
     });
 
     if (!election) {
