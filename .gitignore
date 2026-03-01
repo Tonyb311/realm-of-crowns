@@ -21,6 +21,7 @@ database/prisma/migrations/*_migration_lock.toml
 # IDE
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 
