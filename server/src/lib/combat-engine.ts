@@ -31,6 +31,7 @@ import type {
   FleeResult,
   RacialAbilityActionResult,
   PsionAbilityResult,
+  ClassAbilityResult,
   StatusTickResult,
   TurnLogEntry,
   DeathPenalty,
@@ -52,6 +53,18 @@ import {
 import { getBeastfolkNaturalWeapon } from '../services/racial-passive-tracker';
 import { psionAbilities } from '@shared/data/skills/psion';
 import { DEATH_PENALTY, getDeathXpPenalty, getDeathDurabilityPenalty } from '@shared/data/progression';
+import {
+  resolveClassAbility,
+  tickAbilityCooldowns as tickClassAbilityCooldowns,
+  tickActiveBuffs as tickClassActiveBuffs,
+  tickDelayedEffects,
+  getBuffAttackMod,
+  getBuffAcMod,
+  getBuffDamageMod,
+  getBuffDamageReduction,
+  consumeAbsorption,
+  checkDeathPrevention as checkClassDeathPrevention,
+} from './class-ability-resolver';
 
 // ---- Constants ----
 
@@ -206,6 +219,55 @@ const STATUS_EFFECT_DEFS: Record<StatusEffectName, StatusEffectDef> = {
     acModifier: 2,
     saveModifier: 2,
   },
+  // -- Class ability status effects --
+  taunt: {
+    preventsAction: false,
+    dotDamage: () => 0,
+    hotHealing: () => 0,
+    attackModifier: 0,
+    acModifier: 0,
+    saveModifier: 0,
+  },
+  silence: {
+    preventsAction: false, // can still basic attack
+    dotDamage: () => 0,
+    hotHealing: () => 0,
+    attackModifier: 0,
+    acModifier: 0,
+    saveModifier: 0,
+  },
+  root: {
+    preventsAction: false, // can attack/use abilities, cannot flee
+    dotDamage: () => 0,
+    hotHealing: () => 0,
+    attackModifier: 0,
+    acModifier: -3,
+    saveModifier: 0,
+  },
+  skip_turn: {
+    preventsAction: true,
+    dotDamage: () => 0,
+    hotHealing: () => 0,
+    attackModifier: 0,
+    acModifier: 0,
+    saveModifier: 0,
+  },
+  mesmerize: {
+    preventsAction: true, // breaks on damage (handled in damage application)
+    dotDamage: () => 0,
+    hotHealing: () => 0,
+    attackModifier: 0,
+    acModifier: 0,
+    saveModifier: 0,
+  },
+  polymorph: {
+    preventsAction: false, // can still basic attack (reduced to 1d4)
+    dotDamage: () => 0,
+    hotHealing: () => 0,
+    attackModifier: -4,
+    acModifier: -5, // AC effectively drops toward 10
+    saveModifier: -2,
+  },
 };
 
 // ---- Initiative ----
@@ -213,9 +275,11 @@ const STATUS_EFFECT_DEFS: Record<StatusEffectName, StatusEffectDef> = {
 /** Roll initiative for a combatant and return an updated copy. */
 export function calculateInitiative(combatant: Combatant): Combatant {
   const dexMod = getModifier(combatant.stats.dex);
+  // Phase 6 PSION-PASSIVE-2: initiativeBonus adds to initiative roll
+  const bonus = combatant.initiativeBonus ?? 0;
   return {
     ...combatant,
-    initiative: initiativeRoll(dexMod),
+    initiative: initiativeRoll(dexMod) + bonus,
   };
 }
 
@@ -273,6 +337,9 @@ export function calculateAC(combatant: Combatant, racialTracker?: RacialCombatTr
     ac += racialMods.acBonus;
   }
 
+  // Class ability buff AC bonuses
+  ac += getBuffAcMod(combatant);
+
   return ac;
 }
 
@@ -298,6 +365,9 @@ export function calculateDamage(
 
 // ---- Status Effects ----
 
+// Phase 5A: CC statuses that are blocked by ccImmune buffs
+const CC_STATUSES: StatusEffectName[] = ['stunned', 'frozen', 'paralyzed', 'dominated', 'mesmerize', 'polymorph', 'root', 'skip_turn'];
+
 /** Apply a status effect to a combatant. Replaces if same effect already present. */
 export function applyStatusEffect(
   combatant: Combatant,
@@ -306,6 +376,11 @@ export function applyStatusEffect(
   sourceId: string,
   damagePerRound?: number
 ): Combatant {
+  // Phase 5A BUFF-1: CC immunity check
+  if (CC_STATUSES.includes(effectName) && combatant.activeBuffs?.some(b => b.ccImmune === true)) {
+    return combatant; // CC immune, status not applied
+  }
+
   const id = `${effectName}-${sourceId}-${Date.now()}`;
   const newEffect: StatusEffect = {
     id,
@@ -445,20 +520,131 @@ export function resolveAttack(
     atkMod += racialMods.attackBonus;
   }
 
-  const targetAC = calculateAC(target, racialTracker);
+  // Class ability buff attack bonus
+  const buffAtkMod = getBuffAttackMod(actor);
+  if (buffAtkMod !== 0) {
+    atkModBreakdown.push({ source: 'classBuffs', value: buffAtkMod });
+    atkMod += buffAtkMod;
+  }
+
+  // Phase 5A: Class ability attack modifiers (set by handleDamage)
+  const classMods = actor.classAbilityAttackMods;
+  if (classMods) {
+    if (classMods.accuracyMod) {
+      atkModBreakdown.push({ source: 'abilityAccuracy', value: classMods.accuracyMod });
+      atkMod += classMods.accuracyMod;
+    }
+    // Clear after reading
+    actor = { ...actor, classAbilityAttackMods: undefined };
+  }
+
+  let targetAC = calculateAC(target, racialTracker);
+
+  // Phase 5A: ignoreArmor from class abilities
+  if (classMods?.ignoreArmor) {
+    targetAC = 10;
+  }
+
+  // Phase 5A BUFF-5: Stealth miss — stealthed targets auto-dodge attacks
+  // Phase 6 PSION-PASSIVE-3: seeInvisible bypasses stealth
+  if (target.activeBuffs?.some(b => b.stealthed === true) && !actor.seeInvisible) {
+    const result: AttackResult = {
+      type: 'attack',
+      actorId,
+      targetId,
+      attackRoll: 0,
+      attackTotal: 0,
+      attackModifiers: atkModBreakdown,
+      targetAC,
+      hit: false,
+      critical: false,
+      damageRoll: 0,
+      damageRolls: [],
+      damageModifiers: [],
+      damageType: weapon.damageType,
+      totalDamage: 0,
+      targetHpBefore: target.currentHp,
+      targetHpAfter: target.currentHp,
+      targetKilled: false,
+      weaponName: weapon.name,
+      weaponDice: `${weapon.diceCount}d${weapon.diceSides}`,
+    };
+    const combatants = state.combatants.map((c) => {
+      if (c.id === targetId) return target;
+      if (c.id === actorId) return actor;
+      return c;
+    });
+    return { state: { ...state, combatants }, result };
+  }
 
   // Check Half-Orc Unstoppable Force auto-hit
   const autoHit = racialTracker ? checkAutoHit(racialTracker) : false;
 
-  const roll = autoHit
-    ? { roll: 20, total: 20 + atkMod, hit: true, critical: false }
-    : attackRoll(atkMod, targetAC);
+  // Phase 5A BUFF-2: Guaranteed hits from buffs
+  let guaranteedHitUsed = false;
+  const guaranteedBuff = actor.activeBuffs?.find(b => b.guaranteedHits != null && b.guaranteedHits > 0);
+  if (guaranteedBuff) {
+    guaranteedHitUsed = true;
+    actor = {
+      ...actor,
+      activeBuffs: actor.activeBuffs!.map(b =>
+        b === guaranteedBuff ? { ...b, guaranteedHits: Math.max(0, (b.guaranteedHits ?? 0) - 1) } : b
+      ),
+    };
+  }
+
+  // Phase 5B PASSIVE-6: Advantage vs low HP targets — roll twice, take better
+  const useAdvantage = actor.advantageVsLowHp &&
+    (target.currentHp / target.maxHp * 100) <= (actor.advantageHpThreshold ?? 50);
+
+  let roll: { roll: number; total: number; hit: boolean; critical: boolean };
+  if (autoHit || guaranteedHitUsed || (classMods?.autoHit ?? false)) {
+    roll = { roll: 15, total: 15 + atkMod, hit: true, critical: false };
+  } else if (useAdvantage) {
+    const roll1 = attackRoll(atkMod, targetAC);
+    const roll2 = attackRoll(atkMod, targetAC);
+    roll = roll1.total >= roll2.total ? roll1 : roll2;
+  } else {
+    roll = attackRoll(atkMod, targetAC);
+  }
+
+  // Phase 5A: Expanded crit range from class abilities
+  const totalCritBonus = (classMods?.critBonus ?? 0) + (actor.critChanceBonus ?? 0);
+  if (roll.hit && !roll.critical && totalCritBonus > 0) {
+    const critThreshold = 20 - Math.floor(totalCritBonus / 5);
+    if (roll.roll >= critThreshold) {
+      roll.critical = true;
+    }
+  }
+
+  // Phase 5B PASSIVE-3: First strike auto-crit
+  if (roll.hit && !roll.critical && actor.firstStrikeCrit && !actor.hasAttackedThisCombat) {
+    roll.critical = true;
+  }
+  // Mark that actor has now attacked
+  if (actor.firstStrikeCrit && !actor.hasAttackedThisCombat) {
+    actor = { ...actor, hasAttackedThisCombat: true };
+  }
 
   let totalDamage = 0;
   let damageRollValue = 0;
   let damageRolls: number[] = [];
   const dmgModBreakdown: AttackModifierBreakdown[] = [];
   const targetHpBefore = target.currentHp;
+
+  // Phase 3: Reactive/companion tracking (declared before hit block for scope)
+  let companionIntercepted = false;
+  let companionDmgAbsorbed = 0;
+  let companionKilled = false;
+  let counterTriggered = false;
+  let counterDmg = 0;
+  let counterAbilityName = '';
+  let counterAoe = false;
+  // Phase 4: Death prevention tracking
+  let deathPrevented = false;
+  let deathPreventedAbility = '';
+  let attackerDeathPrevented = false;
+  let attackerDeathPreventedAbility = '';
 
   // Precognitive Dodge reaction: negate the hit entirely
   if (roll.hit && target.hasReaction && target.reactionType === 'precognitive_dodge') {
@@ -495,7 +681,19 @@ export function resolveAttack(
     return { state: { ...state, combatants }, result };
   }
 
+  // Phase 5A BUFF-3: Dodge check after hit determination
+  let dodged = false;
   if (roll.hit) {
+    const totalDodge = (target.activeBuffs ?? []).reduce((sum, b) => sum + (b.dodgeMod ?? 0), 0);
+    if (totalDodge > 0) {
+      const dodgeRoll = Math.floor(Math.random() * 100) + 1;
+      if (dodgeRoll <= totalDodge) {
+        dodged = true;
+      }
+    }
+  }
+
+  if (roll.hit && !dodged) {
     const dmg = calculateDamage(actor, weapon, roll.critical);
     damageRollValue = dmg.total;
     damageRolls = dmg.rolls;
@@ -530,15 +728,137 @@ export function resolveAttack(
       dmgModBreakdown.push({ source: 'racialFlat', value: racialMods.damageFlatBonus });
     }
 
-    // Check death prevention (Orc Relentless Endurance, Revenant Undying Fortitude)
-    if (target.race && racialTracker) {
-      const prevention = checkDeathPrevention(target, totalDamage, target.race, target.level, racialTracker);
-      if (prevention.prevented) {
-        target = {
-          ...target,
-          currentHp: prevention.newHp,
-          isAlive: true,
+    // Class ability buff damage bonus
+    const buffDmgMod = getBuffDamageMod(actor);
+    if (buffDmgMod !== 0) {
+      totalDamage = Math.max(0, totalDamage + buffDmgMod);
+      dmgModBreakdown.push({ source: 'classBuffs', value: buffDmgMod });
+    }
+
+    // Phase 5B MECH-1: Consume one-use buffs (bonusDamageNext) after damage applied
+    if (actor.activeBuffs?.some(b => b.consumeOnUse && b.damageMod)) {
+      actor = {
+        ...actor,
+        activeBuffs: actor.activeBuffs!.map(b =>
+          b.consumeOnUse && b.damageMod ? { ...b, damageMod: 0, consumeOnUse: false } : b
+        ),
+      };
+    }
+
+    // Phase 5B MECH-5: Bonus damage from source — check target for bonusDamageFromSource matching actor
+    if (target.activeBuffs) {
+      const sourceBuff = target.activeBuffs.find(b =>
+        b.bonusDamageFromSource && b.bonusDamageSourceId === actorId
+      );
+      if (sourceBuff && sourceBuff.bonusDamageFromSource) {
+        totalDamage += sourceBuff.bonusDamageFromSource;
+        dmgModBreakdown.push({ source: 'bonusFromSource', value: sourceBuff.bonusDamageFromSource });
+      }
+    }
+
+    // Phase 5B MECH-9: Poison charges — on hit, apply poisoned to target and decrement charge
+    if (actor.activeBuffs) {
+      const poisonBuff = actor.activeBuffs.find(b => b.poisonCharges != null && b.poisonCharges > 0);
+      if (poisonBuff) {
+        target = applyStatusEffect(
+          target, 'poisoned',
+          poisonBuff.poisonDotDuration ?? 3,
+          actorId,
+          poisonBuff.poisonDotDamage ?? 3,
+        );
+        actor = {
+          ...actor,
+          activeBuffs: actor.activeBuffs.map(b =>
+            b === poisonBuff ? { ...b, poisonCharges: Math.max(0, (b.poisonCharges ?? 0) - 1) } : b
+          ),
         };
+      }
+    }
+
+    // Phase 5B MECH-11: Stacking attack speed — increment stacks on hit
+    if (actor.activeBuffs) {
+      actor = {
+        ...actor,
+        activeBuffs: actor.activeBuffs.map(b => {
+          if (b.stackingAttackSpeedStacks != null && b.stackingAttackSpeedMax != null) {
+            const newStacks = Math.min(b.stackingAttackSpeedMax, (b.stackingAttackSpeedStacks ?? 0) + 1);
+            return { ...b, stackingAttackSpeedStacks: newStacks };
+          }
+          return b;
+        }),
+      };
+    }
+
+    // Class ability damage reduction on target
+    const dr = getBuffDamageReduction(target);
+    if (dr > 0) {
+      const before = totalDamage;
+      totalDamage = Math.floor(totalDamage * (1 - dr));
+      dmgModBreakdown.push({ source: 'targetDR', value: totalDamage - before });
+    }
+
+    // Class ability absorption on target
+    const absorbResult = consumeAbsorption(target, totalDamage);
+    if (absorbResult.remainingDamage < totalDamage) {
+      dmgModBreakdown.push({ source: 'absorbed', value: absorbResult.remainingDamage - totalDamage });
+      target = absorbResult.combatant;
+      totalDamage = absorbResult.remainingDamage;
+    }
+
+    // Phase 3: Companion interception check (Alpha Predator)
+    if (target.activeBuffs && totalDamage > 0) {
+      const companionBuff = target.activeBuffs.find(b => b.companionHp != null && b.companionHp > 0);
+      if (companionBuff && Math.random() < 0.3) {
+        companionIntercepted = true;
+        companionDmgAbsorbed = totalDamage;
+        // Phase 5B PASSIVE-4: Companion immune — absorbs damage without taking HP loss
+        if (target.companionImmune) {
+          companionKilled = false;
+          // Companion absorbs all damage but takes no HP loss
+        } else {
+          const newCompanionHp = Math.max(0, companionBuff.companionHp! - totalDamage);
+          companionKilled = newCompanionHp <= 0;
+          if (companionKilled) {
+            target = { ...target, activeBuffs: target.activeBuffs.filter(b => b !== companionBuff) };
+          } else {
+            target = {
+              ...target,
+              activeBuffs: target.activeBuffs.map(b =>
+                b === companionBuff ? { ...b, companionHp: newCompanionHp } : b
+              ),
+            };
+          }
+        }
+        totalDamage = 0; // Companion absorbs all damage
+      }
+    }
+
+    // Break mesmerize on damage
+    if (totalDamage > 0) {
+      target = {
+        ...target,
+        statusEffects: target.statusEffects.filter(e => e.name !== 'mesmerize'),
+      };
+    }
+
+    // Apply damage to target (skip if companion intercepted)
+    if (totalDamage > 0) {
+      // Check death prevention (Orc Relentless Endurance, Revenant Undying Fortitude)
+      if (target.race && racialTracker) {
+        const prevention = checkDeathPrevention(target, totalDamage, target.race, target.level, racialTracker);
+        if (prevention.prevented) {
+          target = {
+            ...target,
+            currentHp: prevention.newHp,
+            isAlive: true,
+          };
+        } else {
+          target = {
+            ...target,
+            currentHp: Math.max(0, target.currentHp - totalDamage),
+            isAlive: target.currentHp - totalDamage > 0,
+          };
+        }
       } else {
         target = {
           ...target,
@@ -546,12 +866,25 @@ export function resolveAttack(
           isAlive: target.currentHp - totalDamage > 0,
         };
       }
-    } else {
-      target = {
-        ...target,
-        currentHp: Math.max(0, target.currentHp - totalDamage),
-        isAlive: target.currentHp - totalDamage > 0,
-      };
+    }
+
+    // Phase 4: Class ability death prevention (fallback after racial)
+    if (!target.isAlive && !target.hasFled) {
+      const unlockedIds = Object.keys(target.abilityUsesThisCombat ?? {});
+      const classPrevention = checkClassDeathPrevention(target, unlockedIds);
+      if (classPrevention) {
+        target = {
+          ...target,
+          currentHp: classPrevention.revivedHp,
+          isAlive: true,
+          abilityUsesThisCombat: {
+            ...(target.abilityUsesThisCombat ?? {}),
+            [classPrevention.abilityId]: (target.abilityUsesThisCombat?.[classPrevention.abilityId] ?? 0) + 1,
+          },
+        };
+        deathPrevented = true;
+        deathPreventedAbility = classPrevention.abilityName;
+      }
     }
 
     // Nethkin Infernal Rebuke: reflect fire damage on melee hit
@@ -565,7 +898,89 @@ export function resolveAttack(
         };
       }
     }
+
+    // Phase 5A BUFF-4: Buff-based damage reflect (e.g., Iron Bulwark 30%)
+    if (target.activeBuffs && totalDamage > 0) {
+      const reflectValues = target.activeBuffs.filter(b => b.damageReflect != null && b.damageReflect > 0).map(b => b.damageReflect!);
+      const maxReflect = reflectValues.length > 0 ? Math.max(...reflectValues) : 0;
+      if (maxReflect > 0) {
+        const reflectedDamage = Math.floor(totalDamage * maxReflect);
+        if (reflectedDamage > 0) {
+          actor = {
+            ...actor,
+            currentHp: Math.max(0, actor.currentHp - reflectedDamage),
+            isAlive: actor.currentHp - reflectedDamage > 0,
+          };
+          dmgModBreakdown.push({ source: 'damageReflect', value: -reflectedDamage });
+        }
+      }
+    }
+
+    // Phase 3: Reactive counter/trap trigger check on target
+    if (target.activeBuffs && target.activeBuffs.length > 0) {
+      const reactiveBuff = target.activeBuffs.find(buff =>
+        (buff.counterDamage && buff.triggerOn === 'melee_attack') ||
+        (buff.trapDamage && buff.triggerOn === 'attacked')
+      );
+      if (reactiveBuff) {
+        const reactiveDamage = reactiveBuff.counterDamage ?? reactiveBuff.trapDamage ?? 0;
+        counterTriggered = true;
+        counterDmg = reactiveDamage;
+        counterAbilityName = reactiveBuff.name;
+        counterAoe = reactiveBuff.trapAoe ?? false;
+
+        if (counterAoe) {
+          // Explosive Trap: damage ALL alive enemies of the trap-layer
+          const trapEnemies = state.combatants.filter(
+            c => c.team !== target.team && c.isAlive && !c.hasFled
+          );
+          for (const enemy of trapEnemies) {
+            const newHp = Math.max(0, enemy.currentHp - reactiveDamage);
+            if (enemy.id === actor.id) {
+              actor = { ...actor, currentHp: newHp, isAlive: newHp > 0 };
+            }
+            state = {
+              ...state,
+              combatants: state.combatants.map(c =>
+                c.id === enemy.id ? { ...c, currentHp: newHp, isAlive: newHp > 0 } : c
+              ),
+            };
+          }
+        } else {
+          // Counter/single trap: damage only the ATTACKER
+          const newActorHp = Math.max(0, actor.currentHp - reactiveDamage);
+          actor = { ...actor, currentHp: newActorHp, isAlive: newActorHp > 0 };
+        }
+
+        // Consume the reactive buff (one-shot)
+        target = {
+          ...target,
+          activeBuffs: target.activeBuffs.filter(b => b !== reactiveBuff),
+        };
+
+        // Phase 4: Check class death prevention for attacker killed by counter/trap
+        if (!actor.isAlive && !actor.hasFled) {
+          const attackerUnlockedIds = Object.keys(actor.abilityUsesThisCombat ?? {});
+          const attackerPrev = checkClassDeathPrevention(actor, attackerUnlockedIds);
+          if (attackerPrev) {
+            actor = {
+              ...actor,
+              currentHp: attackerPrev.revivedHp,
+              isAlive: true,
+              abilityUsesThisCombat: {
+                ...(actor.abilityUsesThisCombat ?? {}),
+                [attackerPrev.abilityId]: (actor.abilityUsesThisCombat?.[attackerPrev.abilityId] ?? 0) + 1,
+              },
+            };
+            attackerDeathPrevented = true;
+            attackerDeathPreventedAbility = attackerPrev.abilityName;
+          }
+        }
+      }
+    }
   }
+
+  // Phase 5B MECH-7: Taunt enforcement is handled before action resolution in resolveTurn
 
   const result: AttackResult = {
     type: 'attack',
@@ -575,8 +990,8 @@ export function resolveAttack(
     attackTotal: roll.total,
     attackModifiers: atkModBreakdown,
     targetAC,
-    hit: roll.hit,
-    critical: roll.critical,
+    hit: roll.hit && !dodged,
+    critical: roll.critical && !dodged,
     damageRoll: damageRollValue,
     damageRolls,
     damageModifiers: dmgModBreakdown,
@@ -587,6 +1002,17 @@ export function resolveAttack(
     targetKilled: !target.isAlive,
     weaponName: weapon.name,
     weaponDice: `${weapon.diceCount}d${weapon.diceSides}`,
+    counterTriggered,
+    counterDamage: counterTriggered ? counterDmg : undefined,
+    counterAbilityName: counterTriggered ? counterAbilityName : undefined,
+    counterAoe: counterTriggered ? counterAoe : undefined,
+    companionIntercepted: companionIntercepted || undefined,
+    companionDamageAbsorbed: companionIntercepted ? companionDmgAbsorbed : undefined,
+    companionKilled: companionIntercepted ? companionKilled : undefined,
+    deathPrevented: deathPrevented || undefined,
+    deathPreventedAbility: deathPrevented ? deathPreventedAbility : undefined,
+    attackerDeathPrevented: attackerDeathPrevented || undefined,
+    attackerDeathPreventedAbility: attackerDeathPrevented ? attackerDeathPreventedAbility : undefined,
   };
 
   const combatants = state.combatants.map((c) => {
@@ -657,6 +1083,10 @@ export function resolveCast(
         isAlive: target.currentHp - totalDamage > 0,
       };
       targetKilled = !target.isAlive;
+      // Break mesmerize on damage
+      if (totalDamage > 0) {
+        target = { ...target, statusEffects: target.statusEffects.filter(e => e.name !== 'mesmerize') };
+      }
     }
 
     if (spell.type === 'heal') {
@@ -693,6 +1123,10 @@ export function resolveCast(
       isAlive: target.currentHp - totalDamage > 0,
     };
     targetKilled = !target.isAlive;
+    // Break mesmerize on damage
+    if (totalDamage > 0) {
+      target = { ...target, statusEffects: target.statusEffects.filter(e => e.name !== 'mesmerize') };
+    }
   }
 
   const result: CastResult = {
@@ -868,14 +1302,10 @@ function applyPsychicDamage(target: Combatant, rawDamage: number): { damage: num
     damage = Math.floor(damage / 2);
   }
 
-  // Thought Shield passive: psion telepaths get psychic resistance
-  if (target.characterClass === 'psion') {
-    const hasThoughtShield = psionAbilities.some(
-      (a) => a.id === 'psi-tel-2' && a.levelRequired <= target.level
-    );
-    if (hasThoughtShield) {
-      damage = Math.floor(damage / 2);
-    }
+  // Thought Shield passive: psychicResistance field halves psychic damage
+  // (set by applyPassiveAbilities when psi-tel-2 is unlocked, or manually in sim)
+  if (target.psychicResistance) {
+    damage = Math.floor(damage / 2);
   }
 
   damage = Math.max(0, damage);
@@ -1603,6 +2033,79 @@ export function resolveTurn(
     ),
   };
 
+  // Phase 5B PASSIVE-5: Increment stacking damage bonus at start of turn
+  const actorForStacking = current.combatants.find((c) => c.id === actorId)!;
+  if (actorForStacking.stackingDamagePerRound) {
+    const newBonus = (actorForStacking.roundDamageBonus ?? 0) + actorForStacking.stackingDamagePerRound;
+    current = {
+      ...current,
+      combatants: current.combatants.map(c =>
+        c.id === actorId ? { ...c, roundDamageBonus: newBonus } : c
+      ),
+    };
+  }
+
+  // Process class ability cooldowns and buff ticks at start of turn
+  const actorAfterStatus = current.combatants.find((c) => c.id === actorId)!;
+  const cooldownTicked = tickClassAbilityCooldowns(actorAfterStatus);
+  const enemies = current.combatants.filter(c => c.team !== actorAfterStatus.team && c.isAlive && !c.hasFled);
+  const { combatant: buffTicked, hotHealing: classHotHealing, companionDamageDealt } = tickClassActiveBuffs(cooldownTicked, enemies);
+  if (classHotHealing > 0) {
+    ticks.push({
+      combatantId: actorId,
+      effectName: 'regenerating',
+      healing: classHotHealing,
+      expired: false,
+      hpAfter: buffTicked.currentHp,
+      killed: false,
+    });
+  }
+  current = {
+    ...current,
+    combatants: current.combatants.map((c) =>
+      c.id === actorId ? buffTicked : c
+    ),
+  };
+
+  // Phase 3: Apply companion auto-damage to the targeted enemy
+  if (companionDamageDealt) {
+    const cTarget = current.combatants.find(c => c.id === companionDamageDealt.targetId);
+    if (cTarget) {
+      const newHp = Math.max(0, cTarget.currentHp - companionDamageDealt.damage);
+      current = {
+        ...current,
+        combatants: current.combatants.map(c =>
+          c.id === companionDamageDealt.targetId
+            ? { ...c, currentHp: newHp, isAlive: newHp > 0 }
+            : c
+        ),
+      };
+      ticks.push({
+        combatantId: companionDamageDealt.targetId,
+        effectName: 'burning' as any, // Visual proxy for companion damage
+        damage: companionDamageDealt.damage,
+        expired: false,
+        hpAfter: newHp,
+        killed: newHp <= 0,
+      });
+    }
+  }
+
+  // Process delayed effect detonations at start of turn (e.g., Death Mark)
+  const actorForDelayed = current.combatants.find((c) => c.id === actorId)!;
+  const { state: delayedState, detonations } = tickDelayedEffects(current, actorForDelayed);
+  current = delayedState;
+  for (const det of detonations) {
+    ticks.push({
+      combatantId: det.targetId,
+      effectName: 'burning' as any, // Use burning as visual proxy for delayed detonation
+      damage: det.damage,
+      expired: true,
+      hpAfter: det.hpAfter,
+      killed: det.killed,
+    });
+  }
+
   // Process Elementari Primordial Awakening AoE DoT at start of turn
   if (racialContext?.tracker) {
     const { state: awState } = processPrimordialAwakeningDot(current, actorId, racialContext.tracker);
@@ -1689,6 +2192,15 @@ export function resolveTurn(
   });
 
   let result: TurnResult;
+
+  // Phase 5B MECH-7: Taunt enforcement — override attack/ability target to taunt source
+  const tauntEffect = currentActor.statusEffects.find(e => e.name === 'taunt');
+  if (tauntEffect && !isPrevented) {
+    const tauntSource = current.combatants.find(c => c.id === tauntEffect.sourceId && c.isAlive && !c.hasFled);
+    if (tauntSource && (action.type === 'attack' || action.type === 'class_ability')) {
+      action = { ...action, targetId: tauntSource.id };
+    }
+  }
 
   if (isPrevented) {
     // Forced to "defend" when unable to act
@@ -1822,6 +2334,34 @@ export function resolveTurn(
         break;
       }
 
+      case 'class_ability': {
+        if (!action.classAbilityId) {
+          result = { type: 'defend', actorId, acBonusGranted: 0 } as DefendResult;
+          break;
+        }
+        const classAbility = resolveClassAbility(current, actorId, action.classAbilityId, action.targetId, action.targetIds);
+        current = classAbility.state;
+        result = classAbility.result;
+        // If effect type is unimplemented, fall back to basic attack
+        if (classAbility.result.fallbackToAttack && action.targetId && context.weapon) {
+          const atk = resolveAttack(current, actorId, action.targetId, context.weapon, racialContext?.tracker);
+          current = atk.state;
+          result = atk.result;
+        }
+        // Phase 3: Diplomat's Gambit may end combat peacefully
+        if (current.status === 'COMPLETED') {
+          const logEntry: TurnLogEntry = {
+            round: current.round,
+            actorId,
+            action: action.type,
+            result,
+            statusTicks: ticks,
+          };
+          return { ...current, log: [...current.log, logEntry] };
+        }
+        break;
+      }
+
       default:
         result = { type: 'defend', actorId, acBonusGranted: 0 } as DefendResult;
     }
@@ -1839,6 +2379,49 @@ export function resolveTurn(
     ...current,
     log: [...current.log, logEntry],
   };
+
+  // Phase 5B MECH-10: Extra action — resolve one basic attack if extraAction buff is present
+  const extraActionActor = current.combatants.find(c => c.id === actorId);
+  if (
+    extraActionActor?.isAlive &&
+    !extraActionActor.extraActionUsedThisTurn &&
+    extraActionActor.activeBuffs?.some(b => b.extraAction === true) &&
+    context.weapon &&
+    !isPrevented
+  ) {
+    // Find a valid target
+    const extraEnemies = current.combatants.filter(c => c.team !== extraActionActor.team && c.isAlive && !c.hasFled);
+    if (extraEnemies.length > 0) {
+      const extraTarget = extraEnemies.reduce((w, e) => e.currentHp < w.currentHp ? e : w);
+      // Mark extra action used to prevent infinite loops
+      current = {
+        ...current,
+        combatants: current.combatants.map(c =>
+          c.id === actorId ? { ...c, extraActionUsedThisTurn: true } : c
+        ),
+      };
+      const extraAtk = resolveAttack(current, actorId, extraTarget.id, context.weapon, racialContext?.tracker);
+      current = extraAtk.state;
+      const extraLog: TurnLogEntry = {
+        round: current.round,
+        actorId,
+        action: 'attack',
+        result: extraAtk.result,
+        statusTicks: [],
+      };
+      current = { ...current, log: [...current.log, extraLog] };
+    }
+  }
+
+  // Reset extra action flag at end of turn
+  if (extraActionActor?.extraActionUsedThisTurn) {
+    current = {
+      ...current,
+      combatants: current.combatants.map(c =>
+        c.id === actorId ? { ...c, extraActionUsedThisTurn: false } : c
+      ),
+    };
+  }
 
   // Tick down racial active buff durations at end of turn
   if (racialContext?.tracker) {

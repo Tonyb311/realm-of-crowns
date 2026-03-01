@@ -20,7 +20,7 @@ export function getModifier(stat: number): number {
 
 // ---- Combat Actions ----
 
-export type CombatActionType = 'attack' | 'cast' | 'defend' | 'item' | 'flee' | 'racial_ability' | 'psion_ability';
+export type CombatActionType = 'attack' | 'cast' | 'defend' | 'item' | 'flee' | 'racial_ability' | 'psion_ability' | 'class_ability';
 
 export interface CombatAction {
   type: CombatActionType;
@@ -36,6 +36,8 @@ export interface CombatAction {
   targetIds?: string[];
   /** Psion ability ID being used (for psion_ability actions) */
   psionAbilityId?: string;
+  /** Class ability ID being used (for class_ability actions) */
+  classAbilityId?: string;
 }
 
 // ---- Combatant Representation ----
@@ -67,7 +69,14 @@ export type StatusEffectName =
   | 'dominated'
   | 'banished'
   | 'phased'
-  | 'foresight';
+  | 'foresight'
+  // Class ability status effects
+  | 'taunt'
+  | 'silence'
+  | 'root'
+  | 'skip_turn'
+  | 'mesmerize'
+  | 'polymorph';
 
 export interface SpellSlots {
   /** Key is spell level (1-5), value is remaining slots */
@@ -151,10 +160,136 @@ export interface Combatant {
   reactionType?: string | null;
   /** Psion: The last combat action performed, for Temporal Echo */
   lastAction?: CombatAction | null;
-  /** Psion: Character class for ability resolution */
+  /** Character class for ability resolution */
   characterClass?: string | null;
+  /** Character specialization */
+  specialization?: string | null;
   /** P2 #52: True if the combatant successfully fled from combat */
   hasFled?: boolean;
+  /** Class ability cooldowns: abilityId -> rounds remaining */
+  abilityCooldowns?: Record<string, number>;
+  /** Class ability uses this combat: abilityId -> times used */
+  abilityUsesThisCombat?: Record<string, number>;
+  /** Active buffs from class abilities */
+  activeBuffs?: ActiveBuff[];
+  /** Delayed effects waiting to detonate (e.g., Death Mark) */
+  delayedEffects?: DelayedEffect[];
+  /** Cooldown reduction from passives (0-1 percentage, e.g., 0.3 = 30%) */
+  cooldownReductionPercent?: number;
+  /** Cooldown reduction from passives (flat rounds subtracted) */
+  cooldownReductionFlat?: number;
+  /** Phase 5A: Temporary attack modifiers set by class ability handlers, consumed by resolveAttack */
+  classAbilityAttackMods?: ClassAbilityAttackMods;
+  // Phase 5B: Passive fields
+  /** PASSIVE-1: Crit chance bonus from passives (added to critBonus in resolveAttack) */
+  critChanceBonus?: number;
+  /** PASSIVE-3: First attack in combat is an auto-crit */
+  firstStrikeCrit?: boolean;
+  /** PASSIVE-3: Tracks whether combatant has attacked this combat */
+  hasAttackedThisCombat?: boolean;
+  /** PASSIVE-4: Companion buff never expires */
+  permanentCompanion?: boolean;
+  /** PASSIVE-4: Companion doesn't take interception damage */
+  companionImmune?: boolean;
+  /** PASSIVE-5: Damage bonus that stacks each round */
+  stackingDamagePerRound?: number;
+  /** PASSIVE-5: Current accumulated round damage bonus */
+  roundDamageBonus?: number;
+  /** PASSIVE-6: Roll twice vs targets below HP threshold */
+  advantageVsLowHp?: boolean;
+  /** PASSIVE-6: HP percentage threshold for advantage */
+  advantageHpThreshold?: number;
+  /** MECH-6: Bonus multiplier for radiant/holy damage */
+  holyDamageBonus?: number;
+  /** MECH-8: Reduce enemy healing to zero */
+  antiHealAura?: boolean;
+  /** MECH-3: Charm/mesmerize duration multiplier */
+  charmEffectiveness?: number;
+  /** MECH-10: Tracks if extra action was already used this turn */
+  extraActionUsedThisTurn?: boolean;
+  // Phase 6: Psion passive fields
+  /** PSION-PASSIVE-1: Psychic damage resistance (50% reduction) */
+  psychicResistance?: boolean;
+  /** PSION-PASSIVE-1: Mental save bonus (+2 to WIS/INT saves vs psion abilities) */
+  mentalSaveBonus?: number;
+  /** PSION-PASSIVE-2: Bonus to initiative roll */
+  initiativeBonus?: number;
+  /** PSION-PASSIVE-2: Cannot be surprised */
+  cannotBeSurprised?: boolean;
+  /** PSION-PASSIVE-3: Can see through stealth/invisible */
+  seeInvisible?: boolean;
+  /** PSION-PASSIVE-3: Immune to blinded status */
+  immuneBlinded?: boolean;
+  /** PSION-PASSIVE-3: Bonus to trap detection */
+  trapDetectionBonus?: number;
+  /** PSION-PASSIVE-4: Free disengage without opportunity attacks */
+  freeDisengage?: boolean;
+}
+
+export interface ClassAbilityAttackMods {
+  critBonus?: number;
+  autoHit?: boolean;
+  ignoreArmor?: boolean;
+  accuracyMod?: number;
+}
+
+export interface ActiveBuff {
+  sourceAbilityId: string;
+  name: string;
+  roundsRemaining: number;
+  attackMod?: number;
+  acMod?: number;
+  damageMod?: number;
+  dodgeMod?: number;
+  damageReduction?: number;
+  damageReflect?: number;
+  absorbRemaining?: number;
+  hotPerRound?: number;
+  guaranteedHits?: number;
+  extraAction?: boolean;
+  ccImmune?: boolean;
+  stealthed?: boolean;
+  // Phase 3: Reactive trigger fields
+  counterDamage?: number;
+  trapDamage?: number;
+  trapAoe?: boolean;
+  triggerOn?: 'melee_attack' | 'attacked';
+  // Phase 3: Companion fields
+  companionDamage?: number;
+  companionHp?: number;
+  // Phase 5B: Mechanic fields
+  /** MECH-4: Buff scales with missing HP */
+  scalingType?: string;
+  /** MECH-4: Maximum scaling bonus */
+  scalingMax?: number;
+  /** MECH-5: Extra damage taken from a specific source */
+  bonusDamageFromSource?: number;
+  /** MECH-5: Source actor ID for bonus damage */
+  bonusDamageSourceId?: string;
+  /** MECH-1: Buff is consumed after one use */
+  consumeOnUse?: boolean;
+  /** MECH-2: Next ability cooldown is halved */
+  nextCooldownHalved?: boolean;
+  /** MECH-9: Remaining poison application charges */
+  poisonCharges?: number;
+  /** MECH-9: DoT damage per round from poison */
+  poisonDotDamage?: number;
+  /** MECH-9: Duration of applied poison */
+  poisonDotDuration?: number;
+  /** MECH-11: Current stacking attack speed stacks */
+  stackingAttackSpeedStacks?: number;
+  /** MECH-11: Maximum stacks for attack speed */
+  stackingAttackSpeedMax?: number;
+}
+
+export interface DelayedEffect {
+  id: string;
+  sourceAbilityId: string;
+  sourceAbilityName: string;
+  sourceActorId: string;
+  roundsRemaining: number;
+  diceCount: number;
+  diceSides: number;
 }
 
 // ---- Turn Resolution Results ----
@@ -185,6 +320,20 @@ export interface AttackResult {
   weaponName?: string;
   weaponDice?: string;
   negatedAttack?: boolean;
+  // Phase 3: Reactive counter/trap results
+  counterTriggered?: boolean;
+  counterDamage?: number;
+  counterAbilityName?: string;
+  counterAoe?: boolean;
+  // Phase 3: Companion interception
+  companionIntercepted?: boolean;
+  companionDamageAbsorbed?: number;
+  companionKilled?: boolean;
+  // Phase 4: Death prevention
+  deathPrevented?: boolean;
+  deathPreventedAbility?: string;
+  attackerDeathPrevented?: boolean;
+  attackerDeathPreventedAbility?: string;
 }
 
 export interface CastResult {
@@ -273,7 +422,69 @@ export interface PsionAbilityResult {
   targetKilled?: boolean;
 }
 
-export type TurnResult = AttackResult | CastResult | DefendResult | ItemResult | FleeResult | RacialAbilityActionResult | PsionAbilityResult;
+export interface ClassAbilityResult {
+  type: 'class_ability';
+  actorId: string;
+  abilityId: string;
+  abilityName: string;
+  effectType: string;
+  targetId?: string;
+  targetIds?: string[];
+  damage?: number;
+  healing?: number;
+  selfHealing?: number;
+  buffApplied?: string;
+  buffDuration?: number;
+  debuffApplied?: string;
+  debuffDuration?: number;
+  statusApplied?: StatusEffectName;
+  statusDuration?: number;
+  statModifiers?: Record<string, number>;
+  saveRequired?: boolean;
+  saveType?: string;
+  saveDC?: number;
+  saveRoll?: number;
+  saveTotal?: number;
+  saveSucceeded?: boolean;
+  fleeAttempt?: boolean;
+  fleeSuccess?: boolean;
+  cleansedEffects?: string[];
+  description: string;
+  targetHpAfter?: number;
+  actorHpAfter?: number;
+  targetKilled?: boolean;
+  /** True when unimplemented effect type falls through to basic attack */
+  fallbackToAttack?: boolean;
+  /** Per-target breakdown for AoE abilities */
+  perTargetResults?: Array<{
+    targetId: string;
+    targetName: string;
+    damage?: number;
+    healing?: number;
+    statusApplied?: string;
+    hpAfter: number;
+    killed: boolean;
+  }>;
+  /** Per-strike breakdown for multi_attack abilities */
+  strikeResults?: Array<{
+    strikeNumber: number;
+    hit: boolean;
+    crit: boolean;
+    damage: number;
+    attackRoll?: number;
+    attackTotal?: number;
+    targetAc?: number;
+  }>;
+  totalStrikes?: number;
+  strikesHit?: number;
+  // Phase 3: Steal/special results
+  goldStolen?: number;
+  bonusLootRoll?: boolean;
+  peacefulResolution?: boolean;
+  randomAbilityUsed?: string;
+}
+
+export type TurnResult = AttackResult | CastResult | DefendResult | ItemResult | FleeResult | RacialAbilityActionResult | PsionAbilityResult | ClassAbilityResult;
 
 // ---- Status Effect Processing ----
 
@@ -311,6 +522,8 @@ export interface CombatState {
   turnOrder: string[];
   log: TurnLogEntry[];
   winningTeam: number | null;
+  /** Phase 3: Set by Diplomat's Gambit when combat ends via negotiation */
+  peacefulResolution?: boolean;
 }
 
 export interface TurnLogEntry {
