@@ -21,7 +21,8 @@
     "test": "npm run test --workspace=server",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "validate:economy": "npm run validate-sync --workspace=database"
+    "validate:economy": "npm run validate-sync --workspace=database",
+    "combat-sim": "npm run combat-sim --workspace=server --"
   },
   "devDependencies": {
     "concurrently": "^8.2.0",
