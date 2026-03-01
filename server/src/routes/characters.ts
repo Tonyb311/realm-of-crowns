@@ -13,6 +13,7 @@ import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
 import { isRaceReleased } from '../lib/content-release';
 import { assignStartingTown } from '../lib/starting-town';
+import { transformInventory } from '../lib/inventory-transform';
 import { giveStartingInventory } from '../lib/starting-inventory';
 import { giveStarterWeapon, giveStarterArmor } from '../lib/starting-weapons';
 import { giveStarterHouse } from '../lib/starting-house';
@@ -232,33 +233,7 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
     const { currentTown, homeTown, professions, inventory, equipment, ...rest } = character;
 
     // Transform inventory into frontend-friendly shape
-    // Includes top-level aliases (name, type, rarity, templateName, itemId) for
-    // compatibility with CraftingPage, MarketPage, and InventoryPage expectations.
-    const inventoryItems = (inventory || []).map((inv: any) => ({
-      id: inv.item.id,
-      itemId: inv.item.id,
-      templateId: inv.item.templateId,
-      templateName: inv.item.template.name,
-      name: inv.item.template.name,
-      type: inv.item.template.type,
-      rarity: inv.item.template.rarity,
-      description: inv.item.template.description,
-      template: {
-        id: inv.item.template.id,
-        name: inv.item.template.name,
-        type: inv.item.template.type,
-        rarity: inv.item.template.rarity,
-        description: inv.item.template.description,
-        stats: inv.item.template.stats,
-        durability: inv.item.template.durability,
-      },
-      quantity: inv.quantity,
-      currentDurability: inv.item.currentDurability,
-      quality: inv.item.quality,
-      craftedById: inv.item.craftedById,
-      craftedByName: inv.item.craftedBy?.name ?? null,
-      enchantments: inv.item.enchantments ?? [],
-    }));
+    const inventoryItems = transformInventory(inventory || [], true);
 
     // Transform equipment into slot-based map
     const SLOT_MAP: Record<string, string> = {
@@ -349,22 +324,7 @@ router.get('/me/inventory', authGuard, characterGuard, async (req: Authenticated
       return res.status(404).json({ error: 'Character not found' });
     }
 
-    const items = (character.inventory || []).map((inv: any) => ({
-      id: inv.item.id,
-      itemId: inv.item.id,
-      templateId: inv.item.templateId,
-      templateName: inv.item.template.name,
-      name: inv.item.template.name,
-      type: inv.item.template.type,
-      rarity: inv.item.template.rarity,
-      description: inv.item.template.description,
-      quantity: inv.quantity,
-      currentDurability: inv.item.currentDurability,
-      quality: inv.item.quality,
-      craftedById: inv.item.craftedById,
-      craftedByName: inv.item.craftedBy?.name ?? null,
-      enchantments: inv.item.enchantments ?? [],
-    }));
+    const items = transformInventory(character.inventory || []);
 
     return res.json(items);
   } catch (error) {
