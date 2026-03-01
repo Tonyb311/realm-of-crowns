@@ -39,9 +39,9 @@ export function startSeerPremonitionJob() {
 
       cronJobExecutions.inc({ job: 'seerPremonition', result: 'success' });
       logger.info({ job: 'seerPremonition', sent, total: seers.length }, 'seer premonitions sent');
-    } catch (error: any) {
+    } catch (error: unknown) {
       cronJobExecutions.inc({ job: 'seerPremonition', result: 'failure' });
-      logger.error({ job: 'seerPremonition', err: error.message }, 'cron job failed');
+      logger.error({ job: 'seerPremonition', err: error instanceof Error ? error.message : String(error) }, 'cron job failed');
     }
   });
 }

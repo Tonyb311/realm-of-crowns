@@ -18,9 +18,9 @@ export function startConstructionCompleteJob() {
     try {
       await notifyCompletedConstructions();
       cronJobExecutions.inc({ job: 'constructionComplete', result: 'success' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       cronJobExecutions.inc({ job: 'constructionComplete', result: 'failure' });
-      logger.error({ job: 'constructionComplete', err: error.message }, 'cron job failed');
+      logger.error({ job: 'constructionComplete', err: error instanceof Error ? error.message : String(error) }, 'cron job failed');
     }
   });
 

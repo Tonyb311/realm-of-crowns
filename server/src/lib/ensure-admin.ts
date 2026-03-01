@@ -41,8 +41,8 @@ export async function ensureAdminAccount(): Promise<void> {
     });
 
     logger.warn('Admin account (admin@roc.com) was missing — created automatically');
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Don't crash the server if admin seeding fails (e.g. unique constraint on username)
-    logger.error({ err: err.message }, 'Failed to ensure admin account');
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, 'Failed to ensure admin account');
   }
 }

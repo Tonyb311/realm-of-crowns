@@ -17,8 +17,8 @@ export function startMarketCycleTimer(): void {
       if (result.transactionsCompleted > 0) {
         logger.info(result, 'Market cycle resolved');
       }
-    } catch (err: any) {
-      logger.error({ err: err.message }, 'Market cycle timer error');
+    } catch (err: unknown) {
+      logger.error({ err: err instanceof Error ? err.message : String(err) }, 'Market cycle timer error');
     }
   }, 60_000);
 

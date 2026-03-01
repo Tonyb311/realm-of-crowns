@@ -51,8 +51,8 @@ if (process.env.REDIS_URL) {
     const subClient = pubClient.duplicate();
     io.adapter(createAdapter(pubClient, subClient));
     logger.info('Socket.io Redis adapter configured');
-  } catch (err: any) {
-    logger.warn({ err: err.message }, 'Failed to configure Socket.io Redis adapter, falling back to in-memory');
+  } catch (err: unknown) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'Failed to configure Socket.io Redis adapter, falling back to in-memory');
   }
 }
 
@@ -146,8 +146,8 @@ const gracefulShutdown = async (signal: string) => {
     clearTimeout(timeout);
     logger.info('graceful shutdown complete');
     process.exit(0);
-  } catch (err: any) {
-    logger.error({ err: err.message }, 'error during shutdown');
+  } catch (err: unknown) {
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, 'error during shutdown');
     process.exit(1);
   }
 };

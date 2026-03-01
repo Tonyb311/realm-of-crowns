@@ -43,6 +43,16 @@ import {
   type RacialCombatTracker,
 } from './racial-combat-abilities';
 import { processItemDrops } from '../lib/loot-items';
+import { ALL_ABILITIES } from '@shared/data/skills';
+
+// ---- Class Ability Detection ----
+
+const CLASS_ABILITY_IDS = new Set(ALL_ABILITIES.map(a => a.id));
+
+/** Check if an ability ID belongs to a class ability (vs racial ability) */
+function isClassAbility(abilityId: string): boolean {
+  return CLASS_ABILITY_IDS.has(abilityId);
+}
 
 // ---- Constants ----
 
@@ -136,8 +146,27 @@ function decideAction(
     }
 
     if (shouldUse) {
-      // Check if this is a racial ability
       const target = enemies.length > 0 ? enemies[0] : null;
+
+      // Determine if this is a class ability or a racial ability
+      if (entry.abilityId && isClassAbility(entry.abilityId)) {
+        // Check cooldown before dispatching
+        const cooldownRemaining = actor.abilityCooldowns?.[entry.abilityId] ?? 0;
+        if (cooldownRemaining > 0) continue; // skip to next ability in queue
+
+        return {
+          action: {
+            type: 'class_ability',
+            actorId,
+            classAbilityId: entry.abilityId,
+            targetId: target?.id,
+            targetIds: enemies.map(e => e.id),
+          },
+          context: {},
+        };
+      }
+
+      // Racial ability dispatch
       return {
         action: {
           type: 'racial_ability',

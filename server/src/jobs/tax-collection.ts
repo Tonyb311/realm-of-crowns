@@ -15,9 +15,9 @@ export function startTaxCollectionJob() {
     try {
       await collectTaxes();
       cronJobExecutions.inc({ job: 'taxCollection', result: 'success' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       cronJobExecutions.inc({ job: 'taxCollection', result: 'failure' });
-      logger.error({ job: 'taxCollection', err: error.message }, 'cron job failed');
+      logger.error({ job: 'taxCollection', err: error instanceof Error ? error.message : String(error) }, 'cron job failed');
     }
   });
 

@@ -122,13 +122,210 @@ export interface ActionResult {
   detail: string;
   endpoint: string;
   httpStatus?: number;
-  requestBody?: Record<string, any>;
-  responseBody?: Record<string, any>;
+  requestBody?: Record<string, unknown>;
+  responseBody?: Record<string, unknown>;
 }
 
 export interface DispatchResult {
   status: number;
-  data: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any; // HTTP response body — genuinely dynamic JSON
+}
+
+// ---------------------------------------------------------------------------
+// API response shapes (used by actions.ts for typing HTTP responses)
+// ---------------------------------------------------------------------------
+
+export interface ApiRecipe {
+  id: string;
+  recipeId?: string;
+  name: string;
+  canCraft: boolean;
+  professionType?: string;
+  tier?: number;
+  ingredients?: ApiRecipeInput[];
+  inputs?: ApiRecipeInput[];
+  outputItemName?: string;
+  outputTemplateId?: string;
+  outputQuantity?: number;
+  requiredLevel?: number;
+  craftMinutes?: number;
+  category?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+export interface ApiRecipeInput {
+  itemName?: string;
+  templateName?: string;
+  templateId?: string;
+  name?: string;
+  quantity: number;
+  needed?: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+export interface ApiInventoryItem {
+  id: string;
+  itemId?: string;
+  templateName?: string;
+  name?: string;
+  templateId?: string;
+  quantity?: number;
+  equipped?: boolean;
+  isEquipped?: boolean;
+  slot?: string;
+  type?: string;
+  itemType?: string;
+  baseValue?: number;
+  value?: number;
+  stats?: Record<string, unknown>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+export interface ApiMarketListing {
+  id: string;
+  listingId?: string;
+  itemId?: string;
+  itemName?: string;
+  name?: string;
+  price: number;
+  unitPrice?: number;
+  quantity?: number;
+  sellerId?: string;
+  sellerName?: string;
+  templateId?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+export interface ApiRoute {
+  id: string;
+  routeId?: string;
+  fromTownId?: string;
+  toTownId?: string;
+  fromTown?: { id: string; name: string };
+  toTown?: { id: string; name: string };
+  destination?: { id: string; name: string };
+  terrain?: string;
+  estimatedTime?: number;
+  distance?: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+export interface ApiQuest {
+  id: string;
+  questId?: string;
+  name?: string;
+  title?: string;
+  type?: string;
+  objectives?: unknown[];
+  progress?: Record<string, number>;
+  status?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+export interface ApiTool {
+  id: string;
+  itemId?: string;
+  stats?: { professionType?: string; yieldBonus?: number; qualityBonus?: number };
+  currentDurability: number;
+  name?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+export interface ApiAsset {
+  id: string;
+  townId: string;
+  name?: string;
+  cropState?: string;
+  professionType?: string;
+  spotType?: string;
+  pendingYield?: number;
+  capacity?: number;
+  aliveCount?: number;
+  tier?: number;
+  jobListings?: unknown[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+export interface ApiJob {
+  id: string;
+  pay?: number;
+  ownerId?: string;
+  title?: string;
+  jobLabel?: string;
+  jobType?: string;
+  assetName?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+export interface ApiBuilding {
+  id: string;
+  town?: { id: string; name: string };
+  townId?: string;
+  name?: string;
+  spotType?: string;
+  capacity?: number;
+  aliveCount?: number;
+  type?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+export interface ApiHouse {
+  id: string;
+  townId: string;
+  storageCapacity?: number;
+  storageUsed?: number;
+  name?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+export interface ApiStorageItem {
+  itemName: string;
+  quantity: number;
+  templateId?: string;
+  itemTemplateId?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+export interface ApiProfession {
+  type: string;
+  professionType?: string;
+  name?: string;
+  level?: number;
+  assetTypes?: ApiProfessionAssetType[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+export interface ApiProfessionAssetType {
+  id?: string;
+  name?: string;
+  spotType?: string;
+  tiers?: ApiAssetTier[];
+}
+
+export interface ApiAssetTier {
+  tier: number;
+  name?: string;
+  cost?: number;
+  locked?: boolean;
+  owned?: number;
+  maxSlots?: number;
+  nextSlotCost?: number;
+  levelRequired?: number;
+  [key: string]: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 // ---------------------------------------------------------------------------
@@ -291,10 +488,10 @@ export interface BotActionEntry {
   timestamp: string;
   intent: string;
   endpoint: string;
-  requestBody: Record<string, any>;
+  requestBody: Record<string, unknown>;
   httpStatus: number;
   success: boolean;
-  responseBody: Record<string, any>;
+  responseBody: Record<string, unknown>;
   attemptNumber: number;
   fallbackReason?: string;
   durationMs: number;

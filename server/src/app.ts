@@ -63,8 +63,8 @@ app.get('/api/health', async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     checks.db = true;
-  } catch (err: any) {
-    details.db = err.message;
+  } catch (err: unknown) {
+    details.db = err instanceof Error ? err.message : String(err);
   }
 
   try {
@@ -74,8 +74,8 @@ app.get('/api/health', async (_req, res) => {
     } else {
       details.redis = 'REDIS_URL not configured';
     }
-  } catch (err: any) {
-    details.redis = err.message;
+  } catch (err: unknown) {
+    details.redis = err instanceof Error ? err.message : String(err);
   }
 
   // P3 #64: Check daily tick freshness

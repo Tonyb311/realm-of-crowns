@@ -581,9 +581,9 @@ export async function resolveRoadEncounter(
       });
       await checkAchievements(characterId, 'combat_pve', { wins: pveWins });
     }
-  } catch (sideEffectErr: any) {
+  } catch (sideEffectErr: unknown) {
     logger.warn(
-      { characterId, err: sideEffectErr.message },
+      { characterId, err: sideEffectErr instanceof Error ? sideEffectErr.message : String(sideEffectErr) },
       'Road encounter: post-combat side-effect error (non-fatal)',
     );
   }
@@ -1031,9 +1031,9 @@ export async function resolveGroupRoadEncounter(
         }
       }
     }
-  } catch (sideEffectErr: any) {
+  } catch (sideEffectErr: unknown) {
     logger.warn(
-      { memberCharacterIds, err: sideEffectErr.message },
+      { memberCharacterIds, err: sideEffectErr instanceof Error ? sideEffectErr.message : String(sideEffectErr) },
       'Group road encounter: post-combat side-effect error (non-fatal)',
     );
   }
@@ -1078,9 +1078,9 @@ export async function resolveGroupRoadEncounter(
             simulationTick: getSimulationTick(),
           },
         });
-      } catch (logErr: any) {
+      } catch (logErr: unknown) {
         logger.error(
-          { characterId: char.id, err: logErr.message },
+          { characterId: char.id, err: logErr instanceof Error ? logErr.message : String(logErr) },
           'Failed to write group combat encounter log',
         );
       }

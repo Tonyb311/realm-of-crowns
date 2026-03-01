@@ -17,9 +17,9 @@ export function startElectionLifecycle(io: Server) {
       await transitionVotingToCompleted(io);
       await resolveExpiredImpeachments(io);
       cronJobExecutions.inc({ job: 'electionLifecycle', result: 'success' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       cronJobExecutions.inc({ job: 'electionLifecycle', result: 'failure' });
-      logger.error({ job: 'electionLifecycle', err: error.message }, 'cron job failed');
+      logger.error({ job: 'electionLifecycle', err: error instanceof Error ? error.message : String(error) }, 'cron job failed');
     }
   });
 

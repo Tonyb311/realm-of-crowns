@@ -46,10 +46,12 @@ export function registerJobs(_io: Server) {
       if (redis) {
         await redis.set('dailyTick:lastSuccess', Date.now().toString());
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       end();
       cronJobExecutions.inc({ job: jobName, result: 'failure' });
-      logger.error({ job: jobName, err: error.message, stack: error.stack }, 'cron job FAILED');
+      const errStr = error instanceof Error ? error.message : String(error);
+      const errStack = error instanceof Error ? error.stack : undefined;
+      logger.error({ job: jobName, err: errStr, stack: errStack }, 'cron job FAILED');
     }
   });
   logger.info('Daily tick cron registered (daily at 00:00 UTC)');

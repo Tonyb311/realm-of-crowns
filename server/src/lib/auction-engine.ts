@@ -512,14 +512,14 @@ export async function resolveAuctionCycle(townId: string): Promise<{
       ordersProcessed: totalOrdersProcessed,
       transactionsCompleted: totalTransactionsCompleted,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Revert cycle status on error
     await prisma.auctionCycle.update({
       where: { id: cycle.id },
       data: { status: 'open' },
     }).catch(() => {});
 
-    logger.error({ err: err.message, townId, cycleId: cycle.id }, 'Failed to resolve auction cycle');
+    logger.error({ err: err instanceof Error ? err.message : String(err), townId, cycleId: cycle.id }, 'Failed to resolve auction cycle');
     throw err;
   }
 }
@@ -573,8 +573,8 @@ export async function resolveAllTownAuctions(): Promise<{
         totalTransactions += result.transactionsCompleted;
         totalOrders += result.ordersProcessed;
       }
-    } catch (err: any) {
-      logger.error({ err: err.message, townId }, 'Failed to resolve auction for town');
+    } catch (err: unknown) {
+      logger.error({ err: err instanceof Error ? err.message : String(err), townId }, 'Failed to resolve auction for town');
     }
   }
 

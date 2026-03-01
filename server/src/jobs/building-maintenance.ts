@@ -25,9 +25,9 @@ export function startBuildingMaintenanceJob() {
     try {
       await degradeBuildings();
       cronJobExecutions.inc({ job: 'buildingMaintenance', result: 'success' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       cronJobExecutions.inc({ job: 'buildingMaintenance', result: 'failure' });
-      logger.error({ job: 'buildingMaintenance', err: error.message }, 'cron job failed');
+      logger.error({ job: 'buildingMaintenance', err: error instanceof Error ? error.message : String(error) }, 'cron job failed');
     }
   });
 

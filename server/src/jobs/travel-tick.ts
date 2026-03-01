@@ -41,11 +41,13 @@ export function startTravelTickJob(io: Server) {
         ...result,
         processedAt: new Date().toISOString(),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       end();
       cronJobExecutions.inc({ job: jobName, result: 'failure' });
+      const errStr = error instanceof Error ? error.message : String(error);
+      const errStack = error instanceof Error ? error.stack : undefined;
       logger.error(
-        { job: jobName, err: error.message, stack: error.stack },
+        { job: jobName, err: errStr, stack: errStack },
         'Travel tick cron job FAILED',
       );
     }

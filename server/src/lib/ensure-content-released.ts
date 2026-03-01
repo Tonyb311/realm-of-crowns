@@ -60,7 +60,7 @@ export async function ensureCoreContentReleased(): Promise<void> {
       { racesReleased, townsReleased },
       'No released content found — auto-released core races and home towns',
     );
-  } catch (err: any) {
-    logger.error({ err: err.message }, 'Failed to ensure core content released');
+  } catch (err: unknown) {
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, 'Failed to ensure core content released');
   }
 }

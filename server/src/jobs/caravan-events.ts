@@ -47,9 +47,9 @@ export function startCaravanEventsJob() {
     try {
       await processCaravanEvents();
       cronJobExecutions.inc({ job: 'caravanEvents', result: 'success' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       cronJobExecutions.inc({ job: 'caravanEvents', result: 'failure' });
-      logger.error({ job: 'caravanEvents', err: error.message }, 'cron job failed');
+      logger.error({ job: 'caravanEvents', err: error instanceof Error ? error.message : String(error) }, 'cron job failed');
     }
   });
 

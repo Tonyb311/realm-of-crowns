@@ -5,7 +5,12 @@
 // endpoints via the internal HTTP dispatcher.
 // ---------------------------------------------------------------------------
 
-import { BotState, ActionResult } from './types';
+import {
+  BotState, ActionResult, ApiRecipe, ApiRecipeInput, ApiInventoryItem,
+  ApiMarketListing, ApiRoute, ApiQuest, ApiTool, ApiAsset, ApiJob,
+  ApiBuilding, ApiHouse, ApiStorageItem, ApiProfession,
+  ApiProfessionAssetType, ApiAssetTier,
+} from './types';
 import { get, post } from './dispatcher';
 import { getResourcesByType } from './seed';
 import { TOWN_GATHERING_SPOTS } from '@shared/data/gathering';
@@ -23,6 +28,11 @@ import { STANDARD_FEE_RATE } from '@shared/data/market';
 function pickRandom<T>(arr: T[]): T | undefined {
   if (!arr.length) return undefined;
   return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/** Extract error message from unknown catch variable. */
+function errMsg(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 const GATHERING_RESOURCE_MAP: Record<string, string[]> = {
@@ -62,8 +72,8 @@ export async function refreshBotState(bot: BotState): Promise<void> {
     if (d.level !== undefined) bot.level = d.level;
     if (d.currentTownId) bot.currentTownId = d.currentTownId;
     if (Array.isArray(d.professions)) {
-      bot.professions = d.professions.map((p: any) =>
-        typeof p === 'string' ? p : p.type || p.professionType,
+      bot.professions = d.professions.map((p: string | { type?: string; professionType?: string }) =>
+        typeof p === 'string' ? p : p.type || p.professionType || '',
       );
       // Populate profession levels + specializations maps
       bot.professionLevels = {};
@@ -107,7 +117,7 @@ export async function refreshBotState(bot: BotState): Promise<void> {
   if (partyRes.status >= 200 && partyRes.status < 300) {
     if (partyRes.data?.party) {
       bot.partyId = partyRes.data.party.id;
-      const myMembership = partyRes.data.party.members?.find((m: any) => m.characterId === bot.characterId);
+      const myMembership = partyRes.data.party.members?.find((m: { characterId: string; role?: string }) => m.characterId === bot.characterId);
       bot.partyRole = myMembership?.role || 'member';
     } else {
       bot.partyId = null;
@@ -138,8 +148,8 @@ export async function learnProfession(
       return { success: true, detail: `Learned profession ${professionType}`, endpoint, httpStatus: res.status, requestBody: { professionType }, responseBody: res.data };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { professionType }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -161,8 +171,8 @@ export async function specialize(
       return { success: true, detail: `Specialized ${professionType} as ${specialization}`, endpoint, httpStatus: res.status, requestBody: { professionType, specialization }, responseBody: res.data };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { professionType, specialization }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -187,8 +197,8 @@ export async function gatherFromSpot(bot: BotState): Promise<ActionResult> {
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -262,8 +272,8 @@ export async function startGathering(bot: BotState): Promise<ActionResult> {
     // Graceful failure for HTTP errors
     bot.pendingGathering = false;
     return { success: false, detail: res.data?.error || `Gathering failed: HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { professionType: profKey, resourceId: resource.id }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -280,8 +290,8 @@ export async function collectGathering(bot: BotState): Promise<ActionResult> {
       return { success: true, detail: 'Collected gathering results', endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -305,8 +315,8 @@ export async function startCrafting(bot: BotState): Promise<ActionResult> {
       };
     }
 
-    const allRecipes: any[] = recipesRes.data?.recipes || recipesRes.data || [];
-    const craftable = allRecipes.filter((r: any) => r.canCraft === true);
+    const allRecipes: ApiRecipe[] = recipesRes.data?.recipes || recipesRes.data || [];
+    const craftable = allRecipes.filter((r: ApiRecipe) => r.canCraft === true);
     if (craftable.length === 0) {
       return {
         success: false,
@@ -336,8 +346,8 @@ export async function startCrafting(bot: BotState): Promise<ActionResult> {
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: body, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -354,8 +364,8 @@ export async function collectCrafting(bot: BotState): Promise<ActionResult> {
       return { success: true, detail: 'Collected crafting results', endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -368,7 +378,7 @@ export async function browseMarket(bot: BotState): Promise<ActionResult> {
   try {
     const res = await get(endpoint, bot.token);
     if (res.status >= 200 && res.status < 300) {
-      const listings: any[] = res.data?.listings || res.data || [];
+      const listings: ApiMarketListing[] = res.data?.listings || res.data || [];
       return {
         success: true,
         detail: `Found ${listings.length} marketplace listings`,
@@ -379,8 +389,8 @@ export async function browseMarket(bot: BotState): Promise<ActionResult> {
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -404,9 +414,9 @@ export async function buyFromMarket(bot: BotState): Promise<ActionResult> {
       };
     }
 
-    const listings: any[] = browseRes.data?.listings || browseRes.data || [];
+    const listings: ApiMarketListing[] = browseRes.data?.listings || browseRes.data || [];
     const maxSpend = bot.gold * 0.5;
-    const affordable = listings.filter((l: any) => {
+    const affordable = listings.filter((l: ApiMarketListing) => {
       const price = l.price || l.unitPrice || 0;
       return price > 0 && price <= maxSpend;
     });
@@ -447,8 +457,8 @@ export async function buyFromMarket(bot: BotState): Promise<ActionResult> {
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { listingId, bidPrice }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -471,9 +481,9 @@ export async function listOnMarket(bot: BotState): Promise<ActionResult> {
       };
     }
 
-    const items: any[] = invRes.data?.items || invRes.data || [];
+    const items: ApiInventoryItem[] = invRes.data?.items || invRes.data || [];
     const sellable = items.filter(
-      (i: any) => !i.equipped && i.equipped !== true,
+      (i: ApiInventoryItem) => !i.equipped && !i.isEquipped,
     );
 
     if (sellable.length === 0) {
@@ -509,8 +519,8 @@ export async function listOnMarket(bot: BotState): Promise<ActionResult> {
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { itemId, price, quantity: 1 }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -527,7 +537,7 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
     if (invRes.status < 200 || invRes.status >= 300) {
       return { success: false, detail: 'Failed to fetch inventory', endpoint, httpStatus: invRes.status ?? 0, requestBody: {}, responseBody: invRes.data };
     }
-    const items: any[] = invRes.data?.items || invRes.data || [];
+    const items: ApiInventoryItem[] = invRes.data?.items || invRes.data || [];
     if (items.length === 0) {
       console.log(`${diagTag}: Empty inventory — nothing to list`);
       return { success: false, detail: 'Empty inventory', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
@@ -535,8 +545,8 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
 
     // Diagnostic: log inventory summary
     const invSummary = items
-      .filter((i: any) => !i.equipped)
-      .map((i: any) => `${i.quantity || 1}x ${i.templateName || i.name || '?'}`)
+      .filter((i: ApiInventoryItem) => !i.equipped)
+      .map((i: ApiInventoryItem) => `${i.quantity || 1}x ${i.templateName || i.name || '?'}`)
       .join(', ');
     const profKeys = Object.keys(bot.professionLevels || {}).map(k => `${k}:L${(bot.professionLevels || {})[k]}`).join(', ');
     console.log(`${diagTag} Prof=[${profKeys}] Inventory(${items.length}): ${invSummary}`);
@@ -608,7 +618,7 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
       if (needed > 0 && qty > needed) {
         // Surplus: list excess beyond what the most demanding recipe needs
         toList.push({
-          id: item.id || item.itemId,
+          id: item.id || item.itemId || '',
           name,
           quantity: qty - needed,
           baseValue: item.baseValue || item.value || 10,
@@ -616,7 +626,7 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
       } else if (!reachableNeeded.has(name) && needed === 0) {
         // Not needed by any currently-craftable recipe — list everything (v20: was bot.neededItemNames)
         toList.push({
-          id: item.id || item.itemId,
+          id: item.id || item.itemId || '',
           name,
           quantity: qty,
           baseValue: item.baseValue || item.value || 10,
@@ -651,8 +661,8 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
         } else {
           console.log(`${diagTag} LIST-FAIL: ${item.quantity}x ${item.name} — HTTP ${res.status}: ${res.data?.error || 'unknown'}`);
         }
-      } catch (e: any) {
-        console.log(`${diagTag} LIST-ERROR: ${item.quantity}x ${item.name} — ${e.message}`);
+      } catch (e: unknown) {
+        console.log(`${diagTag} LIST-ERROR: ${item.quantity}x ${item.name} — ${errMsg(e)}`);
       }
     }
 
@@ -669,8 +679,8 @@ export async function listUnwantedItems(bot: BotState): Promise<ActionResult> {
       requestBody: { count: listed },
       responseBody: { listed: listedNames },
     };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -701,7 +711,7 @@ export async function acceptQuest(bot: BotState): Promise<ActionResult> {
       };
     }
 
-    const quests: any[] = availRes.data?.quests || availRes.data || [];
+    const quests: ApiQuest[] = availRes.data?.quests || availRes.data || [];
     if (quests.length === 0) {
       return {
         success: false,
@@ -728,8 +738,8 @@ export async function acceptQuest(bot: BotState): Promise<ActionResult> {
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { questId }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -753,7 +763,7 @@ export async function travel(bot: BotState): Promise<ActionResult> {
       };
     }
 
-    const routes: any[] = routesRes.data?.routes || routesRes.data || [];
+    const routes: ApiRoute[] = routesRes.data?.routes || routesRes.data || [];
     if (routes.length === 0) {
       return {
         success: false,
@@ -783,8 +793,8 @@ export async function travel(bot: BotState): Promise<ActionResult> {
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { routeId }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -820,8 +830,8 @@ export async function nominateForElection(
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { electionId, platform: 'Bot candidate for a better tomorrow!' }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -869,8 +879,8 @@ export async function voteInElection(
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { electionId, candidateId }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -897,8 +907,8 @@ export async function sendMessage(bot: BotState): Promise<ActionResult> {
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { channelType: 'TOWN', content }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -939,8 +949,8 @@ export async function addFriend(
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { characterId: target.characterId }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -983,8 +993,8 @@ export async function createGuild(bot: BotState): Promise<ActionResult> {
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { name: `Guild of ${bot.characterName}`, tag, description: 'A guild for adventurers' }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -1007,8 +1017,8 @@ export async function equipItem(bot: BotState): Promise<ActionResult> {
       };
     }
 
-    const items: any[] = invRes.data?.items || invRes.data || [];
-    const equippable = items.filter((i: any) => {
+    const items: ApiInventoryItem[] = invRes.data?.items || invRes.data || [];
+    const equippable = items.filter((i: ApiInventoryItem) => {
       if (i.equipped) return false;
       const type = (i.type || i.itemType || '').toUpperCase();
       return (
@@ -1066,8 +1076,8 @@ export async function equipItem(bot: BotState): Promise<ActionResult> {
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { itemId, slot }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -1094,8 +1104,8 @@ export async function equipTool(
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { itemId, professionType }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -1147,16 +1157,16 @@ export async function ensureToolEquipped(
     // 2. Search tool inventory for matching tool with durability
     const invRes = await get('/tools/inventory', bot.token);
     if (invRes.status >= 200 && invRes.status < 300) {
-      const tools: any[] = invRes.data?.tools || [];
+      const tools: ApiTool[] = invRes.data?.tools || [];
       const matching = tools.filter(
-        (t: any) => t.stats?.professionType === targetProfession && t.currentDurability > 0,
+        (t: ApiTool) => t.stats?.professionType === targetProfession && t.currentDurability > 0,
       );
       // Prefer highest yield bonus (best tier)
-      matching.sort((a: any, b: any) => (b.stats?.yieldBonus || 0) - (a.stats?.yieldBonus || 0));
+      matching.sort((a: ApiTool, b: ApiTool) => (b.stats?.yieldBonus || 0) - (a.stats?.yieldBonus || 0));
 
       if (matching.length > 0) {
         const tool = matching[0];
-        return await equipTool(bot, tool.itemId, targetProfession);
+        return await equipTool(bot, tool.itemId || tool.id, targetProfession);
       }
     }
 
@@ -1241,8 +1251,8 @@ export async function ensureToolEquipped(
       requestBody: { listingId: listing.id, bidPrice },
       responseBody: {},
     };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -1250,11 +1260,11 @@ export async function ensureToolEquipped(
 // 20. checkActiveQuest — get the bot's active quest info
 // ---------------------------------------------------------------------------
 
-export async function checkActiveQuest(bot: BotState): Promise<{ questId: string; objectives: any[]; progress: Record<string, number>; type: string } | null> {
+export async function checkActiveQuest(bot: BotState): Promise<{ questId: string; objectives: unknown[]; progress: Record<string, number>; type: string } | null> {
   try {
     const res = await get('/quests/active', bot.token);
     if (res.status < 200 || res.status >= 300) return null;
-    const quests: any[] = res.data?.quests || res.data || [];
+    const quests: ApiQuest[] = res.data?.quests || res.data || [];
     if (quests.length === 0) return null;
     const q = quests[0];
     return {
@@ -1280,8 +1290,8 @@ export async function completeQuest(bot: BotState, questId: string): Promise<Act
       return { success: true, detail: `Completed quest ${questId}`, endpoint, httpStatus: res.status, requestBody: { questId }, responseBody: res.data };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { questId }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -1303,8 +1313,8 @@ export async function createParty(bot: BotState): Promise<ActionResult> {
       return { success: true, detail: `Created party${partyId ? ` (${partyId})` : ''}`, endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -1320,8 +1330,8 @@ export async function inviteToParty(bot: BotState, targetBot: BotState): Promise
       return { success: true, detail: `Invited ${targetBot.characterName} to party`, endpoint, httpStatus: res.status, requestBody: { characterId: targetBot.characterId }, responseBody: res.data };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { characterId: targetBot.characterId }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -1338,13 +1348,14 @@ export async function acceptPartyInvite(bot: BotState): Promise<ActionResult> {
       return { success: false, detail: 'Failed to check party status', endpoint: checkEndpoint, httpStatus: meRes.status, requestBody: {}, responseBody: meRes.data };
     }
 
-    const invitations: any[] = meRes.data?.pendingInvitations || meRes.data?.invitations || [];
+    const invitations: Array<Record<string, unknown>> = meRes.data?.pendingInvitations || meRes.data?.invitations || [];
     if (invitations.length === 0) {
       return { success: false, detail: 'No pending party invitations', endpoint: checkEndpoint, httpStatus: 0, requestBody: {}, responseBody: { error: 'No pending party invitations' } };
     }
 
     const invite = invitations[0];
-    const partyId = invite.party?.id || invite.partyId || invite.id;
+    const invParty = invite.party as Record<string, unknown> | undefined;
+    const partyId = String(invParty?.id || invite.partyId || invite.id);
     const acceptEndpoint = `/parties/${partyId}/accept`;
     const res = await post(acceptEndpoint, bot.token, {});
     if (res.status >= 200 && res.status < 300) {
@@ -1353,8 +1364,8 @@ export async function acceptPartyInvite(bot: BotState): Promise<ActionResult> {
       return { success: true, detail: `Joined party ${partyId}`, endpoint: acceptEndpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint: acceptEndpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -1373,8 +1384,8 @@ export async function disbandParty(bot: BotState): Promise<ActionResult> {
       return { success: true, detail: 'Disbanded party', endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -1393,8 +1404,8 @@ export async function leaveParty(bot: BotState): Promise<ActionResult> {
       return { success: true, detail: 'Left party', endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -1418,7 +1429,7 @@ export async function partyTravel(bot: BotState): Promise<ActionResult> {
       };
     }
 
-    const routes: any[] = routesRes.data?.routes || routesRes.data || [];
+    const routes: ApiRoute[] = routesRes.data?.routes || routesRes.data || [];
     if (routes.length === 0) {
       return {
         success: false,
@@ -1449,8 +1460,8 @@ export async function partyTravel(bot: BotState): Promise<ActionResult> {
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { routeId }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -1468,7 +1479,7 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
     try {
       const recipesRes = await get('/crafting/recipes', bot.token);
       if (recipesRes.status >= 200 && recipesRes.status < 300) {
-        const recipes: any[] = recipesRes.data?.recipes || recipesRes.data || [];
+        const recipes: ApiRecipe[] = recipesRes.data?.recipes || recipesRes.data || [];
         const botProfsUpper = new Set(bot.professions.map(p => p.toUpperCase()));
         // Only keep ingredients for recipes this bot can actually craft
         for (const r of recipes) {
@@ -1510,13 +1521,13 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
       const invRes = await get('/characters/me/inventory', bot.token);
       if (recipesRes.status >= 200 && recipesRes.status < 300 &&
           invRes.status >= 200 && invRes.status < 300) {
-        const allRecipes: any[] = recipesRes.data?.recipes || recipesRes.data || [];
-        const items: any[] = invRes.data?.items || invRes.data || [];
+        const allRecipes: ApiRecipe[] = recipesRes.data?.recipes || recipesRes.data || [];
+        const items: ApiInventoryItem[] = invRes.data?.items || invRes.data || [];
         // Filter to only recipes for this bot's professions AND within level range
         // v24: added level filter — without it, L3 SMELTER sees smelt-steel (L30) and buys Iron Ingots it can't use
         const botProfs = new Set(bot.professions.map(p => p.toUpperCase()));
         const profLevels = bot.professionLevels || {};
-        const recipes = allRecipes.filter((r: any) => {
+        const recipes = allRecipes.filter((r: ApiRecipe) => {
           const profType = (r.professionType || '').toUpperCase();
           if (!botProfs.has(profType)) return false;
           const profLevel = profLevels[profType] || 1;
@@ -1535,7 +1546,7 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
           'Wood Logs', 'Iron Ore Chunks', 'Stone Blocks', 'Clay', 'Salt', 'Spices',
           'Wild Game Meat', 'Common Herbs', 'Mushrooms', 'Common Fish',
         ]);
-        const notCraftable = recipes.filter((r: any) => !r.canCraft);
+        const notCraftable = recipes.filter((r: ApiRecipe) => !r.canCraft);
         const rawMissing: string[] = [];
         const craftedMissing: string[] = [];
         for (const r of notCraftable) {
@@ -1584,8 +1595,8 @@ export async function doFreeMarketActions(bot: BotState): Promise<ActionResult[]
       } else {
         results.push({ success: false, detail: `[MarketBuy] ${bot.characterName}: recipe HTTP ${recipesRes.status}, inv HTTP ${invRes.status}`, endpoint: '/market/buy (direct DB)' });
       }
-    } catch (err: any) {
-      results.push({ success: false, detail: `[MarketBuy] ${bot.characterName}: ERROR ${err.message}`, endpoint: '/market/buy (direct DB)' });
+    } catch (err: unknown) {
+      results.push({ success: false, detail: `[MarketBuy] ${bot.characterName}: ERROR ${errMsg(err)}`, endpoint: '/market/buy (direct DB)' });
     }
   }
 
@@ -1612,7 +1623,7 @@ export async function buyAsset(bot: BotState): Promise<ActionResult> {
       };
     }
 
-    const professions: any[] = availRes.data?.professions || [];
+    const professions: ApiProfession[] = availRes.data?.professions || [];
     // Find the first purchasable slot: prefer T1, then T2, then T3
     let bestAssetTypeId: string | null = null;
     let bestTier = 0;
@@ -1620,19 +1631,19 @@ export async function buyAsset(bot: BotState): Promise<ActionResult> {
     let bestName = '';
 
     for (const prof of professions) {
-      const assetTypes: any[] = prof.assetTypes || [];
+      const assetTypes: ApiProfessionAssetType[] = prof.assetTypes || [];
       for (const at of assetTypes) {
-        const tiers: any[] = at.tiers || [];
+        const tiers: ApiAssetTier[] = at.tiers || [];
         // Sort by tier ascending to prefer cheapest
-        const sorted = [...tiers].sort((a: any, b: any) => a.tier - b.tier);
+        const sorted = [...tiers].sort((a: ApiAssetTier, b: ApiAssetTier) => a.tier - b.tier);
         for (const t of sorted) {
           if (t.locked) continue;
-          if (t.owned >= t.maxSlots) continue;
+          if ((t.owned ?? 0) >= (t.maxSlots ?? 0)) continue;
           const cost = t.nextSlotCost || 0;
           if (cost <= 0) continue;
           if (cost > bot.gold) continue; // buy if affordable
           if (cost < bestCost) {
-            bestAssetTypeId = at.id;
+            bestAssetTypeId = at.id || '';
             bestTier = t.tier;
             bestCost = cost;
             bestName = at.name || at.spotType || 'asset';
@@ -1645,18 +1656,18 @@ export async function buyAsset(bot: BotState): Promise<ActionResult> {
       // Build a detailed rejection reason for debugging
       const reasons: string[] = [];
       for (const prof of professions) {
-        const assetTypes: any[] = prof.assetTypes || [];
+        const assetTypes: ApiProfessionAssetType[] = prof.assetTypes || [];
         if (assetTypes.length === 0) {
           reasons.push(`${prof.professionType}: no asset types defined`);
           continue;
         }
         for (const at of assetTypes) {
-          const tiers: any[] = at.tiers || [];
+          const tiers: ApiAssetTier[] = at.tiers || [];
           for (const t of tiers) {
             if (t.locked) {
               reasons.push(`${at.name} T${t.tier}: locked (need prof L${t.levelRequired}, have L${prof.level || '?'})`);
-            } else if (t.owned >= t.maxSlots) {
-              reasons.push(`${at.name} T${t.tier}: max slots (${t.owned}/${t.maxSlots})`);
+            } else if ((t.owned ?? 0) >= (t.maxSlots ?? 0)) {
+              reasons.push(`${at.name} T${t.tier}: max slots (${t.owned ?? 0}/${t.maxSlots ?? 0})`);
             } else if ((t.nextSlotCost || 0) > bot.gold) {
               reasons.push(`${at.name} T${t.tier}: too expensive (${t.nextSlotCost}g, have ${bot.gold}g)`);
             }
@@ -1689,8 +1700,8 @@ export async function buyAsset(bot: BotState): Promise<ActionResult> {
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: body, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -1714,10 +1725,10 @@ export async function plantAsset(bot: BotState): Promise<ActionResult> {
       };
     }
 
-    const assets: any[] = mineRes.data?.assets || [];
+    const assets: ApiAsset[] = mineRes.data?.assets || [];
     // Filter: assets in bot's current town with cropState === 'EMPTY'
     const emptyAssets = assets.filter(
-      (a: any) => a.townId === bot.currentTownId && a.cropState === 'EMPTY',
+      (a: ApiAsset) => a.townId === bot.currentTownId && a.cropState === 'EMPTY',
     );
 
     if (emptyAssets.length === 0) {
@@ -1745,8 +1756,8 @@ export async function plantAsset(bot: BotState): Promise<ActionResult> {
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint: plantEndpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -1770,11 +1781,11 @@ export async function harvestAsset(bot: BotState, excludeProfession?: string): P
       };
     }
 
-    const assets: any[] = mineRes.data?.assets || [];
+    const assets: ApiAsset[] = mineRes.data?.assets || [];
     // Filter: assets in bot's current town with cropState === 'READY'
     // Exclude RANCHER buildings (they produce automatically via livestock tick)
     const readyAssets = assets.filter(
-      (a: any) => a.townId === bot.currentTownId && a.cropState === 'READY'
+      (a: ApiAsset) => a.townId === bot.currentTownId && a.cropState === 'READY'
         && a.professionType !== 'RANCHER'
         && (!excludeProfession || a.professionType !== excludeProfession),
     );
@@ -1804,8 +1815,8 @@ export async function harvestAsset(bot: BotState, excludeProfession?: string): P
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint: harvestEndpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -1829,10 +1840,10 @@ export async function buyLivestock(bot: BotState): Promise<ActionResult> {
       };
     }
 
-    const buildings: any[] = bldgRes.data?.buildings || [];
+    const buildings: ApiBuilding[] = bldgRes.data?.buildings || [];
     // Filter: buildings in bot's current town with available capacity
     const available = buildings.filter(
-      (b: any) => b.town?.id === bot.currentTownId && b.aliveCount < b.capacity,
+      (b: ApiBuilding) => b.town?.id === bot.currentTownId && (b.aliveCount ?? 0) < (b.capacity ?? 0),
     );
 
     if (available.length === 0) {
@@ -1847,11 +1858,11 @@ export async function buyLivestock(bot: BotState): Promise<ActionResult> {
     }
 
     // Pick the building with the most remaining capacity
-    available.sort((a: any, b: any) => (b.capacity - b.aliveCount) - (a.capacity - a.aliveCount));
+    available.sort((a: ApiBuilding, b: ApiBuilding) => ((b.capacity ?? 0) - (b.aliveCount ?? 0)) - ((a.capacity ?? 0) - (a.aliveCount ?? 0)));
     const building = available[0];
 
     // Determine correct animal type from building spotType
-    const allowedAnimals = BUILDING_ANIMAL_MAP[building.spotType];
+    const allowedAnimals = building.spotType ? BUILDING_ANIMAL_MAP[building.spotType] : undefined;
     if (!allowedAnimals || allowedAnimals.length === 0) {
       return {
         success: false,
@@ -1881,8 +1892,8 @@ export async function buyLivestock(bot: BotState): Promise<ActionResult> {
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: body, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -1899,16 +1910,16 @@ export async function acceptJob(bot: BotState): Promise<ActionResult> {
       return { success: false, detail: jobsRes.data?.error || `Failed to fetch jobs: HTTP ${jobsRes.status}`, endpoint: browseEndpoint, httpStatus: jobsRes.status, requestBody: {}, responseBody: jobsRes.data };
     }
 
-    const jobs: any[] = jobsRes.data?.jobs || [];
+    const jobs: ApiJob[] = jobsRes.data?.jobs || [];
     // Filter: paid jobs, exclude own jobs
-    const paidJobs = jobs.filter((j: any) => (j.pay || 0) > 0 && j.ownerId !== bot.characterId);
+    const paidJobs = jobs.filter((j: ApiJob) => (j.pay || 0) > 0 && j.ownerId !== bot.characterId);
 
     if (paidJobs.length === 0) {
       return { success: false, detail: 'No paid job listings available', endpoint: browseEndpoint, httpStatus: 0, requestBody: {}, responseBody: { error: 'No paid jobs' } };
     }
 
     // Pick the highest-paying job
-    paidJobs.sort((a: any, b: any) => (b.pay || 0) - (a.pay || 0));
+    paidJobs.sort((a: ApiJob, b: ApiJob) => (b.pay || 0) - (a.pay || 0));
     const job = paidJobs[0];
     const acceptEndpoint = `/jobs/${job.id}/accept`;
     const res = await post(acceptEndpoint, bot.token);
@@ -1924,8 +1935,8 @@ export async function acceptJob(bot: BotState): Promise<ActionResult> {
       return { success: true, detail, endpoint: acceptEndpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint: acceptEndpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint: browseEndpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint: browseEndpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -1947,7 +1958,7 @@ export async function postJob(bot: BotState): Promise<ActionResult> {
       return { success: false, detail: 'Failed to fetch assets', endpoint, httpStatus: mineRes.status, requestBody: {}, responseBody: mineRes.data };
     }
 
-    const assets: any[] = mineRes.data?.assets || [];
+    const assets: ApiAsset[] = mineRes.data?.assets || [];
 
     for (const asset of assets) {
       // Skip if already has an open job
@@ -1958,7 +1969,7 @@ export async function postJob(bot: BotState): Promise<ActionResult> {
 
       if (asset.professionType === 'RANCHER') {
         if ((asset.pendingYield || 0) > 0) {
-          jobType = RANCHER_SPOT_TO_JOB[asset.spotType] || null;
+          jobType = (asset.spotType ? RANCHER_SPOT_TO_JOB[asset.spotType] : null) || null;
         }
       } else {
         if (asset.cropState === 'READY') jobType = 'harvest_field';
@@ -1986,8 +1997,8 @@ export async function postJob(bot: BotState): Promise<ActionResult> {
     }
 
     return { success: false, detail: 'No assets eligible for job posting', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -2003,9 +2014,9 @@ export async function collectRancherProducts(bot: BotState): Promise<ActionResul
       return { success: false, detail: 'Failed to fetch assets', endpoint, httpStatus: mineRes.status, requestBody: {}, responseBody: mineRes.data };
     }
 
-    const assets: any[] = mineRes.data?.assets || [];
+    const assets: ApiAsset[] = mineRes.data?.assets || [];
     const collectible = assets.filter(
-      (a: any) => a.townId === bot.currentTownId && a.professionType === 'RANCHER' && (a.pendingYield || 0) > 0,
+      (a: ApiAsset) => a.townId === bot.currentTownId && a.professionType === 'RANCHER' && (a.pendingYield || 0) > 0,
     );
 
     if (collectible.length === 0) {
@@ -2013,7 +2024,7 @@ export async function collectRancherProducts(bot: BotState): Promise<ActionResul
     }
 
     // Pick building with most pending yield
-    collectible.sort((a: any, b: any) => (b.pendingYield || 0) - (a.pendingYield || 0));
+    collectible.sort((a: ApiAsset, b: ApiAsset) => (b.pendingYield || 0) - (a.pendingYield || 0));
     const building = collectible[0];
 
     const collectEndpoint = `/assets/${building.id}/collect`;
@@ -2029,8 +2040,8 @@ export async function collectRancherProducts(bot: BotState): Promise<ActionResul
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint: collectEndpoint, httpStatus: res.status, requestBody: {}, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -2042,7 +2053,7 @@ export async function getInventory(bot: BotState): Promise<{ name: string; quant
   try {
     const res = await get('/characters/me/inventory', bot.token);
     if (res.status < 200 || res.status >= 300) return [];
-    const items: any[] = res.data?.items || res.data || [];
+    const items: ApiInventoryItem[] = res.data?.items || res.data || [];
     // Group by template name, sum quantities
     const grouped = new Map<string, { name: string; quantity: number; id: string; type?: string }>();
     for (const item of items) {
@@ -2054,7 +2065,7 @@ export async function getInventory(bot: BotState): Promise<{ name: string; quant
         grouped.set(name, {
           name,
           quantity: item.quantity || 1,
-          id: item.id || item.itemId,
+          id: item.id || item.itemId || '',
           type: item.type || item.itemType,
         });
       }
@@ -2081,15 +2092,15 @@ export async function getCraftableRecipes(bot: BotState): Promise<{
   try {
     const res = await get('/crafting/recipes', bot.token);
     if (res.status < 200 || res.status >= 300) return [];
-    const recipes: any[] = res.data?.recipes || res.data || [];
-    return recipes.map((r: any) => ({
-      id: r.id || r.recipeId,
+    const recipes: ApiRecipe[] = res.data?.recipes || res.data || [];
+    return recipes.map((r: ApiRecipe) => ({
+      id: r.id || r.recipeId || '',
       name: r.name || 'Unknown Recipe',
       canCraft: r.canCraft === true,
       tier: r.tier || 1,
       professionRequired: r.professionType || r.professionRequired || '',
       levelRequired: r.levelRequired || 1,
-      inputs: (r.ingredients || r.inputs || []).map((inp: any) => ({
+      inputs: (r.ingredients || r.inputs || []).map((inp: ApiRecipeInput) => ({
         itemName: inp.itemName || inp.name || '',
         quantity: inp.quantity || inp.needed || 1,
       })),
@@ -2119,8 +2130,8 @@ export async function craftSpecificRecipe(bot: BotState, recipeId: string, recip
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: body, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -2161,7 +2172,7 @@ export async function travelToResourceTown(
       return { success: false, detail: routesRes.data?.error || `Failed to fetch routes: HTTP ${routesRes.status}`, endpoint, httpStatus: routesRes.status, requestBody: {}, responseBody: routesRes.data };
     }
 
-    const routes: any[] = routesRes.data?.routes || routesRes.data || [];
+    const routes: ApiRoute[] = routesRes.data?.routes || routesRes.data || [];
     if (routes.length === 0) {
       return { success: false, detail: 'No travel routes available', endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: 'No routes' } };
     }
@@ -2176,7 +2187,7 @@ export async function travelToResourceTown(
     }
 
     // Check routes for matching destinations
-    let bestRoute: any = null;
+    let bestRoute: ApiRoute | null = null;
     for (const route of routes) {
       const destName = (route.destination?.name || route.name || '').toLowerCase();
       if (targetTowns.has(destName)) {
@@ -2206,8 +2217,8 @@ export async function travelToResourceTown(
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { routeId }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -2223,13 +2234,13 @@ export async function travelHome(bot: BotState, reason: string): Promise<ActionR
       return { success: false, detail: routesRes.data?.error || `Failed to fetch routes`, endpoint, httpStatus: routesRes.status, requestBody: {}, responseBody: routesRes.data };
     }
 
-    const routes: any[] = routesRes.data?.routes || routesRes.data || [];
+    const routes: ApiRoute[] = routesRes.data?.routes || routesRes.data || [];
     if (routes.length === 0) {
       return { success: false, detail: 'No travel routes available', endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: 'No routes' } };
     }
 
     // Find route toward home town (may not be direct)
-    let bestRoute: any = null;
+    let bestRoute: ApiRoute | null = null;
     for (const route of routes) {
       const destId = route.destination?.id || route.destinationTownId || '';
       if (destId === bot.homeTownId) {
@@ -2259,8 +2270,8 @@ export async function travelHome(bot: BotState, reason: string): Promise<ActionR
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { routeId }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -2300,13 +2311,13 @@ export async function travelForCombatDrops(
       return { success: false, detail: routesRes.data?.error || `Failed to fetch routes`, endpoint, httpStatus: routesRes.status, requestBody: {}, responseBody: routesRes.data };
     }
 
-    const routes: any[] = routesRes.data?.routes || routesRes.data || [];
+    const routes: ApiRoute[] = routesRes.data?.routes || routesRes.data || [];
     if (routes.length === 0) {
       return { success: false, detail: 'No travel routes available', endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: 'No routes' } };
     }
 
     // Score each route: biome match (10pts) + danger level (1-7pts)
-    let bestRoute: any = null;
+    let bestRoute: ApiRoute | null = null;
     let bestScore = -1;
     for (const route of routes) {
       const terrain: string = route.terrain || '';
@@ -2342,8 +2353,8 @@ export async function travelForCombatDrops(
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint, httpStatus: res.status, requestBody: { routeId }, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -2564,8 +2575,8 @@ export async function buySpecificItem(bot: BotState, itemName: string, maxPrice?
       requestBody: { listingId: listing.id, bidPrice, townId: listing.townId },
       responseBody: { orderId: order.id, cycleId: cycle.id },
     };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -2580,9 +2591,9 @@ export async function listSurplusOnMarket(bot: BotState, keepItemNames?: Set<str
     const invRes = await get('/characters/me/inventory', bot.token);
     if (invRes.status < 200 || invRes.status >= 300) return results;
 
-    const items: any[] = invRes.data?.items || invRes.data || [];
+    const items: ApiInventoryItem[] = invRes.data?.items || invRes.data || [];
     // Group by template name, sum quantities
-    const grouped = new Map<string, { name: string; totalQty: number; items: any[] }>();
+    const grouped = new Map<string, { name: string; totalQty: number; items: ApiInventoryItem[] }>();
     for (const item of items) {
       if (item.equipped) continue;
       const name = item.templateName || item.name || '';
@@ -2646,8 +2657,8 @@ export async function listStorageOnMarket(bot: BotState, keepItemNames?: Set<str
       return results;
     }
 
-    const houses: any[] = housesRes.data?.houses || [];
-    const localHouse = houses.find((h: any) => h.townId === bot.currentTownId);
+    const houses: ApiHouse[] = housesRes.data?.houses || [];
+    const localHouse = houses.find((h: ApiHouse) => h.townId === bot.currentTownId);
     if (!localHouse || localHouse.storageUsed === 0) {
       console.log(`${diagTag}: no local house or empty storage (houses=${houses.length}, local=${!!localHouse}, used=${localHouse?.storageUsed || 0})`);
       return results;
@@ -2660,12 +2671,12 @@ export async function listStorageOnMarket(bot: BotState, keepItemNames?: Set<str
       return results;
     }
 
-    const storageItems: any[] = storageRes.data?.storage?.items || [];
+    const storageItems: ApiStorageItem[] = storageRes.data?.storage?.items || [];
     if (storageItems.length === 0) {
       console.log(`${diagTag}: storage empty (storageUsed=${localHouse.storageUsed} but 0 items)`);
       return results;
     }
-    const itemSummary = storageItems.map((i: any) => `${i.quantity}x ${i.itemName}`).join(', ');
+    const itemSummary = storageItems.map((i: ApiStorageItem) => `${i.quantity}x ${i.itemName}`).join(', ');
     console.log(`${diagTag}: ${storageItems.length} items in storage: [${itemSummary}]`);
 
     // 3. List items from storage (keep 1 of each for personal use, sell rest)
@@ -2724,8 +2735,8 @@ export async function withdrawGrainForFeed(bot: BotState): Promise<ActionResult>
       return { success: false, detail: 'No houses found', endpoint, httpStatus: housesRes.status, requestBody: {}, responseBody: housesRes.data };
     }
 
-    const houses: any[] = housesRes.data?.houses || [];
-    const localHouse = houses.find((h: any) => h.townId === bot.currentTownId);
+    const houses: ApiHouse[] = housesRes.data?.houses || [];
+    const localHouse = houses.find((h: ApiHouse) => h.townId === bot.currentTownId);
     if (!localHouse || localHouse.storageUsed === 0) {
       return { success: false, detail: 'No house with storage in current town', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
     }
@@ -2736,8 +2747,8 @@ export async function withdrawGrainForFeed(bot: BotState): Promise<ActionResult>
       return { success: false, detail: 'Failed to read storage', endpoint, httpStatus: storageRes.status, requestBody: {}, responseBody: storageRes.data };
     }
 
-    const storageItems: any[] = storageRes.data?.storage?.items || [];
-    const grainEntry = storageItems.find((s: any) => s.itemName === 'Grain');
+    const storageItems: ApiStorageItem[] = storageRes.data?.storage?.items || [];
+    const grainEntry = storageItems.find((s: ApiStorageItem) => s.itemName === 'Grain');
     if (!grainEntry || grainEntry.quantity <= 0) {
       return { success: false, detail: 'No Grain in house storage', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
     }
@@ -2758,8 +2769,8 @@ export async function withdrawGrainForFeed(bot: BotState): Promise<ActionResult>
       };
     }
     return { success: false, detail: res.data?.error || `HTTP ${res.status}`, endpoint: withdrawEndpoint, httpStatus: res.status, requestBody: body, responseBody: res.data };
-  } catch (err: any) {
-    return { success: false, detail: err.message, endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: errMsg(err), endpoint, httpStatus: 0, requestBody: {}, responseBody: { error: errMsg(err) } };
   }
 }
 
@@ -2786,7 +2797,7 @@ export async function triggerInvalidAction(
       requestBody: { listingId: 'invalid-uuid-000', quantity: -1 },
       responseBody: res.data,
     };
-  } catch (err: any) {
-    return { success: false, detail: `Error storm: ${err.message}`, endpoint, httpStatus: 0, requestBody: { listingId: 'invalid-uuid-000', quantity: -1 }, responseBody: { error: err.message } };
+  } catch (err: unknown) {
+    return { success: false, detail: `Error storm: ${errMsg(err)}`, endpoint, httpStatus: 0, requestBody: { listingId: 'invalid-uuid-000', quantity: -1 }, responseBody: { error: errMsg(err) } };
   }
 }

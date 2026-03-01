@@ -205,8 +205,8 @@ async function seedMarketItem(
       });
     }
     logger.info({ item: name, total: listingsToCreate * qtyPerListing, price }, 'Seeded market listings');
-  } catch (err: any) {
-    logger.warn({ item: name, error: err.message }, 'Failed to seed market listings (non-fatal)');
+  } catch (err: unknown) {
+    logger.warn({ item: name, error: err instanceof Error ? err.message : String(err) }, 'Failed to seed market listings (non-fatal)');
   }
 }
 

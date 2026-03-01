@@ -40,8 +40,8 @@ export async function dispatch(
     }
 
     return { status: res.status, data };
-  } catch (err: any) {
-    return { status: 0, data: { error: `Network error: ${err.message}` } };
+  } catch (err: unknown) {
+    return { status: 0, data: { error: `Network error: ${err instanceof Error ? err.message : String(err)}` } };
   }
 }
 

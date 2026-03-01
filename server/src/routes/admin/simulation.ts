@@ -99,9 +99,9 @@ router.post('/tick', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await simulationController.runSingleTick();
     return res.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logRouteError(req, 500, '[Simulation] Tick error', error);
-    return res.status(500).json({ error: error.message || 'Tick failed' });
+    return res.status(500).json({ error: (error instanceof Error ? error.message : String(error)) || 'Tick failed' });
   }
 });
 
@@ -117,9 +117,9 @@ router.post('/run', validate(runSchema), async (req: AuthenticatedRequest, res: 
       ticksRun: results.length,
       results,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logRouteError(req, 500, '[Simulation] Run error', error);
-    return res.status(500).json({ error: error.message || 'Run failed' });
+    return res.status(500).json({ error: (error instanceof Error ? error.message : String(error)) || 'Run failed' });
   }
 });
 
@@ -130,8 +130,8 @@ router.get('/stats', async (_req: AuthenticatedRequest, res: Response) => {
   try {
     const stats = simulationController.getSimulationStats();
     return res.json(stats);
-  } catch (error: any) {
-    return res.status(500).json({ error: error.message });
+  } catch (error: unknown) {
+    return res.status(500).json({ error: (error instanceof Error ? error.message : String(error)) });
   }
 });
 
@@ -142,9 +142,9 @@ router.post('/start', async (req: AuthenticatedRequest, res: Response) => {
   try {
     await simulationController.start();
     return res.json({ message: 'Simulation started' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logRouteError(req, 400, '[Simulation] Start error', error);
-    return res.status(400).json({ error: error.message });
+    return res.status(400).json({ error: (error instanceof Error ? error.message : String(error)) });
   }
 });
 
@@ -155,8 +155,8 @@ router.post('/pause', async (_req: AuthenticatedRequest, res: Response) => {
   try {
     simulationController.pause();
     return res.json({ message: 'Simulation paused' });
-  } catch (error: any) {
-    return res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    return res.status(400).json({ error: (error instanceof Error ? error.message : String(error)) });
   }
 });
 
@@ -167,8 +167,8 @@ router.post('/resume', async (_req: AuthenticatedRequest, res: Response) => {
   try {
     simulationController.resume();
     return res.json({ message: 'Simulation resumed' });
-  } catch (error: any) {
-    return res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    return res.status(400).json({ error: (error instanceof Error ? error.message : String(error)) });
   }
 });
 
@@ -179,8 +179,8 @@ router.post('/stop', async (_req: AuthenticatedRequest, res: Response) => {
   try {
     simulationController.stop();
     return res.json({ message: 'Simulation stopped' });
-  } catch (error: any) {
-    return res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    return res.status(400).json({ error: (error instanceof Error ? error.message : String(error)) });
   }
 });
 
@@ -192,8 +192,8 @@ router.get('/status', async (_req: AuthenticatedRequest, res: Response) => {
     const status = simulationController.getStatus();
     const dbTestPlayers = await getTestPlayerCount();
     return res.json({ ...status, dbTestPlayers });
-  } catch (error: any) {
-    return res.status(500).json({ error: error.message });
+  } catch (error: unknown) {
+    return res.status(500).json({ error: (error instanceof Error ? error.message : String(error)) });
   }
 });
 
@@ -207,8 +207,8 @@ router.get('/activity', async (req: AuthenticatedRequest, res: Response) => {
     return res.json({
       recentActivity: status.recentActivity.slice(0, Math.min(count, 200)),
     });
-  } catch (error: any) {
-    return res.status(500).json({ error: error.message });
+  } catch (error: unknown) {
+    return res.status(500).json({ error: (error instanceof Error ? error.message : String(error)) });
   }
 });
 
@@ -219,8 +219,8 @@ router.patch('/config', validate(configPatchSchema), async (req: AuthenticatedRe
   try {
     simulationController.adjustConfig(req.body);
     return res.json({ message: 'Configuration updated', config: req.body });
-  } catch (error: any) {
-    return res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    return res.status(400).json({ error: (error instanceof Error ? error.message : String(error)) });
   }
 });
 
@@ -249,8 +249,8 @@ router.post('/error-storm', validate(errorStormSchema), async (req: Authenticate
     const { durationSeconds } = req.body;
     simulationController.triggerErrorStorm(durationSeconds);
     return res.json({ message: `Error storm triggered for ${durationSeconds}s` });
-  } catch (error: any) {
-    return res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    return res.status(400).json({ error: (error instanceof Error ? error.message : String(error)) });
   }
 });
 
@@ -262,8 +262,8 @@ router.post('/focus', validate(focusSchema), async (req: AuthenticatedRequest, r
     const { system, durationSeconds } = req.body;
     simulationController.focusOnSystem(system, durationSeconds);
     return res.json({ message: `Focused on ${system} for ${durationSeconds}s` });
-  } catch (error: any) {
-    return res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    return res.status(400).json({ error: (error instanceof Error ? error.message : String(error)) });
   }
 });
 
@@ -274,8 +274,8 @@ router.get('/history', async (_req: AuthenticatedRequest, res: Response) => {
   try {
     const history = simulationController.getTickHistory();
     return res.json({ ticks: history, total: history.length });
-  } catch (error: any) {
-    return res.status(500).json({ error: error.message });
+  } catch (error: unknown) {
+    return res.status(500).json({ error: (error instanceof Error ? error.message : String(error)) });
   }
 });
 
@@ -297,8 +297,8 @@ router.get('/bot-logs', async (req: AuthenticatedRequest, res: Response) => {
     }
 
     return res.json({ logs, total: logs.length });
-  } catch (error: any) {
-    return res.status(500).json({ error: error.message });
+  } catch (error: unknown) {
+    return res.status(500).json({ error: (error instanceof Error ? error.message : String(error)) });
   }
 });
 
@@ -324,18 +324,19 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
     let totalSpent = 0;
     let totalActions = 0;
     let totalErrors = 0;
-    history.forEach((t: any) => {
-      totalEarned += t.goldStats?.totalEarned ?? 0;
-      totalSpent += t.goldStats?.totalSpent ?? 0;
-      totalActions += (t.successes ?? 0) + (t.failures ?? 0);
-      totalErrors += t.failures ?? 0;
+    history.forEach((t) => {
+      const gs = t.goldStats;
+      totalEarned += gs?.totalEarned ?? 0;
+      totalSpent += gs?.totalSpent ?? 0;
+      totalActions += ((t.successes as number) ?? 0) + ((t.failures as number) ?? 0);
+      totalErrors += (t.failures as number) ?? 0;
     });
     const netGold = totalEarned - totalSpent;
     const errorRate = totalActions > 0 ? (totalErrors / totalActions * 100).toFixed(1) : '0.0';
 
     const bots = status.bots ?? [];
     const avgLevel = bots.length > 0
-      ? Math.round(bots.reduce((sum: number, b: any) => sum + b.level, 0) / bots.length * 10) / 10
+      ? Math.round(bots.reduce((sum: number, b: { level: number }) => sum + b.level, 0) / bots.length * 10) / 10
       : 0;
 
     const lastTick = history.length > 0 ? history[history.length - 1] : null;
@@ -345,7 +346,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
 
     // Profession adoption (use stats.professionDistribution — bot summaries lack professions array)
     const profDist = stats.professionDistribution ?? [];
-    const botsWithProf = profDist.reduce((sum: number, p: any) => sum + p.count, 0);
+    const botsWithProf = profDist.reduce((sum: number, p: { count: number }) => sum + p.count, 0);
     const topProfession = profDist.length > 0 ? profDist[0].name : 'None';
 
     const summaryData = [
@@ -368,7 +369,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(summaryData), 'Summary');
 
     // Sheet 2: Bot Details
-    const botData = bots.map((b: any) => ({
+    const botData = bots.map((b) => ({
       Name: b.characterName,
       Race: b.race,
       Class: b.class,
@@ -386,29 +387,29 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
 
     // Sheet 3: Race Distribution
     if (stats.raceDistribution.length > 0) {
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.raceDistribution.map((d: any) => ({ Race: d.name, Count: d.count }))), 'Race Distribution');
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.raceDistribution.map((d: { name: string; count: number }) => ({ Race: d.name, Count: d.count }))), 'Race Distribution');
     }
 
     // Sheet 4: Class Distribution
     if (stats.classDistribution.length > 0) {
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.classDistribution.map((d: any) => ({ Class: d.name, Count: d.count }))), 'Class Distribution');
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.classDistribution.map((d: { name: string; count: number }) => ({ Class: d.name, Count: d.count }))), 'Class Distribution');
     }
 
     // Sheet 5: Profession Distribution
     if (stats.professionDistribution.length > 0) {
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.professionDistribution.map((d: any) => ({ Profession: d.name, Count: d.count }))), 'Prof Distribution');
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.professionDistribution.map((d: { name: string; count: number }) => ({ Profession: d.name, Count: d.count }))), 'Prof Distribution');
     }
 
     // Sheet 6: Town Distribution
     if (stats.townDistribution.length > 0) {
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.townDistribution.map((d: any) => ({ Town: resolveTown(d.name), Count: d.count }))), 'Town Distribution');
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.townDistribution.map((d: { name: string; count: number }) => ({ Town: resolveTown(d.name), Count: d.count }))), 'Town Distribution');
     }
 
     // Sheet 7: Tick History (with cumulative columns)
     let cumGoldEarned = 0;
     let cumGoldSpent = 0;
     let cumActions = 0;
-    const tickData = history.map((t: any) => {
+    const tickData = history.map((t) => {
       const earned = t.goldStats?.totalEarned ?? 0;
       const spent = t.goldStats?.totalSpent ?? 0;
       cumGoldEarned += earned;
@@ -445,8 +446,8 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
     }
 
     // Sheet 8: Gold by Profession (per tick)
-    const goldByProf: any[] = [];
-    history.forEach((t: any) => {
+    const goldByProf: Record<string, unknown>[] = [];
+    history.forEach((t) => {
       if (t.goldStats?.byProfession) {
         Object.entries(t.goldStats.byProfession).forEach(([prof, data]: [string, any]) => {
           goldByProf.push({
@@ -466,8 +467,8 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
     }
 
     // Sheet 9: Gold by Town
-    const goldByTown: any[] = [];
-    history.forEach((t: any) => {
+    const goldByTown: Record<string, unknown>[] = [];
+    history.forEach((t) => {
       if (t.goldStats?.byTown) {
         Object.entries(t.goldStats.byTown).forEach(([town, data]: [string, any]) => {
           goldByTown.push({
@@ -487,7 +488,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
     // Sheet 10: Activity Log
     const recentActivity = status.recentActivity ?? [];
     if (recentActivity.length > 0) {
-      const actData = recentActivity.slice(0, 500).map((a: any) => ({
+      const actData = recentActivity.slice(0, 500).map((a) => ({
         Time: a.timestamp,
         Bot: a.botName,
         Profile: a.profile,
@@ -501,7 +502,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
 
     // Sheet 11: Bot Daily Logs
     if (botLogs.length > 0) {
-      const dailyData = botLogs.map((l: any) => ({
+      const dailyData = botLogs.map((l) => ({
         Tick: l.tickNumber,
         GameDay: l.gameDay,
         BotName: l.botName,
@@ -520,9 +521,9 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
     }
 
     // Sheet 12: All Actions Detail
-    const actionsDetail: any[] = [];
-    botLogs.forEach((l: any) => {
-      (l.actions || []).forEach((a: any) => {
+    const actionsDetail: Record<string, unknown>[] = [];
+    botLogs.forEach((l) => {
+      (l.actions || []).forEach((a) => {
         actionsDetail.push({
           Tick: l.tickNumber,
           BotName: l.botName,
@@ -545,7 +546,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
     // Sheet 13: Combat Encounter Logs
     try {
       // Get tick range from simulation history for filtering
-      const tickNumbers = history.map((t: any) => t.tickNumber).filter((n: number) => n != null);
+      const tickNumbers = history.map((t) => t.tickNumber as number).filter((n: number) => n != null);
       const combatLogs = tickNumbers.length > 0
         ? await prisma.combatEncounterLog.findMany({
             where: { simulationTick: { in: tickNumbers } },
@@ -560,21 +561,21 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
           });
 
       if (combatLogs.length > 0) {
-        const combatData = combatLogs.map((log: any) => ({
+        const combatData = combatLogs.map((log) => ({
           CombatId: log.sessionId ?? '',
           Tick: log.simulationTick ?? '',
           Type: log.type,
           Character: log.characterName,
           Opponent: log.opponentName,
-          Town: log.townId ? resolveTown(log.townId) : '',
+          Town: log.townId ? resolveTown(log.townId as string) : '',
           Outcome: log.outcome,
           TotalRounds: log.totalRounds,
           CharStartHP: log.characterStartHp,
           CharEndHP: log.characterEndHp,
           OppStartHP: log.opponentStartHp,
           OppEndHP: log.opponentEndHp,
-          DamageDealt: Math.max(0, log.opponentStartHp - log.opponentEndHp),
-          DamageTaken: Math.max(0, log.characterStartHp - log.characterEndHp),
+          DamageDealt: Math.max(0, (log.opponentStartHp as number ?? 0) - (log.opponentEndHp as number ?? 0)),
+          DamageTaken: Math.max(0, (log.characterStartHp as number ?? 0) - (log.characterEndHp as number ?? 0)),
           CharWeapon: log.characterWeapon,
           OppWeapon: log.opponentWeapon,
           XPAwarded: log.xpAwarded,
@@ -655,9 +656,9 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
           // Find winner and runner-up from allBidders
           let winnerScore = 0, winnerRoll = 0, runnerUpScore = 0, runnerUpRoll = 0;
           if (allBidders && allBidders.length > 0) {
-            const winner = allBidders.find((b: any) => b.outcome === 'won');
-            const losers = allBidders.filter((b: any) => b.outcome === 'lost')
-              .sort((a: any, b: any) => (b.priorityScore || 0) - (a.priorityScore || 0));
+            const winner = allBidders.find((b: { outcome: string; priorityScore?: number }) => b.outcome === 'won');
+            const losers = allBidders.filter((b: { outcome: string; priorityScore?: number }) => b.outcome === 'lost')
+              .sort((a: { priorityScore?: number }, b: { priorityScore?: number }) => (b.priorityScore || 0) - (a.priorityScore || 0));
 
             winnerScore = winner?.priorityScore || 0;
             winnerRoll = winner?.rollResult || winner?.rollBreakdown?.total || 0;
@@ -677,17 +678,17 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
             SalePrice: tx.price,
             SellerName: tx.seller.name,
             SellerLevel: tx.seller.level,
-            SellerProfession: tx.seller.professions.map((p: any) => p.professionType).join(', ') || 'None',
+            SellerProfession: tx.seller.professions.map((p: { professionType: string }) => p.professionType).join(', ') || 'None',
             BuyerName: tx.buyer.name,
             BuyerLevel: tx.buyer.level,
-            BuyerProfession: tx.buyer.professions.map((p: any) => p.professionType).join(', ') || 'None',
+            BuyerProfession: tx.buyer.professions.map((p: { professionType: string }) => p.professionType).join(', ') || 'None',
             NumBidders: numBidders,
             Contested: contested ? 'Yes' : 'No',
             WinnerPriorityScore: Math.round(winnerScore * 100) / 100,
             WinnerRollTotal: winnerRoll,
             RunnerUpScore: Math.round(runnerUpScore * 100) / 100,
             RunnerUpRoll: runnerUpRoll,
-            FeeRate: tx.seller.professions.some((p: any) => p.professionType === 'MERCHANT') ? '5%' : '10%',
+            FeeRate: tx.seller.professions.some((p: { professionType: string }) => p.professionType === 'MERCHANT') ? '5%' : '10%',
             FeeAmount: tx.sellerFee,
             SellerNetProceeds: tx.sellerNet,
           };
@@ -727,7 +728,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
           Town: o.listing.town.name,
           ItemName: o.listing.itemName || 'Unknown',
           BuyerName: o.buyer.name,
-          BuyerProfession: o.buyer.professions.map((p: any) => p.professionType).join(', ') || 'None',
+          BuyerProfession: o.buyer.professions.map((p: { professionType: string }) => p.professionType).join(', ') || 'None',
           BidPrice: o.bidPrice,
           AskingPrice: o.listing.price,
           BidRatio: Math.round((o.bidPrice / Math.max(o.listing.price, 1)) * 100) + '%',
@@ -916,9 +917,9 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=simulation-export-day${gameDay}.xlsx`);
     return res.send(Buffer.from(buffer));
-  } catch (error: any) {
+  } catch (error: unknown) {
     logRouteError(req as any, 500, '[Simulation] Export error', error);
-    return res.status(500).json({ error: error.message || 'Export failed' });
+    return res.status(500).json({ error: (error instanceof Error ? error.message : String(error)) || 'Export failed' });
   }
 });
 
@@ -928,7 +929,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
 router.get('/combat-detail', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const history = simulationController.getTickHistory();
-    const tickNumbers = history.map((t: any) => t.tickNumber).filter((n: number) => n != null);
+    const tickNumbers = history.map((t) => t.tickNumber as number).filter((n: number) => n != null);
 
     const combatLogs = tickNumbers.length > 0
       ? await prisma.combatEncounterLog.findMany({
@@ -943,7 +944,7 @@ router.get('/combat-detail', async (req: AuthenticatedRequest, res: Response) =>
           take: 5000,
         });
 
-    const detail = combatLogs.map((log: any) => ({
+    const detail = combatLogs.map((log) => ({
       id: log.id,
       type: log.type,
       sessionId: log.sessionId,
@@ -972,9 +973,9 @@ router.get('/combat-detail', async (req: AuthenticatedRequest, res: Response) =>
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', 'attachment; filename=combat-detail.json');
     return res.json({ encounters: detail, total: detail.length });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logRouteError(req as any, 500, '[Simulation] Combat detail export error', error);
-    return res.status(500).json({ error: error.message || 'Combat detail export failed' });
+    return res.status(500).json({ error: (error instanceof Error ? error.message : String(error)) || 'Combat detail export failed' });
   }
 });
 

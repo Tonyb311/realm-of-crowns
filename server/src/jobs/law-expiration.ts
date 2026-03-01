@@ -15,9 +15,9 @@ export function startLawExpirationJob() {
     try {
       await expireLaws();
       cronJobExecutions.inc({ job: 'lawExpiration', result: 'success' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       cronJobExecutions.inc({ job: 'lawExpiration', result: 'failure' });
-      logger.error({ job: 'lawExpiration', err: error.message }, 'cron job failed');
+      logger.error({ job: 'lawExpiration', err: error instanceof Error ? error.message : String(error) }, 'cron job failed');
     }
   });
 

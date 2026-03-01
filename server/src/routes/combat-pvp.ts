@@ -569,7 +569,7 @@ router.post(
         await finalizePvpMatch(sessionId, combatState);
       }
 
-      const response: any = {
+      const response: Record<string, unknown> = {
         session: {
           id: sessionId,
           status: combatState.status,
@@ -1395,7 +1395,7 @@ router.post(
         await finalizeSparMatch(sessionId, combatState);
       }
 
-      const response: any = {
+      const response: Record<string, unknown> = {
         session: {
           id: sessionId,
           type: 'SPAR',

@@ -15,9 +15,9 @@ export function startResourceRegenerationJob() {
     try {
       await regenerateResources();
       cronJobExecutions.inc({ job: 'resourceRegeneration', result: 'success' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       cronJobExecutions.inc({ job: 'resourceRegeneration', result: 'failure' });
-      logger.error({ job: 'resourceRegeneration', err: error.message }, 'cron job failed');
+      logger.error({ job: 'resourceRegeneration', err: error instanceof Error ? error.message : String(error) }, 'cron job failed');
     }
   });
 

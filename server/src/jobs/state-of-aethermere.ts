@@ -26,9 +26,9 @@ export function startStateOfAethermereJob() {
 
       cronJobExecutions.inc({ job: 'stateOfAethermere', result: 'success' });
       logger.info({ job: 'stateOfAethermere' }, 'monthly report broadcast complete');
-    } catch (error: any) {
+    } catch (error: unknown) {
       cronJobExecutions.inc({ job: 'stateOfAethermere', result: 'failure' });
-      logger.error({ job: 'stateOfAethermere', err: error.message }, 'cron job failed');
+      logger.error({ job: 'stateOfAethermere', err: error instanceof Error ? error.message : String(error) }, 'cron job failed');
     }
   });
 

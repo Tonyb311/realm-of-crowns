@@ -216,10 +216,10 @@ export async function processTravelTick(): Promise<TravelTickResult> {
 
         result.soloMoved++;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       result.errors++;
       logger.error(
-        { characterId: traveler.characterId, travelStateId: traveler.id, err: error.message },
+        { characterId: traveler.characterId, travelStateId: traveler.id, err: error instanceof Error ? error.message : String(error) },
         'Error processing solo traveler tick',
       );
     }
@@ -398,10 +398,10 @@ export async function processTravelTick(): Promise<TravelTickResult> {
 
         result.groupsMoved++;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       result.errors++;
       logger.error(
-        { groupId: groupState.groupId, groupTravelStateId: groupState.id, err: error.message },
+        { groupId: groupState.groupId, groupTravelStateId: groupState.id, err: error instanceof Error ? error.message : String(error) },
         'Error processing group traveler tick',
       );
     }

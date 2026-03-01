@@ -135,8 +135,8 @@ class SimulationController {
     this.tickInProgress = true;
     try {
       await this.runSingleTick();
-    } catch (err: any) {
-      logger.error({ err: err.message }, 'Interval tick error');
+    } catch (err: unknown) {
+      logger.error({ err: (err instanceof Error ? err.message : String(err)) }, 'Interval tick error');
     } finally {
       this.tickInProgress = false;
     }
@@ -224,8 +224,8 @@ class SimulationController {
       let result: ActionResult;
       try {
         result = await decideBotAction(bot, this.bots, this.config, this.simLogger, this.singleTickCount + 1);
-      } catch (err: any) {
-        result = { success: false, detail: `Uncaught: ${err.message}`, endpoint: 'error' };
+      } catch (err: unknown) {
+        result = { success: false, detail: `Uncaught: ${(err instanceof Error ? err.message : String(err))}`, endpoint: 'error' };
       }
 
       const actionType = categorizeAction(result.endpoint);
@@ -394,8 +394,8 @@ class SimulationController {
     // Phase 2: Run daily tick (resolves LOCKED_IN gather/craft actions from Phase 1)
     // -----------------------------------------------------------------------
     const p2Start = Date.now();
-    try { await processDailyTick(); } catch (err: any) {
-      errors.push(`Daily tick error: ${err.message}`);
+    try { await processDailyTick(); } catch (err: unknown) {
+      errors.push(`Daily tick error: ${(err instanceof Error ? err.message : String(err))}`);
     }
     phaseTiming['phase2_daily_tick'] = Date.now() - p2Start;
 
@@ -446,8 +446,8 @@ class SimulationController {
         { tick: this.singleTickCount + 1, soloMoved: travelResult.soloMoved, soloArrived: travelResult.soloArrived, soloEncountered: travelResult.soloEncountered, combatRoundsLogged: travelResult.combatRounds.length },
         'Travel tick processed within simulation',
       );
-    } catch (err: any) {
-      errors.push(`Travel tick error: ${err.message}`);
+    } catch (err: unknown) {
+      errors.push(`Travel tick error: ${(err instanceof Error ? err.message : String(err))}`);
     }
     phaseTiming['phase3_travel'] = Date.now() - p3Start;
 
@@ -466,8 +466,8 @@ class SimulationController {
         { tick: this.singleTickCount + 1, ...auctionResult },
         'Market auctions resolved within simulation',
       );
-    } catch (err: any) {
-      errors.push(`Market auction error: ${err.message}`);
+    } catch (err: unknown) {
+      errors.push(`Market auction error: ${(err instanceof Error ? err.message : String(err))}`);
     }
     const auctionResolvedAfter = new Date();
     phaseTiming['phase4_auctions'] = Date.now() - p4Start;

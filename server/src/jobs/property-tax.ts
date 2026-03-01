@@ -47,9 +47,9 @@ export function startPropertyTaxJob() {
     try {
       await collectPropertyTaxes();
       cronJobExecutions.inc({ job: 'propertyTax', result: 'success' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       cronJobExecutions.inc({ job: 'propertyTax', result: 'failure' });
-      logger.error({ job: 'propertyTax', err: error.message }, 'cron job failed');
+      logger.error({ job: 'propertyTax', err: error instanceof Error ? error.message : String(error) }, 'cron job failed');
     }
   });
 

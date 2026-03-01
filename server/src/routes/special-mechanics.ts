@@ -70,10 +70,10 @@ router.post('/changeling/shift', authGuard, characterGuard, validate(changelingS
     const result = await changelingService.shiftAppearance(character.id, targetRace, targetName);
 
     return res.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (handlePrismaError(error, res, 'changeling-shift', req)) return;
     logRouteError(req, 500, 'Changeling shift error', error);
-    return res.status(400).json({ error: error.message || 'Internal server error' });
+    return res.status(400).json({ error: (error instanceof Error ? error.message : String(error)) || 'Internal server error' });
   }
 });
 
@@ -85,10 +85,10 @@ router.post('/changeling/revert', authGuard, characterGuard, async (req: Authent
 
     const result = await changelingService.revertToTrueForm(character.id);
     return res.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (handlePrismaError(error, res, 'changeling-revert', req)) return;
     logRouteError(req, 500, 'Changeling revert error', error);
-    return res.status(400).json({ error: error.message || 'Internal server error' });
+    return res.status(400).json({ error: (error instanceof Error ? error.message : String(error)) || 'Internal server error' });
   }
 });
 
@@ -111,10 +111,10 @@ router.get('/forgeborn/status', authGuard, characterGuard, async (req: Authentic
       maintenance: status,
       queueSlotBonus: queueBonus,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (handlePrismaError(error, res, 'forgeborn-status', req)) return;
     logRouteError(req, 500, 'Forgeborn status error', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+    return res.status(500).json({ error: (error instanceof Error ? error.message : String(error)) || 'Internal server error' });
   }
 });
 
@@ -128,10 +128,10 @@ router.post('/forgeborn/maintain', authGuard, characterGuard, validate(forgeborn
     const result = await forgebornService.performMaintenance(character.id, repairKitItemId);
 
     return res.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (handlePrismaError(error, res, 'forgeborn-maintain', req)) return;
     logRouteError(req, 500, 'Forgeborn maintain error', error);
-    return res.status(400).json({ error: error.message || 'Internal server error' });
+    return res.status(400).json({ error: (error instanceof Error ? error.message : String(error)) || 'Internal server error' });
   }
 });
 
@@ -143,10 +143,10 @@ router.post('/forgeborn/self-repair', authGuard, characterGuard, async (req: Aut
 
     const result = await forgebornService.applySelfRepair(character.id);
     return res.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (handlePrismaError(error, res, 'forgeborn-self-repair', req)) return;
     logRouteError(req, 500, 'Forgeborn self-repair error', error);
-    return res.status(400).json({ error: error.message || 'Internal server error' });
+    return res.status(400).json({ error: (error instanceof Error ? error.message : String(error)) || 'Internal server error' });
   }
 });
 

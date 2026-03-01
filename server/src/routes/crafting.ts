@@ -685,10 +685,10 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
       },
       remainingInQueue,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (handlePrismaError(error, res, 'collect crafting', req)) return;
     // P0 #5 FIX: Return 409 if already collected (race condition guard)
-    if (error?.message === 'ALREADY_COLLECTED') {
+    if (error instanceof Error && error.message === 'ALREADY_COLLECTED') {
       return res.status(409).json({ error: 'Crafting action already collected' });
     }
     logRouteError(req, 500, 'Collect crafting error', error);

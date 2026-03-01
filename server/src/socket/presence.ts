@@ -29,14 +29,14 @@ async function addPresenceRedis(entry: PresenceEntry): Promise<void> {
   if (!redis) return;
   try {
     await redis.hset(PRESENCE_KEY, entry.characterId, JSON.stringify(entry));
-  } catch (err: any) { logger.warn({ err: err.message }, 'presence Redis error'); }
+  } catch (err: unknown) { logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'presence Redis error'); }
 }
 
 async function removePresenceRedis(characterId: string): Promise<void> {
   if (!redis) return;
   try {
     await redis.hdel(PRESENCE_KEY, characterId);
-  } catch (err: any) { logger.warn({ err: err.message }, 'presence Redis error'); }
+  } catch (err: unknown) { logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'presence Redis error'); }
 }
 
 async function updatePresenceFieldRedis(characterId: string, field: string, value: string | null): Promise<void> {
@@ -48,7 +48,7 @@ async function updatePresenceFieldRedis(characterId: string, field: string, valu
       entry[field] = value;
       await redis.hset(PRESENCE_KEY, characterId, JSON.stringify(entry));
     }
-  } catch (err: any) { logger.warn({ err: err.message }, 'presence Redis error'); }
+  } catch (err: unknown) { logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'presence Redis error'); }
 }
 
 // ---------------------------------------------------------------------------
