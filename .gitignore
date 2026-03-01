@@ -42,6 +42,17 @@ docker-compose.override.yml
 # Archives
 *.zip
 
+# Simulation & temp artifacts
+sim_*.json
+analyze_*.js
+diag_*.js
+*_recipes.json
+*_items.json
+*.xlsx
+run_*.js
+run_*.sh
+generate_*.js
+
 # Tokens & credentials
 *_token.txt
 
