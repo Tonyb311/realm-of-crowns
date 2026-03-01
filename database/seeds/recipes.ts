@@ -9,7 +9,7 @@
  */
 
 import { PrismaClient, ItemType, ItemRarity, ProfessionType, ProfessionTier, Prisma } from '@prisma/client';
-import { ALL_PROCESSING_RECIPES } from '@shared/data/recipes';
+import { ALL_PROCESSING_RECIPES, ALL_ARMOR_RECIPES, ALL_WEAPON_RECIPES } from '@shared/data/recipes';
 import { COOK_RECIPES } from '@shared/data/recipes/cook';
 import { BREWER_CONSUMABLES } from '@shared/data/recipes/consumables';
 
@@ -1570,6 +1570,98 @@ export async function seedRecipes(prisma: PrismaClient) {
 
   console.log(`  BREWER recipes: ${BREWER_CONSUMABLES.length}`);
 
+  // ----- Seed Armor Recipes (ARMORER, LEATHERWORKER, TAILOR, TANNER finished goods) -----
+  console.log('--- Seeding Armor Recipes (from shared data) ---');
+
+  for (const recipe of ALL_ARMOR_RECIPES) {
+    const ingredients: { itemTemplateId: string; itemName: string; quantity: number }[] = [];
+    for (const inp of recipe.inputs) {
+      const templateId = ensureTemplate(inp.itemName, recipe.name);
+      ingredients.push({ itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity });
+    }
+
+    const output = recipe.outputs[0];
+    const resultId = ensureTemplate(output.itemName, recipe.name);
+
+    const recipeId = `recipe-${recipe.recipeId}`;
+    const tier = levelToTier(recipe.levelRequired);
+
+    await prisma.recipe.upsert({
+      where: { id: recipeId },
+      update: {
+        name: recipe.name,
+        professionType: recipe.professionRequired as ProfessionType,
+        tier,
+        ingredients,
+        result: resultId,
+        craftTime: recipe.craftTime,
+        xpReward: recipe.xpReward,
+        levelRequired: recipe.levelRequired,
+      },
+      create: {
+        id: recipeId,
+        name: recipe.name,
+        professionType: recipe.professionRequired as ProfessionType,
+        tier,
+        ingredients,
+        result: resultId,
+        craftTime: recipe.craftTime,
+        xpReward: recipe.xpReward,
+        levelRequired: recipe.levelRequired,
+      },
+    });
+
+    console.log(`  + ${recipe.name} (${recipe.professionRequired} Lvl ${recipe.levelRequired})`);
+  }
+
+  console.log(`  Armor recipes: ${ALL_ARMOR_RECIPES.length}`);
+
+  // ----- Seed Weapon Recipes (BLACKSMITH melee + FLETCHER ranged from shared data) -----
+  console.log('--- Seeding Weapon Recipes (from shared data) ---');
+
+  for (const recipe of ALL_WEAPON_RECIPES) {
+    const ingredients: { itemTemplateId: string; itemName: string; quantity: number }[] = [];
+    for (const inp of recipe.inputs) {
+      const templateId = ensureTemplate(inp.itemName, recipe.name);
+      ingredients.push({ itemTemplateId: templateId, itemName: inp.itemName, quantity: inp.quantity });
+    }
+
+    const output = recipe.outputs[0];
+    const resultId = ensureTemplate(output.itemName, recipe.name);
+
+    const recipeId = `recipe-${recipe.recipeId}`;
+    const tier = levelToTier(recipe.levelRequired);
+
+    await prisma.recipe.upsert({
+      where: { id: recipeId },
+      update: {
+        name: recipe.name,
+        professionType: recipe.professionRequired as ProfessionType,
+        tier,
+        ingredients,
+        result: resultId,
+        craftTime: recipe.craftTime,
+        xpReward: recipe.xpReward,
+        levelRequired: recipe.levelRequired,
+      },
+      create: {
+        id: recipeId,
+        name: recipe.name,
+        professionType: recipe.professionRequired as ProfessionType,
+        tier,
+        ingredients,
+        result: resultId,
+        craftTime: recipe.craftTime,
+        xpReward: recipe.xpReward,
+        levelRequired: recipe.levelRequired,
+      },
+    });
+
+    console.log(`  + ${recipe.name} (${recipe.professionRequired} Lvl ${recipe.levelRequired})`);
+  }
+
+  console.log(`  Weapon recipes: ${ALL_WEAPON_RECIPES.length}`);
+
   // ----- Seed Crafting Recipes (non-processing) -----
   console.log('--- Seeding Crafting Recipes ---');
 
@@ -1611,5 +1703,5 @@ export async function seedRecipes(prisma: PrismaClient) {
   }
 
   console.log(`  Crafting recipes: ${CRAFTING_RECIPES.length}`);
-  console.log(`  Total recipes: ${ALL_PROCESSING_RECIPES.length + COOK_RECIPES.length + BREWER_CONSUMABLES.length + CRAFTING_RECIPES.length}`);
+  console.log(`  Total recipes: ${ALL_PROCESSING_RECIPES.length + COOK_RECIPES.length + BREWER_CONSUMABLES.length + ALL_ARMOR_RECIPES.length + ALL_WEAPON_RECIPES.length + CRAFTING_RECIPES.length}`);
 }

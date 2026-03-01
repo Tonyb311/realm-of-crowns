@@ -744,19 +744,22 @@ export async function decideBotAction(
 
   // ── P3: Craft (highest-tier craftable recipe, intermediates preferred) ──
   if (hasCrafting && config.enabledSystems.crafting) {
-    // DIAG: SMELTER P3 diagnostic (ALL ticks until first successful craft)
-    if (profs.includes('SMELTER') && tick != null) {
-      const allRecipesForDiag = await actions.getCraftableRecipes(bot);
-      const smelterRecipes = allRecipesForDiag.filter(r => r.professionRequired.toUpperCase() === 'SMELTER');
-      const levelFiltered = smelterRecipes.filter(r => r.levelRequired <= ((bot.professionLevels || {})['SMELTER'] || 1));
-      const craftable = levelFiltered.filter(r => r.canCraft);
-      console.log(`[DIAG-SMELTER] T${tick} ${bot.characterName}: ` +
-        `profLevel=${(bot.professionLevels || {})['SMELTER']}, ` +
-        `allSmelterRecipes=${smelterRecipes.length}, ` +
-        `afterLevelFilter=${levelFiltered.length}, ` +
-        `craftable=${craftable.map(r => `${r.name}(L${r.levelRequired})`).join(',') || 'NONE'}, ` +
-        `inv=[${[...invMap.entries()].filter(([,q]) => q > 0).map(([n,q]) => `${q}x${n}`).join(',')}]`
-      );
+    // DIAG: P3 diagnostic for professions under investigation
+    for (const diagProf of ['SMELTER', 'LEATHERWORKER', 'TANNER'] as const) {
+      if (profs.includes(diagProf) && tick != null && tick <= 10) {
+        const allRecipesForDiag = await actions.getCraftableRecipes(bot);
+        const profRecipes = allRecipesForDiag.filter(r => r.professionRequired.toUpperCase() === diagProf);
+        const profLevel = (bot.professionLevels || {})[diagProf] || 1;
+        const levelFiltered = profRecipes.filter(r => r.levelRequired <= profLevel);
+        const craftable = levelFiltered.filter(r => r.canCraft);
+        console.log(`[DIAG-${diagProf}] T${tick} ${bot.characterName}: ` +
+          `profLevel=${profLevel}, ` +
+          `allRecipes=${profRecipes.length}, ` +
+          `afterLevelFilter=${levelFiltered.length}, ` +
+          `craftable=${craftable.map(r => `${r.name}(L${r.levelRequired})`).join(',') || 'NONE'}, ` +
+          `inv=[${[...invMap.entries()].filter(([,q]) => q > 0).map(([n,q]) => `${q}x${n}`).join(',')}]`
+        );
+      }
     }
     const craftable = recipes.filter(r => r.canCraft);
     if (craftable.length > 0) {
