@@ -125,7 +125,9 @@ router.post('/list', authGuard, characterGuard, validate(listSchema), async (req
           }),
     ]);
 
-    onMarketSell(character.id).catch(() => {}); // fire-and-forget
+    onMarketSell(character.id).catch((error: unknown) => {
+      logRouteError(req, 500, 'Quest trigger failed after market sell', error);
+    });
 
     await invalidateCache('cache:/api/market/browse*');
     return res.status(201).json({ listing });
