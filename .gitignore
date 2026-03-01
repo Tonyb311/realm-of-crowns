@@ -41,3 +41,9 @@ docker-compose.override.yml
 
 # Archives
 *.zip
+
+# Tokens & credentials
+*_token.txt
+
+# Combat simulator output
+server/src/scripts/combat-sim-results/*.json
