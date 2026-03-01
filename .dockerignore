@@ -16,3 +16,24 @@ coverage
 docs
 deploy.zip
 staging
+
+# Simulation & temp artifacts
+sim_*.json
+sim-data/
+analyze_*.js
+diag_*.js
+*_recipes.json
+*_items.json
+*.xlsx
+run_*.js
+run_*.sh
+generate_*.js
+*_token.txt
+nul
+files.zip
+
+# Development artifacts
+prompts/
+*.md
+!README.md
+studio-website/
