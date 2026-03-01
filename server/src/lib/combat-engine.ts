@@ -73,6 +73,11 @@ const BASE_AC = 10;
 const DEFAULT_FLEE_DC = 10;
 const DEATH_GOLD_LOSS_PERCENT = DEATH_PENALTY.GOLD_LOSS_PERCENT;
 
+/** Helper to create a no-op defend result (used as fallback in racial ability handlers). */
+function noOpDefend(actorId: string): DefendResult {
+  return { type: 'defend', actorId, acBonusGranted: 0 };
+}
+
 // ---- Status Effect Definitions ----
 
 interface StatusEffectDef {
@@ -2108,7 +2113,7 @@ export function resolveTurn(
       };
       ticks.push({
         combatantId: companionDamageDealt.targetId,
-        effectName: 'burning' as any, // Visual proxy for companion damage
+        effectName: 'burning', // Visual proxy for companion damage
         damage: companionDamageDealt.damage,
         expired: false,
         hpAfter: newHp,
@@ -2124,7 +2129,7 @@ export function resolveTurn(
   for (const det of detonations) {
     ticks.push({
       combatantId: det.targetId,
-      effectName: 'burning' as any, // Use burning as visual proxy for delayed detonation
+      effectName: 'burning', // Visual proxy for delayed detonation
       damage: det.damage,
       expired: true,
       hpAfter: det.hpAfter,
@@ -2144,11 +2149,7 @@ export function resolveTurn(
       round: current.round,
       actorId,
       action: action.type,
-      result: {
-        type: 'defend',
-        actorId,
-        acBonusGranted: 0,
-      } as DefendResult,
+      result: noOpDefend(actorId),
       statusTicks: ticks,
     };
 
@@ -2173,7 +2174,7 @@ export function resolveTurn(
       current = atk.state;
       result = atk.result;
     } else {
-      result = { type: 'defend', actorId, acBonusGranted: 0 } as DefendResult;
+      result = noOpDefend(actorId);
     }
 
     // Decrement control duration
@@ -2230,13 +2231,13 @@ export function resolveTurn(
 
   if (isPrevented) {
     // Forced to "defend" when unable to act
-    result = { type: 'defend', actorId, acBonusGranted: 0 } as DefendResult;
+    result = noOpDefend(actorId);
   } else {
     // Resolve the chosen action
     switch (action.type) {
       case 'attack': {
         if (!action.targetId || !context.weapon) {
-          result = { type: 'defend', actorId, acBonusGranted: 0 } as DefendResult;
+          result = noOpDefend(actorId);
           break;
         }
         const atk = resolveAttack(current, actorId, action.targetId, context.weapon, racialContext?.tracker);
@@ -2271,14 +2272,14 @@ export function resolveTurn(
 
       case 'cast': {
         if (!action.targetId || !context.spell) {
-          result = { type: 'defend', actorId, acBonusGranted: 0 } as DefendResult;
+          result = noOpDefend(actorId);
           break;
         }
         const slotLevel = action.spellSlotLevel ?? context.spell.level;
         // Verify actor has a slot available
         const actorNow = current.combatants.find((c) => c.id === actorId)!;
         if ((actorNow.spellSlots[slotLevel] ?? 0) <= 0) {
-          result = { type: 'defend', actorId, acBonusGranted: 0 } as DefendResult;
+          result = noOpDefend(actorId);
           break;
         }
         const cast = resolveCast(current, actorId, action.targetId, context.spell, slotLevel);
@@ -2296,7 +2297,7 @@ export function resolveTurn(
 
       case 'item': {
         if (!action.targetId || !context.item) {
-          result = { type: 'defend', actorId, acBonusGranted: 0 } as DefendResult;
+          result = noOpDefend(actorId);
           break;
         }
         const itm = resolveItem(current, actorId, action.targetId, context.item);
@@ -2314,7 +2315,7 @@ export function resolveTurn(
 
       case 'racial_ability': {
         if (!action.racialAbilityName || !racialContext) {
-          result = { type: 'defend', actorId, acBonusGranted: 0 } as DefendResult;
+          result = noOpDefend(actorId);
           break;
         }
         const abilityResult = resolveRacialAbility(
@@ -2344,7 +2345,7 @@ export function resolveTurn(
 
       case 'psion_ability': {
         if (!action.psionAbilityId) {
-          result = { type: 'defend', actorId, acBonusGranted: 0 } as DefendResult;
+          result = noOpDefend(actorId);
           break;
         }
         const psi = resolvePsionAbility(current, actorId, action.psionAbilityId, action.targetId);
@@ -2365,7 +2366,7 @@ export function resolveTurn(
 
       case 'class_ability': {
         if (!action.classAbilityId) {
-          result = { type: 'defend', actorId, acBonusGranted: 0 } as DefendResult;
+          result = noOpDefend(actorId);
           break;
         }
         const classAbility = resolveClassAbility(current, actorId, action.classAbilityId, action.targetId, action.targetIds);
@@ -2392,7 +2393,7 @@ export function resolveTurn(
       }
 
       default:
-        result = { type: 'defend', actorId, acBonusGranted: 0 } as DefendResult;
+        result = noOpDefend(actorId);
     }
   }
 
