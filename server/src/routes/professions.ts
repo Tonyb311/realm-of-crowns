@@ -18,27 +18,12 @@ import { getRace } from '@shared/data/races';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
 import { PROFESSION_UNLOCK_LEVEL } from '@shared/data/progression/xp-curve';
+import { CATEGORY_LIMITS, getMaxProfessions } from '@shared/data/profession-config';
 import { onSelectProfession } from '../services/quest-triggers';
 
 const router = Router();
 
-// ---------------------------------------------------------------------------
-// Category limits
-// ---------------------------------------------------------------------------
-
-const BASE_MAX_PROFESSIONS = 3;
-// P1 #27: Humans get a 4th profession slot at level 15
-const HUMAN_BONUS_PROFESSION_LEVEL = 15;
-const CATEGORY_LIMITS: Record<ProfessionCategory, number> = {
-  GATHERING: 2,
-  CRAFTING: 2,
-  SERVICE: 1,
-};
-
-function getMaxProfessions(race: Race, level: number): number {
-  if (race === 'HUMAN' && level >= HUMAN_BONUS_PROFESSION_LEVEL) return 4;
-  return BASE_MAX_PROFESSIONS;
-}
+// Profession constants imported from @shared/data/profession-config
 
 // ---------------------------------------------------------------------------
 // Helpers

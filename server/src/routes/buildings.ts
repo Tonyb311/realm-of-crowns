@@ -7,6 +7,13 @@ import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { BuildingType } from '@prisma/client';
 import {
+  WORKSHOP_TYPES,
+  STORAGE_TYPES,
+  STONE_BUILDINGS,
+  WOOD_BUILDINGS,
+  CONDITION_TIERS,
+} from '@shared/data/building-config';
+import {
   BUILDING_REQUIREMENTS,
   STORAGE_CAPACITY,
   getMaterialsForLevel,
@@ -58,21 +65,7 @@ const setRentPriceSchema = z.object({
   pricePerUse: z.number().int().min(0),
 });
 
-/**
- * Workshop building types (used for rental features).
- */
-const WORKSHOP_TYPES: BuildingType[] = [
-  'SMITHY', 'SMELTERY', 'TANNERY', 'TAILOR_SHOP', 'ALCHEMY_LAB',
-  'ENCHANTING_TOWER', 'KITCHEN', 'BREWERY', 'JEWELER_WORKSHOP',
-  'FLETCHER_BENCH', 'MASON_YARD', 'LUMBER_MILL', 'SCRIBE_STUDY',
-];
-
-/**
- * Building types that support storage.
- */
-const STORAGE_TYPES: BuildingType[] = [
-  'HOUSE_SMALL', 'HOUSE_MEDIUM', 'HOUSE_LARGE', 'WAREHOUSE',
-];
+// Building constants imported from @shared/data/building-config
 
 function isWorkshop(type: BuildingType): boolean {
   return WORKSHOP_TYPES.includes(type);
@@ -82,35 +75,30 @@ function hasStorage(type: BuildingType): boolean {
   return STORAGE_TYPES.includes(type);
 }
 
-// Racial construction bonuses
+// Racial construction bonuses — building categories from @shared/data/building-config
 function getRacialConstructionBonus(race: string, buildingType: string): { materialDiscount: number; dayDiscount: number } {
-  const stoneBuildings = ['SMITHY', 'SMELTERY', 'ALCHEMY_LAB', 'ENCHANTING_TOWER', 'MASON_YARD', 'BANK', 'MINE'];
-  const woodBuildings = ['HOUSE_SMALL', 'HOUSE_MEDIUM', 'HOUSE_LARGE', 'KITCHEN', 'BREWERY', 'FLETCHER_BENCH', 'LUMBER_MILL', 'STABLE', 'INN', 'FARM', 'RANCH'];
-  const workshops = ['SMITHY', 'SMELTERY', 'TANNERY', 'TAILOR_SHOP', 'ALCHEMY_LAB', 'ENCHANTING_TOWER', 'KITCHEN', 'BREWERY', 'JEWELER_WORKSHOP', 'FLETCHER_BENCH', 'MASON_YARD', 'LUMBER_MILL', 'SCRIBE_STUDY'];
-
   switch (race) {
     case 'HUMAN':
       return { materialDiscount: 0.10, dayDiscount: 0 }; // -10% materials
     case 'DWARF':
     case 'MOUNTAIN_DWARF':
-      return { materialDiscount: 0, dayDiscount: stoneBuildings.includes(buildingType) ? 0.15 : 0 }; // -15% days for stone
+      return { materialDiscount: 0, dayDiscount: STONE_BUILDINGS.includes(buildingType) ? 0.15 : 0 }; // -15% days for stone
     case 'GNOME':
-      return { materialDiscount: workshops.includes(buildingType) ? 0.10 : 0, dayDiscount: 0 }; // -10% materials for workshops
+      return { materialDiscount: WORKSHOP_TYPES.includes(buildingType as BuildingType) ? 0.10 : 0, dayDiscount: 0 }; // -10% materials for workshops
     case 'FORGEBORN':
       return { materialDiscount: 0, dayDiscount: 0.20 }; // -20% build days
     case 'FIRBOLG':
-      return { materialDiscount: woodBuildings.includes(buildingType) ? 0.25 : 0, dayDiscount: 0 }; // -25% for wood buildings
+      return { materialDiscount: WOOD_BUILDINGS.includes(buildingType) ? 0.25 : 0, dayDiscount: 0 }; // -25% for wood buildings
     default:
       return { materialDiscount: 0, dayDiscount: 0 };
   }
 }
 
-// Building condition effect tiers
+// Building condition effect tiers — thresholds from @shared/data/building-config
 function getConditionEffects(condition: number): { effectTier: string; effectivenessMultiplier: number } {
-  if (condition >= 75) return { effectTier: 'FULL', effectivenessMultiplier: 1.0 };
-  if (condition >= 50) return { effectTier: 'DEGRADED', effectivenessMultiplier: 0.90 };
-  if (condition >= 25) return { effectTier: 'POOR', effectivenessMultiplier: 0.75 };
-  if (condition > 0) return { effectTier: 'CONDEMNED', effectivenessMultiplier: 0.50 };
+  for (const tier of CONDITION_TIERS) {
+    if (condition >= tier.minCondition) return { effectTier: tier.effectTier, effectivenessMultiplier: tier.effectivenessMultiplier };
+  }
   return { effectTier: 'NON_FUNCTIONAL', effectivenessMultiplier: 0 };
 }
 

@@ -31,12 +31,12 @@ import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
 import { logPveCombat, COMBAT_LOGGING_ENABLED } from '../lib/combat-logger';
 import { processItemDrops } from '../lib/loot-items';
+import { COMBAT_TTL } from '@shared/data/combat-config';
 
 const router = Router();
 
 // ---- Combat state store (Redis with in-memory fallback) ----
 const localCombats = new Map<string, CombatState>();
-const COMBAT_TTL = 3600; // 1 hour
 
 async function getCombatState(sessionId: string): Promise<CombatState | undefined> {
   if (redis) {

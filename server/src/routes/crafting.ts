@@ -8,6 +8,14 @@ import { AuthenticatedRequest } from '../types/express';
 import { qualityRoll } from '@shared/utils/dice';
 import { getProficiencyBonus, getModifier } from '@shared/utils/bounded-accuracy';
 import { ProfessionTier, ProfessionType, BuildingType } from '@prisma/client';
+import {
+  TIER_ORDER,
+  TIER_LEVEL_REQUIRED,
+  PROFESSION_WORKSHOP_MAP,
+  QUALITY_BONUS,
+  QUALITY_MAP,
+  PROFESSION_TIER_QUALITY_BONUS,
+} from '@shared/data/crafting-config';
 import { checkLevelUp } from '../services/progression';
 import { checkAchievements } from '../services/achievements';
 import { addProfessionXP } from '../services/profession-xp';
@@ -38,71 +46,7 @@ const queueCraftSchema = z.object({
   count: z.number().int().min(1).max(10).default(1),
 });
 
-const TIER_ORDER: ProfessionTier[] = [
-  'APPRENTICE',
-  'JOURNEYMAN',
-  'CRAFTSMAN',
-  'EXPERT',
-  'MASTER',
-  'GRANDMASTER',
-];
-
-// Tier -> minimum profession level required
-const TIER_LEVEL_REQUIRED: Record<ProfessionTier, number> = {
-  APPRENTICE: 1,
-  JOURNEYMAN: 11,
-  CRAFTSMAN: 26,
-  EXPERT: 51,
-  MASTER: 76,
-  GRANDMASTER: 91,
-};
-
-// Profession type -> required workshop building type
-const PROFESSION_WORKSHOP_MAP: Partial<Record<ProfessionType, BuildingType>> = {
-  SMELTER: 'SMELTERY',
-  BLACKSMITH: 'SMITHY',
-  TANNER: 'TANNERY',
-  TAILOR: 'TAILOR_SHOP',
-  MASON: 'MASON_YARD',
-  WOODWORKER: 'LUMBER_MILL',
-  ALCHEMIST: 'ALCHEMY_LAB',
-  ENCHANTER: 'ENCHANTING_TOWER',
-  COOK: 'KITCHEN',
-  BREWER: 'BREWERY',
-  JEWELER: 'JEWELER_WORKSHOP',
-  FLETCHER: 'FLETCHER_BENCH',
-  LEATHERWORKER: 'TANNERY',
-  ARMORER: 'SMITHY',
-  SCRIBE: 'SCRIBE_STUDY',
-};
-
-// Quality bonus values for cascading quality
-const QUALITY_BONUS: Record<string, number> = {
-  FINE: 1,
-  SUPERIOR: 2,
-  MASTERWORK: 3,
-  LEGENDARY: 5,
-};
-
-// Map quality string from dice.ts to ItemRarity enum
-const QUALITY_MAP: Record<string, 'POOR' | 'COMMON' | 'FINE' | 'SUPERIOR' | 'MASTERWORK' | 'LEGENDARY'> = {
-  Poor: 'POOR',
-  Common: 'COMMON',
-  Fine: 'FINE',
-  Superior: 'SUPERIOR',
-  Masterwork: 'MASTERWORK',
-  Legendary: 'LEGENDARY',
-};
-
-// Profession tier -> quality bonus for crafting rolls
-const PROFESSION_TIER_QUALITY_BONUS: Record<ProfessionTier, number> = {
-  APPRENTICE: 0,
-  JOURNEYMAN: 1,
-  CRAFTSMAN: 2,
-  EXPERT: 3,
-  MASTER: 5,
-  GRANDMASTER: 7,
-};
+// Crafting constants imported from @shared/data/crafting-config
 
 function tierIndex(tier: ProfessionTier): number {
   return TIER_ORDER.indexOf(tier);
