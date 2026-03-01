@@ -68,39 +68,41 @@ router.post('/nominate', authGuard, characterGuard, validate(nominateSchema), as
       return res.status(400).json({ error: 'Elections in this town are not yet available' });
     }
 
-    // Check eligibility based on election type
+    // Check eligibility based on election type (mayor residency is synchronous)
     if (election.type === 'MAYOR') {
       if (character.currentTownId !== election.townId) {
         return res.status(403).json({ error: 'You must be a resident of this town to run for mayor' });
       }
-    } else if (election.type === 'RULER') {
-      // Only mayors can run for ruler
-      const isMayor = await prisma.town.findFirst({
-        where: { mayorId: character.id },
-      });
-      if (!isMayor) {
-        return res.status(403).json({ error: 'Only mayors can run for ruler' });
-      }
     }
 
-    // Check term limits: max 3 consecutive terms
-    const previousWins = await prisma.election.count({
-      where: {
-        townId: election.townId,
-        type: election.type,
-        winnerId: character.id,
-        termNumber: { gte: election.termNumber - MAX_CONSECUTIVE_TERMS },
-      },
-    });
+    // Queries 2-4 are independent — run in parallel
+    const [mayorCheck, previousWins, existingCandidate] = await Promise.all([
+      // Only matters for RULER elections
+      election.type === 'RULER'
+        ? prisma.town.findFirst({ where: { mayorId: character.id } })
+        : Promise.resolve(true), // non-RULER: skip check
+      // Term limits: max 3 consecutive terms
+      prisma.election.count({
+        where: {
+          townId: election.townId,
+          type: election.type,
+          winnerId: character.id,
+          termNumber: { gte: election.termNumber - MAX_CONSECUTIVE_TERMS },
+        },
+      }),
+      // Duplicate nomination check
+      prisma.electionCandidate.findUnique({
+        where: { electionId_characterId: { electionId, characterId: character.id } },
+      }),
+    ]);
+
+    if (election.type === 'RULER' && !mayorCheck) {
+      return res.status(403).json({ error: 'Only mayors can run for ruler' });
+    }
 
     if (previousWins >= MAX_CONSECUTIVE_TERMS) {
       return res.status(400).json({ error: `Term limit reached. Maximum ${MAX_CONSECUTIVE_TERMS} consecutive terms allowed` });
     }
-
-    // Check if already nominated
-    const existingCandidate = await prisma.electionCandidate.findUnique({
-      where: { electionId_characterId: { electionId, characterId: character.id } },
-    });
 
     if (existingCandidate) {
       return res.status(400).json({ error: 'You are already nominated for this election' });
