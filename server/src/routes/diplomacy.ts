@@ -21,6 +21,7 @@ import { getPsionSpec, assessTreatyCredibility, calculateTensionIndex } from '..
 import { emitNotification } from '../socket/events';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
+import { getRacialRelations } from '../lib/racial-relations';
 
 const router = Router();
 
@@ -112,7 +113,7 @@ async function logDiplomacyEvent(
 // =========================================================================
 router.get('/relations', async (_req: Request, res: Response) => {
   try {
-    const relations = await prisma.racialRelation.findMany();
+    const relations = await getRacialRelations();
     const allRaces = Object.values(Race);
 
     const matrix: Record<string, Record<string, { status: string; modifier: number }>> = {};

@@ -10,6 +10,7 @@ import { AuthenticatedRequest } from '../types/express';
 import { getRace, getRacesByTier } from '@shared/data/races';
 import { Race, ProfessionType } from '@prisma/client';
 import { getReleasedRaceKeys } from '../lib/content-release';
+import { getRacialRelations } from '../lib/racial-relations';
 import { calculateRacialBonuses } from '../services/racial-bonus-calculator';
 import { getAllRacialProfessionBonuses } from '../services/racial-profession-bonuses';
 import {
@@ -77,11 +78,10 @@ router.get('/', async (req: Request, res: Response) => {
 // =========================================================================
 router.get('/relations/matrix', async (req: Request, res: Response) => {
   try {
-    const relations = await prisma.racialRelation.findMany();
+    const relations = await getRacialRelations();
+    const allRaces = Object.values(Race);
 
     const matrix: Record<string, Record<string, { status: string; modifier: number }>> = {};
-
-    const allRaces = Object.values(Race);
     for (const r1 of allRaces) {
       matrix[r1] = {};
       for (const r2 of allRaces) {
