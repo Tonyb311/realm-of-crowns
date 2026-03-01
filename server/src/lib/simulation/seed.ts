@@ -383,6 +383,8 @@ export async function seedBots(config: SeedConfig): Promise<BotState[]> {
     { name: 'Nails',           totalQty: 50,  qtyPerListing: 5,  price: 6 },   // ARMORER (helm, greaves, shield)
     { name: 'Bow Stave',       totalQty: 40,  qtyPerListing: 4,  price: 15 },  // FLETCHER (shortbow L5+)
     { name: 'Wooden Handle',   totalQty: 50,  qtyPerListing: 5,  price: 8 },   // BLACKSMITH (various)
+    // v28: Animal Pelts — HUNTER gathers Wild Game Meat not Animal Pelts; TANNER+LEATHERWORKER need this
+    { name: 'Animal Pelts',    totalQty: 100, qtyPerListing: 10, price: 8 },   // TANNER (Cure Leather), LEATHERWORKER (Gloves/Boots/Waterskin)
   ];
 
   for (const seed of MARKET_SEEDS) {
