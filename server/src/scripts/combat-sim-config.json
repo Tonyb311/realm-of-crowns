@@ -1,0 +1,57 @@
+{
+  "name": "custom-duel",
+  "description": "Example custom 1v1 duel — edit this file to test your own scenarios",
+  "type": "DUEL",
+  "combatants": [
+    {
+      "id": "player-a",
+      "name": "Custom Fighter",
+      "entityType": "character",
+      "team": 0,
+      "stats": { "str": 16, "dex": 12, "con": 14, "int": 10, "wis": 10, "cha": 10 },
+      "level": 5,
+      "hp": 44,
+      "maxHp": 44,
+      "ac": 16,
+      "weapon": {
+        "id": "weapon-longsword",
+        "name": "Longsword",
+        "diceCount": 1,
+        "diceSides": 8,
+        "damageModifierStat": "str",
+        "attackModifierStat": "str",
+        "bonusDamage": 0,
+        "bonusAttack": 0,
+        "damageType": "SLASHING"
+      },
+      "race": "human",
+      "characterClass": "Warrior",
+      "stance": "BALANCED",
+      "retreatHpThreshold": 20,
+      "neverRetreat": false
+    },
+    {
+      "id": "monster-a",
+      "name": "Custom Monster",
+      "entityType": "monster",
+      "team": 1,
+      "stats": { "str": 14, "dex": 10, "con": 14, "int": 6, "wis": 10, "cha": 6 },
+      "level": 5,
+      "hp": 40,
+      "maxHp": 40,
+      "ac": 13,
+      "weapon": {
+        "id": "weapon-claws",
+        "name": "Claws",
+        "diceCount": 1,
+        "diceSides": 6,
+        "damageModifierStat": "str",
+        "attackModifierStat": "str",
+        "bonusDamage": 0,
+        "bonusAttack": 0,
+        "damageType": "SLASHING"
+      },
+      "neverRetreat": true
+    }
+  ]
+}
