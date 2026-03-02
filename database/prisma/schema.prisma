@@ -1543,6 +1543,25 @@ model CombatParticipant {
   @@map("combat_participants")
 }
 
+model SimulationRun {
+  id              String    @id @default(cuid())
+  startedAt       DateTime  @default(now()) @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  tickCount       Int       @map("tick_count")
+  ticksCompleted  Int       @default(0) @map("ticks_completed")
+  botCount        Int       @default(0) @map("bot_count")
+  config          Json      @default("{}")
+  encounterCount  Int       @default(0) @map("encounter_count")
+  status          String    @default("running") // running|completed|stopped|failed
+  notes           String?
+  archived        Boolean   @default(false)
+  encounterLogs   CombatEncounterLog[]
+
+  @@index([startedAt])
+  @@index([status])
+  @@map("simulation_runs")
+}
+
 model CombatEncounterLog {
   id               String   @id @default(uuid())
   type             String   // 'pve' | 'pvp'
@@ -1572,6 +1591,7 @@ model CombatEncounterLog {
   originTownId     String?  @map("origin_town_id")
   destinationTownId String? @map("destination_town_id")
   simulationTick   Int?     @map("simulation_tick")
+  simulationRunId  String?  @map("simulation_run_id")
   createdAt        DateTime @default(now()) @map("created_at")
 
   character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
@@ -1579,9 +1599,11 @@ model CombatEncounterLog {
   party           Party?    @relation(fields: [partyId], references: [id], onDelete: SetNull)
   originTown      Town?     @relation("EncounterOrigin", fields: [originTownId], references: [id], onDelete: SetNull)
   destinationTown Town?     @relation("EncounterDestination", fields: [destinationTownId], references: [id], onDelete: SetNull)
+  simulationRun   SimulationRun? @relation(fields: [simulationRunId], references: [id], onDelete: SetNull)
 
   @@index([characterId, startedAt])
   @@index([simulationTick])
+  @@index([simulationRunId])
   @@index([type])
   @@index([triggerSource])
   @@index([partyId])

@@ -1103,7 +1103,7 @@ function DetailPanel({ encounter: e }: { encounter: Encounter }) {
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export default function HistoryTab({ dataSource = 'live' }: { dataSource?: string }) {
+export default function HistoryTab({ dataSource = 'live', runId }: { dataSource?: string; runId?: string | null }) {
   const [typeFilter, setTypeFilter] = useState('all');
   const [outcomeFilter, setOutcomeFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -1119,18 +1119,19 @@ export default function HistoryTab({ dataSource = 'live' }: { dataSource?: strin
     return () => clearTimeout(timer);
   }, [search]);
 
-  useEffect(() => { setPage(1); }, [typeFilter, outcomeFilter, dateFrom, dateTo, sort, dataSource]);
+  useEffect(() => { setPage(1); }, [typeFilter, outcomeFilter, dateFrom, dateTo, sort, dataSource, runId]);
 
   const [sortBy, sortOrder] = sort.split(':');
   const queryParams = useMemo(() => {
     const params: Record<string, string> = { page: String(page), limit: '25', dataSource, sortBy, sortOrder };
+    if (runId) params.runId = runId;
     if (typeFilter !== 'all') params.type = typeFilter;
     if (outcomeFilter !== 'all') params.outcome = outcomeFilter;
     if (debouncedSearch) params.search = debouncedSearch;
     if (dateFrom) params.startDate = new Date(dateFrom).toISOString();
     if (dateTo) params.endDate = new Date(dateTo + 'T23:59:59.999Z').toISOString();
     return params;
-  }, [page, dataSource, typeFilter, outcomeFilter, debouncedSearch, dateFrom, dateTo, sortBy, sortOrder]);
+  }, [page, dataSource, runId, typeFilter, outcomeFilter, debouncedSearch, dateFrom, dateTo, sortBy, sortOrder]);
 
   const { data: historyData, isLoading: listLoading, error: listError } = useQuery<HistoryResponse>({
     queryKey: ['admin', 'combat', 'history', queryParams],

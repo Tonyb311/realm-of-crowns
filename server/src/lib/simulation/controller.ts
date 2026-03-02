@@ -28,7 +28,7 @@ import { advanceGameDay, getGameDay, getGameDayOffset } from '../../lib/game-day
 import { processDailyTick } from '../../jobs/daily-tick';
 import { processTravelTick } from '../../lib/travel-tick';
 import { logger } from '../../lib/logger';
-import { setSimulationTick } from '../../lib/simulation-context';
+import { setSimulationTick, setSimulationRunId, getSimulationRunId } from '../../lib/simulation-context';
 import { prisma } from '../../lib/prisma';
 import { SimulationLogger, captureBotState } from './sim-logger';
 
@@ -154,6 +154,26 @@ class SimulationController {
     let failures = 0;
     const errors: string[] = [];
     let botsProcessed = 0;
+
+    // If called outside runTicks, create an ad-hoc 1-tick SimulationRun
+    const isStandaloneTick = !getSimulationRunId();
+    let standaloneRunId: string | null = null;
+    if (isStandaloneTick) {
+      try {
+        const run = await prisma.simulationRun.create({
+          data: {
+            tickCount: 1,
+            botCount: this.bots.filter(b => b.isActive).length,
+            config: { standalone: true, tickNumber: this.singleTickCount + 1 },
+            status: 'running',
+          },
+        });
+        standaloneRunId = run.id;
+        setSimulationRunId(run.id);
+      } catch (err) {
+        logger.error({ err }, 'Failed to create standalone SimulationRun');
+      }
+    }
 
     // Set simulation context so combat logs get tagged with this tick number
     setSimulationTick(this.singleTickCount + 1);
@@ -675,6 +695,27 @@ class SimulationController {
     // Clear simulation context
     setSimulationTick(null);
 
+    // Finalize standalone run
+    if (isStandaloneTick && standaloneRunId) {
+      try {
+        const encounterCount = await prisma.combatEncounterLog.count({
+          where: { simulationRunId: standaloneRunId },
+        });
+        await prisma.simulationRun.update({
+          where: { id: standaloneRunId },
+          data: {
+            completedAt: new Date(),
+            ticksCompleted: 1,
+            encounterCount,
+            status: 'completed',
+          },
+        });
+      } catch (err) {
+        logger.error({ err }, 'Failed to finalize standalone SimulationRun');
+      }
+      setSimulationRunId(null);
+    }
+
     return tickResult;
   }
 
@@ -689,17 +730,60 @@ class SimulationController {
     const results: SimTickResult[] = [];
     const progress = { current: 0, total: n };
     this.runProgress = progress;
+
+    // Create a SimulationRun record for this batch
+    let runId: string | null = null;
+    try {
+      const run = await prisma.simulationRun.create({
+        data: {
+          tickCount: n,
+          botCount: this.bots.filter(b => b.isActive).length,
+          config: JSON.parse(JSON.stringify({ ...this.config, seedConfig: this.seedConfig })),
+          status: 'running',
+        },
+      });
+      runId = run.id;
+      setSimulationRunId(run.id);
+    } catch (err) {
+      logger.error({ err }, 'Failed to create SimulationRun record');
+    }
+
+    let finalStatus = 'completed';
     try {
       for (let i = 0; i < n; i++) {
         if (this.stopRequested) {
           logger.info(`Run stopped early at tick ${i}/${n}`);
+          finalStatus = 'stopped';
           break;
         }
         progress.current = i + 1;
         const result = await this.runSingleTick();
         results.push(result);
       }
+    } catch (err) {
+      finalStatus = 'failed';
+      throw err;
     } finally {
+      // Finalize the SimulationRun record
+      if (runId) {
+        try {
+          const encounterCount = await prisma.combatEncounterLog.count({
+            where: { simulationRunId: runId },
+          });
+          await prisma.simulationRun.update({
+            where: { id: runId },
+            data: {
+              completedAt: new Date(),
+              ticksCompleted: results.length,
+              encounterCount,
+              status: finalStatus,
+            },
+          });
+        } catch (err) {
+          logger.error({ err }, 'Failed to finalize SimulationRun record');
+        }
+        setSimulationRunId(null);
+      }
       this.runProgress = null;
       this.stopRequested = false;
     }

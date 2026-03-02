@@ -31,7 +31,8 @@ import type { WeaponInfo, CombatAction, StatusEffect } from '@shared/types/comba
 const router = Router();
 
 // ---- Shared: data source filter helper ----
-function getSimFilter(dataSource: string) {
+function getSimFilter(dataSource: string, runId?: string) {
+  if (runId) return { simulationRunId: runId };
   if (dataSource === 'live') return { simulationTick: null };
   if (dataSource === 'sim') return { simulationTick: { not: null } } as const;
   return {};
@@ -155,7 +156,8 @@ router.get('/history', async (req: AuthenticatedRequest, res: Response) => {
     const skip = (page - 1) * limit;
 
     const dataSource = (req.query.dataSource as string) || 'live';
-    const simFilter = getSimFilter(dataSource);
+    const runId = req.query.runId as string | undefined;
+    const simFilter = getSimFilter(dataSource, runId);
 
     const type = req.query.type as string | undefined;
     const outcome = req.query.outcome as string | undefined;
@@ -302,7 +304,8 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
   try {
     // --- Parse data source + date range params ---
     const dataSource = (req.query.dataSource as string) || 'live';
-    const simFilter = getSimFilter(dataSource);
+    const runId = req.query.runId as string | undefined;
+    const simFilter = getSimFilter(dataSource, runId);
 
     const presetParam = (req.query.preset as string) || '30d';
     const startDateParam = req.query.startDate as string | undefined;
@@ -805,7 +808,8 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
 router.get('/stats/by-race', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const dataSource = (req.query.dataSource as string) || 'live';
-    const simFilter = getSimFilter(dataSource);
+    const runId = req.query.runId as string | undefined;
+    const simFilter = getSimFilter(dataSource, runId);
 
     const encounters = await prisma.combatEncounterLog.findMany({
       where: { ...simFilter },
@@ -895,7 +899,8 @@ router.get('/stats/by-race', async (req: AuthenticatedRequest, res: Response) =>
 router.get('/stats/by-class', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const dataSource = (req.query.dataSource as string) || 'live';
-    const simFilter = getSimFilter(dataSource);
+    const runId = req.query.runId as string | undefined;
+    const simFilter = getSimFilter(dataSource, runId);
 
     const encounters = await prisma.combatEncounterLog.findMany({
       where: { ...simFilter },
@@ -985,7 +990,8 @@ router.get('/stats/by-class', async (req: AuthenticatedRequest, res: Response) =
 router.get('/stats/by-monster', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const dataSource = (req.query.dataSource as string) || 'live';
-    const simFilter = getSimFilter(dataSource);
+    const runId = req.query.runId as string | undefined;
+    const simFilter = getSimFilter(dataSource, runId);
 
     const encounters = await prisma.combatEncounterLog.findMany({
       where: { type: 'pve', ...simFilter },

@@ -9,6 +9,7 @@
  */
 
 let _currentSimulationTick: number | null = null;
+let _currentSimulationRunId: string | null = null;
 
 export function setSimulationTick(tick: number | null): void {
   _currentSimulationTick = tick;
@@ -16,4 +17,12 @@ export function setSimulationTick(tick: number | null): void {
 
 export function getSimulationTick(): number | null {
   return _currentSimulationTick;
+}
+
+export function setSimulationRunId(id: string | null): void {
+  _currentSimulationRunId = id;
+}
+
+export function getSimulationRunId(): string | null {
+  return _currentSimulationRunId;
 }

@@ -1,5 +1,6 @@
 import { useState, lazy, Suspense } from 'react';
 import CombatSubNav, { type CombatTab } from '../../components/admin/combat/CombatSubNav';
+import RunSelector from '../../components/admin/combat/RunSelector';
 
 const OverviewTab = lazy(() => import('../../components/admin/combat/OverviewTab'));
 const CodexTab = lazy(() => import('../../components/admin/combat/CodexTab'));
@@ -18,7 +19,22 @@ export default function AdminCombatPage() {
   const [activeTab, setActiveTab] = useState<CombatTab>('overview');
   const [dataSource, setDataSource] = useState<DataSource>('live');
 
+  // Run selection state (only relevant when dataSource === 'sim')
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [compareRunId, setCompareRunId] = useState<string | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
+
   const activeOption = DATA_SOURCE_OPTIONS.find((o) => o.value === dataSource)!;
+
+  function handleDataSourceChange(value: DataSource) {
+    setDataSource(value);
+    // Clear run selection when switching away from sim
+    if (value !== 'sim') {
+      setSelectedRunId(null);
+      setCompareRunId(null);
+      setCompareMode(false);
+    }
+  }
 
   return (
     <div>
@@ -29,7 +45,7 @@ export default function AdminCombatPage() {
             {DATA_SOURCE_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
-                onClick={() => setDataSource(opt.value)}
+                onClick={() => handleDataSourceChange(opt.value)}
                 className={`px-3 py-1.5 text-xs font-display transition-colors ${
                   dataSource === opt.value
                     ? 'bg-realm-gold-500 text-realm-bg-900'
@@ -44,6 +60,20 @@ export default function AdminCombatPage() {
         </div>
       </div>
 
+      {/* Run selector — only visible in simulation mode */}
+      {dataSource === 'sim' && (
+        <div className="mb-4">
+          <RunSelector
+            selectedRunId={selectedRunId}
+            compareRunId={compareRunId}
+            compareMode={compareMode}
+            onSelectRun={setSelectedRunId}
+            onSelectCompareRun={setCompareRunId}
+            onToggleCompare={setCompareMode}
+          />
+        </div>
+      )}
+
       <CombatSubNav activeTab={activeTab} onTabChange={setActiveTab} />
 
       <Suspense fallback={
@@ -53,9 +83,17 @@ export default function AdminCombatPage() {
           ))}
         </div>
       }>
-        {activeTab === 'overview' && <OverviewTab dataSource={dataSource} />}
+        {activeTab === 'overview' && (
+          <OverviewTab
+            dataSource={dataSource}
+            runId={selectedRunId}
+            compareRunId={compareMode ? compareRunId : null}
+          />
+        )}
         {activeTab === 'codex' && <CodexTab />}
-        {activeTab === 'history' && <HistoryTab dataSource={dataSource} />}
+        {activeTab === 'history' && (
+          <HistoryTab dataSource={dataSource} runId={selectedRunId} />
+        )}
         {activeTab === 'simulator' && <SimulatorTab />}
       </Suspense>
     </div>

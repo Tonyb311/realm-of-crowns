@@ -230,7 +230,7 @@ function formatDelta(
 
 // ---- Component ----
 
-export default function OverviewTab({ dataSource = 'live' }: { dataSource?: string }) {
+export default function OverviewTab({ dataSource = 'live', runId, compareRunId }: { dataSource?: string; runId?: string | null; compareRunId?: string | null }) {
   const [preset, setPreset] = useState<string>('30d');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
@@ -238,10 +238,11 @@ export default function OverviewTab({ dataSource = 'live' }: { dataSource?: stri
   const isCustom = !!(customStart && customEnd);
 
   const { data, isLoading, isFetching, error } = useQuery<CombatStats>({
-    queryKey: ['admin', 'combat', 'stats', { dataSource, ...(isCustom ? { startDate: customStart, endDate: customEnd } : { preset }) }],
+    queryKey: ['admin', 'combat', 'stats', { dataSource, runId, ...(isCustom ? { startDate: customStart, endDate: customEnd } : { preset }) }],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.set('dataSource', dataSource);
+      if (runId) params.set('runId', runId);
       if (isCustom) {
         params.set('startDate', new Date(customStart).toISOString());
         params.set('endDate', new Date(customEnd + 'T23:59:59.999Z').toISOString());
@@ -250,6 +251,24 @@ export default function OverviewTab({ dataSource = 'live' }: { dataSource?: stri
       }
       return (await api.get(`/admin/combat/stats?${params}`)).data;
     },
+  });
+
+  // Compare run data (only fetched when compareRunId is set)
+  const { data: compareData } = useQuery<CombatStats>({
+    queryKey: ['admin', 'combat', 'stats', { dataSource, runId: compareRunId, ...(isCustom ? { startDate: customStart, endDate: customEnd } : { preset }) }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.set('dataSource', dataSource);
+      if (compareRunId) params.set('runId', compareRunId);
+      if (isCustom) {
+        params.set('startDate', new Date(customStart).toISOString());
+        params.set('endDate', new Date(customEnd + 'T23:59:59.999Z').toISOString());
+      } else {
+        params.set('preset', preset);
+      }
+      return (await api.get(`/admin/combat/stats?${params}`)).data;
+    },
+    enabled: !!compareRunId,
   });
 
   function selectPreset(key: string) {
@@ -321,6 +340,16 @@ export default function OverviewTab({ dataSource = 'live' }: { dataSource?: stri
 
   const hasDeltas = data.deltas !== null;
 
+  // Compute cross-run comparison deltas when in compare mode
+  const crossRunDeltas = compareData ? {
+    totalEncounters: data.totalEncounters - compareData.totalEncounters,
+    pveSurvivalRate: +(data.pveSurvivalRate - compareData.pveSurvivalRate).toFixed(1),
+    fleeAttemptRate: +(data.fleeAttemptRate - compareData.fleeAttemptRate).toFixed(1),
+    avgRounds: +(data.avgRounds - compareData.avgRounds).toFixed(1),
+    goldPerDay: data.goldPerDay - compareData.goldPerDay,
+    itemsDroppedPerDay: +(data.itemsDroppedPerDay - compareData.itemsDroppedPerDay).toFixed(1),
+  } : null;
+
   const kpiCards: Array<{
     label: string;
     value: string;
@@ -383,6 +412,13 @@ export default function OverviewTab({ dataSource = 'live' }: { dataSource?: stri
           const deltaInfo = card.deltaKey
             ? formatDelta(delta, hasDeltas, card.deltaDir ?? 'neutral', card.isPercent)
             : null;
+          // Cross-run comparison delta (from compare mode)
+          const crossDelta = card.deltaKey && crossRunDeltas
+            ? (crossRunDeltas as Record<string, number>)[card.deltaKey]
+            : undefined;
+          const crossDeltaInfo = crossDelta !== undefined
+            ? formatDelta(crossDelta, true, card.deltaDir ?? 'neutral', card.isPercent)
+            : null;
           return (
             <div
               key={card.label}
@@ -395,11 +431,15 @@ export default function OverviewTab({ dataSource = 'live' }: { dataSource?: stri
               <div className="text-realm-text-muted text-xs font-display uppercase tracking-wider mt-1">
                 {card.label}
               </div>
-              {deltaInfo && (
+              {crossDeltaInfo ? (
+                <div className={`text-[10px] mt-1.5 ${crossDeltaInfo.color}`}>
+                  {crossDeltaInfo.text.replace('vs prev', 'vs Run B')}
+                </div>
+              ) : deltaInfo ? (
                 <div className={`text-[10px] mt-1.5 ${deltaInfo.color}`}>
                   {deltaInfo.text}
                 </div>
-              )}
+              ) : null}
             </div>
           );
         })}

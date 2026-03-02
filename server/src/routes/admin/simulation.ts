@@ -229,6 +229,8 @@ router.patch('/config', validate(configPatchSchema), async (req: AuthenticatedRe
 // ---------------------------------------------------------------------------
 router.delete('/cleanup', validate(cleanupSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
+    // Delete simulation runs (encounters FK is SET NULL, so this is safe)
+    await prisma.simulationRun.deleteMany({});
     const result = await simulationController.cleanup();
     return res.json({
       message: 'All test data cleaned up',
@@ -238,6 +240,113 @@ router.delete('/cleanup', validate(cleanupSchema), async (req: AuthenticatedRequ
     if (handlePrismaError(error, res, 'simulation-cleanup', req)) return;
     logRouteError(req, 500, '[Simulation] Cleanup error', error);
     return res.status(500).json({ error: 'Cleanup failed' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/simulation/runs — List all simulation runs
+// ---------------------------------------------------------------------------
+router.get('/runs', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const includeArchived = req.query.includeArchived === 'true';
+    const where = includeArchived ? {} : { archived: false };
+
+    const runs = await prisma.simulationRun.findMany({
+      where,
+      orderBy: { startedAt: 'desc' },
+      take: 100,
+    });
+
+    return res.json({ runs, total: runs.length });
+  } catch (error) {
+    logRouteError(req, 500, '[Simulation] List runs error', error);
+    return res.status(500).json({ error: 'Failed to list simulation runs' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/simulation/runs/:id — Get single run details
+// ---------------------------------------------------------------------------
+router.get('/runs/:id', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const run = await prisma.simulationRun.findUnique({
+      where: { id: req.params.id },
+    });
+    if (!run) return res.status(404).json({ error: 'Run not found' });
+    return res.json(run);
+  } catch (error) {
+    logRouteError(req, 500, '[Simulation] Get run error', error);
+    return res.status(500).json({ error: 'Failed to get simulation run' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// PATCH /api/admin/simulation/runs/:id — Update run notes or archived flag
+// ---------------------------------------------------------------------------
+router.patch('/runs/:id', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { notes, archived } = req.body;
+    const data: Record<string, unknown> = {};
+    if (notes !== undefined) data.notes = notes;
+    if (archived !== undefined) data.archived = Boolean(archived);
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ error: 'Nothing to update' });
+    }
+
+    const run = await prisma.simulationRun.update({
+      where: { id: req.params.id },
+      data,
+    });
+    return res.json(run);
+  } catch (error) {
+    if (handlePrismaError(error, res, 'simulation-run-update', req)) return;
+    logRouteError(req, 500, '[Simulation] Update run error', error);
+    return res.status(500).json({ error: 'Failed to update simulation run' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/simulation/runs/:id/archive — Toggle archived flag
+// ---------------------------------------------------------------------------
+router.post('/runs/:id/archive', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const existing = await prisma.simulationRun.findUnique({
+      where: { id: req.params.id },
+      select: { archived: true },
+    });
+    if (!existing) return res.status(404).json({ error: 'Run not found' });
+
+    const run = await prisma.simulationRun.update({
+      where: { id: req.params.id },
+      data: { archived: !existing.archived },
+    });
+    return res.json(run);
+  } catch (error) {
+    if (handlePrismaError(error, res, 'simulation-run-archive', req)) return;
+    logRouteError(req, 500, '[Simulation] Archive run error', error);
+    return res.status(500).json({ error: 'Failed to archive simulation run' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /api/admin/simulation/runs/:id — Hard delete run + its encounters
+// ---------------------------------------------------------------------------
+router.delete('/runs/:id', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    // Null out FK references first, then delete the run
+    await prisma.combatEncounterLog.updateMany({
+      where: { simulationRunId: req.params.id },
+      data: { simulationRunId: null },
+    });
+    await prisma.simulationRun.delete({
+      where: { id: req.params.id },
+    });
+    return res.json({ message: 'Run deleted' });
+  } catch (error) {
+    if (handlePrismaError(error, res, 'simulation-run-delete', req)) return;
+    logRouteError(req, 500, '[Simulation] Delete run error', error);
+    return res.status(500).json({ error: 'Failed to delete simulation run' });
   }
 });
 

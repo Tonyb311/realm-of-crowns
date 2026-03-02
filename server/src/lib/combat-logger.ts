@@ -13,7 +13,7 @@
 
 import { prisma } from './prisma';
 import { logger } from './logger';
-import { getSimulationTick } from './simulation-context';
+import { getSimulationTick, getSimulationRunId } from './simulation-context';
 import type {
   CombatState,
   TurnLogEntry,
@@ -462,6 +462,7 @@ export async function logPveCombat(params: {
         originTownId: params.originTownId ?? null,
         destinationTownId: params.destinationTownId ?? null,
         simulationTick: params.simulationTick ?? getSimulationTick(),
+        simulationRunId: getSimulationRunId(),
       },
     });
   } catch (err) {

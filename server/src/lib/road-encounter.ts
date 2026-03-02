@@ -39,7 +39,7 @@ import { onMonsterKill } from '../services/quest-triggers';
 import { checkLevelUp } from '../services/progression';
 import { checkAchievements } from '../services/achievements';
 import { logPveCombat, COMBAT_LOGGING_ENABLED } from './combat-logger';
-import { getSimulationTick } from './simulation-context';
+import { getSimulationTick, getSimulationRunId } from './simulation-context';
 import type { CombatRound } from './simulation/types';
 import type { AttackResult } from '@shared/types/combat';
 import { processItemDrops } from './loot-items';
@@ -1089,6 +1089,7 @@ export async function resolveGroupRoadEncounter(
             originTownId,
             destinationTownId,
             simulationTick: getSimulationTick(),
+            simulationRunId: getSimulationRunId(),
           },
         });
       } catch (logErr: unknown) {
