@@ -167,6 +167,20 @@ const UNARMED_WEAPON: WeaponInfo = {
   bonusAttack: 0,
 };
 
+/** Map class to preferred attack/damage stat for weapon overrides. */
+const CLASS_ATTACK_STAT: Record<string, 'str' | 'dex' | 'int' | 'wis' | 'cha'> = {
+  warrior: 'str', rogue: 'dex', ranger: 'dex',
+  mage: 'int', psion: 'int', cleric: 'wis', bard: 'cha',
+};
+
+/** Apply class-based attack stat override to weapon (casters use INT/WIS/CHA). */
+function applyClassWeaponStat(weapon: WeaponInfo, characterClass: string | null): WeaponInfo {
+  if (!characterClass) return weapon;
+  const stat = CLASS_ATTACK_STAT[characterClass.toLowerCase()];
+  if (!stat || stat === weapon.attackModifierStat) return weapon;
+  return { ...weapon, attackModifierStat: stat, damageModifierStat: stat };
+}
+
 /**
  * Get quality-scaled equipped weapon stats using calculateItemStats().
  * Applies quality multiplier to bonusDamage and bonusAttack.
@@ -326,6 +340,7 @@ export async function resolveRoadEncounter(
       xp: true,
       race: true,
       subRace: true,
+      class: true,
     },
   });
 
@@ -400,7 +415,8 @@ export async function resolveRoadEncounter(
   const charStats = parseStats(character.stats);
 
   // 4. Get character's equipped weapon, armor AC, and equipment stat bonuses
-  const playerWeapon = await getEquippedWeapon(characterId);
+  const rawWeapon = await getEquippedWeapon(characterId);
+  const playerWeapon = applyClassWeaponStat(rawWeapon, character.class ?? null);
   const equipTotals = await calculateEquipmentTotals(characterId);
 
   // Apply equipment stat bonuses (STR ring, DEX boots, etc.) to combat stats
@@ -729,6 +745,7 @@ export async function resolveGroupRoadEncounter(
       xp: true,
       race: true,
       subRace: true,
+      class: true,
     },
   });
 
@@ -815,7 +832,8 @@ export async function resolveGroupRoadEncounter(
   const playerWeapons: Record<string, WeaponInfo> = {};
   for (const char of characters) {
     const charStats = parseStats(char.stats);
-    const playerWeapon = await getEquippedWeapon(char.id);
+    const rawWeapon = await getEquippedWeapon(char.id);
+    const playerWeapon = applyClassWeaponStat(rawWeapon, char.class ?? null);
     const equipTotals = await calculateEquipmentTotals(char.id);
 
     // Apply equipment stat bonuses to combat stats
