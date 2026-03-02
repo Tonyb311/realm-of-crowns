@@ -78,6 +78,9 @@ interface RecipeEntry {
   ingredients?: Record<string, number> | { name: string; quantity: number }[];
   result?: unknown;
   craftTime?: number;
+  outputStats?: Record<string, unknown>;
+  outputItemType?: string;
+  consumableStats?: Record<string, unknown>;
 }
 
 interface MonsterEntry {
@@ -554,6 +557,7 @@ function ItemsSubTab({ search }: { search: string }) {
           <div className="space-y-1">
             {cat.items.map((item, i) => {
               const ingredients = formatIngredients(item.ingredients);
+              const statSummary = formatCompactStats(item);
               return (
                 <div
                   key={item.id ?? `${cat.key}-${i}`}
@@ -561,6 +565,9 @@ function ItemsSubTab({ search }: { search: string }) {
                 >
                   <div className="min-w-0">
                     <span className="text-sm text-realm-text-primary">{item.name}</span>
+                    {statSummary && (
+                      <div className="text-xs text-realm-teal-300/80 mt-0.5">{statSummary}</div>
+                    )}
                     {ingredients && (
                       <div className="text-xs text-realm-text-muted mt-0.5">{ingredients}</div>
                     )}
@@ -599,6 +606,67 @@ function formatIngredients(
       .map(([name, qty]) => `${name} x${qty}`)
       .join(', ');
   }
+  return null;
+}
+
+/** Compact one-line stat summary for admin codex items */
+function formatCompactStats(item: RecipeEntry): string | null {
+  const stats = item.outputStats as Record<string, unknown> | undefined;
+  const cStats = item.consumableStats as Record<string, unknown> | undefined;
+
+  if (cStats && typeof cStats.effect === 'string') {
+    const effect = cStats.effect as string;
+    const mag = typeof cStats.magnitude === 'number' ? cStats.magnitude : 0;
+    const dur = typeof cStats.duration === 'number' ? cStats.duration : 0;
+    const EFFECT_SHORT: Record<string, string> = {
+      heal_hp: `Heals ${mag} HP`, heal_mana: `Restores ${mag} Mana`,
+      hp_regen: `+${mag} HP regen/${dur}m`, mana_regen: `+${mag} MP regen/${dur}m`,
+      buff_strength: `+${mag} STR ${dur}m`, buff_dexterity: `+${mag} DEX ${dur}m`,
+      buff_intelligence: `+${mag} INT ${dur}m`, buff_constitution: `+${mag} CON ${dur}m`,
+      buff_wisdom: `+${mag} WIS ${dur}m`, buff_charisma: `+${mag} CHA ${dur}m`,
+      buff_all_stats: `+${mag} All Stats ${dur}m`, buff_armor: `+${mag} AC ${dur}m`,
+      cure_poison: 'Cures Poison', cure_disease: 'Cures Disease', cure_all: 'Cures All',
+      poison_immunity: `Poison Immunity ${dur}m`, apply_poison: `Poison ${mag} dmg`,
+      damage_fire: `${mag} Fire`, damage_ice: `${mag} Ice`, damage_lightning: `${mag} Lightning`,
+      sustenance: `Food ${dur}m`, stun: `Stun ${dur}m`,
+    };
+    return EFFECT_SHORT[effect] ?? `${effect}: ${mag}`;
+  }
+
+  if (!stats) return null;
+
+  const baseDmg = typeof stats.baseDamage === 'number' ? stats.baseDamage : null;
+  const dmgType = typeof stats.damageType === 'string' ? stats.damageType : null;
+  const armor = typeof stats.armor === 'number' ? stats.armor : null;
+  const magicResist = typeof stats.magicResist === 'number' ? stats.magicResist : null;
+  const speedB = typeof stats.speedBonus === 'number' ? stats.speedBonus : null;
+  const yieldB = typeof stats.yieldBonus === 'number' ? stats.yieldBonus : null;
+  const reqStr = typeof stats.requiredStr === 'number' ? stats.requiredStr : null;
+  const reqDex = typeof stats.requiredDex === 'number' ? stats.requiredDex : null;
+
+  // Weapons
+  if (baseDmg != null) {
+    const parts = [`${baseDmg} ${dmgType ?? 'dmg'}`];
+    if (reqStr != null || reqDex != null) {
+      parts.push(`STR ${reqStr ?? '-'}/DEX ${reqDex ?? '-'}`);
+    }
+    return parts.join(', ');
+  }
+  // Armor
+  if (armor != null || magicResist != null) {
+    const parts: string[] = [];
+    if (armor != null) parts.push(`AC +${armor}`);
+    if (magicResist != null) parts.push(`MR +${magicResist}`);
+    return parts.join(', ');
+  }
+  // Tools
+  if (speedB != null || yieldB != null) {
+    const parts: string[] = [];
+    if (speedB != null) parts.push(`+${Math.round(speedB * 100)}% speed`);
+    if (yieldB != null) parts.push(`+${Math.round(yieldB * 100)}% yield`);
+    return parts.join(', ');
+  }
+
   return null;
 }
 
