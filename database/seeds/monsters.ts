@@ -133,7 +133,7 @@ const MONSTERS: MonsterDef[] = [
     biome: 'BADLANDS',
     regionName: 'Ashenfang Wastes',
     stats: {
-      hp: 42, ac: 14, attack: 6, damage: '1d10+3', speed: 30,
+      hp: 46, ac: 14, attack: 6, damage: '1d10+4', speed: 30,
       str: 16, dex: 10, con: 14, int: 8, wis: 10, cha: 8,
     },
     lootTable: [
