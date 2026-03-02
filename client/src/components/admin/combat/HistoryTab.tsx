@@ -136,6 +136,242 @@ function resolveName(id: string, nameMap: Record<string, string>): string {
   return nameMap[id] || id.substring(0, 8);
 }
 
+// ── Round Data Normalizer ────────────────────────────────────────────────────
+// The DB stores RoundLogEntry[] (from combat-logger.ts), not TurnLogEntry[].
+// First element is metadata: { _encounterContext: { combatants, turnOrder } }.
+// RoundLogEntry has flat fields (attackRoll = {raw, modifiers, total}), no result wrapper.
+// This normalizer transforms DB format → TurnEntry format expected by renderers.
+
+interface EncounterContextMeta {
+  _encounterContext: {
+    combatants: Array<{ id: string; name: string; team: number; hp: number; maxHp: number; ac: number; weapon: { name: string; dice: string; damageType?: string } | null }>;
+    turnOrder: string[];
+  };
+}
+
+function isEncounterContext(entry: any): entry is EncounterContextMeta {
+  return entry && typeof entry === 'object' && '_encounterContext' in entry;
+}
+
+/**
+ * Build an extended name map from _encounterContext combatant data.
+ * This resolves ALL combatant IDs (not just character/opponent).
+ */
+function buildNameMapFromContext(encounter: Encounter, raw: any[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  // Start with basic encounter names
+  if (encounter.characterId) map[encounter.characterId] = encounter.characterName || 'Player';
+  if (encounter.opponentId) map[encounter.opponentId] = encounter.opponentName || 'Opponent';
+  // Enhance from _encounterContext if present
+  const ctx = raw.find(isEncounterContext);
+  if (ctx) {
+    for (const c of ctx._encounterContext.combatants) {
+      if (c.id && c.name) map[c.id] = c.name;
+    }
+  }
+  return map;
+}
+
+/**
+ * Normalize a RoundLogEntry (DB format) into TurnEntry (renderer format).
+ * Adapts: flat fields → nested result object, object attackRoll → number fields, etc.
+ */
+function normalizeRoundEntry(raw: any, nameMap: Record<string, string>): TurnEntry | null {
+  // Skip metadata entries
+  if (isEncounterContext(raw)) return null;
+  // Must have an action type
+  if (!raw.action && !raw.type) return null;
+
+  const action = raw.action || raw.type || 'unknown';
+  const actorId = raw.actorId || '';
+
+  // Build a result object that the renderers expect
+  const result: any = { type: action };
+
+  // Resolve targetId: find the non-actor combatant
+  let targetId = raw.targetId || '';
+  if (!targetId && raw.hpAfter && raw.actor) {
+    for (const name of Object.keys(raw.hpAfter)) {
+      if (name !== raw.actor) {
+        const id = Object.entries(nameMap).find(([, n]) => n === name)?.[0];
+        if (id) { targetId = id; break; }
+      }
+    }
+  }
+  if (!targetId) {
+    targetId = Object.keys(nameMap).find(id => id !== actorId) || '';
+  }
+
+  // Copy common fields
+  result.actorId = actorId;
+  result.targetId = targetId;
+  result.weaponName = raw.weaponName;
+  result.targetKilled = raw.targetKilled;
+  result.targetHpBefore = raw.targetHpBefore;
+  result.targetHpAfter = raw.targetHpAfter;
+  result.negatedAttack = raw.negatedAttack;
+
+  if (action === 'attack') {
+    // attackRoll can be { raw, modifiers, total } object or just a number
+    if (raw.attackRoll && typeof raw.attackRoll === 'object') {
+      result.attackRoll = raw.attackRoll.raw;
+      result.attackModifiers = raw.attackRoll.modifiers;
+      result.attackTotal = raw.attackRoll.total;
+    } else {
+      result.attackRoll = raw.attackRoll;
+      result.attackModifiers = raw.attackModifiers;
+      result.attackTotal = raw.attackTotal;
+    }
+    result.targetAC = raw.targetAC;
+    result.hit = raw.hit;
+    result.critical = raw.isCritical ?? raw.critical;
+
+    // damageRoll can be { dice, rolls, modifiers, total, type } object or number
+    if (raw.damageRoll && typeof raw.damageRoll === 'object') {
+      result.weaponDice = raw.damageRoll.dice;
+      result.damageRolls = raw.damageRoll.rolls;
+      result.damageModifiers = raw.damageRoll.modifiers;
+      result.totalDamage = raw.damageRoll.total;
+      result.damageType = raw.damageRoll.type;
+    } else {
+      result.damageRoll = raw.damageRoll;
+      result.damageRolls = raw.damageRolls;
+      result.damageModifiers = raw.damageModifiers;
+      result.totalDamage = raw.totalDamage;
+      result.damageType = raw.damageType;
+    }
+
+    // Reactive results
+    result.counterTriggered = raw.counterTriggered;
+    result.counterDamage = raw.counterDamage;
+    result.counterAbilityName = raw.counterAbilityName;
+    result.companionIntercepted = raw.companionIntercepted;
+    result.companionDamageAbsorbed = raw.companionDamageAbsorbed;
+    result.deathPrevented = raw.deathPrevented;
+    result.deathPreventedAbility = raw.deathPreventedAbility;
+  } else if (action === 'cast') {
+    result.spellName = raw.spellName;
+    result.saveRequired = raw.saveDC != null;
+    result.saveDC = raw.saveDC;
+    result.saveRoll = raw.saveRoll;
+    result.saveTotal = raw.saveTotal;
+    result.saveSucceeded = raw.saveSucceeded;
+    result.healAmount = raw.healAmount;
+    if (raw.damageRoll && typeof raw.damageRoll === 'object') {
+      result.totalDamage = raw.damageRoll.total;
+    } else {
+      result.totalDamage = raw.totalDamage;
+    }
+    if (raw.statusEffectsApplied?.length > 0) {
+      result.statusApplied = raw.statusEffectsApplied[0];
+    }
+  } else if (action === 'defend') {
+    result.acBonusGranted = raw.acBonusGranted;
+  } else if (action === 'item') {
+    result.itemName = raw.itemName;
+    result.healAmount = raw.healAmount;
+    if (raw.damageRoll && typeof raw.damageRoll === 'object') {
+      result.damageAmount = raw.damageRoll.total;
+    }
+    if (raw.statusEffectsApplied?.length > 0) {
+      result.statusApplied = raw.statusEffectsApplied[0];
+    }
+  } else if (action === 'flee') {
+    result.fleeRoll = raw.fleeRoll;
+    result.fleeDC = raw.fleeDC;
+    result.success = raw.fleeSuccess ?? raw.success;
+  } else if (action === 'racial_ability') {
+    result.abilityName = raw.abilityName;
+    result.description = raw.abilityDescription ?? raw.description;
+    if (raw.damageRoll && typeof raw.damageRoll === 'object') {
+      result.damage = raw.damageRoll.total;
+    } else {
+      result.damage = raw.damage;
+    }
+    result.healing = raw.healAmount ?? raw.healing;
+    if (raw.statusEffectsApplied?.length > 0) {
+      result.statusApplied = raw.statusEffectsApplied[0];
+    }
+  } else if (action === 'psion_ability') {
+    result.abilityName = raw.abilityName;
+    result.description = raw.abilityDescription ?? raw.description;
+    result.saveRequired = raw.saveDC != null;
+    result.saveDC = raw.saveDC;
+    result.saveRoll = raw.saveRoll;
+    result.saveTotal = raw.saveTotal;
+    result.saveSucceeded = raw.saveSucceeded;
+    if (raw.damageRoll && typeof raw.damageRoll === 'object') {
+      result.damage = raw.damageRoll.total;
+    } else {
+      result.damage = raw.damage;
+    }
+    result.controlled = raw.controlled;
+    result.banished = raw.banished;
+  } else if (action === 'class_ability') {
+    result.abilityName = raw.abilityName;
+    result.description = raw.abilityDescription ?? raw.description;
+    result.saveRequired = raw.saveDC != null;
+    result.saveDC = raw.saveDC;
+    result.saveRoll = raw.saveRoll;
+    result.saveTotal = raw.saveTotal;
+    result.saveSucceeded = raw.saveSucceeded;
+    if (raw.damageRoll && typeof raw.damageRoll === 'object') {
+      result.damage = raw.damageRoll.total;
+    } else {
+      result.damage = raw.damage;
+    }
+    result.healing = raw.healAmount ?? raw.healing;
+    result.selfHealing = raw.selfHealing;
+    result.strikeResults = raw.strikeResults;
+    result.totalStrikes = raw.totalStrikes;
+    result.strikesHit = raw.strikesHit;
+    result.perTargetResults = raw.perTargetResults;
+    result.goldStolen = raw.goldStolen;
+    result.peacefulResolution = raw.peacefulResolution;
+    result.buffApplied = raw.buffApplied;
+    result.debuffApplied = raw.debuffApplied;
+    if (raw.statusEffectsApplied?.length > 0) {
+      result.statusApplied = raw.statusEffectsApplied[0];
+    }
+  }
+
+  // Build statusTicks from flat fields
+  const statusTicks: StatusTick[] = [];
+  if (raw.statusEffectsExpired?.length > 0) {
+    for (const effectName of raw.statusEffectsExpired) {
+      statusTicks.push({ combatantId: actorId, effectName, expired: true, hpAfter: 0, killed: false });
+    }
+  }
+  if (raw.statusTickDamage && raw.statusTickDamage > 0) {
+    statusTicks.push({
+      combatantId: actorId,
+      effectName: raw.statusEffectsApplied?.[0] || 'Status Effect',
+      damage: raw.statusTickDamage,
+      expired: false,
+      hpAfter: raw.hpAfter?.[raw.actor] ?? 0,
+      killed: false,
+    });
+  }
+  if (raw.statusTickHealing && raw.statusTickHealing > 0) {
+    statusTicks.push({
+      combatantId: actorId,
+      effectName: 'Regeneration',
+      healing: raw.statusTickHealing,
+      expired: false,
+      hpAfter: raw.hpAfter?.[raw.actor] ?? 0,
+      killed: false,
+    });
+  }
+
+  return {
+    round: raw.round ?? 1,
+    actorId,
+    action,
+    result,
+    statusTicks,
+  };
+}
+
 // ── Round-by-Round Combat Log ────────────────────────────────────────────────
 
 function RollBreakdown({ label, roll, modifiers, total, comparison, compLabel, hit }: {
@@ -483,7 +719,18 @@ const ACTION_ICONS: Record<string, string> = {
 
 function TurnResultRenderer({ entry, nameMap }: { entry: TurnEntry; nameMap: Record<string, string> }) {
   const r = entry.result;
-  if (!r) return null;
+  if (!r) {
+    // Fallback: render raw entry as formatted JSON with parse error label
+    return (
+      <div className="py-1.5 pl-6 relative">
+        <span className="absolute left-0 top-2 text-sm text-yellow-400">⚠</span>
+        <div className="text-xs text-yellow-400 font-display mb-1">Parse Error — Raw Entry</div>
+        <pre className="text-[10px] text-realm-text-muted bg-realm-bg-900/50 rounded p-2 overflow-x-auto max-h-32">
+          {JSON.stringify(entry, null, 2)}
+        </pre>
+      </div>
+    );
+  }
   const type = r.type || entry.action;
 
   return (
@@ -517,25 +764,48 @@ function TurnResultRenderer({ entry, nameMap }: { entry: TurnEntry; nameMap: Rec
 }
 
 function CombatRoundLog({ encounter }: { encounter: Encounter }) {
-  const nameMap = useMemo(() => buildNameMap(encounter), [encounter.characterId, encounter.opponentId, encounter.characterName, encounter.opponentName]);
-
-  const parsedRounds = useMemo(() => {
+  const rawEntries = useMemo(() => {
     try {
       const raw = Array.isArray(encounter.rounds) ? encounter.rounds : JSON.parse(encounter.rounds as string);
       if (!Array.isArray(raw) || raw.length === 0) return null;
-
-      // Group by round number
-      const grouped = new Map<number, TurnEntry[]>();
-      for (const entry of raw as TurnEntry[]) {
-        const rnd = entry.round ?? 1;
-        if (!grouped.has(rnd)) grouped.set(rnd, []);
-        grouped.get(rnd)!.push(entry);
-      }
-      return [...grouped.entries()].sort((a, b) => a[0] - b[0]);
+      return raw;
     } catch {
       return null;
     }
   }, [encounter.rounds]);
+
+  const nameMap = useMemo(
+    () => rawEntries ? buildNameMapFromContext(encounter, rawEntries) : buildNameMap(encounter),
+    [encounter.characterId, encounter.opponentId, encounter.characterName, encounter.opponentName, rawEntries],
+  );
+
+  const parsedRounds = useMemo(() => {
+    if (!rawEntries) return null;
+
+    // Detect format: if first non-context entry has a nested `result` object, it's already TurnEntry format.
+    // Otherwise it's RoundLogEntry from combat-logger and needs normalization.
+    const firstReal = rawEntries.find((e: any) => !isEncounterContext(e));
+    const needsNormalize = firstReal && !firstReal.result;
+
+    // Group by round number
+    const grouped = new Map<number, TurnEntry[]>();
+    for (const rawEntry of rawEntries) {
+      let entry: TurnEntry | null;
+      if (needsNormalize) {
+        entry = normalizeRoundEntry(rawEntry, nameMap);
+      } else if (isEncounterContext(rawEntry)) {
+        continue; // skip metadata
+      } else {
+        entry = rawEntry as TurnEntry;
+      }
+      if (!entry) continue;
+      const rnd = entry.round ?? 1;
+      if (!grouped.has(rnd)) grouped.set(rnd, []);
+      grouped.get(rnd)!.push(entry);
+    }
+    if (grouped.size === 0) return null;
+    return [...grouped.entries()].sort((a, b) => a[0] - b[0]);
+  }, [rawEntries, nameMap]);
 
   const [collapsedRounds, setCollapsedRounds] = useState<Set<number>>(new Set());
 
@@ -682,15 +952,12 @@ function Pagination({
 }
 
 function DetailPanel({ encounter: e }: { encounter: Encounter }) {
-  const nameMap = useMemo(() => buildNameMap(e), [e.characterId, e.opponentId, e.characterName, e.opponentName]);
-
-  // Build HP timeline from actual round data
+  // Build HP timeline from actual round data (handles both RoundLogEntry and TurnEntry formats)
   const hpTimeline = useMemo(() => {
     try {
       const raw = Array.isArray(e.rounds) ? e.rounds : JSON.parse(e.rounds as string);
       if (!Array.isArray(raw) || raw.length === 0) return null;
 
-      // Track HP by combatant across rounds
       let playerHp = e.characterStartHp;
       let enemyHp = e.opponentStartHp;
       const points: { round: number; playerHp: number; enemyHp: number }[] = [
@@ -698,24 +965,38 @@ function DetailPanel({ encounter: e }: { encounter: Encounter }) {
       ];
 
       let lastRound = 0;
-      for (const entry of raw as TurnEntry[]) {
-        const r = entry.result;
-        if (!r) continue;
-        // Track HP changes from any result type
-        if (r.targetHpAfter != null && r.targetId) {
-          if (r.targetId === e.characterId) playerHp = r.targetHpAfter;
-          else if (r.targetId === e.opponentId) enemyHp = r.targetHpAfter;
+      for (const entry of raw) {
+        // Skip _encounterContext metadata
+        if (entry && typeof entry === 'object' && '_encounterContext' in entry) continue;
+        if (!entry || typeof entry !== 'object') continue;
+
+        // RoundLogEntry format: hpAfter is a Record<name, hp>
+        if (entry.hpAfter && typeof entry.hpAfter === 'object' && !Array.isArray(entry.hpAfter)) {
+          const hpMap = entry.hpAfter as Record<string, number>;
+          // Match by name
+          if (e.characterName && hpMap[e.characterName] != null) playerHp = hpMap[e.characterName];
+          if (e.opponentName && hpMap[e.opponentName] != null) enemyHp = hpMap[e.opponentName];
         }
-        // Status tick HP
-        if (entry.statusTicks) {
-          for (const tick of entry.statusTicks) {
-            if (tick.combatantId === e.characterId) playerHp = tick.hpAfter;
-            else if (tick.combatantId === e.opponentId) enemyHp = tick.hpAfter;
+        // TurnEntry format: result.targetHpAfter + targetId
+        else if (entry.result) {
+          const r = entry.result;
+          if (r.targetHpAfter != null && r.targetId) {
+            if (r.targetId === e.characterId) playerHp = r.targetHpAfter;
+            else if (r.targetId === e.opponentId) enemyHp = r.targetHpAfter;
+          }
+          // Status tick HP
+          if (entry.statusTicks) {
+            for (const tick of entry.statusTicks) {
+              if (tick.combatantId === e.characterId) playerHp = tick.hpAfter;
+              else if (tick.combatantId === e.opponentId) enemyHp = tick.hpAfter;
+            }
           }
         }
-        if (entry.round !== lastRound) {
-          points.push({ round: entry.round, playerHp: Math.max(0, playerHp), enemyHp: Math.max(0, enemyHp) });
-          lastRound = entry.round;
+
+        const rnd = entry.round ?? 1;
+        if (rnd !== lastRound) {
+          points.push({ round: rnd, playerHp: Math.max(0, playerHp), enemyHp: Math.max(0, enemyHp) });
+          lastRound = rnd;
         }
       }
       // Final state
@@ -726,7 +1007,7 @@ function DetailPanel({ encounter: e }: { encounter: Encounter }) {
     } catch {
       return null;
     }
-  }, [e.rounds, e.characterId, e.opponentId, e.characterStartHp, e.opponentStartHp]);
+  }, [e.rounds, e.characterId, e.opponentId, e.characterName, e.opponentName, e.characterStartHp, e.opponentStartHp]);
 
   return (
     <div className="p-5 space-y-5">
