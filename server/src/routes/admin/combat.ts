@@ -331,6 +331,8 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
           startedAt: true,
           opponentName: true,
           characterId: true,
+          partyId: true,
+          sessionId: true,
           character: { select: { level: true, race: true, class: true } },
         },
       }),
@@ -630,6 +632,78 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     const newPlayerEncounters = newPlayerPve.length;
     const newPlayerSurvivalRate = newPlayerEncounters > 0 ? +(newPlayerWins / newPlayerEncounters * 100).toFixed(1) : 0;
 
+    // --- Solo vs Group analysis (PvE only) ---
+    const soloEncounters = pveEncounters.filter((e) => !e.partyId);
+    const groupEncounters = pveEncounters.filter((e) => !!e.partyId);
+
+    const computeGroupMetrics = (encs: typeof pveEncounters) => {
+      const wins = encs.filter((e) => e.outcome === 'win');
+      const flees = encs.filter((e) => e.outcome === 'flee');
+      let hpSum = 0;
+      let hpCount = 0;
+      for (const e of wins) {
+        if (e.characterStartHp > 0) {
+          hpSum += (e.characterEndHp / e.characterStartHp) * 100;
+          hpCount++;
+        }
+      }
+      return {
+        survivalRate: encs.length > 0 ? +(wins.length / encs.length * 100).toFixed(1) : 0,
+        avgRounds: encs.length > 0 ? +(encs.reduce((s, e) => s + e.totalRounds, 0) / encs.length).toFixed(1) : 0,
+        avgHpRemainingPct: hpCount > 0 ? +(hpSum / hpCount).toFixed(1) : 0,
+        avgGoldPerEncounter: encs.length > 0 ? +(encs.reduce((s, e) => s + e.goldAwarded, 0) / encs.length).toFixed(1) : 0,
+        avgXpPerEncounter: encs.length > 0 ? +(encs.reduce((s, e) => s + e.xpAwarded, 0) / encs.length).toFixed(1) : 0,
+        fleeRate: encs.length > 0 ? +(flees.length / encs.length * 100).toFixed(1) : 0,
+      };
+    };
+
+    const soloMetrics = computeGroupMetrics(soloEncounters);
+    const groupMetrics = computeGroupMetrics(groupEncounters);
+    const survivalGap = +(groupMetrics.survivalRate - soloMetrics.survivalRate).toFixed(1);
+
+    // Group balance alert
+    if (soloEncounters.length >= 10 && groupEncounters.length >= 10) {
+      if (survivalGap > 50) {
+        alerts.push({ category: 'level_band', entity: 'Solo vs Group', metric: 'survival gap', value: survivalGap, expected: '<30pp', severity: 'critical', message: `Group survival rate (${groupMetrics.survivalRate}%) exceeds solo (${soloMetrics.survivalRate}%) by ${survivalGap}pp — grouping may trivialize combat` });
+      } else if (survivalGap > 30) {
+        alerts.push({ category: 'level_band', entity: 'Solo vs Group', metric: 'survival gap', value: survivalGap, expected: '<30pp', severity: 'warning', message: `Group survival rate (${groupMetrics.survivalRate}%) exceeds solo (${soloMetrics.survivalRate}%) by ${survivalGap}pp — grouping may trivialize combat` });
+      }
+    }
+
+    // Group size distribution: group by partyId+sessionId, count distinct characterIds
+    const partyGroups = new Map<string, Set<string>>();
+    const partyOutcomes = new Map<string, string>();
+    for (const e of groupEncounters) {
+      const key = `${e.partyId}|${e.sessionId ?? e.startedAt.toISOString()}`;
+      if (!partyGroups.has(key)) partyGroups.set(key, new Set());
+      partyGroups.get(key)!.add(e.characterId);
+      if (!partyOutcomes.has(key)) partyOutcomes.set(key, e.outcome);
+    }
+    const sizeMap: Record<number, { encounters: number; wins: number }> = {};
+    for (const [key, members] of partyGroups) {
+      const size = Math.min(members.size, 5);
+      if (!sizeMap[size]) sizeMap[size] = { encounters: 0, wins: 0 };
+      sizeMap[size].encounters++;
+      if (partyOutcomes.get(key) === 'win') sizeMap[size].wins++;
+    }
+    const sizeDistribution = Object.entries(sizeMap)
+      .map(([size, d]) => ({
+        size: parseInt(size),
+        encounters: d.encounters,
+        survivalRate: d.encounters > 0 ? +(d.wins / d.encounters * 100).toFixed(1) : 0,
+      }))
+      .sort((a, b) => a.size - b.size);
+
+    const groupAnalysis = {
+      soloEncounters: soloEncounters.length,
+      groupEncounters: groupEncounters.length,
+      groupRate: pveEncounters.length > 0 ? +(groupEncounters.length / pveEncounters.length * 100).toFixed(1) : 0,
+      solo: soloMetrics,
+      group: groupMetrics,
+      survivalGap,
+      sizeDistribution,
+    };
+
     // --- Comparison deltas ---
     let deltas: { totalEncounters: number; pveSurvivalRate: number; fleeAttemptRate: number; avgRounds: number; goldPerDay: number; itemsDroppedPerDay: number } | null = null;
     if (compEncounters.length > 0 && !isAllTime) {
@@ -682,6 +756,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       topMonsters,
       topRaces,
       topClasses,
+      groupAnalysis,
       dateRange: {
         start: startDate.toISOString(),
         end: endDate.toISOString(),

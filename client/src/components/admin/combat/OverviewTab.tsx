@@ -89,6 +89,29 @@ interface CombatStats {
     newPlayerSurvivalRate: number;
     newPlayerEncounters: number;
   };
+  groupAnalysis: {
+    soloEncounters: number;
+    groupEncounters: number;
+    groupRate: number;
+    solo: {
+      survivalRate: number;
+      avgRounds: number;
+      avgHpRemainingPct: number;
+      avgGoldPerEncounter: number;
+      avgXpPerEncounter: number;
+      fleeRate: number;
+    };
+    group: {
+      survivalRate: number;
+      avgRounds: number;
+      avgHpRemainingPct: number;
+      avgGoldPerEncounter: number;
+      avgXpPerEncounter: number;
+      fleeRate: number;
+    };
+    survivalGap: number;
+    sizeDistribution: Array<{ size: number; encounters: number; survivalRate: number }>;
+  };
 }
 
 // ---- Constants ----
@@ -166,6 +189,19 @@ function newPlayerSurvivalColor(rate: number): string {
   if (rate > 60) return 'text-realm-success';
   if (rate >= 35) return 'text-realm-warning';
   return 'text-realm-danger';
+}
+
+function survivalGapColor(gap: number): string {
+  if (gap < 15) return 'text-realm-success';
+  if (gap <= 30) return 'text-realm-warning';
+  return 'text-realm-danger';
+}
+
+function comparisonHighlight(soloVal: number, groupVal: number, isPercentage: boolean): string {
+  const diff = Math.abs(groupVal - soloVal);
+  const threshold = isPercentage ? 15 : soloVal * 0.5;
+  if (diff <= threshold) return '';
+  return groupVal > soloVal ? 'text-realm-warning' : 'text-realm-success';
 }
 
 type DeltaDirection = 'positive' | 'negative' | 'neutral';
@@ -369,7 +405,7 @@ export default function OverviewTab() {
       </div>
 
       {/* Player Engagement */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-3 hover:border-realm-gold-600/40 transition-colors">
           <div className="flex items-center gap-1.5 mb-1">
             <Users className="w-3.5 h-3.5 text-realm-text-muted" />
@@ -412,6 +448,16 @@ export default function OverviewTab() {
             Level 1-3 PvE ({data.engagement.newPlayerEncounters} fights)
           </div>
         </div>
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-3 hover:border-realm-gold-600/40 transition-colors">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Users className="w-3.5 h-3.5 text-realm-text-muted" />
+            <span className="text-realm-text-muted text-[10px] font-display uppercase tracking-wider">Group Rate</span>
+          </div>
+          <div className="text-lg font-display text-realm-text-primary">{data.groupAnalysis.groupRate}%</div>
+          <div className="text-realm-text-muted text-[10px]">
+            {data.groupAnalysis.groupEncounters} of {data.groupAnalysis.soloEncounters + data.groupAnalysis.groupEncounters} in groups
+          </div>
+        </div>
       </div>
 
       {/* TIER 2A: PvE Survival Rate by Level Band */}
@@ -446,6 +492,83 @@ export default function OverviewTab() {
           </ComposedChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Solo vs Group Combat */}
+      {data.groupAnalysis.groupEncounters > 0 && (
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+          <h3 className="font-display text-realm-text-primary text-sm mb-4">Solo vs Group Combat</h3>
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-4 items-stretch">
+            {/* Solo column */}
+            <div className="border-l-4 border-slate-500 bg-realm-bg-800/40 rounded-r-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Swords className="w-4 h-4 text-slate-400" />
+                <span className="font-display text-sm text-realm-text-primary">Solo</span>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-realm-text-muted">Survival Rate</span><span className="text-realm-text-primary font-display">{data.groupAnalysis.solo.survivalRate}%</span></div>
+                <div className="flex justify-between"><span className="text-realm-text-muted">Avg Rounds</span><span className="text-realm-text-primary font-display">{data.groupAnalysis.solo.avgRounds}</span></div>
+                <div className="flex justify-between"><span className="text-realm-text-muted">Avg HP Left</span><span className="text-realm-text-primary font-display">{data.groupAnalysis.solo.avgHpRemainingPct}%</span></div>
+                <div className="flex justify-between"><span className="text-realm-text-muted">Flee Rate</span><span className="text-realm-text-primary font-display">{data.groupAnalysis.solo.fleeRate}%</span></div>
+                <div className="flex justify-between"><span className="text-realm-text-muted">Gold/Fight</span><span className="text-realm-text-primary font-display">{data.groupAnalysis.solo.avgGoldPerEncounter}</span></div>
+                <div className="flex justify-between"><span className="text-realm-text-muted">XP/Fight</span><span className="text-realm-text-primary font-display">{data.groupAnalysis.solo.avgXpPerEncounter}</span></div>
+              </div>
+              <div className="text-realm-text-muted text-[10px] mt-3">({data.groupAnalysis.soloEncounters} encounters)</div>
+            </div>
+
+            {/* Gap indicator */}
+            <div className="flex flex-col items-center justify-center px-2">
+              <span className="text-realm-text-muted text-[10px] font-display uppercase tracking-wider mb-1">Gap</span>
+              <span className={`text-2xl font-display ${survivalGapColor(data.groupAnalysis.survivalGap)}`}>
+                {data.groupAnalysis.survivalGap > 0 ? '+' : ''}{data.groupAnalysis.survivalGap}pp
+              </span>
+              <span className={`text-[10px] mt-1 ${survivalGapColor(data.groupAnalysis.survivalGap)}`}>
+                {data.groupAnalysis.survivalGap > 30 ? 'imbalanced' : data.groupAnalysis.survivalGap > 15 ? 'monitor' : 'healthy'}
+              </span>
+            </div>
+
+            {/* Group column */}
+            <div className="border-l-4 border-realm-gold-600/60 bg-realm-bg-800/40 rounded-r-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="w-4 h-4 text-realm-gold-400" />
+                <span className="font-display text-sm text-realm-text-primary">Group</span>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-realm-text-muted">Survival Rate</span><span className={`font-display ${comparisonHighlight(data.groupAnalysis.solo.survivalRate, data.groupAnalysis.group.survivalRate, true) || 'text-realm-text-primary'}`}>{data.groupAnalysis.group.survivalRate}%</span></div>
+                <div className="flex justify-between"><span className="text-realm-text-muted">Avg Rounds</span><span className={`font-display ${comparisonHighlight(data.groupAnalysis.solo.avgRounds, data.groupAnalysis.group.avgRounds, false) || 'text-realm-text-primary'}`}>{data.groupAnalysis.group.avgRounds}</span></div>
+                <div className="flex justify-between"><span className="text-realm-text-muted">Avg HP Left</span><span className={`font-display ${comparisonHighlight(data.groupAnalysis.solo.avgHpRemainingPct, data.groupAnalysis.group.avgHpRemainingPct, true) || 'text-realm-text-primary'}`}>{data.groupAnalysis.group.avgHpRemainingPct}%</span></div>
+                <div className="flex justify-between"><span className="text-realm-text-muted">Flee Rate</span><span className="text-realm-text-primary font-display">{data.groupAnalysis.group.fleeRate}%</span></div>
+                <div className="flex justify-between"><span className="text-realm-text-muted">Gold/Fight</span><span className="text-realm-text-primary font-display">{data.groupAnalysis.group.avgGoldPerEncounter}</span></div>
+                <div className="flex justify-between"><span className="text-realm-text-muted">XP/Fight</span><span className="text-realm-text-primary font-display">{data.groupAnalysis.group.avgXpPerEncounter}</span></div>
+              </div>
+              <div className="text-realm-text-muted text-[10px] mt-3">({data.groupAnalysis.groupEncounters} encounters)</div>
+            </div>
+          </div>
+
+          {/* Group Size Distribution */}
+          {data.groupAnalysis.sizeDistribution.length > 0 && (
+            <div className="mt-5">
+              <h4 className="font-display text-realm-text-secondary text-xs mb-3">Encounters by Group Size</h4>
+              <ResponsiveContainer width="100%" height={120}>
+                <BarChart data={data.groupAnalysis.sizeDistribution}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
+                  <XAxis dataKey="size" stroke="#6b7280" tick={{ fontSize: 11 }} tickFormatter={(s) => `${s} players`} />
+                  <YAxis stroke="#6b7280" tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={TOOLTIP_STYLE}
+                    labelStyle={{ color: '#d4af37' }}
+                    formatter={(value: number, name: string) => {
+                      if (name === 'encounters') return [value, 'Encounters'];
+                      return [value, name];
+                    }}
+                    labelFormatter={(s) => `Group of ${s}`}
+                  />
+                  <Bar dataKey="encounters" fill="#d4af37" radius={[4, 4, 0, 0]} label={{ position: 'top', fontSize: 10, fill: '#9ca3af', formatter: (_: unknown, __: unknown, idx: number) => `${data.groupAnalysis.sizeDistribution[idx]?.survivalRate ?? 0}%` }} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* TIER 2B: Economy Trend + Loot by Rarity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
