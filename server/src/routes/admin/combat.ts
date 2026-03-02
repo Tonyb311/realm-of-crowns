@@ -205,6 +205,8 @@ router.get('/history', async (req: AuthenticatedRequest, res: Response) => {
       encounters: encounters.map((e) => ({
         id: e.id,
         type: e.type,
+        characterId: e.characterId,
+        opponentId: e.opponentId,
         characterName: e.characterName,
         opponentName: e.opponentName,
         outcome: e.outcome,
