@@ -33,6 +33,8 @@ import { logRouteError } from '../lib/error-logger';
 import { logPveCombat, COMBAT_LOGGING_ENABLED } from '../lib/combat-logger';
 import { processItemDrops } from '../lib/loot-items';
 import { COMBAT_TTL } from '@shared/data/combat-config';
+import { narrateCombatEvent, narrateStatusTick, narrateCombatOpening } from '@shared/data/combat-narrator';
+import type { NarrationContext, NarratorLogEntry } from '@shared/data/combat-narrator';
 
 const router = Router();
 
@@ -625,6 +627,95 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
 // ---- Response Formatting ----
 
 function formatCombatResponse(state: CombatState) {
+  // Build lookup maps for combatant data
+  const combatantMap = new Map(state.combatants.map(c => [c.id, c]));
+
+  // Inject combat opening as a system entry
+  const monster = state.combatants.find(c => c.entityType === 'monster');
+  const openingEntry = monster ? {
+    id: `${state.sessionId}-opening`,
+    actor: '',
+    actorType: 'system' as const,
+    action: 'opening',
+    message: narrateCombatOpening(monster.name),
+    isCritical: false,
+    timestamp: new Date().toISOString(),
+  } : null;
+
+  // Transform log entries to CombatLogEntry format with narrative messages
+  const log = state.log.flatMap((entry, idx) => {
+    const actor = combatantMap.get(entry.actorId);
+    const result = entry.result as unknown as Record<string, unknown>;
+    const targetId = (result.targetId as string) || '';
+    const target = targetId ? combatantMap.get(targetId) : undefined;
+
+    // Build narration context
+    const ctx: NarrationContext = {
+      actorName: actor?.name ?? 'Unknown',
+      actorRace: (actor as any)?.race ?? undefined,
+      actorClass: (actor as any)?.characterClass ?? undefined,
+      actorEntityType: actor?.entityType ?? 'character',
+      actorHpPercent: actor ? Math.round((actor.currentHp / actor.maxHp) * 100) : 100,
+      targetName: target?.name,
+      targetEntityType: target?.entityType,
+      targetHpPercent: target ? Math.round((target.currentHp / target.maxHp) * 100) : undefined,
+      targetKilled: result.targetKilled as boolean | undefined,
+      weaponName: (result.weaponName as string) || (actor?.weapon as any)?.name,
+    };
+
+    const narEntry: NarratorLogEntry = {
+      round: entry.round,
+      actorId: entry.actorId,
+      action: entry.action,
+      result: { type: (result.type as string) || entry.action, actorId: entry.actorId, ...result },
+      statusTicks: entry.statusTicks,
+    };
+
+    const message = narrateCombatEvent(narEntry, ctx);
+
+    // Extract mechanical data for UI display
+    const roll = (result.attackRoll as number) || (result.fleeRoll as number) || undefined;
+    const damage = (result.totalDamage as number) || (result.damage as number) || undefined;
+    const healing = (result.healAmount as number) || (result.healing as number) || (result.selfHealing as number) || undefined;
+
+    const entries: Array<Record<string, unknown>> = [{
+      id: `${state.sessionId}-${idx}`,
+      actor: actor?.name ?? 'Unknown',
+      actorType: actor?.entityType === 'monster' ? 'enemy' as const : 'player' as const,
+      action: entry.action,
+      roll,
+      damage: damage && damage > 0 ? damage : undefined,
+      healing: healing && healing > 0 ? healing : undefined,
+      message,
+      isCritical: !!(result.critical),
+      timestamp: new Date().toISOString(),
+    }];
+
+    // Expand status ticks into separate narrative entries
+    if (entry.statusTicks) {
+      for (let si = 0; si < entry.statusTicks.length; si++) {
+        const tick = entry.statusTicks[si];
+        const tickTarget = combatantMap.get(tick.combatantId);
+        const tickMsg = narrateStatusTick(tick.effectName, tick.damage, tick.healing, tick.expired, tick.killed);
+        if (tickMsg) {
+          entries.push({
+            id: `${state.sessionId}-${idx}-st${si}`,
+            actor: tickTarget?.name ?? 'Unknown',
+            actorType: tickTarget?.entityType === 'monster' ? 'enemy' as const : 'player' as const,
+            action: 'status',
+            damage: tick.damage && tick.damage > 0 ? tick.damage : undefined,
+            healing: tick.healing && tick.healing > 0 ? tick.healing : undefined,
+            message: tickMsg,
+            isCritical: false,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    return entries;
+  });
+
   return {
     sessionId: state.sessionId,
     status: state.status,
@@ -645,13 +736,7 @@ function formatCombatResponse(state: CombatState) {
       isAlive: c.isAlive,
       isDefending: c.isDefending,
     })),
-    log: state.log.map((entry) => ({
-      round: entry.round,
-      actorId: entry.actorId,
-      action: entry.action,
-      result: entry.result,
-      statusTicks: entry.statusTicks,
-    })),
+    log: openingEntry ? [openingEntry, ...log] : log,
   };
 }
 

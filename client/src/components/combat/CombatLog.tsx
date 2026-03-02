@@ -10,6 +10,7 @@ export interface CombatLogEntry {
   damage?: number;
   healing?: number;
   message: string;
+  isCritical?: boolean;
   timestamp: string;
 }
 
@@ -39,11 +40,11 @@ export default function CombatLog({ entries }: { entries: CombatLogEntry[] }) {
           <p className="text-realm-text-muted/50 text-xs text-center py-4">Combat begins...</p>
         ) : (
           entries.map((entry) => (
-            <div key={entry.id} className="text-xs leading-relaxed">
+            <div key={entry.id} className={`text-xs leading-relaxed ${entry.isCritical ? 'bg-realm-gold-400/10 border-l-2 border-realm-gold-400 pl-2 -ml-2' : ''}`}>
               <span className={`font-semibold ${LOG_COLORS[entry.actorType] ?? 'text-realm-text-muted'}`}>
                 {entry.actor}
               </span>
-              <span className="text-realm-text-secondary"> {entry.message}</span>
+              <span className={entry.isCritical ? 'text-realm-gold-400 font-medium' : 'text-realm-text-secondary'}> {entry.message}</span>
               {entry.roll && (
                 <span className={`ml-1 ${entry.roll === 20 ? 'text-realm-gold-400 font-bold' : entry.roll === 1 ? 'text-realm-danger font-bold' : 'text-realm-text-muted'}`}>
                   [d20: {entry.roll}]
