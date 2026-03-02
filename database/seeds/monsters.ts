@@ -86,7 +86,7 @@ const MONSTERS: MonsterDef[] = [
     biome: 'PLAINS',
     regionName: 'Verdant Heartlands',
     stats: {
-      hp: 20, ac: 12, attack: 4, damage: '1d8+2', speed: 30,
+      hp: 18, ac: 12, attack: 3, damage: '1d6+2', speed: 30,
       str: 12, dex: 12, con: 12, int: 10, wis: 10, cha: 10,
     },
     lootTable: [
@@ -133,7 +133,7 @@ const MONSTERS: MonsterDef[] = [
     biome: 'BADLANDS',
     regionName: 'Ashenfang Wastes',
     stats: {
-      hp: 42, ac: 14, attack: 6, damage: '1d12+4', speed: 30,
+      hp: 35, ac: 13, attack: 5, damage: '1d10+3', speed: 30,
       str: 16, dex: 10, con: 14, int: 8, wis: 10, cha: 8,
     },
     lootTable: [

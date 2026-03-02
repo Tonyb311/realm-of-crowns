@@ -296,9 +296,11 @@ export function buildSyntheticPlayer(config: SyntheticPlayerConfig): SyntheticPl
  * Build a synthetic monster from raw stat data (from DB or seed data).
  * Returns all parameters needed for createMonsterCombatant().
  */
-/** Default stance per class archetype */
+/** Default stance per class archetype.
+ *  NOTE: AGGRESSIVE stance attackBonus is NOT applied in applyStanceToState() —
+ *  only the AC penalty takes effect. Use BALANCED for accurate sim results. */
 const CLASS_DEFAULT_STANCE: Record<string, 'AGGRESSIVE' | 'BALANCED' | 'DEFENSIVE'> = {
-  warrior: 'AGGRESSIVE', rogue: 'AGGRESSIVE', ranger: 'AGGRESSIVE',
+  warrior: 'BALANCED', rogue: 'BALANCED', ranger: 'BALANCED',
   mage: 'BALANCED', psion: 'BALANCED', cleric: 'BALANCED', bard: 'BALANCED',
 };
 
