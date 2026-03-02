@@ -174,7 +174,7 @@ const CLASS_ATTACK_STAT: Record<string, 'str' | 'dex' | 'int' | 'wis' | 'cha'> =
 };
 
 /** Apply class-based attack stat override to weapon (casters use INT/WIS/CHA). */
-function applyClassWeaponStat(weapon: WeaponInfo, characterClass: string | null): WeaponInfo {
+export function applyClassWeaponStat(weapon: WeaponInfo, characterClass: string | null): WeaponInfo {
   if (!characterClass) return weapon;
   const stat = CLASS_ATTACK_STAT[characterClass.toLowerCase()];
   if (!stat || stat === weapon.attackModifierStat) return weapon;

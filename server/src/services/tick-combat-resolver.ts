@@ -45,6 +45,7 @@ import {
   type RacialCombatTracker,
 } from './racial-combat-abilities';
 import { processItemDrops } from '../lib/loot-items';
+import { applyClassWeaponStat } from '../lib/road-encounter';
 import { ALL_ABILITIES } from '@shared/data/skills';
 
 // ---- Class Ability Detection ----
@@ -385,6 +386,8 @@ export async function resolveNodePvE(
   const playerAC = 10 + getModifier(effectiveStats.dex) + getEquipmentAC(character.equipment);
 
   // Build combatants
+  const rawWeapon = getEquippedWeapon(character.equipment);
+  const playerWeapon = rawWeapon ? applyClassWeaponStat(rawWeapon, character.class) : null;
   const playerCombatant = createCharacterCombatant(
     character.id,
     character.name,
@@ -394,7 +397,7 @@ export async function resolveNodePvE(
     character.health,
     character.maxHealth,
     playerAC,
-    getEquippedWeapon(character.equipment),
+    playerWeapon,
     {},
     getProficiencyBonus(character.level),
   );
@@ -553,7 +556,7 @@ export async function resolveNodePvP(
     travelerEffective, traveler.level,
     traveler.health, traveler.maxHealth,
     10 + getModifier(travelerEffective.dex) + getEquipmentAC(traveler.equipment),
-    getEquippedWeapon(traveler.equipment),
+    (() => { const w = getEquippedWeapon(traveler.equipment); return w ? applyClassWeaponStat(w, traveler.class) : null; })(),
     {},
     getProficiencyBonus(traveler.level),
   );
@@ -564,7 +567,7 @@ export async function resolveNodePvP(
     ambusherEffective, ambusher.level,
     ambusher.health, ambusher.maxHealth,
     10 + getModifier(ambusherEffective.dex) + getEquipmentAC(ambusher.equipment),
-    getEquippedWeapon(ambusher.equipment),
+    (() => { const w = getEquippedWeapon(ambusher.equipment); return w ? applyClassWeaponStat(w, ambusher.class) : null; })(),
     {},
     getProficiencyBonus(ambusher.level),
   );
@@ -717,7 +720,7 @@ export async function resolveGroupCombat(
       char.id, char.name, 0, effective, char.level,
       char.health, char.maxHealth,
       10 + getModifier(effective.dex) + getEquipmentAC(char.equipment),
-      getEquippedWeapon(char.equipment), {},
+      (() => { const w = getEquippedWeapon(char.equipment); return w ? applyClassWeaponStat(w, char.class) : null; })(), {},
       getProficiencyBonus(char.level),
     );
     (combatant as any).race = char.race.toLowerCase();
@@ -752,7 +755,7 @@ export async function resolveGroupCombat(
       char.id, char.name, 1, effective, char.level,
       char.health, char.maxHealth,
       10 + getModifier(effective.dex) + getEquipmentAC(char.equipment),
-      getEquippedWeapon(char.equipment), {},
+      (() => { const w = getEquippedWeapon(char.equipment); return w ? applyClassWeaponStat(w, char.class) : null; })(), {},
       getProficiencyBonus(char.level),
     );
     (combatant as any).race = char.race.toLowerCase();

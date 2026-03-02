@@ -30,6 +30,10 @@ import {
   OPENING_GENERIC,
   MONSTER_ATTACK_GENERIC,
   MONSTER_MISS_GENERIC,
+  PVP_OPENING_DUEL,
+  PVP_OPENING_SPAR,
+  PVP_VICTORY,
+  PVP_DEFEAT,
 } from './templates';
 
 // ---------------------------------------------------------------------------
@@ -397,4 +401,20 @@ export function narrateMonsterWounded(monsterName: string): string | null {
     return pick(flavor.wounded);
   }
   return null;
+}
+
+/**
+ * Generate a PvP combat opening line.
+ */
+export function narratePvpOpening(opponentName: string, isSpar: boolean): string {
+  const pool = isSpar ? PVP_OPENING_SPAR : PVP_OPENING_DUEL;
+  return sub(pick(pool), { opponent: opponentName });
+}
+
+/**
+ * Generate PvP victory/defeat text.
+ */
+export function narratePvpKill(opponentName: string, isVictor: boolean): string {
+  const pool = isVictor ? PVP_VICTORY : PVP_DEFEAT;
+  return sub(pick(pool), { opponent: opponentName });
 }

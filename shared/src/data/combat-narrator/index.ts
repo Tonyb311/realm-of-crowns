@@ -3,6 +3,8 @@ export {
   narrateStatusTick,
   narrateCombatOpening,
   narrateMonsterWounded,
+  narratePvpOpening,
+  narratePvpKill,
 } from './narrator';
 
 export type { NarrationContext, NarratorLogEntry } from './narrator';

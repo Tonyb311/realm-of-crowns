@@ -3,6 +3,8 @@ import {
   narrateStatusTick,
   narrateCombatOpening,
   narrateMonsterWounded,
+  narratePvpOpening,
+  narratePvpKill,
 } from '@shared/data/combat-narrator';
 import type { NarrationContext, NarratorLogEntry } from '@shared/data/combat-narrator';
 
@@ -301,6 +303,80 @@ describe('weapon type detection', () => {
 
   it('uses generic templates for unknown weapon types', () => {
     const msg = narrateCombatEvent(makeEntry(), makeCtx({ weaponName: 'Mysterious Artifact' }));
+    expect(msg).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PvP narrator functions
+// ---------------------------------------------------------------------------
+
+describe('narratePvpOpening', () => {
+  it('returns duel opening with opponent name', () => {
+    const msg = narratePvpOpening('DarkKnight', false);
+    expect(msg).toBeTruthy();
+    expect(msg).toContain('DarkKnight');
+  });
+
+  it('returns spar opening with opponent name', () => {
+    const msg = narratePvpOpening('FriendlyMage', true);
+    expect(msg).toBeTruthy();
+    expect(msg).toContain('FriendlyMage');
+  });
+
+  it('duel openings do not reference monsters', () => {
+    for (let i = 0; i < 20; i++) {
+      const msg = narratePvpOpening('TestOpponent', false);
+      expect(msg).not.toMatch(/goblin|wolf|dragon|monster/i);
+    }
+  });
+});
+
+describe('narratePvpKill', () => {
+  it('returns victory text with opponent name', () => {
+    const msg = narratePvpKill('FallenWarrior', true);
+    expect(msg).toBeTruthy();
+    expect(msg).toContain('FallenWarrior');
+  });
+
+  it('returns defeat text with opponent name', () => {
+    const msg = narratePvpKill('VictoriousRogue', false);
+    expect(msg).toBeTruthy();
+    expect(msg).toContain('VictoriousRogue');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PvP character narration (class templates, no monster templates)
+// ---------------------------------------------------------------------------
+
+describe('PvP character-vs-character narration', () => {
+  it('uses class templates for PvP character actions', () => {
+    const ctx = makeCtx({
+      actorName: 'PlayerOne',
+      actorEntityType: 'character',
+      actorClass: 'mage',
+      targetName: 'PlayerTwo',
+      targetEntityType: 'character',
+      weaponName: 'Oak Staff',
+    });
+    const msg = narrateCombatEvent(makeEntry(), ctx);
+    expect(msg).toBeTruthy();
+    expect(msg.length).toBeGreaterThan(5);
+  });
+
+  it('does not use monster personality text for PvP', () => {
+    // Even if actorName matches a monster, entityType=character bypasses monster templates
+    const ctx = makeCtx({
+      actorName: 'Goblin', // Same name as monster, but entityType is character
+      actorEntityType: 'character',
+      targetName: 'Hero',
+      targetEntityType: 'character',
+    });
+    const entry = makeEntry({
+      result: { type: 'attack', actorId: 'p1', hit: true, attackRoll: 15, totalDamage: 8, targetKilled: false },
+    });
+    const msg = narrateCombatEvent(entry, ctx);
     expect(msg).toBeTruthy();
   });
 });

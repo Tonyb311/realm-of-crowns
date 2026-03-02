@@ -1084,3 +1084,35 @@ export const MONSTER_MISS_GENERIC: string[] = [
   'swings at you but the attack falls short.',
   'strikes at you but misses.',
 ];
+
+// ---------------------------------------------------------------------------
+// PvP Opening Lines
+// ---------------------------------------------------------------------------
+
+export const PVP_OPENING_DUEL: string[] = [
+  'You face {opponent} across the arena floor. The crowd falls silent.',
+  'Steel rings as {opponent} draws their weapon. The duel begins.',
+  '{opponent} meets your gaze with cold determination. No quarter asked.',
+  'The arena master signals — the duel with {opponent} has begun!',
+];
+
+export const PVP_OPENING_SPAR: string[] = [
+  'You and {opponent} square off for a friendly bout.',
+  '{opponent} grins and raises their guard. Time for practice.',
+  'A training spar with {opponent}. No stakes, just skill.',
+];
+
+// ---------------------------------------------------------------------------
+// PvP Victory / Defeat Lines
+// ---------------------------------------------------------------------------
+
+export const PVP_VICTORY: string[] = [
+  'You stand victorious as {opponent} yields.',
+  '{opponent} crumples — the duel is yours.',
+  'The arena roars as you claim victory over {opponent}.',
+];
+
+export const PVP_DEFEAT: string[] = [
+  'Your strength gives out. {opponent} wins the duel.',
+  'The world spins as {opponent} lands the final blow.',
+];

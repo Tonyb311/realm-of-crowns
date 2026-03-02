@@ -149,7 +149,19 @@ new_effect: ['shakes off the new effect.'],
 
 ## Integration Points
 
-- **PvE combat**: Full narrator integration via `formatCombatResponse()` in `combat-pve.ts`
-- **PvP combat**: Not integrated (sends raw log) — future enhancement
+- **PvE combat**: Full narrator integration via `formatCombatLog()` in `combat-narrator-formatter.ts`, called by `formatCombatResponse()` in `combat-pve.ts`
+- **PvP combat**: Full narrator integration via `formatCombatLog()` with `isPvp: true`, wired into GET `/state`, GET `/spar-state`, with perspective-aware `actorType` (player vs enemy based on requesting character)
+- **Shared formatter**: `server/src/lib/combat-narrator-formatter.ts` — single module used by both PvE and PvP routes
 - **Simulation**: Not integrated (sim uses combat engine directly)
 - **CombatLog.tsx**: Renders narrative messages with critical hit styling (gold highlight + left border)
+
+## PvP-Specific Features
+
+| Feature | Details |
+|---------|---------|
+| Opening lines (duel) | 4 variants with `{opponent}` substitution |
+| Opening lines (spar) | 3 friendlier variants |
+| Victory lines | 3 variants |
+| Defeat lines | 2 variants |
+| Perspective | `requestingCharacterId` determines who is 'player' vs 'enemy' |
+| Class templates | Both combatants get class-specific narration (no monster templates in PvP) |

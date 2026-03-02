@@ -27,6 +27,8 @@ import { isSameAccount } from '../lib/alt-guard';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
 import { logPvpCombat, COMBAT_LOGGING_ENABLED } from '../lib/combat-logger';
+import { formatCombatLog } from '../lib/combat-narrator-formatter';
+import { applyClassWeaponStat } from '../lib/road-encounter';
 
 const router = Router();
 
@@ -376,9 +378,10 @@ router.post(
           {}, // spellSlots
           getProficiencyBonus(p.character.level),
         );
-        // Set race for racial ability resolution
+        // Set race and class for racial ability resolution and narrator
         (combatant as any).race = p.character.race.toLowerCase();
         (combatant as any).subRace = p.character.subRace ?? null;
+        (combatant as any).characterClass = p.character.class?.toLowerCase() ?? null;
         return combatant;
       });
 
@@ -532,7 +535,8 @@ router.post(
       };
 
       // P0 #3 FIX: Look up weapon from DB instead of trusting client
-      const equippedWeapon = await getEquippedWeapon(character.id);
+      const rawWeapon = await getEquippedWeapon(character.id);
+      const equippedWeapon = applyClassWeaponStat(rawWeapon, character.class);
 
       // Resolve the turn
       combatState = resolveTurn(combatState, combatAction, {
@@ -698,7 +702,10 @@ router.get(
               remainingRounds: e.remainingRounds,
             })),
           })),
-          log: combatState.log,
+          log: formatCombatLog(combatState, {
+            isPvp: true,
+            requestingCharacterId: character.id,
+          }),
         },
       });
     } catch (error) {
@@ -1185,9 +1192,10 @@ router.post(
           {},
           getProficiencyBonus(p.character.level),
         );
-        // Set race for racial ability resolution
+        // Set race and class for racial ability resolution and narrator
         (combatant as any).race = p.character.race.toLowerCase();
         (combatant as any).subRace = p.character.subRace ?? null;
+        (combatant as any).characterClass = p.character.class?.toLowerCase() ?? null;
         return combatant;
       });
 
@@ -1358,7 +1366,8 @@ router.post(
       };
 
       // P0 #3 FIX: Look up weapon from DB instead of trusting client
-      const equippedWeapon = await getEquippedWeapon(character.id);
+      const rawWeapon = await getEquippedWeapon(character.id);
+      const equippedWeapon = applyClassWeaponStat(rawWeapon, character.class);
 
       // Resolve the turn
       combatState = resolveTurn(combatState, combatAction, {
@@ -1524,7 +1533,11 @@ router.get(
               remainingRounds: e.remainingRounds,
             })),
           })),
-          log: combatState.log,
+          log: formatCombatLog(combatState, {
+            isPvp: true,
+            requestingCharacterId: character.id,
+            isSpar: true,
+          }),
         },
       });
     } catch (error) {
