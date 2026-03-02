@@ -315,6 +315,10 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     const pveWins = pveEncounters.filter((e) => e.outcome === 'win').length;
     const pveSurvivalRate = pveEncounters.length > 0 ? +(pveWins / pveEncounters.length * 100).toFixed(1) : 0;
 
+    // --- Flee attempt rate (all encounters) ---
+    const fleeCount = allEncounters.filter((e) => e.outcome === 'flee').length;
+    const fleeAttemptRate = totalEncounters > 0 ? +(fleeCount / totalEncounters * 100).toFixed(1) : 0;
+
     // --- Avg rounds ---
     const avgRounds = totalEncounters > 0
       ? +(allEncounters.reduce((s, e) => s + e.totalRounds, 0) / totalEncounters).toFixed(1)
@@ -346,9 +350,9 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     const activeLevelRange = Object.entries(bandCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '1-5';
 
     // --- Survival by level band (PvE only) ---
-    const bandStats: Record<string, { encounters: number; wins: number; totalRounds: number; hpSum: number; hpCount: number }> = {};
+    const bandStats: Record<string, { encounters: number; wins: number; flees: number; totalRounds: number; hpSum: number; hpCount: number }> = {};
     for (const band of ['1-5', '6-10', '11-15', '16-20']) {
-      bandStats[band] = { encounters: 0, wins: 0, totalRounds: 0, hpSum: 0, hpCount: 0 };
+      bandStats[band] = { encounters: 0, wins: 0, flees: 0, totalRounds: 0, hpSum: 0, hpCount: 0 };
     }
     for (const e of pveEncounters) {
       const lvl = e.character?.level;
@@ -357,6 +361,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       const b = bandStats[band];
       b.encounters++;
       b.totalRounds += e.totalRounds;
+      if (e.outcome === 'flee') b.flees++;
       if (e.outcome === 'win') {
         b.wins++;
         if (e.characterStartHp > 0) {
@@ -371,6 +376,8 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
         band,
         encounters: b.encounters,
         wins: b.wins,
+        flees: b.flees,
+        fleeRate: b.encounters > 0 ? +(b.flees / b.encounters * 100).toFixed(1) : 0,
         survivalRate: b.encounters > 0 ? +(b.wins / b.encounters * 100).toFixed(1) : 0,
         avgRounds: b.encounters > 0 ? +(b.totalRounds / b.encounters).toFixed(1) : 0,
         avgHpRemainingPct: b.hpCount > 0 ? +(b.hpSum / b.hpCount).toFixed(1) : 0,
@@ -537,6 +544,18 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       }
     }
 
+    // Level band flee rate alerts
+    for (const band of ['1-5', '6-10', '11-15', '16-20']) {
+      const b = bandStats[band];
+      if (b.encounters < 10) continue;
+      const fr = +(b.flees / b.encounters * 100).toFixed(1);
+      if (fr > 50) {
+        alerts.push({ category: 'level_band', entity: band, metric: 'flee rate', value: fr, expected: '<30%', severity: 'critical', message: `${band} level band has ${fr}% flee rate — players are avoiding combat here` });
+      } else if (fr > 30) {
+        alerts.push({ category: 'level_band', entity: band, metric: 'flee rate', value: fr, expected: '<30%', severity: 'warning', message: `${band} level band has ${fr}% flee rate — players are avoiding combat here` });
+      }
+    }
+
     // Loot rarity alerts
     if (totalItemDrops > 0) {
       const mwCount = rarityCounts['MASTERWORK'] ?? 0;
@@ -554,6 +573,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     return res.json({
       totalEncounters,
       pveSurvivalRate,
+      fleeAttemptRate,
       avgRounds,
       goldPerDay,
       itemsDroppedPerDay,

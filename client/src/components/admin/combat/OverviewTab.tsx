@@ -7,6 +7,7 @@ import {
   Package,
   Layers,
   AlertTriangle,
+  LogOut,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -21,6 +22,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ReferenceArea,
 } from 'recharts';
 import api from '../../../services/api';
@@ -30,6 +32,7 @@ import api from '../../../services/api';
 interface CombatStats {
   totalEncounters: number;
   pveSurvivalRate: number;
+  fleeAttemptRate: number;
   avgRounds: number;
   goldPerDay: number;
   itemsDroppedPerDay: number;
@@ -38,6 +41,8 @@ interface CombatStats {
     band: string;
     encounters: number;
     wins: number;
+    flees: number;
+    fleeRate: number;
     survivalRate: number;
     avgRounds: number;
     avgHpRemainingPct: number;
@@ -63,7 +68,7 @@ interface CombatStats {
 
 const LOOT_RARITY_COLORS: Record<string, string> = {
   POOR: '#9ca3af',
-  COMMON: '#e5e7eb',
+  COMMON: '#d1d5db',
   FINE: '#22c55e',
   SUPERIOR: '#3b82f6',
   MASTERWORK: '#a855f7',
@@ -93,6 +98,12 @@ function survivalColor(rate: number): string {
   return 'text-realm-danger';
 }
 
+function fleeColor(rate: number): string {
+  if (rate < 10) return 'text-realm-success';
+  if (rate <= 30) return 'text-realm-warning';
+  return 'text-realm-danger';
+}
+
 function roundsColor(rounds: number): string {
   if (rounds >= 4 && rounds <= 8) return 'text-realm-success';
   if ((rounds >= 2 && rounds < 4) || (rounds > 8 && rounds <= 12)) return 'text-realm-warning';
@@ -116,8 +127,8 @@ export default function OverviewTab() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {[...Array(6)].map((_, i) => (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+          {[...Array(7)].map((_, i) => (
             <div key={i} className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 h-28 animate-pulse" />
           ))}
         </div>
@@ -151,6 +162,7 @@ export default function OverviewTab() {
   const kpiCards = [
     { label: 'Total Encounters', value: data.totalEncounters.toLocaleString(), icon: Swords, color: 'text-realm-gold-400' },
     { label: 'PvE Survival Rate', value: `${data.pveSurvivalRate}%`, icon: TrendingUp, color: survivalColor(data.pveSurvivalRate) },
+    { label: 'Flee Rate', value: `${data.fleeAttemptRate}%`, icon: LogOut, color: fleeColor(data.fleeAttemptRate) },
     { label: 'Avg Rounds', value: data.avgRounds.toFixed(1), icon: Timer, color: roundsColor(data.avgRounds) },
     { label: 'Gold / Day', value: data.goldPerDay.toLocaleString(), icon: Coins, color: 'text-realm-gold-300' },
     { label: 'Items / Day', value: data.itemsDroppedPerDay.toFixed(1), icon: Package, color: 'text-realm-teal-300' },
@@ -160,7 +172,7 @@ export default function OverviewTab() {
   return (
     <div className="space-y-6">
       {/* TIER 1: KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         {kpiCards.map((card) => {
           const Icon = card.icon;
           return (
@@ -200,12 +212,15 @@ export default function OverviewTab() {
               labelStyle={{ color: '#d4af37' }}
               formatter={(value: number, name: string) => {
                 if (name === 'survivalRate') return [`${value}%`, 'Survival Rate'];
+                if (name === 'fleeRate') return [`${value}%`, 'Flee Rate'];
                 if (name === 'encounters') return [value, 'Encounters'];
                 return [value, name];
               }}
             />
-            <Bar yAxisId="right" dataKey="encounters" fill="#242B45" radius={[4, 4, 0, 0]} />
-            <Line yAxisId="left" type="monotone" dataKey="survivalRate" stroke="#d4af37" strokeWidth={3} dot={{ r: 5, fill: '#d4af37' }} />
+            <Legend wrapperStyle={{ fontSize: 12, color: '#9ca3af' }} />
+            <Bar yAxisId="right" dataKey="encounters" fill="#242B45" radius={[4, 4, 0, 0]} name="Encounters" />
+            <Line yAxisId="left" type="monotone" dataKey="survivalRate" stroke="#d4af37" strokeWidth={3} dot={{ r: 5, fill: '#d4af37' }} name="Survival Rate" />
+            <Line yAxisId="left" type="monotone" dataKey="fleeRate" stroke="#ef4444" strokeWidth={2} strokeDasharray="6 3" dot={{ r: 4, fill: '#ef4444' }} name="Flee Rate" />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
