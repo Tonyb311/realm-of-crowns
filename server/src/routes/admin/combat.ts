@@ -282,13 +282,43 @@ router.get('/session/:id', async (req: AuthenticatedRequest, res: Response) => {
 // GET /stats — Executive combat health dashboard
 router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // --- Parse date range params ---
+    const presetParam = (req.query.preset as string) || '30d';
+    const startDateParam = req.query.startDate as string | undefined;
+    const endDateParam = req.query.endDate as string | undefined;
+
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date = now;
+    let isAllTime = false;
+    let effectivePreset: string | null = presetParam;
+
+    if (startDateParam && endDateParam) {
+      startDate = new Date(startDateParam);
+      endDate = new Date(endDateParam);
+      effectivePreset = null;
+    } else {
+      switch (presetParam) {
+        case '7d': startDate = new Date(now.getTime() - 7 * 86400000); break;
+        case '90d': startDate = new Date(now.getTime() - 90 * 86400000); break;
+        case 'all': startDate = new Date(0); isAllTime = true; break;
+        default: startDate = new Date(now.getTime() - 30 * 86400000); break;
+      }
+    }
+
+    // Comparison period (equal length, immediately before current period)
+    const periodMs = endDate.getTime() - startDate.getTime();
+    const compStart = isAllTime ? null : new Date(startDate.getTime() - periodMs);
+    const compEnd = isAllTime ? null : new Date(startDate.getTime() - 1);
+
+    const dateWhere = isAllTime ? {} : { startedAt: { gte: startDate, lte: endDate } };
+    const compWhere = compStart && compEnd ? { startedAt: { gte: compStart, lte: compEnd } } : null;
 
     const getBand = (lvl: number) => lvl <= 5 ? '1-5' : lvl <= 10 ? '6-10' : lvl <= 15 ? '11-15' : '16-20';
 
-    const [allEncounters, itemTemplates] = await Promise.all([
+    const [allEncounters, itemTemplates, compEncounters] = await Promise.all([
       prisma.combatEncounterLog.findMany({
+        where: dateWhere,
         select: {
           type: true,
           outcome: true,
@@ -300,12 +330,26 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
           lootDropped: true,
           startedAt: true,
           opponentName: true,
+          characterId: true,
           character: { select: { level: true, race: true, class: true } },
         },
       }),
       prisma.itemTemplate.findMany({
         select: { name: true, rarity: true },
       }),
+      compWhere
+        ? prisma.combatEncounterLog.findMany({
+            where: compWhere,
+            select: {
+              type: true,
+              outcome: true,
+              totalRounds: true,
+              goldAwarded: true,
+              lootDropped: true,
+              startedAt: true,
+            },
+          })
+        : Promise.resolve([]),
     ]);
 
     const totalEncounters = allEncounters.length;
@@ -324,22 +368,22 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       ? +(allEncounters.reduce((s, e) => s + e.totalRounds, 0) / totalEncounters).toFixed(1)
       : 0;
 
-    // --- Economy: gold/day, items/day (last 30 days) ---
-    const recentEncounters = allEncounters.filter((e) => e.startedAt >= thirtyDaysAgo);
-    const recentDays = new Set(recentEncounters.map((e) => e.startedAt.toISOString().slice(0, 10))).size || 1;
-    const recentGold = recentEncounters.reduce((s, e) => s + e.goldAwarded, 0);
-    let recentItemCount = 0;
-    for (const e of recentEncounters) {
+    // --- Economy: gold/day, items/day (over selected period) ---
+    const activeDays = new Set(allEncounters.map((e) => e.startedAt.toISOString().slice(0, 10))).size || 1;
+    const effectiveDays = isAllTime ? activeDays : Math.max(1, Math.ceil(periodMs / 86400000));
+    const totalGold = allEncounters.reduce((s, e) => s + e.goldAwarded, 0);
+    let totalItemCount = 0;
+    for (const e of allEncounters) {
       if (e.lootDropped) {
         const items = e.lootDropped.split(',').map((s) => s.trim()).filter(Boolean);
         for (const item of items) {
           const match = item.match(/^(\d+)x\s+/);
-          recentItemCount += match ? parseInt(match[1]) : 1;
+          totalItemCount += match ? parseInt(match[1]) : 1;
         }
       }
     }
-    const goldPerDay = +(recentGold / recentDays).toFixed(0);
-    const itemsDroppedPerDay = +(recentItemCount / recentDays).toFixed(1);
+    const goldPerDay = +(totalGold / effectiveDays).toFixed(0);
+    const itemsDroppedPerDay = +(totalItemCount / effectiveDays).toFixed(1);
 
     // --- Active level range ---
     const bandCounts: Record<string, number> = { '1-5': 0, '6-10': 0, '11-15': 0, '16-20': 0 };
@@ -384,9 +428,9 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       };
     });
 
-    // --- Economy trend (last 30 days) ---
+    // --- Economy trend (daily breakdown of selected period) ---
     const dayEcon: Record<string, { gold: number; xp: number; itemsDropped: number }> = {};
-    for (const e of recentEncounters) {
+    for (const e of allEncounters) {
       const day = e.startedAt.toISOString().slice(0, 10);
       if (!dayEcon[day]) dayEcon[day] = { gold: 0, xp: 0, itemsDropped: 0 };
       dayEcon[day].gold += e.goldAwarded;
@@ -570,6 +614,58 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       }
     }
 
+    // --- Player engagement ---
+    const playerCounts = new Map<string, number>();
+    for (const e of allEncounters) {
+      if (e.characterId) {
+        playerCounts.set(e.characterId, (playerCounts.get(e.characterId) ?? 0) + 1);
+      }
+    }
+    const uniquePlayers = playerCounts.size;
+    const encountersPerPlayer = uniquePlayers > 0 ? +(totalEncounters / uniquePlayers).toFixed(1) : 0;
+    const repeatCombatants = [...playerCounts.values()].filter((c) => c > 1).length;
+    const repeatRate = uniquePlayers > 0 ? +(repeatCombatants / uniquePlayers * 100).toFixed(1) : 0;
+    const newPlayerPve = pveEncounters.filter((e) => e.character?.level && e.character.level <= 3);
+    const newPlayerWins = newPlayerPve.filter((e) => e.outcome === 'win').length;
+    const newPlayerEncounters = newPlayerPve.length;
+    const newPlayerSurvivalRate = newPlayerEncounters > 0 ? +(newPlayerWins / newPlayerEncounters * 100).toFixed(1) : 0;
+
+    // --- Comparison deltas ---
+    let deltas: { totalEncounters: number; pveSurvivalRate: number; fleeAttemptRate: number; avgRounds: number; goldPerDay: number; itemsDroppedPerDay: number } | null = null;
+    if (compEncounters.length > 0 && !isAllTime) {
+      const compTotal = compEncounters.length;
+      const compPve = compEncounters.filter((e) => e.type === 'pve');
+      const compPveWins = compPve.filter((e) => e.outcome === 'win').length;
+      const compPveSurvival = compPve.length > 0 ? +(compPveWins / compPve.length * 100).toFixed(1) : 0;
+      const compFlees = compEncounters.filter((e) => e.outcome === 'flee').length;
+      const compFleeRate = compTotal > 0 ? +(compFlees / compTotal * 100).toFixed(1) : 0;
+      const compAvgRnds = compTotal > 0
+        ? +(compEncounters.reduce((s, e) => s + e.totalRounds, 0) / compTotal).toFixed(1)
+        : 0;
+      const compPeriodDays = Math.max(1, Math.ceil(periodMs / 86400000));
+      const compGoldTotal = compEncounters.reduce((s, e) => s + e.goldAwarded, 0);
+      let compItemTotal = 0;
+      for (const e of compEncounters) {
+        if (e.lootDropped) {
+          const items = e.lootDropped.split(',').map((s) => s.trim()).filter(Boolean);
+          for (const item of items) {
+            const match = item.match(/^(\d+)x\s+/);
+            compItemTotal += match ? parseInt(match[1]) : 1;
+          }
+        }
+      }
+      const compGoldPerDay = +(compGoldTotal / compPeriodDays).toFixed(0);
+      const compItemsPerDay = +(compItemTotal / compPeriodDays).toFixed(1);
+      deltas = {
+        totalEncounters: totalEncounters - compTotal,
+        pveSurvivalRate: +(pveSurvivalRate - compPveSurvival).toFixed(1),
+        fleeAttemptRate: +(fleeAttemptRate - compFleeRate).toFixed(1),
+        avgRounds: +(avgRounds - compAvgRnds).toFixed(1),
+        goldPerDay: goldPerDay - compGoldPerDay,
+        itemsDroppedPerDay: +(itemsDroppedPerDay - compItemsPerDay).toFixed(1),
+      };
+    }
+
     return res.json({
       totalEncounters,
       pveSurvivalRate,
@@ -586,6 +682,22 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       topMonsters,
       topRaces,
       topClasses,
+      dateRange: {
+        start: startDate.toISOString(),
+        end: endDate.toISOString(),
+        preset: effectivePreset,
+        comparisonStart: compStart?.toISOString() ?? null,
+        comparisonEnd: compEnd?.toISOString() ?? null,
+      },
+      deltas,
+      engagement: {
+        uniquePlayers,
+        encountersPerPlayer,
+        repeatCombatants,
+        repeatRate,
+        newPlayerSurvivalRate,
+        newPlayerEncounters,
+      },
     });
   } catch (error) {
     logRouteError(req, 500, 'Admin combat stats error', error);

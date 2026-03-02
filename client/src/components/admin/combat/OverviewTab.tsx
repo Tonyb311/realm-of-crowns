@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Swords,
@@ -8,6 +9,9 @@ import {
   Layers,
   AlertTriangle,
   LogOut,
+  Users,
+  Repeat,
+  Shield,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -62,6 +66,29 @@ interface CombatStats {
   topMonsters: Array<{ name: string; count: number; playerWinRate: number }>;
   topRaces: Array<{ race: string; count: number; winRate: number }>;
   topClasses: Array<{ class: string; count: number; winRate: number }>;
+  dateRange: {
+    start: string;
+    end: string;
+    preset: string | null;
+    comparisonStart: string | null;
+    comparisonEnd: string | null;
+  };
+  deltas: {
+    totalEncounters: number;
+    pveSurvivalRate: number;
+    fleeAttemptRate: number;
+    avgRounds: number;
+    goldPerDay: number;
+    itemsDroppedPerDay: number;
+  } | null;
+  engagement: {
+    uniquePlayers: number;
+    encountersPerPlayer: number;
+    repeatCombatants: number;
+    repeatRate: number;
+    newPlayerSurvivalRate: number;
+    newPlayerEncounters: number;
+  };
 }
 
 // ---- Constants ----
@@ -90,6 +117,13 @@ const CATEGORY_LABELS: Record<string, string> = {
   loot: 'Loot',
 };
 
+const PRESETS = [
+  { key: '7d', label: '7 Days' },
+  { key: '30d', label: '30 Days' },
+  { key: '90d', label: '90 Days' },
+  { key: 'all', label: 'All Time' },
+] as const;
+
 // ---- Helpers ----
 
 function survivalColor(rate: number): string {
@@ -116,28 +150,97 @@ function winRateColor(rate: number): string {
   return 'text-realm-danger';
 }
 
+function engagementPerPlayerColor(val: number): string {
+  if (val > 3) return 'text-realm-success';
+  if (val >= 1) return 'text-realm-warning';
+  return 'text-realm-danger';
+}
+
+function repeatRateColor(rate: number): string {
+  if (rate > 50) return 'text-realm-success';
+  if (rate >= 25) return 'text-realm-warning';
+  return 'text-realm-danger';
+}
+
+function newPlayerSurvivalColor(rate: number): string {
+  if (rate > 60) return 'text-realm-success';
+  if (rate >= 35) return 'text-realm-warning';
+  return 'text-realm-danger';
+}
+
+type DeltaDirection = 'positive' | 'negative' | 'neutral';
+
+function formatDelta(
+  value: number | undefined,
+  hasDeltas: boolean,
+  direction: DeltaDirection,
+  isPercent = false,
+): { text: string; color: string } {
+  if (!hasDeltas) return { text: 'No prior data', color: 'text-realm-text-muted' };
+  if (value === undefined || value === null) return { text: '—', color: 'text-realm-text-muted' };
+  if (value === 0) return { text: '— 0', color: 'text-realm-text-muted' };
+
+  const arrow = value > 0 ? '▲' : '▼';
+  const sign = value > 0 ? '+' : '';
+  const suffix = isPercent ? 'pp' : '';
+  const formatted = isPercent ? `${sign}${value.toFixed(1)}${suffix}` : `${sign}${value}`;
+  const text = `${arrow} ${formatted} vs prev`;
+
+  if (direction === 'neutral') return { text, color: 'text-realm-warning' };
+  if (direction === 'positive') return { text, color: value > 0 ? 'text-realm-success' : 'text-realm-danger' };
+  // negative: up is bad, down is good
+  return { text, color: value > 0 ? 'text-realm-danger' : 'text-realm-success' };
+}
+
 // ---- Component ----
 
 export default function OverviewTab() {
-  const { data, isLoading, error } = useQuery<CombatStats>({
-    queryKey: ['admin', 'combat', 'stats'],
-    queryFn: async () => (await api.get('/admin/combat/stats')).data,
+  const [preset, setPreset] = useState<string>('30d');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+
+  const isCustom = !!(customStart && customEnd);
+
+  const { data, isLoading, isFetching, error } = useQuery<CombatStats>({
+    queryKey: ['admin', 'combat', 'stats', isCustom ? { startDate: customStart, endDate: customEnd } : { preset }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (isCustom) {
+        params.set('startDate', new Date(customStart).toISOString());
+        params.set('endDate', new Date(customEnd + 'T23:59:59.999Z').toISOString());
+      } else {
+        params.set('preset', preset);
+      }
+      return (await api.get(`/admin/combat/stats?${params}`)).data;
+    },
   });
+
+  function selectPreset(key: string) {
+    setPreset(key);
+    setCustomStart('');
+    setCustomEnd('');
+  }
+
+  function handleCustomDate(start: string, end: string) {
+    setCustomStart(start);
+    setCustomEnd(end);
+  }
 
   if (isLoading) {
     return (
       <div className="space-y-6">
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-3 h-12 animate-pulse" />
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
           {[...Array(7)].map((_, i) => (
-            <div key={i} className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 h-28 animate-pulse" />
+            <div key={i} className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 h-32 animate-pulse" />
+          ))}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 h-24 animate-pulse" />
           ))}
         </div>
         <div className="bg-realm-bg-700 border border-realm-border rounded-lg h-72 animate-pulse" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-realm-bg-700 border border-realm-border rounded-lg h-64 animate-pulse" />
-          <div className="bg-realm-bg-700 border border-realm-border rounded-lg h-64 animate-pulse" />
-        </div>
-        <div className="bg-realm-bg-700 border border-realm-border rounded-lg h-56 animate-pulse" />
       </div>
     );
   }
@@ -152,29 +255,97 @@ export default function OverviewTab() {
 
   if (data.totalEncounters === 0) {
     return (
-      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-12 text-center">
-        <Swords className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-4" />
-        <p className="text-realm-text-muted">No combat data yet. Run a simulation or wait for player encounters.</p>
+      <div className="space-y-6">
+        {/* Date picker still shown so user can change range */}
+        <div className="flex items-center justify-between bg-realm-bg-700 border border-realm-border rounded-lg px-4 py-2">
+          <div className="flex gap-1">
+            {PRESETS.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => selectPreset(p.key)}
+                className={`px-3 py-1 text-xs font-display rounded-full transition-colors ${
+                  !isCustom && preset === p.key
+                    ? 'bg-realm-gold-600/20 text-realm-gold-400 border border-realm-gold-600/40'
+                    : 'text-realm-text-muted hover:text-realm-text-secondary border border-transparent'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-12 text-center">
+          <Swords className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-4" />
+          <p className="text-realm-text-muted">No combat data in this period. Try a wider date range.</p>
+        </div>
       </div>
     );
   }
 
-  const kpiCards = [
-    { label: 'Total Encounters', value: data.totalEncounters.toLocaleString(), icon: Swords, color: 'text-realm-gold-400' },
-    { label: 'PvE Survival Rate', value: `${data.pveSurvivalRate}%`, icon: TrendingUp, color: survivalColor(data.pveSurvivalRate) },
-    { label: 'Flee Rate', value: `${data.fleeAttemptRate}%`, icon: LogOut, color: fleeColor(data.fleeAttemptRate) },
-    { label: 'Avg Rounds', value: data.avgRounds.toFixed(1), icon: Timer, color: roundsColor(data.avgRounds) },
-    { label: 'Gold / Day', value: data.goldPerDay.toLocaleString(), icon: Coins, color: 'text-realm-gold-300' },
-    { label: 'Items / Day', value: data.itemsDroppedPerDay.toFixed(1), icon: Package, color: 'text-realm-teal-300' },
+  const hasDeltas = data.deltas !== null;
+
+  const kpiCards: Array<{
+    label: string;
+    value: string;
+    icon: typeof Swords;
+    color: string;
+    deltaKey?: keyof NonNullable<CombatStats['deltas']>;
+    deltaDir?: DeltaDirection;
+    isPercent?: boolean;
+  }> = [
+    { label: 'Total Encounters', value: data.totalEncounters.toLocaleString(), icon: Swords, color: 'text-realm-gold-400', deltaKey: 'totalEncounters', deltaDir: 'positive' },
+    { label: 'PvE Survival Rate', value: `${data.pveSurvivalRate}%`, icon: TrendingUp, color: survivalColor(data.pveSurvivalRate), deltaKey: 'pveSurvivalRate', deltaDir: 'positive', isPercent: true },
+    { label: 'Flee Rate', value: `${data.fleeAttemptRate}%`, icon: LogOut, color: fleeColor(data.fleeAttemptRate), deltaKey: 'fleeAttemptRate', deltaDir: 'negative', isPercent: true },
+    { label: 'Avg Rounds', value: data.avgRounds.toFixed(1), icon: Timer, color: roundsColor(data.avgRounds), deltaKey: 'avgRounds', deltaDir: 'neutral' },
+    { label: 'Gold / Day', value: data.goldPerDay.toLocaleString(), icon: Coins, color: 'text-realm-gold-300', deltaKey: 'goldPerDay', deltaDir: 'neutral' },
+    { label: 'Items / Day', value: data.itemsDroppedPerDay.toFixed(1), icon: Package, color: 'text-realm-teal-300', deltaKey: 'itemsDroppedPerDay', deltaDir: 'neutral' },
     { label: 'Active Level Range', value: data.activeLevelRange, icon: Layers, color: 'text-realm-text-secondary' },
   ];
 
   return (
     <div className="space-y-6">
+      {/* Date Range Picker */}
+      <div className="flex items-center justify-between bg-realm-bg-700 border border-realm-border rounded-lg px-4 py-2">
+        <div className="flex gap-1">
+          {PRESETS.map((p) => (
+            <button
+              key={p.key}
+              onClick={() => selectPreset(p.key)}
+              className={`px-3 py-1 text-xs font-display rounded-full transition-colors ${
+                !isCustom && preset === p.key
+                  ? 'bg-realm-gold-600/20 text-realm-gold-400 border border-realm-gold-600/40'
+                  : 'text-realm-text-muted hover:text-realm-text-secondary border border-transparent'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={customStart}
+            onChange={(e) => handleCustomDate(e.target.value, customEnd)}
+            className="bg-realm-bg-800 border border-realm-border text-realm-text-secondary text-xs rounded px-2 py-1 focus:border-realm-gold-600/60 focus:outline-none"
+          />
+          <span className="text-realm-text-muted text-xs">to</span>
+          <input
+            type="date"
+            value={customEnd}
+            onChange={(e) => handleCustomDate(customStart, e.target.value)}
+            className="bg-realm-bg-800 border border-realm-border text-realm-text-secondary text-xs rounded px-2 py-1 focus:border-realm-gold-600/60 focus:outline-none"
+          />
+        </div>
+      </div>
+
       {/* TIER 1: KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+      <div className={`grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 ${isFetching ? 'opacity-60' : ''}`}>
         {kpiCards.map((card) => {
           const Icon = card.icon;
+          const delta = card.deltaKey && data.deltas ? data.deltas[card.deltaKey] : undefined;
+          const deltaInfo = card.deltaKey
+            ? formatDelta(delta, hasDeltas, card.deltaDir ?? 'neutral', card.isPercent)
+            : null;
           return (
             <div
               key={card.label}
@@ -187,9 +358,60 @@ export default function OverviewTab() {
               <div className="text-realm-text-muted text-xs font-display uppercase tracking-wider mt-1">
                 {card.label}
               </div>
+              {deltaInfo && (
+                <div className={`text-[10px] mt-1.5 ${deltaInfo.color}`}>
+                  {deltaInfo.text}
+                </div>
+              )}
             </div>
           );
         })}
+      </div>
+
+      {/* Player Engagement */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-3 hover:border-realm-gold-600/40 transition-colors">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Users className="w-3.5 h-3.5 text-realm-text-muted" />
+            <span className="text-realm-text-muted text-[10px] font-display uppercase tracking-wider">Unique Players</span>
+          </div>
+          <div className="text-lg font-display text-realm-text-primary">{data.engagement.uniquePlayers}</div>
+          <div className="text-realm-text-muted text-[10px]">fought in this period</div>
+        </div>
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-3 hover:border-realm-gold-600/40 transition-colors">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Swords className="w-3.5 h-3.5 text-realm-text-muted" />
+            <span className="text-realm-text-muted text-[10px] font-display uppercase tracking-wider">Encounters / Player</span>
+          </div>
+          <div className={`text-lg font-display ${engagementPerPlayerColor(data.engagement.encountersPerPlayer)}`}>
+            {data.engagement.encountersPerPlayer}
+          </div>
+          <div className="text-realm-text-muted text-[10px]">avg per player</div>
+        </div>
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-3 hover:border-realm-gold-600/40 transition-colors">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Repeat className="w-3.5 h-3.5 text-realm-text-muted" />
+            <span className="text-realm-text-muted text-[10px] font-display uppercase tracking-wider">Repeat Rate</span>
+          </div>
+          <div className={`text-lg font-display ${repeatRateColor(data.engagement.repeatRate)}`}>
+            {data.engagement.repeatRate}%
+          </div>
+          <div className="text-realm-text-muted text-[10px]">
+            {data.engagement.repeatCombatants} of {data.engagement.uniquePlayers} fought again
+          </div>
+        </div>
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-3 hover:border-realm-gold-600/40 transition-colors">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Shield className="w-3.5 h-3.5 text-realm-text-muted" />
+            <span className="text-realm-text-muted text-[10px] font-display uppercase tracking-wider">New Player Survival</span>
+          </div>
+          <div className={`text-lg font-display ${newPlayerSurvivalColor(data.engagement.newPlayerSurvivalRate)}`}>
+            {data.engagement.newPlayerSurvivalRate}%
+          </div>
+          <div className="text-realm-text-muted text-[10px]">
+            Level 1-3 PvE ({data.engagement.newPlayerEncounters} fights)
+          </div>
+        </div>
       </div>
 
       {/* TIER 2A: PvE Survival Rate by Level Band */}
@@ -229,7 +451,7 @@ export default function OverviewTab() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Economy Injection Trend */}
         <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
-          <h3 className="font-display text-realm-text-primary text-sm mb-4">Economy Injection (Last 30 Days)</h3>
+          <h3 className="font-display text-realm-text-primary text-sm mb-4">Economy Injection</h3>
           {data.economyTrend.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <AreaChart data={data.economyTrend}>
@@ -243,7 +465,7 @@ export default function OverviewTab() {
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <div className="text-center py-10 text-realm-text-muted text-sm">No recent data</div>
+            <div className="text-center py-10 text-realm-text-muted text-sm">No data in this period</div>
           )}
         </div>
 
