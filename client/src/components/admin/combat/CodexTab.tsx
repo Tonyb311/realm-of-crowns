@@ -25,6 +25,12 @@ interface RaceAbility {
   levelRequired?: number;
   cooldown?: number;
   effects?: Record<string, unknown>;
+  type?: 'active' | 'passive';
+  effectType?: string;
+  effectValue?: any;
+  targetType?: 'self' | 'party' | 'enemy' | 'aoe';
+  cooldownSeconds?: number;
+  duration?: number;
 }
 
 interface RaceEntry {
@@ -32,7 +38,7 @@ interface RaceEntry {
   name: string;
   tier: string;
   lore: string;
-  trait: string;
+  trait: string | { name: string; description: string };
   statModifiers: Record<string, number>;
   abilities: RaceAbility[];
   professionBonuses: Record<string, unknown>[];
@@ -271,7 +277,17 @@ function RacesSubTab({ search }: { search: string }) {
               <div className="px-5 pb-5 space-y-4">
                 <p className="text-xs text-realm-text-secondary leading-relaxed italic">{race.lore}</p>
                 <div className="text-xs text-realm-text-muted">
-                  Trait: <span className="text-realm-text-secondary">{race.trait}</span>
+                  Trait:{' '}
+                  {typeof race.trait === 'object' && race.trait !== null ? (
+                    <>
+                      <span className="text-realm-text-secondary">{race.trait.name}</span>
+                      {race.trait.description && (
+                        <span className="text-realm-text-muted ml-1">({race.trait.description})</span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-realm-text-secondary">{String(race.trait)}</span>
+                  )}
                 </div>
 
                 {/* Stat modifiers */}
@@ -337,6 +353,13 @@ function RacesSubTab({ search }: { search: string }) {
                         levelRequired={ability.levelRequired}
                         cooldown={ability.cooldown}
                         effects={ability.effects}
+                        type={ability.type}
+                        effectType={ability.effectType}
+                        effectValue={ability.effectValue}
+                        targetType={ability.targetType}
+                        cooldownSeconds={ability.cooldownSeconds}
+                        duration={ability.duration}
+                        abilitySource="race"
                       />
                     ))}
                   </div>
@@ -457,6 +480,7 @@ function ClassesSubTab({ search }: { search: string }) {
                           cooldown={ability.cooldown}
                           effects={ability.effects}
                           specialization={ability.specialization}
+                          abilitySource="class"
                         />
                       ))}
                     </div>

@@ -1,16 +1,34 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Clock } from 'lucide-react';
 
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
 interface AbilityCardProps {
   name: string;
   description: string;
+  // Class ability fields
   tier?: number;
   levelRequired?: number;
-  cooldown?: number;
+  cooldown?: number;          // combat rounds
   effects?: Record<string, unknown>;
   specialization?: string;
-  type?: 'passive' | 'active';
+  prerequisiteAbilityId?: string | null;
+  // Race ability fields
+  type?: 'active' | 'passive';
+  effectType?: string;
+  effectValue?: any;
+  targetType?: 'self' | 'party' | 'enemy' | 'aoe';
+  cooldownSeconds?: number;   // overworld seconds
+  duration?: number;           // effect duration in seconds
+  // Source context
+  abilitySource?: 'race' | 'class';
 }
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
 const TIER_COLORS: Record<number, string> = {
   1: 'bg-green-500/20 text-green-400',
@@ -19,6 +37,476 @@ const TIER_COLORS: Record<number, string> = {
   4: 'bg-yellow-500/20 text-yellow-400',
   5: 'bg-red-500/20 text-red-400',
 };
+
+const STATUS_COLORS: Record<string, string> = {
+  stun: 'bg-yellow-500/20 text-yellow-400',
+  stunned: 'bg-yellow-500/20 text-yellow-400',
+  poison: 'bg-green-500/20 text-green-400',
+  poisoned: 'bg-green-500/20 text-green-400',
+  burning: 'bg-orange-500/20 text-orange-400',
+  frozen: 'bg-blue-500/20 text-blue-400',
+  bleeding: 'bg-red-500/20 text-red-400',
+  taunt: 'bg-amber-500/20 text-amber-400',
+  mesmerize: 'bg-purple-500/20 text-purple-400',
+  dominated: 'bg-purple-500/20 text-purple-400',
+  silence: 'bg-indigo-500/20 text-indigo-400',
+  root: 'bg-emerald-500/20 text-emerald-400',
+  paralyzed: 'bg-yellow-500/20 text-yellow-400',
+  blessed: 'bg-amber-500/20 text-amber-300',
+  weakened: 'bg-purple-500/20 text-purple-400',
+  shielded: 'bg-cyan-500/20 text-cyan-400',
+  regenerating: 'bg-emerald-500/20 text-emerald-400',
+};
+
+const MENTAL_EFFECTS = new Set(['taunt', 'mesmerize', 'dominated', 'silence', 'fear', 'charm', 'confused']);
+const PHYSICAL_EFFECTS = new Set(['stun', 'stunned', 'root', 'paralyzed', 'grappled', 'prone']);
+
+const TARGET_LABELS: Record<string, string> = {
+  self: 'Self',
+  party: 'Party',
+  enemy: 'Single Enemy',
+  aoe: 'Area of Effect',
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function formatDuration(seconds: number): string {
+  if (seconds >= 86400) return `${Math.round(seconds / 86400)}d`;
+  if (seconds >= 3600) return `${Math.round(seconds / 3600)}h`;
+  if (seconds >= 60) return `${Math.round(seconds / 60)}m`;
+  return `${seconds}s`;
+}
+
+function StatusBadge({ effect, duration }: { effect: string; duration?: number }) {
+  const color = STATUS_COLORS[effect.toLowerCase()] || 'bg-realm-bg-600 text-realm-text-secondary';
+  return (
+    <span className={`${color} px-1.5 py-0.5 rounded text-[10px] font-display inline-flex items-center gap-1`}>
+      {effect}
+      {duration != null && <span className="opacity-70">({duration} rnd{duration !== 1 ? 's' : ''})</span>}
+    </span>
+  );
+}
+
+function MechanicsLine({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-2 text-xs">
+      <span className="text-realm-text-muted w-20 shrink-0 text-right">{label}:</span>
+      <span className="text-realm-text-primary">{children}</span>
+    </div>
+  );
+}
+
+function DiceFormula({ formula }: { formula: string }) {
+  return <span className="font-mono text-realm-gold-400">{formula}</span>;
+}
+
+function VsTag({ text }: { text: string }) {
+  return <span className="text-realm-text-muted bg-realm-bg-900/50 px-1 py-0.5 rounded text-[10px]">{text}</span>;
+}
+
+function deriveSaveDefault(effect: string): string {
+  const lower = effect.toLowerCase();
+  if (MENTAL_EFFECTS.has(lower)) return 'WIS';
+  if (PHYSICAL_EFFECTS.has(lower)) return 'CON';
+  return 'CON';
+}
+
+function getTypeIcon(effectType: string | undefined, effects: Record<string, unknown> | undefined): string {
+  if (!effectType && !effects) return '';
+  const type = effectType || (effects?.type as string) || '';
+
+  if (['damage', 'multi_attack', 'aoe_damage'].includes(type)) return '\u2694\uFE0F';
+  if (type === 'buff') {
+    const e = effects || {};
+    if (e.acBonus || e.damageReduction || e.damageReflect) return '\uD83D\uDEE1\uFE0F';
+    return '\u26A1';
+  }
+  if (['status', 'cc', 'damage_status'].includes(type)) return '\uD83C\uDFAF';
+  if (type === 'heal') return '\uD83D\uDC9A';
+  if (type === 'passive') return '\u2B50';
+  if (type === 'damage_save') return '\u2728';
+
+  // Race ability effectTypes
+  if (type.includes('combat') || type.includes('damage') || type.includes('attack')) return '\uD83D\uDD2E';
+  if (type.includes('death') || type.includes('hp')) return '\uD83D\uDD2E';
+  if (type.includes('buff') || type.includes('bonus')) return '\u2B50';
+  if (type.includes('xp') || type.includes('reputation') || type.includes('profession')) return '\u2B50';
+
+  return '';
+}
+
+function getBorderColor(effectType: string | undefined, effects: Record<string, unknown> | undefined): string {
+  const type = effectType || (effects?.type as string) || '';
+  if (['damage', 'multi_attack', 'aoe_damage', 'damage_status', 'damage_save'].includes(type)) return 'border-l-realm-gold-500/60';
+  if (type === 'buff') return 'border-l-blue-500/60';
+  if (['status', 'cc'].includes(type)) return 'border-l-purple-500/60';
+  if (type === 'heal') return 'border-l-green-500/60';
+  if (type === 'passive') return 'border-l-teal-500/60';
+  // Race ability types
+  if (type.includes('combat') || type.includes('damage') || type.includes('attack')) return 'border-l-realm-gold-500/60';
+  if (type.includes('death') || type.includes('hp')) return 'border-l-red-500/60';
+  if (type.includes('buff') || type.includes('bonus')) return 'border-l-blue-500/60';
+  return 'border-l-realm-border/60';
+}
+
+// ---------------------------------------------------------------------------
+// Class Ability Mechanics
+// ---------------------------------------------------------------------------
+
+function ClassMechanics({ effects, cooldown }: { effects: Record<string, unknown>; cooldown?: number }) {
+  const type = effects.type as string | undefined;
+  if (!type) return <GenericEffects effects={effects} />;
+
+  return (
+    <div className={`bg-realm-bg-900/50 border-l-2 ${getBorderColor(undefined, effects)} rounded-r px-3 py-2 space-y-1`}>
+      <div className="text-[10px] font-display text-realm-text-muted uppercase tracking-wider mb-1">Combat Mechanics</div>
+
+      {type === 'damage' && <DamageMechanics effects={effects} />}
+      {type === 'multi_attack' && <MultiAttackMechanics effects={effects} />}
+      {type === 'aoe_damage' && <AoeDamageMechanics effects={effects} />}
+      {type === 'buff' && <BuffMechanics effects={effects} />}
+      {type === 'damage_status' && <DamageStatusMechanics effects={effects} />}
+      {type === 'status' && <StatusMechanics effects={effects} />}
+      {type === 'damage_save' && <DamageSaveMechanics effects={effects} />}
+      {type === 'cc' && <CcMechanics effects={effects} />}
+      {type === 'heal' && <HealMechanics effects={effects} />}
+      {type === 'passive' && <PassiveMechanics effects={effects} />}
+      {!['damage', 'multi_attack', 'aoe_damage', 'buff', 'damage_status', 'status', 'damage_save', 'cc', 'heal', 'passive'].includes(type) && (
+        <GenericEffects effects={effects} />
+      )}
+
+      {cooldown != null && cooldown > 0 && (
+        <MechanicsLine label="Cooldown">{cooldown} round{cooldown !== 1 ? 's' : ''}</MechanicsLine>
+      )}
+    </div>
+  );
+}
+
+function DamageMechanics({ effects }: { effects: Record<string, unknown> }) {
+  const e = effects;
+  return (
+    <>
+      <MechanicsLine label="Type">{'\u2694\uFE0F'} Melee Damage</MechanicsLine>
+      {e.bonusDamage != null && <MechanicsLine label="Bonus Dmg">+{String(e.bonusDamage)}</MechanicsLine>}
+      {e.selfDefenseDebuff != null && (
+        <MechanicsLine label="Side Effect"><span className="text-red-400">{String(e.selfDefenseDebuff)} AC (self)</span></MechanicsLine>
+      )}
+      <MechanicsLine label="Offense">STR/DEX + proficiency <VsTag text="vs AC" /></MechanicsLine>
+    </>
+  );
+}
+
+function MultiAttackMechanics({ effects }: { effects: Record<string, unknown> }) {
+  const strikes = Number(effects.strikes ?? 2);
+  const penalty = effects.accuracyPenalty != null ? Number(effects.accuracyPenalty) : 0;
+  return (
+    <>
+      <MechanicsLine label="Type">{'\u2694\uFE0F'} Multi-Strike ({strikes} hits)</MechanicsLine>
+      {penalty !== 0 && <MechanicsLine label="Accuracy">{penalty} per strike</MechanicsLine>}
+      <MechanicsLine label="Defense"><VsTag text="vs AC" /> (each strike)</MechanicsLine>
+    </>
+  );
+}
+
+function AoeDamageMechanics({ effects }: { effects: Record<string, unknown> }) {
+  const targets = effects.targets as string | undefined;
+  const mult = effects.damageMultiplier != null ? Math.round(Number(effects.damageMultiplier) * 100) : 100;
+  return (
+    <>
+      <MechanicsLine label="Type">{'\u2694\uFE0F'} AoE Attack{targets ? ` \u2014 ${targets.replace(/_/g, ' ')}` : ''}</MechanicsLine>
+      <MechanicsLine label="Damage">{mult}% weapon damage</MechanicsLine>
+      <MechanicsLine label="Defense"><VsTag text="vs AC" /> (each target)</MechanicsLine>
+    </>
+  );
+}
+
+function BuffMechanics({ effects }: { effects: Record<string, unknown> }) {
+  const e = effects;
+  const dur = e.duration as number | undefined;
+  const parts: string[] = [];
+
+  if (e.acBonus) parts.push(`+${e.acBonus} AC`);
+  if (e.attackBonus) parts.push(`+${e.attackBonus} Attack`);
+  if (e.damageReduction) parts.push(`${Math.round(Number(e.damageReduction) * 100)}% Damage Reduction`);
+  if (e.damageReflect) parts.push(`${Math.round(Number(e.damageReflect) * 100)}% Damage Reflect`);
+  if (e.ccImmune) parts.push('CC Immune');
+  if (e.immovable) parts.push('Immovable');
+  if (e.extraAction) parts.push('Extra Action');
+  if (e.guaranteedHits) parts.push(`${e.guaranteedHits} Guaranteed Hits`);
+  if (e.attackScaling) parts.push(`Attack scales with ${String(e.attackScaling).replace(/([A-Z])/g, ' $1').toLowerCase()}`);
+
+  const icon = (e.acBonus || e.damageReduction || e.damageReflect) ? '\uD83D\uDEE1\uFE0F' : '\u26A1';
+
+  return (
+    <>
+      <MechanicsLine label="Type">{icon} Self Buff{dur ? ` (${dur} rnd${dur !== 1 ? 's' : ''})` : ''}</MechanicsLine>
+      {parts.length > 0 && <MechanicsLine label="Effects">{parts.join(', ')}</MechanicsLine>}
+    </>
+  );
+}
+
+function DamageStatusMechanics({ effects }: { effects: Record<string, unknown> }) {
+  const e = effects;
+  const status = e.statusEffect as string | undefined;
+  const statusDur = e.statusDuration as number | undefined;
+  const saveStat = (e.saveStat as string | undefined) ?? (status ? deriveSaveDefault(status) : 'CON');
+  return (
+    <>
+      <MechanicsLine label="Type">{'\u2694\uFE0F'} Attack + Status</MechanicsLine>
+      {e.damage != null && <MechanicsLine label="Bonus Dmg">+{String(e.damage)}</MechanicsLine>}
+      {status && (
+        <MechanicsLine label="Applies"><StatusBadge effect={status} duration={statusDur} /></MechanicsLine>
+      )}
+      <MechanicsLine label="Offense">Weapon attack <VsTag text="vs AC" /> (damage)</MechanicsLine>
+      <MechanicsLine label="Status Save"><VsTag text={`${saveStat} save`} />{!e.saveStat && <span className="text-realm-text-muted text-[10px] ml-1">(estimated)</span>}</MechanicsLine>
+    </>
+  );
+}
+
+function StatusMechanics({ effects }: { effects: Record<string, unknown> }) {
+  const e = effects;
+  const status = e.statusEffect as string | undefined;
+  const statusDur = e.statusDuration as number | undefined;
+  const saveStat = (e.saveStat as string | undefined) ?? (status ? deriveSaveDefault(status) : 'WIS');
+  return (
+    <>
+      <MechanicsLine label="Type">{'\uD83C\uDFAF'} Crowd Control</MechanicsLine>
+      {status && (
+        <MechanicsLine label="Applies"><StatusBadge effect={status} duration={statusDur} /></MechanicsLine>
+      )}
+      <MechanicsLine label="Save"><VsTag text={`${saveStat} save`} />{!e.saveStat && <span className="text-realm-text-muted text-[10px] ml-1">(estimated)</span>}</MechanicsLine>
+    </>
+  );
+}
+
+function DamageSaveMechanics({ effects }: { effects: Record<string, unknown> }) {
+  const e = effects;
+  const saveStat = (e.saveStat as string | undefined)?.toUpperCase() ?? 'CON';
+  const dice = e.diceCount && e.diceSides ? `${e.diceCount}d${e.diceSides}` : null;
+  const status = e.statusEffect as string | undefined;
+  const statusDur = e.statusDuration as number | undefined;
+  return (
+    <>
+      <MechanicsLine label="Type">{'\u2728'} Save-or-Suck</MechanicsLine>
+      {dice && <MechanicsLine label="Damage"><DiceFormula formula={dice} /></MechanicsLine>}
+      <MechanicsLine label="Save"><VsTag text={`${saveStat} save`} /></MechanicsLine>
+      {status && (
+        <MechanicsLine label="On Fail"><StatusBadge effect={status} duration={statusDur} /></MechanicsLine>
+      )}
+    </>
+  );
+}
+
+function CcMechanics({ effects }: { effects: Record<string, unknown> }) {
+  const e = effects;
+  const saveStat = (e.saveStat as string | undefined)?.toUpperCase() ?? 'WIS';
+  const status = e.statusEffect as string | undefined;
+  const statusDur = e.statusDuration as number | undefined;
+  return (
+    <>
+      <MechanicsLine label="Type">{'\uD83E\uDDE0'} Crowd Control</MechanicsLine>
+      {status && (
+        <MechanicsLine label="Applies"><StatusBadge effect={status} duration={statusDur} /></MechanicsLine>
+      )}
+      <MechanicsLine label="Save"><VsTag text={`${saveStat} save`} /></MechanicsLine>
+    </>
+  );
+}
+
+function HealMechanics({ effects }: { effects: Record<string, unknown> }) {
+  const e = effects;
+  return (
+    <>
+      <MechanicsLine label="Type">{'\uD83D\uDC9A'} Heal</MechanicsLine>
+      {e.fullRestore && <MechanicsLine label="Amount">Full HP Restore</MechanicsLine>}
+      {e.healDice && (
+        <MechanicsLine label="Amount">
+          <DiceFormula formula={String(e.healDice)} />
+          {e.healModifier != null && <span className="text-realm-text-muted"> + {String(e.healModifier).toUpperCase()} mod</span>}
+        </MechanicsLine>
+      )}
+      {e.usesPerCombat != null && (
+        <MechanicsLine label="Uses">{String(e.usesPerCombat)}/combat</MechanicsLine>
+      )}
+    </>
+  );
+}
+
+function PassiveMechanics({ effects }: { effects: Record<string, unknown> }) {
+  const e = effects;
+  const lines: { label: string; text: string }[] = [];
+
+  if (e.cheatingDeath) lines.push({ label: 'Effect', text: `Survive lethal blow at 1 HP (${e.usesPerCombat ?? 1}/combat)` });
+  if (e.bonusHpFromCon != null) lines.push({ label: 'Effect', text: `+${Math.round(Number(e.bonusHpFromCon) * 100)}% max HP from CON` });
+  if (e.hpRegenPerRound != null) lines.push({ label: 'Effect', text: `Regenerate ${e.hpRegenPerRound} HP/round` });
+  if (e.critChanceBonus != null) lines.push({ label: 'Effect', text: `+${Math.round(Number(e.critChanceBonus) * 100)}% crit chance` });
+  if (e.firstStrikeCrit) lines.push({ label: 'Effect', text: 'First attack is auto-crit' });
+  if (e.counterattackChance != null) lines.push({ label: 'Effect', text: `${Math.round(Number(e.counterattackChance) * 100)}% counterattack chance` });
+  if (e.dodgeChance != null) lines.push({ label: 'Effect', text: `${Math.round(Number(e.dodgeChance) * 100)}% dodge chance` });
+  if (e.bonusInitiative != null) lines.push({ label: 'Initiative', text: `+${e.bonusInitiative}` });
+
+  // Fallback for any keys not specifically handled
+  if (lines.length === 0) {
+    for (const [k, v] of Object.entries(e)) {
+      if (k === 'type') continue;
+      lines.push({ label: formatKey(k), text: formatValue(v) });
+    }
+  }
+
+  return (
+    <>
+      <MechanicsLine label="Type">{'\u2B50'} Passive</MechanicsLine>
+      {lines.map((l, i) => (
+        <MechanicsLine key={i} label={l.label}>{l.text}</MechanicsLine>
+      ))}
+    </>
+  );
+}
+
+function GenericEffects({ effects }: { effects: Record<string, unknown> }) {
+  const entries = Object.entries(effects).filter(([k]) => k !== 'type');
+  if (entries.length === 0) return null;
+  return (
+    <div className="bg-realm-bg-900/50 border-l-2 border-l-realm-border/60 rounded-r px-3 py-2 space-y-1">
+      <div className="text-[10px] font-display text-realm-text-muted uppercase tracking-wider mb-1">Effects</div>
+      {entries.map(([k, v]) => (
+        <MechanicsLine key={k} label={formatKey(k)}>{formatValue(v)}</MechanicsLine>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Race Ability Mechanics
+// ---------------------------------------------------------------------------
+
+function RaceMechanics({ effectType, effectValue, targetType, cooldownSeconds, duration }: {
+  effectType: string;
+  effectValue: any;
+  targetType?: string;
+  cooldownSeconds?: number;
+  duration?: number;
+}) {
+  const isCombat = /combat|damage|attack|death|hp|reroll|buff|debuff|companion|counter|defense|critical/i.test(effectType);
+  const sectionLabel = isCombat ? 'Combat Mechanics' : 'Overworld Effect';
+
+  return (
+    <div className={`bg-realm-bg-900/50 border-l-2 ${getBorderColor(effectType, undefined)} rounded-r px-3 py-2 space-y-1`}>
+      <div className="text-[10px] font-display text-realm-text-muted uppercase tracking-wider mb-1">{sectionLabel}</div>
+
+      <MechanicsLine label="Type">{getTypeIcon(effectType, undefined)} {formatEffectType(effectType)}</MechanicsLine>
+
+      {/* Render effectValue fields intelligently */}
+      {effectValue && typeof effectValue === 'object' && <EffectValueRenderer effectType={effectType} value={effectValue} />}
+
+      {targetType && <MechanicsLine label="Target">{TARGET_LABELS[targetType] || targetType}</MechanicsLine>}
+
+      {cooldownSeconds != null && cooldownSeconds > 0 && (
+        <MechanicsLine label="Cooldown">{formatDuration(cooldownSeconds)}</MechanicsLine>
+      )}
+      {duration != null && duration > 0 && (
+        <MechanicsLine label="Duration">{formatDuration(duration)}</MechanicsLine>
+      )}
+    </div>
+  );
+}
+
+function EffectValueRenderer({ effectType, value }: { effectType: string; value: Record<string, any> }) {
+  const lines: JSX.Element[] = [];
+  const v = value;
+
+  // Combat debuffs
+  if (v.enemyAttackPenalty != null) lines.push(<MechanicsLine key="eap" label="Effect">{v.enemyAttackPenalty} enemy attack{v.scope ? ` (${v.scope.replace(/_/g, ' ')})` : ''}</MechanicsLine>);
+
+  // Death prevention
+  if (v.surviveAtHp != null) lines.push(<MechanicsLine key="sah" label="Effect">Survive lethal blow at {v.surviveAtHp} HP{v.usesPerCombat ? ` (${v.usesPerCombat}/combat)` : ''}</MechanicsLine>);
+
+  // Low HP buff
+  if (v.hpThreshold != null) lines.push(<MechanicsLine key="hpt" label="Trigger">HP below {Math.round(v.hpThreshold * 100)}%</MechanicsLine>);
+  if (v.damageBonus != null && v.hpThreshold != null) lines.push(<MechanicsLine key="db" label="Effect">+{Math.round(v.damageBonus * 100)}% damage</MechanicsLine>);
+
+  // Stat buffs
+  if (v.allStats != null) lines.push(<MechanicsLine key="as" label="Effect">+{v.allStats} to ALL stats</MechanicsLine>);
+  if (v.strBonus != null) lines.push(<MechanicsLine key="str" label="Effect">+{v.strBonus} STR</MechanicsLine>);
+  if (v.dexBonus != null) lines.push(<MechanicsLine key="dex" label="Effect">+{v.dexBonus} DEX</MechanicsLine>);
+  if (v.conBonus != null) lines.push(<MechanicsLine key="con" label="Effect">+{v.conBonus} CON</MechanicsLine>);
+  if (v.intBonus != null) lines.push(<MechanicsLine key="int" label="Effect">+{v.intBonus} INT</MechanicsLine>);
+  if (v.wisBonus != null) lines.push(<MechanicsLine key="wis" label="Effect">+{v.wisBonus} WIS</MechanicsLine>);
+  if (v.chaBonus != null) lines.push(<MechanicsLine key="cha" label="Effect">+{v.chaBonus} CHA</MechanicsLine>);
+  if (v.acBonus != null) lines.push(<MechanicsLine key="ac" label="Effect">+{v.acBonus} AC</MechanicsLine>);
+  if (v.attackBonus != null) lines.push(<MechanicsLine key="atk" label="Effect">+{v.attackBonus} Attack</MechanicsLine>);
+
+  // Combat bonuses
+  if (v.extraAttack != null) lines.push(<MechanicsLine key="ea" label="Effect">Extra attack per round</MechanicsLine>);
+  if (v.criticalRange != null) lines.push(<MechanicsLine key="cr" label="Effect">Crit range: {v.criticalRange}+</MechanicsLine>);
+  if (v.bonusDamage != null && !v.hpThreshold) lines.push(<MechanicsLine key="bd" label="Bonus Dmg">+{v.bonusDamage}</MechanicsLine>);
+  if (v.damageReduction != null) lines.push(<MechanicsLine key="dr" label="Effect">{typeof v.damageReduction === 'number' && v.damageReduction < 1 ? `${Math.round(v.damageReduction * 100)}%` : v.damageReduction} damage reduction</MechanicsLine>);
+  if (v.counterattackChance != null) lines.push(<MechanicsLine key="ca" label="Effect">{Math.round(v.counterattackChance * 100)}% counterattack chance</MechanicsLine>);
+  if (v.counterDamageMultiplier != null) lines.push(<MechanicsLine key="cdm" label="Counter Dmg">{Math.round(v.counterDamageMultiplier * 100)}% weapon damage</MechanicsLine>);
+  if (v.dodgeChance != null) lines.push(<MechanicsLine key="dc" label="Effect">{Math.round(v.dodgeChance * 100)}% dodge chance</MechanicsLine>);
+  if (v.rerollCount != null) lines.push(<MechanicsLine key="rc" label="Effect">Reroll {v.rerollCount} attack{v.rerollCount !== 1 ? 's' : ''}/combat</MechanicsLine>);
+  if (v.healPerKill != null) lines.push(<MechanicsLine key="hpk" label="Effect">Heal {v.healPerKill} HP per kill</MechanicsLine>);
+
+  // Mount buffs
+  if (v.mountSpeedBonus != null) lines.push(<MechanicsLine key="msb" label="Effect">+{Math.round(v.mountSpeedBonus * 100)}% mount speed</MechanicsLine>);
+  if (v.mountCombatBonus != null) lines.push(<MechanicsLine key="mcb" label="Effect">+{v.mountCombatBonus} mounted combat bonus</MechanicsLine>);
+
+  // XP / reputation / profession
+  if (v.xpMultiplier != null) lines.push(<MechanicsLine key="xp" label="Effect">+{Math.round(v.xpMultiplier * 100)}% XP{v.scope ? ` (${v.scope.replace(/_/g, ' ')})` : ''}</MechanicsLine>);
+  if (v.reputationMultiplier != null) lines.push(<MechanicsLine key="rep" label="Effect">+{Math.round(v.reputationMultiplier * 100)}% reputation gains</MechanicsLine>);
+  if (v.maxProfessions != null) lines.push(<MechanicsLine key="mp" label="Effect">Can learn up to {v.maxProfessions} professions</MechanicsLine>);
+  if (v.buildingMaterialDiscount != null) lines.push(<MechanicsLine key="bmd" label="Effect">{Math.round(v.buildingMaterialDiscount * 100)}% building material discount</MechanicsLine>);
+
+  // Companion
+  if (v.companionName) lines.push(<MechanicsLine key="cn" label="Companion">{v.companionName}</MechanicsLine>);
+  if (v.companionDamage) lines.push(<MechanicsLine key="cd" label="Companion Dmg">{v.companionDamage}</MechanicsLine>);
+  if (v.interceptChance != null) lines.push(<MechanicsLine key="ic" label="Intercept">{Math.round(v.interceptChance * 100)}% chance to intercept attacks</MechanicsLine>);
+
+  // Scope
+  if (v.scope && !lines.some(l => l.key === 'eap' || l.key === 'xp')) {
+    lines.push(<MechanicsLine key="scope" label="Scope">{String(v.scope).replace(/_/g, ' ')}</MechanicsLine>);
+  }
+
+  // Fallback for any unhandled fields
+  if (lines.length === 0) {
+    for (const [k, val] of Object.entries(v)) {
+      lines.push(<MechanicsLine key={k} label={formatKey(k)}>{formatValue(val)}</MechanicsLine>);
+    }
+  }
+
+  return <>{lines}</>;
+}
+
+function formatEffectType(effectType: string): string {
+  return effectType
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function formatKey(key: string): string {
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/_/g, ' ')
+    .replace(/^\w/, c => c.toUpperCase())
+    .trim();
+}
+
+function formatValue(v: unknown): string {
+  if (v == null) return '--';
+  if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+  if (typeof v === 'number') {
+    if (v > 0 && v < 1) return `${Math.round(v * 100)}%`;
+    return String(v);
+  }
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
+// ---------------------------------------------------------------------------
+// Main Component
+// ---------------------------------------------------------------------------
 
 export default function AbilityCard({
   name,
@@ -29,25 +517,33 @@ export default function AbilityCard({
   effects,
   specialization,
   type,
+  effectType,
+  effectValue,
+  targetType,
+  cooldownSeconds,
+  duration,
+  abilitySource,
 }: AbilityCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const tierClass = tier ? TIER_COLORS[tier] ?? 'bg-realm-bg-600 text-realm-text-muted' : null;
-  const effectType = effects?.type as string | undefined;
-  const derivedType = type ?? (effectType === 'passive' ? 'passive' : effectType === 'active' ? 'active' : undefined);
+  const classEffectType = effects?.type as string | undefined;
+  const derivedType = type ?? (classEffectType === 'passive' ? 'passive' : undefined);
+  const icon = getTypeIcon(effectType, effects);
 
   return (
     <div
       className="bg-realm-bg-800/50 border border-realm-border/50 rounded px-3 py-2 cursor-pointer hover:border-realm-border transition-colors"
       onClick={() => setExpanded(!expanded)}
     >
-      {/* Collapsed header */}
+      {/* Header */}
       <div className="flex items-center gap-2 flex-wrap">
         {expanded ? (
           <ChevronDown className="w-3.5 h-3.5 text-realm-text-muted flex-shrink-0" />
         ) : (
           <ChevronRight className="w-3.5 h-3.5 text-realm-text-muted flex-shrink-0" />
         )}
+        {icon && <span className="text-sm flex-shrink-0">{icon}</span>}
         <span className="text-sm text-realm-text-primary font-display">{name}</span>
 
         {/* Badges */}
@@ -71,9 +567,9 @@ export default function AbilityCard({
               {derivedType}
             </span>
           )}
-          {effectType && effectType !== 'passive' && effectType !== 'active' && (
+          {classEffectType && classEffectType !== 'passive' && classEffectType !== 'active' && (
             <span className="bg-realm-purple/20 text-realm-purple px-2 py-0.5 rounded text-xs font-display">
-              {effectType}
+              {classEffectType}
             </span>
           )}
         </div>
@@ -81,7 +577,7 @@ export default function AbilityCard({
 
       {/* Expanded body */}
       {expanded && (
-        <div className="mt-2 ml-5 space-y-1.5">
+        <div className="mt-2 ml-5 space-y-2">
           <p className="text-xs text-realm-text-secondary leading-relaxed">{description}</p>
 
           {specialization && (
@@ -90,23 +586,33 @@ export default function AbilityCard({
             </div>
           )}
 
-          {cooldown != null && cooldown > 0 && (
+          {/* Cooldown (for class abilities without mechanics box) */}
+          {abilitySource !== 'class' && cooldown != null && cooldown > 0 && (
             <div className="flex items-center gap-1 text-xs text-realm-text-muted">
               <Clock className="w-3 h-3" />
               <span>{cooldown} round{cooldown !== 1 ? 's' : ''} cooldown</span>
             </div>
           )}
 
-          {effects && Object.keys(effects).length > 0 && (
-            <div className="text-xs">
-              <span className="text-realm-text-muted">Effects: </span>
-              <span className="text-realm-text-secondary">
-                {Object.entries(effects)
-                  .filter(([k]) => k !== 'type')
-                  .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`)
-                  .join(', ')}
-              </span>
-            </div>
+          {/* Race ability mechanics */}
+          {abilitySource === 'race' && effectType && effectValue != null && (
+            <RaceMechanics
+              effectType={effectType}
+              effectValue={effectValue}
+              targetType={targetType}
+              cooldownSeconds={cooldownSeconds}
+              duration={duration}
+            />
+          )}
+
+          {/* Class ability mechanics */}
+          {abilitySource === 'class' && effects && Object.keys(effects).length > 0 && (
+            <ClassMechanics effects={effects} cooldown={cooldown} />
+          )}
+
+          {/* Fallback: no source or no structured data — show raw effects */}
+          {!abilitySource && effects && Object.keys(effects).length > 0 && (
+            <ClassMechanics effects={effects} cooldown={cooldown} />
           )}
         </div>
       )}
