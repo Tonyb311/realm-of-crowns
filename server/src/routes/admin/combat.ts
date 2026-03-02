@@ -279,78 +279,137 @@ router.get('/session/:id', async (req: AuthenticatedRequest, res: Response) => {
 
 // ---- Stats Endpoints (sourced from CombatEncounterLog) ----
 
-// GET /stats — Aggregate combat statistics
+// GET /stats — Executive combat health dashboard
 router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const [
-      totalEncounters,
-      aggregates,
-      byOutcome,
-      byTriggerSource,
-      byType,
-      recentEncounters,
-      raceClassData,
-      pveData,
-      lootRows,
-      itemTemplates,
-    ] = await Promise.all([
-      prisma.combatEncounterLog.count(),
-      prisma.combatEncounterLog.aggregate({
-        _avg: { totalRounds: true },
-        _sum: { xpAwarded: true, goldAwarded: true },
-      }),
-      prisma.combatEncounterLog.groupBy({ by: ['outcome'], _count: true }),
-      prisma.combatEncounterLog.groupBy({ by: ['triggerSource'], _count: true }),
-      prisma.combatEncounterLog.groupBy({ by: ['type'], _count: true }),
-      prisma.combatEncounterLog.findMany({
-        where: { startedAt: { gte: thirtyDaysAgo } },
-        select: { startedAt: true, outcome: true },
-        orderBy: { startedAt: 'asc' },
-      }),
+    const getBand = (lvl: number) => lvl <= 5 ? '1-5' : lvl <= 10 ? '6-10' : lvl <= 15 ? '11-15' : '16-20';
+
+    const [allEncounters, itemTemplates] = await Promise.all([
       prisma.combatEncounterLog.findMany({
         select: {
+          type: true,
           outcome: true,
+          totalRounds: true,
           characterStartHp: true,
           characterEndHp: true,
-          character: { select: { race: true, class: true } },
+          xpAwarded: true,
+          goldAwarded: true,
+          lootDropped: true,
+          startedAt: true,
+          opponentName: true,
+          character: { select: { level: true, race: true, class: true } },
         },
-      }),
-      prisma.combatEncounterLog.findMany({
-        where: { type: 'pve' },
-        select: { opponentName: true, outcome: true },
-      }),
-      prisma.combatEncounterLog.findMany({
-        where: { lootDropped: { not: '' } },
-        select: { lootDropped: true },
       }),
       prisma.itemTemplate.findMany({
         select: { name: true, rarity: true },
       }),
     ]);
 
-    // PvE survival rate (win rate for PvE only)
-    const pveTotal = pveData.length;
-    const pveWins = pveData.filter((e) => e.outcome === 'win').length;
-    const pveSurvivalRate = pveTotal > 0 ? +(pveWins / pveTotal * 100).toFixed(1) : 0;
+    const totalEncounters = allEncounters.length;
 
-    // PvP duels count
-    const pvpDuels = byType.find((t) => t.type === 'pvp')?._count ?? 0;
+    // --- PvE survival rate ---
+    const pveEncounters = allEncounters.filter((e) => e.type === 'pve');
+    const pveWins = pveEncounters.filter((e) => e.outcome === 'win').length;
+    const pveSurvivalRate = pveEncounters.length > 0 ? +(pveWins / pveEncounters.length * 100).toFixed(1) : 0;
 
-    // Loot by rarity
+    // --- Avg rounds ---
+    const avgRounds = totalEncounters > 0
+      ? +(allEncounters.reduce((s, e) => s + e.totalRounds, 0) / totalEncounters).toFixed(1)
+      : 0;
+
+    // --- Economy: gold/day, items/day (last 30 days) ---
+    const recentEncounters = allEncounters.filter((e) => e.startedAt >= thirtyDaysAgo);
+    const recentDays = new Set(recentEncounters.map((e) => e.startedAt.toISOString().slice(0, 10))).size || 1;
+    const recentGold = recentEncounters.reduce((s, e) => s + e.goldAwarded, 0);
+    let recentItemCount = 0;
+    for (const e of recentEncounters) {
+      if (e.lootDropped) {
+        const items = e.lootDropped.split(',').map((s) => s.trim()).filter(Boolean);
+        for (const item of items) {
+          const match = item.match(/^(\d+)x\s+/);
+          recentItemCount += match ? parseInt(match[1]) : 1;
+        }
+      }
+    }
+    const goldPerDay = +(recentGold / recentDays).toFixed(0);
+    const itemsDroppedPerDay = +(recentItemCount / recentDays).toFixed(1);
+
+    // --- Active level range ---
+    const bandCounts: Record<string, number> = { '1-5': 0, '6-10': 0, '11-15': 0, '16-20': 0 };
+    for (const e of allEncounters) {
+      const lvl = e.character?.level;
+      if (lvl) bandCounts[getBand(lvl)]++;
+    }
+    const activeLevelRange = Object.entries(bandCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '1-5';
+
+    // --- Survival by level band (PvE only) ---
+    const bandStats: Record<string, { encounters: number; wins: number; totalRounds: number; hpSum: number; hpCount: number }> = {};
+    for (const band of ['1-5', '6-10', '11-15', '16-20']) {
+      bandStats[band] = { encounters: 0, wins: 0, totalRounds: 0, hpSum: 0, hpCount: 0 };
+    }
+    for (const e of pveEncounters) {
+      const lvl = e.character?.level;
+      if (!lvl) continue;
+      const band = getBand(lvl);
+      const b = bandStats[band];
+      b.encounters++;
+      b.totalRounds += e.totalRounds;
+      if (e.outcome === 'win') {
+        b.wins++;
+        if (e.characterStartHp > 0) {
+          b.hpSum += (e.characterEndHp / e.characterStartHp) * 100;
+          b.hpCount++;
+        }
+      }
+    }
+    const survivalByLevel = ['1-5', '6-10', '11-15', '16-20'].map((band) => {
+      const b = bandStats[band];
+      return {
+        band,
+        encounters: b.encounters,
+        wins: b.wins,
+        survivalRate: b.encounters > 0 ? +(b.wins / b.encounters * 100).toFixed(1) : 0,
+        avgRounds: b.encounters > 0 ? +(b.totalRounds / b.encounters).toFixed(1) : 0,
+        avgHpRemainingPct: b.hpCount > 0 ? +(b.hpSum / b.hpCount).toFixed(1) : 0,
+      };
+    });
+
+    // --- Economy trend (last 30 days) ---
+    const dayEcon: Record<string, { gold: number; xp: number; itemsDropped: number }> = {};
+    for (const e of recentEncounters) {
+      const day = e.startedAt.toISOString().slice(0, 10);
+      if (!dayEcon[day]) dayEcon[day] = { gold: 0, xp: 0, itemsDropped: 0 };
+      dayEcon[day].gold += e.goldAwarded;
+      dayEcon[day].xp += e.xpAwarded;
+      if (e.lootDropped) {
+        const items = e.lootDropped.split(',').map((s) => s.trim()).filter(Boolean);
+        for (const item of items) {
+          const match = item.match(/^(\d+)x\s+/);
+          dayEcon[day].itemsDropped += match ? parseInt(match[1]) : 1;
+        }
+      }
+    }
+    const economyTrend = Object.entries(dayEcon)
+      .map(([date, d]) => ({ date, ...d }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // --- Loot by rarity ---
     const nameToRarity = new Map(itemTemplates.map((t) => [t.name.toLowerCase(), t.rarity]));
     const rarityCounts: Record<string, number> = {};
-    for (const row of lootRows) {
-      const items = row.lootDropped.split(',').map((s) => s.trim()).filter(Boolean);
+    let totalItemDrops = 0;
+    for (const e of allEncounters) {
+      if (!e.lootDropped) continue;
+      const items = e.lootDropped.split(',').map((s) => s.trim()).filter(Boolean);
       for (const item of items) {
-        // Parse "2x Iron Ore" format
         const match = item.match(/^(\d+)x\s+(.+)$/);
         const qty = match ? parseInt(match[1]) : 1;
         const name = (match ? match[2] : item).trim();
         const rarity = nameToRarity.get(name.toLowerCase()) ?? 'UNKNOWN';
         rarityCounts[rarity] = (rarityCounts[rarity] ?? 0) + qty;
+        totalItemDrops += qty;
       }
     }
     const RARITY_ORDER = ['POOR', 'COMMON', 'FINE', 'SUPERIOR', 'MASTERWORK', 'LEGENDARY', 'UNKNOWN'];
@@ -358,33 +417,19 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       .filter((r) => (rarityCounts[r] ?? 0) > 0)
       .map((r) => ({ rarity: r, count: rarityCounts[r] }));
 
-    // Avg HP remaining (%)
-    let hpSum = 0;
-    let hpCount = 0;
-    for (const e of raceClassData) {
-      if (e.characterStartHp > 0) {
-        hpSum += (e.characterEndHp / e.characterStartHp) * 100;
-        hpCount++;
-      }
-    }
-    const avgHpRemaining = hpCount > 0 ? +(hpSum / hpCount).toFixed(1) : 0;
+    // --- Pacing by level band ---
+    const pacingByLevel = ['1-5', '6-10', '11-15', '16-20'].map((band) => {
+      const b = bandStats[band];
+      return {
+        band,
+        avgRounds: b.encounters > 0 ? +(b.totalRounds / b.encounters).toFixed(1) : 0,
+        encounters: b.encounters,
+      };
+    });
 
-    // Encounters per day (last 30 days)
-    const dayMap: Record<string, { count: number; wins: number; losses: number }> = {};
-    for (const e of recentEncounters) {
-      const day = e.startedAt.toISOString().slice(0, 10);
-      if (!dayMap[day]) dayMap[day] = { count: 0, wins: 0, losses: 0 };
-      dayMap[day].count++;
-      if (e.outcome === 'win') dayMap[day].wins++;
-      else if (e.outcome === 'loss') dayMap[day].losses++;
-    }
-    const encountersPerDay = Object.entries(dayMap)
-      .map(([date, d]) => ({ date, ...d }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-
-    // Top 5 monsters (PvE only)
+    // --- Top 5 monsters ---
     const monsterMap: Record<string, { count: number; wins: number }> = {};
-    for (const e of pveData) {
+    for (const e of pveEncounters) {
       if (!e.opponentName) continue;
       if (!monsterMap[e.opponentName]) monsterMap[e.opponentName] = { count: 0, wins: 0 };
       monsterMap[e.opponentName].count++;
@@ -399,9 +444,9 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
         playerWinRate: +(d.wins / d.count * 100).toFixed(1),
       }));
 
-    // Top 5 races
+    // --- Top 5 races ---
     const raceMap: Record<string, { count: number; wins: number }> = {};
-    for (const e of raceClassData) {
+    for (const e of allEncounters) {
       const race = e.character?.race;
       if (!race) continue;
       if (!raceMap[race]) raceMap[race] = { count: 0, wins: 0 };
@@ -417,9 +462,9 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
         winRate: +(d.wins / d.count * 100).toFixed(1),
       }));
 
-    // Top 5 classes (skip null)
+    // --- Top 5 classes ---
     const classMap: Record<string, { count: number; wins: number }> = {};
-    for (const e of raceClassData) {
+    for (const e of allEncounters) {
       const cls = e.character?.class;
       if (!cls) continue;
       if (!classMap[cls]) classMap[cls] = { count: 0, wins: 0 };
@@ -435,51 +480,92 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
         winRate: +(d.wins / d.count * 100).toFixed(1),
       }));
 
-    // Balance alerts — flag win rates outside 35-85% with >10 encounters
-    const balanceAlerts: Array<{
+    // --- Balance alerts ---
+    type Alert = {
+      category: 'race' | 'class' | 'monster' | 'level_band' | 'loot';
       entity: string;
-      entityType: 'race' | 'class' | 'monster';
-      winRate: number;
-      encounters: number;
-      severity: 'warning' | 'critical';
-    }> = [];
+      metric: string;
+      value: number;
+      expected: string;
+      severity: 'critical' | 'warning';
+      message: string;
+    };
+    const alerts: Alert[] = [];
 
-    const checkBalance = (
+    // Race/Class PvE survival alerts
+    const checkPveSurvival = (
       map: Record<string, { count: number; wins: number }>,
-      entityType: 'race' | 'class' | 'monster',
+      category: 'race' | 'class',
     ) => {
       for (const [name, d] of Object.entries(map)) {
         if (d.count < 10) continue;
-        const wr = +(d.wins / d.count * 100).toFixed(1);
-        if (wr < 25 || wr > 95) {
-          balanceAlerts.push({ entity: name, entityType, winRate: wr, encounters: d.count, severity: 'critical' });
-        } else if (wr < 35 || wr > 85) {
-          balanceAlerts.push({ entity: name, entityType, winRate: wr, encounters: d.count, severity: 'warning' });
+        const sr = +(d.wins / d.count * 100).toFixed(1);
+        if (sr < 25 || sr > 95) {
+          alerts.push({ category, entity: name, metric: 'PvE survival rate', value: sr, expected: '35-85%', severity: 'critical', message: `${name} has ${sr}% PvE survival rate (expected 35-85%) across ${d.count} encounters` });
+        } else if (sr < 35 || sr > 85) {
+          alerts.push({ category, entity: name, metric: 'PvE survival rate', value: sr, expected: '35-85%', severity: 'warning', message: `${name} has ${sr}% PvE survival rate (expected 35-85%) across ${d.count} encounters` });
         }
       }
     };
+    checkPveSurvival(raceMap, 'race');
+    checkPveSurvival(classMap, 'class');
 
-    checkBalance(raceMap, 'race');
-    checkBalance(classMap, 'class');
-    checkBalance(monsterMap, 'monster');
+    // Monster survival alerts
+    for (const [name, d] of Object.entries(monsterMap)) {
+      if (d.count < 10) continue;
+      const sr = +(d.wins / d.count * 100).toFixed(1);
+      if (sr < 15 || sr > 98) {
+        alerts.push({ category: 'monster', entity: name, metric: 'player survival rate', value: sr, expected: '25-90%', severity: 'critical', message: `${name}: ${sr}% player survival (expected 25-90%) across ${d.count} encounters` });
+      } else if (sr < 25 || sr > 90) {
+        alerts.push({ category: 'monster', entity: name, metric: 'player survival rate', value: sr, expected: '25-90%', severity: 'warning', message: `${name}: ${sr}% player survival (expected 25-90%) across ${d.count} encounters` });
+      }
+    }
+
+    // Level band economy alerts
+    const overallAvgGold = totalEncounters > 0 ? allEncounters.reduce((s, e) => s + e.goldAwarded, 0) / totalEncounters : 0;
+    const overallAvgXp = totalEncounters > 0 ? allEncounters.reduce((s, e) => s + e.xpAwarded, 0) / totalEncounters : 0;
+    for (const band of ['1-5', '6-10', '11-15', '16-20']) {
+      const bandEncs = allEncounters.filter((e) => e.character?.level && getBand(e.character.level) === band);
+      if (bandEncs.length < 10) continue;
+      const bandAvgGold = bandEncs.reduce((s, e) => s + e.goldAwarded, 0) / bandEncs.length;
+      const bandAvgXp = bandEncs.reduce((s, e) => s + e.xpAwarded, 0) / bandEncs.length;
+      if (overallAvgGold > 0 && bandAvgGold > overallAvgGold * 2) {
+        alerts.push({ category: 'level_band', entity: band, metric: 'gold per encounter', value: +bandAvgGold.toFixed(0), expected: `<${+(overallAvgGold * 2).toFixed(0)}`, severity: 'warning', message: `Level ${band}: ${bandAvgGold.toFixed(0)} avg gold/encounter (>2x overall avg of ${overallAvgGold.toFixed(0)})` });
+      }
+      if (overallAvgXp > 0 && bandAvgXp > overallAvgXp * 2) {
+        alerts.push({ category: 'level_band', entity: band, metric: 'XP per encounter', value: +bandAvgXp.toFixed(0), expected: `<${+(overallAvgXp * 2).toFixed(0)}`, severity: 'warning', message: `Level ${band}: ${bandAvgXp.toFixed(0)} avg XP/encounter (>2x overall avg of ${overallAvgXp.toFixed(0)})` });
+      }
+    }
+
+    // Loot rarity alerts
+    if (totalItemDrops > 0) {
+      const mwCount = rarityCounts['MASTERWORK'] ?? 0;
+      const legCount = rarityCounts['LEGENDARY'] ?? 0;
+      const highRarePct = +((mwCount + legCount) / totalItemDrops * 100).toFixed(1);
+      const legPct = +(legCount / totalItemDrops * 100).toFixed(1);
+      if (legPct > 2) {
+        alerts.push({ category: 'loot', entity: 'LEGENDARY', metric: 'drop rate', value: legPct, expected: '<2% of total drops', severity: 'critical', message: `LEGENDARY items are ${legPct}% of all drops (expected <2%)` });
+      }
+      if (highRarePct > 5) {
+        alerts.push({ category: 'loot', entity: 'MASTERWORK+LEGENDARY', metric: 'drop rate', value: highRarePct, expected: '<5% of total drops', severity: 'warning', message: `MASTERWORK+LEGENDARY items are ${highRarePct}% of all drops (expected <5%)` });
+      }
+    }
 
     return res.json({
       totalEncounters,
       pveSurvivalRate,
-      pvpDuels,
-      avgRounds: +(aggregates._avg.totalRounds ?? 0).toFixed(1),
-      avgHpRemaining,
-      totalXpAwarded: aggregates._sum.xpAwarded ?? 0,
-      totalGoldAwarded: aggregates._sum.goldAwarded ?? 0,
+      avgRounds,
+      goldPerDay,
+      itemsDroppedPerDay,
+      activeLevelRange,
+      survivalByLevel,
+      economyTrend,
       lootByRarity,
-      encountersPerDay,
-      byOutcome: byOutcome.map((o) => ({ outcome: o.outcome, count: o._count })),
-      byTriggerSource: byTriggerSource.map((s) => ({ source: s.triggerSource, count: s._count })),
-      byType: byType.map((t) => ({ type: t.type, count: t._count })),
+      pacingByLevel,
+      alerts,
       topMonsters,
       topRaces,
       topClasses,
-      balanceAlerts,
     });
   } catch (error) {
     logRouteError(req, 500, 'Admin combat stats error', error);

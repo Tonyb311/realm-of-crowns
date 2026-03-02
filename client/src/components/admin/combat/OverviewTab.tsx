@@ -1,58 +1,69 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   Swords,
-  Shield,
   TrendingUp,
   Timer,
-  Heart,
-  Sparkles,
   Coins,
+  Package,
+  Layers,
   AlertTriangle,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
+  ComposedChart,
   AreaChart,
   Area,
   BarChart,
   Bar,
-  PieChart,
-  Pie,
+  Line,
   Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
+  ReferenceArea,
 } from 'recharts';
 import api from '../../../services/api';
+
+// ---- Types ----
 
 interface CombatStats {
   totalEncounters: number;
   pveSurvivalRate: number;
-  pvpDuels: number;
   avgRounds: number;
-  avgHpRemaining: number;
-  totalXpAwarded: number;
-  totalGoldAwarded: number;
+  goldPerDay: number;
+  itemsDroppedPerDay: number;
+  activeLevelRange: string;
+  survivalByLevel: Array<{
+    band: string;
+    encounters: number;
+    wins: number;
+    survivalRate: number;
+    avgRounds: number;
+    avgHpRemainingPct: number;
+  }>;
+  economyTrend: Array<{ date: string; gold: number; xp: number; itemsDropped: number }>;
   lootByRarity: Array<{ rarity: string; count: number }>;
-  encountersPerDay: Array<{ date: string; count: number; wins: number; losses: number }>;
-  byOutcome: Array<{ outcome: string; count: number }>;
-  byTriggerSource: Array<{ source: string; count: number }>;
-  byType: Array<{ type: string; count: number }>;
+  pacingByLevel: Array<{ band: string; avgRounds: number; encounters: number }>;
+  alerts: Array<{
+    category: 'race' | 'class' | 'monster' | 'level_band' | 'loot';
+    entity: string;
+    metric: string;
+    value: number;
+    expected: string;
+    severity: 'critical' | 'warning';
+    message: string;
+  }>;
   topMonsters: Array<{ name: string; count: number; playerWinRate: number }>;
   topRaces: Array<{ race: string; count: number; winRate: number }>;
   topClasses: Array<{ class: string; count: number; winRate: number }>;
-  balanceAlerts: Array<{
-    entity: string;
-    entityType: 'race' | 'class' | 'monster';
-    winRate: number;
-    encounters: number;
-    severity: 'warning' | 'critical';
-  }>;
 }
 
-const RARITY_COLORS: Record<string, string> = {
+// ---- Constants ----
+
+const LOOT_RARITY_COLORS: Record<string, string> = {
   POOR: '#9ca3af',
-  COMMON: '#ffffff',
+  COMMON: '#e5e7eb',
   FINE: '#22c55e',
   SUPERIOR: '#3b82f6',
   MASTERWORK: '#a855f7',
@@ -60,17 +71,31 @@ const RARITY_COLORS: Record<string, string> = {
   UNKNOWN: '#6b7280',
 };
 
-const PIE_COLORS = ['#d4af37', '#4D8FA8', '#A855C7', '#B87333', '#5A8F6E', '#8B2E2E'];
-const OUTCOME_COLORS: Record<string, string> = {
-  win: '#5A8F6E',
-  loss: '#8B2E2E',
-  flee: '#C9952B',
-  draw: '#6b7280',
+const TOOLTIP_STYLE = {
+  backgroundColor: '#1a1a2e',
+  border: '1px solid #2a2a3a',
+  borderRadius: '8px',
 };
 
-function survivalRateColor(rate: number): string {
+const CATEGORY_LABELS: Record<string, string> = {
+  race: 'Race',
+  class: 'Class',
+  monster: 'Monster',
+  level_band: 'Level Band',
+  loot: 'Loot',
+};
+
+// ---- Helpers ----
+
+function survivalColor(rate: number): string {
   if (rate > 70) return 'text-realm-success';
   if (rate >= 40) return 'text-realm-warning';
+  return 'text-realm-danger';
+}
+
+function roundsColor(rounds: number): string {
+  if (rounds >= 4 && rounds <= 8) return 'text-realm-success';
+  if ((rounds >= 2 && rounds < 4) || (rounds > 8 && rounds <= 12)) return 'text-realm-warning';
   return 'text-realm-danger';
 }
 
@@ -79,6 +104,8 @@ function winRateColor(rate: number): string {
   if (rate >= 40) return 'text-realm-warning';
   return 'text-realm-danger';
 }
+
+// ---- Component ----
 
 export default function OverviewTab() {
   const { data, isLoading, error } = useQuery<CombatStats>({
@@ -89,21 +116,17 @@ export default function OverviewTab() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-          {[...Array(7)].map((_, i) => (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {[...Array(6)].map((_, i) => (
             <div key={i} className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 h-28 animate-pulse" />
           ))}
         </div>
-        <div className="bg-realm-bg-700 border border-realm-border rounded-lg h-64 animate-pulse" />
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg h-72 animate-pulse" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-realm-bg-700 border border-realm-border rounded-lg h-64 animate-pulse" />
           <div className="bg-realm-bg-700 border border-realm-border rounded-lg h-64 animate-pulse" />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-realm-bg-700 border border-realm-border rounded-lg h-56 animate-pulse" />
-          ))}
-        </div>
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg h-56 animate-pulse" />
       </div>
     );
   }
@@ -116,26 +139,28 @@ export default function OverviewTab() {
     );
   }
 
+  if (data.totalEncounters === 0) {
+    return (
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-12 text-center">
+        <Swords className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-4" />
+        <p className="text-realm-text-muted">No combat data yet. Run a simulation or wait for player encounters.</p>
+      </div>
+    );
+  }
+
   const kpiCards = [
     { label: 'Total Encounters', value: data.totalEncounters.toLocaleString(), icon: Swords, color: 'text-realm-gold-400' },
-    { label: 'PvE Survival Rate', value: `${data.pveSurvivalRate}%`, icon: TrendingUp, color: survivalRateColor(data.pveSurvivalRate) },
-    { label: 'Avg Rounds', value: data.avgRounds.toFixed(1), icon: Timer, color: 'text-realm-text-secondary' },
-    { label: 'Avg HP Left', value: `${data.avgHpRemaining}%`, icon: Heart, color: 'text-realm-hp' },
-    { label: 'Total XP', value: data.totalXpAwarded.toLocaleString(), icon: Sparkles, color: 'text-realm-purple-300' },
-    { label: 'Total Gold', value: data.totalGoldAwarded.toLocaleString(), icon: Coins, color: 'text-realm-gold-300' },
-    { label: 'PvP Duels', value: data.pvpDuels.toLocaleString(), icon: Shield, color: 'text-realm-teal-300' },
+    { label: 'PvE Survival Rate', value: `${data.pveSurvivalRate}%`, icon: TrendingUp, color: survivalColor(data.pveSurvivalRate) },
+    { label: 'Avg Rounds', value: data.avgRounds.toFixed(1), icon: Timer, color: roundsColor(data.avgRounds) },
+    { label: 'Gold / Day', value: data.goldPerDay.toLocaleString(), icon: Coins, color: 'text-realm-gold-300' },
+    { label: 'Items / Day', value: data.itemsDroppedPerDay.toFixed(1), icon: Package, color: 'text-realm-teal-300' },
+    { label: 'Active Level Range', value: data.activeLevelRange, icon: Layers, color: 'text-realm-text-secondary' },
   ];
-
-  // Compute flees from the difference for chart data
-  const chartData = data.encountersPerDay.map((d) => ({
-    ...d,
-    flees: d.count - d.wins - d.losses,
-  }));
 
   return (
     <div className="space-y-6">
-      {/* Row 1: KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+      {/* TIER 1: KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {kpiCards.map((card) => {
           const Icon = card.icon;
           return (
@@ -155,164 +180,102 @@ export default function OverviewTab() {
         })}
       </div>
 
-      {/* Row 2: Encounters Per Day */}
-      {chartData.length > 0 && (
-        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
-          <h3 className="font-display text-realm-text-primary text-sm mb-4">
-            Encounters Per Day (Last 30 Days)
-          </h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <AreaChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
-              <XAxis
-                dataKey="date"
-                stroke="#6b7280"
-                tick={{ fontSize: 11 }}
-                tickFormatter={(d) => d.slice(5)}
-              />
-              <YAxis stroke="#6b7280" tick={{ fontSize: 11 }} allowDecimals={false} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1a1a2e',
-                  border: '1px solid #2a2a3a',
-                  borderRadius: '8px',
-                }}
-                labelStyle={{ color: '#d4af37' }}
-              />
-              <Area
-                type="monotone"
-                dataKey="wins"
-                stackId="1"
-                fill="#5A8F6E"
-                stroke="#5A8F6E"
-                fillOpacity={0.6}
-                name="Wins"
-              />
-              <Area
-                type="monotone"
-                dataKey="losses"
-                stackId="1"
-                fill="#8B2E2E"
-                stroke="#8B2E2E"
-                fillOpacity={0.6}
-                name="Losses"
-              />
-              <Area
-                type="monotone"
-                dataKey="flees"
-                stackId="1"
-                fill="#C9952B"
-                stroke="#C9952B"
-                fillOpacity={0.6}
-                name="Flees"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Row 3: Two Pie Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* By Trigger Source */}
-        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
-          <h3 className="font-display text-realm-text-primary text-sm mb-4">By Trigger Source</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie
-                data={data.byTriggerSource}
-                dataKey="count"
-                nameKey="source"
-                cx="50%"
-                cy="50%"
-                outerRadius={90}
-                label={({ source, percent }: { source: string; percent: number }) =>
-                  `${source} (${(percent * 100).toFixed(0)}%)`
-                }
-                labelLine={{ stroke: '#6b7280' }}
-              >
-                {data.byTriggerSource.map((_, i) => (
-                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1a1a2e',
-                  border: '1px solid #2a2a3a',
-                  borderRadius: '8px',
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* By Outcome */}
-        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
-          <h3 className="font-display text-realm-text-primary text-sm mb-4">By Outcome</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie
-                data={data.byOutcome}
-                dataKey="count"
-                nameKey="outcome"
-                cx="50%"
-                cy="50%"
-                outerRadius={90}
-                label={({ outcome, percent }: { outcome: string; percent: number }) =>
-                  `${outcome} (${(percent * 100).toFixed(0)}%)`
-                }
-                labelLine={{ stroke: '#6b7280' }}
-              >
-                {data.byOutcome.map((entry, i) => (
-                  <Cell
-                    key={i}
-                    fill={OUTCOME_COLORS[entry.outcome] ?? PIE_COLORS[i % PIE_COLORS.length]}
-                  />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1a1a2e',
-                  border: '1px solid #2a2a3a',
-                  borderRadius: '8px',
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Row 3.5: Loot by Rarity */}
+      {/* TIER 2A: PvE Survival Rate by Level Band */}
       <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
-        <h3 className="font-display text-realm-text-primary text-sm mb-4">Loot Drops by Rarity</h3>
-        {data.lootByRarity.length > 0 ? (
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={data.lootByRarity}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
-              <XAxis dataKey="rarity" stroke="#6b7280" tick={{ fontSize: 11 }} />
-              <YAxis stroke="#6b7280" tick={{ fontSize: 11 }} allowDecimals={false} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1a1a2e',
-                  border: '1px solid #2a2a3a',
-                  borderRadius: '8px',
-                }}
-                labelStyle={{ color: '#d4af37' }}
-              />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                {data.lootByRarity.map((entry) => (
-                  <Cell key={entry.rarity} fill={RARITY_COLORS[entry.rarity] ?? '#6b7280'} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="text-center py-10 text-realm-text-muted text-sm">
-            No loot drops recorded
-          </div>
-        )}
+        <h3 className="font-display text-realm-text-primary text-sm mb-1">
+          PvE Survival Rate by Level Band
+        </h3>
+        <p className="text-realm-text-muted text-xs mb-4">
+          Green zone = healthy range (40-70%). Below = too hard. Above = too easy.
+        </p>
+        <ResponsiveContainer width="100%" height={280}>
+          <ComposedChart data={data.survivalByLevel}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
+            <ReferenceArea y1={40} y2={70} fill="#5A8F6E" fillOpacity={0.1} />
+            <XAxis dataKey="band" stroke="#6b7280" tick={{ fontSize: 12 }} />
+            <YAxis yAxisId="left" domain={[0, 100]} stroke="#d4af37" tick={{ fontSize: 11 }} label={{ value: 'Survival %', angle: -90, position: 'insideLeft', style: { fill: '#6b7280', fontSize: 10 } }} />
+            <YAxis yAxisId="right" orientation="right" stroke="#6b7280" tick={{ fontSize: 11 }} label={{ value: 'Encounters', angle: 90, position: 'insideRight', style: { fill: '#6b7280', fontSize: 10 } }} />
+            <Tooltip
+              contentStyle={TOOLTIP_STYLE}
+              labelStyle={{ color: '#d4af37' }}
+              formatter={(value: number, name: string) => {
+                if (name === 'survivalRate') return [`${value}%`, 'Survival Rate'];
+                if (name === 'encounters') return [value, 'Encounters'];
+                return [value, name];
+              }}
+            />
+            <Bar yAxisId="right" dataKey="encounters" fill="#242B45" radius={[4, 4, 0, 0]} />
+            <Line yAxisId="left" type="monotone" dataKey="survivalRate" stroke="#d4af37" strokeWidth={3} dot={{ r: 5, fill: '#d4af37' }} />
+          </ComposedChart>
+        </ResponsiveContainer>
       </div>
 
-      {/* Row 4: Top 5 Tables */}
+      {/* TIER 2B: Economy Trend + Loot by Rarity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Economy Injection Trend */}
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+          <h3 className="font-display text-realm-text-primary text-sm mb-4">Economy Injection (Last 30 Days)</h3>
+          {data.economyTrend.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <AreaChart data={data.economyTrend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
+                <XAxis dataKey="date" stroke="#6b7280" tick={{ fontSize: 11 }} tickFormatter={(d) => d.slice(5)} />
+                <YAxis stroke="#6b7280" tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: '#d4af37' }} />
+                <Area type="monotone" dataKey="gold" stackId="1" fill="#f59e0b" stroke="#f59e0b" fillOpacity={0.5} name="Gold" />
+                <Area type="monotone" dataKey="xp" stackId="1" fill="#3b82f6" stroke="#3b82f6" fillOpacity={0.4} name="XP" />
+                <Area type="monotone" dataKey="itemsDropped" stackId="1" fill="#22c55e" stroke="#22c55e" fillOpacity={0.4} name="Items" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="text-center py-10 text-realm-text-muted text-sm">No recent data</div>
+          )}
+        </div>
+
+        {/* Loot by Rarity */}
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+          <h3 className="font-display text-realm-text-primary text-sm mb-4">Loot Drops by Rarity</h3>
+          {data.lootByRarity.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={data.lootByRarity}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
+                <XAxis dataKey="rarity" stroke="#6b7280" tick={{ fontSize: 11 }} />
+                <YAxis stroke="#6b7280" tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: '#d4af37' }} />
+                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                  {data.lootByRarity.map((entry) => (
+                    <Cell key={entry.rarity} fill={LOOT_RARITY_COLORS[entry.rarity] ?? '#6b7280'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="text-center py-10 text-realm-text-muted text-sm">No loot drops recorded</div>
+          )}
+        </div>
+      </div>
+
+      {/* TIER 2C: Fight Pacing by Level Band */}
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+        <h3 className="font-display text-realm-text-primary text-sm mb-1">
+          Fight Pacing by Level Band
+        </h3>
+        <p className="text-realm-text-muted text-xs mb-4">
+          Sweet spot = 4-8 rounds. Under 3 = stomps. Over 10 = tedious.
+        </p>
+        <ResponsiveContainer width="100%" height={200}>
+          <ComposedChart data={data.pacingByLevel}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
+            <ReferenceArea y1={4} y2={8} fill="#5A8F6E" fillOpacity={0.1} />
+            <XAxis dataKey="band" stroke="#6b7280" tick={{ fontSize: 12 }} />
+            <YAxis stroke="#6b7280" tick={{ fontSize: 11 }} allowDecimals={false} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: '#d4af37' }} />
+            <Bar dataKey="avgRounds" fill="#d4af37" radius={[4, 4, 0, 0]} name="Avg Rounds" />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* TIER 2D: Top 5 Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Top Monsters */}
         <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
@@ -327,22 +290,14 @@ export default function OverviewTab() {
             </thead>
             <tbody className="divide-y divide-realm-border/30">
               {data.topMonsters.map((m) => (
-                <tr
-                  key={m.name}
-                  className="hover:bg-realm-bg-800/30 transition-colors cursor-pointer"
-                  onClick={() => {}}
-                >
+                <tr key={m.name} className="hover:bg-realm-bg-800/30 transition-colors cursor-pointer" onClick={() => {}}>
                   <td className="py-2 text-sm text-realm-text-primary">{m.name}</td>
                   <td className="py-2 text-sm text-realm-text-secondary text-right">{m.count}</td>
-                  <td className={`py-2 text-sm text-right font-display ${winRateColor(m.playerWinRate)}`}>
-                    {m.playerWinRate}%
-                  </td>
+                  <td className={`py-2 text-sm text-right font-display ${winRateColor(m.playerWinRate)}`}>{m.playerWinRate}%</td>
                 </tr>
               ))}
               {data.topMonsters.length === 0 && (
-                <tr>
-                  <td colSpan={3} className="py-4 text-center text-realm-text-muted text-sm">No data</td>
-                </tr>
+                <tr><td colSpan={3} className="py-4 text-center text-realm-text-muted text-sm">No data</td></tr>
               )}
             </tbody>
           </table>
@@ -361,22 +316,14 @@ export default function OverviewTab() {
             </thead>
             <tbody className="divide-y divide-realm-border/30">
               {data.topRaces.map((r) => (
-                <tr
-                  key={r.race}
-                  className="hover:bg-realm-bg-800/30 transition-colors cursor-pointer"
-                  onClick={() => {}}
-                >
+                <tr key={r.race} className="hover:bg-realm-bg-800/30 transition-colors cursor-pointer" onClick={() => {}}>
                   <td className="py-2 text-sm text-realm-text-primary">{r.race}</td>
                   <td className="py-2 text-sm text-realm-text-secondary text-right">{r.count}</td>
-                  <td className={`py-2 text-sm text-right font-display ${winRateColor(r.winRate)}`}>
-                    {r.winRate}%
-                  </td>
+                  <td className={`py-2 text-sm text-right font-display ${winRateColor(r.winRate)}`}>{r.winRate}%</td>
                 </tr>
               ))}
               {data.topRaces.length === 0 && (
-                <tr>
-                  <td colSpan={3} className="py-4 text-center text-realm-text-muted text-sm">No data</td>
-                </tr>
+                <tr><td colSpan={3} className="py-4 text-center text-realm-text-muted text-sm">No data</td></tr>
               )}
             </tbody>
           </table>
@@ -395,52 +342,48 @@ export default function OverviewTab() {
             </thead>
             <tbody className="divide-y divide-realm-border/30">
               {data.topClasses.map((c) => (
-                <tr
-                  key={c.class}
-                  className="hover:bg-realm-bg-800/30 transition-colors cursor-pointer"
-                  onClick={() => {}}
-                >
+                <tr key={c.class} className="hover:bg-realm-bg-800/30 transition-colors cursor-pointer" onClick={() => {}}>
                   <td className="py-2 text-sm text-realm-text-primary">{c.class}</td>
                   <td className="py-2 text-sm text-realm-text-secondary text-right">{c.count}</td>
-                  <td className={`py-2 text-sm text-right font-display ${winRateColor(c.winRate)}`}>
-                    {c.winRate}%
-                  </td>
+                  <td className={`py-2 text-sm text-right font-display ${winRateColor(c.winRate)}`}>{c.winRate}%</td>
                 </tr>
               ))}
               {data.topClasses.length === 0 && (
-                <tr>
-                  <td colSpan={3} className="py-4 text-center text-realm-text-muted text-sm">No data</td>
-                </tr>
+                <tr><td colSpan={3} className="py-4 text-center text-realm-text-muted text-sm">No data</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Row 5: Balance Alerts */}
-      {data.balanceAlerts.length > 0 && (
+      {/* TIER 3: Balance Alerts */}
+      {data.alerts.length > 0 && (
         <div className="space-y-3">
-          <h3 className="font-display text-realm-text-primary text-sm">Balance Alerts</h3>
-          {data.balanceAlerts.map((alert) => (
+          <div className="flex items-center gap-2">
+            <h3 className="font-display text-realm-text-primary text-sm">Balance Alerts</h3>
+            <span className="bg-realm-danger/20 text-realm-danger text-xs font-display px-2 py-0.5 rounded-full">
+              {data.alerts.length}
+            </span>
+          </div>
+          {data.alerts.map((alert, i) => (
             <div
-              key={`${alert.entityType}-${alert.entity}`}
-              className={`flex items-center gap-3 rounded-lg p-4 border ${
+              key={i}
+              className={`flex items-start gap-3 rounded-lg p-4 border-l-4 ${
                 alert.severity === 'critical'
-                  ? 'bg-realm-danger/10 border-realm-danger/40'
-                  : 'bg-realm-warning/10 border-realm-warning/40'
+                  ? 'bg-realm-danger/10 border-realm-danger'
+                  : 'bg-realm-warning/10 border-realm-warning'
               }`}
             >
               <AlertTriangle
-                className={`w-5 h-5 flex-shrink-0 ${
+                className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
                   alert.severity === 'critical' ? 'text-realm-danger' : 'text-realm-warning'
                 }`}
               />
-              <span className="text-sm text-realm-text-primary">
-                <strong>{alert.entity}</strong> ({alert.entityType}) —{' '}
-                <span className={alert.severity === 'critical' ? 'text-realm-danger' : 'text-realm-warning'}>
-                  {alert.winRate}% win rate
-                </span>{' '}
-                across {alert.encounters} encounters
+              <div className="flex-1">
+                <span className="text-sm text-realm-text-primary">{alert.message}</span>
+              </div>
+              <span className="text-xs font-display uppercase tracking-wider text-realm-text-muted bg-realm-bg-800 px-2 py-1 rounded flex-shrink-0">
+                {CATEGORY_LABELS[alert.category] ?? alert.category}
               </span>
             </div>
           ))}
