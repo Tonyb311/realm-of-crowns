@@ -294,6 +294,8 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       recentEncounters,
       raceClassData,
       pveData,
+      lootRows,
+      itemTemplates,
     ] = await Promise.all([
       prisma.combatEncounterLog.count(),
       prisma.combatEncounterLog.aggregate({
@@ -310,7 +312,6 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       }),
       prisma.combatEncounterLog.findMany({
         select: {
-          characterId: true,
           outcome: true,
           characterStartHp: true,
           characterEndHp: true,
@@ -321,14 +322,41 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
         where: { type: 'pve' },
         select: { opponentName: true, outcome: true },
       }),
+      prisma.combatEncounterLog.findMany({
+        where: { lootDropped: { not: '' } },
+        select: { lootDropped: true },
+      }),
+      prisma.itemTemplate.findMany({
+        select: { name: true, rarity: true },
+      }),
     ]);
 
-    // Unique combatants
-    const uniqueCombatants = new Set(raceClassData.map((e) => e.characterId)).size;
+    // PvE survival rate (win rate for PvE only)
+    const pveTotal = pveData.length;
+    const pveWins = pveData.filter((e) => e.outcome === 'win').length;
+    const pveSurvivalRate = pveTotal > 0 ? +(pveWins / pveTotal * 100).toFixed(1) : 0;
 
-    // Win rate
-    const winCount = byOutcome.find((o) => o.outcome === 'win')?._count ?? 0;
-    const winRate = totalEncounters > 0 ? +(winCount / totalEncounters * 100).toFixed(1) : 0;
+    // PvP duels count
+    const pvpDuels = byType.find((t) => t.type === 'pvp')?._count ?? 0;
+
+    // Loot by rarity
+    const nameToRarity = new Map(itemTemplates.map((t) => [t.name.toLowerCase(), t.rarity]));
+    const rarityCounts: Record<string, number> = {};
+    for (const row of lootRows) {
+      const items = row.lootDropped.split(',').map((s) => s.trim()).filter(Boolean);
+      for (const item of items) {
+        // Parse "2x Iron Ore" format
+        const match = item.match(/^(\d+)x\s+(.+)$/);
+        const qty = match ? parseInt(match[1]) : 1;
+        const name = (match ? match[2] : item).trim();
+        const rarity = nameToRarity.get(name.toLowerCase()) ?? 'UNKNOWN';
+        rarityCounts[rarity] = (rarityCounts[rarity] ?? 0) + qty;
+      }
+    }
+    const RARITY_ORDER = ['POOR', 'COMMON', 'FINE', 'SUPERIOR', 'MASTERWORK', 'LEGENDARY', 'UNKNOWN'];
+    const lootByRarity = RARITY_ORDER
+      .filter((r) => (rarityCounts[r] ?? 0) > 0)
+      .map((r) => ({ rarity: r, count: rarityCounts[r] }));
 
     // Avg HP remaining (%)
     let hpSum = 0;
@@ -437,12 +465,13 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
 
     return res.json({
       totalEncounters,
-      uniqueCombatants,
-      winRate,
+      pveSurvivalRate,
+      pvpDuels,
       avgRounds: +(aggregates._avg.totalRounds ?? 0).toFixed(1),
       avgHpRemaining,
       totalXpAwarded: aggregates._sum.xpAwarded ?? 0,
       totalGoldAwarded: aggregates._sum.goldAwarded ?? 0,
+      lootByRarity,
       encountersPerDay,
       byOutcome: byOutcome.map((o) => ({ outcome: o.outcome, count: o._count })),
       byTriggerSource: byTriggerSource.map((s) => ({ source: s.triggerSource, count: s._count })),

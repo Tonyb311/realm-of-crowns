@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   Swords,
-  Users,
+  Shield,
   TrendingUp,
   Timer,
   Heart,
@@ -13,6 +13,8 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  BarChart,
+  Bar,
   PieChart,
   Pie,
   Cell,
@@ -25,12 +27,13 @@ import api from '../../../services/api';
 
 interface CombatStats {
   totalEncounters: number;
-  uniqueCombatants: number;
-  winRate: number;
+  pveSurvivalRate: number;
+  pvpDuels: number;
   avgRounds: number;
   avgHpRemaining: number;
   totalXpAwarded: number;
   totalGoldAwarded: number;
+  lootByRarity: Array<{ rarity: string; count: number }>;
   encountersPerDay: Array<{ date: string; count: number; wins: number; losses: number }>;
   byOutcome: Array<{ outcome: string; count: number }>;
   byTriggerSource: Array<{ source: string; count: number }>;
@@ -47,6 +50,16 @@ interface CombatStats {
   }>;
 }
 
+const RARITY_COLORS: Record<string, string> = {
+  POOR: '#9ca3af',
+  COMMON: '#ffffff',
+  FINE: '#22c55e',
+  SUPERIOR: '#3b82f6',
+  MASTERWORK: '#a855f7',
+  LEGENDARY: '#f59e0b',
+  UNKNOWN: '#6b7280',
+};
+
 const PIE_COLORS = ['#d4af37', '#4D8FA8', '#A855C7', '#B87333', '#5A8F6E', '#8B2E2E'];
 const OUTCOME_COLORS: Record<string, string> = {
   win: '#5A8F6E',
@@ -54,6 +67,12 @@ const OUTCOME_COLORS: Record<string, string> = {
   flee: '#C9952B',
   draw: '#6b7280',
 };
+
+function survivalRateColor(rate: number): string {
+  if (rate > 70) return 'text-realm-success';
+  if (rate >= 40) return 'text-realm-warning';
+  return 'text-realm-danger';
+}
 
 function winRateColor(rate: number): string {
   if (rate > 60) return 'text-realm-success';
@@ -99,12 +118,12 @@ export default function OverviewTab() {
 
   const kpiCards = [
     { label: 'Total Encounters', value: data.totalEncounters.toLocaleString(), icon: Swords, color: 'text-realm-gold-400' },
-    { label: 'Unique Combatants', value: data.uniqueCombatants.toLocaleString(), icon: Users, color: 'text-realm-teal-300' },
-    { label: 'Win Rate', value: `${data.winRate}%`, icon: TrendingUp, color: winRateColor(data.winRate) },
+    { label: 'PvE Survival Rate', value: `${data.pveSurvivalRate}%`, icon: TrendingUp, color: survivalRateColor(data.pveSurvivalRate) },
     { label: 'Avg Rounds', value: data.avgRounds.toFixed(1), icon: Timer, color: 'text-realm-text-secondary' },
     { label: 'Avg HP Left', value: `${data.avgHpRemaining}%`, icon: Heart, color: 'text-realm-hp' },
     { label: 'Total XP', value: data.totalXpAwarded.toLocaleString(), icon: Sparkles, color: 'text-realm-purple-300' },
     { label: 'Total Gold', value: data.totalGoldAwarded.toLocaleString(), icon: Coins, color: 'text-realm-gold-300' },
+    { label: 'PvP Duels', value: data.pvpDuels.toLocaleString(), icon: Shield, color: 'text-realm-teal-300' },
   ];
 
   // Compute flees from the difference for chart data
@@ -260,6 +279,37 @@ export default function OverviewTab() {
             </PieChart>
           </ResponsiveContainer>
         </div>
+      </div>
+
+      {/* Row 3.5: Loot by Rarity */}
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+        <h3 className="font-display text-realm-text-primary text-sm mb-4">Loot Drops by Rarity</h3>
+        {data.lootByRarity.length > 0 ? (
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={data.lootByRarity}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
+              <XAxis dataKey="rarity" stroke="#6b7280" tick={{ fontSize: 11 }} />
+              <YAxis stroke="#6b7280" tick={{ fontSize: 11 }} allowDecimals={false} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#1a1a2e',
+                  border: '1px solid #2a2a3a',
+                  borderRadius: '8px',
+                }}
+                labelStyle={{ color: '#d4af37' }}
+              />
+              <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                {data.lootByRarity.map((entry) => (
+                  <Cell key={entry.rarity} fill={RARITY_COLORS[entry.rarity] ?? '#6b7280'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="text-center py-10 text-realm-text-muted text-sm">
+            No loot drops recorded
+          </div>
+        )}
       </div>
 
       {/* Row 4: Top 5 Tables */}
