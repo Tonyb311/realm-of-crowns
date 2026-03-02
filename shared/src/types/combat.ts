@@ -88,8 +88,8 @@ export interface WeaponInfo {
   name: string;
   diceCount: number;
   diceSides: number;
-  damageModifierStat: 'str' | 'dex';
-  attackModifierStat: 'str' | 'dex';
+  damageModifierStat: 'str' | 'dex' | 'int' | 'wis' | 'cha';
+  attackModifierStat: 'str' | 'dex' | 'int' | 'wis' | 'cha';
   /** Flat bonus from enchantments, quality, etc. */
   bonusDamage: number;
   bonusAttack: number;

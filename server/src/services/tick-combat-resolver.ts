@@ -72,7 +72,7 @@ export interface TickCombatOutcome {
   fled: { id: string; name: string; team: number }[];
 }
 
-interface CombatantParams {
+export interface CombatantParams {
   id: string;
   presets: CombatPresets;
   weapon: WeaponInfo | null;

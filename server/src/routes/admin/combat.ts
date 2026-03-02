@@ -25,15 +25,21 @@ import {
   createCharacterCombatant,
   createMonsterCombatant,
   resolveTurn,
+  rollAllInitiative,
 } from '../../lib/combat-engine';
 import type { WeaponInfo, CombatAction, StatusEffect } from '@shared/types/combat';
 import {
   buildSyntheticPlayer,
   buildSyntheticMonster,
+  buildPlayerCombatParams,
   getAllRaceIds,
   getAllClassNames,
   type MonsterStats,
 } from '../../services/combat-simulator';
+import {
+  resolveTickCombat,
+  type CombatantParams,
+} from '../../services/tick-combat-resolver';
 
 const router = Router();
 
@@ -1401,6 +1407,9 @@ router.post('/batch-simulate', validate(batchSimulateSchema), async (req: Authen
       let totalPlayerHp = 0;
       let totalMonsterHp = 0;
 
+      // Build reusable player combat params (presets + ability queue)
+      const playerParams = buildPlayerCombatParams(player);
+
       for (let i = 0; i < matchup.iterations; i++) {
         const playerCombatant = createCharacterCombatant(
           'sim-player', player.name, 0,
@@ -1409,6 +1418,9 @@ router.post('/batch-simulate', validate(batchSimulateSchema), async (req: Authen
           player.equipmentAC, player.weapon,
           player.spellSlots, player.proficiencyBonus,
         );
+        // Set class + race on combatant for ability resolution
+        (playerCombatant as any).characterClass = player.class;
+        (playerCombatant as any).race = player.race;
 
         const monsterCombatant = createMonsterCombatant(
           'sim-monster', monster.name, 1,
@@ -1418,40 +1430,24 @@ router.post('/batch-simulate', validate(batchSimulateSchema), async (req: Authen
         );
 
         let state = createCombatState(`batch-${i}`, 'PVE', [playerCombatant, monsterCombatant]);
+        state = rollAllInitiative(state);
 
-        let round = 0;
-        while (state.status === 'ACTIVE' && round < maxRounds) {
-          round++;
-          for (let t = 0; t < state.turnOrder.length && state.status === 'ACTIVE'; t++) {
-            const actorId = state.turnOrder[state.turnIndex];
-            const actor = state.combatants.find((c) => c.id === actorId);
-            if (!actor || !actor.isAlive) {
-              state = resolveTurn(state, { type: 'defend', actorId, targetId: actorId }, {});
-              continue;
-            }
+        // Use the full AI-driven combat resolver (abilities, stances, presets)
+        const paramsMap = new Map<string, CombatantParams>();
+        paramsMap.set('sim-player', playerParams);
+        // Monster gets default aggressive params via resolveTickCombat fallback
 
-            const target = state.combatants.find((c) => c.team !== actor.team && c.isAlive);
-            const action: CombatAction = {
-              type: 'attack',
-              actorId: actor.id,
-              targetId: target?.id ?? actor.id,
-            };
+        const outcome = resolveTickCombat(state, paramsMap);
 
-            const weapon = actor.id === 'sim-player' ? player.weapon : monster.weapon;
-            state = resolveTurn(state, action, { weapon });
-          }
-        }
-
-        const pResult = state.combatants.find((c) => c.id === 'sim-player');
-        const mResult = state.combatants.find((c) => c.id === 'sim-monster');
-
-        if (state.winningTeam === 0) playerWins++;
-        else if (state.winningTeam === 1) monsterWins++;
+        if (outcome.winner === 'team0') playerWins++;
+        else if (outcome.winner === 'team1') monsterWins++;
         else draws++;
 
-        totalRounds += state.round;
-        totalPlayerHp += Math.max(0, pResult?.currentHp ?? 0);
-        totalMonsterHp += Math.max(0, mResult?.currentHp ?? 0);
+        totalRounds += outcome.rounds;
+        const pSurvivor = outcome.survivors.find((s) => s.id === 'sim-player');
+        const mSurvivor = outcome.survivors.find((s) => s.id === 'sim-monster');
+        totalPlayerHp += pSurvivor?.hpRemaining ?? 0;
+        totalMonsterHp += mSurvivor?.hpRemaining ?? 0;
       }
 
       const result = {

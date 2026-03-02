@@ -6,8 +6,11 @@
  */
 
 import { RaceRegistry, getRace } from '@shared/data/races';
-import { VALID_CLASSES } from '@shared/data/skills';
+import { VALID_CLASSES, ABILITIES_BY_CLASS } from '@shared/data/skills';
+import type { AbilityDefinition } from '@shared/data/skills';
 import type { WeaponInfo } from '@shared/types/combat';
+import type { CombatPresets, AbilityQueueEntry } from '../services/combat-presets';
+import { createRacialCombatTracker, type RacialCombatTracker } from '../services/racial-combat-abilities';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -85,10 +88,10 @@ const CLASS_HIT_DIE: Record<string, number> = {
   warrior: 10, mage: 6, rogue: 8, cleric: 8, ranger: 8, bard: 8, psion: 6,
 };
 
-/** Weapon modifier stat per class */
-const CLASS_WEAPON_STAT: Record<string, 'str' | 'dex'> = {
-  warrior: 'str', cleric: 'str', mage: 'str', psion: 'str',
-  rogue: 'dex', ranger: 'dex', bard: 'dex',
+/** Weapon modifier stat per class — casters use their primary casting stat */
+const CLASS_WEAPON_STAT: Record<string, 'str' | 'dex' | 'int' | 'wis' | 'cha'> = {
+  warrior: 'str', rogue: 'dex', ranger: 'dex',
+  mage: 'int', psion: 'int', cleric: 'wis', bard: 'cha',
 };
 
 /** Weapon type per class */
@@ -293,6 +296,74 @@ export function buildSyntheticPlayer(config: SyntheticPlayerConfig): SyntheticPl
  * Build a synthetic monster from raw stat data (from DB or seed data).
  * Returns all parameters needed for createMonsterCombatant().
  */
+/** Default stance per class archetype */
+const CLASS_DEFAULT_STANCE: Record<string, 'AGGRESSIVE' | 'BALANCED' | 'DEFENSIVE'> = {
+  warrior: 'AGGRESSIVE', rogue: 'AGGRESSIVE', ranger: 'AGGRESSIVE',
+  mage: 'BALANCED', psion: 'BALANCED', cleric: 'BALANCED', bard: 'BALANCED',
+};
+
+/**
+ * Build a default ability queue from class abilities available at the given level.
+ * Sorts by tier descending so highest-tier abilities are tried first.
+ * Filters out passives (cooldown 0 + passive effect) since they don't need to be queued.
+ */
+function buildAbilityQueue(className: string, level: number): AbilityQueueEntry[] {
+  const classAbilities = ABILITIES_BY_CLASS[className] ?? [];
+  const available = classAbilities.filter(
+    (a: AbilityDefinition) => a.levelRequired <= level && (a.effects as any)?.type !== 'passive',
+  );
+  // Sort by tier descending (strongest first), then by cooldown ascending (lower CD = more useful)
+  available.sort((a: AbilityDefinition, b: AbilityDefinition) => b.tier - a.tier || a.cooldown - b.cooldown);
+
+  return available.map((a: AbilityDefinition, i: number) => ({
+    abilityId: a.id,
+    abilityName: a.name,
+    priority: i,
+    useWhen: 'always' as const,
+  }));
+}
+
+/**
+ * Build default CombatPresets for a synthetic combatant.
+ */
+export function buildDefaultPresets(className: string, level: number): CombatPresets {
+  return {
+    stance: CLASS_DEFAULT_STANCE[className] ?? 'BALANCED',
+    retreat: {
+      hpThreshold: 0,
+      oppositionRatio: 0,
+      roundLimit: 0,
+      neverRetreat: true,  // Sim combatants never flee
+    },
+    abilityQueue: buildAbilityQueue(className, level),
+    itemUsageRules: [],
+    pvpLootBehavior: 'TAKE_NOTHING',
+  };
+}
+
+/**
+ * Build full CombatantParams for use with resolveTickCombat().
+ */
+export function buildPlayerCombatParams(player: SyntheticPlayerResult): {
+  id: string;
+  presets: CombatPresets;
+  weapon: WeaponInfo | null;
+  racialTracker: RacialCombatTracker;
+  race: string;
+  level: number;
+  subRace?: { id: string; element?: string } | null;
+} {
+  return {
+    id: 'sim-player',
+    presets: buildDefaultPresets(player.class, player.level),
+    weapon: player.weapon,
+    racialTracker: createRacialCombatTracker(),
+    race: player.race,
+    level: player.level,
+    subRace: null,
+  };
+}
+
 export function buildSyntheticMonster(
   name: string,
   level: number,

@@ -86,7 +86,7 @@ const MONSTERS: MonsterDef[] = [
     biome: 'PLAINS',
     regionName: 'Verdant Heartlands',
     stats: {
-      hp: 25, ac: 13, attack: 4, damage: '1d8+2', speed: 30,
+      hp: 20, ac: 12, attack: 4, damage: '1d8+2', speed: 30,
       str: 12, dex: 12, con: 12, int: 10, wis: 10, cha: 10,
     },
     lootTable: [
@@ -133,7 +133,7 @@ const MONSTERS: MonsterDef[] = [
     biome: 'BADLANDS',
     regionName: 'Ashenfang Wastes',
     stats: {
-      hp: 50, ac: 14, attack: 6, damage: '1d12+4', speed: 30,
+      hp: 42, ac: 14, attack: 6, damage: '1d12+4', speed: 30,
       str: 16, dex: 10, con: 14, int: 8, wis: 10, cha: 8,
     },
     lootTable: [
@@ -161,7 +161,7 @@ const MONSTERS: MonsterDef[] = [
     biome: 'UNDERGROUND',
     regionName: "Vel'Naris Underdark",
     stats: {
-      hp: 45, ac: 13, attack: 6, damage: '1d10+3', speed: 30,
+      hp: 38, ac: 13, attack: 6, damage: '1d10+3', speed: 30,
       str: 14, dex: 16, con: 12, int: 2, wis: 12, cha: 4,
     },
     lootTable: [
@@ -174,7 +174,7 @@ const MONSTERS: MonsterDef[] = [
     biome: 'TUNDRA',
     regionName: 'Frozen Reaches',
     stats: {
-      hp: 55, ac: 13, attack: 7, damage: '2d6+3', speed: 50,
+      hp: 45, ac: 14, attack: 7, damage: '2d8+3', speed: 50,
       str: 16, dex: 14, con: 14, int: 3, wis: 12, cha: 6,
     },
     lootTable: [
@@ -325,7 +325,7 @@ const MONSTERS: MonsterDef[] = [
     regionName: "Vel'Naris Underdark",
     // Ancient underdark spirit. High evasion, hits hard with necrotic magic.
     stats: {
-      hp: 55, ac: 15, attack: 7, damage: '2d6+3', speed: 35,
+      hp: 45, ac: 15, attack: 7, damage: '2d6+3', speed: 35,
       str: 8, dex: 16, con: 12, int: 16, wis: 16, cha: 14,
     },
     lootTable: [
