@@ -6,12 +6,44 @@ const CodexTab = lazy(() => import('../../components/admin/combat/CodexTab'));
 const HistoryTab = lazy(() => import('../../components/admin/combat/HistoryTab'));
 const SimulatorTab = lazy(() => import('../../components/admin/combat/SimulatorTab'));
 
+export type DataSource = 'live' | 'sim' | 'all';
+
+const DATA_SOURCE_OPTIONS: { value: DataSource; label: string; description: string }[] = [
+  { value: 'live', label: 'Live', description: 'Player data only' },
+  { value: 'sim', label: 'Simulation', description: 'Bot simulation data' },
+  { value: 'all', label: 'All', description: 'All data sources' },
+];
+
 export default function AdminCombatPage() {
   const [activeTab, setActiveTab] = useState<CombatTab>('overview');
+  const [dataSource, setDataSource] = useState<DataSource>('live');
+
+  const activeOption = DATA_SOURCE_OPTIONS.find((o) => o.value === dataSource)!;
 
   return (
     <div>
-      <h1 className="text-2xl font-display text-realm-gold-400 mb-6">Combat Dashboard</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-display text-realm-gold-400">Combat Dashboard</h1>
+        <div className="flex items-center gap-3">
+          <div className="flex rounded-lg overflow-hidden border border-realm-border">
+            {DATA_SOURCE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setDataSource(opt.value)}
+                className={`px-3 py-1.5 text-xs font-display transition-colors ${
+                  dataSource === opt.value
+                    ? 'bg-realm-gold-500 text-realm-bg-900'
+                    : 'bg-realm-bg-700 text-realm-text-secondary hover:text-realm-text-primary hover:bg-realm-bg-600'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs text-realm-text-muted">{activeOption.description}</span>
+        </div>
+      </div>
+
       <CombatSubNav activeTab={activeTab} onTabChange={setActiveTab} />
 
       <Suspense fallback={
@@ -21,9 +53,9 @@ export default function AdminCombatPage() {
           ))}
         </div>
       }>
-        {activeTab === 'overview' && <OverviewTab />}
+        {activeTab === 'overview' && <OverviewTab dataSource={dataSource} />}
         {activeTab === 'codex' && <CodexTab />}
-        {activeTab === 'history' && <HistoryTab />}
+        {activeTab === 'history' && <HistoryTab dataSource={dataSource} />}
         {activeTab === 'simulator' && <SimulatorTab />}
       </Suspense>
     </div>

@@ -230,7 +230,7 @@ function formatDelta(
 
 // ---- Component ----
 
-export default function OverviewTab() {
+export default function OverviewTab({ dataSource = 'live' }: { dataSource?: string }) {
   const [preset, setPreset] = useState<string>('30d');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
@@ -238,9 +238,10 @@ export default function OverviewTab() {
   const isCustom = !!(customStart && customEnd);
 
   const { data, isLoading, isFetching, error } = useQuery<CombatStats>({
-    queryKey: ['admin', 'combat', 'stats', isCustom ? { startDate: customStart, endDate: customEnd } : { preset }],
+    queryKey: ['admin', 'combat', 'stats', { dataSource, ...(isCustom ? { startDate: customStart, endDate: customEnd } : { preset }) }],
     queryFn: async () => {
       const params = new URLSearchParams();
+      params.set('dataSource', dataSource);
       if (isCustom) {
         params.set('startDate', new Date(customStart).toISOString());
         params.set('endDate', new Date(customEnd + 'T23:59:59.999Z').toISOString());

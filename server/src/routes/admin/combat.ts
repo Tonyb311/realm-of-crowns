@@ -30,6 +30,13 @@ import type { WeaponInfo, CombatAction, StatusEffect } from '@shared/types/comba
 
 const router = Router();
 
+// ---- Shared: data source filter helper ----
+function getSimFilter(dataSource: string) {
+  if (dataSource === 'live') return { simulationTick: null };
+  if (dataSource === 'sim') return { simulationTick: { not: null } } as const;
+  return {};
+}
+
 // ---- Codex Endpoints (static data) ----
 
 // GET /codex/races — All 20 races with stats, abilities, profession bonuses
@@ -140,83 +147,92 @@ router.get('/codex/status-effects', (_req: AuthenticatedRequest, res: Response) 
 
 // ---- History Endpoints ----
 
-// GET /history — Paginated combat session list with filters
+// GET /history — Paginated encounter log list with filters (from CombatEncounterLog)
 router.get('/history', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 25));
     const skip = (page - 1) * limit;
 
+    const dataSource = (req.query.dataSource as string) || 'live';
+    const simFilter = getSimFilter(dataSource);
+
     const type = req.query.type as string | undefined;
-    const status = req.query.status as string | undefined;
-    const dateFrom = req.query.dateFrom as string | undefined;
-    const dateTo = req.query.dateTo as string | undefined;
-    const characterSearch = req.query.character as string | undefined;
+    const outcome = req.query.outcome as string | undefined;
+    const search = req.query.search as string | undefined;
+    const startDate = req.query.startDate as string | undefined;
+    const endDate = req.query.endDate as string | undefined;
+    const sortBy = (req.query.sortBy as string) || 'startedAt';
+    const sortOrder = (req.query.sortOrder as string) || 'desc';
+
+    const validSorts = ['startedAt', 'totalRounds', 'xpAwarded', 'goldAwarded'];
+    const validOrders = ['asc', 'desc'];
 
     // Build where clause
-    const where: Record<string, unknown> = {};
-    if (type) where.type = type;
-    if (status) where.status = status;
-    if (dateFrom || dateTo) {
-      where.startedAt = {
-        ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
-        ...(dateTo ? { lte: new Date(dateTo) } : {}),
-      };
+    const where: Record<string, unknown> = { ...simFilter };
+    if (type && type !== 'all') where.type = type;
+    if (outcome && outcome !== 'all') where.outcome = outcome;
+    if (search) {
+      where.OR = [
+        { characterName: { contains: search, mode: 'insensitive' } },
+        { opponentName: { contains: search, mode: 'insensitive' } },
+      ];
     }
-    if (characterSearch) {
-      where.participants = {
-        some: {
-          character: {
-            name: { contains: characterSearch, mode: 'insensitive' },
-          },
-        },
+    if (startDate || endDate) {
+      where.startedAt = {
+        ...(startDate ? { gte: new Date(startDate) } : {}),
+        ...(endDate ? { lte: new Date(endDate) } : {}),
       };
     }
 
-    const [sessions, total] = await Promise.all([
-      prisma.combatSession.findMany({
+    const orderField = validSorts.includes(sortBy) ? sortBy : 'startedAt';
+    const orderDir = validOrders.includes(sortOrder) ? sortOrder : 'desc';
+
+    const [encounters, total] = await Promise.all([
+      prisma.combatEncounterLog.findMany({
         where,
         include: {
-          participants: {
-            include: {
-              character: {
-                select: { id: true, name: true, race: true, class: true, level: true },
-              },
-            },
-          },
-          _count: { select: { combatLogs: true } },
+          character: { select: { race: true, class: true, level: true } },
         },
-        orderBy: { startedAt: 'desc' },
+        orderBy: { [orderField]: orderDir },
         skip,
         take: limit,
       }),
-      prisma.combatSession.count({ where }),
+      prisma.combatEncounterLog.count({ where }),
     ]);
 
     return res.json({
-      sessions: sessions.map((s) => ({
-        id: s.id,
-        type: s.type,
-        status: s.status,
-        startedAt: s.startedAt,
-        endedAt: s.endedAt,
-        participants: s.participants.map((p) => ({
-          id: p.id,
-          team: p.team,
-          initiative: p.initiative,
-          currentHp: p.currentHp,
-          character: p.character,
-        })),
-        logCount: s._count.combatLogs,
-        attackerParams: s.attackerParams,
-        defenderParams: s.defenderParams,
+      encounters: encounters.map((e) => ({
+        id: e.id,
+        type: e.type,
+        characterName: e.characterName,
+        opponentName: e.opponentName,
+        outcome: e.outcome,
+        totalRounds: e.totalRounds,
+        characterStartHp: e.characterStartHp,
+        characterEndHp: e.characterEndHp,
+        opponentStartHp: e.opponentStartHp,
+        opponentEndHp: e.opponentEndHp,
+        characterWeapon: e.characterWeapon,
+        opponentWeapon: e.opponentWeapon,
+        xpAwarded: e.xpAwarded,
+        goldAwarded: e.goldAwarded,
+        lootDropped: e.lootDropped,
+        triggerSource: e.triggerSource,
+        startedAt: e.startedAt,
+        endedAt: e.endedAt,
+        summary: e.summary,
+        rounds: e.rounds,
+        simulationTick: e.simulationTick,
+        character: e.character ? {
+          race: e.character.race,
+          class: e.character.class,
+          level: e.character.level,
+        } : null,
       })),
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
     logRouteError(req, 500, 'Admin combat history error', error);
@@ -282,7 +298,10 @@ router.get('/session/:id', async (req: AuthenticatedRequest, res: Response) => {
 // GET /stats — Executive combat health dashboard
 router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    // --- Parse date range params ---
+    // --- Parse data source + date range params ---
+    const dataSource = (req.query.dataSource as string) || 'live';
+    const simFilter = getSimFilter(dataSource);
+
     const presetParam = (req.query.preset as string) || '30d';
     const startDateParam = req.query.startDate as string | undefined;
     const endDateParam = req.query.endDate as string | undefined;
@@ -311,8 +330,8 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     const compStart = isAllTime ? null : new Date(startDate.getTime() - periodMs);
     const compEnd = isAllTime ? null : new Date(startDate.getTime() - 1);
 
-    const dateWhere = isAllTime ? {} : { startedAt: { gte: startDate, lte: endDate } };
-    const compWhere = compStart && compEnd ? { startedAt: { gte: compStart, lte: compEnd } } : null;
+    const dateWhere = isAllTime ? { ...simFilter } : { ...simFilter, startedAt: { gte: startDate, lte: endDate } };
+    const compWhere = compStart && compEnd ? { ...simFilter, startedAt: { gte: compStart, lte: compEnd } } : null;
 
     const getBand = (lvl: number) => lvl <= 5 ? '1-5' : lvl <= 10 ? '6-10' : lvl <= 15 ? '11-15' : '16-20';
 
@@ -783,7 +802,11 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
 // GET /stats/by-race — Combat stats broken down by character race
 router.get('/stats/by-race', async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const dataSource = (req.query.dataSource as string) || 'live';
+    const simFilter = getSimFilter(dataSource);
+
     const encounters = await prisma.combatEncounterLog.findMany({
+      where: { ...simFilter },
       select: {
         outcome: true,
         totalRounds: true,
@@ -869,7 +892,11 @@ router.get('/stats/by-race', async (req: AuthenticatedRequest, res: Response) =>
 // GET /stats/by-class — Combat stats broken down by character class
 router.get('/stats/by-class', async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const dataSource = (req.query.dataSource as string) || 'live';
+    const simFilter = getSimFilter(dataSource);
+
     const encounters = await prisma.combatEncounterLog.findMany({
+      where: { ...simFilter },
       select: {
         outcome: true,
         totalRounds: true,
@@ -955,8 +982,11 @@ router.get('/stats/by-class', async (req: AuthenticatedRequest, res: Response) =
 // GET /stats/by-monster — Combat stats broken down by monster name (PvE only)
 router.get('/stats/by-monster', async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const dataSource = (req.query.dataSource as string) || 'live';
+    const simFilter = getSimFilter(dataSource);
+
     const encounters = await prisma.combatEncounterLog.findMany({
-      where: { type: 'pve' },
+      where: { type: 'pve', ...simFilter },
       select: {
         opponentName: true,
         outcome: true,
