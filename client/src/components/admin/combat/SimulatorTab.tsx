@@ -5,11 +5,14 @@ import {
   Loader2,
   RotateCcw,
   Zap,
+  Grid3X3,
+  Swords,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../services/api';
 import CombatReplay from './CombatReplay';
 import BatchStatsDisplay from './BatchStatsDisplay';
+import BatchGridMode from './BatchGridMode';
 
 interface MonsterData {
   id: string;
@@ -144,6 +147,7 @@ const PRESETS: { label: string; config: Partial<SimConfig> }[] = [
 ];
 
 export default function SimulatorTab() {
+  const [mode, setMode] = useState<'1v1' | 'batch'>('1v1');
   const [config, setConfig] = useState<SimConfig>(DEFAULT_CONFIG);
   const [simResult, setSimResult] = useState<SimResult | null>(null);
 
@@ -227,6 +231,36 @@ export default function SimulatorTab() {
 
   return (
     <div className="space-y-6">
+      {/* Mode Toggle */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setMode('1v1')}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-display rounded transition-colors ${
+            mode === '1v1'
+              ? 'bg-realm-gold-500/20 text-realm-gold-400 border border-realm-gold-500/50'
+              : 'bg-realm-bg-700 text-realm-text-muted border border-realm-border hover:text-realm-text-secondary'
+          }`}
+        >
+          <Swords className="w-4 h-4" />
+          1v1 Mode
+        </button>
+        <button
+          onClick={() => setMode('batch')}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-display rounded transition-colors ${
+            mode === 'batch'
+              ? 'bg-realm-teal-300/20 text-realm-teal-300 border border-realm-teal-300/50'
+              : 'bg-realm-bg-700 text-realm-text-muted border border-realm-border hover:text-realm-text-secondary'
+          }`}
+        >
+          <Grid3X3 className="w-4 h-4" />
+          Batch Grid Mode
+        </button>
+      </div>
+
+      {mode === 'batch' ? (
+        <BatchGridMode />
+      ) : (
+      <>
       {/* Quick Presets */}
       <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
         <h3 className="font-display text-realm-text-primary text-sm mb-3">Quick Presets</h3>
@@ -594,6 +628,8 @@ export default function SimulatorTab() {
             </div>
           )}
         </div>
+      )}
+      </>
       )}
     </div>
   );

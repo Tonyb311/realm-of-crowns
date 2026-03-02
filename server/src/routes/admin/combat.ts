@@ -27,6 +27,13 @@ import {
   resolveTurn,
 } from '../../lib/combat-engine';
 import type { WeaponInfo, CombatAction, StatusEffect } from '@shared/types/combat';
+import {
+  buildSyntheticPlayer,
+  buildSyntheticMonster,
+  getAllRaceIds,
+  getAllClassNames,
+  type MonsterStats,
+} from '../../services/combat-simulator';
 
 const router = Router();
 
@@ -1258,6 +1265,312 @@ router.post('/simulate', validate(simulateSchema), async (req: AuthenticatedRequ
   } catch (error: unknown) {
     logRouteError(req, 500, 'Admin combat simulate error', error);
     return res.status(500).json({ error: error instanceof Error ? error.message : 'Simulation failed' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /batch-simulate — Batch combat simulation with grid sweep
+// ---------------------------------------------------------------------------
+
+const batchMatchupSchema = z.object({
+  race: z.string(),
+  class: z.string(),
+  level: z.number().int().min(1).max(100),
+  opponent: z.string(),
+  iterations: z.number().int().min(1).max(1000).default(100),
+});
+
+const batchGridSchema = z.object({
+  races: z.array(z.string()).min(1),
+  classes: z.array(z.string()).min(1),
+  levels: z.array(z.number().int().min(1).max(100)).min(1),
+  monsters: z.array(z.string()).min(1),
+  iterationsPerMatchup: z.number().int().min(1).max(1000).default(100),
+});
+
+const batchSimulateSchema = z.object({
+  matchups: z.array(batchMatchupSchema).optional(),
+  grid: batchGridSchema.optional(),
+  persist: z.boolean().default(false),
+  notes: z.string().optional(),
+}).refine(
+  (d) => d.matchups || d.grid,
+  { message: 'Either matchups or grid is required' },
+);
+
+router.post('/batch-simulate', validate(batchSimulateSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const body = req.body;
+    const maxTotalFights = 500_000;
+    const maxRounds = 50;
+
+    // Fetch all monsters from DB for lookup
+    const dbMonsters = await prisma.monster.findMany();
+    const monsterMap = new Map(dbMonsters.map((m) => [
+      m.name.toLowerCase(),
+      { name: m.name, level: m.level, stats: m.stats as unknown as MonsterStats },
+    ]));
+
+    // Expand ALL keywords
+    const allRaces = getAllRaceIds();
+    const allClasses = getAllClassNames();
+    const allMonsterNames = dbMonsters.map((m) => m.name);
+
+    // Build matchup list
+    interface Matchup { race: string; class: string; level: number; opponent: string; iterations: number }
+    let matchups: Matchup[] = [];
+
+    if (body.matchups) {
+      matchups = body.matchups;
+    } else if (body.grid) {
+      const g = body.grid;
+      const races = g.races[0] === 'ALL' ? allRaces : g.races;
+      const classes = g.classes[0] === 'ALL' ? allClasses : g.classes;
+      const monsters = g.monsters[0] === 'ALL' ? allMonsterNames : g.monsters;
+
+      for (const race of races) {
+        for (const cls of classes) {
+          for (const lvl of g.levels) {
+            for (const mon of monsters) {
+              matchups.push({ race, class: cls, level: lvl, opponent: mon, iterations: g.iterationsPerMatchup });
+            }
+          }
+        }
+      }
+    }
+
+    if (matchups.length === 0) {
+      return res.status(400).json({ error: 'No matchups generated. Check your grid or matchup configuration.' });
+    }
+
+    const totalFights = matchups.reduce((sum, m) => sum + m.iterations, 0);
+    if (totalFights > maxTotalFights) {
+      return res.status(400).json({
+        error: `Grid produces ${matchups.length} matchups × iterations = ${totalFights} fights. Max ${maxTotalFights} total fights per batch. Reduce grid or iterations.`,
+      });
+    }
+
+    // Optional persistence
+    let simulationRunId: string | null = null;
+    if (body.persist) {
+      const run = await prisma.simulationRun.create({
+        data: {
+          tickCount: 0,
+          botCount: 0,
+          config: JSON.parse(JSON.stringify(body)),
+          status: 'running',
+          notes: body.notes || `Batch sim: ${matchups.length} matchups, ${totalFights} fights`,
+        },
+      });
+      simulationRunId = run.id;
+    }
+
+    const startTime = Date.now();
+    const results: Array<{
+      race: string; class: string; level: number; opponent: string;
+      iterations: number; playerWins: number; monsterWins: number; draws: number;
+      winRate: number; avgRounds: number; avgPlayerHpRemaining: number; avgMonsterHpRemaining: number;
+    }> = [];
+
+    const errors: string[] = [];
+
+    for (const matchup of matchups) {
+      const player = buildSyntheticPlayer({
+        race: matchup.race,
+        class: matchup.class,
+        level: matchup.level,
+      });
+
+      if (!player) {
+        errors.push(`Invalid player config: ${matchup.race} ${matchup.class} L${matchup.level}`);
+        continue;
+      }
+
+      const monsterData = monsterMap.get(matchup.opponent.toLowerCase());
+      if (!monsterData) {
+        errors.push(`Monster not found: ${matchup.opponent}`);
+        continue;
+      }
+
+      const monster = buildSyntheticMonster(monsterData.name, monsterData.level, monsterData.stats);
+
+      let playerWins = 0;
+      let monsterWins = 0;
+      let draws = 0;
+      let totalRounds = 0;
+      let totalPlayerHp = 0;
+      let totalMonsterHp = 0;
+
+      for (let i = 0; i < matchup.iterations; i++) {
+        const playerCombatant = createCharacterCombatant(
+          'sim-player', player.name, 0,
+          player.stats, player.level,
+          player.hp, player.maxHp,
+          player.equipmentAC, player.weapon,
+          player.spellSlots, player.proficiencyBonus,
+        );
+
+        const monsterCombatant = createMonsterCombatant(
+          'sim-monster', monster.name, 1,
+          monster.stats, monster.level,
+          monster.hp, monster.ac,
+          monster.weapon, 0,
+        );
+
+        let state = createCombatState(`batch-${i}`, 'PVE', [playerCombatant, monsterCombatant]);
+
+        let round = 0;
+        while (state.status === 'ACTIVE' && round < maxRounds) {
+          round++;
+          for (let t = 0; t < state.turnOrder.length && state.status === 'ACTIVE'; t++) {
+            const actorId = state.turnOrder[state.turnIndex];
+            const actor = state.combatants.find((c) => c.id === actorId);
+            if (!actor || !actor.isAlive) {
+              state = resolveTurn(state, { type: 'defend', actorId, targetId: actorId }, {});
+              continue;
+            }
+
+            const target = state.combatants.find((c) => c.team !== actor.team && c.isAlive);
+            const action: CombatAction = {
+              type: 'attack',
+              actorId: actor.id,
+              targetId: target?.id ?? actor.id,
+            };
+
+            const weapon = actor.id === 'sim-player' ? player.weapon : monster.weapon;
+            state = resolveTurn(state, action, { weapon });
+          }
+        }
+
+        const pResult = state.combatants.find((c) => c.id === 'sim-player');
+        const mResult = state.combatants.find((c) => c.id === 'sim-monster');
+
+        if (state.winningTeam === 0) playerWins++;
+        else if (state.winningTeam === 1) monsterWins++;
+        else draws++;
+
+        totalRounds += state.round;
+        totalPlayerHp += Math.max(0, pResult?.currentHp ?? 0);
+        totalMonsterHp += Math.max(0, mResult?.currentHp ?? 0);
+      }
+
+      const result = {
+        race: matchup.race,
+        class: matchup.class,
+        level: matchup.level,
+        opponent: monsterData.name,
+        iterations: matchup.iterations,
+        playerWins,
+        monsterWins,
+        draws,
+        winRate: +(playerWins / matchup.iterations).toFixed(3),
+        avgRounds: +(totalRounds / matchup.iterations).toFixed(1),
+        avgPlayerHpRemaining: +(totalPlayerHp / (playerWins || 1)).toFixed(1),
+        avgMonsterHpRemaining: +(totalMonsterHp / (monsterWins || 1)).toFixed(1),
+      };
+      results.push(result);
+    }
+
+    // Persist summary rows
+    if (simulationRunId && results.length > 0) {
+      await prisma.simulationRun.update({
+        where: { id: simulationRunId },
+        data: {
+          status: 'completed',
+          completedAt: new Date(),
+          encounterCount: results.length,
+          notes: body.notes || `Batch sim: ${results.length} matchups, ${totalFights} fights`,
+        },
+      });
+    }
+
+    // Compute summary aggregations
+    const overallWins = results.reduce((s, r) => s + r.playerWins, 0);
+    const overallTotal = results.reduce((s, r) => s + r.iterations, 0);
+    const overallRounds = results.reduce((s, r) => s + r.avgRounds * r.iterations, 0);
+
+    const raceWinRates: Record<string, number> = {};
+    const classWinRates: Record<string, number> = {};
+    const monsterDifficulty: Record<string, number> = {};
+
+    // Per-race aggregation
+    const raceGroups = new Map<string, { wins: number; total: number }>();
+    for (const r of results) {
+      const key = r.race;
+      const existing = raceGroups.get(key) || { wins: 0, total: 0 };
+      existing.wins += r.playerWins;
+      existing.total += r.iterations;
+      raceGroups.set(key, existing);
+    }
+    for (const [race, data] of raceGroups) {
+      raceWinRates[race] = +(data.wins / data.total).toFixed(3);
+    }
+
+    // Per-class aggregation
+    const classGroups = new Map<string, { wins: number; total: number }>();
+    for (const r of results) {
+      const key = r.class;
+      const existing = classGroups.get(key) || { wins: 0, total: 0 };
+      existing.wins += r.playerWins;
+      existing.total += r.iterations;
+      classGroups.set(key, existing);
+    }
+    for (const [cls, data] of classGroups) {
+      classWinRates[cls] = +(data.wins / data.total).toFixed(3);
+    }
+
+    // Per-monster aggregation (player death rate = monster win rate)
+    const monsterGroups = new Map<string, { monsterWins: number; total: number }>();
+    for (const r of results) {
+      const key = r.opponent;
+      const existing = monsterGroups.get(key) || { monsterWins: 0, total: 0 };
+      existing.monsterWins += r.monsterWins;
+      existing.total += r.iterations;
+      monsterGroups.set(key, existing);
+    }
+    for (const [mon, data] of monsterGroups) {
+      monsterDifficulty[mon] = +(data.monsterWins / data.total).toFixed(3);
+    }
+
+    const durationMs = Date.now() - startTime;
+
+    return res.json({
+      simulationRunId,
+      totalMatchups: results.length,
+      totalFights: overallTotal,
+      durationMs,
+      errors: errors.length > 0 ? errors : undefined,
+      results,
+      summary: {
+        overallPlayerWinRate: +(overallWins / (overallTotal || 1)).toFixed(3),
+        avgRounds: +(overallRounds / (overallTotal || 1)).toFixed(1),
+        raceWinRates,
+        classWinRates,
+        monsterDifficulty,
+      },
+    });
+  } catch (error: unknown) {
+    logRouteError(req, 500, 'Batch combat simulation error', error);
+    return res.status(500).json({ error: error instanceof Error ? error.message : 'Batch simulation failed' });
+  }
+});
+
+// GET /batch-simulate/meta — Returns available races, classes, monsters for grid config
+router.get('/batch-simulate/meta', async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const monsters = await prisma.monster.findMany({
+      select: { name: true, level: true, biome: true },
+      orderBy: { level: 'asc' },
+    });
+
+    return res.json({
+      races: getAllRaceIds(),
+      classes: getAllClassNames(),
+      monsters: monsters.map((m) => ({ name: m.name, level: m.level, biome: m.biome })),
+    });
+  } catch (error: unknown) {
+    logRouteError(_req, 500, 'Batch simulate meta error', error);
+    return res.status(500).json({ error: 'Failed to fetch metadata' });
   }
 });
 
