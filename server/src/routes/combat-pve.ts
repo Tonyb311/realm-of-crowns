@@ -1,7 +1,8 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma, ItemRarity } from '@prisma/client';
+import { calculateItemStats } from '../services/item-stats';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
@@ -166,6 +167,13 @@ async function getEquippedWeapon(characterId: string): Promise<WeaponInfo> {
   }
 
   const stats = equip.item.template.stats as Record<string, unknown>;
+  const calculated = calculateItemStats({
+    quality: equip.item.quality ?? ('COMMON' as ItemRarity),
+    enchantments: equip.item.enchantments,
+    template: { stats: equip.item.template.stats },
+  });
+  const multiplier = calculated.qualityMultiplier;
+
   return {
     id: equip.item.id,
     name: equip.item.template.name,
@@ -173,8 +181,8 @@ async function getEquippedWeapon(characterId: string): Promise<WeaponInfo> {
     diceSides: (typeof stats.diceSides === 'number') ? stats.diceSides : 4,
     damageModifierStat: stats.damageModifierStat === 'dex' ? 'dex' : 'str',
     attackModifierStat: stats.attackModifierStat === 'dex' ? 'dex' : 'str',
-    bonusDamage: (typeof stats.bonusDamage === 'number') ? stats.bonusDamage : 0,
-    bonusAttack: (typeof stats.bonusAttack === 'number') ? stats.bonusAttack : 0,
+    bonusDamage: Math.round(((typeof stats.bonusDamage === 'number') ? stats.bonusDamage : 0) * multiplier),
+    bonusAttack: Math.round(((typeof stats.bonusAttack === 'number') ? stats.bonusAttack : 0) * multiplier),
     damageType: (typeof stats.damageType === 'string') ? stats.damageType : undefined,
   };
 }

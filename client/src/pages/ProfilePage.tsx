@@ -14,6 +14,10 @@ import {
   Crown,
   Shirt,
   Wrench,
+  Hand,
+  Footprints,
+  Gem,
+  CircleDot,
 } from 'lucide-react';
 import api from '../services/api';
 import { getRarityStyle } from '../constants';
@@ -70,13 +74,29 @@ interface EquipmentStats {
   equippedCount: number;
 }
 
-const SLOT_DISPLAY: Record<string, { label: string; icon: typeof Shield }> = {
-  MAIN_HAND: { label: 'Weapon', icon: Swords },
-  OFF_HAND: { label: 'Off Hand', icon: Shield },
-  HEAD: { label: 'Head', icon: Crown },
-  CHEST: { label: 'Body', icon: Shirt },
-  LEGS: { label: 'Legs', icon: Shirt },
-  TOOL: { label: 'Tool', icon: Wrench },
+const SLOT_DISPLAY: { key: string; label: string; icon: typeof Shield }[] = [
+  { key: 'HEAD',      label: 'Head',     icon: Crown },
+  { key: 'NECK',      label: 'Neck',     icon: Gem },
+  { key: 'BACK',      label: 'Back',     icon: Shield },
+  { key: 'CHEST',     label: 'Body',     icon: Shirt },
+  { key: 'MAIN_HAND', label: 'Weapon',   icon: Swords },
+  { key: 'OFF_HAND',  label: 'Off Hand', icon: Shield },
+  { key: 'HANDS',     label: 'Hands',    icon: Hand },
+  { key: 'RING_1',    label: 'Ring 1',   icon: CircleDot },
+  { key: 'RING_2',    label: 'Ring 2',   icon: CircleDot },
+  { key: 'LEGS',      label: 'Legs',     icon: Shirt },
+  { key: 'FEET',      label: 'Feet',     icon: Footprints },
+  { key: 'TOOL',      label: 'Tool',     icon: Wrench },
+];
+
+// Map stat keys from equipment API (long names) to character stat keys (short names)
+const STAT_BONUS_MAP: Record<string, string> = {
+  strength: 'str',
+  dexterity: 'dex',
+  constitution: 'con',
+  intelligence: 'int',
+  wisdom: 'wis',
+  charisma: 'cha',
 };
 
 export default function ProfilePage() {
@@ -215,16 +235,40 @@ export default function ProfilePage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {STAT_CONFIG.map((stat) => {
                   const Icon = stat.icon;
-                  const value = profile.stats?.[stat.key] ?? 0;
+                  const baseValue = profile.stats?.[stat.key] ?? 0;
+                  // Find matching equipment bonus (strength→str, dexterity→dex, etc.)
+                  const bonusKey = Object.entries(STAT_BONUS_MAP).find(([, v]) => v === stat.key)?.[0];
+                  const bonus = bonusKey && eqStats?.totalStatBonuses?.[bonusKey] ? Math.round(eqStats.totalStatBonuses[bonusKey]) : 0;
+                  const totalValue = baseValue + bonus;
                   return (
                     <div key={stat.key} className="bg-realm-bg-800 border border-realm-border/50 rounded-lg p-3 text-center">
                       <Icon className={`w-5 h-5 mx-auto mb-1 ${stat.color}`} />
-                      <div className="text-2xl font-display text-realm-text-primary">{value}</div>
+                      <div className="text-2xl font-display text-realm-text-primary">
+                        {totalValue}
+                        {bonus > 0 && (
+                          <span className="text-sm text-realm-success ml-1">(+{bonus})</span>
+                        )}
+                      </div>
                       <div className="text-xs text-realm-text-muted uppercase tracking-wider">{stat.label}</div>
                     </div>
                   );
                 })}
               </div>
+              {/* Effective AC display */}
+              {isOwnProfile && eqStats && eqStats.totalAC > 0 && (
+                <div className="mt-4 pt-3 border-t border-realm-border/50">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-realm-teal-300" />
+                    <span className="text-sm text-realm-text-secondary">Effective AC:</span>
+                    <span className="text-lg font-display text-realm-text-primary">
+                      {10 + Math.floor(((profile.stats?.dex ?? 10) + (eqStats.totalStatBonuses?.dexterity ? Math.round(eqStats.totalStatBonuses.dexterity) : 0) - 10) / 2) + eqStats.totalAC}
+                    </span>
+                    <span className="text-xs text-realm-text-muted">
+                      (10 + DEX + {eqStats.totalAC} armor)
+                    </span>
+                  </div>
+                </div>
+              )}
             </RealmPanel>
 
             {/* Professions */}
@@ -250,13 +294,13 @@ export default function ProfilePage() {
               <div className="mt-6">
                 <RealmPanel title="Equipment">
                   <div className="space-y-2">
-                    {Object.entries(SLOT_DISPLAY).map(([slotKey, slotDef]) => {
-                      const eq = equippedData.equipped.find((e) => e.slot === slotKey);
+                    {SLOT_DISPLAY.map((slotDef) => {
+                      const eq = equippedData.equipped.find((e) => e.slot === slotDef.key);
                       const Icon = slotDef.icon;
                       const rarityStyle = eq ? getRarityStyle(eq.item.quality) : null;
 
                       return (
-                        <div key={slotKey} className="flex items-center gap-3 py-1.5">
+                        <div key={slotDef.key} className="flex items-center gap-3 py-1.5">
                           <Icon className={`w-4 h-4 flex-shrink-0 ${eq ? (rarityStyle?.text ?? 'text-realm-text-primary') : 'text-realm-text-muted/40'}`} />
                           <span className="text-xs text-realm-text-muted w-16 flex-shrink-0">{slotDef.label}</span>
                           {eq ? (

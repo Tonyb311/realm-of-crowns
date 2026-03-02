@@ -8,6 +8,8 @@
  */
 
 import { prisma } from '../lib/prisma';
+import { ItemRarity } from '@prisma/client';
+import { calculateItemStats } from './item-stats';
 import {
   createCombatState,
   createCharacterCombatant,
@@ -370,16 +372,28 @@ export async function resolveNodePvE(
   const charStats = parseStats(character.stats);
   const monsterStats = monster.stats as Record<string, number>;
 
+  // Apply equipment stat bonuses to combat stats
+  const equipBonuses = getEquipmentStatBonuses(character.equipment);
+  const effectiveStats: CharacterStats = {
+    str: charStats.str + (equipBonuses.strength ?? 0),
+    dex: charStats.dex + (equipBonuses.dexterity ?? 0),
+    con: charStats.con + (equipBonuses.constitution ?? 0),
+    int: charStats.int + (equipBonuses.intelligence ?? 0),
+    wis: charStats.wis + (equipBonuses.wisdom ?? 0),
+    cha: charStats.cha + (equipBonuses.charisma ?? 0),
+  };
+  const playerAC = 10 + getModifier(effectiveStats.dex) + getEquipmentAC(character.equipment);
+
   // Build combatants
   const playerCombatant = createCharacterCombatant(
     character.id,
     character.name,
     0, // team 0
-    charStats,
+    effectiveStats,
     character.level,
     character.health,
     character.maxHealth,
-    getEquipmentAC(character.equipment),
+    playerAC,
     getEquippedWeapon(character.equipment),
     {},
     getProficiencyBonus(character.level),
@@ -513,12 +527,32 @@ export async function resolveNodePvP(
   const travelerStats = parseStats(traveler.stats);
   const ambusherStats = parseStats(ambusher.stats);
 
+  // Apply equipment stat bonuses
+  const travelerBonuses = getEquipmentStatBonuses(traveler.equipment);
+  const travelerEffective: CharacterStats = {
+    str: travelerStats.str + (travelerBonuses.strength ?? 0),
+    dex: travelerStats.dex + (travelerBonuses.dexterity ?? 0),
+    con: travelerStats.con + (travelerBonuses.constitution ?? 0),
+    int: travelerStats.int + (travelerBonuses.intelligence ?? 0),
+    wis: travelerStats.wis + (travelerBonuses.wisdom ?? 0),
+    cha: travelerStats.cha + (travelerBonuses.charisma ?? 0),
+  };
+  const ambusherBonuses = getEquipmentStatBonuses(ambusher.equipment);
+  const ambusherEffective: CharacterStats = {
+    str: ambusherStats.str + (ambusherBonuses.strength ?? 0),
+    dex: ambusherStats.dex + (ambusherBonuses.dexterity ?? 0),
+    con: ambusherStats.con + (ambusherBonuses.constitution ?? 0),
+    int: ambusherStats.int + (ambusherBonuses.intelligence ?? 0),
+    wis: ambusherStats.wis + (ambusherBonuses.wisdom ?? 0),
+    cha: ambusherStats.cha + (ambusherBonuses.charisma ?? 0),
+  };
+
   // Build combatants
   const travelerCombatant = createCharacterCombatant(
     traveler.id, traveler.name, 0,
-    travelerStats, traveler.level,
+    travelerEffective, traveler.level,
     traveler.health, traveler.maxHealth,
-    getEquipmentAC(traveler.equipment),
+    10 + getModifier(travelerEffective.dex) + getEquipmentAC(traveler.equipment),
     getEquippedWeapon(traveler.equipment),
     {},
     getProficiencyBonus(traveler.level),
@@ -527,9 +561,9 @@ export async function resolveNodePvP(
 
   const ambusherCombatant = createCharacterCombatant(
     ambusher.id, ambusher.name, 1,
-    ambusherStats, ambusher.level,
+    ambusherEffective, ambusher.level,
     ambusher.health, ambusher.maxHealth,
-    getEquipmentAC(ambusher.equipment),
+    10 + getModifier(ambusherEffective.dex) + getEquipmentAC(ambusher.equipment),
     getEquippedWeapon(ambusher.equipment),
     {},
     getProficiencyBonus(ambusher.level),
@@ -670,10 +704,20 @@ export async function resolveGroupCombat(
     const char = charMap.get(id);
     if (!char) continue;
     const stats = parseStats(char.stats);
+    const bonuses = getEquipmentStatBonuses(char.equipment);
+    const effective: CharacterStats = {
+      str: stats.str + (bonuses.strength ?? 0),
+      dex: stats.dex + (bonuses.dexterity ?? 0),
+      con: stats.con + (bonuses.constitution ?? 0),
+      int: stats.int + (bonuses.intelligence ?? 0),
+      wis: stats.wis + (bonuses.wisdom ?? 0),
+      cha: stats.cha + (bonuses.charisma ?? 0),
+    };
     const combatant = createCharacterCombatant(
-      char.id, char.name, 0, stats, char.level,
+      char.id, char.name, 0, effective, char.level,
       char.health, char.maxHealth,
-      getEquipmentAC(char.equipment), getEquippedWeapon(char.equipment), {},
+      10 + getModifier(effective.dex) + getEquipmentAC(char.equipment),
+      getEquippedWeapon(char.equipment), {},
       getProficiencyBonus(char.level),
     );
     (combatant as any).race = char.race.toLowerCase();
@@ -695,10 +739,20 @@ export async function resolveGroupCombat(
     const char = charMap.get(id);
     if (!char) continue;
     const stats = parseStats(char.stats);
+    const bonuses = getEquipmentStatBonuses(char.equipment);
+    const effective: CharacterStats = {
+      str: stats.str + (bonuses.strength ?? 0),
+      dex: stats.dex + (bonuses.dexterity ?? 0),
+      con: stats.con + (bonuses.constitution ?? 0),
+      int: stats.int + (bonuses.intelligence ?? 0),
+      wis: stats.wis + (bonuses.wisdom ?? 0),
+      cha: stats.cha + (bonuses.charisma ?? 0),
+    };
     const combatant = createCharacterCombatant(
-      char.id, char.name, 1, stats, char.level,
+      char.id, char.name, 1, effective, char.level,
       char.health, char.maxHealth,
-      getEquipmentAC(char.equipment), getEquippedWeapon(char.equipment), {},
+      10 + getModifier(effective.dex) + getEquipmentAC(char.equipment),
+      getEquippedWeapon(char.equipment), {},
       getProficiencyBonus(char.level),
     );
     (combatant as any).race = char.race.toLowerCase();
@@ -761,23 +815,41 @@ function buildMonsterWeapon(monsterStats: Record<string, unknown>): WeaponInfo {
   };
 }
 
+/**
+ * Get quality-scaled AC from pre-loaded equipment using calculateItemStats().
+ */
 function getEquipmentAC(equipment: any[]): number {
   let ac = 0;
   for (const equip of equipment) {
-    const stats = equip.item?.template?.stats as Record<string, number> | undefined;
-    if (stats?.ac) {
-      ac += stats.ac;
+    if (!equip.item?.template) continue;
+    const calculated = calculateItemStats({
+      quality: equip.item.quality ?? ('COMMON' as ItemRarity),
+      enchantments: equip.item.enchantments ?? [],
+      template: { stats: equip.item.template.stats },
+    });
+    if (typeof calculated.finalStats.armor === 'number') {
+      ac += calculated.finalStats.armor;
     }
   }
   return ac;
 }
 
+/**
+ * Get quality-scaled weapon stats from pre-loaded equipment.
+ */
 function getEquippedWeapon(equipment: any[]): WeaponInfo | null {
   const mainHand = equipment.find((e: any) => e.slot === 'MAIN_HAND');
   if (!mainHand) return null;
 
   const stats = mainHand.item?.template?.stats as Record<string, any> | undefined;
   if (!stats) return null;
+
+  const calculated = calculateItemStats({
+    quality: mainHand.item.quality ?? ('COMMON' as ItemRarity),
+    enchantments: mainHand.item.enchantments ?? [],
+    template: { stats: mainHand.item.template.stats },
+  });
+  const multiplier = calculated.qualityMultiplier;
 
   return {
     id: mainHand.item.id,
@@ -786,10 +858,32 @@ function getEquippedWeapon(equipment: any[]): WeaponInfo | null {
     diceSides: stats.diceSides ?? 6,
     damageModifierStat: stats.damageModifierStat ?? 'str',
     attackModifierStat: stats.attackModifierStat ?? 'str',
-    bonusDamage: stats.bonusDamage ?? 0,
-    bonusAttack: stats.bonusAttack ?? 0,
+    bonusDamage: Math.round((stats.bonusDamage ?? 0) * multiplier),
+    bonusAttack: Math.round((stats.bonusAttack ?? 0) * multiplier),
     damageType: stats.damageType ?? undefined,
   };
+}
+
+/**
+ * Sum equipment attribute bonuses (STR, DEX, etc.) from pre-loaded equipment.
+ */
+function getEquipmentStatBonuses(equipment: any[]): Record<string, number> {
+  const totals: Record<string, number> = {};
+  for (const equip of equipment) {
+    if (!equip.item?.template) continue;
+    const calculated = calculateItemStats({
+      quality: equip.item.quality ?? ('COMMON' as ItemRarity),
+      enchantments: equip.item.enchantments ?? [],
+      template: { stats: equip.item.template.stats },
+    });
+    const fs = calculated.finalStats;
+    for (const key of ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma']) {
+      if (typeof fs[key] === 'number') {
+        totals[key] = (totals[key] ?? 0) + (fs[key] as number);
+      }
+    }
+  }
+  return totals;
 }
 
 /**

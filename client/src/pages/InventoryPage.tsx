@@ -11,6 +11,10 @@ import {
   Coins,
   X,
   ChevronRight,
+  Hand,
+  Footprints,
+  Gem,
+  CircleDot,
 } from 'lucide-react';
 import api from '../services/api';
 import { getRarityStyle } from '../constants';
@@ -86,7 +90,7 @@ function getTypeIcon(type: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Equipment slot definitions (6 primary slots from prompt)
+// Equipment slot definitions (all 12 slots)
 // ---------------------------------------------------------------------------
 interface SlotDef {
   key: string;    // DB EquipSlot value
@@ -95,11 +99,17 @@ interface SlotDef {
 }
 
 const PRIMARY_SLOTS: SlotDef[] = [
+  { key: 'HEAD',      label: 'Head',     icon: Crown },
+  { key: 'NECK',      label: 'Neck',     icon: Gem },
+  { key: 'BACK',      label: 'Back',     icon: Shield },
+  { key: 'CHEST',     label: 'Body',     icon: Shirt },
   { key: 'MAIN_HAND', label: 'Weapon',   icon: Swords },
   { key: 'OFF_HAND',  label: 'Off Hand', icon: Shield },
-  { key: 'HEAD',      label: 'Head',     icon: Crown },
-  { key: 'CHEST',     label: 'Body',     icon: Shirt },
+  { key: 'HANDS',     label: 'Hands',    icon: Hand },
+  { key: 'RING_1',    label: 'Ring 1',   icon: CircleDot },
+  { key: 'RING_2',    label: 'Ring 2',   icon: CircleDot },
   { key: 'LEGS',      label: 'Legs',     icon: Shirt },
+  { key: 'FEET',      label: 'Feet',     icon: Footprints },
   { key: 'TOOL',      label: 'Tool',     icon: Wrench },
 ];
 
@@ -131,6 +141,17 @@ function detectSlot(item: InventoryItem): string | null {
     if (name.includes('gloves') || name.includes('gauntlet')) return 'HANDS';
     if (name.includes('cape') || name.includes('cloak')) return 'BACK';
     return 'CHEST'; // default armor → body
+  }
+  if (type === 'ACCESSORY') {
+    if (equipSlot) {
+      const slotMap: Record<string, string> = {
+        RING_1: 'RING_1', RING_2: 'RING_2', NECK: 'NECK',
+      };
+      return slotMap[equipSlot] ?? 'RING_1';
+    }
+    const name = item.template.name.toLowerCase();
+    if (name.includes('necklace') || name.includes('amulet') || name.includes('pendant') || name.includes('choker')) return 'NECK';
+    return 'RING_1'; // default accessory → ring
   }
   return null;
 }
@@ -294,10 +315,10 @@ export default function InventoryPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {/* Equipment Slots (6 primary) */}
+        {/* Equipment Slots (all 12) */}
         <section className="mb-8">
           <h2 className="text-xl font-display text-realm-text-primary mb-4">Equipment</h2>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+          <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
             {PRIMARY_SLOTS.map((slot) => {
               const equipped = getEquippedInSlot(slot.key);
               const Icon = slot.icon;

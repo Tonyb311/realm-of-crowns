@@ -10,7 +10,8 @@
  */
 
 import { prisma } from './prisma';
-import { Prisma, BiomeType } from '@prisma/client';
+import { Prisma, BiomeType, ItemRarity } from '@prisma/client';
+import { calculateItemStats, calculateEquipmentTotals } from '../services/item-stats';
 import { logger } from './logger';
 import {
   createCombatState,
@@ -167,25 +168,9 @@ const UNARMED_WEAPON: WeaponInfo = {
 };
 
 /**
- * Get the total AC bonus from all equipped armor/shield items.
- * Sums the `ac` stat from each equipped item's template.
+ * Get quality-scaled equipped weapon stats using calculateItemStats().
+ * Applies quality multiplier to bonusDamage and bonusAttack.
  */
-async function getEquipmentAC(characterId: string): Promise<number> {
-  const equipment = await prisma.characterEquipment.findMany({
-    where: { characterId },
-    include: { item: { include: { template: true } } },
-  });
-
-  let ac = 0;
-  for (const equip of equipment) {
-    const stats = equip.item.template.stats as Record<string, number> | undefined;
-    if (stats?.ac) {
-      ac += stats.ac;
-    }
-  }
-  return ac;
-}
-
 async function getEquippedWeapon(characterId: string): Promise<WeaponInfo> {
   const equip = await prisma.characterEquipment.findUnique({
     where: { characterId_slot: { characterId, slot: 'MAIN_HAND' } },
@@ -197,6 +182,13 @@ async function getEquippedWeapon(characterId: string): Promise<WeaponInfo> {
   }
 
   const stats = equip.item.template.stats as Record<string, unknown>;
+  const calculated = calculateItemStats({
+    quality: equip.item.quality ?? ('COMMON' as ItemRarity),
+    enchantments: equip.item.enchantments,
+    template: { stats: equip.item.template.stats },
+  });
+  const multiplier = calculated.qualityMultiplier;
+
   return {
     id: equip.item.id,
     name: equip.item.template.name,
@@ -204,8 +196,8 @@ async function getEquippedWeapon(characterId: string): Promise<WeaponInfo> {
     diceSides: (typeof stats.diceSides === 'number') ? stats.diceSides : 4,
     damageModifierStat: stats.damageModifierStat === 'dex' ? 'dex' : 'str',
     attackModifierStat: stats.attackModifierStat === 'dex' ? 'dex' : 'str',
-    bonusDamage: (typeof stats.bonusDamage === 'number') ? stats.bonusDamage : 0,
-    bonusAttack: (typeof stats.bonusAttack === 'number') ? stats.bonusAttack : 0,
+    bonusDamage: Math.round(((typeof stats.bonusDamage === 'number') ? stats.bonusDamage : 0) * multiplier),
+    bonusAttack: Math.round(((typeof stats.bonusAttack === 'number') ? stats.bonusAttack : 0) * multiplier),
     damageType: (typeof stats.damageType === 'string') ? stats.damageType : undefined,
   };
 }
@@ -407,11 +399,22 @@ export async function resolveRoadEncounter(
   const monsterStats = monster.stats as Record<string, number>;
   const charStats = parseStats(character.stats);
 
-  // 4. Get character's equipped weapon and armor AC
+  // 4. Get character's equipped weapon, armor AC, and equipment stat bonuses
   const playerWeapon = await getEquippedWeapon(characterId);
-  const armorAC = await getEquipmentAC(characterId);
-  // AC = 10 + DEX modifier + armor bonus (matches tick-combat-resolver.ts)
-  const playerAC = 10 + getModifier(charStats.dex) + armorAC;
+  const equipTotals = await calculateEquipmentTotals(characterId);
+
+  // Apply equipment stat bonuses (STR ring, DEX boots, etc.) to combat stats
+  const effectiveStats: CharacterStats = {
+    str: charStats.str + (equipTotals.totalStatBonuses.strength ?? 0),
+    dex: charStats.dex + (equipTotals.totalStatBonuses.dexterity ?? 0),
+    con: charStats.con + (equipTotals.totalStatBonuses.constitution ?? 0),
+    int: charStats.int + (equipTotals.totalStatBonuses.intelligence ?? 0),
+    wis: charStats.wis + (equipTotals.totalStatBonuses.wisdom ?? 0),
+    cha: charStats.cha + (equipTotals.totalStatBonuses.charisma ?? 0),
+  };
+
+  // AC = 10 + effective DEX modifier + quality-scaled armor
+  const playerAC = 10 + getModifier(effectiveStats.dex) + equipTotals.totalAC;
 
   // 5. Create combat state (no DB session needed — this is auto-resolved)
   //    Characters enter road encounters at full HP — road rest heals them.
@@ -421,7 +424,7 @@ export async function resolveRoadEncounter(
     character.id,
     character.name,
     0,
-    charStats,
+    effectiveStats,
     character.level,
     character.maxHealth,
     character.maxHealth,
@@ -813,8 +816,18 @@ export async function resolveGroupRoadEncounter(
   for (const char of characters) {
     const charStats = parseStats(char.stats);
     const playerWeapon = await getEquippedWeapon(char.id);
-    const armorAC = await getEquipmentAC(char.id);
-    const playerAC = 10 + getModifier(charStats.dex) + armorAC;
+    const equipTotals = await calculateEquipmentTotals(char.id);
+
+    // Apply equipment stat bonuses to combat stats
+    const effectiveStats: CharacterStats = {
+      str: charStats.str + (equipTotals.totalStatBonuses.strength ?? 0),
+      dex: charStats.dex + (equipTotals.totalStatBonuses.dexterity ?? 0),
+      con: charStats.con + (equipTotals.totalStatBonuses.constitution ?? 0),
+      int: charStats.int + (equipTotals.totalStatBonuses.intelligence ?? 0),
+      wis: charStats.wis + (equipTotals.totalStatBonuses.wisdom ?? 0),
+      cha: charStats.cha + (equipTotals.totalStatBonuses.charisma ?? 0),
+    };
+    const playerAC = 10 + getModifier(effectiveStats.dex) + equipTotals.totalAC;
 
     playerWeapons[char.id] = playerWeapon;
 
@@ -822,7 +835,7 @@ export async function resolveGroupRoadEncounter(
         char.id,
         char.name,
         0, // team 0 = players
-        charStats,
+        effectiveStats,
         char.level,
         char.maxHealth, // road rest heals to full
         char.maxHealth,
