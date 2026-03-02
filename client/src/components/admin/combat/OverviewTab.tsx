@@ -1,11 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, Swords, TrendingUp, LogOut } from 'lucide-react';
+import {
+  Swords,
+  Users,
+  TrendingUp,
+  Timer,
+  Heart,
+  Sparkles,
+  Coins,
+  AlertTriangle,
+} from 'lucide-react';
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -14,12 +24,41 @@ import {
 import api from '../../../services/api';
 
 interface CombatStats {
-  totalFights: number;
-  completedFights: number;
-  fightsByType: { type: string; count: number }[];
-  fightsPerDay: { date: string; count: number }[];
-  outcomes: { wins: number; losses: number; flees: number };
-  topMonsters: { name: string; count: number }[];
+  totalEncounters: number;
+  uniqueCombatants: number;
+  winRate: number;
+  avgRounds: number;
+  avgHpRemaining: number;
+  totalXpAwarded: number;
+  totalGoldAwarded: number;
+  encountersPerDay: Array<{ date: string; count: number; wins: number; losses: number }>;
+  byOutcome: Array<{ outcome: string; count: number }>;
+  byTriggerSource: Array<{ source: string; count: number }>;
+  byType: Array<{ type: string; count: number }>;
+  topMonsters: Array<{ name: string; count: number; playerWinRate: number }>;
+  topRaces: Array<{ race: string; count: number; winRate: number }>;
+  topClasses: Array<{ class: string; count: number; winRate: number }>;
+  balanceAlerts: Array<{
+    entity: string;
+    entityType: 'race' | 'class' | 'monster';
+    winRate: number;
+    encounters: number;
+    severity: 'warning' | 'critical';
+  }>;
+}
+
+const PIE_COLORS = ['#d4af37', '#4D8FA8', '#A855C7', '#B87333', '#5A8F6E', '#8B2E2E'];
+const OUTCOME_COLORS: Record<string, string> = {
+  win: '#5A8F6E',
+  loss: '#8B2E2E',
+  flee: '#C9952B',
+  draw: '#6b7280',
+};
+
+function winRateColor(rate: number): string {
+  if (rate > 60) return 'text-realm-success';
+  if (rate >= 40) return 'text-realm-warning';
+  return 'text-realm-danger';
 }
 
 export default function OverviewTab() {
@@ -31,12 +70,21 @@ export default function OverviewTab() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+          {[...Array(7)].map((_, i) => (
             <div key={i} className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 h-28 animate-pulse" />
           ))}
         </div>
         <div className="bg-realm-bg-700 border border-realm-border rounded-lg h-64 animate-pulse" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-realm-bg-700 border border-realm-border rounded-lg h-64 animate-pulse" />
+          <div className="bg-realm-bg-700 border border-realm-border rounded-lg h-64 animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="bg-realm-bg-700 border border-realm-border rounded-lg h-56 animate-pulse" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -49,110 +97,305 @@ export default function OverviewTab() {
     );
   }
 
-  const totalOutcomes = data.outcomes.wins + data.outcomes.losses + data.outcomes.flees;
-  const winRate = totalOutcomes > 0 ? (data.outcomes.wins / totalOutcomes * 100).toFixed(1) : '0';
-  const fleeRate = totalOutcomes > 0 ? (data.outcomes.flees / totalOutcomes * 100).toFixed(1) : '0';
-
-  const summaryCards = [
-    { label: 'Total Fights', value: data.totalFights.toLocaleString(), icon: Swords, color: 'text-realm-gold-400' },
-    { label: 'Completed', value: data.completedFights.toLocaleString(), icon: BarChart3, color: 'text-realm-teal-300' },
-    { label: 'Win Rate', value: `${winRate}%`, icon: TrendingUp, color: 'text-realm-success' },
-    { label: 'Flee Rate', value: `${fleeRate}%`, icon: LogOut, color: 'text-realm-warning' },
+  const kpiCards = [
+    { label: 'Total Encounters', value: data.totalEncounters.toLocaleString(), icon: Swords, color: 'text-realm-gold-400' },
+    { label: 'Unique Combatants', value: data.uniqueCombatants.toLocaleString(), icon: Users, color: 'text-realm-teal-300' },
+    { label: 'Win Rate', value: `${data.winRate}%`, icon: TrendingUp, color: winRateColor(data.winRate) },
+    { label: 'Avg Rounds', value: data.avgRounds.toFixed(1), icon: Timer, color: 'text-realm-text-secondary' },
+    { label: 'Avg HP Left', value: `${data.avgHpRemaining}%`, icon: Heart, color: 'text-realm-hp' },
+    { label: 'Total XP', value: data.totalXpAwarded.toLocaleString(), icon: Sparkles, color: 'text-realm-purple-300' },
+    { label: 'Total Gold', value: data.totalGoldAwarded.toLocaleString(), icon: Coins, color: 'text-realm-gold-300' },
   ];
+
+  // Compute flees from the difference for chart data
+  const chartData = data.encountersPerDay.map((d) => ({
+    ...d,
+    flees: d.count - d.wins - d.losses,
+  }));
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {summaryCards.map((card) => {
+      {/* Row 1: KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+        {kpiCards.map((card) => {
           const Icon = card.icon;
           return (
-            <div key={card.label} className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+            <div
+              key={card.label}
+              className="bg-realm-bg-700 border border-realm-border rounded-lg p-4 hover:border-realm-gold-600/40 transition-colors"
+            >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-realm-text-muted text-xs font-display uppercase tracking-wider">{card.label}</span>
                 <Icon className={`w-4 h-4 ${card.color}`} />
               </div>
-              <span className={`text-2xl font-display ${card.color}`}>{card.value}</span>
+              <div className={`text-xl font-display ${card.color}`}>{card.value}</div>
+              <div className="text-realm-text-muted text-xs font-display uppercase tracking-wider mt-1">
+                {card.label}
+              </div>
             </div>
           );
         })}
       </div>
 
-      {/* Fights Per Day Chart */}
-      {data.fightsPerDay.length > 0 && (
+      {/* Row 2: Encounters Per Day */}
+      {chartData.length > 0 && (
         <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
-          <h3 className="font-display text-realm-text-primary text-sm mb-4">Fights Per Day (Last 30 Days)</h3>
+          <h3 className="font-display text-realm-text-primary text-sm mb-4">
+            Encounters Per Day (Last 30 Days)
+          </h3>
           <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={data.fightsPerDay}>
+            <AreaChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
-              <XAxis dataKey="date" stroke="#6b7280" tick={{ fontSize: 11 }} tickFormatter={(d) => d.slice(5)} />
+              <XAxis
+                dataKey="date"
+                stroke="#6b7280"
+                tick={{ fontSize: 11 }}
+                tickFormatter={(d) => d.slice(5)}
+              />
               <YAxis stroke="#6b7280" tick={{ fontSize: 11 }} allowDecimals={false} />
               <Tooltip
-                contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #2a2a3a', borderRadius: '8px' }}
+                contentStyle={{
+                  backgroundColor: '#1a1a2e',
+                  border: '1px solid #2a2a3a',
+                  borderRadius: '8px',
+                }}
                 labelStyle={{ color: '#d4af37' }}
               />
-              <Line type="monotone" dataKey="count" stroke="#d4af37" strokeWidth={2} dot={false} />
-            </LineChart>
+              <Area
+                type="monotone"
+                dataKey="wins"
+                stackId="1"
+                fill="#5A8F6E"
+                stroke="#5A8F6E"
+                fillOpacity={0.6}
+                name="Wins"
+              />
+              <Area
+                type="monotone"
+                dataKey="losses"
+                stackId="1"
+                fill="#8B2E2E"
+                stroke="#8B2E2E"
+                fillOpacity={0.6}
+                name="Losses"
+              />
+              <Area
+                type="monotone"
+                dataKey="flees"
+                stackId="1"
+                fill="#C9952B"
+                stroke="#C9952B"
+                fillOpacity={0.6}
+                name="Flees"
+              />
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       )}
 
+      {/* Row 3: Two Pie Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Fights By Type */}
-        {data.fightsByType.length > 0 && (
-          <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
-            <h3 className="font-display text-realm-text-primary text-sm mb-4">Fights By Type</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={data.fightsByType}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
-                <XAxis dataKey="type" stroke="#6b7280" tick={{ fontSize: 11 }} />
-                <YAxis stroke="#6b7280" tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #2a2a3a', borderRadius: '8px' }}
-                />
-                <Bar dataKey="count" fill="#d4af37" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+        {/* By Trigger Source */}
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+          <h3 className="font-display text-realm-text-primary text-sm mb-4">By Trigger Source</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+              <Pie
+                data={data.byTriggerSource}
+                dataKey="count"
+                nameKey="source"
+                cx="50%"
+                cy="50%"
+                outerRadius={90}
+                label={({ source, percent }: { source: string; percent: number }) =>
+                  `${source} (${(percent * 100).toFixed(0)}%)`
+                }
+                labelLine={{ stroke: '#6b7280' }}
+              >
+                {data.byTriggerSource.map((_, i) => (
+                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#1a1a2e',
+                  border: '1px solid #2a2a3a',
+                  borderRadius: '8px',
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
 
-        {/* Top Monsters */}
-        {data.topMonsters.length > 0 && (
-          <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
-            <h3 className="font-display text-realm-text-primary text-sm mb-4">Most Encountered Monsters</h3>
-            <div className="space-y-2">
-              {data.topMonsters.map((m, i) => (
-                <div key={m.name} className="flex items-center justify-between py-1.5 px-2 rounded bg-realm-bg-800/50">
-                  <div className="flex items-center gap-2">
-                    <span className="text-realm-text-muted text-xs w-5">#{i + 1}</span>
-                    <span className="text-realm-text-primary text-sm">{m.name}</span>
-                  </div>
-                  <span className="text-realm-gold-400 font-display text-sm">{m.count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Outcomes Breakdown */}
-      <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
-        <h3 className="font-display text-realm-text-primary text-sm mb-4">Combat Outcomes (Last 30 Days)</h3>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-display text-realm-success">{data.outcomes.wins}</div>
-            <div className="text-xs text-realm-text-muted">Wins</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-display text-realm-danger">{data.outcomes.losses}</div>
-            <div className="text-xs text-realm-text-muted">Losses</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-display text-realm-warning">{data.outcomes.flees}</div>
-            <div className="text-xs text-realm-text-muted">Flees</div>
-          </div>
+        {/* By Outcome */}
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+          <h3 className="font-display text-realm-text-primary text-sm mb-4">By Outcome</h3>
+          <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+              <Pie
+                data={data.byOutcome}
+                dataKey="count"
+                nameKey="outcome"
+                cx="50%"
+                cy="50%"
+                outerRadius={90}
+                label={({ outcome, percent }: { outcome: string; percent: number }) =>
+                  `${outcome} (${(percent * 100).toFixed(0)}%)`
+                }
+                labelLine={{ stroke: '#6b7280' }}
+              >
+                {data.byOutcome.map((entry, i) => (
+                  <Cell
+                    key={i}
+                    fill={OUTCOME_COLORS[entry.outcome] ?? PIE_COLORS[i % PIE_COLORS.length]}
+                  />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#1a1a2e',
+                  border: '1px solid #2a2a3a',
+                  borderRadius: '8px',
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Row 4: Top 5 Tables */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Top Monsters */}
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+          <h3 className="font-display text-realm-text-primary text-sm mb-4">Top Monsters</h3>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-realm-border text-left">
+                <th className="pb-2 text-realm-text-muted text-xs font-display">Monster</th>
+                <th className="pb-2 text-realm-text-muted text-xs font-display text-right">Fights</th>
+                <th className="pb-2 text-realm-text-muted text-xs font-display text-right">Win Rate</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-realm-border/30">
+              {data.topMonsters.map((m) => (
+                <tr
+                  key={m.name}
+                  className="hover:bg-realm-bg-800/30 transition-colors cursor-pointer"
+                  onClick={() => {}}
+                >
+                  <td className="py-2 text-sm text-realm-text-primary">{m.name}</td>
+                  <td className="py-2 text-sm text-realm-text-secondary text-right">{m.count}</td>
+                  <td className={`py-2 text-sm text-right font-display ${winRateColor(m.playerWinRate)}`}>
+                    {m.playerWinRate}%
+                  </td>
+                </tr>
+              ))}
+              {data.topMonsters.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="py-4 text-center text-realm-text-muted text-sm">No data</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Top Races */}
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+          <h3 className="font-display text-realm-text-primary text-sm mb-4">Top Races</h3>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-realm-border text-left">
+                <th className="pb-2 text-realm-text-muted text-xs font-display">Race</th>
+                <th className="pb-2 text-realm-text-muted text-xs font-display text-right">Fights</th>
+                <th className="pb-2 text-realm-text-muted text-xs font-display text-right">Win Rate</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-realm-border/30">
+              {data.topRaces.map((r) => (
+                <tr
+                  key={r.race}
+                  className="hover:bg-realm-bg-800/30 transition-colors cursor-pointer"
+                  onClick={() => {}}
+                >
+                  <td className="py-2 text-sm text-realm-text-primary">{r.race}</td>
+                  <td className="py-2 text-sm text-realm-text-secondary text-right">{r.count}</td>
+                  <td className={`py-2 text-sm text-right font-display ${winRateColor(r.winRate)}`}>
+                    {r.winRate}%
+                  </td>
+                </tr>
+              ))}
+              {data.topRaces.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="py-4 text-center text-realm-text-muted text-sm">No data</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Top Classes */}
+        <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+          <h3 className="font-display text-realm-text-primary text-sm mb-4">Top Classes</h3>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-realm-border text-left">
+                <th className="pb-2 text-realm-text-muted text-xs font-display">Class</th>
+                <th className="pb-2 text-realm-text-muted text-xs font-display text-right">Fights</th>
+                <th className="pb-2 text-realm-text-muted text-xs font-display text-right">Win Rate</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-realm-border/30">
+              {data.topClasses.map((c) => (
+                <tr
+                  key={c.class}
+                  className="hover:bg-realm-bg-800/30 transition-colors cursor-pointer"
+                  onClick={() => {}}
+                >
+                  <td className="py-2 text-sm text-realm-text-primary">{c.class}</td>
+                  <td className="py-2 text-sm text-realm-text-secondary text-right">{c.count}</td>
+                  <td className={`py-2 text-sm text-right font-display ${winRateColor(c.winRate)}`}>
+                    {c.winRate}%
+                  </td>
+                </tr>
+              ))}
+              {data.topClasses.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="py-4 text-center text-realm-text-muted text-sm">No data</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Row 5: Balance Alerts */}
+      {data.balanceAlerts.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="font-display text-realm-text-primary text-sm">Balance Alerts</h3>
+          {data.balanceAlerts.map((alert) => (
+            <div
+              key={`${alert.entityType}-${alert.entity}`}
+              className={`flex items-center gap-3 rounded-lg p-4 border ${
+                alert.severity === 'critical'
+                  ? 'bg-realm-danger/10 border-realm-danger/40'
+                  : 'bg-realm-warning/10 border-realm-warning/40'
+              }`}
+            >
+              <AlertTriangle
+                className={`w-5 h-5 flex-shrink-0 ${
+                  alert.severity === 'critical' ? 'text-realm-danger' : 'text-realm-warning'
+                }`}
+              />
+              <span className="text-sm text-realm-text-primary">
+                <strong>{alert.entity}</strong> ({alert.entityType}) —{' '}
+                <span className={alert.severity === 'critical' ? 'text-realm-danger' : 'text-realm-warning'}>
+                  {alert.winRate}% win rate
+                </span>{' '}
+                across {alert.encounters} encounters
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

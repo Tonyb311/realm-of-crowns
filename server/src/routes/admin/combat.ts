@@ -277,7 +277,7 @@ router.get('/session/:id', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-// ---- Stats Endpoint ----
+// ---- Stats Endpoints (sourced from CombatEncounterLog) ----
 
 // GET /stats — Aggregate combat statistics
 router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
@@ -286,78 +286,422 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const [
-      totalFights,
-      completedFights,
-      fightsByType,
-      recentSessions,
-      topMonsterAttackers,
+      totalEncounters,
+      aggregates,
+      byOutcome,
+      byTriggerSource,
+      byType,
+      recentEncounters,
+      raceClassData,
+      pveData,
     ] = await Promise.all([
-      prisma.combatSession.count(),
-      prisma.combatSession.count({ where: { status: 'COMPLETED' } }),
-      prisma.combatSession.groupBy({
-        by: ['type'],
-        _count: true,
+      prisma.combatEncounterLog.count(),
+      prisma.combatEncounterLog.aggregate({
+        _avg: { totalRounds: true },
+        _sum: { xpAwarded: true, goldAwarded: true },
       }),
-      prisma.combatSession.findMany({
+      prisma.combatEncounterLog.groupBy({ by: ['outcome'], _count: true }),
+      prisma.combatEncounterLog.groupBy({ by: ['triggerSource'], _count: true }),
+      prisma.combatEncounterLog.groupBy({ by: ['type'], _count: true }),
+      prisma.combatEncounterLog.findMany({
         where: { startedAt: { gte: thirtyDaysAgo } },
-        select: { startedAt: true, type: true, status: true, log: true },
+        select: { startedAt: true, outcome: true },
         orderBy: { startedAt: 'asc' },
       }),
-      // Top monsters by encounter frequency (from attacker/defender params)
-      prisma.combatSession.findMany({
-        where: { type: 'PVE', status: 'COMPLETED' },
-        select: { defenderParams: true },
-        take: 1000,
-        orderBy: { startedAt: 'desc' },
+      prisma.combatEncounterLog.findMany({
+        select: {
+          characterId: true,
+          outcome: true,
+          characterStartHp: true,
+          characterEndHp: true,
+          character: { select: { race: true, class: true } },
+        },
+      }),
+      prisma.combatEncounterLog.findMany({
+        where: { type: 'pve' },
+        select: { opponentName: true, outcome: true },
       }),
     ]);
 
-    // Compute fights per day for last 30 days
-    const fightsPerDay: Record<string, number> = {};
-    for (const s of recentSessions) {
-      const day = s.startedAt.toISOString().slice(0, 10);
-      fightsPerDay[day] = (fightsPerDay[day] ?? 0) + 1;
-    }
+    // Unique combatants
+    const uniqueCombatants = new Set(raceClassData.map((e) => e.characterId)).size;
 
-    // Compute win/loss/flee from logs
-    let wins = 0;
-    let losses = 0;
-    let flees = 0;
-    for (const s of recentSessions) {
-      const log = s.log as unknown[];
-      if (!Array.isArray(log)) continue;
-      // Check the session log JSON for outcome hints
-      const logStr = JSON.stringify(log);
-      if (logStr.includes('"FLED"') || logStr.includes('"flee"')) flees++;
-      else if (s.status === 'COMPLETED') wins++;
-    }
-    losses = completedFights - wins - flees;
+    // Win rate
+    const winCount = byOutcome.find((o) => o.outcome === 'win')?._count ?? 0;
+    const winRate = totalEncounters > 0 ? +(winCount / totalEncounters * 100).toFixed(1) : 0;
 
-    // Count monster encounters
-    const monsterCounts: Record<string, number> = {};
-    for (const s of topMonsterAttackers) {
-      const params = s.defenderParams as Record<string, unknown> | null;
-      if (params?.name) {
-        const name = String(params.name);
-        monsterCounts[name] = (monsterCounts[name] ?? 0) + 1;
+    // Avg HP remaining (%)
+    let hpSum = 0;
+    let hpCount = 0;
+    for (const e of raceClassData) {
+      if (e.characterStartHp > 0) {
+        hpSum += (e.characterEndHp / e.characterStartHp) * 100;
+        hpCount++;
       }
     }
-    const topMonsters = Object.entries(monsterCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([name, count]) => ({ name, count }));
+    const avgHpRemaining = hpCount > 0 ? +(hpSum / hpCount).toFixed(1) : 0;
+
+    // Encounters per day (last 30 days)
+    const dayMap: Record<string, { count: number; wins: number; losses: number }> = {};
+    for (const e of recentEncounters) {
+      const day = e.startedAt.toISOString().slice(0, 10);
+      if (!dayMap[day]) dayMap[day] = { count: 0, wins: 0, losses: 0 };
+      dayMap[day].count++;
+      if (e.outcome === 'win') dayMap[day].wins++;
+      else if (e.outcome === 'loss') dayMap[day].losses++;
+    }
+    const encountersPerDay = Object.entries(dayMap)
+      .map(([date, d]) => ({ date, ...d }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // Top 5 monsters (PvE only)
+    const monsterMap: Record<string, { count: number; wins: number }> = {};
+    for (const e of pveData) {
+      if (!e.opponentName) continue;
+      if (!monsterMap[e.opponentName]) monsterMap[e.opponentName] = { count: 0, wins: 0 };
+      monsterMap[e.opponentName].count++;
+      if (e.outcome === 'win') monsterMap[e.opponentName].wins++;
+    }
+    const topMonsters = Object.entries(monsterMap)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 5)
+      .map(([name, d]) => ({
+        name,
+        count: d.count,
+        playerWinRate: +(d.wins / d.count * 100).toFixed(1),
+      }));
+
+    // Top 5 races
+    const raceMap: Record<string, { count: number; wins: number }> = {};
+    for (const e of raceClassData) {
+      const race = e.character?.race;
+      if (!race) continue;
+      if (!raceMap[race]) raceMap[race] = { count: 0, wins: 0 };
+      raceMap[race].count++;
+      if (e.outcome === 'win') raceMap[race].wins++;
+    }
+    const topRaces = Object.entries(raceMap)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 5)
+      .map(([race, d]) => ({
+        race,
+        count: d.count,
+        winRate: +(d.wins / d.count * 100).toFixed(1),
+      }));
+
+    // Top 5 classes (skip null)
+    const classMap: Record<string, { count: number; wins: number }> = {};
+    for (const e of raceClassData) {
+      const cls = e.character?.class;
+      if (!cls) continue;
+      if (!classMap[cls]) classMap[cls] = { count: 0, wins: 0 };
+      classMap[cls].count++;
+      if (e.outcome === 'win') classMap[cls].wins++;
+    }
+    const topClasses = Object.entries(classMap)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 5)
+      .map(([cls, d]) => ({
+        class: cls,
+        count: d.count,
+        winRate: +(d.wins / d.count * 100).toFixed(1),
+      }));
+
+    // Balance alerts — flag win rates outside 35-85% with >10 encounters
+    const balanceAlerts: Array<{
+      entity: string;
+      entityType: 'race' | 'class' | 'monster';
+      winRate: number;
+      encounters: number;
+      severity: 'warning' | 'critical';
+    }> = [];
+
+    const checkBalance = (
+      map: Record<string, { count: number; wins: number }>,
+      entityType: 'race' | 'class' | 'monster',
+    ) => {
+      for (const [name, d] of Object.entries(map)) {
+        if (d.count < 10) continue;
+        const wr = +(d.wins / d.count * 100).toFixed(1);
+        if (wr < 25 || wr > 95) {
+          balanceAlerts.push({ entity: name, entityType, winRate: wr, encounters: d.count, severity: 'critical' });
+        } else if (wr < 35 || wr > 85) {
+          balanceAlerts.push({ entity: name, entityType, winRate: wr, encounters: d.count, severity: 'warning' });
+        }
+      }
+    };
+
+    checkBalance(raceMap, 'race');
+    checkBalance(classMap, 'class');
+    checkBalance(monsterMap, 'monster');
 
     return res.json({
-      totalFights,
-      completedFights,
-      fightsByType: fightsByType.map((f) => ({ type: f.type, count: f._count })),
-      fightsPerDay: Object.entries(fightsPerDay).map(([date, count]) => ({ date, count })),
-      outcomes: { wins, losses, flees },
+      totalEncounters,
+      uniqueCombatants,
+      winRate,
+      avgRounds: +(aggregates._avg.totalRounds ?? 0).toFixed(1),
+      avgHpRemaining,
+      totalXpAwarded: aggregates._sum.xpAwarded ?? 0,
+      totalGoldAwarded: aggregates._sum.goldAwarded ?? 0,
+      encountersPerDay,
+      byOutcome: byOutcome.map((o) => ({ outcome: o.outcome, count: o._count })),
+      byTriggerSource: byTriggerSource.map((s) => ({ source: s.triggerSource, count: s._count })),
+      byType: byType.map((t) => ({ type: t.type, count: t._count })),
       topMonsters,
+      topRaces,
+      topClasses,
+      balanceAlerts,
     });
   } catch (error) {
     logRouteError(req, 500, 'Admin combat stats error', error);
     return res.status(500).json({ error: 'Failed to load combat stats' });
+  }
+});
+
+// GET /stats/by-race — Combat stats broken down by character race
+router.get('/stats/by-race', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const encounters = await prisma.combatEncounterLog.findMany({
+      select: {
+        outcome: true,
+        totalRounds: true,
+        characterStartHp: true,
+        characterEndHp: true,
+        xpAwarded: true,
+        characterWeapon: true,
+        opponentName: true,
+        type: true,
+        character: { select: { race: true } },
+      },
+    });
+
+    const raceMap: Record<string, {
+      encounters: number; wins: number; losses: number; flees: number;
+      totalRounds: number; hpSum: number; hpCount: number; totalXp: number;
+      weapons: Record<string, number>;
+      monsters: Record<string, { count: number; wins: number }>;
+    }> = {};
+
+    for (const e of encounters) {
+      const race = e.character?.race;
+      if (!race) continue;
+      if (!raceMap[race]) {
+        raceMap[race] = {
+          encounters: 0, wins: 0, losses: 0, flees: 0,
+          totalRounds: 0, hpSum: 0, hpCount: 0, totalXp: 0,
+          weapons: {}, monsters: {},
+        };
+      }
+      const r = raceMap[race];
+      r.encounters++;
+      if (e.outcome === 'win') r.wins++;
+      else if (e.outcome === 'loss') r.losses++;
+      else if (e.outcome === 'flee') r.flees++;
+      r.totalRounds += e.totalRounds;
+      if (e.characterStartHp > 0) {
+        r.hpSum += (e.characterEndHp / e.characterStartHp) * 100;
+        r.hpCount++;
+      }
+      r.totalXp += e.xpAwarded;
+      if (e.characterWeapon) {
+        r.weapons[e.characterWeapon] = (r.weapons[e.characterWeapon] ?? 0) + 1;
+      }
+      if (e.type === 'pve' && e.opponentName) {
+        if (!r.monsters[e.opponentName]) r.monsters[e.opponentName] = { count: 0, wins: 0 };
+        r.monsters[e.opponentName].count++;
+        if (e.outcome === 'win') r.monsters[e.opponentName].wins++;
+      }
+    }
+
+    const races = Object.entries(raceMap).map(([race, r]) => ({
+      race,
+      encounters: r.encounters,
+      wins: r.wins,
+      losses: r.losses,
+      flees: r.flees,
+      winRate: +(r.wins / r.encounters * 100).toFixed(1),
+      avgRounds: +(r.totalRounds / r.encounters).toFixed(1),
+      avgHpRemaining: r.hpCount > 0 ? +(r.hpSum / r.hpCount).toFixed(1) : 0,
+      avgXpPerEncounter: +(r.totalXp / r.encounters).toFixed(0),
+      topWeapons: Object.entries(r.weapons)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([weapon, count]) => ({ weapon, count })),
+      topMonsters: Object.entries(r.monsters)
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 3)
+        .map(([monster, d]) => ({
+          monster,
+          count: d.count,
+          winRate: +(d.wins / d.count * 100).toFixed(1),
+        })),
+    }));
+
+    return res.json({ races });
+  } catch (error) {
+    logRouteError(req, 500, 'Admin combat stats by-race error', error);
+    return res.status(500).json({ error: 'Failed to load race combat stats' });
+  }
+});
+
+// GET /stats/by-class — Combat stats broken down by character class
+router.get('/stats/by-class', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const encounters = await prisma.combatEncounterLog.findMany({
+      select: {
+        outcome: true,
+        totalRounds: true,
+        characterStartHp: true,
+        characterEndHp: true,
+        xpAwarded: true,
+        characterWeapon: true,
+        opponentName: true,
+        type: true,
+        character: { select: { class: true } },
+      },
+    });
+
+    const classMap: Record<string, {
+      encounters: number; wins: number; losses: number; flees: number;
+      totalRounds: number; hpSum: number; hpCount: number; totalXp: number;
+      weapons: Record<string, number>;
+      monsters: Record<string, { count: number; wins: number }>;
+    }> = {};
+
+    for (const e of encounters) {
+      const cls = e.character?.class;
+      if (!cls) continue;
+      if (!classMap[cls]) {
+        classMap[cls] = {
+          encounters: 0, wins: 0, losses: 0, flees: 0,
+          totalRounds: 0, hpSum: 0, hpCount: 0, totalXp: 0,
+          weapons: {}, monsters: {},
+        };
+      }
+      const c = classMap[cls];
+      c.encounters++;
+      if (e.outcome === 'win') c.wins++;
+      else if (e.outcome === 'loss') c.losses++;
+      else if (e.outcome === 'flee') c.flees++;
+      c.totalRounds += e.totalRounds;
+      if (e.characterStartHp > 0) {
+        c.hpSum += (e.characterEndHp / e.characterStartHp) * 100;
+        c.hpCount++;
+      }
+      c.totalXp += e.xpAwarded;
+      if (e.characterWeapon) {
+        c.weapons[e.characterWeapon] = (c.weapons[e.characterWeapon] ?? 0) + 1;
+      }
+      if (e.type === 'pve' && e.opponentName) {
+        if (!c.monsters[e.opponentName]) c.monsters[e.opponentName] = { count: 0, wins: 0 };
+        c.monsters[e.opponentName].count++;
+        if (e.outcome === 'win') c.monsters[e.opponentName].wins++;
+      }
+    }
+
+    const classes = Object.entries(classMap).map(([cls, c]) => ({
+      class: cls,
+      encounters: c.encounters,
+      wins: c.wins,
+      losses: c.losses,
+      flees: c.flees,
+      winRate: +(c.wins / c.encounters * 100).toFixed(1),
+      avgRounds: +(c.totalRounds / c.encounters).toFixed(1),
+      avgHpRemaining: c.hpCount > 0 ? +(c.hpSum / c.hpCount).toFixed(1) : 0,
+      avgXpPerEncounter: +(c.totalXp / c.encounters).toFixed(0),
+      topWeapons: Object.entries(c.weapons)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([weapon, count]) => ({ weapon, count })),
+      topMonsters: Object.entries(c.monsters)
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 3)
+        .map(([monster, d]) => ({
+          monster,
+          count: d.count,
+          winRate: +(d.wins / d.count * 100).toFixed(1),
+        })),
+    }));
+
+    return res.json({ classes });
+  } catch (error) {
+    logRouteError(req, 500, 'Admin combat stats by-class error', error);
+    return res.status(500).json({ error: 'Failed to load class combat stats' });
+  }
+});
+
+// GET /stats/by-monster — Combat stats broken down by monster name (PvE only)
+router.get('/stats/by-monster', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const encounters = await prisma.combatEncounterLog.findMany({
+      where: { type: 'pve' },
+      select: {
+        opponentName: true,
+        outcome: true,
+        totalRounds: true,
+        characterStartHp: true,
+        characterEndHp: true,
+        character: { select: { race: true, level: true } },
+      },
+    });
+
+    const monsterMap: Record<string, {
+      encounters: number; playerWins: number;
+      totalRounds: number; hpSum: number; hpCount: number;
+      levels: number[];
+      races: Record<string, { count: number; wins: number }>;
+    }> = {};
+
+    for (const e of encounters) {
+      if (!e.opponentName) continue;
+      if (!monsterMap[e.opponentName]) {
+        monsterMap[e.opponentName] = {
+          encounters: 0, playerWins: 0,
+          totalRounds: 0, hpSum: 0, hpCount: 0,
+          levels: [], races: {},
+        };
+      }
+      const m = monsterMap[e.opponentName];
+      m.encounters++;
+      if (e.outcome === 'win') m.playerWins++;
+      m.totalRounds += e.totalRounds;
+      if (e.characterStartHp > 0) {
+        m.hpSum += (e.characterEndHp / e.characterStartHp) * 100;
+        m.hpCount++;
+      }
+      if (e.character?.level) m.levels.push(e.character.level);
+      const race = e.character?.race;
+      if (race) {
+        if (!m.races[race]) m.races[race] = { count: 0, wins: 0 };
+        m.races[race].count++;
+        if (e.outcome === 'win') m.races[race].wins++;
+      }
+    }
+
+    const monsters = Object.entries(monsterMap).map(([name, m]) => ({
+      name,
+      encounters: m.encounters,
+      playerWinRate: +(m.playerWins / m.encounters * 100).toFixed(1),
+      avgRounds: +(m.totalRounds / m.encounters).toFixed(1),
+      avgPlayerHpRemaining: m.hpCount > 0 ? +(m.hpSum / m.hpCount).toFixed(1) : 0,
+      levelRange: {
+        min: m.levels.length > 0 ? Math.min(...m.levels) : 0,
+        max: m.levels.length > 0 ? Math.max(...m.levels) : 0,
+      },
+      topRacesAgainst: Object.entries(m.races)
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 3)
+        .map(([race, d]) => ({
+          race,
+          count: d.count,
+          winRate: +(d.wins / d.count * 100).toFixed(1),
+        })),
+    }));
+
+    return res.json({ monsters });
+  } catch (error) {
+    logRouteError(req, 500, 'Admin combat stats by-monster error', error);
+    return res.status(500).json({ error: 'Failed to load monster combat stats' });
   }
 });
 
