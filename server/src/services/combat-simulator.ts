@@ -334,24 +334,169 @@ const CLASS_DEFAULT_STANCE: Record<string, 'AGGRESSIVE' | 'BALANCED' | 'DEFENSIV
 };
 
 /**
- * Build a default ability queue from class abilities available at the given level.
- * Sorts by tier descending so highest-tier abilities are tried first.
- * Filters out passives (cooldown 0 + passive effect) since they don't need to be queued.
+ * Classify an ability's combat role based on its effects.type.
+ * Used by buildAbilityQueue to assign smart useWhen conditions.
+ */
+type CombatRole = 'damage' | 'buff' | 'heal' | 'cc' | 'utility';
+
+function classifyAbility(ability: AbilityDefinition): CombatRole {
+  const effects = ability.effects as Record<string, unknown>;
+  const type = effects.type as string;
+
+  // Direct damage dealers
+  if ([
+    'damage', 'damage_status', 'damage_debuff', 'damage_steal',
+    'multi_attack', 'multi_target',
+    'aoe_damage', 'aoe_damage_status', 'aoe_drain', 'aoe_dot',
+    'drain', 'delayed_damage', 'dispel_damage',
+    'companion_attack', 'teleport_attack', 'trap',
+  ].includes(type)) {
+    return 'damage';
+  }
+
+  // Heals and cleanse
+  if (['heal', 'hot', 'cleanse'].includes(type)) {
+    return 'heal';
+  }
+
+  // Buffs (self-buffs, defensive, summons)
+  if (['buff', 'summon', 'counter', 'echo'].includes(type)) {
+    return 'buff';
+  }
+
+  // CC / debuffs / control
+  if (['status', 'debuff', 'aoe_debuff', 'control', 'swap', 'banish'].includes(type)) {
+    return 'cc';
+  }
+
+  // Utility (flee, steal, reaction, phase, special)
+  if (['flee', 'steal', 'reaction', 'phase', 'special'].includes(type)) {
+    return 'utility';
+  }
+
+  return 'utility';
+}
+
+/**
+ * Build a role-aware ability queue from class abilities available at the given level.
+ *
+ * Priority order:
+ *   1. OPENER: One buff or CC ability (first_round only)
+ *   2. SUSTAIN: All damage abilities (always) — the primary combat loop
+ *   3. EMERGENCY: Heal abilities (low_hp only, 40% threshold)
+ *   4. FALLBACK: Remaining CC/debuff abilities (always, lower priority than damage)
+ *   5. REMAINING: Other buffs (always, lowest priority)
+ *
+ * If all abilities are on cooldown, decideAction() falls through to basic attack.
  */
 function buildAbilityQueue(className: string, level: number): AbilityQueueEntry[] {
   const classAbilities = ABILITIES_BY_CLASS[className] ?? [];
   const available = classAbilities.filter(
     (a: AbilityDefinition) => a.levelRequired <= level && (a.effects as any)?.type !== 'passive',
   );
-  // Sort by tier descending (strongest first), then by cooldown ascending (lower CD = more useful)
-  available.sort((a: AbilityDefinition, b: AbilityDefinition) => b.tier - a.tier || a.cooldown - b.cooldown);
 
-  return available.map((a: AbilityDefinition, i: number) => ({
-    abilityId: a.id,
-    abilityName: a.name,
-    priority: i,
-    useWhen: 'always' as const,
+  // Classify each ability
+  const classified = available.map(a => ({
+    ability: a,
+    role: classifyAbility(a),
   }));
+
+  const queue: AbilityQueueEntry[] = [];
+  const usedIds = new Set<string>();
+  let priority = 0;
+
+  // 1. OPENER: Best buff or CC ability (first round only)
+  const openerCandidates = classified
+    .filter(c => c.role === 'buff' || c.role === 'cc')
+    .sort((a, b) => b.ability.tier - a.ability.tier || a.ability.cooldown - b.ability.cooldown);
+
+  if (openerCandidates.length > 0) {
+    const opener = openerCandidates[0];
+    queue.push({
+      abilityId: opener.ability.id,
+      abilityName: opener.ability.name,
+      priority: priority++,
+      useWhen: 'first_round',
+    });
+    usedIds.add(opener.ability.id);
+  }
+
+  // 2. SUSTAIN: All damage abilities, sorted by tier DESC then cooldown ASC
+  const damageAbilities = classified
+    .filter(c => c.role === 'damage')
+    .sort((a, b) => b.ability.tier - a.ability.tier || a.ability.cooldown - b.ability.cooldown);
+
+  for (const da of damageAbilities) {
+    queue.push({
+      abilityId: da.ability.id,
+      abilityName: da.ability.name,
+      priority: priority++,
+      useWhen: 'always',
+    });
+    usedIds.add(da.ability.id);
+  }
+
+  // 3. EMERGENCY: Heal abilities — only when HP is low
+  const healAbilities = classified
+    .filter(c => c.role === 'heal')
+    .sort((a, b) => b.ability.tier - a.ability.tier);
+
+  for (const ha of healAbilities) {
+    queue.push({
+      abilityId: ha.ability.id,
+      abilityName: ha.ability.name,
+      priority: priority++,
+      useWhen: 'low_hp',
+      hpThreshold: 40,
+    });
+    usedIds.add(ha.ability.id);
+  }
+
+  // 4. FALLBACK CC: Remaining CC/debuff abilities not used as opener
+  const remainingCC = classified
+    .filter(c => c.role === 'cc' && !usedIds.has(c.ability.id))
+    .sort((a, b) => b.ability.tier - a.ability.tier || a.ability.cooldown - b.ability.cooldown);
+
+  for (const cc of remainingCC) {
+    queue.push({
+      abilityId: cc.ability.id,
+      abilityName: cc.ability.name,
+      priority: priority++,
+      useWhen: 'always',
+    });
+    usedIds.add(cc.ability.id);
+  }
+
+  // 5. REMAINING: Other buffs not used as opener (lowest priority fallback)
+  const remainingBuffs = classified
+    .filter(c => c.role === 'buff' && !usedIds.has(c.ability.id))
+    .sort((a, b) => b.ability.tier - a.ability.tier || a.ability.cooldown - b.ability.cooldown);
+
+  for (const rb of remainingBuffs) {
+    queue.push({
+      abilityId: rb.ability.id,
+      abilityName: rb.ability.name,
+      priority: priority++,
+      useWhen: 'always',
+    });
+    usedIds.add(rb.ability.id);
+  }
+
+  // 6. Utility abilities that weren't picked up (steal, flee, etc.)
+  const remainingUtility = classified
+    .filter(c => !usedIds.has(c.ability.id))
+    .sort((a, b) => b.ability.tier - a.ability.tier);
+
+  for (const ru of remainingUtility) {
+    queue.push({
+      abilityId: ru.ability.id,
+      abilityName: ru.ability.name,
+      priority: priority++,
+      useWhen: 'always',
+    });
+  }
+
+  return queue;
 }
 
 /**

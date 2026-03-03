@@ -491,8 +491,12 @@ const handleDamageStatus: EffectHandler = (state, actor, target, _enemies, abili
   const damage = (effects.damage as number) ?? 0;
   const diceCount = (effects.diceCount as number) ?? 0;
   const diceSides = (effects.diceSides as number) ?? 0;
+  const damageBonus = (effects.damageBonus as string);
   const statusEffect = mapStatusName((effects.statusEffect as string) ?? 'stunned');
   const duration = (effects.statusDuration as number) ?? 1;
+
+  // Calculate stat-based bonus damage (e.g., INT modifier for psion abilities)
+  const bonusMod = damageBonus ? Math.max(0, getModifier(actor.stats[damageBonus as keyof typeof actor.stats] ?? 10)) : 0;
 
   // Roll with detailed breakdown
   let diceRolls: number[] = [];
@@ -502,7 +506,7 @@ const handleDamageStatus: EffectHandler = (state, actor, target, _enemies, abili
     diceRolls = detailed.rolls;
     diceDmg = detailed.total;
   }
-  const totalDamage = Math.max(0, damage + diceDmg);
+  const totalDamage = Math.max(0, damage + diceDmg + bonusMod);
 
   const hpBefore = target.currentHp;
 
@@ -519,6 +523,7 @@ const handleDamageStatus: EffectHandler = (state, actor, target, _enemies, abili
   // Build damage modifiers
   const dmgModifiers: { source: string; value: number }[] = [];
   if (damage > 0) dmgModifiers.push({ source: 'flat damage', value: damage });
+  if (bonusMod > 0) dmgModifiers.push({ source: `${damageBonus!.toUpperCase()} bonus`, value: bonusMod });
 
   return {
     state,
