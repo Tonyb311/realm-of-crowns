@@ -142,9 +142,16 @@ function resolveName(id: string, nameMap: Record<string, string>): string {
 // RoundLogEntry has flat fields (attackRoll = {raw, modifiers, total}), no result wrapper.
 // This normalizer transforms DB format → TurnEntry format expected by renderers.
 
+interface EncounterContextCombatant {
+  id: string; name: string; team: number; hp: number; maxHp: number; ac: number;
+  stats?: { str: number; dex: number; con: number; int: number; wis: number; cha: number };
+  weapon: { name: string; dice: string; damageType?: string } | null;
+  acBreakdown?: { base: number; dexMod: number; equipmentAC: number; effective: number };
+}
+
 interface EncounterContextMeta {
   _encounterContext: {
-    combatants: Array<{ id: string; name: string; team: number; hp: number; maxHp: number; ac: number; weapon: { name: string; dice: string; damageType?: string } | null }>;
+    combatants: EncounterContextCombatant[];
     turnOrder: string[];
   };
 }
@@ -315,11 +322,29 @@ function normalizeRoundEntry(raw: any, nameMap: Record<string, string>): TurnEnt
     result.saveRoll = raw.saveRoll;
     result.saveTotal = raw.saveTotal;
     result.saveSucceeded = raw.saveSucceeded;
+
+    // Attack roll breakdown (from combat-logger passthrough)
+    if (raw.attackRoll && typeof raw.attackRoll === 'object') {
+      result.attackRoll = raw.attackRoll.raw;
+      result.attackModifiers = raw.attackRoll.modifiers;
+      result.attackTotal = raw.attackRoll.total;
+    }
+    result.targetAC = raw.targetAC;
+    result.hit = raw.hit;
+    result.critical = raw.isCritical ?? raw.critical;
+
+    // Damage breakdown
     if (raw.damageRoll && typeof raw.damageRoll === 'object') {
+      result.weaponDice = raw.damageRoll.dice;
+      result.damageRolls = raw.damageRoll.rolls;
+      result.damageModifiers = raw.damageRoll.modifiers;
       result.damage = raw.damageRoll.total;
+      result.totalDamage = raw.damageRoll.total;
+      result.damageType = raw.damageRoll.type;
     } else {
       result.damage = raw.damage;
     }
+
     result.healing = raw.healAmount ?? raw.healing;
     result.selfHealing = raw.selfHealing;
     result.strikeResults = raw.strikeResults;
@@ -328,7 +353,7 @@ function normalizeRoundEntry(raw: any, nameMap: Record<string, string>): TurnEnt
     result.perTargetResults = raw.perTargetResults;
     result.goldStolen = raw.goldStolen;
     result.peacefulResolution = raw.peacefulResolution;
-    result.buffApplied = raw.buffApplied;
+    result.buffApplied = raw.buffApplied ?? (raw.statusEffectsApplied?.find((s: string) => !['poisoned','stunned','burning','frozen','paralyzed','blinded','weakened','slowed','root','silence','taunt','mesmerize','polymorph','skip_turn'].includes(s)));
     result.debuffApplied = raw.debuffApplied;
     if (raw.statusEffectsApplied?.length > 0) {
       result.statusApplied = raw.statusEffectsApplied[0];
@@ -638,6 +663,8 @@ function PsionAbilityEntry({ r, nameMap }: { r: any; nameMap: Record<string, str
 
 function ClassAbilityEntry({ r, nameMap }: { r: any; nameMap: Record<string, string> }) {
   const actor = resolveName(r.actorId, nameMap);
+  const hasAttackRoll = r.attackRoll != null;
+  const hasDamageBreakdown = r.damageRolls && r.damageRolls.length > 0;
   return (
     <div className="space-y-0.5">
       <div className="text-sm">
@@ -645,11 +672,38 @@ function ClassAbilityEntry({ r, nameMap }: { r: any; nameMap: Record<string, str
         <span className="text-realm-text-muted"> uses </span>
         <span className="text-sky-400">{r.abilityName}</span>
       </div>
+      {/* Attack roll breakdown (for damage abilities with attack rolls) */}
+      {hasAttackRoll && (
+        <RollBreakdown
+          label="Attack Roll"
+          roll={r.attackRoll}
+          modifiers={r.attackModifiers}
+          total={r.attackTotal ?? r.attackRoll}
+          comparison={r.targetAC}
+          compLabel="AC"
+          hit={r.hit}
+        />
+      )}
       {r.saveRequired && (
         <SaveBreakdown roll={r.saveRoll} total={r.saveTotal} dc={r.saveDC} succeeded={r.saveSucceeded} />
       )}
+      {/* Damage breakdown (when detailed roll data is available) */}
+      {hasDamageBreakdown && r.damage != null && r.damage > 0 && (
+        <DamageBreakdown
+          dice={r.weaponDice}
+          rolls={r.damageRolls}
+          modifiers={r.damageModifiers}
+          total={r.totalDamage ?? r.damage}
+          damageType={r.damageType}
+        />
+      )}
+      {/* HP bar for single-target damage */}
+      {r.targetHpBefore != null && r.targetHpAfter != null && (
+        <MiniHpBar before={r.targetHpBefore} after={r.targetHpAfter} name={resolveName(r.targetId, nameMap)} />
+      )}
       {r.description && <div className="text-xs text-realm-text-secondary italic">{r.description}</div>}
-      {r.damage != null && r.damage > 0 && <div className="text-xs text-red-400">Deals {r.damage} damage</div>}
+      {/* Fallback simple damage line when no roll breakdown exists */}
+      {!hasDamageBreakdown && r.damage != null && r.damage > 0 && <div className="text-xs text-red-400">Deals {r.damage} damage</div>}
       {r.healing != null && r.healing > 0 && <div className="text-xs text-green-400">Heals for {r.healing}</div>}
       {r.selfHealing != null && r.selfHealing > 0 && <div className="text-xs text-green-400">Self-heals for {r.selfHealing}</div>}
       {r.buffApplied && <div className="text-xs text-cyan-400">Buff: {r.buffApplied}</div>}
@@ -712,12 +766,41 @@ function StatusTickEntry({ tick, nameMap }: { tick: StatusTick; nameMap: Record<
   );
 }
 
+/** Per-entry snapshot of the acting combatant's state BEFORE the action resolves */
+interface CombatantSnapshot {
+  hp: number;
+  maxHp: number;
+  ac: number;
+  stats?: { str: number; dex: number; con: number; int: number; wis: number; cha: number };
+}
+
+function CombatantStatLine({ snap }: { snap: CombatantSnapshot }) {
+  const mod = (stat: number) => {
+    const m = Math.floor((stat - 10) / 2);
+    return m >= 0 ? `+${m}` : `${m}`;
+  };
+  const hpPct = snap.maxHp > 0 ? snap.hp / snap.maxHp : 0;
+  const hpColor = hpPct > 0.5 ? 'text-green-500/60' : hpPct > 0.25 ? 'text-yellow-500/60' : 'text-red-500/60';
+  return (
+    <div className="text-[10px] text-realm-text-muted/50 font-mono leading-tight mb-0.5">
+      <span className={hpColor}>HP {snap.hp}/{snap.maxHp}</span>
+      <span className="mx-1">|</span>AC {snap.ac}
+      {snap.stats && (
+        <>
+          <span className="mx-1">|</span>
+          STR {mod(snap.stats.str)} DEX {mod(snap.stats.dex)} CON {mod(snap.stats.con)} INT {mod(snap.stats.int)} WIS {mod(snap.stats.wis)} CHA {mod(snap.stats.cha)}
+        </>
+      )}
+    </div>
+  );
+}
+
 const ACTION_ICONS: Record<string, string> = {
   attack: '\u2694\uFE0F', cast: '\u2728', defend: '\uD83D\uDEE1\uFE0F', item: '\uD83E\uDDEA',
   flee: '\uD83C\uDFC3', racial_ability: '\uD83D\uDD2E', psion_ability: '\uD83E\uDDE0', class_ability: '\u26A1',
 };
 
-function TurnResultRenderer({ entry, nameMap }: { entry: TurnEntry; nameMap: Record<string, string> }) {
+function TurnResultRenderer({ entry, nameMap, actorSnapshot }: { entry: TurnEntry; nameMap: Record<string, string>; actorSnapshot?: CombatantSnapshot }) {
   const r = entry.result;
   if (!r) {
     // Fallback: render raw entry as formatted JSON with parse error label
@@ -736,6 +819,7 @@ function TurnResultRenderer({ entry, nameMap }: { entry: TurnEntry; nameMap: Rec
   return (
     <div className="py-1.5 pl-6 relative">
       <span className="absolute left-0 top-2 text-sm">{ACTION_ICONS[type] || '\u25CF'}</span>
+      {actorSnapshot && <CombatantStatLine snap={actorSnapshot} />}
       {type === 'attack' && <AttackEntry r={r} nameMap={nameMap} />}
       {type === 'cast' && <CastEntry r={r} nameMap={nameMap} />}
       {type === 'defend' && <DefendEntry r={r} nameMap={nameMap} />}
@@ -779,6 +863,25 @@ function CombatRoundLog({ encounter }: { encounter: Encounter }) {
     [encounter.characterId, encounter.opponentId, encounter.characterName, encounter.opponentName, rawEntries],
   );
 
+  // Extract encounter context combatant data for stat snapshots
+  const combatantCtx = useMemo(() => {
+    if (!rawEntries) return null;
+    const ctx = rawEntries.find(isEncounterContext);
+    if (!ctx) return null;
+    const map: Record<string, EncounterContextCombatant> = {};
+    for (const c of ctx._encounterContext.combatants) {
+      map[c.id] = c;
+    }
+    return map;
+  }, [rawEntries]);
+
+  // Build reverse name→id map for hpAfter lookups (hpAfter is keyed by name)
+  const nameToId = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const [id, name] of Object.entries(nameMap)) m[name] = id;
+    return m;
+  }, [nameMap]);
+
   const parsedRounds = useMemo(() => {
     if (!rawEntries) return null;
 
@@ -807,6 +910,75 @@ function CombatRoundLog({ encounter }: { encounter: Encounter }) {
     return [...grouped.entries()].sort((a, b) => a[0] - b[0]);
   }, [rawEntries, nameMap]);
 
+  // Build per-entry snapshots: actor's HP/AC/stats BEFORE the action resolves
+  const entrySnapshots = useMemo(() => {
+    if (!rawEntries || !combatantCtx) return new Map<string, CombatantSnapshot>();
+    const snapshots = new Map<string, CombatantSnapshot>();
+
+    // HP tracker: id → current HP (start from context's starting HP)
+    const hpTracker: Record<string, number> = {};
+    // AC tracker: id → current AC (start from context's starting AC, update from targetAC when seen)
+    const acTracker: Record<string, number> = {};
+    for (const c of Object.values(combatantCtx)) {
+      hpTracker[c.id] = c.hp;
+      acTracker[c.id] = c.ac;
+    }
+
+    // Walk raw entries in order to build snapshots
+    let entryIdx = 0;
+    for (const rawEntry of rawEntries) {
+      if (isEncounterContext(rawEntry)) continue;
+      if (!rawEntry || typeof rawEntry !== 'object') continue;
+      if (!rawEntry.action && !rawEntry.type && !rawEntry.result) continue;
+
+      const actorId = rawEntry.actorId || rawEntry.result?.actorId || '';
+      const ctx = actorId ? combatantCtx[actorId] : null;
+
+      // Snapshot actor's state BEFORE this action
+      if (ctx) {
+        const key = `${entryIdx}`;
+        snapshots.set(key, {
+          hp: hpTracker[actorId] ?? ctx.hp,
+          maxHp: ctx.maxHp,
+          ac: acTracker[actorId] ?? ctx.ac,
+          stats: ctx.stats,
+        });
+      }
+
+      // Update HP tracker from hpAfter (keyed by name)
+      const hpAfter = rawEntry.hpAfter;
+      if (hpAfter && typeof hpAfter === 'object') {
+        for (const [name, hp] of Object.entries(hpAfter)) {
+          const id = nameToId[name];
+          if (id && typeof hp === 'number') hpTracker[id] = hp;
+        }
+      }
+
+      // Update AC tracker from targetAC when someone attacks this combatant
+      if (rawEntry.targetAC != null) {
+        // Find the target of this action
+        const targetId = rawEntry.targetId || rawEntry.result?.targetId;
+        if (targetId) acTracker[targetId] = rawEntry.targetAC;
+      }
+
+      // For TurnEntry format (non-normalized), check result for HP updates
+      if (rawEntry.result) {
+        const r = rawEntry.result;
+        if (r.targetHpAfter != null && r.targetId) hpTracker[r.targetId] = r.targetHpAfter;
+        if (r.targetAC != null && r.targetId) acTracker[r.targetId] = r.targetAC;
+        if (r.perTargetResults) {
+          for (const ptr of r.perTargetResults) {
+            if (ptr.targetId) hpTracker[ptr.targetId] = ptr.hpAfter;
+          }
+        }
+      }
+
+      entryIdx++;
+    }
+
+    return snapshots;
+  }, [rawEntries, combatantCtx, nameToId]);
+
   const [collapsedRounds, setCollapsedRounds] = useState<Set<number>>(new Set());
 
   if (!parsedRounds || parsedRounds.length === 0) {
@@ -826,10 +998,23 @@ function CombatRoundLog({ encounter }: { encounter: Encounter }) {
     });
   }
 
+  // Build a flat index offset per round group for snapshot lookup
+  const roundOffsets = useMemo(() => {
+    if (!parsedRounds) return new Map<number, number>();
+    const offsets = new Map<number, number>();
+    let offset = 0;
+    for (const [roundNum, entries] of parsedRounds) {
+      offsets.set(roundNum, offset);
+      offset += entries.length;
+    }
+    return offsets;
+  }, [parsedRounds]);
+
   return (
     <div className="space-y-2">
       {parsedRounds.map(([roundNum, entries]) => {
         const isCollapsed = collapsedRounds.has(roundNum);
+        const baseIdx = roundOffsets.get(roundNum) ?? 0;
         return (
           <div key={roundNum} className="bg-realm-bg-800/50 border-l-2 border-realm-gold-500/40 rounded">
             <button
@@ -847,7 +1032,7 @@ function CombatRoundLog({ encounter }: { encounter: Encounter }) {
             {!isCollapsed && (
               <div className="px-3 pb-2 divide-y divide-realm-border/20">
                 {entries.map((entry, i) => (
-                  <TurnResultRenderer key={i} entry={entry} nameMap={nameMap} />
+                  <TurnResultRenderer key={i} entry={entry} nameMap={nameMap} actorSnapshot={entrySnapshots.get(`${baseIdx + i}`)} />
                 ))}
               </div>
             )}
@@ -1009,6 +1194,19 @@ function DetailPanel({ encounter: e }: { encounter: Encounter }) {
     }
   }, [e.rounds, e.characterId, e.opponentId, e.characterName, e.opponentName, e.characterStartHp, e.opponentStartHp]);
 
+  // Extract encounter context for AC breakdown display
+  const encounterCtx = useMemo(() => {
+    try {
+      const raw = Array.isArray(e.rounds) ? e.rounds : JSON.parse(e.rounds as string);
+      if (!Array.isArray(raw)) return null;
+      const ctx = raw.find((entry: any) => entry && typeof entry === 'object' && '_encounterContext' in entry);
+      return ctx?._encounterContext ?? null;
+    } catch { return null; }
+  }, [e.rounds]);
+
+  const playerCtx = encounterCtx?.combatants?.find((c: any) => c.id === e.characterId);
+  const opponentCtx = encounterCtx?.combatants?.find((c: any) => c.id === e.opponentId);
+
   return (
     <div className="p-5 space-y-5">
       {/* Header */}
@@ -1038,6 +1236,12 @@ function DetailPanel({ encounter: e }: { encounter: Encounter }) {
             <Swords className="w-3 h-3 inline mr-1" />Player
           </div>
           <HpBar current={e.characterEndHp} max={e.characterStartHp} label="HP" />
+          {playerCtx?.acBreakdown && (
+            <div className="text-xs text-realm-text-muted font-mono">
+              AC <span className="text-realm-text-primary font-bold">{playerCtx.acBreakdown.effective}</span>
+              <span className="text-realm-text-muted/70"> (base 10{playerCtx.acBreakdown.dexMod !== 0 ? ` ${playerCtx.acBreakdown.dexMod > 0 ? '+' : ''}${playerCtx.acBreakdown.dexMod} DEX` : ''}{playerCtx.acBreakdown.equipmentAC > 0 ? ` +${playerCtx.acBreakdown.equipmentAC} armor` : ''})</span>
+            </div>
+          )}
           {e.characterWeapon && (
             <div className="text-xs text-realm-text-muted">Weapon: <span className="text-realm-text-secondary">{e.characterWeapon}</span></div>
           )}
@@ -1047,6 +1251,12 @@ function DetailPanel({ encounter: e }: { encounter: Encounter }) {
             <Heart className="w-3 h-3 inline mr-1" />Opponent
           </div>
           <HpBar current={e.opponentEndHp} max={e.opponentStartHp} label="HP" />
+          {opponentCtx?.acBreakdown && (
+            <div className="text-xs text-realm-text-muted font-mono">
+              AC <span className="text-realm-text-primary font-bold">{opponentCtx.acBreakdown.effective}</span>
+              <span className="text-realm-text-muted/70"> (base 10{opponentCtx.acBreakdown.dexMod !== 0 ? ` ${opponentCtx.acBreakdown.dexMod > 0 ? '+' : ''}${opponentCtx.acBreakdown.dexMod} DEX` : ''}{opponentCtx.acBreakdown.equipmentAC > 0 ? ` +${opponentCtx.acBreakdown.equipmentAC} armor` : ''})</span>
+            </div>
+          )}
           {e.opponentWeapon && (
             <div className="text-xs text-realm-text-muted">Weapon: <span className="text-realm-text-secondary">{e.opponentWeapon}</span></div>
           )}

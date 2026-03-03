@@ -453,6 +453,29 @@ export interface ClassAbilityResult {
   targetHpAfter?: number;
   actorHpAfter?: number;
   targetKilled?: boolean;
+  // Roll breakdown fields for combat log display
+  /** Raw d20 attack roll */
+  attackRoll?: number;
+  /** d20 + all attack modifiers */
+  attackTotal?: number;
+  /** Itemized attack modifier sources */
+  attackModifiers?: AttackModifierBreakdown[];
+  /** Effective AC at time of attack */
+  targetAC?: number;
+  /** Whether the attack hit */
+  hit?: boolean;
+  /** Whether the attack was a critical hit */
+  isCritical?: boolean;
+  /** Weapon dice formula, e.g. "1d8" */
+  weaponDice?: string;
+  /** Individual damage die results */
+  damageRolls?: number[];
+  /** Itemized damage modifier sources */
+  damageModifiers?: AttackModifierBreakdown[];
+  /** Damage type (slashing, fire, etc.) */
+  damageType?: string;
+  /** Target HP before damage was applied */
+  targetHpBefore?: number;
   /** True when unimplemented effect type falls through to basic attack */
   fallbackToAttack?: boolean;
   /** Per-target breakdown for AoE abilities */

@@ -14,6 +14,9 @@
 import { prisma } from './prisma';
 import { logger } from './logger';
 import { getSimulationTick, getSimulationRunId } from './simulation-context';
+import {
+  getModifier,
+} from '@shared/types/combat';
 import type {
   CombatState,
   TurnLogEntry,
@@ -55,6 +58,12 @@ export interface CombatantSnapshot {
     attackStat: string;
     damageStat: string;
   } | null;
+  acBreakdown?: {
+    base: number;
+    dexMod: number;
+    equipmentAC: number;
+    effective: number;
+  };
 }
 
 export interface EncounterContext {
@@ -109,6 +118,13 @@ export interface RoundLogEntry {
   // Ability
   abilityName?: string;
   abilityDescription?: string;
+  // Class ability multi-strike / AoE passthrough
+  strikeResults?: ClassAbilityResult['strikeResults'];
+  totalStrikes?: number;
+  strikesHit?: number;
+  perTargetResults?: ClassAbilityResult['perTargetResults'];
+  buffApplied?: string;
+  debuffApplied?: string;
   // Status effects
   statusEffectsApplied: string[];
   statusEffectsExpired: string[];
@@ -147,6 +163,12 @@ export function buildEncounterContext(state: CombatState): EncounterContext {
       attackStat: c.weapon.attackModifierStat,
       damageStat: c.weapon.damageModifierStat,
     } : null,
+    acBreakdown: {
+      base: 10,
+      dexMod: getModifier(c.stats.dex),
+      equipmentAC: Math.max(0, c.ac - 10 - getModifier(c.stats.dex)),
+      effective: c.ac,
+    },
   }));
 
   return {
@@ -351,16 +373,39 @@ export function buildRoundsData(state: CombatState): RoundLogEntry[] {
       if (ca.saveRoll) round.saveRoll = ca.saveRoll;
       if (ca.saveTotal) round.saveTotal = ca.saveTotal;
       if (ca.saveSucceeded !== undefined) round.saveSucceeded = ca.saveSucceeded;
+
+      // Attack roll breakdown (for damage abilities with attack rolls)
+      if (ca.attackRoll != null) {
+        round.attackRoll = {
+          raw: ca.attackRoll,
+          modifiers: ca.attackModifiers ?? [],
+          total: ca.attackTotal ?? ca.attackRoll,
+        };
+        round.targetAC = ca.targetAC;
+        round.hit = ca.hit;
+        round.isCritical = ca.isCritical;
+      }
+
+      // Target HP before damage
+      if (ca.targetHpBefore != null) {
+        round.targetHpBefore = ca.targetHpBefore;
+      } else if (ca.targetId) {
+        round.targetHpBefore = hpTracker[ca.targetId];
+      }
+
       if (ca.targetHpAfter !== undefined) {
         round.targetHpAfter = ca.targetHpAfter;
         round.targetKilled = ca.targetKilled;
       }
+
+      // Damage with full breakdown
       if (ca.damage && ca.damage > 0) {
         round.damageRoll = {
-          dice: 'ability',
-          rolls: [],
-          modifiers: [],
+          dice: ca.weaponDice ?? 'ability',
+          rolls: ca.damageRolls ?? [],
+          modifiers: ca.damageModifiers ?? [],
           total: ca.damage,
+          type: ca.damageType,
         };
       }
       if (ca.healing && ca.healing > 0) {
@@ -371,7 +416,18 @@ export function buildRoundsData(state: CombatState): RoundLogEntry[] {
       }
       if (ca.buffApplied) {
         round.statusEffectsApplied.push(ca.buffApplied);
+        round.buffApplied = ca.buffApplied;
       }
+      if (ca.debuffApplied) {
+        round.debuffApplied = ca.debuffApplied;
+      }
+
+      // Pass through multi-strike and AoE data
+      if (ca.strikeResults) round.strikeResults = ca.strikeResults;
+      if (ca.totalStrikes != null) round.totalStrikes = ca.totalStrikes;
+      if (ca.strikesHit != null) round.strikesHit = ca.strikesHit;
+      if (ca.perTargetResults) round.perTargetResults = ca.perTargetResults;
+
       // Update HP tracker for class ability targets
       if (ca.targetId && ca.targetHpAfter !== undefined) {
         hpTracker[ca.targetId] = ca.targetHpAfter;

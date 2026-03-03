@@ -62,6 +62,16 @@ function rollDice(diceCount: number, diceSides: number, bonus = 0): number {
   return rollMultiple(diceCount, diceSides) + bonus;
 }
 
+/** Roll dice and return individual results + total (for combat log breakdowns) */
+function rollDiceDetailed(diceCount: number, diceSides: number, bonus = 0): { rolls: number[]; total: number } {
+  const rolls: number[] = [];
+  for (let i = 0; i < diceCount; i++) {
+    rolls.push(roll(diceSides));
+  }
+  const total = Math.max(0, rolls.reduce((s, r) => s + r, 0) + bonus);
+  return { rolls, total };
+}
+
 function getTarget(state: CombatState, targetId?: string): Combatant | null {
   if (!targetId) return null;
   return state.combatants.find(c => c.id === targetId) ?? null;
@@ -124,16 +134,31 @@ const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef,
   let abilityHit = true;
   let isCrit = false;
 
-  if (hasAttackMods && actor.weapon && !autoHit) {
+  // Roll breakdown tracking
+  let atkD20: number | undefined;
+  let atkTotal: number | undefined;
+  let atkModifiers: { source: string; value: number }[] | undefined;
+  let effectiveAC: number | undefined;
+
+  if (actor.weapon && !autoHit) {
     const statMod = getModifier(actor.stats[actor.weapon.attackModifierStat]);
     const atkMod = statMod + actor.proficiencyBonus + actor.weapon.bonusAttack + accuracyMod;
-    const effectiveAC = ignoreArmor ? 10 : target.ac;
+    effectiveAC = ignoreArmor ? 10 : target.ac;
     const d20 = roll(20);
     abilityHit = d20 + atkMod >= effectiveAC || d20 === 20;
 
     const effectiveCritBonus = analyzeMissing ? 0 : critBonus;
     const critThreshold = 20 - Math.floor(effectiveCritBonus / 5);
     isCrit = d20 >= critThreshold && abilityHit;
+
+    // Store attack roll breakdown
+    atkD20 = d20;
+    atkTotal = d20 + atkMod;
+    atkModifiers = [];
+    if (statMod !== 0) atkModifiers.push({ source: actor.weapon.attackModifierStat.toUpperCase(), value: statMod });
+    if (actor.proficiencyBonus !== 0) atkModifiers.push({ source: 'proficiency', value: actor.proficiencyBonus });
+    if (actor.weapon.bonusAttack !== 0) atkModifiers.push({ source: 'weapon bonus', value: actor.weapon.bonusAttack });
+    if (accuracyMod !== 0) atkModifiers.push({ source: 'ability accuracy', value: accuracyMod });
   }
 
   if (!abilityHit) {
@@ -143,19 +168,41 @@ const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef,
         damage: 0,
         targetHpAfter: target.currentHp,
         targetKilled: false,
+        attackRoll: atkD20,
+        attackTotal: atkTotal,
+        attackModifiers: atkModifiers,
+        targetAC: effectiveAC,
+        hit: false,
+        isCritical: false,
+        targetHpBefore: target.currentHp,
         description: `${abilityDef.name}: missed ${target.name}${accuracyMod < 0 ? ` (accuracy ${accuracyMod})` : ''}`,
       },
     };
   }
 
-  // Roll weapon damage + ability bonus
+  // Roll weapon damage + ability bonus (with detailed breakdowns)
   let weaponDmg = 0;
+  let weaponDiceStr: string | undefined;
+  let weaponDmgRolls: number[] = [];
+  const dmgModifiers: { source: string; value: number }[] = [];
   if (actor.weapon) {
     const statMod = getModifier(actor.stats[actor.weapon.damageModifierStat]);
     const critMult = isCrit ? 2 : 1;
-    weaponDmg = rollDice(actor.weapon.diceCount * critMult, actor.weapon.diceSides, statMod + actor.weapon.bonusDamage);
+    const wepDetailed = rollDiceDetailed(actor.weapon.diceCount * critMult, actor.weapon.diceSides);
+    weaponDmg = Math.max(0, wepDetailed.total + statMod + actor.weapon.bonusDamage);
+    weaponDiceStr = `${actor.weapon.diceCount * critMult}d${actor.weapon.diceSides}`;
+    weaponDmgRolls = wepDetailed.rolls;
+    if (statMod !== 0) dmgModifiers.push({ source: actor.weapon.damageModifierStat.toUpperCase(), value: statMod });
+    if (actor.weapon.bonusDamage !== 0) dmgModifiers.push({ source: 'weapon bonus', value: actor.weapon.bonusDamage });
   }
-  const abilityDmg = diceCount > 0 ? rollDice(diceCount * (isCrit ? 2 : 1), diceSides) : 0;
+  let abilityDmg = 0;
+  let abilityDmgRolls: number[] = [];
+  if (diceCount > 0) {
+    const abDetailed = rollDiceDetailed(diceCount * (isCrit ? 2 : 1), diceSides);
+    abilityDmg = abDetailed.total;
+    abilityDmgRolls = abDetailed.rolls;
+    if (abilityDmg > 0) dmgModifiers.push({ source: 'ability dice', value: abilityDmg });
+  }
 
   // Phase 5A: Bonus per debuff (DMG-5)
   let debuffBonus = 0;
@@ -165,6 +212,10 @@ const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef,
     const buffDebuffs = (target.activeBuffs ?? []).filter(b => (b.attackMod ?? 0) < 0 || (b.acMod ?? 0) < 0).length;
     debuffBonus = (statusDebuffs + buffDebuffs) * bonusPerDebuff;
   }
+
+  // Track additional flat damage modifiers for log
+  if (bonusDamage !== 0) dmgModifiers.push({ source: 'flat bonus', value: bonusDamage });
+  if (debuffBonus > 0) dmgModifiers.push({ source: 'debuff bonus', value: debuffBonus });
 
   let totalDamage = Math.max(0, weaponDmg + abilityDmg + bonusDamage + debuffBonus);
 
@@ -178,6 +229,9 @@ const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef,
     const holyBonus = Math.floor(totalDamage * actor.holyDamageBonus);
     totalDamage += holyBonus;
   }
+
+  // Store HP before damage
+  const hpBefore = target.currentHp;
 
   // Apply damage to target
   const newHp = clampHp(target.currentHp - totalDamage, target.maxHp);
@@ -205,6 +259,19 @@ const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef,
       damage: totalDamage,
       targetHpAfter: newHp,
       targetKilled: killed,
+      targetHpBefore: hpBefore,
+      // Attack roll breakdown
+      attackRoll: atkD20,
+      attackTotal: atkTotal,
+      attackModifiers: atkModifiers,
+      targetAC: effectiveAC,
+      hit: true,
+      isCritical: isCrit,
+      // Damage roll breakdown
+      weaponDice: weaponDiceStr,
+      damageRolls: [...weaponDmgRolls, ...abilityDmgRolls],
+      damageModifiers: dmgModifiers,
+      damageType: actor.weapon?.damageType ?? (effects.element as string),
       description: `${abilityDef.name}: ${parts.join(' | ')}`,
     },
   };
@@ -426,7 +493,17 @@ const handleDamageStatus: EffectHandler = (state, actor, target, _enemies, abili
   const statusEffect = mapStatusName((effects.statusEffect as string) ?? 'stunned');
   const duration = (effects.statusDuration as number) ?? 1;
 
-  const totalDamage = Math.max(0, damage + (diceCount > 0 ? rollDice(diceCount, diceSides) : 0));
+  // Roll with detailed breakdown
+  let diceRolls: number[] = [];
+  let diceDmg = 0;
+  if (diceCount > 0) {
+    const detailed = rollDiceDetailed(diceCount, diceSides);
+    diceRolls = detailed.rolls;
+    diceDmg = detailed.total;
+  }
+  const totalDamage = Math.max(0, damage + diceDmg);
+
+  const hpBefore = target.currentHp;
 
   // Apply damage
   const newHp = clampHp(target.currentHp - totalDamage, target.maxHp);
@@ -438,6 +515,10 @@ const handleDamageStatus: EffectHandler = (state, actor, target, _enemies, abili
     state = applyStatusEffectToState(state, target.id, statusEffect, duration, actor.id);
   }
 
+  // Build damage modifiers
+  const dmgModifiers: { source: string; value: number }[] = [];
+  if (damage > 0) dmgModifiers.push({ source: 'flat damage', value: damage });
+
   return {
     state,
     result: {
@@ -446,6 +527,10 @@ const handleDamageStatus: EffectHandler = (state, actor, target, _enemies, abili
       statusDuration: duration,
       targetHpAfter: newHp,
       targetKilled: killed,
+      targetHpBefore: hpBefore,
+      weaponDice: diceCount > 0 ? `${diceCount}d${diceSides}` : undefined,
+      damageRolls: diceRolls.length > 0 ? diceRolls : undefined,
+      damageModifiers: dmgModifiers.length > 0 ? dmgModifiers : undefined,
       description: `${abilityDef.name}: ${totalDamage} damage + ${statusEffect}(${duration}) to ${target.name}`,
     },
   };
@@ -1274,6 +1359,7 @@ const handleTeleportAttack: EffectHandler = (state, actor, target, _enemies, abi
   const damageBonus = (effects.damageBonus as string);
 
   // Roll attack with bonus
+  const atkStatName = actor.weapon ? actor.weapon.attackModifierStat : 'int';
   const statMod = actor.weapon
     ? getModifier(actor.stats[actor.weapon.attackModifierStat])
     : getModifier(actor.stats.int);
@@ -1282,6 +1368,15 @@ const handleTeleportAttack: EffectHandler = (state, actor, target, _enemies, abi
   const hit = d20 + atkMod >= target.ac || d20 === 20;
   const isCrit = d20 === 20;
 
+  // Build attack modifiers breakdown
+  const atkModifiers: { source: string; value: number }[] = [];
+  if (statMod !== 0) atkModifiers.push({ source: atkStatName.toUpperCase(), value: statMod });
+  if (actor.proficiencyBonus !== 0) atkModifiers.push({ source: 'proficiency', value: actor.proficiencyBonus });
+  if ((actor.weapon?.bonusAttack ?? 0) !== 0) atkModifiers.push({ source: 'weapon bonus', value: actor.weapon!.bonusAttack });
+  if (attackBonus !== 0) atkModifiers.push({ source: 'teleport bonus', value: attackBonus });
+
+  const hpBefore = target.currentHp;
+
   if (!hit) {
     return {
       state,
@@ -1289,21 +1384,40 @@ const handleTeleportAttack: EffectHandler = (state, actor, target, _enemies, abi
         damage: 0,
         targetHpAfter: target.currentHp,
         targetKilled: false,
+        targetHpBefore: hpBefore,
+        attackRoll: d20,
+        attackTotal: d20 + atkMod,
+        attackModifiers: atkModifiers,
+        targetAC: target.ac,
+        hit: false,
+        isCritical: false,
         description: `${abilityDef.name}: teleported to ${target.name} but missed (${d20}+${atkMod} vs AC ${target.ac})`,
       },
     };
   }
 
-  // Weapon damage + INT bonus damage
+  // Weapon damage + bonus damage (with detailed breakdown)
   let totalDamage = 0;
+  let weaponDiceStr: string | undefined;
+  const allDmgRolls: number[] = [];
+  const dmgModifiers: { source: string; value: number }[] = [];
+
   if (actor.weapon) {
     const dmgStatMod = getModifier(actor.stats[actor.weapon.damageModifierStat]);
-    totalDamage += rollDice(actor.weapon.diceCount * (isCrit ? 2 : 1), actor.weapon.diceSides, dmgStatMod + actor.weapon.bonusDamage);
+    const critMult = isCrit ? 2 : 1;
+    const wepDetailed = rollDiceDetailed(actor.weapon.diceCount * critMult, actor.weapon.diceSides);
+    totalDamage += Math.max(0, wepDetailed.total + dmgStatMod + actor.weapon.bonusDamage);
+    weaponDiceStr = `${actor.weapon.diceCount * critMult}d${actor.weapon.diceSides}`;
+    allDmgRolls.push(...wepDetailed.rolls);
+    if (dmgStatMod !== 0) dmgModifiers.push({ source: actor.weapon.damageModifierStat.toUpperCase(), value: dmgStatMod });
+    if (actor.weapon.bonusDamage !== 0) dmgModifiers.push({ source: 'weapon bonus', value: actor.weapon.bonusDamage });
   }
   // Add INT modifier as bonus damage if damageBonus is 'int'
   if (damageBonus) {
     const bonusMod = getModifier(actor.stats[damageBonus as keyof typeof actor.stats] ?? 10);
-    totalDamage += Math.max(0, bonusMod);
+    const bonusVal = Math.max(0, bonusMod);
+    totalDamage += bonusVal;
+    if (bonusVal > 0) dmgModifiers.push({ source: `${damageBonus.toUpperCase()} bonus`, value: bonusVal });
   }
   totalDamage = Math.max(0, totalDamage);
 
@@ -1317,6 +1431,17 @@ const handleTeleportAttack: EffectHandler = (state, actor, target, _enemies, abi
       damage: totalDamage,
       targetHpAfter: newHp,
       targetKilled: killed,
+      targetHpBefore: hpBefore,
+      attackRoll: d20,
+      attackTotal: d20 + atkMod,
+      attackModifiers: atkModifiers,
+      targetAC: target.ac,
+      hit: true,
+      isCritical: isCrit,
+      weaponDice: weaponDiceStr,
+      damageRolls: allDmgRolls,
+      damageModifiers: dmgModifiers,
+      damageType: actor.weapon?.damageType,
       description: `${abilityDef.name}: teleported and struck ${target.name} for ${totalDamage} damage${isCrit ? ' CRITICAL' : ''}`,
     },
   };
