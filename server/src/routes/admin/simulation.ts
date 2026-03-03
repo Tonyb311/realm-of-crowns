@@ -334,14 +334,24 @@ router.post('/runs/:id/archive', async (req: AuthenticatedRequest, res: Response
 // ---------------------------------------------------------------------------
 router.delete('/runs/:id', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    // Null out FK references first, then delete the run
-    await prisma.combatEncounterLog.updateMany({
-      where: { simulationRunId: req.params.id },
-      data: { simulationRunId: null },
+    const runId = req.params.id;
+    const runShort = runId.slice(-8);
+
+    // 1. Delete batch-sim test users (cascade → Characters → EncounterLogs)
+    await prisma.user.deleteMany({
+      where: { isTestAccount: true, id: { startsWith: `bsim-u-${runShort}` } },
     });
+
+    // 2. Delete remaining encounter logs (from bot tick sims or other sources)
+    await prisma.combatEncounterLog.deleteMany({
+      where: { simulationRunId: runId },
+    });
+
+    // 3. Delete the run itself
     await prisma.simulationRun.delete({
-      where: { id: req.params.id },
+      where: { id: runId },
     });
+
     return res.json({ message: 'Run deleted' });
   } catch (error) {
     if (handlePrismaError(error, res, 'simulation-run-delete', req)) return;

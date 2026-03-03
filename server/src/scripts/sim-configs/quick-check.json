@@ -1,0 +1,10 @@
+{
+  "grid": {
+    "races": ["human"],
+    "classes": ["ALL"],
+    "levels": [1, 5, 10],
+    "monsters": ["Goblin", "Orc Warrior", "Shadow Wraith", "Troll"],
+    "iterationsPerMatchup": 100
+  },
+  "notes": "Quick check: human x all classes x 3 levels x 4 key monsters @ 100 iterations"
+}

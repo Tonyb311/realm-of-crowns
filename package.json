@@ -22,7 +22,10 @@
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "validate:economy": "npm run validate-sync --workspace=database",
-    "combat-sim": "npm run combat-sim --workspace=server --"
+    "combat-sim": "npm run combat-sim --workspace=server --",
+    "sim:run": "npm run sim:run --workspace=server --",
+    "sim:list": "npm run sim:list --workspace=server",
+    "sim:delete": "npm run sim:delete --workspace=server --"
   },
   "devDependencies": {
     "concurrently": "^8.2.0",

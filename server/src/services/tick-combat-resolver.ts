@@ -71,6 +71,7 @@ export interface TickCombatOutcome {
   survivors: { id: string; name: string; hpRemaining: number; team: number }[];
   casualties: { id: string; name: string; team: number }[];
   fled: { id: string; name: string; team: number }[];
+  finalState: CombatState;
 }
 
 export interface CombatantParams {
@@ -333,6 +334,7 @@ export function resolveTickCombat(
     survivors,
     casualties,
     fled,
+    finalState: state,
   };
 }
 

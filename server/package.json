@@ -8,7 +8,10 @@
     "start": "TS_NODE_PROJECT=tsconfig.build.json node -r tsconfig-paths/register dist/index.js",
     "test": "jest --runInBand --forceExit",
     "test:verbose": "jest --runInBand --forceExit --verbose",
-    "combat-sim": "tsx src/scripts/combat-sim.ts"
+    "combat-sim": "tsx src/scripts/combat-sim.ts",
+    "sim:run": "tsx src/scripts/batch-combat-sim.ts run",
+    "sim:list": "tsx src/scripts/batch-combat-sim.ts list",
+    "sim:delete": "tsx src/scripts/batch-combat-sim.ts delete"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
