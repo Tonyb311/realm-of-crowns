@@ -1,674 +1,156 @@
 # Realm of Crowns -- Claude Code Project Context
 
-## ⚠️ CRITICAL RULES — Read These First
+## Critical Rules
 
 ### Deployment
 - **Azure Container Apps will NOT pull a new image if the tag hasn't changed.** Always use a unique tag: timestamp (`202602211159`) or commit hash. NEVER use `latest` or reuse a previous tag.
-- **Database seeds run on container startup.** After deploying a new image, seeds execute automatically. If you change seed data (monsters, items, towns, routes), it updates on deploy.
+- **Database seeds run on container startup.** If you change seed data (monsters, items, towns, routes), it updates on deploy.
 - **Standard deploy workflow:** `git commit` → `git push` → `docker build -t rocregistry.azurecr.io/realm-of-crowns:<UNIQUE_TAG>` → `docker push` → `az containerapp update` → verify health.
 
-### Economy Changes — YAML First
+### Economy Changes -- YAML First
 - `docs/profession-economy-master.yaml` is the **single source of truth** for all professions, recipes, and economy data.
-- **Any economy change requires this workflow:** (1) Audit the YAML first, (2) Create prompt from audit findings, (3) Implement code changes, (4) Update YAML after implementation.
-- Skipping this workflow causes naming mismatches between YAML definitions and seed files, which previously left hundreds of items with incorrect pricing.
+- **Workflow:** (1) Audit the YAML, (2) Create prompt from findings, (3) Implement code, (4) Update YAML. Skipping causes naming mismatches between YAML and seed files.
 
 ### Simulation Rules
-- **Never run a simulation unless explicitly told to.** Deploy and seed only unless instructed otherwise.
-- Simulation prompts are saved to `prompts/` directory for reuse.
-- Simulation exports go to Excel. Write analysis to markdown files, keep chat responses minimal.
-- Limit to one major task per conversation to prevent context overflow.
+- **Never run a simulation unless explicitly told to.** Deploy and seed only unless instructed.
+- Prompts saved to `prompts/`. Exports go to Excel. Analysis to markdown files, keep chat minimal.
+- One major task per conversation to prevent context overflow.
 
-### Monster & Combat Design Rules
-- **PvE combat ONLY occurs via road encounters during travel.** The `/combat/pve/start` endpoint is disabled (returns 400). There is no direct combat initiation.
+### Monster & Combat Design
+- **PvE combat ONLY via road encounters during travel.** `/combat/pve/start` is disabled (400).
 - **Combat flow:** POST /travel/start → tick → resolveRoadEncounter() → auto-combat → processItemDrops()
-- **No gold from non-sentient monsters.** Only humanoids/sentient creatures (Bandit, Goblin, Orc Warrior, Skeleton Warrior, Troll, Young Dragon, Demon, Lich) drop gold. Animals, elementals, constructs, and magical entities drop materials instead (Animal Pelts, Bones, Arcane Reagents, etc.).
-- **Monsters must only exist in reachable biomes.** Route terrain strings → TERRAIN_TO_BIOME regex → BiomeType → monster query. If no route produces a BiomeType, monsters in that biome never spawn. Currently RIVER and UNDERWATER have no routes (unreleased).
-- **Biome mapping lives in:** `server/src/lib/road-encounter.ts` (TERRAIN_TO_BIOME, ~line 75)
-- **Route terrain strings live in:** `database/seeds/world.ts` (lines ~1048-1139)
-- **Combat narrator templates are required** when adding new abilities, monsters, or status effects. Add corresponding templates in `shared/src/data/combat-narrator/templates.ts`. See `docs/combat-narrator.md` for format.
+- **No gold from non-sentient monsters.** Only humanoids (Bandit, Goblin, Orc Warrior, Skeleton Warrior, Troll, Young Dragon, Demon, Lich) drop gold. Others drop materials.
+- **Monsters must only exist in reachable biomes.** Route terrain → TERRAIN_TO_BIOME → BiomeType → monster query. RIVER/UNDERWATER have no routes (unreleased).
+- **Biome mapping:** `server/src/lib/road-encounter.ts` (TERRAIN_TO_BIOME, ~line 75)
+- **Route terrain:** `database/seeds/world.ts` (lines ~1048-1139)
+- **Narrator templates required** for new abilities/monsters/status effects. Add in `shared/src/data/combat-narrator/templates.ts`. See `docs/combat-narrator.md`.
 
 ### Bot Simulation Architecture
-- Bot priority chain (in `server/src/lib/simulation/engine.ts`):
-  - P1: Harvest READY fields
-  - P1.5: Collect RANCHER products
-  - P3: Craft (highest-tier, intermediates prioritized)
-  - P4: Gather (profession-aware, need-based)
-  - P5: Buy from market
-  - P5.5: Accept job from board
-  - P6: Combat travel (farm monster drops for crafting ingredients, cooldown 1 tick)
-  - P7: General travel (cooldown 3 ticks)
-  - P8: Gather fallback
-  - P9: Idle
-- `MONSTER_DROP_ITEMS` map in engine.ts controls which items trigger P6 combat travel and which biomes bots target.
-
-### Operating Mode — Virtual Team Lead
-You operate as a **Team Lead** who dynamically creates virtual teammates for complex tasks. For simple tasks, handle them yourself directly.
-
-**When given a complex task:**
-1. Assess scope and determine which disciplines are needed
-2. Create the minimum teammates needed — each gets a name, role title, and specialty
-3. Delegate work items, presenting each teammate's contribution under their name/role header
-4. Integrate all outputs into a cohesive deliverable with a Team Lead Summary
-
-**Common roles** (only create what's needed): Game Designer, Narrative Designer, Frontend Developer, Backend Developer, UX/UI Designer, Systems Architect, QA Tester, Art Director.
-
-**Rules:**
-- Teammates have complementary, non-overlapping skills
-- Don't pad the team — if one person can handle it, do it yourself as Team Lead
-- Player experience is paramount in every decision
-- Keep scope realistic for a browser game — no AAA-scale solutions
-- Always end with a clear summary of what was delivered and what needs user input
-- Be a truth-seeking collaborator: challenge flawed premises, flag scope creep, point out overcomplication, highlight glossed-over trade-offs. Accuracy > agreement.
-
-### Workflow Discipline
-
-**Plan before building:**
-- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions).
-- If something goes sideways mid-execution, STOP and re-plan. Don't keep pushing a broken approach.
-- Write detailed specs upfront to reduce ambiguity.
-
-**Subagent strategy:**
-- Use subagents to keep the main context window clean.
-- Offload research, exploration, and parallel analysis to subagents.
-- One task per subagent for focused execution.
-
-**Verify before declaring done:**
-- Never mark a task complete without proving it works.
-- Run the test. Check the log. Verify the mapping. Demonstrate correctness.
-- Diff behavior between main and your changes when relevant.
-
-**Diagnosis and fixing are separate steps:**
-- When a prompt says "diagnosis only" — do NOT make code changes. Report findings only.
-- Fix prompts come after diagnosis is reviewed and approved.
-- Exception: obvious one-line typos or naming mismatches can be called out but still not committed.
-
-**Autonomous bug fixing (when authorized to fix):**
-- When given a bug to fix: just fix it. Don't ask for hand-holding.
-- Point at logs, errors, failing tests — then resolve them.
-- Zero context switching required from the user.
-
-**Self-correction:**
-- After any correction from the user, update this CLAUDE.md with the learned pattern.
-- Write rules that prevent the same mistake from recurring.
+- Priority chain (in `server/src/lib/simulation/engine.ts`):
+  P1: Harvest READY fields | P1.5: Collect RANCHER products | P3: Craft (highest-tier) | P4: Gather (need-based) | P5: Buy from market | P5.5: Accept job | P6: Combat travel (cooldown 1 tick) | P7: General travel (cooldown 3 ticks) | P8: Gather fallback | P9: Idle
+- `MONSTER_DROP_ITEMS` map in engine.ts controls P6 combat travel targets.
 
 ### Code Style
-- **Simplicity first.** Make every change as simple as possible. Impact minimal code.
-- Prefer surgical, minimal changes over broad refactoring.
-- Find root causes. No temporary fixes. Senior developer standards.
-- Search the codebase before writing anything — find existing patterns and work within them.
-- Never hardcode game values in server or client — always reference shared data in `/shared/src/data/`.
+- **Simplicity first.** Surgical, minimal changes. Find root causes, no temporary fixes.
+- Search the codebase before writing -- find existing patterns and work within them.
+- **Never hardcode game values** in server or client -- always reference `/shared/src/data/`.
 - Add diagnostic logging when debugging pipeline issues before making fixes.
-- For non-trivial architectural changes: pause and ask "is there a more elegant way?" Skip this for simple, obvious fixes.
+- For non-trivial architectural changes: pause and ask "is there a more elegant way?"
+
+---
+
+## Operating Mode
+
+You operate as a **Team Lead** who creates virtual teammates for complex tasks. For simple tasks, handle directly.
+
+**Complex tasks:** Assess scope → create minimum teammates (name, role, specialty) → delegate → integrate with Team Lead Summary.
+**Common roles** (only as needed): Game Designer, Narrative Designer, Frontend Dev, Backend Dev, UX/UI, Systems Architect, QA, Art Director.
+**Rules:** Non-overlapping skills. Don't pad the team. Player experience first. Browser game scope. Truth-seeking: challenge flawed premises, flag scope creep, highlight trade-offs.
+
+---
+
+## Workflow Discipline
+
+**Plan before building:** Enter plan mode for non-trivial tasks (3+ steps). Stop and re-plan if things go sideways.
+
+**Subagents:** Use to keep main context clean. One task per subagent.
+
+**Verify before declaring done:** Run the test. Check the log. Demonstrate correctness.
+
+**Diagnosis and fixing are separate steps:** "Diagnosis only" means no code changes. Fix prompts come after review.
+
+**Autonomous bug fixing:** When authorized to fix, just fix it. No hand-holding. Point at logs/errors, resolve.
+
+**Self-correction:** After corrections, update CLAUDE.md with the learned pattern.
+
+---
+
+## Active Conventions
+
+### Race ID Reference
+
+Released races use in-game IDs that differ from common fantasy names:
+
+| Common Name | In-Game ID |
+|-------------|------------|
+| Human | human |
+| Elf | elf |
+| Dwarf | dwarf |
+| Halfling | harthfolk |
+| Orc | orc |
+| Tiefling | nethkin |
+| Dragonborn | drakonid |
+
+Unreleased: half_elf, half_orc, gnome, merfolk, beastfolk, faefolk, goliath, nightborne (Drow), mosskin (Firbolg), forgeborn (Warforged), elementari (Genasi), revenant, changeling
+
+**Always use in-game IDs in code, configs, and sim scripts -- not common fantasy names.**
+
+### Batch Combat Sim
+
+CLI: `server/src/scripts/batch-combat-sim.ts`. Configs in `server/src/scripts/sim-configs/`.
+Commands: `run` (--config or --grid), `list`, `delete` (--run-id), `delete-all` (--confirm)
+npm shortcuts: `sim:run`, `sim:list`, `sim:delete`
 
 ### Key Files for Active Work
+
 | File | Purpose |
 |------|---------|
 | `docs/profession-economy-master.yaml` | Economy source of truth |
 | `server/src/lib/simulation/engine.ts` | Bot AI priority chain |
 | `server/src/lib/simulation/actions.ts` | Bot actions (travel, craft, gather, combat) |
-| `server/src/lib/simulation/seed.ts` | Bot seeding and profession assignment |
 | `server/src/lib/road-encounter.ts` | Road encounter resolution, biome mapping, loot |
-| `server/src/lib/loot-items.ts` | Item drop processing after combat |
 | `database/seeds/monsters.ts` | Monster definitions, biomes, loot tables, gold |
 | `database/seeds/world.ts` | Routes, terrain strings, towns |
-| `prompts/` | All Claude Code task prompts (save new ones here) |
-
-### Race ID Reference
-
-Released races use in-game IDs that differ from their common fantasy names:
-
-| Common Name | In-Game ID | Status |
-|-------------|------------|--------|
-| Human | human | Released |
-| Elf | elf | Released |
-| Dwarf | dwarf | Released |
-| Halfling | harthfolk | Released |
-| Orc | orc | Released |
-| Tiefling | nethkin | Released |
-| Dragonborn | drakonid | Released |
-
-Unreleased races: half_elf, half_orc, gnome, merfolk, beastfolk, faefolk, goliath, nightborne (Drow), mosskin (Firbolg), forgeborn (Warforged), elementari (Genasi), revenant, changeling
-
-**Always use in-game IDs in code, configs, and sim scripts — not common fantasy names.**
-
-### Narrator Templates
-
-When adding new abilities, monsters, or status effects, also add narrator templates in `shared/src/data/combat-narrator/templates.ts`. See `docs/combat-narrator.md` for the template format and fallback chain. New content without templates degrades gracefully (generic narration) but loses flavor.
-
-### Batch Combat Sim
-
-CLI script at `server/src/scripts/batch-combat-sim.ts`. Use in-game race IDs (see Race ID Reference above). Common configs in `server/src/scripts/sim-configs/`.
-
-Commands: `run` (--config or --grid), `list`, `delete` (--run-id), `delete-all` (--confirm)
-npm shortcuts: `sim:run`, `sim:list`, `sim:delete`
+| `server/src/lib/combat-engine.ts` | Pure-function turn-based combat engine (d20) |
+| `server/src/lib/class-ability-resolver.ts` | Class ability effect handlers |
+| `server/src/lib/combat-logger.ts` | Structured per-encounter combat logs |
+| `shared/src/types/combat.ts` | All combat type definitions |
+| `prompts/` | All Claude Code task prompts |
 
 ---
 
-## Game Overview
-Browser-based fantasy MMORPG. Renaissance Kingdoms meets D&D.
-20 playable races, 29 professions, 68 towns, player-driven everything.
-All systems implemented across Phase 1 (core), Phase 2A (economy), and Phase 2B (races).
+## Project Overview
 
-## Tech Stack
-- **Frontend:** React 18 + TypeScript + Vite + Tailwind CSS + Zustand + React Query + Framer Motion
-- **Backend:** Node.js + Express + TypeScript
-- **Database:** PostgreSQL 15 + Prisma ORM
-- **Real-time:** Socket.io
-- **Cache:** Redis 7
-- **Auth:** JWT + bcrypt
-- **Validation:** Zod
-- **Testing:** Jest + Supertest
-- **Deployment:** Docker Compose (local) + Azure Container Apps (production) + Nginx + GitHub Actions CI
-- **Monorepo:** npm workspaces (client, server, shared, database)
+Browser-based fantasy MMORPG (Renaissance Kingdoms meets D&D). 20 races, 29 professions, 68 towns, player-driven economy/politics. All Phase 1-2B systems complete.
 
-## Project Structure
-```
-/client          -- React frontend (Vite, Tailwind, Zustand)
-/server          -- Express API + Socket.io backend
-/shared          -- Shared types, constants, and game data
-/database        -- Prisma schema, migrations, seed data
-/docs            -- Game design + technical documentation
-/prompts         -- Claude Code agent team prompts by phase
-/design-docs     -- Original source design documents
-/scripts         -- Utility scripts (setup.sh)
-/.github         -- CI/CD workflow
-```
+**Tech:** React 18 + TypeScript + Vite + Tailwind + Zustand | Node.js + Express | PostgreSQL 15 + Prisma | Redis 7 | Socket.io | Docker + Azure Container Apps
 
-## Documentation
-- `docs/GAME_GUIDE.md` -- Comprehensive player-facing game guide
-- `docs/API_REFERENCE.md` -- Full REST API and Socket.io event documentation
-- `docs/ARCHITECTURE.md` -- Technical architecture, data flow, system design
-- `docs/CODE_INVENTORY.md` -- Complete audit of every file, endpoint, component, model
-- `docs/CHANGELOG.md` -- What was built in each development phase
-- `docs/RACES.md` -- Complete 20-race compendium (stats, abilities, towns, relations)
-- `docs/ECONOMY.md` -- Economy system (29 professions, crafting chains, marketplace)
-- `docs/WORLD_MAP.md` -- All 21 regions, 68 towns, geography, biomes, level ranges
-- `docs/COMBAT.md` -- Combat system (PvE, PvP duels, damage, rewards, death penalties)
-- `docs/POLITICS.md` -- Political system (elections, governance, laws, taxes, diplomacy)
-- `docs/SOCIAL.md` -- Social systems (guilds, messaging, friends, notifications)
-- `docs/QUESTS.md` -- Quests, skills, specializations, leveling, progression
-- `docs/PROMPTS.md` -- All agent team prompts consolidated
-- `docs/PROMPT_QUEUE.md` -- Build phases and completion status
-- `docs/DAILY_ACTION_REBALANCE.md` -- Daily action economy rebalance design
-- `docs/REBALANCE_INTEGRATION_CHECKLIST.md` -- Rebalance implementation checklist
+**Monorepo:** `client/` (React), `server/` (Express API), `shared/` (types + game data), `database/` (Prisma + seeds), `docs/`, `prompts/`
 
-## Frontend Design System
-- **Typography:** Cinzel (display/headers) + Inter (body text) loaded via Google Fonts
-- **Theme:** Tailwind CSS with `realm-*` design tokens in `tailwind.config.js` -- realm-bg-900 to 500, realm-gold, realm-bronze, realm-teal, realm-purple, realm-text-primary/secondary/muted, realm-success, realm-danger, realm-warning, realm-hp
-- **Arcane aesthetic:** Dark fantasy UI inspired by Arcane -- gold accents, deep backgrounds, glowing highlights
-- **UI components (18 files in `client/src/components/ui/`):** 9 Realm* primitives (RealmButton, RealmPanel, RealmCard, RealmModal, RealmInput, RealmBadge, RealmProgress, RealmTooltip, RealmSkeleton) + 9 utility/infrastructure components (Modal, LoadingSkeleton, ErrorBoundary, PageLayout, ErrorMessage, Tooltip, AdminRoute, ProtectedRoute, Navigation)
-- **Layout components (6 files in `client/src/components/layout/`):** GameShell, HudBar, Sidebar, BottomNav, PageHeader, PageLoader
-- **Rarity display:** `getRarityStyle()`, `RARITY_COLORS`, `RARITY_BADGE_COLORS`, `RARITY_TEXT_COLORS` in `client/src/constants/index.ts`
-- **Custom CSS:** `client/src/index.css` -- pulse-subtle keyframe animation, gold scrollbar styling
+### Frontend Design System
+- **Typography:** Cinzel (headers) + Inter (body) via Google Fonts
+- **Theme:** `realm-*` design tokens in `tailwind.config.js` (realm-bg-900 to 500, realm-gold, realm-bronze, realm-teal, realm-purple, realm-text-primary/secondary/muted)
+- **Aesthetic:** Dark fantasy / Arcane-inspired. Gold accents, deep backgrounds, glowing highlights.
+- **Primitives:** 9 `Realm*` components in `client/src/components/ui/` (Button, Panel, Card, Modal, Input, Badge, Progress, Tooltip, Skeleton)
+- **Rarity:** `getRarityStyle()`, `RARITY_COLORS` etc. in `client/src/constants/index.ts`
 
-## 20 Playable Races
-### Core (7) -- 5 towns each, easy start
-Human (Heartlands), Elf (Silverwood), Dwarf (Ironvault), Halfling (Crossroads),
-Orc (Ashenfang), Tiefling (Shadowmere), Dragonborn (Frozen Reaches)
-
-### Common (6) -- 2-3 towns, moderate start
-Half-Elf (Twilight March), Half-Orc (Scarred Frontier), Gnome (Cogsworth),
-Merfolk (Pelagic Depths), Beastfolk (Thornwilds), Faefolk (Glimmerveil)
-
-### Exotic (7) -- 0-2 towns, hard mode
-Goliath (Skypeak), Drow (Vel'Naris/Underdark), Firbolg (Mistwood),
-Warforged (The Foundry), Genasi (The Confluence), Revenant (Ashenmoor),
-Changeling (Nomadic -- no hometown)
-
-### Sub-races
-- Dragonborn: 7 Draconic Ancestries (Red, Blue, White, Black, Green, Gold, Silver)
-- Beastfolk: 6 Animal Clans (Wolf, Bear, Fox, Hawk, Panther, Boar)
-- Genasi: 4 Elements (Fire, Water, Earth, Air)
-
-### Race Data Files (in-game names may differ)
-- Core: human.ts, elf.ts, dwarf.ts, harthfolk.ts, orc.ts, nethkin.ts, drakonid.ts
-- Common: halfElf.ts, halfOrc.ts, gnome.ts, merfolk.ts, beastfolk.ts, faefolk.ts
-- Exotic: goliath.ts, nightborne.ts, mosskin.ts, forgeborn.ts, elementari.ts, revenant.ts, changeling.ts
-
-## 29 Professions
-### Gathering (7): Farmer, Rancher, Fisherman, Lumberjack, Miner, Herbalist, Hunter
-### Crafting (15): Smelter, Blacksmith, Armorer, Woodworker, Tanner, Leatherworker, Tailor, Alchemist, Enchanter, Cook, Brewer, Jeweler, Fletcher, Mason, Scribe
-### Service (7): Merchant, Innkeeper, Healer, Stable Master, Banker, Courier, Mercenary Captain
-
-- Max 3 professions per character (Humans get 4th at Level 15)
-- Levels 1-100 with 6 tiers: Apprentice -> Journeyman -> Craftsman -> Expert -> Master -> Grandmaster
-- Quality roll: d20 + (professionLevel/5) + toolBonus + workshopBonus + racialBonus
-
-## Implemented Server Routes (40 game + 12 admin = 52 files)
-All game routes in `server/src/routes/`:
-- `auth.ts` -- Registration, login, logout, current user (JWT)
-- `characters.ts` -- Character creation, character sheet, public profiles
-- `world.ts` -- World map data, kingdoms, regions
-- `towns.ts` -- Town details, buildings, resources, residents
-- `travel.ts` -- Start travel, check status, arrive, border crossing
-- `regions.ts` -- Regional mechanics, racial majority, bonuses/penalties
-- `zones.ts` -- Exclusive zone access, entry validation, zone resources
-- `market.ts` -- Marketplace browse, list, buy, cancel, price history
-- `trade-analytics.ts` -- Cross-town prices, profitability, supply/demand
-- `work.ts` -- Basic work actions (legacy gathering)
-- `professions.ts` -- Learn, abandon, list professions, info, XP
-- `crafting.ts` -- Recipes, start craft, craft queue, collect, batch
-- `equipment.ts` -- Equip, unequip, compare items, stat calculation
-- `items.ts` -- Item details, repair, durability tracking
-- `tools.ts` -- Tool equip/unequip, durability, tier info
-- `buildings.ts` -- Housing CRUD, construction, upgrade, rent, storage
-- `caravans.ts` -- Create caravan, load cargo, depart, escorts, status
-- `combat-pve.ts` -- PvE start, action, state, loot, dungeons
-- `combat-pvp.ts` -- PvP challenge, accept, action, rankings, wagers
-- `elections.ts` -- Nominate, vote, current election, results, impeach
-- `governance.ts` -- Propose law, vote law, set tax, appointments, treasury
-- `diplomacy.ts` -- Treaty proposals, war declaration, alliance, relations matrix
-- `petitions.ts` -- Citizen petitions for diplomatic actions
-- `world-events.ts` -- Herald announcements, State of Aethermere reports
-- `guilds.ts` -- Guild CRUD, members, ranks, treasury, donations
-- `messages.ts` -- Send, inbox, conversation, channels (town/kingdom/guild/private)
-- `friends.ts` -- Add, remove, list friends, online status
-- `notifications.ts` -- List, mark read, notification preferences
-- `quests.ts` -- Available, accept, progress, complete, quest chains
-- `skills.ts` -- Skill trees, spend points, specializations, ability unlocks
-- `races.ts` -- Race list, details, sub-races, racial bonus calculator
-- `special-mechanics.ts` -- Changeling shift, Warforged maintenance, Merfolk zones, Drow sunlight
-- `profiles.ts` -- Player profiles, search, reputation
-- `actions.ts` -- Real-time action system (gathering, crafting, travel)
-- `food.ts` -- Food consumption, buff system
-- `service.ts` -- Service profession actions (merchant, innkeeper, healer, etc.)
-- `loans.ts` -- Banker loan system
-- `reports.ts` -- Economic reports, mayor dashboards
-- `admin.ts` -- Admin tools
-- `game.ts` -- Game state, server status
-- `index.ts` -- Route aggregator
-
-Admin routes in `server/src/routes/admin/`:
-- `stats.ts` -- Admin dashboard statistics
-- `users.ts` -- User management
-- `characters.ts` -- Character administration
-- `economy.ts` -- Economy monitoring and adjustments
-- `world.ts` -- World/town/region management
-- `travel.ts` -- Travel administration
-- `tools.ts` -- Admin tool utilities
-- `errorLogs.ts` -- Error log viewer
-- `simulation.ts` -- Game simulation tools
-- `contentRelease.ts` -- Content release management
-- `population.ts` -- Population analytics
-- `index.ts` -- Admin route aggregator
-
-## Implemented Server Services (31 files)
-All services in `server/src/services/`:
-- `achievements.ts` -- Achievement tracking and milestone rewards
-- `action-lock-in.ts` -- Prevent concurrent actions per player
-- `border-crossing.ts` -- Tariff and encounter checks at region borders
-- `changeling-service.ts` -- Shapeshifting, NPC deception, appearance copying
-- `combat-presets.ts` -- Monster stat blocks, encounter templates
-- `daily-report.ts` -- Daily activity summaries
-- `diplomacy-engine.ts` -- Treaty processing, war score, relation changes
-- `diplomacy-reputation.ts` -- Kingdom diplomatic reputation tracking
-- `durability.ts` -- Item durability degradation and break handling
-- `faefolk-service.ts` -- Flight mechanics, ground bypass, trap dodging
-- `food-system.ts` -- Food buff application and expiration
-- `forgeborn-service.ts` -- Warforged maintenance and Repair Kit tracking
-- `herald.ts` -- Global diplomatic announcement formatting
-- `item-stats.ts` -- Item stat calculation (base + material + quality + enchant)
-- `law-effects.ts` -- Applying law effects to gameplay
-- `merfolk-service.ts` -- Amphibious movement, underwater resource access
-- `nightborne-service.ts` -- Drow sunlight sensitivity, day/night tracking
-- `profession-xp.ts` -- Profession XP grants, leveling, tier promotions
-- `progression.ts` -- Character XP, level-up, stat point allocation
-- `psion-perks.ts` -- Psion class special abilities
-- `quest-triggers.ts` -- Automatic quest progress from game events
-- `race-environment.ts` -- Biome-based racial bonuses
-- `racial-bonus-calculator.ts` -- Combined racial bonus computation
-- `racial-combat-abilities.ts` -- 121 racial abilities in combat engine (Nightborne has 7)
-- `racial-passive-tracker.ts` -- Always-on racial passive effects
-- `racial-profession-bonuses.ts` -- Race-specific profession speed/quality/yield/XP
-- `racial-special-profession-mechanics.ts` -- Human 4th slot, Gnome efficiency, Warforged overclock
-- `regional-mechanics.ts` -- Town majority tracking, bonus/penalty calculation
-- `revenant-service.ts` -- Reduced death penalties, faster respawn
-- `tick-combat-resolver.ts` -- Combat tick resolution engine
-- `travel-resolver.ts` -- Travel time calculation and completion
-
-## Implemented Cron Jobs (18 files)
-All jobs in `server/src/jobs/`:
-- `election-lifecycle.ts` -- Advance election phases automatically
-- `tax-collection.ts` -- Collect player and town taxes on schedule
-- `law-expiration.ts` -- Expire temporary laws when their duration ends
-- `property-tax.ts` -- Collect building property taxes for town treasury
-- `building-maintenance.ts` -- Degrade buildings over time, require repairs
-- `construction-complete.ts` -- Complete building construction when timer finishes
-- `caravan-events.ts` -- Trigger bandit ambushes and events for in-transit caravans
-- `gathering-autocomplete.ts` -- Auto-complete gathering actions when timer finishes
-- `resource-regeneration.ts` -- Regenerate depleted resource nodes over time
-- `forgeborn-maintenance.ts` -- Degrade Warforged stats when maintenance overdue
-- `reputation-decay.ts` -- Diplomatic reputation decay over time
-- `state-of-aethermere.ts` -- Generate monthly world state report
-- `daily-tick.ts` -- Daily game tick (various housekeeping)
-- `loan-processing.ts` -- Process banker loan interest and payments
-- `service-npc-income.ts` -- NPC service income generation
-- `seer-premonition.ts` -- Seer class event generation
-- `travel-tick.ts` -- Travel progress tick processing
-- `index.ts` -- Job scheduler aggregator
-
-## Implemented Client Pages (26 game + 9 admin = 35 files)
-All game pages in `client/src/pages/`:
-- `LandingPage.tsx` -- Public landing page
-- `LoginPage.tsx` -- Account login
-- `RegisterPage.tsx` -- Account registration
-- `CharacterCreationPage.tsx` -- 5-step character creation wizard
-- `RaceSelectionPage.tsx` -- Race browser with tier tabs, comparison tool, sub-race selection
-- `WorldMapPage.tsx` -- Interactive zoomable world map with 68 towns, regions, travel routes
-- `TownPage.tsx` -- Town dashboard with buildings, resources, residents, gathering access
-- `InventoryPage.tsx` -- Item grid, equipment slots, item details
-- `CraftingPage.tsx` -- Recipe browser, craft queue, quality results, workshop bonus
-- `MarketPage.tsx` -- Marketplace with browse, list, buy, price history charts
-- `ProfessionsPage.tsx` -- Profession browser, learn/abandon, level progress
-- `HousingPage.tsx` -- Properties, construction, furniture, workshops, shops
-- `TradePage.tsx` -- Caravan management, price comparison, trade routes, merchant dashboard
-- `CombatPage.tsx` -- Battle screen, action menus, dice rolls, combat log
-- `TownHallPage.tsx` -- Mayor info, laws, treasury, elections
-- `ElectionPage.tsx` -- Candidates, voting booth, results
-- `GovernancePage.tsx` -- Law proposals, treasury, appointments
-- `KingdomPage.tsx` -- Ruler, member towns, kingdom laws
-- `DiplomacyPage.tsx` -- Relations matrix, treaties, war dashboard, petitions
-- `GuildPage.tsx` -- Members, treasury, quests, officer management
-- `QuestJournalPage.tsx` -- Active quests, progress bars, completed log
-- `SkillTreePage.tsx` -- Visual skill tree, point spending, ability preview
-- `AchievementPage.tsx` -- Achievement gallery with locked/unlocked states
-- `ProfilePage.tsx` -- Character sheet, achievements, reputation
-- `DailyDashboard.tsx` -- Daily action overview and summary
-- `TravelPage.tsx` -- Travel interface, route selection, progress
-
-Admin pages in `client/src/pages/admin/`:
-- `AdminDashboardPage.tsx` -- Admin overview dashboard
-- `AdminToolsPage.tsx` -- Admin tool panel
-- `AdminCharactersPage.tsx` -- Character management
-- `AdminEconomyPage.tsx` -- Economy monitoring
-- `AdminUsersPage.tsx` -- User management
-- `AdminWorldPage.tsx` -- World/town administration
-- `ErrorLogDashboardPage.tsx` -- Error log viewer
-- `ContentReleasePage.tsx` -- Content release management
-- `SimulationDashboardPage.tsx` -- Game simulation dashboard
-
-## Implemented Client Components (30+ directories)
-Key component directories in `client/src/components/`:
-- `auth/` -- Login/register forms
-- `character/` -- Character creation wizard steps
-- `combat/` -- Battle screen, action menus, dice roll animations
-- `crafting/` -- Recipe browser, craft queue, quality results
-- `daily-actions/` -- Daily action dashboard widgets
-- `daily-report/` -- Daily activity report display
-- `diplomacy/` -- Relations matrix, treaty panels, war dashboard
-- `economy/` -- Price charts, trade analytics
-- `food/` -- Food buff system display
-- `gathering/` -- Resource nodes, gathering progress bars
-- `guilds/` -- Guild management panels
-- `housing/` -- Building construction, property management
-- `hud/` -- Main game HUD overlay elements
-- `inventory/` -- Item grid, equipment slots
-- `map/` -- Interactive world map, region overlays, mini-map
-- `messaging/` -- Chat panel, message compose
-- `politics/` -- Election booth, governance controls
-- `professions/` -- Profession browser, XP progress bars
-- `quests/` -- Quest journal, objective tracking
-- `races/` -- Race browser cards, comparison tool
-- `racial-abilities/` -- Ability cards, cooldown timers
-- `social/` -- Friends list, player search
-- `town/` -- Town dashboard, building directory
-- `trade/` -- Caravan management, price comparison tables
-- `travel/` -- Travel progress, route selection
-- `ui/` -- 18 reusable primitives: 9 Realm* components + ErrorBoundary, PageLayout, Modal, LoadingSkeleton, ErrorMessage, Tooltip, AdminRoute, ProtectedRoute, Navigation
-- `layout/` -- 6 layout components: GameShell, HudBar, Sidebar, BottomNav, PageHeader, PageLoader
-- Standalone: `HUD.tsx`, `ChatPanel.tsx`, `FriendsList.tsx`, `NotificationDropdown.tsx`, `PlayerSearch.tsx`, `PoliticalNotifications.tsx`, `QuestDialog.tsx`, `LevelUpCelebration.tsx`, `LoadingScreen.tsx`, `XpBar.tsx`, `StatAllocation.tsx`, `ProgressionEventsProvider.tsx`, `SocialEventsProvider.tsx`
-
-## Shared Data Files
-All static game data in `shared/src/data/`:
-- `races/` -- 20 race definition files organized by tier (core/, common/, exotic/) + index.ts
-- `professions/` -- 29 profession definitions (gathering.ts, crafting.ts, service.ts), XP curves, tiers, types
-- `recipes/` -- 15 recipe files: weapons.ts, armor.ts, consumables.ts, accessories.ts, enchantments.ts, ranged-weapons.ts, smelter.ts, tanner.ts, tailor.ts, mason.ts, woodworker.ts, housing.ts, mount-gear.ts, index.ts, types.ts
-- `resources/` -- 8 resource category files: ores.ts, woods.ts, grains.ts, herbs.ts, animal.ts, fish.ts, stone.ts + index.ts, types.ts
-- `skills/` -- 8 skill tree files: warrior.ts, mage.ts, rogue.ts, cleric.ts, ranger.ts, bard.ts, psion.ts (7 classes) + index.ts, types.ts
-- `quests/` -- 5 quest files: main-quests.ts, town-quests.ts, daily-quests.ts (recurring quests, 72h cooldown), guild-quests.ts, bounty-quests.ts + index.ts, types.ts (49 quests total: 12 main + 20 town + 8 recurring + 3 guild + 6 bounty)
-- `tools/` -- Tool tier definitions (index.ts)
-- `buildings/` -- Building requirements (requirements.ts)
-- `caravans/` -- Caravan type definitions (types.ts)
-- `items/` -- Item data
-- `world/` -- World/region/town definitions
-- `achievements.ts` -- Achievement definitions
-- `progression/` -- XP curves, level-up rewards
-
-**Never hardcode game values in server or client -- always reference shared data.**
-
-## Server Middleware (6 files)
-- `auth.ts` -- JWT token verification, attaches user to request
-- `cache.ts` -- Redis caching middleware with per-user keys
-- `validate.ts` -- Generic Zod schema validation middleware
-- `daily-action.ts` -- Daily action tracking/limiting middleware
-- `admin.ts` -- Admin role verification middleware
-- `character-guard.ts` -- Character lookup, attaches req.character
-
-## Socket.io System (4 files in server/src/socket/)
-- `chat-handlers.ts` -- Chat message handling across all channel types
-- `events.ts` -- Game event emission (combat, trades, travel, politics)
-- `presence.ts` -- Online status tracking, who is in each town
-- `middleware.ts` -- JWT authentication on socket connections
-
-## Server Libraries (5 files in server/src/lib/)
-- `prisma.ts` -- Prisma client singleton
-- `redis.ts` -- Redis client singleton with SCAN-based cache invalidation
-- `combat-engine.ts` -- Pure-function turn-based combat engine (d20 system)
-- `game-day.ts` -- Game day utilities (epoch, tick times, day numbers)
-- `alt-guard.ts` -- Multi-character abuse prevention
-
-## Integration Tests (8 suites in server/src/__tests__/)
-- `auth.test.ts` -- Registration, login, JWT validation
-- `characters.test.ts` -- Character creation, race/class validation
-- `combat.test.ts` -- PvE and PvP combat flows
-- `economy.test.ts` -- Work, crafting, marketplace
-- `politics.test.ts` -- Elections, governance, laws
-- `social.test.ts` -- Guilds, messaging, friends
-- `quests.test.ts` -- Quest acceptance, progress, completion
-- `progression.test.ts` -- XP, leveling, skill trees
-
-## Key Design Principles
-1. **Player-driven economy** -- No NPC-created items. Every sword, potion, and meal is player-crafted
-2. **Daily action economy** -- 1 major action per day (Work or Travel). Paces progression deliberately
-3. **Real-time actions** -- Gathering, crafting, travel take real-world time (minutes to hours)
-4. **Item durability** -- Weapons (100 uses), armor (150 uses), tools (50 uses) break -> constant demand
-5. **3-profession limit** -- Forces interdependence, nobody is self-sufficient
-6. **Geographic scarcity** -- Resources tied to biomes/regions -> trade is necessary
-7. **D&D mechanics** -- d20 rolls, ability scores (STR/DEX/CON/INT/WIS/CHA), AC, spell slots
-8. **Player politics** -- Elected mayors and rulers with real governance power
-9. **Racial relations** -- 20x20 diplomacy matrix affects tariffs, access, NPC behavior
-10. **Exclusive zones** -- 11 zones only certain races can access (Underdark, Deep Ocean, Feywild, etc.)
-11. **Arcane aesthetic** -- Dark fantasy UI with Cinzel/Inter typography, realm-* design tokens, gold accents on deep backgrounds
-
-## The World of Aethermere -- 8 Major Regions + Sub-regions
-
-### Core Regions (5 towns each)
-| Region | Race | Biome | Key Resources |
-|--------|------|-------|---------------|
-| Verdant Heartlands | Human | Plains/Hills | Grain, Cotton, Livestock |
-| Silverwood Forest | Elf | Ancient Forest | Exotic Wood, Herbs, Arcane Reagents |
-| Ironvault Mountains | Dwarf | Mountains/Underground | All Ores, Gems, Stone, Coal |
-| The Crossroads | Halfling | Rolling Hills | Grain, Herbs, Vegetables |
-| Ashenfang Wastes | Orc | Badlands/Volcanic | Leather, Bone, Obsidian, War Beasts |
-| Shadowmere Marshes | Tiefling | Swamps/Bogs | Rare Herbs, Reagents, Mushrooms |
-| Frozen Reaches | Dragonborn | Tundra/Volcanic | Mithril, Adamantine, Exotic Furs |
-| The Suncoast | Neutral (Free Cities) | Coastal | Fish, Salt, Sand/Glass, Trade Goods |
-
-### Common Race Territories (2-3 towns each)
-| Territory | Race | Towns |
-|-----------|------|-------|
-| Twilight March | Half-Elf | Dawnmere, Twinvale, Harmony Point |
-| Scarred Frontier | Half-Orc | Scarwatch, Tuskbridge, Proving Grounds |
-| Cogsworth Warrens | Gnome | Cogsworth, Sparkhollow, Fumblewick |
-| Pelagic Depths | Merfolk | Coralspire, Shallows End, Abyssal Reach |
-| Thornwilds | Beastfolk | Thornden, Clawridge, Windrun |
-| Glimmerveil | Faefolk | Glimmerheart, Dewdrop Hollow, Moonpetal Grove |
-
-### Exotic Race Settlements (0-2 towns each)
-| Territory | Race | Towns |
-|-----------|------|-------|
-| Skypeak Plateaus | Goliath | Skyhold, Windbreak |
-| Vel'Naris Underdark | Drow | Vel'Naris, Gloom Market |
-| Mistwood Glens | Firbolg | Misthaven, Rootholme |
-| The Foundry | Warforged | The Foundry |
-| The Confluence | Genasi | The Confluence, Emberheart |
-| Ashenmoor | Revenant | Ashenmoor |
-| Everywhere | Changeling | (Nomadic -- start anywhere) |
-
-**Total: 68 towns across 21 territories**
-
-## Racial Relations Matrix (Default Starting State)
-Key: A=Allied, F=Friendly, N=Neutral, D=Distrustful, H=Hostile, BF=Blood Feud
-
-Notable relationships:
-- **Dwarf-Orc: Blood Feud** -- deepest hostility, hardest to change
-- **Human-Halfling: Allied** -- strongest alliance
-- **Elf-Faefolk-Firbolg: Allied** -- nature alliance
-- **Dwarf-Gnome-Warforged: Friendly** -- crafter alliance
-- **Tiefling-Drow-Revenant-Changeling: Friendly** -- outcast solidarity
-- **Halflings: Neutral-to-Friendly with nearly everyone** -- traders, not fighters
-- Players CAN change relations through diplomacy, treaties, and sustained effort
-
-## 11 Exclusive Resource Zones
-| Zone | Race | Exclusive Resources |
-|------|------|-------------------|
-| Deep Ocean | Merfolk | Deep Sea Iron, Abyssal Pearl, Living Coral, Sea Silk |
-| Underdark | Drow | Darksteel Ore, Spider Silk, Shadow Crystal |
-| Feywild (Lvl 40) | Faefolk | Moonpetal, Dreamweave Silk, Starlight Dust, Fey Iron |
-| Sky Peaks | Goliath | Sky Iron, Cloud Crystal, Giant Eagle Feather |
-| Deepwood Groves | Firbolg | Heartwood, Living Bark, Elder Sap, Spirit Moss |
-| Foundry Core | Warforged | Arcane Conduit, Soul Crystal, Living Metal |
-| Elemental Rifts (x4) | Genasi | Pure Element Essences, Elemental Cores |
-| Ashenmoor Deadlands | Revenant | Death Blossom, Soul Dust, Grave Iron |
-| Deep Thornwilds | Beastfolk | Spirit Beast Hide, Primal Bone, Thornwood |
-| Dragon Lairs | Dragonborn | Dragon Scale, Dragon Bone, Dragon Blood |
-| Deep Mines | Dwarf | Mithril, Adamantine (deep veins) |
-
-## Crafting Chains (Examples)
-**Iron Sword (5-6 players involved):**
-Miner -> Smelter -> Lumberjack -> Hunter -> Tanner -> Blacksmith -> [Enchanter]
-
-**Steel Plate Armor (6-7 players):**
-Miner -> Smelter -> Farmer -> Tailor -> Hunter -> Tanner -> Armorer -> [Enchanter]
-
-**Greater Healing Potion (3-4 players):**
-Herbalist -> Miner/Woodworker -> Smelter -> Alchemist
-
-## Economy Mechanics
-- **No NPC vendors** for crafted goods -- all real gear is player-made
-- **Player-set prices** on marketplace with town tax (5-25%, set by mayor)
-- **Item durability** creates constant replacement demand
-- **Resource scarcity by biome** creates trade routes between regions
-- **Trade caravans** can be raided (PvE bandits or PvP in wartime)
-- **Quality tiers:** Poor -> Common -> Fine -> Superior -> Masterwork -> Legendary
-- **Workshop bonuses** from player-built buildings affect crafting speed and quality
-- **Cascading quality** -- fine ingredients improve final product quality rolls
-- **Batch crafting** -- queue multiple crafts with total time estimates
-- **Trade analytics** -- per-item per-town price tracking, profitability calculator
-
-## Combat System
-- Turn-based, D&D-style with initiative rolls (d20 + DEX)
-- Attack rolls: d20 + modifiers vs target AC
-- Server-side weapon validation (damage from equipped weapon DB lookup, not client)
+### Non-Obvious Technical Details
+- Server-side weapon validation: damage from equipped weapon DB lookup, not client
 - PvE combat wrapped in database transaction for atomicity
 - Redis key pattern: `combat:pve:{sessionId}` (NOT `combat:{characterId}`)
-- PvE XP reward: `5 * monster.level`
-- 121 racial abilities across 20 races (6 per race, Nightborne has 7; unlock at levels 1/5/10/15/25/40)
-- PvE encounters, dungeons with bosses, PvP duels, arena, kingdom wars
-- Status effects: poisoned, stunned, blessed, burning, frozen, etc.
-- Death penalties: 5% gold loss, 15 x level XP loss, 5 durability damage to all equipped gear
-- Flee action: FLED status with minor penalty (half XP loss, 50% HP, no gold/durability loss)
-- Revenant reduced death penalty (halved)
+- Shared package must be built before server sees type changes: `npx tsc --build shared/tsconfig.json`
+- All static game data in `/shared/src/data/` as typed TypeScript constants
+- Database schema at `/database/prisma/schema.prisma`
 
-## Progression System
-- XP formula: `floor(10 * level^1.15) + 30` XP required per level
-- 7 classes: Warrior, Mage, Rogue, Cleric, Ranger, Bard, Psion (each with 3 specializations = 21 total)
-- 27 achievements across combat, economy, social, and exploration categories
-- 49 quests: 12 main + 20 town + 8 recurring (72h cooldown, formerly "daily quests") + 3 guild + 6 bounty
+---
 
-## Political System
-- Elected town mayors (set taxes, build, appoint officials)
-- Elected kingdom rulers (declare war/peace, kingdom laws, treaties)
-- Law system: propose -> council vote -> enact
-- Diplomatic actions: treaties, trade agreements, alliances, wars
-- Citizen petition system for diplomatic actions
-- Herald announcements for diplomatic events
-- Monthly "State of Aethermere" world reports
+## Where to Find Things
 
-## Exotic Race Special Mechanics
-- **Changeling**: Shapeshifting (visible race change, NPC deception Lvl 10, copy appearance Lvl 15, Veil Network Lvl 25)
-- **Warforged**: Maintenance (no food, 7-day Repair Kit cycle, -1%/day overdue, Self-Repair)
-- **Merfolk**: Amphibious (3x water speed, 85% land speed, underwater resources)
-- **Drow**: Sunlight Sensitivity (day/night tracking, -2 attack/-2 perception daytime surface)
-- **Faefolk**: Flight (bypass ground obstacles, dodge traps, no heavy loads)
-- **Revenant**: Reduced Death (half gold/XP/durability loss, half respawn timer)
-- **Goliath**: Double carry capacity, cold immunity
-- **Firbolg**: Animal/plant communication, nature gathering supremacy
+| Topic | Document |
+|-------|----------|
+| Full API reference | `docs/API_REFERENCE.md` |
+| Architecture & data flow | `docs/ARCHITECTURE.md` |
+| Complete file inventory | `docs/CODE_INVENTORY.md` |
+| Build history / changelog | `docs/CHANGELOG.md` |
+| 20 races, abilities, relations | `docs/RACES.md` |
+| Economy, professions, crafting | `docs/ECONOMY.md` |
+| World map, regions, towns | `docs/WORLD_MAP.md` |
+| Combat system | `docs/COMBAT.md` |
+| Political system | `docs/POLITICS.md` |
+| Social systems | `docs/SOCIAL.md` |
+| Quests & progression | `docs/QUESTS.md` |
+| Player-facing game guide | `docs/GAME_GUIDE.md` |
+| Combat narrator format | `docs/combat-narrator.md` |
+| Economy YAML source of truth | `docs/profession-economy-master.yaml` |
 
-## Game Data Location
-All static game data -> `/shared/src/data/` as typed TypeScript constants
-Database schema -> `/database/prisma/schema.prisma`
-**Never hardcode game values in server or client -- always reference shared data.**
-
-## Development Phases -- ALL COMPLETE
-- Phase 1 (Prompts 00-08): Core systems foundation -- **COMPLETE**
-- Phase 2A (Prompts 09-14): Economy & professions expansion -- **COMPLETE**
-- Phase 2B (Prompts 15-18): 20 races & world expansion -- **COMPLETE**
-- Documentation Pass: Full docs, game guide, API reference -- **COMPLETE**
-- P0 Fix Pass: 13 security/data-integrity fixes -- **COMPLETE**
-- P1 Fix Pass: Crafting chain fixes, frontend fixes, backend logic fixes -- **COMPLETE**
-- P2/P3 Fix Pass: Docs sync, schema enums, typed recipes, observability -- **IN PROGRESS**
-- Phase 3 (Prompts 19+): Future features (mounts, religion, naval, seasons) -- Not started
-
-## Completion Summary
-All 19 prompts (00-18) across 3 phases are complete. Implemented systems:
-
-**Phase 1 -- Core Systems:**
-- Auth (JWT + bcrypt), character creation with all 20 races
-- World navigation with 68 seeded towns across 21 regions
-- Basic marketplace with player-set prices and town taxes
-- Turn-based PvE combat (Redis state, monster AI, loot, XP)
-- PvP duels (challenge/accept, wagers, leaderboard)
-- Elections (nominations, voting, impeachment, auto-lifecycle cron)
-- Governance (laws, taxes, treasury, appointments, war/peace)
-- Guilds (ranks, invites, donations, leadership transfer)
-- Multi-channel messaging (7 channel types), friends, notifications
-- Quest system (5 types, auto-triggers, NPC quest givers)
-- Skill trees (7 classes, 21 specializations, ability unlock)
-- Leveling (XP formula, stat/skill points, HP/MP growth)
-- Socket.io real-time events throughout
-- Zod validation on all endpoints
-- Integration tests, Docker Compose, CI/CD
-
-**Phase 2A -- Economy Expansion:**
-- 29 profession system with learn/abandon, XP curves, 6 tiers
-- Resource gathering engine with d20 rolls, tool bonuses, depletion
-- 60+ raw resources across 8 categories assigned to towns by biome
-- Tool system (6 types, 6 material tiers, durability)
-- Full processing chain (smelting, tanning, spinning, masonry, milling)
-- Finished goods crafting (weapons, armor, consumables, accessories, enchantments)
-- Batch crafting queues with workshop bonuses and cascading quality
-- Item durability and repair system
-- Player housing (houses, workshops, shops) with construction and maintenance
-- Trade caravans with cargo, escorts, bandit ambushes, insurance
-- Trade analytics (cross-town prices, profitability calculator, supply/demand)
-
-**Phase 2B -- Race Expansion:**
-- Full 20-race data with stat modifiers, traits, 121 abilities, profession bonuses
-- Sub-race systems (7 ancestries, 6 clans, 4 elements)
-- 68-town world map with 21 regions, travel routes, border mechanics
-- 11 exclusive resource zones with access requirements
-- Regional mechanics (racial majority, border tariffs, environmental effects)
-- 20x20 racial diplomacy matrix (190 pairings) with treaty/war system
-- Herald announcements, State of Aethermere reports, citizen petitions
-- All 121 racial combat abilities integrated into combat engine (Nightborne has 7)
-- All racial profession bonuses integrated into gathering/crafting
-- Special exotic race mechanics (Changeling shapeshifting, Warforged maintenance, Merfolk amphibious, Drow sunlight, Faefolk flight, Revenant reduced death)
-
-**P0/P1 Fix Passes:**
-- All 13 P0 security/integrity fixes applied (credential rotation, combat weapon validation, crafting race condition, double taxation, vote stuffing, cache per-user keys, graceful shutdown, Docker non-root, JWT validation)
-- Crafting chain fixes (Nails copper, Silk Thread recipe, Exotic Hide resource, Cloth Padding, Copper weapons softwood, Woodworker barrel/furniture, Rancher names)
-- Frontend fixes (error boundaries, 401 interceptor, dynamic tax rates, kingdom ID resolution, socket reconnection, 404 catch-all, PvP player search)
-- Backend fixes (Human 4th profession, PvP leaderboard pagination, caravan location check, quest progress validation, quest item rewards, flee penalty, getCharacter ordering)
-- Database: LawVote model, inventory unique constraint, kingdom-region relation, 8 kingdom seeds, 4 performance indexes, cascade delete fixes
-- Human 4th profession slot implemented (`getMaxProfessions()` returns 4 for HUMAN level 15+)
+For file inventories (routes, services, components, pages, cron jobs, middleware), search the codebase directly rather than relying on a static list.
