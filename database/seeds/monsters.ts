@@ -584,7 +584,7 @@ const MONSTERS: MonsterDef[] = [
     damageType: 'FORCE',
     resistances: ['SLASHING', 'PIERCING'],
     immunities: ['PSYCHIC'],
-    legendaryActions: 1,
+    legendaryActions: 2,
     legendaryResistances: 1,
     abilities: [
       {
