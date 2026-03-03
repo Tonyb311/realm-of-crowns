@@ -1255,6 +1255,507 @@ const handleSummon: EffectHandler = (state, actor, _target, _enemies, abilityDef
   };
 };
 
+// ---- Psion Effect Handlers ----
+
+/** Save DC = 8 + proficiency bonus + caster's stat modifier (INT for Psion) */
+function calculateSaveDC(actor: Combatant, saveStatOverride?: string): number {
+  const castingStat = saveStatOverride ?? 'int';
+  const statMod = getModifier(actor.stats[castingStat as keyof typeof actor.stats] ?? 10);
+  return 8 + actor.proficiencyBonus + statMod;
+}
+
+/** teleport_attack: Blink Strike — teleport to target and attack with bonus */
+const handleTeleportAttack: EffectHandler = (state, actor, target, _enemies, abilityDef, effects) => {
+  if (!target || !target.isAlive) {
+    return { state, result: { description: `${abilityDef.name}: no valid target` } };
+  }
+
+  const attackBonus = (effects.attackBonus as number) ?? 0;
+  const damageBonus = (effects.damageBonus as string);
+
+  // Roll attack with bonus
+  const statMod = actor.weapon
+    ? getModifier(actor.stats[actor.weapon.attackModifierStat])
+    : getModifier(actor.stats.int);
+  const atkMod = statMod + actor.proficiencyBonus + (actor.weapon?.bonusAttack ?? 0) + attackBonus;
+  const d20 = roll(20);
+  const hit = d20 + atkMod >= target.ac || d20 === 20;
+  const isCrit = d20 === 20;
+
+  if (!hit) {
+    return {
+      state,
+      result: {
+        damage: 0,
+        targetHpAfter: target.currentHp,
+        targetKilled: false,
+        description: `${abilityDef.name}: teleported to ${target.name} but missed (${d20}+${atkMod} vs AC ${target.ac})`,
+      },
+    };
+  }
+
+  // Weapon damage + INT bonus damage
+  let totalDamage = 0;
+  if (actor.weapon) {
+    const dmgStatMod = getModifier(actor.stats[actor.weapon.damageModifierStat]);
+    totalDamage += rollDice(actor.weapon.diceCount * (isCrit ? 2 : 1), actor.weapon.diceSides, dmgStatMod + actor.weapon.bonusDamage);
+  }
+  // Add INT modifier as bonus damage if damageBonus is 'int'
+  if (damageBonus) {
+    const bonusMod = getModifier(actor.stats[damageBonus as keyof typeof actor.stats] ?? 10);
+    totalDamage += Math.max(0, bonusMod);
+  }
+  totalDamage = Math.max(0, totalDamage);
+
+  const newHp = clampHp(target.currentHp - totalDamage, target.maxHp);
+  const killed = newHp <= 0;
+  state = updateCombatant(state, target.id, { currentHp: newHp, isAlive: !killed });
+
+  return {
+    state,
+    result: {
+      damage: totalDamage,
+      targetHpAfter: newHp,
+      targetKilled: killed,
+      description: `${abilityDef.name}: teleported and struck ${target.name} for ${totalDamage} damage${isCrit ? ' CRITICAL' : ''}`,
+    },
+  };
+};
+
+/** control: Dominate — target saves or is stunned (domination = stun in combat) */
+const handleControl: EffectHandler = (state, actor, target, _enemies, abilityDef, effects) => {
+  if (!target || !target.isAlive) {
+    return { state, result: { description: `${abilityDef.name}: no valid target` } };
+  }
+
+  const saveType = (effects.saveType as string) ?? 'wis';
+  const savePenalty = (effects.savePenalty as number) ?? 0;
+  const controlDuration = (effects.controlDuration as number) ?? 1;
+  const failEffect = (effects.failEffect as string);
+  const failDuration = (effects.failDuration as number) ?? 2;
+
+  const dc = calculateSaveDC(actor) + Math.abs(savePenalty);
+  const targetSaveMod = getModifier(target.stats[saveType as keyof typeof target.stats] ?? 10);
+  const save = savingThrow(targetSaveMod, dc);
+
+  if (save.success) {
+    // On save: apply weaker effect if specified, otherwise nothing
+    if (failEffect) {
+      const mapped = mapStatusName(failEffect);
+      state = applyStatusEffectToState(state, target.id, mapped, failDuration, actor.id);
+      return {
+        state,
+        result: {
+          saveRequired: true,
+          saveDC: dc,
+          saveRoll: save.roll,
+          saveTotal: save.total,
+          saveSucceeded: true,
+          statusApplied: mapped,
+          statusDuration: failDuration,
+          description: `${abilityDef.name}: ${target.name} resisted (${save.total} vs DC ${dc}) but ${mapped} for ${failDuration} rounds`,
+        },
+      };
+    }
+    return {
+      state,
+      result: {
+        saveRequired: true,
+        saveDC: dc,
+        saveRoll: save.roll,
+        saveTotal: save.total,
+        saveSucceeded: true,
+        description: `${abilityDef.name}: ${target.name} resisted (${save.total} vs DC ${dc})`,
+      },
+    };
+  }
+
+  // Failed save: apply domination as stunned
+  state = applyStatusEffectToState(state, target.id, 'stunned', controlDuration, actor.id);
+
+  // Apply fail damage if defined (Absolute Dominion)
+  let failDmg = 0;
+  const failDamage = effects.failDamage as { diceCount?: number; diceSides?: number } | undefined;
+  if (failDamage?.diceCount && failDamage?.diceSides) {
+    failDmg = rollDice(failDamage.diceCount, failDamage.diceSides);
+    const newHp = clampHp(target.currentHp - failDmg, target.maxHp);
+    const killed = newHp <= 0;
+    state = updateCombatant(state, target.id, { currentHp: newHp, isAlive: !killed });
+    return {
+      state,
+      result: {
+        saveRequired: true,
+        saveDC: dc,
+        saveRoll: save.roll,
+        saveTotal: save.total,
+        saveSucceeded: false,
+        statusApplied: 'stunned',
+        statusDuration: controlDuration,
+        damage: failDmg,
+        targetHpAfter: newHp,
+        targetKilled: killed,
+        description: `${abilityDef.name}: dominated ${target.name} for ${controlDuration} rounds + ${failDmg} damage (${save.total} vs DC ${dc})`,
+      },
+    };
+  }
+
+  return {
+    state,
+    result: {
+      saveRequired: true,
+      saveDC: dc,
+      saveRoll: save.roll,
+      saveTotal: save.total,
+      saveSucceeded: false,
+      statusApplied: 'stunned',
+      statusDuration: controlDuration,
+      description: `${abilityDef.name}: dominated ${target.name} for ${controlDuration} rounds (${save.total} vs DC ${dc})`,
+    },
+  };
+};
+
+/** aoe_damage_status: Mind Shatter / Rift Walk — AoE damage + status to all enemies */
+const handleAoeDamageStatus: EffectHandler = (state, actor, _target, enemies, abilityDef, effects) => {
+  if (enemies.length === 0) {
+    return { state, result: { description: `${abilityDef.name}: no targets` } };
+  }
+
+  const diceCount = (effects.diceCount as number) ?? 2;
+  const diceSides = (effects.diceSides as number) ?? 6;
+  const damageBonus = (effects.damageBonus as string);
+  const statusEffect = mapStatusName((effects.statusEffect as string) ?? 'weakened');
+  const statusDuration = (effects.statusDuration as number) ?? 2;
+  const saveType = (effects.saveType as string) ?? 'wis';
+  const halfDamageOnSave = (effects.halfDamageOnSave as boolean) ?? false;
+
+  const dc = calculateSaveDC(actor);
+  const bonusMod = damageBonus ? Math.max(0, getModifier(actor.stats[damageBonus as keyof typeof actor.stats] ?? 10)) : 0;
+
+  const perTargetResults: ClassAbilityResult['perTargetResults'] = [];
+  let totalDamage = 0;
+  const targetIds: string[] = [];
+
+  for (const enemy of enemies) {
+    let dmg = rollDice(diceCount, diceSides, bonusMod);
+    const targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10);
+    const save = savingThrow(targetSaveMod, dc);
+
+    let statusApplied: string | undefined;
+    if (save.success && halfDamageOnSave) {
+      dmg = Math.floor(dmg / 2);
+      // No status on save
+    } else if (save.success) {
+      dmg = 0;
+    } else {
+      // Failed save: full damage + status
+      state = applyStatusEffectToState(state, enemy.id, statusEffect, statusDuration, actor.id);
+      statusApplied = statusEffect;
+    }
+
+    dmg = Math.max(0, dmg);
+    const target = state.combatants.find(c => c.id === enemy.id)!;
+    const newHp = clampHp(target.currentHp - dmg, target.maxHp);
+    const killed = newHp <= 0;
+    state = updateCombatant(state, enemy.id, { currentHp: newHp, isAlive: !killed });
+    totalDamage += dmg;
+    targetIds.push(enemy.id);
+
+    perTargetResults.push({
+      targetId: enemy.id,
+      targetName: enemy.name,
+      damage: dmg,
+      statusApplied,
+      hpAfter: newHp,
+      killed,
+    });
+  }
+
+  return {
+    state,
+    result: {
+      targetIds,
+      damage: totalDamage,
+      saveRequired: true,
+      saveDC: dc,
+      statusApplied: statusEffect,
+      statusDuration,
+      perTargetResults,
+      description: `${abilityDef.name}: ${totalDamage} damage + ${statusEffect}(${statusDuration}) to ${enemies.length} targets (DC ${dc})`,
+    },
+  };
+};
+
+/** reaction: Precognitive Dodge — grant self AC buff (simulate precognitive defense) */
+const handleReaction: EffectHandler = (state, actor, _target, _enemies, abilityDef, effects) => {
+  const usesPerCombat = (effects.usesPerCombat as number) ?? 1;
+  const acBonus = 4; // simulate dodging: significant AC boost for 1 round
+
+  // Check if already used this combat (tracked via cooldowns — reaction abilities have cd:1)
+  const buff: ActiveBuff = {
+    sourceAbilityId: abilityDef.id,
+    name: abilityDef.name,
+    roundsRemaining: 1,
+    acMod: acBonus,
+    damageReduction: 0.5, // 50% damage reduction simulates negating an attack
+  };
+
+  const currentBuffs = actor.activeBuffs ?? [];
+  const filtered = currentBuffs.filter(b => b.sourceAbilityId !== abilityDef.id);
+  state = updateCombatant(state, actor.id, { activeBuffs: [...filtered, buff] });
+
+  return {
+    state,
+    result: {
+      buffApplied: abilityDef.name,
+      buffDuration: 1,
+      description: `${abilityDef.name}: precognitive defense (+${acBonus} AC, 50% DR for 1 round)`,
+    },
+  };
+};
+
+/** phase: Dimensional Pocket — become untargetable (stealth buff) with advantage on return */
+const handlePhase: EffectHandler = (state, actor, _target, _enemies, abilityDef, effects) => {
+  const duration = (effects.duration as number) ?? 1;
+
+  const buff: ActiveBuff = {
+    sourceAbilityId: abilityDef.id,
+    name: abilityDef.name,
+    roundsRemaining: duration,
+    stealthed: true,
+    acMod: 5, // phased out = very hard to hit
+  };
+
+  const currentBuffs = actor.activeBuffs ?? [];
+  const filtered = currentBuffs.filter(b => b.sourceAbilityId !== abilityDef.id);
+  state = updateCombatant(state, actor.id, { activeBuffs: [...filtered, buff] });
+
+  // Grant advantage on return (attack bonus for next round)
+  if (effects.advantageOnReturn) {
+    const returnBuff: ActiveBuff = {
+      sourceAbilityId: `${abilityDef.id}-return`,
+      name: `${abilityDef.name} (return)`,
+      roundsRemaining: duration + 1,
+      attackMod: 4, // simulate advantage
+    };
+    state = updateCombatant(state, actor.id, {
+      activeBuffs: [...(state.combatants.find(c => c.id === actor.id)!.activeBuffs ?? []), returnBuff],
+    });
+  }
+
+  return {
+    state,
+    result: {
+      buffApplied: abilityDef.name,
+      buffDuration: duration,
+      description: `${abilityDef.name}: phased out for ${duration} round${duration > 1 ? 's' : ''} (untargetable)${effects.advantageOnReturn ? ', advantage on return' : ''}`,
+    },
+  };
+};
+
+/** swap: Translocation — in 1v1, apply disoriented debuff (stunned) + damage on fail */
+const handleSwap: EffectHandler = (state, actor, target, _enemies, abilityDef, effects) => {
+  if (!target || !target.isAlive) {
+    return { state, result: { description: `${abilityDef.name}: no valid target` } };
+  }
+
+  const saveType = (effects.saveType as string) ?? 'int';
+  const enemyEffect = (effects.enemyEffect as string) ?? 'lose_action';
+
+  const dc = calculateSaveDC(actor);
+  const targetSaveMod = getModifier(target.stats[saveType as keyof typeof target.stats] ?? 10);
+  const save = savingThrow(targetSaveMod, dc);
+
+  if (save.success) {
+    return {
+      state,
+      result: {
+        saveRequired: true,
+        saveDC: dc,
+        saveRoll: save.roll,
+        saveTotal: save.total,
+        saveSucceeded: true,
+        description: `${abilityDef.name}: ${target.name} resisted translocation (${save.total} vs DC ${dc})`,
+      },
+    };
+  }
+
+  // Failed save: target loses action (stunned for 1 round)
+  state = applyStatusEffectToState(state, target.id, 'stunned', 1, actor.id);
+
+  return {
+    state,
+    result: {
+      saveRequired: true,
+      saveDC: dc,
+      saveRoll: save.roll,
+      saveTotal: save.total,
+      saveSucceeded: false,
+      statusApplied: 'stunned',
+      statusDuration: 1,
+      description: `${abilityDef.name}: translocated ${target.name}, disoriented for 1 round (${save.total} vs DC ${dc})`,
+    },
+  };
+};
+
+/** echo: Temporal Echo — repeat last action as a damage ability */
+const handleEcho: EffectHandler = (state, actor, target, _enemies, abilityDef, _effects) => {
+  if (!target || !target.isAlive) {
+    return { state, result: { description: `${abilityDef.name}: no valid target` } };
+  }
+
+  // Resolve as a weapon attack (echoing the last action)
+  let totalDamage = 0;
+  if (actor.weapon) {
+    const statMod = getModifier(actor.stats[actor.weapon.damageModifierStat]);
+    const atkMod = statMod + actor.proficiencyBonus + actor.weapon.bonusAttack;
+    const d20 = roll(20);
+    const hit = d20 + atkMod >= target.ac || d20 === 20;
+    const isCrit = d20 === 20;
+
+    if (!hit) {
+      return {
+        state,
+        result: {
+          damage: 0,
+          targetHpAfter: target.currentHp,
+          targetKilled: false,
+          description: `${abilityDef.name}: temporal echo missed ${target.name} (${d20}+${atkMod} vs AC ${target.ac})`,
+        },
+      };
+    }
+
+    totalDamage = rollDice(actor.weapon.diceCount * (isCrit ? 2 : 1), actor.weapon.diceSides, statMod + actor.weapon.bonusDamage);
+  } else {
+    // No weapon — deal INT-based psychic damage
+    const intMod = getModifier(actor.stats.int);
+    totalDamage = rollDice(2, 6, intMod);
+  }
+
+  totalDamage = Math.max(0, totalDamage);
+  const newHp = clampHp(target.currentHp - totalDamage, target.maxHp);
+  const killed = newHp <= 0;
+  state = updateCombatant(state, target.id, { currentHp: newHp, isAlive: !killed });
+
+  return {
+    state,
+    result: {
+      damage: totalDamage,
+      targetHpAfter: newHp,
+      targetKilled: killed,
+      description: `${abilityDef.name}: echoed attack for ${totalDamage} damage to ${target.name}`,
+    },
+  };
+};
+
+/** banish: Banishment — target saves or is stunned for N rounds (removed from combat) */
+const handleBanish: EffectHandler = (state, actor, target, _enemies, abilityDef, effects) => {
+  if (!target || !target.isAlive) {
+    return { state, result: { description: `${abilityDef.name}: no valid target` } };
+  }
+
+  const saveType = (effects.saveType as string) ?? 'int';
+  const savePenalty = (effects.savePenalty as number) ?? 0;
+  const banishDuration = (effects.banishDuration as number) ?? 3;
+  const returnDamage = effects.returnDamage as { diceCount?: number; diceSides?: number } | undefined;
+  const returnEffect = (effects.returnEffect as string);
+  const returnDuration = (effects.returnDuration as number) ?? 1;
+  const failDamage = effects.failDamage as { diceCount?: number; diceSides?: number } | undefined;
+  const failEffect = (effects.failEffect as string);
+  const failDuration = (effects.failDuration as number) ?? 1;
+
+  const dc = calculateSaveDC(actor) + Math.abs(savePenalty);
+  const targetSaveMod = getModifier(target.stats[saveType as keyof typeof target.stats] ?? 10);
+  const save = savingThrow(targetSaveMod, dc);
+
+  if (save.success) {
+    // Reduced effect on save
+    let dmg = 0;
+    if (failDamage?.diceCount && failDamage?.diceSides) {
+      dmg = rollDice(failDamage.diceCount, failDamage.diceSides);
+    }
+    if (dmg > 0) {
+      const newHp = clampHp(target.currentHp - dmg, target.maxHp);
+      const killed = newHp <= 0;
+      state = updateCombatant(state, target.id, { currentHp: newHp, isAlive: !killed });
+      if (!killed && failEffect) {
+        state = applyStatusEffectToState(state, target.id, mapStatusName(failEffect), failDuration, actor.id);
+      }
+      return {
+        state,
+        result: {
+          saveRequired: true,
+          saveDC: dc,
+          saveRoll: save.roll,
+          saveTotal: save.total,
+          saveSucceeded: true,
+          damage: dmg,
+          targetHpAfter: newHp,
+          targetKilled: killed,
+          statusApplied: failEffect ? mapStatusName(failEffect) : undefined,
+          statusDuration: failEffect ? failDuration : undefined,
+          description: `${abilityDef.name}: ${target.name} resisted full banishment (${save.total} vs DC ${dc}), ${dmg} damage${failEffect ? ` + ${failEffect}` : ''}`,
+        },
+      };
+    }
+    return {
+      state,
+      result: {
+        saveRequired: true,
+        saveDC: dc,
+        saveRoll: save.roll,
+        saveTotal: save.total,
+        saveSucceeded: true,
+        description: `${abilityDef.name}: ${target.name} resisted banishment (${save.total} vs DC ${dc})`,
+      },
+    };
+  }
+
+  // Failed save: banish = stunned for banishDuration
+  state = applyStatusEffectToState(state, target.id, 'stunned', banishDuration, actor.id);
+
+  // Apply return damage immediately (simplified — in combat the target is stunned the whole time)
+  let returnDmg = 0;
+  if (returnDamage?.diceCount && returnDamage?.diceSides) {
+    returnDmg = rollDice(returnDamage.diceCount, returnDamage.diceSides);
+    const newHp = clampHp(target.currentHp - returnDmg, target.maxHp);
+    const killed = newHp <= 0;
+    state = updateCombatant(state, target.id, { currentHp: newHp, isAlive: !killed });
+    if (!killed && returnEffect) {
+      state = applyStatusEffectToState(state, target.id, mapStatusName(returnEffect), returnDuration, actor.id);
+    }
+    return {
+      state,
+      result: {
+        saveRequired: true,
+        saveDC: dc,
+        saveRoll: save.roll,
+        saveTotal: save.total,
+        saveSucceeded: false,
+        statusApplied: 'stunned',
+        statusDuration: banishDuration,
+        damage: returnDmg,
+        targetHpAfter: clampHp(target.currentHp - returnDmg, target.maxHp),
+        targetKilled: clampHp(target.currentHp - returnDmg, target.maxHp) <= 0,
+        description: `${abilityDef.name}: banished ${target.name} for ${banishDuration} rounds! ${returnDmg} damage on return (${save.total} vs DC ${dc})`,
+      },
+    };
+  }
+
+  return {
+    state,
+    result: {
+      saveRequired: true,
+      saveDC: dc,
+      saveRoll: save.roll,
+      saveTotal: save.total,
+      saveSucceeded: false,
+      statusApplied: 'stunned',
+      statusDuration: banishDuration,
+      description: `${abilityDef.name}: banished ${target.name} for ${banishDuration} rounds (${save.total} vs DC ${dc})`,
+    },
+  };
+};
+
 // ---- Effect Handler Map ----
 
 const EFFECT_HANDLERS: Record<string, EffectHandler> = {
@@ -1287,6 +1788,15 @@ const EFFECT_HANDLERS: Record<string, EffectHandler> = {
   counter: handleCounter,
   trap: handleTrap,
   summon: handleSummon,
+  // Psion handlers
+  teleport_attack: handleTeleportAttack,
+  control: handleControl,
+  aoe_damage_status: handleAoeDamageStatus,
+  reaction: handleReaction,
+  phase: handlePhase,
+  swap: handleSwap,
+  echo: handleEcho,
+  banish: handleBanish,
 };
 
 // ---- Status Name Mapping ----
@@ -1773,8 +2283,17 @@ export function resolveClassAbility(
   if (!handler) {
     // Unimplemented effect type — log and fallback
     console.warn(`[class-ability-resolver] Ability "${abilityDef.name}" uses effect type "${effectType}" which is not yet implemented`);
+    // Set cooldown even on failure to prevent infinite retries of the same unimplemented ability
+    let failState = state;
+    const cd = abilityDef.cooldown || 1;
+    const actorNow = failState.combatants.find(c => c.id === actorId);
+    if (actorNow) {
+      failState = updateCombatant(failState, actorId, {
+        abilityCooldowns: { ...(actorNow.abilityCooldowns ?? {}), [abilityId]: cd },
+      });
+    }
     return {
-      state,
+      state: failState,
       result: {
         type: 'class_ability',
         actorId,

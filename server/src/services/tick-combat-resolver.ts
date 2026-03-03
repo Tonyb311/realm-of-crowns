@@ -166,7 +166,7 @@ function decideAction(
             targetId: target?.id,
             targetIds: enemies.map(e => e.id),
           },
-          context: {},
+          context: { weapon: params.weapon ?? undefined },
         };
       }
 

@@ -24,6 +24,7 @@ import type {
   DefendResult,
   RacialAbilityActionResult,
   PsionAbilityResult,
+  ClassAbilityResult,
   AttackModifierBreakdown,
 } from '@shared/types/combat';
 
@@ -341,6 +342,45 @@ export function buildRoundsData(state: CombatState): RoundLogEntry[] {
       // Update HP tracker for psion targets
       if (psion.targetId && psion.targetHpAfter !== undefined) {
         hpTracker[psion.targetId] = psion.targetHpAfter;
+      }
+    } else if (result.type === 'class_ability') {
+      const ca = result as ClassAbilityResult;
+      round.abilityName = ca.abilityName;
+      round.abilityDescription = ca.description;
+      if (ca.saveDC) round.saveDC = ca.saveDC;
+      if (ca.saveRoll) round.saveRoll = ca.saveRoll;
+      if (ca.saveTotal) round.saveTotal = ca.saveTotal;
+      if (ca.saveSucceeded !== undefined) round.saveSucceeded = ca.saveSucceeded;
+      if (ca.targetHpAfter !== undefined) {
+        round.targetHpAfter = ca.targetHpAfter;
+        round.targetKilled = ca.targetKilled;
+      }
+      if (ca.damage && ca.damage > 0) {
+        round.damageRoll = {
+          dice: 'ability',
+          rolls: [],
+          modifiers: [],
+          total: ca.damage,
+        };
+      }
+      if (ca.healing && ca.healing > 0) {
+        round.healAmount = ca.healing;
+      }
+      if (ca.statusApplied) {
+        round.statusEffectsApplied.push(ca.statusApplied);
+      }
+      if (ca.buffApplied) {
+        round.statusEffectsApplied.push(ca.buffApplied);
+      }
+      // Update HP tracker for class ability targets
+      if (ca.targetId && ca.targetHpAfter !== undefined) {
+        hpTracker[ca.targetId] = ca.targetHpAfter;
+      }
+      // Update HP tracker for AoE per-target results
+      if (ca.perTargetResults) {
+        for (const ptr of ca.perTargetResults) {
+          hpTracker[ptr.targetId] = ptr.hpAfter;
+        }
       }
     }
 
