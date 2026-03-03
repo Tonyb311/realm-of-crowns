@@ -24,6 +24,7 @@ import {
   getAllRaceIds,
   getAllClassNames,
   type MonsterStats,
+  type MonsterCombatData,
 } from '../services/combat-simulator';
 import {
   createCharacterCombatant,
@@ -33,6 +34,42 @@ import {
 import { resolveTickCombat, type CombatantParams } from '../services/tick-combat-resolver';
 import { buildEncounterContext, buildRoundsData, buildSummary } from '../lib/combat-logger';
 import { setSimulationRunId } from '../lib/simulation-context';
+import type { CombatDamageType, MonsterAbility, MonsterAbilityInstance } from '@shared/types/combat';
+
+function buildMonsterAbilityInstances(abilities: any[]): MonsterAbilityInstance[] {
+  if (!Array.isArray(abilities) || abilities.length === 0) return [];
+  return abilities.map((a: any) => ({
+    def: a as MonsterAbility,
+    cooldownRemaining: 0,
+    usesRemaining: a.usesPerCombat ?? null,
+    isRecharged: false,
+  }));
+}
+
+function buildMonsterCombatOptions(cd: MonsterCombatData) {
+  const abilities = buildMonsterAbilityInstances(cd.abilities ?? []);
+  const resistances = (cd.resistances ?? []) as CombatDamageType[];
+  const immunities = (cd.immunities ?? []) as CombatDamageType[];
+  const vulnerabilities = (cd.vulnerabilities ?? []) as CombatDamageType[];
+  const conditionImmunities = cd.conditionImmunities as string[] ?? [];
+  const critImmunity = cd.critImmunity ?? false;
+  const critResistance = cd.critResistance ?? 0;
+
+  if (abilities.length === 0 && resistances.length === 0 && immunities.length === 0 &&
+      vulnerabilities.length === 0 && conditionImmunities.length === 0 &&
+      !critImmunity && critResistance === 0) {
+    return undefined;
+  }
+  return {
+    ...(resistances.length > 0 && { resistances }),
+    ...(immunities.length > 0 && { immunities }),
+    ...(vulnerabilities.length > 0 && { vulnerabilities }),
+    ...(conditionImmunities.length > 0 && { conditionImmunities }),
+    ...(critImmunity && { critImmunity }),
+    ...(critResistance !== 0 && { critResistance }),
+    ...(abilities.length > 0 && { monsterAbilities: abilities }),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Prisma (standalone — not the server singleton)
@@ -252,7 +289,21 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
   const dbMonsters = await prisma.monster.findMany();
   const monsterMap = new Map(dbMonsters.map(m => [
     m.name.toLowerCase(),
-    { name: m.name, level: m.level, stats: m.stats as unknown as MonsterStats },
+    {
+      name: m.name,
+      level: m.level,
+      stats: m.stats as unknown as MonsterStats,
+      combatData: {
+        damageType: m.damageType,
+        abilities: m.abilities as any[] || [],
+        resistances: m.resistances as string[] || [],
+        immunities: m.immunities as string[] || [],
+        vulnerabilities: m.vulnerabilities as string[] || [],
+        conditionImmunities: m.conditionImmunities as string[] || [],
+        critImmunity: m.critImmunity,
+        critResistance: m.critResistance,
+      } as MonsterCombatData,
+    },
   ]));
   const allMonsterNames = dbMonsters.map(m => m.name);
 
@@ -390,7 +441,7 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
       continue;
     }
 
-    const monster = buildSyntheticMonster(monsterData.name, monsterData.level, monsterData.stats);
+    const monster = buildSyntheticMonster(monsterData.name, monsterData.level, monsterData.stats, monsterData.combatData);
     const playerParams = buildPlayerCombatParams(player);
     let matchupWins = 0;
 
@@ -412,6 +463,7 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
           monster.stats, monster.level,
           monster.hp, monster.ac,
           monster.weapon, 0,
+          monster.combatData ? buildMonsterCombatOptions(monster.combatData) : undefined,
         );
 
         const state = createCombatState(`batch-${mIdx}-${i}`, 'PVE', [playerCombatant, monsterCombatant]);
