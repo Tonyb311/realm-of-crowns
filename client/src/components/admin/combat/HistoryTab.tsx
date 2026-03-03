@@ -65,6 +65,8 @@ interface TurnEntry {
   legendaryActions?: LegendaryActionEntry[];
   legendaryResistance?: LegendaryResistanceEntry;
   auraResults?: AuraEntry[];
+  deathThroesResult?: any;
+  phaseTransition?: any;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -459,6 +461,8 @@ function normalizeRoundEntry(raw: any, nameMap: Record<string, string>): TurnEnt
     ...(raw.legendaryActions?.length > 0 && { legendaryActions: raw.legendaryActions }),
     ...(raw.legendaryResistance && { legendaryResistance: raw.legendaryResistance }),
     ...(raw.auraResults?.length > 0 && { auraResults: raw.auraResults }),
+    ...(raw.deathThroesResult && { deathThroesResult: raw.deathThroesResult }),
+    ...(raw.phaseTransition && { phaseTransition: raw.phaseTransition }),
   };
 }
 
@@ -1113,7 +1117,51 @@ const ACTION_ICONS: Record<string, string> = {
   flee: '\uD83C\uDFC3', racial_ability: '\uD83D\uDD2E', psion_ability: '\uD83E\uDDE0', class_ability: '\u26A1',
   monster_ability: '\uD83D\uDC09',
   legendary_action: '\uD83D\uDD31',
+  death_throes: '\uD83D\uDC80',
+  phase_transition: '\u26A1',
 };
+
+function DeathThroesDisplay({ result }: { result: any }) {
+  const isMutualKill = result.mutualKill;
+  const bgClass = isMutualKill
+    ? 'bg-red-500/10 border-l-2 border-red-500'
+    : 'bg-amber-500/10 border-l-2 border-amber-500';
+  return (
+    <div className={`${bgClass} rounded-r px-2.5 py-1.5 my-1`}>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-sm">{'\uD83D\uDC80'}</span>
+        <span className="font-display text-[10px] uppercase text-red-400">Death Throes — {result.monsterName}</span>
+        {isMutualKill
+          ? <span className="px-1.5 py-0.5 rounded text-[9px] font-display uppercase bg-red-500/30 text-red-300">Mutual Kill</span>
+          : <span className="px-1.5 py-0.5 rounded text-[9px] font-display uppercase bg-amber-500/30 text-amber-300">Survived</span>
+        }
+      </div>
+      <div className="text-xs text-realm-text-secondary space-y-0.5 ml-5">
+        <div>Damage: {result.damageRoll} {result.damageType} = {result.damage}</div>
+        <div>Save: d20({result.saveRoll}) total {result.saveTotal} vs DC {result.saveDC} ({result.saveType.toUpperCase()}) — {result.savePassed ? 'Passed (half)' : 'Failed'}</div>
+        <div>Final damage: {result.finalDamage} | HP: {result.playerHpBefore} → {result.playerHpAfter}</div>
+      </div>
+    </div>
+  );
+}
+
+function PhaseTransitionDisplay({ result }: { result: any }) {
+  return (
+    <div className="bg-yellow-500/10 border-l-2 border-yellow-500 rounded-r px-2.5 py-1.5 my-1">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-sm">{'\u26A1'}</span>
+        <span className="font-display text-[10px] uppercase text-yellow-400">Phase Transition — {result.transitionName}</span>
+        <span className="text-[10px] text-yellow-400/60">HP at {result.actualHpPercent}% (threshold {result.hpThresholdPercent}%)</span>
+      </div>
+      <div className="text-xs text-realm-text-secondary space-y-0.5 ml-5">
+        {result.narratorText && <div className="italic text-yellow-300/80">{result.narratorText}</div>}
+        {result.effects?.map((eff: string, i: number) => (
+          <div key={i}>• {eff}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function TurnResultRenderer({ entry, nameMap, actorSnapshot }: { entry: TurnEntry; nameMap: Record<string, string>; actorSnapshot?: CombatantSnapshot }) {
   const r = entry.result;
@@ -1173,6 +1221,10 @@ function TurnResultRenderer({ entry, nameMap, actorSnapshot }: { entry: TurnEntr
           ))}
         </div>
       )}
+      {/* Phase Transition */}
+      {entry.phaseTransition && <PhaseTransitionDisplay result={entry.phaseTransition} />}
+      {/* Death Throes */}
+      {entry.deathThroesResult && <DeathThroesDisplay result={entry.deathThroesResult} />}
       {/* Status ticks */}
       {entry.statusTicks && entry.statusTicks.length > 0 && (
         <div className="mt-1 ml-2 border-l border-realm-border/30 pl-2 space-y-0.5">

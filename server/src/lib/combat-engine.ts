@@ -45,6 +45,10 @@ import type {
   LegendaryResistanceResult,
   AuraResult,
   LegendaryActionResult,
+  DeathThroesResult,
+  PhaseTransition,
+  PhaseTransitionResult,
+  PhaseTransitionEffect,
 } from '@shared/types/combat';
 
 import { getModifier } from '@shared/types/combat';
@@ -3254,6 +3258,7 @@ export function createMonsterCombatant(
     monsterAbilities?: MonsterAbilityInstance[];
     legendaryActions?: number;
     legendaryResistances?: number;
+    phaseTransitions?: PhaseTransition[];
   },
 ): Combatant {
   return {
@@ -3288,5 +3293,289 @@ export function createMonsterCombatant(
       legendaryResistancesMax: options.legendaryResistances,
       legendaryResistancesRemaining: options.legendaryResistances,
     }),
+    ...(options?.phaseTransitions && options.phaseTransitions.length > 0 && {
+      phaseTransitions: options.phaseTransitions.map(pt => ({ ...pt, triggered: false })),
+    }),
   };
+}
+
+// ---- Death Throes ----
+
+/** Parse dice string like "8d6" or "3d6+5" into components */
+function parseDiceString(diceStr: string): { count: number; sides: number; bonus: number } {
+  const match = diceStr.match(/^(\d+)d(\d+)(?:([+-]\d+))?$/);
+  if (!match) return { count: 1, sides: 6, bonus: 0 };
+  return {
+    count: parseInt(match[1], 10),
+    sides: parseInt(match[2], 10),
+    bonus: match[3] ? parseInt(match[3], 10) : 0,
+  };
+}
+
+/**
+ * Resolve death throes for a dead monster. Fires AoE damage on first alive enemy (player).
+ * Called once per monster death — `deathThroesProcessed` flag prevents double-firing.
+ */
+export function resolveDeathThroes(
+  state: CombatState,
+  deadMonsterId: string,
+): { state: CombatState; result: DeathThroesResult | null } {
+  const monster = state.combatants.find(c => c.id === deadMonsterId);
+  if (!monster || monster.isAlive || monster.deathThroesProcessed) {
+    return { state, result: null };
+  }
+
+  // Find death_throes ability
+  const dtAbility = monster.monsterAbilities?.find(inst => inst.def.type === 'death_throes');
+  if (!dtAbility) {
+    return { state, result: null };
+  }
+
+  const def = dtAbility.def;
+  if (!def.deathDamage || !def.deathDamageType || !def.deathSaveDC || !def.deathSaveType) {
+    return { state, result: null };
+  }
+
+  // Find first alive enemy (player)
+  const player = state.combatants.find(c => c.team !== monster.team && c.isAlive);
+  if (!player) {
+    return { state, result: null };
+  }
+
+  // Roll damage
+  const parsed = parseDiceString(def.deathDamage);
+  const dmgResult = damageRoll(parsed.count, parsed.sides, parsed.bonus);
+  const totalDmg = dmgResult.total;
+  const damageRollStr = def.deathDamage;
+
+  // Player saves
+  const saveStat = def.deathSaveType;
+  const statMod = getModifier(player.stats[saveStat]);
+  const profBonus = player.proficiencyBonus;
+
+  // Status effect save modifiers
+  let statusSaveMod = 0;
+  for (const effect of player.statusEffects) {
+    const effectDef = STATUS_EFFECT_DEFS[effect.name];
+    if (effectDef && effectDef.saveModifier !== 0) {
+      statusSaveMod += effectDef.saveModifier;
+    }
+  }
+
+  const saveResult = savingThrow(statMod + profBonus + statusSaveMod, def.deathSaveDC);
+  const savePassed = saveResult.success;
+
+  let finalDamage = savePassed ? Math.floor(totalDmg / 2) : totalDmg;
+
+  // Apply damage type interaction
+  const dtResult = applyDamageTypeInteraction(finalDamage, def.deathDamageType, player);
+  finalDamage = dtResult.finalDamage;
+
+  // Apply damage to player
+  const playerHpBefore = player.currentHp;
+  const newHp = Math.max(0, playerHpBefore - finalDamage);
+  const playerSurvived = newHp > 0;
+
+  // Mark monster as processed
+  state = {
+    ...state,
+    combatants: state.combatants.map(c => {
+      if (c.id === deadMonsterId) return { ...c, deathThroesProcessed: true };
+      if (c.id === player.id) return { ...c, currentHp: newHp, isAlive: playerSurvived };
+      return c;
+    }),
+  };
+
+  const result: DeathThroesResult = {
+    monsterName: monster.name,
+    damage: totalDmg,
+    damageType: def.deathDamageType,
+    damageRoll: damageRollStr,
+    saveDC: def.deathSaveDC,
+    saveType: saveStat,
+    saveRoll: saveResult.roll,
+    saveTotal: saveResult.total,
+    savePassed,
+    finalDamage,
+    playerHpBefore,
+    playerHpAfter: newHp,
+    playerSurvived,
+    mutualKill: !playerSurvived,
+  };
+
+  return { state, result };
+}
+
+// ---- Phase Transitions ----
+
+/**
+ * Check and trigger phase transitions for a monster based on current HP%.
+ * Only triggers ONE transition per call (the highest untriggered threshold reached).
+ */
+export function checkPhaseTransitions(
+  state: CombatState,
+  monsterId: string,
+): { state: CombatState; result: PhaseTransitionResult | null } {
+  const monster = state.combatants.find(c => c.id === monsterId);
+  if (!monster || !monster.isAlive || !monster.phaseTransitions || monster.phaseTransitions.length === 0) {
+    return { state, result: null };
+  }
+
+  const hpPercent = (monster.currentHp / monster.maxHp) * 100;
+
+  // Find untriggered transitions where HP% has dropped to or below the threshold
+  const eligible = monster.phaseTransitions
+    .filter(pt => !pt.triggered && pt.hpThresholdPercent >= hpPercent);
+
+  if (eligible.length === 0) {
+    return { state, result: null };
+  }
+
+  // Take the highest threshold first (only one per call)
+  eligible.sort((a, b) => b.hpThresholdPercent - a.hpThresholdPercent);
+  const transition = eligible[0];
+
+  // Mark as triggered
+  const updatedTransitions = monster.phaseTransitions.map(pt =>
+    pt.id === transition.id ? { ...pt, triggered: true } : pt
+  );
+
+  let updatedMonster: Combatant = { ...monster, phaseTransitions: updatedTransitions };
+  const effectDescriptions: string[] = [];
+  let aoeDamage: number | undefined;
+  let aoeSavePassed: boolean | undefined;
+
+  // Find the player target (for aoe_burst)
+  const player = state.combatants.find(c => c.team !== monster.team && c.isAlive);
+
+  for (const effect of transition.effects) {
+    switch (effect.type) {
+      case 'add_ability': {
+        if (effect.ability) {
+          const newInstance: MonsterAbilityInstance = {
+            def: effect.ability,
+            cooldownRemaining: 0,
+            usesRemaining: effect.ability.usesPerCombat ?? null,
+            isRecharged: true,
+          };
+          updatedMonster = {
+            ...updatedMonster,
+            monsterAbilities: [...(updatedMonster.monsterAbilities ?? []), newInstance],
+          };
+          effectDescriptions.push(`Unlocked: ${effect.ability.name}`);
+        }
+        break;
+      }
+      case 'stat_boost': {
+        if (effect.statBoost) {
+          const buff = {
+            sourceAbilityId: transition.id,
+            name: transition.name,
+            roundsRemaining: 999, // permanent for combat duration
+            ...(effect.statBoost.attack && { attackMod: effect.statBoost.attack }),
+            ...(effect.statBoost.ac && { acMod: effect.statBoost.ac }),
+            ...(effect.statBoost.damage && { damageMod: effect.statBoost.damage }),
+          };
+          updatedMonster = {
+            ...updatedMonster,
+            activeBuffs: [...(updatedMonster.activeBuffs ?? []), buff],
+          };
+          const parts: string[] = [];
+          if (effect.statBoost.attack) parts.push(`+${effect.statBoost.attack} attack`);
+          if (effect.statBoost.damage) parts.push(`+${effect.statBoost.damage} damage`);
+          if (effect.statBoost.ac) parts.push(`${effect.statBoost.ac > 0 ? '+' : ''}${effect.statBoost.ac} AC`);
+          effectDescriptions.push(`Stat boost: ${parts.join(', ')}`);
+        }
+        break;
+      }
+      case 'self_buff': {
+        if (effect.selfBuff) {
+          updatedMonster = applyStatusEffect(
+            updatedMonster,
+            effect.selfBuff.status as any,
+            effect.selfBuff.duration,
+            monsterId,
+          );
+          effectDescriptions.push(`Applied: ${effect.selfBuff.status} (${effect.selfBuff.duration} rounds)`);
+        }
+        break;
+      }
+      case 'aoe_burst': {
+        if (effect.aoeBurst && player) {
+          const burstParsed = parseDiceString(effect.aoeBurst.damage);
+          const burstRoll = damageRoll(burstParsed.count, burstParsed.sides, burstParsed.bonus);
+          const burstDamage = burstRoll.total;
+          const saveStat = effect.aoeBurst.saveType;
+          const statMod = getModifier(player.stats[saveStat]);
+          const profBonus = player.proficiencyBonus;
+          let statusSaveMod = 0;
+          for (const eff of player.statusEffects) {
+            const effDef = STATUS_EFFECT_DEFS[eff.name];
+            if (effDef && effDef.saveModifier !== 0) statusSaveMod += effDef.saveModifier;
+          }
+          const saveResult = savingThrow(statMod + profBonus + statusSaveMod, effect.aoeBurst.saveDC);
+          const passed = saveResult.success;
+          const finalBurstDmg = passed ? Math.floor(burstDamage / 2) : burstDamage;
+
+          // Apply damage type interaction
+          const dtResult = applyDamageTypeInteraction(finalBurstDmg, effect.aoeBurst.damageType, player);
+
+          const newPlayerHp = Math.max(0, player.currentHp - dtResult.finalDamage);
+          const playerAlive = newPlayerHp > 0;
+
+          // Update player in state (will be synced below)
+          state = {
+            ...state,
+            combatants: state.combatants.map(c =>
+              c.id === player.id ? { ...c, currentHp: newPlayerHp, isAlive: playerAlive } : c
+            ),
+          };
+
+          aoeDamage = dtResult.finalDamage;
+          aoeSavePassed = passed;
+          effectDescriptions.push(`AoE burst: ${dtResult.finalDamage} ${effect.aoeBurst.damageType} damage${passed ? ' (save halved)' : ''}`);
+        }
+        break;
+      }
+      case 'unlock_ability': {
+        if (effect.unlockAbilityId && updatedMonster.monsterAbilities) {
+          const abilities = updatedMonster.monsterAbilities;
+          updatedMonster = {
+            ...updatedMonster,
+            monsterAbilities: abilities.map(inst =>
+              inst.def.id === effect.unlockAbilityId
+                ? { ...inst, cooldownRemaining: 0, isRecharged: true }
+                : inst
+            ),
+          };
+          const abilName = abilities.find(
+            inst => inst.def.id === effect.unlockAbilityId
+          )?.def.name ?? effect.unlockAbilityId;
+          effectDescriptions.push(`Reset: ${abilName}`);
+        }
+        break;
+      }
+    }
+  }
+
+  // Sync updated monster back into state combatants
+  state = {
+    ...state,
+    combatants: state.combatants.map(c =>
+      c.id === monsterId ? updatedMonster : c
+    ),
+  };
+
+  const result: PhaseTransitionResult = {
+    transitionId: transition.id,
+    transitionName: transition.name,
+    hpThresholdPercent: transition.hpThresholdPercent,
+    actualHpPercent: Math.round(hpPercent * 10) / 10,
+    effects: effectDescriptions,
+    ...(aoeDamage !== undefined && { aoeDamage }),
+    ...(aoeSavePassed !== undefined && { aoeSavePassed }),
+    narratorText: transition.description,
+  };
+
+  return { state, result };
 }

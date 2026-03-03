@@ -36,6 +36,8 @@ import type {
   LegendaryActionResult,
   LegendaryResistanceResult,
   AuraResult,
+  DeathThroesResult,
+  PhaseTransitionResult,
 } from '@shared/types/combat';
 
 // Config flag — can be turned off in production if performance is a concern
@@ -145,6 +147,9 @@ export interface RoundLogEntry {
   legendaryActions?: LegendaryActionResult[];
   legendaryResistance?: LegendaryResistanceResult;
   auraResults?: AuraResult[];
+  // Death throes & Phase transition results
+  deathThroesResult?: DeathThroesResult;
+  phaseTransition?: PhaseTransitionResult;
   // HP snapshot for all combatants after this action
   hpAfter: Record<string, number>;
 }
@@ -575,6 +580,28 @@ export function buildRoundsData(state: CombatState): RoundLogEntry[] {
     if (entry.auraResults && entry.auraResults.length > 0) {
       if (!round.auraResults) round.auraResults = [];
       round.auraResults.push(...entry.auraResults);
+    }
+
+    // Death throes
+    if (entry.deathThroesResult) {
+      round.deathThroesResult = entry.deathThroesResult;
+      // Update HP tracker — find the player target
+      if (entry.deathThroesResult.playerHpAfter !== undefined) {
+        for (const [id, _] of Object.entries(hpTracker)) {
+          if (id !== entry.actorId) { hpTracker[id] = entry.deathThroesResult.playerHpAfter; break; }
+        }
+      }
+    }
+
+    // Phase transition
+    if (entry.phaseTransition) {
+      round.phaseTransition = entry.phaseTransition;
+      // If aoe_burst damaged player, update HP
+      if (entry.phaseTransition.aoeDamage) {
+        for (const [id, hp] of Object.entries(hpTracker)) {
+          if (id !== entry.actorId) { hpTracker[id] = Math.max(0, (hp as number) - entry.phaseTransition.aoeDamage); break; }
+        }
+      }
     }
 
     // Snapshot HP for all combatants after this action

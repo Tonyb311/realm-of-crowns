@@ -19,7 +19,7 @@ interface MonsterAbilityDef {
   id: string;
   name: string;
   type: 'damage' | 'status' | 'aoe' | 'multiattack' | 'buff' | 'heal' | 'on_hit'
-        | 'fear_aura' | 'damage_aura';
+        | 'fear_aura' | 'damage_aura' | 'death_throes';
   damage?: string;
   damageType?: string;
   saveType?: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
@@ -39,6 +39,10 @@ interface MonsterAbilityDef {
   auraRepeats?: boolean;
   isLegendaryAction?: boolean;
   legendaryCost?: number;
+  deathDamage?: string;
+  deathDamageType?: string;
+  deathSaveDC?: number;
+  deathSaveType?: 'str' | 'dex' | 'con';
 }
 
 interface MonsterDef {
@@ -77,6 +81,7 @@ interface MonsterDef {
   critResistance?: number;
   legendaryActions?: number;
   legendaryResistances?: number;
+  phaseTransitions?: any[];
 }
 
 const MONSTERS: MonsterDef[] = [
@@ -334,6 +339,16 @@ const MONSTERS: MonsterDef[] = [
         description: 'The dragon radiates a terrifying presence.',
       },
     ],
+    phaseTransitions: [{
+      id: 'dragon_phase2', hpThresholdPercent: 25, name: 'Cornered Fury',
+      description: 'The young dragon roars in fury, abandoning defense for reckless ferocity.',
+      triggered: false,
+      effects: [
+        { type: 'unlock_ability', unlockAbilityId: 'dragon_breath' },
+        { type: 'stat_boost', statBoost: { attack: 3, ac: -2 } },
+        { type: 'aoe_burst', aoeBurst: { damage: '6d6', damageType: 'COLD', saveDC: 15, saveType: 'dex' } },
+      ],
+    }],
     stats: {
       hp: 150, ac: 18, attack: 10, damage: '2d10+6', speed: 40,
       str: 20, dex: 12, con: 18, int: 14, wis: 12, cha: 16,
@@ -398,7 +413,20 @@ const MONSTERS: MonsterDef[] = [
         auraDamage: '1d6', auraDamageType: 'FIRE',
         description: 'Flames lash out at anyone who strikes the demon in melee.',
       },
+      {
+        id: 'demon_death_throes', name: 'Infernal Explosion', type: 'death_throes',
+        deathDamage: '8d6', deathDamageType: 'FIRE', deathSaveDC: 15, deathSaveType: 'dex',
+        description: 'The demon explodes in a burst of hellfire upon death.',
+      },
     ],
+    phaseTransitions: [{
+      id: 'demon_phase2', hpThresholdPercent: 30, name: 'Infernal Rage',
+      description: 'The demon enters a berserk frenzy as infernal flames surge around it.',
+      triggered: false,
+      effects: [
+        { type: 'stat_boost', statBoost: { attack: 3, damage: 2 } },
+      ],
+    }],
     stats: {
       hp: 130, ac: 17, attack: 10, damage: '2d8+6', speed: 40,
       str: 18, dex: 14, con: 16, int: 14, wis: 12, cha: 18,
@@ -440,6 +468,35 @@ const MONSTERS: MonsterDef[] = [
         saveType: 'wis', saveDC: 18, statusEffect: 'frightened', statusDuration: 1,
         auraRepeats: false,
         description: 'The lich emanates an aura of overwhelming dread.',
+      },
+    ],
+    phaseTransitions: [
+      {
+        id: 'lich_phase2', hpThresholdPercent: 50, name: 'Desperate Arcana',
+        description: 'The lich channels forbidden reserves, unleashing devastating arcane power.',
+        triggered: false,
+        effects: [
+          {
+            type: 'add_ability',
+            ability: {
+              id: 'lich_mass_necrotic', name: 'Mass Necrotic Wave', type: 'aoe',
+              damage: '4d8+5', damageType: 'NECROTIC', saveType: 'con', saveDC: 18,
+              cooldown: 2, priority: 10,
+              description: 'A wave of concentrated necrotic energy.',
+            },
+          },
+          { type: 'stat_boost', statBoost: { attack: 2 } },
+          { type: 'aoe_burst', aoeBurst: { damage: '3d6', damageType: 'NECROTIC', saveDC: 18, saveType: 'dex' } },
+        ],
+      },
+      {
+        id: 'lich_phase3', hpThresholdPercent: 25, name: 'Phylactery Rage',
+        description: 'The lich draws power from its phylactery in a desperate bid for survival.',
+        triggered: false,
+        effects: [
+          { type: 'unlock_ability', unlockAbilityId: 'lich_paralyze' },
+          { type: 'stat_boost', statBoost: { damage: 3, ac: 2 } },
+        ],
       },
     ],
     stats: {
@@ -652,6 +709,7 @@ export async function seedMonsters(prisma: PrismaClient): Promise<void> {
       critResistance: monster.critResistance ?? 0,
       legendaryActions: monster.legendaryActions ?? 0,
       legendaryResistances: monster.legendaryResistances ?? 0,
+      phaseTransitions: monster.phaseTransitions ?? [],
     };
 
     if (existing) {

@@ -56,10 +56,12 @@ function buildMonsterCombatOptions(cd: MonsterCombatData) {
   const critResistance = cd.critResistance ?? 0;
   const legendaryActions = cd.legendaryActions ?? 0;
   const legendaryResistances = cd.legendaryResistances ?? 0;
+  const phaseTransitions = cd.phaseTransitions ?? [];
 
   if (abilities.length === 0 && resistances.length === 0 && immunities.length === 0 &&
       vulnerabilities.length === 0 && conditionImmunities.length === 0 &&
-      !critImmunity && critResistance === 0 && legendaryActions === 0 && legendaryResistances === 0) {
+      !critImmunity && critResistance === 0 && legendaryActions === 0 && legendaryResistances === 0 &&
+      phaseTransitions.length === 0) {
     return undefined;
   }
   return {
@@ -72,6 +74,7 @@ function buildMonsterCombatOptions(cd: MonsterCombatData) {
     ...(abilities.length > 0 && { monsterAbilities: abilities }),
     ...(legendaryActions > 0 && { legendaryActions }),
     ...(legendaryResistances > 0 && { legendaryResistances }),
+    ...(phaseTransitions.length > 0 && { phaseTransitions }),
   };
 }
 
@@ -308,6 +311,7 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
         critResistance: m.critResistance,
         legendaryActions: (m as any).legendaryActions ?? 0,
         legendaryResistances: (m as any).legendaryResistances ?? 0,
+        phaseTransitions: (m as any).phaseTransitions as any[] || [],
       } as MonsterCombatData,
     },
   ]));

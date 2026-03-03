@@ -179,7 +179,7 @@ export interface MonsterAbility {
   id: string;
   name: string;
   type: 'damage' | 'status' | 'aoe' | 'multiattack' | 'buff' | 'heal' | 'on_hit'
-        | 'fear_aura' | 'damage_aura';
+        | 'fear_aura' | 'damage_aura' | 'death_throes';
   damage?: string;
   damageType?: CombatDamageType;
   saveType?: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
@@ -204,6 +204,14 @@ export interface MonsterAbility {
   isLegendaryAction?: boolean;
   /** Legendary action point cost (1-3) */
   legendaryCost?: number;
+  /** Dice for death throes explosion (e.g., "8d6") */
+  deathDamage?: string;
+  /** Damage type for death throes */
+  deathDamageType?: CombatDamageType;
+  /** Save DC for death throes (half damage on save) */
+  deathSaveDC?: number;
+  /** Save type for death throes */
+  deathSaveType?: 'str' | 'dex' | 'con';
 }
 
 export interface MonsterAbilityInstance {
@@ -298,6 +306,52 @@ export interface AuraResult {
   damage?: number;
   damageType?: CombatDamageType;
   damageRoll?: string;
+}
+
+export interface DeathThroesResult {
+  monsterName: string;
+  damage: number;
+  damageType: CombatDamageType;
+  damageRoll: string;
+  saveDC: number;
+  saveType: string;
+  saveRoll: number;
+  saveTotal: number;
+  savePassed: boolean;
+  finalDamage: number;
+  playerHpBefore: number;
+  playerHpAfter: number;
+  playerSurvived: boolean;
+  mutualKill: boolean;
+}
+
+export interface PhaseTransitionEffect {
+  type: 'add_ability' | 'stat_boost' | 'self_buff' | 'aoe_burst' | 'unlock_ability';
+  ability?: MonsterAbility;
+  statBoost?: { attack?: number; ac?: number; damage?: number };
+  selfBuff?: { status: string; duration: number };
+  aoeBurst?: { damage: string; damageType: CombatDamageType; saveDC: number; saveType: 'str' | 'dex' | 'con' };
+  unlockAbilityId?: string;
+}
+
+export interface PhaseTransition {
+  id: string;
+  hpThresholdPercent: number;
+  name: string;
+  description: string;
+  triggered: boolean;
+  effects: PhaseTransitionEffect[];
+}
+
+export interface PhaseTransitionResult {
+  transitionId: string;
+  transitionName: string;
+  hpThresholdPercent: number;
+  actualHpPercent: number;
+  effects: string[];
+  aoeDamage?: number;
+  aoeSavePassed?: boolean;
+  narratorText: string;
 }
 
 export interface SpellSlots {
@@ -474,6 +528,10 @@ export interface Combatant {
   legendaryResistancesRemaining?: number;
   /** Immune to fear aura after passing save */
   fearAuraImmune?: boolean;
+  /** Phase transitions for boss monsters */
+  phaseTransitions?: PhaseTransition[];
+  /** Whether death throes have already fired for this monster */
+  deathThroesProcessed?: boolean;
 }
 
 export interface ClassAbilityAttackMods {
@@ -822,4 +880,6 @@ export interface TurnLogEntry {
   legendaryActions?: LegendaryActionResult[];
   legendaryResistance?: LegendaryResistanceResult;
   auraResults?: AuraResult[];
+  deathThroesResult?: DeathThroesResult;
+  phaseTransition?: PhaseTransitionResult;
 }

@@ -529,6 +529,12 @@ export function resolveMonsterAbility(
       resolved = handleBuff(state, actor, abilityDef);
       break;
 
+    case 'death_throes':
+    case 'fear_aura':
+    case 'damage_aura':
+      // Passive abilities — not resolved as actions
+      return { state, result: { ...baseResult, description: `${abilityDef.name} is passive.` } };
+
     default:
       return { state, result: { ...baseResult, description: `Unknown ability type: ${abilityDef.type}` } };
   }

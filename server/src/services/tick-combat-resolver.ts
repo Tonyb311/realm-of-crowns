@@ -22,6 +22,8 @@ import {
   calculateAC,
   checkCombatEnd,
   STATUS_EFFECT_DEFS,
+  resolveDeathThroes,
+  checkPhaseTransitions,
 } from '../lib/combat-engine';
 import { resolveMonsterAbility } from '../lib/monster-ability-resolver';
 import type {
@@ -35,6 +37,7 @@ import type {
   MonsterAbilityInstance,
   MonsterAbility,
   LegendaryActionResult,
+  PhaseTransition,
 } from '@shared/types/combat';
 import { getModifier } from '@shared/types/combat';
 import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
@@ -77,9 +80,11 @@ function buildMonsterCombatOptions(monster: any) {
   const critResistance = monster.critResistance as number ?? 0;
   const legendaryActions = monster.legendaryActions as number ?? 0;
   const legendaryResistances = monster.legendaryResistances as number ?? 0;
+  const phaseTransitions = (monster.phaseTransitions as PhaseTransition[] ?? []);
   if (abilities.length === 0 && resistances.length === 0 && immunities.length === 0 &&
       vulnerabilities.length === 0 && conditionImmunities.length === 0 &&
-      !critImmunity && critResistance === 0 && legendaryActions === 0 && legendaryResistances === 0) {
+      !critImmunity && critResistance === 0 && legendaryActions === 0 && legendaryResistances === 0 &&
+      phaseTransitions.length === 0) {
     return undefined;
   }
   return {
@@ -92,6 +97,7 @@ function buildMonsterCombatOptions(monster: any) {
     ...(abilities.length > 0 && { monsterAbilities: abilities }),
     ...(legendaryActions > 0 && { legendaryActions }),
     ...(legendaryResistances > 0 && { legendaryResistances }),
+    ...(phaseTransitions.length > 0 && { phaseTransitions }),
   };
 }
 
@@ -186,9 +192,12 @@ function decideAction(
         }
       }
 
-      // Filter available abilities (not on cooldown, has uses, not on_hit type)
+      // Filter available abilities (not on cooldown, has uses, not passive types)
       const available = actor.monsterAbilities.filter(inst => {
         if (inst.def.type === 'on_hit') return false; // on_hit triggers passively
+        if (inst.def.type === 'death_throes') return false; // fires on death, not as action
+        if (inst.def.type === 'fear_aura') return false; // processed at turn start
+        if (inst.def.type === 'damage_aura') return false; // processed on melee hit
         if (inst.cooldownRemaining > 0 && !inst.isRecharged) return false;
         if (inst.usesRemaining !== null && inst.usesRemaining <= 0) return false;
         return true;
@@ -511,6 +520,54 @@ export function resolveTickCombat(
               { ...lastEntry, legendaryActions: legendaryActionResults },
             ],
           };
+        }
+      }
+
+      // === PHASE TRANSITIONS (after player's turn — monster may have dropped below HP threshold) ===
+      const monsterForPT = state.combatants.find(
+        c => c.team !== actor.team && c.isAlive && c.entityType === 'monster'
+          && c.phaseTransitions && c.phaseTransitions.length > 0
+      );
+      if (monsterForPT && state.status === 'ACTIVE') {
+        const pt = checkPhaseTransitions(state, monsterForPT.id);
+        state = pt.state;
+        if (pt.result) {
+          // Attach to last log entry
+          if (state.log.length > 0) {
+            const lastEntry = state.log[state.log.length - 1];
+            state = {
+              ...state,
+              log: [
+                ...state.log.slice(0, -1),
+                { ...lastEntry, phaseTransition: pt.result },
+              ],
+            };
+          }
+          // aoe_burst may have killed the player
+          state = checkCombatEnd(state);
+        }
+      }
+    }
+
+    // === DEATH THROES — centralized check after every turn ===
+    for (const c of state.combatants) {
+      if (c.entityType === 'monster' && !c.isAlive && !c.deathThroesProcessed) {
+        const dt = resolveDeathThroes(state, c.id);
+        state = dt.state;
+        if (dt.result) {
+          // Attach to last log entry
+          if (state.log.length > 0) {
+            const lastEntry = state.log[state.log.length - 1];
+            state = {
+              ...state,
+              log: [
+                ...state.log.slice(0, -1),
+                { ...lastEntry, deathThroesResult: dt.result },
+              ],
+            };
+          }
+          // Re-check: player may have died from death throes → mutual kill
+          state = checkCombatEnd(state);
         }
       }
     }

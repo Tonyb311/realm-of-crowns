@@ -62,6 +62,7 @@ export interface MonsterCombatData {
   critResistance?: number;
   legendaryActions?: number;
   legendaryResistances?: number;
+  phaseTransitions?: any[];
 }
 
 export interface SyntheticMonsterResult {

@@ -1629,6 +1629,7 @@ model Monster {
   expandedCritRange   Int       @default(0)              @map("expanded_crit_range")
   legendaryActions      Int       @default(0)              @map("legendary_actions")
   legendaryResistances  Int       @default(0)              @map("legendary_resistances")
+  phaseTransitions      Json      @default("[]")           @map("phase_transitions")
   formulaCR           Float?                             @map("formula_cr")
   simCR               Float?                             @map("sim_cr")
   encounterType       String    @default("solo")         @map("encounter_type")

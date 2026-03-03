@@ -118,6 +118,16 @@ export interface CRInput {
   legendaryResistances?: number;
   fearAura?: boolean;
   damageAura?: { damage: string };
+  deathThroesDamage?: string;
+  phaseTransitions?: {
+    hpThresholdPercent: number;
+    effects: {
+      type: string;
+      statBoost?: { attack?: number; damage?: number };
+      aoeBurst?: { damage: string };
+      ability?: { damage?: string };
+    }[];
+  }[];
 }
 
 // ---- Core Formula ----
@@ -202,6 +212,32 @@ export function computeFormulaCR(input: CRInput): number {
   if (input.damageAura?.damage) {
     const auraDpr = parseAvgDamage(input.damageAura.damage);
     abilityDprBonus += auraDpr; // roughly once per round
+  }
+
+  // Death throes DPR (one-time burst amortized over combat)
+  if (input.deathThroesDamage) {
+    const dtAvg = parseAvgDamage(input.deathThroesDamage);
+    const expectedDt = dtAvg * 0.65 + (dtAvg / 2) * 0.35; // weighted save-for-half
+    abilityDprBonus += expectedDt / TARGET_ROUNDS;
+  }
+
+  // Phase transition DPR (stat boosts active for fraction of combat, aoe bursts are one-time)
+  if (input.phaseTransitions) {
+    for (const pt of input.phaseTransitions) {
+      const activePercent = pt.hpThresholdPercent / 100;
+      for (const eff of pt.effects) {
+        if (eff.type === 'stat_boost' && eff.statBoost) {
+          if (eff.statBoost.attack) abilityDprBonus += avgDmg * 0.05 * eff.statBoost.attack * activePercent;
+          if (eff.statBoost.damage) abilityDprBonus += eff.statBoost.damage * activePercent;
+        }
+        if (eff.type === 'aoe_burst' && eff.aoeBurst) {
+          abilityDprBonus += parseAvgDamage(eff.aoeBurst.damage) * 0.65 / TARGET_ROUNDS;
+        }
+        if (eff.type === 'add_ability' && eff.ability?.damage) {
+          abilityDprBonus += parseAvgDamage(eff.ability.damage) * 0.5 * activePercent;
+        }
+      }
+    }
   }
 
   // Legendary action multiplier: extra actions boost effective DPR
