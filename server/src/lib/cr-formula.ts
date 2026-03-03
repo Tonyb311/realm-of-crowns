@@ -114,6 +114,10 @@ export interface CRInput {
     recharge?: number;
     cooldown?: number;
   }[];
+  legendaryActions?: number;
+  legendaryResistances?: number;
+  fearAura?: boolean;
+  damageAura?: { damage: string };
 }
 
 // ---- Core Formula ----
@@ -194,11 +198,20 @@ export function computeFormulaCR(input: CRInput): number {
     }
   }
 
+  // Damage aura DPR (attacker takes damage when hitting the monster in melee)
+  if (input.damageAura?.damage) {
+    const auraDpr = parseAvgDamage(input.damageAura.damage);
+    abilityDprBonus += auraDpr; // roughly once per round
+  }
+
+  // Legendary action multiplier: extra actions boost effective DPR
+  const laMultiplier = 1 + (input.legendaryActions ?? 0) * 0.5;
+
   // Find EDPR_Level: the level whose avg HP is killed by this monster in ~TARGET_ROUNDS
   let edprLevel = 1;
   for (let lvl = 1; lvl <= 50; lvl++) {
     const hitProb = baseHitProb(lvl);
-    const monsterDpr = avgDmg * hitProb * attacksPerRound + abilityDprBonus;
+    const monsterDpr = (avgDmg * hitProb * attacksPerRound + abilityDprBonus) * laMultiplier;
     const playerHp = getTableValue(PLAYER_HP, lvl);
     const roundsToKill = playerHp / monsterDpr;
     if (roundsToKill >= TARGET_ROUNDS) {
@@ -224,6 +237,15 @@ export function computeFormulaCR(input: CRInput): number {
       }
     }
   }
+
+  // Fear aura lethality bonus
+  if (input.fearAura) {
+    lethalityAdj += 0.5;
+  }
+
+  // Legendary resistance reduces lethality vulnerability (boss resists player debuffs)
+  const lrReduction = Math.min(lethalityAdj, (input.legendaryResistances ?? 0) * 0.5);
+  lethalityAdj = Math.max(0, lethalityAdj - lrReduction);
 
   // ---- Final CR ----
   const cr = (ehpLevel + edprLevel + lethalityAdj) / 2;

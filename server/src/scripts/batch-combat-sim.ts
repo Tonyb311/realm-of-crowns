@@ -54,10 +54,12 @@ function buildMonsterCombatOptions(cd: MonsterCombatData) {
   const conditionImmunities = cd.conditionImmunities as string[] ?? [];
   const critImmunity = cd.critImmunity ?? false;
   const critResistance = cd.critResistance ?? 0;
+  const legendaryActions = cd.legendaryActions ?? 0;
+  const legendaryResistances = cd.legendaryResistances ?? 0;
 
   if (abilities.length === 0 && resistances.length === 0 && immunities.length === 0 &&
       vulnerabilities.length === 0 && conditionImmunities.length === 0 &&
-      !critImmunity && critResistance === 0) {
+      !critImmunity && critResistance === 0 && legendaryActions === 0 && legendaryResistances === 0) {
     return undefined;
   }
   return {
@@ -68,6 +70,8 @@ function buildMonsterCombatOptions(cd: MonsterCombatData) {
     ...(critImmunity && { critImmunity }),
     ...(critResistance !== 0 && { critResistance }),
     ...(abilities.length > 0 && { monsterAbilities: abilities }),
+    ...(legendaryActions > 0 && { legendaryActions }),
+    ...(legendaryResistances > 0 && { legendaryResistances }),
   };
 }
 

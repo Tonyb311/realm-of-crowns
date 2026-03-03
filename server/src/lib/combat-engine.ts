@@ -42,6 +42,9 @@ import type {
   FumbleResult,
   D100Modifier,
   MonsterAbilityInstance,
+  LegendaryResistanceResult,
+  AuraResult,
+  LegendaryActionResult,
 } from '@shared/types/combat';
 
 import { getModifier } from '@shared/types/combat';
@@ -463,6 +466,45 @@ export function applyDamageTypeInteraction(
   };
 }
 
+// ---- Legendary Resistance ----
+
+/**
+ * Check if a monster can override a failed save with Legendary Resistance.
+ * Consumes one LR charge. Only fires for monsters with remaining charges.
+ */
+export function checkLegendaryResistance(
+  state: CombatState,
+  targetId: string,
+  save: { roll: number; total: number; success: boolean },
+  saveDC: number,
+): { state: CombatState; overridden: boolean; lrResult?: LegendaryResistanceResult } {
+  if (save.success) return { state, overridden: false };
+  const target = state.combatants.find(c => c.id === targetId);
+  if (!target || target.entityType !== 'monster') return { state, overridden: false };
+  if (!target.legendaryResistancesRemaining || target.legendaryResistancesRemaining <= 0)
+    return { state, overridden: false };
+
+  const remaining = target.legendaryResistancesRemaining - 1;
+  state = {
+    ...state,
+    combatants: state.combatants.map(c =>
+      c.id === targetId ? { ...c, legendaryResistancesRemaining: remaining } : c
+    ),
+  };
+  return {
+    state,
+    overridden: true,
+    lrResult: {
+      originalRoll: save.roll,
+      originalTotal: save.total,
+      saveDC,
+      wouldHaveFailed: true,
+      resistanceUsed: true,
+      resistancesRemaining: remaining,
+    },
+  };
+}
+
 // ---- Status Effects ----
 
 // Phase 5A: CC statuses that are blocked by ccImmune buffs
@@ -874,6 +916,7 @@ export function resolveAttack(
 
   // Phase 5A BUFF-3: Dodge check after hit determination
   let dodged = false;
+  let damageAuraResult: AuraResult | undefined;
   if (roll.hit) {
     const totalDodge = (target.activeBuffs ?? []).reduce((sum, b) => sum + (b.dodgeMod ?? 0), 0);
     if (totalDodge > 0) {
@@ -1222,6 +1265,40 @@ export function resolveAttack(
       }
     }
 
+    // === DAMAGE AURA (fire aura damages melee attacker on hit) ===
+    if (target.entityType === 'monster' && target.monsterAbilities && roll.hit && weapon.attackModifierStat === 'str') {
+      const dmgAura = target.monsterAbilities.find(inst => inst.def.type === 'damage_aura');
+      if (dmgAura && dmgAura.def.auraDamage) {
+        const auraDmgMatch = dmgAura.def.auraDamage.match(/^(\d+)d(\d+)$/);
+        if (auraDmgMatch) {
+          const auraDmgRoll = damageRoll(parseInt(auraDmgMatch[1]), parseInt(auraDmgMatch[2]));
+          let auraDmg = auraDmgRoll.total;
+          const auraDmgType = dmgAura.def.auraDamageType;
+          // Apply DT interaction (future-proof: in case attacker has resistances)
+          if (auraDmgType && actor.resistances?.includes(auraDmgType)) {
+            auraDmg = Math.floor(auraDmg / 2);
+          }
+          if (auraDmgType && actor.immunities?.includes(auraDmgType)) {
+            auraDmg = 0;
+          }
+          if (auraDmg > 0) {
+            actor = {
+              ...actor,
+              currentHp: Math.max(0, actor.currentHp - auraDmg),
+              isAlive: actor.currentHp - auraDmg > 0,
+            };
+          }
+          damageAuraResult = {
+            auraName: dmgAura.def.name,
+            auraType: 'damage',
+            damage: auraDmg,
+            damageType: auraDmgType,
+            damageRoll: dmgAura.def.auraDamage,
+          };
+        }
+      }
+    }
+
     // Phase 3: Reactive counter/trap trigger check on target
     if (target.activeBuffs && target.activeBuffs.length > 0) {
       const reactiveBuff = target.activeBuffs.find(buff =>
@@ -1323,6 +1400,7 @@ export function resolveAttack(
     fumbleResult,
     damageTypeResult,
     statusEffectsApplied,
+    ...(damageAuraResult && { auraResult: damageAuraResult }),
   };
 
   const combatants = state.combatants.map((c) => {
@@ -1367,6 +1445,9 @@ export function resolveCast(
       if (def) totalSaveMod += def.saveModifier;
     }
     const save = savingThrow(totalSaveMod, saveDC);
+    // Legendary Resistance check
+    { const lr = checkLegendaryResistance(state, targetId, save, saveDC);
+      if (lr.overridden) { save.success = true; state = lr.state; target = state.combatants.find(c => c.id === targetId)!; } }
     saveRoll = save.roll;
     saveTotal = save.total;
     saveSucceeded = save.success;
@@ -1676,6 +1757,7 @@ export function resolvePsionAbility(
         if (def) totalSaveMod += def.saveModifier;
       }
       const save = savingThrow(totalSaveMod, saveDC);
+      { const lr = checkLegendaryResistance(current, targetId!, save, saveDC); if (lr.overridden) { save.success = true; current = lr.state; } }
       const rawDmg = damageRoll(2, 6, intMod);
       let totalDamage = rawDmg.total;
       let statusApplied: string | undefined;
@@ -1736,6 +1818,7 @@ export function resolvePsionAbility(
         if (def) totalSaveMod += def.saveModifier;
       }
       const save = savingThrow(totalSaveMod, saveDC);
+      { const lr = checkLegendaryResistance(current, targetId!, save, saveDC); if (lr.overridden) { save.success = true; current = lr.state; } }
       const rawDmg = damageRoll(3, 8, intMod);
       let totalDamage = rawDmg.total;
       let statusApplied: string | undefined;
@@ -1785,6 +1868,7 @@ export function resolvePsionAbility(
         if (def) totalSaveMod += def.saveModifier;
       }
       const save = savingThrow(totalSaveMod, saveDC);
+      { const lr = checkLegendaryResistance(current, targetId!, save, saveDC); if (lr.overridden) { save.success = true; current = lr.state; } }
       let updatedTarget = target;
       let statusApplied: string | undefined;
       let statusDuration: number | undefined;
@@ -1841,6 +1925,7 @@ export function resolvePsionAbility(
           if (def) totalSaveMod += def.saveModifier;
         }
         const save = savingThrow(totalSaveMod, saveDC);
+        { const lr = checkLegendaryResistance(current, enemy.id, save, saveDC); if (lr.overridden) { save.success = true; current = lr.state; } }
         const rawDmg = damageRoll(3, 6, intMod);
         let dmg = rawDmg.total;
         let updatedEnemy = enemy;
@@ -1884,6 +1969,7 @@ export function resolvePsionAbility(
         if (def) totalSaveMod += def.saveModifier;
       }
       const save = savingThrow(totalSaveMod, saveDC);
+      { const lr = checkLegendaryResistance(current, targetId!, save, saveDC); if (lr.overridden) { save.success = true; current = lr.state; } }
       let updatedTarget = target;
       let statusApplied: string | undefined;
       let statusDuration: number | undefined;
@@ -2141,6 +2227,7 @@ export function resolvePsionAbility(
           if (def) totalSaveMod += def.saveModifier;
         }
         const save = savingThrow(totalSaveMod, saveDC);
+        { const lr = checkLegendaryResistance(current, targetId!, save, saveDC); if (lr.overridden) { save.success = true; current = lr.state; } }
 
         if (!save.success) {
           updatedTarget = applyStatusEffect(updatedTarget, 'stunned', 1, actorId);
@@ -2214,6 +2301,7 @@ export function resolvePsionAbility(
           if (def) totalSaveMod += def.saveModifier;
         }
         const save = savingThrow(totalSaveMod, saveDC);
+        { const lr = checkLegendaryResistance(current, enemy.id, save, saveDC); if (lr.overridden) { save.success = true; current = lr.state; } }
         const rawDmg = damageRoll(2, 8, intMod);
         let dmg = rawDmg.total;
         const applied = applyPsychicDamage(enemy, dmg);
@@ -2266,6 +2354,7 @@ export function resolvePsionAbility(
         if (def) totalSaveMod += def.saveModifier;
       }
       const save = savingThrow(totalSaveMod, saveDC);
+      { const lr = checkLegendaryResistance(current, targetId!, save, saveDC); if (lr.overridden) { save.success = true; current = lr.state; } }
       let updatedTarget = target;
       let totalDamage: number | undefined;
       let banished = false;
@@ -2349,6 +2438,17 @@ export function resolveTurn(
 ): CombatState {
   const actorId = state.turnOrder[state.turnIndex];
   let current = state;
+
+  // === LEGENDARY ACTION POOL REFRESH (at start of monster's turn) ===
+  const laActor = current.combatants.find(c => c.id === actorId);
+  if (laActor?.entityType === 'monster' && laActor.legendaryActionsMax && laActor.legendaryActionsMax > 0) {
+    current = {
+      ...current,
+      combatants: current.combatants.map(c =>
+        c.id === actorId ? { ...c, legendaryActionsRemaining: c.legendaryActionsMax } : c
+      ),
+    };
+  }
 
   // Clear the actor's defend stance from previous round
   current = {
@@ -2481,6 +2581,60 @@ export function resolveTurn(
     }
   }
 
+  // === FEAR AURA (player turn start — check opponent monster's fear_aura) ===
+  const auraResults: AuraResult[] = [];
+  const currentActorPreAura = current.combatants.find(c => c.id === actorId)!;
+  if (currentActorPreAura.entityType === 'character' && !currentActorPreAura.fearAuraImmune) {
+    const monsterOpponent = current.combatants.find(
+      c => c.team !== currentActorPreAura.team && c.isAlive && c.entityType === 'monster' && c.monsterAbilities
+    );
+    if (monsterOpponent) {
+      const fearAura = monsterOpponent.monsterAbilities?.find(inst => inst.def.type === 'fear_aura');
+      if (fearAura) {
+        const wisMod = getModifier(currentActorPreAura.stats.wis);
+        let totalSaveMod = wisMod + currentActorPreAura.proficiencyBonus;
+        for (const eff of currentActorPreAura.statusEffects) {
+          const effDef = STATUS_EFFECT_DEFS[eff.name];
+          if (effDef) totalSaveMod += effDef.saveModifier;
+        }
+        const auraSaveDC = fearAura.def.saveDC ?? 15;
+        const save = savingThrow(totalSaveMod, auraSaveDC);
+        const auraResult: AuraResult = {
+          auraName: fearAura.def.name,
+          auraType: 'fear',
+          saveDC: auraSaveDC,
+          saveRoll: save.roll,
+          saveTotal: save.total,
+          savePassed: save.success,
+        };
+        if (save.success) {
+          // Immune after passing
+          auraResult.immuneAfterPass = true;
+          current = {
+            ...current,
+            combatants: current.combatants.map(c =>
+              c.id === actorId ? { ...c, fearAuraImmune: true } : c
+            ),
+          };
+        } else {
+          // Apply frightened status (1 round)
+          const frightened = applyStatusEffect(
+            current.combatants.find(c => c.id === actorId)!,
+            'frightened', 1, monsterOpponent.id
+          );
+          current = {
+            ...current,
+            combatants: current.combatants.map(c =>
+              c.id === actorId ? frightened : c
+            ),
+          };
+          auraResult.statusApplied = 'frightened';
+        }
+        auraResults.push(auraResult);
+      }
+    }
+  }
+
   // If actor died to DoT, log and skip action
   if (!updatedActor.isAlive) {
     const logEntry: TurnLogEntry = {
@@ -2489,6 +2643,7 @@ export function resolveTurn(
       action: action.type,
       result: noOpDefend(actorId),
       statusTicks: ticks,
+      ...(auraResults.length > 0 && { auraResults }),
     };
 
     return advanceTurn({
@@ -2824,6 +2979,7 @@ export function resolveTurn(
     action: action.type,
     result,
     statusTicks: ticks,
+    ...(auraResults.length > 0 && { auraResults }),
   };
 
   current = {
@@ -2964,7 +3120,7 @@ function advanceTurn(state: CombatState): CombatState {
 }
 
 /** Check if combat has ended (one team standing). */
-function checkCombatEnd(state: CombatState): CombatState {
+export function checkCombatEnd(state: CombatState): CombatState {
   const aliveTeams = new Set<number>();
   for (const c of state.combatants) {
     if (c.isAlive) aliveTeams.add(c.team);
@@ -3087,6 +3243,8 @@ export function createMonsterCombatant(
     critImmunity?: boolean;
     critResistance?: number;
     monsterAbilities?: MonsterAbilityInstance[];
+    legendaryActions?: number;
+    legendaryResistances?: number;
   },
 ): Combatant {
   return {
@@ -3113,5 +3271,13 @@ export function createMonsterCombatant(
     ...(options?.critImmunity && { critImmunity: options.critImmunity }),
     ...(options?.critResistance && { critResistance: options.critResistance }),
     ...(options?.monsterAbilities && { monsterAbilities: options.monsterAbilities }),
+    ...(options?.legendaryActions && {
+      legendaryActionsMax: options.legendaryActions,
+      legendaryActionsRemaining: options.legendaryActions,
+    }),
+    ...(options?.legendaryResistances && {
+      legendaryResistancesMax: options.legendaryResistances,
+      legendaryResistancesRemaining: options.legendaryResistances,
+    }),
   };
 }

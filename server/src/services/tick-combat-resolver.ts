@@ -20,7 +20,10 @@ import {
   resolveFlee,
   calculateDeathPenalty,
   calculateAC,
+  checkCombatEnd,
+  STATUS_EFFECT_DEFS,
 } from '../lib/combat-engine';
+import { resolveMonsterAbility } from '../lib/monster-ability-resolver';
 import type {
   CombatState,
   CombatAction,
@@ -31,6 +34,7 @@ import type {
   CombatDamageType,
   MonsterAbilityInstance,
   MonsterAbility,
+  LegendaryActionResult,
 } from '@shared/types/combat';
 import { getModifier } from '@shared/types/combat';
 import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
@@ -71,9 +75,11 @@ function buildMonsterCombatOptions(monster: any) {
   const conditionImmunities = monster.conditionImmunities as string[] ?? [];
   const critImmunity = monster.critImmunity as boolean ?? false;
   const critResistance = monster.critResistance as number ?? 0;
+  const legendaryActions = monster.legendaryActions as number ?? 0;
+  const legendaryResistances = monster.legendaryResistances as number ?? 0;
   if (abilities.length === 0 && resistances.length === 0 && immunities.length === 0 &&
       vulnerabilities.length === 0 && conditionImmunities.length === 0 &&
-      !critImmunity && critResistance === 0) {
+      !critImmunity && critResistance === 0 && legendaryActions === 0 && legendaryResistances === 0) {
     return undefined;
   }
   return {
@@ -84,6 +90,8 @@ function buildMonsterCombatOptions(monster: any) {
     ...(critImmunity && { critImmunity }),
     ...(critResistance !== 0 && { critResistance }),
     ...(abilities.length > 0 && { monsterAbilities: abilities }),
+    ...(legendaryActions > 0 && { legendaryActions }),
+    ...(legendaryResistances > 0 && { legendaryResistances }),
   };
 }
 
@@ -379,6 +387,133 @@ export function resolveTickCombat(
       : undefined;
 
     state = resolveTurn(state, action, context, racialContext);
+
+    // === LEGENDARY ACTIONS (after player's turn, if opponent monster has LA remaining) ===
+    if (actor.entityType === 'character' && state.status === 'ACTIVE') {
+      const monsterOpponent = state.combatants.find(
+        c => c.team !== actor.team && c.isAlive && c.entityType === 'monster'
+          && c.legendaryActionsRemaining && c.legendaryActionsRemaining > 0
+      );
+      if (monsterOpponent) {
+        const legendaryActionResults: LegendaryActionResult[] = [];
+        let laCount = 0;
+        const MAX_LA_PER_TURN = 3; // Safety cap
+
+        while (
+          state.status === 'ACTIVE'
+          && laCount < MAX_LA_PER_TURN
+        ) {
+          const monster = state.combatants.find(c => c.id === monsterOpponent.id);
+          if (!monster || !monster.isAlive || !monster.legendaryActionsRemaining || monster.legendaryActionsRemaining <= 0) break;
+
+          // Check if monster is prevented from acting
+          const isPrevented = monster.statusEffects.some(e => {
+            const def = STATUS_EFFECT_DEFS[e.name as keyof typeof STATUS_EFFECT_DEFS];
+            return def?.preventsAction;
+          });
+          if (isPrevented) break;
+
+          // Find available legendary abilities (not fear_aura/damage_aura, not on cooldown, cost <= remaining)
+          const availableLAs = (monster.monsterAbilities ?? []).filter(inst => {
+            if (!inst.def.isLegendaryAction) return false;
+            if (inst.def.type === 'fear_aura' || inst.def.type === 'damage_aura') return false;
+            if (inst.cooldownRemaining > 0 && !inst.isRecharged) return false;
+            if (inst.usesRemaining !== null && inst.usesRemaining <= 0) return false;
+            if ((inst.def.legendaryCost ?? 1) > (monster.legendaryActionsRemaining ?? 0)) return false;
+            return true;
+          });
+
+          // Sort by priority descending
+          availableLAs.sort((a, b) => (b.def.priority ?? 0) - (a.def.priority ?? 0));
+
+          const enemies = state.combatants.filter(c => c.team !== monster.team && c.isAlive);
+          if (enemies.length === 0) break;
+          const targetId = enemies[0].id;
+
+          let laResult: LegendaryActionResult;
+
+          if (availableLAs.length > 0) {
+            const chosen = availableLAs[0];
+            const cost = chosen.def.legendaryCost ?? 1;
+
+            // Resolve the ability
+            const abilityOutcome = resolveMonsterAbility(state, monster.id, chosen.def, targetId);
+            state = abilityOutcome.state;
+
+            // Tick cooldown on used ability
+            state = {
+              ...state,
+              combatants: state.combatants.map(c => {
+                if (c.id !== monster.id || !c.monsterAbilities) return c;
+                return {
+                  ...c,
+                  legendaryActionsRemaining: (c.legendaryActionsRemaining ?? 0) - cost,
+                  monsterAbilities: c.monsterAbilities.map(inst => {
+                    if (inst.def.id === chosen.def.id) {
+                      return {
+                        ...inst,
+                        cooldownRemaining: inst.def.recharge ? 1 : (inst.def.cooldown ?? 0),
+                        usesRemaining: inst.usesRemaining !== null ? inst.usesRemaining - 1 : null,
+                        isRecharged: false,
+                      };
+                    }
+                    return inst;
+                  }),
+                };
+              }),
+            };
+
+            const updatedMonster = state.combatants.find(c => c.id === monster.id);
+            laResult = {
+              actionNumber: laCount + 1,
+              actionsRemaining: updatedMonster?.legendaryActionsRemaining ?? 0,
+              cost,
+              action: abilityOutcome.result,
+            };
+          } else {
+            // Basic attack fallback (cost 1)
+            const monsterWeapon = monster.weapon;
+            if (!monsterWeapon) break;
+            const atk = resolveAttack(state, monster.id, targetId, monsterWeapon);
+            state = atk.state;
+
+            // Deduct 1 LA point
+            state = {
+              ...state,
+              combatants: state.combatants.map(c =>
+                c.id === monster.id
+                  ? { ...c, legendaryActionsRemaining: (c.legendaryActionsRemaining ?? 0) - 1 }
+                  : c
+              ),
+            };
+
+            const updatedMonster = state.combatants.find(c => c.id === monster.id);
+            laResult = {
+              actionNumber: laCount + 1,
+              actionsRemaining: updatedMonster?.legendaryActionsRemaining ?? 0,
+              cost: 1,
+              action: atk.result,
+            };
+          }
+
+          legendaryActionResults.push(laResult);
+          state = checkCombatEnd(state);
+          laCount++;
+        }
+
+        // Attach legendary action results to the last log entry
+        if (legendaryActionResults.length > 0 && state.log.length > 0) {
+          const lastEntry = state.log[state.log.length - 1];
+          state = {
+            ...state,
+            log: [
+              ...state.log.slice(0, -1),
+              { ...lastEntry, legendaryActions: legendaryActionResults },
+            ],
+          };
+        }
+      }
+    }
 
     // Track fled combatants
     if (action.type === 'flee') {

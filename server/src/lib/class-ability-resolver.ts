@@ -14,6 +14,7 @@ import {
   applyStatusEffect,
   resolveAttack,
   resolveFlee,
+  checkLegendaryResistance,
 } from './combat-engine';
 import { roll, rollMultiple, savingThrow, fleeCheck } from '@shared/utils/dice';
 import { getModifier } from '@shared/types/combat';
@@ -1462,6 +1463,7 @@ const handleControl: EffectHandler = (state, actor, target, _enemies, abilityDef
   const dc = calculateSaveDC(actor) + Math.abs(savePenalty);
   const targetSaveMod = getModifier(target.stats[saveType as keyof typeof target.stats] ?? 10);
   const save = savingThrow(targetSaveMod, dc);
+  { const lr = checkLegendaryResistance(state, target.id, save, dc); if (lr.overridden) { save.success = true; state = lr.state; } }
 
   if (save.success) {
     // On save: apply weaker effect if specified, otherwise nothing
@@ -1564,6 +1566,7 @@ const handleAoeDamageStatus: EffectHandler = (state, actor, _target, enemies, ab
     let dmg = rollDice(diceCount, diceSides, bonusMod);
     const targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10);
     const save = savingThrow(targetSaveMod, dc);
+    { const lr = checkLegendaryResistance(state, enemy.id, save, dc); if (lr.overridden) { save.success = true; state = lr.state; } }
 
     let statusApplied: string | undefined;
     if (save.success && halfDamageOnSave) {
@@ -1689,6 +1692,7 @@ const handleSwap: EffectHandler = (state, actor, target, _enemies, abilityDef, e
   const dc = calculateSaveDC(actor);
   const targetSaveMod = getModifier(target.stats[saveType as keyof typeof target.stats] ?? 10);
   const save = savingThrow(targetSaveMod, dc);
+  { const lr = checkLegendaryResistance(state, target.id, save, dc); if (lr.overridden) { save.success = true; state = lr.state; } }
 
   if (save.success) {
     return {
@@ -1791,6 +1795,7 @@ const handleBanish: EffectHandler = (state, actor, target, _enemies, abilityDef,
   const dc = calculateSaveDC(actor) + Math.abs(savePenalty);
   const targetSaveMod = getModifier(target.stats[saveType as keyof typeof target.stats] ?? 10);
   const save = savingThrow(targetSaveMod, dc);
+  { const lr = checkLegendaryResistance(state, target.id, save, dc); if (lr.overridden) { save.success = true; state = lr.state; } }
 
   if (save.success) {
     // Reduced effect on save

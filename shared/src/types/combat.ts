@@ -178,7 +178,8 @@ export interface DamageTypeResult {
 export interface MonsterAbility {
   id: string;
   name: string;
-  type: 'damage' | 'status' | 'aoe' | 'multiattack' | 'buff' | 'heal' | 'on_hit';
+  type: 'damage' | 'status' | 'aoe' | 'multiattack' | 'buff' | 'heal' | 'on_hit'
+        | 'fear_aura' | 'damage_aura';
   damage?: string;
   damageType?: CombatDamageType;
   saveType?: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
@@ -193,6 +194,16 @@ export interface MonsterAbility {
   disabledBy?: CombatDamageType[];
   attacks?: number;
   description?: string;
+  /** Dice for damage aura (e.g., "1d6") */
+  auraDamage?: string;
+  /** Damage type for damage aura */
+  auraDamageType?: CombatDamageType;
+  /** false = immune after first successful save */
+  auraRepeats?: boolean;
+  /** Can this ability be used as a legendary action? */
+  isLegendaryAction?: boolean;
+  /** Legendary action point cost (1-3) */
+  legendaryCost?: number;
 }
 
 export interface MonsterAbilityInstance {
@@ -255,6 +266,38 @@ export interface MonsterAbilityResult {
     hpAfter: number;
     killed: boolean;
   }>;
+}
+
+// ---- Boss Feature Result Types ----
+
+export interface LegendaryActionResult {
+  actionNumber: number;
+  actionsRemaining: number;
+  cost: number;
+  action: MonsterAbilityResult | AttackResult;
+}
+
+export interface LegendaryResistanceResult {
+  originalRoll: number;
+  originalTotal: number;
+  saveDC: number;
+  wouldHaveFailed: boolean;
+  resistanceUsed: boolean;
+  resistancesRemaining: number;
+}
+
+export interface AuraResult {
+  auraName: string;
+  auraType: 'fear' | 'damage';
+  saveDC?: number;
+  saveRoll?: number;
+  saveTotal?: number;
+  savePassed?: boolean;
+  statusApplied?: string;
+  immuneAfterPass?: boolean;
+  damage?: number;
+  damageType?: CombatDamageType;
+  damageRoll?: string;
 }
 
 export interface SpellSlots {
@@ -420,6 +463,17 @@ export interface Combatant {
   monsterAbilities?: MonsterAbilityInstance[];
   /** Damage types received this round (for regen disabling) */
   damageTypesReceivedThisRound?: CombatDamageType[];
+  // Boss features
+  /** Maximum legendary actions per round */
+  legendaryActionsMax?: number;
+  /** Remaining legendary actions this round */
+  legendaryActionsRemaining?: number;
+  /** Maximum legendary resistances per combat */
+  legendaryResistancesMax?: number;
+  /** Remaining legendary resistances */
+  legendaryResistancesRemaining?: number;
+  /** Immune to fear aura after passing save */
+  fearAuraImmune?: boolean;
 }
 
 export interface ClassAbilityAttackMods {
@@ -536,6 +590,8 @@ export interface AttackResult {
   damageTypeResult?: DamageTypeResult;
   // Monster on-hit effects
   statusEffectsApplied?: string[];
+  // Boss aura: damage reflected back on melee attacker
+  auraResult?: AuraResult;
 }
 
 export interface CastResult {
@@ -761,4 +817,7 @@ export interface TurnLogEntry {
   action: CombatActionType;
   result: TurnResult;
   statusTicks: StatusTickResult[];
+  legendaryActions?: LegendaryActionResult[];
+  legendaryResistance?: LegendaryResistanceResult;
+  auraResults?: AuraResult[];
 }

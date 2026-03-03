@@ -60,6 +60,8 @@ export interface MonsterCombatData {
   conditionImmunities?: string[];
   critImmunity?: boolean;
   critResistance?: number;
+  legendaryActions?: number;
+  legendaryResistances?: number;
 }
 
 export interface SyntheticMonsterResult {

@@ -33,6 +33,9 @@ import type {
   CritResult,
   FumbleResult,
   DamageTypeResult,
+  LegendaryActionResult,
+  LegendaryResistanceResult,
+  AuraResult,
 } from '@shared/types/combat';
 
 // Config flag — can be turned off in production if performance is a concern
@@ -138,6 +141,10 @@ export interface RoundLogEntry {
   critResult?: CritResult;
   fumbleResult?: FumbleResult;
   damageTypeResult?: DamageTypeResult;
+  // Legendary & Aura results
+  legendaryActions?: LegendaryActionResult[];
+  legendaryResistance?: LegendaryResistanceResult;
+  auraResults?: AuraResult[];
   // HP snapshot for all combatants after this action
   hpAfter: Record<string, number>;
 }
@@ -266,6 +273,17 @@ export function buildRoundsData(state: CombatState): RoundLogEntry[] {
       if (atk.damageTypeResult) round.damageTypeResult = atk.damageTypeResult;
       if (atk.statusEffectsApplied && atk.statusEffectsApplied.length > 0) {
         round.statusEffectsApplied.push(...atk.statusEffectsApplied);
+      }
+
+      // Damage aura result (fire aura etc when melee hitting a boss)
+      if (atk.auraResult) {
+        if (!round.auraResults) round.auraResults = [];
+        round.auraResults.push(atk.auraResult);
+        // Update attacker HP from aura damage
+        if (atk.auraResult.damage && atk.auraResult.damage > 0 && actor) {
+          const actorHpAfterAura = Math.max(0, (hpTracker[actor.id] ?? 0) - atk.auraResult.damage);
+          hpTracker[actor.id] = actorHpAfterAura;
+        }
       }
 
       // Update HP tracker
@@ -531,6 +549,32 @@ export function buildRoundsData(state: CombatState): RoundLogEntry[] {
           hpTracker[ptr.targetId] = ptr.hpAfter;
         }
       }
+    }
+
+    // Pass through legendary actions from TurnLogEntry
+    if (entry.legendaryActions && entry.legendaryActions.length > 0) {
+      round.legendaryActions = entry.legendaryActions;
+      // Update HP tracker from legendary action results
+      for (const la of entry.legendaryActions) {
+        const act = la.action as any;
+        if (act.targetId && act.targetHpAfter !== undefined) {
+          hpTracker[act.targetId] = act.targetHpAfter;
+        }
+        if (act.actorId && act.actorHpAfter !== undefined) {
+          hpTracker[act.actorId] = act.actorHpAfter;
+        }
+      }
+    }
+
+    // Pass through legendary resistance
+    if (entry.legendaryResistance) {
+      round.legendaryResistance = entry.legendaryResistance;
+    }
+
+    // Pass through aura results (fear aura at turn start)
+    if (entry.auraResults && entry.auraResults.length > 0) {
+      if (!round.auraResults) round.auraResults = [];
+      round.auraResults.push(...entry.auraResults);
     }
 
     // Snapshot HP for all combatants after this action

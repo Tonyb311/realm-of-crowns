@@ -1627,6 +1627,8 @@ model Monster {
   critImmunity        Boolean   @default(false)          @map("crit_immunity")
   critResistance      Int       @default(0)              @map("crit_resistance")
   expandedCritRange   Int       @default(0)              @map("expanded_crit_range")
+  legendaryActions      Int       @default(0)              @map("legendary_actions")
+  legendaryResistances  Int       @default(0)              @map("legendary_resistances")
   formulaCR           Float?                             @map("formula_cr")
   simCR               Float?                             @map("sim_cr")
   encounterType       String    @default("solo")         @map("encounter_type")

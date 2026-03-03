@@ -12,7 +12,7 @@ import type {
 } from '@shared/types/combat';
 import { getModifier } from '@shared/types/combat';
 import { damageRoll, roll, advantage, savingThrow, attackRoll } from '@shared/utils/dice';
-import { applyStatusEffect, calculateDamage, resolveAttack } from '../lib/combat-engine';
+import { applyStatusEffect, calculateDamage, resolveAttack, checkLegendaryResistance } from '../lib/combat-engine';
 import type { RacialAbility } from '@shared/types/race';
 
 // ---- Types ----
@@ -589,6 +589,7 @@ function resolveDrakonidAbility(
         const saveDC = 8 + conMod + proficiency;
         const dexMod = getModifier(enemy.stats.dex);
         const save = savingThrow(dexMod, saveDC);
+        { const lr = checkLegendaryResistance(current, enemy.id, save, saveDC); if (lr.overridden) { save.success = true; current = lr.state; } }
 
         const actualDamage = save.success ? Math.floor(totalDamage / 2) : totalDamage;
         const newHp = Math.max(0, enemy.currentHp - actualDamage);
@@ -626,6 +627,7 @@ function resolveDrakonidAbility(
 
       for (const enemy of enemies) {
         const save = savingThrow(getModifier(enemy.stats.wis), saveDC);
+        { const lr = checkLegendaryResistance(current, enemy.id, save, saveDC); if (lr.overridden) { save.success = true; current = lr.state; } }
         if (!save.success) {
           // Frightened = weakened (attack and save penalties)
           const updated = applyStatusEffect(enemy, 'weakened', 2, actor.id);
@@ -810,6 +812,7 @@ function resolveMerfolkAbility(
         const proficiency = Math.floor(actor.level / 4) + 2;
         const saveDC = 8 + getModifier(actor.stats.wis) + proficiency;
         const save = savingThrow(dexMod, saveDC);
+        { const lr = checkLegendaryResistance(current, enemy.id, save, saveDC); if (lr.overridden) { save.success = true; current = lr.state; } }
 
         const actualDamage = save.success ? Math.floor(dmg.total / 2) : dmg.total;
         const newHp = Math.max(0, enemy.currentHp - actualDamage);
@@ -1040,6 +1043,7 @@ function resolveGoliathAbility(
 
       for (const enemy of enemies) {
         const save = savingThrow(getModifier(enemy.stats.dex), saveDC);
+        { const lr = checkLegendaryResistance(current, enemy.id, save, saveDC); if (lr.overridden) { save.success = true; current = lr.state; } }
         const actualDamage = save.success ? Math.floor(dmg.total / 2) : dmg.total;
         const newHp = Math.max(0, enemy.currentHp - actualDamage);
 
@@ -1153,6 +1157,7 @@ function resolveNightborneAbility(
       const proficiency = Math.floor(actor.level / 4) + 2;
       const saveDC = 8 + chaMod + proficiency;
       const save = savingThrow(getModifier(target.stats.wis), saveDC);
+      { let current = state; const lr = checkLegendaryResistance(current, target.id, save, saveDC); if (lr.overridden) { save.success = true; state = lr.state; } }
 
       if (save.success) {
         return {
@@ -1349,6 +1354,7 @@ function resolveElementariAbility(
 
       for (const enemy of enemies) {
         const save = savingThrow(getModifier(enemy.stats.dex), saveDC);
+        { const lr = checkLegendaryResistance(current, enemy.id, save, saveDC); if (lr.overridden) { save.success = true; current = lr.state; } }
         const actualDamage = save.success ? Math.floor(dmg.total / 2) : dmg.total;
         const newHp = Math.max(0, enemy.currentHp - actualDamage);
         current = updateCombatant(current, enemy.id, { currentHp: newHp, isAlive: newHp > 0 });

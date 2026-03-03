@@ -52,12 +52,19 @@ interface StatusTick { combatantId: string; effectName: string; damage?: number;
 interface StrikeResult { strikeNumber: number; hit: boolean; crit: boolean; damage: number; attackRoll?: number; attackTotal?: number; targetAc?: number }
 interface PerTargetResult { targetId: string; targetName?: string; damage?: number; healing?: number; statusApplied?: string; hpAfter: number; killed: boolean }
 
+interface LegendaryActionEntry { actionNumber: number; actionsRemaining: number; cost: number; action: any }
+interface LegendaryResistanceEntry { originalRoll: number; originalTotal: number; saveDC: number; wouldHaveFailed: boolean; resistanceUsed: boolean; resistancesRemaining: number }
+interface AuraEntry { auraName: string; auraType: 'fear' | 'damage'; saveDC?: number; saveRoll?: number; saveTotal?: number; savePassed?: boolean; statusApplied?: string; immuneAfterPass?: boolean; damage?: number; damageType?: string; damageRoll?: string }
+
 interface TurnEntry {
   round: number;
   actorId: string;
   action: string;
   result: any;
   statusTicks: StatusTick[];
+  legendaryActions?: LegendaryActionEntry[];
+  legendaryResistance?: LegendaryResistanceEntry;
+  auraResults?: AuraEntry[];
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -86,6 +93,7 @@ const STATUS_COLORS: Record<string, string> = {
   poisoned: 'text-green-400', burning: 'text-orange-400', frozen: 'text-blue-400',
   stunned: 'text-yellow-400', blessed: 'text-amber-300', bleeding: 'text-red-400',
   weakened: 'text-purple-400', shielded: 'text-cyan-400', regenerating: 'text-emerald-400',
+  frightened: 'text-amber-400',
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -448,6 +456,9 @@ function normalizeRoundEntry(raw: any, nameMap: Record<string, string>): TurnEnt
     action,
     result,
     statusTicks,
+    ...(raw.legendaryActions?.length > 0 && { legendaryActions: raw.legendaryActions }),
+    ...(raw.legendaryResistance && { legendaryResistance: raw.legendaryResistance }),
+    ...(raw.auraResults?.length > 0 && { auraResults: raw.auraResults }),
   };
 }
 
@@ -999,6 +1010,75 @@ function StatusTickEntry({ tick, nameMap }: { tick: StatusTick; nameMap: Record<
   );
 }
 
+function LegendaryResistanceDisplay({ lr }: { lr: LegendaryResistanceEntry }) {
+  return (
+    <div className="bg-amber-900/20 border border-amber-700/30 rounded px-2.5 py-1.5 text-xs my-1 flex items-center gap-2">
+      <span className="text-amber-400 font-display text-[10px] uppercase">Legendary Resistance</span>
+      <span className="font-mono text-amber-300">
+        Save {lr.originalTotal} vs DC {lr.saveDC} — would have FAILED
+      </span>
+      <span className="text-amber-400 font-bold">OVERRIDDEN</span>
+      <span className="text-amber-400/60">({lr.resistancesRemaining} left)</span>
+    </div>
+  );
+}
+
+function FearAuraDisplay({ aura, nameMap, targetId }: { aura: AuraEntry; nameMap: Record<string, string>; targetId?: string }) {
+  const target = targetId ? resolveName(targetId, nameMap) : '';
+  return (
+    <div className="bg-purple-900/20 border border-purple-700/30 rounded px-2.5 py-1.5 text-xs my-1">
+      <div className="flex items-center gap-2">
+        <span className="text-purple-400 font-display text-[10px] uppercase">{aura.auraName}</span>
+        {target && <span className="text-realm-text-muted">vs {target}</span>}
+      </div>
+      <div className="font-mono text-realm-text-primary mt-0.5">
+        WIS Save: {aura.saveRoll != null && <span>d20 = {aura.saveRoll}</span>}
+        {aura.saveTotal != null && aura.saveRoll != null && aura.saveTotal !== aura.saveRoll && <span className="text-realm-text-muted"> → {aura.saveTotal}</span>}
+        {aura.saveDC != null && <span className="text-realm-text-muted"> vs DC {aura.saveDC}</span>}
+        <span className={`ml-1 font-bold ${aura.savePassed ? 'text-green-400' : 'text-red-400'}`}>
+          → {aura.savePassed ? 'SAVED' : 'FAILED'}
+        </span>
+      </div>
+      {!aura.savePassed && aura.statusApplied && <div className="text-yellow-400 mt-0.5">Applies {aura.statusApplied}</div>}
+      {aura.savePassed && aura.immuneAfterPass && <div className="text-green-400/70 mt-0.5 italic">Immune to further fear</div>}
+    </div>
+  );
+}
+
+function DamageAuraDisplay({ aura }: { aura: AuraEntry }) {
+  return (
+    <div className="bg-orange-900/20 border border-orange-700/30 rounded px-2.5 py-1.5 text-xs my-1">
+      <div className="flex items-center gap-2">
+        <span className="text-orange-400 font-display text-[10px] uppercase">{aura.auraName}</span>
+        <span className="font-mono text-red-400 font-bold">
+          {aura.damage} {aura.damageType} damage
+        </span>
+        {aura.damageRoll && <span className="text-realm-text-muted font-mono">({aura.damageRoll})</span>}
+      </div>
+    </div>
+  );
+}
+
+function LegendaryActionDisplay({ la, nameMap }: { la: LegendaryActionEntry; nameMap: Record<string, string> }) {
+  const innerResult = la.action;
+  const innerType = innerResult?.type;
+  return (
+    <div className="bg-amber-900/15 border border-amber-600/30 rounded px-2.5 py-1.5 my-1">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-amber-400 font-display text-[10px] uppercase">Legendary Action #{la.actionNumber}</span>
+        <span className="text-amber-400/60 text-[10px]">Cost: {la.cost} | {la.actionsRemaining} remaining</span>
+      </div>
+      <div className="ml-2 border-l-2 border-amber-600/30 pl-2">
+        {innerType === 'attack' && <AttackEntry r={innerResult} nameMap={nameMap} />}
+        {innerType === 'monster_ability' && <MonsterAbilityEntry r={innerResult} nameMap={nameMap} />}
+        {innerType !== 'attack' && innerType !== 'monster_ability' && (
+          <div className="text-xs text-realm-text-muted">{innerType}: {innerResult?.abilityName || 'action'}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Per-entry snapshot of the acting combatant's state BEFORE the action resolves */
 interface CombatantSnapshot {
   hp: number;
@@ -1032,6 +1112,7 @@ const ACTION_ICONS: Record<string, string> = {
   attack: '\u2694\uFE0F', cast: '\u2728', defend: '\uD83D\uDEE1\uFE0F', item: '\uD83E\uDDEA',
   flee: '\uD83C\uDFC3', racial_ability: '\uD83D\uDD2E', psion_ability: '\uD83E\uDDE0', class_ability: '\u26A1',
   monster_ability: '\uD83D\uDC09',
+  legendary_action: '\uD83D\uDD31',
 };
 
 function TurnResultRenderer({ entry, nameMap, actorSnapshot }: { entry: TurnEntry; nameMap: Record<string, string>; actorSnapshot?: CombatantSnapshot }) {
@@ -1068,6 +1149,28 @@ function TurnResultRenderer({ entry, nameMap, actorSnapshot }: { entry: TurnEntr
         <div className="text-xs text-realm-text-muted">
           <span className="font-bold">{resolveName(entry.actorId, nameMap)}</span> performs {type}
           {r.description && <div className="italic">{r.description}</div>}
+        </div>
+      )}
+      {/* Aura results (fear aura at turn start, damage aura after melee hit) */}
+      {entry.auraResults && entry.auraResults.length > 0 && (
+        <div className="mt-1 space-y-0.5">
+          {entry.auraResults.map((aura, i) => (
+            aura.auraType === 'fear'
+              ? <FearAuraDisplay key={i} aura={aura} nameMap={nameMap} targetId={entry.actorId} />
+              : <DamageAuraDisplay key={i} aura={aura} />
+          ))}
+        </div>
+      )}
+      {/* Legendary Resistance */}
+      {entry.legendaryResistance && entry.legendaryResistance.resistanceUsed && (
+        <LegendaryResistanceDisplay lr={entry.legendaryResistance} />
+      )}
+      {/* Legendary Actions (after player's turn) */}
+      {entry.legendaryActions && entry.legendaryActions.length > 0 && (
+        <div className="mt-1 space-y-0.5">
+          {entry.legendaryActions.map((la, i) => (
+            <LegendaryActionDisplay key={i} la={la} nameMap={nameMap} />
+          ))}
         </div>
       )}
       {/* Status ticks */}

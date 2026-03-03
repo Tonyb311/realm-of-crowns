@@ -18,7 +18,8 @@ import { PrismaClient, BiomeType } from '@prisma/client';
 interface MonsterAbilityDef {
   id: string;
   name: string;
-  type: 'damage' | 'status' | 'aoe' | 'multiattack' | 'buff' | 'heal' | 'on_hit';
+  type: 'damage' | 'status' | 'aoe' | 'multiattack' | 'buff' | 'heal' | 'on_hit'
+        | 'fear_aura' | 'damage_aura';
   damage?: string;
   damageType?: string;
   saveType?: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
@@ -33,6 +34,11 @@ interface MonsterAbilityDef {
   disabledBy?: string[];
   attacks?: number;
   description?: string;
+  auraDamage?: string;
+  auraDamageType?: string;
+  auraRepeats?: boolean;
+  isLegendaryAction?: boolean;
+  legendaryCost?: number;
 }
 
 interface MonsterDef {
@@ -69,6 +75,8 @@ interface MonsterDef {
   conditionImmunities?: string[];
   critImmunity?: boolean;
   critResistance?: number;
+  legendaryActions?: number;
+  legendaryResistances?: number;
 }
 
 const MONSTERS: MonsterDef[] = [
@@ -283,6 +291,7 @@ const MONSTERS: MonsterDef[] = [
     resistances: ['SLASHING', 'PIERCING'],
     conditionImmunities: ['poisoned', 'frightened', 'charmed'],
     critResistance: -20,
+    legendaryResistances: 2,
     abilities: [{
       id: 'golem_multiattack', name: 'Slam', type: 'multiattack',
       attacks: 2, priority: 5, cooldown: 0,
@@ -304,6 +313,8 @@ const MONSTERS: MonsterDef[] = [
     regionName: 'Frozen Reaches',
     damageType: 'PIERCING',
     immunities: ['COLD'],
+    legendaryActions: 1,
+    legendaryResistances: 1,
     abilities: [
       {
         id: 'dragon_multiattack', name: 'Multiattack', type: 'multiattack',
@@ -315,6 +326,12 @@ const MONSTERS: MonsterDef[] = [
         damage: '12d6', damageType: 'COLD', saveType: 'con', saveDC: 17,
         recharge: 5, priority: 10, cooldown: 0,
         description: 'The dragon exhales a blast of freezing air.',
+      },
+      {
+        id: 'dragon_fear_aura', name: 'Frightful Presence', type: 'fear_aura',
+        saveType: 'wis', saveDC: 15, statusEffect: 'frightened', statusDuration: 1,
+        auraRepeats: false,
+        description: 'The dragon radiates a terrifying presence.',
       },
     ],
     stats: {
@@ -355,10 +372,13 @@ const MONSTERS: MonsterDef[] = [
     damageType: 'FIRE',
     resistances: ['COLD', 'LIGHTNING'],
     immunities: ['FIRE', 'POISON'],
+    legendaryActions: 2,
+    legendaryResistances: 1,
     abilities: [
       {
         id: 'demon_multiattack', name: 'Fiendish Strikes', type: 'multiattack',
         attacks: 2, priority: 5, cooldown: 0,
+        isLegendaryAction: true, legendaryCost: 1,
         description: 'The demon slashes with burning claws.',
       },
       {
@@ -366,6 +386,17 @@ const MONSTERS: MonsterDef[] = [
         damage: '8d6', damageType: 'FIRE', saveType: 'dex', saveDC: 15,
         priority: 8, cooldown: 3,
         description: 'The demon unleashes a wave of hellfire.',
+      },
+      {
+        id: 'demon_fear_aura', name: 'Abyssal Dread', type: 'fear_aura',
+        saveType: 'wis', saveDC: 15, statusEffect: 'frightened', statusDuration: 1,
+        auraRepeats: false,
+        description: 'The demon radiates an aura of abyssal terror.',
+      },
+      {
+        id: 'demon_fire_aura', name: 'Fire Aura', type: 'damage_aura',
+        auraDamage: '1d6', auraDamageType: 'FIRE',
+        description: 'Flames lash out at anyone who strikes the demon in melee.',
       },
     ],
     stats: {
@@ -387,18 +418,28 @@ const MONSTERS: MonsterDef[] = [
     immunities: ['POISON'],
     conditionImmunities: ['poisoned', 'frightened', 'charmed'],
     critResistance: -10,
+    legendaryActions: 3,
+    legendaryResistances: 3,
     abilities: [
       {
         id: 'lich_paralyze', name: 'Paralyzing Touch', type: 'status',
         saveType: 'con', saveDC: 18, statusEffect: 'stunned', statusDuration: 2,
         priority: 9, cooldown: 3,
+        isLegendaryAction: true, legendaryCost: 2,
         description: 'The lich reaches out with necrotic energy, attempting to paralyze.',
       },
       {
         id: 'lich_bolt', name: 'Necrotic Bolt', type: 'damage',
         damage: '4d8+5', damageType: 'NECROTIC',
         priority: 6, cooldown: 1,
+        isLegendaryAction: true, legendaryCost: 1,
         description: 'The lich hurls a bolt of concentrated necrotic energy.',
+      },
+      {
+        id: 'lich_fear_aura', name: 'Dread Aura', type: 'fear_aura',
+        saveType: 'wis', saveDC: 18, statusEffect: 'frightened', statusDuration: 1,
+        auraRepeats: false,
+        description: 'The lich emanates an aura of overwhelming dread.',
       },
     ],
     stats: {
@@ -543,6 +584,8 @@ const MONSTERS: MonsterDef[] = [
     damageType: 'FORCE',
     resistances: ['SLASHING', 'PIERCING'],
     immunities: ['PSYCHIC'],
+    legendaryActions: 1,
+    legendaryResistances: 1,
     abilities: [
       {
         id: 'fey_root', name: 'Entangling Roots', type: 'status',
@@ -554,7 +597,14 @@ const MONSTERS: MonsterDef[] = [
         id: 'fey_aoe', name: 'Radiant Burst', type: 'aoe',
         damage: '6d8', damageType: 'RADIANT', saveType: 'dex', saveDC: 16,
         priority: 7, cooldown: 2,
+        isLegendaryAction: true, legendaryCost: 2,
         description: 'The guardian unleashes a burst of radiant energy.',
+      },
+      {
+        id: 'fey_fear_aura', name: 'Fey Majesty', type: 'fear_aura',
+        saveType: 'wis', saveDC: 16, statusEffect: 'frightened', statusDuration: 1,
+        auraRepeats: false,
+        description: 'The guardian radiates an aura of overwhelming fey majesty.',
       },
     ],
     stats: {
@@ -600,6 +650,8 @@ export async function seedMonsters(prisma: PrismaClient): Promise<void> {
       conditionImmunities: monster.conditionImmunities ?? [],
       critImmunity: monster.critImmunity ?? false,
       critResistance: monster.critResistance ?? 0,
+      legendaryActions: monster.legendaryActions ?? 0,
+      legendaryResistances: monster.legendaryResistances ?? 0,
     };
 
     if (existing) {
