@@ -25,6 +25,7 @@
 - **Monsters must only exist in reachable biomes.** Route terrain strings → TERRAIN_TO_BIOME regex → BiomeType → monster query. If no route produces a BiomeType, monsters in that biome never spawn. Currently RIVER and UNDERWATER have no routes (unreleased).
 - **Biome mapping lives in:** `server/src/lib/road-encounter.ts` (TERRAIN_TO_BIOME, ~line 75)
 - **Route terrain strings live in:** `database/seeds/world.ts` (lines ~1048-1139)
+- **Combat narrator templates are required** when adding new abilities, monsters, or status effects. Add corresponding templates in `shared/src/data/combat-narrator/templates.ts`. See `docs/combat-narrator.md` for format.
 
 ### Bot Simulation Architecture
 - Bot priority chain (in `server/src/lib/simulation/engine.ts`):
@@ -111,6 +112,35 @@ You operate as a **Team Lead** who dynamically creates virtual teammates for com
 | `database/seeds/monsters.ts` | Monster definitions, biomes, loot tables, gold |
 | `database/seeds/world.ts` | Routes, terrain strings, towns |
 | `prompts/` | All Claude Code task prompts (save new ones here) |
+
+### Race ID Reference
+
+Released races use in-game IDs that differ from their common fantasy names:
+
+| Common Name | In-Game ID | Status |
+|-------------|------------|--------|
+| Human | human | Released |
+| Elf | elf | Released |
+| Dwarf | dwarf | Released |
+| Halfling | harthfolk | Released |
+| Orc | orc | Released |
+| Tiefling | nethkin | Released |
+| Dragonborn | drakonid | Released |
+
+Unreleased races: half_elf, half_orc, gnome, merfolk, beastfolk, faefolk, goliath, nightborne (Drow), mosskin (Firbolg), forgeborn (Warforged), elementari (Genasi), revenant, changeling
+
+**Always use in-game IDs in code, configs, and sim scripts — not common fantasy names.**
+
+### Narrator Templates
+
+When adding new abilities, monsters, or status effects, also add narrator templates in `shared/src/data/combat-narrator/templates.ts`. See `docs/combat-narrator.md` for the template format and fallback chain. New content without templates degrades gracefully (generic narration) but loses flavor.
+
+### Batch Combat Sim
+
+CLI script at `server/src/scripts/batch-combat-sim.ts`. Use in-game race IDs (see Race ID Reference above). Common configs in `server/src/scripts/sim-configs/`.
+
+Commands: `run` (--config or --grid), `list`, `delete` (--run-id), `delete-all` (--confirm)
+npm shortcuts: `sim:run`, `sim:list`, `sim:delete`
 
 ---
 
