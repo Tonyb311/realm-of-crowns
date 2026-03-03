@@ -51,6 +51,17 @@ export interface MonsterStats {
   cha: number;
 }
 
+export interface MonsterCombatData {
+  damageType?: string;
+  abilities?: any[];
+  resistances?: string[];
+  immunities?: string[];
+  vulnerabilities?: string[];
+  conditionImmunities?: string[];
+  critImmunity?: boolean;
+  critResistance?: number;
+}
+
 export interface SyntheticMonsterResult {
   name: string;
   level: number;
@@ -58,6 +69,7 @@ export interface SyntheticMonsterResult {
   hp: number;
   ac: number;
   weapon: WeaponInfo;
+  combatData?: MonsterCombatData;
 }
 
 // ---------------------------------------------------------------------------
@@ -370,6 +382,7 @@ export function buildSyntheticMonster(
   name: string,
   level: number,
   monsterStats: MonsterStats,
+  combatData?: MonsterCombatData,
 ): SyntheticMonsterResult {
   const parsed = parseDamageString(monsterStats.damage);
 
@@ -395,6 +408,8 @@ export function buildSyntheticMonster(
       bonusAttack: monsterStats.attack,
       damageModifierStat: 'str',
       attackModifierStat: 'str',
+      damageType: combatData?.damageType,
     },
+    combatData,
   };
 }

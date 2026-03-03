@@ -24,6 +24,9 @@ import type {
   CharacterStats,
   CombatState,
   WeaponInfo,
+  CombatDamageType,
+  MonsterAbilityInstance,
+  MonsterAbility,
 } from '@shared/types/combat';
 import { getModifier } from '@shared/types/combat';
 import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
@@ -153,6 +156,44 @@ function buildMonsterWeapon(monsterStats: Record<string, unknown>): WeaponInfo {
     bonusDamage: damage.bonus,
     bonusAttack: (monsterStats.attack as number) ?? 0,
     damageType: (monsterStats.damageType as string) ?? 'BLUDGEONING',
+  };
+}
+
+/** Build MonsterAbilityInstance[] from DB JSON abilities array */
+function buildMonsterAbilityInstances(abilities: unknown[]): MonsterAbilityInstance[] {
+  if (!Array.isArray(abilities) || abilities.length === 0) return [];
+  return abilities.map((a: any) => ({
+    def: a as MonsterAbility,
+    cooldownRemaining: 0,
+    usesRemaining: a.usesPerCombat ?? null,
+    isRecharged: false,
+  }));
+}
+
+/** Build the options param for createMonsterCombatant from a DB monster row */
+function buildMonsterCombatOptions(monster: any) {
+  const abilities = buildMonsterAbilityInstances(monster.abilities as unknown[] ?? []);
+  const resistances = (monster.resistances as string[] ?? []) as CombatDamageType[];
+  const immunities = (monster.immunities as string[] ?? []) as CombatDamageType[];
+  const vulnerabilities = (monster.vulnerabilities as string[] ?? []) as CombatDamageType[];
+  const conditionImmunities = monster.conditionImmunities as string[] ?? [];
+  const critImmunity = monster.critImmunity as boolean ?? false;
+  const critResistance = monster.critResistance as number ?? 0;
+
+  // Only return options if there's something non-default
+  if (abilities.length === 0 && resistances.length === 0 && immunities.length === 0 &&
+      vulnerabilities.length === 0 && conditionImmunities.length === 0 &&
+      !critImmunity && critResistance === 0) {
+    return undefined;
+  }
+  return {
+    ...(resistances.length > 0 && { resistances }),
+    ...(immunities.length > 0 && { immunities }),
+    ...(vulnerabilities.length > 0 && { vulnerabilities }),
+    ...(conditionImmunities.length > 0 && { conditionImmunities }),
+    ...(critImmunity && { critImmunity }),
+    ...(critResistance !== 0 && { critResistance }),
+    ...(abilities.length > 0 && { monsterAbilities: abilities }),
   };
 }
 
@@ -463,6 +504,7 @@ export async function resolveRoadEncounter(
     monsterStats.ac ?? 12,
     buildMonsterWeapon(monsterStats),
     0,
+    buildMonsterCombatOptions(monster),
   );
 
   // Set race for racial ability resolution
@@ -878,6 +920,7 @@ export async function resolveGroupRoadEncounter(
     monsterStats.ac ?? 12,
     scaledMonsterWeapon,
     0, // proficiency already baked into monster attack stat
+    buildMonsterCombatOptions(monster),
   );
   combatants.push(monsterCombatant);
 

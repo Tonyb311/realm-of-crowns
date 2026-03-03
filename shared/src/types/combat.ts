@@ -20,7 +20,7 @@ export function getModifier(stat: number): number {
 
 // ---- Combat Actions ----
 
-export type CombatActionType = 'attack' | 'cast' | 'defend' | 'item' | 'flee' | 'racial_ability' | 'psion_ability' | 'class_ability';
+export type CombatActionType = 'attack' | 'cast' | 'defend' | 'item' | 'flee' | 'racial_ability' | 'psion_ability' | 'class_ability' | 'monster_ability';
 
 export interface CombatAction {
   type: CombatActionType;
@@ -38,6 +38,8 @@ export interface CombatAction {
   psionAbilityId?: string;
   /** Class ability ID being used (for class_ability actions) */
   classAbilityId?: string;
+  /** Monster ability ID being used (for monster_ability actions) */
+  monsterAbilityId?: string;
 }
 
 // ---- Combatant Representation ----
@@ -76,7 +78,184 @@ export type StatusEffectName =
   | 'root'
   | 'skip_turn'
   | 'mesmerize'
-  | 'polymorph';
+  | 'polymorph'
+  // Monster ability status effects
+  | 'frightened'
+  | 'diseased'
+  | 'knocked_down';
+
+// ---- Damage Types ----
+
+export type CombatDamageType =
+  | 'SLASHING' | 'PIERCING' | 'BLUDGEONING'
+  | 'FIRE' | 'COLD' | 'LIGHTNING' | 'THUNDER'
+  | 'ACID' | 'POISON' | 'NECROTIC' | 'RADIANT'
+  | 'FORCE' | 'PSYCHIC';
+
+// ---- Crit/Fumble Types ----
+
+export type CritSeverity = 'minor' | 'major' | 'devastating';
+export type FumbleSeverity = 'trivial' | 'minor' | 'moderate';
+export type CritChartType = 'slashing' | 'piercing' | 'bludgeoning' | 'ranged' | 'spell';
+export type FumbleChartType = 'melee' | 'ranged' | 'spell';
+
+export interface D100Modifier {
+  source: string;
+  value: number;
+}
+
+export interface CritChartEntry {
+  rangeStart: number;
+  rangeEnd: number;
+  severity: CritSeverity;
+  name: string;
+  bonusDice: number;
+  statusEffect?: {
+    type: string;
+    value?: number;
+    duration: number;
+  };
+  narratorTemplate: string;
+}
+
+export interface FumbleChartEntry {
+  rangeStart: number;
+  rangeEnd: number;
+  severity: FumbleSeverity;
+  name: string;
+  effect: {
+    type: 'ac_penalty' | 'attack_penalty' | 'save_penalty' | 'skip_attack'
+          | 'opponent_bonus' | 'self_damage' | 'disadvantage' | 'none'
+          | 'damage_reduction' | 'random_surge';
+    value?: number;
+    duration: number;
+  };
+  narratorTemplate: string;
+}
+
+export interface CritResult {
+  trigger: 'nat20' | 'expanded_range' | 'first_strike';
+  triggerSource?: string;
+  chartType: CritChartType;
+  rawD100: number;
+  modifiers: D100Modifier[];
+  modifiedD100: number;
+  severity: CritSeverity;
+  entry: CritChartEntry;
+  bonusDamage: number;
+  statusApplied?: string;
+  statusDuration?: number;
+  totalCritDamage: number;
+}
+
+export interface FumbleResult {
+  confirmed: boolean;
+  confirmationRoll: number;
+  confirmationTotal: number;
+  confirmationAC: number;
+  rawD100?: number;
+  modifiers?: D100Modifier[];
+  modifiedD100?: number;
+  levelCap?: number;
+  cappedD100?: number;
+  severity?: FumbleSeverity;
+  chartType?: FumbleChartType;
+  entry?: FumbleChartEntry;
+  effectApplied?: string;
+  duration?: number;
+}
+
+export interface DamageTypeResult {
+  originalDamage: number;
+  damageType: CombatDamageType;
+  interaction: 'normal' | 'resistant' | 'immune' | 'vulnerable';
+  multiplier: number;
+  finalDamage: number;
+}
+
+// ---- Monster Ability Types ----
+
+export interface MonsterAbility {
+  id: string;
+  name: string;
+  type: 'damage' | 'status' | 'aoe' | 'multiattack' | 'buff' | 'heal' | 'on_hit';
+  damage?: string;
+  damageType?: CombatDamageType;
+  saveType?: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
+  saveDC?: number;
+  statusEffect?: StatusEffectName;
+  statusDuration?: number;
+  cooldown?: number;
+  recharge?: number;
+  usesPerCombat?: number;
+  priority?: number;
+  hpPerTurn?: number;
+  disabledBy?: CombatDamageType[];
+  attacks?: number;
+  description?: string;
+}
+
+export interface MonsterAbilityInstance {
+  def: MonsterAbility;
+  cooldownRemaining: number;
+  usesRemaining: number | null;
+  isRecharged: boolean;
+}
+
+export interface MonsterAbilityResult {
+  type: 'monster_ability';
+  actorId: string;
+  abilityName: string;
+  abilityId: string;
+  targetId?: string;
+  targetIds?: string[];
+  damage?: number;
+  healing?: number;
+  saveRequired?: boolean;
+  saveType?: string;
+  saveDC?: number;
+  saveRoll?: number;
+  saveTotal?: number;
+  saveSucceeded?: boolean;
+  statusApplied?: string;
+  statusDuration?: number;
+  description: string;
+  targetHpAfter?: number;
+  targetKilled?: boolean;
+  actorHpAfter?: number;
+  attackRoll?: number;
+  attackTotal?: number;
+  attackModifiers?: AttackModifierBreakdown[];
+  targetAC?: number;
+  hit?: boolean;
+  isCritical?: boolean;
+  weaponDice?: string;
+  damageRolls?: number[];
+  damageModifiers?: AttackModifierBreakdown[];
+  damageType?: string;
+  targetHpBefore?: number;
+  critResult?: CritResult;
+  fumbleResult?: FumbleResult;
+  damageTypeResult?: DamageTypeResult;
+  strikeResults?: Array<{
+    strikeNumber: number;
+    hit: boolean;
+    crit: boolean;
+    damage: number;
+    attackRoll?: number;
+    attackTotal?: number;
+    targetAc?: number;
+  }>;
+  totalStrikes?: number;
+  strikesHit?: number;
+  perTargetResults?: Array<{
+    targetId: string;
+    targetName: string;
+    damage?: number;
+    hpAfter: number;
+    killed: boolean;
+  }>;
+}
 
 export interface SpellSlots {
   /** Key is spell level (1-5), value is remaining slots */
@@ -224,6 +403,23 @@ export interface Combatant {
   trapDetectionBonus?: number;
   /** PSION-PASSIVE-4: Free disengage without opportunity attacks */
   freeDisengage?: boolean;
+  // Monster ability fields
+  /** Damage type resistances (halve damage) */
+  resistances?: CombatDamageType[];
+  /** Damage type immunities (zero damage) */
+  immunities?: CombatDamageType[];
+  /** Damage type vulnerabilities (double damage) */
+  vulnerabilities?: CombatDamageType[];
+  /** Condition immunities (block status effects) */
+  conditionImmunities?: string[];
+  /** Immune to critical hits (amorphous creatures) */
+  critImmunity?: boolean;
+  /** Negative d100 modifier when taking crits */
+  critResistance?: number;
+  /** Monster abilities definition array */
+  monsterAbilities?: MonsterAbilityInstance[];
+  /** Damage types received this round (for regen disabling) */
+  damageTypesReceivedThisRound?: CombatDamageType[];
 }
 
 export interface ClassAbilityAttackMods {
@@ -334,6 +530,10 @@ export interface AttackResult {
   deathPreventedAbility?: string;
   attackerDeathPrevented?: boolean;
   attackerDeathPreventedAbility?: string;
+  // Crit/Fumble/Damage Type results
+  critResult?: CritResult;
+  fumbleResult?: FumbleResult;
+  damageTypeResult?: DamageTypeResult;
 }
 
 export interface CastResult {
@@ -507,7 +707,7 @@ export interface ClassAbilityResult {
   randomAbilityUsed?: string;
 }
 
-export type TurnResult = AttackResult | CastResult | DefendResult | ItemResult | FleeResult | RacialAbilityActionResult | PsionAbilityResult | ClassAbilityResult;
+export type TurnResult = AttackResult | CastResult | DefendResult | ItemResult | FleeResult | RacialAbilityActionResult | PsionAbilityResult | ClassAbilityResult | MonsterAbilityResult;
 
 // ---- Status Effect Processing ----
 

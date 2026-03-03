@@ -28,6 +28,9 @@ import type {
   WeaponInfo,
   CharacterStats,
   TurnLogEntry,
+  CombatDamageType,
+  MonsterAbilityInstance,
+  MonsterAbility,
 } from '@shared/types/combat';
 import { getModifier } from '@shared/types/combat';
 import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
@@ -47,6 +50,42 @@ import {
 import { processItemDrops } from '../lib/loot-items';
 import { applyClassWeaponStat } from '../lib/road-encounter';
 import { ALL_ABILITIES } from '@shared/data/skills';
+
+// ---- Monster Ability Instance Builder ----
+
+function buildMonsterAbilityInstances(abilities: unknown[]): MonsterAbilityInstance[] {
+  if (!Array.isArray(abilities) || abilities.length === 0) return [];
+  return abilities.map((a: any) => ({
+    def: a as MonsterAbility,
+    cooldownRemaining: 0,
+    usesRemaining: a.usesPerCombat ?? null,
+    isRecharged: false,
+  }));
+}
+
+function buildMonsterCombatOptions(monster: any) {
+  const abilities = buildMonsterAbilityInstances(monster.abilities as unknown[] ?? []);
+  const resistances = (monster.resistances as string[] ?? []) as CombatDamageType[];
+  const immunities = (monster.immunities as string[] ?? []) as CombatDamageType[];
+  const vulnerabilities = (monster.vulnerabilities as string[] ?? []) as CombatDamageType[];
+  const conditionImmunities = monster.conditionImmunities as string[] ?? [];
+  const critImmunity = monster.critImmunity as boolean ?? false;
+  const critResistance = monster.critResistance as number ?? 0;
+  if (abilities.length === 0 && resistances.length === 0 && immunities.length === 0 &&
+      vulnerabilities.length === 0 && conditionImmunities.length === 0 &&
+      !critImmunity && critResistance === 0) {
+    return undefined;
+  }
+  return {
+    ...(resistances.length > 0 && { resistances }),
+    ...(immunities.length > 0 && { immunities }),
+    ...(vulnerabilities.length > 0 && { vulnerabilities }),
+    ...(conditionImmunities.length > 0 && { conditionImmunities }),
+    ...(critImmunity && { critImmunity }),
+    ...(critResistance !== 0 && { critResistance }),
+    ...(abilities.length > 0 && { monsterAbilities: abilities }),
+  };
+}
 
 // ---- Class Ability Detection ----
 
@@ -121,6 +160,48 @@ function decideAction(
 
     if (shouldRetreat) {
       return { action: { type: 'flee', actorId }, context: {} };
+    }
+  }
+
+  // ---- 1b. Monster ability AI ----
+  if (actor.entityType === 'monster' && actor.monsterAbilities && actor.monsterAbilities.length > 0) {
+    const target = enemies.length > 0 ? enemies[0] : null;
+    if (target) {
+      // Recharge check: roll d6 for abilities with recharge field
+      for (const inst of actor.monsterAbilities) {
+        if (inst.def.recharge && !inst.isRecharged && inst.cooldownRemaining > 0) {
+          const rechargeRoll = Math.floor(Math.random() * 6) + 1;
+          if (rechargeRoll >= inst.def.recharge) {
+            inst.isRecharged = true;
+            inst.cooldownRemaining = 0;
+          }
+        }
+      }
+
+      // Filter available abilities (not on cooldown, has uses, not on_hit type)
+      const available = actor.monsterAbilities.filter(inst => {
+        if (inst.def.type === 'on_hit') return false; // on_hit triggers passively
+        if (inst.cooldownRemaining > 0 && !inst.isRecharged) return false;
+        if (inst.usesRemaining !== null && inst.usesRemaining <= 0) return false;
+        return true;
+      });
+
+      // Sort by priority descending (higher = use first)
+      available.sort((a, b) => (b.def.priority ?? 0) - (a.def.priority ?? 0));
+
+      if (available.length > 0) {
+        const chosen = available[0];
+        return {
+          action: {
+            type: 'monster_ability',
+            actorId,
+            monsterAbilityId: chosen.def.id,
+            targetId: target.id,
+            targetIds: enemies.map(e => e.id),
+          },
+          context: { weapon: params.weapon ?? undefined },
+        };
+      }
     }
   }
 
@@ -418,6 +499,7 @@ export async function resolveNodePvE(
     monsterStats.ac ?? 12,
     buildMonsterWeapon(monsterStats),
     0, // Monster attack stat already includes proficiency equivalent
+    buildMonsterCombatOptions(monster),
   );
 
   // Create combat state

@@ -49,6 +49,14 @@ You operate as a **Team Lead** who creates virtual teammates for complex tasks. 
 
 ---
 
+### Prompt Structure
+- **Every prompt must start with the Team Lead preamble** (Operating Mode section above) so Claude Code operates as Team Lead and assembles the right specialists.
+- **Every prompt must include:** `cat CLAUDE.md` and `cat .claude/agents/` directory awareness. Claude Code picks the right agent(s) based on the task — don't hardcode agent names in prompts.
+- Available agents are in `.claude/agents/`: `combat.md`, `game-designer.md`, `balance-designer.md`, `sim-analyst.md`, `web-design.md`, `backend-api.md`, `database.md`, `lore-narrative.md`, `economy-auditor.md`, `profession-crafting.md`, `deploy.md`, `studio-finance.md`
+- **Never skip the Team Lead block.** Without it, Claude Code runs as a generic coder instead of assembling the right team.
+
+---
+
 ## Workflow Discipline
 
 **Plan before building:** Enter plan mode for non-trivial tasks (3+ steps). Stop and re-plan if things go sideways.

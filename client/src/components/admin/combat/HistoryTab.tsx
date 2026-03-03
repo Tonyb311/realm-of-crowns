@@ -256,6 +256,11 @@ function normalizeRoundEntry(raw: any, nameMap: Record<string, string>): TurnEnt
     result.companionDamageAbsorbed = raw.companionDamageAbsorbed;
     result.deathPrevented = raw.deathPrevented;
     result.deathPreventedAbility = raw.deathPreventedAbility;
+
+    // Crit/Fumble/DamageType results
+    result.critResult = raw.critResult;
+    result.fumbleResult = raw.fumbleResult;
+    result.damageTypeResult = raw.damageTypeResult;
   } else if (action === 'cast') {
     result.spellName = raw.spellName;
     result.saveRequired = raw.saveDC != null;
@@ -358,6 +363,55 @@ function normalizeRoundEntry(raw: any, nameMap: Record<string, string>): TurnEnt
     if (raw.statusEffectsApplied?.length > 0) {
       result.statusApplied = raw.statusEffectsApplied[0];
     }
+
+    // Crit/Fumble/DamageType results
+    result.critResult = raw.critResult;
+    result.fumbleResult = raw.fumbleResult;
+    result.damageTypeResult = raw.damageTypeResult;
+  } else if (action === 'monster_ability') {
+    result.abilityName = raw.abilityName;
+    result.description = raw.abilityDescription ?? raw.description;
+    result.saveRequired = raw.saveDC != null;
+    result.saveDC = raw.saveDC;
+    result.saveRoll = raw.saveRoll;
+    result.saveTotal = raw.saveTotal;
+    result.saveSucceeded = raw.saveSucceeded;
+
+    // Attack roll breakdown
+    if (raw.attackRoll && typeof raw.attackRoll === 'object') {
+      result.attackRoll = raw.attackRoll.raw;
+      result.attackModifiers = raw.attackRoll.modifiers;
+      result.attackTotal = raw.attackRoll.total;
+    }
+    result.targetAC = raw.targetAC;
+    result.hit = raw.hit;
+    result.critical = raw.isCritical ?? raw.critical;
+
+    // Damage breakdown
+    if (raw.damageRoll && typeof raw.damageRoll === 'object') {
+      result.weaponDice = raw.damageRoll.dice;
+      result.damageRolls = raw.damageRoll.rolls;
+      result.damageModifiers = raw.damageRoll.modifiers;
+      result.damage = raw.damageRoll.total;
+      result.totalDamage = raw.damageRoll.total;
+      result.damageType = raw.damageRoll.type;
+    } else {
+      result.damage = raw.damage;
+    }
+
+    result.healing = raw.healAmount ?? raw.healing;
+    result.strikeResults = raw.strikeResults;
+    result.totalStrikes = raw.totalStrikes;
+    result.strikesHit = raw.strikesHit;
+    result.perTargetResults = raw.perTargetResults;
+    if (raw.statusEffectsApplied?.length > 0) {
+      result.statusApplied = raw.statusEffectsApplied[0];
+    }
+
+    // Crit/Fumble/DamageType results
+    result.critResult = raw.critResult;
+    result.fumbleResult = raw.fumbleResult;
+    result.damageTypeResult = raw.damageTypeResult;
   }
 
   // Build statusTicks from flat fields
@@ -490,6 +544,92 @@ function SaveBreakdown({ roll, total, dc, succeeded }: {
   );
 }
 
+function CritDisplay({ crit }: { crit: any }) {
+  const [open, setOpen] = useState(false);
+  if (!crit) return null;
+  const severityBg: Record<string, string> = { minor: 'bg-amber-800/30', major: 'bg-amber-700/40', devastating: 'bg-amber-600/50' };
+  return (
+    <div className="bg-amber-900/20 border border-amber-700/30 rounded px-2.5 py-1.5 text-xs my-1">
+      <button onClick={() => setOpen(!open)} className="flex items-center gap-1.5 w-full text-left">
+        <span className="text-amber-400 font-display text-[10px] uppercase">Critical Hit</span>
+        <span className={`px-1 py-0.5 rounded text-[10px] font-bold ${severityBg[crit.severity] || ''} text-amber-300`}>{crit.severity?.toUpperCase()}</span>
+        <span className="text-amber-400/70 ml-auto">{open ? '▾' : '▸'}</span>
+      </button>
+      {open && (
+        <div className="mt-1.5 space-y-0.5">
+          <div className="text-amber-400/80">Trigger: <span className="text-amber-300">{crit.trigger}</span> ({crit.chartType})</div>
+          <div className="font-mono text-amber-400">
+            <span className="text-amber-500">d100</span> = {crit.rawD100}
+            {crit.modifiers?.map((m: any, i: number) => (
+              <span key={i} className="text-amber-400/60"> {m.value >= 0 ? '+' : ''}{m.value} {m.source}</span>
+            ))}
+            {crit.modifiedD100 !== crit.rawD100 && <span className="text-amber-300 font-bold"> = {crit.modifiedD100}</span>}
+          </div>
+          {crit.entry?.name && <div className="text-amber-300 font-bold">{crit.entry.name}</div>}
+          <div className="text-amber-400">Bonus damage: <span className="text-red-400 font-bold">+{crit.bonusDamage}</span></div>
+          {crit.totalCritDamage != null && <div className="text-amber-400">Total crit damage: <span className="font-bold">{crit.totalCritDamage}</span></div>}
+          {crit.statusApplied && <div className="text-yellow-400">Status: {crit.statusApplied}{crit.statusDuration ? ` (${crit.statusDuration} rounds)` : ''}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FumbleDisplay({ fumble }: { fumble: any }) {
+  const [open, setOpen] = useState(false);
+  if (!fumble) return null;
+  const severityBg: Record<string, string> = { trivial: 'bg-red-900/20', minor: 'bg-red-800/30', moderate: 'bg-red-700/40' };
+  return (
+    <div className="bg-red-900/20 border border-red-700/30 rounded px-2.5 py-1.5 text-xs my-1">
+      <button onClick={() => setOpen(!open)} className="flex items-center gap-1.5 w-full text-left">
+        <span className="text-red-400 font-display text-[10px] uppercase">Fumble</span>
+        {fumble.confirmed
+          ? <span className={`px-1 py-0.5 rounded text-[10px] font-bold ${severityBg[fumble.severity] || ''} text-red-300`}>{fumble.severity?.toUpperCase() || 'CONFIRMED'}</span>
+          : <span className="px-1 py-0.5 rounded text-[10px] bg-green-900/30 text-green-400">NOT CONFIRMED</span>
+        }
+        <span className="text-red-400/70 ml-auto">{open ? '▾' : '▸'}</span>
+      </button>
+      {open && (
+        <div className="mt-1.5 space-y-0.5">
+          <div className="font-mono text-red-400">
+            Confirm: d20={fumble.confirmationRoll} ({fumble.confirmationTotal}) vs AC {fumble.confirmationAC}
+            <span className={`ml-1 font-bold ${fumble.confirmed ? 'text-red-300' : 'text-green-400'}`}>
+              {fumble.confirmed ? 'CONFIRMED' : 'SAVED'}
+            </span>
+          </div>
+          {fumble.confirmed && fumble.rawD100 != null && (
+            <>
+              <div className="font-mono text-red-400">
+                <span className="text-red-500">d100</span> = {fumble.rawD100}
+                {fumble.modifiers?.map((m: any, i: number) => (
+                  <span key={i} className="text-red-400/60"> {m.value >= 0 ? '+' : ''}{m.value} {m.source}</span>
+                ))}
+                {fumble.modifiedD100 != null && fumble.modifiedD100 !== fumble.rawD100 && <span className="text-red-300"> = {fumble.modifiedD100}</span>}
+                {fumble.levelCap != null && <span className="text-red-400/60"> (cap: {fumble.levelCap})</span>}
+                {fumble.cappedD100 != null && fumble.cappedD100 !== fumble.modifiedD100 && <span className="text-red-300 font-bold"> → {fumble.cappedD100}</span>}
+              </div>
+              {fumble.chartType && <div className="text-red-400/80">Chart: {fumble.chartType}</div>}
+              {fumble.entry?.name && <div className="text-red-300 font-bold">{fumble.entry.name}</div>}
+              {fumble.effectApplied && <div className="text-yellow-400">Effect: {fumble.effectApplied}{fumble.duration ? ` (${fumble.duration} rounds)` : ''}</div>}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DamageTypeDisplay({ dtr }: { dtr: any }) {
+  if (!dtr || dtr.interaction === 'normal') return null;
+  const colors: Record<string, string> = { immune: 'text-gray-400', resistant: 'text-blue-400', vulnerable: 'text-red-400' };
+  const color = colors[dtr.interaction] || 'text-realm-text-muted';
+  return (
+    <div className={`text-xs font-mono my-0.5 ${color}`}>
+      {dtr.originalDamage} {dtr.damageType} → <span className="uppercase font-bold">{dtr.interaction}</span> ({dtr.multiplier}x) → {dtr.finalDamage} damage
+    </div>
+  );
+}
+
 function AttackEntry({ r, nameMap }: { r: any; nameMap: Record<string, string> }) {
   const actor = resolveName(r.actorId, nameMap);
   const target = resolveName(r.targetId, nameMap);
@@ -536,6 +676,9 @@ function AttackEntry({ r, nameMap }: { r: any; nameMap: Record<string, string> }
       {r.deathPrevented && (
         <div className="text-amber-300 text-xs mt-0.5">{r.deathPreventedAbility || 'Ability'} prevents death!</div>
       )}
+      <CritDisplay crit={r.critResult} />
+      <FumbleDisplay fumble={r.fumbleResult} />
+      <DamageTypeDisplay dtr={r.damageTypeResult} />
     </div>
   );
 }
@@ -747,6 +890,96 @@ function ClassAbilityEntry({ r, nameMap }: { r: any; nameMap: Record<string, str
       {r.goldStolen != null && r.goldStolen > 0 && <div className="text-xs text-realm-gold-400">Stole {r.goldStolen} gold!</div>}
       {r.peacefulResolution && <div className="text-xs text-green-400">Combat resolved peacefully</div>}
       {r.targetKilled && <div className="text-red-400 font-bold text-xs">Target has been slain!</div>}
+      <CritDisplay crit={r.critResult} />
+      <FumbleDisplay fumble={r.fumbleResult} />
+      <DamageTypeDisplay dtr={r.damageTypeResult} />
+    </div>
+  );
+}
+
+function MonsterAbilityEntry({ r, nameMap }: { r: any; nameMap: Record<string, string> }) {
+  const actor = resolveName(r.actorId, nameMap);
+  const target = r.targetId ? resolveName(r.targetId, nameMap) : null;
+  const hasAttackRoll = r.attackRoll != null;
+  const hasDamageBreakdown = r.damageRolls && r.damageRolls.length > 0;
+  return (
+    <div className="space-y-0.5">
+      <div className="text-sm">
+        <span className="font-bold text-realm-text-primary">{actor}</span>
+        <span className="text-realm-text-muted"> uses </span>
+        <span className="text-orange-400">{r.abilityName}</span>
+        {target && <span className="text-realm-text-muted"> on </span>}
+        {target && <span className="text-realm-text-secondary">{target}</span>}
+      </div>
+      {hasAttackRoll && (
+        <RollBreakdown
+          label="Attack Roll"
+          roll={r.attackRoll}
+          modifiers={r.attackModifiers}
+          total={r.attackTotal ?? r.attackRoll}
+          comparison={r.targetAC}
+          compLabel="AC"
+          hit={r.hit}
+        />
+      )}
+      {r.saveRequired && (
+        <SaveBreakdown roll={r.saveRoll} total={r.saveTotal} dc={r.saveDC} succeeded={r.saveSucceeded} />
+      )}
+      {hasDamageBreakdown && r.damage != null && r.damage > 0 && (
+        <DamageBreakdown
+          dice={r.weaponDice}
+          rolls={r.damageRolls}
+          modifiers={r.damageModifiers}
+          total={r.totalDamage ?? r.damage}
+          damageType={r.damageType}
+        />
+      )}
+      {r.targetHpBefore != null && r.targetHpAfter != null && target && (
+        <MiniHpBar before={r.targetHpBefore} after={r.targetHpAfter} name={target} />
+      )}
+      {r.description && <div className="text-xs text-realm-text-secondary italic">{r.description}</div>}
+      {!hasDamageBreakdown && r.damage != null && r.damage > 0 && <div className="text-xs text-red-400">Deals {r.damage} damage</div>}
+      {r.healing != null && r.healing > 0 && <div className="text-xs text-green-400">Heals for {r.healing}</div>}
+      {r.statusApplied && <div className="text-xs text-yellow-400">Applies {r.statusApplied}</div>}
+      {/* Multi-strike */}
+      {r.strikeResults && (r.strikeResults as StrikeResult[]).length > 0 && (
+        <div className="ml-2 mt-1 space-y-0.5 border-l-2 border-realm-border/30 pl-2">
+          {(r.strikeResults as StrikeResult[]).map((s, i) => (
+            <div key={i} className="text-xs font-mono">
+              Strike {s.strikeNumber}:
+              {s.attackRoll != null && <> d20={s.attackRoll}</>}
+              {s.attackTotal != null && <> ({s.attackTotal})</>}
+              {s.targetAc != null && <> vs AC {s.targetAc}</>}
+              {' → '}
+              <span className={s.hit ? 'text-green-400' : 'text-red-400'}>{s.hit ? 'HIT' : 'MISS'}</span>
+              {s.crit && <span className="text-realm-gold-400 ml-1">CRIT!</span>}
+              {s.hit && <span className="text-red-400"> → {s.damage} dmg</span>}
+            </div>
+          ))}
+          {r.totalStrikes != null && (
+            <div className="text-xs text-realm-text-muted font-bold">{r.strikesHit}/{r.totalStrikes} strikes hit</div>
+          )}
+        </div>
+      )}
+      {/* AoE per-target */}
+      {r.perTargetResults && (r.perTargetResults as PerTargetResult[]).length > 0 && (
+        <div className="ml-2 mt-1 space-y-0.5 border-l-2 border-realm-border/30 pl-2">
+          {(r.perTargetResults as PerTargetResult[]).map((t, i) => (
+            <div key={i} className="text-xs">
+              <span className="text-realm-text-secondary">{t.targetName || resolveName(t.targetId, nameMap)}</span>
+              {t.damage != null && <span className="text-red-400"> → {t.damage} dmg</span>}
+              {t.healing != null && <span className="text-green-400"> → +{t.healing} HP</span>}
+              {t.statusApplied && <span className="text-yellow-400"> [{t.statusApplied}]</span>}
+              <span className="text-realm-text-muted"> ({t.hpAfter} HP)</span>
+              {t.killed && <span className="text-red-400 font-bold"> SLAIN</span>}
+            </div>
+          ))}
+        </div>
+      )}
+      {r.targetKilled && <div className="text-red-400 font-bold text-xs">Target has been slain!</div>}
+      <CritDisplay crit={r.critResult} />
+      <FumbleDisplay fumble={r.fumbleResult} />
+      <DamageTypeDisplay dtr={r.damageTypeResult} />
     </div>
   );
 }
@@ -798,6 +1031,7 @@ function CombatantStatLine({ snap }: { snap: CombatantSnapshot }) {
 const ACTION_ICONS: Record<string, string> = {
   attack: '\u2694\uFE0F', cast: '\u2728', defend: '\uD83D\uDEE1\uFE0F', item: '\uD83E\uDDEA',
   flee: '\uD83C\uDFC3', racial_ability: '\uD83D\uDD2E', psion_ability: '\uD83E\uDDE0', class_ability: '\u26A1',
+  monster_ability: '\uD83D\uDC09',
 };
 
 function TurnResultRenderer({ entry, nameMap, actorSnapshot }: { entry: TurnEntry; nameMap: Record<string, string>; actorSnapshot?: CombatantSnapshot }) {
@@ -828,8 +1062,9 @@ function TurnResultRenderer({ entry, nameMap, actorSnapshot }: { entry: TurnEntr
       {type === 'racial_ability' && <RacialAbilityEntry r={r} nameMap={nameMap} />}
       {type === 'psion_ability' && <PsionAbilityEntry r={r} nameMap={nameMap} />}
       {type === 'class_ability' && <ClassAbilityEntry r={r} nameMap={nameMap} />}
+      {type === 'monster_ability' && <MonsterAbilityEntry r={r} nameMap={nameMap} />}
       {/* Fallback for unknown types */}
-      {!['attack', 'cast', 'defend', 'item', 'flee', 'racial_ability', 'psion_ability', 'class_ability'].includes(type) && (
+      {!['attack', 'cast', 'defend', 'item', 'flee', 'racial_ability', 'psion_ability', 'class_ability', 'monster_ability'].includes(type) && (
         <div className="text-xs text-realm-text-muted">
           <span className="font-bold">{resolveName(entry.actorId, nameMap)}</span> performs {type}
           {r.description && <div className="italic">{r.description}</div>}

@@ -32,9 +32,16 @@ import type {
   RacialAbilityActionResult,
   PsionAbilityResult,
   ClassAbilityResult,
+  MonsterAbilityResult,
   StatusTickResult,
   TurnLogEntry,
   DeathPenalty,
+  CombatDamageType,
+  DamageTypeResult,
+  CritResult,
+  FumbleResult,
+  D100Modifier,
+  MonsterAbilityInstance,
 } from '@shared/types/combat';
 
 import { getModifier } from '@shared/types/combat';
@@ -65,6 +72,16 @@ import {
   consumeAbsorption,
   checkDeathPrevention as checkClassDeathPrevention,
 } from './class-ability-resolver';
+import {
+  lookupCritChart,
+  lookupFumbleChart,
+  getCritChartType,
+  getFumbleChartType,
+  getFumbleLevelCap,
+  getCritSeverity,
+  getFumbleSeverity,
+} from '@shared/data/combat/crit-charts';
+import { resolveOnHitAbilities } from './monster-ability-resolver';
 
 // ---- Constants ----
 
@@ -273,6 +290,31 @@ export const STATUS_EFFECT_DEFS: Record<StatusEffectName, StatusEffectDef> = {
     acModifier: -5, // AC effectively drops toward 10
     saveModifier: -2,
   },
+  // Monster ability status effects
+  frightened: {
+    preventsAction: false,
+    dotDamage: () => 0,
+    hotHealing: () => 0,
+    attackModifier: -2,
+    acModifier: 0,
+    saveModifier: -2,
+  },
+  diseased: {
+    preventsAction: false,
+    dotDamage: (e) => e.damagePerRound ?? 2,
+    hotHealing: () => 0,
+    attackModifier: -1,
+    acModifier: 0,
+    saveModifier: -1,
+  },
+  knocked_down: {
+    preventsAction: false,
+    dotDamage: () => 0,
+    hotHealing: () => 0,
+    attackModifier: -2,
+    acModifier: -2,
+    saveModifier: 0,
+  },
 };
 
 // ---- Initiative ----
@@ -368,6 +410,59 @@ export function calculateDamage(
   return damageRoll(weapon.diceCount, weapon.diceSides, modifier);
 }
 
+// ---- Damage Type Interaction ----
+
+/**
+ * Apply damage type interaction (resistance/immunity/vulnerability).
+ * Returns a DamageTypeResult with the modified damage.
+ */
+export function applyDamageTypeInteraction(
+  damage: number,
+  damageType: CombatDamageType,
+  target: Combatant,
+): DamageTypeResult {
+  // Check immunity first
+  if (target.immunities?.includes(damageType)) {
+    return {
+      originalDamage: damage,
+      damageType,
+      interaction: 'immune',
+      multiplier: 0,
+      finalDamage: 0,
+    };
+  }
+
+  // Check vulnerability (double damage)
+  if (target.vulnerabilities?.includes(damageType)) {
+    return {
+      originalDamage: damage,
+      damageType,
+      interaction: 'vulnerable',
+      multiplier: 2,
+      finalDamage: damage * 2,
+    };
+  }
+
+  // Check resistance (half damage)
+  if (target.resistances?.includes(damageType)) {
+    return {
+      originalDamage: damage,
+      damageType,
+      interaction: 'resistant',
+      multiplier: 0.5,
+      finalDamage: Math.floor(damage / 2),
+    };
+  }
+
+  return {
+    originalDamage: damage,
+    damageType,
+    interaction: 'normal',
+    multiplier: 1,
+    finalDamage: damage,
+  };
+}
+
 // ---- Status Effects ----
 
 // Phase 5A: CC statuses that are blocked by ccImmune buffs
@@ -384,6 +479,11 @@ export function applyStatusEffect(
   // Phase 5A BUFF-1: CC immunity check
   if (CC_STATUSES.includes(effectName) && combatant.activeBuffs?.some(b => b.ccImmune === true)) {
     return combatant; // CC immune, status not applied
+  }
+
+  // Condition immunity check (monster-specific)
+  if (combatant.conditionImmunities?.includes(effectName)) {
+    return combatant; // Condition immune, status not applied
   }
 
   const id = `${effectName}-${sourceId}-${Date.now()}`;
@@ -631,6 +731,92 @@ export function resolveAttack(
     actor = { ...actor, hasAttackedThisCombat: true };
   }
 
+  // === FUMBLE RESOLUTION (d100 charts) ===
+  let fumbleResult: FumbleResult | undefined;
+  if (roll.roll === 1) {
+    const confirmRoll = attackRoll(atkMod, targetAC);
+    if (!confirmRoll.hit) {
+      // Confirmed fumble — d100 chart lookup
+      const isSpell = weapon.damageType === 'FORCE' || weapon.damageType === 'PSYCHIC' || weapon.damageType === 'RADIANT';
+      const isRanged = weapon.attackModifierStat === 'dex' && !isSpell;
+      const fumbleChartType = getFumbleChartType(isRanged, isSpell);
+      const rawD100 = Math.floor(Math.random() * 100) + 1;
+      const levelCap = getFumbleLevelCap(actor.level);
+      const modifiers: D100Modifier[] = [];
+      // Bard: -15 (less clumsy), Heavy weapon: +5, Finesse: -5
+      if (actor.characterClass?.toLowerCase() === 'bard') modifiers.push({ source: 'Bard', value: -15 });
+      const totalMod = modifiers.reduce((sum, m) => sum + m.value, 0);
+      const modifiedD100 = Math.max(1, Math.min(levelCap, rawD100 + totalMod));
+      const entry = lookupFumbleChart(fumbleChartType, modifiedD100);
+      const severity = getFumbleSeverity(modifiedD100);
+
+      fumbleResult = {
+        confirmed: true,
+        confirmationRoll: confirmRoll.roll,
+        confirmationTotal: confirmRoll.total,
+        confirmationAC: targetAC,
+        rawD100,
+        modifiers,
+        modifiedD100,
+        levelCap,
+        cappedD100: modifiedD100,
+        severity,
+        chartType: fumbleChartType,
+        entry,
+        effectApplied: entry.effect.type !== 'none' ? entry.effect.type : undefined,
+        duration: entry.effect.duration || undefined,
+      };
+
+      // Apply fumble self-effects
+      if (entry.effect.type === 'ac_penalty' && entry.effect.value) {
+        actor = applyStatusEffect(actor, 'weakened', entry.effect.duration, actorId, 0);
+      }
+      if (entry.effect.type === 'attack_penalty' && entry.effect.value) {
+        actor = applyStatusEffect(actor, 'weakened', entry.effect.duration, actorId, 0);
+      }
+      if (entry.effect.type === 'skip_attack') {
+        actor = applyStatusEffect(actor, 'stunned', entry.effect.duration, actorId, 0);
+      }
+
+      // Fumble = miss with consequences — early return
+      const fumbleAttackResult: AttackResult = {
+        type: 'attack',
+        actorId,
+        targetId,
+        attackRoll: roll.roll,
+        attackTotal: roll.total,
+        attackModifiers: atkModBreakdown,
+        targetAC,
+        hit: false,
+        critical: false,
+        damageRoll: 0,
+        damageRolls: [],
+        damageModifiers: [],
+        damageType: weapon.damageType,
+        totalDamage: 0,
+        targetHpBefore: target.currentHp,
+        targetHpAfter: target.currentHp,
+        targetKilled: false,
+        weaponName: weapon.name,
+        weaponDice: `${weapon.diceCount}d${weapon.diceSides}`,
+        fumbleResult,
+      };
+      const combatants = state.combatants.map(c => {
+        if (c.id === actorId) return actor;
+        return c;
+      });
+      return { state: { ...state, combatants }, result: fumbleAttackResult };
+    } else {
+      // Not confirmed — just a regular miss
+      fumbleResult = {
+        confirmed: false,
+        confirmationRoll: confirmRoll.roll,
+        confirmationTotal: confirmRoll.total,
+        confirmationAC: targetAC,
+      };
+    }
+  }
+
   let totalDamage = 0;
   let damageRollValue = 0;
   let damageRolls: number[] = [];
@@ -698,8 +884,13 @@ export function resolveAttack(
     }
   }
 
+  // === CRIT RESOLUTION (d100 charts) ===
+  let critResult: CritResult | undefined;
+  let damageTypeResult: DamageTypeResult | undefined;
+
   if (roll.hit && !dodged) {
-    const dmg = calculateDamage(actor, weapon, roll.critical);
+    // Always calculate base damage (non-crit), d100 chart adds bonus dice
+    const dmg = calculateDamage(actor, weapon, false);
     damageRollValue = dmg.total;
     damageRolls = dmg.rolls;
     totalDamage = Math.max(0, dmg.total);
@@ -711,7 +902,87 @@ export function resolveAttack(
       dmgModBreakdown.push({ source: 'weaponBonus', value: weapon.bonusDamage });
     }
 
-    // Half-Orc Savage Attacks: extra die on crit
+    // d100 Crit chart resolution
+    if (roll.critical) {
+      // Check crit immunity (amorphous creatures like Slime)
+      if (target.critImmunity) {
+        // Downgrade to normal hit — damage already calculated as base
+        roll.critical = false;
+      } else {
+        // Determine crit trigger source
+        let critTrigger: 'nat20' | 'expanded_range' | 'first_strike' = 'nat20';
+        if (roll.roll !== 20 && actor.firstStrikeCrit && !actor.hasAttackedThisCombat) {
+          critTrigger = 'first_strike';
+        } else if (roll.roll !== 20) {
+          critTrigger = 'expanded_range';
+        }
+
+        // Determine chart type from weapon damage type
+        const isRanged = weapon.attackModifierStat === 'dex' &&
+          !(weapon.damageType === 'FORCE' || weapon.damageType === 'PSYCHIC' || weapon.damageType === 'RADIANT');
+        const chartType = getCritChartType(weapon.damageType ?? 'BLUDGEONING', isRanged);
+
+        // Roll d100 and collect modifiers
+        const rawD100 = Math.floor(Math.random() * 100) + 1;
+        const critModifiers: D100Modifier[] = [];
+        // Berserker Rage: +15
+        if (actor.activeBuffs?.some(b => b.name?.toLowerCase().includes('rage'))) {
+          critModifiers.push({ source: 'Berserker Rage', value: 15 });
+        }
+        // Rogue stealth: +20
+        if (actor.activeBuffs?.some(b => b.stealthed === true)) {
+          critModifiers.push({ source: 'Rogue Stealth', value: 20 });
+        }
+        // Psion bonus: +5
+        if (actor.characterClass?.toLowerCase() === 'psion') {
+          critModifiers.push({ source: 'Psion', value: 5 });
+        }
+        // Target crit resistance (negative modifier)
+        if (target.critResistance && target.critResistance !== 0) {
+          critModifiers.push({ source: 'Target Crit Resistance', value: target.critResistance });
+        }
+        const totalCritMod = critModifiers.reduce((sum, m) => sum + m.value, 0);
+        const modifiedD100 = Math.max(1, Math.min(100, rawD100 + totalCritMod));
+
+        // Lookup chart entry
+        const critEntry = lookupCritChart(chartType, modifiedD100);
+        const critSeverity = getCritSeverity(modifiedD100);
+
+        // Apply bonus dice from chart entry
+        const bonusDmg = damageRoll(critEntry.bonusDice, weapon.diceSides);
+        totalDamage += bonusDmg.total;
+        damageRollValue += bonusDmg.total;
+        damageRolls = [...damageRolls, ...bonusDmg.rolls];
+        dmgModBreakdown.push({ source: `crit_${critSeverity}`, value: bonusDmg.total });
+
+        // Apply chart status effect if present
+        if (critEntry.statusEffect) {
+          const effectName = critEntry.statusEffect.type as StatusEffectName;
+          if (STATUS_EFFECT_DEFS[effectName]) {
+            target = applyStatusEffect(
+              target, effectName, critEntry.statusEffect.duration,
+              actorId, critEntry.statusEffect.value ?? 0,
+            );
+          }
+        }
+
+        critResult = {
+          trigger: critTrigger,
+          chartType,
+          rawD100,
+          modifiers: critModifiers,
+          modifiedD100,
+          severity: critSeverity,
+          entry: critEntry,
+          bonusDamage: bonusDmg.total,
+          statusApplied: critEntry.statusEffect?.type,
+          statusDuration: critEntry.statusEffect?.duration,
+          totalCritDamage: totalDamage,
+        };
+      }
+    }
+
+    // Half-Orc Savage Attacks: extra die on crit (still applies on top of d100 chart)
     if (roll.critical && racialMods && racialMods.extraCritDice > 0) {
       const extraDmg = damageRoll(racialMods.extraCritDice, weapon.diceSides);
       totalDamage += extraDmg.total;
@@ -808,6 +1079,26 @@ export function resolveAttack(
       dmgModBreakdown.push({ source: 'absorbed', value: absorbResult.remainingDamage - totalDamage });
       target = absorbResult.combatant;
       totalDamage = absorbResult.remainingDamage;
+    }
+
+    // === DAMAGE TYPE INTERACTION ===
+    if (totalDamage > 0 && weapon.damageType) {
+      const dtResult = applyDamageTypeInteraction(totalDamage, weapon.damageType as CombatDamageType, target);
+      if (dtResult.interaction !== 'normal') {
+        dmgModBreakdown.push({ source: `DT_${dtResult.interaction}`, value: dtResult.finalDamage - totalDamage });
+        totalDamage = dtResult.finalDamage;
+        damageTypeResult = dtResult;
+      }
+      // Track damage type received for regen-disabling
+      if (totalDamage > 0 && weapon.damageType) {
+        target = {
+          ...target,
+          damageTypesReceivedThisRound: [
+            ...(target.damageTypesReceivedThisRound ?? []),
+            weapon.damageType as CombatDamageType,
+          ],
+        };
+      }
     }
 
     // Phase 3: Companion interception check (Alpha Predator)
@@ -921,6 +1212,12 @@ export function resolveAttack(
       }
     }
 
+    // === MONSTER ON-HIT ABILITIES ===
+    if (actor.entityType === 'monster' && totalDamage > 0 && target.isAlive) {
+      const onHitResult = resolveOnHitAbilities(actor, target);
+      target = onHitResult.target;
+    }
+
     // Phase 3: Reactive counter/trap trigger check on target
     if (target.activeBuffs && target.activeBuffs.length > 0) {
       const reactiveBuff = target.activeBuffs.find(buff =>
@@ -1018,6 +1315,9 @@ export function resolveAttack(
     deathPreventedAbility: deathPrevented ? deathPreventedAbility : undefined,
     attackerDeathPrevented: attackerDeathPrevented || undefined,
     attackerDeathPreventedAbility: attackerDeathPrevented ? attackerDeathPreventedAbility : undefined,
+    critResult,
+    fumbleResult,
+    damageTypeResult,
   };
 
   const combatants = state.combatants.map((c) => {
@@ -2392,6 +2692,53 @@ export function resolveTurn(
         break;
       }
 
+      case 'monster_ability': {
+        if (!action.monsterAbilityId) {
+          result = noOpDefend(actorId);
+          break;
+        }
+        const mActor = current.combatants.find(c => c.id === actorId);
+        const abilityInst = mActor?.monsterAbilities?.find(inst => inst.def.id === action.monsterAbilityId);
+        if (!abilityInst || !mActor) {
+          // Fallback to basic attack if ability not found
+          if (action.targetId && context.weapon) {
+            const atk = resolveAttack(current, actorId, action.targetId, context.weapon, racialContext?.tracker);
+            current = atk.state;
+            result = atk.result;
+          } else {
+            result = noOpDefend(actorId);
+          }
+          break;
+        }
+        const { resolveMonsterAbility } = require('./monster-ability-resolver');
+        const monsterAbilityResult = resolveMonsterAbility(current, actorId, abilityInst.def, action.targetId, action.targetIds);
+        current = monsterAbilityResult.state;
+        result = monsterAbilityResult.result;
+
+        // Tick cooldowns: set cooldown on the used ability, decrement others
+        current = {
+          ...current,
+          combatants: current.combatants.map(c => {
+            if (c.id !== actorId || !c.monsterAbilities) return c;
+            return {
+              ...c,
+              monsterAbilities: c.monsterAbilities.map(inst => {
+                if (inst.def.id === action.monsterAbilityId) {
+                  return {
+                    ...inst,
+                    cooldownRemaining: inst.def.cooldown ?? 0,
+                    usesRemaining: inst.usesRemaining !== null ? inst.usesRemaining - 1 : null,
+                    isRecharged: false,
+                  };
+                }
+                return inst;
+              }),
+            };
+          }),
+        };
+        break;
+      }
+
       default:
         result = noOpDefend(actorId);
     }
@@ -2450,6 +2797,44 @@ export function resolveTurn(
       combatants: current.combatants.map(c =>
         c.id === actorId ? { ...c, extraActionUsedThisTurn: false } : c
       ),
+    };
+  }
+
+  // === MONSTER REGENERATION & ABILITY COOLDOWN TICK ===
+  const turnActor = current.combatants.find(c => c.id === actorId);
+  if (turnActor?.entityType === 'monster' && turnActor.monsterAbilities) {
+    let updatedActor = { ...turnActor };
+
+    // Check heal abilities with disabledBy (e.g., Troll regen disabled by FIRE/ACID)
+    for (const inst of updatedActor.monsterAbilities!) {
+      if (inst.def.type === 'heal' && inst.def.hpPerTurn && updatedActor.isAlive) {
+        const disabled = inst.def.disabledBy?.some(dt =>
+          updatedActor.damageTypesReceivedThisRound?.includes(dt)
+        );
+        if (!disabled) {
+          const healAmount = Math.min(inst.def.hpPerTurn, updatedActor.maxHp - updatedActor.currentHp);
+          if (healAmount > 0) {
+            updatedActor = { ...updatedActor, currentHp: updatedActor.currentHp + healAmount };
+          }
+        }
+      }
+    }
+
+    // Clear damage types received this round
+    updatedActor = { ...updatedActor, damageTypesReceivedThisRound: [] };
+
+    // Tick all ability cooldowns down by 1
+    updatedActor = {
+      ...updatedActor,
+      monsterAbilities: updatedActor.monsterAbilities!.map(inst => ({
+        ...inst,
+        cooldownRemaining: Math.max(0, inst.cooldownRemaining - 1),
+      })),
+    };
+
+    current = {
+      ...current,
+      combatants: current.combatants.map(c => c.id === actorId ? updatedActor : c),
     };
   }
 
@@ -2632,7 +3017,16 @@ export function createMonsterCombatant(
   hp: number,
   ac: number,
   weapon: WeaponInfo | null,
-  proficiencyBonus: number = 0
+  proficiencyBonus: number = 0,
+  options?: {
+    resistances?: CombatDamageType[];
+    immunities?: CombatDamageType[];
+    vulnerabilities?: CombatDamageType[];
+    conditionImmunities?: string[];
+    critImmunity?: boolean;
+    critResistance?: number;
+    monsterAbilities?: MonsterAbilityInstance[];
+  },
 ): Combatant {
   return {
     id,
@@ -2651,5 +3045,12 @@ export function createMonsterCombatant(
     isAlive: true,
     isDefending: false,
     proficiencyBonus,
+    ...(options?.resistances && { resistances: options.resistances }),
+    ...(options?.immunities && { immunities: options.immunities }),
+    ...(options?.vulnerabilities && { vulnerabilities: options.vulnerabilities }),
+    ...(options?.conditionImmunities && { conditionImmunities: options.conditionImmunities }),
+    ...(options?.critImmunity && { critImmunity: options.critImmunity }),
+    ...(options?.critResistance && { critResistance: options.critResistance }),
+    ...(options?.monsterAbilities && { monsterAbilities: options.monsterAbilities }),
   };
 }

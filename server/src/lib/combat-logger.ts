@@ -28,7 +28,11 @@ import type {
   RacialAbilityActionResult,
   PsionAbilityResult,
   ClassAbilityResult,
+  MonsterAbilityResult,
   AttackModifierBreakdown,
+  CritResult,
+  FumbleResult,
+  DamageTypeResult,
 } from '@shared/types/combat';
 
 // Config flag — can be turned off in production if performance is a concern
@@ -130,6 +134,10 @@ export interface RoundLogEntry {
   statusEffectsExpired: string[];
   statusTickDamage?: number;
   statusTickHealing?: number;
+  // Crit/Fumble/Damage Type results
+  critResult?: CritResult;
+  fumbleResult?: FumbleResult;
+  damageTypeResult?: DamageTypeResult;
   // HP snapshot for all combatants after this action
   hpAfter: Record<string, number>;
 }
@@ -251,6 +259,11 @@ export function buildRoundsData(state: CombatState): RoundLogEntry[] {
           type: atk.damageType,
         };
       }
+
+      // Pass through crit/fumble/DT results
+      if (atk.critResult) round.critResult = atk.critResult;
+      if (atk.fumbleResult) round.fumbleResult = atk.fumbleResult;
+      if (atk.damageTypeResult) round.damageTypeResult = atk.damageTypeResult;
 
       // Update HP tracker
       if (atk.targetId) {
@@ -435,6 +448,78 @@ export function buildRoundsData(state: CombatState): RoundLogEntry[] {
       // Update HP tracker for AoE per-target results
       if (ca.perTargetResults) {
         for (const ptr of ca.perTargetResults) {
+          hpTracker[ptr.targetId] = ptr.hpAfter;
+        }
+      }
+    } else if (result.type === 'monster_ability') {
+      const ma = result as MonsterAbilityResult;
+      round.abilityName = ma.abilityName;
+      round.abilityDescription = ma.description;
+      if (ma.saveDC) round.saveDC = ma.saveDC;
+      if (ma.saveRoll) round.saveRoll = ma.saveRoll;
+      if (ma.saveTotal) round.saveTotal = ma.saveTotal;
+      if (ma.saveSucceeded !== undefined) round.saveSucceeded = ma.saveSucceeded;
+
+      // Attack roll breakdown
+      if (ma.attackRoll != null) {
+        round.attackRoll = {
+          raw: ma.attackRoll,
+          modifiers: ma.attackModifiers ?? [],
+          total: ma.attackTotal ?? ma.attackRoll,
+        };
+        round.targetAC = ma.targetAC;
+        round.hit = ma.hit;
+        round.isCritical = ma.isCritical;
+      }
+
+      // Target HP
+      if (ma.targetHpBefore != null) {
+        round.targetHpBefore = ma.targetHpBefore;
+      } else if (ma.targetId) {
+        round.targetHpBefore = hpTracker[ma.targetId];
+      }
+      if (ma.targetHpAfter !== undefined) {
+        round.targetHpAfter = ma.targetHpAfter;
+        round.targetKilled = ma.targetKilled;
+      }
+
+      // Damage
+      if (ma.damage && ma.damage > 0) {
+        round.damageRoll = {
+          dice: ma.weaponDice ?? 'ability',
+          rolls: ma.damageRolls ?? [],
+          modifiers: ma.damageModifiers ?? [],
+          total: ma.damage,
+          type: ma.damageType,
+        };
+      }
+      if (ma.healing && ma.healing > 0) {
+        round.healAmount = ma.healing;
+      }
+      if (ma.statusApplied) {
+        round.statusEffectsApplied.push(ma.statusApplied);
+      }
+
+      // Multi-strike passthrough
+      if (ma.strikeResults) round.strikeResults = ma.strikeResults;
+      if (ma.totalStrikes != null) round.totalStrikes = ma.totalStrikes;
+      if (ma.strikesHit != null) round.strikesHit = ma.strikesHit;
+      if (ma.perTargetResults) round.perTargetResults = ma.perTargetResults;
+
+      // Crit/fumble/DT
+      if (ma.critResult) round.critResult = ma.critResult;
+      if (ma.fumbleResult) round.fumbleResult = ma.fumbleResult;
+      if (ma.damageTypeResult) round.damageTypeResult = ma.damageTypeResult;
+
+      // Update HP tracker
+      if (ma.targetId && ma.targetHpAfter !== undefined) {
+        hpTracker[ma.targetId] = ma.targetHpAfter;
+      }
+      if (ma.actorHpAfter !== undefined) {
+        hpTracker[ma.actorId] = ma.actorHpAfter;
+      }
+      if (ma.perTargetResults) {
+        for (const ptr of ma.perTargetResults) {
           hpTracker[ptr.targetId] = ptr.hpAfter;
         }
       }

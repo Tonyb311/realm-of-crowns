@@ -1617,8 +1617,20 @@ model Monster {
   stats     Json      @default("{}")
   lootTable Json      @default("[]") @map("loot_table")
   regionId  String?   @map("region_id")
-  biome     BiomeType
-  createdAt DateTime  @default(now()) @map("created_at")
+  biome               BiomeType
+  abilities           Json      @default("[]")
+  damageType          String    @default("BLUDGEONING")  @map("damage_type")
+  resistances         Json      @default("[]")
+  immunities          Json      @default("[]")
+  vulnerabilities     Json      @default("[]")
+  conditionImmunities Json      @default("[]")           @map("condition_immunities")
+  critImmunity        Boolean   @default(false)          @map("crit_immunity")
+  critResistance      Int       @default(0)              @map("crit_resistance")
+  expandedCritRange   Int       @default(0)              @map("expanded_crit_range")
+  formulaCR           Float?                             @map("formula_cr")
+  simCR               Float?                             @map("sim_cr")
+  encounterType       String    @default("solo")         @map("encounter_type")
+  createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
   region Region? @relation(fields: [regionId], references: [id], onDelete: SetNull)
