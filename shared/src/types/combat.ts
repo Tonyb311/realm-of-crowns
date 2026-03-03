@@ -534,6 +534,8 @@ export interface AttackResult {
   critResult?: CritResult;
   fumbleResult?: FumbleResult;
   damageTypeResult?: DamageTypeResult;
+  // Monster on-hit effects
+  statusEffectsApplied?: string[];
 }
 
 export interface CastResult {
@@ -705,6 +707,10 @@ export interface ClassAbilityResult {
   bonusLootRoll?: boolean;
   peacefulResolution?: boolean;
   randomAbilityUsed?: string;
+  // Crit/Fumble/Damage Type results
+  critResult?: CritResult;
+  fumbleResult?: FumbleResult;
+  damageTypeResult?: DamageTypeResult;
 }
 
 export type TurnResult = AttackResult | CastResult | DefendResult | ItemResult | FleeResult | RacialAbilityActionResult | PsionAbilityResult | ClassAbilityResult | MonsterAbilityResult;

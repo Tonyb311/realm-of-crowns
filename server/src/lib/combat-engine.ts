@@ -887,6 +887,7 @@ export function resolveAttack(
   // === CRIT RESOLUTION (d100 charts) ===
   let critResult: CritResult | undefined;
   let damageTypeResult: DamageTypeResult | undefined;
+  let statusEffectsApplied: string[] | undefined;
 
   if (roll.hit && !dodged) {
     // Always calculate base damage (non-crit), d100 chart adds bonus dice
@@ -1216,6 +1217,9 @@ export function resolveAttack(
     if (actor.entityType === 'monster' && totalDamage > 0 && target.isAlive) {
       const onHitResult = resolveOnHitAbilities(actor, target);
       target = onHitResult.target;
+      if (onHitResult.effectsApplied.length > 0) {
+        statusEffectsApplied = onHitResult.effectsApplied;
+      }
     }
 
     // Phase 3: Reactive counter/trap trigger check on target
@@ -1318,6 +1322,7 @@ export function resolveAttack(
     critResult,
     fumbleResult,
     damageTypeResult,
+    statusEffectsApplied,
   };
 
   const combatants = state.combatants.map((c) => {
@@ -2443,6 +2448,39 @@ export function resolveTurn(
     current = awState;
   }
 
+  // === MONSTER REGENERATION (start of monster turn, before action) ===
+  const regenActor = current.combatants.find(c => c.id === actorId);
+  if (regenActor?.entityType === 'monster' && regenActor.monsterAbilities && regenActor.isAlive) {
+    let regenUpdated = { ...regenActor };
+    for (const inst of regenUpdated.monsterAbilities!) {
+      if (inst.def.type === 'heal' && inst.def.hpPerTurn) {
+        const disabled = inst.def.disabledBy?.some(dt =>
+          regenUpdated.damageTypesReceivedThisRound?.includes(dt)
+        );
+        if (!disabled) {
+          const healAmount = Math.min(inst.def.hpPerTurn, regenUpdated.maxHp - regenUpdated.currentHp);
+          if (healAmount > 0) {
+            regenUpdated = { ...regenUpdated, currentHp: regenUpdated.currentHp + healAmount };
+            ticks.push({
+              combatantId: actorId,
+              effectName: 'regenerating',
+              healing: healAmount,
+              expired: false,
+              hpAfter: regenUpdated.currentHp,
+              killed: false,
+            });
+          }
+        }
+      }
+    }
+    if (regenUpdated.currentHp !== regenActor.currentHp) {
+      current = {
+        ...current,
+        combatants: current.combatants.map(c => c.id === actorId ? regenUpdated : c),
+      };
+    }
+  }
+
   // If actor died to DoT, log and skip action
   if (!updatedActor.isAlive) {
     const logEntry: TurnLogEntry = {
@@ -2672,6 +2710,42 @@ export function resolveTurn(
         const classAbility = resolveClassAbility(current, actorId, action.classAbilityId, action.targetId, action.targetIds);
         current = classAbility.state;
         result = classAbility.result;
+        // Apply damage type interaction to class ability damage
+        if (classAbility.result.damage && classAbility.result.damage > 0 && action.targetId && context.weapon?.damageType) {
+          const dtTarget = current.combatants.find(c => c.id === action.targetId);
+          if (dtTarget) {
+            const dtRes = applyDamageTypeInteraction(classAbility.result.damage, context.weapon.damageType as CombatDamageType, dtTarget);
+            if (dtRes.interaction !== 'normal') {
+              // Undo full damage, reapply with DT modifier
+              const hpBeforeDmg = classAbility.result.targetHpBefore ?? (dtTarget.currentHp + classAbility.result.damage);
+              const newHp = Math.max(0, hpBeforeDmg - dtRes.finalDamage);
+              current = {
+                ...current,
+                combatants: current.combatants.map(c =>
+                  c.id === action.targetId ? { ...c, currentHp: newHp, isAlive: newHp > 0 } : c
+                ),
+              };
+              (classAbility.result as any).damageTypeResult = dtRes;
+              (classAbility.result as any).targetHpAfter = newHp;
+              (classAbility.result as any).targetKilled = newHp <= 0;
+            }
+            // Track damage type received for regen-disabling
+            if (dtRes.finalDamage > 0) {
+              current = {
+                ...current,
+                combatants: current.combatants.map(c =>
+                  c.id === action.targetId ? {
+                    ...c,
+                    damageTypesReceivedThisRound: [
+                      ...(c.damageTypesReceivedThisRound ?? []),
+                      context.weapon!.damageType as CombatDamageType,
+                    ],
+                  } : c
+                ),
+              };
+            }
+          }
+        }
         // If effect type is unimplemented, fall back to basic attack
         if (classAbility.result.fallbackToAttack && action.targetId && context.weapon) {
           const atk = resolveAttack(current, actorId, action.targetId, context.weapon, racialContext?.tracker);
@@ -2726,7 +2800,7 @@ export function resolveTurn(
                 if (inst.def.id === action.monsterAbilityId) {
                   return {
                     ...inst,
-                    cooldownRemaining: inst.def.cooldown ?? 0,
+                    cooldownRemaining: inst.def.recharge ? 1 : (inst.def.cooldown ?? 0),
                     usesRemaining: inst.usesRemaining !== null ? inst.usesRemaining - 1 : null,
                     isRecharged: false,
                   };
@@ -2800,25 +2874,10 @@ export function resolveTurn(
     };
   }
 
-  // === MONSTER REGENERATION & ABILITY COOLDOWN TICK ===
+  // === MONSTER ABILITY COOLDOWN TICK ===
   const turnActor = current.combatants.find(c => c.id === actorId);
   if (turnActor?.entityType === 'monster' && turnActor.monsterAbilities) {
     let updatedActor = { ...turnActor };
-
-    // Check heal abilities with disabledBy (e.g., Troll regen disabled by FIRE/ACID)
-    for (const inst of updatedActor.monsterAbilities!) {
-      if (inst.def.type === 'heal' && inst.def.hpPerTurn && updatedActor.isAlive) {
-        const disabled = inst.def.disabledBy?.some(dt =>
-          updatedActor.damageTypesReceivedThisRound?.includes(dt)
-        );
-        if (!disabled) {
-          const healAmount = Math.min(inst.def.hpPerTurn, updatedActor.maxHp - updatedActor.currentHp);
-          if (healAmount > 0) {
-            updatedActor = { ...updatedActor, currentHp: updatedActor.currentHp + healAmount };
-          }
-        }
-      }
-    }
 
     // Clear damage types received this round
     updatedActor = { ...updatedActor, damageTypesReceivedThisRound: [] };
@@ -2828,7 +2887,9 @@ export function resolveTurn(
       ...updatedActor,
       monsterAbilities: updatedActor.monsterAbilities!.map(inst => ({
         ...inst,
-        cooldownRemaining: Math.max(0, inst.cooldownRemaining - 1),
+        cooldownRemaining: inst.def.recharge
+          ? inst.cooldownRemaining  // recharge abilities only clear via d6 roll, not tick
+          : Math.max(0, inst.cooldownRemaining - 1),
       })),
     };
 

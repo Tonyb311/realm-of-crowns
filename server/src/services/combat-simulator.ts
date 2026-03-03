@@ -112,6 +112,19 @@ const CLASS_WEAPON_TYPE: Record<string, 'melee' | 'ranged' | 'staff'> = {
   ranger: 'ranged', bard: 'melee', mage: 'staff', psion: 'staff',
 };
 
+/** Default damage type per weapon type — used when weapon has no explicit damageType */
+const WEAPON_TYPE_DAMAGE: Record<string, string> = {
+  melee: 'SLASHING',
+  ranged: 'PIERCING',
+  staff: 'BLUDGEONING',
+};
+
+/** Class-specific damage type overrides (rogue uses piercing weapons, cleric uses bludgeoning) */
+const CLASS_DAMAGE_TYPE_OVERRIDE: Record<string, string> = {
+  rogue: 'PIERCING',
+  cleric: 'BLUDGEONING',
+};
+
 // ---------------------------------------------------------------------------
 // Equipment Tiers (index 0-4 for level ranges 1-4, 5-9, 10-14, 15-19, 20+)
 // ---------------------------------------------------------------------------
@@ -287,6 +300,7 @@ export function buildSyntheticPlayer(config: SyntheticPlayerConfig): SyntheticPl
     bonusAttack: weaponTier.bonusAttack,
     damageModifierStat: weaponStat,
     attackModifierStat: weaponStat,
+    damageType: CLASS_DAMAGE_TYPE_OVERRIDE[className] ?? WEAPON_TYPE_DAMAGE[weaponType] ?? 'SLASHING',
   };
 
   return {

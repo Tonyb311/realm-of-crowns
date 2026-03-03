@@ -264,6 +264,9 @@ export function buildRoundsData(state: CombatState): RoundLogEntry[] {
       if (atk.critResult) round.critResult = atk.critResult;
       if (atk.fumbleResult) round.fumbleResult = atk.fumbleResult;
       if (atk.damageTypeResult) round.damageTypeResult = atk.damageTypeResult;
+      if (atk.statusEffectsApplied && atk.statusEffectsApplied.length > 0) {
+        round.statusEffectsApplied.push(...atk.statusEffectsApplied);
+      }
 
       // Update HP tracker
       if (atk.targetId) {
@@ -440,6 +443,11 @@ export function buildRoundsData(state: CombatState): RoundLogEntry[] {
       if (ca.totalStrikes != null) round.totalStrikes = ca.totalStrikes;
       if (ca.strikesHit != null) round.strikesHit = ca.strikesHit;
       if (ca.perTargetResults) round.perTargetResults = ca.perTargetResults;
+
+      // Pass through crit/fumble/DT results for class abilities
+      if (ca.critResult) round.critResult = ca.critResult;
+      if (ca.fumbleResult) round.fumbleResult = ca.fumbleResult;
+      if (ca.damageTypeResult) round.damageTypeResult = ca.damageTypeResult;
 
       // Update HP tracker for class ability targets
       if (ca.targetId && ca.targetHpAfter !== undefined) {
