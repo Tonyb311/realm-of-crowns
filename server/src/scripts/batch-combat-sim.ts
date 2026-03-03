@@ -306,6 +306,8 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
         conditionImmunities: m.conditionImmunities as string[] || [],
         critImmunity: m.critImmunity,
         critResistance: m.critResistance,
+        legendaryActions: (m as any).legendaryActions ?? 0,
+        legendaryResistances: (m as any).legendaryResistances ?? 0,
       } as MonsterCombatData,
     },
   ]));

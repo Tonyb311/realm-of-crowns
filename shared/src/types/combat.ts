@@ -809,6 +809,8 @@ export interface CombatState {
   winningTeam: number | null;
   /** Phase 3: Set by Diplomat's Gambit when combat ends via negotiation */
   peacefulResolution?: boolean;
+  /** Transient: last LR result, consumed by resolveTurn for logging */
+  lastLegendaryResistance?: LegendaryResistanceResult;
 }
 
 export interface TurnLogEntry {

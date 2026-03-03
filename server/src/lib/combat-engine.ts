@@ -485,8 +485,17 @@ export function checkLegendaryResistance(
     return { state, overridden: false };
 
   const remaining = target.legendaryResistancesRemaining - 1;
+  const lrResult: LegendaryResistanceResult = {
+    originalRoll: save.roll,
+    originalTotal: save.total,
+    saveDC,
+    wouldHaveFailed: true,
+    resistanceUsed: true,
+    resistancesRemaining: remaining,
+  };
   state = {
     ...state,
+    lastLegendaryResistance: lrResult,
     combatants: state.combatants.map(c =>
       c.id === targetId ? { ...c, legendaryResistancesRemaining: remaining } : c
     ),
@@ -494,14 +503,7 @@ export function checkLegendaryResistance(
   return {
     state,
     overridden: true,
-    lrResult: {
-      originalRoll: save.roll,
-      originalTotal: save.total,
-      saveDC,
-      wouldHaveFailed: true,
-      resistanceUsed: true,
-      resistancesRemaining: remaining,
-    },
+    lrResult,
   };
 }
 
@@ -2973,6 +2975,12 @@ export function resolveTurn(
     }
   }
 
+  // Consume LR result from state (set by checkLegendaryResistance during action resolution)
+  const lrResult = current.lastLegendaryResistance;
+  if (lrResult) {
+    current = { ...current, lastLegendaryResistance: undefined };
+  }
+
   const logEntry: TurnLogEntry = {
     round: current.round,
     actorId,
@@ -2980,6 +2988,7 @@ export function resolveTurn(
     result,
     statusTicks: ticks,
     ...(auraResults.length > 0 && { auraResults }),
+    ...(lrResult && { legendaryResistance: lrResult }),
   };
 
   current = {
