@@ -120,7 +120,7 @@ export interface RoundLogEntry {
 /**
  * Build encounter context with starting stat blocks for all combatants.
  */
-function buildEncounterContext(state: CombatState): EncounterContext {
+export function buildEncounterContext(state: CombatState): EncounterContext {
   // Use the first round's combatants — they represent the starting state
   // since combatants are immutable (new objects each round via spread)
   // We take the snapshot from the state but use maxHp as the starting HP indicator
@@ -158,7 +158,7 @@ function buildEncounterContext(state: CombatState): EncounterContext {
  * Extract structured per-round data from the combat engine's TurnLogEntry array.
  * Uses typed result objects for correct field access.
  */
-function buildRoundsData(state: CombatState): RoundLogEntry[] {
+export function buildRoundsData(state: CombatState): RoundLogEntry[] {
   const rounds: RoundLogEntry[] = [];
 
   // Track HP per combatant across rounds
@@ -358,7 +358,7 @@ function buildRoundsData(state: CombatState): RoundLogEntry[] {
 /**
  * Build a human-readable summary string for the encounter.
  */
-function buildSummary(
+export function buildSummary(
   outcome: string,
   totalRounds: number,
   characterName: string,

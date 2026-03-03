@@ -31,7 +31,7 @@ import {
   createCombatState,
 } from '../lib/combat-engine';
 import { resolveTickCombat, type CombatantParams } from '../services/tick-combat-resolver';
-import { logPveCombat } from '../lib/combat-logger';
+import { buildEncounterContext, buildRoundsData, buildSummary } from '../lib/combat-logger';
 import { setSimulationRunId } from '../lib/simulation-context';
 
 // ---------------------------------------------------------------------------
@@ -341,7 +341,7 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
     charMap.set(combo, charId);
   }
 
-  // Fight loop
+  // Fight loop — all in-memory, no DB calls per fight
   let completedFights = 0;
   let totalWins = 0;
   let totalLosses = 0;
@@ -352,6 +352,16 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
   // Per-class and per-monster stats
   const classStats = new Map<string, { wins: number; total: number }>();
   const monsterStats = new Map<string, { wins: number; total: number }>();
+
+  // Collect encounter log rows in memory for bulk insert
+  const BATCH_SIZE = 500;
+  let pendingRows: any[] = [];
+
+  async function flushRows(): Promise<void> {
+    if (pendingRows.length === 0) return;
+    await prisma.combatEncounterLog.createMany({ data: pendingRows });
+    pendingRows = [];
+  }
 
   const progressInterval = Math.max(1, Math.floor(totalFights / 20)); // Report every ~5%
 
@@ -408,7 +418,6 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
 
         const paramsMap = new Map<string, CombatantParams>();
         paramsMap.set(characterId, { ...playerParams, id: characterId });
-        // Monster gets default params via resolveTickCombat fallback
 
         const outcome = resolveTickCombat(state, paramsMap);
 
@@ -422,32 +431,50 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
 
         totalRoundsSum += outcome.rounds;
 
-        // Write encounter log
-        try {
-          await logPveCombat({
-            sessionId: `batch-${mIdx}-${i}`,
-            state: outcome.finalState,
-            characterId,
-            characterName: player.name,
-            opponentName: monster.name,
-            townId: null,
-            characterStartHp: player.hp,
-            opponentStartHp: monster.hp,
-            characterWeapon: player.weapon.name,
-            opponentWeapon: monster.weapon.name,
-            xpAwarded: 0,
-            goldAwarded: 0,
-            lootDropped: '',
-            outcome: outcomeStr as 'win' | 'loss' | 'flee' | 'draw',
-            simulationTick: mIdx,
-            triggerSource: 'batch_sim',
-          });
-        } catch (logErr) {
-          // Don't abort on log failure
-          errors++;
-        }
+        // Build encounter log row data in-memory
+        const fs = outcome.finalState;
+        const playerC = fs.combatants.find(c => c.id === characterId);
+        const monsterC = fs.combatants.find(c => c.entityType === 'monster');
+        const encounterContext = buildEncounterContext(fs);
+        const rounds = buildRoundsData(fs);
+        const summary = buildSummary(
+          outcomeStr, fs.round, player.name, monster.name,
+          player.hp, playerC?.currentHp ?? 0,
+          monster.hp, monsterC?.currentHp ?? 0,
+        );
+
+        pendingRows.push({
+          type: 'pve',
+          sessionId: `batch-${mIdx}-${i}`,
+          characterId,
+          characterName: player.name,
+          opponentId: monsterC?.id ?? null,
+          opponentName: monster.name,
+          townId: null,
+          outcome: outcomeStr,
+          totalRounds: fs.round,
+          characterStartHp: player.hp,
+          characterEndHp: playerC?.currentHp ?? 0,
+          opponentStartHp: monster.hp,
+          opponentEndHp: monsterC?.currentHp ?? 0,
+          characterWeapon: player.weapon.name,
+          opponentWeapon: monster.weapon.name,
+          xpAwarded: 0,
+          goldAwarded: 0,
+          lootDropped: '',
+          rounds: [{ _encounterContext: encounterContext }, ...rounds] as any,
+          summary,
+          triggerSource: 'batch_sim',
+          simulationTick: mIdx,
+          simulationRunId: runId,
+        });
 
         completedFights++;
+
+        // Flush batch to DB when buffer is full
+        if (pendingRows.length >= BATCH_SIZE) {
+          await flushRows();
+        }
 
         // Progress reporting
         if (completedFights % progressInterval === 0 || completedFights === totalFights) {
@@ -474,6 +501,9 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
     monExisting.total += matchup.iterations;
     monsterStats.set(monKey, monExisting);
   }
+
+  // Flush remaining rows
+  await flushRows();
 
   console.log(''); // newline after progress
 
