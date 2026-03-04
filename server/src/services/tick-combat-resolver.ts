@@ -260,6 +260,13 @@ function decideAction(
       if (!actorSetupTags.includes(def.requiresSetupTag)) continue;
       const cooldownRemaining = actor.abilityCooldowns?.[entry.abilityId] ?? 0;
       if (cooldownRemaining > 0) continue;
+      // Route psion spec abilities (psi-* but NOT psi-t0-*) through psion_ability path
+      if (entry.abilityId.startsWith('psi-') && !entry.abilityId.startsWith('psi-t0-')) {
+        return {
+          action: { type: 'psion_ability', actorId, psionAbilityId: entry.abilityId, targetId: chainTarget.id, targetIds: enemies.map(e => e.id) },
+          context: { weapon: params.weapon ?? undefined },
+        };
+      }
       return {
         action: {
           type: 'class_ability',
@@ -288,6 +295,13 @@ function decideAction(
         if (!payoffDef) continue;
         const payoffCd = actor.abilityCooldowns?.[payoffDef.id] ?? 0;
         if (payoffCd > 1) continue;
+        // Route psion spec abilities through psion_ability path
+        if (entry.abilityId.startsWith('psi-') && !entry.abilityId.startsWith('psi-t0-')) {
+          return {
+            action: { type: 'psion_ability', actorId, psionAbilityId: entry.abilityId, targetId: chainTarget.id, targetIds: enemies.map(e => e.id) },
+            context: { weapon: params.weapon ?? undefined },
+          };
+        }
         return {
           action: {
             type: 'class_ability',
@@ -330,11 +344,25 @@ function decideAction(
     if (shouldUse) {
       const target = enemies.length > 0 ? enemies[0] : null;
 
-      // Determine if this is a class ability or a racial ability
+      // Determine if this is a class ability, psion spec ability, or racial ability
       if (entry.abilityId && isClassAbility(entry.abilityId)) {
         // Check cooldown before dispatching
         const cooldownRemaining = actor.abilityCooldowns?.[entry.abilityId] ?? 0;
         if (cooldownRemaining > 0) continue; // skip to next ability in queue
+
+        // Route psion spec abilities (psi-* but NOT psi-t0-*) through psion_ability path
+        if (entry.abilityId.startsWith('psi-') && !entry.abilityId.startsWith('psi-t0-')) {
+          return {
+            action: {
+              type: 'psion_ability',
+              actorId,
+              psionAbilityId: entry.abilityId,
+              targetId: target?.id,
+              targetIds: enemies.map(e => e.id),
+            },
+            context: { weapon: params.weapon ?? undefined },
+          };
+        }
 
         return {
           action: {

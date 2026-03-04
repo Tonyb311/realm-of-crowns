@@ -333,7 +333,7 @@ const CLASS_DEFAULT_STANCE: Record<string, 'AGGRESSIVE' | 'BALANCED' | 'DEFENSIV
  * Classify an ability's combat role based on its effects.type.
  * Used by buildAbilityQueue to assign smart useWhen conditions.
  */
-type CombatRole = 'damage' | 'buff' | 'heal' | 'cc' | 'utility';
+type CombatRole = 'damage' | 'buff' | 'heal' | 'cc' | 'utility' | 'echo';
 
 function classifyAbility(ability: AbilityDefinition): CombatRole {
   const effects = ability.effects as Record<string, unknown>;
@@ -355,8 +355,13 @@ function classifyAbility(ability: AbilityDefinition): CombatRole {
     return 'heal';
   }
 
+  // Echo abilities repeat last action — must NOT be used as openers (no previous action to echo)
+  if (type === 'echo') {
+    return 'echo';
+  }
+
   // Buffs (self-buffs, defensive, summons)
-  if (['buff', 'summon', 'counter', 'echo'].includes(type)) {
+  if (['buff', 'summon', 'counter'].includes(type)) {
     return 'buff';
   }
 
@@ -449,19 +454,48 @@ function buildAbilityQueue(className: string, level: number, options?: AbilityQu
     usedIds.add(opener.ability.id);
   }
 
-  // 2. SUSTAIN: All damage abilities, sorted by tier DESC then cooldown ASC
+  // 2. SUSTAIN: Damage abilities interleaved with echo abilities
+  // Echo repeats last action — placing it after the first damage ability gives:
+  // R1 opener, R2 damage, R3 echo(repeats damage), R4 damage, R5 echo, ...
   const damageAbilities = classified
     .filter(c => c.role === 'damage')
     .sort((a, b) => b.ability.tier - a.ability.tier || a.ability.cooldown - b.ability.cooldown);
 
-  for (const da of damageAbilities) {
+  const echoAbilities = classified
+    .filter(c => c.role === 'echo')
+    .sort((a, b) => b.ability.tier - a.ability.tier);
+
+  // Add first damage ability
+  if (damageAbilities.length > 0) {
     queue.push({
-      abilityId: da.ability.id,
-      abilityName: da.ability.name,
+      abilityId: damageAbilities[0].ability.id,
+      abilityName: damageAbilities[0].ability.name,
       priority: priority++,
       useWhen: 'always',
     });
-    usedIds.add(da.ability.id);
+    usedIds.add(damageAbilities[0].ability.id);
+  }
+
+  // Add echo abilities right after first damage (so they alternate)
+  for (const ea of echoAbilities) {
+    queue.push({
+      abilityId: ea.ability.id,
+      abilityName: ea.ability.name,
+      priority: priority++,
+      useWhen: 'always',
+    });
+    usedIds.add(ea.ability.id);
+  }
+
+  // Add remaining damage abilities
+  for (let i = 1; i < damageAbilities.length; i++) {
+    queue.push({
+      abilityId: damageAbilities[i].ability.id,
+      abilityName: damageAbilities[i].ability.name,
+      priority: priority++,
+      useWhen: 'always',
+    });
+    usedIds.add(damageAbilities[i].ability.id);
   }
 
   // 3. EMERGENCY: Heal abilities — only when HP is low

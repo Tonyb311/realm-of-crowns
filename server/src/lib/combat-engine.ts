@@ -2144,9 +2144,9 @@ export function resolvePsionAbility(
         };
       }
 
-      // Re-resolve the last action by recursively calling resolvePsionAbility
-      // if it was a psion ability, or simulate an attack if it was an attack
       const lastAction = updatedActor.lastAction;
+
+      // Echo psion spec abilities — re-resolve via resolvePsionAbility (no cooldown cost)
       if (lastAction.type === 'psion_ability' && lastAction.psionAbilityId) {
         const echo = resolvePsionAbility(current, actorId, lastAction.psionAbilityId, lastAction.targetId);
         return {
@@ -2159,13 +2159,73 @@ export function resolvePsionAbility(
         };
       }
 
-      // For non-psion last actions, just mark the echo as performed
+      // Echo class abilities (tier 0 psion abilities route here) — re-resolve via resolveClassAbility
+      if (lastAction.type === 'class_ability' && lastAction.classAbilityId) {
+        // Temporarily zero out cooldown so the echo doesn't get blocked
+        const origCd = updatedActor.abilityCooldowns?.[lastAction.classAbilityId] ?? 0;
+        if (origCd > 0) {
+          current = {
+            ...current,
+            combatants: current.combatants.map((c) =>
+              c.id === actorId ? {
+                ...c,
+                abilityCooldowns: { ...c.abilityCooldowns, [lastAction.classAbilityId!]: 0 },
+              } : c
+            ),
+          };
+        }
+        const echo = resolveClassAbility(current, actorId, lastAction.classAbilityId, lastAction.targetId, lastAction.targetIds);
+        // Restore original cooldown (don't let echo consume a real use)
+        let echoState = echo.state;
+        if (origCd > 0) {
+          echoState = {
+            ...echoState,
+            combatants: echoState.combatants.map((c) =>
+              c.id === actorId ? {
+                ...c,
+                abilityCooldowns: { ...c.abilityCooldowns, [lastAction.classAbilityId!]: origCd },
+              } : c
+            ),
+          };
+        }
+        return {
+          state: echoState,
+          result: {
+            type: 'psion_ability', actorId,
+            abilityName: `Temporal Echo: ${echo.result.abilityName ?? lastAction.classAbilityId}`,
+            abilityId, saveRequired: false, echoAction: true,
+            damage: echo.result.damage,
+            description: echo.result.description ? `Temporal Echo: ${echo.result.description}` : `Temporal Echo repeats ${updatedActor.name}'s last class ability.`,
+          },
+        };
+      }
+
+      // Echo basic attacks — re-resolve via resolveAttack
+      if (lastAction.type === 'attack' && lastAction.targetId && updatedActor.weapon) {
+        const echoTarget = current.combatants.find((c) => c.id === lastAction.targetId && c.isAlive)
+          ?? current.combatants.find((c) => c.team !== updatedActor.team && c.isAlive);
+        if (echoTarget) {
+          const echo = resolveAttack(current, actorId, echoTarget.id, updatedActor.weapon);
+          return {
+            state: echo.state,
+            result: {
+              type: 'psion_ability', actorId,
+              abilityName: `Temporal Echo: Attack`,
+              abilityId, saveRequired: false, echoAction: true,
+              damage: echo.result.totalDamage,
+              description: `Temporal Echo repeats ${updatedActor.name}'s attack against ${echoTarget.name}.`,
+            },
+          };
+        }
+      }
+
+      // Fallback: action type not echoable (defend, flee, item, etc.)
       return {
         state: current,
         result: {
           type: 'psion_ability', actorId, abilityName: abilityDef.name, abilityId,
           saveRequired: false, echoAction: true,
-          description: `Temporal Echo repeats ${updatedActor.name}'s last action.`,
+          description: `Temporal Echo: no echoable action to repeat.`,
         },
       };
     }
@@ -2809,6 +2869,13 @@ export function resolveTurn(
             }
           }
         }
+        // Track lastAction for Temporal Echo
+        current = {
+          ...current,
+          combatants: current.combatants.map((c) =>
+            c.id === actorId ? { ...c, lastAction: action } : c
+          ),
+        };
         break;
       }
 
@@ -2899,6 +2966,22 @@ export function resolveTurn(
         const psi = resolvePsionAbility(current, actorId, action.psionAbilityId, action.targetId);
         current = psi.state;
         result = psi.result;
+        // Set cooldown for the psion ability (resolveClassAbility does this internally, psion does not)
+        const psiDef = psionAbilities.find(a => a.id === action.psionAbilityId);
+        if (psiDef && psiDef.cooldown > 0) {
+          const psiActor = current.combatants.find(c => c.id === actorId);
+          if (psiActor) {
+            current = {
+              ...current,
+              combatants: current.combatants.map((c) =>
+                c.id === actorId ? {
+                  ...c,
+                  abilityCooldowns: { ...c.abilityCooldowns, [action.psionAbilityId!]: psiDef.cooldown },
+                } : c
+              ),
+            };
+          }
+        }
         // Track lastAction for Temporal Echo — skip echo itself to prevent
         // infinite recursion (echo replaying echo replaying echo...)
         if (action.psionAbilityId !== 'psi-see-5') {
@@ -2962,6 +3045,13 @@ export function resolveTurn(
           current = atk.state;
           result = atk.result;
         }
+        // Track lastAction for Temporal Echo (psion tier 0 abilities route here)
+        current = {
+          ...current,
+          combatants: current.combatants.map((c) =>
+            c.id === actorId ? { ...c, lastAction: action } : c
+          ),
+        };
         // Phase 3: Diplomat's Gambit may end combat peacefully
         if (current.status === 'COMPLETED') {
           const logEntry: TurnLogEntry = {

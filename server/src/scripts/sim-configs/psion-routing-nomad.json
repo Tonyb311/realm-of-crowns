@@ -1,0 +1,14 @@
+{
+  "notes": "Regression check: Nomad psion abilities still work after routing fix",
+  "matchups": [
+    {
+      "race": "human",
+      "class": "psion",
+      "specialization": "nomad",
+      "level": 25,
+      "opponent": "Mind Flayer",
+      "iterations": 5,
+      "tier0Selections": { "3": "a", "5": "a", "8": "a" }
+    }
+  ]
+}

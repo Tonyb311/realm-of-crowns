@@ -1,0 +1,14 @@
+{
+  "notes": "Verify psion routing fix: Seer spec abilities log as psion_ability, Temporal Echo echoes psion abilities",
+  "matchups": [
+    {
+      "race": "human",
+      "class": "psion",
+      "specialization": "seer",
+      "level": 35,
+      "opponent": "Mind Flayer",
+      "iterations": 10,
+      "tier0Selections": { "3": "a", "5": "a", "8": "a" }
+    }
+  ]
+}
