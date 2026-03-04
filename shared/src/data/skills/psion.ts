@@ -40,6 +40,6 @@ export const psionTier0Abilities: AbilityDefinition[] = [
 
   // Level 8 — "Coming Online"
   { id: 'psi-t0-8a', name: 'Ego Whip', description: 'Lash out with raw willpower, scourging the enemy\'s sense of self.', class: 'psion', specialization: 'none', tier: 0, effects: { type: 'damage', element: 'psychic', diceCount: 2, diceSides: 4, bonusDamage: 1 }, cooldown: 3, levelRequired: 8, requiresChoice: true, choiceGroup: 'psion_tier0_level8' },
-  { id: 'psi-t0-8b', name: 'Id Insinuation', description: 'Implant a psychic barb that disrupts the target\'s motor control.', class: 'psion', specialization: 'none', tier: 0, effects: { type: 'damage_status', bonusDamage: 2, statusEffect: 'stunned', statusDuration: 1 }, cooldown: 5, levelRequired: 8, requiresChoice: true, choiceGroup: 'psion_tier0_level8' },
+  { id: 'psi-t0-8b', name: 'Id Insinuation', description: 'Implant a psychic barb that disrupts the target\'s motor control.', class: 'psion', specialization: 'none', tier: 0, effects: { type: 'damage_status', damage: 2, statusEffect: 'stunned', statusDuration: 1 }, cooldown: 5, levelRequired: 8, requiresChoice: true, choiceGroup: 'psion_tier0_level8' },
   { id: 'psi-t0-8c', name: 'Precognition', description: 'Glimpse a fraction of a second into the future, turning every fight into a foregone conclusion.', class: 'psion', specialization: 'none', tier: 0, effects: { type: 'buff', acBonus: 4, attackBonus: 2, duration: 2 }, cooldown: 4, levelRequired: 8, requiresChoice: true, choiceGroup: 'psion_tier0_level8' },
 ];

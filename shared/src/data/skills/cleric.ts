@@ -30,7 +30,7 @@ export const clericAbilities: AbilityDefinition[] = [
 export const clericTier0Abilities: AbilityDefinition[] = [
   // Level 3 — "First Taste"
   { id: 'cle-t0-3a', name: 'Sacred Strike', description: 'Channel the faintest glimmer of divine wrath through your weapon.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'damage', bonusDamage: 3, element: 'radiant' }, cooldown: 2, levelRequired: 3, requiresChoice: true, choiceGroup: 'cleric_tier0_level3' },
-  { id: 'cle-t0-3b', name: 'Mending Touch', description: 'Lay hands upon your wounds, coaxing flesh to knit.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'heal', healAmount: 6 }, cooldown: 3, levelRequired: 3, requiresChoice: true, choiceGroup: 'cleric_tier0_level3' },
+  { id: 'cle-t0-3b', name: 'Mending Touch', description: 'Lay hands upon your wounds, coaxing flesh to knit.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'heal', diceCount: 1, diceSides: 6, bonusHealing: 3 }, cooldown: 3, levelRequired: 3, requiresChoice: true, choiceGroup: 'cleric_tier0_level3' },
   { id: 'cle-t0-3c', name: 'Blessed Ward', description: 'Invoke a prayer of protection, hardening your skin against harm.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'buff', acBonus: 3, duration: 2 }, cooldown: 3, levelRequired: 3, requiresChoice: true, choiceGroup: 'cleric_tier0_level3' },
 
   // Level 5 — "Building Up"
@@ -41,5 +41,5 @@ export const clericTier0Abilities: AbilityDefinition[] = [
   // Level 8 — "Coming Online"
   { id: 'cle-t0-8a', name: 'Holy Fire', description: 'Conjure sacred flame that sears the unholy.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'damage', element: 'radiant', diceCount: 1, diceSides: 8, bonusDamage: 2 }, cooldown: 3, levelRequired: 8, requiresChoice: true, choiceGroup: 'cleric_tier0_level8' },
   { id: 'cle-t0-8b', name: 'Sanctuary', description: 'Wrap yourself in divine light, turning away blades and dark magic alike.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'buff', absorbDamage: 12, acBonus: 2, duration: 3 }, cooldown: 5, levelRequired: 8, requiresChoice: true, choiceGroup: 'cleric_tier0_level8' },
-  { id: 'cle-t0-8c', name: 'Condemnation', description: 'Pass divine judgment upon a foe, cracking their defenses wide open.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'damage_debuff', bonusDamage: 3, acReduction: -3, duration: 2 }, cooldown: 4, levelRequired: 8, requiresChoice: true, choiceGroup: 'cleric_tier0_level8' },
+  { id: 'cle-t0-8c', name: 'Condemnation', description: 'Pass divine judgment upon a foe, cracking their defenses wide open.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'damage_debuff', diceCount: 1, diceSides: 6, acReduction: 3, duration: 2 }, cooldown: 4, levelRequired: 8, requiresChoice: true, choiceGroup: 'cleric_tier0_level8' },
 ];
