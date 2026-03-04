@@ -2995,6 +2995,57 @@ export function resolveTurn(
     }
   }
 
+  // === DAMAGE AURA for non-attack melee actions (class_ability etc. hitting a monster with damage_aura) ===
+  // resolveAttack() already handles damage_aura for basic 'attack' actions
+  if (
+    action.type !== 'attack' &&
+    !isPrevented &&
+    context.weapon?.attackModifierStat === 'str'
+  ) {
+    const actorForAura = current.combatants.find(c => c.id === actorId);
+    if (actorForAura?.entityType === 'character') {
+      const resultAny = result as any;
+      const resultDmg = resultAny?.damage ?? resultAny?.totalDamage ?? 0;
+      const targetIdForAura = resultAny?.targetId ?? action.targetId;
+      if (resultDmg > 0 && targetIdForAura) {
+        const auraTarget = current.combatants.find(c => c.id === targetIdForAura);
+        if (auraTarget?.entityType === 'monster' && auraTarget.monsterAbilities) {
+          const dmgAura = auraTarget.monsterAbilities.find(inst => inst.def.type === 'damage_aura');
+          if (dmgAura?.def.auraDamage) {
+            const auraDmgMatch = dmgAura.def.auraDamage.match(/^(\d+)d(\d+)$/);
+            if (auraDmgMatch) {
+              const auraDmgRoll = damageRoll(parseInt(auraDmgMatch[1]), parseInt(auraDmgMatch[2]));
+              let auraDmg = auraDmgRoll.total;
+              const auraDmgType = dmgAura.def.auraDamageType;
+              if (auraDmgType && actorForAura.resistances?.includes(auraDmgType as CombatDamageType)) {
+                auraDmg = Math.floor(auraDmg / 2);
+              }
+              if (auraDmgType && actorForAura.immunities?.includes(auraDmgType as CombatDamageType)) {
+                auraDmg = 0;
+              }
+              if (auraDmg > 0) {
+                const newHp = Math.max(0, actorForAura.currentHp - auraDmg);
+                current = {
+                  ...current,
+                  combatants: current.combatants.map(c =>
+                    c.id === actorId ? { ...c, currentHp: newHp, isAlive: newHp > 0 } : c
+                  ),
+                };
+              }
+              auraResults.push({
+                auraName: dmgAura.def.name,
+                auraType: 'damage',
+                damage: auraDmg,
+                damageType: auraDmgType as CombatDamageType,
+                damageRoll: dmgAura.def.auraDamage,
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
   // Consume LR result from state (set by checkLegendaryResistance during action resolution)
   const lrResult = current.lastLegendaryResistance;
   if (lrResult) {

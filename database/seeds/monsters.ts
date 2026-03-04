@@ -1,12 +1,15 @@
 /**
  * Monster Seed Data for Realm of Crowns
  *
- * 35 monsters across 4 tiers:
+ * 51 monsters across 6 tiers:
  *   Tier 1 (lvl 1-5): Goblin, Wolf, Bandit, Giant Rat, Slime, Mana Wisp, Bog Wraith
  *   Tier 2 (lvl 5-10): Orc Warrior, Skeleton Warrior, Giant Spider, Dire Wolf, Troll, Arcane Elemental, Shadow Wraith
  *   Tier 3 (lvl 10-20): Young Dragon, Lich, Demon, Hydra, Ancient Golem, Void Stalker, Elder Fey Guardian
  *   Tier 4 (lvl 17-30): Wyvern, Treant, Chimera, Mind Flayer, Vampire Lord, Frost Giant, Sea Serpent,
  *                        Iron Golem, Fire Giant, Purple Worm, Beholder, Fey Dragon, Death Knight, Storm Giant
+ *   Tier 5 (lvl 31-40): Sand Wyrm, Kraken Spawn, War Mammoth, River Leviathan, Basilisk King,
+ *                        Aboleth, Djinn Lord, Roc, Archlich
+ *   Tier 6 (lvl 41-50): Phoenix, Pit Fiend, Deep Kraken, Elder Wyrm, Arcane Titan, Tarrasque, Void Emperor
  *
  * Arcane monsters (6) drop Arcane Reagents via itemTemplateName loot entries.
  *
@@ -1222,6 +1225,814 @@ const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.75, minQty: 20, maxQty: 50, gold: 25 },
       { dropChance: 0.40, minQty: 3, maxQty: 5, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+
+  // ==================== TIER 5 (L31-40) ====================
+
+  {
+    name: 'Sand Wyrm',
+    level: 31,
+    biome: 'DESERT',
+    regionName: 'The Suncoast',
+    damageType: 'PIERCING',
+    resistances: ['FIRE'],
+    abilities: [
+      {
+        id: 'sandwyrm_multiattack', name: 'Burrow Strike', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The Sand Wyrm erupts from below with devastating twin strikes.',
+      },
+      {
+        id: 'sandwyrm_sandblast', name: 'Sand Blast', type: 'aoe',
+        damage: '6d8', damageType: 'BLUDGEONING', saveType: 'dex', saveDC: 18,
+        priority: 8, cooldown: 3,
+        description: 'A torrent of superheated sand blasts everything nearby.',
+      },
+      {
+        id: 'sandwyrm_ambush', name: 'Tremorsense Ambush', type: 'on_hit',
+        saveType: 'dex', saveDC: 17, statusEffect: 'knocked_down', statusDuration: 1,
+        description: 'Surprise attacks from below send the target sprawling.',
+      },
+      {
+        id: 'sandwyrm_death', name: 'Burrowing Collapse', type: 'death_throes',
+        deathDamage: '6d6', deathDamageType: 'BLUDGEONING', deathSaveDC: 17, deathSaveType: 'dex',
+        description: 'The wyrm\'s tunnels collapse in a cascade of sand and stone.',
+      },
+    ],
+    stats: {
+      hp: 290, ac: 20, attack: 14, damage: '3d10+8', speed: 40,
+      str: 26, dex: 10, con: 22, int: 3, wis: 12, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 100, maxQty: 200, gold: 0 },
+      { dropChance: 0.50, minQty: 2, maxQty: 4, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Kraken Spawn',
+    level: 32,
+    biome: 'UNDERWATER',
+    regionName: 'Pelagic Depths',
+    damageType: 'BLUDGEONING',
+    resistances: ['COLD', 'LIGHTNING'],
+    immunities: ['ACID'],
+    legendaryActions: 1,
+    abilities: [
+      {
+        id: 'krakenspawn_tentacle', name: 'Tentacle Slam', type: 'multiattack',
+        attacks: 3, priority: 5, cooldown: 0,
+        description: 'Three massive tentacles slam down in rapid succession.',
+      },
+      {
+        id: 'krakenspawn_ink', name: 'Ink Cloud', type: 'status',
+        saveType: 'con', saveDC: 18, statusEffect: 'weakened', statusDuration: 2,
+        priority: 7, cooldown: 3,
+        description: 'A cloud of disorienting ink blinds and confuses.',
+      },
+      {
+        id: 'krakenspawn_constrict', name: 'Constrict', type: 'status',
+        saveType: 'str', saveDC: 18, statusEffect: 'restrained', statusDuration: 2,
+        priority: 6, cooldown: 2,
+        description: 'A tentacle wraps around the target, crushing them.',
+      },
+    ],
+    stats: {
+      hp: 310, ac: 20, attack: 14, damage: '3d8+8', speed: 30,
+      str: 24, dex: 12, con: 22, int: 10, wis: 14, cha: 8,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 100, maxQty: 200, gold: 0 },
+      { dropChance: 0.40, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'War Mammoth',
+    level: 33,
+    biome: 'PLAINS',
+    regionName: 'Verdant Heartlands',
+    damageType: 'BLUDGEONING',
+    resistances: ['COLD'],
+    abilities: [
+      {
+        id: 'warmammoth_multiattack', name: 'Gore and Stomp', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The mammoth gores with its tusks then stomps with massive feet.',
+      },
+      {
+        id: 'warmammoth_trample', name: 'Trampling Charge', type: 'aoe',
+        damage: '6d10', damageType: 'BLUDGEONING', saveType: 'dex', saveDC: 18,
+        priority: 8, cooldown: 3,
+        description: 'The mammoth charges through everything in its path.',
+      },
+      {
+        id: 'warmammoth_toss', name: 'Tusk Toss', type: 'on_hit',
+        saveType: 'str', saveDC: 18, statusEffect: 'knocked_down', statusDuration: 1,
+        description: 'A powerful tusk swing sends the target flying.',
+      },
+    ],
+    stats: {
+      hp: 330, ac: 20, attack: 15, damage: '3d10+8', speed: 40,
+      str: 28, dex: 8, con: 24, int: 3, wis: 12, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 100, maxQty: 200, gold: 0 },
+      { dropChance: 0.55, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'River Leviathan',
+    level: 34,
+    biome: 'RIVER',
+    regionName: 'Verdant Heartlands',
+    damageType: 'PIERCING',
+    resistances: ['COLD'],
+    abilities: [
+      {
+        id: 'riverleviathan_multiattack', name: 'Bite and Tail', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The leviathan bites with its enormous jaws and lashes with its tail.',
+      },
+      {
+        id: 'riverleviathan_tidal', name: 'Tidal Wave', type: 'aoe',
+        damage: '5d10', damageType: 'BLUDGEONING', saveType: 'str', saveDC: 18,
+        priority: 8, cooldown: 3,
+        description: 'A massive wave of water crashes over everything nearby.',
+      },
+      {
+        id: 'riverleviathan_drag', name: 'Drag Under', type: 'status',
+        saveType: 'str', saveDC: 18, statusEffect: 'restrained', statusDuration: 2,
+        priority: 6, cooldown: 2,
+        description: 'The leviathan drags its prey beneath the water.',
+      },
+    ],
+    stats: {
+      hp: 320, ac: 19, attack: 15, damage: '3d10+8', speed: 50,
+      str: 26, dex: 14, con: 22, int: 4, wis: 12, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 120, maxQty: 220, gold: 0 },
+      { dropChance: 0.45, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Basilisk King',
+    level: 35,
+    biome: 'HILLS',
+    regionName: 'Cogsworth Warrens',
+    damageType: 'PIERCING',
+    immunities: ['POISON'],
+    legendaryResistances: 1,
+    phaseTransitions: [
+      {
+        id: 'basilisk_stone_fury',
+        hpThresholdPercent: 30,
+        name: 'Stone Fury',
+        description: 'The Basilisk King\'s scales harden into living stone, becoming more dangerous.',
+        triggered: false,
+        effects: [
+          { type: 'stat_boost', statBoost: { attack: 3, ac: 2 } },
+        ],
+      },
+    ],
+    abilities: [
+      {
+        id: 'basilisk_multiattack', name: 'Bite and Tail', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The Basilisk King strikes with venomous fangs and a crushing tail.',
+      },
+      {
+        id: 'basilisk_gaze', name: 'Petrifying Gaze', type: 'status',
+        saveType: 'con', saveDC: 19, statusEffect: 'stunned', statusDuration: 2,
+        priority: 9, cooldown: 4,
+        description: 'The basilisk\'s gaze begins to turn flesh to stone.',
+      },
+      {
+        id: 'basilisk_venom', name: 'Venomous Bite', type: 'on_hit',
+        saveType: 'con', saveDC: 18, statusEffect: 'poisoned', statusDuration: 3,
+        description: 'Potent venom courses through the wound.',
+      },
+    ],
+    stats: {
+      hp: 340, ac: 21, attack: 15, damage: '4d8+9', speed: 30,
+      str: 24, dex: 10, con: 24, int: 3, wis: 14, cha: 8,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 130, maxQty: 230, gold: 0 },
+      { dropChance: 0.50, minQty: 2, maxQty: 4, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Aboleth',
+    level: 37,
+    biome: 'UNDERWATER',
+    regionName: 'Pelagic Depths',
+    damageType: 'PSYCHIC',
+    resistances: ['PSYCHIC', 'COLD'],
+    immunities: ['POISON'],
+    conditionImmunities: ['poisoned', 'charmed'],
+    legendaryActions: 2,
+    legendaryResistances: 2,
+    abilities: [
+      {
+        id: 'aboleth_tentacle', name: 'Tentacle Lash', type: 'multiattack',
+        attacks: 3, priority: 5, cooldown: 0,
+        description: 'Three slimy tentacles lash out with supernatural precision.',
+      },
+      {
+        id: 'aboleth_enslave', name: 'Enslave', type: 'status',
+        saveType: 'wis', saveDC: 20, statusEffect: 'charmed', statusDuration: 3,
+        priority: 9, cooldown: 4,
+        description: 'The aboleth bends the target\'s will to its own.',
+      },
+      {
+        id: 'aboleth_psychic', name: 'Psychic Drain', type: 'aoe',
+        damage: '6d8', damageType: 'PSYCHIC', saveType: 'wis', saveDC: 19,
+        priority: 8, cooldown: 3,
+        description: 'A wave of psychic agony washes over the battlefield.',
+      },
+      {
+        id: 'aboleth_mucus', name: 'Mucus Cloud', type: 'status',
+        saveType: 'con', saveDC: 19, statusEffect: 'poisoned', statusDuration: 2,
+        priority: 6, cooldown: 3,
+        description: 'A cloud of slimy mucus envelops the target.',
+      },
+    ],
+    stats: {
+      hp: 370, ac: 21, attack: 16, damage: '3d10+9', speed: 40,
+      str: 22, dex: 10, con: 22, int: 22, wis: 20, cha: 18,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 150, maxQty: 300, gold: 0 },
+    ],
+  },
+  {
+    name: 'Djinn Lord',
+    level: 38,
+    biome: 'DESERT',
+    regionName: 'The Suncoast',
+    damageType: 'LIGHTNING',
+    immunities: ['LIGHTNING', 'THUNDER'],
+    resistances: ['FIRE'],
+    legendaryActions: 2,
+    legendaryResistances: 1,
+    abilities: [
+      {
+        id: 'djinn_scimitar', name: 'Scimitar Storm', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Twin scimitars of crackling lightning slash in rapid succession.',
+      },
+      {
+        id: 'djinn_whirlwind', name: 'Whirlwind', type: 'aoe',
+        damage: '8d8', damageType: 'BLUDGEONING', saveType: 'str', saveDC: 20,
+        priority: 8, cooldown: 3,
+        description: 'A devastating whirlwind tears across the battlefield.',
+      },
+      {
+        id: 'djinn_lightning', name: 'Lightning Storm', type: 'aoe',
+        damage: '6d10', damageType: 'LIGHTNING', saveType: 'dex', saveDC: 19,
+        priority: 7, cooldown: 2,
+        isLegendaryAction: true, legendaryCost: 2,
+        description: 'Bolts of lightning rain down from a conjured storm.',
+      },
+      {
+        id: 'djinn_shield', name: 'Wind Shield', type: 'buff',
+        statusEffect: 'shielded', statusDuration: 2,
+        priority: 4, cooldown: 4,
+        description: 'A barrier of swirling wind deflects incoming attacks.',
+      },
+    ],
+    stats: {
+      hp: 380, ac: 22, attack: 17, damage: '4d8+9', speed: 60,
+      str: 22, dex: 18, con: 20, int: 16, wis: 18, cha: 22,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 200, maxQty: 350, gold: 20 },
+    ],
+  },
+  {
+    name: 'Roc',
+    level: 39,
+    biome: 'MOUNTAIN',
+    regionName: 'Ironvault Mountains',
+    damageType: 'PIERCING',
+    abilities: [
+      {
+        id: 'roc_multiattack', name: 'Talon and Beak', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Massive talons and a razor-sharp beak strike in tandem.',
+      },
+      {
+        id: 'roc_snatch', name: 'Snatch', type: 'status',
+        saveType: 'dex', saveDC: 20, statusEffect: 'restrained', statusDuration: 2,
+        priority: 8, cooldown: 3,
+        description: 'The Roc snatches the target in its enormous talons.',
+      },
+      {
+        id: 'roc_wingbuffet', name: 'Wing Buffet', type: 'aoe',
+        damage: '6d8', damageType: 'BLUDGEONING', saveType: 'str', saveDC: 19,
+        priority: 7, cooldown: 2,
+        description: 'A devastating sweep of its wings sends shockwaves across the ground.',
+      },
+    ],
+    stats: {
+      hp: 400, ac: 21, attack: 17, damage: '4d10+9', speed: 80,
+      str: 28, dex: 14, con: 22, int: 4, wis: 14, cha: 10,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 180, maxQty: 320, gold: 0 },
+      { dropChance: 0.50, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Archlich',
+    level: 40,
+    biome: 'SWAMP',
+    regionName: 'Ashenmoor',
+    damageType: 'NECROTIC',
+    resistances: ['COLD', 'LIGHTNING', 'NECROTIC'],
+    immunities: ['POISON', 'PSYCHIC'],
+    conditionImmunities: ['poisoned', 'frightened', 'charmed', 'stunned'],
+    legendaryActions: 3,
+    legendaryResistances: 3,
+    phaseTransitions: [
+      {
+        id: 'archlich_phylactery',
+        hpThresholdPercent: 50,
+        name: 'Phylactery Surge',
+        description: 'The Archlich draws power from its phylactery, dark energy erupting outward.',
+        triggered: false,
+        effects: [
+          { type: 'stat_boost', statBoost: { attack: 3, damage: 3 } },
+          { type: 'aoe_burst', aoeBurst: { damage: '6d8', damageType: 'NECROTIC', saveDC: 20, saveType: 'con' } },
+        ],
+      },
+      {
+        id: 'archlich_undying',
+        hpThresholdPercent: 25,
+        name: 'Undying Will',
+        description: 'The Archlich refuses to perish, sustained by pure death energy.',
+        triggered: false,
+        effects: [
+          { type: 'stat_boost', statBoost: { ac: 3 } },
+          { type: 'add_ability', addAbility: { id: 'archlich_massraise', name: 'Mass Raise Dead', type: 'heal', hpPerTurn: 30, description: 'The archlich draws on death energy to sustain itself.' } },
+        ],
+      },
+    ],
+    abilities: [
+      {
+        id: 'archlich_stun', name: 'Power Word Stun', type: 'status',
+        saveType: 'wis', saveDC: 21, statusEffect: 'stunned', statusDuration: 2,
+        priority: 10, cooldown: 4,
+        isLegendaryAction: true, legendaryCost: 2,
+        description: 'A single word of power stuns the target\'s mind.',
+      },
+      {
+        id: 'archlich_storm', name: 'Necrotic Storm', type: 'aoe',
+        damage: '8d8', damageType: 'NECROTIC', saveType: 'con', saveDC: 20,
+        priority: 8, cooldown: 2,
+        description: 'A storm of death energy ravages all nearby life.',
+      },
+      {
+        id: 'archlich_souldrain', name: 'Soul Drain', type: 'on_hit',
+        saveType: 'con', saveDC: 20, statusEffect: 'weakened', statusDuration: 3,
+        description: 'Each strike siphons away the target\'s life force.',
+      },
+      {
+        id: 'archlich_deathaura', name: 'Death Aura', type: 'damage_aura',
+        auraDamage: '3d6', auraDamageType: 'NECROTIC',
+        description: 'An aura of death damages anyone who strikes the archlich.',
+      },
+    ],
+    stats: {
+      hp: 420, ac: 23, attack: 18, damage: '4d8+10', speed: 30,
+      str: 14, dex: 14, con: 18, int: 24, wis: 22, cha: 20,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 200, maxQty: 400, gold: 25 },
+      { dropChance: 0.60, minQty: 4, maxQty: 7, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+
+  // ==================== TIER 6 (L41-50) ====================
+
+  {
+    name: 'Phoenix',
+    level: 42,
+    biome: 'VOLCANIC',
+    regionName: 'The Confluence',
+    damageType: 'FIRE',
+    immunities: ['FIRE', 'POISON'],
+    vulnerabilities: ['COLD'],
+    legendaryActions: 2,
+    legendaryResistances: 1,
+    abilities: [
+      {
+        id: 'phoenix_talon', name: 'Flame Talon', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Talons wreathed in living flame strike twice in rapid succession.',
+      },
+      {
+        id: 'phoenix_immolation', name: 'Immolation Burst', type: 'aoe',
+        damage: '8d8', damageType: 'FIRE', saveType: 'dex', saveDC: 20,
+        priority: 8, cooldown: 2,
+        description: 'The Phoenix erupts in a devastating burst of sacred fire.',
+      },
+      {
+        id: 'phoenix_heal', name: 'Healing Flames', type: 'heal',
+        hpPerTurn: 25, disabledBy: ['COLD'],
+        priority: 3, cooldown: 0,
+        description: 'The Phoenix regenerates from its own flames unless chilled.',
+      },
+      {
+        id: 'phoenix_aura', name: 'Fire Aura', type: 'damage_aura',
+        auraDamage: '3d6', auraDamageType: 'FIRE',
+        description: 'Intense heat sears anyone who strikes the Phoenix.',
+      },
+      {
+        id: 'phoenix_death', name: 'Rebirth Inferno', type: 'death_throes',
+        deathDamage: '10d6', deathDamageType: 'FIRE', deathSaveDC: 20, deathSaveType: 'dex',
+        description: 'The Phoenix explodes in a final blaze of purifying fire.',
+      },
+    ],
+    stats: {
+      hp: 440, ac: 22, attack: 19, damage: '4d10+10', speed: 80,
+      str: 22, dex: 20, con: 20, int: 14, wis: 18, cha: 22,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 300, maxQty: 500, gold: 0 },
+      { dropChance: 0.50, minQty: 3, maxQty: 5, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Pit Fiend',
+    level: 43,
+    biome: 'BADLANDS',
+    regionName: 'Ashenfang Wastes',
+    damageType: 'SLASHING',
+    immunities: ['FIRE', 'POISON'],
+    resistances: ['COLD'],
+    conditionImmunities: ['poisoned', 'frightened'],
+    legendaryActions: 2,
+    legendaryResistances: 2,
+    phaseTransitions: [
+      {
+        id: 'pitfiend_ascension',
+        hpThresholdPercent: 25,
+        name: 'Infernal Ascension',
+        description: 'The Pit Fiend assumes its true form, wreathed in hellfire.',
+        triggered: false,
+        effects: [
+          { type: 'stat_boost', statBoost: { attack: 4, damage: 4, ac: 2 } },
+        ],
+      },
+    ],
+    abilities: [
+      {
+        id: 'pitfiend_multiattack', name: 'Mace and Tail', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'A burning mace and spiked tail strike in deadly combination.',
+      },
+      {
+        id: 'pitfiend_fireball', name: 'Fireball', type: 'aoe',
+        damage: '10d6', damageType: 'FIRE', saveType: 'dex', saveDC: 21,
+        priority: 8, cooldown: 2,
+        description: 'A massive ball of hellfire detonates on impact.',
+      },
+      {
+        id: 'pitfiend_fear', name: 'Fear Aura', type: 'fear_aura',
+        saveDC: 21,
+        auraRepeats: false,
+        description: 'The Pit Fiend\'s mere presence inspires abject terror.',
+      },
+      {
+        id: 'pitfiend_wound', name: 'Infernal Wound', type: 'on_hit',
+        saveType: 'con', saveDC: 20, statusEffect: 'burning', statusDuration: 3,
+        description: 'Hellfire lingers in the wound, burning from within.',
+      },
+    ],
+    stats: {
+      hp: 500, ac: 23, attack: 19, damage: '4d10+11', speed: 40,
+      str: 28, dex: 16, con: 24, int: 20, wis: 18, cha: 24,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 350, maxQty: 550, gold: 25 },
+    ],
+  },
+  {
+    name: 'Deep Kraken',
+    level: 44,
+    biome: 'UNDERWATER',
+    regionName: 'Pelagic Depths',
+    damageType: 'BLUDGEONING',
+    immunities: ['LIGHTNING', 'COLD'],
+    resistances: ['ACID', 'PIERCING'],
+    legendaryActions: 3,
+    legendaryResistances: 2,
+    abilities: [
+      {
+        id: 'deepkraken_tentacle', name: 'Tentacle Lash', type: 'multiattack',
+        attacks: 4, priority: 5, cooldown: 0,
+        description: 'Four colossal tentacles lash out with devastating force.',
+      },
+      {
+        id: 'deepkraken_maelstrom', name: 'Maelstrom', type: 'aoe',
+        damage: '8d10', damageType: 'BLUDGEONING', saveType: 'str', saveDC: 21,
+        priority: 9, cooldown: 3,
+        isLegendaryAction: true, legendaryCost: 2,
+        description: 'A whirling vortex of crushing water engulfs everything.',
+      },
+      {
+        id: 'deepkraken_lightning', name: 'Lightning Storm', type: 'aoe',
+        damage: '8d8', damageType: 'LIGHTNING', saveType: 'dex', saveDC: 20,
+        priority: 7, cooldown: 2,
+        description: 'Electricity arcs through the water in deadly chains.',
+      },
+      {
+        id: 'deepkraken_ink', name: 'Ink Darkness', type: 'status',
+        saveType: 'wis', saveDC: 20, statusEffect: 'frightened', statusDuration: 2,
+        priority: 6, cooldown: 4,
+        description: 'Impenetrable darkness triggers primal terror.',
+      },
+    ],
+    stats: {
+      hp: 520, ac: 22, attack: 20, damage: '4d10+11', speed: 40,
+      str: 30, dex: 12, con: 26, int: 18, wis: 16, cha: 14,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 350, maxQty: 550, gold: 0 },
+      { dropChance: 0.50, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Elder Wyrm',
+    level: 46,
+    biome: 'TUNDRA',
+    regionName: 'Frozen Reaches',
+    damageType: 'PIERCING',
+    immunities: ['COLD'],
+    resistances: ['FIRE', 'LIGHTNING'],
+    legendaryActions: 3,
+    legendaryResistances: 3,
+    phaseTransitions: [
+      {
+        id: 'elderwyrm_fury',
+        hpThresholdPercent: 20,
+        name: 'Ancient Fury',
+        description: 'The Elder Wyrm unleashes its full primordial power, trading defense for devastating offense.',
+        triggered: false,
+        effects: [
+          { type: 'stat_boost', statBoost: { attack: 4, damage: 4, ac: -3 } },
+          { type: 'aoe_burst', aoeBurst: { damage: '10d6', damageType: 'COLD', saveDC: 22, saveType: 'con' } },
+        ],
+      },
+    ],
+    abilities: [
+      {
+        id: 'elderwyrm_multiattack', name: 'Bite and Claws', type: 'multiattack',
+        attacks: 3, priority: 5, cooldown: 0,
+        description: 'A devastating combination of razor-sharp teeth and ancient claws.',
+      },
+      {
+        id: 'elderwyrm_breath', name: 'Glacial Breath', type: 'aoe',
+        damage: '14d6', damageType: 'COLD', saveType: 'con', saveDC: 22,
+        priority: 10, recharge: 5, cooldown: 0,
+        description: 'A cone of absolute cold freezes everything it touches.',
+      },
+      {
+        id: 'elderwyrm_fear', name: 'Frightful Presence', type: 'fear_aura',
+        saveDC: 21,
+        auraRepeats: false,
+        description: 'The wyrm\'s presence inspires primal terror in all who face it.',
+      },
+      {
+        id: 'elderwyrm_tail', name: 'Tail Sweep', type: 'aoe',
+        damage: '6d8', damageType: 'BLUDGEONING', saveType: 'dex', saveDC: 20,
+        priority: 6, cooldown: 2,
+        isLegendaryAction: true, legendaryCost: 1,
+        description: 'The wyrm\'s massive tail sweeps across the ground.',
+      },
+    ],
+    stats: {
+      hp: 560, ac: 24, attack: 21, damage: '5d8+12', speed: 60,
+      str: 30, dex: 12, con: 26, int: 18, wis: 16, cha: 22,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 400, maxQty: 600, gold: 0 },
+      { dropChance: 0.55, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Arcane Titan',
+    level: 47,
+    biome: 'FEYWILD',
+    regionName: 'Glimmerveil',
+    damageType: 'FORCE',
+    immunities: ['PSYCHIC', 'FORCE'],
+    resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
+    conditionImmunities: ['charmed', 'frightened'],
+    legendaryActions: 2,
+    legendaryResistances: 2,
+    phaseTransitions: [
+      {
+        id: 'arcanetitan_overload',
+        hpThresholdPercent: 30,
+        name: 'Arcane Overload',
+        description: 'The Titan channels overwhelming arcane energy, becoming a conduit of raw magical power.',
+        triggered: false,
+        effects: [
+          { type: 'stat_boost', statBoost: { attack: 3, damage: 5 } },
+          { type: 'add_ability', addAbility: { id: 'arcanetitan_nova', name: 'Arcane Nova', type: 'aoe', damage: '12d8', damageType: 'FORCE', saveType: 'wis', saveDC: 23, cooldown: 3, priority: 10, description: 'A cataclysmic explosion of pure arcane energy.' } },
+        ],
+      },
+    ],
+    abilities: [
+      {
+        id: 'arcanetitan_fist', name: 'Arcane Fist', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Fists glowing with arcane energy strike with devastating force.',
+      },
+      {
+        id: 'arcanetitan_cataclysm', name: 'Arcane Cataclysm', type: 'aoe',
+        damage: '10d8', damageType: 'FORCE', saveType: 'wis', saveDC: 22,
+        priority: 9, cooldown: 2,
+        isLegendaryAction: true, legendaryCost: 2,
+        description: 'A wave of pure arcane destruction rolls across the battlefield.',
+      },
+      {
+        id: 'arcanetitan_pulse', name: 'Antimagic Pulse', type: 'status',
+        saveType: 'int', saveDC: 22, statusEffect: 'weakened', statusDuration: 2,
+        priority: 7, cooldown: 4,
+        description: 'A pulse of antimagic suppresses all magical ability.',
+      },
+      {
+        id: 'arcanetitan_shield', name: 'Arcane Shield', type: 'buff',
+        statusEffect: 'shielded', statusDuration: 2,
+        priority: 4, cooldown: 4,
+        description: 'A shimmering barrier of arcane energy absorbs incoming damage.',
+      },
+    ],
+    stats: {
+      hp: 580, ac: 24, attack: 21, damage: '5d8+12', speed: 40,
+      str: 28, dex: 12, con: 24, int: 24, wis: 20, cha: 18,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 400, maxQty: 600, gold: 25 },
+      { dropChance: 0.70, minQty: 5, maxQty: 10, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Tarrasque',
+    level: 49,
+    biome: 'PLAINS',
+    regionName: 'Verdant Heartlands',
+    damageType: 'PIERCING',
+    immunities: ['FIRE', 'POISON'],
+    resistances: ['COLD', 'LIGHTNING', 'SLASHING', 'PIERCING', 'BLUDGEONING'],
+    conditionImmunities: ['poisoned', 'frightened', 'charmed', 'stunned'],
+    critResistance: -30,
+    legendaryActions: 3,
+    legendaryResistances: 3,
+    phaseTransitions: [
+      {
+        id: 'tarrasque_rage',
+        hpThresholdPercent: 50,
+        name: 'Primal Rage',
+        description: 'The Tarrasque enters a primal fury, its attacks becoming even more devastating.',
+        triggered: false,
+        effects: [
+          { type: 'stat_boost', statBoost: { attack: 3, damage: 3 } },
+          { type: 'aoe_burst', aoeBurst: { damage: '8d6', damageType: 'BLUDGEONING', saveDC: 22, saveType: 'str' } },
+        ],
+      },
+      {
+        id: 'tarrasque_extinction',
+        hpThresholdPercent: 20,
+        name: 'Extinction Event',
+        description: 'The Tarrasque rears up and brings its full apocalyptic might to bear.',
+        triggered: false,
+        effects: [
+          { type: 'stat_boost', statBoost: { attack: 5, ac: 2 } },
+          { type: 'add_ability', addAbility: { id: 'tarrasque_quake', name: 'Earthshatter', type: 'aoe', damage: '12d10', damageType: 'BLUDGEONING', saveType: 'dex', saveDC: 24, cooldown: 3, priority: 10, description: 'The earth itself shatters beneath the Tarrasque\'s rage.' } },
+        ],
+      },
+    ],
+    abilities: [
+      {
+        id: 'tarrasque_multiattack', name: 'Rend and Tear', type: 'multiattack',
+        attacks: 4, priority: 5, cooldown: 0,
+        description: 'Bite, two claws, and tail strike with world-ending force.',
+      },
+      {
+        id: 'tarrasque_swallow', name: 'Swallow', type: 'swallow',
+        saveType: 'str', saveDC: 24,
+        swallowDamage: '5d8', swallowDamageType: 'ACID', swallowEscapeThreshold: 40,
+        priority: 8, cooldown: 4,
+        description: 'The Tarrasque swallows its prey whole.',
+      },
+      {
+        id: 'tarrasque_fear', name: 'Frightful Presence', type: 'fear_aura',
+        saveDC: 23,
+        auraRepeats: false,
+        description: 'The Tarrasque\'s presence is the stuff of nightmares.',
+      },
+      {
+        id: 'tarrasque_tail', name: 'Tail Sweep', type: 'aoe',
+        damage: '8d8', damageType: 'BLUDGEONING', saveType: 'dex', saveDC: 22,
+        priority: 7, cooldown: 2,
+        isLegendaryAction: true, legendaryCost: 1,
+        description: 'The Tarrasque\'s tail levels everything in its path.',
+      },
+    ],
+    stats: {
+      hp: 640, ac: 25, attack: 22, damage: '5d10+14', speed: 40,
+      str: 30, dex: 12, con: 30, int: 4, wis: 14, cha: 14,
+    },
+    lootTable: [
+      { dropChance: 0.90, minQty: 500, maxQty: 800, gold: 0 },
+      { dropChance: 0.60, minQty: 4, maxQty: 8, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Void Emperor',
+    level: 50,
+    biome: 'UNDERGROUND',
+    regionName: 'Vel\'Naris Underdark',
+    damageType: 'PSYCHIC',
+    immunities: ['PSYCHIC', 'NECROTIC', 'POISON'],
+    resistances: ['COLD', 'FIRE', 'LIGHTNING', 'FORCE'],
+    conditionImmunities: ['poisoned', 'frightened', 'charmed', 'stunned'],
+    critResistance: -25,
+    legendaryActions: 3,
+    legendaryResistances: 3,
+    phaseTransitions: [
+      {
+        id: 'voidemperor_ascension',
+        hpThresholdPercent: 50,
+        name: 'Void Ascension',
+        description: 'The Void Emperor transcends mortal form, reality warping around it.',
+        triggered: false,
+        effects: [
+          { type: 'stat_boost', statBoost: { attack: 4, damage: 4 } },
+          { type: 'aoe_burst', aoeBurst: { damage: '10d8', damageType: 'PSYCHIC', saveDC: 24, saveType: 'wis' } },
+        ],
+      },
+      {
+        id: 'voidemperor_horizon',
+        hpThresholdPercent: 20,
+        name: 'Event Horizon',
+        description: 'The Void Emperor becomes an event horizon — reality collapses around it.',
+        triggered: false,
+        effects: [
+          { type: 'stat_boost', statBoost: { ac: 3 } },
+          { type: 'add_ability', addAbility: { id: 'voidemperor_collapse', name: 'Dimensional Collapse', type: 'aoe', damage: '14d8', damageType: 'FORCE', saveType: 'int', saveDC: 25, cooldown: 3, priority: 10, description: 'Reality itself tears apart in a sphere of annihilation.' } },
+        ],
+      },
+    ],
+    abilities: [
+      {
+        id: 'voidemperor_rend', name: 'Void Rend', type: 'multiattack',
+        attacks: 3, priority: 5, cooldown: 0,
+        description: 'Three slashes through the fabric of reality itself.',
+      },
+      {
+        id: 'voidemperor_tear', name: 'Reality Tear', type: 'aoe',
+        damage: '12d8', damageType: 'PSYCHIC', saveType: 'wis', saveDC: 24,
+        priority: 9, cooldown: 2,
+        isLegendaryAction: true, legendaryCost: 2,
+        description: 'The Emperor tears reality apart, psychic energy flooding the void.',
+      },
+      {
+        id: 'voidemperor_dread', name: 'Existential Dread', type: 'fear_aura',
+        saveDC: 24,
+        auraRepeats: false,
+        description: 'The Emperor\'s presence threatens to erase the concept of self.',
+      },
+      {
+        id: 'voidemperor_drain', name: 'Void Drain', type: 'on_hit',
+        saveType: 'wis', saveDC: 22, statusEffect: 'weakened', statusDuration: 3,
+        description: 'Each strike drains meaning from the target\'s existence.',
+      },
+      {
+        id: 'voidemperor_rift', name: 'Dimensional Rift', type: 'status',
+        saveType: 'int', saveDC: 23, statusEffect: 'stunned', statusDuration: 2,
+        priority: 10, cooldown: 4,
+        isLegendaryAction: true, legendaryCost: 2,
+        description: 'The Emperor opens a rift in spacetime, trapping the target between dimensions.',
+      },
+      {
+        id: 'voidemperor_death', name: 'Void Collapse', type: 'death_throes',
+        deathDamage: '12d8', deathDamageType: 'PSYCHIC', deathSaveDC: 22, deathSaveType: 'wis',
+        description: 'The Emperor\'s destruction collapses the surrounding dimensional fabric.',
+      },
+    ],
+    stats: {
+      hp: 650, ac: 25, attack: 22, damage: '5d10+14', speed: 30,
+      str: 24, dex: 16, con: 26, int: 28, wis: 24, cha: 26,
+    },
+    lootTable: [
+      { dropChance: 0.90, minQty: 500, maxQty: 800, gold: 30 },
+      { dropChance: 0.50, minQty: 5, maxQty: 8, gold: 0, itemTemplateName: 'Arcane Reagents' },
     ],
   },
 ];
