@@ -1,0 +1,3881 @@
+{
+  "matchups": [
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "elf",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "dwarf",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "harthfolk",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "orc",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "nethkin",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "drakonid",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "elf",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "dwarf",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "harthfolk",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "orc",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "nethkin",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "drakonid",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "elf",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "dwarf",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "harthfolk",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "orc",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "nethkin",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "drakonid",
+      "class": "warrior",
+      "level": 8,
+      "opponent": "Orc Warrior",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "elf",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "dwarf",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "harthfolk",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "orc",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "nethkin",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "drakonid",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "elf",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "dwarf",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "harthfolk",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "orc",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "nethkin",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "drakonid",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "elf",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "dwarf",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "harthfolk",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "orc",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "nethkin",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "drakonid",
+      "class": "warrior",
+      "level": 20,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "elf",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "dwarf",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "harthfolk",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "orc",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "nethkin",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "drakonid",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "berserker"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "elf",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "dwarf",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "harthfolk",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "orc",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "nethkin",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "drakonid",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "guardian"
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "elf",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "dwarf",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "harthfolk",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "orc",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "nethkin",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    },
+    {
+      "race": "drakonid",
+      "class": "warrior",
+      "level": 35,
+      "opponent": "Elder Fey Guardian",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "warlord"
+    }
+  ],
+  "notes": "Warrior functional verification: 27 tier0 combos × 3 specs × 3 levels (human) + 7 races × 3 specs × 3 levels (fixed aaa)"
+}

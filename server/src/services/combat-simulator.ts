@@ -389,18 +389,41 @@ function classifyAbility(ability: AbilityDefinition): CombatRole {
  *
  * If all abilities are on cooldown, decideAction() falls through to basic attack.
  */
-function buildAbilityQueue(className: string, level: number): AbilityQueueEntry[] {
-  const classAbilities = ABILITIES_BY_CLASS[className] ?? [];
+export interface AbilityQueueOptions {
+  /** Which tier 0 option to pick per choice level, e.g. { 3: 'a', 5: 'b', 8: 'c' } */
+  tier0Selections?: Record<number, string>;
+  /** Filter spec abilities to a single specialization (e.g. 'berserker') */
+  specialization?: string;
+}
 
-  // For tier 0 choice abilities, pick only the first option per choice group (deterministic)
+function buildAbilityQueue(className: string, level: number, options?: AbilityQueueOptions): AbilityQueueEntry[] {
+  const classAbilities = ABILITIES_BY_CLASS[className] ?? [];
+  const tier0Sel = options?.tier0Selections;
+  const spec = options?.specialization;
+
+  // For tier 0 choice abilities, pick specific option or default to first per group
   const chosenGroups = new Set<string>();
   const available = classAbilities.filter((a: AbilityDefinition) => {
     if (a.levelRequired > level) return false;
     if ((a.effects as any)?.type === 'passive') return false;
+
+    // Tier 0: pick specific option if tier0Selections provided
     if (a.requiresChoice && a.choiceGroup) {
-      if (chosenGroups.has(a.choiceGroup)) return false; // already picked one from this group
+      if (tier0Sel) {
+        const sel = tier0Sel[a.levelRequired];
+        if (sel) {
+          // Ability IDs end with the option letter: war-t0-3a, war-t0-3b, etc.
+          return a.id.endsWith(sel);
+        }
+      }
+      // Default: first per group
+      if (chosenGroups.has(a.choiceGroup)) return false;
       chosenGroups.add(a.choiceGroup);
     }
+
+    // Specialization filter: only include abilities from specified spec (tier 0 has spec='none', always included)
+    if (spec && a.specialization !== 'none' && a.specialization !== spec) return false;
+
     return true;
   });
 
@@ -511,7 +534,7 @@ function buildAbilityQueue(className: string, level: number): AbilityQueueEntry[
 /**
  * Build default CombatPresets for a synthetic combatant.
  */
-export function buildDefaultPresets(className: string, level: number): CombatPresets {
+export function buildDefaultPresets(className: string, level: number, options?: AbilityQueueOptions): CombatPresets {
   return {
     stance: CLASS_DEFAULT_STANCE[className] ?? 'BALANCED',
     retreat: {
@@ -520,7 +543,7 @@ export function buildDefaultPresets(className: string, level: number): CombatPre
       roundLimit: 0,
       neverRetreat: true,  // Sim combatants never flee
     },
-    abilityQueue: buildAbilityQueue(className, level),
+    abilityQueue: buildAbilityQueue(className, level, options),
     itemUsageRules: [],
     pvpLootBehavior: 'TAKE_NOTHING',
   };
@@ -529,7 +552,7 @@ export function buildDefaultPresets(className: string, level: number): CombatPre
 /**
  * Build full CombatantParams for use with resolveTickCombat().
  */
-export function buildPlayerCombatParams(player: SyntheticPlayerResult): {
+export function buildPlayerCombatParams(player: SyntheticPlayerResult, options?: AbilityQueueOptions): {
   id: string;
   presets: CombatPresets;
   weapon: WeaponInfo | null;
@@ -540,7 +563,7 @@ export function buildPlayerCombatParams(player: SyntheticPlayerResult): {
 } {
   return {
     id: 'sim-player',
-    presets: buildDefaultPresets(player.class, player.level),
+    presets: buildDefaultPresets(player.class, player.level, options),
     weapon: player.weapon,
     racialTracker: createRacialCombatTracker(),
     race: player.race,

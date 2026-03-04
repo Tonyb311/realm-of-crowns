@@ -121,6 +121,8 @@ interface Matchup {
   level: number;
   opponent: string;
   iterations: number;
+  tier0Selections?: Record<number, string>;
+  specialization?: string;
 }
 
 interface GridConfig {
@@ -452,7 +454,10 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
     }
 
     const monster = buildSyntheticMonster(monsterData.name, monsterData.level, monsterData.stats, monsterData.combatData);
-    const playerParams = buildPlayerCombatParams(player);
+    const playerParams = buildPlayerCombatParams(player, {
+      tier0Selections: matchup.tier0Selections,
+      specialization: matchup.specialization,
+    });
     let matchupWins = 0;
 
     for (let i = 0; i < matchup.iterations; i++) {
