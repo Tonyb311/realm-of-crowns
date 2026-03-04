@@ -1,0 +1,6 @@
+{
+  "notes": "Verify Psion L20 Kineticist uses INT for spell attacks (was STR/DEX weapon stat)",
+  "matchups": [
+    { "race": "human", "class": "psion", "level": 20, "opponent": "Mind Flayer", "iterations": 20, "specialization": "kineticist", "tier0Selections": { "3": "a", "5": "a", "8": "a" } }
+  ]
+}

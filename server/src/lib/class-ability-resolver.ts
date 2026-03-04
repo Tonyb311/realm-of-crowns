@@ -97,9 +97,6 @@ const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef,
   const critBonus = (effects.critBonus as number) ?? 0;
   const autoHit = (effects.autoHit as boolean) ?? false;
   const ignoreArmor = (effects.ignoreArmor as boolean) ?? false;
-  const accuracyBonus = (effects.accuracyBonus as number) ?? 0;
-  const accuracyPenalty = (effects.accuracyPenalty as number) ?? 0;
-  const accuracyMod = accuracyBonus + accuracyPenalty;
   const bonusPerDebuff = (effects.bonusPerDebuff as number) ?? 0;
   const damageMultiplier = (effects.damageMultiplier as number) ?? 1.0;
   const requiresStealth = (effects.requiresStealth as boolean) ?? false;
@@ -135,36 +132,74 @@ const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef,
     }
   }
 
-  // Phase 5A: Optional attack roll when accuracy/crit modifiers are present (DMG-1 to DMG-4)
-  const hasAttackMods = critBonus > 0 || ignoreArmor || accuracyMod !== 0;
+  // --- Save-based path (attackType: 'save') ---
+  const saveResult = resolveAbilitySave(state, actor, target, abilityDef, effects);
+  if (saveResult) {
+    state = saveResult.state;
+    const { dc, saveType, save } = saveResult.result;
+
+    // Roll ability dice damage (no weapon damage for save-based abilities)
+    let abilityDmg = 0;
+    if (diceCount > 0) {
+      abilityDmg = rollDice(diceCount, diceSides);
+    }
+    let totalDamage = Math.max(0, abilityDmg + bonusDamage);
+
+    // On successful save: half damage
+    if (save.success) {
+      totalDamage = Math.floor(totalDamage / 2);
+    }
+
+    if (actor.holyDamageBonus && effects.element === 'radiant') {
+      totalDamage += Math.floor(totalDamage * actor.holyDamageBonus);
+    }
+
+    const hpBefore = target.currentHp;
+    const newHp = clampHp(target.currentHp - totalDamage, target.maxHp);
+    const killed = newHp <= 0;
+    state = updateCombatant(state, target.id, { currentHp: newHp, isAlive: !killed });
+
+    return {
+      state,
+      result: {
+        damage: totalDamage,
+        targetHpAfter: newHp,
+        targetKilled: killed,
+        targetHpBefore: hpBefore,
+        hit: true,
+        saveRequired: true,
+        saveDC: dc,
+        saveType,
+        saveRoll: save.roll,
+        saveTotal: save.total,
+        saveSucceeded: save.success,
+        damageType: abilityDef.damageType ?? (effects.element as string),
+        description: `${abilityDef.name}: ${totalDamage} damage to ${target.name}${save.success ? ' (saved, half)' : ''} (DC ${dc} ${saveType.toUpperCase()})`,
+      },
+    };
+  }
+
+  // --- Attack roll path (weapon or spell) ---
+  const atkResult = resolveAbilityAttackRoll(actor, target, abilityDef, effects);
   let abilityHit = true;
   let isCrit = false;
-
-  // Roll breakdown tracking
   let atkD20: number | undefined;
   let atkTotal: number | undefined;
   let atkModifiers: { source: string; value: number }[] | undefined;
   let effectiveAC: number | undefined;
 
-  if (actor.weapon && !autoHit) {
-    const statMod = getModifier(actor.stats[actor.weapon.attackModifierStat]);
-    const atkMod = statMod + actor.proficiencyBonus + actor.weapon.bonusAttack + accuracyMod;
-    effectiveAC = ignoreArmor ? 10 : target.ac;
-    const d20 = roll(20);
-    abilityHit = d20 + atkMod >= effectiveAC || d20 === 20;
+  if (atkResult) {
+    abilityHit = atkResult.hit;
+    isCrit = atkResult.isCrit;
+    atkD20 = atkResult.d20;
+    atkTotal = atkResult.total;
+    atkModifiers = atkResult.modifiers;
+    effectiveAC = atkResult.targetAC;
 
-    const effectiveCritBonus = analyzeMissing ? 0 : critBonus;
-    const critThreshold = 20 - Math.floor(effectiveCritBonus / 5);
-    isCrit = d20 >= critThreshold && abilityHit;
-
-    // Store attack roll breakdown
-    atkD20 = d20;
-    atkTotal = d20 + atkMod;
-    atkModifiers = [];
-    if (statMod !== 0) atkModifiers.push({ source: actor.weapon.attackModifierStat.toUpperCase(), value: statMod });
-    if (actor.proficiencyBonus !== 0) atkModifiers.push({ source: 'proficiency', value: actor.proficiencyBonus });
-    if (actor.weapon.bonusAttack !== 0) atkModifiers.push({ source: 'weapon bonus', value: actor.weapon.bonusAttack });
-    if (accuracyMod !== 0) atkModifiers.push({ source: 'ability accuracy', value: accuracyMod });
+    // Adjust crit for analyze requirement
+    if (analyzeMissing && critBonus > 0) {
+      isCrit = atkResult.d20 >= 20 && abilityHit;
+    }
   }
 
   if (!abilityHit) {
@@ -181,7 +216,7 @@ const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef,
         hit: false,
         isCritical: false,
         targetHpBefore: target.currentHp,
-        description: `${abilityDef.name}: missed ${target.name}${accuracyMod < 0 ? ` (accuracy ${accuracyMod})` : ''}`,
+        description: `${abilityDef.name}: missed ${target.name}`,
       },
     };
   }
@@ -191,7 +226,11 @@ const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef,
   let weaponDiceStr: string | undefined;
   let weaponDmgRolls: number[] = [];
   const dmgModifiers: { source: string; value: number }[] = [];
-  if (actor.weapon) {
+
+  // Spell attacks use class primary stat for damage instead of weapon stat
+  const isSpellAttack = abilityDef.attackType === 'spell';
+
+  if (actor.weapon && !isSpellAttack) {
     const statMod = getModifier(actor.stats[actor.weapon.damageModifierStat]);
     const critMult = isCrit ? 2 : 1;
     const wepDetailed = rollDiceDetailed(actor.weapon.diceCount * critMult, actor.weapon.diceSides);
@@ -200,7 +239,16 @@ const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef,
     weaponDmgRolls = wepDetailed.rolls;
     if (statMod !== 0) dmgModifiers.push({ source: actor.weapon.damageModifierStat.toUpperCase(), value: statMod });
     if (actor.weapon.bonusDamage !== 0) dmgModifiers.push({ source: 'weapon bonus', value: actor.weapon.bonusDamage });
+  } else if (isSpellAttack) {
+    // Spell attacks: add class primary stat modifier to damage (no weapon dice)
+    const primaryStat = actor.characterClass
+      ? CLASS_PRIMARY_STAT[actor.characterClass.toLowerCase()] ?? 'int'
+      : 'int';
+    const statMod = getModifier(actor.stats[primaryStat as keyof typeof actor.stats] ?? 10);
+    if (statMod > 0) dmgModifiers.push({ source: primaryStat.toUpperCase(), value: statMod });
+    weaponDmg = Math.max(0, statMod);
   }
+
   let abilityDmg = 0;
   let abilityDmgRolls: number[] = [];
   if (diceCount > 0) {
@@ -277,7 +325,7 @@ const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef,
       weaponDice: weaponDiceStr,
       damageRolls: [...weaponDmgRolls, ...abilityDmgRolls],
       damageModifiers: dmgModifiers,
-      damageType: actor.weapon?.damageType ?? (effects.element as string),
+      damageType: abilityDef.damageType ?? actor.weapon?.damageType ?? (effects.element as string),
       description: `${abilityDef.name}: ${parts.join(' | ')}`,
     },
   };
@@ -357,16 +405,30 @@ const handleDebuff: EffectHandler = (state, actor, target, _enemies, abilityDef,
   // Phase 5B MECH-5: bonusDamageFromYou — target takes bonus damage from actor
   const bonusDamageFromYou = (effects.bonusDamageFromYou as number) ?? 0;
 
+  // --- Save-based path: target can resist the debuff ---
+  const saveResult = resolveAbilitySave(state, actor, target, abilityDef, effects);
+  if (saveResult) {
+    state = saveResult.state;
+    const { dc, saveType, save } = saveResult.result;
+
+    if (save.success) {
+      return {
+        state,
+        result: {
+          saveRequired: true, saveDC: dc, saveType, saveRoll: save.roll, saveTotal: save.total, saveSucceeded: true,
+          description: `${abilityDef.name}: ${target.name} resisted debuff (${save.total} vs DC ${dc} ${saveType.toUpperCase()})`,
+        },
+      };
+    }
+  }
+
   // BUG-FIX 4: Use ActiveBuff for actual values instead of weakened status
-  // Weakened status has hardcoded -3 attack which caused double-dipping.
-  // ActiveBuff attackMod/acMod are consumed by getBuffAttackMod/getBuffAcMod in the engine.
   const debuffBuff: ActiveBuff = {
     sourceAbilityId: abilityDef.id,
     name: abilityDef.name,
     roundsRemaining: duration,
     attackMod: (attackReduction > 0 || allStatsReduction > 0) ? -(attackReduction || allStatsReduction) : undefined,
     acMod: acReduction > 0 ? -acReduction : undefined,
-    // Phase 5B MECH-5: Bonus damage from source
     bonusDamageFromSource: bonusDamageFromYou > 0 ? bonusDamageFromYou : undefined,
     bonusDamageSourceId: bonusDamageFromYou > 0 ? actor.id : undefined,
   };
@@ -376,6 +438,8 @@ const handleDebuff: EffectHandler = (state, actor, target, _enemies, abilityDef,
   state = updateCombatant(state, target.id, {
     activeBuffs: [...currentBuffs.filter(b => b.sourceAbilityId !== abilityDef.id), debuffBuff],
   });
+
+  const saveInfo = saveResult ? { saveRequired: true, saveDC: saveResult.result.dc, saveType: saveResult.result.saveType, saveRoll: saveResult.result.save.roll, saveTotal: saveResult.result.save.total, saveSucceeded: false } : {};
 
   return {
     state,
@@ -387,13 +451,15 @@ const handleDebuff: EffectHandler = (state, actor, target, _enemies, abilityDef,
         ...(acReduction ? { ac: -acReduction } : {}),
         ...(allStatsReduction ? { allStats: -allStatsReduction } : {}),
       },
+      ...saveInfo,
       description: (() => {
         const parts: string[] = [];
         if (attackReduction > 0) parts.push(`ATK -${attackReduction}`);
         if (acReduction > 0) parts.push(`AC -${acReduction}`);
         if (allStatsReduction > 0) parts.push(`all stats -${allStatsReduction}`);
         if (bonusDamageFromYou > 0) parts.push(`+${bonusDamageFromYou} bonus dmg taken`);
-        return `${abilityDef.name}: debuff on ${target.name} for ${duration} rounds${parts.length ? ` (${parts.join(', ')})` : ''}`;
+        const saveNote = saveResult ? ` (DC ${saveResult.result.dc})` : '';
+        return `${abilityDef.name}: debuff on ${target.name} for ${duration} rounds${parts.length ? ` (${parts.join(', ')})` : ''}${saveNote}`;
       })(),
     },
   };
@@ -532,6 +598,60 @@ const handleDamageStatus: EffectHandler = (state, actor, target, _enemies, abili
   const statusEffect = mapStatusName((effects.statusEffect as string) ?? 'stunned');
   const duration = (effects.statusDuration as number) ?? 1;
 
+  // --- Save-based path ---
+  const saveResult = resolveAbilitySave(state, actor, target, abilityDef, effects);
+  if (saveResult) {
+    state = saveResult.state;
+    const { dc, saveType, save } = saveResult.result;
+    const bonusMod = damageBonus ? Math.max(0, getModifier(actor.stats[damageBonus as keyof typeof actor.stats] ?? 10)) : 0;
+    let diceDmg = diceCount > 0 ? rollDice(diceCount, diceSides) : 0;
+    let totalDamage = Math.max(0, damage + diceDmg + bonusMod);
+
+    if (save.success) {
+      totalDamage = Math.floor(totalDamage / 2);
+      // No status on successful save
+    }
+
+    const hpBefore = target.currentHp;
+    const newHp = clampHp(target.currentHp - totalDamage, target.maxHp);
+    const killed = newHp <= 0;
+    state = updateCombatant(state, target.id, { currentHp: newHp, isAlive: !killed });
+
+    if (!save.success && !killed) {
+      state = applyStatusEffectToState(state, target.id, statusEffect, duration, actor.id);
+    }
+
+    return {
+      state,
+      result: {
+        damage: totalDamage,
+        statusApplied: save.success ? undefined : statusEffect,
+        statusDuration: save.success ? undefined : duration,
+        targetHpAfter: newHp,
+        targetKilled: killed,
+        targetHpBefore: hpBefore,
+        hit: true,
+        saveRequired: true, saveDC: dc, saveType, saveRoll: save.roll, saveTotal: save.total, saveSucceeded: save.success,
+        damageType: abilityDef.damageType ?? (effects.element as string),
+        description: `${abilityDef.name}: ${totalDamage} damage${save.success ? ' (saved, half, no status)' : ` + ${statusEffect}(${duration})`} to ${target.name} (DC ${dc})`,
+      },
+    };
+  }
+
+  // --- Attack roll path (weapon or spell) ---
+  const atkResult = resolveAbilityAttackRoll(actor, target, abilityDef, effects);
+  if (atkResult && !atkResult.hit) {
+    return {
+      state,
+      result: {
+        damage: 0, targetHpAfter: target.currentHp, targetKilled: false, targetHpBefore: target.currentHp,
+        attackRoll: atkResult.d20, attackTotal: atkResult.total, attackModifiers: atkResult.modifiers,
+        targetAC: atkResult.targetAC, hit: false, isCritical: false,
+        description: `${abilityDef.name}: missed ${target.name}`,
+      },
+    };
+  }
+
   // Calculate stat-based bonus damage (e.g., INT modifier for psion abilities)
   const bonusMod = damageBonus ? Math.max(0, getModifier(actor.stats[damageBonus as keyof typeof actor.stats] ?? 10)) : 0;
 
@@ -574,6 +694,8 @@ const handleDamageStatus: EffectHandler = (state, actor, target, _enemies, abili
       weaponDice: diceCount > 0 ? `${diceCount}d${diceSides}` : undefined,
       damageRolls: diceRolls.length > 0 ? diceRolls : undefined,
       damageModifiers: dmgModifiers.length > 0 ? dmgModifiers : undefined,
+      ...(atkResult ? { attackRoll: atkResult.d20, attackTotal: atkResult.total, attackModifiers: atkResult.modifiers, targetAC: atkResult.targetAC, hit: true, isCritical: atkResult.isCrit } : {}),
+      damageType: abilityDef.damageType ?? (effects.element as string),
       description: `${abilityDef.name}: ${totalDamage} damage + ${statusEffect}(${duration}) to ${target.name}`,
     },
   };
@@ -588,6 +710,51 @@ const handleDamageDebuff: EffectHandler = (state, actor, target, _enemies, abili
   const diceSides = (effects.diceSides as number) ?? 6;
   const acReduction = (effects.acReduction as number) ?? 0;
   const duration = (effects.duration as number) ?? 2;
+
+  // --- Save-based path ---
+  const saveResult = resolveAbilitySave(state, actor, target, abilityDef, effects);
+  if (saveResult) {
+    state = saveResult.state;
+    const { dc, saveType, save } = saveResult.result;
+    let totalDamage = rollDice(diceCount, diceSides);
+    if (save.success) {
+      totalDamage = Math.floor(totalDamage / 2);
+    }
+    const newHp = clampHp(target.currentHp - totalDamage, target.maxHp);
+    const killed = newHp <= 0;
+    state = updateCombatant(state, target.id, { currentHp: newHp, isAlive: !killed });
+
+    if (!save.success && !killed && acReduction > 0) {
+      state = applyStatusEffectToState(state, target.id, 'weakened', duration, actor.id);
+    }
+
+    return {
+      state,
+      result: {
+        damage: totalDamage,
+        debuffApplied: save.success ? undefined : `AC -${acReduction}`,
+        debuffDuration: save.success ? undefined : duration,
+        targetHpAfter: newHp, targetKilled: killed,
+        hit: true, saveRequired: true, saveDC: dc, saveType, saveRoll: save.roll, saveTotal: save.total, saveSucceeded: save.success,
+        damageType: abilityDef.damageType ?? (effects.element as string),
+        description: `${abilityDef.name}: ${totalDamage} damage${save.success ? ' (saved, half, no debuff)' : ` + AC-${acReduction}(${duration}r)`} to ${target.name} (DC ${dc})`,
+      },
+    };
+  }
+
+  // --- Attack roll path ---
+  const atkResult = resolveAbilityAttackRoll(actor, target, abilityDef, effects);
+  if (atkResult && !atkResult.hit) {
+    return {
+      state,
+      result: {
+        damage: 0, targetHpAfter: target.currentHp, targetKilled: false,
+        attackRoll: atkResult.d20, attackTotal: atkResult.total, attackModifiers: atkResult.modifiers,
+        targetAC: atkResult.targetAC, hit: false, isCritical: false,
+        description: `${abilityDef.name}: missed ${target.name}`,
+      },
+    };
+  }
 
   const totalDamage = rollDice(diceCount, diceSides);
   const newHp = clampHp(target.currentHp - totalDamage, target.maxHp);
@@ -606,6 +773,8 @@ const handleDamageDebuff: EffectHandler = (state, actor, target, _enemies, abili
       debuffDuration: duration,
       targetHpAfter: newHp,
       targetKilled: killed,
+      ...(atkResult ? { attackRoll: atkResult.d20, attackTotal: atkResult.total, attackModifiers: atkResult.modifiers, targetAC: atkResult.targetAC, hit: true, isCritical: atkResult.isCrit } : {}),
+      damageType: abilityDef.damageType ?? (effects.element as string),
       description: `${abilityDef.name}: ${totalDamage} damage + AC-${acReduction}(${duration}r) to ${target.name}`,
     },
   };
@@ -614,6 +783,20 @@ const handleDamageDebuff: EffectHandler = (state, actor, target, _enemies, abili
 const handleDrain: EffectHandler = (state, actor, target, enemies, abilityDef, effects) => {
   if (!target || !target.isAlive) {
     return { state, result: { description: `${abilityDef.name}: no valid target` } };
+  }
+
+  // Attack roll for spell/weapon drain abilities
+  const atkResult = resolveAbilityAttackRoll(actor, target, abilityDef, effects);
+  if (atkResult && !atkResult.hit) {
+    return {
+      state,
+      result: {
+        damage: 0, targetHpAfter: target.currentHp, targetKilled: false,
+        attackRoll: atkResult.d20, attackTotal: atkResult.total, attackModifiers: atkResult.modifiers,
+        targetAC: atkResult.targetAC, hit: false, isCritical: false,
+        description: `${abilityDef.name}: missed ${target.name}`,
+      },
+    };
   }
 
   const diceCount = (effects.diceCount as number) ?? 2;
@@ -641,6 +824,8 @@ const handleDrain: EffectHandler = (state, actor, target, enemies, abilityDef, e
       targetHpAfter: targetNewHp,
       actorHpAfter: actorNewHp,
       targetKilled: killed,
+      ...(atkResult ? { attackRoll: atkResult.d20, attackTotal: atkResult.total, attackModifiers: atkResult.modifiers, targetAC: atkResult.targetAC, hit: true, isCritical: atkResult.isCrit } : {}),
+      damageType: abilityDef.damageType ?? (effects.element as string),
       description: `${abilityDef.name}: ${totalDamage} damage to ${target.name}, healed self ${selfHeal}`,
     },
   };
@@ -778,6 +963,11 @@ const handleAoeDamage: EffectHandler = (state, actor, _target, enemies, abilityD
     return { state, result: { description: `${abilityDef.name}: no targets` } };
   }
 
+  // Save-based AoE: calculate DC once, each target saves individually
+  const isSaveBased = abilityDef.attackType === 'save';
+  const saveType = (effects.saveType as string) ?? 'dex';
+  const dc = isSaveBased ? calculateSaveDC(actor) : 0;
+
   const perTargetResults: ClassAbilityResult['perTargetResults'] = [];
   let totalDamage = 0;
   const targetIds: string[] = [];
@@ -807,6 +997,17 @@ const handleAoeDamage: EffectHandler = (state, actor, _target, enemies, abilityD
       dmg = rollDice(diceCount, diceSides);
     }
 
+    // Per-target save for save-based AoE
+    if (isSaveBased) {
+      const targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10);
+      const save = savingThrow(targetSaveMod, dc);
+      const lr = checkLegendaryResistance(state, enemy.id, save, dc);
+      if (lr.overridden) { save.success = true; state = lr.state; }
+      if (save.success) {
+        dmg = Math.floor(dmg / 2);
+      }
+    }
+
     dmg = Math.max(0, dmg);
     const target = state.combatants.find(c => c.id === enemy.id)!;
     const newHp = clampHp(target.currentHp - dmg, target.maxHp);
@@ -826,13 +1027,16 @@ const handleAoeDamage: EffectHandler = (state, actor, _target, enemies, abilityD
   }
 
   const element = (effects.element as string) ?? '';
+  const saveNote = isSaveBased ? ` (DC ${dc} ${saveType.toUpperCase()} save, half on success)` : '';
   return {
     state,
     result: {
       targetIds,
       damage: totalDamage,
       perTargetResults,
-      description: `${abilityDef.name}: ${totalDamage}${element ? ' ' + element : ''} damage to ${enemies.length} targets`,
+      ...(isSaveBased ? { saveRequired: true, saveDC: dc, saveType } : {}),
+      damageType: abilityDef.damageType ?? (effects.element as string),
+      description: `${abilityDef.name}: ${totalDamage}${element ? ' ' + element : ''} damage to ${enemies.length} targets${saveNote}`,
     },
   };
 };
@@ -849,11 +1053,28 @@ const handleMultiTarget: EffectHandler = (state, actor, _target, enemies, abilit
 
   const diceCount = (effects.diceCount as number) ?? 1;
   const diceSides = (effects.diceSides as number) ?? 6;
+  const hasAttackRoll = abilityDef.attackType === 'weapon' || abilityDef.attackType === 'spell';
   const perTargetResults: ClassAbilityResult['perTargetResults'] = [];
   let totalDamage = 0;
   const targetIds: string[] = [];
 
   for (const enemy of targets) {
+    // Per-target attack roll for weapon/spell multi-target abilities
+    if (hasAttackRoll) {
+      const atkResult = resolveAbilityAttackRoll(actor, enemy, abilityDef, effects);
+      if (atkResult && !atkResult.hit) {
+        targetIds.push(enemy.id);
+        perTargetResults.push({
+          targetId: enemy.id,
+          targetName: enemy.name,
+          damage: 0,
+          hpAfter: enemy.currentHp,
+          killed: false,
+        });
+        continue;
+      }
+    }
+
     const dmg = rollDice(diceCount, diceSides);
     const target = state.combatants.find(c => c.id === enemy.id)!;
     const newHp = clampHp(target.currentHp - dmg, target.maxHp);
@@ -879,6 +1100,7 @@ const handleMultiTarget: EffectHandler = (state, actor, _target, enemies, abilit
       targetIds,
       damage: totalDamage,
       perTargetResults,
+      damageType: abilityDef.damageType ?? (effects.element as string),
       description: `${abilityDef.name}: ${totalDamage}${element ? ' ' + element : ''} damage to ${targets.length} targets`,
     },
   };
@@ -971,18 +1193,39 @@ const handleAoeDrain: EffectHandler = (state, actor, _target, enemies, abilityDe
   const diceSides = (effects.diceSides as number) ?? 8;
   const healPerTarget = (effects.healPerTarget as number) ?? 8;
 
+  // Save-based AoE drain: each target saves individually
+  const isSaveBased = abilityDef.attackType === 'save';
+  const saveType = (effects.saveType as string) ?? 'wis';
+  const dc = isSaveBased ? calculateSaveDC(actor) : 0;
+
   const perTargetResults: ClassAbilityResult['perTargetResults'] = [];
   let totalDamage = 0;
+  let healableTargets = 0;
   const targetIds: string[] = [];
 
   for (const enemy of enemies) {
-    const dmg = rollDice(diceCount, diceSides);
+    let dmg = rollDice(diceCount, diceSides);
+
+    // Per-target save
+    if (isSaveBased) {
+      const targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10);
+      const save = savingThrow(targetSaveMod, dc);
+      const lr = checkLegendaryResistance(state, enemy.id, save, dc);
+      if (lr.overridden) { save.success = true; state = lr.state; }
+      if (save.success) {
+        dmg = Math.floor(dmg / 2);
+        // Reduced healing from saved targets
+      }
+    }
+
+    dmg = Math.max(0, dmg);
     const target = state.combatants.find(c => c.id === enemy.id)!;
     const newHp = clampHp(target.currentHp - dmg, target.maxHp);
     const killed = newHp <= 0;
 
     state = updateCombatant(state, enemy.id, { currentHp: newHp, isAlive: !killed });
     totalDamage += dmg;
+    healableTargets++;
     targetIds.push(enemy.id);
 
     perTargetResults.push({
@@ -995,11 +1238,12 @@ const handleAoeDrain: EffectHandler = (state, actor, _target, enemies, abilityDe
   }
 
   // Heal actor
-  const selfHeal = enemies.length * healPerTarget;
+  const selfHeal = healableTargets * healPerTarget;
   const actorNow = state.combatants.find(c => c.id === actor.id)!;
   const newActorHp = clampHp(actorNow.currentHp + selfHeal, actorNow.maxHp);
   state = updateCombatant(state, actor.id, { currentHp: newActorHp });
 
+  const saveNote = isSaveBased ? ` (DC ${dc} ${saveType.toUpperCase()} save)` : '';
   return {
     state,
     result: {
@@ -1008,7 +1252,9 @@ const handleAoeDrain: EffectHandler = (state, actor, _target, enemies, abilityDe
       selfHealing: selfHeal,
       actorHpAfter: newActorHp,
       perTargetResults,
-      description: `${abilityDef.name}: ${totalDamage} damage to ${enemies.length} targets, healed self ${selfHeal}`,
+      ...(isSaveBased ? { saveRequired: true, saveDC: dc, saveType } : {}),
+      damageType: abilityDef.damageType ?? (effects.element as string),
+      description: `${abilityDef.name}: ${totalDamage} damage to ${enemies.length} targets, healed self ${selfHeal}${saveNote}`,
     },
   };
 };
@@ -1385,8 +1631,8 @@ const handleSummon: EffectHandler = (state, actor, _target, _enemies, abilityDef
 
 // ---- Psion Effect Handlers ----
 
-/** Class → primary casting stat for save DC calculations */
-const CLASS_SAVE_DC_STAT: Record<string, string> = {
+/** Class → primary casting/attack stat (used for save DCs and spell attack rolls) */
+const CLASS_PRIMARY_STAT: Record<string, string> = {
   warrior: 'str', rogue: 'dex', ranger: 'dex',
   mage: 'int', psion: 'int', cleric: 'wis', bard: 'cha',
 };
@@ -1394,41 +1640,133 @@ const CLASS_SAVE_DC_STAT: Record<string, string> = {
 /** Save DC = 8 + proficiency bonus + class primary stat modifier */
 function calculateSaveDC(actor: Combatant, saveStatOverride?: string): number {
   const castingStat = saveStatOverride
-    ?? (actor.characterClass ? CLASS_SAVE_DC_STAT[actor.characterClass.toLowerCase()] : undefined)
+    ?? (actor.characterClass ? CLASS_PRIMARY_STAT[actor.characterClass.toLowerCase()] : undefined)
     ?? 'int';
   const statMod = getModifier(actor.stats[castingStat as keyof typeof actor.stats] ?? 10);
   return 8 + actor.proficiencyBonus + statMod;
 }
 
-/** teleport_attack: Blink Strike — teleport to target and attack with bonus */
+// ---- Ability Attack/Save Resolution Utilities ----
+
+interface AbilityAttackResult {
+  hit: boolean;
+  isCrit: boolean;
+  d20: number;
+  total: number;
+  modifiers: { source: string; value: number }[];
+  targetAC: number;
+}
+
+/**
+ * Shared attack roll for class abilities based on attackType.
+ * - 'weapon': uses weapon's attackModifierStat + proficiency + weapon bonus
+ * - 'spell': uses CLASS_PRIMARY_STAT + proficiency (no weapon bonus)
+ * - 'save' / 'auto' / undefined with autoHit: returns null (no roll)
+ */
+function resolveAbilityAttackRoll(
+  actor: Combatant,
+  target: Combatant,
+  abilityDef: AbilityDefinition,
+  effects: Record<string, any>,
+): AbilityAttackResult | null {
+  const attackType = abilityDef.attackType;
+  const autoHit = (effects.autoHit as boolean) ?? false;
+  const ignoreArmor = (effects.ignoreArmor as boolean) ?? false;
+  const accuracyBonus = (effects.accuracyBonus as number) ?? 0;
+  const accuracyPenalty = (effects.accuracyPenalty as number) ?? 0;
+  const accuracyMod = accuracyBonus + accuracyPenalty;
+  const critBonus = (effects.critBonus as number) ?? 0;
+
+  // No roll for auto-hit, save-based, or explicitly auto abilities
+  if (autoHit || attackType === 'save' || attackType === 'auto') return null;
+
+  // Determine stat and bonus based on attack type
+  let statMod: number;
+  let statName: string;
+  let weaponBonus = 0;
+  const modifiers: { source: string; value: number }[] = [];
+
+  if (attackType === 'spell') {
+    // Spell attack: class primary stat + proficiency, no weapon bonus
+    statName = actor.characterClass
+      ? CLASS_PRIMARY_STAT[actor.characterClass.toLowerCase()] ?? 'int'
+      : 'int';
+    statMod = getModifier(actor.stats[statName as keyof typeof actor.stats] ?? 10);
+  } else {
+    // Weapon attack (default): use weapon's attack modifier stat
+    if (!actor.weapon) return null; // can't roll without weapon
+    statName = actor.weapon.attackModifierStat;
+    statMod = getModifier(actor.stats[actor.weapon.attackModifierStat]);
+    weaponBonus = actor.weapon.bonusAttack;
+  }
+
+  const totalMod = statMod + actor.proficiencyBonus + weaponBonus + accuracyMod;
+  const effectiveAC = ignoreArmor ? 10 : target.ac;
+  const d20 = roll(20);
+  const hit = d20 + totalMod >= effectiveAC || d20 === 20;
+  const critThreshold = 20 - Math.floor(critBonus / 5);
+  const isCrit = d20 >= critThreshold && hit;
+
+  if (statMod !== 0) modifiers.push({ source: statName.toUpperCase(), value: statMod });
+  if (actor.proficiencyBonus !== 0) modifiers.push({ source: 'proficiency', value: actor.proficiencyBonus });
+  if (weaponBonus !== 0) modifiers.push({ source: 'weapon bonus', value: weaponBonus });
+  if (accuracyMod !== 0) modifiers.push({ source: 'ability accuracy', value: accuracyMod });
+
+  return { hit, isCrit, d20, total: d20 + totalMod, modifiers, targetAC: effectiveAC };
+}
+
+interface AbilitySaveResult {
+  dc: number;
+  saveType: string;
+  save: { roll: number; total: number; success: boolean };
+}
+
+/**
+ * Shared saving throw resolution for abilities with attackType: 'save'.
+ * Uses calculateSaveDC() (class-aware) and savingThrow() from dice utils.
+ * Also checks legendary resistance.
+ */
+function resolveAbilitySave(
+  state: CombatState,
+  actor: Combatant,
+  target: Combatant,
+  abilityDef: AbilityDefinition,
+  effects: Record<string, any>,
+): { result: AbilitySaveResult; state: CombatState } | null {
+  if (abilityDef.attackType !== 'save') return null;
+
+  const saveType = (effects.saveType as string) ?? 'wis';
+  const dc = calculateSaveDC(actor);
+  const targetSaveMod = getModifier(target.stats[saveType as keyof typeof target.stats] ?? 10);
+  const save = savingThrow(targetSaveMod, dc);
+
+  // Check legendary resistance
+  const lr = checkLegendaryResistance(state, target.id, save, dc);
+  if (lr.overridden) {
+    save.success = true;
+    state = lr.state;
+  }
+
+  return {
+    result: { dc, saveType, save: { roll: save.roll, total: save.total, success: save.success } },
+    state,
+  };
+}
+
+/** teleport_attack: Blink Strike — teleport to target and attack with spell attack (INT) */
 const handleTeleportAttack: EffectHandler = (state, actor, target, _enemies, abilityDef, effects) => {
   if (!target || !target.isAlive) {
     return { state, result: { description: `${abilityDef.name}: no valid target` } };
   }
 
-  const attackBonus = (effects.attackBonus as number) ?? 0;
   const damageBonus = (effects.damageBonus as string);
 
-  // Roll attack with bonus
-  const atkStatName = actor.weapon ? actor.weapon.attackModifierStat : 'int';
-  const statMod = actor.weapon
-    ? getModifier(actor.stats[actor.weapon.attackModifierStat])
-    : getModifier(actor.stats.int);
-  const atkMod = statMod + actor.proficiencyBonus + (actor.weapon?.bonusAttack ?? 0) + attackBonus;
-  const d20 = roll(20);
-  const hit = d20 + atkMod >= target.ac || d20 === 20;
-  const isCrit = d20 === 20;
-
-  // Build attack modifiers breakdown
-  const atkModifiers: { source: string; value: number }[] = [];
-  if (statMod !== 0) atkModifiers.push({ source: atkStatName.toUpperCase(), value: statMod });
-  if (actor.proficiencyBonus !== 0) atkModifiers.push({ source: 'proficiency', value: actor.proficiencyBonus });
-  if ((actor.weapon?.bonusAttack ?? 0) !== 0) atkModifiers.push({ source: 'weapon bonus', value: actor.weapon!.bonusAttack });
-  if (attackBonus !== 0) atkModifiers.push({ source: 'teleport bonus', value: attackBonus });
-
+  // Use resolveAbilityAttackRoll — Blink Strike has attackType: 'spell' on the definition
+  // which will use INT (psion's primary stat) instead of weapon's attack stat
+  const atkResult = resolveAbilityAttackRoll(actor, target, abilityDef, effects);
   const hpBefore = target.currentHp;
 
-  if (!hit) {
+  if (atkResult && !atkResult.hit) {
     return {
       state,
       result: {
@@ -1436,16 +1774,18 @@ const handleTeleportAttack: EffectHandler = (state, actor, target, _enemies, abi
         targetHpAfter: target.currentHp,
         targetKilled: false,
         targetHpBefore: hpBefore,
-        attackRoll: d20,
-        attackTotal: d20 + atkMod,
-        attackModifiers: atkModifiers,
-        targetAC: target.ac,
+        attackRoll: atkResult.d20,
+        attackTotal: atkResult.total,
+        attackModifiers: atkResult.modifiers,
+        targetAC: atkResult.targetAC,
         hit: false,
         isCritical: false,
-        description: `${abilityDef.name}: teleported to ${target.name} but missed (${d20}+${atkMod} vs AC ${target.ac})`,
+        description: `${abilityDef.name}: teleported to ${target.name} but missed`,
       },
     };
   }
+
+  const isCrit = atkResult?.isCrit ?? false;
 
   // Weapon damage + bonus damage (with detailed breakdown)
   let totalDamage = 0;
@@ -1483,16 +1823,13 @@ const handleTeleportAttack: EffectHandler = (state, actor, target, _enemies, abi
       targetHpAfter: newHp,
       targetKilled: killed,
       targetHpBefore: hpBefore,
-      attackRoll: d20,
-      attackTotal: d20 + atkMod,
-      attackModifiers: atkModifiers,
-      targetAC: target.ac,
+      ...(atkResult ? { attackRoll: atkResult.d20, attackTotal: atkResult.total, attackModifiers: atkResult.modifiers, targetAC: atkResult.targetAC } : {}),
       hit: true,
       isCritical: isCrit,
       weaponDice: weaponDiceStr,
       damageRolls: allDmgRolls,
       damageModifiers: dmgModifiers,
-      damageType: actor.weapon?.damageType,
+      damageType: abilityDef.damageType ?? actor.weapon?.damageType,
       description: `${abilityDef.name}: teleported and struck ${target.name} for ${totalDamage} damage${isCrit ? ' CRITICAL' : ''}`,
     },
   };

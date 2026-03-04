@@ -19,6 +19,10 @@ export interface AbilityDefinition {
   requiresSetupTag?: string;
   /** If true, the setup tag is consumed when this ability fires */
   consumesSetupTag?: boolean;
+  /** How the ability resolves: weapon attack, spell attack, saving throw, or auto-hit */
+  attackType?: 'weapon' | 'spell' | 'save' | 'auto';
+  /** Damage type for resistance/vulnerability checks (e.g., 'FIRE', 'PSYCHIC') */
+  damageType?: string;
 }
 
 export interface SpecializationDefinition {
