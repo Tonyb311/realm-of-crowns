@@ -507,9 +507,10 @@ export async function resolveRoadEncounter(
     buildMonsterCombatOptions(monster),
   );
 
-  // Set race for racial ability resolution
+  // Set race and class for racial ability + save DC resolution
   (playerCombatant as any).race = character.race.toLowerCase();
   (playerCombatant as any).subRace = character.subRace ?? null;
+  (playerCombatant as any).characterClass = character.class?.toLowerCase() ?? null;
 
   let combatState = createCombatState(sessionId, 'PVE', [playerCombatant, monsterCombatant]);
 
@@ -904,9 +905,10 @@ export async function resolveGroupRoadEncounter(
         {},
         getProficiencyBonus(char.level),
     );
-    // Set race for racial ability resolution
+    // Set race and class for racial ability + save DC resolution
     (combatant as any).race = char.race.toLowerCase();
     (combatant as any).subRace = char.subRace ?? null;
+    (combatant as any).characterClass = char.class?.toLowerCase() ?? null;
     combatants.push(combatant);
   }
 

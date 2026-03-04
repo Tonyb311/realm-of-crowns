@@ -1385,9 +1385,17 @@ const handleSummon: EffectHandler = (state, actor, _target, _enemies, abilityDef
 
 // ---- Psion Effect Handlers ----
 
-/** Save DC = 8 + proficiency bonus + caster's stat modifier (INT for Psion) */
+/** Class → primary casting stat for save DC calculations */
+const CLASS_SAVE_DC_STAT: Record<string, string> = {
+  warrior: 'str', rogue: 'dex', ranger: 'dex',
+  mage: 'int', psion: 'int', cleric: 'wis', bard: 'cha',
+};
+
+/** Save DC = 8 + proficiency bonus + class primary stat modifier */
 function calculateSaveDC(actor: Combatant, saveStatOverride?: string): number {
-  const castingStat = saveStatOverride ?? 'int';
+  const castingStat = saveStatOverride
+    ?? (actor.characterClass ? CLASS_SAVE_DC_STAT[actor.characterClass.toLowerCase()] : undefined)
+    ?? 'int';
   const statMod = getModifier(actor.stats[castingStat as keyof typeof actor.stats] ?? 10);
   return 8 + actor.proficiencyBonus + statMod;
 }

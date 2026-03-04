@@ -890,9 +890,10 @@ export async function resolveNodePvE(
     getProficiencyBonus(character.level),
   );
 
-  // Add race to combatant
+  // Add race and class to combatant
   (playerCombatant as any).race = character.race.toLowerCase();
   (playerCombatant as any).subRace = character.subRace;
+  (playerCombatant as any).characterClass = character.class?.toLowerCase() ?? null;
 
   const monsterCombatant = createMonsterCombatant(
     `monster-${monster.id}`,
@@ -1050,6 +1051,7 @@ export async function resolveNodePvP(
     getProficiencyBonus(traveler.level),
   );
   (travelerCombatant as any).race = traveler.race.toLowerCase();
+  (travelerCombatant as any).characterClass = traveler.class?.toLowerCase() ?? null;
 
   const ambusherCombatant = createCharacterCombatant(
     ambusher.id, ambusher.name, 1,
@@ -1061,6 +1063,7 @@ export async function resolveNodePvP(
     getProficiencyBonus(ambusher.level),
   );
   (ambusherCombatant as any).race = ambusher.race.toLowerCase();
+  (ambusherCombatant as any).characterClass = ambusher.class?.toLowerCase() ?? null;
 
   // Create combat state
   const sessionId = `tick-pvp-${travelerId}-${ambusherId}-${Date.now()}`;
@@ -1213,6 +1216,7 @@ export async function resolveGroupCombat(
       getProficiencyBonus(char.level),
     );
     (combatant as any).race = char.race.toLowerCase();
+    (combatant as any).characterClass = char.class?.toLowerCase() ?? null;
     combatants.push(combatant);
 
     const params = await buildCombatParams(char.id);
@@ -1248,6 +1252,7 @@ export async function resolveGroupCombat(
       getProficiencyBonus(char.level),
     );
     (combatant as any).race = char.race.toLowerCase();
+    (combatant as any).characterClass = char.class?.toLowerCase() ?? null;
     combatants.push(combatant);
 
     const params = await buildCombatParams(char.id);
