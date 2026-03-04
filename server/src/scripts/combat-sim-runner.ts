@@ -35,6 +35,8 @@ import { applyPassiveAbilities } from '../lib/class-ability-resolver';
 
 // Class ability ID set for dispatch detection
 const CLASS_ABILITY_IDS = new Set(ALL_ABILITIES.map(a => a.id));
+// Ability lookup map for chain tag resolution
+const ABILITY_BY_ID = new Map(ALL_ABILITIES.map(a => [a.id, a]));
 import { getModifier } from '@shared/types/combat';
 import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
 import type {
@@ -198,6 +200,67 @@ function simDecideAction(
         context: {},
         reason: `flee: HP at ${Math.round(hpPercent)}% <= threshold ${params.retreatHpThreshold}%`,
       };
+    }
+  }
+
+  // 1c. Setup→Payoff ability chaining
+  const actorSetupTags = actor.setupTags ?? [];
+  const chainTarget = enemies.length > 0 ? enemies[0] : null;
+
+  // If actor has a setup tag, prioritize the payoff ability
+  if (actorSetupTags.length > 0 && chainTarget) {
+    for (const entry of params.abilityQueue) {
+      if (!entry.abilityId || !CLASS_ABILITY_IDS.has(entry.abilityId)) continue;
+      const def = ABILITY_BY_ID.get(entry.abilityId);
+      if (!def?.requiresSetupTag) continue;
+      if (!actorSetupTags.includes(def.requiresSetupTag)) continue;
+      const cooldownRemaining = actor.abilityCooldowns?.[entry.abilityId] ?? 0;
+      if (cooldownRemaining > 0) continue;
+      // Dispatch psion abilities via psion_ability path
+      if (entry.abilityId.startsWith('psi-')) {
+        return {
+          action: { type: 'psion_ability', actorId, psionAbilityId: entry.abilityId, targetId: chainTarget.id, targetIds: enemies.map(e => e.id) },
+          context: {},
+          reason: `chain payoff: ${entry.abilityName} (setup tag: ${def.requiresSetupTag})`,
+        };
+      }
+      return {
+        action: { type: 'class_ability', actorId, classAbilityId: entry.abilityId, targetId: chainTarget.id, targetIds: enemies.map(e => e.id) },
+        context: {},
+        reason: `chain payoff: ${entry.abilityName} (setup tag: ${def.requiresSetupTag})`,
+      };
+    }
+  }
+
+  // If no setup tag active, consider initiating a setup when payoff is available
+  if (actorSetupTags.length === 0 && chainTarget) {
+    const hpPercentForSetup = (actor.currentHp / actor.maxHp) * 100;
+    if (hpPercentForSetup > 30) {
+      for (const entry of params.abilityQueue) {
+        if (!entry.abilityId || !CLASS_ABILITY_IDS.has(entry.abilityId)) continue;
+        const def = ABILITY_BY_ID.get(entry.abilityId);
+        if (!def?.grantsSetupTag) continue;
+        const setupCd = actor.abilityCooldowns?.[entry.abilityId] ?? 0;
+        if (setupCd > 0) continue;
+        const payoffDef = ALL_ABILITIES.find(a => a.requiresSetupTag === def.grantsSetupTag);
+        if (!payoffDef) continue;
+        const payoffCd = actor.abilityCooldowns?.[payoffDef.id] ?? 0;
+        if (payoffCd > 1) continue;
+        // Don't re-setup if tag already active
+        if (actorSetupTags.includes(def.grantsSetupTag)) continue;
+        if (entry.abilityId.startsWith('psi-')) {
+          return {
+            action: { type: 'psion_ability', actorId, psionAbilityId: entry.abilityId, targetId: chainTarget.id, targetIds: enemies.map(e => e.id) },
+            context: {},
+            reason: `chain setup: ${entry.abilityName} (grants tag: ${def.grantsSetupTag})`,
+          };
+        }
+        return {
+          action: { type: 'class_ability', actorId, classAbilityId: entry.abilityId, targetId: chainTarget.id, targetIds: enemies.map(e => e.id) },
+          context: {},
+          reason: `chain setup: ${entry.abilityName} (grants tag: ${def.grantsSetupTag})`,
+        };
+      }
     }
   }
 

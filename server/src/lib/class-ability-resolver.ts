@@ -111,21 +111,26 @@ const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef,
     state = updateCombatant(state, actor.id, { ac: actor.ac - Math.abs(selfAcPenalty) });
   }
 
-  // Phase 5A: Check stealth requirement (DMG-7)
+  // Phase 5A: Check stealth requirement (DMG-7) — also honor setupTag from AI chaining
   let effectiveMultiplier = damageMultiplier;
   let stealthMissing = false;
   if (requiresStealth) {
     const currentActor = state.combatants.find(c => c.id === actor.id)!;
-    if (!(currentActor.activeBuffs?.some(b => b.stealthed === true) ?? false)) {
+    const hasMechanicalStealth = currentActor.activeBuffs?.some(b => b.stealthed === true) ?? false;
+    const hasSetupTag = currentActor.setupTags?.includes('stealthed') ?? false;
+    if (!hasMechanicalStealth && !hasSetupTag) {
       effectiveMultiplier = 1.0;
       stealthMissing = true;
     }
   }
 
-  // Phase 5A: Check analyze requirement (DMG-8)
+  // Phase 5A: Check analyze requirement (DMG-8) — also honor setupTag from AI chaining
   let analyzeMissing = false;
   if (requiresAnalyze) {
-    if (!(target.activeBuffs?.some(b => b.name === 'Analyze') ?? false)) {
+    const currentActor = state.combatants.find(c => c.id === actor.id)!;
+    const hasMechanicalAnalyze = target.activeBuffs?.some(b => b.name === 'Analyze') ?? false;
+    const hasSetupTag = currentActor.setupTags?.includes('target_analyzed') ?? false;
+    if (!hasMechanicalAnalyze && !hasSetupTag) {
       analyzeMissing = true;
     }
   }
@@ -2511,6 +2516,26 @@ export function resolveClassAbility(
         });
       }
     }
+  }
+
+  // Setup tag chaining: grant tag when setup ability fires
+  if (abilityDef.grantsSetupTag) {
+    const actorNow = finalState.combatants.find(c => c.id === actorId)!;
+    const tags = actorNow.setupTags ?? [];
+    if (!tags.includes(abilityDef.grantsSetupTag)) {
+      finalState = updateCombatant(finalState, actorId, {
+        setupTags: [...tags, abilityDef.grantsSetupTag],
+      });
+    }
+  }
+
+  // Setup tag chaining: consume tag when payoff ability fires
+  if (abilityDef.consumesSetupTag && abilityDef.requiresSetupTag) {
+    const actorNow = finalState.combatants.find(c => c.id === actorId)!;
+    const tags = actorNow.setupTags ?? [];
+    finalState = updateCombatant(finalState, actorId, {
+      setupTags: tags.filter(t => t !== abilityDef.requiresSetupTag),
+    });
   }
 
   const result: ClassAbilityResult = {

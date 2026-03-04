@@ -576,6 +576,8 @@ export interface Combatant {
   swallowDamageTypePerRound?: CombatDamageType;
   /** Damage threshold to escape */
   swallowEscapeThreshold?: number;
+  /** Setup tags for ability chaining AI (e.g., 'stealthed' from Vanish → Ambush) */
+  setupTags?: string[];
 }
 
 export interface ClassAbilityAttackMods {

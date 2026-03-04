@@ -61,6 +61,9 @@ import { processItemDrops } from '../lib/loot-items';
 import { applyClassWeaponStat } from '../lib/road-encounter';
 import { ALL_ABILITIES } from '@shared/data/skills';
 
+// Ability lookup map for chain tag resolution
+const ABILITY_BY_ID = new Map(ALL_ABILITIES.map(a => [a.id, a]));
+
 // ---- Monster Ability Instance Builder ----
 
 function buildMonsterAbilityInstances(abilities: unknown[]): MonsterAbilityInstance[] {
@@ -236,6 +239,61 @@ function decideAction(
             actorId,
             monsterAbilityId: chosen.def.id,
             targetId: target.id,
+            targetIds: enemies.map(e => e.id),
+          },
+          context: { weapon: params.weapon ?? undefined },
+        };
+      }
+    }
+  }
+
+  // ---- 1c. Setup→Payoff ability chaining ----
+  const actorSetupTags = actor.setupTags ?? [];
+  const chainTarget = enemies.length > 0 ? enemies[0] : null;
+
+  // If actor has a setup tag, prioritize the payoff ability
+  if (actorSetupTags.length > 0 && chainTarget) {
+    for (const entry of presets.abilityQueue) {
+      if (!entry.abilityId || !isClassAbility(entry.abilityId)) continue;
+      const def = ABILITY_BY_ID.get(entry.abilityId);
+      if (!def?.requiresSetupTag) continue;
+      if (!actorSetupTags.includes(def.requiresSetupTag)) continue;
+      const cooldownRemaining = actor.abilityCooldowns?.[entry.abilityId] ?? 0;
+      if (cooldownRemaining > 0) continue;
+      return {
+        action: {
+          type: 'class_ability',
+          actorId,
+          classAbilityId: entry.abilityId,
+          targetId: chainTarget.id,
+          targetIds: enemies.map(e => e.id),
+        },
+        context: { weapon: params.weapon ?? undefined },
+      };
+    }
+  }
+
+  // If no setup tag active, consider initiating a setup when payoff is available
+  if (actorSetupTags.length === 0 && chainTarget) {
+    const hpPercentForSetup = (actor.currentHp / actor.maxHp) * 100;
+    if (hpPercentForSetup > 30) {
+      for (const entry of presets.abilityQueue) {
+        if (!entry.abilityId || !isClassAbility(entry.abilityId)) continue;
+        const def = ABILITY_BY_ID.get(entry.abilityId);
+        if (!def?.grantsSetupTag) continue;
+        const setupCd = actor.abilityCooldowns?.[entry.abilityId] ?? 0;
+        if (setupCd > 0) continue;
+        // Check that a payoff ability exists and is off cooldown (or will be next turn)
+        const payoffDef = ALL_ABILITIES.find(a => a.requiresSetupTag === def.grantsSetupTag);
+        if (!payoffDef) continue;
+        const payoffCd = actor.abilityCooldowns?.[payoffDef.id] ?? 0;
+        if (payoffCd > 1) continue;
+        return {
+          action: {
+            type: 'class_ability',
+            actorId,
+            classAbilityId: entry.abilityId,
+            targetId: chainTarget.id,
             targetIds: enemies.map(e => e.id),
           },
           context: { weapon: params.weapon ?? undefined },

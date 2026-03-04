@@ -13,6 +13,12 @@ export interface AbilityDefinition {
   requiresChoice?: boolean;
   /** Groups abilities into a choice set (e.g., 'warrior_tier0_level3') */
   choiceGroup?: string;
+  /** If set, grants this tag to the actor when used (e.g., 'stealthed' from Vanish) */
+  grantsSetupTag?: string;
+  /** If set, this ability gets priority boost when the actor has this tag */
+  requiresSetupTag?: string;
+  /** If true, the setup tag is consumed when this ability fires */
+  consumesSetupTag?: boolean;
 }
 
 export interface SpecializationDefinition {
