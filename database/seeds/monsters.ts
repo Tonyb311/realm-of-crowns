@@ -47,7 +47,7 @@ interface MonsterAbilityDef {
   deathDamage?: string;
   deathDamageType?: string;
   deathSaveDC?: number;
-  deathSaveType?: 'str' | 'dex' | 'con';
+  deathSaveType?: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
   swallowDamage?: string;
   swallowDamageType?: string;
   swallowEscapeThreshold?: number;
@@ -92,7 +92,9 @@ interface MonsterDef {
   phaseTransitions?: any[];
 }
 
-const MONSTERS: MonsterDef[] = [
+export { MonsterDef, MonsterAbilityDef };
+
+export const MONSTERS: MonsterDef[] = [
   // ---- Tier 1 (Level 1-5) ----
   {
     name: 'Goblin',
@@ -2063,7 +2065,7 @@ export async function seedMonsters(prisma: PrismaClient): Promise<void> {
       regionId,
       biome: monster.biome,
       damageType: monster.damageType ?? 'BLUDGEONING',
-      abilities: monster.abilities ?? [],
+      abilities: (monster.abilities ?? []) as any,
       resistances: monster.resistances ?? [],
       immunities: monster.immunities ?? [],
       vulnerabilities: monster.vulnerabilities ?? [],
@@ -2072,7 +2074,7 @@ export async function seedMonsters(prisma: PrismaClient): Promise<void> {
       critResistance: monster.critResistance ?? 0,
       legendaryActions: monster.legendaryActions ?? 0,
       legendaryResistances: monster.legendaryResistances ?? 0,
-      phaseTransitions: monster.phaseTransitions ?? [],
+      phaseTransitions: (monster.phaseTransitions ?? []) as any,
     };
 
     if (existing) {
