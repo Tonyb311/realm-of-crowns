@@ -5,7 +5,7 @@ import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
 
 // Shared data (class/spec/ability/profession data lives in shared TS, not DB)
-import { VALID_CLASSES, SPECIALIZATIONS, ABILITIES_BY_CLASS } from '@shared/data/skills';
+import { VALID_CLASSES, SPECIALIZATIONS, ABILITIES_BY_CLASS, TIER0_ABILITIES_BY_CLASS, TIER0_CHOICE_LEVELS } from '@shared/data/skills';
 import { ALL_PROFESSIONS, PROFESSION_TIERS } from '@shared/data/professions';
 import { PROFESSION_TIER_UNLOCKS } from '@shared/data/professions/tier-unlocks';
 import { getAllRaces } from '@shared/data/races';
@@ -33,20 +33,57 @@ router.get('/races', cache(300), async (req: Request, res: Response) => {
 // =========================================================================
 router.get('/classes', cache(300), (_req: Request, res: Response) => {
   try {
-    const classes = (VALID_CLASSES || []).map(cls => ({
-      name: cls,
-      specializations: SPECIALIZATIONS?.[cls] || [],
-      abilities: (ABILITIES_BY_CLASS?.[cls] || []).map(a => ({
-        id: a.id,
-        name: a.name,
-        description: a.description,
-        specialization: a.specialization,
-        tier: a.tier,
-        levelRequired: a.levelRequired,
-        cooldown: a.cooldown,
-        effects: a.effects,
-      })),
-    }));
+    const classes = (VALID_CLASSES || []).map(cls => {
+      const allAbilities = ABILITIES_BY_CLASS?.[cls] || [];
+      const tier0Raw = TIER0_ABILITIES_BY_CLASS?.[cls] || [];
+
+      // Spec abilities = non-tier-0
+      const specAbilities = allAbilities
+        .filter(a => !a.requiresChoice)
+        .map(a => ({
+          id: a.id,
+          name: a.name,
+          description: a.description,
+          specialization: a.specialization,
+          tier: a.tier,
+          levelRequired: a.levelRequired,
+          cooldown: a.cooldown,
+          effects: a.effects,
+        }));
+
+      // Tier 0 abilities grouped by choice level
+      const tier0Abilities = TIER0_CHOICE_LEVELS.map(level => ({
+        choiceLevel: level,
+        abilities: tier0Raw
+          .filter(a => a.levelRequired === level)
+          .map(a => ({
+            id: a.id,
+            name: a.name,
+            description: a.description,
+            tier: a.tier,
+            levelRequired: a.levelRequired,
+            cooldown: a.cooldown,
+            choiceGroup: a.choiceGroup,
+          })),
+      }));
+
+      return {
+        name: cls,
+        specializations: SPECIALIZATIONS?.[cls] || [],
+        tier0Abilities,
+        specAbilities,
+        abilities: allAbilities.map(a => ({
+          id: a.id,
+          name: a.name,
+          description: a.description,
+          specialization: a.specialization,
+          tier: a.tier,
+          levelRequired: a.levelRequired,
+          cooldown: a.cooldown,
+          effects: a.effects,
+        })),
+      };
+    });
 
     return res.json({ classes });
   } catch (error) {

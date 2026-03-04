@@ -60,11 +60,20 @@ interface ClassAbility {
   cooldown: number;
   levelRequired: number;
   prerequisiteAbilityId: string | null;
+  requiresChoice?: boolean;
+  choiceGroup?: string | null;
+}
+
+interface Tier0Group {
+  choiceLevel: number;
+  abilities: ClassAbility[];
 }
 
 interface ClassEntry {
   name: string;
   specializations: string[];
+  tier0Abilities?: Tier0Group[];
+  specAbilities?: ClassAbility[];
   abilities: ClassAbility[];
 }
 
@@ -423,9 +432,15 @@ function ClassesSubTab({ search }: { search: string }) {
       </div>
       {filtered.map((cls) => {
         const isExpanded = expandedClass === cls.name;
-        // Group abilities by specialization
+        // Spec abilities only (exclude tier 0)
+        const specAbilities = cls.specAbilities ?? cls.abilities.filter(a => !a.requiresChoice);
+        const tier0Groups = cls.tier0Abilities ?? [];
+        const tier0Count = tier0Groups.reduce((sum, g) => sum + g.abilities.length, 0);
+        const totalCount = specAbilities.length + tier0Count;
+
+        // Group spec abilities by specialization
         const specGroups = new Map<string, ClassAbility[]>();
-        for (const a of cls.abilities) {
+        for (const a of specAbilities) {
           const key = a.specialization || 'General';
           const list = specGroups.get(key) ?? [];
           list.push(a);
@@ -448,7 +463,9 @@ function ClassesSubTab({ search }: { search: string }) {
                 {cls.specializations.length} specs
               </span>
               <span className="bg-realm-gold-500/20 text-realm-gold-400 px-2 py-0.5 rounded text-xs font-display ml-auto">
-                {cls.abilities.length} abilities
+                {tier0Count > 0
+                  ? `${tier0Count} tier 0 + ${specAbilities.length} spec = ${totalCount}`
+                  : `${totalCount} abilities`}
               </span>
             </button>
 
@@ -466,7 +483,48 @@ function ClassesSubTab({ search }: { search: string }) {
                   ))}
                 </div>
 
-                {/* Abilities grouped by specialization */}
+                {/* Tier 0 — Early Abilities */}
+                {tier0Groups.length > 0 && tier0Groups.some(g => g.abilities.length > 0) && (
+                  <div className="space-y-3">
+                    <h4 className="text-xs text-realm-text-muted font-display uppercase tracking-wider">
+                      Tier 0 — Early Abilities (Choose 1 of 3)
+                    </h4>
+                    {tier0Groups.map((group) => (
+                      group.abilities.length > 0 && (
+                        <div key={group.choiceLevel} className="space-y-1.5">
+                          <div className="flex items-center gap-2 text-xs text-realm-text-muted">
+                            <span className="bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded font-display">
+                              Level {group.choiceLevel}
+                            </span>
+                            <span>— Choose One</span>
+                            {group.abilities[0]?.choiceGroup && (
+                              <span className="text-realm-text-muted/60 font-mono text-[10px]">
+                                [{group.abilities[0].choiceGroup}]
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-1.5">
+                            {group.abilities.map((ability) => (
+                              <AbilityCard
+                                key={ability.id}
+                                name={ability.name}
+                                description={ability.description}
+                                tier={ability.tier}
+                                levelRequired={ability.levelRequired}
+                                cooldown={ability.cooldown}
+                                effects={ability.effects}
+                                specialization={ability.specialization || 'none'}
+                                abilitySource="class"
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    ))}
+                  </div>
+                )}
+
+                {/* Spec Abilities grouped by specialization */}
                 {[...specGroups.entries()].map(([specName, abilities]) => (
                   <div key={specName}>
                     <h4 className="text-xs text-realm-text-muted mb-2 font-display uppercase tracking-wider">

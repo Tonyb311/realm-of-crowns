@@ -10,6 +10,8 @@ import {
   ABILITIES_BY_CLASS,
   SPECIALIZATIONS,
   VALID_CLASSES,
+  TIER0_ABILITIES_BY_CLASS,
+  TIER0_CHOICE_LEVELS,
 } from '@shared/data/skills';
 import {
   ALL_PROCESSING_RECIPES,
@@ -82,10 +84,11 @@ router.get('/codex/races', (_req: AuthenticatedRequest, res: Response) => {
 // GET /codex/classes — 7 classes with 21 specializations and all abilities
 router.get('/codex/classes', (_req: AuthenticatedRequest, res: Response) => {
   try {
-    const classes = VALID_CLASSES.map((className) => ({
-      name: className,
-      specializations: SPECIALIZATIONS[className] ?? [],
-      abilities: (ABILITIES_BY_CLASS[className] ?? []).map((a) => ({
+    const classes = VALID_CLASSES.map((className) => {
+      const allAbilities = ABILITIES_BY_CLASS[className] ?? [];
+      const tier0Raw = TIER0_ABILITIES_BY_CLASS[className] ?? [];
+
+      const mapAbility = (a: typeof allAbilities[number]) => ({
         id: a.id,
         name: a.name,
         description: a.description,
@@ -96,8 +99,25 @@ router.get('/codex/classes', (_req: AuthenticatedRequest, res: Response) => {
         cooldown: a.cooldown,
         levelRequired: a.levelRequired,
         prerequisiteAbilityId: a.prerequisiteAbilityId ?? null,
-      })),
-    }));
+        requiresChoice: a.requiresChoice ?? false,
+        choiceGroup: a.choiceGroup ?? null,
+      });
+
+      const specAbilities = allAbilities.filter(a => !a.requiresChoice).map(mapAbility);
+
+      const tier0Abilities = TIER0_CHOICE_LEVELS.map(level => ({
+        choiceLevel: level,
+        abilities: tier0Raw.filter(a => a.levelRequired === level).map(mapAbility),
+      }));
+
+      return {
+        name: className,
+        specializations: SPECIALIZATIONS[className] ?? [],
+        tier0Abilities,
+        specAbilities,
+        abilities: allAbilities.map(mapAbility),
+      };
+    });
 
     return res.json({
       classes,

@@ -31,6 +31,7 @@ interface AbilityCardProps {
 // ---------------------------------------------------------------------------
 
 const TIER_COLORS: Record<number, string> = {
+  0: 'bg-cyan-500/20 text-cyan-400',
   1: 'bg-green-500/20 text-green-400',
   2: 'bg-blue-500/20 text-blue-400',
   3: 'bg-purple-500/20 text-purple-400',
