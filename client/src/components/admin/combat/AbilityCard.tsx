@@ -24,6 +24,12 @@ interface AbilityCardProps {
   duration?: number;           // effect duration in seconds
   // Source context
   abilitySource?: 'race' | 'class';
+  // Resolution fields
+  attackType?: string | null;
+  damageType?: string | null;
+  grantsSetupTag?: string | null;
+  requiresSetupTag?: string | null;
+  characterClass?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -61,6 +67,28 @@ const STATUS_COLORS: Record<string, string> = {
 
 const MENTAL_EFFECTS = new Set(['taunt', 'mesmerize', 'dominated', 'silence', 'fear', 'charm', 'confused']);
 const PHYSICAL_EFFECTS = new Set(['stun', 'stunned', 'root', 'paralyzed', 'grappled', 'prone']);
+
+const ATTACK_TYPE_BADGE: Record<string, { label: string; className: string }> = {
+  weapon: { label: 'WEAPON', className: 'bg-realm-gold-400/15 text-realm-gold-400' },
+  spell: { label: 'SPELL', className: 'bg-violet-500/15 text-violet-400' },
+  save: { label: 'SAVE', className: 'bg-teal-500/15 text-teal-400' },
+  auto: { label: 'AUTO', className: 'bg-realm-bg-600 text-realm-text-muted' },
+};
+
+const DAMAGE_TYPE_BADGE: Record<string, string> = {
+  FIRE: 'bg-orange-500/20 text-orange-400',
+  COLD: 'bg-sky-500/20 text-sky-300',
+  LIGHTNING: 'bg-yellow-500/20 text-yellow-400',
+  RADIANT: 'bg-amber-200/20 text-amber-200',
+  NECROTIC: 'bg-purple-500/20 text-purple-400',
+  PSYCHIC: 'bg-pink-500/20 text-pink-400',
+  THUNDER: 'bg-blue-500/20 text-blue-400',
+};
+
+const CLASS_PRIMARY_STAT: Record<string, string> = {
+  warrior: 'STR', rogue: 'DEX', ranger: 'DEX',
+  mage: 'INT', psion: 'INT', cleric: 'WIS', bard: 'CHA',
+};
 
 const TARGET_LABELS: Record<string, string> = {
   self: 'Self',
@@ -524,6 +552,11 @@ export default function AbilityCard({
   cooldownSeconds,
   duration,
   abilitySource,
+  attackType,
+  damageType,
+  grantsSetupTag,
+  requiresSetupTag,
+  characterClass,
 }: AbilityCardProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -573,6 +606,16 @@ export default function AbilityCard({
               {classEffectType}
             </span>
           )}
+          {attackType && ATTACK_TYPE_BADGE[attackType] && (
+            <span className={`${ATTACK_TYPE_BADGE[attackType].className} px-2 py-0.5 rounded text-[10px] font-display`}>
+              {ATTACK_TYPE_BADGE[attackType].label}
+            </span>
+          )}
+          {damageType && (
+            <span className={`${DAMAGE_TYPE_BADGE[damageType] ?? 'bg-gray-500/20 text-gray-400'} px-2 py-0.5 rounded text-[10px] font-display`}>
+              {damageType}
+            </span>
+          )}
         </div>
       </div>
 
@@ -584,6 +627,37 @@ export default function AbilityCard({
           {specialization && (
             <div className="text-xs text-realm-text-muted">
               Specialization: <span className="text-realm-text-secondary">{specialization}</span>
+            </div>
+          )}
+
+          {/* Resolution info */}
+          {abilitySource === 'class' && attackType && attackType !== 'auto' && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-realm-text-muted">
+              {attackType === 'spell' && (
+                <span>Attack: <span className="text-violet-400">{CLASS_PRIMARY_STAT[characterClass ?? ''] || 'STAT'} + Prof vs AC</span></span>
+              )}
+              {attackType === 'weapon' && (
+                <span>Attack: <span className="text-realm-gold-400">STR/DEX + Prof vs AC</span></span>
+              )}
+              {attackType === 'save' && (
+                <span>Save: <span className="text-teal-400">DC 8 + Prof + {CLASS_PRIMARY_STAT[characterClass ?? ''] || 'STAT'} mod | Target: {((effects as Record<string, unknown>)?.saveType as string || 'WIS').toUpperCase()} Save</span></span>
+              )}
+            </div>
+          )}
+
+          {/* Chain tags */}
+          {(grantsSetupTag || requiresSetupTag) && (
+            <div className="flex flex-wrap gap-2 text-xs">
+              {grantsSetupTag && (
+                <span className="bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded font-display">
+                  Grants: {grantsSetupTag}
+                </span>
+              )}
+              {requiresSetupTag && (
+                <span className="bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded font-display">
+                  Requires: {requiresSetupTag}
+                </span>
+              )}
             </div>
           )}
 

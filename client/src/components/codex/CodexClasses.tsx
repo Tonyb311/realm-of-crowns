@@ -20,6 +20,9 @@ interface AbilityDefinition {
   levelRequired: number;
   cooldown: number;
   effects?: { type: 'passive' | 'active' };
+  attackType?: 'weapon' | 'spell' | 'save' | 'auto';
+  damageType?: string;
+  saveType?: string;
 }
 
 interface Tier0Ability {
@@ -30,6 +33,9 @@ interface Tier0Ability {
   levelRequired: number;
   cooldown: number;
   choiceGroup?: string;
+  attackType?: 'weapon' | 'spell' | 'save' | 'auto';
+  damageType?: string;
+  saveType?: string;
 }
 
 interface Tier0Group {
@@ -69,6 +75,58 @@ const TIER_VARIANT: Record<number, 'default' | 'common' | 'uncommon' | 'rare' | 
   4: 'epic',
   5: 'legendary',
 };
+
+// ---------------------------------------------------------------------------
+// Attack type & damage type display
+// ---------------------------------------------------------------------------
+const ATTACK_TYPE_STYLE: Record<string, { label: string; className: string }> = {
+  weapon: { label: 'Melee', className: 'bg-realm-gold-400/15 text-realm-gold-400 border border-realm-gold-400/30' },
+  spell: { label: 'Spell', className: 'bg-violet-500/15 text-violet-400 border border-violet-500/30' },
+  save: { label: 'Save', className: 'bg-teal-500/15 text-teal-400 border border-teal-500/30' },
+};
+
+const DAMAGE_TYPE_STYLE: Record<string, string> = {
+  FIRE: 'bg-orange-500/20 text-orange-400 border border-orange-500/30',
+  COLD: 'bg-sky-500/20 text-sky-300 border border-sky-500/30',
+  LIGHTNING: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
+  RADIANT: 'bg-amber-200/20 text-amber-200 border border-amber-200/30',
+  NECROTIC: 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
+  PSYCHIC: 'bg-pink-500/20 text-pink-400 border border-pink-500/30',
+  THUNDER: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+  SLASHING: 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
+  PIERCING: 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
+  BLUDGEONING: 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
+};
+
+function AttackTypeBadge({ attackType }: { attackType?: string }) {
+  if (!attackType || attackType === 'auto') return null;
+  const style = ATTACK_TYPE_STYLE[attackType];
+  if (!style) return null;
+  return (
+    <span className={`${style.className} px-1.5 py-0 rounded text-[10px] font-display leading-4`}>
+      {style.label}
+    </span>
+  );
+}
+
+function DamageTypeBadge({ damageType }: { damageType?: string }) {
+  if (!damageType) return null;
+  const style = DAMAGE_TYPE_STYLE[damageType] ?? 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
+  return (
+    <span className={`${style} px-1.5 py-0 rounded text-[10px] font-display leading-4`}>
+      {damageType}
+    </span>
+  );
+}
+
+function SaveInfo({ attackType, saveType }: { attackType?: string; saveType?: string }) {
+  if (attackType !== 'save' || !saveType) return null;
+  return (
+    <span className="text-teal-400 text-xs ml-1">
+      (Target: {saveType.toUpperCase()} Save)
+    </span>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -129,10 +187,10 @@ export default function CodexClasses({ searchQuery }: CodexClassesProps) {
       if (specs.some((spec) => matchesSearch(searchQuery, spec))) {
         return true;
       }
-      if (specAbilities.some((a) => matchesSearch(searchQuery, a.name, a.description))) {
+      if (specAbilities.some((a) => matchesSearch(searchQuery, a.name, a.description, a.damageType || '', a.attackType || ''))) {
         return true;
       }
-      if (tier0Abilities.some((g) => g.abilities.some((a) => matchesSearch(searchQuery, a.name, a.description)))) {
+      if (tier0Abilities.some((g) => g.abilities.some((a) => matchesSearch(searchQuery, a.name, a.description, a.damageType || '', a.attackType || '')))) {
         return true;
       }
       return false;
@@ -154,7 +212,7 @@ export default function CodexClasses({ searchQuery }: CodexClassesProps) {
         if (matchesSearch(searchQuery, spec)) {
           return true;
         }
-        return matchesSearch(searchQuery, a.name, a.description);
+        return matchesSearch(searchQuery, a.name, a.description, a.damageType || '', a.attackType || '');
       })
       .sort((a, b) => a.tier - b.tier || a.levelRequired - b.levelRequired);
   };
@@ -174,7 +232,7 @@ export default function CodexClasses({ searchQuery }: CodexClassesProps) {
     return tier0
       .map(g => ({
         ...g,
-        abilities: g.abilities.filter(a => matchesSearch(searchQuery, a.name, a.description)),
+        abilities: g.abilities.filter(a => matchesSearch(searchQuery, a.name, a.description, a.damageType || '', a.attackType || '')),
       }))
       .filter(g => g.abilities.length > 0);
   };
@@ -292,14 +350,17 @@ export default function CodexClasses({ searchQuery }: CodexClassesProps) {
                           key={ability.id}
                           className="bg-realm-bg-700 border border-realm-teal-500/20 rounded-lg p-4 space-y-2"
                         >
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <RealmBadge variant="default">T0</RealmBadge>
                             <span className="font-display text-sm text-realm-text-primary">
                               {ability.name}
                             </span>
+                            <AttackTypeBadge attackType={ability.attackType} />
+                            <DamageTypeBadge damageType={ability.damageType} />
                           </div>
                           <p className="text-xs font-body text-realm-text-secondary leading-relaxed">
                             {ability.description}
+                            <SaveInfo attackType={ability.attackType} saveType={ability.saveType} />
                           </p>
                           <div className="text-xs font-body text-realm-text-muted">
                             {ability.cooldown === 0 ? 'No CD' : `${ability.cooldown} rounds`}
@@ -366,11 +427,16 @@ export default function CodexClasses({ searchQuery }: CodexClassesProps) {
                                     T{ability.tier}
                                   </RealmBadge>
                                 </td>
-                                <td className="py-2 pr-3 text-realm-text-primary font-medium">
-                                  {ability.name}
+                                <td className="py-2 pr-3">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-realm-text-primary font-medium">{ability.name}</span>
+                                    <AttackTypeBadge attackType={ability.attackType} />
+                                    <DamageTypeBadge damageType={ability.damageType} />
+                                  </div>
                                 </td>
                                 <td className="py-2 pr-3 text-realm-text-secondary">
                                   {ability.description}
+                                  <SaveInfo attackType={ability.attackType} saveType={ability.saveType} />
                                 </td>
                                 <td className="py-2 pr-3 text-center text-realm-text-muted">
                                   {ability.levelRequired}

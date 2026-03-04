@@ -49,6 +49,9 @@ router.get('/classes', cache(300), (_req: Request, res: Response) => {
           levelRequired: a.levelRequired,
           cooldown: a.cooldown,
           effects: a.effects,
+          attackType: a.attackType,
+          damageType: a.damageType,
+          saveType: (a.effects as Record<string, unknown>)?.saveType as string | undefined,
         }));
 
       // Tier 0 abilities grouped by choice level
@@ -64,6 +67,9 @@ router.get('/classes', cache(300), (_req: Request, res: Response) => {
             levelRequired: a.levelRequired,
             cooldown: a.cooldown,
             choiceGroup: a.choiceGroup,
+            attackType: a.attackType,
+            damageType: a.damageType,
+            saveType: (a.effects as Record<string, unknown>)?.saveType as string | undefined,
           })),
       }));
 

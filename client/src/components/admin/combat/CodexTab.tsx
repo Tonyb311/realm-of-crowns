@@ -62,6 +62,11 @@ interface ClassAbility {
   prerequisiteAbilityId: string | null;
   requiresChoice?: boolean;
   choiceGroup?: string | null;
+  attackType?: string | null;
+  damageType?: string | null;
+  grantsSetupTag?: string | null;
+  requiresSetupTag?: string | null;
+  consumesSetupTag?: boolean;
 }
 
 interface Tier0Group {
@@ -413,7 +418,9 @@ function ClassesSubTab({ search }: { search: string }) {
           (a) =>
             a.name.toLowerCase().includes(q) ||
             a.description.toLowerCase().includes(q) ||
-            a.specialization.toLowerCase().includes(q),
+            a.specialization.toLowerCase().includes(q) ||
+            (a.damageType ?? '').toLowerCase().includes(q) ||
+            (a.attackType ?? '').toLowerCase().includes(q),
         );
         if (nameMatch) return cls;
         if (matchedAbilities.length > 0) return { ...cls, abilities: matchedAbilities };
@@ -515,6 +522,11 @@ function ClassesSubTab({ search }: { search: string }) {
                                 effects={ability.effects}
                                 specialization={ability.specialization || 'none'}
                                 abilitySource="class"
+                                attackType={ability.attackType}
+                                damageType={ability.damageType}
+                                grantsSetupTag={ability.grantsSetupTag}
+                                requiresSetupTag={ability.requiresSetupTag}
+                                characterClass={cls.name}
                               />
                             ))}
                           </div>
@@ -542,6 +554,11 @@ function ClassesSubTab({ search }: { search: string }) {
                           effects={ability.effects}
                           specialization={ability.specialization}
                           abilitySource="class"
+                          attackType={ability.attackType}
+                          damageType={ability.damageType}
+                          grantsSetupTag={ability.grantsSetupTag}
+                          requiresSetupTag={ability.requiresSetupTag}
+                          characterClass={cls.name}
                         />
                       ))}
                     </div>

@@ -101,6 +101,11 @@ router.get('/codex/classes', (_req: AuthenticatedRequest, res: Response) => {
         prerequisiteAbilityId: a.prerequisiteAbilityId ?? null,
         requiresChoice: a.requiresChoice ?? false,
         choiceGroup: a.choiceGroup ?? null,
+        attackType: a.attackType ?? null,
+        damageType: a.damageType ?? null,
+        grantsSetupTag: a.grantsSetupTag ?? null,
+        requiresSetupTag: a.requiresSetupTag ?? null,
+        consumesSetupTag: a.consumesSetupTag ?? false,
       });
 
       const specAbilities = allAbilities.filter(a => !a.requiresChoice).map(mapAbility);
