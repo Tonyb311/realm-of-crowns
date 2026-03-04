@@ -50,6 +50,12 @@ export default function LevelUpCelebration({ data, onDismiss }: LevelUpCelebrati
           )}
         </div>
 
+        {data.tier0Pending && data.tier0Pending > 0 && (
+          <div className="mb-4 px-4 py-2 bg-realm-teal-500/10 border border-realm-teal-500/30 rounded text-sm text-realm-teal-300">
+            {data.tier0Pending} ability {data.tier0Pending === 1 ? 'choice' : 'choices'} available!
+          </div>
+        )}
+
         <div className="flex gap-3">
           <button
             onClick={onDismiss}
@@ -57,12 +63,21 @@ export default function LevelUpCelebration({ data, onDismiss }: LevelUpCelebrati
           >
             Continue
           </button>
-          <button
-            onClick={() => { onDismiss(); navigate('/skills'); }}
-            className="flex-1 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
-          >
-            Allocate Stats
-          </button>
+          {data.tier0Pending && data.tier0Pending > 0 ? (
+            <button
+              onClick={() => { onDismiss(); navigate('/skills'); }}
+              className="flex-1 py-2.5 bg-realm-teal-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-teal-400 transition-colors"
+            >
+              Choose Abilities
+            </button>
+          ) : (
+            <button
+              onClick={() => { onDismiss(); navigate('/skills'); }}
+              className="flex-1 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
+            >
+              Allocate Stats
+            </button>
+          )}
         </div>
       </div>
     </div>

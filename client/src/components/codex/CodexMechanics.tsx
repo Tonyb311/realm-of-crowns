@@ -486,7 +486,7 @@ function LevelingContent() {
         items={[
           'XP is earned from combat kills, crafting completions, and quest rewards.',
           <>
-            Each level grants: <Stat>2 stat points</Stat>, auto-unlocked abilities, and HP growth.
+            Each level grants: <Stat>2 stat points</Stat>, auto-unlocked abilities, and HP growth. At levels 3, 5, and 8 you choose one of three early abilities for your class.
           </>,
         ]}
       />

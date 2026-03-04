@@ -123,6 +123,7 @@ export interface LevelUpPayload {
   statPoints: number;
   maxHealthGain: number;
   abilitiesGranted: string[];
+  tier0Pending?: number;
 }
 
 export interface AchievementUnlockedPayload {

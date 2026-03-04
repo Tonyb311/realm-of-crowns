@@ -391,9 +391,18 @@ function classifyAbility(ability: AbilityDefinition): CombatRole {
  */
 function buildAbilityQueue(className: string, level: number): AbilityQueueEntry[] {
   const classAbilities = ABILITIES_BY_CLASS[className] ?? [];
-  const available = classAbilities.filter(
-    (a: AbilityDefinition) => a.levelRequired <= level && (a.effects as any)?.type !== 'passive',
-  );
+
+  // For tier 0 choice abilities, pick only the first option per choice group (deterministic)
+  const chosenGroups = new Set<string>();
+  const available = classAbilities.filter((a: AbilityDefinition) => {
+    if (a.levelRequired > level) return false;
+    if ((a.effects as any)?.type === 'passive') return false;
+    if (a.requiresChoice && a.choiceGroup) {
+      if (chosenGroups.has(a.choiceGroup)) return false; // already picked one from this group
+      chosenGroups.add(a.choiceGroup);
+    }
+    return true;
+  });
 
   // Classify each ability
   const classified = available.map(a => ({

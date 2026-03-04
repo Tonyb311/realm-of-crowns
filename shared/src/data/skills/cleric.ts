@@ -25,3 +25,21 @@ export const clericAbilities: AbilityDefinition[] = [
   { id: 'cle-inq-5', name: 'Excommunicate', description: 'Massively reduce an enemy\'s stats for 3 rounds.', class: 'cleric', specialization: 'inquisitor', tier: 4, effects: { type: 'debuff', allStatsReduction: -5, duration: 3 }, cooldown: 10, prerequisiteAbilityId: 'cle-inq-4', levelRequired: 32 },
   { id: 'cle-inq-6', name: 'Inquisitors Verdict', description: 'Enemies cannot benefit from healing effects. Passive aura.', class: 'cleric', specialization: 'inquisitor', tier: 5, effects: { type: 'passive', antiHealAura: true }, cooldown: 0, prerequisiteAbilityId: 'cle-inq-5', levelRequired: 40 },
 ];
+
+// ---- Tier 0 (Pre-Specialization) ----
+export const clericTier0Abilities: AbilityDefinition[] = [
+  // Level 3 — "First Taste"
+  { id: 'cle-t0-3a', name: 'Sacred Strike', description: 'Channel the faintest glimmer of divine wrath through your weapon.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'damage', bonusDamage: 3, element: 'radiant' }, cooldown: 2, levelRequired: 3, requiresChoice: true, choiceGroup: 'cleric_tier0_level3' },
+  { id: 'cle-t0-3b', name: 'Mending Touch', description: 'Lay hands upon your wounds, coaxing flesh to knit.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'heal', healAmount: 6 }, cooldown: 3, levelRequired: 3, requiresChoice: true, choiceGroup: 'cleric_tier0_level3' },
+  { id: 'cle-t0-3c', name: 'Blessed Ward', description: 'Invoke a prayer of protection, hardening your skin against harm.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'buff', acBonus: 3, duration: 2 }, cooldown: 3, levelRequired: 3, requiresChoice: true, choiceGroup: 'cleric_tier0_level3' },
+
+  // Level 5 — "Building Up"
+  { id: 'cle-t0-5a', name: 'Divine Strike', description: 'Call upon divine fury to strike down the unworthy.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'damage', bonusDamage: 4, element: 'radiant' }, cooldown: 2, levelRequired: 5, requiresChoice: true, choiceGroup: 'cleric_tier0_level5' },
+  { id: 'cle-t0-5b', name: 'Rejuvenation', description: 'Whisper a healing prayer that works slowly, mending wounds over time.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'hot', healPerRound: 3, duration: 3 }, cooldown: 4, levelRequired: 5, requiresChoice: true, choiceGroup: 'cleric_tier0_level5' },
+  { id: 'cle-t0-5c', name: 'Rebuke', description: 'Chastise the wicked with righteous authority, sapping their will to fight.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'debuff', attackReduction: -3, duration: 3 }, cooldown: 3, levelRequired: 5, requiresChoice: true, choiceGroup: 'cleric_tier0_level5' },
+
+  // Level 8 — "Coming Online"
+  { id: 'cle-t0-8a', name: 'Holy Fire', description: 'Conjure sacred flame that sears the unholy.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'damage', element: 'radiant', diceCount: 1, diceSides: 8, bonusDamage: 2 }, cooldown: 3, levelRequired: 8, requiresChoice: true, choiceGroup: 'cleric_tier0_level8' },
+  { id: 'cle-t0-8b', name: 'Sanctuary', description: 'Wrap yourself in divine light, turning away blades and dark magic alike.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'buff', absorbDamage: 12, acBonus: 2, duration: 3 }, cooldown: 5, levelRequired: 8, requiresChoice: true, choiceGroup: 'cleric_tier0_level8' },
+  { id: 'cle-t0-8c', name: 'Condemnation', description: 'Pass divine judgment upon a foe, cracking their defenses wide open.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'damage_debuff', bonusDamage: 3, acReduction: -3, duration: 2 }, cooldown: 4, levelRequired: 8, requiresChoice: true, choiceGroup: 'cleric_tier0_level8' },
+];

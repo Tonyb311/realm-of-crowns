@@ -25,3 +25,21 @@ export const bardAbilities: AbilityDefinition[] = [
   { id: 'bar-lor-5', name: 'Tome of Secrets', description: 'Use a random powerful spell from any class.', class: 'bard', specialization: 'lorekeeper', tier: 4, effects: { type: 'special', randomClassAbility: true, powerLevel: 'high' }, cooldown: 8, prerequisiteAbilityId: 'bar-lor-4', levelRequired: 32 },
   { id: 'bar-lor-6', name: 'Omniscient', description: 'Gain 25% more XP from all sources. Passive.', class: 'bard', specialization: 'lorekeeper', tier: 5, effects: { type: 'passive', globalXpBonus: 0.25 }, cooldown: 0, prerequisiteAbilityId: 'bar-lor-5', levelRequired: 40 },
 ];
+
+// ---- Tier 0 (Pre-Specialization) ----
+export const bardTier0Abilities: AbilityDefinition[] = [
+  // Level 3 — "First Taste"
+  { id: 'bar-t0-3a', name: 'Cutting Words', description: 'Hurl an insult so cutting it wounds more than any blade.', class: 'bard', specialization: 'none', tier: 0, effects: { type: 'damage', bonusDamage: 3 }, cooldown: 2, levelRequired: 3, requiresChoice: true, choiceGroup: 'bard_tier0_level3' },
+  { id: 'bar-t0-3b', name: 'Soothing Melody', description: 'Hum a gentle tune that knits wounds and calms racing hearts.', class: 'bard', specialization: 'none', tier: 0, effects: { type: 'heal', healAmount: 6 }, cooldown: 3, levelRequired: 3, requiresChoice: true, choiceGroup: 'bard_tier0_level3' },
+  { id: 'bar-t0-3c', name: 'Jarring Note', description: 'Hit a discordant pitch that rattles the enemy\'s concentration.', class: 'bard', specialization: 'none', tier: 0, effects: { type: 'debuff', attackReduction: -2, duration: 2 }, cooldown: 3, levelRequired: 3, requiresChoice: true, choiceGroup: 'bard_tier0_level3' },
+
+  // Level 5 — "Building Up"
+  { id: 'bar-t0-5a', name: 'Vicious Mockery', description: 'Weave magical spite into your words — insults that draw real blood.', class: 'bard', specialization: 'none', tier: 0, effects: { type: 'damage_debuff', bonusDamage: 3, attackReduction: -2, duration: 2 }, cooldown: 3, levelRequired: 5, requiresChoice: true, choiceGroup: 'bard_tier0_level5' },
+  { id: 'bar-t0-5b', name: 'Hymn of Fortitude', description: 'Sing an ancient war hymn that steels your nerves and steadies your hand.', class: 'bard', specialization: 'none', tier: 0, effects: { type: 'buff', acBonus: 2, attackBonus: 2, duration: 3 }, cooldown: 4, levelRequired: 5, requiresChoice: true, choiceGroup: 'bard_tier0_level5' },
+  { id: 'bar-t0-5c', name: 'Lullaby', description: 'Croon a drowsy melody that weighs down the enemy\'s limbs.', class: 'bard', specialization: 'none', tier: 0, effects: { type: 'status', statusEffect: 'slowed', statusDuration: 2 }, cooldown: 3, levelRequired: 5, requiresChoice: true, choiceGroup: 'bard_tier0_level5' },
+
+  // Level 8 — "Coming Online"
+  { id: 'bar-t0-8a', name: 'Thunderclap', description: 'Clap your hands and release a shockwave of pure sound.', class: 'bard', specialization: 'none', tier: 0, effects: { type: 'damage', diceCount: 2, diceSides: 4, bonusDamage: 2 }, cooldown: 3, levelRequired: 8, requiresChoice: true, choiceGroup: 'bard_tier0_level8' },
+  { id: 'bar-t0-8b', name: 'Inspiring Ballad', description: 'Belt out a stirring ballad that fills you with renewed purpose.', class: 'bard', specialization: 'none', tier: 0, effects: { type: 'heal', healAmount: 12 }, cooldown: 4, levelRequired: 8, requiresChoice: true, choiceGroup: 'bard_tier0_level8' },
+  { id: 'bar-t0-8c', name: 'Cacophony', description: 'Unleash a wall of unbearable noise that overwhelms the senses.', class: 'bard', specialization: 'none', tier: 0, effects: { type: 'damage_debuff', bonusDamage: 2, attackReduction: -3, acReduction: -2, duration: 2 }, cooldown: 4, levelRequired: 8, requiresChoice: true, choiceGroup: 'bard_tier0_level8' },
+];

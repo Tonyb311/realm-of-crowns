@@ -7,6 +7,7 @@ import {
   LEVEL_UP_REWARDS,
 } from '@shared/data/progression';
 import { autoGrantAbilities } from './ability-grants';
+import { TIER0_ABILITIES_BY_CLASS, TIER0_CHOICE_LEVELS } from '@shared/data/skills';
 
 /**
  * XP Curve: floor(10 * level^1.15) + 30
@@ -95,6 +96,25 @@ export async function checkLevelUp(characterId: string): Promise<LevelUpResult |
   const { checkAchievements } = await import('./achievements');
   await checkAchievements(characterId, 'leveling', { level: newLevel });
 
+  // Count pending tier 0 choices at the new level
+  let tier0Pending = 0;
+  if (character.class) {
+    const tier0Abilities = TIER0_ABILITIES_BY_CLASS[character.class] ?? [];
+    const existingAbilities = await prisma.characterAbility.findMany({
+      where: { characterId },
+      select: { abilityId: true },
+    });
+    const existingSet = new Set(existingAbilities.map((e) => e.abilityId));
+
+    for (const lvl of TIER0_CHOICE_LEVELS) {
+      if (newLevel < lvl) continue;
+      const group = `${character.class}_tier0_level${lvl}`;
+      const groupAbilities = tier0Abilities.filter((a) => a.choiceGroup === group);
+      const alreadyChosen = groupAbilities.some((a) => existingSet.has(a.id));
+      if (!alreadyChosen) tier0Pending++;
+    }
+  }
+
   // Emit Socket.io event
   emitLevelUp(characterId, {
     characterId,
@@ -104,6 +124,7 @@ export async function checkLevelUp(characterId: string): Promise<LevelUpResult |
       maxHealth: maxHealthGained,
       abilitiesGranted,
     },
+    tier0Pending: tier0Pending > 0 ? tier0Pending : undefined,
   });
 
   return result;

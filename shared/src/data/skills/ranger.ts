@@ -25,3 +25,21 @@ export const rangerAbilities: AbilityDefinition[] = [
   { id: 'ran-tra-5', name: 'Predator Instinct', description: 'Gain advantage on all attacks against enemies below 50% HP.', class: 'ranger', specialization: 'tracker', tier: 4, effects: { type: 'passive', advantageVsLowHp: true, hpThreshold: 0.5 }, cooldown: 0, prerequisiteAbilityId: 'ran-tra-4', levelRequired: 32 },
   { id: 'ran-tra-6', name: 'Master Tracker', description: 'First strike in combat always crits. Passive.', class: 'ranger', specialization: 'tracker', tier: 5, effects: { type: 'passive', firstStrikeCrit: true }, cooldown: 0, prerequisiteAbilityId: 'ran-tra-5', levelRequired: 40 },
 ];
+
+// ---- Tier 0 (Pre-Specialization) ----
+export const rangerTier0Abilities: AbilityDefinition[] = [
+  // Level 3 — "First Taste"
+  { id: 'ran-t0-3a', name: 'Steady Shot', description: 'Take a breath, steady your aim, and let the arrow fly true.', class: 'ranger', specialization: 'none', tier: 0, effects: { type: 'damage', bonusDamage: 3, accuracyBonus: 1 }, cooldown: 2, levelRequired: 3, requiresChoice: true, choiceGroup: 'ranger_tier0_level3' },
+  { id: 'ran-t0-3b', name: 'Nature\'s Grasp', description: 'Call upon tangled roots and vines to hold the enemy fast.', class: 'ranger', specialization: 'none', tier: 0, effects: { type: 'status', statusEffect: 'root', statusDuration: 1 }, cooldown: 3, levelRequired: 3, requiresChoice: true, choiceGroup: 'ranger_tier0_level3' },
+  { id: 'ran-t0-3c', name: 'Tracker\'s Eye', description: 'Study your prey, cataloguing every weakness in their stance.', class: 'ranger', specialization: 'none', tier: 0, effects: { type: 'debuff', acReduction: -2, duration: 3 }, cooldown: 3, levelRequired: 3, requiresChoice: true, choiceGroup: 'ranger_tier0_level3' },
+
+  // Level 5 — "Building Up"
+  { id: 'ran-t0-5a', name: 'Twin Arrows', description: 'Nock two arrows and loose them in quick succession.', class: 'ranger', specialization: 'none', tier: 0, effects: { type: 'damage', bonusDamage: 2, diceCount: 1, diceSides: 4 }, cooldown: 2, levelRequired: 5, requiresChoice: true, choiceGroup: 'ranger_tier0_level5' },
+  { id: 'ran-t0-5b', name: 'Bark Skin', description: 'Invoke the forest\'s protection, toughening your skin like ancient bark.', class: 'ranger', specialization: 'none', tier: 0, effects: { type: 'buff', acBonus: 3, duration: 3 }, cooldown: 4, levelRequired: 5, requiresChoice: true, choiceGroup: 'ranger_tier0_level5' },
+  { id: 'ran-t0-5c', name: 'Trip Wire', description: 'Deploy a hidden wire that tangles the enemy\'s legs.', class: 'ranger', specialization: 'none', tier: 0, effects: { type: 'damage_status', bonusDamage: 2, statusEffect: 'slowed', statusDuration: 2 }, cooldown: 3, levelRequired: 5, requiresChoice: true, choiceGroup: 'ranger_tier0_level5' },
+
+  // Level 8 — "Coming Online"
+  { id: 'ran-t0-8a', name: 'Drilling Shot', description: 'Put everything into a single shot that punches clean through armor.', class: 'ranger', specialization: 'none', tier: 0, effects: { type: 'damage', bonusDamage: 5, ignoreArmor: true }, cooldown: 3, levelRequired: 8, requiresChoice: true, choiceGroup: 'ranger_tier0_level8' },
+  { id: 'ran-t0-8b', name: 'Camouflage', description: 'Blend with the terrain, becoming a ghost on the battlefield.', class: 'ranger', specialization: 'none', tier: 0, effects: { type: 'buff', acBonus: 4, duration: 3 }, cooldown: 4, levelRequired: 8, requiresChoice: true, choiceGroup: 'ranger_tier0_level8' },
+  { id: 'ran-t0-8c', name: 'Venomous Arrow', description: 'Tip your arrow in a potent venom that eats away at the target.', class: 'ranger', specialization: 'none', tier: 0, effects: { type: 'damage_status', bonusDamage: 3, statusEffect: 'poisoned', statusDuration: 3 }, cooldown: 3, levelRequired: 8, requiresChoice: true, choiceGroup: 'ranger_tier0_level8' },
+];

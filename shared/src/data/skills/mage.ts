@@ -25,3 +25,21 @@ export const mageAbilities: AbilityDefinition[] = [
   { id: 'mag-enc-5', name: 'Polymorph', description: 'Transform an enemy into a harmless creature for 2 rounds.', class: 'mage', specialization: 'enchanter', tier: 4, effects: { type: 'status', statusEffect: 'polymorph', statusDuration: 2 }, cooldown: 10, prerequisiteAbilityId: 'mag-enc-4', levelRequired: 32 },
   { id: 'mag-enc-6', name: 'Spell Weaver', description: 'Cooldowns for all abilities reduced by 1 round. Passive.', class: 'mage', specialization: 'enchanter', tier: 5, effects: { type: 'passive', cooldownReduction: 1 }, cooldown: 0, prerequisiteAbilityId: 'mag-enc-5', levelRequired: 40 },
 ];
+
+// ---- Tier 0 (Pre-Specialization) ----
+export const mageTier0Abilities: AbilityDefinition[] = [
+  // Level 3 — "First Taste"
+  { id: 'mag-t0-3a', name: 'Arcane Spark', description: 'Release a crackling mote of raw arcane energy at your foe.', class: 'mage', specialization: 'none', tier: 0, effects: { type: 'damage', diceCount: 1, diceSides: 4, bonusDamage: 1 }, cooldown: 1, levelRequired: 3, requiresChoice: true, choiceGroup: 'mage_tier0_level3' },
+  { id: 'mag-t0-3b', name: 'Mana Shield', description: 'Weave a thin membrane of arcane force around yourself.', class: 'mage', specialization: 'none', tier: 0, effects: { type: 'buff', absorbDamage: 6, duration: 2 }, cooldown: 3, levelRequired: 3, requiresChoice: true, choiceGroup: 'mage_tier0_level3' },
+  { id: 'mag-t0-3c', name: 'Chill Touch', description: 'Reach out with spectral cold that numbs the target\'s limbs.', class: 'mage', specialization: 'none', tier: 0, effects: { type: 'damage_status', bonusDamage: 1, statusEffect: 'slowed', statusDuration: 1 }, cooldown: 2, levelRequired: 3, requiresChoice: true, choiceGroup: 'mage_tier0_level3' },
+
+  // Level 5 — "Building Up"
+  { id: 'mag-t0-5a', name: 'Flame Jet', description: 'Channel a burst of conjured flame from your outstretched palm.', class: 'mage', specialization: 'none', tier: 0, effects: { type: 'damage', element: 'fire', diceCount: 1, diceSides: 6, bonusDamage: 1 }, cooldown: 2, levelRequired: 5, requiresChoice: true, choiceGroup: 'mage_tier0_level5' },
+  { id: 'mag-t0-5b', name: 'Frost Ward', description: 'Encase yourself in a shell of crystalline ice that deflects blows.', class: 'mage', specialization: 'none', tier: 0, effects: { type: 'buff', acBonus: 3, duration: 3 }, cooldown: 4, levelRequired: 5, requiresChoice: true, choiceGroup: 'mage_tier0_level5' },
+  { id: 'mag-t0-5c', name: 'Hex', description: 'Curse the enemy with arcane sigils that unravel their defenses.', class: 'mage', specialization: 'none', tier: 0, effects: { type: 'debuff', acReduction: -3, duration: 3 }, cooldown: 3, levelRequired: 5, requiresChoice: true, choiceGroup: 'mage_tier0_level5' },
+
+  // Level 8 — "Coming Online"
+  { id: 'mag-t0-8a', name: 'Lightning Bolt', description: 'Call a crackling bolt of electricity from the ether to strike your enemy.', class: 'mage', specialization: 'none', tier: 0, effects: { type: 'damage', element: 'lightning', diceCount: 2, diceSides: 4, bonusDamage: 1 }, cooldown: 3, levelRequired: 8, requiresChoice: true, choiceGroup: 'mage_tier0_level8' },
+  { id: 'mag-t0-8b', name: 'Arcane Barrier', description: 'Erect a shimmering wall of force that absorbs incoming blows.', class: 'mage', specialization: 'none', tier: 0, effects: { type: 'buff', absorbDamage: 15, duration: 3 }, cooldown: 5, levelRequired: 8, requiresChoice: true, choiceGroup: 'mage_tier0_level8' },
+  { id: 'mag-t0-8c', name: 'Enervation', description: 'Siphon vital energy from your foe, replenishing your own strength.', class: 'mage', specialization: 'none', tier: 0, effects: { type: 'drain', diceCount: 1, diceSides: 6, healPercent: 0.5 }, cooldown: 3, levelRequired: 8, requiresChoice: true, choiceGroup: 'mage_tier0_level8' },
+];

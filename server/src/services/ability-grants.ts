@@ -19,10 +19,12 @@ export async function autoGrantAbilities(characterId: string): Promise<string[]>
   if (!classAbilities) return [];
 
   // Get abilities for this spec where levelRequired <= character level
+  // Skip tier 0 abilities (requiresChoice) — those need explicit player choice
   const qualifyingAbilities = classAbilities.filter(
     (a) =>
       a.specialization === character.specialization &&
-      a.levelRequired <= character.level,
+      a.levelRequired <= character.level &&
+      !a.requiresChoice,
   );
 
   if (qualifyingAbilities.length === 0) return [];

@@ -145,6 +145,7 @@ export function emitLevelUp(characterId: string, data: {
     maxHealth: number;
     abilitiesGranted: string[];
   };
+  tier0Pending?: number;
 }) {
   getIO().to(`user:${characterId}`).emit('player:level-up', data);
 }

@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Check,
   Sparkles,
+  AlertTriangle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -25,7 +26,6 @@ interface SkillAbility {
   specialization: string;
   tier: number;
   cooldown: number;
-
   prerequisiteAbilityId?: string;
   unlocked: boolean;
   status: 'unlocked' | 'upcoming' | 'locked';
@@ -39,10 +39,30 @@ interface SpecializationInfo {
   abilities: SkillAbility[];
 }
 
+interface Tier0Ability {
+  id: string;
+  name: string;
+  description: string;
+  cooldown: number;
+  levelRequired: number;
+  effects: Record<string, unknown>;
+  choiceGroup: string;
+  unlocked: boolean;
+  status: 'chosen' | 'not_chosen' | 'available' | 'locked';
+}
+
+interface Tier0Group {
+  level: number;
+  choiceGroup: string;
+  chosen: string | null;
+  abilities: Tier0Ability[];
+}
+
 interface SkillTree {
   className: string;
   specialization: string | null;
   specializations: SpecializationInfo[];
+  tier0: Tier0Group[];
 }
 
 interface CharacterStats {
@@ -218,11 +238,178 @@ function AbilityDetail({ ability }: { ability: SkillAbility }) {
 }
 
 // ---------------------------------------------------------------------------
+// Tier 0 Choice Section
+// ---------------------------------------------------------------------------
+function Tier0ChoiceSection({
+  group,
+  onChoose,
+  isPending,
+}: {
+  group: Tier0Group;
+  onChoose: (abilityId: string) => void;
+  isPending: boolean;
+}) {
+  const hasChosen = !!group.chosen;
+  const hasAvailable = group.abilities.some((a) => a.status === 'available');
+
+  return (
+    <div className={`border-2 rounded-lg p-4 ${
+      hasAvailable
+        ? 'border-realm-teal-500/50 bg-realm-teal-500/5 shadow-lg shadow-realm-teal-500/10'
+        : hasChosen
+          ? 'border-realm-success/30 bg-realm-bg-700'
+          : 'border-realm-border bg-realm-bg-700 opacity-60'
+    }`}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs font-display text-realm-text-muted uppercase tracking-wider">
+          Level {group.level}
+        </span>
+        {hasAvailable && (
+          <span className="text-[10px] bg-realm-teal-500/20 text-realm-teal-300 px-2 py-0.5 rounded font-display">
+            Choose One
+          </span>
+        )}
+        {hasChosen && (
+          <Check className="w-3.5 h-3.5 text-realm-success" />
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {group.abilities.map((ability) => (
+          <div
+            key={ability.id}
+            className={`rounded-lg border-2 p-3 transition-all ${
+              ability.status === 'chosen'
+                ? 'border-realm-success/50 bg-realm-success/10'
+                : ability.status === 'available'
+                  ? 'border-realm-teal-300/40 bg-realm-bg-800 hover:border-realm-teal-300/70 cursor-pointer'
+                  : ability.status === 'not_chosen'
+                    ? 'border-realm-border/30 bg-realm-bg-800 opacity-40'
+                    : 'border-realm-border/30 bg-realm-bg-800 opacity-30'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 mb-1">
+              {ability.status === 'chosen' ? (
+                <Check className="w-3.5 h-3.5 text-realm-success flex-shrink-0" />
+              ) : ability.status === 'available' ? (
+                <Sparkles className="w-3.5 h-3.5 text-realm-teal-300 flex-shrink-0" />
+              ) : (
+                <Lock className="w-3.5 h-3.5 text-realm-text-muted/40 flex-shrink-0" />
+              )}
+              <span className={`text-sm font-semibold ${
+                ability.status === 'chosen' ? 'text-realm-success'
+                  : ability.status === 'available' ? 'text-realm-text-primary'
+                    : 'text-realm-text-muted/50'
+              }`}>
+                {ability.name}
+              </span>
+            </div>
+
+            <p className={`text-xs leading-relaxed mb-2 ${
+              ability.status === 'not_chosen' || ability.status === 'locked'
+                ? 'text-realm-text-muted/40' : 'text-realm-text-secondary'
+            }`}>
+              {ability.description}
+            </p>
+
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(ability.effects ?? {}).filter(([k]) => k !== 'type').map(([k, v]) => (
+                <span key={k} className="text-[9px] bg-realm-bg-900/50 border border-realm-border/30 rounded px-1.5 py-0.5 text-realm-text-muted">
+                  {k}: {String(v)}
+                </span>
+              ))}
+              {ability.cooldown > 0 && (
+                <span className="text-[9px] bg-realm-bg-900/50 border border-realm-border/30 rounded px-1.5 py-0.5 text-realm-text-muted">
+                  cd: {ability.cooldown}
+                </span>
+              )}
+            </div>
+
+            {ability.status === 'available' && (
+              <RealmButton
+                onClick={() => onChoose(ability.id)}
+                disabled={isPending}
+                variant="primary"
+                size="sm"
+                className="w-full mt-3 text-xs"
+              >
+                {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Choose This'}
+              </RealmButton>
+            )}
+
+            {ability.status === 'not_chosen' && (
+              <p className="text-[10px] text-realm-text-muted/40 mt-2 italic">Not chosen</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Confirm Choice Modal
+// ---------------------------------------------------------------------------
+function ConfirmChoiceModal({
+  ability,
+  onConfirm,
+  onCancel,
+  isPending,
+}: {
+  ability: Tier0Ability;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isPending: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onCancel}>
+      <div
+        className="bg-realm-bg-800 border-2 border-realm-gold-500 rounded-lg p-6 max-w-md w-full mx-4 shadow-lg shadow-realm-gold-500/20"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <AlertTriangle className="w-5 h-5 text-realm-gold-400" />
+          <h3 className="font-display text-realm-gold-400 text-lg">Confirm Ability Choice</h3>
+        </div>
+
+        <p className="text-realm-text-secondary text-sm mb-4">
+          Are you sure you want to choose <strong className="text-realm-text-primary">{ability.name}</strong>?
+          This choice is <span className="text-realm-danger font-semibold">permanent</span> — the other options will be locked out.
+        </p>
+
+        <div className="bg-realm-bg-900 border border-realm-border rounded-lg p-3 mb-4">
+          <p className="text-realm-text-primary text-sm font-semibold mb-1">{ability.name}</p>
+          <p className="text-realm-text-secondary text-xs">{ability.description}</p>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isPending}
+            className="flex-1 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main Page
 // ---------------------------------------------------------------------------
 export default function SkillTreePage() {
   const queryClient = useQueryClient();
   const [selectedAbilityId, setSelectedAbilityId] = useState<string | null>(null);
+  const [confirmAbility, setConfirmAbility] = useState<Tier0Ability | null>(null);
 
   const { data: character, isLoading: charLoading } = useQuery<CharacterStats>({
     queryKey: ['character', 'me'],
@@ -260,6 +447,15 @@ export default function SkillTreePage() {
           })),
           isActive: s.isActive ?? false,
         })),
+        tier0: (d.tier0 ?? []).map((g: any) => ({
+          level: g.level,
+          choiceGroup: g.choiceGroup,
+          chosen: g.chosen ?? null,
+          abilities: (g.abilities ?? []).map((a: any) => ({
+            ...a,
+            effects: a.effects ?? {},
+          })),
+        })),
       };
     },
     enabled: !!character,
@@ -279,6 +475,33 @@ export default function SkillTreePage() {
       });
     },
   });
+
+  const chooseTier0Mutation = useMutation({
+    mutationFn: async (abilityId: string) => {
+      return (await api.post('/skills/choose-tier0', { abilityId })).data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['skills'] });
+      queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
+      setConfirmAbility(null);
+      toast(`Ability chosen: ${data.ability?.name ?? 'Unknown'}`, {
+        duration: 4000,
+        style: { background: '#1a1a2e', color: '#e8d5b7', border: '1px solid #5eead4' },
+      });
+    },
+    onError: () => {
+      toast('Failed to choose ability', {
+        duration: 3000,
+        style: { background: '#1a1a2e', color: '#e8d5b7', border: '1px solid #ef4444' },
+      });
+    },
+  });
+
+  const handleChooseTier0 = (abilityId: string) => {
+    const allT0 = (skillTree?.tier0 ?? []).flatMap((g) => g.abilities);
+    const ability = allT0.find((a) => a.id === abilityId);
+    if (ability) setConfirmAbility(ability);
+  };
 
   if (charLoading || treeLoading) {
     return (
@@ -331,8 +554,23 @@ export default function SkillTreePage() {
 
   const selectedAbility = (activeSpec?.abilities ?? []).find((a) => a.id === selectedAbilityId) ?? null;
 
+  // Check for pending tier 0 choices
+  const pendingTier0 = (skillTree.tier0 ?? []).filter(
+    (g) => !g.chosen && g.abilities.some((a) => a.status === 'available')
+  );
+
   return (
     <div>
+      {/* Confirm modal */}
+      {confirmAbility && (
+        <ConfirmChoiceModal
+          ability={confirmAbility}
+          onConfirm={() => chooseTier0Mutation.mutate(confirmAbility.id)}
+          onCancel={() => setConfirmAbility(null)}
+          isPending={chooseTier0Mutation.isPending}
+        />
+      )}
+
       {/* Header */}
       <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
@@ -382,6 +620,31 @@ export default function SkillTreePage() {
             }}
             unspentStatPoints={character.unspentStatPoints}
           />
+        )}
+
+        {/* Tier 0 Early Abilities Section */}
+        {(skillTree.tier0 ?? []).length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <Zap className="w-5 h-5 text-realm-teal-300" />
+              <h2 className="text-lg font-display text-realm-text-primary">Early Abilities</h2>
+              {pendingTier0.length > 0 && (
+                <span className="text-[10px] bg-realm-teal-500/20 text-realm-teal-300 px-2 py-0.5 rounded font-display">
+                  {pendingTier0.length} pending
+                </span>
+              )}
+            </div>
+            <div className="space-y-4">
+              {(skillTree.tier0 ?? []).map((group) => (
+                <Tier0ChoiceSection
+                  key={group.choiceGroup}
+                  group={group}
+                  onChoose={handleChooseTier0}
+                  isPending={chooseTier0Mutation.isPending}
+                />
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Specialization Selection (if not yet specialized) */}

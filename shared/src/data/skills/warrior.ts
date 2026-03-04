@@ -25,3 +25,21 @@ export const warriorAbilities: AbilityDefinition[] = [
   { id: 'war-war-5', name: 'Warlords Decree', description: 'Your next three attacks cannot miss.', class: 'warrior', specialization: 'warlord', tier: 4, effects: { type: 'buff', guaranteedHits: 3, duration: 3 }, cooldown: 10, prerequisiteAbilityId: 'war-war-3', levelRequired: 32 },
   { id: 'war-war-6', name: 'Legendary Commander', description: 'Once per combat, fully restore your HP.', class: 'warrior', specialization: 'warlord', tier: 5, effects: { type: 'heal', fullRestore: true, usesPerCombat: 1 }, cooldown: 0, prerequisiteAbilityId: 'war-war-5', levelRequired: 40 },
 ];
+
+// ---- Tier 0 (Pre-Specialization) ----
+export const warriorTier0Abilities: AbilityDefinition[] = [
+  // Level 3 — "First Taste"
+  { id: 'war-t0-3a', name: 'Power Strike', description: 'A heavy overhead swing that connects with brutal force.', class: 'warrior', specialization: 'none', tier: 0, effects: { type: 'damage', bonusDamage: 3 }, cooldown: 2, levelRequired: 3, requiresChoice: true, choiceGroup: 'warrior_tier0_level3' },
+  { id: 'war-t0-3b', name: 'Defensive Stance', description: 'Plant your feet and brace for impact, hardening your guard.', class: 'warrior', specialization: 'none', tier: 0, effects: { type: 'buff', acBonus: 3, duration: 2 }, cooldown: 3, levelRequired: 3, requiresChoice: true, choiceGroup: 'warrior_tier0_level3' },
+  { id: 'war-t0-3c', name: 'Intimidating Shout', description: 'Bellow a challenge that shakes your opponent\'s confidence.', class: 'warrior', specialization: 'none', tier: 0, effects: { type: 'debuff', attackReduction: -2, duration: 2 }, cooldown: 3, levelRequired: 3, requiresChoice: true, choiceGroup: 'warrior_tier0_level3' },
+
+  // Level 5 — "Building Up"
+  { id: 'war-t0-5a', name: 'Sundering Strike', description: 'A targeted blow to armor joints, cracking their defense.', class: 'warrior', specialization: 'none', tier: 0, effects: { type: 'damage_debuff', bonusDamage: 2, acReduction: -2, duration: 2 }, cooldown: 3, levelRequired: 5, requiresChoice: true, choiceGroup: 'warrior_tier0_level5' },
+  { id: 'war-t0-5b', name: 'Second Wind', description: 'Catch your breath mid-fight, willing yourself through the pain.', class: 'warrior', specialization: 'none', tier: 0, effects: { type: 'heal', healAmount: 8 }, cooldown: 4, levelRequired: 5, requiresChoice: true, choiceGroup: 'warrior_tier0_level5' },
+  { id: 'war-t0-5c', name: 'Hamstring', description: 'Cut low, crippling your foe\'s movement.', class: 'warrior', specialization: 'none', tier: 0, effects: { type: 'damage_status', bonusDamage: 1, statusEffect: 'slowed', statusDuration: 2 }, cooldown: 3, levelRequired: 5, requiresChoice: true, choiceGroup: 'warrior_tier0_level5' },
+
+  // Level 8 — "Coming Online"
+  { id: 'war-t0-8a', name: 'Brutal Charge', description: 'Lower your shoulder and crash into the enemy with devastating momentum.', class: 'warrior', specialization: 'none', tier: 0, effects: { type: 'damage', bonusDamage: 5, accuracyBonus: 2 }, cooldown: 3, levelRequired: 8, requiresChoice: true, choiceGroup: 'warrior_tier0_level8' },
+  { id: 'war-t0-8b', name: 'Iron Skin', description: 'Steel your body against punishment, shrugging off blows that would fell lesser fighters.', class: 'warrior', specialization: 'none', tier: 0, effects: { type: 'buff', absorbDamage: 12, duration: 3 }, cooldown: 4, levelRequired: 8, requiresChoice: true, choiceGroup: 'warrior_tier0_level8' },
+  { id: 'war-t0-8c', name: 'War Cry', description: 'Let loose a thunderous battle cry that sharpens your focus and hardens your resolve.', class: 'warrior', specialization: 'none', tier: 0, effects: { type: 'buff', attackBonus: 3, acBonus: 1, duration: 3 }, cooldown: 4, levelRequired: 8, requiresChoice: true, choiceGroup: 'warrior_tier0_level8' },
+];
