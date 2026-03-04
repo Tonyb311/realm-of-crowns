@@ -36,10 +36,10 @@ export default function LevelUpCelebration({ data, onDismiss }: LevelUpCelebrati
               <span className="text-realm-success font-display">+{data.statPoints}</span>
             </div>
           )}
-          {data.skillPoints > 0 && (
+          {data.abilitiesGranted && data.abilitiesGranted.length > 0 && (
             <div className="flex justify-between text-sm bg-realm-bg-900 rounded px-4 py-2">
-              <span className="text-realm-text-muted">Skill Points</span>
-              <span className="text-realm-teal-300 font-display">+{data.skillPoints}</span>
+              <span className="text-realm-text-muted">New Abilities</span>
+              <span className="text-realm-teal-300 font-display">+{data.abilitiesGranted.length}</span>
             </div>
           )}
           {data.maxHealthGain > 0 && (

@@ -523,9 +523,6 @@ async function createSingleBot(
   const tier = raceDef?.tier ?? 'core';
   const gold = config.startingGold ?? GOLD_BY_TIER[tier] ?? 100;
 
-  // Skill points from leveling
-  const unspentSkillPoints = startLevel - 1;
-
   // 10. Starting profession — use pre-computed assignment map (guarantees min 2 per profession)
   let startingProfession: string | null = profAssignments.get(index) || null;
 
@@ -545,7 +542,6 @@ async function createSingleBot(
       xp: accumulatedXP,
       health: maxHealth,
       maxHealth,
-      unspentSkillPoints,
       currentTownId: townId,
       homeTownId: townId,
     },

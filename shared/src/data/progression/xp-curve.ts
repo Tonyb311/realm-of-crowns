@@ -188,15 +188,12 @@ export const ACTION_XP = {
 /**
  * What players receive per level gained.
  *
- * Stat points let players customize their build. Skill points unlock abilities.
+ * Stat points let players customize their build. Abilities are auto-granted
+ * based on level and specialization (no skill points).
  * HP gains are flat per level for predictability.
- *
- * Unchanged from original system — these values feel right for the game's
- * stat economy and are independent of XP pacing.
  */
 export const LEVEL_UP_REWARDS = {
   STAT_POINTS_PER_LEVEL: 2,      // 2 stat points per level (allocate to str/dex/con/int/wis/cha)
-  SKILL_POINTS_PER_LEVEL: 1,     // 1 skill point per level (unlock abilities)
   HP_PER_LEVEL: 10,              // +10 max HP per level
 } as const;
 

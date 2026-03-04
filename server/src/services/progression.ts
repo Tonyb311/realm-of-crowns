@@ -6,6 +6,7 @@ import {
   levelForXp,
   LEVEL_UP_REWARDS,
 } from '@shared/data/progression';
+import { autoGrantAbilities } from './ability-grants';
 
 /**
  * XP Curve: floor(10 * level^1.15) + 30
@@ -39,14 +40,14 @@ export interface LevelUpResult {
   oldLevel: number;
   newLevel: number;
   statPointsGained: number;
-  skillPointsGained: number;
   maxHealthGained: number;
+  abilitiesGranted: string[];
 }
 
 /**
  * Checks if a character has enough XP to level up.
- * If so, applies all level ups (possibly multiple), grants stat/skill points,
- * increases max HP, and heals to full.
+ * If so, applies all level ups (possibly multiple), grants stat points,
+ * increases max HP, heals to full, and auto-grants any new abilities.
  *
  * Returns null if no level up occurred, or the details of the level-up(s).
  */
@@ -64,7 +65,6 @@ export async function checkLevelUp(characterId: string): Promise<LevelUpResult |
 
   const levelsGained = newLevel - currentLevel;
   const statPointsGained = levelsGained * LEVEL_UP_REWARDS.STAT_POINTS_PER_LEVEL;
-  const skillPointsGained = levelsGained * LEVEL_UP_REWARDS.SKILL_POINTS_PER_LEVEL;
   const maxHealthGained = levelsGained * LEVEL_UP_REWARDS.HP_PER_LEVEL;
 
   const newMaxHealth = character.maxHealth + maxHealthGained;
@@ -74,19 +74,21 @@ export async function checkLevelUp(characterId: string): Promise<LevelUpResult |
     data: {
       level: newLevel,
       unspentStatPoints: character.unspentStatPoints + statPointsGained,
-      unspentSkillPoints: character.unspentSkillPoints + skillPointsGained,
       maxHealth: newMaxHealth,
       health: newMaxHealth, // heal to full
     },
   });
+
+  // Auto-grant any abilities the character now qualifies for
+  const abilitiesGranted = await autoGrantAbilities(characterId);
 
   const result: LevelUpResult = {
     levelsGained,
     oldLevel: currentLevel,
     newLevel,
     statPointsGained,
-    skillPointsGained,
     maxHealthGained,
+    abilitiesGranted,
   };
 
   // Check leveling achievements
@@ -99,8 +101,8 @@ export async function checkLevelUp(characterId: string): Promise<LevelUpResult |
     newLevel,
     rewards: {
       statPoints: statPointsGained,
-      skillPoints: skillPointsGained,
       maxHealth: maxHealthGained,
+      abilitiesGranted,
     },
   });
 

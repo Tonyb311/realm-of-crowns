@@ -19,7 +19,6 @@ const editCharacterSchema = z.object({
   maxHealth: z.number().int().min(1).optional(),
   currentTownId: z.string().optional(),
   unspentStatPoints: z.number().int().min(0).optional(),
-  unspentSkillPoints: z.number().int().min(0).optional(),
 });
 
 const teleportSchema = z.object({

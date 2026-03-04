@@ -486,7 +486,7 @@ function LevelingContent() {
         items={[
           'XP is earned from combat kills, crafting completions, and quest rewards.',
           <>
-            Each level grants: <Stat>2 stat points</Stat>, skill points, and HP/MP growth.
+            Each level grants: <Stat>2 stat points</Stat>, auto-unlocked abilities, and HP growth.
           </>,
         ]}
       />

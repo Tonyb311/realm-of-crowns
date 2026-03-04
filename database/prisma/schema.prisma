@@ -412,7 +412,7 @@ model Character {
   level                  Int              @default(1)
   xp                     Int              @default(0)
   unspentStatPoints      Int              @default(0) @map("unspent_stat_points")
-  unspentSkillPoints     Int              @default(0) @map("unspent_skill_points")
+
   title                  String?
   stats                  Json             @default("{}")
   currentTownId          String?          @map("current_town_id")

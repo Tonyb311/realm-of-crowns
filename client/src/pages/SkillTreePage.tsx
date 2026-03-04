@@ -28,7 +28,7 @@ interface SkillAbility {
 
   prerequisiteAbilityId?: string;
   unlocked: boolean;
-  canUnlock: boolean;
+  status: 'unlocked' | 'upcoming' | 'locked';
   levelRequired: number;
   effects: Record<string, unknown>;
 }
@@ -43,7 +43,6 @@ interface SkillTree {
   className: string;
   specialization: string | null;
   specializations: SpecializationInfo[];
-  unspentSkillPoints: number;
 }
 
 interface CharacterStats {
@@ -52,7 +51,6 @@ interface CharacterStats {
   specialization: string | null;
   level: number;
   unspentStatPoints: number;
-  unspentSkillPoints: number;
   str: number;
   dex: number;
   con: number;
@@ -118,32 +116,29 @@ function SkillNode({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const locked = !ability.unlocked && !ability.canUnlock;
-  const canUnlockNow = !ability.unlocked && ability.canUnlock;
-
   return (
     <button
       onClick={onSelect}
       className={`relative w-full text-left p-3 rounded-lg border-2 transition-all ${
         selected
           ? 'border-realm-gold-500 bg-realm-gold-500/10 ring-1 ring-realm-gold-500/30'
-          : ability.unlocked
+          : ability.status === 'unlocked'
             ? 'border-realm-success/40 bg-realm-success/10 hover:border-realm-success/60'
-            : canUnlockNow
-              ? 'border-realm-gold-500/30 bg-realm-bg-700 hover:border-realm-gold-500/60 animate-pulse-subtle'
+            : ability.status === 'upcoming'
+              ? 'border-realm-teal-300/30 bg-realm-bg-700 hover:border-realm-teal-300/50'
               : 'border-realm-border bg-realm-bg-700 opacity-50'
       }`}
     >
       <div className="flex items-center gap-2">
-        {ability.unlocked ? (
+        {ability.status === 'unlocked' ? (
           <Unlock className="w-4 h-4 text-realm-success flex-shrink-0" />
-        ) : canUnlockNow ? (
-          <Sparkles className="w-4 h-4 text-realm-gold-400 flex-shrink-0" />
         ) : (
           <Lock className="w-4 h-4 text-realm-text-muted/50 flex-shrink-0" />
         )}
         <span className={`text-sm font-semibold truncate ${
-          ability.unlocked ? 'text-realm-success' : locked ? 'text-realm-text-muted/50' : 'text-realm-text-primary'
+          ability.status === 'unlocked' ? 'text-realm-success'
+            : ability.status === 'locked' ? 'text-realm-text-muted/50'
+              : 'text-realm-text-primary'
         }`}>
           {ability.name}
         </span>
@@ -156,24 +151,14 @@ function SkillNode({
 // ---------------------------------------------------------------------------
 // Ability Detail Panel
 // ---------------------------------------------------------------------------
-function AbilityDetail({
-  ability,
-  onUnlock,
-  isPending,
-  hasPoints,
-}: {
-  ability: SkillAbility;
-  onUnlock: () => void;
-  isPending: boolean;
-  hasPoints: boolean;
-}) {
+function AbilityDetail({ ability }: { ability: SkillAbility }) {
   return (
     <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
       <div className="flex items-center gap-2 mb-3">
-        {ability.unlocked ? (
+        {ability.status === 'unlocked' ? (
           <Check className="w-5 h-5 text-realm-success" />
-        ) : ability.canUnlock ? (
-          <Sparkles className="w-5 h-5 text-realm-gold-400" />
+        ) : ability.status === 'upcoming' ? (
+          <Sparkles className="w-5 h-5 text-realm-teal-300" />
         ) : (
           <Lock className="w-5 h-5 text-realm-text-muted" />
         )}
@@ -214,25 +199,18 @@ function AbilityDetail({
         </div>
       )}
 
-      {ability.unlocked ? (
+      {ability.status === 'unlocked' ? (
         <div className="text-realm-success text-sm font-display flex items-center gap-1.5">
           <Check className="w-4 h-4" />
           Unlocked
         </div>
-      ) : ability.canUnlock ? (
-        <RealmButton
-          onClick={onUnlock}
-          disabled={isPending || !hasPoints}
-          variant="primary"
-          className="w-full flex items-center justify-center gap-2"
-        >
-          {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-          {hasPoints ? 'Unlock (1 Skill Point)' : 'No Skill Points'}
-        </RealmButton>
+      ) : ability.status === 'upcoming' ? (
+        <p className="text-realm-teal-300 text-xs">
+          Unlocks automatically when you reach this spec
+        </p>
       ) : (
         <p className="text-realm-text-muted text-xs">
-          Requires: Level {ability.levelRequired}
-          {ability.prerequisiteAbilityId && ', prerequisite ability'}
+          Unlocks at Level {ability.levelRequired}
         </p>
       )}
     </div>
@@ -260,7 +238,6 @@ export default function SkillTreePage() {
         wis: d.wis ?? stats.wis ?? stats.wisdom ?? 10,
         cha: d.cha ?? stats.cha ?? stats.charisma ?? 10,
         unspentStatPoints: d.unspentStatPoints ?? 0,
-        unspentSkillPoints: d.unspentSkillPoints ?? 0,
       };
     },
   });
@@ -283,7 +260,6 @@ export default function SkillTreePage() {
           })),
           isActive: s.isActive ?? false,
         })),
-        unspentSkillPoints: d.unspentSkillPoints ?? 0,
       };
     },
     enabled: !!character,
@@ -293,25 +269,12 @@ export default function SkillTreePage() {
     mutationFn: async (specialization: string) => {
       return (await api.post('/skills/specialize', { specialization })).data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['skills'] });
       queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
-      toast('Specialization chosen!', {
+      const count = data.abilitiesGranted?.length ?? 0;
+      toast(`Specialized! ${count > 0 ? `${count} abilities unlocked.` : ''}`, {
         duration: 4000,
-        style: { background: '#1a1a2e', color: '#e8d5b7', border: '1px solid #c9a84c' },
-      });
-    },
-  });
-
-  const unlockMutation = useMutation({
-    mutationFn: async (abilityId: string) => {
-      return (await api.post('/skills/unlock', { abilityId })).data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['skills'] });
-      queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
-      toast('Ability unlocked!', {
-        duration: 3000,
         style: { background: '#1a1a2e', color: '#e8d5b7', border: '1px solid #c9a84c' },
       });
     },
@@ -390,13 +353,9 @@ export default function SkillTreePage() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className={`bg-realm-bg-700 rounded px-4 py-2 text-sm ${
-                skillTree.unspentSkillPoints > 0
-                  ? 'border border-realm-gold-500/30 shadow-realm-glow'
-                  : 'border border-realm-border'
-              }`}>
-                <span className="text-realm-text-muted">Skill Points: </span>
-                <span className="text-realm-gold-400 font-display">{skillTree.unspentSkillPoints}</span>
+              <div className="bg-realm-bg-700 border border-realm-border rounded px-4 py-2 text-sm">
+                <span className="text-realm-text-muted">Level: </span>
+                <span className="text-realm-gold-400 font-display">{character.level}</span>
               </div>
               {character.unspentStatPoints > 0 && (
                 <div className="bg-realm-bg-700 border border-realm-gold-500/30 shadow-realm-glow rounded px-4 py-2 text-sm">
@@ -483,12 +442,7 @@ export default function SkillTreePage() {
             {/* Detail panel (1 col) */}
             <div className="lg:col-span-1">
               {selectedAbility ? (
-                <AbilityDetail
-                  ability={selectedAbility}
-                  onUnlock={() => unlockMutation.mutate(selectedAbility.id)}
-                  isPending={unlockMutation.isPending}
-                  hasPoints={skillTree.unspentSkillPoints > 0}
-                />
+                <AbilityDetail ability={selectedAbility} />
               ) : (
                 <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
                   <Sparkles className="w-10 h-10 text-realm-text-muted/20 mx-auto mb-3" />

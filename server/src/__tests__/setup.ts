@@ -49,7 +49,6 @@ interface TestCharacterOptions {
   gold?: number;
   townId?: string;
   unspentStatPoints?: number;
-  unspentSkillPoints?: number;
   specialization?: string;
 }
 
@@ -119,7 +118,6 @@ export async function createTestUserWithCharacter(
       health: 100,
       maxHealth: 100,
       unspentStatPoints: charOptions.unspentStatPoints ?? 0,
-      unspentSkillPoints: charOptions.unspentSkillPoints ?? 0,
       specialization: charOptions.specialization || null,
     },
   });

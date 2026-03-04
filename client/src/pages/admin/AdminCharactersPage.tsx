@@ -37,7 +37,6 @@ interface AdminCharacter {
   wisdom: number;
   charisma: number;
   unspentStatPoints: number;
-  unspentSkillPoints: number;
 }
 
 interface CharactersResponse {
@@ -228,7 +227,6 @@ export default function AdminCharactersPage() {
       wisdom: char.wisdom,
       charisma: char.charisma,
       unspentStatPoints: char.unspentStatPoints,
-      unspentSkillPoints: char.unspentSkillPoints,
     });
   }, []);
 
@@ -629,14 +627,6 @@ export default function AdminCharactersPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-realm-text-muted text-xs mb-1 block">Unspent Skill Points</label>
-                      <input
-                        type="number"
-                        value={editForm.unspentSkillPoints ?? ''}
-                        onChange={(e) => updateField('unspentSkillPoints', parseInt(e.target.value, 10) || 0)}
-                        min="0"
-                        className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
-                      />
                     </div>
                   </div>
                 </div>

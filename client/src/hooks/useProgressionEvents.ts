@@ -8,8 +8,8 @@ export interface LevelUpPayload {
   characterId: string;
   newLevel: number;
   statPoints: number;
-  skillPoints: number;
   maxHealthGain: number;
+  abilitiesGranted: string[];
 }
 
 export interface AchievementUnlockedPayload {

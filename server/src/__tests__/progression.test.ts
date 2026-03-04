@@ -21,7 +21,7 @@ describe('Progression API (Skills & Abilities)', () => {
 
   describe('GET /api/skills/tree', () => {
     it('should return skill tree for character class', async () => {
-      const user = await createTestUserWithCharacter({}, { class: 'warrior', level: 5 });
+      const user = await createTestUserWithCharacter({}, { class: 'warrior', level: 10 });
 
       const res = await request(app)
         .get('/api/skills/tree')
@@ -29,10 +29,9 @@ describe('Progression API (Skills & Abilities)', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.class).toBe('warrior');
-      expect(res.body.level).toBe(5);
+      expect(res.body.level).toBe(10);
       expect(res.body.tree).toBeDefined();
       expect(Array.isArray(res.body.tree)).toBe(true);
-      expect(res.body.unspentSkillPoints).toBeDefined();
     });
 
     it('should return 404 when user has no character', async () => {
@@ -88,41 +87,35 @@ describe('Progression API (Skills & Abilities)', () => {
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('Invalid specialization');
     });
+
+    it('should auto-grant tier 1 ability on specialization', async () => {
+      const user = await createTestUserWithCharacter({}, { class: 'warrior', level: 10 });
+
+      const res = await request(app)
+        .post('/api/skills/specialize')
+        .set(authHeader(user.token))
+        .send({ specialization: 'berserker' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.specialization).toBe('berserker');
+      expect(res.body.abilitiesGranted).toBeDefined();
+      expect(res.body.abilitiesGranted.length).toBeGreaterThanOrEqual(1);
+      expect(res.body.abilitiesGranted).toContain('war-ber-1');
+    });
   });
 
-  // ---- POST /api/skills/unlock ----
+  // ---- POST /api/skills/unlock (REMOVED) ----
 
   describe('POST /api/skills/unlock', () => {
-    it('should reject unlock with no skill points', async () => {
-      const user = await createTestUserWithCharacter({}, {
-        class: 'warrior',
-        level: 5,
-        unspentSkillPoints: 0,
-      });
+    it('should return 404 (endpoint removed)', async () => {
+      const user = await createTestUserWithCharacter({}, { class: 'warrior', level: 10 });
 
       const res = await request(app)
         .post('/api/skills/unlock')
         .set(authHeader(user.token))
-        .send({ abilityId: 'some-ability-id' });
-
-      // Either 404 (ability not found) or 400 (no skill points)
-      expect([400, 404]).toContain(res.status);
-    });
-
-    it('should reject unlock for nonexistent ability', async () => {
-      const user = await createTestUserWithCharacter({}, {
-        class: 'warrior',
-        level: 5,
-        unspentSkillPoints: 3,
-      });
-
-      const res = await request(app)
-        .post('/api/skills/unlock')
-        .set(authHeader(user.token))
-        .send({ abilityId: 'nonexistent-ability-id' });
+        .send({ abilityId: 'war-ber-1' });
 
       expect(res.status).toBe(404);
-      expect(res.body.error).toContain('not found');
     });
   });
 
