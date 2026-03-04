@@ -184,19 +184,53 @@ function getBorderColor(effectType: string | undefined, effects: Record<string, 
 // Class Ability Mechanics
 // ---------------------------------------------------------------------------
 
-function ClassMechanics({ effects, cooldown }: { effects: Record<string, unknown>; cooldown?: number }) {
+interface MechanicsContext {
+  attackType?: string | null;
+  damageType?: string | null;
+  characterClass?: string;
+}
+
+function getAttackLabel(ctx: MechanicsContext): { icon: string; label: string } {
+  const atk = ctx.attackType;
+  const dmg = ctx.damageType;
+  if (atk === 'spell') {
+    return { icon: '\u2728', label: dmg ? `${dmg} Spell Attack` : 'Spell Attack' };
+  }
+  if (atk === 'save') {
+    const saveType = 'Save'; // save type shown separately
+    return { icon: '\uD83D\uDEE1\uFE0F', label: dmg ? `${dmg} (${saveType}-based)` : `Save-based` };
+  }
+  // weapon or default
+  return { icon: '\u2694\uFE0F', label: dmg ? `${dmg} Melee Attack` : 'Melee Attack' };
+}
+
+function getOffenseLabel(ctx: MechanicsContext): React.ReactNode {
+  const stat = ctx.characterClass ? CLASS_PRIMARY_STAT[ctx.characterClass] : null;
+  if (ctx.attackType === 'spell') {
+    return <>{stat || 'STAT'} + proficiency <VsTag text="vs AC" /></>;
+  }
+  if (ctx.attackType === 'save') {
+    const saveType = ((ctx as any).saveType as string || 'WIS').toUpperCase();
+    return <>DC 8 + Prof + {stat || 'STAT'} mod <VsTag text={`${saveType} save`} /></>;
+  }
+  // weapon or default
+  return <>STR/DEX + proficiency <VsTag text="vs AC" /></>;
+}
+
+function ClassMechanics({ effects, cooldown, ctx }: { effects: Record<string, unknown>; cooldown?: number; ctx: MechanicsContext }) {
   const type = effects.type as string | undefined;
   if (!type) return <GenericEffects effects={effects} />;
+  const ctxWithSave = { ...ctx, saveType: effects.saveType as string | undefined };
 
   return (
     <div className={`bg-realm-bg-900/50 border-l-2 ${getBorderColor(undefined, effects)} rounded-r px-3 py-2 space-y-1`}>
       <div className="text-[10px] font-display text-realm-text-muted uppercase tracking-wider mb-1">Combat Mechanics</div>
 
-      {type === 'damage' && <DamageMechanics effects={effects} />}
-      {type === 'multi_attack' && <MultiAttackMechanics effects={effects} />}
-      {type === 'aoe_damage' && <AoeDamageMechanics effects={effects} />}
+      {type === 'damage' && <DamageMechanics effects={effects} ctx={ctxWithSave} />}
+      {type === 'multi_attack' && <MultiAttackMechanics effects={effects} ctx={ctxWithSave} />}
+      {type === 'aoe_damage' && <AoeDamageMechanics effects={effects} ctx={ctxWithSave} />}
       {type === 'buff' && <BuffMechanics effects={effects} />}
-      {type === 'damage_status' && <DamageStatusMechanics effects={effects} />}
+      {type === 'damage_status' && <DamageStatusMechanics effects={effects} ctx={ctxWithSave} />}
       {type === 'status' && <StatusMechanics effects={effects} />}
       {type === 'damage_save' && <DamageSaveMechanics effects={effects} />}
       {type === 'cc' && <CcMechanics effects={effects} />}
@@ -213,40 +247,48 @@ function ClassMechanics({ effects, cooldown }: { effects: Record<string, unknown
   );
 }
 
-function DamageMechanics({ effects }: { effects: Record<string, unknown> }) {
+function DamageMechanics({ effects, ctx }: { effects: Record<string, unknown>; ctx: MechanicsContext }) {
   const e = effects;
+  const { icon, label } = getAttackLabel(ctx);
   return (
     <>
-      <MechanicsLine label="Type">{'\u2694\uFE0F'} Melee Damage</MechanicsLine>
+      <MechanicsLine label="Type">{icon} {label}</MechanicsLine>
       {e.bonusDamage != null && <MechanicsLine label="Bonus Dmg">+{String(e.bonusDamage)}</MechanicsLine>}
+      {e.diceCount != null && e.diceSides != null && (
+        <MechanicsLine label="Damage"><DiceFormula formula={`${e.diceCount}d${e.diceSides}`} /></MechanicsLine>
+      )}
       {e.selfDefenseDebuff != null && (
         <MechanicsLine label="Side Effect"><span className="text-red-400">{String(e.selfDefenseDebuff)} AC (self)</span></MechanicsLine>
       )}
-      <MechanicsLine label="Offense">STR/DEX + proficiency <VsTag text="vs AC" /></MechanicsLine>
+      <MechanicsLine label="Offense">{getOffenseLabel(ctx)}</MechanicsLine>
     </>
   );
 }
 
-function MultiAttackMechanics({ effects }: { effects: Record<string, unknown> }) {
+function MultiAttackMechanics({ effects, ctx }: { effects: Record<string, unknown>; ctx: MechanicsContext }) {
   const strikes = Number(effects.strikes ?? 2);
   const penalty = effects.accuracyPenalty != null ? Number(effects.accuracyPenalty) : 0;
+  const { icon } = getAttackLabel(ctx);
   return (
     <>
-      <MechanicsLine label="Type">{'\u2694\uFE0F'} Multi-Strike ({strikes} hits)</MechanicsLine>
+      <MechanicsLine label="Type">{icon} Multi-Strike ({strikes} hits)</MechanicsLine>
       {penalty !== 0 && <MechanicsLine label="Accuracy">{penalty} per strike</MechanicsLine>}
-      <MechanicsLine label="Defense"><VsTag text="vs AC" /> (each strike)</MechanicsLine>
+      <MechanicsLine label="Offense">{getOffenseLabel(ctx)} (each strike)</MechanicsLine>
     </>
   );
 }
 
-function AoeDamageMechanics({ effects }: { effects: Record<string, unknown> }) {
+function AoeDamageMechanics({ effects, ctx }: { effects: Record<string, unknown>; ctx: MechanicsContext }) {
   const targets = effects.targets as string | undefined;
-  const mult = effects.damageMultiplier != null ? Math.round(Number(effects.damageMultiplier) * 100) : 100;
+  const mult = effects.damageMultiplier != null ? Math.round(Number(effects.damageMultiplier) * 100) : null;
+  const dice = effects.diceCount && effects.diceSides ? `${effects.diceCount}d${effects.diceSides}` : null;
+  const { icon, label } = getAttackLabel(ctx);
   return (
     <>
-      <MechanicsLine label="Type">{'\u2694\uFE0F'} AoE Attack{targets ? ` \u2014 ${targets.replace(/_/g, ' ')}` : ''}</MechanicsLine>
-      <MechanicsLine label="Damage">{mult}% weapon damage</MechanicsLine>
-      <MechanicsLine label="Defense"><VsTag text="vs AC" /> (each target)</MechanicsLine>
+      <MechanicsLine label="Type">{icon} AoE {label}{targets ? ` \u2014 ${targets.replace(/_/g, ' ')}` : ''}</MechanicsLine>
+      {dice && <MechanicsLine label="Damage"><DiceFormula formula={dice} /></MechanicsLine>}
+      {mult != null && <MechanicsLine label="Damage">{mult}% weapon damage</MechanicsLine>}
+      <MechanicsLine label="Offense">{getOffenseLabel(ctx)} (each target)</MechanicsLine>
     </>
   );
 }
@@ -276,20 +318,26 @@ function BuffMechanics({ effects }: { effects: Record<string, unknown> }) {
   );
 }
 
-function DamageStatusMechanics({ effects }: { effects: Record<string, unknown> }) {
+function DamageStatusMechanics({ effects, ctx }: { effects: Record<string, unknown>; ctx: MechanicsContext }) {
   const e = effects;
   const status = e.statusEffect as string | undefined;
   const statusDur = e.statusDuration as number | undefined;
-  const saveStat = (e.saveStat as string | undefined) ?? (status ? deriveSaveDefault(status) : 'CON');
+  const saveStat = (e.saveStat as string | undefined) ?? (e.saveType as string | undefined) ?? (status ? deriveSaveDefault(status) : 'CON');
+  const { icon, label } = getAttackLabel(ctx);
   return (
     <>
-      <MechanicsLine label="Type">{'\u2694\uFE0F'} Attack + Status</MechanicsLine>
+      <MechanicsLine label="Type">{icon} {label} + Status</MechanicsLine>
       {e.damage != null && <MechanicsLine label="Bonus Dmg">+{String(e.damage)}</MechanicsLine>}
+      {e.diceCount != null && e.diceSides != null && (
+        <MechanicsLine label="Damage"><DiceFormula formula={`${e.diceCount}d${e.diceSides}`} /></MechanicsLine>
+      )}
       {status && (
         <MechanicsLine label="Applies"><StatusBadge effect={status} duration={statusDur} /></MechanicsLine>
       )}
-      <MechanicsLine label="Offense">Weapon attack <VsTag text="vs AC" /> (damage)</MechanicsLine>
-      <MechanicsLine label="Status Save"><VsTag text={`${saveStat} save`} />{!e.saveStat && <span className="text-realm-text-muted text-[10px] ml-1">(estimated)</span>}</MechanicsLine>
+      <MechanicsLine label="Offense">{getOffenseLabel(ctx)}</MechanicsLine>
+      {ctx.attackType !== 'save' && (
+        <MechanicsLine label="Status Save"><VsTag text={`${saveStat.toUpperCase()} save`} />{!e.saveStat && !e.saveType && <span className="text-realm-text-muted text-[10px] ml-1">(estimated)</span>}</MechanicsLine>
+      )}
     </>
   );
 }
@@ -682,12 +730,12 @@ export default function AbilityCard({
 
           {/* Class ability mechanics */}
           {abilitySource === 'class' && effects && Object.keys(effects).length > 0 && (
-            <ClassMechanics effects={effects} cooldown={cooldown} />
+            <ClassMechanics effects={effects} cooldown={cooldown} ctx={{ attackType: attackType ?? undefined, damageType: damageType ?? undefined, characterClass }} />
           )}
 
           {/* Fallback: no source or no structured data — show raw effects */}
           {!abilitySource && effects && Object.keys(effects).length > 0 && (
-            <ClassMechanics effects={effects} cooldown={cooldown} />
+            <ClassMechanics effects={effects} cooldown={cooldown} ctx={{ attackType: attackType ?? undefined, damageType: damageType ?? undefined, characterClass }} />
           )}
         </div>
       )}
