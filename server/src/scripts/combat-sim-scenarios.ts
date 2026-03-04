@@ -13,6 +13,7 @@ import type {
   SpellSlots,
   StatusEffect,
   StatusEffectName,
+  CombatDamageType,
 } from '@shared/types/combat';
 import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
 
@@ -113,6 +114,7 @@ function makeSpell(
     statusDuration?: number;
     requiresSave?: boolean;
     saveType?: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
+    damageType?: CombatDamageType;
   } = {},
 ): SpellInfo {
   return {
@@ -128,6 +130,7 @@ function makeSpell(
     statusDuration: opts.statusDuration,
     requiresSave: opts.requiresSave ?? false,
     saveType: opts.saveType,
+    damageType: opts.damageType,
   };
 }
 
@@ -187,15 +190,16 @@ const spellVsMelee: ScenarioDef = {
       weapon: makeWeapon('Quarterstaff', 1, 6, 'str', 0, 0, 'BLUDGEONING'),
       spellSlots: { 1: 4, 2: 3, 3: 2 },
       spells: [
-        makeSpell('Fire Bolt', 0, 'int', 'damage', 2, 10, { requiresSave: false }),
+        makeSpell('Fire Bolt', 0, 'int', 'damage', 2, 10, { requiresSave: false, damageType: 'FIRE' }),
         makeSpell('Burning Hands', 1, 'int', 'damage_status', 3, 6, {
           requiresSave: true,
           saveType: 'dex',
           statusEffect: 'burning',
           statusDuration: 2,
+          damageType: 'FIRE',
         }),
-        makeSpell('Scorching Ray', 2, 'int', 'damage', 4, 6, { requiresSave: false }),
-        makeSpell('Fireball', 3, 'int', 'damage', 8, 6, { requiresSave: true, saveType: 'dex' }),
+        makeSpell('Scorching Ray', 2, 'int', 'damage', 4, 6, { requiresSave: false, damageType: 'FIRE' }),
+        makeSpell('Fireball', 3, 'int', 'damage', 8, 6, { requiresSave: true, saveType: 'dex', damageType: 'FIRE' }),
       ],
       race: 'elf',
       characterClass: 'Mage',
@@ -242,16 +246,19 @@ const statusEffects: ScenarioDef = {
           saveType: 'wis',
           statusEffect: 'poisoned',
           statusDuration: 3,
+          damageType: 'NECROTIC',
         }),
         makeSpell('Hellfire', 2, 'cha', 'damage_status', 3, 6, {
           requiresSave: true,
           saveType: 'dex',
           statusEffect: 'burning',
           statusDuration: 3,
+          damageType: 'FIRE',
         }),
         makeSpell('Blight', 3, 'cha', 'damage', 5, 8, {
           requiresSave: true,
           saveType: 'con',
+          damageType: 'NECROTIC',
         }),
       ],
       race: 'nethkin',
@@ -373,6 +380,7 @@ const racialAbilities: ScenarioDef = {
         makeSpell('Fire Breath', 1, 'cha', 'damage', 3, 6, {
           requiresSave: true,
           saveType: 'dex',
+          damageType: 'FIRE',
         }),
       ],
       race: 'drakonid',
@@ -425,12 +433,13 @@ const teamFight: ScenarioDef = {
       weapon: makeWeapon('Staff', 1, 6, 'str', 0, 0, 'BLUDGEONING'),
       spellSlots: { 1: 4, 2: 3, 3: 2 },
       spells: [
-        makeSpell('Ice Shard', 1, 'int', 'damage', 2, 8),
+        makeSpell('Ice Shard', 1, 'int', 'damage', 2, 8, { damageType: 'COLD' }),
         makeSpell('Frost Nova', 2, 'int', 'damage_status', 3, 6, {
           requiresSave: true,
           saveType: 'con',
           statusEffect: 'frozen',
           statusDuration: 1,
+          damageType: 'COLD',
         }),
       ],
       race: 'elf',
@@ -505,12 +514,13 @@ const teamFight: ScenarioDef = {
       weapon: makeWeapon('Dagger', 1, 4, 'dex'),
       spellSlots: { 1: 4, 2: 3, 3: 2 },
       spells: [
-        makeSpell('Necrotic Bolt', 1, 'int', 'damage', 2, 8, { requiresSave: false }),
+        makeSpell('Necrotic Bolt', 1, 'int', 'damage', 2, 8, { requiresSave: false, damageType: 'NECROTIC' }),
         makeSpell('Wither', 2, 'int', 'damage_status', 3, 6, {
           requiresSave: true,
           saveType: 'con',
           statusEffect: 'weakened',
           statusDuration: 2,
+          damageType: 'NECROTIC',
         }),
       ],
       race: 'human',
@@ -805,12 +815,13 @@ const companion: ScenarioDef = {
       weapon: makeWeapon('Staff', 1, 6, 'str', 0, 0, 'BLUDGEONING'),
       spellSlots: { 1: 3, 2: 2 },
       spells: [
-        makeSpell('Dark Bolt', 1, 'int', 'damage', 2, 8),
+        makeSpell('Dark Bolt', 1, 'int', 'damage', 2, 8, { damageType: 'NECROTIC' }),
         makeSpell('Curse', 2, 'int', 'damage_status', 2, 6, {
           requiresSave: true,
           saveType: 'wis',
           statusEffect: 'weakened',
           statusDuration: 2,
+          damageType: 'NECROTIC',
         }),
       ],
       neverRetreat: true,
@@ -916,12 +927,13 @@ const specialAbilities: ScenarioDef = {
       weapon: makeWeapon('Dagger', 1, 4, 'dex'),
       spellSlots: { 1: 3, 2: 2 },
       spells: [
-        makeSpell('Shadow Bolt', 1, 'int', 'damage', 2, 8),
+        makeSpell('Shadow Bolt', 1, 'int', 'damage', 2, 8, { damageType: 'NECROTIC' }),
         makeSpell('Fear', 2, 'int', 'damage_status', 2, 6, {
           requiresSave: true,
           saveType: 'wis',
           statusEffect: 'weakened',
           statusDuration: 2,
+          damageType: 'PSYCHIC',
         }),
       ],
       neverRetreat: true,
@@ -1107,12 +1119,13 @@ const drainHealLoop: ScenarioDef = {
       weapon: makeWeapon('Staff', 1, 6, 'str', 0, 0, 'BLUDGEONING'),
       spellSlots: { 1: 4, 2: 3 },
       spells: [
-        makeSpell('Shadow Bolt', 1, 'int', 'damage', 2, 8),
+        makeSpell('Shadow Bolt', 1, 'int', 'damage', 2, 8, { damageType: 'NECROTIC' }),
         makeSpell('Blight', 2, 'int', 'damage_status', 3, 6, {
           requiresSave: true,
           saveType: 'con',
           statusEffect: 'poisoned',
           statusDuration: 2,
+          damageType: 'NECROTIC',
         }),
       ],
       race: 'human',
@@ -1261,8 +1274,9 @@ const dispelAndCleanse: ScenarioDef = {
           saveType: 'wis',
           statusEffect: 'weakened',
           statusDuration: 2,
+          damageType: 'NECROTIC',
         }),
-        makeSpell('Fire Bolt', 0, 'int', 'damage', 2, 6),
+        makeSpell('Fire Bolt', 0, 'int', 'damage', 2, 6, { damageType: 'FIRE' }),
       ],
       race: 'elf',
       characterClass: 'Mage',
@@ -1297,8 +1311,8 @@ const absorptionShield: ScenarioDef = {
       weapon: makeWeapon('Staff', 1, 6, 'str', 0, 0, 'BLUDGEONING'),
       spellSlots: { 1: 4, 2: 3, 3: 2 },
       spells: [
-        makeSpell('Fire Bolt', 0, 'int', 'damage', 2, 6),
-        makeSpell('Scorching Ray', 2, 'int', 'damage', 3, 6),
+        makeSpell('Fire Bolt', 0, 'int', 'damage', 2, 6, { damageType: 'FIRE' }),
+        makeSpell('Scorching Ray', 2, 'int', 'damage', 3, 6, { damageType: 'FIRE' }),
       ],
       race: 'elf',
       characterClass: 'Mage',
@@ -1417,7 +1431,7 @@ const cooldownReduction: ScenarioDef = {
       weapon: makeWeapon('Staff', 1, 6, 'str', 0, 0, 'BLUDGEONING'),
       spellSlots: { 1: 4, 2: 3, 3: 2 },
       spells: [
-        makeSpell('Fire Bolt', 0, 'int', 'damage', 2, 6),
+        makeSpell('Fire Bolt', 0, 'int', 'damage', 2, 6, { damageType: 'FIRE' }),
       ],
       race: 'elf',
       characterClass: 'Mage',
@@ -1600,7 +1614,7 @@ const drainHealFixed: ScenarioDef = {
       ac: 12,
       weapon: makeWeapon('Staff', 1, 6, 'str', 0, 0, 'BLUDGEONING'),
       spellSlots: { 1: 4, 2: 3 },
-      spells: [makeSpell('Shadow Bolt', 1, 'int', 'damage', 2, 8)],
+      spells: [makeSpell('Shadow Bolt', 1, 'int', 'damage', 2, 8, { damageType: 'NECROTIC' })],
       race: 'human',
       characterClass: 'Mage',
       specialization: 'Necromancer',
@@ -1711,7 +1725,7 @@ const ccImmuneBerserker: ScenarioDef = {
       ac: 11,
       weapon: makeWeapon('Staff', 1, 6, 'str', 0, 0, 'BLUDGEONING'),
       spellSlots: { 1: 4, 2: 3, 3: 2 },
-      spells: [makeSpell('Fire Bolt', 0, 'int', 'damage', 2, 6)],
+      spells: [makeSpell('Fire Bolt', 0, 'int', 'damage', 2, 6, { damageType: 'FIRE' })],
       race: 'human',
       characterClass: 'Mage',
       specialization: 'Enchanter',
@@ -1766,7 +1780,7 @@ const guaranteedHitsWarlord: ScenarioDef = {
       ac: 18,
       weapon: makeWeapon('Staff', 1, 6, 'str', 0, 0, 'BLUDGEONING'),
       spellSlots: { 1: 4, 2: 3, 3: 2 },
-      spells: [makeSpell('Fire Bolt', 0, 'int', 'damage', 2, 6)],
+      spells: [makeSpell('Fire Bolt', 0, 'int', 'damage', 2, 6, { damageType: 'FIRE' })],
       race: 'elf',
       neverRetreat: true,
     },

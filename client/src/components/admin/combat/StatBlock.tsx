@@ -11,7 +11,6 @@ interface StatBlockProps {
     attack?: number;
     damage?: string;
     damageType?: string;
-    speed?: number;
   };
   showCombatStats?: boolean;
 }
@@ -56,12 +55,6 @@ export default function StatBlock({ stats, showCombatStats }: StatBlockProps) {
               {stats.damageType && (
                 <span className="text-realm-text-muted ml-1">({stats.damageType.toLowerCase()})</span>
               )}
-            </span>
-          )}
-          {stats.speed !== undefined && (
-            <span>
-              <span className="text-realm-text-muted">SPD</span>{' '}
-              <span className="text-realm-text-secondary font-display">{stats.speed}</span>
             </span>
           )}
         </div>

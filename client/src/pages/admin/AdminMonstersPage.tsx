@@ -6,7 +6,7 @@ import { Search, ChevronDown, ChevronRight, Skull, Shield, Swords, Heart, Coins,
 // Types
 interface MonsterStats {
   hp: number; ac: number; attack: number; damage: string;
-  damageType: string; speed: number;
+  damageType: string;
   str: number; dex: number; con: number;
   int: number; wis: number; cha: number;
 }
@@ -151,10 +151,6 @@ function MonsterCard({ monster }: { monster: Monster }) {
               <div className="bg-realm-bg-900/60 rounded px-3 py-2 border border-realm-border/20">
                 <span className="text-realm-text-muted text-xs">Damage Type</span>
                 <div className="text-realm-text-primary font-semibold">{s.damageType}</div>
-              </div>
-              <div className="bg-realm-bg-900/60 rounded px-3 py-2 border border-realm-border/20">
-                <span className="text-realm-text-muted text-xs">Speed</span>
-                <div className="text-realm-text-primary font-semibold">{s.speed} ft</div>
               </div>
             </div>
           </div>

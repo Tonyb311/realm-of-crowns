@@ -14,7 +14,7 @@
  * Arcane monsters (6) drop Arcane Reagents via itemTemplateName loot entries.
  *
  * Each monster is seeded with the region whose biome matches best.
- * Stats JSON: { hp, ac, attack, damage, speed, str, dex, con, int, wis, cha }
+ * Stats JSON: { hp, ac, attack, damage, str, dex, con, int, wis, cha }
  * LootTable JSON: array of { dropChance, minQty, maxQty, gold, itemTemplateName? }
  */
 
@@ -63,7 +63,6 @@ interface MonsterDef {
     ac: number;
     attack: number;
     damage: string; // e.g. "1d6+2"
-    speed: number;
     str: number;
     dex: number;
     con: number;
@@ -103,7 +102,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Crossroads',
     damageType: 'SLASHING',
     stats: {
-      hp: 24, ac: 12, attack: 3, damage: '1d4+1', speed: 30,
+      hp: 24, ac: 12, attack: 3, damage: '1d4+1',
       str: 8, dex: 14, con: 10, int: 8, wis: 8, cha: 6,
     },
     lootTable: [
@@ -123,7 +122,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The wolf lunges and tries to knock the target prone.',
     }],
     stats: {
-      hp: 15, ac: 11, attack: 4, damage: '1d6+1', speed: 40,
+      hp: 15, ac: 11, attack: 4, damage: '1d6+1',
       str: 12, dex: 14, con: 12, int: 3, wis: 12, cha: 6,
     },
     lootTable: [
@@ -137,7 +136,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Verdant Heartlands',
     damageType: 'SLASHING',
     stats: {
-      hp: 20, ac: 12, attack: 4, damage: '1d6+2', speed: 30,
+      hp: 20, ac: 12, attack: 4, damage: '1d6+2',
       str: 12, dex: 12, con: 12, int: 10, wis: 10, cha: 10,
     },
     lootTable: [
@@ -157,7 +156,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The rat\'s filthy bite risks spreading disease.',
     }],
     stats: {
-      hp: 18, ac: 12, attack: 3, damage: '1d4+1', speed: 30,
+      hp: 18, ac: 12, attack: 3, damage: '1d4+1',
       str: 6, dex: 14, con: 8, int: 2, wis: 10, cha: 4,
     },
     lootTable: [
@@ -174,7 +173,7 @@ export const MONSTERS: MonsterDef[] = [
     immunities: ['LIGHTNING'],
     critImmunity: true,
     stats: {
-      hp: 15, ac: 8, attack: 2, damage: '1d6', speed: 10,
+      hp: 15, ac: 8, attack: 2, damage: '1d6',
       str: 12, dex: 4, con: 16, int: 1, wis: 6, cha: 1,
     },
     lootTable: [
@@ -193,7 +192,7 @@ export const MONSTERS: MonsterDef[] = [
     immunities: ['POISON'],
     conditionImmunities: ['poisoned'],
     stats: {
-      hp: 40, ac: 15, attack: 5, damage: '1d10+3', speed: 30,
+      hp: 40, ac: 15, attack: 5, damage: '1d10+3',
       str: 14, dex: 12, con: 12, int: 6, wis: 8, cha: 5,
     },
     lootTable: [
@@ -213,7 +212,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The orc warrior attacks twice with its greataxe.',
     }],
     stats: {
-      hp: 46, ac: 15, attack: 6, damage: '1d10+3', speed: 30,
+      hp: 46, ac: 15, attack: 6, damage: '1d10+3',
       str: 16, dex: 12, con: 14, int: 8, wis: 10, cha: 8,
     },
     lootTable: [
@@ -241,7 +240,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 38, ac: 13, attack: 6, damage: '1d10+3', speed: 30,
+      hp: 38, ac: 13, attack: 6, damage: '1d10+3',
       str: 14, dex: 16, con: 12, int: 2, wis: 12, cha: 4,
     },
     lootTable: [
@@ -260,7 +259,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The dire wolf pounces, trying to knock its prey to the ground.',
     }],
     stats: {
-      hp: 45, ac: 14, attack: 7, damage: '2d8+3', speed: 50,
+      hp: 45, ac: 14, attack: 7, damage: '2d8+3',
       str: 16, dex: 14, con: 14, int: 3, wis: 12, cha: 6,
     },
     lootTable: [
@@ -287,7 +286,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 75, ac: 12, attack: 7, damage: '2d6+4', speed: 30,
+      hp: 75, ac: 12, attack: 7, damage: '2d6+4',
       str: 18, dex: 8, con: 18, int: 6, wis: 8, cha: 6,
     },
     lootTable: [
@@ -313,7 +312,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The golem slams with both massive fists.',
     }],
     stats: {
-      hp: 140, ac: 19, attack: 8, damage: '2d10+5', speed: 20,
+      hp: 140, ac: 19, attack: 8, damage: '2d10+5',
       str: 22, dex: 6, con: 20, int: 3, wis: 8, cha: 1,
     },
     lootTable: [
@@ -360,7 +359,7 @@ export const MONSTERS: MonsterDef[] = [
       ],
     }],
     stats: {
-      hp: 150, ac: 18, attack: 10, damage: '2d10+6', speed: 40,
+      hp: 150, ac: 18, attack: 10, damage: '2d10+6',
       str: 20, dex: 12, con: 18, int: 14, wis: 12, cha: 16,
     },
     lootTable: [
@@ -381,7 +380,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The hydra attacks with all five of its heads.',
     }],
     stats: {
-      hp: 160, ac: 15, attack: 8, damage: '3d6+4', speed: 30,
+      hp: 160, ac: 15, attack: 8, damage: '3d6+4',
       str: 20, dex: 10, con: 20, int: 4, wis: 10, cha: 6,
     },
     lootTable: [
@@ -438,7 +437,7 @@ export const MONSTERS: MonsterDef[] = [
       ],
     }],
     stats: {
-      hp: 130, ac: 17, attack: 10, damage: '2d8+6', speed: 40,
+      hp: 130, ac: 17, attack: 10, damage: '2d8+6',
       str: 18, dex: 14, con: 16, int: 14, wis: 12, cha: 18,
     },
     lootTable: [
@@ -510,7 +509,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 120, ac: 17, attack: 9, damage: '3d6+5', speed: 30,
+      hp: 120, ac: 17, attack: 9, damage: '3d6+5',
       str: 10, dex: 14, con: 14, int: 22, wis: 16, cha: 16,
     },
     lootTable: [
@@ -532,7 +531,7 @@ export const MONSTERS: MonsterDef[] = [
     resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
     critImmunity: true,
     stats: {
-      hp: 16, ac: 13, attack: 3, damage: '1d6+1', speed: 40,
+      hp: 16, ac: 13, attack: 3, damage: '1d6+1',
       str: 3, dex: 16, con: 8, int: 14, wis: 12, cha: 10,
     },
     lootTable: [
@@ -553,7 +552,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The wraith drains life force with its touch.',
     }],
     stats: {
-      hp: 22, ac: 12, attack: 4, damage: '1d6+2', speed: 25,
+      hp: 22, ac: 12, attack: 4, damage: '1d6+2',
       str: 6, dex: 14, con: 12, int: 12, wis: 14, cha: 8,
     },
     lootTable: [
@@ -578,7 +577,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The elemental unleashes arcane fire that burns continuously.',
     }],
     stats: {
-      hp: 48, ac: 14, attack: 6, damage: '1d10+3', speed: 30,
+      hp: 48, ac: 14, attack: 6, damage: '1d10+3',
       str: 10, dex: 12, con: 14, int: 18, wis: 14, cha: 10,
     },
     lootTable: [
@@ -607,7 +606,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 45, ac: 15, attack: 7, damage: '2d6+3', speed: 35,
+      hp: 45, ac: 15, attack: 7, damage: '2d6+3',
       str: 8, dex: 16, con: 12, int: 16, wis: 16, cha: 14,
     },
     lootTable: [
@@ -636,7 +635,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 110, ac: 17, attack: 9, damage: '2d8+5', speed: 40,
+      hp: 110, ac: 17, attack: 9, damage: '2d8+5',
       str: 16, dex: 18, con: 16, int: 16, wis: 14, cha: 6,
     },
     lootTable: [
@@ -675,7 +674,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 135, ac: 17, attack: 10, damage: '2d10+5', speed: 35,
+      hp: 135, ac: 17, attack: 10, damage: '2d10+5',
       str: 14, dex: 16, con: 16, int: 20, wis: 18, cha: 18,
     },
     lootTable: [
@@ -705,7 +704,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 130, ac: 15, attack: 9, damage: '2d8+5', speed: 60,
+      hp: 130, ac: 15, attack: 9, damage: '2d8+5',
       str: 19, dex: 12, con: 16, int: 5, wis: 12, cha: 6,
     },
     lootTable: [
@@ -736,7 +735,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 150, ac: 16, attack: 10, damage: '2d10+5', speed: 20,
+      hp: 150, ac: 16, attack: 10, damage: '2d10+5',
       str: 22, dex: 8, con: 20, int: 10, wis: 16, cha: 10,
     },
     lootTable: [
@@ -765,7 +764,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 140, ac: 15, attack: 10, damage: '2d8+5', speed: 40,
+      hp: 140, ac: 15, attack: 10, damage: '2d8+5',
       str: 19, dex: 11, con: 18, int: 3, wis: 14, cha: 10,
     },
     lootTable: [
@@ -802,7 +801,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 120, ac: 16, attack: 10, damage: '2d8+4', speed: 30,
+      hp: 120, ac: 16, attack: 10, damage: '2d8+4',
       str: 11, dex: 12, con: 14, int: 22, wis: 18, cha: 17,
     },
     lootTable: [
@@ -851,7 +850,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 155, ac: 17, attack: 11, damage: '2d8+5', speed: 40,
+      hp: 155, ac: 17, attack: 11, damage: '2d8+5',
       str: 18, dex: 18, con: 16, int: 17, wis: 15, cha: 20,
     },
     lootTable: [
@@ -884,7 +883,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 175, ac: 16, attack: 11, damage: '3d8+6', speed: 40,
+      hp: 175, ac: 16, attack: 11, damage: '3d8+6',
       str: 23, dex: 9, con: 21, int: 9, wis: 10, cha: 12,
     },
     lootTable: [
@@ -915,7 +914,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 165, ac: 16, attack: 11, damage: '2d10+5', speed: 50,
+      hp: 165, ac: 16, attack: 11, damage: '2d10+5',
       str: 22, dex: 14, con: 20, int: 4, wis: 12, cha: 6,
     },
     lootTable: [
@@ -948,7 +947,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 200, ac: 20, attack: 12, damage: '3d8+6', speed: 25,
+      hp: 200, ac: 20, attack: 12, damage: '3d8+6',
       str: 24, dex: 9, con: 20, int: 3, wis: 11, cha: 1,
     },
     lootTable: [
@@ -980,7 +979,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 185, ac: 17, attack: 12, damage: '3d8+7', speed: 40,
+      hp: 185, ac: 17, attack: 12, damage: '3d8+7',
       str: 25, dex: 9, con: 23, int: 10, wis: 14, cha: 13,
     },
     lootTable: [
@@ -1030,7 +1029,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 210, ac: 18, attack: 13, damage: '3d8+7', speed: 50,
+      hp: 210, ac: 18, attack: 13, damage: '3d8+7',
       str: 28, dex: 7, con: 22, int: 1, wis: 8, cha: 4,
     },
     lootTable: [
@@ -1069,7 +1068,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 180, ac: 18, attack: 12, damage: '2d10+5', speed: 20,
+      hp: 180, ac: 18, attack: 12, damage: '2d10+5',
       str: 10, dex: 14, con: 18, int: 20, wis: 15, cha: 17,
     },
     lootTable: [
@@ -1103,7 +1102,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 145, ac: 17, attack: 11, damage: '2d8+5', speed: 60,
+      hp: 145, ac: 17, attack: 11, damage: '2d8+5',
       str: 16, dex: 18, con: 16, int: 18, wis: 16, cha: 20,
     },
     lootTable: [
@@ -1162,7 +1161,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 230, ac: 20, attack: 14, damage: '3d8+7', speed: 30,
+      hp: 230, ac: 20, attack: 14, damage: '3d8+7',
       str: 22, dex: 11, con: 20, int: 14, wis: 16, cha: 20,
     },
     lootTable: [
@@ -1221,7 +1220,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 280, ac: 21, attack: 15, damage: '3d10+8', speed: 50,
+      hp: 280, ac: 21, attack: 15, damage: '3d10+8',
       str: 29, dex: 14, con: 22, int: 16, wis: 18, cha: 20,
     },
     lootTable: [
@@ -1263,7 +1262,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 290, ac: 20, attack: 14, damage: '3d10+8', speed: 40,
+      hp: 290, ac: 20, attack: 14, damage: '3d10+8',
       str: 26, dex: 10, con: 22, int: 3, wis: 12, cha: 6,
     },
     lootTable: [
@@ -1300,7 +1299,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 310, ac: 20, attack: 14, damage: '3d8+8', speed: 30,
+      hp: 310, ac: 20, attack: 14, damage: '3d8+8',
       str: 24, dex: 12, con: 22, int: 10, wis: 14, cha: 8,
     },
     lootTable: [
@@ -1334,7 +1333,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 330, ac: 20, attack: 15, damage: '3d10+8', speed: 40,
+      hp: 330, ac: 20, attack: 15, damage: '3d10+8',
       str: 28, dex: 8, con: 24, int: 3, wis: 12, cha: 6,
     },
     lootTable: [
@@ -1369,7 +1368,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 320, ac: 19, attack: 15, damage: '3d10+8', speed: 50,
+      hp: 320, ac: 19, attack: 15, damage: '3d10+8',
       str: 26, dex: 14, con: 22, int: 4, wis: 12, cha: 6,
     },
     lootTable: [
@@ -1416,7 +1415,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 340, ac: 21, attack: 15, damage: '4d8+9', speed: 30,
+      hp: 340, ac: 21, attack: 15, damage: '4d8+9',
       str: 24, dex: 10, con: 24, int: 3, wis: 14, cha: 8,
     },
     lootTable: [
@@ -1461,7 +1460,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 370, ac: 21, attack: 16, damage: '3d10+9', speed: 40,
+      hp: 370, ac: 21, attack: 16, damage: '3d10+9',
       str: 22, dex: 10, con: 22, int: 22, wis: 20, cha: 18,
     },
     lootTable: [
@@ -1505,7 +1504,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 380, ac: 22, attack: 17, damage: '4d8+9', speed: 60,
+      hp: 380, ac: 22, attack: 17, damage: '4d8+9',
       str: 22, dex: 18, con: 20, int: 16, wis: 18, cha: 22,
     },
     lootTable: [
@@ -1538,7 +1537,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 400, ac: 21, attack: 17, damage: '4d10+9', speed: 80,
+      hp: 400, ac: 21, attack: 17, damage: '4d10+9',
       str: 28, dex: 14, con: 22, int: 4, wis: 14, cha: 10,
     },
     lootTable: [
@@ -1607,7 +1606,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 420, ac: 23, attack: 18, damage: '4d8+10', speed: 30,
+      hp: 420, ac: 23, attack: 18, damage: '4d8+10',
       str: 14, dex: 14, con: 18, int: 24, wis: 22, cha: 20,
     },
     lootTable: [
@@ -1658,7 +1657,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 440, ac: 22, attack: 19, damage: '4d10+10', speed: 80,
+      hp: 440, ac: 22, attack: 19, damage: '4d10+10',
       str: 22, dex: 20, con: 20, int: 14, wis: 18, cha: 22,
     },
     lootTable: [
@@ -1714,7 +1713,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 500, ac: 23, attack: 19, damage: '4d10+11', speed: 40,
+      hp: 500, ac: 23, attack: 19, damage: '4d10+11',
       str: 28, dex: 16, con: 24, int: 20, wis: 18, cha: 24,
     },
     lootTable: [
@@ -1758,7 +1757,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 520, ac: 22, attack: 20, damage: '4d10+11', speed: 40,
+      hp: 520, ac: 22, attack: 20, damage: '4d10+11',
       str: 30, dex: 12, con: 26, int: 18, wis: 16, cha: 14,
     },
     lootTable: [
@@ -1816,7 +1815,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 560, ac: 24, attack: 21, damage: '5d8+12', speed: 60,
+      hp: 560, ac: 24, attack: 21, damage: '5d8+12',
       str: 30, dex: 12, con: 26, int: 18, wis: 16, cha: 22,
     },
     lootTable: [
@@ -1875,7 +1874,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 580, ac: 24, attack: 21, damage: '5d8+12', speed: 40,
+      hp: 580, ac: 24, attack: 21, damage: '5d8+12',
       str: 28, dex: 12, con: 24, int: 24, wis: 20, cha: 18,
     },
     lootTable: [
@@ -1947,7 +1946,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 640, ac: 25, attack: 22, damage: '5d10+14', speed: 40,
+      hp: 640, ac: 25, attack: 22, damage: '5d10+14',
       str: 30, dex: 12, con: 30, int: 4, wis: 14, cha: 14,
     },
     lootTable: [
@@ -2029,7 +2028,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 650, ac: 25, attack: 22, damage: '5d10+14', speed: 30,
+      hp: 650, ac: 25, attack: 22, damage: '5d10+14',
       str: 24, dex: 16, con: 26, int: 28, wis: 24, cha: 26,
     },
     lootTable: [

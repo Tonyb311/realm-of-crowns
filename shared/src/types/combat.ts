@@ -423,6 +423,8 @@ export interface SpellInfo {
   /** Whether the target makes a save to resist */
   requiresSave: boolean;
   saveType?: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
+  /** Damage type for resistance/vulnerability checks */
+  damageType?: CombatDamageType;
 }
 
 export interface ItemInfo {
@@ -716,6 +718,8 @@ export interface CastResult {
   statusDuration?: number;
   targetHpAfter: number;
   targetKilled: boolean;
+  /** Damage type interaction (resistance/vulnerability/immunity) */
+  damageTypeResult?: DamageTypeResult;
 }
 
 export interface DefendResult {

@@ -630,7 +630,7 @@ const handleHot: EffectHandler = (state, actor, target, _enemies, abilityDef, ef
 const handleCleanse: EffectHandler = (state, actor, _target, _enemies, abilityDef, effects) => {
   const removeCount = (effects.removeCount as number) ?? 1;
 
-  const harmfulEffects = ['poisoned', 'stunned', 'burning', 'frozen', 'paralyzed', 'blinded', 'weakened', 'slowed', 'dominated', 'root', 'silence', 'mesmerize', 'skip_turn', 'polymorph'];
+  const harmfulEffects = ['poisoned', 'stunned', 'burning', 'frozen', 'paralyzed', 'blinded', 'weakened', 'slowed', 'dominated', 'root', 'silence', 'mesmerize', 'skip_turn', 'polymorph', 'diseased'];
   const currentActor = state.combatants.find(c => c.id === actor.id)!;
   const toRemove = currentActor.statusEffects
     .filter(e => harmfulEffects.includes(e.name))

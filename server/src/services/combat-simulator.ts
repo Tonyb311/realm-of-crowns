@@ -11,6 +11,7 @@ import type { AbilityDefinition } from '@shared/data/skills';
 import type { WeaponInfo } from '@shared/types/combat';
 import type { CombatPresets, AbilityQueueEntry } from '../services/combat-presets';
 import { createRacialCombatTracker, type RacialCombatTracker } from '../services/racial-combat-abilities';
+import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,7 +43,6 @@ export interface MonsterStats {
   ac: number;
   attack: number;
   damage: string;
-  speed: number;
   str: number;
   dex: number;
   con: number;
@@ -195,10 +195,6 @@ function getTierIndex(level: number): number {
   if (level <= 14) return 2;
   if (level <= 19) return 3;
   return 4;
-}
-
-function getProficiencyBonus(level: number): number {
-  return Math.floor((level - 1) / 4) + 2;
 }
 
 function computeEquipmentAC(className: string, level: number, dexMod: number): number {

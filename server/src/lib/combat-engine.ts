@@ -1481,6 +1481,7 @@ export function resolveCast(
   let statusApplied: StatusEffectName | undefined;
   let statusDuration: number | undefined;
   let targetKilled = false;
+  let spellDamageTypeResult: DamageTypeResult | undefined;
 
   // Determine if spell effect applies (no save required, or save failed)
   const effectApplies = !spell.requiresSave || !saveSucceeded;
@@ -1490,6 +1491,11 @@ export function resolveCast(
       const dmg = damageRoll(spell.diceCount, spell.diceSides, spell.modifier);
       damageRollValue = dmg.total;
       totalDamage = dmg.total;
+      // Apply damage type resistance/vulnerability/immunity
+      if (spell.damageType) {
+        spellDamageTypeResult = applyDamageTypeInteraction(totalDamage, spell.damageType, target);
+        totalDamage = spellDamageTypeResult.finalDamage;
+      }
       target = {
         ...target,
         currentHp: Math.max(0, target.currentHp - totalDamage),
@@ -1530,6 +1536,11 @@ export function resolveCast(
     const dmg = damageRoll(spell.diceCount, spell.diceSides, spell.modifier);
     damageRollValue = dmg.total;
     totalDamage = Math.floor(dmg.total / 2);
+    // Apply damage type resistance/vulnerability/immunity
+    if (spell.damageType) {
+      spellDamageTypeResult = applyDamageTypeInteraction(totalDamage, spell.damageType, target);
+      totalDamage = spellDamageTypeResult.finalDamage;
+    }
     target = {
       ...target,
       currentHp: Math.max(0, target.currentHp - totalDamage),
@@ -1561,6 +1572,7 @@ export function resolveCast(
     statusDuration,
     targetHpAfter: target.currentHp,
     targetKilled,
+    damageTypeResult: spellDamageTypeResult,
   };
 
   const combatants = state.combatants.map((c) => {
@@ -1641,7 +1653,7 @@ export function resolveItem(
     // Remove the first harmful status effect
     const harmful: StatusEffectName[] = [
       'poisoned', 'stunned', 'burning', 'frozen', 'paralyzed', 'blinded', 'weakened', 'slowed',
-      'dominated', 'banished',
+      'dominated', 'banished', 'diseased',
     ];
     const toRemove = target.statusEffects.find((e) => harmful.includes(e.name));
     if (toRemove) {
@@ -1676,12 +1688,25 @@ export function resolveFlee(
   actorId: string
 ): { state: CombatState; result: FleeResult } {
   const actor = state.combatants.find((c) => c.id === actorId)!;
+
+  // Rooted combatants cannot flee
+  const isRooted = actor.statusEffects.some(e => e.name === 'root');
+  if (isRooted) {
+    return {
+      state,
+      result: { type: 'flee', actorId, fleeRoll: 0, fleeDC: 0, success: false },
+    };
+  }
+
   const enemies = state.combatants.filter(
     (c) => c.team !== actor.team && c.isAlive
   );
 
+  // Slowed combatants have harder time fleeing (+5 DC)
+  const slowedPenalty = actor.statusEffects.some(e => e.name === 'slowed') ? 5 : 0;
+
   // DC increases with more enemies (base 10, +2 per extra enemy)
-  const fleeDC = DEFAULT_FLEE_DC + Math.max(0, (enemies.length - 1) * 2);
+  const fleeDC = DEFAULT_FLEE_DC + Math.max(0, (enemies.length - 1) * 2) + slowedPenalty;
   const dexMod = getModifier(actor.stats.dex);
   const check = fleeCheck(dexMod, fleeDC);
 
@@ -2480,8 +2505,16 @@ export function resolveTurn(
     ),
   };
 
-  // Process status effects at start of turn
-  const actor = current.combatants.find((c) => c.id === actorId)!;
+  // Check if stunned/frozen/paralyzed prevents action BEFORE ticking status effects
+  // (a 1-round stun must block the turn before it expires)
+  const actorBeforeTick = current.combatants.find((c) => c.id === actorId)!;
+  const isPrevented = actorBeforeTick.statusEffects.some((e) => {
+    const def = STATUS_EFFECT_DEFS[e.name];
+    return def?.preventsAction;
+  });
+
+  // Process status effects at start of turn (DoT/HoT, duration decrement)
+  const actor = actorBeforeTick;
   const { combatant: updatedActor, ticks } = processStatusEffects(actor);
 
   current = {
@@ -2727,12 +2760,6 @@ export function resolveTurn(
     return current;
   }
 
-  // Check if stunned/frozen/paralyzed prevents action
-  const isPrevented = updatedActor.statusEffects.some((e) => {
-    const def = STATUS_EFFECT_DEFS[e.name];
-    return def?.preventsAction;
-  });
-
   let result: TurnResult;
 
   // Phase 5B MECH-7: Taunt enforcement — override attack/ability target to taunt source
@@ -2787,6 +2814,12 @@ export function resolveTurn(
 
       case 'cast': {
         if (!action.targetId || !context.spell) {
+          result = noOpDefend(actorId);
+          break;
+        }
+        // Silence prevents spellcasting (verbal component)
+        const casterForSilence = current.combatants.find(c => c.id === actorId)!;
+        if (casterForSilence.statusEffects.some(e => e.name === 'silence')) {
           result = noOpDefend(actorId);
           break;
         }
