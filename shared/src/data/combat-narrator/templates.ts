@@ -1006,6 +1006,465 @@ export const MONSTER_FLAVOR: Record<string, MonsterFlavor> = {
       'An ancient presence fills the glade — an elder fey guardian blocks the way!',
     ],
   },
+
+  // ---- Tier 4 (Level 17-30) ----
+
+  'Wyvern': {
+    attack: [
+      'dives with talons extended, screeching like tearing metal.',
+      'snaps its jaws and lashes with the barbed tail in one fluid motion.',
+      'swoops low, raking claws across you before banking away.',
+    ],
+    wounded: [
+      'The wyvern shrieks, one wing trailing blood as it circles unsteadily.',
+      'Venom drips from its stinger as the wyvern hisses in pain.',
+    ],
+    opening: [
+      'A shadow blots out the sun — a wyvern descends, talons gleaming!',
+      'A piercing screech echoes off the peaks as a wyvern dives from above!',
+    ],
+  },
+  'Treant': {
+    attack: [
+      'swings a massive limb with the force of a falling oak.',
+      'slams root-fists into the ground, the shockwave reaching you.',
+      'lashes with gnarled branches that crack like thunder.',
+    ],
+    wounded: [
+      'Sap bleeds from deep gashes in the treant\'s bark, hissing in the air.',
+      'Splintered wood groans as the treant sways but holds firm.',
+    ],
+    opening: [
+      'What you mistook for a tree begins to move — an ancient treant awakens!',
+      'The forest stirs as a towering treant uproots itself and blocks the path!',
+    ],
+  },
+  'Chimera': {
+    attack: [
+      'strikes with three heads at once — lion, goat, and dragon.',
+      'rakes with lion claws while the dragon head snaps at your flank.',
+      'charges with horns lowered, all three maws snarling.',
+    ],
+    wounded: [
+      'The chimera\'s heads snap at each other in agitated pain.',
+      'One head droops but the other two snarl with redoubled fury.',
+    ],
+    opening: [
+      'A beast of three heads stalks from the badlands — lion, goat, and dragon fused!',
+      'The ground shakes as a chimera charges from the wastes, fire dripping from its jaws!',
+    ],
+  },
+  'Mind Flayer': {
+    attack: [
+      'extends writhing tentacles, psychic pressure crushing your thoughts.',
+      'locks its alien eyes on you — pain explodes behind your temples.',
+      'reaches with pale fingers, reality bending around its touch.',
+    ],
+    wounded: [
+      'The mind flayer\'s tentacles twitch erratically, ichor leaking from its skull.',
+      'A psychic shriek tears through the air as the creature staggers.',
+    ],
+    opening: [
+      'The air thickens with dread — a mind flayer glides from the darkness, tentacles unfurling!',
+      'Your thoughts scatter as an alien presence invades — a mind flayer emerges!',
+    ],
+  },
+  'Vampire Lord': {
+    attack: [
+      'closes the distance in a blur, fangs bared and claws raking.',
+      'strikes with preternatural speed, draining warmth with every touch.',
+      'slashes with clawed hands wreathed in necrotic shadow.',
+    ],
+    wounded: [
+      'The vampire lord hisses, pale skin cracking to reveal the monster beneath.',
+      'Dark blood seeps from the wound but the vampire\'s eyes burn with cold hunger.',
+    ],
+    opening: [
+      'A figure in tattered noble finery steps from the shadows, eyes burning crimson!',
+      'The air chills as a vampire lord materializes, cape billowing in a phantom wind!',
+    ],
+  },
+  'Frost Giant': {
+    attack: [
+      'brings a colossal fist down like an avalanche.',
+      'swings a frozen greatsword that trails crystals of ice.',
+      'hurls a boulder of packed ice with devastating accuracy.',
+    ],
+    wounded: [
+      'The frost giant bellows, shaking snow from the mountainside.',
+      'Ice-blue blood stains the snow as the giant snarls defiantly.',
+    ],
+    opening: [
+      'The ground trembles as a frost giant strides through the blizzard, weapon raised!',
+      'A massive silhouette looms through the snow — a frost giant blocks the mountain pass!',
+    ],
+  },
+  'Sea Serpent': {
+    attack: [
+      'lunges from the surf, massive jaws snapping shut with crushing force.',
+      'coils around you with muscle like ship cables, squeezing relentlessly.',
+      'thrashes its tail across the shallows, sending a wall of water crashing.',
+    ],
+    wounded: [
+      'The serpent writhes, dark blood swirling in the churning water.',
+      'Scales split along the serpent\'s flank but it rears up again.',
+    ],
+    opening: [
+      'The sea erupts — a serpent rises from the waves, seawater streaming from its maw!',
+      'A shadow beneath the surf grows massive — a sea serpent bursts from the shallows!',
+    ],
+  },
+  'Iron Golem': {
+    attack: [
+      'brings an iron fist crashing down, cratering the ground.',
+      'swings a massive arm with grinding mechanical precision.',
+      'slams forward with unstoppable momentum, metal screaming.',
+    ],
+    wounded: [
+      'Sparks fly from deep dents in the golem\'s iron shell.',
+      'The golem\'s furnace core flickers, toxic smoke venting from cracks.',
+    ],
+    opening: [
+      'Metal groans as an iron golem activates, furnace eyes blazing to life!',
+      'A construct of black iron rises from dormancy, each step shaking the ground!',
+    ],
+  },
+  'Fire Giant': {
+    attack: [
+      'swings a blade wreathed in flames that leave trails of molten rock.',
+      'brings a massive burning fist down with forge-hammer force.',
+      'hurls a glob of magma that splashes on impact.',
+    ],
+    wounded: [
+      'The giant\'s molten veins pulse brighter as it roars in fury.',
+      'Cracks in the giant\'s obsidian skin glow with inner fire.',
+    ],
+    opening: [
+      'Heat shimmers as a fire giant strides from the volcanic haze, blade ablaze!',
+      'The earth splits and a fire giant rises, wreathed in smoke and cinder!',
+    ],
+  },
+  'Purple Worm': {
+    attack: [
+      'bursts from the earth, maw gaping wide enough to swallow a horse.',
+      'slams its massive tail sideways, cratering the ground.',
+      'lunges forward with terrifying speed, mandibles grinding stone.',
+    ],
+    wounded: [
+      'The worm thrashes in agony, acid spraying from its wounds.',
+      'Segments of the worm\'s hide split, revealing pulsing innards.',
+    ],
+    opening: [
+      'The ground collapses — a purple worm erupts from below, shaking the very earth!',
+      'A tremor becomes a roar as a massive worm tears through the stone!',
+    ],
+  },
+  'Beholder': {
+    attack: [
+      'fires beams of destruction from its writhing eye stalks.',
+      'focuses its central eye — reality warps in a cone of annihilation.',
+      'swivels multiple eye stalks, each crackling with different energy.',
+    ],
+    wounded: [
+      'Several eye stalks droop, sparking and twitching erratically.',
+      'The beholder spins wildly, firing beams in desperate arcs.',
+    ],
+    opening: [
+      'A floating sphere of eyes drifts from the cavern darkness, central eye blazing!',
+      'Madness given form — a beholder rises into view, eye stalks writhing!',
+    ],
+  },
+  'Fey Dragon': {
+    attack: [
+      'rakes with iridescent claws that shimmer between planes.',
+      'exhales a prismatic wave of raw fey magic.',
+      'blinks through a dimensional fold and strikes from behind.',
+    ],
+    wounded: [
+      'The dragon\'s scales flicker between visible and invisible.',
+      'Shimmering blood evaporates into motes of light as the dragon hisses.',
+    ],
+    opening: [
+      'The air sparkles as a dragon of living color phases into existence!',
+      'A ripple in the fey veil parts — a dragon of prismatic scales emerges!',
+    ],
+  },
+  'Death Knight': {
+    attack: [
+      'brings its cursed blade down in an arc of black flame.',
+      'strikes with precision born of centuries of undying warfare.',
+      'channels necrotic energy through its sword, each blow draining warmth.',
+    ],
+    wounded: [
+      'Dark energy pours from cracks in the death knight\'s armor.',
+      'The death knight staggers but its hollow eyes burn brighter with hatred.',
+    ],
+    opening: [
+      'Rusted armor draped in shadow — a death knight strides forth, sword blazing with hellfire!',
+      'The swamp mist parts for a figure of dread — a death knight, its aura suffocating!',
+    ],
+  },
+  'Storm Giant': {
+    attack: [
+      'brings a lightning-wreathed greatsword crashing down like a thunderbolt.',
+      'hurls a boulder that cracks the air with a sonic boom.',
+      'calls down a bolt of raw lightning from the gathering storm.',
+    ],
+    wounded: [
+      'The giant\'s storm aura flickers but then surges with renewed fury.',
+      'Thunder rumbles as the storm giant roars, bleeding ozone and light.',
+    ],
+    opening: [
+      'Storm clouds gather as a giant descends the peak, lightning arcing across its form!',
+      'The sky darkens and the wind howls — a storm giant strides through the tempest!',
+    ],
+  },
+
+  // ---- Tier 5 (Level 31-40) ----
+
+  'Sand Wyrm': {
+    attack: [
+      'erupts from beneath the sand, mandibles snapping shut.',
+      'whips its segmented body in a devastating lateral sweep.',
+      'sprays a torrent of superheated sand from its maw.',
+    ],
+    wounded: [
+      'The wyrm\'s segments crack and grind, sand pouring from the wounds.',
+      'The sand wyrm screeches, burrowing halfway down before surfacing again.',
+    ],
+    opening: [
+      'The dunes shift and collapse — a sand wyrm surges upward, sand cascading from its bulk!',
+      'Tremors shake the ground as something massive moves beneath — a sand wyrm bursts free!',
+    ],
+  },
+  'Kraken Spawn': {
+    attack: [
+      'lashes with barbed tentacles that crack like whips.',
+      'slams multiple arms down simultaneously, each strike like a battering ram.',
+      'wraps a tentacle around you and squeezes with crushing pressure.',
+    ],
+    wounded: [
+      'Ink-dark blood pours from severed tentacles, but more writhe forward.',
+      'The spawn\'s beak gnashes in fury as it retracts wounded limbs.',
+    ],
+    opening: [
+      'The water darkens — massive tentacles rise from the depths, dragging a horror to the surface!',
+      'A kraken spawn heaves itself from the abyss, tentacles flailing!',
+    ],
+  },
+  'War Mammoth': {
+    attack: [
+      'charges with tusks lowered, trampling everything underfoot.',
+      'swings its armored trunk like a battering ram.',
+      'stomps with earth-shattering force, cracks spreading from the impact.',
+    ],
+    wounded: [
+      'The mammoth trumpets in pain, blood streaming from beneath its war-plate.',
+      'The beast\'s charge slows but its fury is undiminished.',
+    ],
+    opening: [
+      'The earth shakes as an armored war mammoth thunders toward you, tusks gleaming!',
+      'A mammoth clad in spiked iron plate charges from the tundra, trumpeting a war cry!',
+    ],
+  },
+  'River Leviathan': {
+    attack: [
+      'lunges from the current, massive jaws engulfing everything in their path.',
+      'whips its tail, sending a wall of water and debris crashing over you.',
+      'drags you toward the depths with coiled, muscular force.',
+    ],
+    wounded: [
+      'The leviathan thrashes, churning the water red.',
+      'Armored scales crack along the leviathan\'s flank as it writhes.',
+    ],
+    opening: [
+      'The river erupts — a massive leviathan surges from the water, jaws wide!',
+      'Something enormous displaces the current — a river leviathan surfaces, eyes like lanterns!',
+    ],
+  },
+  'Basilisk King': {
+    attack: [
+      'locks its petrifying gaze on you, stone creeping up your limbs.',
+      'lunges with fangs dripping with calcifying venom.',
+      'sweeps its heavy tail in a wide, bone-breaking arc.',
+    ],
+    wounded: [
+      'The basilisk king\'s crown of stone horns crack and splinter.',
+      'Venom pools beneath the basilisk as wounds weep toxic ichor.',
+    ],
+    opening: [
+      'Stone statues litter the ground — their creator, a basilisk king, turns its gaze on you!',
+      'A basilisk of monstrous size slithers from its lair, crown of horns glinting!',
+    ],
+  },
+  'Aboleth': {
+    attack: [
+      'lashes with tentacles coated in psychic-numbing mucus.',
+      'projects a wave of psychic domination that hammers your will.',
+      'wraps a slimy tentacle around you, alien thoughts flooding your mind.',
+    ],
+    wounded: [
+      'The aboleth\'s ancient eyes narrow as it emits a keening psychic wail.',
+      'Mucus streams thicker from the aboleth\'s wounds, the stench overwhelming.',
+    ],
+    opening: [
+      'The water turns opaque as an aboleth rises — something older than memory stirs!',
+      'A primordial horror surfaces, tentacles spread wide, its mind pressing against yours!',
+    ],
+  },
+  'Djinn Lord': {
+    attack: [
+      'slashes with twin scimitars of condensed wind.',
+      'summons a focused cyclone that tears at everything in its path.',
+      'hurls a bolt of lightning from the gathering storm above.',
+    ],
+    wounded: [
+      'The djinn lord\'s form wavers like a heat shimmer, then resolidifies.',
+      'Wind howls louder as the djinn lord\'s fury intensifies.',
+    ],
+    opening: [
+      'The air twists into a vortex — a djinn lord materializes, eyes crackling with lightning!',
+      'Sand and wind coalesce into a towering figure wielding scimitars of pure storm!',
+    ],
+  },
+  'Roc': {
+    attack: [
+      'dives with talons that could crush a wagon, wind screaming.',
+      'snatches at you with claws like anchor hooks, trying to lift you skyward.',
+      'buffets you with wings that generate hurricane-force gusts.',
+    ],
+    wounded: [
+      'Feathers the size of swords rain down as the roc shrieks.',
+      'The roc banks unsteadily, one wing trailing blood.',
+    ],
+    opening: [
+      'A shadow blots out the sky — a roc descends from the clouds, talons spread wide!',
+      'The wind screams as a bird of impossible size swoops from the mountain peak!',
+    ],
+  },
+  'Archlich': {
+    attack: [
+      'speaks a word of annihilation — the air itself warps and tears.',
+      'raises a skeletal hand and unleashes a storm of necrotic energy.',
+      'casts with terrifying speed, each spell a masterwork of millennia.',
+    ],
+    wounded: [
+      'The archlich\'s phylactery flares — dark energy stitches its form back together.',
+      'Bone splinters but reassembles, the archlich laughing with contempt.',
+    ],
+    opening: [
+      'An aura of absolute death precedes it — an archlich floats forth, robes of shadow trailing!',
+      'The very air dies as an archlich appears, its power warping reality around it!',
+    ],
+  },
+
+  // ---- Tier 6 (Level 41-50) ----
+
+  'Phoenix': {
+    attack: [
+      'rakes with talons of living flame that burn white-hot.',
+      'beats its wings, sending waves of searing heat rolling over you.',
+      'dives through you in an explosion of fire and rebirth.',
+    ],
+    wounded: [
+      'Embers gutter from the phoenix\'s wings but its fire burns ever brighter.',
+      'The phoenix shrieks — its flames dim momentarily before blazing anew.',
+    ],
+    opening: [
+      'The sky ignites as a phoenix descends, trailing fire like a falling star!',
+      'Heat washes over you as a bird of pure flame swoops from the clouds!',
+    ],
+  },
+  'Pit Fiend': {
+    attack: [
+      'swings a burning mace with the weight of damnation behind it.',
+      'lashes with a barbed tail that drips infernal poison.',
+      'unleashes a fireball from its clawed hand with contemptuous ease.',
+    ],
+    wounded: [
+      'The pit fiend snarls, molten ichor dripping from its wounds.',
+      'Hellfire flickers in the fiend\'s eyes as it draws on infernal reserves.',
+    ],
+    opening: [
+      'Brimstone and sulfur choke the air as a pit fiend tears through from the hells!',
+      'A fiend of towering malice steps from a portal of hellfire, mace raised!',
+    ],
+  },
+  'Deep Kraken': {
+    attack: [
+      'slams tentacles thick as masts down from every direction.',
+      'generates a whirlpool of crushing force that drags you under.',
+      'fires a bolt of bio-electric energy that arcs through the water.',
+    ],
+    wounded: [
+      'Severed tentacles thrash independently as the kraken bellows.',
+      'The kraken\'s ink clouds the water black as it recoils.',
+    ],
+    opening: [
+      'The ocean heaves upward — a deep kraken surfaces, tentacles blotting out the horizon!',
+      'Water churns to foam as a kraken of abyssal size rises from the depths!',
+    ],
+  },
+  'Elder Wyrm': {
+    attack: [
+      'unleashes a torrent of glacial breath that flash-freezes everything.',
+      'rakes with claws that could cleave castle walls.',
+      'bites down with jaws that could swallow a horse whole.',
+    ],
+    wounded: [
+      'Ancient scales crack revealing scars from centuries of battle beneath.',
+      'The elder wyrm roars — the sound shakes the mountain to its foundations.',
+    ],
+    opening: [
+      'The mountain itself seems to stir — an elder wyrm unfurls from its lair!',
+      'An ancient dragon descends, each wingbeat a gale, each roar a promise of oblivion!',
+    ],
+  },
+  'Arcane Titan': {
+    attack: [
+      'channels raw magic through its fists, reality cracking on impact.',
+      'fires a beam of concentrated arcane force that disintegrates stone.',
+      'slams the ground, sending shockwaves of magical energy outward.',
+    ],
+    wounded: [
+      'Arcane runes flicker across the titan\'s skin as its power destabilizes.',
+      'Cracks of pure energy split the titan\'s form, magic bleeding through.',
+    ],
+    opening: [
+      'The air screams with magical discharge — an arcane titan strides from a rift in space!',
+      'A being of living magic towers above, runes orbiting its form like satellites!',
+    ],
+  },
+  'Tarrasque': {
+    attack: [
+      'bites with jaws that could crush a fortress gate in a single snap.',
+      'rakes with claws the size of greatswords, tearing earth and flesh alike.',
+      'sweeps its massive tail, leveling everything in a wide arc.',
+    ],
+    wounded: [
+      'The tarrasque\'s wounds close almost instantly, flesh knitting with horrifying speed.',
+      'Even wounded, the tarrasque seems unstoppable — its rage only intensifies.',
+    ],
+    opening: [
+      'The earth splits open as the tarrasque rises — extinction given form!',
+      'A living calamity crests the horizon — the tarrasque has awakened!',
+    ],
+  },
+  'Void Emperor': {
+    attack: [
+      'tears a rift in space that shreds everything near the wound in reality.',
+      'gestures and gravity inverts, slamming you against nothingness.',
+      'extends a hand and pulls at the threads of your existence.',
+    ],
+    wounded: [
+      'The Void Emperor flickers between dimensions, form destabilizing.',
+      'Reality screams as the emperor\'s wounds leak raw void energy.',
+    ],
+    opening: [
+      'Space folds and tears — a figure of absolute void steps through, reality breaking around it!',
+      'The stars go dark. A Void Emperor manifests, its presence erasing the light!',
+    ],
+  },
 };
 
 // ---------------------------------------------------------------------------

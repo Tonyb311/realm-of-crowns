@@ -16,6 +16,15 @@
 - Prompts saved to `prompts/`. Exports go to Excel. Analysis to markdown files, keep chat minimal.
 - One major task per conversation to prevent context overflow.
 
+### Ability System
+- **Skill points are removed.** No manual ability unlocking. All abilities are either auto-granted or chosen.
+- **Tier 0 abilities (levels 3, 5, 8):** Class-level choices. Player picks 1 of 3 options at each level. These are pre-specialization, low-power abilities. Choice is permanent. 63 total (9 per class × 7 classes). Data in `shared/src/data/skills/{class}.ts` as tier 0 exports.
+- **Spec abilities (levels 10, 14, 20, 25, 32, 40):** Auto-granted when the character reaches the required level AND has a specialization selected. No player action needed.
+- **Auto-grant service:** `server/src/services/ability-grants.ts` — called on level-up and on specialization selection. Idempotent.
+- **Tier 0 choice API:** `POST /api/skills/choose-tier0` (pick an ability), `GET /api/skills/tier0-pending` (what choices are available)
+- **Specialization is chosen at level 10.** On selection, all qualifying spec abilities are granted retroactively. Tier 0 choices made before level 10 persist after spec selection.
+- **Old level schedule was 1→5→10→18→28→40.** New schedule: tier 0 at 3/5/8, then spec abilities at 10/14/20/25/32/40.
+
 ### Monster & Combat Design
 - **PvE combat ONLY via road encounters during travel.** `/combat/pve/start` is disabled (400).
 - **Combat flow:** POST /travel/start → tick → resolveRoadEncounter() → auto-combat → processItemDrops()
@@ -111,6 +120,9 @@ npm shortcuts: `sim:run`, `sim:list`, `sim:delete`
 | `database/seeds/world.ts` | Routes, terrain strings, towns |
 | `server/src/lib/combat-engine.ts` | Pure-function turn-based combat engine (d20) |
 | `server/src/lib/class-ability-resolver.ts` | Class ability effect handlers |
+| `server/src/services/ability-grants.ts` | Auto-grant abilities on level-up / spec selection |
+| `docs/skill-point-removal-summary.md` | Prompt A changes: skill point removal, auto-grant |
+| `docs/tier0-ability-choices-summary.md` | Prompt B changes: 63 tier 0 abilities, choice system |
 | `server/src/lib/combat-logger.ts` | Structured per-encounter combat logs |
 | `shared/src/types/combat.ts` | All combat type definitions |
 | `prompts/` | All Claude Code task prompts |
