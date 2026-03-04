@@ -382,7 +382,14 @@ const handleDebuff: EffectHandler = (state, actor, target, _enemies, abilityDef,
         ...(acReduction ? { ac: -acReduction } : {}),
         ...(allStatsReduction ? { allStats: -allStatsReduction } : {}),
       },
-      description: `${abilityDef.name}: debuff on ${target.name} for ${duration} rounds (ATK ${attackReduction > 0 ? `-${attackReduction}` : ''}${acReduction > 0 ? ` AC -${acReduction}` : ''})`,
+      description: (() => {
+        const parts: string[] = [];
+        if (attackReduction > 0) parts.push(`ATK -${attackReduction}`);
+        if (acReduction > 0) parts.push(`AC -${acReduction}`);
+        if (allStatsReduction > 0) parts.push(`all stats -${allStatsReduction}`);
+        if (bonusDamageFromYou > 0) parts.push(`+${bonusDamageFromYou} bonus dmg taken`);
+        return `${abilityDef.name}: debuff on ${target.name} for ${duration} rounds${parts.length ? ` (${parts.join(', ')})` : ''}`;
+      })(),
     },
   };
 };
@@ -451,6 +458,29 @@ const handleStatus: EffectHandler = (state, actor, target, _enemies, abilityDef,
   const statusEffect = mapStatusName((effects.statusEffect as string) ?? 'stunned');
   let duration = (effects.statusDuration as number) ?? 2;
 
+  // Save check — if the ability defines a saveType, target can resist
+  const saveType = effects.saveType as string | undefined;
+  if (saveType) {
+    const dc = calculateSaveDC(actor);
+    const targetSaveMod = getModifier(target.stats[saveType as keyof typeof target.stats] ?? 10);
+    const save = savingThrow(targetSaveMod, dc);
+    { const lr = checkLegendaryResistance(state, target.id, save, dc); if (lr.overridden) { save.success = true; state = lr.state; } }
+
+    if (save.success) {
+      return {
+        state,
+        result: {
+          saveRequired: true,
+          saveDC: dc,
+          saveRoll: save.roll,
+          saveTotal: save.total,
+          saveSucceeded: true,
+          description: `${abilityDef.name}: ${target.name} resisted (${save.total} vs DC ${dc})`,
+        },
+      };
+    }
+  }
+
   // Phase 5B MECH-3: Charm effectiveness multiplier for mesmerize/charm abilities
   if (actor.charmEffectiveness && (statusEffect === 'mesmerize' || abilityDef.id.startsWith('bar-dip-'))) {
     duration = Math.floor(duration * (1 + actor.charmEffectiveness));
@@ -473,12 +503,14 @@ const handleStatus: EffectHandler = (state, actor, target, _enemies, abilityDef,
     });
   }
 
+  const saveInfo = saveType ? ` (DC ${calculateSaveDC(actor)})` : '';
   return {
     state,
     result: {
       statusApplied: statusEffect,
       statusDuration: duration,
-      description: `${abilityDef.name}: applied ${statusEffect} to ${target.name} for ${duration} rounds${statusEffect === 'taunt' ? ' (AC -2)' : ''}`,
+      ...(saveType ? { saveRequired: true, saveDC: calculateSaveDC(actor), saveSucceeded: false } : {}),
+      description: `${abilityDef.name}: applied ${statusEffect} to ${target.name} for ${duration} rounds${statusEffect === 'taunt' ? ' (AC -2)' : ''}${saveInfo}`,
     },
   };
 };
