@@ -640,6 +640,16 @@ export const STATUS_APPLY: Record<string, string[]> = {
   slow: [
     'feels movements grow sluggish and heavy.',
   ],
+  swallowed: [
+    '{target} is trapped inside the creature\'s stomach.',
+    '{target} struggles within the creature\'s digestive tract.',
+    '{target} is engulfed in darkness and burning acid.',
+  ],
+  restrained: [
+    '{target} is held fast, unable to move freely.',
+    '{target} is bound in place, struggling against the restraint.',
+    '{target} is pinned down, movement severely restricted.',
+  ],
 };
 
 export const STATUS_EXPIRE: Record<string, string[]> = {
@@ -666,6 +676,8 @@ export const STATUS_EXPIRE: Record<string, string[]> = {
   mesmerize: ['blinks and shakes off the trance.'],
   polymorph: ['reverts to their true form in a shimmer of magic.'],
   slow: ['shakes off the sluggishness, moving freely again.'],
+  swallowed: ['is freed from the creature\'s stomach.'],
+  restrained: ['breaks free of the restraint, moving again.'],
 };
 
 // ---------------------------------------------------------------------------
@@ -1083,6 +1095,39 @@ export const MONSTER_MISS_GENERIC: string[] = [
   'lunges at you but you dodge aside.',
   'swings at you but the attack falls short.',
   'strikes at you but misses.',
+];
+
+// ---------------------------------------------------------------------------
+// Monster Ability — Swallow
+// ---------------------------------------------------------------------------
+
+export const MONSTER_ABILITY_SWALLOW: string[] = [
+  'opens its cavernous maw and engulfs {target} whole.',
+  'lunges forward, swallowing {target} in a single gulp.',
+  'unhinges its jaw and drags {target} into its gullet.',
+  'surges forward, consuming {target} completely.',
+];
+
+// ---------------------------------------------------------------------------
+// Swallow Event Templates
+// ---------------------------------------------------------------------------
+
+export const SWALLOW_DAMAGE: string[] = [
+  'Digestive acid burns {target} from within.',
+  '{target} takes corrosive damage inside the creature\'s stomach.',
+  'Caustic fluids sear {target}\'s flesh inside the beast.',
+];
+
+export const SWALLOW_ESCAPE: string[] = [
+  '{target} cuts free from the creature\'s stomach!',
+  '{target} tears through the gut wall and bursts free!',
+  '{target} deals enough damage to force the creature to regurgitate them!',
+];
+
+export const SWALLOW_FREED: string[] = [
+  '{target} crawls free from the fallen creature\'s remains.',
+  'The creature collapses, releasing {target} from its stomach.',
+  '{target} emerges from the dead creature, covered in acid.',
 ];
 
 // ---------------------------------------------------------------------------

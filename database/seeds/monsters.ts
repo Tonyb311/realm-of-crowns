@@ -1,10 +1,12 @@
 /**
  * Monster Seed Data for Realm of Crowns
  *
- * 21 monsters across 3 tiers:
+ * 35 monsters across 4 tiers:
  *   Tier 1 (lvl 1-5): Goblin, Wolf, Bandit, Giant Rat, Slime, Mana Wisp, Bog Wraith
  *   Tier 2 (lvl 5-10): Orc Warrior, Skeleton Warrior, Giant Spider, Dire Wolf, Troll, Arcane Elemental, Shadow Wraith
  *   Tier 3 (lvl 10-20): Young Dragon, Lich, Demon, Hydra, Ancient Golem, Void Stalker, Elder Fey Guardian
+ *   Tier 4 (lvl 17-30): Wyvern, Treant, Chimera, Mind Flayer, Vampire Lord, Frost Giant, Sea Serpent,
+ *                        Iron Golem, Fire Giant, Purple Worm, Beholder, Fey Dragon, Death Knight, Storm Giant
  *
  * Arcane monsters (6) drop Arcane Reagents via itemTemplateName loot entries.
  *
@@ -19,7 +21,7 @@ interface MonsterAbilityDef {
   id: string;
   name: string;
   type: 'damage' | 'status' | 'aoe' | 'multiattack' | 'buff' | 'heal' | 'on_hit'
-        | 'fear_aura' | 'damage_aura' | 'death_throes';
+        | 'fear_aura' | 'damage_aura' | 'death_throes' | 'swallow';
   damage?: string;
   damageType?: string;
   saveType?: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
@@ -43,6 +45,9 @@ interface MonsterAbilityDef {
   deathDamageType?: string;
   deathSaveDC?: number;
   deathSaveType?: 'str' | 'dex' | 'con';
+  swallowDamage?: string;
+  swallowDamageType?: string;
+  swallowEscapeThreshold?: number;
 }
 
 interface MonsterDef {
@@ -670,6 +675,553 @@ const MONSTERS: MonsterDef[] = [
     },
     lootTable: [
       { dropChance: 0.60, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+
+  // ---- Tier 4 (Level 17-30) — Mid-to-High Tier ----
+  {
+    name: 'Wyvern',
+    level: 17,
+    biome: 'MOUNTAIN',
+    regionName: 'Skypeak Plateaus',
+    damageType: 'PIERCING',
+    resistances: ['BLUDGEONING'],
+    abilities: [
+      {
+        id: 'wyvern_multiattack', name: 'Claw and Bite', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The wyvern slashes with its talons and snaps with its jaws.',
+      },
+      {
+        id: 'wyvern_poison', name: 'Venomous Stinger', type: 'on_hit',
+        saveType: 'con', saveDC: 15, statusEffect: 'poisoned', statusDuration: 2,
+        damage: '2d6', damageType: 'POISON',
+        description: 'The wyvern\'s tail stinger injects a potent venom on contact.',
+      },
+    ],
+    stats: {
+      hp: 130, ac: 15, attack: 9, damage: '2d8+5', speed: 60,
+      str: 19, dex: 12, con: 16, int: 5, wis: 12, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Monster Parts' },
+      { dropChance: 0.25, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Wyvern Venom Sac' },
+    ],
+  },
+  {
+    name: 'Treant',
+    level: 18,
+    biome: 'FOREST',
+    regionName: 'Mistwood Glens',
+    damageType: 'BLUDGEONING',
+    resistances: ['BLUDGEONING', 'PIERCING'],
+    vulnerabilities: ['FIRE'],
+    abilities: [
+      {
+        id: 'treant_regen', name: 'Bark Regeneration', type: 'heal',
+        hpPerTurn: 8, priority: 3, cooldown: 0,
+        disabledBy: ['FIRE'],
+        description: 'The treant regenerates its bark armor each round.',
+      },
+      {
+        id: 'treant_entangle', name: 'Entangling Roots', type: 'status',
+        saveType: 'str', saveDC: 16, statusEffect: 'restrained', statusDuration: 2,
+        priority: 7, cooldown: 3,
+        description: 'Thick roots burst from the earth, binding the target in place.',
+      },
+    ],
+    stats: {
+      hp: 150, ac: 16, attack: 10, damage: '2d10+5', speed: 20,
+      str: 22, dex: 8, con: 20, int: 10, wis: 16, cha: 10,
+    },
+    lootTable: [
+      { dropChance: 0.45, minQty: 2, maxQty: 4, gold: 0, itemTemplateName: 'Monster Parts' },
+      { dropChance: 0.30, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Chimera',
+    level: 19,
+    biome: 'BADLANDS',
+    regionName: 'Scarred Frontier',
+    damageType: 'SLASHING',
+    resistances: ['FIRE'],
+    abilities: [
+      {
+        id: 'chimera_multiattack', name: 'Triple Maw', type: 'multiattack',
+        attacks: 3, priority: 5, cooldown: 0,
+        description: 'The chimera strikes with lion bite, goat horns, and dragon fangs.',
+      },
+      {
+        id: 'chimera_breath', name: 'Fire Breath', type: 'aoe',
+        damage: '6d6', damageType: 'FIRE', saveType: 'dex', saveDC: 15,
+        priority: 8, recharge: 5,
+        description: 'The dragon head unleashes a cone of searing flame.',
+      },
+    ],
+    stats: {
+      hp: 140, ac: 15, attack: 10, damage: '2d8+5', speed: 40,
+      str: 19, dex: 11, con: 18, int: 3, wis: 14, cha: 10,
+    },
+    lootTable: [
+      { dropChance: 0.45, minQty: 1, maxQty: 3, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Mind Flayer',
+    level: 20,
+    biome: 'UNDERGROUND',
+    regionName: "Vel'Naris Underdark",
+    damageType: 'PSYCHIC',
+    resistances: ['PSYCHIC'],
+    immunities: ['FORCE'],
+    conditionImmunities: ['frightened'],
+    abilities: [
+      {
+        id: 'mindflayer_blast', name: 'Mind Blast', type: 'aoe',
+        damage: '6d8', damageType: 'PSYCHIC', saveType: 'int', saveDC: 17,
+        priority: 8, recharge: 5,
+        description: 'The mind flayer emits a devastating psychic wave.',
+      },
+      {
+        id: 'mindflayer_stun', name: 'Psychic Grasp', type: 'status',
+        saveType: 'wis', saveDC: 17, statusEffect: 'stunned', statusDuration: 2,
+        priority: 6, cooldown: 3,
+        description: 'Tendrils of psychic energy grip the target\'s mind.',
+      },
+      {
+        id: 'mindflayer_extract', name: 'Extract Brain', type: 'damage',
+        damage: '10d10', damageType: 'PSYCHIC',
+        priority: 10, usesPerCombat: 1, cooldown: 0,
+        description: 'The mind flayer attempts to extract the target\'s brain — a devastating attack.',
+      },
+    ],
+    stats: {
+      hp: 120, ac: 16, attack: 10, damage: '2d8+4', speed: 30,
+      str: 11, dex: 12, con: 14, int: 22, wis: 18, cha: 17,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 2, maxQty: 4, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Vampire Lord',
+    level: 21,
+    biome: 'FOREST',
+    regionName: 'Silverwood Forest',
+    damageType: 'NECROTIC',
+    resistances: ['NECROTIC', 'COLD'],
+    immunities: ['POISON'],
+    conditionImmunities: ['poisoned'],
+    phaseTransitions: [
+      {
+        id: 'vampire_mist_form',
+        hpThresholdPercent: 40,
+        name: 'Mist Form',
+        description: 'The Vampire Lord dissolves into crimson mist, reforming with renewed vigor.',
+        triggered: false,
+        effects: [
+          { type: 'stat_boost', statBoost: { ac: 2, attack: 2 } },
+          { type: 'self_buff', selfBuff: { status: 'hasted', duration: 3 } },
+        ],
+      },
+    ],
+    abilities: [
+      {
+        id: 'vampire_drain', name: 'Life Drain', type: 'on_hit',
+        saveType: 'con', saveDC: 16, statusEffect: 'weakened', statusDuration: 2,
+        hpPerTurn: 10,
+        description: 'The vampire drains life force on each strike, healing itself.',
+      },
+      {
+        id: 'vampire_charm', name: 'Vampiric Charm', type: 'status',
+        saveType: 'wis', saveDC: 17, statusEffect: 'mesmerize', statusDuration: 2,
+        priority: 7, cooldown: 4,
+        description: 'The vampire lord fixes its gaze, mesmerizing the target.',
+      },
+      {
+        id: 'vampire_multiattack', name: 'Claw and Bite', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The vampire strikes with claws and fangs in rapid succession.',
+      },
+    ],
+    stats: {
+      hp: 155, ac: 17, attack: 11, damage: '2d8+5', speed: 40,
+      str: 18, dex: 18, con: 16, int: 17, wis: 15, cha: 20,
+    },
+    lootTable: [
+      { dropChance: 0.70, minQty: 5, maxQty: 15, gold: 10 },
+      { dropChance: 0.30, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Frost Giant',
+    level: 22,
+    biome: 'TUNDRA',
+    regionName: 'Frozen Reaches',
+    damageType: 'BLUDGEONING',
+    resistances: ['COLD'],
+    immunities: ['COLD'],
+    legendaryActions: 1,
+    abilities: [
+      {
+        id: 'frost_boulder', name: 'Boulder Hurl', type: 'aoe',
+        damage: '6d8', damageType: 'BLUDGEONING', saveType: 'dex', saveDC: 16,
+        priority: 7, cooldown: 2,
+        description: 'The frost giant hurls a massive boulder, shattering on impact.',
+      },
+      {
+        id: 'frost_stomp', name: 'Freeze Stomp', type: 'status',
+        saveType: 'con', saveDC: 16, statusEffect: 'frozen', statusDuration: 2,
+        priority: 6, cooldown: 3,
+        isLegendaryAction: true, legendaryCost: 1,
+        description: 'The giant stomps the ground, sending a wave of frost that freezes targets.',
+      },
+    ],
+    stats: {
+      hp: 175, ac: 16, attack: 11, damage: '3d8+6', speed: 40,
+      str: 23, dex: 9, con: 21, int: 9, wis: 10, cha: 12,
+    },
+    lootTable: [
+      { dropChance: 0.55, minQty: 8, maxQty: 20, gold: 12 },
+      { dropChance: 0.35, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Sea Serpent',
+    level: 22,
+    biome: 'COASTAL',
+    regionName: 'The Suncoast',
+    damageType: 'BLUDGEONING',
+    resistances: ['COLD', 'LIGHTNING'],
+    abilities: [
+      {
+        id: 'serpent_constrict', name: 'Constrict', type: 'status',
+        saveType: 'str', saveDC: 17, statusEffect: 'restrained', statusDuration: 2,
+        damage: '3d8', damageType: 'BLUDGEONING',
+        priority: 7, cooldown: 2,
+        description: 'The serpent wraps its coils around the target, crushing them.',
+      },
+      {
+        id: 'serpent_tidal', name: 'Tidal Surge', type: 'aoe',
+        damage: '5d8', damageType: 'BLUDGEONING', saveType: 'str', saveDC: 16,
+        priority: 6, cooldown: 3,
+        description: 'The serpent thrashes, sending a wall of water crashing over everything.',
+      },
+    ],
+    stats: {
+      hp: 165, ac: 16, attack: 11, damage: '2d10+5', speed: 50,
+      str: 22, dex: 14, con: 20, int: 4, wis: 12, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 2, maxQty: 4, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Iron Golem',
+    level: 23,
+    biome: 'MOUNTAIN',
+    regionName: 'The Foundry',
+    damageType: 'BLUDGEONING',
+    resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
+    immunities: ['FIRE', 'POISON', 'PSYCHIC', 'NECROTIC'],
+    conditionImmunities: ['poisoned', 'frightened', 'stunned', 'paralyzed'],
+    critImmunity: true,
+    legendaryResistances: 2,
+    abilities: [
+      {
+        id: 'golem_slam', name: 'Iron Slam', type: 'damage',
+        damage: '4d10+6', damageType: 'BLUDGEONING',
+        priority: 5, cooldown: 0,
+        description: 'The golem brings its massive iron fist crashing down.',
+      },
+      {
+        id: 'golem_poison_breath', name: 'Poison Breath', type: 'aoe',
+        damage: '6d8', damageType: 'POISON', saveType: 'con', saveDC: 17,
+        priority: 7, recharge: 6,
+        description: 'The golem exhales a cloud of toxic gas from its furnace core.',
+      },
+    ],
+    stats: {
+      hp: 200, ac: 20, attack: 12, damage: '3d8+6', speed: 25,
+      str: 24, dex: 9, con: 20, int: 3, wis: 11, cha: 1,
+    },
+    lootTable: [
+      { dropChance: 0.45, minQty: 2, maxQty: 4, gold: 0, itemTemplateName: 'Monster Parts' },
+      { dropChance: 0.20, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Fire Giant',
+    level: 24,
+    biome: 'VOLCANIC',
+    regionName: 'The Confluence',
+    damageType: 'BLUDGEONING',
+    resistances: ['BLUDGEONING'],
+    immunities: ['FIRE'],
+    legendaryActions: 1,
+    abilities: [
+      {
+        id: 'fire_giant_flame', name: 'Flame Strike', type: 'aoe',
+        damage: '7d6', damageType: 'FIRE', saveType: 'dex', saveDC: 17,
+        priority: 7, cooldown: 2,
+        isLegendaryAction: true, legendaryCost: 1,
+        description: 'The fire giant swings its blazing greatsword in a devastating arc.',
+      },
+      {
+        id: 'fire_giant_heated', name: 'Heated Body', type: 'damage_aura',
+        auraDamage: '2d6', auraDamageType: 'FIRE',
+        description: 'The giant\'s body radiates intense heat, searing anyone who strikes it.',
+      },
+    ],
+    stats: {
+      hp: 185, ac: 17, attack: 12, damage: '3d8+7', speed: 40,
+      str: 25, dex: 9, con: 23, int: 10, wis: 14, cha: 13,
+    },
+    lootTable: [
+      { dropChance: 0.60, minQty: 10, maxQty: 25, gold: 15 },
+      { dropChance: 0.30, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Purple Worm',
+    level: 25,
+    biome: 'UNDERGROUND',
+    regionName: "Vel'Naris Underdark",
+    damageType: 'PIERCING',
+    resistances: ['BLUDGEONING', 'PIERCING'],
+    immunities: ['POISON'],
+    conditionImmunities: ['poisoned', 'frightened'],
+    phaseTransitions: [
+      {
+        id: 'worm_frenzy',
+        hpThresholdPercent: 30,
+        name: 'Burrowing Frenzy',
+        description: 'The Purple Worm thrashes violently, its tunneling instincts driving it into a frenzy.',
+        triggered: false,
+        effects: [
+          { type: 'stat_boost', statBoost: { attack: 3, damage: 3 } },
+          { type: 'aoe_burst', aoeBurst: { damage: '4d8', damageType: 'BLUDGEONING', saveDC: 18, saveType: 'dex' } },
+        ],
+      },
+    ],
+    abilities: [
+      {
+        id: 'worm_swallow', name: 'Swallow', type: 'swallow',
+        saveType: 'str', saveDC: 18,
+        swallowDamage: '3d6', swallowDamageType: 'ACID', swallowEscapeThreshold: 25,
+        priority: 9, cooldown: 4,
+        description: 'The worm opens its maw and attempts to swallow the target whole.',
+      },
+      {
+        id: 'worm_multiattack', name: 'Bite and Tail', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The worm strikes with its crushing jaws and lashing tail.',
+      },
+      {
+        id: 'worm_death_throes', name: 'Bursting Death', type: 'death_throes',
+        deathDamage: '6d8', deathDamageType: 'ACID', deathSaveDC: 16, deathSaveType: 'dex',
+        description: 'The worm explodes in a shower of caustic acid on death.',
+      },
+    ],
+    stats: {
+      hp: 210, ac: 18, attack: 13, damage: '3d8+7', speed: 50,
+      str: 28, dex: 7, con: 22, int: 1, wis: 8, cha: 4,
+    },
+    lootTable: [
+      { dropChance: 0.55, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Beholder',
+    level: 26,
+    biome: 'UNDERGROUND',
+    regionName: "Vel'Naris Underdark",
+    damageType: 'FORCE',
+    immunities: ['PSYCHIC'],
+    conditionImmunities: ['stunned', 'paralyzed'],
+    legendaryActions: 2,
+    legendaryResistances: 2,
+    abilities: [
+      {
+        id: 'beholder_rays', name: 'Eye Rays', type: 'multiattack',
+        attacks: 3, priority: 5, cooldown: 0,
+        isLegendaryAction: true, legendaryCost: 1,
+        description: 'The beholder fires beams of destructive energy from its eye stalks.',
+      },
+      {
+        id: 'beholder_disintegrate', name: 'Disintegration Ray', type: 'damage',
+        damage: '10d8', damageType: 'FORCE',
+        priority: 9, cooldown: 3,
+        isLegendaryAction: true, legendaryCost: 2,
+        description: 'The beholder\'s central eye fires a concentrated beam of annihilation.',
+      },
+      {
+        id: 'beholder_charm', name: 'Charm Ray', type: 'status',
+        saveType: 'wis', saveDC: 17, statusEffect: 'mesmerize', statusDuration: 2,
+        priority: 6, cooldown: 3,
+        description: 'A shimmering ray attempts to dominate the target\'s will.',
+      },
+    ],
+    stats: {
+      hp: 180, ac: 18, attack: 12, damage: '2d10+5', speed: 20,
+      str: 10, dex: 14, con: 18, int: 20, wis: 15, cha: 17,
+    },
+    lootTable: [
+      { dropChance: 0.55, minQty: 3, maxQty: 5, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Fey Dragon',
+    level: 22,
+    biome: 'FEYWILD',
+    regionName: 'Glimmerveil',
+    damageType: 'FORCE',
+    resistances: ['PSYCHIC', 'RADIANT'],
+    abilities: [
+      {
+        id: 'feydragon_breath', name: 'Fey Breath', type: 'aoe',
+        damage: '6d6', damageType: 'FORCE', saveType: 'dex', saveDC: 16,
+        priority: 7, recharge: 5,
+        description: 'The fey dragon exhales a shimmering wave of raw magical energy.',
+      },
+      {
+        id: 'feydragon_phase', name: 'Phase Shift', type: 'buff',
+        statusEffect: 'shielded', statusDuration: 1,
+        priority: 4, cooldown: 3,
+        description: 'The dragon shifts between planes, becoming partially incorporeal.',
+      },
+      {
+        id: 'feydragon_multiattack', name: 'Claw and Fang', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The fey dragon rakes with iridescent claws and snaps with prismatic fangs.',
+      },
+    ],
+    stats: {
+      hp: 145, ac: 17, attack: 11, damage: '2d8+5', speed: 60,
+      str: 16, dex: 18, con: 16, int: 18, wis: 16, cha: 20,
+    },
+    lootTable: [
+      { dropChance: 0.65, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Death Knight',
+    level: 28,
+    biome: 'SWAMP',
+    regionName: 'Ashenmoor',
+    damageType: 'NECROTIC',
+    resistances: ['COLD', 'NECROTIC'],
+    immunities: ['POISON'],
+    conditionImmunities: ['poisoned', 'frightened'],
+    legendaryActions: 2,
+    legendaryResistances: 2,
+    phaseTransitions: [
+      {
+        id: 'death_knight_undying',
+        hpThresholdPercent: 30,
+        name: 'Undying Hatred',
+        description: 'The Death Knight\'s armor cracks, dark energy pouring from within as it enters a berserk rage.',
+        triggered: false,
+        effects: [
+          { type: 'stat_boost', statBoost: { attack: 3, damage: 4 } },
+          { type: 'aoe_burst', aoeBurst: { damage: '6d6', damageType: 'NECROTIC', saveDC: 19, saveType: 'con' } },
+        ],
+      },
+    ],
+    abilities: [
+      {
+        id: 'dk_hellfire', name: 'Hellfire Orb', type: 'aoe',
+        damage: '10d8', damageType: 'FIRE', saveType: 'dex', saveDC: 19,
+        priority: 9, cooldown: 4,
+        description: 'The Death Knight hurls an orb of black flame that explodes on impact.',
+      },
+      {
+        id: 'dk_dread_aura', name: 'Dread Aura', type: 'fear_aura',
+        saveType: 'wis', saveDC: 18, statusEffect: 'frightened', statusDuration: 2,
+        auraRepeats: false,
+        description: 'An aura of overwhelming dread emanates from the Death Knight.',
+      },
+      {
+        id: 'dk_multiattack', name: 'Ruinous Strikes', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        isLegendaryAction: true, legendaryCost: 1,
+        description: 'The Death Knight strikes with its cursed blade in a blur of dark steel.',
+      },
+      {
+        id: 'dk_necrotic_smite', name: 'Necrotic Smite', type: 'damage',
+        damage: '6d8', damageType: 'NECROTIC',
+        priority: 7, cooldown: 2,
+        isLegendaryAction: true, legendaryCost: 2,
+        description: 'The Death Knight channels necrotic energy through its blade.',
+      },
+    ],
+    stats: {
+      hp: 230, ac: 20, attack: 14, damage: '3d8+7', speed: 30,
+      str: 22, dex: 11, con: 20, int: 14, wis: 16, cha: 20,
+    },
+    lootTable: [
+      { dropChance: 0.75, minQty: 15, maxQty: 35, gold: 20 },
+      { dropChance: 0.35, minQty: 2, maxQty: 4, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Storm Giant',
+    level: 30,
+    biome: 'MOUNTAIN',
+    regionName: 'Skypeak Plateaus',
+    damageType: 'BLUDGEONING',
+    resistances: ['COLD', 'THUNDER'],
+    immunities: ['LIGHTNING'],
+    legendaryActions: 3,
+    legendaryResistances: 2,
+    phaseTransitions: [
+      {
+        id: 'storm_giant_tempest',
+        hpThresholdPercent: 40,
+        name: 'Eye of the Storm',
+        description: 'The Storm Giant channels the full fury of the tempest, lightning crackling across its form.',
+        triggered: false,
+        effects: [
+          { type: 'stat_boost', statBoost: { attack: 3, ac: 2, damage: 4 } },
+          { type: 'aoe_burst', aoeBurst: { damage: '8d6', damageType: 'LIGHTNING', saveDC: 20, saveType: 'dex' } },
+        ],
+      },
+    ],
+    abilities: [
+      {
+        id: 'storm_lightning', name: 'Lightning Strike', type: 'aoe',
+        damage: '8d8', damageType: 'LIGHTNING', saveType: 'dex', saveDC: 20,
+        priority: 8, cooldown: 2,
+        isLegendaryAction: true, legendaryCost: 2,
+        description: 'The giant calls down a devastating bolt of lightning.',
+      },
+      {
+        id: 'storm_aura', name: 'Storm Aura', type: 'damage_aura',
+        auraDamage: '2d8', auraDamageType: 'LIGHTNING',
+        description: 'Electricity arcs from the giant\'s body to anyone who strikes it.',
+      },
+      {
+        id: 'storm_multiattack', name: 'Thunderous Blows', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        isLegendaryAction: true, legendaryCost: 1,
+        description: 'The giant strikes twice with its massive greatsword wreathed in lightning.',
+      },
+      {
+        id: 'storm_throw', name: 'Rock Throw', type: 'damage',
+        damage: '4d10+7', damageType: 'BLUDGEONING',
+        priority: 6, cooldown: 1,
+        isLegendaryAction: true, legendaryCost: 1,
+        description: 'The giant hurls a massive boulder with devastating force.',
+      },
+    ],
+    stats: {
+      hp: 280, ac: 21, attack: 15, damage: '3d10+8', speed: 50,
+      str: 29, dex: 14, con: 22, int: 16, wis: 18, cha: 20,
+    },
+    lootTable: [
+      { dropChance: 0.75, minQty: 20, maxQty: 50, gold: 25 },
+      { dropChance: 0.40, minQty: 3, maxQty: 5, gold: 0, itemTemplateName: 'Arcane Reagents' },
     ],
   },
 ];

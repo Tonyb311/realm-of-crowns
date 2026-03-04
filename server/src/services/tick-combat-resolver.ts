@@ -24,7 +24,9 @@ import {
   STATUS_EFFECT_DEFS,
   resolveDeathThroes,
   checkPhaseTransitions,
+  applyDamageTypeInteraction,
 } from '../lib/combat-engine';
+import { damageRoll } from '@shared/utils/dice';
 import { resolveMonsterAbility } from '../lib/monster-ability-resolver';
 import type {
   CombatState,
@@ -38,6 +40,7 @@ import type {
   MonsterAbility,
   LegendaryActionResult,
   PhaseTransition,
+  SwallowResult,
 } from '@shared/types/combat';
 import { getModifier } from '@shared/types/combat';
 import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
@@ -137,6 +140,17 @@ export interface CombatantParams {
   subRace?: { id: string; element?: string } | null;
 }
 
+// ---- Swallow Helpers ----
+
+/** Extract total damage dealt by an actor from a log entry's result */
+function extractDamageDealt(logEntry: TurnLogEntry | undefined, actorId: string): number {
+  if (!logEntry || logEntry.actorId !== actorId) return 0;
+  const result = logEntry.result;
+  if ('totalDamage' in result && typeof result.totalDamage === 'number') return result.totalDamage;
+  if ('damage' in result && typeof result.damage === 'number') return result.damage;
+  return 0;
+}
+
 // ---- Autonomous Decision Engine ----
 
 /**
@@ -175,6 +189,14 @@ function decideAction(
     if (shouldRetreat) {
       return { action: { type: 'flee', actorId }, context: {} };
     }
+  }
+
+  // ---- 1a. If swallowed, can only basic attack the swallower ----
+  if (actor.swallowedBy) {
+    return {
+      action: { type: 'attack', actorId, targetId: actor.swallowedBy },
+      context: { weapon: params.weapon ?? undefined },
+    };
   }
 
   // ---- 1b. Monster ability AI ----
@@ -397,6 +419,78 @@ export function resolveTickCombat(
 
     state = resolveTurn(state, action, context, racialContext);
 
+    // === SWALLOW PROCESSING — digestive damage + escape check ===
+    const swallowResults: SwallowResult[] = [];
+    const actorAfterTurn = state.combatants.find(c => c.id === actorId);
+
+    if (actorAfterTurn?.swallowedBy && actorAfterTurn.swallowDamagePerRound && state.status === 'ACTIVE') {
+      // Digestive damage
+      const parsed = parseDamageString(actorAfterTurn.swallowDamagePerRound);
+      const dmg = damageRoll(parsed.diceCount, parsed.diceSides, parsed.bonus);
+      const swallowDT = actorAfterTurn.swallowDamageTypePerRound as CombatDamageType;
+      const dtResult = applyDamageTypeInteraction(dmg.total, swallowDT, actorAfterTurn);
+      const finalDmg = dtResult.finalDamage;
+      const hpBefore = actorAfterTurn.currentHp;
+      const newHp = Math.max(0, hpBefore - finalDmg);
+
+      state = { ...state, combatants: state.combatants.map(c =>
+        c.id === actorId ? { ...c, currentHp: newHp, isAlive: newHp > 0 } : c
+      )};
+
+      const swallower = state.combatants.find(c => c.id === actorAfterTurn.swallowedBy);
+      swallowResults.push({
+        type: 'swallow_damage',
+        monsterName: swallower?.name ?? 'Unknown',
+        damage: finalDmg,
+        damageType: swallowDT,
+        damageRoll: actorAfterTurn.swallowDamagePerRound,
+        playerHpBefore: hpBefore,
+        playerHpAfter: newHp,
+      });
+
+      state = checkCombatEnd(state);
+
+      // Escape check — did the player deal enough damage this round?
+      if (state.status === 'ACTIVE') {
+        const playerAfterDmg = state.combatants.find(c => c.id === actorId);
+        if (playerAfterDmg?.isAlive && playerAfterDmg.swallowEscapeThreshold) {
+          const lastLog = state.log[state.log.length - 1];
+          const damageDealt = extractDamageDealt(lastLog, actorId);
+
+          if (damageDealt >= playerAfterDmg.swallowEscapeThreshold) {
+            state = { ...state, combatants: state.combatants.map(c => {
+              if (c.id !== actorId) return c;
+              return {
+                ...c,
+                statusEffects: c.statusEffects.filter(e => e.name !== 'swallowed'),
+                swallowedBy: undefined,
+                swallowDamagePerRound: undefined,
+                swallowDamageTypePerRound: undefined,
+                swallowEscapeThreshold: undefined,
+              };
+            })};
+
+            swallowResults.push({
+              type: 'swallow_escape',
+              monsterName: swallower?.name ?? 'Unknown',
+              damageDealtInRound: damageDealt,
+              escapeThreshold: playerAfterDmg.swallowEscapeThreshold,
+              escaped: true,
+            });
+          }
+        }
+      }
+    }
+
+    // Attach swallow results to log
+    if (swallowResults.length > 0 && state.log.length > 0) {
+      const lastEntry = state.log[state.log.length - 1];
+      state = {
+        ...state,
+        log: [...state.log.slice(0, -1), { ...lastEntry, swallowResults }],
+      };
+    }
+
     // === LEGENDARY ACTIONS (after player's turn, if opponent monster has LA remaining) ===
     if (actor.entityType === 'character' && state.status === 'ACTIVE') {
       const monsterOpponent = state.combatants.find(
@@ -425,7 +519,7 @@ export function resolveTickCombat(
           // Find available legendary abilities (not fear_aura/damage_aura, not on cooldown, cost <= remaining)
           const availableLAs = (monster.monsterAbilities ?? []).filter(inst => {
             if (!inst.def.isLegendaryAction) return false;
-            if (inst.def.type === 'fear_aura' || inst.def.type === 'damage_aura') return false;
+            if (inst.def.type === 'fear_aura' || inst.def.type === 'damage_aura' || inst.def.type === 'swallow') return false;
             if (inst.cooldownRemaining > 0 && !inst.isRecharged) return false;
             if (inst.usesRemaining !== null && inst.usesRemaining <= 0) return false;
             if ((inst.def.legendaryCost ?? 1) > (monster.legendaryActionsRemaining ?? 0)) return false;
@@ -568,6 +662,39 @@ export function resolveTickCombat(
           }
           // Re-check: player may have died from death throes → mutual kill
           state = checkCombatEnd(state);
+        }
+
+        // === SWALLOW FREED — if dead monster had swallowed someone, free them ===
+        const freedPlayer = state.combatants.find(p => p.swallowedBy === c.id);
+        if (freedPlayer) {
+          state = { ...state, combatants: state.combatants.map(p => {
+            if (p.id !== freedPlayer.id) return p;
+            return {
+              ...p,
+              statusEffects: p.statusEffects.filter(e => e.name !== 'swallowed'),
+              swallowedBy: undefined,
+              swallowDamagePerRound: undefined,
+              swallowDamageTypePerRound: undefined,
+              swallowEscapeThreshold: undefined,
+            };
+          })};
+
+          // Attach swallow_freed to last log entry
+          if (state.log.length > 0) {
+            const lastEntry = state.log[state.log.length - 1];
+            const existingSwallow = lastEntry.swallowResults ?? [];
+            state = {
+              ...state,
+              log: [
+                ...state.log.slice(0, -1),
+                { ...lastEntry, swallowResults: [...existingSwallow, {
+                  type: 'swallow_freed' as const,
+                  monsterName: c.name,
+                  escaped: true,
+                }] },
+              ],
+            };
+          }
         }
       }
     }

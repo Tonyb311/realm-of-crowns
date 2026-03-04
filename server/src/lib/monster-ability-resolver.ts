@@ -416,6 +416,112 @@ function handleBuff(
   return { state, result: { description: `${actor.name} uses ${ability.name}.` } };
 }
 
+// ---- Swallow Handler ----
+
+function handleSwallow(
+  state: CombatState,
+  actor: Combatant,
+  target: Combatant,
+  ability: MonsterAbility,
+): { state: CombatState; result: Partial<MonsterAbilityResult> } {
+  // Already swallowed — skip
+  if (target.swallowedBy) {
+    return { state, result: { description: `${target.name} is already swallowed.` } };
+  }
+
+  // 1. Attack roll vs AC
+  const atkMod = actor.weapon
+    ? (getModifier(actor.stats[actor.weapon.attackModifierStat]) + actor.proficiencyBonus + actor.weapon.bonusAttack)
+    : (getModifier(actor.stats.str) + actor.proficiencyBonus);
+  const targetAC = calculateAC(target);
+  const roll = attackRoll(atkMod, targetAC);
+
+  if (!roll.hit) {
+    return {
+      state,
+      result: {
+        targetId: target.id,
+        hit: false,
+        attackRoll: roll.roll,
+        attackTotal: roll.total,
+        targetAC,
+        damage: 0,
+        targetHpAfter: target.currentHp,
+        targetKilled: false,
+        description: `${actor.name} attempts to swallow ${target.name} but misses.`,
+      },
+    };
+  }
+
+  // 2. STR save vs saveDC
+  if (!ability.saveType || !ability.saveDC) {
+    return { state, result: { description: `${ability.name} missing save config.` } };
+  }
+
+  const saveStatMod = getModifier(target.stats[ability.saveType]);
+  let totalSaveMod = saveStatMod + target.proficiencyBonus;
+  for (const eff of target.statusEffects) {
+    const def = STATUS_EFFECT_DEFS[eff.name];
+    if (def) totalSaveMod += def.saveModifier;
+  }
+  const save = savingThrow(totalSaveMod, ability.saveDC);
+
+  if (save.success) {
+    return {
+      state,
+      result: {
+        targetId: target.id,
+        hit: true,
+        attackRoll: roll.roll,
+        attackTotal: roll.total,
+        targetAC,
+        saveRequired: true,
+        saveType: ability.saveType,
+        saveDC: ability.saveDC,
+        saveRoll: save.roll,
+        saveTotal: save.total,
+        saveSucceeded: true,
+        targetHpAfter: target.currentHp,
+        targetKilled: false,
+        description: `${actor.name} tries to swallow ${target.name}, but they wrench free!`,
+      },
+    };
+  }
+
+  // 3. Save failed — apply swallowed status + tracking fields
+  let updatedTarget = applyStatusEffect(target, 'swallowed' as StatusEffectName, 999, actor.id);
+  updatedTarget = {
+    ...updatedTarget,
+    swallowedBy: actor.id,
+    swallowDamagePerRound: ability.swallowDamage,
+    swallowDamageTypePerRound: ability.swallowDamageType,
+    swallowEscapeThreshold: ability.swallowEscapeThreshold,
+  };
+
+  const combatants = state.combatants.map(c => c.id === target.id ? updatedTarget : c);
+
+  return {
+    state: { ...state, combatants },
+    result: {
+      targetId: target.id,
+      hit: true,
+      attackRoll: roll.roll,
+      attackTotal: roll.total,
+      targetAC,
+      saveRequired: true,
+      saveType: ability.saveType,
+      saveDC: ability.saveDC,
+      saveRoll: save.roll,
+      saveTotal: save.total,
+      saveSucceeded: false,
+      statusApplied: 'swallowed',
+      targetHpAfter: updatedTarget.currentHp,
+      targetKilled: false,
+      description: `${actor.name} swallows ${target.name} whole! They must deal ${ability.swallowEscapeThreshold} damage in a round to escape.`,
+    },
+  };
+}
+
 // ---- On-Hit Resolution (called from resolveAttack) ----
 
 /**
@@ -527,6 +633,13 @@ export function resolveMonsterAbility(
 
     case 'buff':
       resolved = handleBuff(state, actor, abilityDef);
+      break;
+
+    case 'swallow':
+      if (!target) {
+        return { state, result: { ...baseResult, description: 'No valid target.' } };
+      }
+      resolved = handleSwallow(state, actor, target, abilityDef);
       break;
 
     case 'death_throes':

@@ -38,6 +38,7 @@ import type {
   AuraResult,
   DeathThroesResult,
   PhaseTransitionResult,
+  SwallowResult,
 } from '@shared/types/combat';
 
 // Config flag — can be turned off in production if performance is a concern
@@ -147,9 +148,10 @@ export interface RoundLogEntry {
   legendaryActions?: LegendaryActionResult[];
   legendaryResistance?: LegendaryResistanceResult;
   auraResults?: AuraResult[];
-  // Death throes & Phase transition results
+  // Death throes & Phase transition & Swallow results
   deathThroesResult?: DeathThroesResult;
   phaseTransition?: PhaseTransitionResult;
+  swallowResults?: SwallowResult[];
   // HP snapshot for all combatants after this action
   hpAfter: Record<string, number>;
 }
@@ -600,6 +602,19 @@ export function buildRoundsData(state: CombatState): RoundLogEntry[] {
       if (entry.phaseTransition.aoeDamage) {
         for (const [id, hp] of Object.entries(hpTracker)) {
           if (id !== entry.actorId) { hpTracker[id] = Math.max(0, (hp as number) - entry.phaseTransition.aoeDamage); break; }
+        }
+      }
+    }
+
+    // Swallow results
+    if (entry.swallowResults && entry.swallowResults.length > 0) {
+      round.swallowResults = entry.swallowResults;
+      // Update HP tracker for swallow damage
+      for (const sr of entry.swallowResults) {
+        if (sr.playerHpAfter !== undefined) {
+          for (const [id, _] of Object.entries(hpTracker)) {
+            if (id !== entry.actorId) { hpTracker[id] = sr.playerHpAfter; break; }
+          }
         }
       }
     }

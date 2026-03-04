@@ -322,6 +322,22 @@ export const STATUS_EFFECT_DEFS: Record<StatusEffectName, StatusEffectDef> = {
     acModifier: -2,
     saveModifier: 0,
   },
+  restrained: {
+    preventsAction: false,
+    dotDamage: () => 0,
+    hotHealing: () => 0,
+    attackModifier: -4,
+    acModifier: -2,
+    saveModifier: -2,
+  },
+  swallowed: {
+    preventsAction: false,
+    dotDamage: () => 0,
+    hotHealing: () => 0,
+    attackModifier: -4,
+    acModifier: -2,
+    saveModifier: -2,
+  },
 };
 
 // ---- Initiative ----
@@ -514,7 +530,7 @@ export function checkLegendaryResistance(
 // ---- Status Effects ----
 
 // Phase 5A: CC statuses that are blocked by ccImmune buffs
-const CC_STATUSES: StatusEffectName[] = ['stunned', 'frozen', 'paralyzed', 'dominated', 'mesmerize', 'polymorph', 'root', 'skip_turn'];
+const CC_STATUSES: StatusEffectName[] = ['stunned', 'frozen', 'paralyzed', 'dominated', 'mesmerize', 'polymorph', 'root', 'skip_turn', 'swallowed'];
 
 /** Apply a status effect to a combatant. Replaces if same effect already present. */
 export function applyStatusEffect(

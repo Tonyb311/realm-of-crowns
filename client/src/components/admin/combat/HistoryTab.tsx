@@ -67,6 +67,7 @@ interface TurnEntry {
   auraResults?: AuraEntry[];
   deathThroesResult?: any;
   phaseTransition?: any;
+  swallowResults?: any[];
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -96,6 +97,8 @@ const STATUS_COLORS: Record<string, string> = {
   stunned: 'text-yellow-400', blessed: 'text-amber-300', bleeding: 'text-red-400',
   weakened: 'text-purple-400', shielded: 'text-cyan-400', regenerating: 'text-emerald-400',
   frightened: 'text-amber-400',
+  restrained: 'text-yellow-600',
+  swallowed: 'text-purple-400',
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -463,6 +466,7 @@ function normalizeRoundEntry(raw: any, nameMap: Record<string, string>): TurnEnt
     ...(raw.auraResults?.length > 0 && { auraResults: raw.auraResults }),
     ...(raw.deathThroesResult && { deathThroesResult: raw.deathThroesResult }),
     ...(raw.phaseTransition && { phaseTransition: raw.phaseTransition }),
+    ...(raw.swallowResults?.length > 0 && { swallowResults: raw.swallowResults }),
   };
 }
 
@@ -1119,7 +1123,45 @@ const ACTION_ICONS: Record<string, string> = {
   legendary_action: '\uD83D\uDD31',
   death_throes: '\uD83D\uDC80',
   phase_transition: '\u26A1',
+  swallow: '\uD83D\uDC1B',
 };
+
+function SwallowDisplay({ result }: { result: any }) {
+  const typeConfig: Record<string, { icon: string; label: string; bg: string }> = {
+    swallow_attempt: { icon: '\uD83D\uDC1B', label: 'SWALLOW', bg: 'bg-purple-500/10 border-l-2 border-purple-500' },
+    swallow_damage: { icon: '\uD83E\uDEE0', label: 'DIGESTIVE DAMAGE', bg: 'bg-purple-500/10 border-l-2 border-purple-500' },
+    swallow_escape: { icon: '\uD83D\uDCAA', label: 'ESCAPED!', bg: 'bg-green-500/10 border-l-2 border-green-500' },
+    swallow_freed: { icon: '\uD83D\uDC1B', label: 'FREED', bg: 'bg-teal-500/10 border-l-2 border-teal-500' },
+  };
+  const cfg = typeConfig[result.type] ?? { icon: '\uD83D\uDC1B', label: 'SWALLOW', bg: 'bg-purple-500/10 border-l-2 border-purple-500' };
+
+  return (
+    <div className={`${cfg.bg} rounded-r px-2.5 py-1.5 my-1`}>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-sm">{cfg.icon}</span>
+        <span className="font-display text-[10px] uppercase text-purple-400">{cfg.label} — {result.monsterName}</span>
+      </div>
+      <div className="text-xs text-realm-text-secondary space-y-0.5 ml-5">
+        {result.type === 'swallow_attempt' && (
+          <>
+            {result.attackRoll != null && <div>Attack: d20({result.attackRoll}) = {result.attackTotal} vs AC {result.targetAC} — {result.hit ? 'Hit' : 'Miss'}</div>}
+            {result.hit && result.saveRoll != null && <div>Save: d20({result.saveRoll}) = {result.saveTotal} vs DC {result.saveDC} ({result.saveType?.toUpperCase()}) — {result.savePassed ? 'Resisted' : 'Failed'}</div>}
+            {result.swallowed && <div className="text-purple-400 font-bold">Swallowed!</div>}
+          </>
+        )}
+        {result.type === 'swallow_damage' && (
+          <div>{result.damageRoll} {result.damageType} = {result.damage} damage | HP: {result.playerHpBefore} &rarr; {result.playerHpAfter}</div>
+        )}
+        {result.type === 'swallow_escape' && (
+          <div>Dealt {result.damageDealtInRound} damage (threshold: {result.escapeThreshold}) — broke free!</div>
+        )}
+        {result.type === 'swallow_freed' && (
+          <div>Monster died — freed from stomach</div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function DeathThroesDisplay({ result }: { result: any }) {
   const isMutualKill = result.mutualKill;
@@ -1225,6 +1267,14 @@ function TurnResultRenderer({ entry, nameMap, actorSnapshot }: { entry: TurnEntr
       {entry.phaseTransition && <PhaseTransitionDisplay result={entry.phaseTransition} />}
       {/* Death Throes */}
       {entry.deathThroesResult && <DeathThroesDisplay result={entry.deathThroesResult} />}
+      {/* Swallow Results */}
+      {entry.swallowResults && entry.swallowResults.length > 0 && (
+        <div className="mt-1 space-y-0.5">
+          {entry.swallowResults.map((sr: any, i: number) => (
+            <SwallowDisplay key={i} result={sr} />
+          ))}
+        </div>
+      )}
       {/* Status ticks */}
       {entry.statusTicks && entry.statusTicks.length > 0 && (
         <div className="mt-1 ml-2 border-l border-realm-border/30 pl-2 space-y-0.5">

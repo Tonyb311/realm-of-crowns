@@ -82,7 +82,9 @@ export type StatusEffectName =
   // Monster ability status effects
   | 'frightened'
   | 'diseased'
-  | 'knocked_down';
+  | 'knocked_down'
+  | 'restrained'
+  | 'swallowed';
 
 // ---- Damage Types ----
 
@@ -179,7 +181,7 @@ export interface MonsterAbility {
   id: string;
   name: string;
   type: 'damage' | 'status' | 'aoe' | 'multiattack' | 'buff' | 'heal' | 'on_hit'
-        | 'fear_aura' | 'damage_aura' | 'death_throes';
+        | 'fear_aura' | 'damage_aura' | 'death_throes' | 'swallow';
   damage?: string;
   damageType?: CombatDamageType;
   saveType?: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
@@ -212,6 +214,12 @@ export interface MonsterAbility {
   deathSaveDC?: number;
   /** Save type for death throes */
   deathSaveType?: 'str' | 'dex' | 'con';
+  /** Dice for acid/digestive damage per round while swallowed (e.g., "3d6") */
+  swallowDamage?: string;
+  /** Damage type for swallow damage */
+  swallowDamageType?: CombatDamageType;
+  /** Damage threshold to escape from inside (e.g., 25) */
+  swallowEscapeThreshold?: number;
 }
 
 export interface MonsterAbilityInstance {
@@ -323,6 +331,32 @@ export interface DeathThroesResult {
   playerHpAfter: number;
   playerSurvived: boolean;
   mutualKill: boolean;
+}
+
+export interface SwallowResult {
+  type: 'swallow_attempt' | 'swallow_damage' | 'swallow_escape' | 'swallow_freed';
+  monsterName: string;
+  // Attempt fields
+  attackRoll?: number;
+  attackTotal?: number;
+  targetAC?: number;
+  hit?: boolean;
+  saveRoll?: number;
+  saveTotal?: number;
+  saveDC?: number;
+  saveType?: string;
+  savePassed?: boolean;
+  swallowed?: boolean;
+  // Per-round damage fields
+  damage?: number;
+  damageType?: CombatDamageType;
+  damageRoll?: string;
+  playerHpBefore?: number;
+  playerHpAfter?: number;
+  // Escape fields
+  damageDealtInRound?: number;
+  escapeThreshold?: number;
+  escaped?: boolean;
 }
 
 export interface PhaseTransitionEffect {
@@ -532,6 +566,14 @@ export interface Combatant {
   phaseTransitions?: PhaseTransition[];
   /** Whether death throes have already fired for this monster */
   deathThroesProcessed?: boolean;
+  /** ID of monster that swallowed this combatant */
+  swallowedBy?: string;
+  /** Damage dice for per-round swallow damage */
+  swallowDamagePerRound?: string;
+  /** Damage type for swallow damage */
+  swallowDamageTypePerRound?: CombatDamageType;
+  /** Damage threshold to escape */
+  swallowEscapeThreshold?: number;
 }
 
 export interface ClassAbilityAttackMods {
@@ -882,4 +924,5 @@ export interface TurnLogEntry {
   auraResults?: AuraResult[];
   deathThroesResult?: DeathThroesResult;
   phaseTransition?: PhaseTransitionResult;
+  swallowResults?: SwallowResult[];
 }
