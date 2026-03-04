@@ -1,0 +1,3983 @@
+{
+  "notes": "Mage functional verification: 243 tier0 combos + 63 race combos across L8/L20/L35",
+  "matchups": [
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "human",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "elf",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "elf",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "elf",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "elf",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "elf",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "elf",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "elf",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "elf",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "elf",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "dwarf",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "dwarf",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "dwarf",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "dwarf",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "dwarf",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "dwarf",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "dwarf",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "dwarf",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "dwarf",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "harthfolk",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "harthfolk",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "harthfolk",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "harthfolk",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "harthfolk",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "harthfolk",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "harthfolk",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "harthfolk",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "harthfolk",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "orc",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "orc",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "orc",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "orc",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "orc",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "orc",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "orc",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "orc",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "orc",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "nethkin",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "nethkin",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "nethkin",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "nethkin",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "nethkin",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "nethkin",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "nethkin",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "nethkin",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "nethkin",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "drakonid",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "drakonid",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "drakonid",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "elementalist"
+    },
+    {
+      "race": "drakonid",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "drakonid",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "drakonid",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "necromancer"
+    },
+    {
+      "race": "drakonid",
+      "class": "mage",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "drakonid",
+      "class": "mage",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    },
+    {
+      "race": "drakonid",
+      "class": "mage",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "enchanter"
+    }
+  ]
+}

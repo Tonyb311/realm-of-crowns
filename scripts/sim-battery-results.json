@@ -1,0 +1,27 @@
+[
+  {
+    "name": "Run 1: Baseline — even race/class, diverse levels",
+    "error": "Run failed",
+    "status": 504
+  },
+  {
+    "name": "Run 2: Realistic race/class distribution, diverse levels",
+    "error": "Run failed",
+    "status": 500
+  },
+  {
+    "name": "Run 3: Low-level combat (all L1 start), even distribution",
+    "error": "Run failed",
+    "status": 500
+  },
+  {
+    "name": "Run 4: Mid-level combat (all L5 start), even distribution, high intelligence",
+    "error": "Run failed",
+    "status": 500
+  },
+  {
+    "name": "Run 5: Warrior-heavy — melee stress test",
+    "error": "Run failed",
+    "status": 500
+  }
+]

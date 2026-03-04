@@ -1,0 +1,14 @@
+{
+  "notes": "Verify Analyze→Exploit Weakness chain fires correctly (20 combats)",
+  "matchups": [
+    {
+      "race": "human",
+      "class": "bard",
+      "specialization": "lorekeeper",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 20,
+      "tier0Selections": { "3": "a", "5": "a", "8": "a" }
+    }
+  ]
+}

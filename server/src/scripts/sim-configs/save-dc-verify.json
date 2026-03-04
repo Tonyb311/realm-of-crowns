@@ -1,0 +1,32 @@
+{
+  "notes": "Verify save DCs use class primary stat: Bard=CHA, Warrior=STR, Psion=INT",
+  "matchups": [
+    {
+      "race": "human",
+      "class": "bard",
+      "specialization": "lorekeeper",
+      "level": 20,
+      "opponent": "Troll",
+      "iterations": 5,
+      "tier0Selections": { "3": "a", "5": "a", "8": "a" }
+    },
+    {
+      "race": "human",
+      "class": "warrior",
+      "specialization": "guardian",
+      "level": 20,
+      "opponent": "Troll",
+      "iterations": 5,
+      "tier0Selections": { "3": "a", "5": "a", "8": "a" }
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "specialization": "telepath",
+      "level": 20,
+      "opponent": "Troll",
+      "iterations": 5,
+      "tier0Selections": { "3": "a", "5": "a", "8": "a" }
+    }
+  ]
+}

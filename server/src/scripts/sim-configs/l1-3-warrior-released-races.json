@@ -1,0 +1,10 @@
+{
+  "grid": {
+    "races": ["human", "elf", "dwarf", "harthfolk", "orc", "nethkin", "drakonid"],
+    "classes": ["warrior"],
+    "levels": [1, 2, 3],
+    "monsters": ["Goblin", "Giant Rat", "Wolf", "Slime", "Bandit", "Mana Wisp", "Bog Wraith", "Skeleton Warrior"],
+    "iterationsPerMatchup": 10
+  },
+  "notes": "L1-3 Warriors, all 7 released races, vs L1-5 monsters. For admin log review."
+}

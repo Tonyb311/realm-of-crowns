@@ -49,6 +49,11 @@ router.get('/', async (_req: AuthenticatedRequest, res: Response) => {
         name: m.name,
         level: m.level,
         biome: m.biome,
+        category: m.category,
+        encounterType: m.encounterType,
+        sentient: m.sentient,
+        size: m.size,
+        tags: m.tags as Record<string, unknown>,
         regionId: m.regionId,
         regionName: m.region?.name ?? null,
         stats: {
@@ -83,6 +88,8 @@ router.get('/', async (_req: AuthenticatedRequest, res: Response) => {
         max: enriched.length > 0 ? Math.max(...enriched.map(m => m.level)) : 0,
       },
       biomes: [...new Set(enriched.map(m => m.biome))].sort(),
+      categories: [...new Set(enriched.map(m => m.category))].sort(),
+      encounterTypes: [...new Set(enriched.map(m => m.encounterType))].sort(),
       regions: [...new Set(enriched.filter(m => m.regionName).map(m => m.regionName!))].sort(),
       tierBreakdown: {
         low: enriched.filter(m => m.level <= 5).length,

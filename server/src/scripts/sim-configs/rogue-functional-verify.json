@@ -1,0 +1,3983 @@
+{
+  "notes": "Rogue functional verification: 243 tier0 combos + 63 race combos across L8/L20/L35",
+  "matchups": [
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "human",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "elf",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "elf",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "elf",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "elf",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "elf",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "elf",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "elf",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "elf",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "elf",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "dwarf",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "dwarf",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "dwarf",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "dwarf",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "dwarf",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "dwarf",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "dwarf",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "dwarf",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "dwarf",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "harthfolk",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "harthfolk",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "harthfolk",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "harthfolk",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "harthfolk",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "harthfolk",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "harthfolk",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "harthfolk",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "harthfolk",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "orc",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "orc",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "orc",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "orc",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "orc",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "orc",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "orc",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "orc",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "orc",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "nethkin",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "nethkin",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "nethkin",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "nethkin",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "nethkin",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "nethkin",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "nethkin",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "nethkin",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "nethkin",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "drakonid",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "drakonid",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "drakonid",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "assassin"
+    },
+    {
+      "race": "drakonid",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "drakonid",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "drakonid",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "thief"
+    },
+    {
+      "race": "drakonid",
+      "class": "rogue",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "drakonid",
+      "class": "rogue",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    },
+    {
+      "race": "drakonid",
+      "class": "rogue",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "swashbuckler"
+    }
+  ]
+}

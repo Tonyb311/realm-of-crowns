@@ -1,0 +1,14 @@
+{
+  "notes": "Verify Vanish→Ambush chain fires correctly (20 combats)",
+  "matchups": [
+    {
+      "race": "human",
+      "class": "rogue",
+      "specialization": "assassin",
+      "level": 25,
+      "opponent": "Mind Flayer",
+      "iterations": 20,
+      "tier0Selections": { "3": "a", "5": "a", "8": "a" }
+    }
+  ]
+}

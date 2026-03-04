@@ -1,12 +1,18 @@
 /**
- * Warrior Ability Mechanical Audit Script
+ * Class-Agnostic Ability Mechanical Audit Script
  *
- * Pulls all combat encounter logs from the most recent warrior verification sim run,
- * loads every Warrior ability definition, and cross-references every class_ability action
- * against the ability definition to validate damage, buffs, debuffs, status effects,
+ * Pulls all combat encounter logs from a sim run, loads every ability definition
+ * for the specified class, and cross-references every class_ability action against
+ * the ability definition to validate damage, buffs, debuffs, status effects,
  * durations, cooldowns, and more.
  *
- * Run: npx tsx --tsconfig server/tsconfig.json server/src/scripts/audit-warrior-combat-logs.ts
+ * Usage:
+ *   npx tsx --tsconfig server/tsconfig.json server/src/scripts/audit-combat-logs.ts --class=warrior
+ *   npx tsx --tsconfig server/tsconfig.json server/src/scripts/audit-combat-logs.ts --class=mage --run-id=abc123
+ *
+ * Arguments:
+ *   --class=<warrior|mage|rogue|cleric|ranger|bard|psion>  (required)
+ *   --run-id=<sim_run_id>                                   (optional — defaults to most recent completed sim run)
  */
 
 process.env.DATABASE_URL = 'postgresql://rocadmin:RoC-Dev-2026!@roc-db-server.postgres.database.azure.com:5432/realm_of_crowns?sslmode=require';
@@ -14,10 +20,41 @@ process.env.DATABASE_URL = 'postgresql://rocadmin:RoC-Dev-2026!@roc-db-server.po
 import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
-import { warriorAbilities, warriorTier0Abilities } from '@shared/data/skills/warrior';
+import { ABILITIES_BY_CLASS, VALID_CLASSES } from '@shared/data/skills/index';
 import type { AbilityDefinition } from '@shared/data/skills/types';
 
 const prisma = new PrismaClient();
+
+// ---- CLI Argument Parsing ----
+
+function parseArgs(): { className: string; runId: string | null } {
+  const args = process.argv.slice(2);
+  let className: string | null = null;
+  let runId: string | null = null;
+
+  for (const arg of args) {
+    if (arg.startsWith('--class=')) {
+      className = arg.split('=')[1].toLowerCase();
+    } else if (arg.startsWith('--run-id=')) {
+      runId = arg.split('=')[1];
+    }
+  }
+
+  if (!className) {
+    console.error('Error: --class argument is required.');
+    console.error(`Valid classes: ${VALID_CLASSES.join(', ')}`);
+    console.error('Usage: npx tsx --tsconfig server/tsconfig.json server/src/scripts/audit-combat-logs.ts --class=warrior [--run-id=<id>]');
+    process.exit(1);
+  }
+
+  if (!(VALID_CLASSES as readonly string[]).includes(className)) {
+    console.error(`Error: Unknown class "${className}".`);
+    console.error(`Valid classes: ${VALID_CLASSES.join(', ')}`);
+    process.exit(1);
+  }
+
+  return { className, runId };
+}
 
 // ---- Types for log entries ----
 
@@ -77,14 +114,6 @@ interface EncounterContext {
     weapon: { name: string; dice: string; damageType?: string; bonusAttack: number; bonusDamage: number; attackStat: string; damageStat: string } | null;
   }>;
   turnOrder: string[];
-}
-
-// ---- Ability definitions lookup ----
-
-const ALL_WARRIOR_ABILITIES: AbilityDefinition[] = [...warriorAbilities, ...warriorTier0Abilities];
-const abilityByName = new Map<string, AbilityDefinition>();
-for (const a of ALL_WARRIOR_ABILITIES) {
-  abilityByName.set(a.name, a);
 }
 
 // ---- Validation types ----
@@ -170,14 +199,53 @@ function normalizeStatusName(name: string): string {
   return mapping[name] ?? name;
 }
 
+/** Capitalize first letter */
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 // ---- Main ----
 
 async function main() {
-  const SIM_RUN_ID = 'cmmc4vui200007jyzsfptkuqc';
+  const { className, runId: cliRunId } = parseArgs();
+  const classLabel = capitalize(className);
 
+  // Load abilities for the selected class
+  const classAbilities: AbilityDefinition[] = ABILITIES_BY_CLASS[className];
+  if (!classAbilities || classAbilities.length === 0) {
+    console.error(`No abilities found for class "${className}".`);
+    process.exit(1);
+  }
+
+  const abilityByName = new Map<string, AbilityDefinition>();
+  for (const a of classAbilities) {
+    abilityByName.set(a.name, a);
+  }
+
+  // Resolve SIM_RUN_ID
+  let simRunId: string;
+  if (cliRunId) {
+    simRunId = cliRunId;
+    console.log(`Using provided run ID: ${simRunId}`);
+  } else {
+    console.log('No --run-id provided, querying most recent completed sim run...');
+    const latestRun = await prisma.simulationRun.findFirst({
+      orderBy: { startedAt: 'desc' },
+      where: { status: 'completed' },
+    });
+    if (!latestRun) {
+      console.error('No completed simulation runs found in the database.');
+      await prisma.$disconnect();
+      process.exit(1);
+    }
+    simRunId = latestRun.id;
+    console.log(`Using most recent completed run: ${simRunId} (started ${latestRun.startedAt.toISOString()})`);
+  }
+
+  console.log(`Auditing ${classLabel} abilities (${classAbilities.length} total)...`);
   console.log('Fetching combat logs...');
   const logs = await prisma.combatEncounterLog.findMany({
-    where: { simulationRunId: SIM_RUN_ID },
+    where: { simulationRunId: simRunId },
     select: {
       id: true,
       characterName: true,
@@ -188,7 +256,7 @@ async function main() {
     },
   });
 
-  console.log(`Found ${logs.length} combat logs for run ${SIM_RUN_ID}`);
+  console.log(`Found ${logs.length} combat logs for run ${simRunId}`);
 
   const allIssues: ValidationIssue[] = [];
   const abilityResults = new Map<string, AbilityAuditResult>();
@@ -197,7 +265,7 @@ async function main() {
   const untestableAbilities: { name: string; reason: string }[] = [];
 
   // Initialize audit results for each ability
-  for (const ability of ALL_WARRIOR_ABILITIES) {
+  for (const ability of classAbilities) {
     abilityResults.set(ability.name, {
       name: ability.name,
       id: ability.id,
@@ -272,7 +340,7 @@ async function main() {
       if (!entry.abilityName) continue;
 
       const abilityDef = abilityByName.get(entry.abilityName);
-      if (!abilityDef) continue; // Not a warrior ability
+      if (!abilityDef) continue; // Not an ability for this class
 
       const auditResult = abilityResults.get(entry.abilityName)!;
       auditResult.totalUses++;
@@ -357,7 +425,6 @@ async function main() {
           const diceCount = (effects.diceCount as number) ?? 1;
           const diceSides = (effects.diceSides as number) ?? 6;
 
-          // Sundering Strike: diceCount/diceSides undefined → defaults to 1d6
           const minDmg = diceCount * 1;
           const maxDmg = diceCount * diceSides;
 
@@ -413,7 +480,7 @@ async function main() {
             allIssues.push(issue);
           }
 
-          // Document known mismatch: Hamstring has bonusDamage:1 but handler reads damage field
+          // Document known mismatch: abilities with bonusDamage but handler reads damage field
           if (effects.bonusDamage && !effects.damage) {
             const issue: ValidationIssue = {
               combatId, round: entry.round, actor: entry.actor,
@@ -431,7 +498,7 @@ async function main() {
         }
       }
 
-      // ---- AoE Damage (Cleave) ----
+      // ---- AoE Damage ----
       if (effectType === 'aoe_damage') {
         auditResult.damageValidation = auditResult.damageValidation === 'FAIL' ? 'FAIL' : 'PASS';
 
@@ -464,7 +531,7 @@ async function main() {
         }
       }
 
-      // ---- Multi-Attack (Frenzy) ----
+      // ---- Multi-Attack ----
       if (effectType === 'multi_attack') {
         auditResult.damageValidation = auditResult.damageValidation === 'FAIL' ? 'FAIL' : 'PASS';
 
@@ -681,11 +748,8 @@ async function main() {
 
       // ---- F. Self-Damage / Self-Debuff Validation ----
       if (effectType === 'damage' && effects.selfDefenseDebuff) {
-        // Reckless Strike: self AC penalty
-        // The handler applies selfAcPenalty at start — we can verify the description mentions it
+        // Self AC penalty abilities — the handler applies selfAcPenalty at start
         const desc = entry.abilityDescription ?? '';
-        // Just document that the self-debuff field exists and should be applied
-        // Can't easily verify from log entry alone, but we track it
         auditResult.statModifierValidation = auditResult.statModifierValidation === 'FAIL' ? 'FAIL' : 'PASS';
       }
 
@@ -774,40 +838,46 @@ async function main() {
     }
   }
 
-  // ---- Identify untestable abilities ----
-  for (const ability of ALL_WARRIOR_ABILITIES) {
+  // ---- Identify untestable abilities (class-agnostic) ----
+  for (const ability of classAbilities) {
     const effects = ability.effects as Record<string, any>;
     const result = abilityResults.get(ability.name)!;
 
+    // Any passive-type ability is untestable as a class_ability action
     if (effects.type === 'passive') {
-      if (ability.name === 'Inspiring Presence') {
-        untestableAbilities.push({ name: ability.name, reason: 'Passive HP regen does not appear as class_ability action. Would need to trace HoT ticks.' });
-      } else if (ability.name === 'Undying Fury') {
-        untestableAbilities.push({ name: ability.name, reason: 'Survive fatal blow at 1 HP — passive triggered on death. Requires specific HP scenario in logs.' });
-      } else if (ability.name === 'Unbreakable') {
-        untestableAbilities.push({ name: ability.name, reason: 'Passive bonus HP from CON — applied at combat start, not logged as class_ability.' });
-      }
+      untestableAbilities.push({
+        name: ability.name,
+        reason: 'Passive ability — does not appear as class_ability action in combat logs. Effect is applied implicitly by the engine.',
+      });
     }
 
+    // L40 abilities are untestable because sim only goes to L35
     if (ability.levelRequired >= 40 && result.totalUses === 0) {
-      untestableAbilities.push({ name: ability.name, reason: `L${ability.levelRequired} ability — sim only tests up to L35.` });
+      untestableAbilities.push({
+        name: ability.name,
+        reason: `L${ability.levelRequired} ability — sim only tests up to L35.`,
+      });
     }
 
+    // Any ability with zero uses that isn't already flagged
     if (result.totalUses === 0 && !untestableAbilities.find(u => u.name === ability.name)) {
-      untestableAbilities.push({ name: ability.name, reason: 'Zero uses found in combat logs.' });
+      untestableAbilities.push({
+        name: ability.name,
+        reason: 'Zero uses found in combat logs.',
+      });
     }
   }
 
   // ---- Generate report ----
   console.log('Generating audit report...');
-  const report = generateReport(abilityResults, durationEntries, cooldownEntries, allIssues, untestableAbilities);
+  const report = generateReport(classLabel, simRunId, abilityByName, abilityResults, durationEntries, cooldownEntries, allIssues, untestableAbilities);
 
-  const outputPath = path.resolve(process.cwd(), 'docs/warrior-ability-mechanical-audit.md');
+  const outputPath = path.resolve(process.cwd(), `docs/${className}-ability-mechanical-audit.md`);
   fs.writeFileSync(outputPath, report, 'utf-8');
   console.log(`Audit report written to: ${outputPath}`);
 
   // Print summary
-  const totalAbilities = ALL_WARRIOR_ABILITIES.length;
+  const totalAbilities = classAbilities.length;
   const abilitiesWithIssues = [...abilityResults.values()].filter(r => r.overall === 'ISSUES FOUND').length;
   const abilitiesWithUses = [...abilityResults.values()].filter(r => r.totalUses > 0).length;
   const totalIssues = allIssues.length;
@@ -817,8 +887,8 @@ async function main() {
   const durationMismatches = durationEntries.filter(d => d.match === 'MISMATCH').length;
   const cooldownViolations = cooldownEntries.filter(c => c.result === 'VIOLATION').length;
 
-  console.log('\n=== AUDIT SUMMARY ===');
-  console.log(`Total warrior abilities: ${totalAbilities}`);
+  console.log(`\n=== ${classLabel.toUpperCase()} AUDIT SUMMARY ===`);
+  console.log(`Total ${className} abilities: ${totalAbilities}`);
   console.log(`Abilities with log data: ${abilitiesWithUses}`);
   console.log(`Abilities with issues: ${abilitiesWithIssues}`);
   console.log(`Total validation issues: ${totalIssues} (${critical} CRITICAL, ${moderate} MODERATE, ${minor} MINOR)`);
@@ -832,6 +902,9 @@ async function main() {
 // ---- Report Generator ----
 
 function generateReport(
+  classLabel: string,
+  simRunId: string,
+  abilityByName: Map<string, AbilityDefinition>,
   abilityResults: Map<string, AbilityAuditResult>,
   durationEntries: DurationAuditEntry[],
   cooldownEntries: CooldownAuditEntry[],
@@ -840,9 +913,9 @@ function generateReport(
 ): string {
   const lines: string[] = [];
 
-  lines.push('# Warrior Ability Mechanical Audit');
+  lines.push(`# ${classLabel} Ability Mechanical Audit`);
   lines.push('');
-  lines.push(`**Sim Run:** cmmc4vui200007jyzsfptkuqc`);
+  lines.push(`**Sim Run:** ${simRunId}`);
   lines.push(`**Generated:** ${new Date().toISOString()}`);
   lines.push('');
 
@@ -882,7 +955,7 @@ function generateReport(
         }
       }
       for (const [, { issue, count }] of byField) {
-        lines.push(`- **${issue.severity}** \`${issue.field}\` (×${count}): expected \`${issue.expected}\`, got \`${issue.actual}\``);
+        lines.push(`- **${issue.severity}** \`${issue.field}\` (x${count}): expected \`${issue.expected}\`, got \`${issue.actual}\``);
         lines.push(`  - Sample: Combat ${issue.combatId.substring(0, 12)}..., Round ${issue.round}, Actor: ${issue.actor}`);
       }
     }
@@ -921,12 +994,12 @@ function generateReport(
         }
       }
 
-      lines.push('| Ability | Effect | Count | Result | Sample (Applied→Expected→Actual) |');
+      lines.push('| Ability | Effect | Count | Result | Sample (Applied->Expected->Actual) |');
       lines.push('|---------|--------|-------|--------|----------------------------------|');
       for (const [, { entries, match }] of grouped) {
         const sample = entries[0];
         const actualStr = sample.actualExpiryRound === 'NEVER' ? 'NEVER' : `R${sample.actualExpiryRound}`;
-        lines.push(`| ${sample.abilityName} | ${sample.effectName} | ${entries.length} | ${match} | R${sample.appliedRound}→R${sample.expectedExpiryRound}→${actualStr} |`);
+        lines.push(`| ${sample.abilityName} | ${sample.effectName} | ${entries.length} | ${match} | R${sample.appliedRound}->R${sample.expectedExpiryRound}->${actualStr} |`);
       }
       lines.push('');
     }
@@ -993,7 +1066,7 @@ function generateReport(
       for (const [name, g] of grouped) {
         if (g.violations === 0) continue;
         for (const s of g.samples) {
-          lines.push(`- **${name}**: R${s.roundA}→R${s.roundB} (gap ${s.gap}, min ${s.expectedMinimum}) in combat ${s.combatId.substring(0, 12)}...`);
+          lines.push(`- **${name}**: R${s.roundA}->R${s.roundB} (gap ${s.gap}, min ${s.expectedMinimum}) in combat ${s.combatId.substring(0, 12)}...`);
         }
       }
       lines.push('');
@@ -1028,7 +1101,7 @@ function generateReport(
         }
       }
       for (const [, { issue, count }] of grouped) {
-        lines.push(`- **${issue.abilityName}** \`${issue.field}\` (×${count}):`);
+        lines.push(`- **${issue.abilityName}** \`${issue.field}\` (x${count}):`);
         lines.push(`  - Expected: ${issue.expected}`);
         lines.push(`  - Actual: ${issue.actual}`);
         lines.push(`  - Sample: Combat ${issue.combatId.substring(0, 12)}..., Round ${issue.round}`);
@@ -1058,19 +1131,28 @@ function generateReport(
   // ---- 6. Known Data/Handler Mismatches ----
   lines.push('## 6. Known Data/Handler Mismatches');
   lines.push('');
-  lines.push('These are confirmed mismatches between ability data definitions and handler implementations:');
-  lines.push('');
-  lines.push('| Ability | Data Field | Handler Reads | Impact |');
-  lines.push('|---------|-----------|---------------|--------|');
-  lines.push('| Sundering Strike | `bonusDamage: 2` | `diceCount/diceSides` (defaults 1d6) | bonusDamage ignored, deals 1d6 random instead of +2 flat |');
-  lines.push('| Second Wind | `healAmount: 8` | `diceCount/diceSides` (defaults 1d8) | healAmount ignored, heals 1-8 random instead of flat 8 |');
-  lines.push('| Hamstring | `bonusDamage: 1` | `effects.damage` (flat field) | bonusDamage ignored, deals 0 flat damage |');
-  lines.push('');
-  lines.push('**Recommendation:** Fix the ability data definitions to use the field names the handlers actually read, OR update the handlers to recognize the data fields. The data→handler contract is:');
-  lines.push('- `handleDamage`: reads `bonusDamage`, `diceCount`, `diceSides` ✓');
-  lines.push('- `handleDamageDebuff`: reads `diceCount`, `diceSides` (NOT `bonusDamage`)');
-  lines.push('- `handleDamageStatus`: reads `damage` (flat), `diceCount`, `diceSides` (NOT `bonusDamage`)');
-  lines.push('- `handleHeal`: reads `diceCount`, `diceSides`, `bonusHealing`, `fullRestore` (NOT `healAmount`)');
+
+  // Collect mismatches dynamically from the issues
+  const mismatchIssues = allIssues.filter(i => i.field === 'data_handler_mismatch');
+  if (mismatchIssues.length === 0) {
+    lines.push('No data/handler mismatches detected for this class.');
+  } else {
+    lines.push('These are confirmed mismatches between ability data definitions and handler implementations:');
+    lines.push('');
+    // Deduplicate by ability name
+    const seen = new Set<string>();
+    for (const issue of mismatchIssues) {
+      if (seen.has(issue.abilityName)) continue;
+      seen.add(issue.abilityName);
+      lines.push(`- **${issue.abilityName}**: Expected ${issue.expected}. Actual: ${issue.actual}`);
+    }
+    lines.push('');
+    lines.push('**Handler contract reference:**');
+    lines.push('- `handleDamage`: reads `bonusDamage`, `diceCount`, `diceSides`');
+    lines.push('- `handleDamageDebuff`: reads `diceCount`, `diceSides` (NOT `bonusDamage`)');
+    lines.push('- `handleDamageStatus`: reads `damage` (flat), `diceCount`, `diceSides` (NOT `bonusDamage`)');
+    lines.push('- `handleHeal`: reads `diceCount`, `diceSides`, `bonusHealing`, `fullRestore` (NOT `healAmount`)');
+  }
   lines.push('');
 
   return lines.join('\n');

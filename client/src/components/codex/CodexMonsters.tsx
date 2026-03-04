@@ -13,6 +13,9 @@ interface MonsterData {
   level: number;
   biome: string;
   regionName: string | null;
+  category: string;
+  size: string;
+  difficulty: string;
   stats: {
     hp: number;
     ac: number;
@@ -42,6 +45,36 @@ const BIOME_COLORS: Record<string, string> = {
   COASTAL: 'bg-realm-teal-300/10 border-realm-teal-300/30 text-realm-teal-300',
   VOLCANIC: 'bg-realm-danger/10 border-realm-danger/30 text-realm-danger',
 };
+
+const CATEGORY_COLORS: Record<string, string> = {
+  beast: 'bg-green-500/20 text-green-300',
+  undead: 'bg-purple-500/20 text-purple-300',
+  fiend: 'bg-red-500/20 text-red-300',
+  dragon: 'bg-amber-500/20 text-amber-300',
+  construct: 'bg-slate-500/20 text-slate-300',
+  elemental: 'bg-cyan-500/20 text-cyan-300',
+  humanoid: 'bg-blue-500/20 text-blue-300',
+  aberration: 'bg-pink-500/20 text-pink-300',
+  fey: 'bg-emerald-500/20 text-emerald-300',
+  monstrosity: 'bg-orange-500/20 text-orange-300',
+  plant: 'bg-lime-500/20 text-lime-300',
+  ooze: 'bg-yellow-500/20 text-yellow-300',
+};
+
+const DIFFICULTY_COLORS: Record<string, string> = {
+  Common: 'bg-gray-500/20 text-gray-300',
+  Dangerous: 'bg-blue-500/20 text-blue-300',
+  Deadly: 'bg-amber-500/20 text-amber-300',
+  Legendary: 'bg-red-500/20 text-red-300',
+};
+
+function formatCategory(category: string): string {
+  return category.charAt(0).toUpperCase() + category.slice(1);
+}
+
+function formatSize(size: string): string {
+  return size.charAt(0).toUpperCase() + size.slice(1);
+}
 
 function formatBiome(biome: string): string {
   return biome.charAt(0) + biome.slice(1).toLowerCase().replace(/_/g, ' ');
@@ -89,6 +122,7 @@ export default function CodexMonsters({ searchQuery }: CodexMonstersProps) {
         if (m.name.toLowerCase().includes(query)) return true;
         if ((m.regionName || '').toLowerCase().includes(query)) return true;
         if (m.biome.toLowerCase().includes(query)) return true;
+        if (m.category.toLowerCase().includes(query)) return true;
         return false;
       }
       return true;
@@ -183,6 +217,19 @@ export default function CodexMonsters({ searchQuery }: CodexMonstersProps) {
                   </h3>
                   <span className={`font-display text-sm ${getLevelColor(monster.level)}`}>
                     Lv.{monster.level}
+                  </span>
+                </div>
+
+                {/* Classification badges */}
+                <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                  <span className={`text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm ${CATEGORY_COLORS[monster.category] || 'bg-realm-bg-700 text-realm-text-muted'}`}>
+                    {formatCategory(monster.category)}
+                  </span>
+                  <span className={`text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm ${DIFFICULTY_COLORS[monster.difficulty] || 'bg-gray-500/20 text-gray-300'}`}>
+                    {monster.difficulty}
+                  </span>
+                  <span className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm bg-realm-bg-600/50 text-realm-text-muted">
+                    {formatSize(monster.size)}
                   </span>
                 </div>
 

@@ -203,11 +203,23 @@ router.get('/monsters', cache(300), async (req: Request, res: Response) => {
         }
       }
 
+      // Derive player-friendly difficulty label from encounterType
+      const difficultyMap: Record<string, string> = {
+        standard: 'Common',
+        elite: 'Dangerous',
+        boss: 'Deadly',
+        world_boss: 'Legendary',
+      };
+      const difficulty = difficultyMap[m.encounterType] || 'Common';
+
       return {
         name: m.name,
         level: m.level,
         biome: m.biome,
         regionName: m.region?.name ?? null,
+        category: m.category,
+        size: m.size,
+        difficulty,
         stats: {
           hp: stats.hp ?? 0,
           ac: stats.ac ?? 10,

@@ -1,0 +1,3983 @@
+{
+  "notes": "Psion functional verification: 243 tier0 combos + 63 race combos across L8/L20/L35",
+  "matchups": [
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "b",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "a",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "b",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "b"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "c",
+        "5": "c",
+        "8": "c"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "human",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "elf",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "elf",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "elf",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "elf",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "elf",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "elf",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "elf",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "elf",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "elf",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "dwarf",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "dwarf",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "dwarf",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "dwarf",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "dwarf",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "dwarf",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "dwarf",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "dwarf",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "dwarf",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "harthfolk",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "harthfolk",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "harthfolk",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "harthfolk",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "harthfolk",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "harthfolk",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "harthfolk",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "harthfolk",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "harthfolk",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "orc",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "orc",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "orc",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "orc",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "orc",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "orc",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "orc",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "orc",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "orc",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "nethkin",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "nethkin",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "nethkin",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "nethkin",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "nethkin",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "nethkin",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "nethkin",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "nethkin",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "nethkin",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "drakonid",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "drakonid",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "drakonid",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "telepath"
+    },
+    {
+      "race": "drakonid",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "drakonid",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "drakonid",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "seer"
+    },
+    {
+      "race": "drakonid",
+      "class": "psion",
+      "level": 8,
+      "opponent": "Dire Wolf",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "drakonid",
+      "class": "psion",
+      "level": 20,
+      "opponent": "Mind Flayer",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    },
+    {
+      "race": "drakonid",
+      "class": "psion",
+      "level": 35,
+      "opponent": "Basilisk King",
+      "iterations": 1,
+      "tier0Selections": {
+        "3": "a",
+        "5": "a",
+        "8": "a"
+      },
+      "specialization": "nomad"
+    }
+  ]
+}

@@ -1632,7 +1632,11 @@ model Monster {
   phaseTransitions      Json      @default("[]")           @map("phase_transitions")
   formulaCR           Float?                             @map("formula_cr")
   simCR               Float?                             @map("sim_cr")
-  encounterType       String    @default("solo")         @map("encounter_type")
+  encounterType       String    @default("standard")     @map("encounter_type")
+  category            String    @default("beast")        @map("category")
+  sentient            Boolean   @default(false)          @map("sentient")
+  size                String    @default("medium")       @map("size")
+  tags                Json      @default("{}")           @map("tags")
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 

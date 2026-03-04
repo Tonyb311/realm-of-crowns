@@ -102,6 +102,10 @@ interface MonsterEntry {
   name: string;
   level: number;
   biome: string;
+  category: string;
+  encounterType: string;
+  sentient: boolean;
+  size: string;
   regionName: string | null;
   stats: {
     hp: number;
@@ -749,6 +753,28 @@ function formatCompactStats(item: RecipeEntry): string | null {
 // Sub-tab: Monsters
 // ---------------------------------------------------------------------------
 
+const MONSTER_CATEGORY_COLORS: Record<string, string> = {
+  beast: 'bg-green-500/20 text-green-300',
+  undead: 'bg-purple-500/20 text-purple-300',
+  fiend: 'bg-red-500/20 text-red-300',
+  dragon: 'bg-amber-500/20 text-amber-300',
+  construct: 'bg-slate-500/20 text-slate-300',
+  elemental: 'bg-cyan-500/20 text-cyan-300',
+  humanoid: 'bg-blue-500/20 text-blue-300',
+  aberration: 'bg-pink-500/20 text-pink-300',
+  fey: 'bg-emerald-500/20 text-emerald-300',
+  monstrosity: 'bg-orange-500/20 text-orange-300',
+  plant: 'bg-lime-500/20 text-lime-300',
+  ooze: 'bg-yellow-500/20 text-yellow-300',
+};
+
+const ENCOUNTER_TYPE_COLORS: Record<string, string> = {
+  standard: 'bg-gray-500/20 text-gray-300',
+  elite: 'bg-blue-500/20 text-blue-300',
+  boss: 'bg-yellow-500/20 text-yellow-300',
+  world_boss: 'bg-red-500/20 text-red-300',
+};
+
 function MonstersSubTab({ search }: { search: string }) {
   const { data, isLoading, error } = useQuery<{ monsters: MonsterEntry[]; summary: unknown }>({
     queryKey: ['admin', 'monsters'],
@@ -764,6 +790,8 @@ function MonstersSubTab({ search }: { search: string }) {
       (m) =>
         m.name.toLowerCase().includes(q) ||
         m.biome.toLowerCase().includes(q) ||
+        m.category.toLowerCase().includes(q) ||
+        m.encounterType.toLowerCase().replace('_', ' ').includes(q) ||
         m.regionName?.toLowerCase().includes(q),
     );
   }, [data, search]);
@@ -788,6 +816,24 @@ function MonstersSubTab({ search }: { search: string }) {
               <span className="bg-realm-gold-500/20 text-realm-gold-400 px-2 py-0.5 rounded text-xs font-display">
                 {monster.rewards.xp} XP
               </span>
+            </div>
+
+            {/* Classification badges */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className={`${MONSTER_CATEGORY_COLORS[monster.category] ?? 'bg-realm-bg-600 text-realm-text-muted'} px-2 py-0.5 rounded text-xs font-display`}>
+                {monster.category}
+              </span>
+              <span className={`${ENCOUNTER_TYPE_COLORS[monster.encounterType] ?? 'bg-gray-500/20 text-gray-300'} px-2 py-0.5 rounded text-xs font-display`}>
+                {monster.encounterType.replace('_', ' ')}
+              </span>
+              <span className="bg-slate-500/20 text-slate-400 px-2 py-0.5 rounded text-xs font-display">
+                {monster.size}
+              </span>
+              {monster.sentient && (
+                <span className="bg-violet-500/20 text-violet-300 px-2 py-0.5 rounded text-xs font-display">
+                  Sentient
+                </span>
+              )}
             </div>
 
             {/* Biome badge */}

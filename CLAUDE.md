@@ -24,6 +24,17 @@
 - **Tier 0 choice API:** `POST /api/skills/choose-tier0` (pick an ability), `GET /api/skills/tier0-pending` (what choices are available)
 - **Specialization is chosen at level 10.** On selection, all qualifying spec abilities are granted retroactively. Tier 0 choices made before level 10 persist after spec selection.
 - **Old level schedule was 1→5→10→18→28→40.** New schedule: tier 0 at 3/5/8, then spec abilities at 10/14/20/25/32/40.
+- **Ability attack resolution types:** Every ability has an `attackType` field determining how it resolves:
+  - `'weapon'` — STR/DEX + proficiency vs AC (physical attacks: Warrior melee, Rogue strikes, Ranger shots)
+  - `'spell'` — class primary stat + proficiency vs AC (magical attacks: Mage bolts, Psion jabs, Cleric holy fire)
+  - `'save'` — auto-hits, target rolls a save to resist/reduce (AoE spells, debuffs, CC). Save DC = 8 + prof + caster's primary stat mod.
+  - `'auto'` — no roll needed (self-buffs, heals, cleanses, passives, Arcane Bolt auto-hit)
+  - Default (untagged) = `'weapon'` for backward compatibility. All 180 abilities are tagged.
+- **Class primary stats for spell attacks and save DCs:** Warrior=STR, Rogue=DEX, Ranger=DEX, Mage=INT, Psion=INT, Cleric=WIS, Bard=CHA. Map is `CLASS_PRIMARY_STAT` in `class-ability-resolver.ts`.
+- **Combat AI chaining:** Setup→payoff ability pairs use `grantsSetupTag`/`requiresSetupTag`/`consumesSetupTag` fields on AbilityDefinition. Current chains: Vanish→Ambush (Rogue), Analyze→Exploit Weakness (Bard). Tags stored as `setupTags[]` on Combatant.
+- **Psion routing:** Psion spec abilities dispatch as `psion_ability` action type and resolve through `resolvePsionAbility()` in combat-engine.ts. Psion tier 0 abilities dispatch as `class_ability` through the standard resolver.
+- **Full audit docs:** `docs/audit-ability-attack-mechanics.md`, `docs/audit-combat-stat-mechanics.md`, `docs/audit-save-dc-stats.md`
+- **Codex update rule:** ANY change to ability data, combat mechanics, or monster data MUST also update both codexes (player-facing `client/src/components/codex/CodexClasses.tsx` and admin `client/src/components/admin/combat/CodexTab.tsx`) if those fields are displayed. API routes: `/api/codex/classes` and `/admin/combat/codex/classes`.
 
 ### Monster & Combat Design
 - **PvE combat ONLY via road encounters during travel.** `/combat/pve/start` is disabled (400).
