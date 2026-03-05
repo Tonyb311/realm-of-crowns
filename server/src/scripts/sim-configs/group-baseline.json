@@ -1,0 +1,61 @@
+{
+  "groupGrid": {
+    "parties": [
+      {
+        "name": "Balanced",
+        "members": [
+          { "race": "human", "class": "warrior", "level": 10, "specialization": "guardian" },
+          { "race": "human", "class": "mage", "level": 10, "specialization": "elementalist" },
+          { "race": "human", "class": "cleric", "level": 10, "specialization": "healer" },
+          { "race": "human", "class": "rogue", "level": 10, "specialization": "assassin" },
+          { "race": "human", "class": "ranger", "level": 10, "specialization": "sharpshooter" }
+        ]
+      },
+      {
+        "name": "Heavy Melee",
+        "members": [
+          { "race": "human", "class": "warrior", "level": 10, "specialization": "berserker" },
+          { "race": "human", "class": "warrior", "level": 10, "specialization": "guardian" },
+          { "race": "human", "class": "rogue", "level": 10, "specialization": "swashbuckler" },
+          { "race": "human", "class": "cleric", "level": 10, "specialization": "paladin" },
+          { "race": "human", "class": "ranger", "level": 10, "specialization": "beastmaster" }
+        ]
+      },
+      {
+        "name": "Caster Heavy",
+        "members": [
+          { "race": "human", "class": "mage", "level": 10, "specialization": "elementalist" },
+          { "race": "human", "class": "mage", "level": 10, "specialization": "necromancer" },
+          { "race": "human", "class": "psion", "level": 10, "specialization": "seer" },
+          { "race": "human", "class": "cleric", "level": 10, "specialization": "healer" },
+          { "race": "human", "class": "bard", "level": 10, "specialization": "lorekeeper" }
+        ]
+      },
+      {
+        "name": "Support Control",
+        "members": [
+          { "race": "human", "class": "bard", "level": 10, "specialization": "diplomat" },
+          { "race": "human", "class": "cleric", "level": 10, "specialization": "healer" },
+          { "race": "human", "class": "psion", "level": 10, "specialization": "telepath" },
+          { "race": "human", "class": "ranger", "level": 10, "specialization": "tracker" },
+          { "race": "human", "class": "warrior", "level": 10, "specialization": "warlord" }
+        ]
+      },
+      {
+        "name": "Glass Cannon",
+        "members": [
+          { "race": "human", "class": "mage", "level": 10, "specialization": "elementalist" },
+          { "race": "human", "class": "rogue", "level": 10, "specialization": "assassin" },
+          { "race": "human", "class": "ranger", "level": 10, "specialization": "sharpshooter" },
+          { "race": "human", "class": "psion", "level": 10, "specialization": "nomad" },
+          { "race": "human", "class": "bard", "level": 10, "specialization": "battlechanter" }
+        ]
+      }
+    ],
+    "levels": [10, 20, 30],
+    "difficulties": ["medium", "hard", "deadly"],
+    "method": "cr_match",
+    "iterationsPerMatchup": 10
+  },
+  "notes": "5v5 group baseline: 5 parties x 3 levels x 3 difficulties x 10 iterations = 450 combats"
+}

@@ -60,6 +60,7 @@ import {
 import { processItemDrops } from '../lib/loot-items';
 import { applyClassWeaponStat } from '../lib/road-encounter';
 import { ALL_ABILITIES } from '@shared/data/skills';
+import { classifyAbility } from './combat-simulator';
 
 // Ability lookup map for chain tag resolution
 const ABILITY_BY_ID = new Map(ALL_ABILITIES.map(a => [a.id, a]));
@@ -202,9 +203,21 @@ function decideAction(
     };
   }
 
+  // ---- 1a2. Taunt enforcement — forced to attack the taunter ----
+  const tauntEffect = actor.statusEffects.find(e => e.name === 'taunt');
+  if (tauntEffect && (tauntEffect as any).sourceId) {
+    const taunter = state.combatants.find(c => c.id === (tauntEffect as any).sourceId && c.isAlive);
+    if (taunter) {
+      return {
+        action: { type: 'attack', actorId, targetId: taunter.id },
+        context: { weapon: params.weapon ?? undefined },
+      };
+    }
+  }
+
   // ---- 1b. Monster ability AI ----
   if (actor.entityType === 'monster' && actor.monsterAbilities && actor.monsterAbilities.length > 0) {
-    const target = enemies.length > 0 ? enemies[0] : null;
+    const target = enemies.length > 0 ? enemies.reduce((w, e) => e.currentHp < w.currentHp ? e : w) : null;
     if (target) {
       // Recharge check: roll d6 for abilities with recharge field
       for (const inst of actor.monsterAbilities) {
@@ -342,7 +355,31 @@ function decideAction(
     }
 
     if (shouldUse) {
-      const target = enemies.length > 0 ? enemies[0] : null;
+      // Smart target selection based on ability role
+      let targetId: string | undefined;
+      const abilityDef = entry.abilityId ? ABILITY_BY_ID.get(entry.abilityId) : undefined;
+      const role = abilityDef ? classifyAbility(abilityDef) : 'damage';
+
+      if (role === 'heal') {
+        // Target lowest HP% ally (including self)
+        const lowestAlly = allies.reduce((w, a) =>
+          (a.currentHp / a.maxHp) < (w.currentHp / w.maxHp) ? a : w
+        );
+        targetId = lowestAlly.id;
+      } else if (role === 'buff') {
+        // Self-buff
+        targetId = actorId;
+      } else if (role === 'cc') {
+        // Target highest-level enemy
+        targetId = enemies.length > 0
+          ? enemies.reduce((h, e) => e.level > h.level ? e : h).id
+          : undefined;
+      } else {
+        // Damage / utility — target lowest HP enemy (focus fire)
+        targetId = enemies.length > 0
+          ? enemies.reduce((w, e) => e.currentHp < w.currentHp ? e : w).id
+          : undefined;
+      }
 
       // Determine if this is a class ability, psion spec ability, or racial ability
       if (entry.abilityId && isClassAbility(entry.abilityId)) {
@@ -357,7 +394,7 @@ function decideAction(
               type: 'psion_ability',
               actorId,
               psionAbilityId: entry.abilityId,
-              targetId: target?.id,
+              targetId,
               targetIds: enemies.map(e => e.id),
             },
             context: { weapon: params.weapon ?? undefined },
@@ -369,7 +406,7 @@ function decideAction(
             type: 'class_ability',
             actorId,
             classAbilityId: entry.abilityId,
-            targetId: target?.id,
+            targetId,
             targetIds: enemies.map(e => e.id),
           },
           context: { weapon: params.weapon ?? undefined },
@@ -382,7 +419,7 @@ function decideAction(
           type: 'racial_ability',
           actorId,
           racialAbilityName: entry.abilityName,
-          targetId: target?.id,
+          targetId,
           targetIds: enemies.map(e => e.id),
         },
         context: {},

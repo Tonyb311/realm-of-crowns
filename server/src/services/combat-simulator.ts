@@ -24,6 +24,17 @@ export interface SyntheticPlayerConfig {
   subRace?: string;
 }
 
+export interface PartyMemberConfig extends SyntheticPlayerConfig {
+  specialization?: string;
+  tier0Selections?: Record<number, string>;
+}
+
+export interface PartyConfig {
+  name: string;
+  members: PartyMemberConfig[];
+  partyLevel?: number;  // Override all member levels
+}
+
 export interface SyntheticPlayerResult {
   name: string;
   race: string;
@@ -335,7 +346,7 @@ const CLASS_DEFAULT_STANCE: Record<string, 'AGGRESSIVE' | 'BALANCED' | 'DEFENSIV
  */
 type CombatRole = 'damage' | 'buff' | 'heal' | 'cc' | 'utility' | 'echo';
 
-function classifyAbility(ability: AbilityDefinition): CombatRole {
+export function classifyAbility(ability: AbilityDefinition): CombatRole {
   const effects = ability.effects as Record<string, unknown>;
   const type = effects.type as string;
 
@@ -600,6 +611,42 @@ export function buildPlayerCombatParams(player: SyntheticPlayerResult, options?:
     level: player.level,
     subRace: null,
   };
+}
+
+/**
+ * Build a synthetic party from a PartyConfig.
+ * Returns array of SyntheticPlayerResult with unique names (appends #1, #2, etc. for duplicate classes).
+ */
+export function buildSyntheticParty(config: PartyConfig): SyntheticPlayerResult[] {
+  const results: SyntheticPlayerResult[] = [];
+  const classCount = new Map<string, number>();
+
+  for (const member of config.members) {
+    const level = config.partyLevel ?? member.level;
+    const player = buildSyntheticPlayer({ ...member, level });
+    if (!player) continue;
+
+    // Track class counts for unique naming
+    const cls = member.class.toLowerCase();
+    const count = (classCount.get(cls) ?? 0) + 1;
+    classCount.set(cls, count);
+
+    results.push(player);
+  }
+
+  // Append #N suffix for duplicate classes
+  const classSeen = new Map<string, number>();
+  for (const player of results) {
+    const cls = player.class;
+    const total = classCount.get(cls) ?? 1;
+    if (total > 1) {
+      const idx = (classSeen.get(cls) ?? 0) + 1;
+      classSeen.set(cls, idx);
+      player.name = `${player.name} #${idx}`;
+    }
+  }
+
+  return results;
 }
 
 export function buildSyntheticMonster(
