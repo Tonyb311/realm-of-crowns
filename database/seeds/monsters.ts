@@ -1,15 +1,33 @@
 /**
  * Monster Seed Data for Realm of Crowns
  *
- * 51 monsters across 6 tiers:
- *   Tier 1 (lvl 1-5): Goblin, Wolf, Bandit, Giant Rat, Slime, Mana Wisp, Bog Wraith
- *   Tier 2 (lvl 5-10): Orc Warrior, Skeleton Warrior, Giant Spider, Dire Wolf, Troll, Arcane Elemental, Shadow Wraith
- *   Tier 3 (lvl 10-20): Young Dragon, Lich, Demon, Hydra, Ancient Golem, Void Stalker, Elder Fey Guardian
+ * 129 monsters across 6 tiers:
+ *   Tier 1 (lvl 1-5): Goblin, Wolf, Bandit, Giant Rat, Slime, Mana Wisp, Bog Wraith,
+ *                      Dustjaw Hyena, Bone Rattler, Thornvine Creeper, Tide Crab, Ember Beetle,
+ *                      Frost Mote, Shambling Corpse, Prairie Stalker, Glimmerfae, Bloodwing Stirge,
+ *                      Sand Viper, Hollow Sentinel, Brambleback Toad
+ *   Tier 2 (lvl 5-10): Orc Warrior, Skeleton Warrior, Giant Spider, Dire Wolf, Troll, Arcane Elemental, Shadow Wraith,
+ *                       Ghoul Stalker, Dune Scorpion, Tidal Elemental, Stoneclaw Gargoyle, Hooktusk,
+ *                       Harrowsong Harpy, Lavamaw Salamander, Frostfang Wolf, Ironhide Ogre,
+ *                       Broodmother Spider, Rust Lurker
+ *   Tier 3 (lvl 10-20): Young Dragon, Lich, Demon, Hydra, Ancient Golem, Void Stalker, Elder Fey Guardian,
+ *                        Sandscale Basilisk, Thornwarden, Razormane Manticore, Crypt Warden, Dune Revenant,
+ *                        Cyclops Brute, Tidecaller Siren, Magma Crawler, Steppe Lion, Cairn Specter,
+ *                        Mire Hulk, Gorgon Bull, Remorhaz Burrower, Prairie Centaur, Feywild Enchantress,
+ *                        Chuul Predator
  *   Tier 4 (lvl 17-30): Wyvern, Treant, Chimera, Mind Flayer, Vampire Lord, Frost Giant, Sea Serpent,
- *                        Iron Golem, Fire Giant, Purple Worm, Beholder, Fey Dragon, Death Knight, Storm Giant
+ *                        Iron Golem, Fire Giant, Purple Worm, Beholder, Fey Dragon, Death Knight, Storm Giant,
+ *                        Thornfang Wyvern, Sandstorm Djinn, Bone Fiend, Hill Ettin, Coastal Behemoth,
+ *                        Obsidian Golem, Ashlands Wyrm, Feywood Archon, Wasteland Behir, Reef Terror,
+ *                        Frost Revenant, Infernal Ravager, Dread Colossus, Moonveil Stalker
  *   Tier 5 (lvl 31-40): Sand Wyrm, Kraken Spawn, War Mammoth, River Leviathan, Basilisk King,
- *                        Aboleth, Djinn Lord, Roc, Archlich
- *   Tier 6 (lvl 41-50): Phoenix, Pit Fiend, Deep Kraken, Elder Wyrm, Arcane Titan, Tarrasque, Void Emperor
+ *                        Aboleth, Djinn Lord, Roc, Archlich, Ironbark Treant, Steppe Behemoth,
+ *                        Dune Colossus, Nightwalker, Volcanic Drake, Thornbloom Horror, Dust Devil,
+ *                        Spectral Knight, Infernal Bladedancer, Coastal Wyrm, Feywild Warden,
+ *                        Frost Wyrm, Hill Giant Warlord, Dracolich
+ *   Tier 6 (lvl 41-50): Phoenix, Pit Fiend, Deep Kraken, Elder Wyrm, Arcane Titan, Tarrasque, Void Emperor,
+ *                        Ember Titan, Ancient Forest Guardian, Swamp Hydra, Mind Reaver, Tundra Sentinel,
+ *                        Plains Thunderherd, Blight Dragon, Granite Warden, Siege Wurm, Abyssal Ravager
  *
  * Arcane monsters (6) drop Arcane Reagents via itemTemplateName loot entries.
  *
@@ -195,6 +213,261 @@ export const MONSTERS: MonsterDef[] = [
     ],
   },
 
+  // -- New Tier 1 monsters --
+  {
+    name: 'Dustjaw Hyena',
+    level: 1,
+    biome: 'DESERT',
+    regionName: 'The Suncoast',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'PIERCING',
+    stats: {
+      hp: 18, ac: 11, attack: 3, damage: '1d4+1',
+      str: 12, dex: 13, con: 10, int: 2, wis: 11, cha: 5,
+    },
+    lootTable: [
+      { dropChance: 0.55, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Animal Pelts' },
+    ],
+  },
+  {
+    name: 'Bone Rattler',
+    level: 2,
+    biome: 'BADLANDS',
+    regionName: 'Ashenfang Wastes',
+    category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'SLASHING',
+    vulnerabilities: ['BLUDGEONING'],
+    immunities: ['POISON'],
+    conditionImmunities: ['poisoned'],
+    stats: {
+      hp: 16, ac: 11, attack: 3, damage: '1d6+1',
+      str: 10, dex: 12, con: 10, int: 3, wis: 6, cha: 3,
+    },
+    lootTable: [
+      { dropChance: 0.5, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Thornvine Creeper',
+    level: 2,
+    biome: 'FOREST',
+    regionName: 'Thornwilds',
+    category: 'plant', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'PIERCING',
+    abilities: [{
+      id: 'thornvine_entangle', name: 'Entangle', type: 'on_hit',
+      saveType: 'str', saveDC: 10, statusEffect: 'restrained', statusDuration: 1,
+      description: 'Thorned vines lash out and bind the target.',
+    }],
+    stats: {
+      hp: 20, ac: 10, attack: 3, damage: '1d6',
+      str: 14, dex: 6, con: 14, int: 1, wis: 8, cha: 1,
+    },
+    lootTable: [
+      { dropChance: 0.35, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Tide Crab',
+    level: 3,
+    biome: 'COASTAL',
+    regionName: 'The Suncoast',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'BLUDGEONING',
+    stats: {
+      hp: 16, ac: 14, attack: 3, damage: '1d4+2',
+      str: 13, dex: 10, con: 12, int: 1, wis: 9, cha: 3,
+    },
+    lootTable: [
+      { dropChance: 0.5, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Ember Beetle',
+    level: 3,
+    biome: 'VOLCANIC',
+    regionName: 'The Confluence',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
+    damageType: 'FIRE',
+    abilities: [{
+      id: 'ember_beetle_death', name: 'Ember Burst', type: 'death_throes',
+      deathDamage: '1d4', deathDamageType: 'FIRE', deathSaveDC: 11, deathSaveType: 'dex',
+      description: 'The beetle explodes in a burst of embers upon death.',
+    }],
+    stats: {
+      hp: 15, ac: 13, attack: 3, damage: '1d4+1',
+      str: 8, dex: 14, con: 12, int: 1, wis: 7, cha: 3,
+    },
+    lootTable: [
+      { dropChance: 0.4, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Frost Mote',
+    level: 3,
+    biome: 'TUNDRA',
+    regionName: 'Frozen Reaches',
+    category: 'elemental', encounterType: 'standard', sentient: false, size: 'tiny',
+    damageType: 'COLD',
+    abilities: [{
+      id: 'frost_mote_chill', name: 'Chill', type: 'on_hit',
+      saveType: 'con', saveDC: 11, statusEffect: 'slowed', statusDuration: 2,
+      description: 'Icy tendrils slow the target\'s movements.',
+    }],
+    stats: {
+      hp: 14, ac: 13, attack: 4, damage: '1d6',
+      str: 3, dex: 16, con: 8, int: 4, wis: 10, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.35, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Shambling Corpse',
+    level: 3,
+    biome: 'SWAMP',
+    regionName: 'Ashenmoor',
+    category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'BLUDGEONING',
+    vulnerabilities: ['SLASHING'],
+    immunities: ['POISON'],
+    conditionImmunities: ['poisoned'],
+    stats: {
+      hp: 25, ac: 8, attack: 2, damage: '1d6+1',
+      str: 14, dex: 4, con: 16, int: 1, wis: 6, cha: 3,
+    },
+    lootTable: [
+      { dropChance: 0.45, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Prairie Stalker',
+    level: 3,
+    biome: 'PLAINS',
+    regionName: 'Verdant Heartlands',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'SLASHING',
+    abilities: [{
+      id: 'prairie_stalker_pounce', name: 'Pounce', type: 'on_hit',
+      saveType: 'str', saveDC: 11, statusEffect: 'knocked_down', statusDuration: 1,
+      description: 'The prairie cat pounces and tries to knock its prey down.',
+    }],
+    stats: {
+      hp: 18, ac: 12, attack: 4, damage: '1d6+1',
+      str: 14, dex: 14, con: 10, int: 3, wis: 12, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.55, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Animal Pelts' },
+    ],
+  },
+  {
+    name: 'Glimmerfae',
+    level: 4,
+    biome: 'FEYWILD',
+    regionName: 'Glimmerveil',
+    category: 'fey', encounterType: 'standard', sentient: true, size: 'tiny',
+    damageType: 'RADIANT',
+    abilities: [{
+      id: 'glimmerfae_dazzle', name: 'Dazzle', type: 'status',
+      saveType: 'wis', saveDC: 11, statusEffect: 'blinded', statusDuration: 1,
+      priority: 7, cooldown: 2,
+      description: 'The glimmerfae pulses with brilliant light, blinding nearby foes.',
+    }],
+    stats: {
+      hp: 14, ac: 14, attack: 4, damage: '1d4+2',
+      str: 3, dex: 18, con: 8, int: 12, wis: 14, cha: 16,
+    },
+    lootTable: [
+      { dropChance: 0.3, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Arcane Reagents' },
+      { dropChance: 0.6, minQty: 1, maxQty: 3, gold: 2 },
+    ],
+  },
+  {
+    name: 'Bloodwing Stirge',
+    level: 4,
+    biome: 'HILLS',
+    regionName: 'The Crossroads',
+    category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'tiny',
+    damageType: 'PIERCING',
+    abilities: [{
+      id: 'stirge_blood_drain', name: 'Blood Drain', type: 'on_hit',
+      saveType: 'con', saveDC: 11, statusEffect: 'weakened', statusDuration: 1,
+      description: 'The stirge latches on and drains blood, weakening the target.',
+    }],
+    stats: {
+      hp: 12, ac: 13, attack: 5, damage: '1d4+2',
+      str: 4, dex: 16, con: 10, int: 2, wis: 8, cha: 4,
+    },
+    lootTable: [
+      { dropChance: 0.4, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Sand Viper',
+    level: 4,
+    biome: 'DESERT',
+    regionName: 'The Suncoast',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
+    damageType: 'PIERCING',
+    abilities: [{
+      id: 'sand_viper_venom', name: 'Venom', type: 'on_hit',
+      saveType: 'con', saveDC: 12, statusEffect: 'poisoned', statusDuration: 2,
+      description: 'The viper injects a debilitating venom into its prey.',
+    }],
+    stats: {
+      hp: 16, ac: 13, attack: 5, damage: '1d6+2',
+      str: 8, dex: 16, con: 12, int: 2, wis: 10, cha: 4,
+    },
+    lootTable: [
+      { dropChance: 0.5, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Animal Pelts' },
+    ],
+  },
+  {
+    name: 'Hollow Sentinel',
+    level: 5,
+    biome: 'MOUNTAIN',
+    regionName: 'Ironvault Mountains',
+    category: 'construct', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'BLUDGEONING',
+    conditionImmunities: ['poisoned', 'frightened', 'charmed'],
+    stats: {
+      hp: 28, ac: 15, attack: 5, damage: '1d8+2',
+      str: 16, dex: 8, con: 14, int: 3, wis: 8, cha: 1,
+    },
+    lootTable: [
+      { dropChance: 0.5, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Brambleback Toad',
+    level: 5,
+    biome: 'SWAMP',
+    regionName: 'Shadowmere Marshes',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
+    damageType: 'BLUDGEONING',
+    abilities: [
+      {
+        id: 'toad_croak', name: 'Croak Blast', type: 'aoe',
+        damage: '1d6', damageType: 'THUNDER', saveType: 'con', saveDC: 12,
+        priority: 7, cooldown: 3,
+        description: 'The toad unleashes a deafening croak that rattles everything nearby.',
+      },
+      {
+        id: 'toad_swallow', name: 'Swallow', type: 'swallow',
+        swallowDamage: '1d6', swallowDamageType: 'ACID', swallowEscapeThreshold: 12,
+        priority: 6, cooldown: 4,
+        description: 'The toad attempts to swallow a smaller creature whole.',
+      },
+    ],
+    stats: {
+      hp: 30, ac: 11, attack: 4, damage: '1d8+2',
+      str: 16, dex: 8, con: 14, int: 2, wis: 10, cha: 4,
+    },
+    lootTable: [
+      { dropChance: 0.5, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Animal Pelts' },
+    ],
+  },
+
   // ---- Tier 2 (Level 5-10) ----
   {
     name: 'Skeleton Warrior',
@@ -311,6 +584,255 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.8, minQty: 5, maxQty: 20, gold: 15 },
       { dropChance: 0.15, minQty: 1, maxQty: 1, gold: 0 },
+    ],
+  },
+
+  // -- New Tier 2 monsters --
+  {
+    name: 'Ghoul Stalker',
+    level: 5,
+    biome: 'UNDERGROUND',
+    regionName: "Vel'Naris Underdark",
+    category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'SLASHING',
+    immunities: ['POISON'],
+    conditionImmunities: ['poisoned'],
+    abilities: [{
+      id: 'ghoul_paralyze', name: 'Paralyzing Touch', type: 'on_hit',
+      saveType: 'con', saveDC: 12, statusEffect: 'paralyzed', statusDuration: 1,
+      description: 'Necrotic claws lock the target\'s muscles in place.',
+    }],
+    stats: {
+      hp: 38, ac: 13, attack: 5, damage: '1d8+2',
+      str: 14, dex: 14, con: 12, int: 7, wis: 10, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.45, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Dune Scorpion',
+    level: 6,
+    biome: 'DESERT',
+    regionName: 'The Suncoast',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
+    damageType: 'PIERCING',
+    abilities: [
+      {
+        id: 'scorpion_multiattack', name: 'Multiattack', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 1,
+        description: 'The scorpion strikes with its claws and stinger in rapid succession.',
+      },
+      {
+        id: 'scorpion_venom', name: 'Sting Venom', type: 'on_hit',
+        saveType: 'con', saveDC: 12, statusEffect: 'poisoned', statusDuration: 2,
+        description: 'The scorpion\'s stinger injects a potent toxin.',
+      },
+    ],
+    stats: {
+      hp: 45, ac: 14, attack: 6, damage: '1d10+3',
+      str: 16, dex: 12, con: 14, int: 1, wis: 10, cha: 3,
+    },
+    lootTable: [
+      { dropChance: 0.55, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+      { dropChance: 0.3, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Tidal Elemental',
+    level: 6,
+    biome: 'COASTAL',
+    regionName: 'The Suncoast',
+    category: 'elemental', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'BLUDGEONING',
+    immunities: ['POISON'],
+    conditionImmunities: ['poisoned'],
+    abilities: [{
+      id: 'tidal_wave', name: 'Crashing Wave', type: 'aoe',
+      damage: '1d8', damageType: 'BLUDGEONING', saveType: 'str', saveDC: 12,
+      statusEffect: 'knocked_down', statusDuration: 1,
+      priority: 7, cooldown: 3,
+      description: 'The elemental unleashes a surging wave that slams into everything nearby.',
+    }],
+    stats: {
+      hp: 48, ac: 13, attack: 6, damage: '1d10+2',
+      str: 16, dex: 10, con: 16, int: 4, wis: 10, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.4, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Stoneclaw Gargoyle',
+    level: 7,
+    biome: 'MOUNTAIN',
+    regionName: 'Skypeak Plateaus',
+    category: 'construct', encounterType: 'elite', sentient: false, size: 'medium',
+    damageType: 'SLASHING',
+    resistances: ['PIERCING', 'SLASHING'],
+    conditionImmunities: ['poisoned'],
+    stats: {
+      hp: 55, ac: 16, attack: 6, damage: '1d10+3',
+      str: 16, dex: 10, con: 16, int: 6, wis: 10, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.5, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Hooktusk',
+    level: 7,
+    biome: 'FOREST',
+    regionName: 'Silverwood Forest',
+    category: 'monstrosity', encounterType: 'elite', sentient: false, size: 'large',
+    damageType: 'PIERCING',
+    abilities: [{
+      id: 'hooktusk_multiattack', name: 'Rend', type: 'multiattack',
+      attacks: 2, priority: 5, cooldown: 0,
+      description: 'The hooktusk attacks with its hooked beak and raking claws.',
+    }],
+    stats: {
+      hp: 60, ac: 14, attack: 7, damage: '2d6+3',
+      str: 18, dex: 12, con: 14, int: 3, wis: 12, cha: 5,
+    },
+    lootTable: [
+      { dropChance: 0.6, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Hide' },
+      { dropChance: 0.3, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Harrowsong Harpy',
+    level: 7,
+    biome: 'MOUNTAIN',
+    regionName: 'Ironvault Mountains',
+    category: 'monstrosity', encounterType: 'standard', sentient: true, size: 'medium',
+    damageType: 'SLASHING',
+    abilities: [{
+      id: 'harpy_lure', name: 'Luring Song', type: 'status',
+      saveType: 'wis', saveDC: 13, statusEffect: 'charmed', statusDuration: 2,
+      priority: 8, cooldown: 3,
+      description: 'The harpy sings an enchanting melody that lures victims closer.',
+    }],
+    stats: {
+      hp: 42, ac: 13, attack: 6, damage: '1d8+3',
+      str: 12, dex: 14, con: 12, int: 8, wis: 12, cha: 16,
+    },
+    lootTable: [
+      { dropChance: 0.5, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Parts' },
+      { dropChance: 0.5, minQty: 2, maxQty: 8, gold: 6 },
+    ],
+  },
+  {
+    name: 'Lavamaw Salamander',
+    level: 8,
+    biome: 'VOLCANIC',
+    regionName: 'The Confluence',
+    category: 'elemental', encounterType: 'elite', sentient: false, size: 'large',
+    damageType: 'FIRE',
+    immunities: ['FIRE'],
+    vulnerabilities: ['COLD'],
+    abilities: [{
+      id: 'lavamaw_heat', name: 'Heat Aura', type: 'damage_aura',
+      auraDamage: '1d4', auraDamageType: 'FIRE',
+      description: 'Waves of scorching heat radiate from the salamander\'s molten skin.',
+    }],
+    stats: {
+      hp: 65, ac: 14, attack: 7, damage: '2d6+4',
+      str: 18, dex: 10, con: 16, int: 4, wis: 10, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.45, minQty: 1, maxQty: 3, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Frostfang Wolf',
+    level: 8,
+    biome: 'TUNDRA',
+    regionName: 'Frozen Reaches',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
+    damageType: 'COLD',
+    abilities: [{
+      id: 'frostfang_breath', name: 'Frost Breath', type: 'aoe',
+      damage: '2d6', damageType: 'COLD', saveType: 'dex', saveDC: 13,
+      recharge: 5, priority: 8, cooldown: 0,
+      description: 'The wolf exhales a cone of frigid air that freezes everything in its path.',
+    }],
+    stats: {
+      hp: 55, ac: 14, attack: 7, damage: '2d6+3',
+      str: 16, dex: 14, con: 14, int: 4, wis: 12, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.65, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Animal Pelts' },
+    ],
+  },
+  {
+    name: 'Ironhide Ogre',
+    level: 8,
+    biome: 'HILLS',
+    regionName: 'Cogsworth Warrens',
+    category: 'humanoid', encounterType: 'elite', sentient: true, size: 'large',
+    damageType: 'BLUDGEONING',
+    stats: {
+      hp: 70, ac: 13, attack: 7, damage: '2d8+4',
+      str: 20, dex: 8, con: 18, int: 5, wis: 7, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.8, minQty: 5, maxQty: 20, gold: 12 },
+      { dropChance: 0.3, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Broodmother Spider',
+    level: 9,
+    biome: 'FOREST',
+    regionName: 'Thornwilds',
+    category: 'beast', encounterType: 'elite', sentient: false, size: 'large',
+    damageType: 'PIERCING',
+    abilities: [
+      {
+        id: 'broodmother_multiattack', name: 'Frenzy', type: 'multiattack',
+        attacks: 3, priority: 5, cooldown: 0,
+        description: 'The broodmother strikes with fangs and two forelegs in a flurry.',
+      },
+      {
+        id: 'broodmother_venom', name: 'Brood Venom', type: 'on_hit',
+        saveType: 'con', saveDC: 13, statusEffect: 'poisoned', statusDuration: 2,
+        description: 'Potent venom courses through the bite wound.',
+      },
+      {
+        id: 'broodmother_web', name: 'Web Spray', type: 'status',
+        saveType: 'dex', saveDC: 13, statusEffect: 'restrained', statusDuration: 2,
+        priority: 8, cooldown: 3,
+        description: 'The broodmother sprays thick webbing to immobilize its prey.',
+      },
+    ],
+    stats: {
+      hp: 68, ac: 14, attack: 7, damage: '2d6+3',
+      str: 16, dex: 14, con: 16, int: 3, wis: 12, cha: 4,
+    },
+    lootTable: [
+      { dropChance: 0.6, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Parts' },
+      { dropChance: 0.3, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Rust Lurker',
+    level: 9,
+    biome: 'UNDERGROUND',
+    regionName: "Vel'Naris Underdark",
+    category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'ACID',
+    abilities: [{
+      id: 'rust_lurker_corrode', name: 'Corrosion', type: 'on_hit',
+      saveType: 'con', saveDC: 13, statusEffect: 'weakened', statusDuration: 2,
+      description: 'Acidic secretions corrode armor and flesh alike.',
+    }],
+    stats: {
+      hp: 50, ac: 14, attack: 6, damage: '2d6+2',
+      str: 14, dex: 12, con: 14, int: 4, wis: 12, cha: 4,
+    },
+    lootTable: [
+      { dropChance: 0.5, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Parts' },
     ],
   },
 
@@ -540,6 +1062,442 @@ export const MONSTERS: MonsterDef[] = [
       { dropChance: 1.0, minQty: 30, maxQty: 100, gold: 80 },
       { dropChance: 0.5, minQty: 1, maxQty: 2, gold: 0 },
       { dropChance: 0.15, minQty: 1, maxQty: 1, gold: 0 },
+    ],
+  },
+
+  // ---- Tier 3 New Monsters (Levels 10-19) ----
+
+  {
+    name: 'Sandscale Basilisk',
+    level: 10,
+    biome: 'DESERT',
+    regionName: 'The Suncoast',
+    category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'PIERCING',
+    abilities: [{
+      id: 'sandscale_petrify', name: 'Petrifying Gaze', type: 'on_hit',
+      saveType: 'con', saveDC: 14, statusEffect: 'slowed', statusDuration: 2,
+      description: 'The basilisk\'s gaze begins to petrify the target, slowing their movements.',
+    }],
+    stats: {
+      hp: 110, ac: 15, attack: 8, damage: '2d8+3',
+      str: 16, dex: 10, con: 16, int: 3, wis: 12, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Monster Hide' },
+      { dropChance: 0.30, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Thornwarden',
+    level: 11,
+    biome: 'FOREST',
+    regionName: 'Thornwilds',
+    category: 'plant', encounterType: 'standard', sentient: false, size: 'large',
+    damageType: 'PIERCING',
+    vulnerabilities: ['FIRE'],
+    abilities: [
+      {
+        id: 'thornwarden_volley', name: 'Thorn Volley', type: 'aoe',
+        damage: '2d6', damageType: 'PIERCING', saveType: 'dex', saveDC: 14,
+        priority: 7, cooldown: 3,
+        description: 'The thornwarden launches a barrage of razor-sharp thorns.',
+      },
+      {
+        id: 'thornwarden_regen', name: 'Regeneration', type: 'heal',
+        hpPerTurn: 8, disabledBy: ['FIRE'],
+        description: 'The thornwarden regenerates 8 HP per turn unless damaged by fire.',
+      },
+    ],
+    stats: {
+      hp: 115, ac: 15, attack: 8, damage: '2d8+3',
+      str: 16, dex: 8, con: 18, int: 4, wis: 12, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.45, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Razormane Manticore',
+    level: 11,
+    biome: 'HILLS',
+    regionName: 'The Crossroads',
+    category: 'monstrosity', encounterType: 'elite', sentient: false, size: 'large',
+    damageType: 'PIERCING',
+    abilities: [
+      {
+        id: 'manticore_multi', name: 'Claw and Sting', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The manticore slashes with its claws and strikes with its barbed tail.',
+      },
+      {
+        id: 'manticore_poison', name: 'Tail Spike', type: 'on_hit',
+        saveType: 'con', saveDC: 14, statusEffect: 'poisoned', statusDuration: 2,
+        description: 'The manticore\'s tail spike injects a debilitating venom.',
+      },
+    ],
+    stats: {
+      hp: 145, ac: 16, attack: 9, damage: '2d8+4',
+      str: 17, dex: 14, con: 16, int: 5, wis: 12, cha: 8,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Monster Parts' },
+      { dropChance: 0.30, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Crypt Warden',
+    level: 11,
+    biome: 'UNDERGROUND',
+    regionName: 'Vel\'Naris Underdark',
+    category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'NECROTIC',
+    immunities: ['POISON', 'NECROTIC'],
+    conditionImmunities: ['poisoned'],
+    abilities: [{
+      id: 'crypt_wail', name: 'Wail of the Dead', type: 'status',
+      saveType: 'wis', saveDC: 14, statusEffect: 'frightened', statusDuration: 2,
+      priority: 7, cooldown: 3,
+      description: 'The crypt warden unleashes a bone-chilling wail that strikes terror into the living.',
+    }],
+    stats: {
+      hp: 115, ac: 16, attack: 8, damage: '2d8+3',
+      str: 14, dex: 12, con: 16, int: 8, wis: 14, cha: 10,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Dune Revenant',
+    level: 12,
+    biome: 'DESERT',
+    regionName: 'The Suncoast',
+    category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'SLASHING',
+    immunities: ['POISON'],
+    conditionImmunities: ['poisoned'],
+    abilities: [{
+      id: 'dune_desiccate', name: 'Desiccating Touch', type: 'on_hit',
+      saveType: 'con', saveDC: 14, statusEffect: 'weakened', statusDuration: 2,
+      description: 'The revenant\'s touch drains moisture from the target\'s body.',
+    }],
+    stats: {
+      hp: 120, ac: 15, attack: 8, damage: '2d8+3',
+      str: 16, dex: 12, con: 16, int: 6, wis: 10, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.45, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Cyclops Brute',
+    level: 12,
+    biome: 'MOUNTAIN',
+    regionName: 'Skypeak Plateaus',
+    category: 'humanoid', encounterType: 'standard', sentient: true, size: 'large',
+    damageType: 'BLUDGEONING',
+    abilities: [{
+      id: 'cyclops_hurl', name: 'Rock Hurl', type: 'damage',
+      damage: '3d8', damageType: 'BLUDGEONING',
+      priority: 7, cooldown: 2,
+      description: 'The cyclops hurls a massive boulder at its target.',
+    }],
+    stats: {
+      hp: 125, ac: 14, attack: 9, damage: '2d8+4',
+      str: 20, dex: 8, con: 18, int: 6, wis: 10, cha: 8,
+    },
+    lootTable: [
+      { dropChance: 0.70, minQty: 8, maxQty: 20, gold: 8 },
+      { dropChance: 0.40, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Tidecaller Siren',
+    level: 13,
+    biome: 'COASTAL',
+    regionName: 'The Suncoast',
+    category: 'fey', encounterType: 'standard', sentient: true, size: 'medium',
+    damageType: 'PSYCHIC',
+    abilities: [
+      {
+        id: 'siren_charm', name: 'Enchanting Call', type: 'status',
+        saveType: 'wis', saveDC: 15, statusEffect: 'charmed', statusDuration: 2,
+        priority: 8, cooldown: 3,
+        description: 'The siren\'s haunting melody compels the target to lower their guard.',
+      },
+      {
+        id: 'siren_surge', name: 'Tidal Surge', type: 'aoe',
+        damage: '2d8', damageType: 'COLD', saveType: 'dex', saveDC: 14,
+        priority: 6, cooldown: 3,
+        description: 'The siren calls forth a wave of frigid seawater.',
+      },
+    ],
+    stats: {
+      hp: 115, ac: 15, attack: 8, damage: '2d8+3',
+      str: 10, dex: 14, con: 14, int: 14, wis: 16, cha: 18,
+    },
+    lootTable: [
+      { dropChance: 0.60, minQty: 10, maxQty: 25, gold: 10 },
+      { dropChance: 0.45, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Magma Crawler',
+    level: 13,
+    biome: 'VOLCANIC',
+    regionName: 'The Confluence',
+    category: 'elemental', encounterType: 'standard', sentient: false, size: 'large',
+    damageType: 'FIRE',
+    immunities: ['FIRE'],
+    vulnerabilities: ['COLD'],
+    abilities: [{
+      id: 'magma_shell', name: 'Molten Shell', type: 'damage_aura',
+      auraDamage: '1d6', auraDamageType: 'FIRE',
+      description: 'The crawler\'s molten shell burns anything that gets too close.',
+    }],
+    stats: {
+      hp: 125, ac: 16, attack: 8, damage: '2d8+4',
+      str: 18, dex: 8, con: 18, int: 3, wis: 8, cha: 4,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Steppe Lion',
+    level: 14,
+    biome: 'PLAINS',
+    regionName: 'Verdant Heartlands',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
+    damageType: 'SLASHING',
+    abilities: [
+      {
+        id: 'lion_multi', name: 'Claw and Bite', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The lion strikes with powerful claws and a crushing bite.',
+      },
+      {
+        id: 'lion_pounce', name: 'Pounce', type: 'on_hit',
+        saveType: 'str', saveDC: 15, statusEffect: 'knocked_down', statusDuration: 1,
+        description: 'The lion pounces on its prey, driving them to the ground.',
+      },
+    ],
+    stats: {
+      hp: 130, ac: 15, attack: 9, damage: '2d8+4',
+      str: 18, dex: 16, con: 16, int: 4, wis: 14, cha: 8,
+    },
+    lootTable: [
+      { dropChance: 0.55, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Animal Pelts' },
+      { dropChance: 0.30, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Cairn Specter',
+    level: 14,
+    biome: 'BADLANDS',
+    regionName: 'Ashenfang Wastes',
+    category: 'undead', encounterType: 'elite', sentient: false, size: 'medium',
+    damageType: 'NECROTIC',
+    resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
+    immunities: ['POISON', 'NECROTIC'],
+    conditionImmunities: ['poisoned'],
+    abilities: [
+      {
+        id: 'cairn_drain', name: 'Life Drain', type: 'on_hit',
+        saveType: 'con', saveDC: 15, statusEffect: 'weakened', statusDuration: 2,
+        description: 'The specter drains life force from its target with a spectral touch.',
+      },
+      {
+        id: 'cairn_howl', name: 'Howl', type: 'status',
+        saveType: 'wis', saveDC: 15, statusEffect: 'frightened', statusDuration: 2,
+        priority: 7, cooldown: 3,
+        description: 'The specter unleashes a mournful howl that chills the soul.',
+      },
+    ],
+    stats: {
+      hp: 150, ac: 16, attack: 9, damage: '2d8+4',
+      str: 8, dex: 16, con: 16, int: 10, wis: 14, cha: 12,
+    },
+    lootTable: [
+      { dropChance: 0.45, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Mire Hulk',
+    level: 15,
+    biome: 'SWAMP',
+    regionName: 'Shadowmere Marshes',
+    category: 'plant', encounterType: 'elite', sentient: false, size: 'huge',
+    damageType: 'BLUDGEONING',
+    immunities: ['LIGHTNING'],
+    vulnerabilities: ['FIRE'],
+    abilities: [
+      {
+        id: 'mire_multi', name: 'Crushing Vines', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The hulk lashes out with two massive vine-covered limbs.',
+      },
+      {
+        id: 'mire_engulf', name: 'Engulf', type: 'on_hit',
+        saveType: 'str', saveDC: 15, statusEffect: 'restrained', statusDuration: 2,
+        description: 'The hulk attempts to engulf the target in its tangled mass.',
+      },
+    ],
+    stats: {
+      hp: 170, ac: 16, attack: 9, damage: '2d8+4',
+      str: 20, dex: 6, con: 20, int: 3, wis: 10, cha: 4,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 2, maxQty: 3, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Gorgon Bull',
+    level: 16,
+    biome: 'MOUNTAIN',
+    regionName: 'Ironvault Mountains',
+    category: 'monstrosity', encounterType: 'elite', sentient: false, size: 'large',
+    damageType: 'BLUDGEONING',
+    resistances: ['SLASHING', 'PIERCING'],
+    abilities: [{
+      id: 'gorgon_breath', name: 'Petrifying Breath', type: 'aoe',
+      damage: '2d8', damageType: 'POISON', saveType: 'con', saveDC: 16,
+      statusEffect: 'slowed', statusDuration: 2,
+      priority: 8, recharge: 5,
+      description: 'The gorgon exhales a cone of petrifying gas.',
+    }],
+    stats: {
+      hp: 180, ac: 17, attack: 10, damage: '2d10+5',
+      str: 20, dex: 8, con: 18, int: 4, wis: 12, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 3, gold: 0, itemTemplateName: 'Monster Parts' },
+      { dropChance: 0.30, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Remorhaz Burrower',
+    level: 16,
+    biome: 'TUNDRA',
+    regionName: 'Frozen Reaches',
+    category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'huge',
+    damageType: 'PIERCING',
+    immunities: ['FIRE', 'COLD'],
+    abilities: [{
+      id: 'remorhaz_heat', name: 'Heated Body', type: 'damage_aura',
+      auraDamage: '1d8', auraDamageType: 'FIRE',
+      description: 'The remorhaz\'s superheated body sears anything that touches it.',
+    }],
+    stats: {
+      hp: 150, ac: 17, attack: 10, damage: '2d8+5',
+      str: 22, dex: 10, con: 18, int: 3, wis: 10, cha: 4,
+    },
+    lootTable: [
+      { dropChance: 0.55, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Monster Parts' },
+      { dropChance: 0.30, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Prairie Centaur',
+    level: 17,
+    biome: 'PLAINS',
+    regionName: 'Verdant Heartlands',
+    category: 'humanoid', encounterType: 'standard', sentient: true, size: 'large',
+    damageType: 'PIERCING',
+    abilities: [
+      {
+        id: 'centaur_multi', name: 'Hooves and Lance', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The centaur strikes with its lance and rearing hooves.',
+      },
+      {
+        id: 'centaur_trample', name: 'Trample', type: 'on_hit',
+        saveType: 'str', saveDC: 16, statusEffect: 'knocked_down', statusDuration: 1,
+        description: 'The centaur charges forward, trampling the target underfoot.',
+      },
+    ],
+    stats: {
+      hp: 145, ac: 16, attack: 10, damage: '2d8+5',
+      str: 18, dex: 16, con: 16, int: 10, wis: 14, cha: 12,
+    },
+    lootTable: [
+      { dropChance: 0.65, minQty: 10, maxQty: 25, gold: 10 },
+      { dropChance: 0.40, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Feywild Enchantress',
+    level: 18,
+    biome: 'FEYWILD',
+    regionName: 'Glimmerveil',
+    category: 'fey', encounterType: 'boss', sentient: true, size: 'medium',
+    damageType: 'RADIANT',
+    legendaryActions: 2,
+    legendaryResistances: 1,
+    abilities: [
+      {
+        id: 'enchantress_beguile', name: 'Beguiling Mist', type: 'status',
+        saveType: 'wis', saveDC: 17, statusEffect: 'charmed', statusDuration: 2,
+        priority: 8, cooldown: 3,
+        description: 'The enchantress weaves a mist of beguiling magic around the target.',
+      },
+      {
+        id: 'enchantress_bolt', name: 'Fey Bolt', type: 'damage',
+        damage: '3d8+4', damageType: 'RADIANT',
+        priority: 6, cooldown: 1,
+        description: 'A bolt of brilliant fey energy streaks toward the target.',
+      },
+      {
+        id: 'enchantress_aura', name: 'Enchanting Presence', type: 'fear_aura',
+        saveType: 'wis', saveDC: 16, statusEffect: 'frightened', statusDuration: 1,
+        auraRepeats: false,
+        description: 'The enchantress radiates an overwhelming aura of otherworldly beauty.',
+      },
+    ],
+    phaseTransitions: [{
+      id: 'enchantress_phase2', hpThresholdPercent: 40, name: 'Fey Fury',
+      description: 'The enchantress drops her serene facade, wild magic surging around her.',
+      triggered: false,
+      effects: [
+        { type: 'stat_boost', statBoost: { attack: 2, damage: 2 } },
+        { type: 'aoe_burst', aoeBurst: { damage: '4d6', damageType: 'RADIANT', saveDC: 17, saveType: 'dex' } },
+      ],
+    }],
+    stats: {
+      hp: 200, ac: 17, attack: 10, damage: '2d8+5',
+      str: 10, dex: 16, con: 16, int: 18, wis: 20, cha: 22,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 15, maxQty: 40, gold: 15 },
+      { dropChance: 0.55, minQty: 2, maxQty: 4, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Chuul Predator',
+    level: 19,
+    biome: 'SWAMP',
+    regionName: 'Ashenmoor',
+    category: 'aberration', encounterType: 'standard', sentient: false, size: 'large',
+    damageType: 'BLUDGEONING',
+    abilities: [
+      {
+        id: 'chuul_multi', name: 'Pincers', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The chuul snaps at the target with both massive pincers.',
+      },
+      {
+        id: 'chuul_paralyze', name: 'Paralyzing Tentacles', type: 'on_hit',
+        saveType: 'con', saveDC: 16, statusEffect: 'paralyzed', statusDuration: 1,
+        description: 'The chuul\'s tentacles secrete a paralyzing toxin.',
+      },
+    ],
+    stats: {
+      hp: 155, ac: 17, attack: 10, damage: '3d6+5',
+      str: 20, dex: 10, con: 18, int: 5, wis: 12, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 3, gold: 0, itemTemplateName: 'Monster Parts' },
     ],
   },
 
@@ -1277,6 +2235,423 @@ export const MONSTERS: MonsterDef[] = [
     ],
   },
 
+  // ---- Tier 4 New Monsters (Levels 19-29) ----
+
+  {
+    name: 'Thornfang Wyvern',
+    level: 19,
+    biome: 'FOREST',
+    regionName: 'Silverwood Forest',
+    category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'large',
+    damageType: 'PIERCING',
+    abilities: [
+      {
+        id: 'thornwyvern_multi', name: 'Fang and Claw', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The wyvern tears with its fangs and rakes with its claws.',
+      },
+      {
+        id: 'thornwyvern_venom', name: 'Venomous Sting', type: 'on_hit',
+        saveType: 'con', saveDC: 16, statusEffect: 'poisoned', statusDuration: 2,
+        description: 'The wyvern\'s tail stinger injects a potent venom.',
+      },
+    ],
+    stats: {
+      hp: 160, ac: 17, attack: 10, damage: '3d6+5',
+      str: 19, dex: 14, con: 18, int: 5, wis: 12, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Monster Parts' },
+      { dropChance: 0.30, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Sandstorm Djinn',
+    level: 20,
+    biome: 'DESERT',
+    regionName: 'The Suncoast',
+    category: 'elemental', encounterType: 'elite', sentient: true, size: 'large',
+    damageType: 'LIGHTNING',
+    immunities: ['LIGHTNING', 'THUNDER'],
+    abilities: [{
+      id: 'djinn_sandstorm', name: 'Sandstorm', type: 'aoe',
+      damage: '3d8', damageType: 'BLUDGEONING', saveType: 'str', saveDC: 17,
+      priority: 8, cooldown: 3,
+      description: 'The djinn conjures a violent sandstorm that batters everything nearby.',
+    }],
+    stats: {
+      hp: 210, ac: 18, attack: 12, damage: '2d10+5',
+      str: 20, dex: 16, con: 18, int: 14, wis: 16, cha: 18,
+    },
+    lootTable: [
+      { dropChance: 0.70, minQty: 15, maxQty: 40, gold: 15 },
+      { dropChance: 0.50, minQty: 2, maxQty: 3, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Bone Fiend',
+    level: 21,
+    biome: 'UNDERGROUND',
+    regionName: 'Vel\'Naris Underdark',
+    category: 'fiend', encounterType: 'standard', sentient: true, size: 'medium',
+    damageType: 'NECROTIC',
+    immunities: ['FIRE', 'POISON'],
+    abilities: [
+      {
+        id: 'bonefiend_spear', name: 'Bone Spear', type: 'damage',
+        damage: '3d8+5', damageType: 'PIERCING',
+        priority: 6, cooldown: 1,
+        description: 'The fiend launches a javelin of sharpened bone.',
+      },
+      {
+        id: 'bonefiend_aura', name: 'Dread Presence', type: 'fear_aura',
+        saveType: 'wis', saveDC: 16, statusEffect: 'frightened', statusDuration: 1,
+        auraRepeats: false,
+        description: 'The bone fiend exudes an aura of infernal dread.',
+      },
+    ],
+    stats: {
+      hp: 175, ac: 18, attack: 12, damage: '2d10+5',
+      str: 16, dex: 14, con: 18, int: 14, wis: 14, cha: 16,
+    },
+    lootTable: [
+      { dropChance: 0.65, minQty: 12, maxQty: 30, gold: 12 },
+      { dropChance: 0.45, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Hill Ettin',
+    level: 21,
+    biome: 'HILLS',
+    regionName: 'Cogsworth Warrens',
+    category: 'humanoid', encounterType: 'standard', sentient: true, size: 'large',
+    damageType: 'BLUDGEONING',
+    abilities: [{
+      id: 'ettin_multi', name: 'Twin Clubs', type: 'multiattack',
+      attacks: 2, priority: 5, cooldown: 0,
+      description: 'The ettin swings both of its massive clubs simultaneously.',
+    }],
+    stats: {
+      hp: 180, ac: 17, attack: 12, damage: '2d10+5',
+      str: 22, dex: 8, con: 20, int: 6, wis: 10, cha: 8,
+    },
+    lootTable: [
+      { dropChance: 0.70, minQty: 12, maxQty: 30, gold: 12 },
+      { dropChance: 0.45, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Coastal Behemoth',
+    level: 23,
+    biome: 'COASTAL',
+    regionName: 'The Suncoast',
+    category: 'beast', encounterType: 'elite', sentient: false, size: 'huge',
+    damageType: 'BLUDGEONING',
+    abilities: [
+      {
+        id: 'behemoth_multi', name: 'Crush and Slam', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The behemoth crushes with its massive body and slams with its tail.',
+      },
+      {
+        id: 'behemoth_slam', name: 'Tidal Slam', type: 'aoe',
+        damage: '3d8', damageType: 'BLUDGEONING', saveType: 'str', saveDC: 17,
+        priority: 7, cooldown: 3,
+        description: 'The behemoth slams the ground, sending a shockwave of water and debris.',
+      },
+    ],
+    stats: {
+      hp: 240, ac: 18, attack: 12, damage: '3d8+5',
+      str: 24, dex: 8, con: 22, int: 3, wis: 10, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.55, minQty: 2, maxQty: 3, gold: 0, itemTemplateName: 'Monster Hide' },
+      { dropChance: 0.35, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Obsidian Golem',
+    level: 24,
+    biome: 'VOLCANIC',
+    regionName: 'The Confluence',
+    category: 'construct', encounterType: 'elite', sentient: false, size: 'large',
+    damageType: 'BLUDGEONING',
+    resistances: ['SLASHING', 'PIERCING'],
+    immunities: ['FIRE'],
+    conditionImmunities: ['poisoned', 'frightened', 'charmed'],
+    abilities: [{
+      id: 'obsidian_slam', name: 'Magma Slam', type: 'damage',
+      damage: '3d10', damageType: 'FIRE',
+      priority: 7, cooldown: 2,
+      description: 'The golem slams its fist into the ground, erupting in molten rock.',
+    }],
+    stats: {
+      hp: 250, ac: 19, attack: 13, damage: '3d8+6',
+      str: 24, dex: 6, con: 22, int: 3, wis: 8, cha: 1,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 2, maxQty: 3, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Ashlands Wyrm',
+    level: 25,
+    biome: 'BADLANDS',
+    regionName: 'Scarred Frontier',
+    category: 'dragon', encounterType: 'standard', sentient: true, size: 'huge',
+    damageType: 'FIRE',
+    abilities: [
+      {
+        id: 'ashwyrm_breath', name: 'Fire Breath', type: 'aoe',
+        damage: '6d6', damageType: 'FIRE', saveType: 'dex', saveDC: 17,
+        priority: 9, recharge: 5,
+        description: 'The wyrm unleashes a torrent of flame from its jaws.',
+      },
+      {
+        id: 'ashwyrm_multi', name: 'Bite and Claw', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The wyrm bites and rakes with its claws.',
+      },
+    ],
+    stats: {
+      hp: 220, ac: 18, attack: 13, damage: '3d8+5',
+      str: 22, dex: 12, con: 20, int: 12, wis: 14, cha: 16,
+    },
+    lootTable: [
+      { dropChance: 0.75, minQty: 15, maxQty: 40, gold: 15 },
+      { dropChance: 0.45, minQty: 1, maxQty: 3, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Feywood Archon',
+    level: 25,
+    biome: 'FEYWILD',
+    regionName: 'Glimmerveil',
+    category: 'fey', encounterType: 'boss', sentient: true, size: 'large',
+    damageType: 'RADIANT',
+    legendaryActions: 2,
+    legendaryResistances: 2,
+    abilities: [
+      {
+        id: 'archon_cascade', name: 'Radiant Cascade', type: 'aoe',
+        damage: '5d8', damageType: 'RADIANT', saveType: 'dex', saveDC: 18,
+        priority: 9, cooldown: 2,
+        isLegendaryAction: true, legendaryCost: 2,
+        description: 'The archon calls down a devastating cascade of radiant energy.',
+      },
+      {
+        id: 'archon_command', name: 'Fey Command', type: 'status',
+        saveType: 'wis', saveDC: 18, statusEffect: 'stunned', statusDuration: 1,
+        priority: 8, cooldown: 3,
+        description: 'The archon speaks a word of fey authority that stuns the target.',
+      },
+      {
+        id: 'archon_multi', name: 'Archon Strikes', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        isLegendaryAction: true, legendaryCost: 1,
+        description: 'The archon strikes twice with blinding speed.',
+      },
+    ],
+    phaseTransitions: [{
+      id: 'archon_phase2', hpThresholdPercent: 35, name: 'Verdant Wrath',
+      description: 'The archon channels the full power of the Feywild, nature magic erupting violently.',
+      triggered: false,
+      effects: [
+        { type: 'stat_boost', statBoost: { attack: 3, ac: 2, damage: 3 } },
+        { type: 'aoe_burst', aoeBurst: { damage: '6d6', damageType: 'RADIANT', saveDC: 18, saveType: 'dex' } },
+      ],
+    }],
+    stats: {
+      hp: 320, ac: 20, attack: 13, damage: '3d8+6',
+      str: 18, dex: 16, con: 20, int: 18, wis: 22, cha: 22,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 20, maxQty: 50, gold: 20 },
+      { dropChance: 0.60, minQty: 3, maxQty: 5, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Wasteland Behir',
+    level: 26,
+    biome: 'BADLANDS',
+    regionName: 'Ashenfang Wastes',
+    category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'huge',
+    damageType: 'LIGHTNING',
+    abilities: [
+      {
+        id: 'behir_breath', name: 'Lightning Breath', type: 'aoe',
+        damage: '5d8', damageType: 'LIGHTNING', saveType: 'dex', saveDC: 17,
+        priority: 9, recharge: 5,
+        description: 'The behir discharges a line of crackling lightning.',
+      },
+      {
+        id: 'behir_multi', name: 'Bite and Constrict', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The behir bites and wraps its serpentine body around the target.',
+      },
+    ],
+    stats: {
+      hp: 230, ac: 18, attack: 13, damage: '3d8+5',
+      str: 24, dex: 12, con: 20, int: 5, wis: 12, cha: 8,
+    },
+    lootTable: [
+      { dropChance: 0.55, minQty: 2, maxQty: 3, gold: 0, itemTemplateName: 'Monster Parts' },
+      { dropChance: 0.35, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Reef Terror',
+    level: 27,
+    biome: 'COASTAL',
+    regionName: 'The Suncoast',
+    category: 'aberration', encounterType: 'standard', sentient: false, size: 'large',
+    damageType: 'BLUDGEONING',
+    abilities: [
+      {
+        id: 'reef_multi', name: 'Tentacle Lash', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The reef terror lashes out with barbed tentacles.',
+      },
+      {
+        id: 'reef_ink', name: 'Ink Cloud', type: 'status',
+        saveType: 'con', saveDC: 17, statusEffect: 'blinded', statusDuration: 2,
+        priority: 7, cooldown: 3,
+        description: 'The creature releases a cloud of blinding ink.',
+      },
+    ],
+    stats: {
+      hp: 235, ac: 18, attack: 13, damage: '3d8+5',
+      str: 22, dex: 10, con: 20, int: 6, wis: 12, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 2, maxQty: 3, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Frost Revenant',
+    level: 27,
+    biome: 'TUNDRA',
+    regionName: 'Frozen Reaches',
+    category: 'undead', encounterType: 'elite', sentient: false, size: 'large',
+    damageType: 'COLD',
+    immunities: ['COLD', 'POISON'],
+    conditionImmunities: ['poisoned', 'frightened'],
+    abilities: [{
+      id: 'frostrev_grasp', name: 'Freezing Grasp', type: 'on_hit',
+      saveType: 'con', saveDC: 17, statusEffect: 'slowed', statusDuration: 2,
+      description: 'The revenant\'s icy grip freezes the target\'s limbs.',
+    }],
+    stats: {
+      hp: 270, ac: 19, attack: 13, damage: '3d8+6',
+      str: 20, dex: 12, con: 20, int: 8, wis: 14, cha: 10,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 2, maxQty: 3, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Infernal Ravager',
+    level: 28,
+    biome: 'VOLCANIC',
+    regionName: 'The Confluence',
+    category: 'fiend', encounterType: 'standard', sentient: true, size: 'large',
+    damageType: 'FIRE',
+    immunities: ['FIRE', 'POISON'],
+    abilities: [
+      {
+        id: 'ravager_multi', name: 'Claw and Bite', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The ravager tears with burning claws and snapping jaws.',
+      },
+      {
+        id: 'ravager_hellfire', name: 'Hellfire Cloak', type: 'damage_aura',
+        auraDamage: '1d8', auraDamageType: 'FIRE',
+        description: 'The ravager is wreathed in hellfire that scorches nearby foes.',
+      },
+    ],
+    stats: {
+      hp: 240, ac: 19, attack: 14, damage: '3d8+6',
+      str: 22, dex: 14, con: 20, int: 12, wis: 14, cha: 18,
+    },
+    lootTable: [
+      { dropChance: 0.70, minQty: 15, maxQty: 40, gold: 15 },
+      { dropChance: 0.50, minQty: 2, maxQty: 3, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Dread Colossus',
+    level: 29,
+    biome: 'MOUNTAIN',
+    regionName: 'Ironvault Mountains',
+    category: 'construct', encounterType: 'boss', sentient: false, size: 'huge',
+    damageType: 'BLUDGEONING',
+    resistances: ['SLASHING', 'PIERCING'],
+    conditionImmunities: ['poisoned', 'frightened', 'charmed'],
+    critResistance: -15,
+    legendaryActions: 2,
+    legendaryResistances: 2,
+    abilities: [
+      {
+        id: 'colossus_quake', name: 'Earthquake Slam', type: 'aoe',
+        damage: '5d10', damageType: 'BLUDGEONING', saveType: 'str', saveDC: 19,
+        priority: 9, cooldown: 3,
+        isLegendaryAction: true, legendaryCost: 2,
+        description: 'The colossus slams both fists into the earth, triggering a localized earthquake.',
+      },
+      {
+        id: 'colossus_multi', name: 'Titanic Blows', type: 'multiattack',
+        attacks: 3, priority: 5, cooldown: 0,
+        isLegendaryAction: true, legendaryCost: 1,
+        description: 'The colossus unleashes a barrage of crushing blows.',
+      },
+    ],
+    phaseTransitions: [{
+      id: 'colossus_phase2', hpThresholdPercent: 30, name: 'Overload',
+      description: 'The colossus begins to fracture, unleashing stored energy in devastating bursts.',
+      triggered: false,
+      effects: [
+        { type: 'stat_boost', statBoost: { attack: 4, damage: 4 } },
+        { type: 'aoe_burst', aoeBurst: { damage: '6d8', damageType: 'BLUDGEONING', saveDC: 19, saveType: 'str' } },
+      ],
+    }],
+    stats: {
+      hp: 380, ac: 21, attack: 14, damage: '3d10+7',
+      str: 28, dex: 6, con: 24, int: 3, wis: 8, cha: 1,
+    },
+    lootTable: [
+      { dropChance: 0.60, minQty: 3, maxQty: 5, gold: 0, itemTemplateName: 'Monster Parts' },
+      { dropChance: 0.35, minQty: 2, maxQty: 3, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Moonveil Stalker',
+    level: 29,
+    biome: 'FEYWILD',
+    regionName: 'Glimmerveil',
+    category: 'fey', encounterType: 'standard', sentient: true, size: 'medium',
+    damageType: 'RADIANT',
+    abilities: [
+      {
+        id: 'moonveil_fire', name: 'Moonfire', type: 'on_hit',
+        saveType: 'wis', saveDC: 18, statusEffect: 'burning', statusDuration: 2,
+        description: 'The stalker\'s attacks leave searing moonfire on the target.',
+      },
+      {
+        id: 'moonveil_vanish', name: 'Vanish', type: 'buff',
+        priority: 4, cooldown: 4,
+        description: 'The stalker phases into moonlight, becoming nearly invisible.',
+      },
+    ],
+    stats: {
+      hp: 210, ac: 19, attack: 13, damage: '3d8+6',
+      str: 14, dex: 20, con: 18, int: 16, wis: 18, cha: 20,
+    },
+    lootTable: [
+      { dropChance: 0.70, minQty: 15, maxQty: 35, gold: 15 },
+      { dropChance: 0.50, minQty: 2, maxQty: 3, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+
   // ==================== TIER 5 (L31-40) ====================
 
   {
@@ -1669,6 +3044,473 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.80, minQty: 200, maxQty: 400, gold: 25 },
       { dropChance: 0.60, minQty: 4, maxQty: 7, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Ironbark Treant',
+    level: 31,
+    biome: 'FOREST',
+    regionName: 'Silverwood Forest',
+    category: 'plant', encounterType: 'standard', sentient: false, size: 'huge',
+    damageType: 'BLUDGEONING',
+    vulnerabilities: ['FIRE'],
+    abilities: [
+      {
+        id: 'ironbarktreant_multiattack', name: 'Limb Slam', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Two massive ironwood limbs crash down with bone-splintering force.',
+      },
+      {
+        id: 'ironbarktreant_regen', name: 'Bark Regen', type: 'heal',
+        hpPerTurn: 15, disabledBy: ['FIRE'],
+        priority: 3, cooldown: 0,
+        description: 'The treant\'s bark knits itself back together unless scorched by flame.',
+      },
+    ],
+    stats: {
+      hp: 290, ac: 19, attack: 14, damage: '3d8+8',
+      str: 24, dex: 6, con: 22, int: 6, wis: 14, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 100, maxQty: 200, gold: 0 },
+      { dropChance: 0.50, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Steppe Behemoth',
+    level: 32,
+    biome: 'PLAINS',
+    regionName: 'Verdant Heartlands',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'huge',
+    damageType: 'BLUDGEONING',
+    abilities: [
+      {
+        id: 'steppebehemoth_multiattack', name: 'Gore and Trample', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'The behemoth gores with its horns and tramples with massive hooves.',
+      },
+      {
+        id: 'steppebehemoth_charge', name: 'Trampling Charge', type: 'on_hit',
+        saveType: 'str', saveDC: 18, statusEffect: 'knocked_down', statusDuration: 1,
+        description: 'A devastating charge sends the target sprawling into the dirt.',
+      },
+    ],
+    stats: {
+      hp: 300, ac: 19, attack: 14, damage: '3d8+8',
+      str: 26, dex: 8, con: 24, int: 3, wis: 12, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 100, maxQty: 220, gold: 0 },
+      { dropChance: 0.50, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Monster Hide' },
+      { dropChance: 0.40, minQty: 2, maxQty: 4, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Dune Colossus',
+    level: 32,
+    biome: 'DESERT',
+    regionName: 'The Suncoast',
+    category: 'construct', encounterType: 'standard', sentient: false, size: 'huge',
+    damageType: 'BLUDGEONING',
+    conditionImmunities: ['poisoned', 'frightened', 'charmed'],
+    abilities: [
+      {
+        id: 'dunecolossus_multiattack', name: 'Fist Slam', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Two colossal stone fists crash down with earthshaking force.',
+      },
+      {
+        id: 'dunecolossus_sandslam', name: 'Sand Slam', type: 'aoe',
+        damage: '4d8', damageType: 'BLUDGEONING', saveType: 'str', saveDC: 18,
+        priority: 8, cooldown: 3,
+        description: 'The colossus slams the ground, sending a shockwave of sand and stone.',
+      },
+    ],
+    stats: {
+      hp: 310, ac: 20, attack: 14, damage: '3d8+8',
+      str: 26, dex: 6, con: 24, int: 3, wis: 10, cha: 3,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 100, maxQty: 220, gold: 0 },
+      { dropChance: 0.50, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Nightwalker',
+    level: 33,
+    biome: 'UNDERGROUND',
+    regionName: 'Vel\'Naris Underdark',
+    category: 'undead', encounterType: 'elite', sentient: false, size: 'huge',
+    damageType: 'NECROTIC',
+    immunities: ['POISON', 'NECROTIC'],
+    resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
+    conditionImmunities: ['poisoned', 'frightened'],
+    abilities: [
+      {
+        id: 'nightwalker_multiattack', name: 'Enervating Strike', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Two massive fists wreathed in necrotic energy strike with soul-draining force.',
+      },
+      {
+        id: 'nightwalker_lifeeater', name: 'Life Eater', type: 'aoe',
+        damage: '5d8', damageType: 'NECROTIC', saveType: 'con', saveDC: 18,
+        priority: 8, cooldown: 3,
+        description: 'A wave of annihilating darkness drains the life from all nearby creatures.',
+      },
+      {
+        id: 'nightwalker_aura', name: 'Annihilating Aura', type: 'damage_aura',
+        auraDamage: '2d6', auraDamageType: 'NECROTIC',
+        description: 'An aura of absolute darkness saps the life from anyone who draws near.',
+      },
+    ],
+    stats: {
+      hp: 340, ac: 20, attack: 15, damage: '3d10+8',
+      str: 22, dex: 12, con: 22, int: 6, wis: 14, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 120, maxQty: 240, gold: 0 },
+      { dropChance: 0.50, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Volcanic Drake',
+    level: 34,
+    biome: 'VOLCANIC',
+    regionName: 'The Confluence',
+    category: 'dragon', encounterType: 'standard', sentient: true, size: 'large',
+    damageType: 'FIRE',
+    immunities: ['FIRE'],
+    abilities: [
+      {
+        id: 'volcanicdrake_multiattack', name: 'Bite and Claw', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Superheated fangs and molten claws strike in rapid succession.',
+      },
+      {
+        id: 'volcanicdrake_breath', name: 'Fire Breath', type: 'aoe',
+        damage: '5d6', damageType: 'FIRE', saveType: 'dex', saveDC: 18,
+        priority: 9, recharge: 5, cooldown: 0,
+        description: 'A torrent of liquid fire erupts from the drake\'s maw.',
+      },
+    ],
+    stats: {
+      hp: 310, ac: 20, attack: 15, damage: '3d8+8',
+      str: 22, dex: 14, con: 20, int: 8, wis: 12, cha: 14,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 120, maxQty: 250, gold: 25 },
+      { dropChance: 0.45, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Thornbloom Horror',
+    level: 34,
+    biome: 'FOREST',
+    regionName: 'Thornwilds',
+    category: 'plant', encounterType: 'elite', sentient: false, size: 'huge',
+    damageType: 'POISON',
+    immunities: ['POISON'],
+    vulnerabilities: ['FIRE'],
+    abilities: [
+      {
+        id: 'thornbloomhorror_multiattack', name: 'Vine Lash', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Thorn-covered vines whip out with blinding speed.',
+      },
+      {
+        id: 'thornbloomhorror_spores', name: 'Toxic Spores', type: 'on_hit',
+        saveType: 'con', saveDC: 18, statusEffect: 'poisoned', statusDuration: 2,
+        description: 'Each strike releases a cloud of paralytic spores into the wound.',
+      },
+      {
+        id: 'thornbloomhorror_cloud', name: 'Spore Cloud', type: 'aoe',
+        damage: '4d8', damageType: 'POISON', saveType: 'con', saveDC: 18,
+        priority: 8, cooldown: 3,
+        description: 'A choking cloud of toxic spores engulfs the area.',
+      },
+    ],
+    stats: {
+      hp: 340, ac: 19, attack: 15, damage: '3d8+8',
+      str: 20, dex: 8, con: 22, int: 4, wis: 14, cha: 4,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 120, maxQty: 240, gold: 0 },
+      { dropChance: 0.50, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Dust Devil',
+    level: 35,
+    biome: 'DESERT',
+    regionName: 'The Suncoast',
+    category: 'elemental', encounterType: 'standard', sentient: false, size: 'large',
+    damageType: 'BLUDGEONING',
+    immunities: ['LIGHTNING', 'THUNDER'],
+    resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
+    abilities: [
+      {
+        id: 'dustdevil_whirlwind', name: 'Whirlwind', type: 'aoe',
+        damage: '4d8', damageType: 'BLUDGEONING', saveType: 'dex', saveDC: 18,
+        priority: 8, cooldown: 3,
+        description: 'A howling vortex of sand and debris batters everything in range.',
+      },
+      {
+        id: 'dustdevil_aura', name: 'Scouring Winds', type: 'damage_aura',
+        auraDamage: '1d8', auraDamageType: 'SLASHING',
+        description: 'Razor-sharp sand constantly swirls around the elemental.',
+      },
+    ],
+    stats: {
+      hp: 300, ac: 19, attack: 14, damage: '3d8+8',
+      str: 18, dex: 20, con: 18, int: 6, wis: 12, cha: 8,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 100, maxQty: 220, gold: 0 },
+      { dropChance: 0.50, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Spectral Knight',
+    level: 35,
+    biome: 'BADLANDS',
+    regionName: 'Scarred Frontier',
+    category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'NECROTIC',
+    immunities: ['POISON', 'NECROTIC'],
+    resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
+    conditionImmunities: ['poisoned'],
+    abilities: [
+      {
+        id: 'spectralknight_multiattack', name: 'Spectral Blade', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'A ghostly sword strikes twice, passing through armor to chill the soul.',
+      },
+      {
+        id: 'spectralknight_chill', name: 'Soul Chill', type: 'on_hit',
+        saveType: 'wis', saveDC: 18, statusEffect: 'weakened', statusDuration: 2,
+        description: 'Each strike drains warmth and resolve from the target.',
+      },
+    ],
+    stats: {
+      hp: 300, ac: 20, attack: 15, damage: '3d8+8',
+      str: 18, dex: 14, con: 18, int: 10, wis: 16, cha: 12,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 100, maxQty: 220, gold: 0 },
+      { dropChance: 0.50, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Infernal Bladedancer',
+    level: 36,
+    biome: 'VOLCANIC',
+    regionName: 'Ashenfang Wastes',
+    category: 'fiend', encounterType: 'elite', sentient: true, size: 'large',
+    damageType: 'SLASHING',
+    immunities: ['FIRE', 'POISON'],
+    resistances: ['COLD', 'LIGHTNING'],
+    legendaryActions: 1,
+    abilities: [
+      {
+        id: 'infernalbladedancer_multiattack', name: 'Blade Flurry', type: 'multiattack',
+        attacks: 4, priority: 5, cooldown: 0,
+        description: 'Four blazing blades weave a deadly dance of fire and steel.',
+      },
+      {
+        id: 'infernalbladedancer_constrict', name: 'Tail Constrict', type: 'on_hit',
+        saveType: 'str', saveDC: 19, statusEffect: 'restrained', statusDuration: 1,
+        description: 'A barbed tail wraps around the target, pinning them in searing agony.',
+      },
+    ],
+    stats: {
+      hp: 360, ac: 21, attack: 16, damage: '3d8+8',
+      str: 22, dex: 20, con: 20, int: 16, wis: 14, cha: 20,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 150, maxQty: 280, gold: 30 },
+      { dropChance: 0.45, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Coastal Wyrm',
+    level: 36,
+    biome: 'COASTAL',
+    regionName: 'The Suncoast',
+    category: 'dragon', encounterType: 'standard', sentient: true, size: 'large',
+    damageType: 'ACID',
+    resistances: ['ACID'],
+    abilities: [
+      {
+        id: 'coastalwyrm_multiattack', name: 'Bite and Tail', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Corrosive jaws and a barnacle-encrusted tail strike in tandem.',
+      },
+      {
+        id: 'coastalwyrm_acid', name: 'Acid Spray', type: 'aoe',
+        damage: '5d6', damageType: 'ACID', saveType: 'dex', saveDC: 19,
+        priority: 9, recharge: 5, cooldown: 0,
+        description: 'A spray of concentrated acid dissolves everything in its path.',
+      },
+    ],
+    stats: {
+      hp: 330, ac: 20, attack: 16, damage: '3d10+8',
+      str: 22, dex: 14, con: 20, int: 10, wis: 12, cha: 14,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 140, maxQty: 260, gold: 25 },
+      { dropChance: 0.45, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Feywild Warden',
+    level: 37,
+    biome: 'FEYWILD',
+    regionName: 'Glimmerveil',
+    category: 'fey', encounterType: 'standard', sentient: true, size: 'large',
+    damageType: 'RADIANT',
+    abilities: [
+      {
+        id: 'feywildwarden_multiattack', name: 'Radiant Strike', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'A staff of living light strikes twice with blinding radiance.',
+      },
+      {
+        id: 'feywildwarden_binding', name: 'Binding Light', type: 'status',
+        saveType: 'wis', saveDC: 19, statusEffect: 'restrained', statusDuration: 2,
+        priority: 8, cooldown: 3,
+        description: 'Chains of radiant light bind the target in place.',
+      },
+    ],
+    stats: {
+      hp: 330, ac: 20, attack: 16, damage: '3d8+8',
+      str: 18, dex: 16, con: 18, int: 16, wis: 20, cha: 18,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 150, maxQty: 280, gold: 25 },
+      { dropChance: 0.50, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Frost Wyrm',
+    level: 37,
+    biome: 'TUNDRA',
+    regionName: 'Frozen Reaches',
+    category: 'dragon', encounterType: 'standard', sentient: true, size: 'large',
+    damageType: 'COLD',
+    immunities: ['COLD'],
+    abilities: [
+      {
+        id: 'frostwyrm_multiattack', name: 'Bite and Claw', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Ice-encrusted fangs and frost-rimed claws tear into the target.',
+      },
+      {
+        id: 'frostwyrm_breath', name: 'Frost Breath', type: 'aoe',
+        damage: '5d8', damageType: 'COLD', saveType: 'con', saveDC: 19,
+        priority: 9, recharge: 5, cooldown: 0,
+        description: 'A cone of absolute cold flash-freezes everything before the wyrm.',
+      },
+    ],
+    stats: {
+      hp: 340, ac: 20, attack: 16, damage: '3d10+8',
+      str: 24, dex: 12, con: 22, int: 10, wis: 12, cha: 14,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 150, maxQty: 280, gold: 25 },
+      { dropChance: 0.45, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Hill Giant Warlord',
+    level: 38,
+    biome: 'HILLS',
+    regionName: 'Cogsworth Warrens',
+    category: 'humanoid', encounterType: 'elite', sentient: true, size: 'huge',
+    damageType: 'BLUDGEONING',
+    legendaryActions: 1,
+    abilities: [
+      {
+        id: 'hillgiantwarlord_multiattack', name: 'Greatclub Smash', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'A massive tree-trunk club crashes down twice with bone-crushing power.',
+      },
+      {
+        id: 'hillgiantwarlord_boulder', name: 'Boulder Barrage', type: 'aoe',
+        damage: '5d8', damageType: 'BLUDGEONING', saveType: 'dex', saveDC: 19,
+        priority: 8, cooldown: 3,
+        description: 'A rain of boulders pelts the area with devastating impact.',
+      },
+      {
+        id: 'hillgiantwarlord_fear', name: 'Warlord\'s Bellow', type: 'fear_aura',
+        saveType: 'wis', saveDC: 18,
+        auraRepeats: false,
+        description: 'A thunderous war cry shakes the resolve of all who hear it.',
+      },
+    ],
+    stats: {
+      hp: 380, ac: 21, attack: 17, damage: '4d8+9',
+      str: 26, dex: 8, con: 24, int: 8, wis: 12, cha: 14,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 170, maxQty: 300, gold: 30 },
+      { dropChance: 0.45, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+  {
+    name: 'Dracolich',
+    level: 39,
+    biome: 'SWAMP',
+    regionName: 'Shadowmere Marshes',
+    category: 'undead', encounterType: 'boss', sentient: true, size: 'huge',
+    damageType: 'NECROTIC',
+    immunities: ['POISON', 'NECROTIC', 'COLD'],
+    conditionImmunities: ['poisoned', 'frightened', 'charmed'],
+    legendaryActions: 2,
+    legendaryResistances: 2,
+    phaseTransitions: [
+      {
+        id: 'dracolich_undeath',
+        hpThresholdPercent: 30,
+        name: 'Undying Fury',
+        description: 'The Dracolich\'s phylactery flares with dark power, death energy erupting from its skeletal frame.',
+        triggered: false,
+        effects: [
+          { type: 'stat_boost', statBoost: { attack: 3, damage: 3, ac: 2 } },
+          { type: 'aoe_burst', aoeBurst: { damage: '6d8', damageType: 'NECROTIC', saveDC: 20, saveType: 'con' } },
+        ],
+      },
+    ],
+    abilities: [
+      {
+        id: 'dracolich_multiattack', name: 'Bite and Claws', type: 'multiattack',
+        attacks: 3, priority: 5, cooldown: 0,
+        description: 'Skeletal jaws and bone claws rend with necrotic-infused savagery.',
+      },
+      {
+        id: 'dracolich_breath', name: 'Necrotic Breath', type: 'aoe',
+        damage: '8d8', damageType: 'NECROTIC', saveType: 'con', saveDC: 20,
+        priority: 10, recharge: 5, cooldown: 0,
+        description: 'A torrent of concentrated death energy annihilates all life before the dracolich.',
+      },
+      {
+        id: 'dracolich_fear', name: 'Dread Presence', type: 'fear_aura',
+        saveType: 'wis', saveDC: 19,
+        auraRepeats: false,
+        description: 'The dracolich\'s unholy presence fills all nearby with existential dread.',
+      },
+      {
+        id: 'dracolich_deathshroud', name: 'Death Shroud', type: 'damage_aura',
+        auraDamage: '2d6', auraDamageType: 'NECROTIC',
+        description: 'A shroud of death energy damages anyone who strikes the dracolich.',
+      },
+    ],
+    stats: {
+      hp: 420, ac: 22, attack: 17, damage: '4d8+9',
+      str: 24, dex: 10, con: 22, int: 18, wis: 16, cha: 18,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 200, maxQty: 350, gold: 35 },
+      { dropChance: 0.50, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Bones' },
     ],
   },
 
@@ -2098,6 +3940,378 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.90, minQty: 500, maxQty: 800, gold: 30 },
       { dropChance: 0.50, minQty: 5, maxQty: 8, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Ember Titan',
+    level: 41,
+    biome: 'VOLCANIC',
+    regionName: 'The Confluence',
+    category: 'elemental', encounterType: 'standard', sentient: false, size: 'huge',
+    damageType: 'FIRE',
+    immunities: ['FIRE', 'POISON'],
+    vulnerabilities: ['COLD'],
+    abilities: [
+      {
+        id: 'embertitan_multiattack', name: 'Magma Fist', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Two fists of molten rock crash down with volcanic fury.',
+      },
+      {
+        id: 'embertitan_eruption', name: 'Eruption', type: 'aoe',
+        damage: '6d8', damageType: 'FIRE', saveType: 'dex', saveDC: 20,
+        priority: 8, cooldown: 3,
+        description: 'The titan erupts, showering the area in magma and superheated rock.',
+      },
+      {
+        id: 'embertitan_aura', name: 'Magma Skin', type: 'damage_aura',
+        auraDamage: '2d6', auraDamageType: 'FIRE',
+        description: 'The titan\'s molten skin sears anyone who strikes it.',
+      },
+    ],
+    stats: {
+      hp: 460, ac: 22, attack: 19, damage: '4d8+10',
+      str: 26, dex: 10, con: 24, int: 6, wis: 12, cha: 8,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 200, maxQty: 350, gold: 0 },
+      { dropChance: 0.50, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Ancient Forest Guardian',
+    level: 41,
+    biome: 'FOREST',
+    regionName: 'Silverwood Forest',
+    category: 'plant', encounterType: 'elite', sentient: false, size: 'gargantuan',
+    damageType: 'BLUDGEONING',
+    immunities: ['LIGHTNING'],
+    resistances: ['SLASHING', 'PIERCING'],
+    vulnerabilities: ['FIRE'],
+    legendaryActions: 1,
+    abilities: [
+      {
+        id: 'ancientforestguardian_multiattack', name: 'Ancient Limb', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Two gargantuan limbs of ancient wood crash down with earth-shaking force.',
+      },
+      {
+        id: 'ancientforestguardian_roots', name: 'Root Eruption', type: 'aoe',
+        damage: '6d8', damageType: 'BLUDGEONING', saveType: 'str', saveDC: 20,
+        priority: 8, cooldown: 3,
+        description: 'Massive roots erupt from the earth, battering everything in range.',
+      },
+      {
+        id: 'ancientforestguardian_heal', name: 'Ancient Bark', type: 'heal',
+        hpPerTurn: 20, disabledBy: ['FIRE'],
+        priority: 3, cooldown: 0,
+        description: 'Centuries-old bark regrows with supernatural speed unless burned.',
+      },
+      {
+        id: 'ancientforestguardian_entangle', name: 'Entangle', type: 'on_hit',
+        saveType: 'str', saveDC: 20, statusEffect: 'restrained', statusDuration: 2,
+        description: 'Grasping roots and vines wrap around the target, pinning them in place.',
+      },
+    ],
+    stats: {
+      hp: 500, ac: 22, attack: 19, damage: '4d10+10',
+      str: 28, dex: 6, con: 26, int: 8, wis: 18, cha: 8,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 200, maxQty: 380, gold: 0 },
+      { dropChance: 0.55, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Swamp Hydra',
+    level: 43,
+    biome: 'SWAMP',
+    regionName: 'Shadowmere Marshes',
+    category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'huge',
+    damageType: 'ACID',
+    abilities: [
+      {
+        id: 'swamphydra_multiattack', name: 'Four-Headed Bite', type: 'multiattack',
+        attacks: 4, priority: 5, cooldown: 0,
+        description: 'Four serpentine heads lunge simultaneously, dripping corrosive venom.',
+      },
+      {
+        id: 'swamphydra_regen', name: 'Regeneration', type: 'heal',
+        hpPerTurn: 15, disabledBy: ['FIRE', 'ACID'],
+        priority: 3, cooldown: 0,
+        description: 'Severed heads regrow and wounds close unless cauterized.',
+      },
+    ],
+    stats: {
+      hp: 480, ac: 22, attack: 19, damage: '4d8+10',
+      str: 24, dex: 12, con: 24, int: 4, wis: 12, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 220, maxQty: 400, gold: 0 },
+      { dropChance: 0.50, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Monster Hide' },
+      { dropChance: 0.40, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Mind Reaver',
+    level: 44,
+    biome: 'UNDERGROUND',
+    regionName: 'Vel\'Naris Underdark',
+    category: 'aberration', encounterType: 'standard', sentient: true, size: 'large',
+    damageType: 'PSYCHIC',
+    immunities: ['PSYCHIC'],
+    abilities: [
+      {
+        id: 'mindreaver_multiattack', name: 'Tentacle Lash', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Two writhing tentacles strike with psychic-charged precision.',
+      },
+      {
+        id: 'mindreaver_mindblast', name: 'Mind Blast', type: 'status',
+        saveType: 'int', saveDC: 21, statusEffect: 'stunned', statusDuration: 1,
+        priority: 9, cooldown: 3,
+        description: 'A devastating psychic shockwave overwhelms the target\'s consciousness.',
+      },
+      {
+        id: 'mindreaver_braindrain', name: 'Brain Drain', type: 'on_hit',
+        saveType: 'wis', saveDC: 20, statusEffect: 'weakened', statusDuration: 2,
+        description: 'Each strike siphons thought and will from the target\'s mind.',
+      },
+    ],
+    stats: {
+      hp: 470, ac: 22, attack: 19, damage: '4d8+10',
+      str: 16, dex: 16, con: 20, int: 24, wis: 20, cha: 18,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 250, maxQty: 400, gold: 30 },
+      { dropChance: 0.45, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Tundra Sentinel',
+    level: 44,
+    biome: 'TUNDRA',
+    regionName: 'Frozen Reaches',
+    category: 'construct', encounterType: 'standard', sentient: false, size: 'large',
+    damageType: 'COLD',
+    immunities: ['COLD', 'POISON'],
+    conditionImmunities: ['poisoned', 'frightened', 'charmed'],
+    abilities: [
+      {
+        id: 'tundrasentinel_multiattack', name: 'Frost Slam', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Two ice-encased fists slam down with numbing cold.',
+      },
+      {
+        id: 'tundrasentinel_frostnova', name: 'Frost Nova', type: 'aoe',
+        damage: '5d8', damageType: 'COLD', saveType: 'con', saveDC: 20,
+        priority: 8, cooldown: 3,
+        description: 'A burst of absolute cold radiates outward, flash-freezing the area.',
+      },
+    ],
+    stats: {
+      hp: 480, ac: 23, attack: 19, damage: '4d8+10',
+      str: 22, dex: 10, con: 24, int: 3, wis: 12, cha: 3,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 220, maxQty: 380, gold: 0 },
+      { dropChance: 0.50, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Plains Thunderherd',
+    level: 45,
+    biome: 'PLAINS',
+    regionName: 'Verdant Heartlands',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'huge',
+    damageType: 'BLUDGEONING',
+    abilities: [
+      {
+        id: 'plainsthunderherd_multiattack', name: 'Horn and Hoof', type: 'multiattack',
+        attacks: 3, priority: 5, cooldown: 0,
+        description: 'Massive horns and thundering hooves strike with the force of a stampede.',
+      },
+      {
+        id: 'plainsthunderherd_trample', name: 'Trampling Rush', type: 'on_hit',
+        saveType: 'str', saveDC: 21, statusEffect: 'knocked_down', statusDuration: 1,
+        description: 'The thunderherd\'s charge knocks the target flat.',
+      },
+      {
+        id: 'plainsthunderherd_stampede', name: 'Stampede', type: 'aoe',
+        damage: '6d10', damageType: 'BLUDGEONING', saveType: 'dex', saveDC: 21,
+        priority: 8, cooldown: 4,
+        description: 'The entire herd stampedes, crushing everything in the area.',
+      },
+    ],
+    stats: {
+      hp: 490, ac: 22, attack: 20, damage: '4d10+10',
+      str: 28, dex: 10, con: 26, int: 3, wis: 12, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 250, maxQty: 400, gold: 0 },
+      { dropChance: 0.55, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Monster Hide' },
+      { dropChance: 0.40, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Blight Dragon',
+    level: 45,
+    biome: 'HILLS',
+    regionName: 'Cogsworth Warrens',
+    category: 'dragon', encounterType: 'boss', sentient: true, size: 'huge',
+    damageType: 'POISON',
+    immunities: ['POISON'],
+    resistances: ['ACID'],
+    legendaryActions: 2,
+    legendaryResistances: 1,
+    phaseTransitions: [
+      {
+        id: 'blightdragon_plague',
+        hpThresholdPercent: 30,
+        name: 'Plague Unleashed',
+        description: 'The Blight Dragon\'s body erupts with concentrated pestilence, poisoning the very air.',
+        triggered: false,
+        effects: [
+          { type: 'stat_boost', statBoost: { attack: 3, damage: 3, ac: 1 } },
+          { type: 'aoe_burst', aoeBurst: { damage: '6d8', damageType: 'POISON', saveDC: 21, saveType: 'con' } },
+        ],
+      },
+    ],
+    abilities: [
+      {
+        id: 'blightdragon_multiattack', name: 'Bite and Claw', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Venom-dripping jaws and plague-infused claws rend flesh and spirit.',
+      },
+      {
+        id: 'blightdragon_breath', name: 'Plague Breath', type: 'aoe',
+        damage: '8d8', damageType: 'POISON', saveType: 'con', saveDC: 21,
+        priority: 10, recharge: 5, cooldown: 0,
+        description: 'A billowing cloud of concentrated plague dissolves all it touches.',
+      },
+      {
+        id: 'blightdragon_bite', name: 'Corrosive Bite', type: 'on_hit',
+        saveType: 'con', saveDC: 21, statusEffect: 'poisoned', statusDuration: 2,
+        description: 'Each bite injects a virulent toxin that weakens the body.',
+      },
+      {
+        id: 'blightdragon_fear', name: 'Plague Dread', type: 'fear_aura',
+        saveType: 'wis', saveDC: 20,
+        auraRepeats: false,
+        description: 'The stench of disease and decay inspires primal terror.',
+      },
+    ],
+    stats: {
+      hp: 540, ac: 23, attack: 20, damage: '5d8+11',
+      str: 26, dex: 12, con: 24, int: 16, wis: 16, cha: 18,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 350, maxQty: 550, gold: 40 },
+      { dropChance: 0.50, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Granite Warden',
+    level: 46,
+    biome: 'MOUNTAIN',
+    regionName: 'Ironvault Mountains',
+    category: 'construct', encounterType: 'standard', sentient: false, size: 'huge',
+    damageType: 'BLUDGEONING',
+    resistances: ['SLASHING', 'PIERCING'],
+    conditionImmunities: ['poisoned', 'frightened', 'charmed'],
+    critResistance: -15,
+    abilities: [
+      {
+        id: 'granitewarden_multiattack', name: 'Stone Fist', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Two enormous granite fists pound down with mountainous force.',
+      },
+      {
+        id: 'granitewarden_avalanche', name: 'Avalanche Slam', type: 'aoe',
+        damage: '6d8', damageType: 'BLUDGEONING', saveType: 'str', saveDC: 21,
+        priority: 8, cooldown: 3,
+        description: 'The warden slams the ground, triggering a localized avalanche.',
+      },
+    ],
+    stats: {
+      hp: 520, ac: 24, attack: 20, damage: '4d10+11',
+      str: 26, dex: 8, con: 26, int: 3, wis: 12, cha: 3,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 250, maxQty: 400, gold: 0 },
+      { dropChance: 0.55, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Siege Wurm',
+    level: 48,
+    biome: 'DESERT',
+    regionName: 'The Suncoast',
+    category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'gargantuan',
+    damageType: 'PIERCING',
+    abilities: [
+      {
+        id: 'siegewurm_multiattack', name: 'Bite and Tail', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Enormous mandibles and a crushing tail strike with siege-engine force.',
+      },
+      {
+        id: 'siegewurm_burrow', name: 'Burrowing Eruption', type: 'aoe',
+        damage: '7d8', damageType: 'BLUDGEONING', saveType: 'dex', saveDC: 22,
+        priority: 8, cooldown: 3,
+        description: 'The wurm erupts from underground, showering the area in rock and debris.',
+      },
+      {
+        id: 'siegewurm_constrict', name: 'Constrict', type: 'on_hit',
+        saveType: 'str', saveDC: 22, statusEffect: 'restrained', statusDuration: 2,
+        description: 'The wurm coils around its prey, crushing with immense pressure.',
+      },
+    ],
+    stats: {
+      hp: 540, ac: 23, attack: 21, damage: '5d8+12',
+      str: 28, dex: 10, con: 26, int: 3, wis: 12, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 280, maxQty: 420, gold: 0 },
+      { dropChance: 0.55, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Monster Hide' },
+      { dropChance: 0.40, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Abyssal Ravager',
+    level: 48,
+    biome: 'COASTAL',
+    regionName: 'The Suncoast',
+    category: 'fiend', encounterType: 'elite', sentient: true, size: 'large',
+    damageType: 'FIRE',
+    immunities: ['FIRE', 'POISON'],
+    resistances: ['COLD'],
+    legendaryActions: 1,
+    abilities: [
+      {
+        id: 'abyssalravager_multiattack', name: 'Hellblade Strike', type: 'multiattack',
+        attacks: 2, priority: 5, cooldown: 0,
+        description: 'Twin blades forged in the abyss strike with searing fury.',
+      },
+      {
+        id: 'abyssalravager_hellfire', name: 'Hellfire Wave', type: 'aoe',
+        damage: '7d8', damageType: 'FIRE', saveType: 'dex', saveDC: 22,
+        priority: 8, cooldown: 2,
+        description: 'A crescent wave of hellfire incinerates everything in its path.',
+      },
+      {
+        id: 'abyssalravager_aura', name: 'Brimstone Cloak', type: 'damage_aura',
+        auraDamage: '2d8', auraDamageType: 'FIRE',
+        description: 'A cloak of brimstone and flame sears anyone who strikes the ravager.',
+      },
+    ],
+    stats: {
+      hp: 560, ac: 23, attack: 21, damage: '5d8+12',
+      str: 24, dex: 18, con: 24, int: 18, wis: 16, cha: 22,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 300, maxQty: 450, gold: 35 },
+      { dropChance: 0.50, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Monster Parts' },
     ],
   },
 ];

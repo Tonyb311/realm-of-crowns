@@ -1007,6 +1007,612 @@ export const MONSTER_FLAVOR: Record<string, MonsterFlavor> = {
     ],
   },
 
+  // ---- Tier 3 New Monsters (Levels 10-19) ----
+
+  'Sandscale Basilisk': {
+    attack: [
+      'fixes its prey with a petrifying stare, scales rattling like dry sand.',
+      'lunges forward and rakes with serrated claws across exposed flesh.',
+      'whips its heavy tail in a sweeping arc that cracks against bone.',
+    ],
+    wounded: [
+      'Cracked scales flake away, revealing raw flesh beneath the sand-colored hide.',
+      'The basilisk hisses and averts its wounded gaze, blood darkening the dust.',
+    ],
+    opening: [
+      'Sand shifts and a basilisk rises, its terrible gaze sweeping the path!',
+      'A low reptilian hiss cuts the silence — a sandscale basilisk blocks the way!',
+    ],
+  },
+  'Thornwarden': {
+    attack: [
+      'launches a volley of razor-sharp thorns from its twisted branches.',
+      'slams a massive root-arm downward, splitting the earth on impact.',
+      'wraps barbed vines around its target and squeezes with crushing force.',
+    ],
+    wounded: [
+      'Sap oozes from deep gashes in its bark like golden blood.',
+      'The thornwarden creaks and shudders, broken branches already regrowing.',
+    ],
+    opening: [
+      'What seemed a dead tree lurches to life, thorns bristling along every limb!',
+      'The forest groans as a massive thornwarden uproots itself and advances!',
+    ],
+  },
+  'Razormane Manticore': {
+    attack: [
+      'flicks its scorpion tail and sends a spray of barbed spikes whistling forward.',
+      'pounces with outstretched claws, bat-wings snapping wide for balance.',
+      'drives its venomous stinger downward in a brutal overhead strike.',
+    ],
+    wounded: [
+      'The manticore snarls, mane bristling as dark blood mats its fur.',
+      'Broken spikes litter the ground as the manticore circles, limping.',
+    ],
+    opening: [
+      'Leathery wings blot out the sun — a razormane manticore dives from the crags!',
+      'A bestial roar splits the air as a manticore lands, tail poised to strike!',
+    ],
+  },
+  'Crypt Warden': {
+    attack: [
+      'swings a corroded greatsword trailing wisps of necrotic energy.',
+      'unleashes a ghostly wail that chills the blood and cracks stone.',
+      'thrusts a gauntleted fist wreathed in pale green flame.',
+    ],
+    wounded: [
+      'Ancient armor buckles inward, releasing a gust of tomb-stale air.',
+      'The crypt warden staggers, spectral light flickering in its hollow helm.',
+    ],
+    opening: [
+      'A sealed sarcophagus bursts open and an armored revenant steps forth, blade ready!',
+      'Cold light flares in the darkness — a crypt warden rises from eternal vigil!',
+    ],
+  },
+  'Dune Revenant': {
+    attack: [
+      'rakes with desiccated fingers that drain moisture on contact.',
+      'exhales a choking cloud of grave-sand that scours exposed skin.',
+      'lunges forward and clutches with mummified hands, leeching vitality.',
+    ],
+    wounded: [
+      'Linen wrappings unravel as the revenant\'s form crumbles at the edges.',
+      'The dune revenant hisses, sand pouring from a wound that refuses to bleed.',
+    ],
+    opening: [
+      'The sand erupts and a desiccated figure claws free, hollow eyes blazing!',
+      'Dry wind carries the stench of ancient death — a dune revenant stalks forward!',
+    ],
+  },
+  'Cyclops Brute': {
+    attack: [
+      'hurls a jagged boulder that whistles through the air like a siege stone.',
+      'swings a crude tree-trunk club in a devastating horizontal arc.',
+      'stomps the ground with enough force to send cracks racing outward.',
+    ],
+    wounded: [
+      'The cyclops bellows in pain, its single eye narrowing with fury.',
+      'Blood streams down the brute\'s face as it staggers but stays upright.',
+    ],
+    opening: [
+      'The ground trembles underfoot — a one-eyed giant lumbers into view, club raised!',
+      'A guttural roar echoes off the cliffs as a cyclops brute charges!',
+    ],
+  },
+  'Tidecaller Siren': {
+    attack: [
+      'sends a crashing wave of conjured seawater slamming into its target.',
+      'unleashes a piercing note that splits the air like shattering glass.',
+      'lashes out with a tendril of living water that coils and strikes.',
+    ],
+    wounded: [
+      'The siren\'s song falters, saltwater streaming from a wound like tears.',
+      'Her radiant beauty flickers, revealing something cold and inhuman beneath.',
+    ],
+    opening: [
+      'A haunting melody drifts across the water — a tidecaller siren surfaces, eyes gleaming!',
+      'The tide surges unnaturally and a siren rises on a pillar of foam!',
+    ],
+  },
+  'Magma Crawler': {
+    attack: [
+      'spits a glob of molten rock that sizzles and splashes on impact.',
+      'rakes with superheated mandibles that leave glowing score marks.',
+      'slams its molten carapace forward, radiating waves of blistering heat.',
+    ],
+    wounded: [
+      'Cracks spiderweb across its shell, magma oozing sluggishly from the fissures.',
+      'The crawler\'s glow dims and its movements grow jagged and desperate.',
+    ],
+    opening: [
+      'The rock splits and a glowing insectoid form crawls free, dripping magma!',
+      'Heat shimmers distort the air as a magma crawler scuttles from a vent!',
+    ],
+  },
+  'Steppe Lion': {
+    attack: [
+      'pounces with claws extended, driving its full weight into the strike.',
+      'rakes with massive forepaws that tear through leather and chain alike.',
+      'clamps powerful jaws around its prey and wrenches sideways.',
+    ],
+    wounded: [
+      'The great lion snarls, tawny hide darkening with blood.',
+      'It circles low to the ground, muscles coiled despite the wound.',
+    ],
+    opening: [
+      'Tall grass parts and a massive steppe lion springs forward, fangs bared!',
+      'A thunderous roar rolls across the plains — a steppe lion closes fast!',
+    ],
+  },
+  'Cairn Specter': {
+    attack: [
+      'reaches through armor with a translucent claw that chills the soul.',
+      'lets loose a keening wail that saps strength from living flesh.',
+      'surges forward in a blur of ghostly light and rakes with spectral talons.',
+    ],
+    wounded: [
+      'The specter\'s form wavers and distorts, howling in frustrated rage.',
+      'Pale ectoplasm drips from the wound before dissolving into mist.',
+    ],
+    opening: [
+      'A mournful howl rises from the standing stones — a cairn specter drifts forth!',
+      'Cold mist coils between the cairns and a ghostly figure materializes!',
+    ],
+  },
+  'Mire Hulk': {
+    attack: [
+      'lashes out with a massive vine tendril studded with barbs.',
+      'engulfs its target in a wave of reeking swamp vegetation.',
+      'slams a fist of compacted roots and mud that splatters on impact.',
+    ],
+    wounded: [
+      'Chunks of sodden plant matter slough off, revealing writhing roots beneath.',
+      'The mire hulk groans like a falling tree, swamp water seeping from its wounds.',
+    ],
+    opening: [
+      'The bog heaves upward and a massive tangle of vines and mud lurches to life!',
+      'Fetid water churns as a mire hulk drags itself onto solid ground!',
+    ],
+  },
+  'Gorgon Bull': {
+    attack: [
+      'charges headlong with iron-plated horns lowered to gore.',
+      'exhales a cone of gray petrifying vapor that hardens on contact.',
+      'tramples forward with hooves that crack stone like eggshell.',
+    ],
+    wounded: [
+      'Iron plates buckle and spark as the gorgon bull snorts in fury.',
+      'The beast staggers, petrifying breath leaking in thin wisps from its nostrils.',
+    ],
+    opening: [
+      'Metal hooves ring on stone — an iron-plated gorgon bull charges from the ridge!',
+      'A cloud of gray vapor precedes the thunder of hooves as a gorgon bull appears!',
+    ],
+  },
+  'Remorhaz Burrower': {
+    attack: [
+      'clamps superheated mandibles shut with a hiss of boiling air.',
+      'whips its segmented body in a scalding lateral sweep.',
+      'bursts from the frozen ground beneath, jaws snapping upward.',
+    ],
+    wounded: [
+      'Steam erupts from cracked chitin as the remorhaz\'s inner heat escapes.',
+      'The burrower screeches, glowing segments dimming to a sullen red.',
+    ],
+    opening: [
+      'Ice cracks and buckles — a remorhaz erupts from below, heat rolling off its body!',
+      'The snow melts in a widening circle as a glowing remorhaz surfaces!',
+    ],
+  },
+  'Prairie Centaur': {
+    attack: [
+      'drives a war-lance forward with the momentum of a full gallop.',
+      'rears up and brings iron-shod hooves crashing down.',
+      'sweeps a heavy glaive in a wide arc powered by equine strength.',
+    ],
+    wounded: [
+      'The centaur stumbles, flanks heaving and slick with blood.',
+      'It plants its hooves and steadies, eyes blazing with defiance.',
+    ],
+    opening: [
+      'Hoofbeats thunder across the grassland — a prairie centaur charges, lance leveled!',
+      'A centaur warrior crests the hill, silhouetted against the sky, weapon raised!',
+    ],
+  },
+  'Feywild Enchantress': {
+    attack: [
+      'hurls a bolt of shimmering radiance that warps the air around it.',
+      'weaves a beguiling mist that burns where it touches mortal skin.',
+      'traces a sigil of pure fey light that detonates in a brilliant flash.',
+    ],
+    wounded: [
+      'Her glamour cracks, revealing ancient and terrible features beneath.',
+      'The enchantress hisses, radiant blood dripping from her fingertips.',
+    ],
+    opening: [
+      'The air fills with intoxicating fragrance — a feywild enchantress steps from nowhere!',
+      'Reality shimmers and bends as an enchantress materializes, wreathed in fey light!',
+    ],
+  },
+  'Chuul Predator': {
+    attack: [
+      'snaps a massive pincer shut with enough force to sever limbs.',
+      'lashes out with paralytic tentacles that coil around exposed flesh.',
+      'lunges from murky water, both claws closing like a vice.',
+    ],
+    wounded: [
+      'Foul ichor leaks from cracks in the chuul\'s crustacean shell.',
+      'The predator clicks its mandibles in agitation, retreating a half-step.',
+    ],
+    opening: [
+      'The water erupts — a chuul predator surges forward, pincers spread wide!',
+      'Clicking and chittering echoes off the walls as a chuul emerges from the deep!',
+    ],
+  },
+
+  // ---- Tier 1-2 (New Monsters) ----
+
+  'Dustjaw Hyena': {
+    attack: [
+      'lunges with snapping jaws, kicking up a cloud of grit.',
+      'darts in low and clamps down with bone-crushing teeth.',
+      'circles and strikes at your legs, cackling between bites.',
+    ],
+    wounded: [
+      'The hyena yelps, sand-matted fur slick with blood.',
+      'It staggers but bares its teeth wider, refusing to back down.',
+    ],
+    opening: [
+      'A cackling laugh echoes across the dunes — a dustjaw hyena crests the ridge!',
+      'Something moves in the heat shimmer — a gaunt hyena charges from the sand!',
+    ],
+  },
+  'Bone Rattler': {
+    attack: [
+      'swings a rusted blade with hollow, mechanical precision.',
+      'slashes with a notched sword, bones clacking with each strike.',
+      'lunges forward in a jerking motion, blade scraping across your guard.',
+    ],
+    wounded: [
+      'Bones splinter and fall away but the skeleton fights on, eyeless.',
+      'Its ribcage cracks inward — the rattler staggers but does not stop.',
+    ],
+    opening: [
+      'Dry bones clatter to life in the dust, a rusted blade rising with them!',
+      'A skeleton pulls itself upright from the cracked earth, jaw hanging open in a silent scream!',
+    ],
+  },
+  'Thornvine Creeper': {
+    attack: [
+      'lashes out with barbed tendrils that coil and squeeze.',
+      'drives thorned vines upward through the soil beneath your feet.',
+      'whips a cluster of needle-sharp creepers across your path.',
+    ],
+    wounded: [
+      'Severed vines ooze green sap, curling back toward the root mass.',
+      'The creeper shudders, shedding thorns like a wounded animal sheds blood.',
+    ],
+    opening: [
+      'The underbrush writhes — a mass of thorned vines rises from the forest floor!',
+      'What looked like dead brush suddenly coils to life, thorns glistening with sap!',
+    ],
+  },
+  'Tide Crab': {
+    attack: [
+      'snaps a heavy claw shut with enough force to dent steel.',
+      'scuttles forward and hammers down with both armored pincers.',
+      'catches your weapon in one claw and strikes with the other.',
+    ],
+    wounded: [
+      'Shell fragments crack away, revealing soft flesh beneath the armor.',
+      'The crab backs toward the waterline, one claw dragging uselessly.',
+    ],
+    opening: [
+      'Barnacle-crusted claws rise from the tidal pools — a massive crab blocks the shore path!',
+      'The sand erupts as an armored crab bursts from its hiding spot, pincers raised!',
+    ],
+  },
+  'Ember Beetle': {
+    attack: [
+      'spits a glob of molten fluid that sizzles on contact.',
+      'charges with its superheated carapace, leaving scorch marks.',
+      'clicks its mandibles and sprays a fan of burning embers.',
+    ],
+    wounded: [
+      'Cracks in the beetle\'s shell glow brighter, heat pouring from within.',
+      'The beetle wobbles, fire leaking from its fractured carapace.',
+    ],
+    opening: [
+      'The volcanic rock shifts — a beetle glowing like a live coal skitters toward you!',
+      'Heat rolls off a massive beetle as it emerges from a fissure, shell pulsing orange!',
+    ],
+  },
+  'Frost Mote': {
+    attack: [
+      'drifts close and the air around you crystallizes painfully.',
+      'pulses with cold and sends a lance of frost through your guard.',
+      'brushes against you — the touch burns colder than any flame.',
+    ],
+    wounded: [
+      'The mote flickers, its crystalline form cracking like thin ice.',
+      'Shards of ice break away as the frost mote dims and wavers.',
+    ],
+    opening: [
+      'A drifting point of pale light descends — the air turns biting cold!',
+      'Ice crystals form in the air around a tiny, malevolent glow!',
+    ],
+  },
+  'Shambling Corpse': {
+    attack: [
+      'swings a bloated fist with surprising weight behind it.',
+      'lurches forward and grabs at you with cold, swollen hands.',
+      'throws its rotting bulk into you, relying on sheer mass.',
+    ],
+    wounded: [
+      'Chunks of putrid flesh slough off but the corpse shambles onward.',
+      'It barely registers the wound — the dead feel nothing.',
+    ],
+    opening: [
+      'A shape rises from the mire, waterlogged and reeking of decay!',
+      'The stench hits before you see it — a bloated corpse dragging itself from the swamp!',
+    ],
+  },
+  'Prairie Stalker': {
+    attack: [
+      'pounces from the tall grass with claws fully extended.',
+      'rakes with powerful forelimbs, each swipe aimed at your throat.',
+      'darts in, slashes, and retreats before you can counter.',
+    ],
+    wounded: [
+      'The great cat hisses, flanks heaving, blood matting its tawny fur.',
+      'It crouches lower, wounded but coiled to spring again.',
+    ],
+    opening: [
+      'The grass parts in a silent rush — a tawny predator launches itself at you!',
+      'Golden eyes watch from the prairie before a massive cat explodes into motion!',
+    ],
+  },
+  'Glimmerfae': {
+    attack: [
+      'flares with blinding radiance and sears your vision.',
+      'darts around your head, each pass leaving a burning afterimage.',
+      'focuses a beam of concentrated light that cuts like a blade.',
+    ],
+    wounded: [
+      'The fae\'s glow dims and stutters like a guttering candle.',
+      'It spirals erratically, trailing fading motes of light.',
+    ],
+    opening: [
+      'A dazzling point of light weaves between the trees — too bright, too fast!',
+      'The glade fills with prismatic light as a tiny winged figure swoops toward you!',
+    ],
+  },
+  'Bloodwing Stirge': {
+    attack: [
+      'dives and drives its needle-like proboscis into exposed flesh.',
+      'latches on with barbed legs and drills in, feeding greedily.',
+      'swoops past your guard, proboscis punching through cloth and skin.',
+    ],
+    wounded: [
+      'The stirge wobbles in the air, wings buzzing unevenly.',
+      'Blood — yours and its own — drips from the stirge as it falters.',
+    ],
+    opening: [
+      'A buzzing drone grows louder — a blood-bloated stirge dives from the hillside!',
+      'Leathery wings beat overhead and a needle-nosed shape descends on you!',
+    ],
+  },
+  'Sand Viper': {
+    attack: [
+      'strikes from beneath the sand with fangs dripping venom.',
+      'coils and lunges with blinding speed, aiming for bare skin.',
+      'feints low then snaps upward, sinking fangs deep.',
+    ],
+    wounded: [
+      'The viper coils tighter, hissing through bloodied scales.',
+      'It thrashes in the sand, leaving dark trails where it bleeds.',
+    ],
+    opening: [
+      'The sand shifts — a pale viper erupts from just beneath the surface!',
+      'A dry rattle is your only warning before a sand viper strikes from cover!',
+    ],
+  },
+  'Hollow Sentinel': {
+    attack: [
+      'swings a gauntleted fist with mechanical, soulless force.',
+      'brings down an armored forearm like a falling drawbridge.',
+      'marches forward and batters you with hollow, clanging blows.',
+    ],
+    wounded: [
+      'The armor buckles inward — nothing bleeds from the dents.',
+      'It stumbles, pieces of empty plate scraping across stone.',
+    ],
+    opening: [
+      'A suit of armor stands where none was before — and then it moves!',
+      'Metal grinds against stone as an empty sentinel turns its visor toward you!',
+    ],
+  },
+  'Brambleback Toad': {
+    attack: [
+      'lashes out with a barbed tongue that hits like a thrown mace.',
+      'leaps and lands on you, thorny back grinding into your guard.',
+      'inflates its throat and unleashes a concussive croak that rattles your bones.',
+    ],
+    wounded: [
+      'The toad deflates slightly, thorns drooping and slick with ichor.',
+      'It croaks weakly, shuffling backward through the muck.',
+    ],
+    opening: [
+      'A boulder-sized toad covered in thorns rises from the bog, throat pulsing!',
+      'The swamp belches up a massive toad bristling with barbs — it locks eyes on you!',
+    ],
+  },
+  'Ghoul Stalker': {
+    attack: [
+      'rakes with filthy claws that leave numbness spreading from the wounds.',
+      'lunges with unnatural speed, fingers hooked like talons.',
+      'snaps its jaw shut inches from your throat, paralyzing cold in its grip.',
+    ],
+    wounded: [
+      'The ghoul hisses, gray flesh hanging in strips from its frame.',
+      'It staggers but hunger drives it forward, black eyes unblinking.',
+    ],
+    opening: [
+      'A pale shape skitters along the tunnel wall — too fast for something dead!',
+      'The smell of grave dirt fills the passage as a ghoul drops from the ceiling!',
+    ],
+  },
+  'Dune Scorpion': {
+    attack: [
+      'strikes with both claws and drives its stinger down in one fluid motion.',
+      'pins you with a claw and whips its venomous tail overhead.',
+      'scuttles sideways and lashes out with a barbed stinger the size of a dagger.',
+    ],
+    wounded: [
+      'Chitin cracks and pale fluid leaks from the scorpion\'s joints.',
+      'The scorpion clicks its claws erratically, tail curling inward.',
+    ],
+    opening: [
+      'Sand cascades off a massive carapace as a giant scorpion rises from the dunes!',
+      'A barbed tail arcs over the ridge — a dune scorpion the size of a horse crests the sand!',
+    ],
+  },
+  'Tidal Elemental': {
+    attack: [
+      'crashes forward like a breaking wave, engulfing everything in its path.',
+      'lashes out with a tendril of pressurized water that hits like a battering ram.',
+      'surges upward and slams down with the weight of the ocean behind it.',
+    ],
+    wounded: [
+      'The elemental loses cohesion, water splashing away from its core.',
+      'Its form collapses momentarily before pulling itself back together, smaller now.',
+    ],
+    opening: [
+      'The sea heaves and a column of living water rises, eyes like dark whirlpools!',
+      'Saltwater spirals into a towering shape — a tidal elemental rolls toward you!',
+    ],
+  },
+  'Stoneclaw Gargoyle': {
+    attack: [
+      'swoops down and rakes with talons that spark against your armor.',
+      'drops from above, stone claws screeching across your shield.',
+      'slashes with granite-hard wings as it passes overhead.',
+    ],
+    wounded: [
+      'Stone chips fly as cracks spiderweb across the gargoyle\'s hide.',
+      'The gargoyle\'s wing droops, grinding against its shoulder as it circles.',
+    ],
+    opening: [
+      'What you took for a carved statue unfurls its wings and drops from its perch!',
+      'Stone grinds against stone as a gargoyle pulls free from the cliff face, snarling!',
+    ],
+  },
+  'Hooktusk': {
+    attack: [
+      'drives its curved beak forward like a pickaxe aimed at your chest.',
+      'rakes with hooked claws while snapping its serrated beak.',
+      'charges headlong, tusked beak lowered to gore.',
+    ],
+    wounded: [
+      'The beast screams — a grating, inhuman sound — and blood runs from its beak.',
+      'It lowers its head, wounded but pawing the ground for another charge.',
+    ],
+    opening: [
+      'Branches snap as something massive crashes through — a hooked beak gleams in the gloom!',
+      'A guttural shriek echoes through the trees and a tusked monstrosity bursts from cover!',
+    ],
+  },
+  'Harrowsong Harpy': {
+    attack: [
+      'dives with taloned feet, screeching a discordant note that frays your nerves.',
+      'rakes across your back while singing a melody that makes your thoughts swim.',
+      'swoops past, claws tearing at you as her song tugs at your will.',
+    ],
+    wounded: [
+      'The harpy\'s song breaks into a ragged shriek as blood mats her feathers.',
+      'She falters mid-flight, one wing trailing crimson.',
+    ],
+    opening: [
+      'A haunting melody drifts from the crags — then talons flash as a harpy dives!',
+      'Beautiful singing echoes off stone before a winged shape plummets toward you, claws bared!',
+    ],
+  },
+  'Lavamaw Salamander': {
+    attack: [
+      'snaps with jaws that drip liquid fire onto the stone.',
+      'whips its molten tail in a wide arc, scorching everything it touches.',
+      'breathes a gout of superheated air that blisters skin on contact.',
+    ],
+    wounded: [
+      'Cooling streaks of black crust form over the salamander\'s wounds.',
+      'Its inner glow dims as magma-blood pools and hardens beneath it.',
+    ],
+    opening: [
+      'The lava shifts and a sinuous shape rises, glowing like a coal pulled from the forge!',
+      'Heat distorts the air as a salamander crawls from a molten fissure, jaws aglow!',
+    ],
+  },
+  'Frostfang Wolf': {
+    attack: [
+      'lunges with frost-rimed jaws, each bite trailing wisps of frozen air.',
+      'exhales a cone of bitter frost before darting in to snap.',
+      'clamps down and shakes, ice crystals spreading from the wound.',
+    ],
+    wounded: [
+      'The wolf snarls, patches of frost on its pelt stained red.',
+      'It limps but bares its fangs wider, cold mist still curling from its maw.',
+    ],
+    opening: [
+      'A howl splits the frozen air and a white wolf charges through the snowdrift!',
+      'Frost crackles outward from paw prints as a pale wolf stalks onto the path!',
+    ],
+  },
+  'Ironhide Ogre': {
+    attack: [
+      'brings down a tree-trunk club with enough force to crater the ground.',
+      'backhands you with a fist the size of a barrel.',
+      'stomps forward and swings wildly, each miss gouging the earth.',
+    ],
+    wounded: [
+      'The ogre bellows in dim-witted rage, thick blood oozing slowly.',
+      'It clutches the wound, confused, then roars and charges again.',
+    ],
+    opening: [
+      'The ground shakes with heavy footfalls — an ogre lumbers around the bend, club dragging!',
+      'A hulking shape blocks the hillside path, squinting down at you with piggish eyes!',
+    ],
+  },
+  'Broodmother Spider': {
+    attack: [
+      'strikes with venomous fangs while smaller spiders swarm from her abdomen.',
+      'pins you with a jet of thick webbing before lunging with dripping mandibles.',
+      'rears up and drives both forelegs down, fangs puncturing deep.',
+    ],
+    wounded: [
+      'The broodmother hisses, venom and ichor leaking from cracked chitin.',
+      'She retreats into her web, legs curling protectively around the egg sac.',
+    ],
+    opening: [
+      'Webs choke the canopy above — then a massive spider descends on a silk thread!',
+      'The forest falls silent before a chittering mass of legs drops from the darkness overhead!',
+    ],
+  },
+  'Rust Lurker': {
+    attack: [
+      'spits a stream of corrosive fluid that hisses against your gear.',
+      'lashes out with a dripping pseudopod that eats through metal on contact.',
+      'oozes forward and slams into you, acid burning wherever it touches.',
+    ],
+    wounded: [
+      'The lurker shudders, its corroded surface bubbling and sloughing away.',
+      'Chunks of dissolved matter drip from it — the creature is losing cohesion.',
+    ],
+    opening: [
+      'The tunnel wall glistens wetly — then it moves, and the stench of acid fills the air!',
+      'A shapeless mass of corroded metal and slime peels from the cavern floor!',
+    ],
+  },
+
   // ---- Tier 4 (Level 17-30) ----
 
   'Wyvern': {
@@ -1217,6 +1823,219 @@ export const MONSTER_FLAVOR: Record<string, MonsterFlavor> = {
     opening: [
       'Storm clouds gather as a giant descends the peak, lightning arcing across its form!',
       'The sky darkens and the wind howls — a storm giant strides through the tempest!',
+    ],
+  },
+
+  // ---- Tier 4 New Monsters (Levels 19-29) ----
+
+  'Thornfang Wyvern': {
+    attack: [
+      'dives with thorn-studded talons that rake through armor like parchment.',
+      'whips its barbed tail in a venomous arc that hisses through the air.',
+      'snaps with a jaw full of briar-like fangs dripping caustic venom.',
+    ],
+    wounded: [
+      'Thorny scales splinter and fall as the wyvern shrieks in fury.',
+      'The wyvern\'s wingbeats falter, dark venom leaking from its wounds.',
+    ],
+    opening: [
+      'A shadow blots the canopy — a thornfang wyvern crashes through the branches!',
+      'Venomous hissing fills the air as a thorn-scaled wyvern descends!',
+    ],
+  },
+  'Sandstorm Djinn': {
+    attack: [
+      'hurls a lance of compressed wind and sand that scours flesh from bone.',
+      'calls down a bolt of crackling lightning from the swirling sandstorm.',
+      'sweeps a hand and sends a wall of razor-sharp sand grains forward.',
+    ],
+    wounded: [
+      'The djinn\'s form scatters momentarily before swirling back together.',
+      'Cracks of light appear in the djinn\'s sandstone skin, leaking elemental fury.',
+    ],
+    opening: [
+      'The sky darkens with churning sand — a djinn coalesces from the heart of the storm!',
+      'Lightning splits the dunes and a sandstorm djinn rises, eyes like molten glass!',
+    ],
+  },
+  'Bone Fiend': {
+    attack: [
+      'launches a volley of sharpened bone spears from its ribcage.',
+      'rakes with skeletal claws sheathed in crackling hellfire.',
+      'projects an aura of dread that freezes the blood and cracks resolve.',
+    ],
+    wounded: [
+      'Shattered bones knit back together with a sickening grinding sound.',
+      'The bone fiend staggers, hellfire guttering in its hollow eye sockets.',
+    ],
+    opening: [
+      'The ground cracks open and a skeletal fiend claws its way free, wreathed in balefire!',
+      'Bones rattle and fuse together — a bone fiend assembles itself from the remains!',
+    ],
+  },
+  'Hill Ettin': {
+    attack: [
+      'brings both crude clubs crashing down in a brutal double slam.',
+      'swings wide with its left head snarling and its right head laughing.',
+      'kicks with a massive foot that sends debris flying like shrapnel.',
+    ],
+    wounded: [
+      'Both heads roar in pain, each blaming the other in guttural barks.',
+      'The ettin stumbles, one head dazed while the other seethes with rage.',
+    ],
+    opening: [
+      'The hillside shakes as a two-headed ettin lumbers down, clubs dragging furrows!',
+      'Two voices bicker and then unify in a roar — a hill ettin has spotted prey!',
+    ],
+  },
+  'Coastal Behemoth': {
+    attack: [
+      'slams a barnacle-encrusted limb down with the force of a tidal wave.',
+      'sweeps its massive tail and sends a wall of brackish water crashing forward.',
+      'crushes everything in reach beneath its enormous bulk.',
+    ],
+    wounded: [
+      'The behemoth bellows, sea-spray erupting from gashes in its thick hide.',
+      'It lists to one side, barnacles cracking as the great beast falters.',
+    ],
+    opening: [
+      'The surf explodes upward as a massive behemoth hauls itself onto the shore!',
+      'The coastline trembles — a behemoth rises from the shallows, dwarfing the rocks!',
+    ],
+  },
+  'Obsidian Golem': {
+    attack: [
+      'drives a fist of volcanic glass forward, shattering on impact into razor shards.',
+      'sweeps a magma-veined arm that leaves glowing cracks in the stone floor.',
+      'slams both fists together, sending a shockwave of superheated air outward.',
+    ],
+    wounded: [
+      'Obsidian plates crack and fall away, exposing the molten core beneath.',
+      'The golem\'s movements slow as magma cools and hardens in its joints.',
+    ],
+    opening: [
+      'The volcanic rock splits apart and a golem of black glass steps forth, eyes like embers!',
+      'Heat distortion warps the air as an obsidian golem activates, magma pulsing within!',
+    ],
+  },
+  'Ashlands Wyrm': {
+    attack: [
+      'unleashes a torrent of gray fire that chars everything in its path.',
+      'snaps with jaws that trail embers and ash like a furnace door.',
+      'rakes with claws blackened by centuries of volcanic soot.',
+    ],
+    wounded: [
+      'Ash-gray scales crack, revealing dull orange heat glowing beneath.',
+      'The wyrm hisses, smoke pouring from its wounds instead of blood.',
+    ],
+    opening: [
+      'Ash clouds billow as a wyrm emerges from the wasteland, eyes like dying coals!',
+      'The scorched earth splits and an ashlands wyrm slithers free, heat rippling around it!',
+    ],
+  },
+  'Feywood Archon': {
+    attack: [
+      'strikes with a blade of crystallized moonlight that hums with ancient power.',
+      'gestures and a cascade of radiant thorns erupts from the ground.',
+      'channels the wrath of the wild into a beam of searing emerald light.',
+    ],
+    wounded: [
+      'The archon\'s crown of living branches splinters, sap running like tears.',
+      'Radiant light dims around the archon as bark-like armor fractures.',
+    ],
+    opening: [
+      'The ancient trees bow as a feywood archon strides from the green, crowned in living wood!',
+      'Light and shadow war across the glade — a feywood archon materializes in full splendor!',
+    ],
+  },
+  'Wasteland Behir': {
+    attack: [
+      'exhales a crackling bolt of lightning from its serpentine jaws.',
+      'coils around its target and constricts with crushing, relentless force.',
+      'lunges forward on a dozen clawed legs, snapping with electrified fangs.',
+    ],
+    wounded: [
+      'Sparks arc erratically from the behir\'s wounds as it recoils.',
+      'The behir uncoils partially, scales scorched and cracked along its flank.',
+    ],
+    opening: [
+      'Lightning arcs between the crags — a behir slithers into view, jaws crackling!',
+      'The wasteland rumbles as a massive behir surges from its rocky den!',
+    ],
+  },
+  'Reef Terror': {
+    attack: [
+      'lashes out with barbed tentacles that leave welts of burning toxin.',
+      'sprays a cloud of blinding ink that stings and suffocates.',
+      'drags its prey toward a beak that cracks shells and bone alike.',
+    ],
+    wounded: [
+      'The creature\'s chromatophores flash chaotically as dark ichor clouds the water.',
+      'Severed tentacles writhe independently as the reef terror retreats a pace.',
+    ],
+    opening: [
+      'The coral explodes outward as a reef terror emerges, tentacles fanning wide!',
+      'Ink darkens the water and something massive surges from the reef!',
+    ],
+  },
+  'Frost Revenant': {
+    attack: [
+      'drives an ice-sheathed blade forward that crackles with killing cold.',
+      'grips its target with frozen gauntlets that sear like frostbite.',
+      'exhales a blast of arctic wind that coats everything in rime.',
+    ],
+    wounded: [
+      'Ice armor fractures and reforms, each cycle thinner than the last.',
+      'The revenant\'s frozen visage cracks, pale light leaking from within.',
+    ],
+    opening: [
+      'Frost spreads across the ground in radiating patterns — a frost revenant advances!',
+      'The temperature plummets and an armored figure of solid ice steps from the blizzard!',
+    ],
+  },
+  'Infernal Ravager': {
+    attack: [
+      'rakes with claws wreathed in hellfire that leave trails of burning air.',
+      'slams the ground and sends a wave of brimstone flame rolling outward.',
+      'bites with fangs that drip liquid fire, searing on contact.',
+    ],
+    wounded: [
+      'Hellfire gutters in the ravager\'s wounds, ichor hissing as it hits the ground.',
+      'The demon snarls, its burning aura dimming to a sullen flicker.',
+    ],
+    opening: [
+      'Sulfur chokes the air as an infernal ravager tears through from the other side!',
+      'Flames erupt from a crack in reality and a ravager steps through, claws blazing!',
+    ],
+  },
+  'Dread Colossus': {
+    attack: [
+      'brings a stone fist down with enough force to crater the earth.',
+      'sweeps a pillar-like arm that sends bodies tumbling like ragdolls.',
+      'stamps with a foot the size of a wagon, sending shockwaves outward.',
+    ],
+    wounded: [
+      'Ancient runes flicker and fade across the colossus\'s crumbling stone shell.',
+      'Massive chunks of masonry break free and crash to the ground below.',
+    ],
+    opening: [
+      'The mountain itself seems to move — a dread colossus rises, stone groaning!',
+      'Ancient glyphs flare to life across a towering stone form — the colossus awakens!',
+    ],
+  },
+  'Moonveil Stalker': {
+    attack: [
+      'strikes from a shimmer of moonlight, blade trailing silver fire.',
+      'vanishes and reappears behind its target, slashing in a single fluid motion.',
+      'hurls a bolt of concentrated moonfire that burns with cold radiance.',
+    ],
+    wounded: [
+      'The stalker flickers between visibility and shadow, silver blood misting the air.',
+      'Its moonlit form wavers, glamour cracking to reveal something desperate beneath.',
+    ],
+    opening: [
+      'Moonlight coalesces into a lithe figure — a moonveil stalker materializes, blades drawn!',
+      'Silver light flashes between the trees and a fey hunter steps from the veil!',
     ],
   },
 
@@ -1463,6 +2282,366 @@ export const MONSTER_FLAVOR: Record<string, MonsterFlavor> = {
     opening: [
       'Space folds and tears — a figure of absolute void steps through, reality breaking around it!',
       'The stars go dark. A Void Emperor manifests, its presence erasing the light!',
+    ],
+  },
+  'Ironbark Treant': {
+    attack: [
+      'swings a massive limb of petrified wood, splintering against armor.',
+      'slams root-knuckled fists into the ground, sending shockwaves through stone.',
+      'whips thorned branches in a sweeping arc, bark cracking with the force.',
+    ],
+    wounded: [
+      'Sap bleeds from deep gouges in the treant\'s ancient bark, hissing where it hits soil.',
+      'The Ironbark Treant groans like a falling oak, splinters jutting from its wounds.',
+    ],
+    opening: [
+      'The forest canopy parts as a towering treant wrenches free of the earth, roots tearing stone!',
+      'What seemed an ancient oak lurches forward — an Ironbark Treant, bark harder than steel!',
+    ],
+  },
+  'Steppe Behemoth': {
+    attack: [
+      'charges headlong, hooves cracking the earth like a battering ram.',
+      'sweeps its massive horned skull sideways, flinging bodies like ragdolls.',
+      'rears up and crashes down, the impact cratering the ground.',
+    ],
+    wounded: [
+      'The Steppe Behemoth bellows across the plains, blood matting its coarse hide.',
+      'Wounds streak the behemoth\'s flanks, but rage keeps the beast charging.',
+    ],
+    opening: [
+      'The horizon darkens as a Steppe Behemoth thunders forward, the ground trembling under its bulk!',
+      'A wall of muscle and horn crests the grassland — a Steppe Behemoth, stampeding straight at you!',
+    ],
+  },
+  'Dune Colossus': {
+    attack: [
+      'slams a fist of compressed sand, the impact scattering debris in all directions.',
+      'sweeps an arm through the air, hurling a wave of scouring grit.',
+      'stomps the dune flat, the shockwave burying everything nearby in sand.',
+    ],
+    wounded: [
+      'Cracks split the colossus\'s sandstone shell, grains pouring from the fractures.',
+      'The Dune Colossus staggers, its form crumbling at the edges before reforming.',
+    ],
+    opening: [
+      'The desert rises — a Dune Colossus assembles from the sands, eyes blazing like molten glass!',
+      'A towering shape of compacted sand and stone lurches upright, blocking out the sun!',
+    ],
+  },
+  'Nightwalker': {
+    attack: [
+      'reaches through shadow and drags cold fingers across flesh, leeching warmth.',
+      'exhales a wave of pure darkness that withers everything it touches.',
+      'crushes with a fist of condensed shadow, bones creaking under the void.',
+    ],
+    wounded: [
+      'The Nightwalker\'s silhouette wavers, darkness peeling away like burning cloth.',
+      'Wounds in the Nightwalker reveal nothing inside — just deeper, hungrier darkness.',
+    ],
+    opening: [
+      'All light dies. A Nightwalker rises from the blackness, its form swallowing torchlight whole!',
+      'The shadows congeal into something massive and hateful — a Nightwalker steps forth, draining all warmth!',
+    ],
+  },
+  'Volcanic Drake': {
+    attack: [
+      'spews a jet of liquid fire that pools and spreads across the ground.',
+      'rakes with molten-edged talons, leaving scorched furrows in stone.',
+      'snaps forward with jaws wreathed in flame, superheated air rippling outward.',
+    ],
+    wounded: [
+      'Magma seeps from the drake\'s cracked scales, sizzling against cooler stone.',
+      'The Volcanic Drake snarls, smoke pouring from wounds that glow like embers.',
+    ],
+    opening: [
+      'A Volcanic Drake erupts from a lava vent, wings trailing fire and ash!',
+      'Heat-shimmer precedes the beast — a drake of living magma lands with a roar that shakes the caldera!',
+    ],
+  },
+  'Thornbloom Horror': {
+    attack: [
+      'lashes out with barbed vines that puncture and inject burning toxin.',
+      'belches a cloud of toxic spores that sear lungs and blur vision.',
+      'slams a thorned tendril down, the impact splitting the ground open.',
+    ],
+    wounded: [
+      'Severed vines writhe on the ground, still leaking caustic sap.',
+      'The Thornbloom Horror shudders, releasing a burst of acrid pollen from its wounds.',
+    ],
+    opening: [
+      'The undergrowth erupts — a Thornbloom Horror unfurls, spore sacs pulsing with toxic light!',
+      'A mass of thorned vines and bloated blossoms lurches from the treeline, reeking of poison!',
+    ],
+  },
+  'Dust Devil': {
+    attack: [
+      'hurls a lance of compressed wind that cuts like a blade of glass.',
+      'spirals into a scouring vortex, stripping skin with airborne grit.',
+      'whips sand and stone in a blinding cyclone, battering from every angle.',
+    ],
+    wounded: [
+      'The Dust Devil\'s form scatters momentarily before swirling back together.',
+      'Gusts falter and the elemental wobbles, its vortex shrinking before surging back.',
+    ],
+    opening: [
+      'A pillar of screaming wind and sand tears across the dunes — a Dust Devil, hungry and wild!',
+      'The air shrieks as a Dust Devil spirals into existence, scouring everything in its path!',
+    ],
+  },
+  'Spectral Knight': {
+    attack: [
+      'thrusts a ghostly blade through armor as if it were smoke, chilling bone.',
+      'slashes with a spectral longsword, the wound burning with necrotic cold.',
+      'drives a translucent gauntlet forward, draining warmth on contact.',
+    ],
+    wounded: [
+      'The Spectral Knight\'s ethereal armor fractures, wisps of soul-light escaping.',
+      'Ghostly ichor trails from the knight\'s wounds, evaporating before it reaches the ground.',
+    ],
+    opening: [
+      'A Spectral Knight materializes from grave-mist, hollow eyes burning with cold purpose!',
+      'Armor clanks with no body inside — a Spectral Knight strides from the fog, blade drawn!',
+    ],
+  },
+  'Infernal Bladedancer': {
+    attack: [
+      'whirls four blades in a hellish flourish, each edge trailing brimstone sparks.',
+      'lashes its barbed tail around an ankle and wrenches hard enough to crack bone.',
+      'lunges with two swords high and two low, cutting from impossible angles.',
+    ],
+    wounded: [
+      'Ichor hisses where it drips from the bladedancer\'s wounds, scorching the earth.',
+      'The Infernal Bladedancer snarls, its four arms tightening their grip on smoking blades.',
+    ],
+    opening: [
+      'Four swords ignite at once — an Infernal Bladedancer erupts from sulfurous flame, grinning with malice!',
+      'A whirlwind of hellforged steel spins into view as the Infernal Bladedancer lands in a fighter\'s crouch!',
+    ],
+  },
+  'Coastal Wyrm': {
+    attack: [
+      'spits a stream of caustic acid that eats through steel and stone alike.',
+      'lashes its barnacle-crusted tail sideways, shattering anything it strikes.',
+      'lunges from the surf with snapping jaws slick with corrosive saliva.',
+    ],
+    wounded: [
+      'Acid-green blood drips from the wyrm\'s scales, etching the rocks beneath it.',
+      'The Coastal Wyrm recoils, hissing as seawater stings its open wounds.',
+    ],
+    opening: [
+      'The tide surges unnaturally — a Coastal Wyrm breaches the shallows, acid dripping from its maw!',
+      'Barnacle-armored coils rise from the surf as a Coastal Wyrm fixes its predatory gaze on shore!',
+    ],
+  },
+  'Feywild Warden': {
+    attack: [
+      'hurls a lance of blinding radiance that sears shadow from flesh.',
+      'sweeps a staff of living light, the arc leaving afterimages branded on vision.',
+      'binds with threads of pure sunlight that tighten and burn.',
+    ],
+    wounded: [
+      'The warden\'s luminous form dims, cracks of mortal darkness showing through.',
+      'Petals of fading light drift from the Feywild Warden\'s injuries like dying embers.',
+    ],
+    opening: [
+      'The air shimmers gold and green — a Feywild Warden steps from between the trees, blazing with ancient light!',
+      'Flowers bloom and wither in an instant as a Feywild Warden appears, radiance pouring from its crown!',
+    ],
+  },
+  'Frost Wyrm': {
+    attack: [
+      'exhales a cone of flash-freezing breath that coats everything in rime.',
+      'rakes with frost-edged claws that leave crystalline wounds.',
+      'snaps forward with jaws cold enough to shatter frozen steel.',
+    ],
+    wounded: [
+      'Shards of ice break from the Frost Wyrm\'s hide, revealing raw scales beneath.',
+      'The Frost Wyrm shrieks, its breath growing erratic as frost-blood seeps from deep gashes.',
+    ],
+    opening: [
+      'A blizzard descends from nowhere — a Frost Wyrm dives from the whiteout, ice cracking in its wake!',
+      'The temperature plummets as a Frost Wyrm lands, frost spreading in waves from its talons!',
+    ],
+  },
+  'Hill Giant Warlord': {
+    attack: [
+      'hurls a boulder the size of a cart, the impact cratering the earth.',
+      'swings a tree-trunk club in a devastating overhead smash.',
+      'stomps the ground with enough force to buckle stone and send foes sprawling.',
+    ],
+    wounded: [
+      'The Hill Giant Warlord roars, clutching a wound too large to bandage.',
+      'Blood streams down the warlord\'s scarred hide, but fury keeps the giant standing.',
+    ],
+    opening: [
+      'A Hill Giant Warlord crests the ridge, war-painted and bellowing a challenge that echoes for miles!',
+      'The ground shakes with each step as a Hill Giant Warlord lumbers into view, trophy skulls rattling!',
+    ],
+  },
+  'Dracolich': {
+    attack: [
+      'exhales a torrent of necrotic flame that blackens bone and withers flesh.',
+      'rakes with skeletal claws wreathed in deathly energy, each scratch rotting tissue.',
+      'bites with a jaw of exposed fangs, necrotic venom flooding the wound.',
+    ],
+    wounded: [
+      'Bones crack and reform in the Dracolich\'s frame, dark magic knitting the damage.',
+      'The Dracolich\'s phylactery pulses as its skeletal form shudders from the blow.',
+    ],
+    opening: [
+      'A Dracolich rises from the bog, tattered wings spreading as necrotic energy crackles between exposed bones!',
+      'Death itself takes wing — a Dracolich launches skyward, its hollow roar freezing blood!',
+    ],
+  },
+  'Ember Titan': {
+    attack: [
+      'slams molten fists into the ground, sending geysers of magma skyward.',
+      'hurls a chunk of volcanic rock that detonates on impact in a shower of cinders.',
+      'sweeps arms of living flame, the heat warping metal from ten paces away.',
+    ],
+    wounded: [
+      'Cracks spread across the Ember Titan\'s obsidian hide, magma bleeding through.',
+      'The Ember Titan staggers, its inner fire dimming before surging brighter with rage.',
+    ],
+    opening: [
+      'The earth splits and an Ember Titan climbs from the molten depths, heat rolling off it in visible waves!',
+      'Lava fountains announce the arrival of an Ember Titan, its body a furnace of living stone!',
+    ],
+  },
+  'Ancient Forest Guardian': {
+    attack: [
+      'brings down a limb the size of a siege tower, the impact felling nearby trees.',
+      'erupts roots from the earth in a jagged line, impaling everything in their path.',
+      'sweeps the canopy itself as a weapon, branches crashing like a wooden avalanche.',
+    ],
+    wounded: [
+      'The Ancient Forest Guardian groans like a continent shifting, sap cascading from colossal wounds.',
+      'Entire branches snap from the guardian\'s form, each one larger than a full-grown oak.',
+    ],
+    opening: [
+      'The forest itself moves — an Ancient Forest Guardian rises, its crown scraping the clouds!',
+      'Birds scatter in thousands as the Ancient Forest Guardian uproots and turns, ancient eyes blazing green!',
+    ],
+  },
+  'Swamp Hydra': {
+    attack: [
+      'strikes with three heads at once, each snapping from a different angle.',
+      'spews a stream of corrosive bile that dissolves armor on contact.',
+      'coils a muscular neck around its prey and constricts while other heads lunge.',
+    ],
+    wounded: [
+      'A severed stump writhes and splits — two new heads already pushing through the gore.',
+      'The Swamp Hydra hisses from multiple throats, acid blood sizzling in the muck.',
+    ],
+    opening: [
+      'The swamp churns and a mass of serpentine heads erupts — a Swamp Hydra, each maw dripping acid!',
+      'Ripples spread across the bog before a Swamp Hydra surfaces, its many eyes fixing on prey!',
+    ],
+  },
+  'Mind Reaver': {
+    attack: [
+      'drives a psychic lance into the mind, shattering concentration and coherent thought.',
+      'grips with slick tentacles while flooding the brain with paralyzing visions.',
+      'unleashes a concussive mind blast that buckles knees and blurs the world.',
+    ],
+    wounded: [
+      'The Mind Reaver\'s telepathic shriek reverberates through skulls as its blood hits the stone.',
+      'Purple ichor leaks from the reaver\'s wounds, and its psychic aura flickers erratically.',
+    ],
+    opening: [
+      'A Mind Reaver glides from the darkness, tentacles writhing, its psychic presence crushing like deep water!',
+      'Thoughts scatter and panic rises unbidden — a Mind Reaver has emerged, its alien gaze piercing!',
+    ],
+  },
+  'Tundra Sentinel': {
+    attack: [
+      'drives a fist of frozen stone forward, ice cracking outward from the impact.',
+      'releases a pulse of arctic cold that flash-freezes moisture in the air.',
+      'stomps the permafrost, sending jagged ice spikes erupting in a line.',
+    ],
+    wounded: [
+      'Chunks of enchanted ice break from the sentinel\'s frame, revealing hollow runes within.',
+      'The Tundra Sentinel\'s glowing core flickers as frost cascades from deep fractures.',
+    ],
+    opening: [
+      'A shape of ice and ancient stone rises from the snowfield — a Tundra Sentinel, eyes blazing pale blue!',
+      'The blizzard coalesces into form — a Tundra Sentinel stands guard, frost radiating from its core!',
+    ],
+  },
+  'Plains Thunderherd': {
+    attack: [
+      'charges with lowered horns, the impact strong enough to shatter a palisade.',
+      'tramples forward in a thunderous rush, hooves pulverizing stone beneath.',
+      'sweeps a massive rack of antlers sideways, gouging deep furrows.',
+    ],
+    wounded: [
+      'The Plains Thunderherd beast stumbles, blood streaking its dusty hide, but momentum carries it forward.',
+      'A bellow rolls across the grassland as the wounded beast paws the earth, readying another charge.',
+    ],
+    opening: [
+      'The plains tremble as a Plains Thunderherd beast stampedes into view, horns gleaming in the dust!',
+      'A thunderous rumble precedes the beast — a Plains Thunderherd charges headlong, unstoppable!',
+    ],
+  },
+  'Blight Dragon': {
+    attack: [
+      'exhales a billowing cloud of plague-breath that rots flesh on contact.',
+      'bites with corroded fangs, injecting venom that burns through veins.',
+      'rakes with diseased claws, each scratch festering instantly.',
+    ],
+    wounded: [
+      'Putrid ichor seeps from the Blight Dragon\'s wounds, the stench alone enough to gag.',
+      'Scales slough from the dragon\'s festering hide, revealing pulsing, infected tissue beneath.',
+    ],
+    opening: [
+      'A Blight Dragon descends in a miasma of rot, its diseased wings spreading plague across the hillside!',
+      'The grass withers in a spreading circle as a Blight Dragon lands, corruption rolling off its form!',
+    ],
+  },
+  'Granite Warden': {
+    attack: [
+      'drives a fist of solid granite downward, the blow splitting bedrock.',
+      'sweeps a stone arm in a wide arc, scattering rubble like shrapnel.',
+      'brings both fists together overhead and hammers the ground, the shockwave cracking foundations.',
+    ],
+    wounded: [
+      'Chunks of stone break from the Granite Warden\'s body, revealing glowing runes beneath.',
+      'The Granite Warden\'s movements slow as cracks spider-web across its massive form.',
+    ],
+    opening: [
+      'A Granite Warden tears free from the mountainside, stone grinding against stone as it stands!',
+      'The cliff face crumbles and reshapes — a Granite Warden steps forth, eyes burning like forge-coals!',
+    ],
+  },
+  'Siege Wurm': {
+    attack: [
+      'erupts from the earth and drives its spike-ringed maw forward like a battering ram.',
+      'coils around its prey and constricts, chitinous plates grinding against armor.',
+      'whips its segmented tail in a scything arc, the barbed tip punching through steel.',
+    ],
+    wounded: [
+      'Viscous fluid pours from punctures in the Siege Wurm\'s carapace, the beast thrashing in fury.',
+      'The Siege Wurm burrows halfway underground, its wounded segments pulsing as it coils to strike again.',
+    ],
+    opening: [
+      'The ground collapses as a Siege Wurm breaches the surface, its enormous maw ringed with crushing spines!',
+      'Sand cascades into a sinkhole — then a Siege Wurm erupts skyward, blotting out the sun!',
+    ],
+  },
+  'Abyssal Ravager': {
+    attack: [
+      'hurls a wave of hellfire that crashes across the shore, turning sand to glass.',
+      'rakes with claws dripping brimstone, each strike leaving trails of burning pitch.',
+      'slams the ground with a fist of condensed flame, the blast radiating outward.',
+    ],
+    wounded: [
+      'Hellfire bleeds from the Abyssal Ravager\'s wounds, pooling in searing puddles.',
+      'The Abyssal Ravager snarls, its brimstone aura flaring as demonic rage intensifies.',
+    ],
+    opening: [
+      'The tide boils as an Abyssal Ravager wades ashore, wreathed in hellfire and sulfurous smoke!',
+      'Brimstone erupts from the waterline — an Abyssal Ravager emerges, its burning gaze fixed on the living!',
     ],
   },
 };
