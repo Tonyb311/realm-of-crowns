@@ -97,6 +97,33 @@ interface RecipeEntry {
   consumableStats?: Record<string, unknown>;
 }
 
+interface MonsterAbility {
+  id: string;
+  name: string;
+  type: string;
+  damage?: string;
+  damageType?: string;
+  saveType?: string;
+  saveDC?: number;
+  statusEffect?: string;
+  statusDuration?: number;
+  cooldown?: number;
+  recharge?: number;
+  usesPerCombat?: number;
+  priority?: number;
+  description?: string;
+  isLegendaryAction?: boolean;
+  legendaryCost?: number;
+  attacks?: number;
+}
+
+interface PhaseTransition {
+  hpThresholdPercent: number;
+  name?: string;
+  description?: string;
+  effects: { type: string; statBoost?: unknown; aoeBurst?: unknown; ability?: unknown }[];
+}
+
 interface MonsterEntry {
   id: string;
   name: string;
@@ -107,12 +134,24 @@ interface MonsterEntry {
   sentient: boolean;
   size: string;
   regionName: string | null;
+  formulaCR: number | null;
+  simCR: number | null;
+  damageType: string;
+  abilities: MonsterAbility[];
+  resistances: string[];
+  immunities: string[];
+  vulnerabilities: string[];
+  conditionImmunities: string[];
+  critImmunity: boolean;
+  critResistance: number;
+  legendaryActions: number;
+  legendaryResistances: number;
+  phaseTransitions: PhaseTransition[];
   stats: {
     hp: number;
     ac: number;
     attack: number;
     damage: string;
-    damageType: string;
     speed: number;
     str: number;
     dex: number;
@@ -775,12 +814,44 @@ const ENCOUNTER_TYPE_COLORS: Record<string, string> = {
   world_boss: 'bg-red-500/20 text-red-300',
 };
 
+const DAMAGE_TYPE_COLORS: Record<string, string> = {
+  FIRE: 'bg-orange-500/20 text-orange-300',
+  COLD: 'bg-blue-500/20 text-blue-300',
+  LIGHTNING: 'bg-yellow-500/20 text-yellow-300',
+  NECROTIC: 'bg-purple-500/20 text-purple-300',
+  PSYCHIC: 'bg-pink-500/20 text-pink-300',
+  FORCE: 'bg-indigo-500/20 text-indigo-300',
+  ACID: 'bg-green-500/20 text-green-300',
+  RADIANT: 'bg-amber-500/20 text-amber-300',
+  POISON: 'bg-emerald-500/20 text-emerald-300',
+  THUNDER: 'bg-sky-500/20 text-sky-300',
+  SLASHING: 'bg-gray-500/20 text-gray-300',
+  PIERCING: 'bg-gray-500/20 text-gray-300',
+  BLUDGEONING: 'bg-gray-500/20 text-gray-300',
+};
+
+const ABILITY_TYPE_COLORS: Record<string, string> = {
+  damage: 'bg-red-500/20 text-red-300',
+  aoe: 'bg-orange-500/20 text-orange-300',
+  status: 'bg-purple-500/20 text-purple-300',
+  multiattack: 'bg-blue-500/20 text-blue-300',
+  on_hit: 'bg-amber-500/20 text-amber-300',
+  heal: 'bg-green-500/20 text-green-300',
+  buff: 'bg-teal-500/20 text-teal-300',
+  fear_aura: 'bg-violet-500/20 text-violet-300',
+  damage_aura: 'bg-red-500/20 text-red-300',
+  death_throes: 'bg-gray-500/20 text-gray-300',
+  swallow: 'bg-pink-500/20 text-pink-300',
+};
+
 function MonstersSubTab({ search }: { search: string }) {
   const { data, isLoading, error } = useQuery<{ monsters: MonsterEntry[]; summary: unknown }>({
     queryKey: ['admin', 'monsters'],
     queryFn: async () => (await api.get('/admin/monsters')).data,
     staleTime: Infinity,
   });
+
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     if (!data?.monsters) return [];
@@ -792,7 +863,9 @@ function MonstersSubTab({ search }: { search: string }) {
         m.biome.toLowerCase().includes(q) ||
         m.category.toLowerCase().includes(q) ||
         m.encounterType.toLowerCase().replace('_', ' ').includes(q) ||
-        m.regionName?.toLowerCase().includes(q),
+        m.regionName?.toLowerCase().includes(q) ||
+        m.damageType?.toLowerCase().includes(q) ||
+        m.abilities?.some((a) => a.name.toLowerCase().includes(q)),
     );
   }, [data, search]);
 
@@ -803,73 +876,360 @@ function MonstersSubTab({ search }: { search: string }) {
     <div className="space-y-3">
       <div className="text-xs text-realm-text-muted">{filtered.length} monsters</div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {filtered.map((monster) => (
-          <div key={monster.id} className="bg-realm-bg-700 border border-realm-border rounded-lg p-4 space-y-2">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="font-display text-sm text-realm-text-primary">{monster.name}</span>
-                <span className="bg-realm-bg-600 text-realm-text-secondary px-2 py-0.5 rounded text-xs font-display">
-                  Lv {monster.level}
-                </span>
-              </div>
-              <span className="bg-realm-gold-500/20 text-realm-gold-400 px-2 py-0.5 rounded text-xs font-display">
-                {monster.rewards.xp} XP
-              </span>
-            </div>
+        {filtered.map((monster) => {
+          const isExpanded = expandedId === monster.id;
+          const resCount = monster.resistances?.length ?? 0;
+          const immCount = monster.immunities?.length ?? 0;
+          const vulnCount = monster.vulnerabilities?.length ?? 0;
+          const defSummaryParts: string[] = [];
+          if (resCount > 0) defSummaryParts.push(`${resCount} res`);
+          if (immCount > 0) defSummaryParts.push(`${immCount} imm`);
+          if (vulnCount > 0) defSummaryParts.push(`${vulnCount} vuln`);
+          const defSummary = defSummaryParts.join(', ');
 
-            {/* Classification badges */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className={`${MONSTER_CATEGORY_COLORS[monster.category] ?? 'bg-realm-bg-600 text-realm-text-muted'} px-2 py-0.5 rounded text-xs font-display`}>
-                {monster.category}
-              </span>
-              <span className={`${ENCOUNTER_TYPE_COLORS[monster.encounterType] ?? 'bg-gray-500/20 text-gray-300'} px-2 py-0.5 rounded text-xs font-display`}>
-                {monster.encounterType.replace('_', ' ')}
-              </span>
-              <span className="bg-slate-500/20 text-slate-400 px-2 py-0.5 rounded text-xs font-display">
-                {monster.size}
-              </span>
-              {monster.sentient && (
-                <span className="bg-violet-500/20 text-violet-300 px-2 py-0.5 rounded text-xs font-display">
-                  Sentient
-                </span>
+          return (
+            <div
+              key={monster.id}
+              className={`bg-realm-bg-700 border border-realm-border rounded-lg ${isExpanded ? 'col-span-full' : ''}`}
+            >
+              {/* Collapsed header — always visible */}
+              <button
+                onClick={() => setExpandedId(isExpanded ? null : monster.id)}
+                className="w-full text-left px-4 py-3"
+              >
+                {/* Row 1: Name, level, CR, XP, chevron */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {isExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-realm-text-muted flex-shrink-0" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-realm-text-muted flex-shrink-0" />
+                  )}
+                  <span className="font-display text-sm text-realm-text-primary">{monster.name}</span>
+                  <span className="bg-realm-bg-600 text-realm-text-secondary px-2 py-0.5 rounded text-xs font-display">
+                    Lv {monster.level}
+                  </span>
+                  {monster.formulaCR != null && (
+                    <span className="bg-realm-gold-500/20 text-realm-gold-400 px-2 py-0.5 rounded text-xs font-display">
+                      CR {monster.formulaCR}
+                    </span>
+                  )}
+                  <span className="bg-realm-gold-500/20 text-realm-gold-400 px-2 py-0.5 rounded text-xs font-display">
+                    {monster.rewards.xp} XP
+                  </span>
+
+                  {/* Classification badges */}
+                  <span className={`${MONSTER_CATEGORY_COLORS[monster.category] ?? 'bg-realm-bg-600 text-realm-text-muted'} px-2 py-0.5 rounded text-xs font-display`}>
+                    {monster.category}
+                  </span>
+                  <span className={`${ENCOUNTER_TYPE_COLORS[monster.encounterType] ?? 'bg-gray-500/20 text-gray-300'} px-2 py-0.5 rounded text-xs font-display`}>
+                    {monster.encounterType.replace('_', ' ')}
+                  </span>
+                  <span className="bg-slate-500/20 text-slate-400 px-2 py-0.5 rounded text-xs font-display">
+                    {monster.size}
+                  </span>
+                  {monster.sentient && (
+                    <span className="bg-violet-500/20 text-violet-300 px-2 py-0.5 rounded text-xs font-display">
+                      Sentient
+                    </span>
+                  )}
+                </div>
+
+                {/* Row 2: Biome, region, inline stats, damage type, defense summary */}
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <span className="bg-teal-500/20 text-teal-400 px-2 py-0.5 rounded text-xs font-display">
+                    {monster.biome}
+                  </span>
+                  {monster.regionName && (
+                    <span className="text-xs text-realm-text-muted">{monster.regionName}</span>
+                  )}
+                  <span className="text-xs text-realm-text-secondary ml-1">
+                    HP {monster.stats.hp} | AC {monster.stats.ac} | ATK +{monster.stats.attack} | DMG {monster.stats.damage}
+                  </span>
+                  {monster.damageType && (
+                    <span className={`${DAMAGE_TYPE_COLORS[monster.damageType] ?? 'bg-realm-bg-600 text-realm-text-muted'} px-2 py-0.5 rounded text-xs font-display`}>
+                      {monster.damageType}
+                    </span>
+                  )}
+                  {defSummary && (
+                    <span className="text-xs text-realm-text-muted ml-auto">{defSummary}</span>
+                  )}
+                </div>
+              </button>
+
+              {/* Expanded detail */}
+              {isExpanded && (
+                <div className="px-5 pb-5 space-y-4 border-t border-realm-border/30">
+
+                  {/* A. Core Stats */}
+                  <div className="pt-3">
+                    <h4 className="text-xs text-realm-text-muted mb-2 font-display uppercase tracking-wider">
+                      Core Stats
+                    </h4>
+                    <StatBlock stats={monster.stats} showCombatStats />
+                    <div className="flex items-center gap-3 mt-2 flex-wrap">
+                      {monster.formulaCR != null && (
+                        <span className="text-xs text-realm-text-secondary">
+                          Formula CR: <span className="text-realm-gold-400 font-display">{monster.formulaCR}</span>
+                        </span>
+                      )}
+                      {monster.simCR != null && (
+                        <span className="text-xs text-realm-text-secondary">
+                          Sim CR: <span className="text-realm-teal-300 font-display">{monster.simCR}</span>
+                        </span>
+                      )}
+                      {monster.damageType && (
+                        <span className={`${DAMAGE_TYPE_COLORS[monster.damageType] ?? 'bg-realm-bg-600 text-realm-text-muted'} px-2 py-0.5 rounded text-xs font-display`}>
+                          {monster.damageType}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* B. Defenses */}
+                  {(resCount > 0 || immCount > 0 || vulnCount > 0 || (monster.conditionImmunities?.length ?? 0) > 0 || monster.critImmunity || (monster.critResistance ?? 0) > 0) && (
+                    <div>
+                      <h4 className="text-xs text-realm-text-muted mb-2 font-display uppercase tracking-wider">
+                        Defenses
+                      </h4>
+                      <div className="space-y-2">
+                        {resCount > 0 && (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs text-realm-text-muted w-24 flex-shrink-0">Resistances</span>
+                            {monster.resistances.map((r) => (
+                              <span
+                                key={r}
+                                className={`${DAMAGE_TYPE_COLORS[r] ?? 'bg-realm-bg-600 text-realm-text-muted'} px-2 py-0.5 rounded text-xs font-display border border-current/20`}
+                              >
+                                {r}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {immCount > 0 && (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs text-realm-text-muted w-24 flex-shrink-0">Immunities</span>
+                            {monster.immunities.map((r) => (
+                              <span
+                                key={r}
+                                className={`${DAMAGE_TYPE_COLORS[r] ?? 'bg-realm-bg-600 text-realm-text-muted'} px-2 py-0.5 rounded text-xs font-display font-bold`}
+                              >
+                                {r}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {vulnCount > 0 && (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs text-realm-text-muted w-24 flex-shrink-0">Vulnerabilities</span>
+                            {monster.vulnerabilities.map((r) => (
+                              <span
+                                key={r}
+                                className="bg-red-500/20 text-red-300 px-2 py-0.5 rounded text-xs font-display border border-red-500/30"
+                              >
+                                {r}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {(monster.conditionImmunities?.length ?? 0) > 0 && (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs text-realm-text-muted w-24 flex-shrink-0">Cond. Immune</span>
+                            {monster.conditionImmunities.map((c) => (
+                              <span
+                                key={c}
+                                className="bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded text-xs font-display"
+                              >
+                                {formatEffectName(c)}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {(monster.critImmunity || (monster.critResistance ?? 0) > 0) && (
+                          <div className="flex items-center gap-2">
+                            {monster.critImmunity && (
+                              <span className="bg-red-500/20 text-red-300 px-2 py-0.5 rounded text-xs font-display">
+                                Crit Immune
+                              </span>
+                            )}
+                            {(monster.critResistance ?? 0) > 0 && (
+                              <span className="bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded text-xs font-display">
+                                Crit Resist: {monster.critResistance}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* C. Abilities */}
+                  {(monster.abilities?.length ?? 0) > 0 && (
+                    <div>
+                      <h4 className="text-xs text-realm-text-muted mb-2 font-display uppercase tracking-wider">
+                        Abilities ({monster.abilities.length})
+                      </h4>
+                      <div className="space-y-2">
+                        {monster.abilities.map((ability) => (
+                          <div
+                            key={ability.id}
+                            className="bg-realm-bg-800/50 rounded px-3 py-2 space-y-1"
+                          >
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm text-realm-text-primary font-display">{ability.name}</span>
+                              <span className={`${ABILITY_TYPE_COLORS[ability.type] ?? 'bg-realm-bg-600 text-realm-text-muted'} px-2 py-0.5 rounded text-xs font-display`}>
+                                {ability.type.replace('_', ' ')}
+                              </span>
+                              {ability.damage && ability.damageType && (
+                                <span className={`${DAMAGE_TYPE_COLORS[ability.damageType] ?? 'bg-realm-bg-600 text-realm-text-muted'} px-2 py-0.5 rounded text-xs font-display`}>
+                                  {ability.damage} {ability.damageType}
+                                </span>
+                              )}
+                              {ability.damage && !ability.damageType && (
+                                <span className="bg-realm-bg-600 text-realm-text-secondary px-2 py-0.5 rounded text-xs font-display">
+                                  {ability.damage}
+                                </span>
+                              )}
+                              {ability.saveType && (
+                                <span className="bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded text-xs font-display">
+                                  DC {ability.saveDC ?? '?'} {ability.saveType}
+                                </span>
+                              )}
+                              {ability.statusEffect && (
+                                <span className="bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded text-xs font-display">
+                                  {formatEffectName(ability.statusEffect)}
+                                  {ability.statusDuration ? ` (${ability.statusDuration}t)` : ''}
+                                </span>
+                              )}
+                              {ability.isLegendaryAction && (
+                                <span className="bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded text-xs font-display">
+                                  Legendary{ability.legendaryCost ? ` (${ability.legendaryCost})` : ''}
+                                </span>
+                              )}
+                            </div>
+                            {ability.description && (
+                              <p className="text-xs text-realm-text-muted leading-relaxed">{ability.description}</p>
+                            )}
+                            <div className="flex items-center gap-3 flex-wrap">
+                              {ability.cooldown != null && ability.cooldown > 0 && (
+                                <span className="text-[10px] text-realm-text-muted">CD: {ability.cooldown}t</span>
+                              )}
+                              {ability.recharge != null && ability.recharge > 0 && (
+                                <span className="text-[10px] text-realm-text-muted">Recharge: {ability.recharge}+</span>
+                              )}
+                              {ability.usesPerCombat != null && ability.usesPerCombat > 0 && (
+                                <span className="text-[10px] text-realm-text-muted">Uses: {ability.usesPerCombat}/combat</span>
+                              )}
+                              {ability.attacks != null && ability.attacks > 1 && (
+                                <span className="text-[10px] text-realm-text-muted">Attacks: {ability.attacks}x</span>
+                              )}
+                              {ability.priority != null && (
+                                <span className="text-[10px] text-realm-text-muted">Priority: {ability.priority}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* D. Legendary Mechanics */}
+                  {((monster.legendaryActions ?? 0) > 0 || (monster.legendaryResistances ?? 0) > 0) && (
+                    <div>
+                      <h4 className="text-xs text-realm-text-muted mb-2 font-display uppercase tracking-wider">
+                        Legendary Mechanics
+                      </h4>
+                      <div className="flex items-center gap-3">
+                        {(monster.legendaryActions ?? 0) > 0 && (
+                          <span className="bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded text-xs font-display">
+                            {monster.legendaryActions} Legendary Actions
+                          </span>
+                        )}
+                        {(monster.legendaryResistances ?? 0) > 0 && (
+                          <span className="bg-amber-500/20 text-amber-300 px-3 py-1 rounded text-xs font-display">
+                            {monster.legendaryResistances} Legendary Resistances
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* E. Phase Transitions */}
+                  {(monster.phaseTransitions?.length ?? 0) > 0 && (
+                    <div>
+                      <h4 className="text-xs text-realm-text-muted mb-2 font-display uppercase tracking-wider">
+                        Phase Transitions ({monster.phaseTransitions.length})
+                      </h4>
+                      <div className="space-y-2">
+                        {monster.phaseTransitions.map((phase, idx) => (
+                          <div key={idx} className="bg-realm-bg-800/50 rounded px-3 py-2 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="bg-red-500/20 text-red-300 px-2 py-0.5 rounded text-xs font-display">
+                                {phase.hpThresholdPercent}% HP
+                              </span>
+                              {phase.name && (
+                                <span className="text-sm text-realm-text-primary font-display">{phase.name}</span>
+                              )}
+                            </div>
+                            {phase.description && (
+                              <p className="text-xs text-realm-text-muted">{phase.description}</p>
+                            )}
+                            {phase.effects.length > 0 && (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {phase.effects.map((eff, ei) => (
+                                  <span key={ei} className="bg-realm-bg-600 text-realm-text-secondary px-2 py-0.5 rounded text-xs font-display">
+                                    {eff.type}
+                                    {eff.statBoost ? ' (stat boost)' : ''}
+                                    {eff.aoeBurst ? ' (AoE burst)' : ''}
+                                    {eff.ability ? ' (ability)' : ''}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* F. Loot */}
+                  <div>
+                    <h4 className="text-xs text-realm-text-muted mb-2 font-display uppercase tracking-wider">
+                      Loot
+                    </h4>
+                    {(monster.rewards.goldRange.min > 0 || monster.rewards.goldRange.max > 0) && (
+                      <div className="text-xs text-realm-text-muted mb-1">
+                        Gold:{' '}
+                        <span className="text-realm-gold-400">
+                          {monster.rewards.goldRange.min}-{monster.rewards.goldRange.max}g
+                        </span>
+                      </div>
+                    )}
+                    {monster.rewards.itemDrops.length > 0 ? (
+                      <div className="space-y-1">
+                        {monster.rewards.itemDrops.map((drop, di) => (
+                          <div key={di} className="flex items-center gap-2 bg-realm-bg-800/50 rounded px-3 py-1.5">
+                            <span className="text-xs text-realm-text-primary">{drop.name}</span>
+                            <span className="text-[10px] text-realm-text-muted">
+                              {Math.round(drop.dropChance * 100)}% drop
+                            </span>
+                            {(drop.minQty !== 1 || drop.maxQty !== 1) && (
+                              <span className="text-[10px] text-realm-text-muted">
+                                x{drop.minQty}-{drop.maxQty}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-realm-text-muted">No item drops</div>
+                    )}
+                  </div>
+
+                </div>
               )}
             </div>
-
-            {/* Biome badge */}
-            <div className="flex items-center gap-1.5">
-              <span className="bg-teal-500/20 text-teal-400 px-2 py-0.5 rounded text-xs font-display">
-                {monster.biome}
-              </span>
-              {monster.regionName && (
-                <span className="text-xs text-realm-text-muted">{monster.regionName}</span>
-              )}
-            </div>
-
-            {/* Stat block */}
-            <StatBlock stats={monster.stats} showCombatStats />
-
-            {/* Gold range */}
-            {(monster.rewards.goldRange.min > 0 || monster.rewards.goldRange.max > 0) && (
-              <div className="text-xs text-realm-text-muted">
-                Gold:{' '}
-                <span className="text-realm-gold-400">
-                  {monster.rewards.goldRange.min}-{monster.rewards.goldRange.max}g
-                </span>
-              </div>
-            )}
-
-            {/* Loot drops */}
-            {monster.rewards.itemDrops.length > 0 && (
-              <div className="text-xs">
-                <span className="text-realm-text-muted">Loot: </span>
-                <span className="text-realm-text-secondary">
-                  {monster.rewards.itemDrops.map((d) => d.name).join(', ')}
-                </span>
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

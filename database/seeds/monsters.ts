@@ -19,6 +19,7 @@
  */
 
 import { PrismaClient, BiomeType } from '@prisma/client';
+import { computeFormulaCR, CRInput } from '../../server/src/lib/cr-formula';
 
 interface MonsterAbilityDef {
   id: string;
@@ -2121,6 +2122,38 @@ export async function seedMonsters(prisma: PrismaClient): Promise<void> {
       where: { name: monster.name, level: monster.level },
     });
 
+    // Compute formula CR
+    const crInput: CRInput = {
+      hp: monster.stats.hp,
+      ac: monster.stats.ac,
+      attack: monster.stats.attack,
+      damage: monster.stats.damage,
+      level: monster.level,
+      resistances: monster.resistances,
+      immunities: monster.immunities,
+      vulnerabilities: monster.vulnerabilities,
+      abilities: monster.abilities?.map(a => ({
+        type: a.type as CRInput['abilities'][0]['type'],
+        damage: a.damage,
+        saveDC: a.saveDC,
+        saveType: a.saveType,
+        attacks: a.attacks,
+        statusEffect: a.statusEffect,
+        statusDuration: a.statusDuration,
+        recharge: a.recharge,
+        cooldown: a.cooldown,
+      })),
+      legendaryActions: monster.legendaryActions,
+      legendaryResistances: monster.legendaryResistances,
+      fearAura: monster.abilities?.some(a => a.type === 'fear_aura'),
+      damageAura: monster.abilities?.find(a => a.type === 'damage_aura')
+        ? { damage: monster.abilities.find(a => a.type === 'damage_aura')!.auraDamage ?? '0' }
+        : undefined,
+      deathThroesDamage: monster.abilities?.find(a => a.type === 'death_throes')?.deathDamage,
+      phaseTransitions: monster.phaseTransitions,
+    };
+    const formulaCR = computeFormulaCR(crInput);
+
     const monsterData = {
       stats: monster.stats,
       lootTable: monster.lootTable,
@@ -2137,6 +2170,7 @@ export async function seedMonsters(prisma: PrismaClient): Promise<void> {
       legendaryActions: monster.legendaryActions ?? 0,
       legendaryResistances: monster.legendaryResistances ?? 0,
       phaseTransitions: (monster.phaseTransitions ?? []) as any,
+      formulaCR,
       encounterType: monster.encounterType ?? 'standard',
       category: monster.category ?? 'beast',
       sentient: monster.sentient ?? false,

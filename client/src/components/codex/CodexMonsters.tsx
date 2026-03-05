@@ -24,6 +24,12 @@ interface MonsterData {
   };
   resistances: string[];
   goldRange: string;
+  damageType: string;
+  immunities: string[];
+  vulnerabilities: string[];
+  abilities: { name: string; description: string }[];
+  isLegendary: boolean;
+  itemDrops: string[];
 }
 
 interface CodexMonstersProps {
@@ -59,6 +65,22 @@ const CATEGORY_COLORS: Record<string, string> = {
   monstrosity: 'bg-orange-500/20 text-orange-300',
   plant: 'bg-lime-500/20 text-lime-300',
   ooze: 'bg-yellow-500/20 text-yellow-300',
+};
+
+const DAMAGE_TYPE_COLORS: Record<string, string> = {
+  FIRE: 'bg-orange-500/20 text-orange-300',
+  COLD: 'bg-blue-500/20 text-blue-300',
+  LIGHTNING: 'bg-yellow-500/20 text-yellow-300',
+  NECROTIC: 'bg-purple-500/20 text-purple-300',
+  PSYCHIC: 'bg-pink-500/20 text-pink-300',
+  FORCE: 'bg-indigo-500/20 text-indigo-300',
+  ACID: 'bg-green-500/20 text-green-300',
+  RADIANT: 'bg-amber-500/20 text-amber-300',
+  POISON: 'bg-emerald-500/20 text-emerald-300',
+  THUNDER: 'bg-sky-500/20 text-sky-300',
+  SLASHING: 'bg-gray-500/20 text-gray-300',
+  PIERCING: 'bg-gray-500/20 text-gray-300',
+  BLUDGEONING: 'bg-gray-500/20 text-gray-300',
 };
 
 const DIFFICULTY_COLORS: Record<string, string> = {
@@ -212,9 +234,16 @@ export default function CodexMonsters({ searchQuery }: CodexMonstersProps) {
               >
                 {/* Header */}
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="font-display text-base text-realm-text-primary">
-                    {monster.name}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display text-base text-realm-text-primary">
+                      {monster.name}
+                    </h3>
+                    {monster.isLegendary && (
+                      <span className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        Legendary
+                      </span>
+                    )}
+                  </div>
                   <span className={`font-display text-sm ${getLevelColor(monster.level)}`}>
                     Lv.{monster.level}
                   </span>
@@ -278,6 +307,11 @@ export default function CodexMonsters({ searchQuery }: CodexMonstersProps) {
                         <div className="bg-realm-bg-800 border border-realm-border/50 rounded p-2 text-center">
                           <div className="text-lg font-display text-realm-text-primary">{monster.stats.damage}</div>
                           <div className="text-[10px] text-realm-text-muted uppercase">Damage</div>
+                          {monster.damageType && (
+                            <span className={`inline-block mt-1 text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm ${DAMAGE_TYPE_COLORS[monster.damageType] || 'bg-gray-500/20 text-gray-300'}`}>
+                              {monster.damageType}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -296,6 +330,53 @@ export default function CodexMonsters({ searchQuery }: CodexMonstersProps) {
                       </div>
                     )}
 
+                    {/* Immunities */}
+                    {monster.immunities && monster.immunities.length > 0 && (
+                      <div>
+                        <h4 className="font-display text-realm-gold-400 text-xs uppercase tracking-wider mb-2">
+                          Immunities
+                        </h4>
+                        <div className="flex flex-wrap gap-1.5">
+                          {monster.immunities.map(i => (
+                            <RealmBadge key={i} variant="rare">{i}</RealmBadge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Vulnerabilities */}
+                    {monster.vulnerabilities && monster.vulnerabilities.length > 0 && (
+                      <div>
+                        <h4 className="font-display text-realm-gold-400 text-xs uppercase tracking-wider mb-2">
+                          Vulnerabilities
+                        </h4>
+                        <div className="flex flex-wrap gap-1.5">
+                          {monster.vulnerabilities.map(v => (
+                            <span key={v} className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm bg-red-500/20 text-red-300">
+                              {v}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Abilities */}
+                    {monster.abilities && monster.abilities.length > 0 && (
+                      <div>
+                        <h4 className="font-display text-realm-gold-400 text-xs uppercase tracking-wider mb-2">
+                          Abilities
+                        </h4>
+                        <div className="space-y-2">
+                          {monster.abilities.map(a => (
+                            <div key={a.name} className="bg-realm-bg-800 border border-realm-border/50 rounded p-2">
+                              <div className="font-display text-realm-text-primary text-sm">{a.name}</div>
+                              <div className="text-realm-text-secondary text-xs mt-0.5">{a.description}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Loot */}
                     <div>
                       <h4 className="font-display text-realm-gold-400 text-xs uppercase tracking-wider mb-2">
@@ -304,6 +385,14 @@ export default function CodexMonsters({ searchQuery }: CodexMonstersProps) {
                       <p className="text-sm text-realm-text-secondary font-body">
                         Gold: {monster.goldRange}
                       </p>
+                      {/* Item Drops */}
+                      {monster.itemDrops && monster.itemDrops.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {monster.itemDrops.map(item => (
+                            <RealmBadge key={item} variant="uncommon">{item}</RealmBadge>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

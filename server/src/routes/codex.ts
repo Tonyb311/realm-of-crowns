@@ -212,6 +212,12 @@ router.get('/monsters', cache(300), async (req: Request, res: Response) => {
       };
       const difficulty = difficultyMap[m.encounterType] || 'Common';
 
+      // Abilities — name + description only (no mechanics)
+      const abilities = ((m.abilities as any[]) || []).map((a: any) => ({
+        name: a.name ?? a.id ?? 'Unknown',
+        description: a.description ?? '',
+      }));
+
       return {
         name: m.name,
         level: m.level,
@@ -220,13 +226,18 @@ router.get('/monsters', cache(300), async (req: Request, res: Response) => {
         category: m.category,
         size: m.size,
         difficulty,
+        damageType: m.damageType,
         stats: {
           hp: stats.hp ?? 0,
           ac: stats.ac ?? 10,
           attack: stats.attack ?? 0,
           damage: stats.damage ?? '1d4',
         },
-        resistances: (stats.resistances as string[]) || [],
+        resistances: (m.resistances as string[]) || [],
+        immunities: (m.immunities as string[]) || [],
+        vulnerabilities: (m.vulnerabilities as string[]) || [],
+        abilities,
+        isLegendary: (m.legendaryActions ?? 0) > 0,
         goldRange: maxGold > 0 ? `Up to ${maxGold}g` : 'None',
         itemDrops: possibleItemDrops,
       };
