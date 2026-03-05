@@ -120,27 +120,18 @@ const CLASS_WEAPON_STAT: Record<string, 'str' | 'dex' | 'int' | 'wis' | 'cha'> =
   mage: 'int', psion: 'int', cleric: 'wis', bard: 'cha',
 };
 
-/** Weapon type per class */
-const CLASS_WEAPON_TYPE: Record<string, 'melee' | 'ranged' | 'staff'> = {
-  warrior: 'melee', cleric: 'melee', rogue: 'melee',
-  ranger: 'ranged', bard: 'melee', mage: 'staff', psion: 'staff',
+/** Weapon category per class — determines which WEAPON_TIERS row to use */
+const CLASS_WEAPON_TYPE: Record<string, string> = {
+  warrior: 'sword', cleric: 'holy_symbol', rogue: 'dagger',
+  ranger: 'bow', bard: 'instrument', mage: 'staff', psion: 'orb',
 };
 
-/** Default damage type per weapon type — used when weapon has no explicit damageType */
-const WEAPON_TYPE_DAMAGE: Record<string, string> = {
-  melee: 'SLASHING',
-  ranged: 'PIERCING',
-  staff: 'BLUDGEONING',
-};
-
-/** Class-specific damage type overrides (rogue uses piercing weapons, cleric uses bludgeoning) */
-const CLASS_DAMAGE_TYPE_OVERRIDE: Record<string, string> = {
-  rogue: 'PIERCING',
-  cleric: 'BLUDGEONING',
-};
 
 // ---------------------------------------------------------------------------
-// Equipment Tiers (index 0-4 for level ranges 1-4, 5-9, 10-14, 15-19, 20+)
+// Equipment Tiers — derived from real recipe baseDamage / armor values
+// ---------------------------------------------------------------------------
+// Tier index: 0=T1(L1-9), 1=T2(L10-19), 2=T3(L20-29), 3=T4(L30+)
+// Quality: T1=COMMON(1.0×), T2=COMMON(1.0×), T3=FINE(1.15×), T4=MASTERWORK(1.5×)
 // ---------------------------------------------------------------------------
 
 interface WeaponTier {
@@ -151,45 +142,111 @@ interface WeaponTier {
   bonusAttack: number;
 }
 
+/** Quality multipliers applied at each tier index */
+const TIER_QUALITY: number[] = [1.0, 1.0, 1.15, 1.5];
+const TIER_QUALITY_LABEL: string[] = ['COMMON', 'COMMON', 'FINE', 'MASTERWORK'];
+
+/**
+ * Class-specific weapon tiers based on real recipe data.
+ * Values are PRE-quality (quality multiplier applied in buildSyntheticPlayer).
+ *
+ * Warrior: swords (Iron Sword 12 → Steel Sword 20 → Mithril Sword 30)
+ * Rogue: daggers (Iron Dagger 8 → Steel Dagger 14 → Mithril Dagger ~20)
+ * Ranger: bows (Hunting Bow 8 → War Bow 16 → Composite Bow 22 → Mithril Composite 36)
+ * Mage: staves (Ashwood 4 → Ironwood 6 → Ebonwood 8 → Starwood 10)
+ * Cleric: holy symbols (Wooden 3 → Iron 5 → Silver 6 → Gold 7)
+ * Bard: instruments (Traveler's Lute 4 → Fine Lute 6 → Master's Lute 8 → Enchanted Harp 10)
+ * Psion: orbs (Quartz 3 → Amethyst 5 → Sapphire 6 → Arcane 7)
+ */
 const WEAPON_TIERS: Record<string, WeaponTier[]> = {
-  melee: [
-    { name: 'Copper Sword',           diceCount: 1, diceSides: 6,  bonusDamage: 0, bonusAttack: 0 },
-    { name: 'Iron Longsword',         diceCount: 1, diceSides: 8,  bonusDamage: 1, bonusAttack: 1 },
-    { name: 'Steel Longsword',        diceCount: 1, diceSides: 8,  bonusDamage: 3, bonusAttack: 2 },
-    { name: 'Mithril Sword',          diceCount: 1, diceSides: 10, bonusDamage: 4, bonusAttack: 3 },
-    { name: 'Adamantine Greatsword',  diceCount: 1, diceSides: 12, bonusDamage: 5, bonusAttack: 4 },
+  // Warrior: 1H swords — baseDamage 6/12/20/30
+  sword: [
+    { name: 'Copper Sword',     diceCount: 1, diceSides: 6,  bonusDamage: 0, bonusAttack: 0 },
+    { name: 'Iron Sword',       diceCount: 1, diceSides: 8,  bonusDamage: 1, bonusAttack: 1 },
+    { name: 'Steel Sword',      diceCount: 1, diceSides: 10, bonusDamage: 2, bonusAttack: 2 },
+    { name: 'Mithril Sword',    diceCount: 1, diceSides: 12, bonusDamage: 3, bonusAttack: 3 },
   ],
-  ranged: [
-    { name: 'Short Bow',              diceCount: 1, diceSides: 6,  bonusDamage: 0, bonusAttack: 0 },
-    { name: 'Longbow',                diceCount: 1, diceSides: 8,  bonusDamage: 1, bonusAttack: 1 },
-    { name: 'Steel Longbow',          diceCount: 1, diceSides: 8,  bonusDamage: 3, bonusAttack: 2 },
-    { name: 'Mithril Longbow',        diceCount: 1, diceSides: 10, bonusDamage: 4, bonusAttack: 3 },
-    { name: 'Adamantine Longbow',     diceCount: 1, diceSides: 12, bonusDamage: 5, bonusAttack: 4 },
+  // Rogue: daggers — baseDamage 4/8/14/~20
+  dagger: [
+    { name: 'Copper Dagger',    diceCount: 1, diceSides: 4,  bonusDamage: 0, bonusAttack: 0 },
+    { name: 'Iron Dagger',      diceCount: 1, diceSides: 6,  bonusDamage: 1, bonusAttack: 1 },
+    { name: 'Steel Dagger',     diceCount: 1, diceSides: 8,  bonusDamage: 2, bonusAttack: 2 },
+    { name: 'Mithril Dagger',   diceCount: 1, diceSides: 10, bonusDamage: 3, bonusAttack: 3 },
   ],
+  // Ranger: bows — baseDamage 6/14/22/36
+  bow: [
+    { name: 'Shortbow',         diceCount: 1, diceSides: 6,  bonusDamage: 0, bonusAttack: 0 },
+    { name: 'Longbow',          diceCount: 1, diceSides: 8,  bonusDamage: 2, bonusAttack: 1 },
+    { name: 'Composite Bow',    diceCount: 1, diceSides: 10, bonusDamage: 3, bonusAttack: 2 },
+    { name: 'Mithril Composite Bow', diceCount: 1, diceSides: 12, bonusDamage: 4, bonusAttack: 3 },
+  ],
+  // Mage: staves — baseDamage 4/6/8/10 (caster weapons scale lower, abilities do the damage)
   staff: [
-    { name: 'Wooden Staff',           diceCount: 1, diceSides: 6,  bonusDamage: 0, bonusAttack: 0 },
-    { name: 'Iron Staff',             diceCount: 1, diceSides: 6,  bonusDamage: 1, bonusAttack: 1 },
-    { name: 'Steel Staff',            diceCount: 1, diceSides: 6,  bonusDamage: 2, bonusAttack: 2 },
-    { name: 'Mithril Staff',          diceCount: 1, diceSides: 8,  bonusDamage: 3, bonusAttack: 3 },
-    { name: 'Adamantine Staff',       diceCount: 1, diceSides: 8,  bonusDamage: 4, bonusAttack: 4 },
+    { name: 'Ashwood Staff',    diceCount: 1, diceSides: 4,  bonusDamage: 0, bonusAttack: 0 },
+    { name: 'Ironwood Staff',   diceCount: 1, diceSides: 6,  bonusDamage: 1, bonusAttack: 1 },
+    { name: 'Ebonwood Staff',   diceCount: 1, diceSides: 6,  bonusDamage: 2, bonusAttack: 2 },
+    { name: 'Starwood Staff',   diceCount: 1, diceSides: 8,  bonusDamage: 3, bonusAttack: 3 },
   ],
+  // Cleric: holy symbols — baseDamage 3/5/6/7 (1H, radiant)
+  holy_symbol: [
+    { name: 'Wooden Holy Symbol',  diceCount: 1, diceSides: 4, bonusDamage: 0, bonusAttack: 0 },
+    { name: 'Iron Holy Symbol',    diceCount: 1, diceSides: 4, bonusDamage: 1, bonusAttack: 1 },
+    { name: 'Silver Holy Symbol',  diceCount: 1, diceSides: 6, bonusDamage: 2, bonusAttack: 2 },
+    { name: 'Gold Holy Symbol',    diceCount: 1, diceSides: 6, bonusDamage: 3, bonusAttack: 3 },
+  ],
+  // Bard: instruments — baseDamage 4/6/8/10 (2H, thunder)
+  instrument: [
+    { name: "Traveler's Lute",  diceCount: 1, diceSides: 4,  bonusDamage: 0, bonusAttack: 0 },
+    { name: 'Fine Lute',        diceCount: 1, diceSides: 6,  bonusDamage: 1, bonusAttack: 1 },
+    { name: "Master's Lute",    diceCount: 1, diceSides: 6,  bonusDamage: 2, bonusAttack: 2 },
+    { name: 'Enchanted Harp',   diceCount: 1, diceSides: 8,  bonusDamage: 3, bonusAttack: 3 },
+  ],
+  // Psion: orbs — baseDamage 3/5/6/7 (1H, psychic)
+  orb: [
+    { name: 'Quartz Orb',      diceCount: 1, diceSides: 4,  bonusDamage: 0, bonusAttack: 0 },
+    { name: 'Amethyst Orb',    diceCount: 1, diceSides: 4,  bonusDamage: 1, bonusAttack: 1 },
+    { name: 'Sapphire Orb',    diceCount: 1, diceSides: 6,  bonusDamage: 2, bonusAttack: 2 },
+    { name: 'Arcane Orb',      diceCount: 1, diceSides: 6,  bonusDamage: 3, bonusAttack: 3 },
+  ],
+};
+
+/** Damage type per weapon category */
+const WEAPON_CATEGORY_DAMAGE: Record<string, string> = {
+  sword: 'SLASHING',
+  dagger: 'PIERCING',
+  bow: 'PIERCING',
+  staff: 'FORCE',
+  holy_symbol: 'RADIANT',
+  instrument: 'THUNDER',
+  orb: 'PSYCHIC',
 };
 
 /**
  * Base armor AC per class per tier (before DEX mod for applicable armor types).
+ * Derived from real recipe armor values summed across all slots.
+ *
+ * Plate (warrior): Copper set 26 → Iron set 50 → Steel set 88 → Mithril set 134
+ *   AC = 10 + armor/5 (scaled to D&D range): T1=15, T2=18, T3=20, T4=22
+ *   Quality multiplier applied: T3×1.15=23, T4×1.5=33 → capped at D&D bounds
+ *
+ * Medium (cleric/ranger): leather+some plate mix
+ * Light (rogue/bard): leather only
+ * None (mage/psion): cloth robes with magicResist but minimal AC
+ *
+ * Values represent final AC BEFORE quality (quality applied in computeEquipmentAC).
  * Heavy armor: flat AC, no DEX bonus.
  * Medium armor: base + min(DEX mod, 2).
  * Light armor: base + DEX mod.
  * None: 10 + DEX mod.
  */
 const ARMOR_TIERS: Record<string, { type: 'heavy' | 'medium' | 'light' | 'none'; ac: number[] }> = {
-  warrior: { type: 'heavy',  ac: [14, 17, 19, 21, 23] },
-  cleric:  { type: 'medium', ac: [13, 15, 17, 18, 20] },
-  ranger:  { type: 'medium', ac: [12, 14, 16, 17, 19] },
-  rogue:   { type: 'light',  ac: [11, 13, 14, 16, 17] },
-  bard:    { type: 'light',  ac: [11, 13, 14, 16, 17] },
-  mage:    { type: 'none',   ac: [10, 10, 10, 10, 10] },
-  psion:   { type: 'none',   ac: [10, 10, 10, 10, 10] },
+  warrior: { type: 'heavy',  ac: [14, 16, 18, 21] },
+  cleric:  { type: 'medium', ac: [13, 15, 17, 19] },
+  ranger:  { type: 'medium', ac: [12, 14, 16, 18] },
+  rogue:   { type: 'light',  ac: [11, 13, 14, 16] },
+  bard:    { type: 'light',  ac: [11, 13, 14, 16] },
+  mage:    { type: 'none',   ac: [10, 10, 10, 10] },
+  psion:   { type: 'none',   ac: [10, 10, 10, 10] },
 };
 
 // ---------------------------------------------------------------------------
@@ -200,24 +257,28 @@ function getModifier(score: number): number {
   return Math.floor((score - 10) / 2);
 }
 
+/** Map level to equipment tier: L1-9→T1, L10-19→T2, L20-29→T3, L30+→T4 */
 function getTierIndex(level: number): number {
-  if (level <= 4) return 0;
-  if (level <= 9) return 1;
-  if (level <= 14) return 2;
-  if (level <= 19) return 3;
-  return 4;
+  if (level < 10) return 0;  // T1: Copper/starter gear
+  if (level < 20) return 1;  // T2: Iron gear
+  if (level < 30) return 2;  // T3: Steel gear (FINE quality)
+  return 3;                  // T4: Mithril gear (MASTERWORK quality)
 }
 
 function computeEquipmentAC(className: string, level: number, dexMod: number): number {
   const armor = ARMOR_TIERS[className] || ARMOR_TIERS.warrior;
   const tier = getTierIndex(level);
   const baseAC = armor.ac[tier];
+  // Apply quality multiplier to AC bonus above base 10
+  const qualityMult = TIER_QUALITY[tier];
+  const acBonus = baseAC - 10;
+  const scaledAC = 10 + Math.floor(acBonus * qualityMult);
 
   switch (armor.type) {
-    case 'heavy':  return baseAC;
-    case 'medium': return baseAC + Math.min(dexMod, 2);
-    case 'light':  return baseAC + dexMod;
-    case 'none':   return baseAC + dexMod;
+    case 'heavy':  return scaledAC;
+    case 'medium': return scaledAC + Math.min(dexMod, 2);
+    case 'light':  return scaledAC + dexMod;
+    case 'none':   return scaledAC + dexMod;
   }
 }
 
@@ -295,22 +356,24 @@ export function buildSyntheticPlayer(config: SyntheticPlayerConfig): SyntheticPl
   const dexMod = getModifier(stats.dex);
   const equipmentAC = computeEquipmentAC(className, config.level, dexMod);
 
-  // 7. Weapon
-  const weaponType = CLASS_WEAPON_TYPE[className] || 'melee';
+  // 7. Weapon — class-specific with quality scaling
+  const weaponCategory = CLASS_WEAPON_TYPE[className] || 'sword';
   const weaponStat = CLASS_WEAPON_STAT[className] || 'str';
   const tier = getTierIndex(config.level);
-  const weaponTier = WEAPON_TIERS[weaponType][tier];
+  const weaponTier = WEAPON_TIERS[weaponCategory]?.[tier] ?? WEAPON_TIERS.sword[tier];
+  const qualityMult = TIER_QUALITY[tier];
+  const qualityLabel = TIER_QUALITY_LABEL[tier];
 
   const weapon: WeaponInfo = {
     id: 'sim-weapon',
-    name: weaponTier.name,
+    name: qualityLabel !== 'COMMON' ? `${qualityLabel} ${weaponTier.name}` : weaponTier.name,
     diceCount: weaponTier.diceCount,
     diceSides: weaponTier.diceSides,
-    bonusDamage: weaponTier.bonusDamage,
-    bonusAttack: weaponTier.bonusAttack,
+    bonusDamage: Math.floor(weaponTier.bonusDamage * qualityMult),
+    bonusAttack: Math.floor(weaponTier.bonusAttack * qualityMult),
     damageModifierStat: weaponStat,
     attackModifierStat: weaponStat,
-    damageType: CLASS_DAMAGE_TYPE_OVERRIDE[className] ?? WEAPON_TYPE_DAMAGE[weaponType] ?? 'SLASHING',
+    damageType: WEAPON_CATEGORY_DAMAGE[weaponCategory] ?? 'SLASHING',
   };
 
   return {

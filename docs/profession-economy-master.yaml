@@ -999,6 +999,15 @@ professions:
         - { id: bs-hardwood-tower-shield, level: 8, inputs: "2x Iron Ore Chunks + 1x Coal + 2x Hardwood", output: "Hardwood Tower Shield", base_value: 108, specialization: ARMORER }
         - { id: bs-reinforced-chain-leggings, level: 8, inputs: "1x Silver Ore + 3x Iron Ore Chunks + 1x Coal + 1x Wood Logs", output: "Reinforced Chain Leggings", base_value: 105, specialization: ARMORER }
     notes: "Two pathways: (1) Raw-ore recipes (L3-L8) for early crafting, (2) Ingot-based weapon recipes (L1-L75) for endgame via SMELTER chain"
+    # ELITE BOSS-MATERIAL RECIPES (2026-03-05)
+    elite_recipes:
+      elite_weaponsmith:
+        - { id: elite-dragonscale-longsword, level: 35, inputs: "1x Dragon Scale + 3x Steel Ingot + 1x Leather", output: "Dragonscale Longsword", base_value: 2000, specialization: WEAPONSMITH, tier: 3 }
+        - { id: elite-hellforged-greatsword, level: 35, inputs: "1x Demon Heart + 4x Steel Ingot", output: "Hellforged Greatsword", base_value: 2200, specialization: WEAPONSMITH, tier: 3 }
+        - { id: elite-soulreaper-blade, level: 40, inputs: "1x Lich Dust + 3x Steel Ingot + 1x Arcane Reagents", output: "Soulreaper Blade", base_value: 2400, specialization: WEAPONSMITH, tier: 3 }
+        - { id: elite-stormforged-warhammer, level: 60, inputs: "1x Storm Giant's Heart + 3x Mithril Ingot", output: "Stormforged Warhammer", base_value: 4500, specialization: WEAPONSMITH, tier: 4 }
+        - { id: elite-voidsteel-greatsword, level: 80, inputs: "1x Void Fragment + 4x Adamantine Ingot", output: "Voidsteel Greatsword", base_value: 12000, specialization: WEAPONSMITH, tier: 5 }
+        - { id: elite-tarrasque-cleaver, level: 80, inputs: "1x Tarrasque Plate + 3x Adamantine Ingot", output: "Tarrasque Cleaver", base_value: 14000, specialization: WEAPONSMITH, tier: 5 }
 
   ARMORER:
     # ARMORER profession LIVE — 25 recipes, metal plate armor (2026-02-19)
@@ -1047,6 +1056,12 @@ professions:
         - { id: craft-adamantine-shield, level: 75, slot: OFF_HAND, inputs: "2x Adamantine Ingot + 1x Bear Leather + 1x Steel Ingot", base_value: 8500 }
     supply_chain: "MINER → SMELTER → ARMORER, HUNTER → TANNER → ARMORER"
     notes: "Shares SMITHY workshop with BLACKSMITH. Uses Leather (T1-3) and Bear Leather (T4-5) as secondary inputs."
+    # ELITE BOSS-MATERIAL RECIPES (2026-03-05)
+    elite_recipes:
+      - { id: elite-dragonscale-plate, level: 35, slot: CHEST, inputs: "2x Dragon Scale + 4x Steel Ingot + 2x Leather", output: "Dragonscale Plate", base_value: 2500, tier: 3, note: "+cold resist" }
+      - { id: elite-golem-forged-plate, level: 60, slot: CHEST, inputs: "1x Golem Core + 4x Mithril Ingot + 2x Leather", output: "Golem-Forged Plate", base_value: 5500, tier: 4, note: "+crit resistance" }
+      - { id: elite-wyrm-scale-plate, level: 80, slot: CHEST, inputs: "2x Elder Wyrm Scale + 4x Adamantine Ingot + 2x Leather", output: "Wyrm Scale Plate", base_value: 16000, tier: 5, note: "Best plate armor" }
+      - { id: elite-tarrasque-shell, level: 80, slot: OFF_HAND, inputs: "1x Tarrasque Plate + 3x Adamantine Ingot", output: "Tarrasque Shell", base_value: 13000, tier: 5, note: "Best shield" }
 
   WOODWORKER:
     # WOODWORKER profession LIVE — 25 recipes (11 processing + 14 finished goods)
@@ -1094,6 +1109,10 @@ professions:
         - { id: ww-reinforced-crate, level: 35, inputs: "3x Hardwood Planks + 8x Nails + 3x Iron Fittings", output: "Reinforced Crate", base_value: 130 }
         - { id: ww-hardwood-tower-shield, level: 40, inputs: "2x Exotic Planks + 1x Iron Ingot + 1x Leather", output: "Hardwood Tower Shield", base_value: 230 }
         - { id: ww-practice-bow, level: 30, inputs: "1x Bow Stave + 1x Bowstring + 1x Softwood", output: "Practice Bow", base_value: 45 }
+    # ELITE BOSS-MATERIAL RECIPES (2026-03-05)
+    elite_recipes:
+      - { id: elite-feywood-lute, level: 35, inputs: "2x Feywood Branch + 2x Exotic Planks + 1x Spider Silk", output: "Feywood Lute", base_value: 1800, tier: 3, note: "Bard caster weapon, +CHA" }
+      - { id: elite-stormsong-harp, level: 60, inputs: "1x Storm Feather + 2x Mithril Ingot + 2x Exotic Planks + 1x Spider Silk", output: "Stormsong Harp", base_value: 4200, tier: 4, note: "Best bard weapon" }
 
   TANNER:
     type: CRAFTING
@@ -1146,6 +1165,11 @@ professions:
         - { id: lw-hunters-kit, level: 35, inputs: "1x Wolf Leather + 1x Bear Leather + 10x Nails", output: "Hunter's Kit", base_value: 280 }
         - { id: lw-explorers-pack, level: 40, inputs: "2x Bear Leather + 1x Wolf Leather + 1x Wooden Frame", output: "Explorer's Pack", base_value: 480 }
     notes: "Fills the gaps TANNER doesn't cover. Armor values intentionally lower than TANNER — LEATHERWORKER makes utility, not defense. DEX bonuses on all armor pieces (leather stat identity). Supply chain: HUNTER → TANNER → LEATHERWORKER. Workshop: TANNERY (shared, no new building needed)."
+    # ELITE BOSS-MATERIAL RECIPES (2026-03-05)
+    elite_recipes:
+      - { id: elite-wyvern-scale-vest, level: 35, slot: CHEST, inputs: "2x Wyvern Scale + 2x Wolf Leather + 1x Leather", output: "Wyvern Scale Vest", base_value: 1500, tier: 3, note: "+DEX, light armor" }
+      - { id: elite-vampire-hide-armor, level: 60, slot: CHEST, inputs: "2x Vampire Fang + 2x Bear Leather + 1x Wolf Leather", output: "Vampire Hide Armor", base_value: 4000, tier: 4, note: "+lifesteal flavor" }
+      - { id: elite-wyrm-hide-armor, level: 80, slot: CHEST, inputs: "2x Elder Wyrm Scale + 3x Bear Leather + 1x Wolf Leather", output: "Wyrm Hide Armor", base_value: 12000, tier: 5, note: "Best leather armor" }
 
   TAILOR:
     type: CRAFTING
@@ -1165,6 +1189,11 @@ professions:
       CRAFTSMAN: ["Weave Fine Cloth (DEFERRED)", "Process Silk (DEFERRED)", "Archmage's Robe", "Diplomat's Regalia", "Silk Hood of Insight", "Noble's Leggings", "Enchanted Cloak"]
     recipe_count: 17  # 4 processing + 13 armor (make-cloth-padding removed — Cloth Padding unused)
     notes: "Cotton is sim-seeded market supply (not a gathering spot) — feeds Woven Cloth (T1). Weave Fine Cloth and Process Silk are DEFERRED (depend on RANCHER). Buys Leather from TANNER. Legacy spin-cloth kept for WOODWORKER housing-bed recipe. Wool removed from active recipe inputs — future RANCHER content."
+    # ELITE BOSS-MATERIAL RECIPES (2026-03-05)
+    elite_recipes:
+      - { id: elite-fey-touched-robe, level: 35, slot: CHEST, inputs: "2x Feywood Branch + 2x Woven Cloth + 1x Silk Fabric", output: "Fey-Touched Robe", base_value: 1800, tier: 3, note: "+WIS, nature resist" }
+      - { id: elite-death-knights-mantle, level: 60, slot: CHEST, inputs: "1x Death Knight Essence + 2x Silk Fabric + 1x Bear Leather", output: "Death Knight's Mantle", base_value: 4500, tier: 4, note: "+necrotic resist" }
+      - { id: elite-phoenix-silk-robe, level: 80, slot: CHEST, inputs: "2x Phoenix Feather + 3x Silk Fabric + 1x Arcane Reagents", output: "Phoenix Silk Robe", base_value: 14000, tier: 5, note: "Best cloth armor" }
 
   ALCHEMIST:
     type: CRAFTING
@@ -1232,6 +1261,12 @@ professions:
         - { id: ench-true-sight, level: 45, output: True Sight Enchantment Scroll, base_value: 350, magical_inputs: "2x Basilisk Eye", mundane_inputs: "1x Gemstones + 1x Arcane Reagents + 1x Silver Ingot + 2x Coal" }
     supply_chain: "HERBALIST → Arcane Reagents; MINER → Coal/Gemstones; SMELTER → Ingots; Monster Encounters → Magical Components → ENCHANTER"
     notes: "13 enchantment scrolls (9 original + 4 new). All recipes now require magical components from monster encounters. Component cost = 20-40% of total input. Scroll application to equipment is a separate future feature."
+    # ELITE BOSS-MATERIAL RECIPES (2026-03-05)
+    elite_recipes:
+      - { id: elite-feywood-staff, level: 35, inputs: "2x Feywood Branch + 1x Arcane Reagents + 1x Fey Tear", output: "Feywood Staff", base_value: 2000, tier: 3, note: "Mage/Cleric caster weapon, +WIS" }
+      - { id: elite-mindshatter-orb, level: 60, inputs: "1x Mind Flayer Brain + 2x Gemstones + 1x Arcane Reagents", output: "Mindshatter Orb", base_value: 4000, tier: 4, note: "Psion caster weapon, +INT" }
+      - { id: elite-phoenix-staff, level: 80, inputs: "2x Phoenix Feather + 2x Adamantine Ingot + 1x Arcane Reagents", output: "Phoenix Staff", base_value: 14000, tier: 5, note: "Best mage staff" }
+      - { id: elite-titans-focus, level: 80, inputs: "1x Titan Bone + 2x Gemstones + 1x Mithril Ingot + 1x Arcane Reagents", output: "Titan's Focus", base_value: 14000, tier: 5, note: "Best psion focus" }
 
   JEWELER:
     # JEWELER profession LIVE — 12 recipes, jewelry & accessories (2026-02-19)
@@ -1266,6 +1301,12 @@ professions:
         - { id: jewel-mithril-ring, level: 55, inputs: "2x Mithril Ingot + 3x Gemstones + 1x Wyvern Scale", output: "Mithril Ring", base_value: 2500 }
     supply_chain: "MINER → SMELTER → JEWELER (ingots + gems)"
     notes: "Full set of rings, necklaces, circlets, and brooches. Uses Gemstones from MINER + ingots from SMELTER."
+    # ELITE BOSS-MATERIAL RECIPES (2026-03-05)
+    elite_recipes:
+      - { id: elite-hydra-fang-amulet, level: 35, inputs: "2x Hydra Fang + 1x Gold Ingot + 1x Gemstones", output: "Hydra Fang Amulet", base_value: 1800, tier: 3, note: "+CON, poison resist" }
+      - { id: elite-beholder-lens-ring, level: 60, inputs: "1x Beholder Eye + 2x Gold Ingot + 2x Gemstones", output: "Beholder Lens Ring", base_value: 4200, tier: 4, note: "+INT, true sight flavor" }
+      - { id: elite-phylactery-amulet, level: 80, inputs: "1x Lich Phylactery + 2x Mithril Ingot + 2x Gemstones", output: "Phylactery Amulet", base_value: 12000, tier: 5, note: "+death save advantage" }
+      - { id: elite-void-crystal-ring, level: 80, inputs: "2x Void Fragment + 1x Adamantine Ingot + 3x Gemstones", output: "Void Crystal Ring", base_value: 14000, tier: 5, note: "Best ring, +all stats" }
 
   # FLETCHER profession LIVE — 13 recipes (2026-02-19)
   FLETCHER:
@@ -1300,6 +1341,10 @@ professions:
         - { id: fletch-flight-arrows, level: 30, inputs: "2x Softwood Planks + 1x Spider Silk", output: "10x Flight Arrows", base_value: 2 }
         - { id: fletch-rangers-longbow, level: 45, inputs: "1x Exotic Planks + 1x Bow Stave + 1x Bowstring + 1x Bear Leather + 1x Bear Claw", output: "Ranger's Longbow", base_value: 260 }
     damage_progression: "Practice Bow (5, WW) → Shortbow (6) → Hunting Bow (8) → Longbow (14) → War Bow (16) → Composite Bow (22) → Ranger's Longbow (26)"
+    # ELITE BOSS-MATERIAL RECIPES (2026-03-05)
+    elite_recipes:
+      - { id: elite-dragonbone-bow, level: 35, inputs: "1x Dragon Scale + 1x Bow Stave + 1x Bowstring + 1x Wolf Leather", output: "Dragonbone Bow", base_value: 2000, tier: 3, note: "+fire damage flavor" }
+      - { id: elite-wyrm-sinew-bow, level: 80, inputs: "2x Elder Wyrm Scale + 1x Exotic Planks + 1x Bowstring + 1x Bear Leather", output: "Wyrm Sinew Bow", base_value: 14000, tier: 5, note: "Best ranged weapon" }
 
   MASON:
     # MASON profession LIVE — 12 recipes, stone processing + housing (2026-02-19)
@@ -4105,3 +4150,52 @@ base_value_reference:
       - { name: "Ranger's Quiver", base_value: 175 } # was 120; input WL(73)+2×HP(36)+4×Nails(4)=113g → 1.55×
       - { name: Flight Arrows, base_value: 2 }     # was 6; per arrow ×10, input 12g → 1.67×
       - { name: "Ranger's Longbow", base_value: 260 } # was 200; input EP(40)+BS(11)+Bow(24)+BL(91)+BearClaw(6)=172g → 1.51×
+
+# =============================================================================
+# SECTION 11: BOSS MATERIALS & ELITE CRAFTED EQUIPMENT (2026-03-05)
+# =============================================================================
+# Boss-exclusive rare materials dropped by elite/boss monsters. No finished
+# equipment drops — crafters need fighters, fighters need crafters.
+# Elite gear is ~15-20% stronger than standard tier equipment.
+# =============================================================================
+
+boss_materials:
+  # Format: { name, rarity, base_value, source_monsters, drop_rate_range }
+  tier_3_materials:  # Level 10-35 bosses
+    - { name: Dragon Scale, rarity: MASTERWORK, base_value: 500, sources: "Young Dragon (L30, 0.15)", note: "BLACKSMITH + ARMORER + FLETCHER" }
+    - { name: Wyvern Scale, rarity: MASTERWORK, base_value: 350, sources: "Wyvern (L24, 0.20)", note: "LEATHERWORKER" }
+    - { name: Hydra Fang, rarity: MASTERWORK, base_value: 400, sources: "Hydra (L28, 0.15)", note: "JEWELER" }
+    - { name: Feywood Branch, rarity: MASTERWORK, base_value: 300, sources: "Feywild Enchantress (L28, 0.15)", note: "WOODWORKER + ENCHANTER + TAILOR" }
+    - { name: Chimera Mane, rarity: MASTERWORK, base_value: 350, sources: "Chimera (L26, 0.18)", note: "Reserved" }
+    - { name: Manticore Barb, rarity: MASTERWORK, base_value: 300, sources: "Manticore (L22, 0.20)", note: "Reserved" }
+
+  tier_4_materials:  # Level 30-60 bosses
+    - { name: Demon Heart, rarity: LEGENDARY, base_value: 800, sources: "Demon (L45, 0.10)", note: "BLACKSMITH" }
+    - { name: Vampire Fang, rarity: LEGENDARY, base_value: 600, sources: "Vampire Lord (L42, 0.12)", note: "LEATHERWORKER" }
+    - { name: Mind Flayer Brain, rarity: LEGENDARY, base_value: 700, sources: "Mind Flayer (L40, 0.10)", note: "ENCHANTER" }
+    - { name: Beholder Eye, rarity: LEGENDARY, base_value: 750, sources: "Beholder (L44, 0.08)", note: "JEWELER" }
+    - { name: Storm Feather, rarity: MASTERWORK, base_value: 400, sources: "Roc (L39, 0.15), Harrowsong Harpy (L14, 0.20)", note: "WOODWORKER + BLACKSMITH" }
+    - { name: Golem Core, rarity: LEGENDARY, base_value: 650, sources: "Iron Golem (L30, 0.12)", note: "ARMORER" }
+    - { name: Death Knight Essence, rarity: LEGENDARY, base_value: 700, sources: "Death Knight (L38, 0.10)", note: "TAILOR" }
+    - { name: Basilisk Eye, rarity: LEGENDARY, base_value: 500, sources: "Basilisk King (L35, 0.10)", note: "Enchanting component" }
+    - { name: Behemoth Horn, rarity: LEGENDARY, base_value: 600, sources: "Behemoth (L36, 0.12)", note: "Reserved" }
+    - { name: Kraken Ink, rarity: LEGENDARY, base_value: 500, sources: "Kraken Spawn (L34, 0.15)", note: "Reserved (UNDERWATER)" }
+
+  tier_5_materials:  # Level 60-80+ bosses
+    - { name: Void Fragment, rarity: LEGENDARY, base_value: 2000, sources: "Void Walker (L48, 0.08)", note: "BLACKSMITH + JEWELER" }
+    - { name: Elder Wyrm Scale, rarity: LEGENDARY, base_value: 2500, sources: "Elder Wyrm (L50, 0.06)", note: "ARMORER + LEATHERWORKER + FLETCHER" }
+    - { name: Phoenix Feather, rarity: LEGENDARY, base_value: 3000, sources: "Phoenix (L50, 0.05)", note: "TAILOR + ENCHANTER" }
+    - { name: Lich Phylactery, rarity: LEGENDARY, base_value: 2500, sources: "Lich (L48, 0.06)", note: "JEWELER" }
+    - { name: Titan Bone, rarity: LEGENDARY, base_value: 3000, sources: "Ancient Titan (L50, 0.05)", note: "ENCHANTER" }
+    - { name: Tarrasque Plate, rarity: LEGENDARY, base_value: 5000, sources: "Tarrasque (L50, 0.03)", note: "ARMORER + BLACKSMITH" }
+
+elite_crafted_summary:
+  # 28 elite recipes across 8 professions
+  BLACKSMITH: 6  # Dragonscale Longsword, Hellforged Greatsword, Soulreaper Blade, Stormforged Warhammer, Voidsteel Greatsword, Tarrasque Cleaver
+  ARMORER: 4     # Dragonscale Plate, Golem-Forged Plate, Wyrm Scale Plate, Tarrasque Shell
+  WOODWORKER: 2  # Feywood Lute, Stormsong Harp
+  LEATHERWORKER: 3  # Wyvern Scale Vest, Vampire Hide Armor, Wyrm Hide Armor
+  TAILOR: 3      # Fey-Touched Robe, Death Knight's Mantle, Phoenix Silk Robe
+  ENCHANTER: 4   # Feywood Staff, Mindshatter Orb, Phoenix Staff, Titan's Focus
+  JEWELER: 4     # Hydra Fang Amulet, Beholder Lens Ring, Phylactery Amulet, Void Crystal Ring
+  FLETCHER: 2    # Dragonbone Bow, Wyrm Sinew Bow
