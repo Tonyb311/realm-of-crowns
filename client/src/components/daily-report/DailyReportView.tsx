@@ -24,19 +24,25 @@ import CombatLogViewer from '../combat/CombatLogViewer';
 interface DailyReport {
   id: string;
   tickDate: string;
+  combatLogs?: any[];
   sections: {
     food?: {
       consumed?: string;
       hungerState: string;
+      buff?: Record<string, number>;
       spoilageWarnings?: string[];
     };
     action?: {
       type: string;
-      outcome: string;
+      outcome?: string;
+      success?: boolean;
+      origin?: string;
+      destination?: string;
       details?: string;
     };
     combat?: {
       occurred: boolean;
+      logs?: any[];
       log?: unknown;
       outcome?: string;
       loot?: { name: string; quantity: number }[];
@@ -52,7 +58,7 @@ interface DailyReport {
       professionXp?: { profession: string; xp: number }[];
       levelUp?: boolean;
       newLevel?: number;
-      questProgress?: string[];
+      questProgress?: (string | { title: string; progress: string })[];
     };
     worldNews?: {
       events: { title: string; message: string }[];
@@ -263,8 +269,18 @@ function FoodSection({ data }: { data: any }) {
     INCAPACITATED: 'text-realm-danger',
   };
 
+  const buffText = data.buff
+    ? Object.entries(data.buff).map(([stat, val]) => `+${val} ${stat.toUpperCase()}`).join(', ')
+    : null;
+
   return (
     <div className="pt-2 space-y-2">
+      {/* Narrative flavor */}
+      <p className="text-realm-text-secondary text-xs italic">
+        {data.consumed
+          ? `You ate a hearty ${data.consumed}, keeping your strength up.${buffText ? ` (${buffText})` : ''}`
+          : 'Your supplies ran low \u2014 you went hungry today.'}
+      </p>
       {data.consumed && (
         <p className="text-realm-text-primary text-xs">
           Consumed: <span className="text-realm-text-secondary font-display">{data.consumed}</span>
@@ -291,12 +307,29 @@ function FoodSection({ data }: { data: any }) {
 }
 
 function ActionSection({ data }: { data: any }) {
+  const narrativeMap: Record<string, string> = {
+    GATHER: `You spent the day gathering resources${data.details ? ` in ${data.details}` : ''}.`,
+    CRAFT: `At the workshop, you crafted ${data.outcome ?? 'something useful'}.`,
+    TRAVEL: `You set out from ${data.origin ?? 'town'} toward ${data.destination ?? 'the unknown'}.`,
+    REST: 'You took the day to rest and recover.',
+  };
+
+  const narrative = narrativeMap[data.type];
+
   return (
     <div className="pt-2 space-y-2">
+      {narrative && (
+        <p className="text-realm-text-secondary text-xs italic">{narrative}</p>
+      )}
       <p className="text-xs text-realm-text-muted">
         Action: <span className="text-realm-text-primary font-display">{data.type}</span>
+        {data.success != null && (
+          <span className={`ml-2 ${data.success ? 'text-realm-success' : 'text-realm-danger'}`}>
+            {data.success ? 'Success' : 'Failed'}
+          </span>
+        )}
       </p>
-      <p className="text-realm-text-primary text-xs">{data.outcome}</p>
+      {data.outcome && <p className="text-realm-text-primary text-xs">{data.outcome}</p>}
       {data.details && (
         <p className="text-realm-text-secondary text-[10px]">{data.details}</p>
       )}
@@ -307,8 +340,10 @@ function ActionSection({ data }: { data: any }) {
 function CombatSection({ data }: { data: any }) {
   if (!data.occurred) return null;
 
+  const logs: any[] = data.logs ?? (data.log ? [data.log] : []);
+
   return (
-    <div className="pt-2 space-y-2">
+    <div className="pt-2 space-y-3">
       {data.outcome && (
         <p className={`font-display text-sm ${
           data.outcome === 'WIN' ? 'text-realm-success'
@@ -328,7 +363,9 @@ function CombatSection({ data }: { data: any }) {
           ))}
         </div>
       )}
-      {data.log && <CombatLogViewer log={data.log} />}
+      {logs.map((log: any, i: number) => (
+        <CombatLogViewer key={i} log={log} />
+      ))}
     </div>
   );
 }
@@ -377,8 +414,10 @@ function ProgressionSection({ data }: { data: any }) {
       {data.questProgress && data.questProgress.length > 0 && (
         <div>
           <p className="text-[10px] text-realm-text-muted uppercase tracking-wider mb-1">Quests</p>
-          {data.questProgress.map((q: string, i: number) => (
-            <p key={i} className="text-realm-text-secondary text-xs">{q}</p>
+          {data.questProgress.map((q: any, i: number) => (
+            <p key={i} className="text-realm-text-secondary text-xs">
+              {typeof q === 'string' ? q : `${q.title}: ${q.progress}`}
+            </p>
           ))}
         </div>
       )}

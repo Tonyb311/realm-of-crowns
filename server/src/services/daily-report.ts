@@ -81,6 +81,67 @@ export async function getReportHistory(characterId: string, limit = 7) {
 // compileReport
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// dismissReport
+// ---------------------------------------------------------------------------
+
+export async function dismissReport(reportId: string) {
+  return prisma.dailyReport.update({
+    where: { id: reportId },
+    data: { dismissedAt: new Date() },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// transformToSections / transformReport
+// ---------------------------------------------------------------------------
+
+function transformToSections(report: any) {
+  const combatLogs = (report.combatLogs ?? []) as any[];
+  return {
+    food: report.foodConsumed ? {
+      consumed: (report.foodConsumed as any)?.itemName ?? null,
+      hungerState: 'FED',
+      buff: (report.foodConsumed as any)?.buff ?? null,
+    } : null,
+    action: report.actionResult && Object.keys(report.actionResult as object).length > 0 ? report.actionResult : null,
+    combat: {
+      occurred: combatLogs.length > 0,
+      logs: combatLogs,
+      outcome: combatLogs.length > 0 ? (combatLogs[0] as any)?.outcome?.toUpperCase() : undefined,
+      loot: combatLogs.flatMap((l: any) => {
+        const lootStr = l.loot || l.lootDropped || '';
+        if (!lootStr) return [];
+        return [{ name: lootStr, quantity: 1 }];
+      }),
+    },
+    economy: {
+      goldEarned: report.goldChange > 0 ? report.goldChange : undefined,
+      goldSpent: report.goldChange < 0 ? Math.abs(report.goldChange) : undefined,
+      netChange: report.goldChange,
+    },
+    progression: {
+      xpEarned: report.xpEarned,
+      questProgress: (report.questProgress as any[]) ?? [],
+    },
+    worldNews: {
+      events: (report.worldEvents as any[]) ?? [],
+    },
+  };
+}
+
+export function transformReport(report: any) {
+  return {
+    ...report,
+    sections: transformToSections(report),
+    dismissed: !!report.dismissedAt,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// compileReport
+// ---------------------------------------------------------------------------
+
 export function compileReport(
   results: {
     food?: { consumed: { name: string } | null; buff: Record<string, unknown> | null };

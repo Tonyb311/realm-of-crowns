@@ -41,7 +41,7 @@ import {
 import { onMonsterKill } from '../services/quest-triggers';
 import { checkLevelUp } from '../services/progression';
 import { checkAchievements } from '../services/achievements';
-import { logPveCombat, COMBAT_LOGGING_ENABLED } from './combat-logger';
+import { logPveCombat, COMBAT_LOGGING_ENABLED, buildRoundsData, buildEncounterContext } from './combat-logger';
 import { getSimulationTick, getSimulationRunId } from './simulation-context';
 import type { CombatRound } from './simulation/types';
 import type { AttackResult } from '@shared/types/combat';
@@ -1118,7 +1118,13 @@ export async function resolveGroupRoadEncounter(
   if (COMBAT_LOGGING_ENABLED) {
     const outcome: 'win' | 'loss' = partyWon ? 'win' : 'loss';
 
-    for (const char of characters) {
+    // Build round data once for the first member's full log
+    const roundsData = buildRoundsData(combatState);
+    const encounterCtx = buildEncounterContext(combatState);
+    const roundsWithContext = [{ _encounterContext: encounterCtx }, ...roundsData];
+
+    for (let ci = 0; ci < characters.length; ci++) {
+      const char = characters[ci];
       const combatant = playerResults.find(p => p.id === char.id);
       const mr = memberResults.find(m => m.characterId === char.id);
 
@@ -1146,7 +1152,7 @@ export async function resolveGroupRoadEncounter(
             xpAwarded: mr?.xpAwarded ?? 0,
             goldAwarded: mr?.goldAwarded ?? 0,
             lootDropped: '',
-            rounds: [] as any, // shared combat state is identical — full log in first member's record
+            rounds: ci === 0 ? roundsWithContext : ([] as any),
             summary: `Group encounter (${memberCount} members): ${partyWon ? 'Victory' : 'Defeat'} vs ${monster.name} (L${monster.level}) in ${totalRounds} rounds.`,
             triggerSource: 'group_road_encounter',
             originTownId,

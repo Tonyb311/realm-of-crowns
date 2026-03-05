@@ -2137,6 +2137,7 @@ model DailyReport {
   questProgress Json?    @map("quest_progress")
   notifications Json?
   worldEvents   Json?    @map("world_events")
+  dismissedAt   DateTime? @map("dismissed_at")
   createdAt     DateTime @default(now()) @map("created_at")
 
   character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)

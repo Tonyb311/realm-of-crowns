@@ -5,7 +5,7 @@ import { logRouteError } from '../lib/error-logger';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { getLatestReport, getReportHistory } from '../services/daily-report';
+import { getLatestReport, getReportHistory, dismissReport, transformReport } from '../services/daily-report';
 
 const router = Router();
 
@@ -23,7 +23,7 @@ router.get('/latest', authGuard, characterGuard, async (req: AuthenticatedReques
       return res.json({ report: null });
     }
 
-    return res.json({ report });
+    return res.json({ report: transformReport(report) });
   } catch (error) {
     if (handlePrismaError(error, res, 'get latest report', req)) return;
     logRouteError(req, 500, 'Get latest report error', error);
@@ -42,7 +42,7 @@ router.get('/history', authGuard, characterGuard, async (req: AuthenticatedReque
     const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 7, 1), 30);
     const reports = await getReportHistory(character.id, limit);
 
-    return res.json({ reports });
+    return res.json({ reports: reports.map(transformReport) });
   } catch (error) {
     if (handlePrismaError(error, res, 'get report history', req)) return;
     logRouteError(req, 500, 'Get report history error', error);
@@ -75,10 +75,37 @@ router.get('/:tickDate', authGuard, characterGuard, async (req: AuthenticatedReq
       return res.status(404).json({ error: 'No report found for this date' });
     }
 
-    return res.json({ report });
+    return res.json({ report: transformReport(report) });
   } catch (error) {
     if (handlePrismaError(error, res, 'get report by date', req)) return;
     logRouteError(req, 500, 'Get report by date error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/reports/:id/dismiss
+// ---------------------------------------------------------------------------
+
+router.post('/:id/dismiss', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { id } = req.params;
+
+    // Verify the report belongs to this character
+    const report = await prisma.dailyReport.findFirst({
+      where: { id, characterId: character.id },
+    });
+
+    if (!report) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
+
+    await dismissReport(id);
+    return res.json({ success: true });
+  } catch (error) {
+    if (handlePrismaError(error, res, 'dismiss report', req)) return;
+    logRouteError(req, 500, 'Dismiss report error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

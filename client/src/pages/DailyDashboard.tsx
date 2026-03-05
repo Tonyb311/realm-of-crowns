@@ -214,7 +214,17 @@ export default function DailyDashboard() {
         {showReport && (
           <DailyReportView
             asModal
-            onDismiss={() => setShowReport(false)}
+            onDismiss={async () => {
+              if (reportCheck?.report) {
+                try {
+                  await api.post(`/reports/${(reportCheck.report as any).id}/dismiss`);
+                } catch {
+                  // Non-critical — just close the modal
+                }
+              }
+              setShowReport(false);
+              queryClient.invalidateQueries({ queryKey: ['reports'] });
+            }}
           />
         )}
       </AnimatePresence>

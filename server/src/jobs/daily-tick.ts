@@ -1098,6 +1098,42 @@ export async function processDailyTick(): Promise<DailyTickResult> {
       const batch = entries.slice(i, i + BATCH_SIZE);
       await Promise.all(batch.map(async ([charId, results]) => {
         try {
+          // Pull in combat logs from CombatEncounterLog for today
+          const todayStart = new Date(tickDateStr);
+          const todayEnd = new Date(todayStart);
+          todayEnd.setDate(todayEnd.getDate() + 1);
+
+          const todayCombats = await prisma.combatEncounterLog.findMany({
+            where: {
+              characterId: charId,
+              triggerSource: { in: ['road_encounter', 'group_road_encounter'] },
+              createdAt: { gte: todayStart, lt: todayEnd },
+            },
+            select: {
+              opponentName: true, outcome: true, totalRounds: true, summary: true,
+              rounds: true, xpAwarded: true, goldAwarded: true, lootDropped: true,
+              characterStartHp: true, characterEndHp: true,
+              opponentStartHp: true, opponentEndHp: true,
+            },
+          });
+
+          if (todayCombats.length > 0) {
+            results.combatLogs = todayCombats.map(c => ({
+              monsterName: c.opponentName,
+              outcome: c.outcome,
+              totalRounds: c.totalRounds,
+              summary: c.summary,
+              rounds: c.rounds,
+              xpAwarded: c.xpAwarded,
+              goldAwarded: c.goldAwarded,
+              loot: c.lootDropped,
+              characterStartHp: c.characterStartHp,
+              characterEndHp: c.characterEndHp,
+              opponentStartHp: c.opponentStartHp,
+              opponentEndHp: c.opponentEndHp,
+            }));
+          }
+
           const reportData = compileReport(results);
           await createDailyReport(charId, tickDateStr, reportData);
 
