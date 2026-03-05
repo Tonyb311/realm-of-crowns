@@ -9,7 +9,6 @@ import {
   Heart,
   Zap,
   Skull,
-  Code,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -49,7 +48,6 @@ interface CombatLogViewerProps {
 export default function CombatLogViewer({ log }: CombatLogViewerProps) {
   const [showRounds, setShowRounds] = useState(false);
   const [expandedRounds, setExpandedRounds] = useState<Set<number>>(new Set());
-  const [showRaw, setShowRaw] = useState(false);
 
   if (!log || typeof log !== 'object') {
     return (
@@ -271,19 +269,6 @@ export default function CombatLogViewer({ log }: CombatLogViewerProps) {
         </div>
       )}
 
-      {/* Raw JSON toggle */}
-      <button
-        onClick={() => setShowRaw(!showRaw)}
-        className="flex items-center gap-1 text-realm-text-muted text-[10px] hover:text-realm-text-secondary transition-colors"
-      >
-        <Code className="w-3 h-3" />
-        {showRaw ? 'Hide' : 'Show'} Raw Data
-      </button>
-      {showRaw && (
-        <pre className="bg-realm-bg-900 border border-realm-border rounded p-3 text-[9px] text-realm-text-muted overflow-auto max-h-60">
-          {JSON.stringify(data, null, 2)}
-        </pre>
-      )}
     </div>
   );
 }
