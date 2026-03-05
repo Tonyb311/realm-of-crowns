@@ -21,3 +21,6 @@ export {
   getCritSeverity,
   getFumbleSeverity,
 } from './crit-charts';
+
+export { computeFormulaCR } from './cr-formula';
+export type { CRInput } from './cr-formula';

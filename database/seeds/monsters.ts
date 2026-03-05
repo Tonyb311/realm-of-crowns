@@ -19,7 +19,7 @@
  */
 
 import { PrismaClient, BiomeType } from '@prisma/client';
-import { computeFormulaCR, CRInput } from '../../server/src/lib/cr-formula';
+import { computeFormulaCR, CRInput } from '@shared/data/combat/cr-formula';
 
 interface MonsterAbilityDef {
   id: string;
