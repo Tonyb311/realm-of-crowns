@@ -106,6 +106,24 @@ interface StatusEffectEntry {
   attackModifier: number;
   acModifier: number;
   saveModifier: number;
+  dexSaveMod: number;
+  strSaveMod: number;
+  damageDealtMod: number;
+  healingReceivedMult: number;
+  blocksMultiattack: boolean;
+  blocksFlee: boolean;
+  blocksSpells: boolean;
+  blocksMovementAbilities: boolean;
+  grantsAdvantageToAttackers: number;
+  autoFailDexSave: boolean;
+  autoFailStrSave: boolean;
+  meleeAutoCrit: boolean;
+  vulnerableTo: string[];
+  removedBy: string[];
+  immuneTo: string[];
+  aiPreference?: string;
+  fleeChance: number;
+  description: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -740,46 +758,44 @@ function StatusEffectsSubTab({ search }: { search: string }) {
   return (
     <div className="space-y-3">
       <div className="text-xs text-realm-text-muted">{filtered.length} status effects</div>
-      <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden">
-        {/* Table header */}
-        <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-2 px-4 py-2 border-b border-realm-border bg-realm-bg-800/50 text-[10px] text-realm-text-muted uppercase tracking-wider font-display">
-          <span>Name</span>
-          <span className="text-center w-16">Prevents</span>
-          <span className="text-center w-16">DoT/HoT</span>
-          <span className="text-center w-14">ATK</span>
-          <span className="text-center w-14">AC</span>
-          <span className="text-center w-14">Save</span>
-        </div>
-
-        {/* Table rows */}
+      <div className="space-y-2">
         {filtered.map((effect) => (
-          <div
-            key={effect.name}
-            className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-2 px-4 py-2 border-b border-realm-border/30 last:border-0 items-center hover:bg-realm-bg-800/30 transition-colors"
-          >
-            <span className="text-sm text-realm-text-primary font-display">{formatEffectName(effect.name)}</span>
-
-            <span className="text-center w-16">
-              {effect.preventsAction ? (
-                <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-xs font-display">Yes</span>
-              ) : (
-                <span className="text-realm-text-muted text-xs">--</span>
+          <div key={effect.name} className="bg-realm-bg-700 border border-realm-border rounded-lg p-4 hover:bg-realm-bg-800/30 transition-colors">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-sm text-realm-text-primary font-display font-bold">{formatEffectName(effect.name)}</span>
+              {effect.preventsAction && (
+                <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-[10px] font-display">SKIPS TURN</span>
               )}
-            </span>
-
-            <span className="text-center w-16">
-              {effect.hasDot ? (
-                <span className="text-red-400 text-xs font-display">-{effect.dotDamageBase}</span>
-              ) : effect.hasHot ? (
-                <span className="text-green-400 text-xs font-display">+{effect.hotHealingBase}</span>
-              ) : (
-                <span className="text-realm-text-muted text-xs">--</span>
+              {effect.hasDot && (
+                <span className="bg-red-500/10 text-red-400 px-2 py-0.5 rounded text-[10px] font-display">DoT {effect.dotDamageBase}/rd</span>
               )}
-            </span>
-
-            <ModifierCell value={effect.attackModifier} />
-            <ModifierCell value={effect.acModifier} />
-            <ModifierCell value={effect.saveModifier} />
+              {effect.hasHot && (
+                <span className="bg-green-500/10 text-green-400 px-2 py-0.5 rounded text-[10px] font-display">HoT {effect.hotHealingBase}/rd</span>
+              )}
+            </div>
+            <p className="text-xs text-realm-text-secondary mb-2">{effect.description}</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px]">
+              {effect.attackModifier !== 0 && <span className={effect.attackModifier > 0 ? 'text-green-400' : 'text-red-400'}>ATK {effect.attackModifier > 0 ? '+' : ''}{effect.attackModifier}</span>}
+              {effect.acModifier !== 0 && <span className={effect.acModifier > 0 ? 'text-green-400' : 'text-red-400'}>AC {effect.acModifier > 0 ? '+' : ''}{effect.acModifier}</span>}
+              {effect.saveModifier !== 0 && <span className={effect.saveModifier > 0 ? 'text-green-400' : 'text-red-400'}>Save {effect.saveModifier > 0 ? '+' : ''}{effect.saveModifier}</span>}
+              {effect.dexSaveMod !== 0 && <span className="text-red-400">DEX Save {effect.dexSaveMod}</span>}
+              {effect.strSaveMod !== 0 && <span className="text-red-400">STR Save {effect.strSaveMod}</span>}
+              {effect.damageDealtMod !== 0 && <span className="text-red-400">DMG {effect.damageDealtMod}</span>}
+              {effect.healingReceivedMult !== 1.0 && <span className="text-red-400">Heal x{effect.healingReceivedMult}</span>}
+              {effect.grantsAdvantageToAttackers !== 0 && <span className="text-amber-400">Attackers +{effect.grantsAdvantageToAttackers}</span>}
+              {effect.autoFailDexSave && <span className="text-red-500">Auto-fail DEX</span>}
+              {effect.autoFailStrSave && <span className="text-red-500">Auto-fail STR</span>}
+              {effect.meleeAutoCrit && <span className="text-red-500">Melee auto-crit</span>}
+              {effect.blocksMultiattack && <span className="text-amber-400">No multiattack</span>}
+              {effect.blocksFlee && <span className="text-amber-400">No flee</span>}
+              {effect.blocksSpells && <span className="text-amber-400">No spells</span>}
+              {effect.blocksMovementAbilities && <span className="text-amber-400">No movement</span>}
+              {effect.vulnerableTo.length > 0 && <span className="text-red-400">Vuln: {effect.vulnerableTo.join(', ')}</span>}
+              {effect.removedBy.length > 0 && <span className="text-blue-400">Removed by: {effect.removedBy.join(', ')}</span>}
+              {effect.immuneTo.length > 0 && <span className="text-cyan-400">Immune: {effect.immuneTo.join(', ')}</span>}
+              {effect.aiPreference && <span className="text-purple-400">AI: {effect.aiPreference}</span>}
+              {effect.fleeChance > 0 && <span className="text-purple-400">{effect.fleeChance}% flee</span>}
+            </div>
           </div>
         ))}
       </div>

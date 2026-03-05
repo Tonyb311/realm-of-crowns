@@ -23,6 +23,7 @@ import {
 } from '@shared/data/recipes';
 import {
   STATUS_EFFECT_DEFS,
+  STATUS_EFFECT_MECHANICS,
   createCombatState,
   createCharacterCombatant,
   createMonsterCombatant,
@@ -159,23 +160,45 @@ router.get('/codex/items', (_req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-// GET /codex/status-effects — All 22 status effects with serialized values
+// GET /codex/status-effects — All status effects with full mechanical details
 router.get('/codex/status-effects', (_req: AuthenticatedRequest, res: Response) => {
   try {
     const dummyEffect = (n: string): StatusEffect => ({
       id: 'dummy', name: n as any, remainingRounds: 1, sourceId: 'dummy',
     });
-    const effects = Object.entries(STATUS_EFFECT_DEFS).map(([name, def]) => ({
-      name,
-      preventsAction: def.preventsAction,
-      hasDot: def.dotDamage(dummyEffect(name)) > 0,
-      dotDamageBase: def.dotDamage(dummyEffect(name)),
-      hasHot: def.hotHealing(dummyEffect(name)) > 0,
-      hotHealingBase: def.hotHealing(dummyEffect(name)),
-      attackModifier: def.attackModifier,
-      acModifier: def.acModifier,
-      saveModifier: def.saveModifier,
-    }));
+    const effects = Object.entries(STATUS_EFFECT_DEFS).map(([name, def]) => {
+      const mech = STATUS_EFFECT_MECHANICS[name as keyof typeof STATUS_EFFECT_MECHANICS];
+      return {
+        name,
+        preventsAction: def.preventsAction,
+        hasDot: def.dotDamage(dummyEffect(name)) > 0,
+        dotDamageBase: def.dotDamage(dummyEffect(name)),
+        hasHot: def.hotHealing(dummyEffect(name)) > 0,
+        hotHealingBase: def.hotHealing(dummyEffect(name)),
+        attackModifier: def.attackModifier,
+        acModifier: def.acModifier,
+        saveModifier: def.saveModifier,
+        // Extended mechanics from STATUS_EFFECT_MECHANICS
+        dexSaveMod: mech?.dexSaveMod ?? 0,
+        strSaveMod: mech?.strSaveMod ?? 0,
+        damageDealtMod: mech?.damageDealtMod ?? 0,
+        healingReceivedMult: mech?.healingReceivedMult ?? 1.0,
+        blocksMultiattack: mech?.blocksMultiattack ?? false,
+        blocksFlee: mech?.blocksFlee ?? false,
+        blocksSpells: mech?.blocksSpells ?? false,
+        blocksMovementAbilities: mech?.blocksMovementAbilities ?? false,
+        grantsAdvantageToAttackers: mech?.grantsAdvantageToAttackers ?? 0,
+        autoFailDexSave: mech?.autoFailDexSave ?? false,
+        autoFailStrSave: mech?.autoFailStrSave ?? false,
+        meleeAutoCrit: mech?.meleeAutoCrit ?? false,
+        vulnerableTo: mech?.vulnerableTo ?? [],
+        removedBy: mech?.removedBy ?? [],
+        immuneTo: mech?.immuneTo ?? [],
+        aiPreference: mech?.aiPreference,
+        fleeChance: mech?.fleeChance ?? 0,
+        description: mech?.description ?? '',
+      };
+    });
 
     return res.json({ effects, total: effects.length });
   } catch (error) {

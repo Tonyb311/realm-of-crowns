@@ -22,6 +22,7 @@ import {
   calculateAC,
   checkCombatEnd,
   STATUS_EFFECT_DEFS,
+  STATUS_EFFECT_MECHANICS,
   resolveDeathThroes,
   checkPhaseTransitions,
   applyDamageTypeInteraction,
@@ -212,6 +213,32 @@ function decideAction(
         action: { type: 'attack', actorId, targetId: taunter.id },
         context: { weapon: params.weapon ?? undefined },
       };
+    }
+  }
+
+  // ---- 1a3. Mesmerize/charm — cannot target the charmer ----
+  const mesmerizeEffect = actor.statusEffects.find(e => e.name === 'mesmerize');
+  if (mesmerizeEffect) {
+    const charmerId = mesmerizeEffect.sourceId;
+    const validEnemies = enemies.filter(e => e.id !== charmerId);
+    if (validEnemies.length === 0) {
+      // Charmer is only enemy — skip turn
+      return { action: { type: 'defend', actorId }, context: {} };
+    }
+    // Can attack other enemies but not the charmer — enemies list is filtered below
+  }
+
+  // ---- 1a4. Frightened — prefer defensive actions, 30% chance to flee ----
+  const frightenedEffect = actor.statusEffects.find(e => e.name === 'frightened');
+  if (frightenedEffect) {
+    const mech = STATUS_EFFECT_MECHANICS['frightened'];
+    // Roll for flee attempt
+    if (mech.fleeChance && Math.random() * 100 < mech.fleeChance) {
+      return { action: { type: 'flee', actorId }, context: {} };
+    }
+    // 50% chance to defend instead of attacking when frightened
+    if (Math.random() < 0.5) {
+      return { action: { type: 'defend', actorId }, context: {} };
     }
   }
 

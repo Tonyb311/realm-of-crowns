@@ -103,6 +103,11 @@ function noOpDefend(actorId: string): DefendResult {
 }
 
 // ---- Status Effect Definitions ----
+// Numeric modifiers driven by STATUS_EFFECT_MECHANICS from shared package.
+// This interface adds dotDamage/hotHealing functions for tick processing.
+
+import { STATUS_EFFECT_MECHANICS } from '@shared/data/combat/status-effect-defs';
+export { STATUS_EFFECT_MECHANICS };
 
 interface StatusEffectDef {
   /** Whether the combatant can take actions */
@@ -119,226 +124,20 @@ interface StatusEffectDef {
   saveModifier: number;
 }
 
-export const STATUS_EFFECT_DEFS: Record<StatusEffectName, StatusEffectDef> = {
-  poisoned: {
-    preventsAction: false,
-    dotDamage: (e) => e.damagePerRound ?? 3,
-    hotHealing: () => 0,
-    attackModifier: -2,
-    acModifier: 0,
-    saveModifier: 0,
-  },
-  stunned: {
-    preventsAction: true,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: 0,
-    acModifier: -2,
-    saveModifier: -4,
-  },
-  blessed: {
-    preventsAction: false,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: 2,
-    acModifier: 0,
-    saveModifier: 2,
-  },
-  burning: {
-    preventsAction: false,
-    dotDamage: (e) => e.damagePerRound ?? 5,
-    hotHealing: () => 0,
-    attackModifier: 0,
-    acModifier: 0,
-    saveModifier: 0,
-  },
-  frozen: {
-    preventsAction: true,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: 0,
-    acModifier: -4,
-    saveModifier: -2,
-  },
-  paralyzed: {
-    preventsAction: true,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: 0,
-    acModifier: -4,
-    saveModifier: -4,
-  },
-  blinded: {
-    preventsAction: false,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: -4,
-    acModifier: -2,
-    saveModifier: 0,
-  },
-  shielded: {
-    preventsAction: false,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: 0,
-    acModifier: 4,
-    saveModifier: 0,
-  },
-  weakened: {
-    preventsAction: false,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: -3,
-    acModifier: 0,
-    saveModifier: -2,
-  },
-  hasted: {
-    preventsAction: false,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: 2,
-    acModifier: 2,
-    saveModifier: 0,
-  },
-  slowed: {
-    preventsAction: false,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: -2,
-    acModifier: -2,
-    saveModifier: -2,
-  },
-  regenerating: {
-    preventsAction: false,
-    dotDamage: () => 0,
-    hotHealing: (e) => e.damagePerRound ?? 5, // reuse field for heal amount
-    attackModifier: 0,
-    acModifier: 0,
-    saveModifier: 0,
-  },
-  dominated: {
-    preventsAction: true,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: 0,
-    acModifier: 0,
-    saveModifier: 0,
-  },
-  banished: {
-    preventsAction: true,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: 0,
-    acModifier: 0,
-    saveModifier: 0,
-  },
-  phased: {
-    preventsAction: false,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: 0,
-    acModifier: 4,
-    saveModifier: 0,
-  },
-  foresight: {
-    preventsAction: false,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: 0,
-    acModifier: 2,
-    saveModifier: 2,
-  },
-  // -- Class ability status effects --
-  taunt: {
-    preventsAction: false,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: 0,
-    acModifier: 0,
-    saveModifier: 0,
-  },
-  silence: {
-    preventsAction: false, // can still basic attack
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: 0,
-    acModifier: 0,
-    saveModifier: 0,
-  },
-  root: {
-    preventsAction: false, // can attack/use abilities, cannot flee
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: 0,
-    acModifier: -3,
-    saveModifier: 0,
-  },
-  skip_turn: {
-    preventsAction: true,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: 0,
-    acModifier: 0,
-    saveModifier: 0,
-  },
-  mesmerize: {
-    preventsAction: true, // breaks on damage (handled in damage application)
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: 0,
-    acModifier: 0,
-    saveModifier: 0,
-  },
-  polymorph: {
-    preventsAction: false, // can still basic attack (reduced to 1d4)
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: -4,
-    acModifier: -5, // AC effectively drops toward 10
-    saveModifier: -2,
-  },
-  // Monster ability status effects
-  frightened: {
-    preventsAction: false,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: -2,
-    acModifier: 0,
-    saveModifier: -2,
-  },
-  diseased: {
-    preventsAction: false,
-    dotDamage: (e) => e.damagePerRound ?? 2,
-    hotHealing: () => 0,
-    attackModifier: -1,
-    acModifier: 0,
-    saveModifier: -1,
-  },
-  knocked_down: {
-    preventsAction: false,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: -2,
-    acModifier: -2,
-    saveModifier: 0,
-  },
-  restrained: {
-    preventsAction: false,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: -4,
-    acModifier: -2,
-    saveModifier: -2,
-  },
-  swallowed: {
-    preventsAction: false,
-    dotDamage: () => 0,
-    hotHealing: () => 0,
-    attackModifier: -4,
-    acModifier: -2,
-    saveModifier: -2,
-  },
-};
+// Build STATUS_EFFECT_DEFS from the centralized mechanics map
+export const STATUS_EFFECT_DEFS: Record<StatusEffectName, StatusEffectDef> = Object.fromEntries(
+  (Object.keys(STATUS_EFFECT_MECHANICS) as StatusEffectName[]).map(name => {
+    const m = STATUS_EFFECT_MECHANICS[name];
+    return [name, {
+      preventsAction: m.preventsAction,
+      dotDamage: m.hasDot ? (e: StatusEffect) => e.damagePerRound ?? m.dotDamageBase : () => 0,
+      hotHealing: m.hasHot ? (e: StatusEffect) => e.damagePerRound ?? m.hotHealingBase : () => 0,
+      attackModifier: m.attackMod,
+      acModifier: m.acMod,
+      saveModifier: m.saveMod,
+    }];
+  })
+) as Record<StatusEffectName, StatusEffectDef>;
 
 // ---- Initiative ----
 
@@ -444,6 +243,20 @@ export function applyDamageTypeInteraction(
   damageType: CombatDamageType,
   target: Combatant,
 ): DamageTypeResult {
+  // Check status-based immunities (frozen: immune to COLD)
+  for (const eff of target.statusEffects) {
+    const mech = STATUS_EFFECT_MECHANICS[eff.name];
+    if (mech?.immuneTo?.includes(damageType)) {
+      return {
+        originalDamage: damage,
+        damageType,
+        interaction: 'immune',
+        multiplier: 0,
+        finalDamage: 0,
+      };
+    }
+  }
+
   // Check immunity first
   if (target.immunities?.includes(damageType)) {
     return {
@@ -453,6 +266,20 @@ export function applyDamageTypeInteraction(
       multiplier: 0,
       finalDamage: 0,
     };
+  }
+
+  // Check status-based vulnerabilities (frozen: vulnerable to BLUDGEONING = +50%)
+  for (const eff of target.statusEffects) {
+    const mech = STATUS_EFFECT_MECHANICS[eff.name];
+    if (mech?.vulnerableTo?.includes(damageType)) {
+      return {
+        originalDamage: damage,
+        damageType,
+        interaction: 'vulnerable',
+        multiplier: 1.5,
+        finalDamage: Math.floor(damage * 1.5),
+      };
+    }
   }
 
   // Check vulnerability (double damage)
@@ -579,12 +406,50 @@ export function processStatusEffects(
   const ticks: StatusTickResult[] = [];
   let hp = combatant.currentHp;
   const remaining: StatusEffect[] = [];
+  const damageTypesReceived = combatant.damageTypesReceivedThisRound ?? [];
 
   for (const effect of combatant.statusEffects) {
     const def = STATUS_EFFECT_DEFS[effect.name];
-    if (!def) {
+    const mech = STATUS_EFFECT_MECHANICS[effect.name];
+    if (!def || !mech) {
       remaining.push(effect);
       continue;
+    }
+
+    // Check if status is removed by damage type received this round
+    if (mech.removedBy && mech.removedBy.length > 0) {
+      const removed = damageTypesReceived.some(dt => mech.removedBy!.includes(dt));
+      if (removed) {
+        ticks.push({
+          combatantId: combatant.id,
+          effectName: effect.name,
+          expired: true,
+          hpAfter: hp,
+          killed: hp <= 0,
+        });
+        continue; // Don't add to remaining — removed
+      }
+    }
+
+    // Regenerating: disabled by FIRE or ACID damage this round
+    if (effect.name === 'regenerating') {
+      const regenDisabled = damageTypesReceived.some(dt => dt === 'FIRE' || dt === 'ACID');
+      if (regenDisabled) {
+        // Skip healing this tick but keep the status
+        const newDuration = effect.remainingRounds - 1;
+        const expired = newDuration <= 0;
+        ticks.push({
+          combatantId: combatant.id,
+          effectName: effect.name,
+          expired,
+          hpAfter: hp,
+          killed: hp <= 0,
+        });
+        if (!expired) {
+          remaining.push({ ...effect, remainingRounds: newDuration });
+        }
+        continue;
+      }
     }
 
     let damage = 0;
@@ -597,15 +462,25 @@ export function processStatusEffects(
       hp = Math.max(0, hp - damage);
     }
 
-    // Apply HoT
+    // Apply HoT (reduced by healing modifiers like diseased)
     const hotHeal = def.hotHealing(effect);
     if (hotHeal > 0) {
       healing = hotHeal;
+      // Check healing received multiplier from other status effects
+      for (const otherEff of combatant.statusEffects) {
+        if (otherEff.id === effect.id) continue;
+        const otherMech = STATUS_EFFECT_MECHANICS[otherEff.name];
+        if (otherMech && otherMech.healingReceivedMult !== 1.0) {
+          healing = Math.floor(healing * otherMech.healingReceivedMult);
+        }
+      }
       hp = Math.min(combatant.maxHp, hp + healing);
     }
 
-    const newDuration = effect.remainingRounds - 1;
-    const expired = newDuration <= 0;
+    // Diseased does not expire naturally — persists until cleansed
+    const neverExpires = effect.name === 'diseased';
+    const newDuration = neverExpires ? effect.remainingRounds : effect.remainingRounds - 1;
+    const expired = !neverExpires && newDuration <= 0;
 
     ticks.push({
       combatantId: combatant.id,
@@ -687,6 +562,26 @@ export function resolveAttack(
   if (racialMods && racialMods.attackBonus !== 0) {
     atkModBreakdown.push({ source: 'racial', value: racialMods.attackBonus });
     atkMod += racialMods.attackBonus;
+  }
+
+  // Target status effect bonuses for attacker (e.g., +4 vs stunned, +2 vs blinded)
+  let targetStatusAtkBonus = 0;
+  for (const effect of target.statusEffects) {
+    const mech = STATUS_EFFECT_MECHANICS[effect.name];
+    if (mech && mech.grantsAdvantageToAttackers !== 0) {
+      // knocked_down: +2 melee, -2 ranged
+      if (effect.name === 'knocked_down') {
+        const isRanged = weapon.attackModifierStat === 'dex' &&
+          !(['FORCE', 'PSYCHIC', 'RADIANT'] as string[]).includes(weapon.damageType ?? '');
+        targetStatusAtkBonus += isRanged ? -2 : mech.grantsAdvantageToAttackers;
+      } else {
+        targetStatusAtkBonus += mech.grantsAdvantageToAttackers;
+      }
+    }
+  }
+  if (targetStatusAtkBonus !== 0) {
+    atkModBreakdown.push({ source: 'targetStatus', value: targetStatusAtkBonus });
+    atkMod += targetStatusAtkBonus;
   }
 
   // Class ability buff attack bonus
@@ -789,6 +684,18 @@ export function resolveAttack(
   // Phase 5B PASSIVE-3: First strike auto-crit
   if (roll.hit && !roll.critical && actor.firstStrikeCrit && !actor.hasAttackedThisCombat) {
     roll.critical = true;
+  }
+
+  // Paralyzed target: melee attacks auto-crit (d20 standard)
+  if (roll.hit && !roll.critical) {
+    const targetParalyzed = target.statusEffects.some(e => e.name === 'paralyzed');
+    if (targetParalyzed) {
+      const isRanged = weapon.attackModifierStat === 'dex' &&
+        !(['FORCE', 'PSYCHIC', 'RADIANT'] as string[]).includes(weapon.damageType ?? '');
+      if (!isRanged) {
+        roll.critical = true;
+      }
+    }
   }
   // Mark that actor has now attacked
   if (actor.firstStrikeCrit && !actor.hasAttackedThisCombat) {
@@ -1068,6 +975,19 @@ export function resolveAttack(
     if (racialMods && racialMods.damageFlatBonus > 0) {
       totalDamage += racialMods.damageFlatBonus;
       dmgModBreakdown.push({ source: 'racialFlat', value: racialMods.damageFlatBonus });
+    }
+
+    // Status effect damage modifier (weakened: -2, diseased: -2)
+    let statusDmgMod = 0;
+    for (const eff of actor.statusEffects) {
+      const mech = STATUS_EFFECT_MECHANICS[eff.name];
+      if (mech && mech.damageDealtMod !== 0) {
+        statusDmgMod += mech.damageDealtMod;
+      }
+    }
+    if (statusDmgMod !== 0) {
+      totalDamage = Math.max(0, totalDamage + statusDmgMod);
+      dmgModBreakdown.push({ source: 'statusDamageMod', value: statusDmgMod });
     }
 
     // Class ability buff damage bonus
@@ -1589,9 +1509,12 @@ export function resolveDefend(
   state: CombatState,
   actorId: string
 ): { state: CombatState; result: DefendResult } {
-  const combatants = state.combatants.map((c) =>
-    c.id === actorId ? { ...c, isDefending: true } : c
-  );
+  const combatants = state.combatants.map((c) => {
+    if (c.id !== actorId) return c;
+    // Defend action extinguishes burning (stop, drop, roll)
+    const updatedEffects = c.statusEffects.filter(e => e.name !== 'burning');
+    return { ...c, isDefending: true, statusEffects: updatedEffects };
+  });
 
   const result: DefendResult = {
     type: 'defend',
@@ -1689,9 +1612,12 @@ export function resolveFlee(
 ): { state: CombatState; result: FleeResult } {
   const actor = state.combatants.find((c) => c.id === actorId)!;
 
-  // Rooted combatants cannot flee
-  const isRooted = actor.statusEffects.some(e => e.name === 'root');
-  if (isRooted) {
+  // Rooted/restrained combatants cannot flee
+  const cantFlee = actor.statusEffects.some(e => {
+    const mech = STATUS_EFFECT_MECHANICS[e.name];
+    return mech?.blocksFlee;
+  });
+  if (cantFlee) {
     return {
       state,
       result: { type: 'flee', actorId, fleeRoll: 0, fleeDC: 0, success: false },

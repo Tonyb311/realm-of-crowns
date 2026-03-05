@@ -35,12 +35,38 @@ import {
   applyStatusEffect,
   calculateAC,
   STATUS_EFFECT_DEFS,
+  STATUS_EFFECT_MECHANICS,
   applyDamageTypeInteraction,
 } from './combat-engine';
 
 import type { StatusEffectName } from '@shared/types/combat';
 
 // ---- Helpers ----
+
+/** Compute total save modifier for a target including status effects, DEX/STR bonuses, and auto-fail. */
+function computeTargetSaveMod(target: Combatant, saveType: string): { totalMod: number; autoFail: boolean } {
+  const baseMod = getModifier(target.stats[saveType as keyof typeof target.stats] ?? 10) + target.proficiencyBonus;
+  let totalMod = baseMod;
+  let autoFail = false;
+
+  for (const eff of target.statusEffects) {
+    const def = STATUS_EFFECT_DEFS[eff.name];
+    if (def) totalMod += def.saveModifier;
+    const mech = STATUS_EFFECT_MECHANICS[eff.name];
+    if (mech) {
+      if (saveType === 'dex') {
+        totalMod += mech.dexSaveMod;
+        if (mech.autoFailDexSave) autoFail = true;
+      }
+      if (saveType === 'str') {
+        totalMod += mech.strSaveMod;
+        if (mech.autoFailStrSave) autoFail = true;
+      }
+    }
+  }
+
+  return { totalMod, autoFail };
+}
 
 function parseDamageString(damage: string): { diceCount: number; diceSides: number; bonus: number } {
   const match = damage.match(/^(\d+)d(\d+)(?:\+(\d+))?$/);
@@ -146,13 +172,10 @@ function handleStatus(
     return { state, result: { description: `${ability.name} missing save/status config.` } };
   }
 
-  const targetSaveMod = getModifier(target.stats[ability.saveType]) + target.proficiencyBonus;
-  let totalSaveMod = targetSaveMod;
-  for (const eff of target.statusEffects) {
-    const def = STATUS_EFFECT_DEFS[eff.name];
-    if (def) totalSaveMod += def.saveModifier;
-  }
-  const save = savingThrow(totalSaveMod, ability.saveDC);
+  const { totalMod: totalSaveMod, autoFail } = computeTargetSaveMod(target, ability.saveType);
+  const save = autoFail
+    ? { roll: 1, total: 0, success: false }
+    : savingThrow(totalSaveMod, ability.saveDC);
 
   if (save.success) {
     return {
@@ -218,13 +241,10 @@ function handleAoe(
 
   for (const enemy of enemies) {
     let target = current.combatants.find(c => c.id === enemy.id)!;
-    const targetSaveMod = getModifier(target.stats[ability.saveType!]) + target.proficiencyBonus;
-    let totalSaveMod = targetSaveMod;
-    for (const eff of target.statusEffects) {
-      const def = STATUS_EFFECT_DEFS[eff.name];
-      if (def) totalSaveMod += def.saveModifier;
-    }
-    const save = savingThrow(totalSaveMod, ability.saveDC!);
+    const { totalMod: totalSaveMod, autoFail } = computeTargetSaveMod(target, ability.saveType!);
+    const save = autoFail
+      ? { roll: 1, total: 0, success: false }
+      : savingThrow(totalSaveMod, ability.saveDC!);
 
     const dmg = damageRoll(parsed.diceCount, parsed.diceSides, parsed.bonus);
     let damage = save.success ? Math.floor(dmg.total / 2) : dmg.total;
@@ -462,13 +482,10 @@ function handleSwallow(
     return { state, result: { description: `${ability.name} missing save config.` } };
   }
 
-  const saveStatMod = getModifier(target.stats[ability.saveType]);
-  let totalSaveMod = saveStatMod + target.proficiencyBonus;
-  for (const eff of target.statusEffects) {
-    const def = STATUS_EFFECT_DEFS[eff.name];
-    if (def) totalSaveMod += def.saveModifier;
-  }
-  const save = savingThrow(totalSaveMod, ability.saveDC);
+  const { totalMod: totalSaveMod, autoFail: saveAutoFail } = computeTargetSaveMod(target, ability.saveType);
+  const save = saveAutoFail
+    ? { roll: 1, total: 0, success: false }
+    : savingThrow(totalSaveMod, ability.saveDC);
 
   if (save.success) {
     return {
@@ -545,13 +562,10 @@ export function resolveOnHitAbilities(
     if (!instance.def.saveType || !instance.def.saveDC || !instance.def.statusEffect) continue;
 
     // Target saves vs saveDC
-    const targetSaveMod = getModifier(target.stats[instance.def.saveType]) + target.proficiencyBonus;
-    let totalSaveMod = targetSaveMod;
-    for (const eff of target.statusEffects) {
-      const def = STATUS_EFFECT_DEFS[eff.name];
-      if (def) totalSaveMod += def.saveModifier;
-    }
-    const save = savingThrow(totalSaveMod, instance.def.saveDC);
+    const { totalMod: fearSaveMod, autoFail: fearAutoFail } = computeTargetSaveMod(target, instance.def.saveType);
+    const save = fearAutoFail
+      ? { roll: 1, total: 0, success: false }
+      : savingThrow(fearSaveMod, instance.def.saveDC);
 
     if (!save.success) {
       target = applyStatusEffect(

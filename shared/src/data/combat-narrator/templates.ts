@@ -558,48 +558,48 @@ export const FLEE_FAILURE: string[] = [
 
 export const STATUS_APPLY: Record<string, string[]> = {
   poisoned: [
-    'venom courses through the veins, flesh burning from within.',
-    'a toxic pallor spreads as poison takes hold.',
+    'venom courses through the veins, sapping strength and focus.',
+    'a toxic pallor spreads as poison takes hold, attacks growing clumsy.',
   ],
   stunned: [
-    'reels from the blow, unable to act.',
-    'staggers, momentarily dazed and defenseless.',
+    'reels from the blow, utterly defenseless and unable to act.',
+    'staggers, completely dazed — an easy target for any attacker.',
   ],
   blessed: [
-    'a warm radiance settles over them, bolstering strength.',
-    'divine favor shines upon them.',
+    'a warm radiance settles over them, bolstering strength and resolve.',
+    'divine favor shines upon them, sharpening strikes and will.',
   ],
   burning: [
     'erupts in flame, fire licking across armor and skin.',
-    'catches fire — flames cling and spread.',
+    'catches fire — flames cling and spread relentlessly.',
   ],
   frozen: [
-    'ice creeps across their body, locking joints in place.',
-    'frost encases them, movements grinding to a halt.',
+    'ice encases their body completely, an immobile target vulnerable to shattering blows.',
+    'frost seals them in a crystalline prison — immune to cold but brittle as glass.',
   ],
   paralyzed: [
-    'seizes up completely, muscles locked and unresponsive.',
-    'is struck with paralysis — unable to move or speak.',
+    'seizes up completely, muscles locked — melee strikes will find their mark with devastating precision.',
+    'is struck with paralysis — a motionless target, defenseless against close-range attacks.',
   ],
   blinded: [
-    'is blinded — darkness floods their vision.',
-    'clutches at their eyes, vision stolen away.',
+    'is blinded — swinging wildly, unable to see incoming attacks.',
+    'clutches at their eyes, vision stolen — every attacker has the advantage.',
   ],
   shielded: [
-    'is surrounded by a shimmering protective barrier.',
-    'a magical shield springs to life around them.',
+    'is surrounded by a shimmering protective barrier that absorbs damage.',
+    'a magical shield springs to life, deflecting blows before they reach.',
   ],
   weakened: [
-    'feels strength draining away, arms growing heavy.',
-    'is sapped of vigor, attacks lacking their usual force.',
+    'feels strength draining away, blows landing with diminished force.',
+    'is sapped of vigor — attacks weak, defenses crumbling.',
   ],
   hasted: [
-    'surges with speed, movements blurring.',
-    'accelerates unnaturally, reflexes razor-sharp.',
+    'surges with speed, movements blurring as they strike again.',
+    'accelerates unnaturally, gaining an extra action.',
   ],
   slowed: [
-    'feels movements grow sluggish and heavy.',
-    'is weighed down, every action dragging.',
+    'movements become sluggish, defenses weakened and unable to chain attacks.',
+    'is weighed down, too slow for combo strikes.',
   ],
   regenerating: [
     'wounds begin to close, flesh knitting itself back together.',
@@ -626,19 +626,31 @@ export const STATUS_APPLY: Record<string, string[]> = {
     'tries to speak but no sound escapes — silenced by divine authority.',
   ],
   root: [
-    'is snared in place, unable to move.',
+    'is snared in place, pinned down and unable to dodge.',
   ],
   skip_turn: [
     'is stopped cold, losing all momentum.',
   ],
   mesmerize: [
-    'is locked in a trance, entranced and helpless.',
+    'falls into a trance, unable to harm the one who charmed them.',
   ],
   polymorph: [
     'warps and shrinks into a harmless creature, squeaking in confusion.',
   ],
+  frightened: [
+    'trembles with fear, attacks shaking and willpower crumbling.',
+    'is overcome with dread, desperately seeking escape.',
+  ],
+  diseased: [
+    'is wracked with disease — body weakening, healing barely taking hold.',
+    'a virulent sickness takes root, sapping all ability.',
+  ],
+  knocked_down: [
+    'is knocked to the ground, vulnerable to melee strikes.',
+    'crashes down hard — scrambling to rise, defenses wide open.',
+  ],
   slow: [
-    'feels movements grow sluggish and heavy.',
+    'movements become sluggish, defenses weakened.',
   ],
   swallowed: [
     '{target} is trapped inside the creature\'s stomach.',
@@ -646,9 +658,9 @@ export const STATUS_APPLY: Record<string, string[]> = {
     '{target} is engulfed in darkness and burning acid.',
   ],
   restrained: [
-    '{target} is held fast, unable to move freely.',
-    '{target} is bound in place, struggling against the restraint.',
-    '{target} is pinned down, movement severely restricted.',
+    '{target} is bound tight, unable to move or dodge — an easy target.',
+    '{target} struggles against the restraint, movements severely limited.',
+    '{target} is pinned down, attackers closing in on the helpless target.',
   ],
 };
 
@@ -676,6 +688,9 @@ export const STATUS_EXPIRE: Record<string, string[]> = {
   mesmerize: ['blinks and shakes off the trance.'],
   polymorph: ['reverts to their true form in a shimmer of magic.'],
   slow: ['shakes off the sluggishness, moving freely again.'],
+  frightened: ['steadies their nerves, the fear subsiding.'],
+  diseased: ['the disease is purged, strength returning.'],
+  knocked_down: ['rises to their feet, regaining their footing.'],
   swallowed: ['is freed from the creature\'s stomach.'],
   restrained: ['breaks free of the restraint, moving again.'],
 };

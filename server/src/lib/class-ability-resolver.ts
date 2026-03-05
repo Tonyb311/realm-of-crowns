@@ -16,6 +16,7 @@ import {
   resolveFlee,
   checkLegendaryResistance,
   STATUS_EFFECT_DEFS,
+  STATUS_EFFECT_MECHANICS,
 } from './combat-engine';
 import { roll, rollMultiple, savingThrow, fleeCheck } from '@shared/utils/dice';
 import { getModifier } from '@shared/types/combat';
@@ -525,16 +526,25 @@ const handleHeal: EffectHandler = (state, actor, target, enemies, abilityDef, ef
     healAmount = rollDice(diceCount, diceSides, bonus);
   }
 
+  // Diseased targets receive halved healing
+  for (const eff of healTarget.statusEffects) {
+    const mech = STATUS_EFFECT_MECHANICS[eff.name];
+    if (mech && mech.healingReceivedMult !== 1.0) {
+      healAmount = Math.floor(healAmount * mech.healingReceivedMult);
+    }
+  }
+
   const newHp = clampHp(healTarget.currentHp + healAmount, healTarget.maxHp);
   state = updateCombatant(state, healTarget.id, { currentHp: newHp });
 
+  const diseasedNote = healTarget.statusEffects.some(e => e.name === 'diseased') ? ' (halved by disease)' : '';
   return {
     state,
     result: {
       healing: healAmount,
       targetId: healTarget.id,
       targetHpAfter: newHp,
-      description: `${abilityDef.name}: healed ${healTarget.name} for ${healAmount} HP${fullRestore ? ' (full restore)' : ''}`,
+      description: `${abilityDef.name}: healed ${healTarget.name} for ${healAmount} HP${fullRestore ? ' (full restore)' : ''}${diseasedNote}`,
     },
   };
 };
@@ -562,26 +572,36 @@ const handleStatus: EffectHandler = (state, actor, target, _enemies, abilityDef,
   const saveType = effects.saveType as string | undefined;
   if (saveType) {
     const dc = calculateSaveDC(actor);
-    let targetSaveMod = getModifier(target.stats[saveType as keyof typeof target.stats] ?? 10) + target.proficiencyBonus;
-    for (const eff of target.statusEffects) {
-      const seDef = STATUS_EFFECT_DEFS[eff.name];
-      if (seDef) targetSaveMod += seDef.saveModifier;
-    }
-    const save = savingThrow(targetSaveMod, dc);
-    { const lr = checkLegendaryResistance(state, target.id, save, dc); if (lr.overridden) { save.success = true; state = lr.state; } }
+    // Auto-fail DEX/STR saves for stunned/paralyzed targets
+    const autoFailDex = target.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailDexSave);
+    const autoFailStr = target.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailStrSave);
+    if (!((saveType === 'dex' && autoFailDex) || (saveType === 'str' && autoFailStr))) {
+      let targetSaveMod = getModifier(target.stats[saveType as keyof typeof target.stats] ?? 10) + target.proficiencyBonus;
+      for (const eff of target.statusEffects) {
+        const seDef = STATUS_EFFECT_DEFS[eff.name];
+        if (seDef) targetSaveMod += seDef.saveModifier;
+        const mech = STATUS_EFFECT_MECHANICS[eff.name];
+        if (mech) {
+          if (saveType === 'dex') targetSaveMod += mech.dexSaveMod;
+          if (saveType === 'str') targetSaveMod += mech.strSaveMod;
+        }
+      }
+      const save = savingThrow(targetSaveMod, dc);
+      { const lr = checkLegendaryResistance(state, target.id, save, dc); if (lr.overridden) { save.success = true; state = lr.state; } }
 
-    if (save.success) {
-      return {
-        state,
-        result: {
-          saveRequired: true,
-          saveDC: dc,
-          saveRoll: save.roll,
-          saveTotal: save.total,
-          saveSucceeded: true,
-          description: `${abilityDef.name}: ${target.name} resisted (${save.total} vs DC ${dc})`,
-        },
-      };
+      if (save.success) {
+        return {
+          state,
+          result: {
+            saveRequired: true,
+            saveDC: dc,
+            saveRoll: save.roll,
+            saveTotal: save.total,
+            saveSucceeded: true,
+            description: `${abilityDef.name}: ${target.name} resisted (${save.total} vs DC ${dc})`,
+          },
+        };
+      }
     }
   }
 
@@ -980,15 +1000,25 @@ const handleAoeDebuff: EffectHandler = (state, actor, _target, enemies, abilityD
     }
     // Save check — target can resist the debuff
     if (isSaveBased) {
-      let targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10) + enemy.proficiencyBonus;
-      for (const eff of enemy.statusEffects) {
-        const seDef = STATUS_EFFECT_DEFS[eff.name];
-        if (seDef) targetSaveMod += seDef.saveModifier;
+      // Auto-fail DEX/STR saves for stunned/paralyzed
+      const afDex = enemy.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailDexSave);
+      const afStr = enemy.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailStrSave);
+      if (!((saveType === 'dex' && afDex) || (saveType === 'str' && afStr))) {
+        let targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10) + enemy.proficiencyBonus;
+        for (const eff of enemy.statusEffects) {
+          const seDef = STATUS_EFFECT_DEFS[eff.name];
+          if (seDef) targetSaveMod += seDef.saveModifier;
+          const mech = STATUS_EFFECT_MECHANICS[eff.name];
+          if (mech) {
+            if (saveType === 'dex') targetSaveMod += mech.dexSaveMod;
+            if (saveType === 'str') targetSaveMod += mech.strSaveMod;
+          }
+        }
+        const save = savingThrow(targetSaveMod, dc);
+        const lr = checkLegendaryResistance(state, enemy.id, save, dc);
+        if (lr.overridden) { save.success = true; state = lr.state; }
+        if (save.success) { saved++; continue; }
       }
-      const save = savingThrow(targetSaveMod, dc);
-      const lr = checkLegendaryResistance(state, enemy.id, save, dc);
-      if (lr.overridden) { save.success = true; state = lr.state; }
-      if (save.success) { saved++; continue; }
     }
     state = applyStatusEffectToState(state, enemy.id, 'blinded', duration, actor.id);
     affected++;
@@ -1072,21 +1102,37 @@ const handleAoeDamage: EffectHandler = (state, actor, _target, enemies, abilityD
     let saveTotalVal: number | undefined;
     let saveSucceededVal: boolean | undefined;
     if (isSaveBased) {
-      let targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10) + enemy.proficiencyBonus;
-      for (const eff of enemy.statusEffects) {
-        const seDef = STATUS_EFFECT_DEFS[eff.name];
-        if (seDef) targetSaveMod += seDef.saveModifier;
+      // Auto-fail DEX/STR saves for stunned/paralyzed
+      const afDex = enemy.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailDexSave);
+      const afStr = enemy.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailStrSave);
+      if ((saveType === 'dex' && afDex) || (saveType === 'str' && afStr)) {
+        // Auto-fail: full damage
+        saveDCVal = dc;
+        saveRollVal = 1;
+        saveTotalVal = 0;
+        saveSucceededVal = false;
+      } else {
+        let targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10) + enemy.proficiencyBonus;
+        for (const eff of enemy.statusEffects) {
+          const seDef = STATUS_EFFECT_DEFS[eff.name];
+          if (seDef) targetSaveMod += seDef.saveModifier;
+          const mech = STATUS_EFFECT_MECHANICS[eff.name];
+          if (mech) {
+            if (saveType === 'dex') targetSaveMod += mech.dexSaveMod;
+            if (saveType === 'str') targetSaveMod += mech.strSaveMod;
+          }
+        }
+        const save = savingThrow(targetSaveMod, dc);
+        const lr = checkLegendaryResistance(state, enemy.id, save, dc);
+        if (lr.overridden) { save.success = true; state = lr.state; }
+        if (save.success) {
+          dmg = Math.floor(dmg / 2);
+        }
+        saveDCVal = dc;
+        saveRollVal = save.roll;
+        saveTotalVal = save.total;
+        saveSucceededVal = save.success;
       }
-      const save = savingThrow(targetSaveMod, dc);
-      const lr = checkLegendaryResistance(state, enemy.id, save, dc);
-      if (lr.overridden) { save.success = true; state = lr.state; }
-      if (save.success) {
-        dmg = Math.floor(dmg / 2);
-      }
-      saveDCVal = dc;
-      saveRollVal = save.roll;
-      saveTotalVal = save.total;
-      saveSucceededVal = save.success;
     }
 
     dmg = Math.max(0, dmg);
@@ -1169,19 +1215,33 @@ const handleMultiTarget: EffectHandler = (state, actor, _target, enemies, abilit
     let saveTotalVal: number | undefined;
     let saveSucceededVal: boolean | undefined;
     if (isSaveBased) {
-      let targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10) + enemy.proficiencyBonus;
-      for (const eff of enemy.statusEffects) {
-        const seDef = STATUS_EFFECT_DEFS[eff.name];
-        if (seDef) targetSaveMod += seDef.saveModifier;
+      const afDex = enemy.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailDexSave);
+      const afStr = enemy.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailStrSave);
+      if ((saveType === 'dex' && afDex) || (saveType === 'str' && afStr)) {
+        saveDCVal = dc;
+        saveRollVal = 1;
+        saveTotalVal = 0;
+        saveSucceededVal = false;
+      } else {
+        let targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10) + enemy.proficiencyBonus;
+        for (const eff of enemy.statusEffects) {
+          const seDef = STATUS_EFFECT_DEFS[eff.name];
+          if (seDef) targetSaveMod += seDef.saveModifier;
+          const mech = STATUS_EFFECT_MECHANICS[eff.name];
+          if (mech) {
+            if (saveType === 'dex') targetSaveMod += mech.dexSaveMod;
+            if (saveType === 'str') targetSaveMod += mech.strSaveMod;
+          }
+        }
+        const save = savingThrow(targetSaveMod, dc);
+        const lr = checkLegendaryResistance(state, enemy.id, save, dc);
+        if (lr.overridden) { save.success = true; state = lr.state; }
+        if (save.success) dmg = Math.floor(dmg / 2);
+        saveDCVal = dc;
+        saveRollVal = save.roll;
+        saveTotalVal = save.total;
+        saveSucceededVal = save.success;
       }
-      const save = savingThrow(targetSaveMod, dc);
-      const lr = checkLegendaryResistance(state, enemy.id, save, dc);
-      if (lr.overridden) { save.success = true; state = lr.state; }
-      if (save.success) dmg = Math.floor(dmg / 2);
-      saveDCVal = dc;
-      saveRollVal = save.roll;
-      saveTotalVal = save.total;
-      saveSucceededVal = save.success;
     }
 
     const target = state.combatants.find(c => c.id === enemy.id)!;
@@ -1319,17 +1379,25 @@ const handleAoeDrain: EffectHandler = (state, actor, _target, enemies, abilityDe
 
     // Per-target save
     if (isSaveBased) {
-      let targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10) + enemy.proficiencyBonus;
-      for (const eff of enemy.statusEffects) {
-        const seDef = STATUS_EFFECT_DEFS[eff.name];
-        if (seDef) targetSaveMod += seDef.saveModifier;
-      }
-      const save = savingThrow(targetSaveMod, dc);
-      const lr = checkLegendaryResistance(state, enemy.id, save, dc);
-      if (lr.overridden) { save.success = true; state = lr.state; }
-      if (save.success) {
-        dmg = Math.floor(dmg / 2);
-        // Reduced healing from saved targets
+      const afDex = enemy.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailDexSave);
+      const afStr = enemy.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailStrSave);
+      if (!((saveType === 'dex' && afDex) || (saveType === 'str' && afStr))) {
+        let targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10) + enemy.proficiencyBonus;
+        for (const eff of enemy.statusEffects) {
+          const seDef = STATUS_EFFECT_DEFS[eff.name];
+          if (seDef) targetSaveMod += seDef.saveModifier;
+          const mech = STATUS_EFFECT_MECHANICS[eff.name];
+          if (mech) {
+            if (saveType === 'dex') targetSaveMod += mech.dexSaveMod;
+            if (saveType === 'str') targetSaveMod += mech.strSaveMod;
+          }
+        }
+        const save = savingThrow(targetSaveMod, dc);
+        const lr = checkLegendaryResistance(state, enemy.id, save, dc);
+        if (lr.overridden) { save.success = true; state = lr.state; }
+        if (save.success) {
+          dmg = Math.floor(dmg / 2);
+        }
       }
     }
 
@@ -1852,11 +1920,28 @@ function resolveAbilitySave(
 
   const saveType = (effects.saveType as string) ?? 'wis';
   const dc = calculateSaveDC(actor);
+
+  // Auto-fail DEX/STR saves for stunned/paralyzed targets
+  const autoFailDex = target.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailDexSave);
+  const autoFailStr = target.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailStrSave);
+  if ((saveType === 'dex' && autoFailDex) || (saveType === 'str' && autoFailStr)) {
+    return {
+      result: { dc, saveType, save: { roll: 1, total: 0, success: false } },
+      state,
+    };
+  }
+
   let targetSaveMod = getModifier(target.stats[saveType as keyof typeof target.stats] ?? 10) + target.proficiencyBonus;
   // Apply status effect save modifiers (e.g., frightened -2)
   for (const eff of target.statusEffects) {
     const seDef = STATUS_EFFECT_DEFS[eff.name];
     if (seDef) targetSaveMod += seDef.saveModifier;
+    // Additional DEX/STR save modifiers from mechanics
+    const mech = STATUS_EFFECT_MECHANICS[eff.name];
+    if (mech) {
+      if (saveType === 'dex') targetSaveMod += mech.dexSaveMod;
+      if (saveType === 'str') targetSaveMod += mech.strSaveMod;
+    }
   }
   const save = savingThrow(targetSaveMod, dc);
 
@@ -2913,6 +2998,51 @@ export function resolveClassAbility(
         fallbackToAttack: true,
       },
     };
+  }
+
+  // Slowed/restrained blocks multiattack abilities (multi_target, multi_attack)
+  const multiattackTypes = ['multi_target', 'multi_attack'];
+  if (multiattackTypes.includes(effectType)) {
+    const blocksMulti = actor.statusEffects.some(e => {
+      const mech = STATUS_EFFECT_MECHANICS[e.name];
+      return mech?.blocksMultiattack;
+    });
+    if (blocksMulti) {
+      return {
+        state,
+        result: {
+          type: 'class_ability',
+          actorId,
+          abilityId,
+          abilityName: abilityDef.name,
+          effectType,
+          description: `${abilityDef.name}: too slow to use multiattack`,
+          fallbackToAttack: true,
+        },
+      };
+    }
+  }
+
+  // Root blocks movement-based abilities (Vanish, Blink Strike, Disengage, etc.)
+  if (effects.requiresMovement || effectType === 'flee' || effectType === 'teleport_attack') {
+    const blocksMovement = actor.statusEffects.some(e => {
+      const mech = STATUS_EFFECT_MECHANICS[e.name];
+      return mech?.blocksMovementAbilities;
+    });
+    if (blocksMovement) {
+      return {
+        state,
+        result: {
+          type: 'class_ability',
+          actorId,
+          abilityId,
+          abilityName: abilityDef.name,
+          effectType,
+          description: `${abilityDef.name}: cannot use movement abilities while rooted`,
+          fallbackToAttack: true,
+        },
+      };
+    }
   }
 
   // Get handler
