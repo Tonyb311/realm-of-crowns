@@ -24,6 +24,7 @@ import {
   X,
   Users,
   Wrench,
+  Newspaper,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -87,6 +88,7 @@ function getMoreCategories(isAdmin: boolean): NavCategory[] {
         { path: '/quests', label: 'Quests', icon: ScrollText },
         { path: '/combat', label: 'Combat', icon: Swords },
         { path: '/skills', label: 'Skills', icon: Sparkles },
+        { path: '/reports', label: 'Reports', icon: Newspaper },
       ],
     },
     {

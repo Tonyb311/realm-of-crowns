@@ -17,6 +17,7 @@ import {
   Shield,
   Crown,
   Trophy,
+  Newspaper,
   ShieldCheck,
   LogOut,
 } from 'lucide-react';
@@ -67,6 +68,7 @@ const NAV_SECTIONS: NavSection[] = [
       { icon: Shield, label: 'Guild', route: '/guild' },
       { icon: Crown, label: 'Diplomacy', route: '/diplomacy' },
       { icon: Trophy, label: 'Achievements', route: '/achievements' },
+      { icon: Newspaper, label: 'Reports', route: '/reports' },
     ],
   },
 ];

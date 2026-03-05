@@ -10,11 +10,13 @@ import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
 
 async function main() {
-  const character = await prisma.character.findFirst({
-    select: { id: true, name: true },
-  });
+  // Target a specific character by ID, or fall back to first character
+  const targetId = process.env.TARGET_CHAR_ID;
+  const character = targetId
+    ? await prisma.character.findUnique({ where: { id: targetId }, select: { id: true, name: true } })
+    : await prisma.character.findFirst({ select: { id: true, name: true } });
   if (!character) {
-    console.error('No characters found in the database.');
+    console.error('No character found.');
     process.exit(1);
   }
 
