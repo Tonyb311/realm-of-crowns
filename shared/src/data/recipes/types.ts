@@ -50,7 +50,8 @@ export interface RecipeDefinition {
 
 // --- Finished goods types ---
 
-export type DamageType = 'slashing' | 'piercing' | 'bludgeoning';
+export type DamageType = 'slashing' | 'piercing' | 'bludgeoning'
+  | 'FORCE' | 'RADIANT' | 'THUNDER' | 'PSYCHIC';
 
 export type EquipSlot =
   | 'MAIN_HAND'
@@ -83,6 +84,10 @@ export interface WeaponStats {
   levelToEquip: number;
   twoHanded?: boolean;
   range?: number;         // for ranged weapons
+  diceCount?: number;     // e.g. 1 for 1d6 (caster weapons)
+  diceSides?: number;     // e.g. 6 for 1d6 (caster weapons)
+  bonusAttack?: number;   // flat attack bonus
+  bonusDamage?: number;   // flat damage bonus
 }
 
 export interface QualityMultiplier {

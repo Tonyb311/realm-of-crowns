@@ -10,6 +10,7 @@
 import { PrismaClient, ProfessionType, ProfessionTier, ItemRarity } from '@prisma/client';
 import { BLACKSMITH_WEAPON_RECIPES } from '@shared/data/recipes/weapons';
 import { RANGED_WEAPON_RECIPES } from '@shared/data/recipes/ranged-weapons';
+import { ALL_CASTER_WEAPON_RECIPES } from '@shared/data/recipes/caster-weapons';
 import { FinishedGoodsRecipe, WeaponStats } from '@shared/data/recipes/types';
 
 // ============================================================
@@ -81,6 +82,27 @@ const BASE_VALUE_MAP: Record<string, number> = {
   'Longbow': 85, 'War Arrows': 7, 'War Bow': 180, 'Quiver': 45,
   'Barbed Arrows': 8, 'Composite Bow': 225, "Ranger's Quiver": 175,
   'Flight Arrows': 2, "Ranger's Longbow": 260,
+  // ENCHANTER caster weapons — Mage Staves
+  'Ashwood Staff': 25, 'Ironwood Staff': 65, 'Ebonwood Staff': 200,
+  'Starwood Staff': 800, 'Worldtree Staff': 2200,
+  // ENCHANTER caster weapons — Mage Wands
+  'Bone Wand': 18, 'Silver Wand': 50, 'Gold Wand': 160,
+  'Mithril Wand': 700, 'Adamantine Wand': 1800,
+  // ENCHANTER caster weapons — Psion Crystal Staves
+  'Crystal Staff': 220, 'Arcane Crystal Staff': 850, 'Void Staff': 2400,
+  // JEWELER caster weapons — Cleric Holy Symbols
+  'Wooden Holy Symbol': 15, 'Iron Holy Symbol': 45, 'Silver Holy Symbol': 140,
+  'Gold Holy Symbol': 650, 'Adamantine Holy Symbol': 1700,
+  // JEWELER caster weapons — Psion Orbs
+  'Quartz Orb': 20, 'Amethyst Orb': 55, 'Sapphire Orb': 170,
+  'Arcane Orb': 750, 'Void Crystal': 2000,
+  // WOODWORKER caster weapons — Bard Instruments
+  "Traveler's Lute": 22, 'Fine Lute': 60, "Master's Lute": 190,
+  'Enchanted Harp': 780, 'Legendary Songblade': 2100,
+  // WOODWORKER caster weapons — Bard Hand Drums
+  'Wooden Drum': 14, 'War Drum': 48, 'Battle Drum': 150,
+  // BLACKSMITH caster weapons — Blessed Maces
+  'Iron Blessed Mace': 58, 'Steel Blessed Mace': 195, 'Mithril Blessed Mace': 900,
 };
 
 // ============================================================
@@ -91,6 +113,7 @@ export async function seedWeaponRecipes(prisma: PrismaClient) {
   const allWeaponRecipes: FinishedGoodsRecipe[] = [
     ...BLACKSMITH_WEAPON_RECIPES,
     ...RANGED_WEAPON_RECIPES,
+    ...ALL_CASTER_WEAPON_RECIPES,
   ];
 
   console.log('--- Seeding Weapon Item Templates ---');

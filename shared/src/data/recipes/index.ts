@@ -30,6 +30,13 @@ import { MOUNT_GEAR_RECIPES } from './mount-gear';
 import { ARMORER_RECIPES, LEATHERWORKER_ARMOR_RECIPES, TAILOR_ARMOR_RECIPES, TANNER_ARMOR_RECIPES, ALL_ARMOR_RECIPES } from './armor';
 import { COOK_RECIPES } from './cook';
 import { BLACKSMITH_RECIPES } from './blacksmith';
+import {
+  ENCHANTER_CASTER_RECIPES,
+  JEWELER_CASTER_RECIPES,
+  WOODWORKER_CASTER_RECIPES,
+  BLACKSMITH_CASTER_RECIPES,
+  ALL_CASTER_WEAPON_RECIPES,
+} from './caster-weapons';
 
 export { SMELTER_RECIPES } from './smelter';
 export { TANNER_RECIPES } from './tanner';
@@ -54,6 +61,13 @@ export { MOUNT_GEAR_RECIPES } from './mount-gear';
 export { ARMORER_RECIPES, LEATHERWORKER_ARMOR_RECIPES, TAILOR_ARMOR_RECIPES, TANNER_ARMOR_RECIPES, ALL_ARMOR_RECIPES } from './armor';
 export { COOK_RECIPES } from './cook';
 export { BLACKSMITH_RECIPES } from './blacksmith';
+export {
+  ENCHANTER_CASTER_RECIPES,
+  JEWELER_CASTER_RECIPES,
+  WOODWORKER_CASTER_RECIPES,
+  BLACKSMITH_CASTER_RECIPES,
+  ALL_CASTER_WEAPON_RECIPES,
+} from './caster-weapons';
 
 /** All COOK recipes (food production from raw ingredients). */
 export const ALL_COOK_RECIPES: RecipeDefinition[] = [...COOK_RECIPES];
@@ -115,10 +129,11 @@ export function getRecipesByMaxTier(maxTier: number): RecipeDefinition[] {
 // Weapon Recipes (finished goods)
 // ============================================================
 
-/** All weapon recipes (blacksmith melee + fletcher/ranged). */
+/** All weapon recipes (blacksmith melee + fletcher/ranged + caster weapons). */
 export const ALL_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
   ...BLACKSMITH_WEAPON_RECIPES,
   ...RANGED_WEAPON_RECIPES,
+  ...ALL_CASTER_WEAPON_RECIPES,
 ];
 
 /** Blacksmith low-level recipes (tools, weapons, armor with specialization branches). */
