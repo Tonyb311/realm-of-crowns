@@ -17,6 +17,7 @@ import { transformInventory } from '../lib/inventory-transform';
 import { giveStartingInventory } from '../lib/starting-inventory';
 import { giveStarterWeapon, giveStarterArmor } from '../lib/starting-weapons';
 import { giveStarterHouse } from '../lib/starting-house';
+import { buildCharacterSheet } from '../services/character-sheet';
 
 const router = Router();
 
@@ -387,6 +388,49 @@ router.post('/switch', authGuard, async (req: AuthenticatedRequest, res: Respons
   } catch (error) {
     if (handlePrismaError(error, res, 'character-switch', req)) return;
     logRouteError(req, 500, 'Switch character error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/characters/me/sheet — full character sheet for own character
+router.get('/me/sheet', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const sheet = await buildCharacterSheet(req.character!.id, req.character!.id);
+    if (!sheet) return res.status(404).json({ error: 'Character not found' });
+    return res.json(sheet);
+  } catch (error) {
+    logRouteError(req, 500, 'Character sheet error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/characters/:id/sheet — character sheet for another player (redacted)
+router.get('/:id/sheet', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const sheet = await buildCharacterSheet(req.params.id, req.character!.id);
+    if (!sheet) return res.status(404).json({ error: 'Character not found' });
+    return res.json(sheet);
+  } catch (error) {
+    logRouteError(req, 500, 'Character sheet error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PATCH /api/characters/me/bio — update character biography
+const bioSchema = z.object({
+  bio: z.string().max(500).nullable(),
+});
+
+router.patch('/me/bio', authGuard, characterGuard, validate(bioSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { bio } = req.body;
+    await prisma.character.update({
+      where: { id: req.character!.id },
+      data: { bio } as any,
+    });
+    return res.json({ success: true, bio });
+  } catch (error) {
+    logRouteError(req, 500, 'Update bio error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

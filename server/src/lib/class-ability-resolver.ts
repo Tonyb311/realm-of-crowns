@@ -10,6 +10,7 @@
 
 import { ALL_ABILITIES } from '@shared/data/skills';
 import type { AbilityDefinition } from '@shared/data/skills/types';
+import { CLASS_PRIMARY_STAT } from '@shared/data/combat-constants';
 import {
   applyStatusEffect,
   resolveAttack,
@@ -1814,11 +1815,7 @@ const handleSummon: EffectHandler = (state, actor, _target, _enemies, abilityDef
 
 // ---- Psion Effect Handlers ----
 
-/** Class → primary casting/attack stat (used for save DCs and spell attack rolls) */
-const CLASS_PRIMARY_STAT: Record<string, string> = {
-  warrior: 'str', rogue: 'dex', ranger: 'dex',
-  mage: 'int', psion: 'int', cleric: 'wis', bard: 'cha',
-};
+// CLASS_PRIMARY_STAT imported from @shared/data/combat-constants
 
 /** Save DC = 8 + proficiency bonus + class primary stat modifier */
 function calculateSaveDC(actor: Combatant, saveStatOverride?: string): number {

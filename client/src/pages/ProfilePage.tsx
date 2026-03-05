@@ -1,168 +1,65 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  User,
-  Shield,
-  Heart,
-  Swords,
-  Brain,
-  Eye,
-  Sparkles,
-  UserPlus,
-  MessageSquare,
-  ArrowLeft,
-  Crown,
-  Shirt,
-  Wrench,
-  Hand,
-  Footprints,
-  Gem,
-  CircleDot,
-} from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowLeft } from 'lucide-react';
 import api from '../services/api';
-import { getRarityStyle } from '../constants';
-import { RealmPanel, RealmButton, RealmBadge, RealmProgress } from '../components/ui/realm-index';
-
-interface CharacterProfile {
-  id: string;
-  name: string;
-  race: string;
-  level: number;
-  experience: number;
-  bio?: string;
-  stats: {
-    str: number;
-    dex: number;
-    con: number;
-    int: number;
-    wis: number;
-    cha: number;
-  };
-  professions?: string[];
-  guildId?: string;
-  guildName?: string;
-  guildTag?: string;
-  isOnline?: boolean;
-}
-
-const STAT_CONFIG = [
-  { key: 'str', label: 'STR', icon: Swords, color: 'text-realm-danger' },
-  { key: 'dex', label: 'DEX', icon: Eye, color: 'text-realm-success' },
-  { key: 'con', label: 'CON', icon: Heart, color: 'text-realm-gold-400' },
-  { key: 'int', label: 'INT', icon: Brain, color: 'text-realm-teal-300' },
-  { key: 'wis', label: 'WIS', icon: Sparkles, color: 'text-realm-purple-300' },
-  { key: 'cha', label: 'CHA', icon: User, color: 'text-realm-bronze-400' },
-] as const;
-
-interface EquippedItemData {
-  slot: string;
-  item: {
-    id: string;
-    name: string;
-    type: string;
-    quality: string;
-    currentDurability: number;
-    maxDurability: number;
-    stats: Record<string, unknown>;
-  };
-}
-
-interface EquipmentStats {
-  totalAC: number;
-  totalDamage: number;
-  totalStatBonuses: Record<string, number>;
-  equippedCount: number;
-}
-
-const SLOT_DISPLAY: { key: string; label: string; icon: typeof Shield }[] = [
-  { key: 'HEAD',      label: 'Head',     icon: Crown },
-  { key: 'NECK',      label: 'Neck',     icon: Gem },
-  { key: 'BACK',      label: 'Back',     icon: Shield },
-  { key: 'CHEST',     label: 'Body',     icon: Shirt },
-  { key: 'MAIN_HAND', label: 'Weapon',   icon: Swords },
-  { key: 'OFF_HAND',  label: 'Off Hand', icon: Shield },
-  { key: 'HANDS',     label: 'Hands',    icon: Hand },
-  { key: 'RING_1',    label: 'Ring 1',   icon: CircleDot },
-  { key: 'RING_2',    label: 'Ring 2',   icon: CircleDot },
-  { key: 'LEGS',      label: 'Legs',     icon: Shirt },
-  { key: 'FEET',      label: 'Feet',     icon: Footprints },
-  { key: 'TOOL',      label: 'Tool',     icon: Wrench },
-];
-
-// Map stat keys from equipment API (long names) to character stat keys (short names)
-const STAT_BONUS_MAP: Record<string, string> = {
-  strength: 'str',
-  dexterity: 'dex',
-  constitution: 'con',
-  intelligence: 'int',
-  wisdom: 'wis',
-  charisma: 'cha',
-};
+import { RealmButton } from '../components/ui/realm-index';
+import {
+  CharacterSheetHeader,
+  CoreStatsBlock,
+  SavingThrowsBlock,
+  EquipmentPaperDoll,
+  AbilitiesPanel,
+  ProfessionsBlock,
+  CombatRecordBlock,
+  BiographyBlock,
+} from '../components/character-sheet';
 
 export default function ProfilePage() {
   const { characterId: paramId } = useParams<{ characterId: string }>();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const { data: myChar } = useQuery<{ id: string }>({
     queryKey: ['character', 'me'],
     queryFn: async () => (await api.get('/characters/me')).data,
   });
 
-  // If no characterId in URL, fall back to own character
-  const characterId = paramId || myChar?.id;
+  const targetId = paramId || myChar?.id;
+  const isOwnProfile = myChar?.id === targetId;
 
-  const { data: profile, isLoading, error } = useQuery<CharacterProfile>({
-    queryKey: ['profile', characterId],
+  const { data: sheet, isLoading, error } = useQuery({
+    queryKey: ['character-sheet', targetId],
     queryFn: async () => {
-      const res = await api.get(`/characters/${characterId}/profile`);
-      return res.data.profile ?? res.data;
+      const endpoint = isOwnProfile ? '/characters/me/sheet' : `/characters/${targetId}/sheet`;
+      return (await api.get(endpoint)).data;
     },
-    enabled: !!characterId,
-  });
-
-  const sendFriendRequest = useMutation({
-    mutationFn: () => api.post('/friends/request', { characterId }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['friends'] }),
-  });
-
-  const isOwnProfile = myChar?.id === characterId;
-
-  // Equipment data (own profile only)
-  const { data: equippedData } = useQuery<{ equipped: EquippedItemData[] }>({
-    queryKey: ['equipment', 'equipped'],
-    queryFn: async () => (await api.get('/equipment/equipped')).data,
-    enabled: isOwnProfile,
-  });
-
-  const { data: eqStats } = useQuery<EquipmentStats>({
-    queryKey: ['equipment', 'stats'],
-    queryFn: async () => (await api.get('/equipment/stats')).data,
-    enabled: isOwnProfile,
+    enabled: !!targetId,
   });
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-6xl mx-auto px-4 py-8 sm:px-6">
         <div className="h-32 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 h-48 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
-          <div className="h-48 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="h-64 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
+            <div className="h-48 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
+          </div>
+          <div className="space-y-4">
+            <div className="h-40 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
+            <div className="h-32 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
+          </div>
         </div>
       </div>
     );
   }
 
-  if (error || !profile) {
+  if (error || !sheet) {
     return (
       <div className="flex flex-col items-center justify-center py-20 p-8">
         <h2 className="text-2xl font-display text-realm-danger mb-4">Character Not Found</h2>
         <p className="text-realm-text-secondary mb-6">This adventurer could not be located.</p>
-        <RealmButton
-          variant="secondary"
-          onClick={() => navigate(-1)}
-        >
-          Go Back
+        <RealmButton variant="secondary" onClick={() => navigate(-1)}>
+          <ArrowLeft className="w-4 h-4" /> Go Back
         </RealmButton>
       </div>
     );
@@ -170,210 +67,58 @@ export default function ProfilePage() {
 
   return (
     <div>
-      {/* Header */}
-      <header className="border-b border-realm-border bg-realm-bg-800/50">
-        <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-1 text-realm-text-muted hover:text-realm-text-primary text-sm mb-4 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </button>
+      <CharacterSheetHeader sheet={sheet} isOwnProfile={isOwnProfile} />
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-4xl font-display text-realm-gold-400">{profile.name}</h1>
-                {profile.isOnline && (
-                  <span className="w-3 h-3 bg-realm-success rounded-full" title="Online" />
-                )}
+      <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left column — main content */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-2">
+                <CoreStatsBlock sheet={sheet} isOwnProfile={isOwnProfile} />
               </div>
-              <div className="flex items-center gap-3 mt-2">
-                <span className="text-realm-text-secondary text-sm">{(profile.race ?? 'Unknown').toLowerCase().replace(/_/g, '-').replace(/\b\w/g, c => c.toUpperCase())}</span>
-                <span className="text-realm-text-muted text-sm">Level {profile.level}</span>
-                {profile.guildTag && (
-                  <span className="text-xs bg-realm-bg-600/40 text-realm-gold-400 px-2 py-0.5 rounded">
-                    [{profile.guildTag}] {profile.guildName}
-                  </span>
-                )}
+              <div>
+                <SavingThrowsBlock savingThrows={sheet.savingThrows} />
               </div>
             </div>
 
-            {!isOwnProfile && (
-              <div className="flex gap-2">
-                <RealmButton
-                  variant="primary"
-                  size="sm"
-                  onClick={() => sendFriendRequest.mutate()}
-                  disabled={sendFriendRequest.isPending}
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Add Friend
-                </RealmButton>
-                <RealmButton
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    (window as any).__chatOpenDM?.(profile.id, profile.name);
-                  }}
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  Message
-                </RealmButton>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
+            <EquipmentPaperDoll
+              equipment={sheet.equipment ?? []}
+              isOwnProfile={isOwnProfile}
+            />
 
-      <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Stats */}
-          <div className="md:col-span-2">
-            <RealmPanel title="Attributes">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {STAT_CONFIG.map((stat) => {
-                  const Icon = stat.icon;
-                  const baseValue = profile.stats?.[stat.key] ?? 0;
-                  // Find matching equipment bonus (strength→str, dexterity→dex, etc.)
-                  const bonusKey = Object.entries(STAT_BONUS_MAP).find(([, v]) => v === stat.key)?.[0];
-                  const bonus = bonusKey && eqStats?.totalStatBonuses?.[bonusKey] ? Math.round(eqStats.totalStatBonuses[bonusKey]) : 0;
-                  const totalValue = baseValue + bonus;
-                  return (
-                    <div key={stat.key} className="bg-realm-bg-800 border border-realm-border/50 rounded-lg p-3 text-center">
-                      <Icon className={`w-5 h-5 mx-auto mb-1 ${stat.color}`} />
-                      <div className="text-2xl font-display text-realm-text-primary">
-                        {totalValue}
-                        {bonus > 0 && (
-                          <span className="text-sm text-realm-success ml-1">(+{bonus})</span>
-                        )}
-                      </div>
-                      <div className="text-xs text-realm-text-muted uppercase tracking-wider">{stat.label}</div>
-                    </div>
-                  );
-                })}
-              </div>
-              {/* Effective AC display */}
-              {isOwnProfile && eqStats && eqStats.totalAC > 0 && (
-                <div className="mt-4 pt-3 border-t border-realm-border/50">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-realm-teal-300" />
-                    <span className="text-sm text-realm-text-secondary">Effective AC:</span>
-                    <span className="text-lg font-display text-realm-text-primary">
-                      {10 + Math.floor(((profile.stats?.dex ?? 10) + (eqStats.totalStatBonuses?.dexterity ? Math.round(eqStats.totalStatBonuses.dexterity) : 0) - 10) / 2) + eqStats.totalAC}
-                    </span>
-                    <span className="text-xs text-realm-text-muted">
-                      (10 + DEX + {eqStats.totalAC} armor)
-                    </span>
-                  </div>
-                </div>
-              )}
-            </RealmPanel>
-
-            {/* Professions */}
-            {profile.professions && profile.professions.length > 0 && (
-              <div className="mt-6">
-                <RealmPanel title="Professions">
-                  <div className="flex flex-wrap gap-2">
-                    {profile.professions.map((p) => (
-                      <span
-                        key={p}
-                        className="text-xs bg-realm-bg-600/40 text-realm-text-secondary px-3 py-1 rounded capitalize"
-                      >
-                        {p}
-                      </span>
-                    ))}
-                  </div>
-                </RealmPanel>
-              </div>
-            )}
-
-            {/* Equipment (own profile only) */}
-            {isOwnProfile && equippedData && (
-              <div className="mt-6">
-                <RealmPanel title="Equipment">
-                  <div className="space-y-2">
-                    {SLOT_DISPLAY.map((slotDef) => {
-                      const eq = equippedData.equipped.find((e) => e.slot === slotDef.key);
-                      const Icon = slotDef.icon;
-                      const rarityStyle = eq ? getRarityStyle(eq.item.quality) : null;
-
-                      return (
-                        <div key={slotDef.key} className="flex items-center gap-3 py-1.5">
-                          <Icon className={`w-4 h-4 flex-shrink-0 ${eq ? (rarityStyle?.text ?? 'text-realm-text-primary') : 'text-realm-text-muted/40'}`} />
-                          <span className="text-xs text-realm-text-muted w-16 flex-shrink-0">{slotDef.label}</span>
-                          {eq ? (
-                            <span className={`text-xs font-semibold ${rarityStyle?.text ?? 'text-realm-text-primary'}`}>
-                              {eq.item.name}
-                              {typeof eq.item.stats?.damage === 'number' && (
-                                <span className="text-realm-text-muted ml-1">+{Math.round(eq.item.stats.damage as number)} ATK</span>
-                              )}
-                              {typeof eq.item.stats?.armor === 'number' && (
-                                <span className="text-realm-text-muted ml-1">+{Math.round(eq.item.stats.armor as number)} DEF</span>
-                              )}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-realm-text-muted/40 italic">Empty</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Combat Stats */}
-                  {eqStats && (eqStats.totalDamage > 0 || eqStats.totalAC > 0) && (
-                    <div className="mt-4 pt-3 border-t border-realm-border/50 flex gap-6">
-                      <div className="text-center">
-                        <Swords className="w-4 h-4 mx-auto text-realm-danger mb-0.5" />
-                        <div className="text-lg font-display text-realm-text-primary">{eqStats.totalDamage}</div>
-                        <div className="text-[10px] text-realm-text-muted uppercase">Attack</div>
-                      </div>
-                      <div className="text-center">
-                        <Shield className="w-4 h-4 mx-auto text-realm-teal-300 mb-0.5" />
-                        <div className="text-lg font-display text-realm-text-primary">{eqStats.totalAC}</div>
-                        <div className="text-[10px] text-realm-text-muted uppercase">Defense</div>
-                      </div>
-                    </div>
-                  )}
-                </RealmPanel>
-              </div>
-            )}
+            <AbilitiesPanel
+              tier0Abilities={sheet.tier0Abilities ?? []}
+              tier0ChoiceLevels={sheet.tier0ChoiceLevels ?? [3, 5, 8]}
+              specAbilities={sheet.specAbilities ?? []}
+              racial={sheet.racial}
+              characterLevel={sheet.level}
+              specialization={sheet.specialization}
+            />
           </div>
 
-          {/* Sidebar */}
+          {/* Right column — sidebar */}
           <div className="space-y-6">
-            {/* Bio */}
-            <RealmPanel title="About">
-              <p className="text-realm-text-secondary text-sm leading-relaxed">
-                {profile.bio || 'This adventurer has not written a biography yet.'}
-              </p>
-            </RealmPanel>
+            <CombatRecordBlock
+              combatRecord={sheet.combatRecord}
+              isOwnProfile={isOwnProfile}
+            />
 
-            {/* Guild */}
-            {profile.guildName && (
-              <RealmPanel title="Guild">
-                <button
-                  onClick={() => navigate('/guild')}
-                  className="text-sm text-realm-text-primary hover:text-realm-gold-400 transition-colors"
-                >
-                  [{profile.guildTag}] {profile.guildName}
-                </button>
-              </RealmPanel>
+            <ProfessionsBlock professions={sheet.professions ?? []} />
+
+            <BiographyBlock
+              bio={sheet.bio}
+              isOwnProfile={isOwnProfile}
+              characterId={sheet.id}
+            />
+
+            {/* Gold display (own profile only) */}
+            {isOwnProfile && sheet.gold !== undefined && (
+              <div className="bg-realm-bg-800/50 border border-realm-border/30 rounded-lg p-4 text-center">
+                <div className="text-2xl font-display text-realm-gold-400">{sheet.gold.toLocaleString()}</div>
+                <div className="text-xs text-realm-text-muted uppercase tracking-wider mt-1">Gold</div>
+              </div>
             )}
-
-            {/* Level progress */}
-            <RealmPanel title="Experience">
-              <div className="text-realm-text-primary text-sm">
-                Level {profile.level}
-              </div>
-              <div className="mt-2">
-                <RealmProgress variant="xp" value={(profile.experience ?? 0) % 1000} max={1000} showValue />
-              </div>
-              <div className="text-xs text-realm-text-muted mt-1">
-                {(profile.experience ?? 0) % 1000} / 1000 XP
-              </div>
-            </RealmPanel>
           </div>
         </div>
       </div>

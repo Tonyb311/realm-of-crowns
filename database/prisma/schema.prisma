@@ -414,6 +414,7 @@ model Character {
   unspentStatPoints      Int              @default(0) @map("unspent_stat_points")
 
   title                  String?
+  bio                    String?          @map("bio")
   stats                  Json             @default("{}")
   currentTownId          String?          @map("current_town_id")
   homeTownId             String?          @map("home_town_id")
