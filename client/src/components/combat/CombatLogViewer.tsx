@@ -122,7 +122,12 @@ export default function CombatLogViewer({ log }: CombatLogViewerProps) {
     });
   };
 
-  const loot: any[] = data.loot ?? [];
+  const rawLoot = data.loot ?? [];
+  const loot: any[] = Array.isArray(rawLoot)
+    ? rawLoot
+    : typeof rawLoot === 'string' && rawLoot
+      ? [{ name: rawLoot, quantity: 1 }]
+      : [];
 
   return (
     <div className="space-y-3">
