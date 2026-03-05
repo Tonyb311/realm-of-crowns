@@ -1,5 +1,11 @@
 import { prisma } from '../lib/prisma';
 import { Prisma } from '@prisma/client';
+import {
+  narrateCombatEvent,
+  narrateCombatOpening,
+  type NarrationContext,
+  type NarratorLogEntry,
+} from '@shared/data/combat-narrator/narrator';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -93,6 +99,106 @@ export async function dismissReport(reportId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// narrateCombatLog — add narrator text to round entries
+// ---------------------------------------------------------------------------
+
+function narrateCombatLog(log: any): any {
+  if (!log || typeof log !== 'object') return log;
+
+  const rawRounds: any[] = Array.isArray(log.rounds) ? log.rounds : [];
+  if (rawRounds.length === 0) return log;
+
+  // Extract encounter context (first entry with _encounterContext)
+  let encounterCtx: any = null;
+  for (const entry of rawRounds) {
+    if (entry._encounterContext) {
+      encounterCtx = entry._encounterContext;
+      break;
+    }
+  }
+
+  // Build combatant lookup
+  const combatants: Record<string, any> = {};
+  if (encounterCtx?.combatants) {
+    for (const c of encounterCtx.combatants) {
+      combatants[c.id] = c;
+      combatants[c.name] = c;
+    }
+  }
+
+  // Generate opening text
+  const openingText = log.monsterName
+    ? narrateCombatOpening(log.monsterName)
+    : undefined;
+
+  // Narrate each round entry
+  const narratedRounds = rawRounds.map((entry: any) => {
+    // Skip the context entry
+    if (entry._encounterContext || entry.round == null) return entry;
+
+    const actor = combatants[entry.actorId] || combatants[entry.actor] || {};
+
+    // Find the target — the other combatant
+    let target: any = {};
+    if (encounterCtx?.combatants) {
+      target = encounterCtx.combatants.find(
+        (c: any) => c.id !== entry.actorId && c.name !== entry.actor,
+      ) || {};
+    }
+
+    // Compute HP percentages from hpAfter map
+    const actorMaxHp = actor.maxHp || actor.hp || 100;
+    const actorCurrentHp = entry.hpAfter?.[entry.actor] ?? actorMaxHp;
+    const actorHpPercent = Math.round((actorCurrentHp / actorMaxHp) * 100);
+
+    const targetMaxHp = target.maxHp || target.hp || 100;
+    const targetCurrentHp = entry.hpAfter?.[target.name] ?? targetMaxHp;
+    const targetHpPercent = Math.round((targetCurrentHp / targetMaxHp) * 100);
+
+    const context: NarrationContext = {
+      actorName: entry.actor,
+      actorRace: actor.race,
+      actorClass: actor.class,
+      actorEntityType: actor.entityType === 'monster' ? 'monster' : 'character',
+      actorHpPercent,
+      targetName: target.name,
+      targetEntityType: target.entityType === 'monster' ? 'monster' : 'character',
+      targetHpPercent,
+      targetKilled: entry.targetKilled,
+      weaponName: entry.weaponName || actor.weapon?.name,
+    };
+
+    const narratorEntry: NarratorLogEntry = {
+      round: entry.round,
+      actorId: entry.actorId || entry.actor,
+      action: entry.action,
+      result: {
+        type: entry.action, // 'attack', 'class_ability', etc.
+        actorId: entry.actorId || entry.actor,
+        hit: entry.hit,
+        critical: entry.isCritical,
+        attackRoll: entry.attackRoll?.raw,
+        targetKilled: entry.targetKilled,
+        abilityName: entry.abilityName,
+        healAmount: entry.healAmount,
+        damageAmount: entry.damageRoll?.total,
+      },
+    };
+
+    try {
+      const text = narrateCombatEvent(narratorEntry, context);
+      // Capitalize actor name + narrator text (verb-first)
+      const narratorText = `${entry.actor} ${text}`;
+      return { ...entry, narratorText };
+    } catch {
+      return entry;
+    }
+  });
+
+  return { ...log, rounds: narratedRounds, openingText };
+}
+
+// ---------------------------------------------------------------------------
 // transformToSections / transformReport
 // ---------------------------------------------------------------------------
 
@@ -107,7 +213,7 @@ function transformToSections(report: any) {
     action: report.actionResult && Object.keys(report.actionResult as object).length > 0 ? report.actionResult : null,
     combat: {
       occurred: combatLogs.length > 0,
-      logs: combatLogs,
+      logs: combatLogs.map(narrateCombatLog),
       outcome: combatLogs.length > 0 ? (combatLogs[0] as any)?.outcome?.toUpperCase() : undefined,
       loot: combatLogs.flatMap((l: any) => {
         const lootStr = l.loot || l.lootDropped || '';

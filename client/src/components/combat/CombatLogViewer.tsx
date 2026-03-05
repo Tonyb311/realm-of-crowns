@@ -35,6 +35,7 @@ interface RoundLogEntry {
   statusEffectsApplied?: string[];
   statusEffectsExpired?: string[];
   hpAfter?: Record<string, number>;
+  narratorText?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -145,9 +146,16 @@ export default function CombatLogViewer({ log }: CombatLogViewerProps) {
         )}
       </div>
 
+      {/* Opening narrator text */}
+      {data.openingText && (
+        <p className="text-realm-text-primary text-xs italic border-l-2 border-realm-gold-500/30 pl-3">
+          {data.openingText}
+        </p>
+      )}
+
       {/* Summary text */}
       {data.summary && (
-        <p className="text-realm-text-secondary text-xs italic">{data.summary}</p>
+        <p className="text-realm-text-secondary text-xs">{data.summary}</p>
       )}
 
       {/* Rewards */}
@@ -288,69 +296,69 @@ function RoundEntryRow({ entry, playerName }: { entry: RoundLogEntry; playerName
   const isPlayer = entry.actor === playerName || entry.actorId?.startsWith('player');
   const actorColor = isPlayer ? 'text-realm-gold-400' : 'text-realm-danger';
 
-  // Build action description
-  let actionDesc = entry.action;
+  // Build mechanical summary line
+  const parts: string[] = [];
   if (entry.abilityName) {
-    actionDesc = entry.abilityName;
-  } else if (entry.weaponName) {
-    actionDesc = `${entry.action} (${entry.weaponName})`;
+    parts.push(entry.abilityName);
+  } else {
+    parts.push(entry.action);
+    if (entry.weaponName) parts[0] += ` (${entry.weaponName})`;
   }
-
-  // Hit/miss
-  let hitDesc = '';
   if (entry.attackRoll) {
     const critLabel = entry.isCritical ? ' CRIT!' : '';
-    hitDesc = entry.hit
+    parts.push(entry.hit
       ? `Hit (${entry.attackRoll.total} vs AC ${entry.targetAC})${critLabel}`
-      : `Miss (${entry.attackRoll.total} vs AC ${entry.targetAC})`;
+      : `Miss (${entry.attackRoll.total} vs AC ${entry.targetAC})`);
+  }
+  if (entry.damageRoll && entry.damageRoll.total > 0) {
+    parts.push(`${entry.damageRoll.total} ${entry.damageRoll.type || 'dmg'}`);
+  }
+  if (entry.healAmount != null && entry.healAmount > 0) {
+    parts.push(`+${entry.healAmount} heal`);
+  }
+  if (entry.targetHpBefore != null && entry.targetHpAfter != null) {
+    parts.push(`HP: ${entry.targetHpBefore} → ${entry.targetHpAfter}`);
   }
 
   return (
-    <div className="flex items-start gap-2 p-2 bg-realm-bg-900/50 rounded mt-1.5">
-      <span className={`text-[10px] font-display shrink-0 w-20 truncate ${actorColor}`}>
-        {entry.actor}
-      </span>
-      <div className="flex-1 min-w-0">
-        <p className="text-realm-text-secondary text-[10px]">{actionDesc}</p>
-        {hitDesc && (
-          <p className={`text-[10px] ${entry.hit ? 'text-realm-text-primary' : 'text-realm-text-muted'}`}>
-            {hitDesc}
-          </p>
-        )}
+    <div className="p-2 bg-realm-bg-900/50 rounded mt-1.5">
+      {/* Narrator text — the story, prominent */}
+      {entry.narratorText ? (
+        <p className={`text-xs leading-relaxed ${isPlayer ? 'text-realm-text-primary' : 'text-realm-text-secondary'}`}>
+          <span className={`font-display ${actorColor}`}>{entry.actor}</span>
+          <span className="text-realm-text-primary"> {entry.narratorText.replace(new RegExp(`^${entry.actor}\\s*`, 'i'), '')}</span>
+          {entry.targetKilled && <span className="text-realm-danger font-display ml-1">☠</span>}
+          {entry.isCritical && <span className="text-realm-gold-400 font-display ml-1">✦</span>}
+        </p>
+      ) : (
+        <p className="text-xs text-realm-text-secondary">
+          <span className={`font-display ${actorColor}`}>{entry.actor}</span>{' '}
+          {entry.abilityName || `${entry.action}${entry.weaponName ? ` (${entry.weaponName})` : ''}`}
+          {entry.targetKilled && <span className="text-realm-danger font-display ml-1">☠</span>}
+        </p>
+      )}
+
+      {/* Mechanical detail — supporting numbers, small/muted */}
+      <p className="text-[10px] text-realm-text-muted/60 mt-0.5 leading-snug">
+        {parts.join(' · ')}
+      </p>
+
+      {/* Status effects */}
+      {((entry.statusEffectsApplied && entry.statusEffectsApplied.length > 0) ||
+        (entry.statusEffectsExpired && entry.statusEffectsExpired.length > 0)) && (
         <div className="flex flex-wrap gap-1.5 mt-0.5">
-          {entry.damageRoll && entry.damageRoll.total > 0 && (
-            <span className="text-realm-danger text-[10px] flex items-center gap-0.5">
-              <Swords className="w-2.5 h-2.5" /> {entry.damageRoll.total}
-              {entry.damageRoll.type && <span className="opacity-60 ml-0.5">{entry.damageRoll.type}</span>}
-            </span>
-          )}
-          {entry.healAmount != null && entry.healAmount > 0 && (
-            <span className="text-realm-success text-[10px] flex items-center gap-0.5">
-              <Heart className="w-2.5 h-2.5" /> +{entry.healAmount}
-            </span>
-          )}
-          {entry.targetKilled && (
-            <span className="text-realm-danger text-[10px] flex items-center gap-0.5">
-              <Skull className="w-2.5 h-2.5" /> Killed!
-            </span>
-          )}
-          {entry.statusEffectsApplied && entry.statusEffectsApplied.map((eff, i) => (
+          {entry.statusEffectsApplied?.map((eff, i) => (
             <span key={`a-${i}`} className="text-realm-teal-300 text-[10px] flex items-center gap-0.5">
               <Zap className="w-2.5 h-2.5" /> +{eff}
             </span>
           ))}
-          {entry.statusEffectsExpired && entry.statusEffectsExpired.map((eff, i) => (
+          {entry.statusEffectsExpired?.map((eff, i) => (
             <span key={`e-${i}`} className="text-realm-text-muted text-[10px] flex items-center gap-0.5">
               <Zap className="w-2.5 h-2.5" /> -{eff}
             </span>
           ))}
         </div>
-        {entry.targetHpBefore != null && entry.targetHpAfter != null && (
-          <p className="text-realm-text-muted text-[9px] mt-0.5">
-            Target HP: {entry.targetHpBefore} &rarr; {entry.targetHpAfter}
-          </p>
-        )}
-      </div>
+      )}
     </div>
   );
 }
