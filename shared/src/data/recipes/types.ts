@@ -184,6 +184,74 @@ export interface ConsumableStats {
 
 export type ConsumableProfession = 'ALCHEMIST' | 'COOK' | 'BREWER' | 'SCRIBE' | 'SMELTER' | 'TANNER';
 
+// ============================================================
+// PROFICIENCY CATEGORY DERIVATION
+// ============================================================
+
+import type { ProfArmorCategory, ProfWeaponCategory } from '../combat-constants';
+
+const SIMPLE_MELEE_NAMES = ['dagger', 'mace', 'spear', 'club', 'quarterstaff', 'sickle', 'javelin', 'handaxe', 'light hammer'];
+const INSTRUMENT_NAMES = ['drum', 'lute', 'flute', 'horn', 'harp', 'fiddle', 'pipes', 'lyre', 'tambourine'];
+
+/** Derive armor proficiency category from recipe metadata */
+export function deriveArmorCategory(recipe: FinishedGoodsRecipe): ProfArmorCategory | null {
+  if (recipe.outputItemType !== 'ARMOR') return null;
+  if (recipe.equipSlot === 'OFF_HAND') return 'shield';
+  switch (recipe.professionRequired) {
+    case 'ARMORER': return 'heavy';
+    case 'TANNER': return 'medium';
+    case 'TAILOR': return 'none';  // cloth = always proficient
+    case 'LEATHERWORKER':
+      return recipe.tier <= 1 ? 'light' : 'medium';
+    default: return null;
+  }
+}
+
+/** Derive weapon proficiency category from recipe metadata */
+export function deriveWeaponCategory(recipe: FinishedGoodsRecipe): ProfWeaponCategory | null {
+  if (recipe.outputItemType !== 'WEAPON') return null;
+  const stats = recipe.outputStats as WeaponStats;
+  const name = recipe.name.toLowerCase();
+
+  // Caster weapon types by damage type
+  if (stats.damageType === 'FORCE' && (name.includes('staff') || stats.twoHanded)) return 'staff';
+  if (stats.damageType === 'FORCE' && name.includes('wand')) return 'wand';
+  if (stats.damageType === 'RADIANT' && (name.includes('holy') || name.includes('symbol'))) return 'holy_symbol';
+  if (stats.damageType === 'THUNDER' || INSTRUMENT_NAMES.some(i => name.includes(i))) return 'instrument';
+  if (stats.damageType === 'PSYCHIC' && name.includes('orb')) return 'orb';
+  if (stats.damageType === 'PSYCHIC' && (name.includes('staff') || stats.twoHanded)) return 'staff';
+
+  // Ranged weapons
+  if (stats.range || name.includes('bow') || name.includes('crossbow') || name.includes('throwing')) {
+    // Simple ranged: shortbow, throwing knives, sling
+    if (name.includes('short') || name.includes('throwing') || name.includes('sling') || name.includes('practice')) {
+      return 'simple_ranged';
+    }
+    return 'martial_ranged';
+  }
+
+  // Melee weapons
+  if (SIMPLE_MELEE_NAMES.some(s => name.includes(s))) return 'simple_melee';
+  return 'martial_melee';
+}
+
+/** Add proficiency categories to recipe outputStats at export time */
+export function tagRecipesWithCategories<T extends FinishedGoodsRecipe>(recipes: T[]): T[] {
+  return recipes.map(recipe => {
+    const armorCat = deriveArmorCategory(recipe);
+    const weaponCat = deriveWeaponCategory(recipe);
+    if (!armorCat && !weaponCat) return recipe;
+    return {
+      ...recipe,
+      outputStats: {
+        ...recipe.outputStats,
+        ...(armorCat != null && { armorCategory: armorCat }),
+        ...(weaponCat != null && { weaponCategory: weaponCat }),
+      },
+    };
+  });
+}
+
 export interface ConsumableRecipe {
   recipeId: string;
   name: string;

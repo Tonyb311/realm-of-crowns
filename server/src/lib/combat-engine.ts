@@ -102,6 +102,13 @@ function noOpDefend(actorId: string): DefendResult {
   return { type: 'defend', actorId, acBonusGranted: 0 };
 }
 
+/** Non-proficient armor penalty: -3 to STR and DEX saving throws */
+function getNonProfArmorSavePenalty(target: Combatant, saveType: string): number {
+  if (!target.nonProficientArmor) return 0;
+  if (saveType === 'str' || saveType === 'dex') return -3;
+  return 0;
+}
+
 // ---- Status Effect Definitions ----
 // Numeric modifiers driven by STATUS_EFFECT_MECHANICS from shared package.
 // This interface adds dotDamage/hotHealing functions for tick processing.
@@ -589,6 +596,16 @@ export function resolveAttack(
   if (buffAtkMod !== 0) {
     atkModBreakdown.push({ source: 'classBuffs', value: buffAtkMod });
     atkMod += buffAtkMod;
+  }
+
+  // Proficiency penalties
+  if (actor.nonProficientArmor) {
+    atkModBreakdown.push({ source: 'nonProfArmor', value: -3 });
+    atkMod -= 3;
+  }
+  if (actor.nonProficientWeapon) {
+    atkModBreakdown.push({ source: 'nonProfWeapon', value: -actor.proficiencyBonus });
+    atkMod -= actor.proficiencyBonus;
   }
 
   // Phase 5A: Class ability attack modifiers (set by handleDamage)
@@ -1386,6 +1403,8 @@ export function resolveCast(
       const def = STATUS_EFFECT_DEFS[eff.name];
       if (def) totalSaveMod += def.saveModifier;
     }
+    // Non-proficient armor: -3 to STR/DEX saves
+    totalSaveMod += getNonProfArmorSavePenalty(target, spell.saveType);
     const save = savingThrow(totalSaveMod, saveDC);
     // Legendary Resistance check
     { const lr = checkLegendaryResistance(state, targetId, save, saveDC);
@@ -3478,7 +3497,8 @@ export function resolveDeathThroes(
     }
   }
 
-  const saveResult = savingThrow(statMod + profBonus + statusSaveMod, def.deathSaveDC);
+  const profPenalty = getNonProfArmorSavePenalty(player, saveStat);
+  const saveResult = savingThrow(statMod + profBonus + statusSaveMod + profPenalty, def.deathSaveDC);
   const savePassed = saveResult.success;
 
   let finalDamage = savePassed ? Math.floor(totalDmg / 2) : totalDmg;
@@ -3629,7 +3649,8 @@ export function checkPhaseTransitions(
             const effDef = STATUS_EFFECT_DEFS[eff.name];
             if (effDef && effDef.saveModifier !== 0) statusSaveMod += effDef.saveModifier;
           }
-          const saveResult = savingThrow(statMod + profBonus + statusSaveMod, effect.aoeBurst.saveDC);
+          const burstProfPenalty = getNonProfArmorSavePenalty(player, saveStat);
+          const saveResult = savingThrow(statMod + profBonus + statusSaveMod + burstProfPenalty, effect.aoeBurst.saveDC);
           const passed = saveResult.success;
           const finalBurstDmg = passed ? Math.floor(burstDamage / 2) : burstDamage;
 

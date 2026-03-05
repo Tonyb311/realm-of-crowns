@@ -15,7 +15,7 @@
  * Slots: HEAD, CHEST, HANDS, LEGS, FEET, OFF_HAND (shields), BACK (cloaks)
  */
 
-import { ITEMS, FinishedGoodsRecipe } from './types';
+import { ITEMS, FinishedGoodsRecipe, tagRecipesWithCategories } from './types';
 
 // ============================================================
 // ARMORER RECIPES - Metal Armor (plate/mail)
@@ -2514,9 +2514,9 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
 // Combined export
 // ============================================================
 
-export const ALL_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
+export const ALL_ARMOR_RECIPES: FinishedGoodsRecipe[] = tagRecipesWithCategories([
   ...ARMORER_RECIPES,
   ...LEATHERWORKER_ARMOR_RECIPES,
   ...TAILOR_ARMOR_RECIPES,
   ...TANNER_ARMOR_RECIPES,
-];
+]);

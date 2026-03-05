@@ -11,6 +11,7 @@ import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
 import { onEquipItem } from '../services/quest-triggers';
 import { getEnchantmentEffect } from '@shared/data/enchantment-effects';
+import { checkEquipmentProficiency } from '@shared/utils/proficiency';
 
 const router = Router();
 
@@ -155,6 +156,22 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
 
     onEquipItem(character.id).catch(() => {}); // fire-and-forget
 
+    // Check proficiency after equip — fetch all equipped items for full check
+    let proficiencyWarnings: string[] = [];
+    if (character.class) {
+      const allEquipped = await prisma.characterEquipment.findMany({
+        where: { characterId: character.id },
+        include: { item: { include: { template: true } } },
+      });
+      const itemsForCheck = allEquipped.map(eq => ({
+        slot: eq.slot,
+        stats: (eq.item.template.stats as Record<string, any>) ?? {},
+        itemName: eq.item.template.name,
+      }));
+      const profCheck = checkEquipmentProficiency(character.class, itemsForCheck);
+      proficiencyWarnings = profCheck.warnings;
+    }
+
     return res.json({
       equipped: {
         slot,
@@ -172,6 +189,7 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
           returnedToInventory: true,
         } : null,
       },
+      proficiencyWarnings,
     });
   } catch (error) {
     if (handlePrismaError(error, res, 'equip-item', req)) return;

@@ -5,9 +5,9 @@
  *   Copper (Lvl 1) -> Iron (Lvl 10) -> Steel (Lvl 30) -> Mithril (Lvl 55) -> Adamantine (Lvl 75)
  */
 
-import { FinishedGoodsRecipe } from './types';
+import { FinishedGoodsRecipe, tagRecipesWithCategories } from './types';
 
-export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
+const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
   // ============================================================
   // COPPER WEAPONS (Tier 1, Level 1)
   // ============================================================
@@ -874,3 +874,5 @@ export const BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     },
   },
 ];
+
+export const BLACKSMITH_WEAPON_RECIPES = tagRecipesWithCategories(_BLACKSMITH_WEAPON_RECIPES);

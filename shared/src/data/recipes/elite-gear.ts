@@ -6,7 +6,7 @@
  * This enforces the fighter↔crafter interdependence loop.
  */
 
-import { FinishedGoodsRecipe } from './types';
+import { FinishedGoodsRecipe, tagRecipesWithCategories } from './types';
 import { ITEMS } from '../items/item-names';
 
 // ============================================================
@@ -836,7 +836,7 @@ export const ELITE_FLETCHER_RECIPES: FinishedGoodsRecipe[] = [
 // COMBINED EXPORTS
 // ============================================================
 
-export const ALL_ELITE_RECIPES: FinishedGoodsRecipe[] = [
+export const ALL_ELITE_RECIPES: FinishedGoodsRecipe[] = tagRecipesWithCategories([
   ...ELITE_BLACKSMITH_WEAPONS,
   ...ELITE_ARMORER_RECIPES,
   ...ELITE_ENCHANTER_RECIPES,
@@ -845,4 +845,4 @@ export const ALL_ELITE_RECIPES: FinishedGoodsRecipe[] = [
   ...ELITE_TAILOR_RECIPES,
   ...ELITE_WOODWORKER_RECIPES,
   ...ELITE_FLETCHER_RECIPES,
-];
+]);

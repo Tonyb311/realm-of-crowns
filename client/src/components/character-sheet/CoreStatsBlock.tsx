@@ -1,5 +1,5 @@
 import {
-  Swords, Eye, Heart, Brain, Sparkles, User, Shield, Crosshair, Zap,
+  Swords, Eye, Heart, Brain, Sparkles, User, Shield, Crosshair, Zap, AlertTriangle,
 } from 'lucide-react';
 import { RealmPanel, RealmProgress, RealmTooltip } from '../ui/realm-index';
 
@@ -105,6 +105,19 @@ export function CoreStatsBlock({ sheet, isOwnProfile }: Props) {
           <div className="text-[10px] text-realm-text-muted uppercase">Save DC</div>
         </div>
       </div>
+
+      {/* Proficiency warnings */}
+      {isOwnProfile && sheet.proficiencyWarnings?.length > 0 && (
+        <div className="mt-3 p-3 bg-red-900/30 border border-red-500/40 rounded-lg">
+          <div className="flex items-center gap-2 mb-1">
+            <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+            <span className="text-sm font-semibold text-red-300">Proficiency Warning</span>
+          </div>
+          {sheet.proficiencyWarnings.map((w: string, i: number) => (
+            <p key={i} className="text-xs text-red-200/80 ml-6">{w}</p>
+          ))}
+        </div>
+      )}
     </RealmPanel>
   );
 }

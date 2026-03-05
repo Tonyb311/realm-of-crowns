@@ -11,9 +11,9 @@
  * Also includes BLACKSMITH Throwing Knives (unchanged).
  */
 
-import { ITEMS, type FinishedGoodsRecipe } from './types';
+import { ITEMS, type FinishedGoodsRecipe, tagRecipesWithCategories } from './types';
 
-export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
+const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
   // ============================================================
   // APPRENTICE TIER (L1-L10) — 4 recipes
   // ============================================================
@@ -611,3 +611,5 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     },
   },
 ];
+
+export const RANGED_WEAPON_RECIPES = tagRecipesWithCategories(_RANGED_WEAPON_RECIPES);

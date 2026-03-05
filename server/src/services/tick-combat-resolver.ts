@@ -242,6 +242,18 @@ function decideAction(
     }
   }
 
+  // ---- 1a5. Non-proficient armor — no class abilities, basic attack only ----
+  if (actor.nonProficientArmor && actor.entityType !== 'monster') {
+    const target = enemies.length > 0 ? enemies[0] : null;
+    if (target) {
+      return {
+        action: { type: 'attack', actorId, targetId: target.id },
+        context: { weapon: params.weapon ?? undefined },
+      };
+    }
+    return { action: { type: 'defend', actorId }, context: {} };
+  }
+
   // ---- 1b. Monster ability AI ----
   if (actor.entityType === 'monster' && actor.monsterAbilities && actor.monsterAbilities.length > 0) {
     const target = enemies.length > 0 ? enemies.reduce((w, e) => e.currentHp < w.currentHp ? e : w) : null;
@@ -995,6 +1007,19 @@ export async function resolveNodePvE(
   (playerCombatant as any).race = character.race.toLowerCase();
   (playerCombatant as any).subRace = character.subRace;
   (playerCombatant as any).characterClass = character.class?.toLowerCase() ?? null;
+
+  // Set proficiency flags based on equipped items
+  if (character.class && character.equipment) {
+    const { checkEquipmentProficiency } = await import('@shared/utils/proficiency');
+    const itemsForCheck = character.equipment.map((eq: any) => ({
+      slot: eq.slot,
+      stats: (eq.item?.template?.stats as Record<string, any>) ?? {},
+      itemName: eq.item?.template?.name,
+    }));
+    const profCheck = checkEquipmentProficiency(character.class, itemsForCheck);
+    (playerCombatant as any).nonProficientArmor = profCheck.nonProficientArmor;
+    (playerCombatant as any).nonProficientWeapon = profCheck.nonProficientWeapon;
+  }
 
   const monsterCombatant = createMonsterCombatant(
     `monster-${monster.id}`,

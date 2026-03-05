@@ -26,6 +26,7 @@ interface EquipmentItem {
   quality: string;
   stats?: any;
   enchanted?: boolean;
+  nonProficient?: boolean;
 }
 
 interface Props {
@@ -57,6 +58,7 @@ export function EquipmentPaperDoll({ equipment, isOwnProfile }: Props) {
           const Icon = slot.icon;
           const rarity = item ? getRarityStyle(item.quality) : null;
 
+          const isNonProf = item?.nonProficient;
           const slotContent = (
             <div
               key={slot.key}
@@ -64,31 +66,39 @@ export function EquipmentPaperDoll({ equipment, isOwnProfile }: Props) {
               className={`
                 flex flex-col items-center justify-center p-2 rounded-lg border text-center min-h-[60px]
                 ${item
-                  ? `border-realm-border/60 bg-realm-bg-800 ${rarity?.border ?? ''}`
+                  ? isNonProf
+                    ? 'border-red-500/60 bg-red-900/20'
+                    : `border-realm-border/60 bg-realm-bg-800 ${rarity?.border ?? ''}`
                   : 'border-realm-border/20 bg-realm-bg-800/30'
                 }
               `}
             >
-              <Icon className={`w-4 h-4 mb-0.5 ${item ? (rarity?.text ?? 'text-realm-text-primary') : 'text-realm-text-muted/30'}`} />
+              <Icon className={`w-4 h-4 mb-0.5 ${item ? (isNonProf ? 'text-red-400' : (rarity?.text ?? 'text-realm-text-primary')) : 'text-realm-text-muted/30'}`} />
               {item ? (
-                <span className={`text-[10px] leading-tight font-semibold ${rarity?.text ?? 'text-realm-text-primary'}`}>
+                <span className={`text-[10px] leading-tight font-semibold ${isNonProf ? 'text-red-300' : (rarity?.text ?? 'text-realm-text-primary')}`}>
                   {item.itemName}
                   {item.enchanted && <span className="text-realm-purple-300 ml-0.5">*</span>}
                 </span>
               ) : (
                 <span className="text-[10px] text-realm-text-muted/30 italic">{slot.label}</span>
               )}
+              {isNonProf && (
+                <span className="text-[8px] text-red-400 mt-0.5">Not proficient</span>
+              )}
             </div>
           );
 
-          if (item && isOwnProfile && item.stats) {
-            const fs = item.stats.finalStats ?? {};
+          if (item && isOwnProfile) {
             const lines: string[] = [];
-            if (fs.damage) lines.push(`+${Math.round(fs.damage)} Damage`);
-            if (fs.armor) lines.push(`+${Math.round(fs.armor)} AC`);
-            ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'].forEach(s => {
-              if (fs[s]) lines.push(`+${Math.round(fs[s])} ${s.slice(0, 3).toUpperCase()}`);
-            });
+            if (item.stats) {
+              const fs = item.stats.finalStats ?? {};
+              if (fs.damage) lines.push(`+${Math.round(fs.damage)} Damage`);
+              if (fs.armor) lines.push(`+${Math.round(fs.armor)} AC`);
+              ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'].forEach(s => {
+                if (fs[s]) lines.push(`+${Math.round(fs[s])} ${s.slice(0, 3).toUpperCase()}`);
+              });
+            }
+            if (isNonProf) lines.push('Not proficient \u2014 combat penalties apply');
             if (lines.length > 0) {
               return (
                 <RealmTooltip key={slot.key} content={<div className="text-xs">{lines.join(' | ')}</div>}>

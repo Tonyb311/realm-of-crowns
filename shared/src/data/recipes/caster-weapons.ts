@@ -10,7 +10,7 @@
  * Crafted by: ENCHANTER, JEWELER, WOODWORKER, BLACKSMITH
  */
 
-import { FinishedGoodsRecipe } from './types';
+import { FinishedGoodsRecipe, tagRecipesWithCategories } from './types';
 
 // ============================================================
 // ENCHANTER — Mage Staves (2H) + Mage Wands (1H) + Psion Crystal Staves (2H)
@@ -1116,9 +1116,9 @@ export const BLACKSMITH_CASTER_RECIPES: FinishedGoodsRecipe[] = [
 // Combined export
 // ============================================================
 
-export const ALL_CASTER_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
+export const ALL_CASTER_WEAPON_RECIPES: FinishedGoodsRecipe[] = tagRecipesWithCategories([
   ...ENCHANTER_CASTER_RECIPES,
   ...JEWELER_CASTER_RECIPES,
   ...WOODWORKER_CASTER_RECIPES,
   ...BLACKSMITH_CASTER_RECIPES,
-];
+]);

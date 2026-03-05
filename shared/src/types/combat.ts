@@ -582,6 +582,10 @@ export interface Combatant {
   swallowEscapeThreshold?: number;
   /** Setup tags for ability chaining AI (e.g., 'stealthed' from Vanish → Ambush) */
   setupTags?: string[];
+  /** Proficiency: wearing armor the class isn't proficient with */
+  nonProficientArmor?: boolean;
+  /** Proficiency: wielding a weapon the class isn't proficient with */
+  nonProficientWeapon?: boolean;
 }
 
 export interface ClassAbilityAttackMods {

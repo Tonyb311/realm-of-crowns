@@ -1,7 +1,8 @@
 import { prisma } from '../lib/prisma';
 import { calculateEquipmentTotals } from './item-stats';
 import { getProficiencyBonus, getModifier } from '@shared/utils/bounded-accuracy';
-import { CLASS_SAVE_PROFICIENCIES, CLASS_PRIMARY_STAT } from '@shared/data/combat-constants';
+import { CLASS_SAVE_PROFICIENCIES, CLASS_PRIMARY_STAT, CLASS_ARMOR_PROFICIENCY, CLASS_WEAPON_PROFICIENCY } from '@shared/data/combat-constants';
+import { checkEquipmentProficiency } from '@shared/utils/proficiency';
 import { TIER0_ABILITIES_BY_CLASS, ABILITIES_BY_CLASS, TIER0_CHOICE_LEVELS } from '@shared/data/skills';
 import { getRace } from '@shared/data/races';
 
@@ -10,6 +11,20 @@ const STAT_LONG_TO_SHORT: Record<string, string> = {
   strength: 'str', dexterity: 'dex', constitution: 'con',
   intelligence: 'int', wisdom: 'wis', charisma: 'cha',
 };
+
+function isItemNonProficient(slot: string, templateStats: Record<string, any>, charClass: string): boolean {
+  const armorProfs = CLASS_ARMOR_PROFICIENCY[charClass] ?? [];
+  const weaponProfs = CLASS_WEAPON_PROFICIENCY[charClass] ?? [];
+  const armorSlots = new Set(['HEAD', 'CHEST', 'HANDS', 'LEGS', 'FEET', 'BACK', 'OFF_HAND']);
+  if (armorSlots.has(slot) && templateStats.armorCategory) {
+    const cat = templateStats.armorCategory;
+    if (cat !== 'none' && !armorProfs.includes(cat)) return true;
+  }
+  if (slot === 'MAIN_HAND' && templateStats.weaponCategory) {
+    if (!weaponProfs.includes(templateStats.weaponCategory)) return true;
+  }
+  return false;
+}
 
 export async function buildCharacterSheet(characterId: string, viewerId: string | null) {
   const isOwner = viewerId === characterId;
@@ -151,6 +166,16 @@ export async function buildCharacterSheet(characterId: string, viewerId: string 
     abilities: raceData.abilities.filter(a => a.levelRequired <= level),
   } : null;
 
+  // Proficiency check
+  const armorProficiencies = CLASS_ARMOR_PROFICIENCY[charClass] ?? [];
+  const weaponProficiencies = CLASS_WEAPON_PROFICIENCY[charClass] ?? [];
+  const itemsForProfCheck = (character.equipment ?? []).map((eq: any) => ({
+    slot: eq.slot,
+    stats: (eq.item?.template?.stats as Record<string, any>) ?? {},
+    itemName: eq.item?.template?.name ?? '',
+  }));
+  const profCheck = checkEquipmentProficiency(charClass, itemsForProfCheck);
+
   // Equipment for display
   const equippedItems = equipTotals.items.map(item => ({
     slot: item.slot,
@@ -160,6 +185,11 @@ export async function buildCharacterSheet(characterId: string, viewerId: string 
     stats: isOwner ? item.stats : undefined,
     enchanted: !!(item.stats.enchantmentBonuses &&
       Object.values(item.stats.enchantmentBonuses).some(v => typeof v === 'number' && v > 0)),
+    nonProficient: isOwner ? isItemNonProficient(
+      item.slot,
+      ((character.equipment ?? []).find((eq: any) => eq.slot === item.slot)?.item?.template?.stats as Record<string, any>) ?? {},
+      charClass
+    ) : undefined,
   }));
 
   // Guild info
@@ -209,6 +239,9 @@ export async function buildCharacterSheet(characterId: string, viewerId: string 
     equipment: equippedItems,
     professions,
     combatRecord: combatStats,
+    armorProficiencies,
+    weaponProficiencies,
+    proficiencyWarnings: profCheck.warnings,
   };
 
   // Owner-only fields

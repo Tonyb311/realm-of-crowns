@@ -485,6 +485,8 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
         );
         (playerCombatant as any).characterClass = player.class;
         (playerCombatant as any).race = player.race;
+        (playerCombatant as any).nonProficientArmor = false;
+        (playerCombatant as any).nonProficientWeapon = false;
 
         const monsterCombatant = createMonsterCombatant(
           `sim-monster-${mIdx}-${i}`, monster.name, 1,
@@ -873,6 +875,8 @@ async function runGroupCommand(args: ReturnType<typeof parseArgs>): Promise<void
           );
           (combatant as any).characterClass = player.class;
           (combatant as any).race = player.race;
+          (combatant as any).nonProficientArmor = false;
+          (combatant as any).nonProficientWeapon = false;
           playerCombatants.push(combatant);
 
           const playerParams = buildPlayerCombatParams(player, {
