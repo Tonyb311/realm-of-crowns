@@ -19,6 +19,8 @@ import {
 import api from '../services/api';
 import { getRarityStyle } from '../constants';
 import { RealmButton } from '../components/ui/realm-index';
+import { EnchantModal } from '../components/enchanting/EnchantModal';
+import { Sparkles } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,7 +44,7 @@ interface InventoryItem {
   quality: string;
   craftedById: string | null;
   craftedByName?: string;
-  enchantments: string[];
+  enchantments: Array<{ scrollName: string; bonuses: Record<string, number> }>;
 }
 
 interface EquippedItemData {
@@ -168,6 +170,7 @@ export default function InventoryPage() {
   const queryClient = useQueryClient();
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [confirmEquip, setConfirmEquip] = useState<{ item: InventoryItem; slot: string; replacing: EquippedItemData | null } | null>(null);
+  const [enchantTarget, setEnchantTarget] = useState<InventoryItem | null>(null);
 
   // Fetch character data (inventory + gold)
   const {
@@ -466,6 +469,7 @@ export default function InventoryPage() {
                 onClose={() => setSelectedItem(null)}
                 onEquip={() => handleEquipClick(selectedItem)}
                 onUnequip={(slot) => unequipMutation.mutate(slot)}
+                onEnchant={() => setEnchantTarget(selectedItem)}
                 isEquipping={equipMutation.isPending}
                 isUnequipping={unequipMutation.isPending}
               />
@@ -505,6 +509,16 @@ export default function InventoryPage() {
           </div>
         </div>
       )}
+
+      {/* Enchant Modal */}
+      {enchantTarget && character && (
+        <EnchantModal
+          isOpen={!!enchantTarget}
+          onClose={() => setEnchantTarget(null)}
+          targetItem={enchantTarget}
+          inventory={character.inventory}
+        />
+      )}
     </div>
   );
 }
@@ -518,6 +532,7 @@ interface ItemDetailPanelProps {
   onClose: () => void;
   onEquip: () => void;
   onUnequip: (slot: string) => void;
+  onEnchant: () => void;
   isEquipping: boolean;
   isUnequipping: boolean;
 }
@@ -528,6 +543,7 @@ function ItemDetailPanel({
   onClose,
   onEquip,
   onUnequip,
+  onEnchant,
   isEquipping,
   isUnequipping,
 }: ItemDetailPanelProps) {
@@ -630,6 +646,24 @@ function ItemDetailPanel({
         </div>
       )}
 
+      {/* Enchantments */}
+      {Array.isArray(item.enchantments) && item.enchantments.length > 0 && (
+        <div className="mb-4">
+          <span className="text-xs text-realm-text-muted uppercase tracking-wider">Enchantments</span>
+          <div className="mt-1 space-y-1">
+            {item.enchantments.map((ench, i) => (
+              <div key={i} className="flex items-center gap-1 text-xs text-realm-purple-400">
+                <Sparkles className="w-3 h-3" />
+                <span>{ench.scrollName.replace(' Enchantment Scroll', '')}</span>
+                <span className="text-realm-text-muted">
+                  ({Object.entries(ench.bonuses).map(([k, v]) => `+${v} ${k.replace(/([A-Z])/g, ' $1').trim()}`).join(', ')})
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="mt-6 space-y-2">
         {equippedSlot ? (
@@ -652,6 +686,16 @@ function ItemDetailPanel({
               {isEquipping ? 'Equipping...' : item.currentDurability <= 0 ? 'Broken' : 'Equip'}
             </RealmButton>
           )
+        )}
+        {(item.template.type === 'WEAPON' || item.template.type === 'ARMOR') && (
+          <RealmButton
+            variant="ghost"
+            className="w-full flex items-center justify-center gap-1.5"
+            onClick={onEnchant}
+          >
+            <Sparkles className="w-4 h-4 text-realm-gold-400" />
+            Enchant
+          </RealmButton>
         )}
       </div>
     </div>

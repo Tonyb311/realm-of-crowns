@@ -300,6 +300,7 @@ export const MONSTERS: MonsterDef[] = [
     },
     lootTable: [
       { dropChance: 0.4, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+      { dropChance: 0.25, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Ember Core' },
     ],
   },
   {
@@ -380,6 +381,7 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.3, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Arcane Reagents' },
       { dropChance: 0.6, minQty: 1, maxQty: 3, gold: 2 },
+      { dropChance: 0.10, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Fey Tear' },
     ],
   },
   {
@@ -535,6 +537,7 @@ export const MONSTERS: MonsterDef[] = [
     },
     lootTable: [
       { dropChance: 0.6, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+      { dropChance: 0.30, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Spider Venom' },
     ],
   },
   {
@@ -720,6 +723,7 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.5, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Parts' },
       { dropChance: 0.5, minQty: 2, maxQty: 8, gold: 6 },
+      { dropChance: 0.20, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Storm Feather' },
     ],
   },
   {
@@ -742,6 +746,7 @@ export const MONSTERS: MonsterDef[] = [
     },
     lootTable: [
       { dropChance: 0.45, minQty: 1, maxQty: 3, gold: 0, itemTemplateName: 'Arcane Reagents' },
+      { dropChance: 0.30, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Ember Core' },
     ],
   },
   {
@@ -763,6 +768,7 @@ export const MONSTERS: MonsterDef[] = [
     },
     lootTable: [
       { dropChance: 0.65, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Animal Pelts' },
+      { dropChance: 0.25, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Frost Essence' },
     ],
   },
   {
@@ -813,6 +819,7 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.6, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Parts' },
       { dropChance: 0.3, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+      { dropChance: 0.25, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Spider Venom' },
     ],
   },
   {
@@ -860,6 +867,7 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 1.0, minQty: 10, maxQty: 40, gold: 0 },
       { dropChance: 0.4, minQty: 1, maxQty: 3, gold: 0, itemTemplateName: 'Bones' },
+      { dropChance: 0.20, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Earth Crystal' },
     ],
   },
   {
@@ -1086,6 +1094,7 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.50, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Monster Hide' },
       { dropChance: 0.30, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+      { dropChance: 0.20, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Basilisk Scale' },
     ],
   },
   {
@@ -1115,6 +1124,7 @@ export const MONSTERS: MonsterDef[] = [
     },
     lootTable: [
       { dropChance: 0.45, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Arcane Reagents' },
+      { dropChance: 0.25, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Living Bark' },
     ],
   },
   {
@@ -1471,6 +1481,7 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.80, minQty: 15, maxQty: 40, gold: 15 },
       { dropChance: 0.55, minQty: 2, maxQty: 4, gold: 0, itemTemplateName: 'Arcane Reagents' },
+      { dropChance: 0.15, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Fey Tear' },
     ],
   },
   {
@@ -1597,6 +1608,7 @@ export const MONSTERS: MonsterDef[] = [
     },
     lootTable: [
       { dropChance: 0.40, minQty: 2, maxQty: 3, gold: 0, itemTemplateName: 'Arcane Reagents' },
+      { dropChance: 0.20, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Shadow Essence' },
     ],
   },
 
@@ -1733,6 +1745,8 @@ export const MONSTERS: MonsterDef[] = [
       { dropChance: 0.60, minQty: 5, maxQty: 15, gold: 10 },
       { dropChance: 0.45, minQty: 2, maxQty: 4, gold: 0, itemTemplateName: 'Monster Parts' },
       { dropChance: 0.30, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Arcane Reagents' },
+      { dropChance: 0.25, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Heartwood Sap' },
+      { dropChance: 0.20, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Living Bark' },
     ],
   },
   {
@@ -1885,6 +1899,7 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.55, minQty: 8, maxQty: 20, gold: 12 },
       { dropChance: 0.35, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Monster Parts' },
+      { dropChance: 0.30, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Frost Essence' },
     ],
   },
   {
@@ -1951,6 +1966,7 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.45, minQty: 2, maxQty: 4, gold: 0, itemTemplateName: 'Monster Parts' },
       { dropChance: 0.20, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Arcane Reagents' },
+      { dropChance: 0.25, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Earth Crystal' },
     ],
   },
   {
@@ -2849,6 +2865,7 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.80, minQty: 130, maxQty: 230, gold: 0 },
       { dropChance: 0.50, minQty: 2, maxQty: 4, gold: 0, itemTemplateName: 'Monster Hide' },
+      { dropChance: 0.12, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Basilisk Eye' },
     ],
   },
   {
@@ -2974,6 +2991,7 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.80, minQty: 180, maxQty: 320, gold: 0 },
       { dropChance: 0.50, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Monster Hide' },
+      { dropChance: 0.15, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Storm Feather' },
     ],
   },
   {
@@ -3074,6 +3092,7 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.80, minQty: 100, maxQty: 200, gold: 0 },
       { dropChance: 0.50, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Arcane Reagents' },
+      { dropChance: 0.30, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Heartwood Sap' },
     ],
   },
   {
@@ -3170,6 +3189,7 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.80, minQty: 120, maxQty: 240, gold: 0 },
       { dropChance: 0.50, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Bones' },
+      { dropChance: 0.25, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Shadow Essence' },
     ],
   },
   {
@@ -3267,6 +3287,7 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.80, minQty: 100, maxQty: 220, gold: 0 },
       { dropChance: 0.50, minQty: 2, maxQty: 5, gold: 0, itemTemplateName: 'Arcane Reagents' },
+      { dropChance: 0.20, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Wind Mote' },
     ],
   },
   {

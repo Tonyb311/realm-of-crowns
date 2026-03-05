@@ -10,6 +10,7 @@ import { calculateItemStats, calculateEquipmentTotals } from '../services/item-s
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
 import { onEquipItem } from '../services/quest-triggers';
+import { getEnchantmentEffect } from '@shared/data/enchantment-effects';
 
 const router = Router();
 
@@ -20,6 +21,11 @@ const equipSchema = z.object({
 
 const unequipSchema = z.object({
   slot: z.nativeEnum(EquipSlot),
+});
+
+const enchantSchema = z.object({
+  scrollItemId: z.string().min(1, 'Scroll item ID is required'),
+  targetItemId: z.string().min(1, 'Target item ID is required'),
 });
 
 // Maps item type to valid equipment slots
@@ -294,6 +300,127 @@ router.get('/stats', authGuard, characterGuard, async (req: AuthenticatedRequest
   } catch (error) {
     if (handlePrismaError(error, res, 'equipment-stats', req)) return;
     logRouteError(req, 500, 'Get equipment stats error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// -------------------------------------------------------------------------
+// POST /api/equipment/enchant — Apply an enchantment scroll to an item
+// -------------------------------------------------------------------------
+router.post('/enchant', authGuard, characterGuard, validate(enchantSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { scrollItemId, targetItemId } = req.body as { scrollItemId: string; targetItemId: string };
+    const character = req.character!;
+
+    // Fetch both items with templates
+    const [scrollItem, targetItem] = await Promise.all([
+      prisma.item.findUnique({ where: { id: scrollItemId }, include: { template: true } }),
+      prisma.item.findUnique({ where: { id: targetItemId }, include: { template: true } }),
+    ]);
+
+    if (!scrollItem || scrollItem.ownerId !== character.id) {
+      return res.status(404).json({ error: 'Scroll not found in your inventory' });
+    }
+    if (!targetItem || targetItem.ownerId !== character.id) {
+      return res.status(404).json({ error: 'Target item not found in your inventory' });
+    }
+
+    // Scroll must be in inventory (not equipped)
+    const scrollInv = await prisma.inventory.findFirst({
+      where: { characterId: character.id, itemId: scrollItemId },
+    });
+    if (!scrollInv) {
+      return res.status(400).json({ error: 'Scroll is not in your inventory' });
+    }
+
+    // Validate scroll is an enchantment scroll
+    if (!scrollItem.template.name.includes('Enchantment Scroll')) {
+      return res.status(400).json({ error: 'Item is not an enchantment scroll' });
+    }
+
+    // Target must be WEAPON or ARMOR
+    if (targetItem.template.type !== 'WEAPON' && targetItem.template.type !== 'ARMOR') {
+      return res.status(400).json({ error: 'Can only enchant weapons and armor' });
+    }
+
+    // Look up enchantment effect
+    const effect = getEnchantmentEffect(scrollItem.template.name);
+    if (!effect) {
+      return res.status(400).json({ error: 'Unknown enchantment scroll type' });
+    }
+
+    // Validate target type constraint
+    if (effect.targetType === 'weapon' && targetItem.template.type !== 'WEAPON') {
+      return res.status(400).json({ error: 'This scroll can only be applied to weapons' });
+    }
+    if (effect.targetType === 'armor' && targetItem.template.type !== 'ARMOR') {
+      return res.status(400).json({ error: 'This scroll can only be applied to armor' });
+    }
+
+    // Check existing enchantments
+    const existingEnchantments = (targetItem.enchantments as Array<{ scrollName: string }>) || [];
+
+    // No duplicate same-type enchantments
+    if (existingEnchantments.some(e => e.scrollName === scrollItem.template.name)) {
+      return res.status(400).json({ error: 'This enchantment is already applied to this item' });
+    }
+
+    // Max 2 enchantments per item
+    if (existingEnchantments.length >= 2) {
+      return res.status(400).json({ error: 'This item already has the maximum of 2 enchantments' });
+    }
+
+    // Build enchantment record
+    const enchantmentRecord = {
+      scrollName: scrollItem.template.name,
+      bonuses: effect.bonuses,
+      ...(effect.elementalDamage ? { elementalDamage: effect.elementalDamage } : {}),
+      appliedAt: new Date().toISOString(),
+    };
+
+    // Apply in transaction
+    const updatedItem = await prisma.$transaction(async (tx) => {
+      // Append enchantment to target item
+      const updated = await tx.item.update({
+        where: { id: targetItemId },
+        data: {
+          enchantments: [...existingEnchantments, enchantmentRecord],
+        },
+        include: { template: true },
+      });
+
+      // Consume the scroll
+      if (scrollInv.quantity <= 1) {
+        await tx.inventory.delete({ where: { id: scrollInv.id } });
+        await tx.item.delete({ where: { id: scrollItemId } });
+      } else {
+        await tx.inventory.update({
+          where: { id: scrollInv.id },
+          data: { quantity: scrollInv.quantity - 1 },
+        });
+      }
+
+      return updated;
+    });
+
+    const calculatedStats = calculateItemStats(updatedItem);
+
+    return res.json({
+      success: true,
+      item: {
+        id: updatedItem.id,
+        name: updatedItem.template.name,
+        type: updatedItem.template.type,
+        quality: updatedItem.quality,
+        enchantments: updatedItem.enchantments,
+        stats: calculatedStats.finalStats,
+        enchantmentBonuses: calculatedStats.enchantmentBonuses,
+      },
+      message: `Applied ${scrollItem.template.name} to ${updatedItem.template.name}`,
+    });
+  } catch (error) {
+    if (handlePrismaError(error, res, 'enchant-item', req)) return;
+    logRouteError(req, 500, 'Enchant item error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
