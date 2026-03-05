@@ -5,6 +5,7 @@
  */
 
 import { prisma } from '../lib/prisma';
+import { calculateItemStats } from './item-stats';
 
 // ---- Types ----
 
@@ -256,7 +257,9 @@ export async function buildCombatParams(characterId: string): Promise<{
   const mainHand = character.equipment.find(e => e.slot === 'MAIN_HAND');
   let equippedWeapon = null;
   if (mainHand) {
+    const calculated = calculateItemStats(mainHand.item);
     const weaponStats = mainHand.item.template.stats as Record<string, any>;
+    const finalStats = calculated.finalStats;
     equippedWeapon = {
       id: mainHand.item.id,
       name: mainHand.item.template.name,
@@ -264,8 +267,8 @@ export async function buildCombatParams(characterId: string): Promise<{
       diceSides: weaponStats.diceSides ?? 6,
       damageModifierStat: weaponStats.damageModifierStat ?? 'str',
       attackModifierStat: weaponStats.attackModifierStat ?? 'str',
-      bonusDamage: weaponStats.bonusDamage ?? 0,
-      bonusAttack: weaponStats.bonusAttack ?? 0,
+      bonusDamage: (finalStats.bonusDamage as number) ?? (finalStats.damage as number) ?? 0,
+      bonusAttack: (finalStats.bonusAttack as number) ?? 0,
       damageType: weaponStats.damageType ?? undefined,
     };
   }
