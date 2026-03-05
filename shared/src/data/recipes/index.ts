@@ -37,6 +37,7 @@ import {
   BLACKSMITH_CASTER_RECIPES,
   ALL_CASTER_WEAPON_RECIPES,
 } from './caster-weapons';
+import { ALL_ELITE_RECIPES } from './elite-gear';
 
 export { SMELTER_RECIPES } from './smelter';
 export { TANNER_RECIPES } from './tanner';
@@ -68,6 +69,7 @@ export {
   BLACKSMITH_CASTER_RECIPES,
   ALL_CASTER_WEAPON_RECIPES,
 } from './caster-weapons';
+export { ALL_ELITE_RECIPES } from './elite-gear';
 
 /** All COOK recipes (food production from raw ingredients). */
 export const ALL_COOK_RECIPES: RecipeDefinition[] = [...COOK_RECIPES];
@@ -143,12 +145,13 @@ export const ALL_BLACKSMITH_RECIPES: FinishedGoodsRecipe[] = [...BLACKSMITH_RECI
 // Armor Recipes (finished goods)
 // ============================================================
 
-/** All finished goods recipes (weapons + armor + blacksmith tools/specialization + tanner). */
+/** All finished goods recipes (weapons + armor + blacksmith tools/specialization + tanner + elite). */
 export const ALL_FINISHED_GOODS_RECIPES: FinishedGoodsRecipe[] = [
   ...ALL_WEAPON_RECIPES,
   ...ALL_ARMOR_RECIPES,
   ...ALL_BLACKSMITH_RECIPES,
   ...WOODWORKER_FINISHED_GOODS,
+  ...ALL_ELITE_RECIPES,
 ];
 
 // Pre-build finished goods lookup maps
