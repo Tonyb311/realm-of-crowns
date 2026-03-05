@@ -42,4 +42,32 @@ export const TANNER_RECIPES: RecipeDefinition[] = [
     xpReward: 28,
     tier: 3,
   },
+  // --- Tier 4: Expert (L50) — Exotic Processing ---
+  {
+    recipeId: 'tan-exotic-leather',
+    name: 'Tan Exotic Leather',
+    professionRequired: 'TANNER',
+    levelRequired: 50,
+    inputs: [
+      { itemName: 'Exotic Hide', quantity: 2 },
+    ],
+    outputs: [{ itemName: 'Exotic Leather', quantity: 2 }],
+    craftTime: 50,
+    xpReward: 40,
+    tier: 4,
+  },
+  // --- Tier 5: Master (L70) — Dragonscale Processing ---
+  {
+    recipeId: 'tan-dragonscale',
+    name: 'Tan Dragonscale Leather',
+    professionRequired: 'TANNER',
+    levelRequired: 70,
+    inputs: [
+      { itemName: 'Dragon Hide', quantity: 2 },
+    ],
+    outputs: [{ itemName: 'Dragonscale Leather', quantity: 2 }],
+    craftTime: 60,
+    xpReward: 55,
+    tier: 5,
+  },
 ];

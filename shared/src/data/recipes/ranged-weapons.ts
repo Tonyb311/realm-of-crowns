@@ -379,6 +379,210 @@ export const RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
   },
 
   // ============================================================
+  // EXPERT TIER (L55) — 3 recipes
+  // ============================================================
+
+  // Mithril-Tipped Arrows — premium ammunition
+  {
+    recipeId: 'fletch-mithril-arrows',
+    name: 'Fletch Mithril-Tipped Arrows',
+    professionRequired: 'FLETCHER',
+    levelRequired: 55,
+    inputs: [
+      { itemName: ITEMS.EXOTIC_PLANKS, quantity: 2 },
+      { itemName: ITEMS.MITHRIL_INGOT, quantity: 1 },
+    ],
+    outputs: [{ itemName: ITEMS.MITHRIL_TIPPED_ARROWS, quantity: 10 }],
+    craftTime: 35,
+    xpReward: 35,
+    tier: 4,
+    outputItemType: 'CONSUMABLE',
+    outputStats: {
+      baseDamage: 10,
+      damageType: 'piercing',
+      speed: 0,
+      requiredStr: 0,
+      requiredDex: 0,
+      durability: 1,
+      levelToEquip: 40,
+      bonusDamage: 3,
+    },
+  },
+
+  // Mithril Longbow — long range, moderate power
+  {
+    recipeId: 'fletch-mithril-longbow',
+    name: 'Craft Mithril Longbow',
+    professionRequired: 'FLETCHER',
+    levelRequired: 55,
+    inputs: [
+      { itemName: ITEMS.EXOTIC_PLANKS, quantity: 1 },
+      { itemName: ITEMS.BOWSTRING, quantity: 1 },
+      { itemName: ITEMS.MITHRIL_INGOT, quantity: 1 },
+      { itemName: ITEMS.BEAR_LEATHER, quantity: 1 },
+    ],
+    outputs: [{ itemName: ITEMS.MITHRIL_LONGBOW, quantity: 1 }],
+    craftTime: 120,
+    xpReward: 80,
+    tier: 4,
+    outputItemType: 'WEAPON',
+    equipSlot: 'MAIN_HAND',
+    outputStats: {
+      baseDamage: 32,
+      damageType: 'piercing',
+      diceCount: 1,
+      diceSides: 10,
+      bonusAttack: 4,
+      bonusDamage: 3,
+      speed: 7,
+      requiredStr: 16,
+      requiredDex: 24,
+      durability: 280,
+      levelToEquip: 45,
+      twoHanded: true,
+      range: 45,
+    },
+  },
+
+  // Mithril Composite Bow — fast, high damage
+  {
+    recipeId: 'fletch-mithril-composite-bow',
+    name: 'Craft Mithril Composite Bow',
+    professionRequired: 'FLETCHER',
+    levelRequired: 55,
+    inputs: [
+      { itemName: ITEMS.EXOTIC_PLANKS, quantity: 1 },
+      { itemName: ITEMS.BOW_STAVE, quantity: 1 },
+      { itemName: ITEMS.BOWSTRING, quantity: 1 },
+      { itemName: ITEMS.MITHRIL_INGOT, quantity: 2 },
+      { itemName: ITEMS.BEAR_LEATHER, quantity: 1 },
+    ],
+    outputs: [{ itemName: ITEMS.MITHRIL_COMPOSITE_BOW, quantity: 1 }],
+    craftTime: 140,
+    xpReward: 90,
+    tier: 4,
+    outputItemType: 'WEAPON',
+    equipSlot: 'MAIN_HAND',
+    outputStats: {
+      baseDamage: 36,
+      damageType: 'piercing',
+      diceCount: 1,
+      diceSides: 12,
+      bonusAttack: 4,
+      bonusDamage: 3,
+      speed: 8,
+      requiredStr: 18,
+      requiredDex: 26,
+      durability: 300,
+      levelToEquip: 45,
+      twoHanded: true,
+      range: 40,
+    },
+  },
+
+  // ============================================================
+  // MASTER TIER (L75) — 3 recipes
+  // ============================================================
+
+  // Adamantine Arrows — ultimate ammunition
+  {
+    recipeId: 'fletch-adamantine-arrows',
+    name: 'Fletch Adamantine Arrows',
+    professionRequired: 'FLETCHER',
+    levelRequired: 75,
+    inputs: [
+      { itemName: ITEMS.EXOTIC_PLANKS, quantity: 2 },
+      { itemName: ITEMS.ADAMANTINE_INGOT, quantity: 1 },
+    ],
+    outputs: [{ itemName: ITEMS.ADAMANTINE_ARROWS, quantity: 10 }],
+    craftTime: 45,
+    xpReward: 50,
+    tier: 5,
+    outputItemType: 'CONSUMABLE',
+    outputStats: {
+      baseDamage: 14,
+      damageType: 'piercing',
+      speed: 0,
+      requiredStr: 0,
+      requiredDex: 0,
+      durability: 1,
+      levelToEquip: 55,
+      bonusDamage: 4,
+    },
+  },
+
+  // Adamantine Longbow — supreme range and power
+  {
+    recipeId: 'fletch-adamantine-longbow',
+    name: 'Craft Adamantine Longbow',
+    professionRequired: 'FLETCHER',
+    levelRequired: 75,
+    inputs: [
+      { itemName: ITEMS.EXOTIC_PLANKS, quantity: 1 },
+      { itemName: ITEMS.BOWSTRING, quantity: 1 },
+      { itemName: ITEMS.ADAMANTINE_INGOT, quantity: 2 },
+      { itemName: ITEMS.DRAGONSCALE_LEATHER, quantity: 1 },
+    ],
+    outputs: [{ itemName: ITEMS.ADAMANTINE_LONGBOW, quantity: 1 }],
+    craftTime: 160,
+    xpReward: 110,
+    tier: 5,
+    outputItemType: 'WEAPON',
+    equipSlot: 'MAIN_HAND',
+    outputStats: {
+      baseDamage: 40,
+      damageType: 'piercing',
+      diceCount: 1,
+      diceSides: 12,
+      bonusAttack: 5,
+      bonusDamage: 4,
+      speed: 7,
+      requiredStr: 20,
+      requiredDex: 28,
+      durability: 400,
+      levelToEquip: 60,
+      twoHanded: true,
+      range: 50,
+    },
+  },
+
+  // Adamantine War Bow — ultimate combat bow
+  {
+    recipeId: 'fletch-adamantine-war-bow',
+    name: 'Craft Adamantine War Bow',
+    professionRequired: 'FLETCHER',
+    levelRequired: 75,
+    inputs: [
+      { itemName: ITEMS.EXOTIC_PLANKS, quantity: 1 },
+      { itemName: ITEMS.BOW_STAVE, quantity: 1 },
+      { itemName: ITEMS.BOWSTRING, quantity: 1 },
+      { itemName: ITEMS.ADAMANTINE_INGOT, quantity: 2 },
+      { itemName: ITEMS.DRAGONSCALE_LEATHER, quantity: 1 },
+    ],
+    outputs: [{ itemName: ITEMS.ADAMANTINE_WAR_BOW, quantity: 1 }],
+    craftTime: 180,
+    xpReward: 130,
+    tier: 5,
+    outputItemType: 'WEAPON',
+    equipSlot: 'MAIN_HAND',
+    outputStats: {
+      baseDamage: 44,
+      damageType: 'piercing',
+      diceCount: 2,
+      diceSides: 6,
+      bonusAttack: 5,
+      bonusDamage: 4,
+      speed: 8,
+      requiredStr: 22,
+      requiredDex: 30,
+      durability: 450,
+      levelToEquip: 60,
+      twoHanded: true,
+      range: 45,
+    },
+  },
+
+  // ============================================================
   // BLACKSMITH (non-FLETCHER, kept as-is)
   // ============================================================
   {

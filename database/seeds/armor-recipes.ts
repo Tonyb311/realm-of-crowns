@@ -84,6 +84,26 @@ const ARMOR_TEMPLATES: ArmorTemplateDef[] = [
   { name: 'Leather Repair Kit', type: 'TOOL', rarity: 'FINE', description: 'Leather patches, needles, and wax for repairing leather goods.', stats: { yieldBonus: 15 }, durability: 25, professionRequired: 'LEATHERWORKER', levelRequired: 20, baseValue: 80 },
   { name: "Ranger's Pack", type: 'ACCESSORY', rarity: 'FINE', description: 'A wolf leather pack built for long wilderness expeditions.', stats: {}, durability: 100, professionRequired: 'LEATHERWORKER', levelRequired: 22, baseValue: 240 },
 
+  // --- LEATHERWORKER: Expert (Exotic Leather) ---
+  { name: 'Exotic Leather Cap', type: 'ARMOR', rarity: 'MASTERWORK', description: 'A supple exotic leather cap that turns blades and arrows.', stats: { armor: 8, dexterity: 3 }, durability: 200, professionRequired: 'LEATHERWORKER', levelRequired: 50, baseValue: 600 },
+  { name: 'Exotic Leather Vest', type: 'ARMOR', rarity: 'MASTERWORK', description: 'Exotic leather vest, lightweight yet remarkably tough.', stats: { armor: 14, dexterity: 3 }, durability: 260, professionRequired: 'LEATHERWORKER', levelRequired: 50, baseValue: 1200 },
+  { name: 'Exotic Leather Gloves', type: 'ARMOR', rarity: 'MASTERWORK', description: 'Exotic leather gloves that grip like a second skin.', stats: { armor: 6, dexterity: 3 }, durability: 180, professionRequired: 'LEATHERWORKER', levelRequired: 50, baseValue: 500 },
+  { name: 'Exotic Leather Boots', type: 'ARMOR', rarity: 'MASTERWORK', description: 'Exotic leather boots crafted for silence and speed.', stats: { armor: 10, dexterity: 3 }, durability: 220, professionRequired: 'LEATHERWORKER', levelRequired: 50, baseValue: 700 },
+  { name: 'Exotic Leather Bracers', type: 'ARMOR', rarity: 'MASTERWORK', description: 'Exotic leather bracers reinforced with hidden bone plates.', stats: { armor: 8, dexterity: 3 }, durability: 200, professionRequired: 'LEATHERWORKER', levelRequired: 50, baseValue: 600 },
+  { name: 'Exotic Leather Leggings', type: 'ARMOR', rarity: 'MASTERWORK', description: 'Exotic leather leggings that allow full range of movement.', stats: { armor: 12, dexterity: 3 }, durability: 240, professionRequired: 'LEATHERWORKER', levelRequired: 50, baseValue: 900 },
+
+  // --- LEATHERWORKER: Master (Dragonscale) ---
+  { name: 'Dragonscale Helm', type: 'ARMOR', rarity: 'LEGENDARY', description: 'A helm of interlocking dragon scales that resists steel and sorcery alike.', stats: { armor: 12, dexterity: 4, magicResist: 4 }, durability: 320, professionRequired: 'LEATHERWORKER', levelRequired: 70, baseValue: 2000 },
+  { name: 'Dragonscale Vest', type: 'ARMOR', rarity: 'LEGENDARY', description: 'A vest of dragon scales, lighter than mail yet harder than steel.', stats: { armor: 22, dexterity: 4, magicResist: 6 }, durability: 400, professionRequired: 'LEATHERWORKER', levelRequired: 70, baseValue: 4000 },
+  { name: 'Dragonscale Gloves', type: 'ARMOR', rarity: 'LEGENDARY', description: 'Dragon-scaled gloves that channel the beast\'s primal strength.', stats: { armor: 10, dexterity: 4, magicResist: 3 }, durability: 280, professionRequired: 'LEATHERWORKER', levelRequired: 70, baseValue: 1800 },
+  { name: 'Dragonscale Boots', type: 'ARMOR', rarity: 'LEGENDARY', description: 'Boots of dragon scale that leave scorched prints in soft earth.', stats: { armor: 14, dexterity: 4, magicResist: 4 }, durability: 340, professionRequired: 'LEATHERWORKER', levelRequired: 70, baseValue: 2500 },
+  { name: 'Dragonscale Bracers', type: 'ARMOR', rarity: 'LEGENDARY', description: 'Bracers of overlapping dragon scales that deflect arrows and spells.', stats: { armor: 12, dexterity: 4, magicResist: 4 }, durability: 320, professionRequired: 'LEATHERWORKER', levelRequired: 70, baseValue: 2000 },
+  { name: 'Dragonscale Leggings', type: 'ARMOR', rarity: 'LEGENDARY', description: 'Dragon scale leggings that shimmer with residual draconic heat.', stats: { armor: 18, dexterity: 4, magicResist: 5 }, durability: 360, professionRequired: 'LEATHERWORKER', levelRequired: 70, baseValue: 3200 },
+
+  // --- TANNER: Gap-fills ---
+  { name: 'Hard Leather Cap', type: 'ARMOR', rarity: 'FINE', description: 'A boiled and hardened leather cap that offers solid protection.', stats: { armor: 3, dexterity: 2 }, durability: 100, professionRequired: 'TANNER', levelRequired: 12, baseValue: 120 },
+  { name: 'Bear Leather Leggings', type: 'ARMOR', rarity: 'SUPERIOR', description: 'Heavy bear leather leggings reinforced at the knees.', stats: { armor: 7, dexterity: 3 }, durability: 140, professionRequired: 'TANNER', levelRequired: 30, baseValue: 280 },
+
   // --- LEATHERWORKER: Craftsman (Bear Leather) ---
   { name: 'Bear Hide Vambraces', type: 'ARMOR', rarity: 'SUPERIOR', description: 'Thick bear hide forearm guards that shrug off blows.', stats: { armor: 5, dexterity: 3 }, durability: 120, professionRequired: 'LEATHERWORKER', levelRequired: 28, baseValue: 310 },
   { name: 'Bear Leather Boots', type: 'ARMOR', rarity: 'SUPERIOR', description: 'Heavy bear leather boots reinforced with layered hide.', stats: { armor: 6, dexterity: 3 }, durability: 130, professionRequired: 'LEATHERWORKER', levelRequired: 32, baseValue: 260 },

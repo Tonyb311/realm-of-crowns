@@ -82,6 +82,9 @@ const BASE_VALUE_MAP: Record<string, number> = {
   'Longbow': 85, 'War Arrows': 7, 'War Bow': 180, 'Quiver': 45,
   'Barbed Arrows': 8, 'Composite Bow': 225, "Ranger's Quiver": 175,
   'Flight Arrows': 2, "Ranger's Longbow": 260,
+  // FLETCHER ranged weapons T4-T5
+  'Mithril-Tipped Arrows': 12, 'Mithril Longbow': 900, 'Mithril Composite Bow': 1100,
+  'Adamantine Arrows': 18, 'Adamantine Longbow': 2400, 'Adamantine War Bow': 2800,
   // ENCHANTER caster weapons — Mage Staves
   'Ashwood Staff': 25, 'Ironwood Staff': 65, 'Ebonwood Staff': 200,
   'Starwood Staff': 800, 'Worldtree Staff': 2200,
