@@ -48,6 +48,34 @@ for (const a of ALL_ABILITIES) {
 
 // ---- Utility ----
 
+/**
+ * Calculate weapon/spell damage contribution for an ability.
+ * Weapon attacks: weapon dice + stat mod + weapon bonus (doubled on crit).
+ * Spell attacks: class primary stat modifier only (no weapon dice).
+ * Save/auto/other: returns 0 (no weapon contribution).
+ */
+function calcWeaponDamage(actor: Combatant, abilityDef: AbilityDefinition, isCrit = false): number {
+  const isSpellAttack = abilityDef.attackType === 'spell';
+  const isWeaponAttack = abilityDef.attackType === 'weapon' || (!abilityDef.attackType && !isSpellAttack);
+
+  if (isWeaponAttack && actor.weapon) {
+    const statMod = getModifier(actor.stats[actor.weapon.damageModifierStat]);
+    const critMult = isCrit ? 2 : 1;
+    let total = 0;
+    for (let i = 0; i < actor.weapon.diceCount * critMult; i++) {
+      total += roll(actor.weapon.diceSides);
+    }
+    return Math.max(0, total + statMod + actor.weapon.bonusDamage);
+  } else if (isSpellAttack) {
+    const primaryStat = actor.characterClass
+      ? CLASS_PRIMARY_STAT[actor.characterClass.toLowerCase()] ?? 'int'
+      : 'int';
+    const statMod = getModifier(actor.stats[primaryStat as keyof typeof actor.stats] ?? 10);
+    return Math.max(0, statMod);
+  }
+  return 0;
+}
+
 function clampHp(hp: number, maxHp: number): number {
   return Math.max(0, Math.min(hp, maxHp));
 }
@@ -605,7 +633,8 @@ const handleDamageStatus: EffectHandler = (state, actor, target, _enemies, abili
     const { dc, saveType, save } = saveResult.result;
     const bonusMod = damageBonus ? Math.max(0, getModifier(actor.stats[damageBonus as keyof typeof actor.stats] ?? 10)) : 0;
     let diceDmg = diceCount > 0 ? rollDice(diceCount, diceSides) : 0;
-    let totalDamage = Math.max(0, damage + diceDmg + bonusMod);
+    const saveWeaponDmg = calcWeaponDamage(actor, abilityDef);
+    let totalDamage = Math.max(0, saveWeaponDmg + damage + diceDmg + bonusMod);
 
     if (save.success) {
       totalDamage = Math.floor(totalDamage / 2);
@@ -663,7 +692,8 @@ const handleDamageStatus: EffectHandler = (state, actor, target, _enemies, abili
     diceRolls = detailed.rolls;
     diceDmg = detailed.total;
   }
-  const totalDamage = Math.max(0, damage + diceDmg + bonusMod);
+  const weaponDmg = calcWeaponDamage(actor, abilityDef, atkResult?.isCrit ?? false);
+  const totalDamage = Math.max(0, weaponDmg + damage + diceDmg + bonusMod);
 
   const hpBefore = target.currentHp;
 
@@ -716,7 +746,8 @@ const handleDamageDebuff: EffectHandler = (state, actor, target, _enemies, abili
   if (saveResult) {
     state = saveResult.state;
     const { dc, saveType, save } = saveResult.result;
-    let totalDamage = rollDice(diceCount, diceSides);
+    const ddSaveWeapon = calcWeaponDamage(actor, abilityDef);
+    let totalDamage = ddSaveWeapon + rollDice(diceCount, diceSides);
     if (save.success) {
       totalDamage = Math.floor(totalDamage / 2);
     }
@@ -756,7 +787,8 @@ const handleDamageDebuff: EffectHandler = (state, actor, target, _enemies, abili
     };
   }
 
-  const totalDamage = rollDice(diceCount, diceSides);
+  const ddWeaponDmg = calcWeaponDamage(actor, abilityDef, atkResult?.isCrit ?? false);
+  const totalDamage = ddWeaponDmg + rollDice(diceCount, diceSides);
   const newHp = clampHp(target.currentHp - totalDamage, target.maxHp);
   const killed = newHp <= 0;
   state = updateCombatant(state, target.id, { currentHp: newHp, isAlive: !killed });
@@ -804,7 +836,8 @@ const handleDrain: EffectHandler = (state, actor, target, enemies, abilityDef, e
   // BUG-FIX 1: healPercent is already a fraction (0.5 = 50%), don't divide by 100 again
   const healPercent = (effects.healPercent as number) ?? 0.5;
 
-  const totalDamage = rollDice(diceCount, diceSides);
+  const drainWeaponDmg = calcWeaponDamage(actor, abilityDef, atkResult?.isCrit ?? false);
+  const totalDamage = drainWeaponDmg + rollDice(diceCount, diceSides);
   // Phase 5B MECH-8: Anti-heal aura blocks self-heal from drains
   const hasAntiHeal = enemies.some(e => e.antiHealAura);
   const selfHeal = hasAntiHeal ? 0 : Math.floor(totalDamage * healPercent);
@@ -1075,7 +1108,8 @@ const handleMultiTarget: EffectHandler = (state, actor, _target, enemies, abilit
       }
     }
 
-    const dmg = rollDice(diceCount, diceSides);
+    const mtWeaponDmg = calcWeaponDamage(actor, abilityDef);
+    const dmg = mtWeaponDmg + rollDice(diceCount, diceSides);
     const target = state.combatants.find(c => c.id === enemy.id)!;
     const newHp = clampHp(target.currentHp - dmg, target.maxHp);
     const killed = newHp <= 0;

@@ -329,6 +329,42 @@ function decideAction(
     }
   }
 
+  // ---- 1d. Heal intercept — if any ally is hurt, prefer healing over damage ----
+  // < 30% HP: ALWAYS heal (emergency, override everything except stun)
+  // < 60% HP: Prefer healing over damage abilities
+  const lowestAllyHpPct = allies.length > 0
+    ? Math.min(...allies.map(a => (a.currentHp / a.maxHp) * 100))
+    : 100;
+
+  if (lowestAllyHpPct < 60) {
+    // Find a direct heal ability (type: 'heal') that's off cooldown
+    for (const entry of presets.abilityQueue) {
+      if (!entry.abilityId || !isClassAbility(entry.abilityId)) continue;
+      const def = ABILITY_BY_ID.get(entry.abilityId);
+      if (!def) continue;
+      const effectType = (def.effects as Record<string, unknown>)?.type;
+      if (effectType !== 'heal') continue;
+      const cd = actor.abilityCooldowns?.[entry.abilityId] ?? 0;
+      if (cd > 0) continue;
+
+      // Target lowest HP% ally
+      const healTarget = allies.reduce((w, a) =>
+        (a.currentHp / a.maxHp) < (w.currentHp / w.maxHp) ? a : w
+      );
+
+      return {
+        action: {
+          type: 'class_ability',
+          actorId,
+          classAbilityId: entry.abilityId,
+          targetId: healTarget.id,
+          targetIds: enemies.map(e => e.id),
+        },
+        context: { weapon: params.weapon ?? undefined },
+      };
+    }
+  }
+
   // ---- 2. Check ability priority queue ----
   for (const entry of presets.abilityQueue) {
     const hpPercent = (actor.currentHp / actor.maxHp) * 100;
@@ -339,7 +375,8 @@ function decideAction(
         shouldUse = true;
         break;
       case 'low_hp':
-        shouldUse = hpPercent <= (entry.hpThreshold ?? 50);
+        // Check ANY ally's HP (including self), not just the caster's
+        shouldUse = lowestAllyHpPct <= (entry.hpThreshold ?? 50);
         break;
       case 'high_hp':
         shouldUse = hpPercent >= (entry.hpThreshold ?? 75);
