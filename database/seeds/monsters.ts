@@ -3442,7 +3442,7 @@ export const MONSTERS: MonsterDef[] = [
       },
       {
         id: 'hillgiantwarlord_fear', name: 'Warlord\'s Bellow', type: 'fear_aura',
-        saveType: 'wis', saveDC: 18,
+        saveType: 'wis', saveDC: 18, statusEffect: 'frightened', statusDuration: 1,
         auraRepeats: false,
         description: 'A thunderous war cry shakes the resolve of all who hear it.',
       },
@@ -3494,7 +3494,7 @@ export const MONSTERS: MonsterDef[] = [
       },
       {
         id: 'dracolich_fear', name: 'Dread Presence', type: 'fear_aura',
-        saveType: 'wis', saveDC: 19,
+        saveType: 'wis', saveDC: 19, statusEffect: 'frightened', statusDuration: 1,
         auraRepeats: false,
         description: 'The dracolich\'s unholy presence fills all nearby with existential dread.',
       },
@@ -3603,7 +3603,7 @@ export const MONSTERS: MonsterDef[] = [
       },
       {
         id: 'pitfiend_fear', name: 'Fear Aura', type: 'fear_aura',
-        saveType: 'wis', saveDC: 21,
+        saveType: 'wis', saveDC: 21, statusEffect: 'frightened', statusDuration: 2,
         auraRepeats: false,
         description: 'The Pit Fiend\'s mere presence inspires abject terror.',
       },
@@ -3705,7 +3705,7 @@ export const MONSTERS: MonsterDef[] = [
       },
       {
         id: 'elderwyrm_fear', name: 'Frightful Presence', type: 'fear_aura',
-        saveType: 'wis', saveDC: 21,
+        saveType: 'wis', saveDC: 21, statusEffect: 'frightened', statusDuration: 2,
         auraRepeats: false,
         description: 'The wyrm\'s presence inspires primal terror in all who face it.',
       },
@@ -3838,7 +3838,7 @@ export const MONSTERS: MonsterDef[] = [
       },
       {
         id: 'tarrasque_fear', name: 'Frightful Presence', type: 'fear_aura',
-        saveType: 'wis', saveDC: 23,
+        saveType: 'wis', saveDC: 23, statusEffect: 'frightened', statusDuration: 2,
         auraRepeats: false,
         description: 'The Tarrasque\'s presence is the stuff of nightmares.',
       },
@@ -3911,7 +3911,7 @@ export const MONSTERS: MonsterDef[] = [
       },
       {
         id: 'voidemperor_dread', name: 'Existential Dread', type: 'fear_aura',
-        saveType: 'wis', saveDC: 24,
+        saveType: 'wis', saveDC: 24, statusEffect: 'frightened', statusDuration: 2,
         auraRepeats: false,
         description: 'The Emperor\'s presence threatens to erase the concept of self.',
       },
@@ -4196,7 +4196,7 @@ export const MONSTERS: MonsterDef[] = [
       },
       {
         id: 'blightdragon_fear', name: 'Plague Dread', type: 'fear_aura',
-        saveType: 'wis', saveDC: 20,
+        saveType: 'wis', saveDC: 20, statusEffect: 'frightened', statusDuration: 2,
         auraRepeats: false,
         description: 'The stench of disease and decay inspires primal terror.',
       },

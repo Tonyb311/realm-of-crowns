@@ -281,6 +281,10 @@ export interface MonsterAbilityResult {
     damage?: number;
     hpAfter: number;
     killed: boolean;
+    saveDC?: number;
+    saveRoll?: number;
+    saveTotal?: number;
+    saveSucceeded?: boolean;
   }>;
 }
 
@@ -851,6 +855,10 @@ export interface ClassAbilityResult {
     statusApplied?: string;
     hpAfter: number;
     killed: boolean;
+    saveDC?: number;
+    saveRoll?: number;
+    saveTotal?: number;
+    saveSucceeded?: boolean;
   }>;
   /** Per-strike breakdown for multi_attack abilities */
   strikeResults?: Array<{

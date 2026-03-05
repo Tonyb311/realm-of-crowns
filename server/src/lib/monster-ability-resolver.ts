@@ -252,6 +252,10 @@ function handleAoe(
       damage,
       hpAfter: target.currentHp,
       killed: !target.isAlive,
+      saveDC: ability.saveDC,
+      saveRoll: save.roll,
+      saveTotal: save.total,
+      saveSucceeded: save.success,
     });
 
     current = {

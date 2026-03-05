@@ -1,0 +1,25 @@
+{
+  "groupMatchups": [
+    {
+      "party": {
+        "name": "Balanced",
+        "members": [
+          { "race": "human", "class": "warrior", "specialization": "guardian" },
+          { "race": "human", "class": "mage", "specialization": "elementalist" },
+          { "race": "human", "class": "cleric", "specialization": "healer" },
+          { "race": "human", "class": "rogue", "specialization": "assassin" },
+          { "race": "human", "class": "ranger", "specialization": "sharpshooter" }
+        ],
+        "partyLevel": 20
+      },
+      "monsterGroup": {
+        "partyLevel": 20,
+        "partySize": 5,
+        "method": "cr_match",
+        "difficulty": "medium"
+      },
+      "iterations": 10
+    }
+  ],
+  "notes": "Save verification: 10 combats to confirm AoE saves, proficiency bonus, drain saves, fear auras"
+}

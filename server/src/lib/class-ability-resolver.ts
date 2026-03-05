@@ -15,6 +15,7 @@ import {
   resolveAttack,
   resolveFlee,
   checkLegendaryResistance,
+  STATUS_EFFECT_DEFS,
 } from './combat-engine';
 import { roll, rollMultiple, savingThrow, fleeCheck } from '@shared/utils/dice';
 import { getModifier } from '@shared/types/combat';
@@ -561,7 +562,11 @@ const handleStatus: EffectHandler = (state, actor, target, _enemies, abilityDef,
   const saveType = effects.saveType as string | undefined;
   if (saveType) {
     const dc = calculateSaveDC(actor);
-    const targetSaveMod = getModifier(target.stats[saveType as keyof typeof target.stats] ?? 10);
+    let targetSaveMod = getModifier(target.stats[saveType as keyof typeof target.stats] ?? 10) + target.proficiencyBonus;
+    for (const eff of target.statusEffects) {
+      const seDef = STATUS_EFFECT_DEFS[eff.name];
+      if (seDef) targetSaveMod += seDef.saveModifier;
+    }
     const save = savingThrow(targetSaveMod, dc);
     { const lr = checkLegendaryResistance(state, target.id, save, dc); if (lr.overridden) { save.success = true; state = lr.state; } }
 
@@ -817,8 +822,14 @@ const handleDrain: EffectHandler = (state, actor, target, enemies, abilityDef, e
     return { state, result: { description: `${abilityDef.name}: no valid target` } };
   }
 
-  // Attack roll for spell/weapon drain abilities
-  const atkResult = resolveAbilityAttackRoll(actor, target, abilityDef, effects);
+  // Save path for attackType: 'save' drain abilities
+  const saveResult = resolveAbilitySave(state, actor, target, abilityDef, effects as Record<string, any>);
+  if (saveResult) {
+    state = saveResult.state;
+  }
+
+  // Attack roll for spell/weapon drain abilities (only if not save-based)
+  const atkResult = !saveResult ? resolveAbilityAttackRoll(actor, target, abilityDef, effects) : null;
   if (atkResult && !atkResult.hit) {
     return {
       state,
@@ -837,7 +848,13 @@ const handleDrain: EffectHandler = (state, actor, target, enemies, abilityDef, e
   const healPercent = (effects.healPercent as number) ?? 0.5;
 
   const drainWeaponDmg = calcWeaponDamage(actor, abilityDef, atkResult?.isCrit ?? false);
-  const totalDamage = drainWeaponDmg + rollDice(diceCount, diceSides);
+  let totalDamage = drainWeaponDmg + rollDice(diceCount, diceSides);
+
+  // On successful save: half damage, half heal
+  if (saveResult?.result.save.success) {
+    totalDamage = Math.floor(totalDamage / 2);
+  }
+
   // Phase 5B MECH-8: Anti-heal aura blocks self-heal from drains
   const hasAntiHeal = enemies.some(e => e.antiHealAura);
   const selfHeal = hasAntiHeal ? 0 : Math.floor(totalDamage * healPercent);
@@ -858,6 +875,7 @@ const handleDrain: EffectHandler = (state, actor, target, enemies, abilityDef, e
       actorHpAfter: actorNewHp,
       targetKilled: killed,
       ...(atkResult ? { attackRoll: atkResult.d20, attackTotal: atkResult.total, attackModifiers: atkResult.modifiers, targetAC: atkResult.targetAC, hit: true, isCritical: atkResult.isCrit } : {}),
+      ...(saveResult ? { saveDC: saveResult.result.dc, saveRoll: saveResult.result.save.roll, saveTotal: saveResult.result.save.total, saveSucceeded: saveResult.result.save.success } : {}),
       damageType: abilityDef.damageType ?? (effects.element as string),
       description: `${abilityDef.name}: ${totalDamage} damage to ${target.name}, healed self ${selfHeal}`,
     },
@@ -947,27 +965,45 @@ const handleFleeAbility: EffectHandler = (state, actor, _target, enemies, abilit
 const handleAoeDebuff: EffectHandler = (state, actor, _target, enemies, abilityDef, effects) => {
   const accuracyReduction = (effects.accuracyReduction as number) ?? 5;
   const duration = (effects.duration as number) ?? 2;
+  const isSaveBased = abilityDef.attackType === 'save';
+  const saveType = (effects as Record<string, any>).saveType as string ?? 'dex';
+  const dc = isSaveBased ? calculateSaveDC(actor) : 0;
 
   let affected = 0;
   let immune = 0;
+  let saved = 0;
   for (const enemy of enemies) {
     // Phase 7 BUG-2: Skip enemies with immuneBlinded (Third Eye Psion passive)
     if (enemy.immuneBlinded) {
       immune++;
       continue;
     }
+    // Save check — target can resist the debuff
+    if (isSaveBased) {
+      let targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10) + enemy.proficiencyBonus;
+      for (const eff of enemy.statusEffects) {
+        const seDef = STATUS_EFFECT_DEFS[eff.name];
+        if (seDef) targetSaveMod += seDef.saveModifier;
+      }
+      const save = savingThrow(targetSaveMod, dc);
+      const lr = checkLegendaryResistance(state, enemy.id, save, dc);
+      if (lr.overridden) { save.success = true; state = lr.state; }
+      if (save.success) { saved++; continue; }
+    }
     state = applyStatusEffectToState(state, enemy.id, 'blinded', duration, actor.id);
     affected++;
   }
 
   const immuneNote = immune > 0 ? ` (${immune} immune)` : '';
+  const savedNote = saved > 0 ? ` (${saved} saved)` : '';
   return {
     state,
     result: {
       targetIds: enemies.filter(e => !e.immuneBlinded).map(e => e.id),
       debuffApplied: `accuracy -${accuracyReduction}`,
       debuffDuration: duration,
-      description: `${abilityDef.name}: -${accuracyReduction} accuracy on ${affected} enemies for ${duration} rounds${immuneNote}`,
+      ...(isSaveBased ? { saveRequired: true, saveDC: dc, saveType } : {}),
+      description: `${abilityDef.name}: -${accuracyReduction} accuracy on ${affected} enemies for ${duration} rounds${immuneNote}${savedNote}`,
     },
   };
 };
@@ -1031,14 +1067,26 @@ const handleAoeDamage: EffectHandler = (state, actor, _target, enemies, abilityD
     }
 
     // Per-target save for save-based AoE
+    let saveDCVal: number | undefined;
+    let saveRollVal: number | undefined;
+    let saveTotalVal: number | undefined;
+    let saveSucceededVal: boolean | undefined;
     if (isSaveBased) {
-      const targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10);
+      let targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10) + enemy.proficiencyBonus;
+      for (const eff of enemy.statusEffects) {
+        const seDef = STATUS_EFFECT_DEFS[eff.name];
+        if (seDef) targetSaveMod += seDef.saveModifier;
+      }
       const save = savingThrow(targetSaveMod, dc);
       const lr = checkLegendaryResistance(state, enemy.id, save, dc);
       if (lr.overridden) { save.success = true; state = lr.state; }
       if (save.success) {
         dmg = Math.floor(dmg / 2);
       }
+      saveDCVal = dc;
+      saveRollVal = save.roll;
+      saveTotalVal = save.total;
+      saveSucceededVal = save.success;
     }
 
     dmg = Math.max(0, dmg);
@@ -1056,6 +1104,7 @@ const handleAoeDamage: EffectHandler = (state, actor, _target, enemies, abilityD
       damage: dmg,
       hpAfter: newHp,
       killed,
+      ...(isSaveBased ? { saveDC: saveDCVal, saveRoll: saveRollVal, saveTotal: saveTotalVal, saveSucceeded: saveSucceededVal } : {}),
     });
   }
 
@@ -1087,6 +1136,9 @@ const handleMultiTarget: EffectHandler = (state, actor, _target, enemies, abilit
   const diceCount = (effects.diceCount as number) ?? 1;
   const diceSides = (effects.diceSides as number) ?? 6;
   const hasAttackRoll = abilityDef.attackType === 'weapon' || abilityDef.attackType === 'spell';
+  const isSaveBased = abilityDef.attackType === 'save';
+  const saveType = (effects as Record<string, any>).saveType as string ?? 'dex';
+  const dc = isSaveBased ? calculateSaveDC(actor) : 0;
   const perTargetResults: ClassAbilityResult['perTargetResults'] = [];
   let totalDamage = 0;
   const targetIds: string[] = [];
@@ -1109,7 +1161,29 @@ const handleMultiTarget: EffectHandler = (state, actor, _target, enemies, abilit
     }
 
     const mtWeaponDmg = calcWeaponDamage(actor, abilityDef);
-    const dmg = mtWeaponDmg + rollDice(diceCount, diceSides);
+    let dmg = mtWeaponDmg + rollDice(diceCount, diceSides);
+
+    // Per-target save for save-based multi-target abilities
+    let saveDCVal: number | undefined;
+    let saveRollVal: number | undefined;
+    let saveTotalVal: number | undefined;
+    let saveSucceededVal: boolean | undefined;
+    if (isSaveBased) {
+      let targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10) + enemy.proficiencyBonus;
+      for (const eff of enemy.statusEffects) {
+        const seDef = STATUS_EFFECT_DEFS[eff.name];
+        if (seDef) targetSaveMod += seDef.saveModifier;
+      }
+      const save = savingThrow(targetSaveMod, dc);
+      const lr = checkLegendaryResistance(state, enemy.id, save, dc);
+      if (lr.overridden) { save.success = true; state = lr.state; }
+      if (save.success) dmg = Math.floor(dmg / 2);
+      saveDCVal = dc;
+      saveRollVal = save.roll;
+      saveTotalVal = save.total;
+      saveSucceededVal = save.success;
+    }
+
     const target = state.combatants.find(c => c.id === enemy.id)!;
     const newHp = clampHp(target.currentHp - dmg, target.maxHp);
     const killed = newHp <= 0;
@@ -1124,18 +1198,21 @@ const handleMultiTarget: EffectHandler = (state, actor, _target, enemies, abilit
       damage: dmg,
       hpAfter: newHp,
       killed,
+      ...(isSaveBased ? { saveDC: saveDCVal, saveRoll: saveRollVal, saveTotal: saveTotalVal, saveSucceeded: saveSucceededVal } : {}),
     });
   }
 
   const element = (effects.element as string) ?? '';
+  const saveNote = isSaveBased ? ` (DC ${dc} ${saveType} save)` : '';
   return {
     state,
     result: {
       targetIds,
       damage: totalDamage,
       perTargetResults,
+      ...(isSaveBased ? { saveRequired: true, saveDC: dc, saveType } : {}),
       damageType: abilityDef.damageType ?? (effects.element as string),
-      description: `${abilityDef.name}: ${totalDamage}${element ? ' ' + element : ''} damage to ${targets.length} targets`,
+      description: `${abilityDef.name}: ${totalDamage}${element ? ' ' + element : ''} damage to ${targets.length} targets${saveNote}`,
     },
   };
 };
@@ -1242,7 +1319,11 @@ const handleAoeDrain: EffectHandler = (state, actor, _target, enemies, abilityDe
 
     // Per-target save
     if (isSaveBased) {
-      const targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10);
+      let targetSaveMod = getModifier(enemy.stats[saveType as keyof typeof enemy.stats] ?? 10) + enemy.proficiencyBonus;
+      for (const eff of enemy.statusEffects) {
+        const seDef = STATUS_EFFECT_DEFS[eff.name];
+        if (seDef) targetSaveMod += seDef.saveModifier;
+      }
       const save = savingThrow(targetSaveMod, dc);
       const lr = checkLegendaryResistance(state, enemy.id, save, dc);
       if (lr.overridden) { save.success = true; state = lr.state; }
@@ -1771,7 +1852,12 @@ function resolveAbilitySave(
 
   const saveType = (effects.saveType as string) ?? 'wis';
   const dc = calculateSaveDC(actor);
-  const targetSaveMod = getModifier(target.stats[saveType as keyof typeof target.stats] ?? 10);
+  let targetSaveMod = getModifier(target.stats[saveType as keyof typeof target.stats] ?? 10) + target.proficiencyBonus;
+  // Apply status effect save modifiers (e.g., frightened -2)
+  for (const eff of target.statusEffects) {
+    const seDef = STATUS_EFFECT_DEFS[eff.name];
+    if (seDef) targetSaveMod += seDef.saveModifier;
+  }
   const save = savingThrow(targetSaveMod, dc);
 
   // Check legendary resistance
