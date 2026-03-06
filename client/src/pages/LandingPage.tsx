@@ -82,23 +82,23 @@ export default function LandingPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-realm-bg-900 text-realm-text-primary font-body overflow-x-hidden">
+    <div className="min-h-screen text-realm-text-primary font-body overflow-x-hidden" style={{ backgroundColor: '#07040F' }}>
       {/* ================================================================= */}
       {/* HERO                                                              */}
       {/* ================================================================= */}
       <section className="relative min-h-screen flex flex-col items-center justify-center px-6">
-        {/* Atmospheric background layers */}
-        <div className="absolute inset-0 bg-realm-bg-900" />
+        {/* Atmospheric background layers — deep cinematic purples */}
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at top, #1a0a2e 0%, #07040F 60%)' }} />
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(74, 25, 66, 0.25) 0%, transparent 70%)',
+            background: 'radial-gradient(ellipse 80% 60% at 50% 35%, rgba(106, 79, 160, 0.2) 0%, transparent 70%)',
           }}
         />
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(212, 168, 67, 0.06) 0%, transparent 60%)',
+            background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(138, 80, 200, 0.08) 0%, transparent 60%)',
           }}
         />
         <div className="absolute inset-0 bg-realm-vignette pointer-events-none" />
@@ -107,7 +107,7 @@ export default function LandingPage() {
         <div
           className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full pointer-events-none"
           style={{
-            background: 'radial-gradient(circle, rgba(212, 168, 67, 0.04) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(138, 80, 200, 0.06) 0%, transparent 70%)',
             animation: 'pulse-glow 6s ease-in-out infinite',
           }}
         />
@@ -149,7 +149,7 @@ export default function LandingPage() {
           >
             A free browser-based MMORPG where every player shapes the world.
             <br className="hidden sm:block" />
-            No downloads. No pay-to-win. Just a realm that needs a ruler.
+            No downloads. No pay-to-win. Just a world shaped by its players.
           </motion.p>
 
           <motion.p
@@ -159,7 +159,7 @@ export default function LandingPage() {
             animate="visible"
             className="font-display text-sm sm:text-base text-realm-gold-500 tracking-wide mb-8"
           >
-            20 races &middot; 29 professions &middot; One throne
+            20 races &middot; 29 professions &middot; Every decision matters
           </motion.p>
 
           {/* Key badges */}
@@ -211,9 +211,9 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* FEATURES                                                          */}
       {/* ================================================================= */}
-      <section className="py-16 sm:py-20 px-6 bg-realm-bg-800 relative">
+      <section className="py-12 sm:py-14 px-6 relative" style={{ backgroundColor: '#0D0618' }}>
         {/* Subtle top gradient blend */}
-        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-realm-bg-900 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-16 pointer-events-none" style={{ background: 'linear-gradient(to bottom, #07040F, transparent)' }} />
 
         <div className="max-w-5xl mx-auto relative z-10">
           <motion.h2
@@ -232,7 +232,7 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
-            className="text-center text-realm-text-muted text-sm mb-12 max-w-lg mx-auto"
+            className="text-center text-realm-text-muted text-sm mb-8 max-w-lg mx-auto"
           >
             Four pillars that set Realm of Crowns apart.
           </motion.p>
@@ -246,10 +246,11 @@ export default function LandingPage() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: '-60px' }}
-                className="group bg-realm-bg-700 border border-realm-border rounded-lg p-5 text-center
-                           bg-realm-panel-gradient shadow-realm-panel
+                className="group border border-realm-border rounded-lg p-5 text-center
+                           shadow-realm-panel
                            hover:border-realm-border-strong hover:shadow-realm-glow-strong
                            transition-all duration-300"
+                style={{ backgroundColor: '#130B22' }}
               >
                 <div className="w-12 h-12 mx-auto mb-4 rounded-lg border border-realm-gold-600/20 bg-realm-gold-700/10 flex items-center justify-center group-hover:border-realm-gold-500/40 transition-colors duration-300">
                   <f.Icon className="w-6 h-6 text-realm-gold-400" />
@@ -269,7 +270,7 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* RACES                                                             */}
       {/* ================================================================= */}
-      <section className="py-16 sm:py-20 px-6 bg-realm-bg-900 relative">
+      <section className="py-12 sm:py-14 px-6 relative" style={{ backgroundColor: '#07040F' }}>
         <div className="max-w-5xl mx-auto">
           <motion.h2
             variants={fadeUp}
@@ -287,7 +288,7 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
-            className="text-center text-realm-text-secondary text-sm max-w-xl mx-auto mb-10"
+            className="text-center text-realm-text-secondary text-sm max-w-xl mx-auto mb-8"
           >
             Seven playable races at launch. From the dwarven halls of Ironvault
             to the elven forests of Silverwood, each has a homeland, culture, and destiny.
@@ -302,9 +303,10 @@ export default function LandingPage() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: '-40px' }}
-                className="bg-realm-bg-700 border border-realm-border rounded-lg p-4
+                className="border border-realm-border rounded-lg p-4
                            hover:border-realm-gold-600/30 hover:shadow-realm-glow
                            transition-all duration-300"
+                style={{ backgroundColor: '#0F081C' }}
               >
                 <h3 className="font-display text-base text-realm-gold-400 mb-1.5">
                   {race.name}
@@ -332,9 +334,7 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* HOW IT WORKS                                                      */}
       {/* ================================================================= */}
-      <section className="py-16 sm:py-20 px-6 bg-realm-bg-800 relative">
-        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-realm-bg-900 to-transparent pointer-events-none" />
-
+      <section className="py-8 sm:py-10 px-6 relative" style={{ backgroundColor: '#0D0618' }}>
         <div className="max-w-3xl mx-auto relative z-10">
           <motion.h2
             variants={fadeUp}
@@ -342,7 +342,7 @@ export default function LandingPage() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
-            className="font-display text-2xl sm:text-3xl text-realm-gold-400 text-center mb-10"
+            className="font-display text-2xl sm:text-3xl text-realm-gold-400 text-center mb-8"
           >
             Three Steps to Aethermere
           </motion.h2>
@@ -358,7 +358,7 @@ export default function LandingPage() {
                 viewport={{ once: true, margin: '-40px' }}
                 className="text-center"
               >
-                <div className="w-14 h-14 mx-auto mb-3 rounded-full border border-realm-gold-600/25 bg-realm-bg-700 flex items-center justify-center">
+                <div className="w-14 h-14 mx-auto mb-3 rounded-full border border-realm-gold-600/25 flex items-center justify-center" style={{ backgroundColor: '#130B22' }}>
                   <step.Icon className="w-6 h-6 text-realm-gold-400" />
                 </div>
                 <h3 className="font-display text-sm text-realm-text-primary mb-1">{step.label}</h3>
@@ -372,12 +372,12 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* FINAL CTA                                                         */}
       {/* ================================================================= */}
-      <section className="py-16 sm:py-20 px-6 bg-realm-bg-900 relative">
+      <section className="py-12 sm:py-14 px-6 relative" style={{ backgroundColor: '#07040F' }}>
         {/* Ambient glow behind CTA */}
         <div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] rounded-full pointer-events-none"
           style={{
-            background: 'radial-gradient(circle, rgba(212, 168, 67, 0.04) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(138, 80, 200, 0.05) 0%, transparent 70%)',
           }}
         />
 
@@ -409,7 +409,7 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* FOOTER                                                            */}
       {/* ================================================================= */}
-      <footer className="py-6 px-6 bg-realm-bg-900 border-t border-realm-border">
+      <footer className="py-6 px-6 border-t border-realm-border" style={{ backgroundColor: '#07040F' }}>
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <span className="font-display text-realm-gold-400 tracking-wider text-sm">
             Realm of Crowns
