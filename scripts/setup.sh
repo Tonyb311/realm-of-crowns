@@ -5,14 +5,14 @@ echo "=== Realm of Crowns - First-Time Setup ==="
 echo ""
 
 # Check required tools
-for cmd in node npm docker; do
+for cmd in node pnpm docker; do
   if ! command -v "$cmd" &> /dev/null; then
     echo "ERROR: $cmd is required but not installed."
     exit 1
   fi
 done
 
-echo "[1/6] Tools verified: node $(node -v), npm $(npm -v), docker $(docker --version | cut -d' ' -f3)"
+echo "[1/6] Tools verified: node $(node -v), pnpm $(pnpm -v), docker $(docker --version | cut -d' ' -f3)"
 
 # Copy .env if it doesn't exist
 if [ ! -f .env ]; then
@@ -23,8 +23,8 @@ else
 fi
 
 # Install dependencies
-echo "[3/6] Installing npm dependencies..."
-npm install
+echo "[3/6] Installing pnpm dependencies..."
+pnpm install
 
 # Start database and cache
 echo "[4/6] Starting PostgreSQL and Redis containers..."
@@ -40,13 +40,13 @@ echo "       PostgreSQL is ready."
 # Run migrations and seed
 echo "[6/6] Running database migrations and seed..."
 npx prisma migrate deploy --schema=database/prisma/schema.prisma
-npm run db:seed
+pnpm run db:seed
 
 echo ""
 echo "=== Setup complete! ==="
 echo ""
 echo "Start development servers:"
-echo "  npm run dev"
+echo "  pnpm run dev"
 echo ""
 echo "Client: http://localhost:3000"
 echo "Server: http://localhost:4000"

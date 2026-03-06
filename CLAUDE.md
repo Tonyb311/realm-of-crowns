@@ -2,10 +2,21 @@
 
 ## Critical Rules
 
+### Honesty & Uncertainty
+- **Never fabricate information.** If you don't know something — a config key, a CLI flag, how a tool works, what a setting does — say "I don't know" or "I'm not sure" instead of guessing. A wrong confident answer is far more damaging than admitting uncertainty.
+- **Verify before asserting.** Before claiming a config option exists, a file doesn't exist, or a command works a certain way: actually check. Read the file, run the command, search the codebase. Don't rely on training data for tool-specific details — it's often wrong or outdated.
+- **Flag your confidence level.** If you're working from memory rather than verification, say so: "I believe X but haven't verified" is acceptable. "X is how it works" without checking is not.
+- **Never invent API endpoints, config keys, CLI flags, or feature names.** If you're unsure whether something exists, search for it first.
+
 ### Deployment
 - **Azure Container Apps will NOT pull a new image if the tag hasn't changed.** Always use a unique tag: timestamp (`202602211159`) or commit hash. NEVER use `latest` or reuse a previous tag.
 - **Database seeds run on container startup.** If you change seed data (monsters, items, towns, routes), it updates on deploy.
 - **Standard deploy workflow:** `git commit` → `git push` → `docker build -t rocregistry.azurecr.io/realm-of-crowns:<UNIQUE_TAG>` → `docker push` → `az containerapp update` → verify health.
+
+### Package Manager
+- **This project uses pnpm**, not npm. All install/run commands use `pnpm`.
+- Workspace filter syntax: `pnpm --filter @realm-of-crowns/client <command>`
+- Never use `npm install` or `npm run` — use `pnpm install` and `pnpm run`.
 
 ### Economy Changes -- YAML First
 - `docs/profession-economy-master.yaml` is the **single source of truth** for all professions, recipes, and economy data.

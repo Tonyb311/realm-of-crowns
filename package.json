@@ -3,32 +3,35 @@
   "version": "0.1.0",
   "private": true,
   "description": "A browser-based fantasy MMORPG with 20 races, player-driven economy and politics",
-  "workspaces": [
-    "client",
-    "server",
-    "shared",
-    "database"
-  ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:client": "npm run dev --workspace=client",
-    "dev:server": "npm run dev --workspace=server",
-    "build": "npm run build --workspace=shared && npm run build --workspace=client && npm run build --workspace=server",
-    "db:migrate": "npm run migrate --workspace=database",
-    "db:seed": "npm run seed --workspace=database",
-    "db:studio": "npm run studio --workspace=database",
-    "db:reset": "npm run reset --workspace=database",
-    "test": "npm run test --workspace=server",
+    "dev": "concurrently \"pnpm run dev:server\" \"pnpm run dev:client\"",
+    "dev:client": "pnpm --filter @realm-of-crowns/client dev",
+    "dev:server": "pnpm --filter @realm-of-crowns/server dev",
+    "build": "pnpm --filter @realm-of-crowns/shared build && pnpm --filter @realm-of-crowns/client build && pnpm --filter @realm-of-crowns/server build",
+    "db:migrate": "pnpm --filter @realm-of-crowns/database migrate",
+    "db:seed": "pnpm --filter @realm-of-crowns/database seed",
+    "db:studio": "pnpm --filter @realm-of-crowns/database studio",
+    "db:reset": "pnpm --filter @realm-of-crowns/database reset",
+    "test": "pnpm --filter @realm-of-crowns/server test",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "validate:economy": "npm run validate-sync --workspace=database",
-    "combat-sim": "npm run combat-sim --workspace=server --",
-    "sim:run": "npm run sim:run --workspace=server --",
-    "sim:list": "npm run sim:list --workspace=server",
-    "sim:delete": "npm run sim:delete --workspace=server --"
+    "validate:economy": "pnpm --filter @realm-of-crowns/database validate-sync",
+    "combat-sim": "pnpm --filter @realm-of-crowns/server combat-sim --",
+    "sim:run": "pnpm --filter @realm-of-crowns/server sim:run --",
+    "sim:list": "pnpm --filter @realm-of-crowns/server sim:list",
+    "sim:delete": "pnpm --filter @realm-of-crowns/server sim:delete --"
   },
   "devDependencies": {
     "concurrently": "^8.2.0",
     "typescript": "^5.4.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma",
+      "unrs-resolver"
+    ]
   }
 }

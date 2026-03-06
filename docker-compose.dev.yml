@@ -1,6 +1,6 @@
 # Development overrides: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 #
-# Only starts postgres and redis -- run the app locally with `npm run dev`
+# Only starts postgres and redis -- run the app locally with `pnpm run dev`
 # for hot-reload. Use this alongside the root docker-compose.yml.
 
 services:

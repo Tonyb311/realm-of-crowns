@@ -1,22 +1,24 @@
 FROM node:20-alpine AS build
 
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /app
 
 # Copy workspace config and lockfile
-COPY package.json package-lock.json ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY client/package.json ./client/
 COPY shared/package.json ./shared/
 
 # Install dependencies
-RUN npm ci --workspace=client --workspace=shared
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY shared/ ./shared/
 COPY client/ ./client/
 
 # Build shared first, then client
-RUN npm run build --workspace=shared
-RUN npm run build --workspace=client
+RUN pnpm --filter @realm-of-crowns/shared build
+RUN pnpm --filter @realm-of-crowns/client build
 
 # --- Nginx stage ---
 FROM nginx:alpine

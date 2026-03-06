@@ -71,7 +71,7 @@ Main story, town, recurring (72h cooldown), guild, and bounty quest types -- 49 
 ### Prerequisites
 
 - **Node.js** 20+
-- **npm** 9+
+- **pnpm** 9+ (`npm install -g pnpm`)
 - **Docker** and **Docker Compose** (for PostgreSQL and Redis)
 
 ### Option A: Full Docker (production-like)
@@ -90,16 +90,16 @@ Open http://localhost. The client runs on port 80 (Nginx), the server on port 40
 
 # Or do it manually:
 cp .env.example .env
-npm install
+pnpm install
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres redis
 npx prisma migrate deploy --schema=database/prisma/schema.prisma
-npm run db:seed
-npm run dev
+pnpm run db:seed
+pnpm run dev
 ```
 
 Client: http://localhost:3000
 Server: http://localhost:4000
-Prisma Studio: `npm run db:studio`
+Prisma Studio: `pnpm run db:studio`
 
 ## Documentation
 
@@ -200,21 +200,21 @@ realm-of-crowns/
   .github/workflows/     CI/CD pipeline (ci.yml)
 ```
 
-## npm Scripts
+## pnpm Scripts
 
 | Command | Description |
 |---|---|
-| `npm run dev` | Start client and server in dev mode with hot-reload |
-| `npm run dev:client` | Start only the Vite dev server |
-| `npm run dev:server` | Start only the Express server (tsx watch) |
-| `npm run build` | Build all workspaces for production |
-| `npm run test` | Run server integration tests |
-| `npm run db:migrate` | Run Prisma migrations |
-| `npm run db:seed` | Seed the database with game data |
-| `npm run db:studio` | Open Prisma Studio GUI |
-| `npm run db:reset` | Reset database (drop + migrate + seed) |
-| `npm run lint` | Run ESLint |
-| `npm run typecheck` | Run TypeScript type checking |
+| `pnpm run dev` | Start client and server in dev mode with hot-reload |
+| `pnpm run dev:client` | Start only the Vite dev server |
+| `pnpm run dev:server` | Start only the Express server (tsx watch) |
+| `pnpm run build` | Build all workspaces for production |
+| `pnpm run test` | Run server integration tests |
+| `pnpm run db:migrate` | Run Prisma migrations |
+| `pnpm run db:seed` | Seed the database with game data |
+| `pnpm run db:studio` | Open Prisma Studio GUI |
+| `pnpm run db:reset` | Reset database (drop + migrate + seed) |
+| `pnpm run lint` | Run ESLint |
+| `pnpm run typecheck` | Run TypeScript type checking |
 
 ## Environment Variables
 
@@ -251,7 +251,7 @@ This starts four services:
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
 # Run the app locally for hot-reload:
-npm run dev
+pnpm run dev
 ```
 
 ### Production (Azure Container Apps)
@@ -278,14 +278,14 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on pushes to main/mast
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/my-feature`)
-3. Run the dev environment (`npm run dev`) and verify changes work
-4. Run tests (`npm run test`) and type checking (`npm run typecheck`)
+3. Run the dev environment (`pnpm run dev`) and verify changes work
+4. Run tests (`pnpm run test`) and type checking (`pnpm run typecheck`)
 5. Commit your changes and open a pull request
 
 ### Adding a New Feature
 
 1. Define shared types/constants in `shared/src/`
-2. Add Prisma models in `database/prisma/schema.prisma` and run `npm run db:migrate`
+2. Add Prisma models in `database/prisma/schema.prisma` and run `pnpm run db:migrate`
 3. Create route handlers in `server/src/routes/`
 4. Add business logic in `server/src/services/`
 5. Build UI pages in `client/src/pages/` and components in `client/src/components/`

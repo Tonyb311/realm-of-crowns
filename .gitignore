@@ -30,6 +30,9 @@ database/prisma/migrations/*_migration_lock.toml
 Thumbs.db
 nul
 
+# Lockfiles - only keep pnpm
+package-lock.json
+
 # Logs
 *.log
 npm-debug.log*

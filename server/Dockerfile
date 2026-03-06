@@ -1,18 +1,19 @@
 FROM node:20-alpine AS builder
 
 RUN apk add --no-cache openssl
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
 # Copy workspace config and lockfile
-COPY package.json package-lock.json ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY server/package.json ./server/
 COPY shared/package.json ./shared/
 COPY database/package.json ./database/
 COPY client/package.json ./client/
 
 # Install all dependencies (including devDependencies for build)
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY shared/ ./shared/
@@ -21,31 +22,32 @@ COPY server/ ./server/
 COPY client/ ./client/
 
 # Generate Prisma client
-RUN npx prisma generate --schema=database/prisma/schema.prisma
+RUN pnpm exec prisma generate --schema=database/prisma/schema.prisma
 
 # Build shared first, then server and client
-RUN npm run build --workspace=shared
-RUN npm run build --workspace=server
-RUN cd client && npx vite build
+RUN pnpm --filter @realm-of-crowns/shared build
+RUN pnpm --filter @realm-of-crowns/server build
+RUN cd client && pnpm exec vite build
 
 # --- Production stage ---
 FROM node:20-alpine
 
 RUN apk add --no-cache openssl
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY server/package.json ./server/
 COPY shared/package.json ./shared/
 COPY database/package.json ./database/
 
 # Install production dependencies only
-RUN npm ci --workspace=server --workspace=shared --workspace=database --omit=dev
+RUN pnpm install --frozen-lockfile --prod
 
 # Copy Prisma schema and generate client for production
 COPY database/prisma/ ./database/prisma/
-RUN npx prisma generate --schema=database/prisma/schema.prisma
+RUN pnpm exec prisma generate --schema=database/prisma/schema.prisma
 
 # Copy built output
 COPY --from=builder /app/shared/dist/ ./shared/dist/
@@ -60,7 +62,7 @@ COPY database/seeds/ ./database/seeds/
 COPY database/tsconfig.production.json ./database/tsconfig.json
 
 # Install tsx globally for running TypeScript seeds at startup
-RUN npm install -g tsx
+RUN pnpm add -g tsx
 
 ENV NODE_ENV=production
 EXPOSE 4000
@@ -69,4 +71,4 @@ RUN addgroup --system app && adduser --system --ingroup app app
 USER app
 
 WORKDIR /app/server
-CMD ["sh", "-c", "npx prisma migrate deploy --schema=../database/prisma/schema.prisma && cd /app/database && tsx --require tsconfig-paths/register seeds/index.ts && cd /app/server && node -r tsconfig-paths/register dist/index.js"]
+CMD ["sh", "-c", "pnpm exec prisma migrate deploy --schema=../database/prisma/schema.prisma && cd /app/database && tsx --require tsconfig-paths/register seeds/index.ts && cd /app/server && node -r tsconfig-paths/register dist/index.js"]

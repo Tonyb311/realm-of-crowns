@@ -16,15 +16,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      - run: npm ci
+      - name: Install pnpm
+        run: corepack enable && corepack prepare pnpm@latest --activate
+
+      - run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma client
         run: npx prisma generate --schema=database/prisma/schema.prisma
 
       - name: Type check shared
-        run: npm run typecheck --workspace=shared
+        run: pnpm --filter @realm-of-crowns/shared typecheck
 
       - name: Type check server
         run: npx tsc --noEmit --project server/tsconfig.json
@@ -69,9 +71,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      - run: npm ci
+      - name: Install pnpm
+        run: corepack enable && corepack prepare pnpm@latest --activate
+
+      - run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma client
         run: npx prisma generate --schema=database/prisma/schema.prisma
@@ -80,7 +84,7 @@ jobs:
         run: npx prisma migrate deploy --schema=database/prisma/schema.prisma
 
       - name: Run tests
-        run: npm test --workspace=server --if-present
+        run: pnpm --filter @realm-of-crowns/server test --if-present
 
   build:
     name: Build
@@ -91,15 +95,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      - run: npm ci
+      - name: Install pnpm
+        run: corepack enable && corepack prepare pnpm@latest --activate
+
+      - run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma client
         run: npx prisma generate --schema=database/prisma/schema.prisma
 
       - name: Build all workspaces
-        run: npm run build
+        run: pnpm run build
 
   docker:
     name: Docker Build
