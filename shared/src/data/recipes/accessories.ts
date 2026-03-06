@@ -74,6 +74,22 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     tier: 4,
   },
 
+  {
+    recipeId: 'jewel-adamantine-ring',
+    name: 'Craft Adamantine Ring',
+    professionRequired: 'JEWELER',
+    levelRequired: 75,
+    inputs: [
+      { itemName: 'Adamantine Ingot', quantity: 2 },
+      { itemName: 'Gemstones', quantity: 4 },
+      { itemName: 'Arcane Reagents', quantity: 2 },
+    ],
+    outputs: [{ itemName: 'Adamantine Ring', quantity: 1 }],
+    craftTime: 120,
+    xpReward: 80,
+    tier: 5,
+  },
+
   // ── Necklaces ──────────────────────────────────────────────
   {
     recipeId: 'jewel-copper-necklace',
@@ -116,6 +132,37 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     craftTime: 60,
     xpReward: 40,
     tier: 3,
+  },
+
+  {
+    recipeId: 'jewel-mithril-necklace',
+    name: 'Craft Mithril Necklace',
+    professionRequired: 'JEWELER',
+    levelRequired: 55,
+    inputs: [
+      { itemName: 'Mithril Ingot', quantity: 2 },
+      { itemName: 'Gemstones', quantity: 3 },
+      { itemName: 'Arcane Reagents', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Mithril Necklace', quantity: 1 }],
+    craftTime: 90,
+    xpReward: 60,
+    tier: 4,
+  },
+  {
+    recipeId: 'jewel-adamantine-necklace',
+    name: 'Craft Adamantine Necklace',
+    professionRequired: 'JEWELER',
+    levelRequired: 75,
+    inputs: [
+      { itemName: 'Adamantine Ingot', quantity: 3 },
+      { itemName: 'Gemstones', quantity: 4 },
+      { itemName: 'Arcane Reagents', quantity: 2 },
+    ],
+    outputs: [{ itemName: 'Adamantine Necklace', quantity: 1 }],
+    craftTime: 130,
+    xpReward: 90,
+    tier: 5,
   },
 
   // ── Circlets & Crowns ──────────────────────────────────────

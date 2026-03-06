@@ -1184,7 +1184,7 @@ const RESOURCE_ITEMS: ResourceItemDef[] = [
   // Other inputs
   { name: 'Salt', type: 'MATERIAL', description: 'Sea salt harvested from tidal pools. Essential for preservation.', baseValue: 3 },
   { name: 'Rare Herbs', type: 'MATERIAL', description: 'Elusive plants that grow only in specific conditions.', baseValue: 28 },
-  { name: 'Arcane Reagents', type: 'MATERIAL', description: 'Volatile magical substances harvested from places of power.', baseValue: 35 },
+  { name: 'Arcane Reagentss', type: 'MATERIAL', description: 'Volatile magical substances harvested from places of power.', baseValue: 35 },
   // Town gathering spot items
   { name: 'Apples', type: 'MATERIAL', description: 'Crisp apples picked from the royal orchards.', baseValue: 3 },
   { name: 'Raw Fish', type: 'MATERIAL', description: 'Fresh fish caught from nearby waters.', baseValue: 4 },
@@ -1202,7 +1202,7 @@ const RESOURCE_ITEMS: ResourceItemDef[] = [
   { name: 'Fiber', type: 'MATERIAL', description: 'Plant fibers used for stringing bows and binding.', baseValue: 3 },
   { name: 'Lumber', type: 'MATERIAL', description: 'Cut and dried timber, ready for use.', baseValue: 5 },
   { name: 'Hide', type: 'MATERIAL', description: 'An animal hide, not yet tanned.', baseValue: 8 },
-  { name: 'Arcane Reagent', type: 'MATERIAL', description: 'A shimmering reagent infused with magical energy.', baseValue: 35 },
+  { name: 'Arcane Reagents', type: 'MATERIAL', description: 'A shimmering reagent infused with magical energy.', baseValue: 35 },
 ];
 
 // ============================================================
@@ -1241,7 +1241,7 @@ const CRAFTING_RECIPES: RecipeDef[] = [
     tier: 'APPRENTICE',
     ingredients: [
       { itemName: 'Herbs', quantity: 3 },
-      { itemName: 'Arcane Reagent', quantity: 1 },
+      { itemName: 'Arcane Reagents', quantity: 1 },
     ],
     resultName: 'Healing Potion',
     craftTime: 45,

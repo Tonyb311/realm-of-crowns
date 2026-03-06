@@ -85,6 +85,18 @@ const ACCESSORY_ITEM_TEMPLATES: ItemTemplateDef[] = [
     baseValue: 2500,
   },
 
+  {
+    name: 'Adamantine Ring',
+    type: 'ACCESSORY',
+    rarity: 'LEGENDARY',
+    description: 'A ring forged from adamantine and set with arcane gems. Virtually indestructible.',
+    stats: { armor: 8, intelligence: 10, dexterity: 5 },
+    durability: 200,
+    professionRequired: 'JEWELER',
+    levelRequired: 75,
+    baseValue: 5000,
+  },
+
   // ── Necklaces ──────────────────────────────────────────────
   {
     name: 'Copper Necklace',
@@ -118,6 +130,29 @@ const ACCESSORY_ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'JEWELER',
     levelRequired: 30,
     baseValue: 650,
+  },
+
+  {
+    name: 'Mithril Necklace',
+    type: 'ACCESSORY',
+    rarity: 'MASTERWORK',
+    description: 'A mithril chain inset with enchanted gemstones. Light as air, strong as iron.',
+    stats: { intelligence: 8, constitution: 5, armor: 3 },
+    durability: 150,
+    professionRequired: 'JEWELER',
+    levelRequired: 55,
+    baseValue: 2800,
+  },
+  {
+    name: 'Adamantine Necklace',
+    type: 'ACCESSORY',
+    rarity: 'LEGENDARY',
+    description: 'An adamantine chain with a massive arcane gem. Radiates raw power.',
+    stats: { intelligence: 12, constitution: 6, wisdom: 4, armor: 5 },
+    durability: 200,
+    professionRequired: 'JEWELER',
+    levelRequired: 75,
+    baseValue: 5500,
   },
 
   // ── Circlets & Crowns ──────────────────────────────────────

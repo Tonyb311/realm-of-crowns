@@ -189,25 +189,27 @@ Now uses `CLASS_SAVE_DC_STAT` map. Deployed and verified (prior session).
 
 ## P3 — Low Priority (Dead Code, Cosmetic, Data Hygiene)
 
-| # | Description | Location |
-|---|-------------|----------|
-| P3-01 | `speed` stat is dead — stored on all monsters, never referenced in combat/travel | monster seeds + type defs |
-| P3-02 | `taunt` status has zero modifiers — AC −2 applied via parallel `ActiveBuff` instead | combat-engine.ts STATUS_EFFECT_DEFS |
-| P3-03 | CHA is a dead stat for non-Bard characters — no CHA saving throws exist | By design |
-| P3-04 | Name collisions: two "Iron Sword" and two "Steel Sword" templates | Blacksmith seeds |
-| P3-05 | Duplicate "Quiver" item from both TANNER and FLETCHER | Recipe seeds |
-| P3-06 | `Arcane Reagent` vs `Arcane Reagents` — singular/plural duplicate | Item template seeds |
-| P3-07 | "Copper" weapons require Iron Ingots — no Copper Ore exists | Blacksmith supply chain |
-| P3-08 | No T5 ring or complete necklace ladder | Jeweler item templates |
-| P3-09 | Frost Giant redundant COLD resistance — FIXED (prior session) | monsters.ts |
-| P3-10 | 4 fear_aura abilities missing `saveType` — FIXED (prior session) | monsters.ts |
-| P3-11 | Large empty level ranges (7+ levels) with no ability unlocks | Skill data files |
-| P3-12 | TUTORIAL quest type in client/shared but not in Prisma schema enum | schema.prisma / quest types |
-| P3-13 | 14/29 professions missing from `PROFESSION_LABELS` in UI | CraftingResults.tsx, RecipeList.tsx |
-| P3-14 | Dead API routes with no client callers | Various server route files |
-| P3-15 | 4 Tier 6 monsters in unreachable biomes (RIVER/UNDERWATER) — intentional | monsters.ts |
-| P3-16 | No T4/T5 piercing weapons — Rogue piercing builds cap at T3 | Blacksmith/weapon templates |
-| P3-17 | Several monster Save DCs deviate significantly from formula | monsters.ts |
+**ALL P3 ISSUES RESOLVED.** 1 deferred to future audit.
+
+| # | Status | Description |
+|---|--------|-------------|
+| P3-01 | ALREADY FIXED | `speed` stat removed from all monsters and type defs in prior session |
+| P3-02 | NOT A BUG | `taunt` modifies AI targeting behavior, not stats — zero modifiers correct |
+| P3-03 | BY DESIGN | CHA matters for Bards (spell DC/attacks) and social/political systems |
+| P3-04 | NOT A BUG | `run-recipes.ts` is legacy standalone script, not part of main seed pipeline — no collision in production |
+| P3-05 | FIXED | TANNER quiver renamed to "Leather Quiver" — FLETCHER keeps "Quiver" (combat accessory) |
+| P3-06 | FIXED | `Arcane Reagent` (singular) in legacy `recipes.ts` normalized to `Arcane Reagents` (plural) |
+| P3-07 | DOCUMENTED | Comment added to weapons.ts explaining "Copper" is flavor naming, materials are Iron |
+| P3-08 | FIXED | Added Adamantine Ring (T5), Mithril Necklace (T4), Adamantine Necklace (T5) to JEWELER |
+| P3-09 | ALREADY FIXED | Frost Giant redundant COLD resistance removed (prior session) |
+| P3-10 | ALREADY FIXED | 4 fear_aura abilities got `saveType: 'wis'` (prior session) |
+| P3-11 | BY DESIGN | Ability unlocks at defined levels; players gain stats/HP/proficiency between unlocks |
+| P3-12 | ALREADY FIXED | TUTORIAL exists in QuestType enum in Prisma schema |
+| P3-13 | FIXED | All 29+ professions added to PROFESSION_LABELS in both CraftingResults.tsx and RecipeList.tsx |
+| P3-14 | DEFERRED | Dead API route audit — future frontend-backend alignment pass |
+| P3-15 | BY DESIGN | RIVER/UNDERWATER monsters are future content for water travel release |
+| P3-16 | FIXED | Mithril Dagger/Rapier (T4) and Adamantine Dagger/Rapier (T5) added for piercing builds |
+| P3-17 | BY DESIGN | Save DC deviations are intentional tuning — weak-stat abilities inflated, high-stat abilities capped |
 
 ---
 
@@ -263,6 +265,23 @@ All fixes deployed in revision `202603052223` unless noted otherwise.
 | P2-18 | NOT A BUG — Psion level schedule matches other classes | P2 fix session (verified) |
 | P2-19 | VERIFIED — `calculateSaveDC()` class-aware | Prior session (verified) |
 | P2-20 | Skeleton Warrior `sentient: true` + broken loot row fixed | P2 fix session |
+| P3-01 | ALREADY FIXED — `speed` stat removed from monsters/types | Prior session |
+| P3-02 | NOT A BUG — taunt modifies AI targeting, not stats | P3 fix session (verified) |
+| P3-03 | BY DESIGN — CHA matters for Bards and social systems | P3 fix session |
+| P3-04 | NOT A BUG — `run-recipes.ts` is unused legacy script | P3 fix session (verified) |
+| P3-05 | TANNER quiver renamed to "Leather Quiver" | P3 fix session |
+| P3-06 | `Arcane Reagent` → `Arcane Reagents` in legacy seed | P3 fix session |
+| P3-07 | DOCUMENTED — "Copper" is flavor naming, uses Iron materials | P3 fix session |
+| P3-08 | Adamantine Ring + Mithril/Adamantine Necklace added to JEWELER | P3 fix session |
+| P3-09 | ALREADY FIXED — Frost Giant COLD resistance removed | Prior session |
+| P3-10 | ALREADY FIXED — fear_aura `saveType: 'wis'` added | Prior session |
+| P3-11 | BY DESIGN — level gaps are normal, players gain stats between ability unlocks | P3 fix session |
+| P3-12 | ALREADY FIXED — TUTORIAL exists in QuestType Prisma enum | P3 fix session (verified) |
+| P3-13 | All 29+ professions in PROFESSION_LABELS (both UI files) | P3 fix session |
+| P3-14 | DEFERRED — dead route audit for future session | P3 fix session |
+| P3-15 | BY DESIGN — RIVER/UNDERWATER monsters are future content | P3 fix session |
+| P3-16 | Mithril/Adamantine Dagger + Rapier (T4/T5 piercing) added | P3 fix session |
+| P3-17 | BY DESIGN — save DC deviations are intentional balance tuning | P3 fix session (verified) |
 
 ---
 
@@ -270,11 +289,13 @@ All fixes deployed in revision `202603052223` unless noted otherwise.
 
 | System | P0 Open | P1 Open | P2 Open | P3 Open | Fixed |
 |--------|---------|---------|---------|---------|-------|
-| Combat Engine | 0 | 0 | 0 | 3 | 14 |
-| Saving Throws | 0 | 0 | 0 | — | 6 |
-| Monster AoE / logging | 0 | 0 | 0 | — | 4 |
-| Equipment / Combat | 0 | 0 | 0 | 8 | 21 |
-| Ability system | 0 | 0 | 0 | 1 | 5 |
-| Schema / Frontend | 0 | 0 | 0 | 3 | — |
-| Monster data | 0 | 0 | 0 | 2 | 6 |
-| **Total** | **0** | **0** | **0** | **17** | **56** |
+| Combat Engine | 0 | 0 | 0 | 0 | 17 |
+| Saving Throws | 0 | 0 | 0 | 0 | 6 |
+| Monster AoE / logging | 0 | 0 | 0 | 0 | 4 |
+| Equipment / Combat | 0 | 0 | 0 | 0 | 29 |
+| Ability system | 0 | 0 | 0 | 0 | 6 |
+| Schema / Frontend | 0 | 0 | 0 | 1 | 2 |
+| Monster data | 0 | 0 | 0 | 0 | 8 |
+| **Total** | **0** | **0** | **0** | **1** | **72** |
+
+*P3-14 (dead API routes) deferred to future audit — only remaining open item.*

@@ -83,11 +83,16 @@ function D20Display({ roll }: { roll: number }) {
 // Profession label helper
 // ---------------------------------------------------------------------------
 const PROFESSION_LABELS: Record<string, string> = {
-  BLACKSMITH: 'Blacksmith', ARMORER: 'Armorer', LEATHERWORKER: 'Leatherworker',
-  TAILOR: 'Tailor', WOODWORKER: 'Woodworker', ALCHEMIST: 'Alchemist',
-  COOK: 'Cook', BREWER: 'Brewer', SMELTER: 'Smelter', TANNER: 'Tanner',
-  FLETCHER: 'Fletcher', JEWELER: 'Jeweler', ENCHANTER: 'Enchanter',
-  SCRIBE: 'Scribe', MASON: 'Mason',
+  FARMER: 'Farmer', FISHER: 'Fisher', FISHERMAN: 'Fisherman', HUNTER: 'Hunter',
+  LUMBERJACK: 'Lumberjack', MINER: 'Miner', HERBALIST: 'Herbalist',
+  MILLER: 'Miller', BAKER: 'Baker', BREWER: 'Brewer', BUTCHER: 'Butcher', COOK: 'Cook',
+  SMELTER: 'Smelter', TANNER: 'Tanner', TAILOR: 'Tailor', LEATHERWORKER: 'Leatherworker',
+  CARPENTER: 'Carpenter', WOODWORKER: 'Woodworker', MASON: 'Mason',
+  BLACKSMITH: 'Blacksmith', ARMORER: 'Armorer', FLETCHER: 'Fletcher',
+  JEWELER: 'Jeweler', ALCHEMIST: 'Alchemist', ENCHANTER: 'Enchanter', SCRIBE: 'Scribe',
+  MERCHANT: 'Merchant', INNKEEPER: 'Innkeeper', HEALER: 'Healer',
+  STABLE_MASTER: 'Stable Master', BANKER: 'Banker', COURIER: 'Courier',
+  MERCENARY_CAPTAIN: 'Mercenary Captain', RANCHER: 'Rancher', BEEKEEPER: 'Beekeeper',
 };
 
 function professionLabel(type: string) {

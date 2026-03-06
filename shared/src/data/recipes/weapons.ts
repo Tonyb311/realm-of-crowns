@@ -3,6 +3,9 @@
  *
  * Weapons are organized by material tier:
  *   Copper (Lvl 1) -> Iron (Lvl 10) -> Steel (Lvl 30) -> Mithril (Lvl 55) -> Adamantine (Lvl 75)
+ *
+ * NOTE: "Copper" weapons use Iron Ingots as materials (no Copper Ore exists).
+ * "Copper" is flavor naming for T1 equipment — all T1 recipes use Iron-based materials.
  */
 
 import { FinishedGoodsRecipe, tagRecipesWithCategories } from './types';
@@ -658,6 +661,56 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     },
   },
   {
+    recipeId: 'forge-mithril-dagger',
+    name: 'Forge Mithril Dagger',
+    professionRequired: 'BLACKSMITH',
+    levelRequired: 55,
+    inputs: [
+      { itemName: 'Mithril Ingot', quantity: 2 },
+      { itemName: 'Exotic Leather', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Mithril Dagger', quantity: 1 }],
+    craftTime: 80,
+    xpReward: 70,
+    tier: 4,
+    outputItemType: 'WEAPON',
+    equipSlot: 'MAIN_HAND',
+    outputStats: {
+      baseDamage: 28,
+      damageType: 'piercing',
+      speed: 12,
+      requiredStr: 8,
+      requiredDex: 16,
+      durability: 300,
+      levelToEquip: 55,
+    },
+  },
+  {
+    recipeId: 'forge-mithril-rapier',
+    name: 'Forge Mithril Rapier',
+    professionRequired: 'BLACKSMITH',
+    levelRequired: 55,
+    inputs: [
+      { itemName: 'Mithril Ingot', quantity: 3 },
+      { itemName: 'Exotic Leather', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Mithril Rapier', quantity: 1 }],
+    craftTime: 90,
+    xpReward: 80,
+    tier: 4,
+    outputItemType: 'WEAPON',
+    equipSlot: 'MAIN_HAND',
+    outputStats: {
+      baseDamage: 34,
+      damageType: 'piercing',
+      speed: 10,
+      requiredStr: 10,
+      requiredDex: 16,
+      durability: 320,
+      levelToEquip: 55,
+    },
+  },
+  {
     recipeId: 'forge-mithril-greatsword',
     name: 'Forge Mithril Greatsword',
     professionRequired: 'BLACKSMITH',
@@ -813,6 +866,56 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 18,
       requiredDex: 10,
       durability: 450,
+      levelToEquip: 75,
+    },
+  },
+  {
+    recipeId: 'forge-adamantine-dagger',
+    name: 'Forge Adamantine Dagger',
+    professionRequired: 'BLACKSMITH',
+    levelRequired: 75,
+    inputs: [
+      { itemName: 'Adamantine Ingot', quantity: 3 },
+      { itemName: 'Exotic Leather', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Adamantine Dagger', quantity: 1 }],
+    craftTime: 140,
+    xpReward: 140,
+    tier: 5,
+    outputItemType: 'WEAPON',
+    equipSlot: 'MAIN_HAND',
+    outputStats: {
+      baseDamage: 36,
+      damageType: 'piercing',
+      speed: 12,
+      requiredStr: 10,
+      requiredDex: 18,
+      durability: 400,
+      levelToEquip: 75,
+    },
+  },
+  {
+    recipeId: 'forge-adamantine-rapier',
+    name: 'Forge Adamantine Rapier',
+    professionRequired: 'BLACKSMITH',
+    levelRequired: 75,
+    inputs: [
+      { itemName: 'Adamantine Ingot', quantity: 4 },
+      { itemName: 'Exotic Leather', quantity: 1 },
+    ],
+    outputs: [{ itemName: 'Adamantine Rapier', quantity: 1 }],
+    craftTime: 155,
+    xpReward: 155,
+    tier: 5,
+    outputItemType: 'WEAPON',
+    equipSlot: 'MAIN_HAND',
+    outputStats: {
+      baseDamage: 44,
+      damageType: 'piercing',
+      speed: 10,
+      requiredStr: 12,
+      requiredDex: 18,
+      durability: 430,
       levelToEquip: 75,
     },
   },

@@ -2377,14 +2377,14 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
   },
   {
     recipeId: 'tan-quiver',
-    name: 'Craft Quiver',
+    name: 'Craft Leather Quiver',
     professionRequired: 'TANNER',
     levelRequired: 6,
     inputs: [
       { itemName: 'Leather', quantity: 3 },
       { itemName: 'Wood Logs', quantity: 2 },
     ],
-    outputs: [{ itemName: 'Quiver', quantity: 1 }],
+    outputs: [{ itemName: 'Leather Quiver', quantity: 1 }],
     craftTime: 30,
     xpReward: 22,
     tier: 2,
