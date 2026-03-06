@@ -1,170 +1,158 @@
 # Post-Rebalance Combat Sim Results
 
-**Run ID:** `cmmfhkxix000014enwv7fvuyj`
+**Run ID:** `cmmfjm8t4000014gn32jikcz1`
 **Date:** 2026-03-06
 **Total fights:** 15,400 (77 matchups x 200 iterations)
-**Overall win rate:** 0.0%
+**Overall win rate:** 8.8%
+**Changes tested:** Bounded accuracy stats (cap 20), class-varied HP/level (4/3/2), save proficiencies, extra attacks, feats
 
-## CRITICAL FINDING: HP Formula Mismatch
+## Key Findings
 
-The sim's `computeHP()` uses D&D-style hit dice. The game uses a flat `10 + conMod + classBonus + 10/level` formula. This produces drastically different HP values and makes ALL sim results invalid for balance analysis.
+### 1. Level 1 balance is reasonable
 
-| Level | Sim HP (avg) | Game HP (Warrior) | Game HP (Mage) | Ratio |
-|------:|-------------:|------------------:|---------------:|------:|
-| 1 | 8 | 20 | 14 | ~40-57% |
-| 5 | 23 | 60 | 54 | ~38-43% |
-| 10 | 42 | 110 | 104 | ~38-40% |
-| 15 | 62 | 160 | 154 | ~39-40% |
-| 20 | 81 | 210 | 204 | ~39-40% |
-| 25 | 100 | 260 | 254 | ~38-39% |
-| 30 | 128 | 310 | 304 | ~41-42% |
-| 40 | 181 | 410 | 404 | ~44-45% |
-| 50 | 254 | 510 | 504 | ~50% |
+L1 vs Giant Rat and Goblin shows meaningful class differentiation:
+- **Warrior: 83%** — strong early game, as intended
+- **Ranger: 71%** — solid physical damage
+- **Cleric: 48%** — mid-tier, consistent
+- **Bard: 35%**, **Rogue: 30%** — squishy but viable
+- **Mage: 22%**, **Psion: 22%** — fragile casters struggle early (expected)
 
-**Game HP formula** (from `server/src/routes/characters.ts` and `server/src/services/progression.ts`):
-- Starting: `10 + floor((CON - 10) / 2) + classHpBonus` (warrior: 10, cleric/ranger: 8, rogue/bard: 6, mage/psion: 4)
-- Per level: `+10 HP` (flat, from `LEVEL_UP_REWARDS.HP_PER_LEVEL`)
+### 2. Level 5+ monsters are massively overtuned
 
-**Sim HP formula** (from `server/src/services/combat-simulator.ts` `computeHP()`):
-- `hitDie + conMod + (level - 1) * floor(hitDieAvg + conMod)`
-- warrior hitDie=10, mage hitDie=6
+From L5 onward, win rates collapse to near-zero:
+- L5 vs Skeleton Warrior: best is Warrior at 18%, most classes at 0%
+- L10 vs Sandscale Basilisk: **0% for 6/7 classes** (only Ranger at 4%)
+- L13+ vs all monsters: **0% across the board**
 
-The sim produces 38-50% of actual game HP, making players die in 1-3 rounds against level-appropriate monsters.
+**Root cause:** Monster HP and damage scale dramatically while player damage stays flat. A L50 Warrior with 220 HP and ~8.4 DPR can't dent a Void Emperor with 650 HP (would need ~77 rounds, dies in ~2).
 
-### Recommendation
+### 3. HP class differentiation works correctly
 
-Replace `computeHP()` in `combat-simulator.ts` with the game's actual formula:
-```typescript
-function computeHP(className: string, level: number, conMod: number): number {
-  const classBonus: Record<string, number> = {
-    warrior: 10, cleric: 8, ranger: 8, rogue: 6, bard: 6, mage: 4, psion: 4,
-  };
-  const startingHp = 10 + conMod + (classBonus[className] ?? 6);
-  return startingHp + (level - 1) * 10;
-}
-```
+| Level | Warrior | Ranger | Cleric | Rogue/Bard | Mage/Psion |
+|------:|--------:|-------:|-------:|-----------:|-----------:|
+| 1 | 20 | 18 | 18 | 16 | 14 |
+| 10 | 56 | 54 | 45 | 43 | 32 |
+| 25 | 116 | 114 | 90 | 88 | 62 |
+| 50 | 220 | 214 | 169 | 163 | 112 |
 
-## Results Summary (Invalid Due to HP Bug)
+**Warrior:Mage HP ratio at L50 = 1.96:1** — exactly the 2:1 target from the design doc.
 
-All data below is recorded for reference but SHOULD NOT be used for balance decisions until the HP formula is fixed and the battery is re-run.
+### 4. Mage survivability at L50 is concerning
 
-### Class Win Rate by Level
+With only 112 HP, Mage/Psion die in 1-2 rounds to any mid+ tier monster. Even with the best possible play, they can't survive long enough to deal meaningful damage. This is by design (back-line fragile) but means caster viability depends entirely on ability damage, which the sim doesn't fully model.
 
-| Level | warrior | mage | rogue | cleric | ranger | bard | psion |
+### 5. Player DPR is too low across all levels
+
+Even Warrior — the highest DPR class — peaks at ~11.2 DPR (L40 vs Archlich). Against monsters with 100-650 HP, this means 10-60+ rounds to kill. Players die long before that.
+
+**The problem is NOT player HP (that's now correct). The problem is the player-to-monster damage/HP ratio.** Monsters need HP rebalancing or player damage scaling needs review.
+
+## Class Win Rate by Level
+
+| Level | Warrior | Mage | Rogue | Cleric | Ranger | Bard | Psion |
 |------:|--------:|-----:|------:|-------:|-------:|-----:|------:|
-| 1 | 0% | 0% | 0% | 0% | 0% | 0% | 0% |
-| 5 | 0% | 0% | 0% | 0% | 0% | 0% | 0% |
-| 10 | 0% | 0% | 0% | 0% | 0% | 0% | 0% |
+| 1 | 83% | 22% | 30% | 48% | 71% | 35% | 22% |
+| 5 | 18% | 0% | 2% | 3% | 10% | 0% | 0% |
+| 10 | 0% | 0% | 0% | 0% | 4% | 0% | 0% |
 | 13 | 0% | 0% | 0% | 0% | 0% | 0% | 0% |
 | 15 | 0% | 0% | 0% | 0% | 0% | 0% | 0% |
-| 20 | 0% | 0% | 0% | 0% | 0% | 0% | 0% |
+| 20 | 6% | 0% | 2% | 4% | 11% | 0% | 0% |
 | 25 | 0% | 0% | 0% | 0% | 0% | 0% | 0% |
 | 30 | 0% | 0% | 0% | 0% | 0% | 0% | 0% |
 | 40 | 0% | 0% | 0% | 0% | 0% | 0% | 0% |
 | 50 | 0% | 0% | 0% | 0% | 0% | 0% | 0% |
 
-### Per-Matchup Breakdown
+## Per-Matchup Breakdown
 
-| Matchup | Win% | Avg Rounds | Avg DPR | n |
-|---------|------|------------|---------|---|
-| L1 warrior vs Giant Rat | 0.0% | 7.4 | 2.0 | 200 |
-| L1 warrior vs Goblin | 0.0% | 6.9 | 2.6 | 200 |
-| L1 ranger vs Giant Rat | 0.0% | 7.2 | 1.8 | 200 |
-| L1 ranger vs Goblin | 0.0% | 5.3 | 2.7 | 200 |
-| L1 rogue vs Giant Rat | 0.0% | 7.8 | 1.2 | 200 |
-| L1 rogue vs Goblin | 0.0% | 5.4 | 1.9 | 200 |
-| L1 cleric vs Giant Rat | 0.0% | 8.0 | 1.4 | 200 |
-| L1 cleric vs Goblin | 0.0% | 6.6 | 1.9 | 200 |
-| L1 mage vs Giant Rat | 0.0% | 5.6 | 1.5 | 200 |
-| L1 mage vs Goblin | 0.0% | 4.1 | 1.8 | 200 |
-| L1 bard vs Giant Rat | 0.0% | 7.7 | 1.3 | 200 |
-| L1 bard vs Goblin | 0.0% | 5.3 | 1.9 | 200 |
-| L1 psion vs Giant Rat | 0.0% | 5.9 | 1.4 | 200 |
-| L1 psion vs Goblin | 0.0% | 4.2 | 1.8 | 200 |
-| L5 warrior vs Skeleton Warrior | 0.0% | 4.5 | 4.0 | 200 |
-| L5 ranger vs Skeleton Warrior | 0.0% | 3.5 | 4.6 | 200 |
-| L5 rogue vs Skeleton Warrior | 0.0% | 3.6 | 3.7 | 200 |
-| L5 cleric vs Skeleton Warrior | 0.0% | 3.6 | 3.5 | 200 |
-| L5 mage vs Skeleton Warrior | 0.0% | 2.4 | 2.4 | 200 |
-| L5 bard vs Skeleton Warrior | 0.0% | 3.2 | 2.1 | 200 |
-| L5 psion vs Skeleton Warrior | 0.0% | 2.4 | 2.1 | 200 |
-| L10 warrior vs Sandscale Basilisk | 0.0% | 4.7 | 8.0 | 200 |
-| L10 ranger vs Sandscale Basilisk | 0.0% | 4.0 | 12.6 | 200 |
-| L10 rogue vs Sandscale Basilisk | 0.0% | 3.7 | 8.0 | 200 |
-| L10 cleric vs Sandscale Basilisk | 0.0% | 5.0 | 5.1 | 200 |
-| L10 mage vs Sandscale Basilisk | 0.0% | 2.8 | 2.3 | 200 |
-| L10 bard vs Sandscale Basilisk | 0.0% | 3.6 | 2.3 | 200 |
-| L10 psion vs Sandscale Basilisk | 0.0% | 3.0 | 4.0 | 200 |
-| L13 warrior vs Void Stalker | 0.0% | 3.0 | 4.2 | 200 |
-| L13 ranger vs Void Stalker | 0.0% | 2.5 | 6.3 | 200 |
-| L13 rogue vs Void Stalker | 0.0% | 2.3 | 2.3 | 200 |
-| L13 cleric vs Void Stalker | 0.0% | 2.7 | 1.8 | 200 |
-| L13 mage vs Void Stalker | 0.0% | 2.0 | 1.6 | 200 |
-| L13 bard vs Void Stalker | 0.0% | 2.2 | 0.9 | 200 |
-| L13 psion vs Void Stalker | 0.0% | 1.9 | 1.0 | 200 |
-| L15 warrior vs Hydra | 0.0% | 1.6 | 2.7 | 200 |
-| L15 others vs Hydra | 0.0% | 1.0 | 0.0-0.2 | 1200 |
-| L20 warrior vs Mind Flayer | 0.0% | 6.9 | 9.6 | 200 |
-| L20 ranger vs Mind Flayer | 0.0% | 5.5 | 7.8 | 200 |
-| L20 rogue vs Mind Flayer | 0.0% | 5.1 | 7.6 | 200 |
-| L20 cleric vs Mind Flayer | 0.0% | 6.5 | 7.0 | 200 |
-| L20 bard vs Mind Flayer | 0.0% | 3.9 | 7.2 | 200 |
-| L20 psion vs Mind Flayer | 0.0% | 2.8 | 2.2 | 200 |
-| L20 mage vs Mind Flayer | 0.0% | 2.4 | 0.0 | 200 |
-| L25 warrior vs Purple Worm | 0.0% | 3.8 | 9.9 | 200 |
-| L25 psion vs Purple Worm | 0.0% | 4.6 | 8.6 | 200 |
-| L25 bard vs Purple Worm | 0.0% | 3.1 | 7.0 | 200 |
-| L25 mage vs Purple Worm | 0.0% | 2.9 | 5.1 | 200 |
-| L25 cleric vs Purple Worm | 0.0% | 3.1 | 4.4 | 200 |
-| L25 rogue vs Purple Worm | 0.0% | 3.1 | 3.2 | 200 |
-| L25 ranger vs Purple Worm | 0.0% | 3.2 | 2.0 | 200 |
-| L30 all vs Storm Giant | 0.0% | 1.6-2.0 | 0.0-9.5 | 1400 |
-| L40 warrior vs Archlich | 0.0% | 6.0 | 10.6 | 200 |
-| L40 ranger vs Archlich | 0.0% | 3.0 | 6.4 | 200 |
-| L40 rogue vs Archlich | 0.0% | 3.0 | 6.1 | 200 |
-| L40 bard vs Archlich | 0.0% | 2.6 | 5.1 | 200 |
-| L40 mage vs Archlich | 0.0% | 2.4 | 2.1 | 200 |
-| L40 cleric vs Archlich | 0.0% | 4.8 | 1.2 | 200 |
-| L40 psion vs Archlich | 0.0% | 2.4 | 0.0 | 200 |
-| L50 warrior vs Void Emperor | 0.0% | 3.2 | 7.6 | 200 |
-| L50 ranger vs Void Emperor | 0.0% | 2.1 | 3.4 | 200 |
-| L50 rogue vs Void Emperor | 0.0% | 2.1 | 1.9 | 200 |
-| L50 mage vs Void Emperor | 0.0% | 2.0 | 0.4 | 200 |
-| L50 bard vs Void Emperor | 0.0% | 2.1 | 0.3 | 200 |
-| L50 cleric vs Void Emperor | 0.0% | 3.0 | 0.0 | 200 |
-| L50 psion vs Void Emperor | 0.0% | 2.0 | 0.0 | 200 |
+### Level 1 (vs Giant Rat / Goblin)
 
-### Monster HP Reference
+| Matchup | Win% | Avg Rounds | DPR |
+|---------|------|------------|-----|
+| L1 warrior vs Giant Rat | 84.0% | 9.4 | 1.8 |
+| L1 warrior vs Goblin | 82.5% | 9.0 | 2.6 |
+| L1 ranger vs Giant Rat | 72.0% | 10.2 | 1.6 |
+| L1 ranger vs Goblin | 69.5% | 8.4 | 2.6 |
+| L1 cleric vs Giant Rat | 43.0% | 13.9 | 1.0 |
+| L1 cleric vs Goblin | 52.0% | 11.0 | 1.8 |
+| L1 bard vs Giant Rat | 39.0% | 11.9 | 1.1 |
+| L1 bard vs Goblin | 31.5% | 9.3 | 1.9 |
+| L1 rogue vs Giant Rat | 33.0% | 12.6 | 1.0 |
+| L1 rogue vs Goblin | 26.5% | 9.1 | 1.9 |
+| L1 mage vs Giant Rat | 30.5% | 10.7 | 1.1 |
+| L1 mage vs Goblin | 12.5% | 7.8 | 1.9 |
+| L1 psion vs Giant Rat | 27.5% | 10.5 | 1.1 |
+| L1 psion vs Goblin | 15.5% | 7.5 | 2.0 |
 
-| Monster | Level Bracket | HP |
-|---------|:------------:|---:|
-| Giant Rat | 1 | 18 |
-| Goblin | 1 | 24 |
-| Skeleton Warrior | 5 | 40 |
-| Sandscale Basilisk | 10 | 110 |
-| Void Stalker | 13 | 110 |
-| Hydra | 15 | 160 |
-| Mind Flayer | 20 | 120 |
-| Purple Worm | 25 | 210 |
-| Storm Giant | 30 | 280 |
-| Archlich | 40 | 420 |
-| Void Emperor | 50 | 650 |
+### Level 5 (vs Skeleton Warrior)
 
-### Balance Alerts
+| Matchup | Win% | Avg Rounds | DPR |
+|---------|------|------------|-----|
+| L5 warrior | 18.0% | 5.6 | 4.5 |
+| L5 ranger | 10.0% | 4.5 | 4.9 |
+| L5 cleric | 3.0% | 4.3 | 3.8 |
+| L5 rogue | 1.5% | 3.8 | 3.5 |
+| L5 mage | 0.0% | 2.8 | 2.7 |
+| L5 bard | 0.0% | 3.7 | 2.3 |
+| L5 psion | 0.0% | 2.8 | 2.1 |
 
-All 77 matchups flagged as <30% win rate. This is entirely due to the HP formula mismatch. No balance conclusions can be drawn.
+### Level 10+ (all 0% except noted)
+
+| Level | Monster | Best Class | Best Win% | Best DPR |
+|------:|---------|------------|-----------|----------|
+| 10 | Sandscale Basilisk (110 HP) | Ranger | 4.0% | 13.7 |
+| 13 | Void Stalker (110 HP) | — | 0% | 7.2 (Ranger) |
+| 15 | Hydra (160 HP) | — | 0% | 2.3 (Warrior) |
+| 20 | Mind Flayer (120 HP) | Ranger | 11.0% | 9.5 (Warrior) |
+| 25 | Purple Worm (210 HP) | — | 0% | 9.5 (Warrior) |
+| 30 | Storm Giant (280 HP) | — | 0% | 3.6 (Warrior) |
+| 40 | Archlich (420 HP) | — | 0% | 11.2 (Warrior) |
+| 50 | Void Emperor (650 HP) | — | 0% | 8.4 (Warrior) |
+
+## Monster HP Reference
+
+| Monster | Level Bracket | HP | Player HP (Warrior) | Ratio |
+|---------|:------------:|---:|--------------------:|------:|
+| Giant Rat | 1 | 18 | 20 | 0.9x |
+| Goblin | 1 | 24 | 20 | 1.2x |
+| Skeleton Warrior | 5 | 40 | 36 | 1.1x |
+| Sandscale Basilisk | 10 | 110 | 56 | 2.0x |
+| Void Stalker | 13 | 110 | 68 | 1.6x |
+| Hydra | 15 | 160 | 76 | 2.1x |
+| Mind Flayer | 20 | 120 | 96 | 1.3x |
+| Purple Worm | 25 | 210 | 116 | 1.8x |
+| Storm Giant | 30 | 280 | 137 | 2.0x |
+| Archlich | 40 | 420 | 178 | 2.4x |
+| Void Emperor | 50 | 650 | 220 | 3.0x |
+
+Monster HP:Warrior HP ratio climbs from 0.9x at L1 to 3.0x at L50. Combined with monsters dealing much more damage per round than players, this makes mid-to-late game unwinnable.
+
+## Warrior Extra Attack DPR Analysis
+
+| Level | Attacks | DPR | Monster | Win% |
+|------:|--------:|----:|---------|-----:|
+| 1 | 1 | 1.8-2.6 | Giant Rat/Goblin | 83% |
+| 5 | 1 | 4.5 | Skeleton Warrior | 18% |
+| 10 | 1 | 7.9 | Sandscale Basilisk | 0% |
+| 13 | 2 | 3.5 | Void Stalker | 0% |
+| 20 | 2 | 9.5 | Mind Flayer | 6% |
+| 40 | 4 | 11.2 | Archlich | 0% |
+| 50 | 4 | 8.4 | Void Emperor | 0% |
+
+DPR doesn't scale proportionally with extra attacks — weapon damage is too low relative to monster HP at higher tiers.
 
 ## What's Validated
 
-Despite the HP bug, the sim successfully validates:
-1. **Stat model is correct** — Stats start at 11 (human, all stats) at L1, primary reaches 20 cap by mid-game
-2. **Save proficiencies work** — Base + milestone saves at L18/30/45 applied correctly
-3. **Extra attacks fire** — Warrior shows higher DPR at levels with extra attacks (10.6 at L40 vs ~5 for others)
-4. **Feats apply** — featIds populated at L38+ (Precise Strikes for martial, Iron Will for casters)
-5. **Class differentiation visible in DPR** — Even with wrong HP, warrior consistently tops DPR, mage/psion lowest (as expected for weapon-based DPR)
+1. **HP formula is now correct** — matches game's actual formula perfectly
+2. **Class HP differentiation works** — 2:1 Warrior:Mage ratio at L50
+3. **Stat model is correct** — bounded accuracy, cap 20, milestone allocations
+4. **Extra attacks fire** — Warrior shows higher sustained DPR
+5. **Save proficiencies and feats apply** — wired into all combatant builders
 
-## Next Steps
+## Next Steps (Monster Rebalance Required)
 
-1. Fix `computeHP()` to use game's actual formula (`10 + conMod + classBonus + (level-1) * 10`)
-2. Re-run the battery
-3. Then analyze for actual balance issues
+The player-side systems are now correct. The problem is monster tuning:
+
+1. **Reduce monster HP at mid-high tiers** — Target 0.8-1.5x player HP (currently 1.6-3.0x)
+2. **Or increase player weapon damage scaling** — Current weapon tiers don't keep up with monster HP growth
+3. **Or both** — Likely the best approach: moderate monster HP reduction + modest damage scaling increase
+4. **Re-run sim after monster rebalance** to validate 40-60% target win rates
