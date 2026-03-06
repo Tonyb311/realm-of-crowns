@@ -7,7 +7,6 @@ import {
   CircleDollarSign,
   Users,
   Swords,
-  Loader2,
   AlertCircle,
   Crown,
   Shield,
@@ -15,6 +14,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import GoldAmount from '../components/shared/GoldAmount';
+import { PageHeader, LoadingState } from '../components/ui/realm-index';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -234,29 +234,27 @@ export default function GovernancePage() {
       {/* Header */}
       <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Gavel className="w-8 h-8 text-realm-gold-400" />
-              <div>
-                <h1 className="text-3xl font-display text-realm-gold-400">Governance</h1>
-                <p className="text-realm-text-muted text-sm">{town?.name ?? 'Loading...'} - Mayor's Panel</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate('/town-hall')}
-                className="px-5 py-2 border border-realm-gold-500/60 text-realm-gold-400 font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-              >
-                Town Hall
-              </button>
-              <button
-                onClick={() => navigate('/town')}
-                className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-              >
-                Back to Town
-              </button>
-            </div>
-          </div>
+          <PageHeader
+            title="Governance"
+            icon={<Gavel className="w-8 h-8 text-realm-gold-400" />}
+            subtitle={`${town?.name ?? 'Loading...'} - Mayor's Panel`}
+            actions={
+              <>
+                <button
+                  onClick={() => navigate('/town-hall')}
+                  className="px-5 py-2 border border-realm-gold-500/60 text-realm-gold-400 font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                >
+                  Town Hall
+                </button>
+                <button
+                  onClick={() => navigate('/town')}
+                  className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                >
+                  Back to Town
+                </button>
+              </>
+            }
+          />
         </div>
       </header>
 
@@ -289,9 +287,7 @@ export default function GovernancePage() {
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {townLoading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 text-realm-gold-400 animate-spin" />
-          </div>
+          <LoadingState />
         ) : (
           <>
             {/* ============================================================= */}
@@ -319,9 +315,7 @@ export default function GovernancePage() {
                 )}
 
                 {lawsLoading ? (
-                  <div className="flex justify-center py-20">
-                    <Loader2 className="w-8 h-8 text-realm-gold-400 animate-spin" />
-                  </div>
+                  <LoadingState />
                 ) : laws.length === 0 ? (
                   <div className="text-center py-20">
                     <ScrollText className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-4" />

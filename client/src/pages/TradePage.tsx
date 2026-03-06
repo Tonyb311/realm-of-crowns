@@ -7,6 +7,7 @@ import {
   ShoppingCart,
 } from 'lucide-react';
 import { useTradeEvents } from '../hooks/useTradeEvents';
+import { PageHeader } from '../components/ui/realm-index';
 import CaravanManager from '../components/trade/CaravanManager';
 import PriceCompare from '../components/trade/PriceCompare';
 import BestTrades from '../components/trade/BestTrades';
@@ -38,26 +39,27 @@ export default function TradePage() {
       {/* Header */}
       <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-4xl font-display text-realm-gold-400">Trade</h1>
-              <p className="text-realm-text-muted text-sm mt-1">Manage caravans, compare prices, and grow your merchant empire</p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => navigate('/market')}
-                className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-              >
-                Go to Market
-              </button>
-              <button
-                onClick={() => navigate('/town')}
-                className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-              >
-                Back to Town
-              </button>
-            </div>
-          </div>
+          <PageHeader
+            title="Trade"
+            icon={<Truck className="w-8 h-8 text-realm-gold-400" />}
+            subtitle="Manage caravans, compare prices, and grow your merchant empire"
+            actions={
+              <div className="flex gap-3">
+                <button
+                  onClick={() => navigate('/market')}
+                  className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                >
+                  Go to Market
+                </button>
+                <button
+                  onClick={() => navigate('/town')}
+                  className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                >
+                  Back to Town
+                </button>
+              </div>
+            }
+          />
         </div>
       </header>
 

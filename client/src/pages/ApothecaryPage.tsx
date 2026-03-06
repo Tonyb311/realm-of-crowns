@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FlaskConical, Coins, User, ShoppingCart } from 'lucide-react';
 import api from '../services/api';
-import { RealmPanel, RealmButton, RealmBadge } from '../components/ui/realm-index';
-import { PageHeader } from '../components/layout/PageHeader';
+import { RealmPanel, RealmButton, RealmBadge, PageHeader } from '../components/ui/realm-index';
 import GoldAmount from '../components/shared/GoldAmount';
 
 // ---------------------------------------------------------------------------

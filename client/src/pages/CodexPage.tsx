@@ -12,7 +12,6 @@ import {
   Skull,
 } from 'lucide-react';
 import { RealmInput } from '../components/ui/RealmInput';
-import { PageHeader } from '../components/layout/PageHeader';
 
 // Lazy-load codex sections for code splitting
 const CodexRaces = lazy(() => import('../components/codex/CodexRaces'));

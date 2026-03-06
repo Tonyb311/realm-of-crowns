@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   Swords,
   Map,
-  Loader2,
 } from 'lucide-react';
 import api from '../services/api';
 import { getSocket } from '../services/socket';

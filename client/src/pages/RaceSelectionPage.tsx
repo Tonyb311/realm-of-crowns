@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import api from '../services/api';
+import { LoadingState } from '../components/ui/realm-index';
 import RaceCard from '../components/races/RaceCard';
 import type { RaceCardData } from '../components/races/RaceCard';
 import RaceDetailPanel from '../components/races/RaceDetailPanel';
@@ -119,11 +120,7 @@ export default function RaceSelectionPage() {
   // Render
   // ---------------------------------------------------------------------------
   if (racesLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-8 h-8 text-realm-gold-400 animate-spin" />
-      </div>
-    );
+    return <LoadingState message="Loading races..." />;
   }
 
   return (

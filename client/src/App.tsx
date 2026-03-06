@@ -8,6 +8,7 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import LoadingScreen from './components/LoadingScreen';
 import api from './services/api';
 import { GameShell } from './components/layout/GameShell';
+const AuthLayout = React.lazy(() => import('./components/layout/AuthLayout'));
 // Global components (always loaded)
 import PoliticalNotifications from './components/PoliticalNotifications';
 import ChatPanel from './components/ChatPanel';
@@ -74,10 +75,12 @@ function App() {
         <ErrorBoundary>
         <Suspense fallback={<LoadingScreen />}>
         <Routes>
-          {/* Public routes — no shell */}
-          <Route path="/" element={<RootPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          {/* Public routes — auth layout */}
+          <Route element={<AuthLayout />}>
+            <Route path="/" element={<RootPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          </Route>
 
           {/* Character creation — protected but no game shell */}
           <Route path="/create-character" element={<ProtectedRoute><CharacterCreationPage /></ProtectedRoute>} />

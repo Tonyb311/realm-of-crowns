@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Briefcase, User, Coins, Package, Award, ScrollText } from 'lucide-react';
 import api from '../services/api';
-import { RealmPanel, RealmButton, RealmBadge } from '../components/ui/realm-index';
-import { PageHeader } from '../components/layout/PageHeader';
+import { RealmPanel, RealmButton, RealmBadge, PageHeader } from '../components/ui/realm-index';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -136,7 +135,7 @@ export default function JobsBoardPage() {
   if (!townId) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <PageHeader title="Jobs Board" />
+        <PageHeader title="Jobs Board" icon={<Briefcase className="w-8 h-8 text-realm-gold-400" />} />
         <RealmPanel title="Jobs Board">
           <p className="text-xs text-realm-text-muted">You must be in a town to view jobs.</p>
         </RealmPanel>
@@ -146,7 +145,7 @@ export default function JobsBoardPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-      <PageHeader title={`Jobs Board \u2014 ${townName}`} />
+      <PageHeader title={`Jobs Board \u2014 ${townName}`} icon={<Briefcase className="w-8 h-8 text-realm-gold-400" />} />
 
       {/* Success toast */}
       {lastResult && (

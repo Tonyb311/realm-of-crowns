@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { PageHeader } from '../components/ui/realm-index';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -147,22 +148,20 @@ function GuildBrowser({ characterId }: { characterId: string }) {
     <div className="pt-12">
       <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-5xl mx-auto px-4 py-6 sm:px-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-4xl font-display text-realm-gold-400 flex items-center gap-3">
-                <Shield className="w-8 h-8" />
-                Guilds
-              </h1>
-              <p className="text-realm-text-secondary text-sm mt-1">Join a guild or found your own.</p>
-            </div>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="flex items-center gap-2 px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Create Guild
-            </button>
-          </div>
+          <PageHeader
+            title="Guilds"
+            icon={<Shield className="w-8 h-8 text-realm-gold-400" />}
+            subtitle="Join a guild or found your own."
+            actions={
+              <button
+                onClick={() => setShowCreate(true)}
+                className="flex items-center gap-2 px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Create Guild
+              </button>
+            }
+          />
         </div>
       </header>
 
@@ -406,33 +405,29 @@ function GuildDashboard({ guildId, characterId }: { guildId: string; characterId
       {/* Header */}
       <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-5xl mx-auto px-4 py-6 sm:px-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-4xl font-display text-realm-gold-400 flex items-center gap-3">
-                <Shield className="w-8 h-8" />
-                [{guild.tag}] {guild.name}
-              </h1>
-              <p className="text-realm-text-secondary text-sm mt-1">
-                Level {guild.level} -- {members.length}/{guild.maxMembers} members
-              </p>
-              {guild.description && (
-                <p className="text-realm-text-secondary text-sm mt-2 max-w-xl">{guild.description}</p>
-              )}
-            </div>
-            {!isLeader && (
-              <button
-                onClick={() => {
-                  if (confirm('Are you sure you want to leave this guild?')) {
-                    leaveGuild.mutate();
-                  }
-                }}
-                className="flex items-center gap-1.5 px-4 py-2 border border-realm-danger/60 text-realm-danger font-display text-sm rounded hover:bg-realm-danger/20 transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                Leave Guild
-              </button>
-            )}
-          </div>
+          <PageHeader
+            title={`[${guild.tag}] ${guild.name}`}
+            icon={<Shield className="w-8 h-8 text-realm-gold-400" />}
+            subtitle={`Level ${guild.level} -- ${members.length}/${guild.maxMembers} members`}
+            actions={
+              !isLeader ? (
+                <button
+                  onClick={() => {
+                    if (confirm('Are you sure you want to leave this guild?')) {
+                      leaveGuild.mutate();
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2 border border-realm-danger/60 text-realm-danger font-display text-sm rounded hover:bg-realm-danger/20 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Leave Guild
+                </button>
+              ) : undefined
+            }
+          />
+          {guild.description && (
+            <p className="text-realm-text-secondary text-sm -mt-4 max-w-xl">{guild.description}</p>
+          )}
         </div>
       </header>
 

@@ -15,6 +15,7 @@ import {
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import { getSocket } from '../services/socket';
+import { PageHeader } from '../components/ui/realm-index';
 import { TOAST_STYLE } from '../constants';
 import RelationsMatrix from '../components/diplomacy/RelationsMatrix';
 import WarDashboard from '../components/diplomacy/WarDashboard';
@@ -202,11 +203,11 @@ export default function DiplomacyPage() {
     <div className="pt-12 pb-16">
       {/* Header */}
       <div className="px-6 py-4 bg-realm-bg-800 border-b border-realm-border">
-        <h1 className="text-2xl font-display text-realm-gold-400 flex items-center gap-2">
-          <Flag className="w-6 h-6" />
-          Diplomacy
-        </h1>
-        <p className="text-realm-text-muted text-xs mt-1">Relations, treaties, wars, and world affairs</p>
+        <PageHeader
+          title="Diplomacy"
+          icon={<Flag className="w-8 h-8 text-realm-gold-400" />}
+          subtitle="Relations, treaties, wars, and world affairs"
+        />
       </div>
 
       {/* Tab navigation */}

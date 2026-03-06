@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Trophy, Lock, Loader2, Clock } from 'lucide-react';
+import { Trophy, Lock, Clock } from 'lucide-react';
 import api from '../services/api';
+import { LoadingState, PageHeader } from '../components/ui/realm-index';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -121,11 +122,7 @@ export default function AchievementPage() {
   });
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-realm-gold-400 animate-spin" />
-      </div>
-    );
+    return <LoadingState message="Loading achievements..." />;
   }
 
   const allAchievements = achievements ?? [];
@@ -156,17 +153,11 @@ export default function AchievementPage() {
       {/* Header */}
       <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Trophy className="w-8 h-8 text-realm-gold-400" />
-              <div>
-                <h1 className="text-3xl font-display text-realm-gold-400">Achievements</h1>
-                <p className="text-realm-text-muted text-sm">
-                  {unlockedCount} / {allAchievements.length} unlocked
-                </p>
-              </div>
-            </div>
-          </div>
+          <PageHeader
+            title="Achievements"
+            icon={<Trophy className="w-8 h-8 text-realm-gold-400" />}
+            subtitle={`${unlockedCount} / ${allAchievements.length} unlocked`}
+          />
         </div>
       </header>
 

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
-import { RealmButton } from '../components/ui/realm-index';
+import { RealmButton, PageHeader } from '../components/ui/realm-index';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -394,13 +394,11 @@ export default function QuestJournalPage() {
       {/* Header */}
       <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-5xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <ScrollText className="w-8 h-8 text-realm-gold-400" />
-            <div>
-              <h1 className="text-3xl font-display text-realm-gold-400">Quest Journal</h1>
-              <p className="text-realm-text-muted text-sm">Track your adventures and available quests</p>
-            </div>
-          </div>
+          <PageHeader
+            title="Quest Journal"
+            icon={<ScrollText className="w-8 h-8 text-realm-gold-400" />}
+            subtitle="Track your adventures and available quests"
+          />
         </div>
       </header>
 
