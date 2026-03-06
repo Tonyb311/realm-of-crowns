@@ -22,6 +22,7 @@ import {
 import { roll, rollMultiple, savingThrow, fleeCheck } from '@shared/utils/dice';
 import { getModifier } from '@shared/types/combat';
 import { getSaveModifier } from '@shared/utils/bounded-accuracy';
+import { computeFeatBonus } from '@shared/data/feats';
 import type {
   CombatState,
   Combatant,
@@ -578,7 +579,7 @@ const handleStatus: EffectHandler = (state, actor, target, _enemies, abilityDef,
     const autoFailDex = target.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailDexSave);
     const autoFailStr = target.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailStrSave);
     if (!((saveType === 'dex' && autoFailDex) || (saveType === 'str' && autoFailStr))) {
-      let targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies);
+      let targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies) + computeFeatBonus(target.featIds, 'allSaveBonus');
       for (const eff of target.statusEffects) {
         const seDef = STATUS_EFFECT_DEFS[eff.name];
         if (seDef) targetSaveMod += seDef.saveModifier;
@@ -1006,7 +1007,7 @@ const handleAoeDebuff: EffectHandler = (state, actor, _target, enemies, abilityD
       const afDex = enemy.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailDexSave);
       const afStr = enemy.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailStrSave);
       if (!((saveType === 'dex' && afDex) || (saveType === 'str' && afStr))) {
-        let targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies);
+        let targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies) + computeFeatBonus(enemy.featIds, 'allSaveBonus');
         for (const eff of enemy.statusEffects) {
           const seDef = STATUS_EFFECT_DEFS[eff.name];
           if (seDef) targetSaveMod += seDef.saveModifier;
@@ -1114,7 +1115,7 @@ const handleAoeDamage: EffectHandler = (state, actor, _target, enemies, abilityD
         saveTotalVal = 0;
         saveSucceededVal = false;
       } else {
-        let targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies);
+        let targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies) + computeFeatBonus(enemy.featIds, 'allSaveBonus');
         for (const eff of enemy.statusEffects) {
           const seDef = STATUS_EFFECT_DEFS[eff.name];
           if (seDef) targetSaveMod += seDef.saveModifier;
@@ -1225,7 +1226,7 @@ const handleMultiTarget: EffectHandler = (state, actor, _target, enemies, abilit
         saveTotalVal = 0;
         saveSucceededVal = false;
       } else {
-        let targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies);
+        let targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies) + computeFeatBonus(enemy.featIds, 'allSaveBonus');
         for (const eff of enemy.statusEffects) {
           const seDef = STATUS_EFFECT_DEFS[eff.name];
           if (seDef) targetSaveMod += seDef.saveModifier;
@@ -1384,7 +1385,7 @@ const handleAoeDrain: EffectHandler = (state, actor, _target, enemies, abilityDe
       const afDex = enemy.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailDexSave);
       const afStr = enemy.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailStrSave);
       if (!((saveType === 'dex' && afDex) || (saveType === 'str' && afStr))) {
-        let targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies);
+        let targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies) + computeFeatBonus(enemy.featIds, 'allSaveBonus');
         for (const eff of enemy.statusEffects) {
           const seDef = STATUS_EFFECT_DEFS[eff.name];
           if (seDef) targetSaveMod += seDef.saveModifier;
@@ -1929,7 +1930,7 @@ function resolveAbilitySave(
     };
   }
 
-  let targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies);
+  let targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies) + computeFeatBonus(target.featIds, 'allSaveBonus');
   // Apply status effect save modifiers (e.g., frightened -2)
   for (const eff of target.statusEffects) {
     const seDef = STATUS_EFFECT_DEFS[eff.name];
@@ -2051,7 +2052,7 @@ const handleControl: EffectHandler = (state, actor, target, _enemies, abilityDef
   const failDuration = (effects.failDuration as number) ?? 2;
 
   const dc = calculateSaveDC(actor) + Math.abs(savePenalty);
-  const targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies);
+  const targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies) + computeFeatBonus(target.featIds, 'allSaveBonus');
   const save = savingThrow(targetSaveMod, dc);
   { const lr = checkLegendaryResistance(state, target.id, save, dc); if (lr.overridden) { save.success = true; state = lr.state; } }
 
@@ -2154,7 +2155,7 @@ const handleAoeDamageStatus: EffectHandler = (state, actor, _target, enemies, ab
 
   for (const enemy of enemies) {
     let dmg = rollDice(diceCount, diceSides, bonusMod);
-    const targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies);
+    const targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies) + computeFeatBonus(enemy.featIds, 'allSaveBonus');
     const save = savingThrow(targetSaveMod, dc);
     { const lr = checkLegendaryResistance(state, enemy.id, save, dc); if (lr.overridden) { save.success = true; state = lr.state; } }
 
@@ -2280,7 +2281,7 @@ const handleSwap: EffectHandler = (state, actor, target, _enemies, abilityDef, e
   const enemyEffect = (effects.enemyEffect as string) ?? 'lose_action';
 
   const dc = calculateSaveDC(actor);
-  const targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies);
+  const targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies) + computeFeatBonus(target.featIds, 'allSaveBonus');
   const save = savingThrow(targetSaveMod, dc);
   { const lr = checkLegendaryResistance(state, target.id, save, dc); if (lr.overridden) { save.success = true; state = lr.state; } }
 
@@ -2383,7 +2384,7 @@ const handleBanish: EffectHandler = (state, actor, target, _enemies, abilityDef,
   const failDuration = (effects.failDuration as number) ?? 1;
 
   const dc = calculateSaveDC(actor) + Math.abs(savePenalty);
-  const targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies);
+  const targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies) + computeFeatBonus(target.featIds, 'allSaveBonus');
   const save = savingThrow(targetSaveMod, dc);
   { const lr = checkLegendaryResistance(state, target.id, save, dc); if (lr.overridden) { save.success = true; state = lr.state; } }
 

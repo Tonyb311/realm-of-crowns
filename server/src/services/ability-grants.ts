@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { ABILITIES_BY_CLASS } from '@shared/data/skills';
 import { CLASS_MILESTONE_SAVE_ORDER, SAVE_PROFICIENCY_MILESTONES } from '@shared/data/combat-constants';
+import { FEAT_UNLOCK_LEVELS } from '@shared/data/feats';
 
 /**
  * Auto-grant all specialization abilities the character qualifies for
@@ -116,4 +117,33 @@ export async function autoGrantSaveProficiencies(characterId: string): Promise<s
   });
 
   return newSaves;
+}
+
+/**
+ * Check if a character should have a pending feat choice.
+ * Sets pendingFeatChoice = true when reaching level 38 or 48
+ * and they haven't already chosen the feat for that milestone.
+ * Idempotent — safe to call on every level-up.
+ */
+export async function checkFeatMilestone(characterId: string): Promise<boolean> {
+  const character = await prisma.character.findUnique({
+    where: { id: characterId },
+    select: { level: true, feats: true, pendingFeatChoice: true },
+  });
+
+  if (!character) return false;
+
+  const currentFeats = (character.feats as string[]) ?? [];
+  const milestonesReached = FEAT_UNLOCK_LEVELS.filter(m => character.level >= m).length;
+
+  // If they have fewer feats than milestones reached and no pending choice, flag one
+  if (currentFeats.length < milestonesReached && !character.pendingFeatChoice) {
+    await prisma.character.update({
+      where: { id: characterId },
+      data: { pendingFeatChoice: true },
+    });
+    return true;
+  }
+
+  return false;
 }

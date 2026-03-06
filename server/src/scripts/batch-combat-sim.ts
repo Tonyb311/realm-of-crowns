@@ -490,6 +490,7 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
         (playerCombatant as any).nonProficientWeapon = false;
         (playerCombatant as any).saveProficiencies = [...(CLASS_SAVE_PROFICIENCIES[player.class] ?? [])];
         (playerCombatant as any).extraAttacks = getAttacksPerAction(player.class, player.level);
+        (playerCombatant as any).featIds = [];
 
         const monsterCombatant = createMonsterCombatant(
           `sim-monster-${mIdx}-${i}`, monster.name, 1,
@@ -882,6 +883,7 @@ async function runGroupCommand(args: ReturnType<typeof parseArgs>): Promise<void
           (combatant as any).nonProficientWeapon = false;
           (combatant as any).saveProficiencies = [...(CLASS_SAVE_PROFICIENCIES[player.class] ?? [])];
           (combatant as any).extraAttacks = getAttacksPerAction(player.class, player.level);
+          (combatant as any).featIds = [];
           playerCombatants.push(combatant);
 
           const playerParams = buildPlayerCombatParams(player, {

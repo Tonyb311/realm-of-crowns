@@ -1013,6 +1013,7 @@ export async function resolveNodePvE(
     ...((character.bonusSaveProficiencies as string[]) ?? []),
   ];
   (playerCombatant as any).extraAttacks = getAttacksPerAction(character.class ?? '', character.level);
+  (playerCombatant as any).featIds = (character.feats as string[]) ?? [];
 
   // Set proficiency flags based on equipped items
   if (character.class && character.equipment) {
@@ -1189,6 +1190,7 @@ export async function resolveNodePvP(
     ...((traveler.bonusSaveProficiencies as string[]) ?? []),
   ];
   (travelerCombatant as any).extraAttacks = getAttacksPerAction(traveler.class ?? '', traveler.level);
+  (travelerCombatant as any).featIds = (traveler.feats as string[]) ?? [];
 
   const ambusherCombatant = createCharacterCombatant(
     ambusher.id, ambusher.name, 1,
@@ -1206,6 +1208,7 @@ export async function resolveNodePvP(
     ...((ambusher.bonusSaveProficiencies as string[]) ?? []),
   ];
   (ambusherCombatant as any).extraAttacks = getAttacksPerAction(ambusher.class ?? '', ambusher.level);
+  (ambusherCombatant as any).featIds = (ambusher.feats as string[]) ?? [];
 
   // Create combat state
   const sessionId = `tick-pvp-${travelerId}-${ambusherId}-${Date.now()}`;
@@ -1364,6 +1367,7 @@ export async function resolveGroupCombat(
       ...((char.bonusSaveProficiencies as string[]) ?? []),
     ];
     (combatant as any).extraAttacks = getAttacksPerAction(char.class ?? '', char.level);
+    (combatant as any).featIds = (char.feats as string[]) ?? [];
     combatants.push(combatant);
 
     const params = await buildCombatParams(char.id);
@@ -1405,6 +1409,7 @@ export async function resolveGroupCombat(
       ...((char.bonusSaveProficiencies as string[]) ?? []),
     ];
     (combatant as any).extraAttacks = getAttacksPerAction(char.class ?? '', char.level);
+    (combatant as any).featIds = (char.feats as string[]) ?? [];
     combatants.push(combatant);
 
     const params = await buildCombatParams(char.id);

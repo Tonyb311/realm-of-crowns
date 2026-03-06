@@ -6,7 +6,7 @@ import {
   levelForXp,
   LEVEL_UP_REWARDS,
 } from '@shared/data/progression';
-import { autoGrantAbilities, autoGrantSaveProficiencies } from './ability-grants';
+import { autoGrantAbilities, autoGrantSaveProficiencies, checkFeatMilestone } from './ability-grants';
 import { TIER0_ABILITIES_BY_CLASS, TIER0_CHOICE_LEVELS } from '@shared/data/skills';
 
 /**
@@ -85,6 +85,9 @@ export async function checkLevelUp(characterId: string): Promise<LevelUpResult |
 
   // Auto-grant milestone save proficiencies (levels 18, 30, 45)
   await autoGrantSaveProficiencies(characterId);
+
+  // Check for feat milestone (levels 38, 48)
+  await checkFeatMilestone(characterId);
 
   const result: LevelUpResult = {
     levelsGained,

@@ -68,6 +68,7 @@ import {
 import { getBeastfolkNaturalWeapon } from '../services/racial-passive-tracker';
 import { psionAbilities } from '@shared/data/skills/psion';
 import { DEATH_PENALTY, getDeathXpPenalty, getDeathDurabilityPenalty } from '@shared/data/progression';
+import { getFeatById } from '@shared/data/feats';
 import {
   resolveClassAbility,
   tickAbilityCooldowns as tickClassAbilityCooldowns,
@@ -101,6 +102,17 @@ const DEATH_GOLD_LOSS_PERCENT = DEATH_PENALTY.GOLD_LOSS_PERCENT;
 /** Helper to create a no-op defend result (used as fallback in racial ability handlers). */
 function noOpDefend(actorId: string): DefendResult {
   return { type: 'defend', actorId, acBonusGranted: 0 };
+}
+
+/** Aggregate a specific numeric feat effect for a combatant */
+function getFeatBonus(combatant: Combatant, key: 'attackBonus' | 'acBonus' | 'initiativeBonus' | 'critDamageBonus' | 'allSaveBonus'): number {
+  if (!combatant.featIds) return 0;
+  let total = 0;
+  for (const fid of combatant.featIds) {
+    const feat = getFeatById(fid);
+    if (feat?.effects[key]) total += feat.effects[key]!;
+  }
+  return total;
 }
 
 /** Non-proficient armor penalty: -3 to STR and DEX saving throws */
@@ -153,7 +165,7 @@ export const STATUS_EFFECT_DEFS: Record<StatusEffectName, StatusEffectDef> = Obj
 export function calculateInitiative(combatant: Combatant): Combatant {
   const dexMod = getModifier(combatant.stats.dex);
   // Phase 6 PSION-PASSIVE-2: initiativeBonus adds to initiative roll
-  const bonus = combatant.initiativeBonus ?? 0;
+  const bonus = (combatant.initiativeBonus ?? 0) + getFeatBonus(combatant, 'initiativeBonus');
   return {
     ...combatant,
     initiative: initiativeRoll(dexMod) + bonus,
@@ -216,6 +228,9 @@ export function calculateAC(combatant: Combatant, racialTracker?: RacialCombatTr
 
   // Class ability buff AC bonuses
   ac += getBuffAcMod(combatant);
+
+  // Feat AC bonus
+  ac += getFeatBonus(combatant, 'acBonus');
 
   return ac;
 }
@@ -620,6 +635,13 @@ export function resolveAttack(
     atkMod -= actor.proficiencyBonus;
   }
 
+  // Feat attack bonus
+  const featAtkBonus = getFeatBonus(actor, 'attackBonus');
+  if (featAtkBonus !== 0) {
+    atkModBreakdown.push({ source: 'feat', value: featAtkBonus });
+    atkMod += featAtkBonus;
+  }
+
   // Phase 5A: Class ability attack modifiers (set by handleDamage)
   const classMods = actor.classAbilityAttackMods;
   if (classMods) {
@@ -952,10 +974,13 @@ export function resolveAttack(
 
         // Apply bonus dice from chart entry
         const bonusDmg = damageRoll(critEntry.bonusDice, weapon.diceSides);
-        totalDamage += bonusDmg.total;
-        damageRollValue += bonusDmg.total;
+        // Brutal Critical feat: +50% crit bonus damage
+        const critFeatMult = getFeatBonus(actor, 'critDamageBonus');
+        const critFeatExtra = critFeatMult > 0 ? Math.floor(bonusDmg.total * critFeatMult) : 0;
+        totalDamage += bonusDmg.total + critFeatExtra;
+        damageRollValue += bonusDmg.total + critFeatExtra;
         damageRolls = [...damageRolls, ...bonusDmg.rolls];
-        dmgModBreakdown.push({ source: `crit_${critSeverity}`, value: bonusDmg.total });
+        dmgModBreakdown.push({ source: `crit_${critSeverity}`, value: bonusDmg.total + critFeatExtra });
 
         // Apply chart status effect if present
         if (critEntry.statusEffect) {
@@ -1408,7 +1433,7 @@ export function resolveCast(
   let saveSucceeded: boolean | undefined;
 
   if (spell.requiresSave && spell.saveType) {
-    const targetSaveMod = getSaveModifier(target.stats, spell.saveType, target.proficiencyBonus, target.saveProficiencies);
+    const targetSaveMod = getSaveModifier(target.stats, spell.saveType, target.proficiencyBonus, target.saveProficiencies) + getFeatBonus(target, 'allSaveBonus');
     let totalSaveMod = targetSaveMod;
     // Apply status effect save modifiers
     for (const eff of target.statusEffects) {
@@ -1752,7 +1777,7 @@ export function resolvePsionAbility(
 
     case 'psi-tel-1': { // Mind Spike - INT save, 2d6+INT psychic, weakened on fail
       const target = current.combatants.find((c) => c.id === targetId)!;
-      const targetSaveMod = getSaveModifier(target.stats, 'int', target.proficiencyBonus, target.saveProficiencies);
+      const targetSaveMod = getSaveModifier(target.stats, 'int', target.proficiencyBonus, target.saveProficiencies) + getFeatBonus(target, 'allSaveBonus');
       let totalSaveMod = targetSaveMod;
       for (const eff of target.statusEffects) {
         const def = STATUS_EFFECT_DEFS[eff.name];
@@ -1813,7 +1838,7 @@ export function resolvePsionAbility(
 
     case 'psi-tel-3': { // Psychic Crush - WIS save, 3d8+INT psychic, stunned on fail
       const target = current.combatants.find((c) => c.id === targetId)!;
-      const targetSaveMod = getSaveModifier(target.stats, 'wis', target.proficiencyBonus, target.saveProficiencies);
+      const targetSaveMod = getSaveModifier(target.stats, 'wis', target.proficiencyBonus, target.saveProficiencies) + getFeatBonus(target, 'allSaveBonus');
       let totalSaveMod = targetSaveMod;
       for (const eff of target.statusEffects) {
         const def = STATUS_EFFECT_DEFS[eff.name];
@@ -1863,7 +1888,7 @@ export function resolvePsionAbility(
 
     case 'psi-tel-4': { // Dominate - WIS save at -2, control 1 round or weakened 2 rounds
       const target = current.combatants.find((c) => c.id === targetId)!;
-      const targetSaveMod = getSaveModifier(target.stats, 'wis', target.proficiencyBonus, target.saveProficiencies) - 2;
+      const targetSaveMod = getSaveModifier(target.stats, 'wis', target.proficiencyBonus, target.saveProficiencies) + getFeatBonus(target, 'allSaveBonus') - 2;
       let totalSaveMod = targetSaveMod;
       for (const eff of target.statusEffects) {
         const def = STATUS_EFFECT_DEFS[eff.name];
@@ -1920,7 +1945,7 @@ export function resolvePsionAbility(
       const affectedIds: string[] = [];
 
       for (const enemy of enemies) {
-        const targetSaveMod = getSaveModifier(enemy.stats, 'wis', enemy.proficiencyBonus, enemy.saveProficiencies);
+        const targetSaveMod = getSaveModifier(enemy.stats, 'wis', enemy.proficiencyBonus, enemy.saveProficiencies) + getFeatBonus(enemy, 'allSaveBonus');
         let totalSaveMod = targetSaveMod;
         for (const eff of enemy.statusEffects) {
           const def = STATUS_EFFECT_DEFS[eff.name];
@@ -1964,7 +1989,7 @@ export function resolvePsionAbility(
 
     case 'psi-tel-6': { // Absolute Dominion - WIS save at -4, control 2 rounds or stunned+2d10 psychic
       const target = current.combatants.find((c) => c.id === targetId)!;
-      const targetSaveMod = getSaveModifier(target.stats, 'wis', target.proficiencyBonus, target.saveProficiencies) - 4;
+      const targetSaveMod = getSaveModifier(target.stats, 'wis', target.proficiencyBonus, target.saveProficiencies) + getFeatBonus(target, 'allSaveBonus') - 4;
       let totalSaveMod = targetSaveMod;
       for (const eff of target.statusEffects) {
         const def = STATUS_EFFECT_DEFS[eff.name];
@@ -2282,7 +2307,7 @@ export function resolvePsionAbility(
 
       if (target.team !== updatedActor.team) {
         // Enemy target: INT save or lose next action (stunned 1 round)
-        const targetSaveMod = getSaveModifier(target.stats, 'int', target.proficiencyBonus, target.saveProficiencies);
+        const targetSaveMod = getSaveModifier(target.stats, 'int', target.proficiencyBonus, target.saveProficiencies) + getFeatBonus(target, 'allSaveBonus');
         let totalSaveMod = targetSaveMod;
         for (const eff of target.statusEffects) {
           const def = STATUS_EFFECT_DEFS[eff.name];
@@ -2356,7 +2381,7 @@ export function resolvePsionAbility(
       const affectedIds: string[] = [];
 
       for (const enemy of enemies) {
-        const targetSaveMod = getSaveModifier(enemy.stats, 'wis', enemy.proficiencyBonus, enemy.saveProficiencies);
+        const targetSaveMod = getSaveModifier(enemy.stats, 'wis', enemy.proficiencyBonus, enemy.saveProficiencies) + getFeatBonus(enemy, 'allSaveBonus');
         let totalSaveMod = targetSaveMod;
         for (const eff of enemy.statusEffects) {
           const def = STATUS_EFFECT_DEFS[eff.name];
@@ -2409,7 +2434,7 @@ export function resolvePsionAbility(
         };
       }
 
-      const targetSaveMod = getSaveModifier(target.stats, 'int', target.proficiencyBonus, target.saveProficiencies) - 2;
+      const targetSaveMod = getSaveModifier(target.stats, 'int', target.proficiencyBonus, target.saveProficiencies) + getFeatBonus(target, 'allSaveBonus') - 2;
       let totalSaveMod = targetSaveMod;
       for (const eff of target.statusEffects) {
         const def = STATUS_EFFECT_DEFS[eff.name];

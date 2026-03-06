@@ -413,6 +413,8 @@ model Character {
   xp                     Int              @default(0)
   unspentStatPoints      Int              @default(0) @map("unspent_stat_points")
   bonusSaveProficiencies Json             @default("[]") @map("bonus_save_proficiencies")
+  feats                  Json             @default("[]") // Array of feat IDs chosen by the player
+  pendingFeatChoice      Boolean          @default(false) @map("pending_feat_choice")
 
   title                  String?
   bio                    String?          @map("bio")

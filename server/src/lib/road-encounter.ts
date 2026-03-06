@@ -384,6 +384,7 @@ export async function resolveRoadEncounter(
       subRace: true,
       class: true,
       bonusSaveProficiencies: true,
+      feats: true,
     },
   });
 
@@ -518,6 +519,7 @@ export async function resolveRoadEncounter(
     ...((character.bonusSaveProficiencies as string[]) ?? []),
   ];
   (playerCombatant as any).extraAttacks = getAttacksPerAction(character.class ?? '', character.level);
+  (playerCombatant as any).featIds = (character.feats as string[]) ?? [];
 
   let combatState = createCombatState(sessionId, 'PVE', [playerCombatant, monsterCombatant]);
 
@@ -797,6 +799,7 @@ export async function resolveGroupRoadEncounter(
       subRace: true,
       class: true,
       bonusSaveProficiencies: true,
+      feats: true,
     },
   });
 
@@ -922,6 +925,7 @@ export async function resolveGroupRoadEncounter(
       ...((char.bonusSaveProficiencies as string[]) ?? []),
     ];
     (combatant as any).extraAttacks = getAttacksPerAction(char.class ?? '', char.level);
+    (combatant as any).featIds = (char.feats as string[]) ?? [];
     combatants.push(combatant);
   }
 

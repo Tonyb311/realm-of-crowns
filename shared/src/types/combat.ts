@@ -590,6 +590,8 @@ export interface Combatant {
   saveProficiencies?: string[];
   /** Number of TOTAL attacks when taking the Attack action (1 = normal, 2+ = extra attacks) */
   extraAttacks?: number;
+  /** Feat IDs this combatant has chosen */
+  featIds?: string[];
 }
 
 export interface ClassAbilityAttackMods {

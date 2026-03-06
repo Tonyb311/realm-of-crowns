@@ -8,6 +8,8 @@ import { AuthenticatedRequest } from '../types/express';
 import { Race, DragonBloodline, BeastClan, ElementalType } from '@prisma/client';
 import { getRace } from '@shared/data/races';
 import { getStatAllocationCost, STAT_HARD_CAP } from '@shared/utils/bounded-accuracy';
+import { FEAT_DEFINITIONS, getFeatById, MAX_FEATS } from '@shared/data/feats';
+import { CLASS_SAVE_PROFICIENCIES } from '@shared/data/combat-constants';
 import { getGameDay, getNextTickTime } from '../lib/game-day';
 import { handlePrismaError } from '../lib/prisma-errors';
 import { logRouteError } from '../lib/error-logger';
@@ -544,6 +546,119 @@ router.post('/allocate-stats', authGuard, characterGuard, validate(allocateStats
   } catch (error) {
     if (handlePrismaError(error, res, 'allocate-stats', req)) return;
     logRouteError(req, 500, 'Allocate stats error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ---- Feat Selection ----
+
+const chooseFeatSchema = z.object({
+  featId: z.string(),
+  saveProficiency: z.string().optional(), // Required only for Resilient feat
+});
+
+router.post('/choose-feat', authGuard, characterGuard, validate(chooseFeatSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = (req as any).character;
+    const { featId, saveProficiency } = req.body;
+
+    // Must have a pending feat choice
+    if (!character.pendingFeatChoice) {
+      return res.status(400).json({ error: 'No pending feat choice available' });
+    }
+
+    // Feat must exist
+    const feat = getFeatById(featId);
+    if (!feat) {
+      return res.status(400).json({ error: 'Invalid feat ID' });
+    }
+
+    // No duplicate feats
+    const currentFeats = (character.feats as string[]) ?? [];
+    if (currentFeats.includes(featId)) {
+      return res.status(400).json({ error: 'You already have this feat' });
+    }
+
+    // Max feats check
+    if (currentFeats.length >= MAX_FEATS) {
+      return res.status(400).json({ error: 'Maximum feats already chosen' });
+    }
+
+    // Class exclusion check
+    if (feat.excludedClasses?.includes(character.class?.toLowerCase() ?? '')) {
+      return res.status(400).json({ error: 'This feat is not available for your class' });
+    }
+
+    // Resilient feat: requires saveProficiency choice
+    if (feat.effects.bonusSaveProficiency) {
+      if (!saveProficiency || !['str', 'dex', 'con', 'int', 'wis', 'cha'].includes(saveProficiency)) {
+        return res.status(400).json({ error: 'Resilient feat requires a valid saveProficiency choice (str/dex/con/int/wis/cha)' });
+      }
+      // Check not already proficient
+      const classSaves = CLASS_SAVE_PROFICIENCIES[character.class?.toLowerCase() ?? ''] ?? [];
+      const bonusSaves = (character.bonusSaveProficiencies as string[]) ?? [];
+      const allSaves = [...classSaves, ...bonusSaves];
+      if (allSaves.includes(saveProficiency)) {
+        return res.status(400).json({ error: `Already proficient in ${saveProficiency} saves` });
+      }
+    }
+
+    // Build update data
+    const updateData: any = {
+      feats: [...currentFeats, featId],
+      pendingFeatChoice: false,
+    };
+
+    // Apply immediate effects
+    if (feat.effects.hpPerLevel) {
+      const hpGain = character.level * feat.effects.hpPerLevel;
+      updateData.maxHealth = character.maxHealth + hpGain;
+      updateData.health = character.health + hpGain;
+    }
+    if (feat.effects.bonusHp) {
+      updateData.maxHealth = (updateData.maxHealth ?? character.maxHealth) + feat.effects.bonusHp;
+      updateData.health = (updateData.health ?? character.health) + feat.effects.bonusHp;
+    }
+    if (feat.effects.statBonus) {
+      const stats = character.stats as Record<string, number>;
+      const newVal = Math.min(STAT_HARD_CAP, (stats[feat.effects.statBonus.stat] ?? 10) + feat.effects.statBonus.value);
+      updateData.stats = { ...stats, [feat.effects.statBonus.stat]: newVal };
+    }
+    if (feat.effects.bonusSaveProficiency && saveProficiency) {
+      const bonusSaves = (character.bonusSaveProficiencies as string[]) ?? [];
+      updateData.bonusSaveProficiencies = [...bonusSaves, saveProficiency];
+    }
+
+    await prisma.character.update({
+      where: { id: character.id },
+      data: updateData,
+    });
+
+    return res.json({ success: true, feat: feat.name });
+  } catch (error) {
+    if (handlePrismaError(error, res, 'choose-feat', req)) return;
+    logRouteError(req, 500, 'Choose feat error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ---- Pending Feats Query ----
+
+router.get('/pending-feat', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = (req as any).character;
+    if (!character.pendingFeatChoice) {
+      return res.json({ pending: false, availableFeats: [] });
+    }
+    const currentFeats = (character.feats as string[]) ?? [];
+    const charClass = character.class?.toLowerCase() ?? '';
+    const available = FEAT_DEFINITIONS.filter(f =>
+      !currentFeats.includes(f.id) &&
+      !f.excludedClasses?.includes(charClass)
+    );
+    return res.json({ pending: true, availableFeats: available });
+  } catch (error) {
+    logRouteError(req, 500, 'Pending feat error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

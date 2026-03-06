@@ -139,7 +139,9 @@
 
 **Level 34** — **Warrior gains 3rd attack.** **Cleric gains Extra Attack** (2 attacks per Attack action).
 
-**Levels 35-39** — No new ability unlocks.
+**Levels 35-37** — No new ability unlocks.
+
+**Level 38** — **First feat choice** (pick 1 from 12 universal feats). See Section 9.
 
 **Level 40** — Sixth and final spec ability auto-granted (Tier 5 or Tier 6). Capstone.
 - Racial abilities unlock: **Indomitable Will** (Human), **Spirit Walk** (Elf), **Ancestral Fury** (Dwarf), **Orcish Rampage** (Orc), **Feast Master** (Harthfolk), **Ancient Wrath** (Drakonid), **Soul Bargain** (Nethkin)
@@ -152,7 +154,11 @@
 
 **Level 45** — **5th saving throw proficiency unlocked** (auto-granted, deterministic per class). See Section 8. Only CHA or STR remain as the 6th unproficient save.
 
-**Levels 46-50** — No new ability unlocks. Pure stat growth. **5-level dead zone to cap.** (Previously 10-level, now partially filled by level 45 save milestone.)
+**Levels 46-47** — No new ability unlocks.
+
+**Level 48** — **Second feat choice** (pick 1 from 12 universal feats). See Section 9.
+
+**Levels 49-50** — No new ability unlocks. Pure stat growth.
 
 ---
 
@@ -497,10 +503,13 @@ Stat mods: INT+3, CHA+2, DEX+1, WIS+1
 | 15-19 | 5 levels | ~23 days | Nothing between racial L15 and spec ability L20 |
 | 21-24 | 4 levels | ~20 days | Nothing between spec L20 and spec L25 |
 | 26-31 | **6 levels** | ~40 days | Nothing between racial L25 and spec L32 |
-| 33-39 | **7 levels** | ~60 days | Nothing between spec L32 and capstone L40 |
-| 41-50 | **10 levels** | ~161 days | **Nothing after capstone. Pure stat growth for 5+ months.** |
+| 33-37 | **5 levels** | ~42 days | Nothing between spec L32 and feat L38 |
+| 39 | 1 level | ~12 days | Nothing between feat L38 and capstone L40 |
+| 41-44 | 4 levels | ~58 days | Nothing between capstone L40 and save L45 |
+| 46-47 | 2 levels | ~26 days | Nothing between save L45 and feat L48 |
+| 49-50 | 2 levels | ~27 days | Nothing after feat L48 to cap |
 
-The 41-50 stretch is the most concerning — players gain nothing except +10 HP and +2 stat points per level for over 5 months of play. This is a significant motivation cliff.
+The endgame dead zones have been significantly reduced by feat milestones at 38/48 and save milestone at 45. The longest gap is now 4 levels (41-44).
 
 ### Tier 0 Choice Levels vs ability-grants.ts
 
@@ -573,3 +582,44 @@ D&D-style saving throw system. Each class starts proficient in 2 of 6 saves. Non
 - All caster classes (Mage, Cleric, Psion) gain CON save at 18 — concentration defense
 - Every class ends with 5/6 saves proficient at level 45, leaving exactly 1 vulnerable save
 - Bard is the most balanced save profile (DEX, CHA, WIS, CON, STR) — only INT remains unproficient
+
+---
+
+## Section 9: Feats
+
+Universal feat system unlocking at levels 38 and 48 (2 feats maximum). Player chooses 1 feat per milestone from a pool of 12. Choice is permanent.
+
+**Source:** `shared/src/data/feats.ts`
+**API:** `POST /api/characters/choose-feat`, `GET /api/characters/pending-feat`
+
+### Feat List
+
+| Feat | Category | Effect |
+|------|----------|--------|
+| Precise Strikes | Combat | +1 to all attack rolls |
+| Brutal Critical | Combat | Critical hits deal +50% bonus damage |
+| Combat Reflexes | Combat | +3 to initiative |
+| Tough | Defense | +2 HP per character level (retroactive) |
+| Resilient | Defense | Gain proficiency in one additional saving throw (chosen on selection) |
+| Iron Will | Defense | +1 to ALL saving throws |
+| Natural Armor | Defense | +1 AC permanently |
+| Lucky | Utility | Once per combat, reroll any d20 roll |
+| Undying | Defense | Death XP and gold penalties reduced by 50% |
+| Quick Learner | Utility | +10% XP from all sources |
+| Master Artisan | Crafting | +3 to all profession quality rolls |
+| Merchant Prince | Crafting | Buy 10% cheaper, sell 10% higher |
+| Fortune Favored | Crafting | +15% gold from all sources |
+
+### Feat Milestone Levels
+
+| Level | Milestone |
+|------:|-----------|
+| 38 | First feat choice (pendingFeatChoice flag set) |
+| 48 | Second feat choice |
+
+### Design Notes
+- Combat feats (Precise Strikes, Brutal Critical, Combat Reflexes) are class-unrestricted
+- Resilient's save choice cannot duplicate an existing proficiency
+- Tough grants retroactive HP: at level 38 = +76 HP, at level 48 = +96 HP
+- Lucky reroll is once per combat (not yet implemented in combat engine)
+- Economy feats (Master Artisan, Merchant Prince, Fortune Favored) won't affect combat but are strong for endgame players focused on crafting/trading
