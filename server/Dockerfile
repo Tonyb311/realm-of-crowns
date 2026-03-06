@@ -22,7 +22,7 @@ COPY server/ ./server/
 COPY client/ ./client/
 
 # Generate Prisma client
-RUN pnpm exec prisma generate --schema=database/prisma/schema.prisma
+RUN cd database && pnpm exec prisma generate --schema=prisma/schema.prisma
 
 # Build shared first, then server and client
 RUN pnpm --filter @realm-of-crowns/shared build
@@ -45,9 +45,12 @@ COPY database/package.json ./database/
 # Install production dependencies only
 RUN pnpm install --frozen-lockfile --prod
 
-# Copy Prisma schema and generate client for production
+# Copy generated Prisma client from builder (avoids needing prisma CLI in prod)
+COPY --from=builder /app/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/@prisma/client/ ./node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/@prisma/client/
+COPY --from=builder /app/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/ ./node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/
+
+# Copy Prisma schema for migrations at startup
 COPY database/prisma/ ./database/prisma/
-RUN pnpm exec prisma generate --schema=database/prisma/schema.prisma
 
 # Copy built output
 COPY --from=builder /app/shared/dist/ ./shared/dist/
@@ -61,14 +64,17 @@ COPY server/tsconfig.production.json ./server/tsconfig.json
 COPY database/seeds/ ./database/seeds/
 COPY database/tsconfig.production.json ./database/tsconfig.json
 
-# Install tsx globally for running TypeScript seeds at startup
-RUN pnpm add -g tsx
+# Setup pnpm global bin and install tsx + prisma CLI for startup
+ENV PNPM_HOME=/usr/local/share/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+RUN pnpm add -g tsx prisma@5.22.0
 
 ENV NODE_ENV=production
 EXPOSE 4000
 
 RUN addgroup --system app && adduser --system --ingroup app app
+RUN chown -R app:app $PNPM_HOME
 USER app
 
 WORKDIR /app/server
-CMD ["sh", "-c", "pnpm exec prisma migrate deploy --schema=../database/prisma/schema.prisma && cd /app/database && tsx --require tsconfig-paths/register seeds/index.ts && cd /app/server && node -r tsconfig-paths/register dist/index.js"]
+CMD ["sh", "-c", "prisma migrate deploy --schema=/app/database/prisma/schema.prisma && cd /app/database && tsx --require tsconfig-paths/register seeds/index.ts && cd /app/server && node -r tsconfig-paths/register dist/index.js"]

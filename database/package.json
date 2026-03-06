@@ -11,13 +11,14 @@
     "validate-sync": "tsx --tsconfig tsconfig.json scripts/validate-yaml-sync.ts"
   },
   "dependencies": {
-    "@prisma/client": "5.22.0"
+    "@prisma/client": "5.22.0",
+    "bcryptjs": "^2.4.3",
+    "tsconfig-paths": "^4.2.0"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "js-yaml": "^4.1.1",
     "prisma": "5.22.0",
-    "tsconfig-paths": "^4.2.0",
     "tsx": "^4.15.0",
     "typescript": "^5.4.0"
   },
