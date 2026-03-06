@@ -12,7 +12,9 @@
 - **Azure Container Apps will NOT pull a new image if the tag hasn't changed.** Always use a unique tag: timestamp (`202602211159`) or commit hash. NEVER use `latest` or reuse a previous tag.
 - **Database seeds run on container startup.** If you change seed data (monsters, items, towns, routes), it updates on deploy.
 - **`az acr build` is deprecated** due to persistent Azure infrastructure failures. Always use the GitHub Actions deploy workflow.
-- **Standard deploy workflow:** `git commit` → `git push` → GitHub Actions → "Deploy to Azure" → Run workflow (auto-generates timestamp tag). Workflow builds image on GitHub runners, pushes to ACR, updates Container App, runs health check.
+- **Standard deploy workflow:** `git commit` → `git push` → trigger deploy → verify.
+- **Deploy command:** `gh workflow run deploy.yml --ref main` — triggers the GitHub Actions workflow. Check status with `gh run list --workflow=deploy.yml --limit=1`.
+- Workflow auto-generates a timestamp tag, builds image on GitHub runners, pushes to ACR, updates Container App, and runs a health check.
 
 ### Package Manager
 - **This project uses pnpm**, not npm. All install/run commands use `pnpm`.
