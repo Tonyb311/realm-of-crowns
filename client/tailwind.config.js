@@ -14,11 +14,11 @@ export default {
         // === Arcane design system colors ===
         // Primary backgrounds
         'realm-bg': {
-          900: '#0A0E1A',
-          800: '#111827',
-          700: '#151A2D',
-          600: '#1A1F35',
-          500: '#242B45',
+          900: '#07040F',
+          800: '#0D0618',
+          700: '#130B22',
+          600: '#1A0F2E',
+          500: '#251840',
         },
         // Gold accent system
         'realm-gold': {

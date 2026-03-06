@@ -36,11 +36,18 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6">
-      <div className="relative z-10 w-full max-w-md bg-realm-bg-700 border border-realm-gold-500/30 rounded-lg shadow-realm-panel p-8 bg-realm-panel-gradient">
-        <h1 className="font-display text-2xl text-realm-text-gold text-center mb-8 tracking-wide">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6">
+      <Link
+        to="/"
+        className="font-display text-3xl text-realm-gold-400 tracking-wider mb-8"
+        style={{ textShadow: '0 0 30px rgba(212, 168, 67, 0.25)' }}
+      >
+        Realm of Crowns
+      </Link>
+      <div className="relative z-10 w-full max-w-md bg-realm-bg-700 border border-realm-border rounded-lg shadow-realm-panel p-8 bg-realm-panel-gradient">
+        <h2 className="font-display text-xl text-realm-text-gold text-center mb-8 tracking-wide">
           Return to the Realm
-        </h1>
+        </h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>

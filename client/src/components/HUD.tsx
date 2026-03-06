@@ -121,7 +121,7 @@ export default function HUD() {
   const raceInitial = character.race ? character.race.charAt(0).toUpperCase() : '?';
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-40 bg-realm-bg-900/95 border-b border-realm-border backdrop-blur-sm">
+    <div className="fixed top-0 left-0 right-0 z-40 bg-realm-bg-900/90 border-b border-realm-gold-700/20 backdrop-blur-md">
       <div className="max-w-screen-2xl mx-auto px-3 flex items-center h-12 gap-3">
         {/* Portrait + Name */}
         <div className="flex items-center gap-2 flex-shrink-0">

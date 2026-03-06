@@ -105,7 +105,7 @@ export default function LandingPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen text-realm-text-primary font-body overflow-x-hidden" style={{ backgroundColor: '#07040F' }}>
+    <div className="min-h-screen bg-realm-bg-900 text-realm-text-primary font-body overflow-x-hidden">
       {/* ================================================================= */}
       {/* HERO                                                              */}
       {/* ================================================================= */}
@@ -208,8 +208,8 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* FEATURES — 6 pillars                                              */}
       {/* ================================================================= */}
-      <section className="py-12 sm:py-14 px-6 relative" style={{ backgroundColor: '#0D0618' }}>
-        <div className="absolute inset-x-0 top-0 h-16 pointer-events-none" style={{ background: 'linear-gradient(to bottom, #07040F, transparent)' }} />
+      <section className="py-12 sm:py-14 px-6 relative bg-realm-bg-800">
+        <div className="absolute inset-x-0 top-0 h-16 pointer-events-none bg-gradient-to-b from-realm-bg-900 to-transparent" />
 
         <div className="max-w-5xl mx-auto relative z-10">
           <motion.h2
@@ -242,11 +242,10 @@ export default function LandingPage() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: '-60px' }}
-                className="group border border-realm-border rounded-lg p-5 text-center
+                className="group border border-realm-border rounded-lg p-5 text-center bg-realm-bg-700
                            shadow-realm-panel
                            hover:border-realm-border-strong hover:shadow-realm-glow-strong
                            transition-all duration-300"
-                style={{ backgroundColor: '#130B22' }}
               >
                 <div className="w-12 h-12 mx-auto mb-4 rounded-lg border border-realm-gold-600/20 bg-realm-gold-700/10 flex items-center justify-center group-hover:border-realm-gold-500/40 transition-colors duration-300">
                   <f.Icon className="w-6 h-6 text-realm-gold-400" />
@@ -266,7 +265,7 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* DEPTH — rapid-fire "and there's more"                             */}
       {/* ================================================================= */}
-      <section className="py-10 sm:py-12 px-6 relative" style={{ backgroundColor: '#07040F' }}>
+      <section className="py-10 sm:py-12 px-6 relative bg-realm-bg-900">
         <div className="max-w-3xl mx-auto">
           <motion.h2
             variants={fadeUp}
@@ -304,7 +303,7 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* RACES                                                             */}
       {/* ================================================================= */}
-      <section className="py-12 sm:py-14 px-6 relative" style={{ backgroundColor: '#0D0618' }}>
+      <section className="py-12 sm:py-14 px-6 relative bg-realm-bg-800">
         <div className="max-w-5xl mx-auto">
           <motion.h2
             variants={fadeUp}
@@ -336,10 +335,9 @@ export default function LandingPage() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: '-40px' }}
-                className="border border-realm-border rounded-lg p-4
+                className="border border-realm-border rounded-lg p-4 bg-realm-bg-700
                            hover:border-realm-gold-600/30 hover:shadow-realm-glow
                            transition-all duration-300"
-                style={{ backgroundColor: '#130B22' }}
               >
                 <h3 className="font-display text-base text-realm-gold-400 mb-1.5">
                   {race.name}
@@ -356,7 +354,7 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* HOW IT WORKS                                                      */}
       {/* ================================================================= */}
-      <section className="py-8 sm:py-10 px-6 relative" style={{ backgroundColor: '#07040F' }}>
+      <section className="py-8 sm:py-10 px-6 relative bg-realm-bg-900">
         <div className="max-w-3xl mx-auto relative z-10">
           <motion.h2
             variants={fadeUp}
@@ -380,7 +378,7 @@ export default function LandingPage() {
                 viewport={{ once: true, margin: '-40px' }}
                 className="text-center"
               >
-                <div className="w-14 h-14 mx-auto mb-3 rounded-full border border-realm-gold-600/25 flex items-center justify-center" style={{ backgroundColor: '#130B22' }}>
+                <div className="w-14 h-14 mx-auto mb-3 rounded-full border border-realm-gold-600/25 bg-realm-bg-700 flex items-center justify-center">
                   <step.Icon className="w-6 h-6 text-realm-gold-400" />
                 </div>
                 <h3 className="font-display text-sm text-realm-text-primary mb-1">{step.label}</h3>
@@ -394,7 +392,7 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* FINAL CTA                                                         */}
       {/* ================================================================= */}
-      <section className="py-12 sm:py-14 px-6 relative" style={{ backgroundColor: '#0D0618' }}>
+      <section className="py-12 sm:py-14 px-6 relative bg-realm-bg-800">
         {/* Ambient glow */}
         <div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] rounded-full pointer-events-none"
@@ -427,7 +425,7 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* FOOTER                                                            */}
       {/* ================================================================= */}
-      <footer className="py-6 px-6 border-t border-realm-border" style={{ backgroundColor: '#07040F' }}>
+      <footer className="py-6 px-6 border-t border-realm-border bg-realm-bg-900">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <span className="font-display text-realm-gold-400 tracking-wider text-sm">
             Realm of Crowns
