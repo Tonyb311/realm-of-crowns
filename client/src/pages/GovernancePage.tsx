@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import GoldAmount from '../components/shared/GoldAmount';
-import { PageHeader, LoadingState } from '../components/ui/realm-index';
+import { PageHeader, LoadingState, RealmButton } from '../components/ui/realm-index';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -206,12 +206,9 @@ export default function GovernancePage() {
         <Gavel className="w-16 h-16 text-realm-text-muted/30 mb-6" />
         <h2 className="text-2xl font-display text-realm-gold-400 mb-4">Access Restricted</h2>
         <p className="text-realm-text-secondary mb-6">Only the mayor or ruler can access the governance panel.</p>
-        <button
-          onClick={() => navigate('/town-hall')}
-          className="px-8 py-3 border border-realm-gold-500 text-realm-gold-400 font-display text-lg rounded hover:bg-realm-bg-700 transition-colors"
-        >
+        <RealmButton variant="secondary" size="lg" onClick={() => navigate('/town-hall')}>
           Back to Town Hall
-        </button>
+        </RealmButton>
       </div>
     );
   }
@@ -240,18 +237,12 @@ export default function GovernancePage() {
             subtitle={`${town?.name ?? 'Loading...'} - Mayor's Panel`}
             actions={
               <>
-                <button
-                  onClick={() => navigate('/town-hall')}
-                  className="px-5 py-2 border border-realm-gold-500/60 text-realm-gold-400 font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-                >
+                <RealmButton variant="secondary" size="sm" onClick={() => navigate('/town-hall')}>
                   Town Hall
-                </button>
-                <button
-                  onClick={() => navigate('/town')}
-                  className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-                >
+                </RealmButton>
+                <RealmButton variant="ghost" size="sm" onClick={() => navigate('/town')}>
                   Back to Town
-                </button>
+                </RealmButton>
               </>
             }
           />

@@ -26,6 +26,7 @@ import BidModal from '../components/market/BidModal';
 import RollBreakdown from '../components/market/RollBreakdown';
 import { RealmBadge } from '../components/ui/RealmBadge';
 import { RealmSkeleton } from '../components/ui/RealmSkeleton';
+import { RealmButton } from '../components/ui/realm-index';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -244,12 +245,9 @@ export default function MarketPage() {
                   </span>
                 )}
               </div>
-              <button
-                onClick={() => navigate('/town')}
-                className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-              >
+              <RealmButton variant="ghost" size="sm" onClick={() => navigate('/town')}>
                 Back to Town
-              </button>
+              </RealmButton>
             </div>
           </div>
         </div>
@@ -715,15 +713,16 @@ export default function MarketPage() {
                 </div>
               </div>
             </div>
-            <button
+            <RealmButton
+              variant="primary"
+              className="w-full"
               onClick={() => {
                 setBidListing(selectedListing);
                 setSelectedListing(null);
               }}
-              className="w-full py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display rounded hover:bg-realm-gold-400 transition-colors"
             >
               Place Order
-            </button>
+            </RealmButton>
           </div>
         </div>
       )}

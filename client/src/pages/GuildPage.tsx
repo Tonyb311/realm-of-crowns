@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { PageHeader } from '../components/ui/realm-index';
+import { PageHeader, RealmButton } from '../components/ui/realm-index';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -153,13 +153,10 @@ function GuildBrowser({ characterId }: { characterId: string }) {
             icon={<Shield className="w-8 h-8 text-realm-gold-400" />}
             subtitle="Join a guild or found your own."
             actions={
-              <button
-                onClick={() => setShowCreate(true)}
-                className="flex items-center gap-2 px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
-              >
+              <RealmButton variant="primary" size="sm" onClick={() => setShowCreate(true)}>
                 <Plus className="w-4 h-4" />
                 Create Guild
-              </button>
+              </RealmButton>
             }
           />
         </div>

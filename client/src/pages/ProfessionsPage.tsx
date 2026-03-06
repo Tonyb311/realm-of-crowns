@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { useCharacter } from '../hooks/useCharacter';
-import { PageHeader } from '../components/ui/realm-index';
+import { PageHeader, RealmButton } from '../components/ui/realm-index';
 import ProfessionCard from '../components/professions/ProfessionCard';
 import ProfessionDetail from '../components/professions/ProfessionDetail';
 import LearnProfessionModal from '../components/professions/LearnProfessionModal';
@@ -269,18 +269,12 @@ export default function ProfessionsPage() {
             subtitle="Learn and master up to 3 professions"
             actions={
               <div className="flex gap-3">
-                <button
-                  onClick={() => navigate('/crafting')}
-                  className="px-5 py-2 border border-realm-gold-400/60 text-realm-gold-400 font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-                >
+                <RealmButton variant="secondary" size="sm" onClick={() => navigate('/crafting')}>
                   Workshop
-                </button>
-                <button
-                  onClick={() => navigate('/town')}
-                  className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-                >
+                </RealmButton>
+                <RealmButton variant="ghost" size="sm" onClick={() => navigate('/town')}>
                   Back to Town
-                </button>
+                </RealmButton>
               </div>
             }
           />
@@ -442,12 +436,9 @@ export default function ProfessionsPage() {
               <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-8 text-center">
                 <BookOpen className="w-10 h-10 text-realm-text-muted/30 mx-auto mb-3" />
                 <p className="text-realm-text-muted text-sm">You haven't learned any professions yet.</p>
-                <button
-                  onClick={() => setViewMode('browse')}
-                  className="mt-4 px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
-                >
+                <RealmButton variant="primary" size="sm" className="mt-4" onClick={() => setViewMode('browse')}>
                   Browse Professions
-                </button>
+                </RealmButton>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

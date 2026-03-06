@@ -12,6 +12,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import api from '../services/api';
+import { RealmButton } from '../components/ui/realm-index';
 import { useBuildingEvents } from '../hooks/useBuildingEvents';
 import BuildingCard, { BuildingData } from '../components/housing/BuildingCard';
 import BuildingDirectory from '../components/housing/BuildingDirectory';
@@ -190,21 +191,15 @@ export default function HousingPage() {
             </div>
             <div className="flex gap-3">
               {isHome && (
-                <button
-                  onClick={() => setShowConstructionFlow(true)}
-                  className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors flex items-center gap-2"
-                >
+                <RealmButton variant="primary" size="sm" onClick={() => setShowConstructionFlow(true)}>
                   <Plus className="w-4 h-4" />
                   Build New
-                </button>
+                </RealmButton>
               )}
               {townId && (
-                <button
-                  onClick={() => navigate('/town')}
-                  className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-                >
+                <RealmButton variant="ghost" size="sm" onClick={() => navigate('/town')}>
                   Back to Town
-                </button>
+                </RealmButton>
               )}
             </div>
           </div>

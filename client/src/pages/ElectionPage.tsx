@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import CountdownTimer from '../components/shared/CountdownTimer';
-import { PageHeader, LoadingState } from '../components/ui/realm-index';
+import { PageHeader, LoadingState, RealmButton } from '../components/ui/realm-index';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -193,18 +193,12 @@ export default function ElectionPage() {
             subtitle="Shape the future of your realm"
             actions={
               <>
-                <button
-                  onClick={() => navigate('/town-hall')}
-                  className="px-5 py-2 border border-realm-gold-500/60 text-realm-gold-400 font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-                >
+                <RealmButton variant="secondary" size="sm" onClick={() => navigate('/town-hall')}>
                   Town Hall
-                </button>
-                <button
-                  onClick={() => navigate('/town')}
-                  className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-                >
+                </RealmButton>
+                <RealmButton variant="ghost" size="sm" onClick={() => navigate('/town')}>
                   Back to Town
-                </button>
+                </RealmButton>
               </>
             }
           />

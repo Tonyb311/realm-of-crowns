@@ -20,6 +20,7 @@ import RecipeList, { type Recipe, professionLabel, TIER_ORDER } from '../compone
 import CraftingQueue, { type QueueItem } from '../components/crafting/CraftingQueue';
 import WorkTab, { type WorkStatus, type TownResource, type Profession } from '../components/crafting/WorkTab';
 import { getRarityStyle } from '../constants';
+import { RealmButton } from '../components/ui/realm-index';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -360,18 +361,12 @@ export default function CraftingPage() {
               <p className="text-realm-text-muted text-sm mt-1">Craft, gather, and refine</p>
             </div>
             <div className="flex gap-3">
-              <button
-                onClick={() => navigate('/inventory')}
-                className="px-5 py-2 border border-realm-gold-400/60 text-realm-gold-400 font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-              >
+              <RealmButton variant="secondary" size="sm" onClick={() => navigate('/inventory')}>
                 Inventory
-              </button>
-              <button
-                onClick={() => navigate('/town')}
-                className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-              >
+              </RealmButton>
+              <RealmButton variant="ghost" size="sm" onClick={() => navigate('/town')}>
                 Back to Town
-              </button>
+              </RealmButton>
             </div>
           </div>
         </div>

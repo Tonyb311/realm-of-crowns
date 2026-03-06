@@ -7,7 +7,7 @@ import {
   ShoppingCart,
 } from 'lucide-react';
 import { useTradeEvents } from '../hooks/useTradeEvents';
-import { PageHeader } from '../components/ui/realm-index';
+import { PageHeader, RealmButton } from '../components/ui/realm-index';
 import CaravanManager from '../components/trade/CaravanManager';
 import PriceCompare from '../components/trade/PriceCompare';
 import BestTrades from '../components/trade/BestTrades';
@@ -45,18 +45,12 @@ export default function TradePage() {
             subtitle="Manage caravans, compare prices, and grow your merchant empire"
             actions={
               <div className="flex gap-3">
-                <button
-                  onClick={() => navigate('/market')}
-                  className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-                >
+                <RealmButton variant="secondary" size="sm" onClick={() => navigate('/market')}>
                   Go to Market
-                </button>
-                <button
-                  onClick={() => navigate('/town')}
-                  className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
-                >
+                </RealmButton>
+                <RealmButton variant="ghost" size="sm" onClick={() => navigate('/town')}>
                   Back to Town
-                </button>
+                </RealmButton>
               </div>
             }
           />

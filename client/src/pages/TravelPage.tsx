@@ -29,6 +29,7 @@ import toast from 'react-hot-toast';
 import api from '../services/api';
 import { TOAST_STYLE } from '../constants';
 import Tooltip from '../components/ui/Tooltip';
+import { RealmButton } from '../components/ui/realm-index';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -686,12 +687,9 @@ export default function TravelPage() {
         <AlertTriangle className="w-12 h-12 text-realm-danger mb-4" />
         <h2 className="text-2xl font-display text-realm-danger mb-4">Travel Error</h2>
         <p className="text-realm-text-secondary mb-6">Failed to load travel status.</p>
-        <button
-          onClick={() => navigate('/town')}
-          className="px-8 py-3 border border-realm-gold-400 text-realm-gold-400 font-display rounded hover:bg-realm-bg-700 transition-colors"
-        >
+        <RealmButton variant="secondary" size="lg" onClick={() => navigate('/town')}>
           Return to Town
-        </button>
+        </RealmButton>
       </div>
     );
   }
@@ -717,18 +715,12 @@ export default function TravelPage() {
           </p>
         </div>
         <div className="flex gap-4 mt-6">
-          <button
-            onClick={() => navigate('/town')}
-            className="px-8 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-lg rounded hover:bg-realm-gold-400 transition-colors"
-          >
+          <RealmButton variant="primary" size="lg" onClick={() => navigate('/town')}>
             Go to Town
-          </button>
-          <button
-            onClick={() => navigate('/map')}
-            className="px-8 py-3 border border-realm-gold-400 text-realm-gold-400 font-display text-lg rounded hover:bg-realm-bg-700 transition-colors"
-          >
+          </RealmButton>
+          <RealmButton variant="secondary" size="lg" onClick={() => navigate('/map')}>
             World Map
-          </button>
+          </RealmButton>
         </div>
       </div>
     );

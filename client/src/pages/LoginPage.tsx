@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { RealmButton } from '../components/ui/realm-index';
 
 export default function LoginPage() {
   const { login, isAuthenticated, isLoading } = useAuth();
@@ -11,7 +12,7 @@ export default function LoginPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-realm-bg-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-realm-gold-400 font-display text-2xl animate-pulse">Loading...</div>
       </div>
     );
@@ -35,9 +36,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-realm-bg-900 flex items-center justify-center px-6">
-      <div className="fixed inset-0 bg-realm-vignette pointer-events-none" />
-
+    <div className="min-h-screen flex items-center justify-center px-6">
       <div className="relative z-10 w-full max-w-md bg-realm-bg-700 border border-realm-gold-500/30 rounded-lg shadow-realm-panel p-8 bg-realm-panel-gradient">
         <h1 className="font-display text-2xl text-realm-text-gold text-center mb-8 tracking-wide">
           Return to the Realm
@@ -76,13 +75,15 @@ export default function LoginPage() {
             <p className="text-realm-danger text-sm">{error}</p>
           )}
 
-          <button
+          <RealmButton
             type="submit"
+            variant="primary"
+            size="lg"
+            className="w-full"
             disabled={submitting}
-            className="w-full py-3 bg-gradient-to-b from-realm-gold-400 to-realm-gold-500 text-realm-bg-900 font-display uppercase tracking-wider text-lg rounded hover:shadow-realm-glow-strong transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? 'Entering...' : 'Enter'}
-          </button>
+          </RealmButton>
         </form>
 
         <p className="mt-6 text-center text-realm-text-secondary text-sm">
