@@ -11,7 +11,9 @@ import type { AbilityDefinition } from '@shared/data/skills';
 import type { WeaponInfo } from '@shared/types/combat';
 import type { CombatPresets, AbilityQueueEntry } from '../services/combat-presets';
 import { createRacialCombatTracker, type RacialCombatTracker } from '../services/racial-combat-abilities';
-import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
+import { getProficiencyBonus, STAT_HARD_CAP } from '@shared/utils/bounded-accuracy';
+import { CLASS_SAVE_PROFICIENCIES, CLASS_MILESTONE_SAVE_ORDER, getAttacksPerAction } from '@shared/data/combat-constants';
+import { FEAT_UNLOCK_LEVELS } from '@shared/data/feats';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -92,22 +94,52 @@ export interface SyntheticMonsterResult {
 
 type StatBlock = { str: number; dex: number; con: number; int: number; wis: number; cha: number };
 
-/** Base stat arrays by class (before racial mods). Primary/secondary emphasized. */
-const CLASS_BASE_STATS: Record<string, StatBlock> = {
-  warrior: { str: 16, dex: 12, con: 14, int: 10, wis: 10, cha: 8 },
-  mage:    { str: 8,  dex: 10, con: 12, int: 16, wis: 14, cha: 10 },
-  rogue:   { str: 10, dex: 16, con: 12, int: 10, wis: 10, cha: 14 },
-  cleric:  { str: 12, dex: 10, con: 14, int: 8,  wis: 16, cha: 10 },
-  ranger:  { str: 10, dex: 16, con: 12, int: 10, wis: 14, cha: 8 },
-  bard:    { str: 8,  dex: 14, con: 12, int: 10, wis: 10, cha: 16 },
-  psion:   { str: 8,  dex: 10, con: 12, int: 16, wis: 14, cha: 10 },
+/**
+ * Stat allocation model for synthetic players.
+ * Mirrors real player progression:
+ * - Base: 10 in all stats + racial modifiers
+ * - 1 stat point per level, but cost curve (1/2/3/4 per step) limits how high stats go
+ * - Simplified as 16 milestone allocations (flat +1 each) to approximate a smart player
+ * - Smart allocation: primary stat first, then secondary, then tertiary
+ */
+const STAT_POINT_LEVELS = [4, 7, 9, 12, 16, 19, 22, 24, 27, 29, 33, 36, 39, 44, 47, 50];
+
+/** Which stats to prioritize per class, in order. First stat filled to cap, then second, etc. */
+const CLASS_STAT_PRIORITY: Record<string, (keyof StatBlock)[]> = {
+  warrior: ['str', 'con', 'dex', 'wis', 'cha', 'int'],
+  mage:    ['int', 'wis', 'con', 'dex', 'cha', 'str'],
+  rogue:   ['dex', 'cha', 'con', 'int', 'str', 'wis'],
+  cleric:  ['wis', 'con', 'str', 'cha', 'dex', 'int'],
+  ranger:  ['dex', 'str', 'con', 'wis', 'cha', 'int'],
+  bard:    ['cha', 'dex', 'con', 'wis', 'int', 'str'],
+  psion:   ['int', 'wis', 'con', 'dex', 'cha', 'str'],
 };
 
-/** Primary stat for each class (gets +1 every 4 levels) */
-const CLASS_PRIMARY_STAT: Record<string, keyof StatBlock> = {
-  warrior: 'str', mage: 'int', rogue: 'dex', cleric: 'wis',
-  ranger: 'dex', bard: 'cha', psion: 'int',
-};
+function computeStatsForLevel(className: string, raceId: string, level: number): StatBlock {
+  const race = getRace(raceId);
+  const base: StatBlock = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
+  if (race) {
+    base.str += race.statModifiers.str;
+    base.dex += race.statModifiers.dex;
+    base.con += race.statModifiers.con;
+    base.int += race.statModifiers.int;
+    base.wis += race.statModifiers.wis;
+    base.cha += race.statModifiers.cha;
+  }
+
+  const earnedPoints = STAT_POINT_LEVELS.filter(l => l <= level).length;
+  const priority = CLASS_STAT_PRIORITY[className] ?? ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+  let remaining = earnedPoints;
+  for (const stat of priority) {
+    if (remaining <= 0) break;
+    const room = STAT_HARD_CAP - base[stat];
+    const toAdd = Math.min(remaining, Math.max(0, room));
+    base[stat] += toAdd;
+    remaining -= toAdd;
+  }
+
+  return base;
+}
 
 /** Hit die per class */
 const CLASS_HIT_DIE: Record<string, number> = {
@@ -257,6 +289,33 @@ function getModifier(score: number): number {
   return Math.floor((score - 10) / 2);
 }
 
+/** Get all save proficiencies for a class at a given level (base + milestones). */
+export function getSimSaveProficiencies(className: string, level: number): string[] {
+  const base = [...(CLASS_SAVE_PROFICIENCIES[className] ?? [])];
+  const milestoneOrder = CLASS_MILESTONE_SAVE_ORDER[className];
+  if (milestoneOrder) {
+    if (level >= 18 && milestoneOrder[0]) base.push(milestoneOrder[0]);
+    if (level >= 30 && milestoneOrder[1]) base.push(milestoneOrder[1]);
+    if (level >= 45 && milestoneOrder[2]) base.push(milestoneOrder[2]);
+  }
+  return base;
+}
+
+/** Pick sim-appropriate feats for a character at a given level.
+ *  Martial classes: Precise Strikes first, then Tough.
+ *  Caster classes: Iron Will first, then Tough. */
+export function getSimFeatIds(className: string, level: number): string[] {
+  const feats: string[] = [];
+  const martial = ['warrior', 'ranger', 'rogue', 'cleric'];
+  if (level >= FEAT_UNLOCK_LEVELS[0]) {
+    feats.push(martial.includes(className) ? 'feat-precise-strikes' : 'feat-iron-will');
+  }
+  if (level >= FEAT_UNLOCK_LEVELS[1]) {
+    feats.push('feat-tough');
+  }
+  return feats;
+}
+
 /** Map level to equipment tier: L1-9→T1, L10-19→T2, L20-29→T3, L30+→T4 */
 function getTierIndex(level: number): number {
   if (level < 10) return 0;  // T1: Copper/starter gear
@@ -322,28 +381,14 @@ export function buildSyntheticPlayer(config: SyntheticPlayerConfig): SyntheticPl
   const raceId = config.race.toLowerCase();
 
   // Validate class
-  if (!CLASS_BASE_STATS[className]) return null;
+  if (!CLASS_STAT_PRIORITY[className]) return null;
 
   // Get race data
   const race = getRace(raceId);
   if (!race) return null;
 
-  // 1. Base stats from class archetype
-  const stats = { ...CLASS_BASE_STATS[className] };
-
-  // 2. Apply racial modifiers
-  const mods = race.statModifiers;
-  stats.str += mods.str;
-  stats.dex += mods.dex;
-  stats.con += mods.con;
-  stats.int += mods.int;
-  stats.wis += mods.wis;
-  stats.cha += mods.cha;
-
-  // 3. Level scaling: +1 to primary stat every 4 levels
-  const primaryStat = CLASS_PRIMARY_STAT[className];
-  const abilityBumps = Math.floor(config.level / 4);
-  stats[primaryStat] += abilityBumps;
+  // 1. Stats from new progression model (base 10 + racial + smart allocation)
+  const stats = computeStatsForLevel(className, raceId, config.level);
 
   // 4. Proficiency bonus
   const proficiencyBonus = getProficiencyBonus(config.level);

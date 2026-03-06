@@ -24,6 +24,8 @@ import {
   buildPlayerCombatParams,
   getAllRaceIds,
   getAllClassNames,
+  getSimSaveProficiencies,
+  getSimFeatIds,
   type MonsterStats,
   type MonsterCombatData,
   type PartyConfig,
@@ -44,7 +46,7 @@ import { resolveTickCombat, type CombatantParams } from '../services/tick-combat
 import { buildEncounterContext, buildRoundsData, buildSummary } from '../lib/combat-logger';
 import { setSimulationRunId } from '../lib/simulation-context';
 import type { CombatDamageType, MonsterAbility, MonsterAbilityInstance } from '@shared/types/combat';
-import { CLASS_SAVE_PROFICIENCIES, getAttacksPerAction } from '@shared/data/combat-constants';
+import { getAttacksPerAction } from '@shared/data/combat-constants';
 
 function buildMonsterAbilityInstances(abilities: any[]): MonsterAbilityInstance[] {
   if (!Array.isArray(abilities) || abilities.length === 0) return [];
@@ -488,9 +490,9 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
         (playerCombatant as any).race = player.race;
         (playerCombatant as any).nonProficientArmor = false;
         (playerCombatant as any).nonProficientWeapon = false;
-        (playerCombatant as any).saveProficiencies = [...(CLASS_SAVE_PROFICIENCIES[player.class] ?? [])];
+        (playerCombatant as any).saveProficiencies = getSimSaveProficiencies(player.class, player.level);
         (playerCombatant as any).extraAttacks = getAttacksPerAction(player.class, player.level);
-        (playerCombatant as any).featIds = [];
+        (playerCombatant as any).featIds = getSimFeatIds(player.class, player.level);
 
         const monsterCombatant = createMonsterCombatant(
           `sim-monster-${mIdx}-${i}`, monster.name, 1,
@@ -881,9 +883,9 @@ async function runGroupCommand(args: ReturnType<typeof parseArgs>): Promise<void
           (combatant as any).race = player.race;
           (combatant as any).nonProficientArmor = false;
           (combatant as any).nonProficientWeapon = false;
-          (combatant as any).saveProficiencies = [...(CLASS_SAVE_PROFICIENCIES[player.class] ?? [])];
+          (combatant as any).saveProficiencies = getSimSaveProficiencies(player.class, player.level);
           (combatant as any).extraAttacks = getAttacksPerAction(player.class, player.level);
-          (combatant as any).featIds = [];
+          (combatant as any).featIds = getSimFeatIds(player.class, player.level);
           playerCombatants.push(combatant);
 
           const playerParams = buildPlayerCombatParams(player, {
