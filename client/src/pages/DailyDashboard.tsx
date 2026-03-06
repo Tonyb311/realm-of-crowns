@@ -37,7 +37,6 @@ interface CharacterHunger {
 export default function DailyDashboard() {
   const queryClient = useQueryClient();
   const [showReport, setShowReport] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('food');
 
   // Character data for hunger status
@@ -76,7 +75,6 @@ export default function DailyDashboard() {
     const onReportReady = () => {
       queryClient.invalidateQueries({ queryKey: ['reports'] });
       setShowReport(true);
-      setIsProcessing(false);
     };
 
     const onActionLockedIn = () => {
@@ -84,7 +82,6 @@ export default function DailyDashboard() {
     };
 
     const onTickComplete = () => {
-      setIsProcessing(false);
       queryClient.invalidateQueries({ queryKey: ['character'] });
       queryClient.invalidateQueries({ queryKey: ['food'] });
       queryClient.invalidateQueries({ queryKey: ['actions'] });
@@ -92,20 +89,14 @@ export default function DailyDashboard() {
       queryClient.invalidateQueries({ queryKey: ['travel'] });
     };
 
-    const onTickProcessing = () => {
-      setIsProcessing(true);
-    };
-
     socket.on('daily-report:ready', onReportReady);
     socket.on('action:locked-in', onActionLockedIn);
     socket.on('tick:complete', onTickComplete);
-    socket.on('tick:processing', onTickProcessing);
 
     return () => {
       socket.off('daily-report:ready', onReportReady);
       socket.off('action:locked-in', onActionLockedIn);
       socket.off('tick:complete', onTickComplete);
-      socket.off('tick:processing', onTickProcessing);
     };
   }, [queryClient]);
 
@@ -129,7 +120,7 @@ export default function DailyDashboard() {
 
       {/* Timer */}
       <div className="px-6 py-3">
-        <ActionTimer isProcessing={isProcessing} />
+        <ActionTimer isProcessing={false} />
       </div>
 
       {/* Main layout */}

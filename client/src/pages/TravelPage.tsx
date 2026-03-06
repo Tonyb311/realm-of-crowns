@@ -30,6 +30,7 @@ import api from '../services/api';
 import { TOAST_STYLE } from '../constants';
 import Tooltip from '../components/ui/Tooltip';
 import { RealmButton } from '../components/ui/realm-index';
+import { useTravelEvents } from '../hooks/useTravelEvents';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -615,6 +616,7 @@ function ActionPanel({
 export default function TravelPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  useTravelEvents();
 
   // Travel status
   const {

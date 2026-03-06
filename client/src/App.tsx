@@ -15,6 +15,7 @@ import ChatPanel from './components/ChatPanel';
 import NotificationDropdown from './components/NotificationDropdown';
 import SocialEventsProvider from './components/SocialEventsProvider';
 import ProgressionEventsProvider from './components/ProgressionEventsProvider';
+import GlobalEventsProvider from './components/GlobalEventsProvider';
 
 // Lazy-loaded page components
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
@@ -69,6 +70,7 @@ function App() {
       <PoliticalNotifications />
       <SocialEventsProvider />
       <ProgressionEventsProvider />
+      <GlobalEventsProvider />
       <NotificationDropdown />
       <ChatPanel />
       <div className="min-h-screen bg-realm-bg-900">

@@ -54,6 +54,32 @@ interface TradeCompletedPayload {
   price: number;
 }
 
+interface FriendRequestPayload {
+  friendshipId: string;
+  requesterId: string;
+  requesterName: string;
+}
+
+interface FriendAcceptedPayload {
+  friendshipId: string;
+  acceptedById: string;
+  acceptedByName: string;
+}
+
+interface ActionCancelledPayload {
+  defaultAction: string;
+}
+
+interface SystemBroadcastPayload {
+  title: string;
+  message: string;
+  timestamp: string;
+}
+
+interface ChatErrorPayload {
+  error: string;
+}
+
 interface UseSocialEventsOptions {
   isAuthenticated: boolean;
   characterId: string | null;
@@ -153,6 +179,44 @@ export function useSocialEvents({
       });
     };
 
+    const handleFriendRequest = (payload: FriendRequestPayload) => {
+      queryClient.invalidateQueries({ queryKey: ['friends'] });
+      toast(`${payload.requesterName} sent you a friend request!`, {
+        duration: 5000,
+        style: TOAST_STYLE,
+      });
+    };
+
+    const handleFriendAccepted = (payload: FriendAcceptedPayload) => {
+      queryClient.invalidateQueries({ queryKey: ['friends'] });
+      toast(`${payload.acceptedByName} accepted your friend request!`, {
+        duration: 5000,
+        style: TOAST_STYLE,
+      });
+    };
+
+    const handleActionCancelled = (_payload: ActionCancelledPayload) => {
+      queryClient.invalidateQueries({ queryKey: ['actions'] });
+      toast('Your action was cancelled.', {
+        duration: 4000,
+        style: { ...TOAST_STYLE, border: '1px solid #eab308' },
+      });
+    };
+
+    const handleSystemBroadcast = (payload: SystemBroadcastPayload) => {
+      toast(payload.message || payload.title, {
+        duration: 10000,
+        style: { ...TOAST_STYLE, border: '1px solid #3b82f6' },
+      });
+    };
+
+    const handleChatError = (payload: ChatErrorPayload) => {
+      toast(payload.error, {
+        duration: 4000,
+        style: { ...TOAST_STYLE, border: '1px solid #ef4444' },
+      });
+    };
+
     socket.on('chat:message', handleChatMessage);
     const handleFriendsOnline = (payload: { friends: PresencePayload[] }) => {
       queryClient.invalidateQueries({ queryKey: ['friends'] });
@@ -170,6 +234,11 @@ export function useSocialEvents({
     socket.on('notification:new', handleNotification);
     socket.on('combat:result', handleCombatResult);
     socket.on('trade:completed', handleTradeCompleted);
+    socket.on('friend:request', handleFriendRequest);
+    socket.on('friend:accepted', handleFriendAccepted);
+    socket.on('action:cancelled', handleActionCancelled);
+    socket.on('system:broadcast', handleSystemBroadcast);
+    socket.on('chat:error', handleChatError);
 
     return () => {
       socket.off('chat:message', handleChatMessage);
@@ -184,6 +253,11 @@ export function useSocialEvents({
       socket.off('notification:new', handleNotification);
       socket.off('combat:result', handleCombatResult);
       socket.off('trade:completed', handleTradeCompleted);
+      socket.off('friend:request', handleFriendRequest);
+      socket.off('friend:accepted', handleFriendAccepted);
+      socket.off('action:cancelled', handleActionCancelled);
+      socket.off('system:broadcast', handleSystemBroadcast);
+      socket.off('chat:error', handleChatError);
     };
   }, [isAuthenticated, characterId, queryClient, onChatMessage, onPresenceChange, onPlayerTown]);
 }

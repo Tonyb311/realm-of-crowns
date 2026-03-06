@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { RealmButton } from '../components/ui/realm-index';
-import { useBuildingEvents } from '../hooks/useBuildingEvents';
 import BuildingCard, { BuildingData } from '../components/housing/BuildingCard';
 import BuildingDirectory from '../components/housing/BuildingDirectory';
 import ConstructionFlow from '../components/housing/ConstructionFlow';
@@ -75,8 +74,7 @@ export default function HousingPage() {
   const [shopBuildingName, setShopBuildingName] = useState('');
   const [constructionBuildingId, setConstructionBuildingId] = useState<string | null>(null);
 
-  // Socket events
-  useBuildingEvents();
+  // Building socket events wired globally via GlobalEventsProvider
 
   // Fetch character (for townId, homeTownId, characterId)
   const { data: character } = useQuery<{
