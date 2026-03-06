@@ -9,6 +9,8 @@ import {
   UserPlus,
   Route,
   Sparkles,
+  Flame,
+  Drama,
 } from 'lucide-react';
 import { RealmButton } from '../components/ui/RealmButton';
 
@@ -46,6 +48,27 @@ const FEATURES = [
     desc: 'Journey between towns through dangerous roads. Trade across regions. Discover a world that remembers.',
     Icon: Compass,
   },
+  {
+    title: 'Twelve Gods, Twelve Paths',
+    desc: 'Choose a patron deity — or reject them all. Your faith shapes your alliances, your power, and your reputation.',
+    Icon: Flame,
+  },
+  {
+    title: 'Play Your Way',
+    desc: 'Noble defender, cunning merchant, corrupt politician — or all three. No scripted heroes. The world doesn\'t judge. It remembers.',
+    Icon: Drama,
+  },
+];
+
+const DEPTH_ITEMS = [
+  { label: 'Religion', text: 'Choose from 12 gods. Join a church. Elect a High Priest. Shape your town\'s spiritual identity.' },
+  { label: 'Adventure', text: 'Road encounters, dangerous biomes, combat that plays out like a tabletop session.' },
+  { label: 'Politics', text: 'Run for mayor. Pass laws. Tax citizens. Betray your allies when the time is right.' },
+  { label: 'Trade', text: 'Caravans, market manipulation, supply chains across regions. The economy is yours to exploit.' },
+  { label: 'Crafting', text: '29 professions that depend on each other. No grinding in isolation — cooperation is the path.' },
+  { label: 'Morality', text: 'No good/evil alignment. No karma system. Just choices and a world that keeps score.' },
+  { label: 'Community', text: 'Guilds, tavern chat, diplomacy between towns. The real game is the people you play with.' },
+  { label: '7 Classes', text: 'Warrior, Mage, Rogue, Cleric, Ranger, Bard, Psion — each with unique ability trees.' },
 ];
 
 const STEPS = [
@@ -86,20 +109,16 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* HERO                                                              */}
       {/* ================================================================= */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-6">
-        {/* Atmospheric background layers — deep cinematic purples */}
+      <section className="relative min-h-[80vh] flex flex-col items-center justify-center px-6 py-16">
+        {/* Atmospheric background layers */}
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at top, #1a0a2e 0%, #07040F 60%)' }} />
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'radial-gradient(ellipse 80% 60% at 50% 35%, rgba(106, 79, 160, 0.2) 0%, transparent 70%)',
-          }}
+          style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 35%, rgba(106, 79, 160, 0.2) 0%, transparent 70%)' }}
         />
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(138, 80, 200, 0.08) 0%, transparent 60%)',
-          }}
+          style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(138, 80, 200, 0.08) 0%, transparent 60%)' }}
         />
         <div className="absolute inset-0 bg-realm-vignette pointer-events-none" />
 
@@ -120,21 +139,13 @@ export default function LandingPage() {
             initial="hidden"
             animate="visible"
             className="font-display text-5xl sm:text-6xl md:text-8xl text-realm-gold-400 tracking-wider"
-            style={{
-              textShadow: '0 0 40px rgba(212, 168, 67, 0.3), 0 0 80px rgba(212, 168, 67, 0.1)',
-            }}
+            style={{ textShadow: '0 0 40px rgba(212, 168, 67, 0.3), 0 0 80px rgba(212, 168, 67, 0.1)' }}
           >
             Realm of Crowns
           </motion.h1>
 
           {/* Gold ornament divider */}
-          <motion.div
-            custom={1}
-            variants={fadeUp}
-            initial="hidden"
-            animate="visible"
-            className="flex items-center justify-center gap-4 my-5"
-          >
+          <motion.div custom={1} variants={fadeUp} initial="hidden" animate="visible" className="flex items-center justify-center gap-4 my-5">
             <div className="h-px w-16 sm:w-24 bg-gradient-to-r from-transparent to-realm-gold-500/40" />
             <div className="w-1.5 h-1.5 rotate-45 border border-realm-gold-500/50" />
             <div className="h-px w-16 sm:w-24 bg-gradient-to-l from-transparent to-realm-gold-500/40" />
@@ -163,13 +174,7 @@ export default function LandingPage() {
           </motion.p>
 
           {/* Key badges */}
-          <motion.div
-            custom={4}
-            variants={fadeUp}
-            initial="hidden"
-            animate="visible"
-            className="flex flex-wrap items-center justify-center gap-3 mb-8"
-          >
+          <motion.div custom={4} variants={fadeUp} initial="hidden" animate="visible" className="flex flex-wrap items-center justify-center gap-3 mb-8">
             {['Free to Play', 'Browser-Based', 'No Downloads'].map((badge) => (
               <span
                 key={badge}
@@ -181,13 +186,7 @@ export default function LandingPage() {
           </motion.div>
 
           {/* CTA buttons */}
-          <motion.div
-            custom={5}
-            variants={fadeUp}
-            initial="hidden"
-            animate="visible"
-            className="flex flex-col sm:flex-row gap-4 justify-center"
-          >
+          <motion.div custom={5} variants={fadeUp} initial="hidden" animate="visible" className="flex flex-col sm:flex-row gap-4 justify-center">
             <RealmButton variant="primary" size="lg" onClick={() => navigate('/register')}>
               Create Your Character
             </RealmButton>
@@ -202,17 +201,16 @@ export default function LandingPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2, duration: 0.8 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          className="mt-10"
         >
           <ChevronDown className="w-6 h-6 text-realm-gold-400/50 animate-bounce" />
         </motion.div>
       </section>
 
       {/* ================================================================= */}
-      {/* FEATURES                                                          */}
+      {/* FEATURES — 6 pillars                                              */}
       {/* ================================================================= */}
       <section className="py-12 sm:py-14 px-6 relative" style={{ backgroundColor: '#0D0618' }}>
-        {/* Subtle top gradient blend */}
         <div className="absolute inset-x-0 top-0 h-16 pointer-events-none" style={{ background: 'linear-gradient(to bottom, #07040F, transparent)' }} />
 
         <div className="max-w-5xl mx-auto relative z-10">
@@ -234,10 +232,10 @@ export default function LandingPage() {
             viewport={{ once: true, margin: '-80px' }}
             className="text-center text-realm-text-muted text-sm mb-8 max-w-lg mx-auto"
           >
-            Four pillars that set Realm of Crowns apart.
+            Six pillars that set Realm of Crowns apart.
           </motion.p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {FEATURES.map((f, i) => (
               <motion.div
                 key={f.title}
@@ -268,9 +266,47 @@ export default function LandingPage() {
       </section>
 
       {/* ================================================================= */}
+      {/* DEPTH — rapid-fire "and there's more"                             */}
+      {/* ================================================================= */}
+      <section className="py-10 sm:py-12 px-6 relative" style={{ backgroundColor: '#07040F' }}>
+        <div className="max-w-3xl mx-auto">
+          <motion.h2
+            variants={fadeUp}
+            custom={0}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-60px' }}
+            className="font-display text-xl sm:text-2xl text-realm-gold-400 text-center mb-8"
+          >
+            A World With Layers
+          </motion.h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+            {DEPTH_ITEMS.map((item, i) => (
+              <motion.div
+                key={item.label}
+                custom={i}
+                variants={cardFade}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: '-30px' }}
+                className="flex items-start gap-3 py-2"
+              >
+                <div className="w-px h-full min-h-[2rem] shrink-0 bg-realm-gold-600/25 mt-1" />
+                <div>
+                  <span className="font-display text-xs text-realm-gold-400 uppercase tracking-wider">{item.label}</span>
+                  <p className="text-xs text-realm-text-secondary leading-relaxed mt-0.5">{item.text}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================================= */}
       {/* RACES                                                             */}
       {/* ================================================================= */}
-      <section className="py-12 sm:py-14 px-6 relative" style={{ backgroundColor: '#07040F' }}>
+      <section className="py-12 sm:py-14 px-6 relative" style={{ backgroundColor: '#0D0618' }}>
         <div className="max-w-5xl mx-auto">
           <motion.h2
             variants={fadeUp}
@@ -290,8 +326,7 @@ export default function LandingPage() {
             viewport={{ once: true, margin: '-80px' }}
             className="text-center text-realm-text-secondary text-sm max-w-xl mx-auto mb-8"
           >
-            Seven playable races at launch. From the dwarven halls of Ironvault
-            to the elven forests of Silverwood, each has a homeland, culture, and destiny.
+            Seven playable races at launch — thirteen more awakening as the realm grows.
           </motion.p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -306,7 +341,7 @@ export default function LandingPage() {
                 className="border border-realm-border rounded-lg p-4
                            hover:border-realm-gold-600/30 hover:shadow-realm-glow
                            transition-all duration-300"
-                style={{ backgroundColor: '#0F081C' }}
+                style={{ backgroundColor: '#130B22' }}
               >
                 <h3 className="font-display text-base text-realm-gold-400 mb-1.5">
                   {race.name}
@@ -317,24 +352,13 @@ export default function LandingPage() {
               </motion.div>
             ))}
           </div>
-
-          <motion.p
-            variants={fadeUp}
-            custom={0}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="text-center text-realm-text-muted text-xs mt-6 italic"
-          >
-            13 more races unlocking as the realm grows...
-          </motion.p>
         </div>
       </section>
 
       {/* ================================================================= */}
       {/* HOW IT WORKS                                                      */}
       {/* ================================================================= */}
-      <section className="py-8 sm:py-10 px-6 relative" style={{ backgroundColor: '#0D0618' }}>
+      <section className="py-8 sm:py-10 px-6 relative" style={{ backgroundColor: '#07040F' }}>
         <div className="max-w-3xl mx-auto relative z-10">
           <motion.h2
             variants={fadeUp}
@@ -372,13 +396,11 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* FINAL CTA                                                         */}
       {/* ================================================================= */}
-      <section className="py-12 sm:py-14 px-6 relative" style={{ backgroundColor: '#07040F' }}>
-        {/* Ambient glow behind CTA */}
+      <section className="py-12 sm:py-14 px-6 relative" style={{ backgroundColor: '#0D0618' }}>
+        {/* Ambient glow */}
         <div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] rounded-full pointer-events-none"
-          style={{
-            background: 'radial-gradient(circle, rgba(138, 80, 200, 0.05) 0%, transparent 70%)',
-          }}
+          style={{ background: 'radial-gradient(circle, rgba(138, 80, 200, 0.05) 0%, transparent 70%)' }}
         />
 
         <motion.div
@@ -391,9 +413,7 @@ export default function LandingPage() {
         >
           <h2
             className="font-display text-3xl sm:text-4xl md:text-5xl text-realm-gold-400 mb-4"
-            style={{
-              textShadow: '0 0 30px rgba(212, 168, 67, 0.25)',
-            }}
+            style={{ textShadow: '0 0 30px rgba(212, 168, 67, 0.25)' }}
           >
             Your Story Begins Now
           </h2>
