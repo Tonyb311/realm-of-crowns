@@ -109,7 +109,7 @@ export default function LandingPage() {
       {/* ================================================================= */}
       {/* HERO                                                              */}
       {/* ================================================================= */}
-      <section className="relative min-h-[80vh] flex flex-col items-center justify-center px-6 py-16">
+      <section className="relative flex flex-col items-center justify-center px-6 py-20 md:py-28">
         {/* Atmospheric background layers */}
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at top, #1a0a2e 0%, #07040F 60%)' }} />
         <div
@@ -156,11 +156,9 @@ export default function LandingPage() {
             variants={fadeUp}
             initial="hidden"
             animate="visible"
-            className="text-base sm:text-lg md:text-xl text-realm-text-secondary leading-relaxed mb-3 px-2"
+            className="font-display text-lg sm:text-xl md:text-2xl text-realm-text-primary/90 leading-snug mb-4 px-2"
           >
-            A free browser-based MMORPG where every player shapes the world.
-            <br className="hidden sm:block" />
-            No downloads. No pay-to-win. Just a world shaped by its players.
+            Gods scheme. Markets bleed. The mayor just sold your town.
           </motion.p>
 
           <motion.p
@@ -168,9 +166,9 @@ export default function LandingPage() {
             variants={fadeUp}
             initial="hidden"
             animate="visible"
-            className="font-display text-sm sm:text-base text-realm-gold-500 tracking-wide mb-8"
+            className="text-sm sm:text-base text-realm-text-secondary mb-8 px-4 max-w-xl mx-auto"
           >
-            20 races &middot; 29 professions &middot; Every decision matters
+            A free browser-based MMORPG. No downloads, no pay-to-win — just a world that reacts to every choice.
           </motion.p>
 
           {/* Key badges */}
