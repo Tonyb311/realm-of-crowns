@@ -30,7 +30,7 @@ import type {
 } from '@shared/types/combat';
 import { getModifier } from '@shared/types/combat';
 import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
-import { CLASS_SAVE_PROFICIENCIES } from '@shared/data/combat-constants';
+import { CLASS_SAVE_PROFICIENCIES, getAttacksPerAction } from '@shared/data/combat-constants';
 import {
   ACTION_XP,
   DEATH_PENALTY,
@@ -517,6 +517,7 @@ export async function resolveRoadEncounter(
     ...(CLASS_SAVE_PROFICIENCIES[character.class?.toLowerCase() ?? ''] ?? []),
     ...((character.bonusSaveProficiencies as string[]) ?? []),
   ];
+  (playerCombatant as any).extraAttacks = getAttacksPerAction(character.class ?? '', character.level);
 
   let combatState = createCombatState(sessionId, 'PVE', [playerCombatant, monsterCombatant]);
 
@@ -920,6 +921,7 @@ export async function resolveGroupRoadEncounter(
       ...(CLASS_SAVE_PROFICIENCIES[char.class?.toLowerCase() ?? ''] ?? []),
       ...((char.bonusSaveProficiencies as string[]) ?? []),
     ];
+    (combatant as any).extraAttacks = getAttacksPerAction(char.class ?? '', char.level);
     combatants.push(combatant);
   }
 

@@ -2797,11 +2797,57 @@ export function resolveTurn(
           result = noOpDefend(actorId);
           break;
         }
+        // First attack (always happens)
         const atk = resolveAttack(current, actorId, action.targetId, context.weapon, racialContext?.tracker);
         current = atk.state;
         result = atk.result;
 
-        // Check for Orcish Rampage: bonus attack on kill
+        // === EXTRA ATTACKS ===
+        const totalAttacks = currentActor.extraAttacks ?? 1;
+        const extraAttackResults: TurnLogEntry[] = [];
+
+        if (totalAttacks > 1) {
+          for (let i = 1; i < totalAttacks; i++) {
+            // Check combat is still active
+            current = checkCombatEnd(current);
+            if (current.status !== 'ACTIVE') break;
+
+            // Re-fetch actor (may have taken damage from thorns/reflect)
+            const actorNow = current.combatants.find(c => c.id === actorId);
+            if (!actorNow || !actorNow.isAlive) break;
+
+            // Find a valid target: prefer original, fall back to any alive enemy
+            let extraTargetId = action.targetId;
+            const originalTarget = current.combatants.find(c => c.id === extraTargetId);
+            if (!originalTarget || !originalTarget.isAlive) {
+              const anyEnemy = current.combatants.find(
+                c => c.team !== actorNow.team && c.isAlive && !c.hasFled
+              );
+              if (!anyEnemy) break;
+              extraTargetId = anyEnemy.id;
+            }
+
+            // Resolve extra attack
+            const extraAtk = resolveAttack(current, actorId, extraTargetId, context.weapon, racialContext?.tracker);
+            current = extraAtk.state;
+
+            // Log as separate entry
+            extraAttackResults.push({
+              round: current.round,
+              actorId,
+              action: 'attack',
+              result: extraAtk.result,
+              statusTicks: [],
+            });
+          }
+
+          // Append all extra attack logs
+          if (extraAttackResults.length > 0) {
+            current = { ...current, log: [...current.log, ...extraAttackResults] };
+          }
+        }
+
+        // Check for Orcish Rampage: bonus attack on kill (only from FIRST attack)
         if (atk.result.targetKilled && racialContext) {
           const bonusAttack = checkBonusAttackOnKill(racialContext.race, racialContext.level, racialContext.tracker);
           if (bonusAttack) {

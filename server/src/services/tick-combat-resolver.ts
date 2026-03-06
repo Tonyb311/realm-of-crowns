@@ -45,7 +45,7 @@ import type {
 } from '@shared/types/combat';
 import { getModifier } from '@shared/types/combat';
 import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
-import { CLASS_SAVE_PROFICIENCIES } from '@shared/data/combat-constants';
+import { CLASS_SAVE_PROFICIENCIES, getAttacksPerAction } from '@shared/data/combat-constants';
 import {
   getCombatPresets,
   buildCombatParams,
@@ -1012,6 +1012,7 @@ export async function resolveNodePvE(
     ...(CLASS_SAVE_PROFICIENCIES[character.class?.toLowerCase() ?? ''] ?? []),
     ...((character.bonusSaveProficiencies as string[]) ?? []),
   ];
+  (playerCombatant as any).extraAttacks = getAttacksPerAction(character.class ?? '', character.level);
 
   // Set proficiency flags based on equipped items
   if (character.class && character.equipment) {
@@ -1187,6 +1188,7 @@ export async function resolveNodePvP(
     ...(CLASS_SAVE_PROFICIENCIES[traveler.class?.toLowerCase() ?? ''] ?? []),
     ...((traveler.bonusSaveProficiencies as string[]) ?? []),
   ];
+  (travelerCombatant as any).extraAttacks = getAttacksPerAction(traveler.class ?? '', traveler.level);
 
   const ambusherCombatant = createCharacterCombatant(
     ambusher.id, ambusher.name, 1,
@@ -1203,6 +1205,7 @@ export async function resolveNodePvP(
     ...(CLASS_SAVE_PROFICIENCIES[ambusher.class?.toLowerCase() ?? ''] ?? []),
     ...((ambusher.bonusSaveProficiencies as string[]) ?? []),
   ];
+  (ambusherCombatant as any).extraAttacks = getAttacksPerAction(ambusher.class ?? '', ambusher.level);
 
   // Create combat state
   const sessionId = `tick-pvp-${travelerId}-${ambusherId}-${Date.now()}`;
@@ -1360,6 +1363,7 @@ export async function resolveGroupCombat(
       ...(CLASS_SAVE_PROFICIENCIES[char.class?.toLowerCase() ?? ''] ?? []),
       ...((char.bonusSaveProficiencies as string[]) ?? []),
     ];
+    (combatant as any).extraAttacks = getAttacksPerAction(char.class ?? '', char.level);
     combatants.push(combatant);
 
     const params = await buildCombatParams(char.id);
@@ -1400,6 +1404,7 @@ export async function resolveGroupCombat(
       ...(CLASS_SAVE_PROFICIENCIES[char.class?.toLowerCase() ?? ''] ?? []),
       ...((char.bonusSaveProficiencies as string[]) ?? []),
     ];
+    (combatant as any).extraAttacks = getAttacksPerAction(char.class ?? '', char.level);
     combatants.push(combatant);
 
     const params = await buildCombatParams(char.id);

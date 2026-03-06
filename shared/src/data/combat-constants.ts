@@ -28,6 +28,39 @@ export const CLASS_MILESTONE_SAVE_ORDER: Record<string, [string, string, string]
 /** Milestone levels at which characters gain additional save proficiencies */
 export const SAVE_PROFICIENCY_MILESTONES = [18, 30, 45] as const;
 
+/**
+ * Extra attacks granted by class at specific character levels.
+ * Value = TOTAL attacks per Attack action (1 = no extra, 2 = one extra, etc.)
+ * Only applies to the 'attack' action type — not abilities or spells.
+ *
+ * D&D 5e reference: Fighter gets 2/3/4 attacks, other martial get 2.
+ * RoC spreads this over 50 levels to fill dead zones.
+ */
+export const CLASS_EXTRA_ATTACKS: Record<string, { level: number; totalAttacks: number }[]> = {
+  warrior: [
+    { level: 13, totalAttacks: 2 },
+    { level: 34, totalAttacks: 3 },
+    { level: 42, totalAttacks: 4 },
+  ],
+  ranger: [
+    { level: 28, totalAttacks: 2 },
+  ],
+  cleric: [
+    { level: 34, totalAttacks: 2 },
+  ],
+};
+
+/** Get total attacks per Attack action for a class at a given level */
+export function getAttacksPerAction(characterClass: string, level: number): number {
+  const classSchedule = CLASS_EXTRA_ATTACKS[characterClass.toLowerCase()];
+  if (!classSchedule) return 1;
+  let attacks = 1;
+  for (const entry of classSchedule) {
+    if (level >= entry.level) attacks = entry.totalAttacks;
+  }
+  return attacks;
+}
+
 /** Class → primary casting/attack stat (used for save DCs and spell attack rolls) */
 export const CLASS_PRIMARY_STAT: Record<string, string> = {
   warrior: 'str', rogue: 'dex', ranger: 'dex',

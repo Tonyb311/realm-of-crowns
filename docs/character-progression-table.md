@@ -102,7 +102,9 @@
 
 **Level 11** — Death XP penalty jumps to 20 (highest tier, permanent from here).
 
-**Levels 12-13** — No new ability unlocks.
+**Level 12** — No new ability unlocks.
+
+**Level 13** — **Warrior gains Extra Attack** (2 attacks per Attack action).
 
 **Level 14** — Second spec ability auto-granted (Tier 2a).
 
@@ -121,7 +123,11 @@
 **Level 25** — Fourth spec ability auto-granted (Tier 3 or Tier 4, varies by spec).
 - Racial abilities unlock: **Empire Builder** (Human), **Ageless Knowledge** (Elf), **Clan Loyalty** (Dwarf), **Clan Warhorn** (Orc), **Trade Network** (Harthfolk), **Dragon's Hoard** (Drakonid), **Infernal Rebuke** (Nethkin)
 
-**Levels 26-29** — No new ability unlocks.
+**Levels 26-27** — No new ability unlocks.
+
+**Level 28** — **Ranger gains Extra Attack** (2 attacks per Attack action).
+
+**Level 29** — No new ability unlocks.
 
 **Level 30** — **4th saving throw proficiency unlocked** (auto-granted, deterministic per class). See Section 8.
 
@@ -129,12 +135,20 @@
 
 **Level 32** — Fifth spec ability auto-granted (Tier 4 or Tier 5).
 
-**Levels 33-39** — No new ability unlocks. **8-level dead zone.**
+**Level 33** — No new ability unlocks.
+
+**Level 34** — **Warrior gains 3rd attack.** **Cleric gains Extra Attack** (2 attacks per Attack action).
+
+**Levels 35-39** — No new ability unlocks.
 
 **Level 40** — Sixth and final spec ability auto-granted (Tier 5 or Tier 6). Capstone.
 - Racial abilities unlock: **Indomitable Will** (Human), **Spirit Walk** (Elf), **Ancestral Fury** (Dwarf), **Orcish Rampage** (Orc), **Feast Master** (Harthfolk), **Ancient Wrath** (Drakonid), **Soul Bargain** (Nethkin)
 
-**Levels 41-44** — No new ability unlocks.
+**Level 41** — No new ability unlocks.
+
+**Level 42** — **Warrior gains 4th attack** (maximum, matches D&D 5e Fighter).
+
+**Levels 43-44** — No new ability unlocks.
 
 **Level 45** — **5th saving throw proficiency unlocked** (auto-granted, deterministic per class). See Section 8. Only CHA or STR remain as the 6th unproficient save.
 
@@ -149,6 +163,22 @@ All 7 classes share the same ability schedule:
 - **Spec abilities (auto-granted):** Levels 10, 14, 20, 25, 32, 40
 
 **Exception: Psion** uses tier numbering 1-6 instead of the standard 1-5, with tiers 5 and 6 at levels 32 and 40 respectively. Functionally identical schedule.
+
+### Extra Attack (Attacks per Attack Action)
+
+Only applies to the `attack` action — not class abilities, racial abilities, or spells.
+
+| Class | L1-12 | L13 | L28 | L34 | L42 |
+|-------|-------|-----|-----|-----|-----|
+| Warrior | 1 | **2** | 2 | **3** | **4** |
+| Ranger | 1 | 1 | **2** | 2 | 2 |
+| Cleric | 1 | 1 | 1 | **2** | 2 |
+| Rogue | 1 | 1 | 1 | 1 | 1 |
+| Bard | 1 | 1 | 1 | 1 | 1 |
+| Mage | 1 | 1 | 1 | 1 | 1 |
+| Psion | 1 | 1 | 1 | 1 | 1 |
+
+**Source:** `CLASS_EXTRA_ATTACKS` and `getAttacksPerAction()` in `shared/src/data/combat-constants.ts`.
 
 ---
 

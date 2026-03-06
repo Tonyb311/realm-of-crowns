@@ -588,6 +588,8 @@ export interface Combatant {
   nonProficientWeapon?: boolean;
   /** Saving throw proficiencies — stat keys this combatant adds proficiency bonus to on saves */
   saveProficiencies?: string[];
+  /** Number of TOTAL attacks when taking the Attack action (1 = normal, 2+ = extra attacks) */
+  extraAttacks?: number;
 }
 
 export interface ClassAbilityAttackMods {
