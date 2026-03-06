@@ -61,6 +61,7 @@ const BASE_VALUE_MAP: Record<string, number> = {
   'Mithril Sword': 750, 'Mithril Longsword': 900, 'Mithril Greatsword': 1200,
   'Mithril Battleaxe': 1100, 'Mithril Warhammer': 1100, 'Mithril Halberd': 1000,
   // Adamantine T5
+  'Adamantine Sword': 1600, 'Adamantine Longsword': 1900,
   'Adamantine Greatsword': 2500, 'Adamantine Battleaxe': 2200,
   'Adamantine Warhammer': 2200, 'Adamantine Halberd': 2000,
   // BLACKSMITH crafted (blacksmith.ts) — Apprentice

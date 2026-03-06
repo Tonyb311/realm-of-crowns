@@ -457,6 +457,7 @@ export const MONSTERS: MonsterDef[] = [
       {
         id: 'toad_swallow', name: 'Swallow', type: 'swallow',
         swallowDamage: '1d6', swallowDamageType: 'ACID', swallowEscapeThreshold: 12,
+        saveType: 'str', saveDC: 12,
         priority: 6, cooldown: 4,
         description: 'The toad attempts to swallow a smaller creature whole.',
       },
@@ -476,7 +477,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 5,
     biome: 'SWAMP',
     regionName: 'Ashenmoor',
-    category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
+    category: 'undead', encounterType: 'standard', sentient: true, size: 'medium',
     damageType: 'SLASHING',
     vulnerabilities: ['BLUDGEONING'],
     immunities: ['POISON'],
@@ -487,7 +488,7 @@ export const MONSTERS: MonsterDef[] = [
     },
     lootTable: [
       { dropChance: 0.7, minQty: 3, maxQty: 10, gold: 8 },
-      { dropChance: 0.2, minQty: 1, maxQty: 1, gold: 0 },
+      { dropChance: 0.2, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
     ],
   },
   {
@@ -538,6 +539,7 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.6, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
       { dropChance: 0.30, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Spider Venom' },
+      { dropChance: 0.25, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Spider Silk' },
     ],
   },
   {
@@ -558,6 +560,7 @@ export const MONSTERS: MonsterDef[] = [
     },
     lootTable: [
       { dropChance: 0.7, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Animal Pelts' },
+      { dropChance: 0.20, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Bear Claw' },
     ],
   },
   {
@@ -786,6 +789,7 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.8, minQty: 5, maxQty: 20, gold: 12 },
       { dropChance: 0.3, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Hide' },
+      { dropChance: 0.20, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Ogre Sinew' },
     ],
   },
   {
@@ -821,6 +825,7 @@ export const MONSTERS: MonsterDef[] = [
       { dropChance: 0.6, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Parts' },
       { dropChance: 0.3, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
       { dropChance: 0.25, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Spider Venom' },
+      { dropChance: 0.25, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Spider Silk' },
     ],
   },
   {

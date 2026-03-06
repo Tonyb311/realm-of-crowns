@@ -384,6 +384,11 @@ export function applyStatusEffect(
     return combatant; // Condition immune, status not applied
   }
 
+  // Player-specific immunity passives
+  if (effectName === 'blinded' && combatant.immuneBlinded) {
+    return combatant; // Immune to blinded (Psion Third Eye)
+  }
+
   const id = `${effectName}-${sourceId}-${Date.now()}`;
   const newEffect: StatusEffect = {
     id,
@@ -537,6 +542,12 @@ export function resolveAttack(
   if (!weapon && actor.race === 'beastfolk') {
     const natural = getBeastfolkNaturalWeapon(actor.level);
     if (natural) weapon = natural;
+  }
+
+  // Polymorph: reduce to 1d4 damage, no weapon bonuses
+  const isPolymorphed = actor.statusEffects.some(e => e.name === 'polymorph');
+  if (isPolymorphed) {
+    weapon = { ...weapon, diceCount: 1, diceSides: 4, bonusDamage: 0, bonusAttack: 0 };
   }
 
   // Calculate attack modifier (stat + proficiency + weapon bonus)
@@ -1677,15 +1688,12 @@ export function resolveFlee(
 // ---- Psychic Damage Helper ----
 
 /** Apply psychic damage to a target, respecting Forgeborn resistance and Thought Shield. */
-function applyPsychicDamage(target: Combatant, rawDamage: number): { damage: number; target: Combatant } {
-  let damage = rawDamage;
+function applyPsychicDamage(target: Combatant, rawDamage: number): { damage: number; target: Combatant; damageTypeResult?: DamageTypeResult } {
+  // Use standard damage type pipeline for PSYCHIC — handles monster immunities/resistances
+  const dtResult = applyDamageTypeInteraction(rawDamage, 'PSYCHIC' as CombatDamageType, target);
+  let damage = dtResult.finalDamage;
 
-  // Forgeborn psychic resistance: halve psychic damage
-  if (target.race === 'forgeborn') {
-    damage = Math.floor(damage / 2);
-  }
-
-  // Thought Shield passive: psychicResistance field halves psychic damage
+  // Thought Shield passive: psychicResistance field halves psychic damage (stacks with resistance)
   // (set by applyPassiveAbilities when psi-tel-2 is unlocked, or manually in sim)
   if (target.psychicResistance) {
     damage = Math.floor(damage / 2);
@@ -1696,6 +1704,7 @@ function applyPsychicDamage(target: Combatant, rawDamage: number): { damage: num
   return {
     damage,
     target: { ...target, currentHp: newHp, isAlive: newHp > 0 },
+    damageTypeResult: dtResult,
   };
 }
 
