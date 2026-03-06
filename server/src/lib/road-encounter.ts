@@ -30,6 +30,7 @@ import type {
 } from '@shared/types/combat';
 import { getModifier } from '@shared/types/combat';
 import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
+import { CLASS_SAVE_PROFICIENCIES } from '@shared/data/combat-constants';
 import {
   ACTION_XP,
   DEATH_PENALTY,
@@ -382,6 +383,7 @@ export async function resolveRoadEncounter(
       race: true,
       subRace: true,
       class: true,
+      bonusSaveProficiencies: true,
     },
   });
 
@@ -507,10 +509,14 @@ export async function resolveRoadEncounter(
     buildMonsterCombatOptions(monster),
   );
 
-  // Set race and class for racial ability + save DC resolution
+  // Set race, class, and save proficiencies for racial ability + save DC resolution
   (playerCombatant as any).race = character.race.toLowerCase();
   (playerCombatant as any).subRace = character.subRace ?? null;
   (playerCombatant as any).characterClass = character.class?.toLowerCase() ?? null;
+  (playerCombatant as any).saveProficiencies = [
+    ...(CLASS_SAVE_PROFICIENCIES[character.class?.toLowerCase() ?? ''] ?? []),
+    ...((character.bonusSaveProficiencies as string[]) ?? []),
+  ];
 
   let combatState = createCombatState(sessionId, 'PVE', [playerCombatant, monsterCombatant]);
 
@@ -789,6 +795,7 @@ export async function resolveGroupRoadEncounter(
       race: true,
       subRace: true,
       class: true,
+      bonusSaveProficiencies: true,
     },
   });
 
@@ -905,10 +912,14 @@ export async function resolveGroupRoadEncounter(
         {},
         getProficiencyBonus(char.level),
     );
-    // Set race and class for racial ability + save DC resolution
+    // Set race, class, and save proficiencies for racial ability + save DC resolution
     (combatant as any).race = char.race.toLowerCase();
     (combatant as any).subRace = char.subRace ?? null;
     (combatant as any).characterClass = char.class?.toLowerCase() ?? null;
+    (combatant as any).saveProficiencies = [
+      ...(CLASS_SAVE_PROFICIENCIES[char.class?.toLowerCase() ?? ''] ?? []),
+      ...((char.bonusSaveProficiencies as string[]) ?? []),
+    ];
     combatants.push(combatant);
   }
 

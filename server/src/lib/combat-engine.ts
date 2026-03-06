@@ -52,6 +52,7 @@ import type {
 } from '@shared/types/combat';
 
 import { getModifier } from '@shared/types/combat';
+import { getSaveModifier } from '@shared/utils/bounded-accuracy';
 
 import type { RacialCombatTracker } from '../services/racial-combat-abilities';
 import {
@@ -1407,8 +1408,8 @@ export function resolveCast(
   let saveSucceeded: boolean | undefined;
 
   if (spell.requiresSave && spell.saveType) {
-    const targetSaveMod = getModifier(target.stats[spell.saveType]);
-    let totalSaveMod = targetSaveMod + target.proficiencyBonus;
+    const targetSaveMod = getSaveModifier(target.stats, spell.saveType, target.proficiencyBonus, target.saveProficiencies);
+    let totalSaveMod = targetSaveMod;
     // Apply status effect save modifiers
     for (const eff of target.statusEffects) {
       const def = STATUS_EFFECT_DEFS[eff.name];
@@ -1751,7 +1752,7 @@ export function resolvePsionAbility(
 
     case 'psi-tel-1': { // Mind Spike - INT save, 2d6+INT psychic, weakened on fail
       const target = current.combatants.find((c) => c.id === targetId)!;
-      const targetSaveMod = getModifier(target.stats.int) + target.proficiencyBonus;
+      const targetSaveMod = getSaveModifier(target.stats, 'int', target.proficiencyBonus, target.saveProficiencies);
       let totalSaveMod = targetSaveMod;
       for (const eff of target.statusEffects) {
         const def = STATUS_EFFECT_DEFS[eff.name];
@@ -1812,7 +1813,7 @@ export function resolvePsionAbility(
 
     case 'psi-tel-3': { // Psychic Crush - WIS save, 3d8+INT psychic, stunned on fail
       const target = current.combatants.find((c) => c.id === targetId)!;
-      const targetSaveMod = getModifier(target.stats.wis) + target.proficiencyBonus;
+      const targetSaveMod = getSaveModifier(target.stats, 'wis', target.proficiencyBonus, target.saveProficiencies);
       let totalSaveMod = targetSaveMod;
       for (const eff of target.statusEffects) {
         const def = STATUS_EFFECT_DEFS[eff.name];
@@ -1862,7 +1863,7 @@ export function resolvePsionAbility(
 
     case 'psi-tel-4': { // Dominate - WIS save at -2, control 1 round or weakened 2 rounds
       const target = current.combatants.find((c) => c.id === targetId)!;
-      const targetSaveMod = getModifier(target.stats.wis) + target.proficiencyBonus - 2;
+      const targetSaveMod = getSaveModifier(target.stats, 'wis', target.proficiencyBonus, target.saveProficiencies) - 2;
       let totalSaveMod = targetSaveMod;
       for (const eff of target.statusEffects) {
         const def = STATUS_EFFECT_DEFS[eff.name];
@@ -1919,7 +1920,7 @@ export function resolvePsionAbility(
       const affectedIds: string[] = [];
 
       for (const enemy of enemies) {
-        const targetSaveMod = getModifier(enemy.stats.wis) + enemy.proficiencyBonus;
+        const targetSaveMod = getSaveModifier(enemy.stats, 'wis', enemy.proficiencyBonus, enemy.saveProficiencies);
         let totalSaveMod = targetSaveMod;
         for (const eff of enemy.statusEffects) {
           const def = STATUS_EFFECT_DEFS[eff.name];
@@ -1963,7 +1964,7 @@ export function resolvePsionAbility(
 
     case 'psi-tel-6': { // Absolute Dominion - WIS save at -4, control 2 rounds or stunned+2d10 psychic
       const target = current.combatants.find((c) => c.id === targetId)!;
-      const targetSaveMod = getModifier(target.stats.wis) + target.proficiencyBonus - 4;
+      const targetSaveMod = getSaveModifier(target.stats, 'wis', target.proficiencyBonus, target.saveProficiencies) - 4;
       let totalSaveMod = targetSaveMod;
       for (const eff of target.statusEffects) {
         const def = STATUS_EFFECT_DEFS[eff.name];
@@ -2281,7 +2282,7 @@ export function resolvePsionAbility(
 
       if (target.team !== updatedActor.team) {
         // Enemy target: INT save or lose next action (stunned 1 round)
-        const targetSaveMod = getModifier(target.stats.int) + target.proficiencyBonus;
+        const targetSaveMod = getSaveModifier(target.stats, 'int', target.proficiencyBonus, target.saveProficiencies);
         let totalSaveMod = targetSaveMod;
         for (const eff of target.statusEffects) {
           const def = STATUS_EFFECT_DEFS[eff.name];
@@ -2355,7 +2356,7 @@ export function resolvePsionAbility(
       const affectedIds: string[] = [];
 
       for (const enemy of enemies) {
-        const targetSaveMod = getModifier(enemy.stats.wis) + enemy.proficiencyBonus;
+        const targetSaveMod = getSaveModifier(enemy.stats, 'wis', enemy.proficiencyBonus, enemy.saveProficiencies);
         let totalSaveMod = targetSaveMod;
         for (const eff of enemy.statusEffects) {
           const def = STATUS_EFFECT_DEFS[eff.name];
@@ -2408,7 +2409,7 @@ export function resolvePsionAbility(
         };
       }
 
-      const targetSaveMod = getModifier(target.stats.int) + target.proficiencyBonus - 2;
+      const targetSaveMod = getSaveModifier(target.stats, 'int', target.proficiencyBonus, target.saveProficiencies) - 2;
       let totalSaveMod = targetSaveMod;
       for (const eff of target.statusEffects) {
         const def = STATUS_EFFECT_DEFS[eff.name];

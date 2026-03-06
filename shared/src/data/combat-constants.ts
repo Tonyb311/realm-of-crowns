@@ -9,6 +9,25 @@ export const CLASS_SAVE_PROFICIENCIES: Record<string, [string, string]> = {
   psion: ['int', 'wis'],
 };
 
+/**
+ * Deterministic save proficiency unlock order at milestone levels 18, 30, 45.
+ * Each class starts with 2 saves (CLASS_SAVE_PROFICIENCIES), then gains one
+ * additional proficiency at each milestone in this order.
+ * Design: fills weakest saves first (WIS for martial, CON for casters).
+ */
+export const CLASS_MILESTONE_SAVE_ORDER: Record<string, [string, string, string]> = {
+  warrior: ['wis', 'dex', 'cha'],  // STR,CON → +WIS(18) +DEX(30) +CHA(45)
+  rogue:   ['wis', 'con', 'cha'],  // DEX,INT → +WIS(18) +CON(30) +CHA(45)
+  ranger:  ['wis', 'con', 'cha'],  // STR,DEX → +WIS(18) +CON(30) +CHA(45)
+  mage:    ['con', 'dex', 'cha'],  // INT,WIS → +CON(18) +DEX(30) +CHA(45)
+  cleric:  ['con', 'str', 'dex'],  // WIS,CHA → +CON(18) +STR(30) +DEX(45)
+  bard:    ['wis', 'con', 'str'],  // DEX,CHA → +WIS(18) +CON(30) +STR(45)
+  psion:   ['con', 'dex', 'cha'],  // INT,WIS → +CON(18) +DEX(30) +CHA(45)
+};
+
+/** Milestone levels at which characters gain additional save proficiencies */
+export const SAVE_PROFICIENCY_MILESTONES = [18, 30, 45] as const;
+
 /** Class → primary casting/attack stat (used for save DCs and spell attack rolls) */
 export const CLASS_PRIMARY_STAT: Record<string, string> = {
   warrior: 'str', rogue: 'dex', ranger: 'dex',

@@ -39,4 +39,24 @@ export function getModifier(stat: number): number {
   return Math.floor((stat - 10) / 2);
 }
 
+/**
+ * Calculate a combatant's saving throw modifier for a given save type.
+ * Proficient saves: stat modifier + proficiency bonus
+ * Non-proficient saves: stat modifier only
+ * Monsters (no saveProficiencies set): always add proficiency (legacy behavior)
+ */
+export function getSaveModifier(
+  stats: { str: number; dex: number; con: number; int: number; wis: number; cha: number },
+  saveType: string,
+  proficiencyBonus: number,
+  saveProficiencies?: string[],
+): number {
+  const statMod = getModifier(stats[saveType as keyof typeof stats] ?? 10);
+  // If no proficiency list provided (monsters), add proficiency to all saves
+  if (!saveProficiencies) return statMod + proficiencyBonus;
+  // Characters: only add proficiency if proficient in this save
+  const isProficient = saveProficiencies.includes(saveType);
+  return statMod + (isProficient ? proficiencyBonus : 0);
+}
+
 export const STAT_HARD_CAP = 20;

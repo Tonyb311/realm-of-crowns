@@ -108,7 +108,11 @@
 
 **Level 15** — Racial abilities unlock: **Adaptable Crafter** (Human), **Arcane Affinity** (Elf), **Stonecunning** (Dwarf), **Warbeast Bond** (Orc), **Nimble Fingers** (Harthfolk), **Frightful Presence** (Drakonid), **Whispers of the Damned** (Nethkin)
 
-**Levels 16-19** — No new ability unlocks. Long gap.
+**Levels 16-17** — No new ability unlocks.
+
+**Level 18** — **3rd saving throw proficiency unlocked** (auto-granted, deterministic per class). See Section 8 for per-class saves.
+
+**Level 19** — No new ability unlocks.
 
 **Level 20** — Third spec ability auto-granted (Tier 2b or Tier 3, varies by spec).
 
@@ -117,7 +121,11 @@
 **Level 25** — Fourth spec ability auto-granted (Tier 3 or Tier 4, varies by spec).
 - Racial abilities unlock: **Empire Builder** (Human), **Ageless Knowledge** (Elf), **Clan Loyalty** (Dwarf), **Clan Warhorn** (Orc), **Trade Network** (Harthfolk), **Dragon's Hoard** (Drakonid), **Infernal Rebuke** (Nethkin)
 
-**Levels 26-31** — No new ability unlocks. **7-level dead zone.**
+**Levels 26-29** — No new ability unlocks.
+
+**Level 30** — **4th saving throw proficiency unlocked** (auto-granted, deterministic per class). See Section 8.
+
+**Levels 31** — No new ability unlocks.
 
 **Level 32** — Fifth spec ability auto-granted (Tier 4 or Tier 5).
 
@@ -126,7 +134,11 @@
 **Level 40** — Sixth and final spec ability auto-granted (Tier 5 or Tier 6). Capstone.
 - Racial abilities unlock: **Indomitable Will** (Human), **Spirit Walk** (Elf), **Ancestral Fury** (Dwarf), **Orcish Rampage** (Orc), **Feast Master** (Harthfolk), **Ancient Wrath** (Drakonid), **Soul Bargain** (Nethkin)
 
-**Levels 41-50** — No new ability unlocks. Pure stat growth. **10-level dead zone to cap.**
+**Levels 41-44** — No new ability unlocks.
+
+**Level 45** — **5th saving throw proficiency unlocked** (auto-granted, deterministic per class). See Section 8. Only CHA or STR remain as the 6th unproficient save.
+
+**Levels 46-50** — No new ability unlocks. Pure stat growth. **5-level dead zone to cap.** (Previously 10-level, now partially filled by level 45 save milestone.)
 
 ---
 
@@ -501,3 +513,33 @@ At level 50, characters have 50 stat points with a cost curve of 1/2/3/4 per poi
 ### Gold Death Penalty
 
 The 5% gold loss on death (`DEATH_PENALTY.GOLD_LOSS_PERCENT`) does NOT scale with level — it's always 5%. At high levels with large gold reserves, this could be the most painful penalty, which may be intentional as an economic sink.
+
+---
+
+## Section 8: Saving Throw Proficiencies
+
+D&D-style saving throw system. Each class starts proficient in 2 of 6 saves. Non-proficient saves use ONLY the stat modifier (no proficiency bonus). At milestone levels 18, 30, 45, characters auto-gain additional save proficiencies in a deterministic class-based order.
+
+**Impact:** At level 40+ (proficiency +8), a non-proficient save is 8 points lower than a proficient one. This makes CC and debuff abilities meaningful against specific saves.
+
+**Monsters:** Always add proficiency to ALL saves (unchanged legacy behavior).
+
+**Source:** `CLASS_SAVE_PROFICIENCIES` and `CLASS_MILESTONE_SAVE_ORDER` in `shared/src/data/combat-constants.ts`.
+
+### Save Proficiency Progression by Class
+
+| Class | Base (L1) | +L18 | +L30 | +L45 | Unproficient |
+|-------|-----------|------|------|------|-------------|
+| Warrior | STR, CON | WIS | DEX | CHA | INT |
+| Rogue | DEX, INT | WIS | CON | CHA | STR |
+| Ranger | STR, DEX | WIS | CON | CHA | INT |
+| Mage | INT, WIS | CON | DEX | CHA | STR |
+| Cleric | WIS, CHA | CON | STR | DEX | INT |
+| Bard | DEX, CHA | WIS | CON | STR | INT |
+| Psion | INT, WIS | CON | DEX | CHA | STR |
+
+**Design notes:**
+- All martial classes (Warrior, Rogue, Ranger) gain WIS save at 18 — D&D tradition of "mental defense for fighters"
+- All caster classes (Mage, Cleric, Psion) gain CON save at 18 — concentration defense
+- Every class ends with 5/6 saves proficient at level 45, leaving exactly 1 vulnerable save
+- Bard is the most balanced save profile (DEX, CHA, WIS, CON, STR) — only INT remains unproficient

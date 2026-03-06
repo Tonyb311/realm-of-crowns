@@ -45,6 +45,7 @@ import type {
 } from '@shared/types/combat';
 import { getModifier } from '@shared/types/combat';
 import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
+import { CLASS_SAVE_PROFICIENCIES } from '@shared/data/combat-constants';
 import {
   getCombatPresets,
   buildCombatParams,
@@ -1003,10 +1004,14 @@ export async function resolveNodePvE(
     getProficiencyBonus(character.level),
   );
 
-  // Add race and class to combatant
+  // Add race, class, and save proficiencies to combatant
   (playerCombatant as any).race = character.race.toLowerCase();
   (playerCombatant as any).subRace = character.subRace;
   (playerCombatant as any).characterClass = character.class?.toLowerCase() ?? null;
+  (playerCombatant as any).saveProficiencies = [
+    ...(CLASS_SAVE_PROFICIENCIES[character.class?.toLowerCase() ?? ''] ?? []),
+    ...((character.bonusSaveProficiencies as string[]) ?? []),
+  ];
 
   // Set proficiency flags based on equipped items
   if (character.class && character.equipment) {
@@ -1178,6 +1183,10 @@ export async function resolveNodePvP(
   );
   (travelerCombatant as any).race = traveler.race.toLowerCase();
   (travelerCombatant as any).characterClass = traveler.class?.toLowerCase() ?? null;
+  (travelerCombatant as any).saveProficiencies = [
+    ...(CLASS_SAVE_PROFICIENCIES[traveler.class?.toLowerCase() ?? ''] ?? []),
+    ...((traveler.bonusSaveProficiencies as string[]) ?? []),
+  ];
 
   const ambusherCombatant = createCharacterCombatant(
     ambusher.id, ambusher.name, 1,
@@ -1190,6 +1199,10 @@ export async function resolveNodePvP(
   );
   (ambusherCombatant as any).race = ambusher.race.toLowerCase();
   (ambusherCombatant as any).characterClass = ambusher.class?.toLowerCase() ?? null;
+  (ambusherCombatant as any).saveProficiencies = [
+    ...(CLASS_SAVE_PROFICIENCIES[ambusher.class?.toLowerCase() ?? ''] ?? []),
+    ...((ambusher.bonusSaveProficiencies as string[]) ?? []),
+  ];
 
   // Create combat state
   const sessionId = `tick-pvp-${travelerId}-${ambusherId}-${Date.now()}`;
@@ -1343,6 +1356,10 @@ export async function resolveGroupCombat(
     );
     (combatant as any).race = char.race.toLowerCase();
     (combatant as any).characterClass = char.class?.toLowerCase() ?? null;
+    (combatant as any).saveProficiencies = [
+      ...(CLASS_SAVE_PROFICIENCIES[char.class?.toLowerCase() ?? ''] ?? []),
+      ...((char.bonusSaveProficiencies as string[]) ?? []),
+    ];
     combatants.push(combatant);
 
     const params = await buildCombatParams(char.id);
@@ -1379,6 +1396,10 @@ export async function resolveGroupCombat(
     );
     (combatant as any).race = char.race.toLowerCase();
     (combatant as any).characterClass = char.class?.toLowerCase() ?? null;
+    (combatant as any).saveProficiencies = [
+      ...(CLASS_SAVE_PROFICIENCIES[char.class?.toLowerCase() ?? ''] ?? []),
+      ...((char.bonusSaveProficiencies as string[]) ?? []),
+    ];
     combatants.push(combatant);
 
     const params = await buildCombatParams(char.id);

@@ -30,6 +30,7 @@ import type {
 } from '@shared/types/combat';
 
 import { getModifier } from '@shared/types/combat';
+import { getSaveModifier } from '@shared/utils/bounded-accuracy';
 
 import {
   applyStatusEffect,
@@ -45,7 +46,7 @@ import type { StatusEffectName } from '@shared/types/combat';
 
 /** Compute total save modifier for a target including status effects, DEX/STR bonuses, and auto-fail. */
 function computeTargetSaveMod(target: Combatant, saveType: string): { totalMod: number; autoFail: boolean } {
-  const baseMod = getModifier(target.stats[saveType as keyof typeof target.stats] ?? 10) + target.proficiencyBonus;
+  const baseMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies);
   let totalMod = baseMod;
   let autoFail = false;
 

@@ -586,6 +586,8 @@ export interface Combatant {
   nonProficientArmor?: boolean;
   /** Proficiency: wielding a weapon the class isn't proficient with */
   nonProficientWeapon?: boolean;
+  /** Saving throw proficiencies — stat keys this combatant adds proficiency bonus to on saves */
+  saveProficiencies?: string[];
 }
 
 export interface ClassAbilityAttackMods {

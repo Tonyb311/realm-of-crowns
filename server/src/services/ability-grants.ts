@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { ABILITIES_BY_CLASS } from '@shared/data/skills';
+import { CLASS_MILESTONE_SAVE_ORDER, SAVE_PROFICIENCY_MILESTONES } from '@shared/data/combat-constants';
 
 /**
  * Auto-grant all specialization abilities the character qualifies for
@@ -77,4 +78,42 @@ export async function autoGrantAbilities(characterId: string): Promise<string[]>
   }
 
   return grantedIds;
+}
+
+/**
+ * Auto-grant milestone save proficiencies at levels 18, 30, 45.
+ * Uses deterministic order from CLASS_MILESTONE_SAVE_ORDER.
+ * Idempotent — safe to call on every level-up.
+ */
+export async function autoGrantSaveProficiencies(characterId: string): Promise<string[]> {
+  const character = await prisma.character.findUnique({
+    where: { id: characterId },
+    select: { level: true, class: true, bonusSaveProficiencies: true },
+  });
+
+  if (!character || !character.class) return [];
+
+  const classKey = character.class.toLowerCase();
+  const milestoneOrder = CLASS_MILESTONE_SAVE_ORDER[classKey];
+  if (!milestoneOrder) return [];
+
+  // Determine how many milestone saves the character should have
+  const milestonesReached = SAVE_PROFICIENCY_MILESTONES.filter(m => character.level >= m).length;
+  const currentBonus = (character.bonusSaveProficiencies as string[]) ?? [];
+
+  if (currentBonus.length >= milestonesReached) return []; // already up to date
+
+  // Grant saves up to the number of milestones reached
+  const targetSaves = milestoneOrder.slice(0, milestonesReached);
+  const newSaves = targetSaves.filter(s => !currentBonus.includes(s));
+
+  if (newSaves.length === 0) return [];
+
+  const updatedBonus = [...currentBonus, ...newSaves];
+  await prisma.character.update({
+    where: { id: characterId },
+    data: { bonusSaveProficiencies: updatedBonus },
+  });
+
+  return newSaves;
 }
