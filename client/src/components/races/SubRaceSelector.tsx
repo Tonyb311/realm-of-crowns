@@ -15,11 +15,11 @@ interface SubRaceSelectorProps {
 // Element colors for Elementari / Drakonid elements
 // ---------------------------------------------------------------------------
 const ELEMENT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  fire:      { bg: 'bg-red-900/30',    border: 'border-red-500',    text: 'text-red-400' },
-  water:     { bg: 'bg-blue-900/30',   border: 'border-blue-500',   text: 'text-blue-400' },
+  fire:      { bg: 'bg-realm-damage/10',    border: 'border-realm-damage',    text: 'text-realm-damage-light' },
+  water:     { bg: 'bg-realm-info/10',   border: 'border-realm-info',   text: 'text-realm-info' },
   earth:     { bg: 'bg-amber-900/30',  border: 'border-amber-600',  text: 'text-amber-400' },
   air:       { bg: 'bg-cyan-900/30',   border: 'border-cyan-400',   text: 'text-cyan-300' },
-  lightning: { bg: 'bg-yellow-900/30', border: 'border-yellow-400', text: 'text-yellow-300' },
+  lightning: { bg: 'bg-realm-caution/10', border: 'border-realm-caution', text: 'text-realm-caution-light' },
   ice:       { bg: 'bg-sky-900/30',    border: 'border-sky-400',    text: 'text-sky-300' },
   acid:      { bg: 'bg-lime-900/30',   border: 'border-lime-500',   text: 'text-lime-400' },
   poison:    { bg: 'bg-emerald-900/30', border: 'border-emerald-500', text: 'text-emerald-400' },

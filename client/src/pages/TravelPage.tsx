@@ -97,16 +97,16 @@ interface GroupMember {
 
 const TERRAIN_COLORS: Record<string, { badge: string; accent: string; bgTint: string }> = {
   forest:      { badge: 'bg-emerald-800/60 text-emerald-300', accent: 'text-emerald-400', bgTint: 'from-green-950/30' },
-  mountain:    { badge: 'bg-slate-700/60 text-slate-300',     accent: 'text-slate-400',   bgTint: 'from-slate-900/30' },
-  plains:      { badge: 'bg-green-800/60 text-green-300',     accent: 'text-green-400',   bgTint: 'from-green-950/20' },
+  mountain:    { badge: 'bg-realm-neutral-dark/60 text-realm-neutral-light',  accent: 'text-realm-neutral',  bgTint: 'from-slate-900/30' },
+  plains:      { badge: 'bg-realm-heal/20 text-realm-heal-light',  accent: 'text-realm-heal',  bgTint: 'from-green-950/20' },
   desert:      { badge: 'bg-amber-800/60 text-amber-300',     accent: 'text-amber-400',   bgTint: 'from-amber-950/30' },
   swamp:       { badge: 'bg-emerald-900/60 text-emerald-300', accent: 'text-emerald-500', bgTint: 'from-emerald-950/30' },
-  coastal:     { badge: 'bg-blue-800/60 text-blue-300',       accent: 'text-blue-400',    bgTint: 'from-blue-950/30' },
+  coastal:     { badge: 'bg-realm-info/20 text-realm-info-light',    accent: 'text-realm-info',  bgTint: 'from-blue-950/30' },
   tundra:      { badge: 'bg-cyan-900/60 text-cyan-300',       accent: 'text-cyan-400',    bgTint: 'from-cyan-950/30' },
-  underground: { badge: 'bg-purple-900/60 text-purple-300',   accent: 'text-purple-400',  bgTint: 'from-purple-950/30' },
-  volcanic:    { badge: 'bg-red-900/60 text-red-300',         accent: 'text-red-400',     bgTint: 'from-red-950/30' },
+  underground: { badge: 'bg-realm-magic/20 text-realm-magic-light',  accent: 'text-realm-magic', bgTint: 'from-purple-950/30' },
+  volcanic:    { badge: 'bg-realm-damage/20 text-realm-damage-muted',  accent: 'text-realm-damage-light', bgTint: 'from-red-950/30' },
   hills:       { badge: 'bg-lime-900/60 text-lime-300',       accent: 'text-lime-400',    bgTint: 'from-lime-950/20' },
-  river:       { badge: 'bg-blue-900/60 text-blue-300',       accent: 'text-blue-400',    bgTint: 'from-blue-950/20' },
+  river:       { badge: 'bg-realm-info/20 text-realm-info-light',    accent: 'text-realm-info',  bgTint: 'from-blue-950/20' },
 };
 
 function getTerrainStyle(terrain: string) {

@@ -81,7 +81,7 @@ interface CitizenDiplomacyPanelProps {
 const STATUS_COLORS: Record<RelationStatus, { bg: string; text: string }> = {
   ALLIED:      { bg: 'bg-emerald-500/15', text: 'text-emerald-400' },
   FRIENDLY:    { bg: 'bg-sky-500/15',     text: 'text-sky-400' },
-  NEUTRAL:     { bg: 'bg-slate-500/15',   text: 'text-slate-400' },
+  NEUTRAL:     { bg: 'bg-realm-neutral-dark/15',   text: 'text-realm-neutral' },
   DISTRUSTFUL: { bg: 'bg-realm-gold-500/15', text: 'text-realm-gold-400' },
   HOSTILE:     { bg: 'bg-orange-500/15',   text: 'text-orange-400' },
   BLOOD_FEUD:  { bg: 'bg-realm-danger/15',     text: 'text-realm-danger' },

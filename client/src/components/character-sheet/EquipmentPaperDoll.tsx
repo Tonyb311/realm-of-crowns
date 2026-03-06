@@ -67,15 +67,15 @@ export function EquipmentPaperDoll({ equipment, isOwnProfile }: Props) {
                 flex flex-col items-center justify-center p-2 rounded-lg border text-center min-h-[60px]
                 ${item
                   ? isNonProf
-                    ? 'border-red-500/60 bg-red-900/20'
+                    ? 'border-realm-damage/60 bg-realm-damage/10'
                     : `border-realm-border/60 bg-realm-bg-800 ${rarity?.border ?? ''}`
                   : 'border-realm-border/20 bg-realm-bg-800/30'
                 }
               `}
             >
-              <Icon className={`w-4 h-4 mb-0.5 ${item ? (isNonProf ? 'text-red-400' : (rarity?.text ?? 'text-realm-text-primary')) : 'text-realm-text-muted/30'}`} />
+              <Icon className={`w-4 h-4 mb-0.5 ${item ? (isNonProf ? 'text-realm-damage-light' : (rarity?.text ?? 'text-realm-text-primary')) : 'text-realm-text-muted/30'}`} />
               {item ? (
-                <span className={`text-[10px] leading-tight font-semibold ${isNonProf ? 'text-red-300' : (rarity?.text ?? 'text-realm-text-primary')}`}>
+                <span className={`text-[10px] leading-tight font-semibold ${isNonProf ? 'text-realm-damage-muted' : (rarity?.text ?? 'text-realm-text-primary')}`}>
                   {item.itemName}
                   {item.enchanted && <span className="text-realm-purple-300 ml-0.5">*</span>}
                 </span>
@@ -83,7 +83,7 @@ export function EquipmentPaperDoll({ equipment, isOwnProfile }: Props) {
                 <span className="text-[10px] text-realm-text-muted/30 italic">{slot.label}</span>
               )}
               {isNonProf && (
-                <span className="text-[8px] text-red-400 mt-0.5">Not proficient</span>
+                <span className="text-[8px] text-realm-damage-light mt-0.5">Not proficient</span>
               )}
             </div>
           );

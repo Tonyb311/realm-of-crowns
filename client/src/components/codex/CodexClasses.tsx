@@ -88,14 +88,14 @@ const ATTACK_TYPE_STYLE: Record<string, { label: string; className: string }> = 
 const DAMAGE_TYPE_STYLE: Record<string, string> = {
   FIRE: 'bg-orange-500/20 text-orange-400 border border-orange-500/30',
   COLD: 'bg-sky-500/20 text-sky-300 border border-sky-500/30',
-  LIGHTNING: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
+  LIGHTNING: 'bg-realm-caution/20 text-realm-caution border border-realm-caution/30',
   RADIANT: 'bg-amber-200/20 text-amber-200 border border-amber-200/30',
-  NECROTIC: 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
+  NECROTIC: 'bg-realm-magic/20 text-realm-magic border border-realm-magic/30',
   PSYCHIC: 'bg-pink-500/20 text-pink-400 border border-pink-500/30',
-  THUNDER: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
-  SLASHING: 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
-  PIERCING: 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
-  BLUDGEONING: 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
+  THUNDER: 'bg-realm-info/20 text-realm-info border border-realm-info/30',
+  SLASHING: 'bg-realm-neutral/20 text-realm-neutral border border-realm-neutral/30',
+  PIERCING: 'bg-realm-neutral/20 text-realm-neutral border border-realm-neutral/30',
+  BLUDGEONING: 'bg-realm-neutral/20 text-realm-neutral border border-realm-neutral/30',
 };
 
 function AttackTypeBadge({ attackType }: { attackType?: string }) {
@@ -111,7 +111,7 @@ function AttackTypeBadge({ attackType }: { attackType?: string }) {
 
 function DamageTypeBadge({ damageType }: { damageType?: string }) {
   if (!damageType) return null;
-  const style = DAMAGE_TYPE_STYLE[damageType] ?? 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
+  const style = DAMAGE_TYPE_STYLE[damageType] ?? 'bg-realm-neutral/20 text-realm-neutral border border-realm-neutral/30';
   return (
     <span className={`${style} px-1.5 py-0 rounded text-[10px] font-display leading-4`}>
       {damageType}

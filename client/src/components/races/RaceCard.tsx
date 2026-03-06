@@ -24,9 +24,9 @@ interface RaceCardProps {
 // Tier badge styling
 // ---------------------------------------------------------------------------
 const TIER_BADGE: Record<string, { bg: string; text: string; label: string }> = {
-  core:   { bg: 'bg-green-700/80',  text: 'text-green-200',  label: 'Core' },
-  common: { bg: 'bg-blue-700/80',   text: 'text-blue-200',   label: 'Common' },
-  exotic: { bg: 'bg-purple-700/80', text: 'text-purple-200', label: 'Exotic' },
+  core:   { bg: 'bg-realm-heal/30',  text: 'text-realm-heal-light',  label: 'Core' },
+  common: { bg: 'bg-realm-info/30',   text: 'text-realm-info-light',   label: 'Common' },
+  exotic: { bg: 'bg-realm-magic/30', text: 'text-realm-magic-light', label: 'Exotic' },
 };
 
 // ---------------------------------------------------------------------------

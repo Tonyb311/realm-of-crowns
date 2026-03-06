@@ -635,7 +635,7 @@ export default function TownHallPage() {
                   confirmMutation.mutate();
                 }}
                 disabled={confirmMutation.isPending}
-                className="flex-1 px-4 py-2.5 bg-realm-danger text-white font-display text-sm rounded hover:bg-realm-danger/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 bg-realm-danger text-realm-text-primary font-display text-sm rounded hover:bg-realm-danger/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {confirmMutation.isPending ? (
                   <>

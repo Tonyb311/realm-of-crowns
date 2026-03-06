@@ -29,7 +29,7 @@ export function CombatRecordBlock({ combatRecord, isOwnProfile }: Props) {
 
   const tiles = [
     { label: 'Wins', value: combatRecord.wins, icon: Swords, color: 'text-realm-success' },
-    { label: 'Losses', value: combatRecord.losses, icon: Skull, color: 'text-red-400' },
+    { label: 'Losses', value: combatRecord.losses, icon: Skull, color: 'text-realm-damage-light' },
     { label: 'Flees', value: combatRecord.flees, icon: Flag, color: 'text-realm-warning' },
     { label: 'Draws', value: combatRecord.draws, icon: Minus, color: 'text-realm-text-muted' },
   ];

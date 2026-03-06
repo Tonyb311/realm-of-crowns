@@ -25,7 +25,7 @@ export function emitPlayerEnterTown(townId: string, data: {
   characterId: string;
   characterName: string;
 }) {
-  getIO().to(`town:${townId}`).emit('player:enter-town', data);
+  getIO().to(`town:${townId}`).emit('player:enter-town', { ...data, townId });
 }
 
 export function emitPlayerLeaveTown(townId: string, data: {
@@ -33,7 +33,7 @@ export function emitPlayerLeaveTown(townId: string, data: {
   characterName: string;
   destinationTownId: string;
 }) {
-  getIO().to(`town:${townId}`).emit('player:leave-town', data);
+  getIO().to(`town:${townId}`).emit('player:leave-town', { ...data, townId });
 }
 
 export function emitTravelTickProcessed(characterId: string, data: {

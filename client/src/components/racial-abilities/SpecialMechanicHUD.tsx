@@ -171,7 +171,7 @@ function ChangelingHUD() {
             onClick={() => revertMutation.mutate()}
             disabled={revertMutation.isPending}
             className="w-full mt-1 px-2 py-1.5 text-[10px] font-display rounded border
-              border-purple-500/40 text-purple-300 hover:bg-purple-900/30 transition-colors
+              border-realm-magic/40 text-realm-magic-light hover:bg-realm-magic/10 transition-colors
               disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {revertMutation.isPending ? (

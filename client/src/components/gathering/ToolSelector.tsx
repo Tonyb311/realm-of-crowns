@@ -33,7 +33,7 @@ interface ToolSelectorProps {
 const TIER_COLORS: Record<string, string> = {
   CRUDE:       'bg-realm-bg-600 text-realm-text-muted',
   COPPER:      'bg-orange-800 text-orange-200',
-  IRON:        'bg-slate-500 text-slate-100',
+  IRON:        'bg-realm-neutral-dark text-realm-neutral-light',
   STEEL:       'bg-realm-teal-300/20 text-realm-teal-300',
   MITHRIL:     'bg-realm-purple-300/20 text-realm-purple-300',
   ADAMANTINE:  'bg-realm-gold-400/20 text-realm-gold-400',

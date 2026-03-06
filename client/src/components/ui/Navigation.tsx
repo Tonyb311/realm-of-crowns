@@ -127,7 +127,7 @@ function getMoreCategories(isAdmin: boolean): NavCategory[] {
 function Badge({ count }: { count?: number }) {
   if (!count || count <= 0) return null;
   return (
-    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-blood-light text-[10px] text-realm-text-primary font-bold px-1 leading-none">
+    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-realm-danger-light text-[10px] text-realm-text-primary font-bold px-1 leading-none">
       {count > 99 ? '99+' : count}
     </span>
   );
@@ -392,7 +392,7 @@ export default function Navigation() {
                     setMoreOpen(false);
                     logout();
                   }}
-                  className="flex items-center gap-3 w-full px-4 py-2 text-sm text-blood-light hover:bg-blood-dark/20 rounded-md transition-colors font-display"
+                  className="flex items-center gap-3 w-full px-4 py-2 text-sm text-realm-danger-light hover:bg-realm-danger/20 rounded-md transition-colors font-display"
                 >
                   <LogOut className="w-4 h-4" />
                   Logout
@@ -444,7 +444,7 @@ export default function Navigation() {
                   setMoreOpen(false);
                   logout();
                 }}
-                className="flex items-center gap-3 w-full px-4 py-3 text-sm text-blood-light hover:bg-blood-dark/20 rounded-md transition-colors font-display"
+                className="flex items-center gap-3 w-full px-4 py-3 text-sm text-realm-danger-light hover:bg-realm-danger/20 rounded-md transition-colors font-display"
               >
                 <LogOut className="w-4 h-4" />
                 Logout

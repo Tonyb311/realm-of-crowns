@@ -54,16 +54,16 @@ interface Position {
 // ---------------------------------------------------------------------------
 
 const NODE_TYPE_CONFIG: Record<string, { icon: typeof MapPin; color: string; fill: string }> = {
-  TOWN_GATE:    { icon: Home,      color: 'text-green-400',    fill: 'fill-green-400/20' },
+  TOWN_GATE:    { icon: Home,      color: 'text-realm-heal',    fill: 'fill-realm-heal/20' },
   FOREST:       { icon: TreePine,  color: 'text-emerald-400',  fill: 'fill-emerald-400/20' },
-  MOUNTAIN:     { icon: Mountain,  color: 'text-slate-400',    fill: 'fill-slate-400/20' },
-  RIVER:        { icon: Droplets,  color: 'text-blue-400',     fill: 'fill-blue-400/20' },
+  MOUNTAIN:     { icon: Mountain,  color: 'text-realm-neutral',    fill: 'fill-realm-neutral/20' },
+  RIVER:        { icon: Droplets,  color: 'text-realm-info',     fill: 'fill-realm-info/20' },
   CAMP:         { icon: Tent,      color: 'text-orange-400',   fill: 'fill-orange-400/20' },
-  RUINS:        { icon: Skull,     color: 'text-red-400',      fill: 'fill-red-400/20' },
-  CROSSROADS:   { icon: CircleDot, color: 'text-yellow-400',   fill: 'fill-yellow-400/20' },
+  RUINS:        { icon: Skull,     color: 'text-realm-damage-light',      fill: 'fill-realm-damage-light/20' },
+  CROSSROADS:   { icon: CircleDot, color: 'text-realm-caution',   fill: 'fill-realm-caution/20' },
   PLAINS:       { icon: MapPin,    color: 'text-stone-400',     fill: 'fill-stone-400/20' },
-  SWAMP:        { icon: Droplets,  color: 'text-green-600',    fill: 'fill-green-600/20' },
-  UNDERGROUND:  { icon: Mountain,  color: 'text-purple-400',   fill: 'fill-purple-400/20' },
+  SWAMP:        { icon: Droplets,  color: 'text-realm-success',    fill: 'fill-realm-success/20' },
+  UNDERGROUND:  { icon: Mountain,  color: 'text-realm-magic',   fill: 'fill-realm-magic/20' },
   COASTAL:      { icon: Droplets,  color: 'text-cyan-400',     fill: 'fill-cyan-400/20' },
 };
 
@@ -72,10 +72,10 @@ function getNodeConfig(type: string) {
 }
 
 function dangerBorderColor(level: number): string {
-  if (level <= 2) return 'stroke-green-500/40';
-  if (level <= 5) return 'stroke-yellow-500/40';
+  if (level <= 2) return 'stroke-realm-heal/40';
+  if (level <= 5) return 'stroke-realm-caution/40';
   if (level <= 7) return 'stroke-orange-500/40';
-  return 'stroke-red-500/40';
+  return 'stroke-realm-damage/40';
 }
 
 // ---------------------------------------------------------------------------

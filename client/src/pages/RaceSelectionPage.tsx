@@ -43,9 +43,9 @@ interface RacesGrouped {
 type TierTab = 'core' | 'common' | 'exotic';
 
 const TIER_CONFIG: Record<TierTab, { label: string; badge: string; badgeColor: string; icon: typeof Users }> = {
-  core:   { label: 'Core Races',   badge: 'Recommended for new players',  badgeColor: 'bg-green-700/70 text-green-200',   icon: Star },
+  core:   { label: 'Core Races',   badge: 'Recommended for new players',  badgeColor: 'bg-realm-heal/30 text-realm-heal-light',   icon: Star },
   common: { label: 'Common Races', badge: '',                             badgeColor: '',                                  icon: Users },
-  exotic: { label: 'Exotic Races', badge: 'Experienced players',          badgeColor: 'bg-purple-700/70 text-purple-200',  icon: Crown },
+  exotic: { label: 'Exotic Races', badge: 'Experienced players',          badgeColor: 'bg-realm-magic/30 text-realm-magic-light',  icon: Crown },
 };
 
 // ---------------------------------------------------------------------------

@@ -53,41 +53,41 @@ const BIOME_COLORS: Record<string, string> = {
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  beast: 'bg-green-500/20 text-green-300',
-  undead: 'bg-purple-500/20 text-purple-300',
-  fiend: 'bg-red-500/20 text-red-300',
+  beast: 'bg-realm-heal/20 text-realm-heal-light',
+  undead: 'bg-realm-magic/20 text-realm-magic-light',
+  fiend: 'bg-realm-damage/20 text-realm-damage-muted',
   dragon: 'bg-amber-500/20 text-amber-300',
-  construct: 'bg-slate-500/20 text-slate-300',
+  construct: 'bg-realm-neutral/20 text-realm-neutral-light',
   elemental: 'bg-cyan-500/20 text-cyan-300',
-  humanoid: 'bg-blue-500/20 text-blue-300',
+  humanoid: 'bg-realm-info/20 text-realm-info-light',
   aberration: 'bg-pink-500/20 text-pink-300',
   fey: 'bg-emerald-500/20 text-emerald-300',
   monstrosity: 'bg-orange-500/20 text-orange-300',
   plant: 'bg-lime-500/20 text-lime-300',
-  ooze: 'bg-yellow-500/20 text-yellow-300',
+  ooze: 'bg-realm-caution/20 text-realm-caution-light',
 };
 
 const DAMAGE_TYPE_COLORS: Record<string, string> = {
   FIRE: 'bg-orange-500/20 text-orange-300',
-  COLD: 'bg-blue-500/20 text-blue-300',
-  LIGHTNING: 'bg-yellow-500/20 text-yellow-300',
-  NECROTIC: 'bg-purple-500/20 text-purple-300',
+  COLD: 'bg-realm-info/20 text-realm-info-light',
+  LIGHTNING: 'bg-realm-caution/20 text-realm-caution-light',
+  NECROTIC: 'bg-realm-magic/20 text-realm-magic-light',
   PSYCHIC: 'bg-pink-500/20 text-pink-300',
   FORCE: 'bg-indigo-500/20 text-indigo-300',
-  ACID: 'bg-green-500/20 text-green-300',
+  ACID: 'bg-realm-heal/20 text-realm-heal-light',
   RADIANT: 'bg-amber-500/20 text-amber-300',
   POISON: 'bg-emerald-500/20 text-emerald-300',
   THUNDER: 'bg-sky-500/20 text-sky-300',
-  SLASHING: 'bg-gray-500/20 text-gray-300',
-  PIERCING: 'bg-gray-500/20 text-gray-300',
-  BLUDGEONING: 'bg-gray-500/20 text-gray-300',
+  SLASHING: 'bg-realm-neutral/20 text-realm-neutral-light',
+  PIERCING: 'bg-realm-neutral/20 text-realm-neutral-light',
+  BLUDGEONING: 'bg-realm-neutral/20 text-realm-neutral-light',
 };
 
 const DIFFICULTY_COLORS: Record<string, string> = {
-  Common: 'bg-gray-500/20 text-gray-300',
-  Dangerous: 'bg-blue-500/20 text-blue-300',
+  Common: 'bg-realm-neutral/20 text-realm-neutral-light',
+  Dangerous: 'bg-realm-info/20 text-realm-info-light',
   Deadly: 'bg-amber-500/20 text-amber-300',
-  Legendary: 'bg-red-500/20 text-red-300',
+  Legendary: 'bg-realm-damage/20 text-realm-damage-muted',
 };
 
 function formatCategory(category: string): string {
@@ -254,7 +254,7 @@ export default function CodexMonsters({ searchQuery }: CodexMonstersProps) {
                   <span className={`text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm ${CATEGORY_COLORS[monster.category] || 'bg-realm-bg-700 text-realm-text-muted'}`}>
                     {formatCategory(monster.category)}
                   </span>
-                  <span className={`text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm ${DIFFICULTY_COLORS[monster.difficulty] || 'bg-gray-500/20 text-gray-300'}`}>
+                  <span className={`text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm ${DIFFICULTY_COLORS[monster.difficulty] || 'bg-realm-neutral/20 text-realm-neutral-light'}`}>
                     {monster.difficulty}
                   </span>
                   <span className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm bg-realm-bg-600/50 text-realm-text-muted">
@@ -308,7 +308,7 @@ export default function CodexMonsters({ searchQuery }: CodexMonstersProps) {
                           <div className="text-lg font-display text-realm-text-primary">{monster.stats.damage}</div>
                           <div className="text-[10px] text-realm-text-muted uppercase">Damage</div>
                           {monster.damageType && (
-                            <span className={`inline-block mt-1 text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm ${DAMAGE_TYPE_COLORS[monster.damageType] || 'bg-gray-500/20 text-gray-300'}`}>
+                            <span className={`inline-block mt-1 text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm ${DAMAGE_TYPE_COLORS[monster.damageType] || 'bg-realm-neutral/20 text-realm-neutral-light'}`}>
                               {monster.damageType}
                             </span>
                           )}
@@ -352,7 +352,7 @@ export default function CodexMonsters({ searchQuery }: CodexMonstersProps) {
                         </h4>
                         <div className="flex flex-wrap gap-1.5">
                           {monster.vulnerabilities.map(v => (
-                            <span key={v} className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm bg-red-500/20 text-red-300">
+                            <span key={v} className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm bg-realm-damage/20 text-realm-damage-muted">
                               {v}
                             </span>
                           ))}

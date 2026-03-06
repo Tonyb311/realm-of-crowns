@@ -54,10 +54,10 @@ export default function ErrorMessage({
 
   return (
     <div
-      className={`bg-realm-bg-700 border border-blood-dark/40 rounded-lg p-6 text-center ${className}`}
+      className={`bg-realm-bg-700 border border-realm-danger/40 rounded-lg p-6 text-center ${className}`}
     >
-      <Icon className="w-10 h-10 text-blood-light mx-auto mb-3" />
-      <h3 className="font-display text-blood-light text-lg mb-1">{info.title}</h3>
+      <Icon className="w-10 h-10 text-realm-danger-light mx-auto mb-3" />
+      <h3 className="font-display text-realm-danger-light text-lg mb-1">{info.title}</h3>
       <p className="text-realm-text-secondary text-sm mb-4 max-w-md mx-auto">{info.message}</p>
       {onRetry && (
         <button

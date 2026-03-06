@@ -45,7 +45,7 @@ const RACE_ABBR: Record<string, string> = {
 const STATUS_COLORS: Record<RelationStatus, { bg: string; border: string; text: string; label: string }> = {
   ALLIED:      { bg: 'bg-emerald-500', border: 'border-emerald-400', text: 'text-emerald-400', label: 'Allied' },
   FRIENDLY:    { bg: 'bg-sky-500',     border: 'border-sky-400',     text: 'text-sky-400',     label: 'Friendly' },
-  NEUTRAL:     { bg: 'bg-slate-500',   border: 'border-slate-400',   text: 'text-slate-400',   label: 'Neutral' },
+  NEUTRAL:     { bg: 'bg-realm-neutral-dark',   border: 'border-realm-neutral',   text: 'text-realm-neutral',   label: 'Neutral' },
   DISTRUSTFUL: { bg: 'bg-realm-gold-500',   border: 'border-realm-gold-400',   text: 'text-realm-gold-400',   label: 'Distrustful' },
   HOSTILE:     { bg: 'bg-orange-500',   border: 'border-orange-400',  text: 'text-orange-400',  label: 'Hostile' },
   BLOOD_FEUD:  { bg: 'bg-realm-danger',     border: 'border-realm-danger',     text: 'text-realm-danger',     label: 'Blood Feud' },

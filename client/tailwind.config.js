@@ -4,48 +4,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        // === Legacy colors (used by existing game pages — keep for backward compat) ===
-        primary: {
-          50: '#FDF8E8',
-          100: '#F5EBCB',
-          200: '#E8D49A',
-          300: '#D4BA6A',
-          400: '#C9A461',
-          500: '#B8913A',
-          600: '#9A7830',
-          700: '#7C5F26',
-          800: '#5E471C',
-          900: '#402F12',
-        },
-        dark: {
-          50: '#4A4A6E',
-          100: '#3D3D5C',
-          200: '#33334E',
-          300: '#2D2D44',
-          400: '#252538',
-          500: '#1A1A2E',
-          600: '#141424',
-          700: '#0E0E1A',
-          800: '#080810',
-          900: '#040408',
-        },
-        parchment: {
-          50: '#F5F0E4',
-          100: '#EDE5D4',
-          200: '#E8E0D0',
-          300: '#D4C9B4',
-          400: '#BFB49E',
-          500: '#A89A80',
-        },
+        // === Legacy colors (admin pages still use blood) ===
         blood: {
           DEFAULT: '#8B0000',
           light: '#B22222',
           dark: '#5C0000',
-        },
-        forest: {
-          DEFAULT: '#2D5A27',
-          light: '#4A8C3F',
-          dark: '#1A3A17',
         },
 
         // === Arcane design system colors ===
@@ -98,16 +61,44 @@ export default {
         'realm-hp': '#C44536',
         'realm-hp-bg': '#3D1515',
         'realm-success': '#5A8F6E',
-        'realm-danger': '#8B2E2E',
+        'realm-danger': {
+          DEFAULT: '#8B2E2E',
+          light: '#B22222',
+        },
         'realm-warning': '#C9952B',
+
+        // Semantic effect colors (map to raw Tailwind equivalents used in codebase)
+        'realm-damage': {
+          DEFAULT: '#EF4444',   // red-500 — damage, errors, negative indicators
+          light: '#F87171',     // red-400 — damage text highlights
+          muted: '#FCA5A5',     // red-300 — softer damage/warning text
+        },
+        'realm-heal': {
+          DEFAULT: '#4ADE80',   // green-400 — healing, positive effects
+          light: '#86EFAC',     // green-300 — heal highlights
+        },
+        'realm-magic': {
+          DEFAULT: '#C084FC',   // purple-400 — magic, arcane, rare
+          light: '#D8B4FE',     // purple-300 — magic highlights
+        },
+        'realm-info': {
+          DEFAULT: '#60A5FA',   // blue-400 — informational, water, neutral highlights
+          light: '#93C5FD',     // blue-300 — info highlights
+        },
+        'realm-caution': {
+          DEFAULT: '#FBBF24',   // amber-400 — caution, warnings, desert
+          light: '#FDE047',     // yellow-300 — caution highlights
+        },
+        'realm-neutral': {
+          DEFAULT: '#9CA3AF',   // gray-400 — disabled, empty, muted
+          light: '#D1D5DB',     // gray-300 — neutral highlights
+          dark: '#6B7280',      // gray-500 — neutral badges
+        },
       },
       fontFamily: {
         display: ['Cinzel', 'serif'],
         body: ['Inter', 'sans-serif'],
         accent: ['Cinzel', 'serif'],
-        // Legacy fonts (if needed explicitly)
-        'display-legacy': ['MedievalSharp', 'serif'],
-        'body-legacy': ['Crimson Text', 'Georgia', 'serif'],
         mono: ['Fira Code', 'monospace'],
       },
       boxShadow: {
@@ -117,8 +108,6 @@ export default {
         'realm-panel': '0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(212, 168, 67, 0.08)',
       },
       backgroundImage: {
-        'parchment-texture': "url('/assets/images/parchment-bg.png')",
-        'dark-stone': "url('/assets/images/stone-bg.png')",
         'realm-vignette': 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.4) 100%)',
         'realm-panel-gradient': 'linear-gradient(180deg, rgba(212,168,67,0.05) 0%, transparent 30%)',
       },
