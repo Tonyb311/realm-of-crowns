@@ -193,7 +193,7 @@ export const ACTION_XP = {
  * HP gains are flat per level for predictability.
  */
 export const LEVEL_UP_REWARDS = {
-  STAT_POINTS_PER_LEVEL: 2,      // 2 stat points per level (allocate to str/dex/con/int/wis/cha)
+  STAT_POINTS_PER_LEVEL: 1,      // 1 stat point per level (50 total over 50 levels, D&D-aligned bounded accuracy)
   HP_PER_LEVEL: 10,              // +10 max HP per level
 } as const;
 
