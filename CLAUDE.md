@@ -11,7 +11,8 @@
 ### Deployment
 - **Azure Container Apps will NOT pull a new image if the tag hasn't changed.** Always use a unique tag: timestamp (`202602211159`) or commit hash. NEVER use `latest` or reuse a previous tag.
 - **Database seeds run on container startup.** If you change seed data (monsters, items, towns, routes), it updates on deploy.
-- **Standard deploy workflow:** `git commit` → `git push` → `docker build -t rocregistry.azurecr.io/realm-of-crowns:<UNIQUE_TAG>` → `docker push` → `az containerapp update` → verify health.
+- **`az acr build` is deprecated** due to persistent Azure infrastructure failures. Always use the GitHub Actions deploy workflow.
+- **Standard deploy workflow:** `git commit` → `git push` → GitHub Actions → "Deploy to Azure" → Run workflow (auto-generates timestamp tag). Workflow builds image on GitHub runners, pushes to ACR, updates Container App, runs health check.
 
 ### Package Manager
 - **This project uses pnpm**, not npm. All install/run commands use `pnpm`.
