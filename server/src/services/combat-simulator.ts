@@ -141,9 +141,14 @@ function computeStatsForLevel(className: string, raceId: string, level: number):
   return base;
 }
 
-/** Hit die per class */
-const CLASS_HIT_DIE: Record<string, number> = {
-  warrior: 10, mage: 6, rogue: 8, cleric: 8, ranger: 8, bard: 8, psion: 6,
+/** Class HP bonus at character creation (mirrors getClassHpBonus in characters.ts) */
+const CLASS_CREATION_HP_BONUS: Record<string, number> = {
+  warrior: 10, cleric: 8, ranger: 8, rogue: 6, bard: 6, mage: 4, psion: 4,
+};
+
+/** HP per level by class (mirrors getHpPerLevel in xp-curve.ts) */
+const CLASS_HP_PER_LEVEL: Record<string, number> = {
+  warrior: 4, ranger: 4, cleric: 3, rogue: 3, bard: 3, mage: 2, psion: 2,
 };
 
 /** Weapon modifier stat per class — casters use their primary casting stat */
@@ -341,11 +346,17 @@ function computeEquipmentAC(className: string, level: number, dexMod: number): n
   }
 }
 
+/**
+ * Compute HP matching the actual game formula:
+ * Starting: 10 + conMod + classCreationBonus
+ * Per level: class-varied (4 martial / 3 hybrid / 2 caster)
+ */
 function computeHP(className: string, level: number, conMod: number): number {
-  const hitDie = CLASS_HIT_DIE[className] || 8;
-  const hitDieAvg = hitDie / 2 + 0.5; // 10→5.5, 8→4.5, 6→3.5
-  // Max HP at level 1, then average + CON mod per level
-  return Math.max(1, hitDie + conMod + (level - 1) * Math.floor(hitDieAvg + conMod));
+  const creationBonus = CLASS_CREATION_HP_BONUS[className] ?? 6;
+  const hpPerLevel = CLASS_HP_PER_LEVEL[className] ?? 3;
+  const base = 10 + conMod + creationBonus;
+  const levelHp = (level - 1) * hpPerLevel;
+  return Math.max(1, base + levelHp);
 }
 
 function parseDamageString(damage: string): { diceCount: number; diceSides: number; bonusDamage: number } {

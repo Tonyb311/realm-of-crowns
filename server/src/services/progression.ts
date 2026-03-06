@@ -5,6 +5,7 @@ import {
   totalXpForLevel,
   levelForXp,
   LEVEL_UP_REWARDS,
+  getHpPerLevel,
 } from '@shared/data/progression';
 import { autoGrantAbilities, autoGrantSaveProficiencies, checkFeatMilestone } from './ability-grants';
 import { TIER0_ABILITIES_BY_CLASS, TIER0_CHOICE_LEVELS } from '@shared/data/skills';
@@ -66,7 +67,7 @@ export async function checkLevelUp(characterId: string): Promise<LevelUpResult |
 
   const levelsGained = newLevel - currentLevel;
   const statPointsGained = levelsGained * LEVEL_UP_REWARDS.STAT_POINTS_PER_LEVEL;
-  const maxHealthGained = levelsGained * LEVEL_UP_REWARDS.HP_PER_LEVEL;
+  const maxHealthGained = levelsGained * getHpPerLevel(character.class ?? 'warrior');
 
   const newMaxHealth = character.maxHealth + maxHealthGained;
 

@@ -190,12 +190,37 @@ export const ACTION_XP = {
  *
  * Stat points let players customize their build. Abilities are auto-granted
  * based on level and specialization (no skill points).
- * HP gains are flat per level for predictability.
+ * HP gains vary by class archetype (see getHpPerLevel).
  */
 export const LEVEL_UP_REWARDS = {
   STAT_POINTS_PER_LEVEL: 1,      // 1 stat point per level (50 total over 50 levels, D&D-aligned bounded accuracy)
-  HP_PER_LEVEL: 10,              // +10 max HP per level
 } as const;
+
+/**
+ * HP gained per level by class archetype.
+ * Martial (4): Warriors and Rangers — front-line fighters, high survivability
+ * Hybrid (3): Clerics, Rogues, Bards — mid-line, moderate HP
+ * Caster (2): Mages, Psions — back-line, fragile
+ *
+ * End-state HP at level 50 (Human, typical CON):
+ *   Warrior: ~220 HP  (D&D Fighter L20: ~175)
+ *   Cleric:  ~169 HP  (D&D Cleric L20: ~134)
+ *   Mage:    ~113 HP  (D&D Wizard L20: ~113)
+ */
+const CLASS_HP_PER_LEVEL: Record<string, number> = {
+  warrior: 4,
+  ranger: 4,
+  cleric: 3,
+  rogue: 3,
+  bard: 3,
+  mage: 2,
+  psion: 2,
+};
+
+/** Get HP gained per level for a given class. Default 3 for unknown classes. */
+export function getHpPerLevel(characterClass: string): number {
+  return CLASS_HP_PER_LEVEL[characterClass.toLowerCase()] ?? 3;
+}
 
 // ---------------------------------------------------------------------------
 // Death Penalty — Level-Scaled

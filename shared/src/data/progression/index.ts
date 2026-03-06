@@ -7,6 +7,7 @@ export {
   XP_TABLE,
   ACTION_XP,
   LEVEL_UP_REWARDS,
+  getHpPerLevel,
   DEATH_PENALTY,
   // Scaled death penalty
   DEATH_XP_BY_LEVEL,
