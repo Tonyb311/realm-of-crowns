@@ -321,12 +321,15 @@ export function getSimFeatIds(className: string, level: number): string[] {
   return feats;
 }
 
-/** Map level to equipment tier: L1-9→T1, L10-19→T2, L20-29→T3, L30+→T4 */
+/**
+ * Map character level to equipment tier, matching real game recipe levelToEquip values.
+ * Copper (L1) → Iron (L10) → Steel (L30) → Mithril (L55) → Adamantine (L75, out of sim range)
+ */
 function getTierIndex(level: number): number {
-  if (level < 10) return 0;  // T1: Copper/starter gear
-  if (level < 20) return 1;  // T2: Iron gear
-  if (level < 30) return 2;  // T3: Steel gear (FINE quality)
-  return 3;                  // T4: Mithril gear (MASTERWORK quality)
+  if (level < 10) return 0;  // T1: Copper/starter gear (levelToEquip: 1)
+  if (level < 30) return 1;  // T2: Iron gear (levelToEquip: 10)
+  if (level < 55) return 2;  // T3: Steel gear (levelToEquip: 30, FINE quality 1.15×)
+  return 3;                  // T4: Mithril gear (levelToEquip: 55, MASTERWORK quality 1.5×)
 }
 
 function computeEquipmentAC(className: string, level: number, dexMod: number): number {
