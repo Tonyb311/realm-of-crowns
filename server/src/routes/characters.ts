@@ -35,11 +35,11 @@ const createCharacterSchema = z.object({
     .max(20, 'Name must be at most 20 characters')
     .regex(/^[a-zA-Z0-9 ]+$/, 'Name must be alphanumeric (spaces allowed)'),
   race: z.enum(VALID_RACES as [string, ...string[]], {
-    errorMap: () => ({ message: 'Invalid race' }),
+    error: 'Invalid race',
   }),
   subRace: z.string().optional(),
   characterClass: z.enum(VALID_CLASSES as unknown as [string, ...string[]], {
-    errorMap: () => ({ message: `Invalid class. Must be one of: ${VALID_CLASSES.join(', ')}` }),
+    error: `Invalid class. Must be one of: ${VALID_CLASSES.join(', ')}`,
   }),
 });
 

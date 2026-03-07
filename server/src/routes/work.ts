@@ -51,9 +51,7 @@ const MIN_ABUNDANCE_TO_GATHER = 10;
 
 const startWorkSchema = z.object({
   professionType: z.enum(GATHERING_PROFESSIONS as [string, ...string[]], {
-    errorMap: () => ({
-      message: `Invalid gathering profession. Must be one of: ${GATHERING_PROFESSIONS.join(', ')}`,
-    }),
+    error: `Invalid gathering profession. Must be one of: ${GATHERING_PROFESSIONS.join(', ')}`,
   }),
   resourceId: z.string().min(1, 'Resource ID is required'),
 });

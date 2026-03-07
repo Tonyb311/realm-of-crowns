@@ -18,17 +18,13 @@ const TOOL_PROFESSION_TYPES = TOOL_TYPES.map((t: ToolTypeDefinition) => t.profes
 const equipSchema = z.object({
   itemId: z.string().min(1, 'Item ID is required'),
   professionType: z.enum(TOOL_PROFESSION_TYPES as [string, ...string[]], {
-    errorMap: () => ({
-      message: `Invalid profession type. Must be one of: ${TOOL_PROFESSION_TYPES.join(', ')}`,
-    }),
+    error: `Invalid profession type. Must be one of: ${TOOL_PROFESSION_TYPES.join(', ')}`,
   }),
 });
 
 const unequipSchema = z.object({
   professionType: z.enum(TOOL_PROFESSION_TYPES as [string, ...string[]], {
-    errorMap: () => ({
-      message: `Invalid profession type. Must be one of: ${TOOL_PROFESSION_TYPES.join(', ')}`,
-    }),
+    error: `Invalid profession type. Must be one of: ${TOOL_PROFESSION_TYPES.join(', ')}`,
   }),
 });
 

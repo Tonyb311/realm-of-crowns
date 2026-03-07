@@ -17,7 +17,7 @@ const proposeLawSchema = z.object({
   kingdomId: z.string().min(1),
   title: z.string().min(1).max(200),
   description: z.string().optional(),
-  effects: z.record(z.unknown()).optional(),
+  effects: z.record(z.string(), z.unknown()).optional(),
   lawType: z.enum(['tax', 'trade', 'military', 'building', 'general']).default('general'),
   expiresAt: z.string().datetime().optional(),
 });
@@ -44,7 +44,7 @@ const allocateTreasurySchema = z.object({
   kingdomId: z.string().optional(),
   amount: z.number().int().min(1),
   purpose: z.enum(['buildings', 'military', 'infrastructure', 'events']),
-  details: z.record(z.unknown()).optional(),
+  details: z.record(z.string(), z.unknown()).optional(),
 });
 
 const declareWarSchema = z.object({

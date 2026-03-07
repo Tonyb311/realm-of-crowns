@@ -61,7 +61,7 @@ const configPatchSchema = z.object({
 });
 
 const cleanupSchema = z.object({
-  confirm: z.literal(true, { errorMap: () => ({ message: 'Must confirm cleanup with { confirm: true }' }) }),
+  confirm: z.literal(true, { error: 'Must confirm cleanup with { confirm: true }' }),
 });
 
 const focusSchema = z.object({

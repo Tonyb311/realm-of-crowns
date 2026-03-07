@@ -26,7 +26,7 @@ const teleportSchema = z.object({
 });
 
 const giveGoldSchema = z.object({
-  amount: z.number({ required_error: 'amount is required' }),
+  amount: z.number({ error: 'amount is required' }),
 });
 
 /**

@@ -1137,7 +1137,7 @@ const simulateSchema = z.object({
     int: z.number().int().min(1).max(30).default(10),
     wis: z.number().int().min(1).max(30).default(10),
     cha: z.number().int().min(1).max(30).default(10),
-  }).default({}),
+  }).default({ str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }),
   playerAC: z.number().int().min(1).max(30).default(10),
   playerHP: z.number().int().min(1).max(500).optional(),
   playerWeapon: z.object({
@@ -1148,7 +1148,7 @@ const simulateSchema = z.object({
     bonusAttack: z.number().int().default(0),
     damageModifierStat: z.enum(['str', 'dex']).default('str'),
     attackModifierStat: z.enum(['str', 'dex']).default('str'),
-  }).default({}),
+  }).default({ name: 'Longsword', diceCount: 1, diceSides: 8, bonusDamage: 0, bonusAttack: 0, damageModifierStat: 'str', attackModifierStat: 'str' }),
   monsterName: z.string().default('Goblin'),
   monsterLevel: z.number().int().min(1).max(100).default(1),
   monsterStats: z.object({
@@ -1158,7 +1158,7 @@ const simulateSchema = z.object({
     int: z.number().int().min(1).max(30).default(10),
     wis: z.number().int().min(1).max(30).default(10),
     cha: z.number().int().min(1).max(30).default(10),
-  }).default({}),
+  }).default({ str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }),
   monsterHP: z.number().int().min(1).max(1000).default(20),
   monsterAC: z.number().int().min(1).max(30).default(12),
   monsterDamage: z.string().default('1d6+2'),

@@ -34,7 +34,7 @@ const BUILDING_TYPES = Object.values(BuildingType) as [string, ...string[]];
 const requestPermitSchema = z.object({
   townId: z.string().min(1, 'Town ID is required'),
   buildingType: z.enum(BUILDING_TYPES as [BuildingType, ...BuildingType[]], {
-    errorMap: () => ({ message: `Invalid building type` }),
+    error: 'Invalid building type',
   }),
   name: z.string().min(1).max(100, 'Name must be 100 characters or less'),
 });

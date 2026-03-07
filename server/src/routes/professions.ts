@@ -49,7 +49,7 @@ function getRacialBonuses(race: Race, professionType: string) {
 
 const professionTypeSchema = z.object({
   professionType: z.enum(VALID_PROFESSION_TYPES as [string, ...string[]], {
-    errorMap: () => ({ message: `Invalid profession type` }),
+    error: 'Invalid profession type',
   }),
 });
 
@@ -498,7 +498,7 @@ const SPECIALIZATION_LEVEL_REQUIRED = 7;
 
 const specializeSchema = z.object({
   professionType: z.enum(VALID_PROFESSION_TYPES as [string, ...string[]], {
-    errorMap: () => ({ message: `Invalid profession type` }),
+    error: 'Invalid profession type',
   }),
   specialization: z.string().min(1, 'Specialization is required'),
 });
