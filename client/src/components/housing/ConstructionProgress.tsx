@@ -142,7 +142,7 @@ export default function ConstructionProgress({
         <button
           onClick={onComplete}
           disabled={isCompleting}
-          className="w-full py-2.5 bg-realm-success text-realm-text-primary font-display text-sm rounded hover:bg-realm-success/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-2.5 bg-realm-success text-realm-text-primary font-display text-sm rounded-sm hover:bg-realm-success/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isCompleting ? 'Completing...' : 'Complete Construction'}
         </button>

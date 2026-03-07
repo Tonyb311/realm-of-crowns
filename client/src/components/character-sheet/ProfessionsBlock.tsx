@@ -25,7 +25,7 @@ export function ProfessionsBlock({ professions }: Props) {
     <RealmPanel title="Professions">
       <div className="space-y-2">
         {professions.map((p) => (
-          <div key={p.name} className="flex items-center justify-between bg-realm-bg-800/50 rounded px-3 py-2 border border-realm-border/20">
+          <div key={p.name} className="flex items-center justify-between bg-realm-bg-800/50 rounded-sm px-3 py-2 border border-realm-border/20">
             <span className="text-sm text-realm-text-primary capitalize">
               {p.name.toLowerCase().replace(/_/g, ' ')}
             </span>

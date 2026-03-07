@@ -82,7 +82,7 @@ export default function CombatantCard({ combatant, isActive, side }: { combatant
           {combatant.statusEffects.map((effect) => (
             <span
               key={effect.id}
-              className="text-[9px] bg-realm-bg-900 border border-realm-border rounded px-1.5 py-0.5 text-realm-text-secondary"
+              className="text-[9px] bg-realm-bg-900 border border-realm-border rounded-sm px-1.5 py-0.5 text-realm-text-secondary"
               title={`${effect.name} (${effect.duration} turns)`}
             >
               {effect.name}

@@ -425,7 +425,7 @@ export default function ProfessionsPage() {
                 </div>
                 <button
                   onClick={() => { setSpecTarget(professionNeedingSpec); setSpecError(null); }}
-                  className="px-4 py-1.5 bg-realm-teal-300 text-realm-bg-900 font-display text-xs rounded hover:bg-realm-teal-300/80 transition-colors flex-shrink-0"
+                  className="px-4 py-1.5 bg-realm-teal-300 text-realm-bg-900 font-display text-xs rounded-sm hover:bg-realm-teal-300/80 transition-colors flex-shrink-0"
                 >
                   Choose
                 </button>
@@ -542,7 +542,7 @@ export default function ProfessionsPage() {
               ))}
             </div>
 
-            <div className="flex items-center gap-2 p-3 bg-realm-danger/10 border border-realm-danger/30 rounded mb-4">
+            <div className="flex items-center gap-2 p-3 bg-realm-danger/10 border border-realm-danger/30 rounded-sm mb-4">
               <AlertTriangle className="w-4 h-4 text-realm-danger flex-shrink-0" />
               <p className="text-xs text-realm-danger">This choice is permanent and cannot be changed.</p>
             </div>
@@ -554,7 +554,7 @@ export default function ProfessionsPage() {
             <button
               onClick={() => { setSpecTarget(null); setSpecError(null); }}
               disabled={specializeMutation.isPending}
-              className="w-full py-2 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors disabled:opacity-50"
+              className="w-full py-2 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
@@ -580,7 +580,7 @@ export default function ProfessionsPage() {
               <button
                 onClick={() => abandonMutation.mutate(abandonTarget)}
                 disabled={abandonMutation.isPending}
-                className="flex-1 py-2.5 bg-realm-danger text-realm-text-primary font-display text-sm rounded hover:bg-realm-danger/80 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 bg-realm-danger text-realm-text-primary font-display text-sm rounded-sm hover:bg-realm-danger/80 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {abandonMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                 {abandonMutation.isPending ? 'Abandoning...' : 'Abandon'}
@@ -588,7 +588,7 @@ export default function ProfessionsPage() {
               <button
                 onClick={() => setAbandonTarget(null)}
                 disabled={abandonMutation.isPending}
-                className="flex-1 py-2.5 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors disabled:opacity-50"
+                className="flex-1 py-2.5 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>

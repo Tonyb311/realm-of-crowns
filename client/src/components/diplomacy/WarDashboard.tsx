@@ -221,7 +221,7 @@ export default function WarDashboard() {
               <div className="mt-3 pt-2 border-t border-realm-border">
                 <button
                   disabled
-                  className="text-[10px] px-2 py-1 rounded bg-realm-bg-900 text-realm-text-muted border border-realm-border cursor-not-allowed font-display"
+                  className="text-[10px] px-2 py-1 rounded-sm bg-realm-bg-900 text-realm-text-muted border border-realm-border cursor-not-allowed font-display"
                 >
                   Enlist (Coming Soon)
                 </button>

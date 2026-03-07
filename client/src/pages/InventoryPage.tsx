@@ -430,10 +430,10 @@ export default function InventoryPage() {
                       className={`relative p-3 rounded-lg border-2 text-left transition-all
                         ${isSelected
                           ? `${rarityStyle.border} ${rarityStyle.bg} ring-1 ring-realm-gold-500/50`
-                          : `${rarityStyle.border} border-opacity-40 ${rarityStyle.bg} hover:border-opacity-80`}`}
+                          : `${rarityStyle.border} ${rarityStyle.bg} hover:brightness-125`}`}
                     >
                       {equippedSlot && (
-                        <span className="absolute top-1 right-1 text-[9px] bg-realm-gold-400/20 text-realm-gold-400 px-1.5 py-0.5 rounded">
+                        <span className="absolute top-1 right-1 text-[9px] bg-realm-gold-400/20 text-realm-gold-400 px-1.5 py-0.5 rounded-sm">
                           E
                         </span>
                       )}

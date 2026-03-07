@@ -55,7 +55,7 @@ export default function AmbushEvent({ caravanId, onClose }: AmbushEventProps) {
   const error = resolveMutation.error as any;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -80,7 +80,7 @@ export default function AmbushEvent({ caravanId, onClose }: AmbushEventProps) {
               </p>
 
               {error && (
-                <div className="flex items-center gap-2 text-realm-danger text-xs bg-realm-danger/10 border border-realm-danger/20 rounded px-3 py-2 mb-4">
+                <div className="flex items-center gap-2 text-realm-danger text-xs bg-realm-danger/10 border border-realm-danger/20 rounded-sm px-3 py-2 mb-4">
                   <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
                   {error?.response?.data?.error ?? 'Something went wrong'}
                 </div>
@@ -197,7 +197,7 @@ export default function AmbushEvent({ caravanId, onClose }: AmbushEventProps) {
 
               <button
                 onClick={onClose}
-                className="mt-2 px-6 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
+                className="mt-2 px-6 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors"
               >
                 Continue
               </button>

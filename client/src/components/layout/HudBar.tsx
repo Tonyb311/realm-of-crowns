@@ -86,7 +86,7 @@ export function HudBar() {
   const hpMax = character.maxHp ?? 100;
 
   return (
-    <div className="sticky top-0 z-50 h-14 lg:h-16 bg-realm-bg-800/95 backdrop-blur-sm border-b border-realm-border">
+    <div className="sticky top-0 z-50 h-14 lg:h-16 bg-realm-bg-800/95 backdrop-blur-xs border-b border-realm-border">
       <div className="max-w-screen-2xl mx-auto px-3 flex items-center h-full gap-3">
         {/* Left: Avatar + Name + Level */}
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -100,7 +100,7 @@ export function HudBar() {
               {character.name}
             </span>
             <Tooltip content={`Level ${character.level}`} position="bottom">
-              <span className="flex items-center gap-0.5 text-[10px] text-realm-gold-400 bg-realm-gold-400/10 border border-realm-gold-400/30 rounded px-1.5 py-0.5 font-display">
+              <span className="flex items-center gap-0.5 text-[10px] text-realm-gold-400 bg-realm-gold-400/10 border border-realm-gold-400/30 rounded-sm px-1.5 py-0.5 font-display">
                 <Crown className="w-2.5 h-2.5" />
                 {character.level}
               </span>
@@ -108,7 +108,7 @@ export function HudBar() {
           </div>
           {/* Mobile: Level badge only (no name) */}
           <div className="sm:hidden">
-            <span className="flex items-center gap-0.5 text-[10px] text-realm-gold-400 bg-realm-gold-400/10 border border-realm-gold-400/30 rounded px-1.5 py-0.5 font-display">
+            <span className="flex items-center gap-0.5 text-[10px] text-realm-gold-400 bg-realm-gold-400/10 border border-realm-gold-400/30 rounded-sm px-1.5 py-0.5 font-display">
               <Crown className="w-2.5 h-2.5" />
               {character.level}
             </span>
@@ -185,7 +185,7 @@ export function HudBar() {
           <Tooltip content="Click to view journey" position="bottom">
             <Link
               to="/travel"
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded bg-realm-gold-400/10 border border-realm-gold-400/30 text-realm-gold-400 hover:bg-realm-gold-400/15 transition-colors flex-shrink-0"
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-sm bg-realm-gold-400/10 border border-realm-gold-400/30 text-realm-gold-400 hover:bg-realm-gold-400/15 transition-colors flex-shrink-0"
             >
               <Compass className="w-3 h-3 animate-[spin_8s_linear_infinite]" />
               <span className="text-[10px] font-display truncate max-w-[80px]">

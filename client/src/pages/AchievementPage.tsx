@@ -166,7 +166,7 @@ export default function AchievementPage() {
         <div className="flex flex-wrap gap-2 mb-6">
           <button
             onClick={() => setSelectedCategory(null)}
-            className={`px-4 py-1.5 rounded font-display text-xs border transition-colors ${
+            className={`px-4 py-1.5 rounded-sm font-display text-xs border transition-colors ${
               selectedCategory === null
                 ? 'border-realm-gold-500 text-realm-gold-400 bg-realm-gold-500/10'
                 : 'border-realm-border text-realm-text-muted hover:text-realm-text-secondary hover:border-realm-text-muted/30'
@@ -181,7 +181,7 @@ export default function AchievementPage() {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-1.5 rounded font-display text-xs border transition-colors ${
+                className={`px-4 py-1.5 rounded-sm font-display text-xs border transition-colors ${
                   selectedCategory === cat
                     ? 'border-realm-gold-500 text-realm-gold-400 bg-realm-gold-500/10'
                     : (CATEGORY_COLORS[cat]?.split(' ')[0] ?? 'border-realm-border') +

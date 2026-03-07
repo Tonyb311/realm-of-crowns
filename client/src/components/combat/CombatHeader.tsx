@@ -12,7 +12,7 @@ export default function InitiativeBar({ combatants, currentTurnId }: { combatant
         return (
           <div
             key={c.entityId}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded border text-xs transition-all
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-sm border text-xs transition-all
               ${isActive
                 ? 'border-realm-gold-500 bg-realm-gold-400/10 text-realm-gold-400'
                 : c.type === 'enemy'

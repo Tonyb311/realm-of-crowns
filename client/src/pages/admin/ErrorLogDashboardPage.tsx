@@ -106,7 +106,7 @@ function LevelBadge({ level }: { level: string }) {
   const Icon = style.icon;
   return (
     <span
-      className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded border ${style.bg} ${style.text}`}
+      className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-sm border ${style.bg} ${style.text}`}
     >
       <Icon className="w-3 h-3" />
       {level}
@@ -122,7 +122,7 @@ function StatusCodeBadge({ code }: { code: number }) {
         ? 'text-realm-gold-400 bg-realm-gold-400/10 border-realm-gold-400/30'
         : 'text-realm-success bg-realm-success/10 border-realm-success/30';
   return (
-    <span className={`inline-flex text-xs font-mono font-semibold px-2 py-0.5 rounded border ${color}`}>
+    <span className={`inline-flex text-xs font-mono font-semibold px-2 py-0.5 rounded-sm border ${color}`}>
       {code}
     </span>
   );
@@ -306,21 +306,21 @@ export default function ErrorLogDashboardPage() {
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 space-y-3 animate-pulse">
               <div className="flex items-center justify-between">
-                <div className="w-2/5 h-5 bg-realm-bg-800 rounded" />
-                <div className="w-16 h-4 bg-realm-bg-800 rounded" />
+                <div className="w-2/5 h-5 bg-realm-bg-800 rounded-sm" />
+                <div className="w-16 h-4 bg-realm-bg-800 rounded-sm" />
               </div>
-              <div className="w-full h-3 bg-realm-bg-800 rounded" />
-              <div className="w-4/5 h-3 bg-realm-bg-800 rounded" />
+              <div className="w-full h-3 bg-realm-bg-800 rounded-sm" />
+              <div className="w-4/5 h-3 bg-realm-bg-800 rounded-sm" />
             </div>
           ))}
         </div>
         <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden animate-pulse">
           <div className="border-b border-realm-border px-4 py-3 flex gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (<div key={i} className="flex-1 h-3 bg-realm-bg-800 rounded" />))}
+            {Array.from({ length: 4 }).map((_, i) => (<div key={i} className="flex-1 h-3 bg-realm-bg-800 rounded-sm" />))}
           </div>
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="px-4 py-3 flex gap-4 border-b border-realm-border last:border-0">
-              {Array.from({ length: 4 }).map((_, j) => (<div key={j} className="flex-1 h-3 bg-realm-bg-800 rounded" />))}
+              {Array.from({ length: 4 }).map((_, j) => (<div key={j} className="flex-1 h-3 bg-realm-bg-800 rounded-sm" />))}
             </div>
           ))}
         </div>
@@ -354,14 +354,14 @@ export default function ErrorLogDashboardPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => { refetchStats(); refetchLogs(); }}
-            className="p-2 border border-realm-border rounded text-realm-text-secondary hover:bg-realm-bg-700 hover:text-realm-gold-400 transition-colors"
+            className="p-2 border border-realm-border rounded-sm text-realm-text-secondary hover:bg-realm-bg-700 hover:text-realm-gold-400 transition-colors"
             title="Refresh"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
           <button
             onClick={() => setShowPurge(true)}
-            className="flex items-center gap-1.5 px-3 py-2 border border-realm-danger/30 text-realm-danger text-sm font-display rounded hover:bg-realm-danger/10 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 border border-realm-danger/30 text-realm-danger text-sm font-display rounded-sm hover:bg-realm-danger/10 transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" />
             Purge Old
@@ -485,7 +485,7 @@ export default function ErrorLogDashboardPage() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Search messages, endpoints..."
-                className="w-full pl-10 pr-3 py-2 bg-realm-bg-800 border border-realm-border rounded text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-none"
+                className="w-full pl-10 pr-3 py-2 bg-realm-bg-800 border border-realm-border rounded-sm text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-hidden"
               />
             </div>
           </div>
@@ -494,7 +494,7 @@ export default function ErrorLogDashboardPage() {
             <select
               value={levelFilter}
               onChange={(e) => { setLevelFilter(e.target.value); setPage(1); }}
-              className="bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+              className="bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
             >
               <option value="">All Levels</option>
               <option value="ERROR">ERROR</option>
@@ -508,7 +508,7 @@ export default function ErrorLogDashboardPage() {
             <select
               value={categoryFilter}
               onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }}
-              className="bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+              className="bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
             >
               <option value="">All Categories</option>
               {categories.map((c) => (
@@ -521,7 +521,7 @@ export default function ErrorLogDashboardPage() {
             <select
               value={resolvedFilter}
               onChange={(e) => { setResolvedFilter(e.target.value); setPage(1); }}
-              className="bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+              className="bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
             >
               <option value="">All</option>
               <option value="false">Unresolved</option>
@@ -535,11 +535,11 @@ export default function ErrorLogDashboardPage() {
       {logsLoading ? (
         <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden animate-pulse">
           <div className="border-b border-realm-border px-4 py-3 flex gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (<div key={i} className="flex-1 h-3 bg-realm-bg-800 rounded" />))}
+            {Array.from({ length: 4 }).map((_, i) => (<div key={i} className="flex-1 h-3 bg-realm-bg-800 rounded-sm" />))}
           </div>
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="px-4 py-3 flex gap-4 border-b border-realm-border last:border-0">
-              {Array.from({ length: 4 }).map((_, j) => (<div key={j} className="flex-1 h-3 bg-realm-bg-800 rounded" />))}
+              {Array.from({ length: 4 }).map((_, j) => (<div key={j} className="flex-1 h-3 bg-realm-bg-800 rounded-sm" />))}
             </div>
           ))}
         </div>
@@ -596,7 +596,7 @@ export default function ErrorLogDashboardPage() {
                 <button
                   disabled={page <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="p-2 rounded border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="p-2 rounded-sm border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -615,7 +615,7 @@ export default function ErrorLogDashboardPage() {
                     <button
                       key={pageNum}
                       onClick={() => setPage(pageNum)}
-                      className={`w-8 h-8 rounded text-xs font-display transition-colors ${
+                      className={`w-8 h-8 rounded-sm text-xs font-display transition-colors ${
                         page === pageNum
                           ? 'bg-realm-gold-500/20 text-realm-gold-400 border border-realm-gold-500/40'
                           : 'text-realm-text-secondary hover:bg-realm-bg-700 border border-transparent'
@@ -628,7 +628,7 @@ export default function ErrorLogDashboardPage() {
                 <button
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className="p-2 rounded border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="p-2 rounded-sm border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -664,19 +664,19 @@ export default function ErrorLogDashboardPage() {
               onChange={(e) => setResolveNotes(e.target.value)}
               placeholder="What was the fix? Root cause?"
               rows={3}
-              className="w-full bg-realm-bg-900 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-none resize-none mb-4"
+              className="w-full bg-realm-bg-900 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-hidden resize-none mb-4"
             />
             <div className="flex gap-3">
               <button
                 onClick={() => setResolveLog(null)}
-                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => resolveMutation.mutate({ id: resolveLog.id, notes: resolveNotes })}
                 disabled={resolveMutation.isPending}
-                className="flex-1 py-2 bg-realm-success text-realm-text-primary font-display text-sm rounded hover:bg-realm-success transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-2 bg-realm-success text-realm-text-primary font-display text-sm rounded-sm hover:bg-realm-success transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {resolveMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Mark Resolved
@@ -714,19 +714,19 @@ export default function ErrorLogDashboardPage() {
               value={purgeDays}
               onChange={(e) => setPurgeDays(Math.max(7, parseInt(e.target.value, 10) || 7))}
               min={7}
-              className="w-full bg-realm-bg-900 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none mb-4"
+              className="w-full bg-realm-bg-900 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden mb-4"
             />
             <div className="flex gap-3">
               <button
                 onClick={() => setShowPurge(false)}
-                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => purgeMutation.mutate(purgeDays)}
                 disabled={purgeMutation.isPending}
-                className="flex-1 py-2 bg-realm-danger text-realm-text-primary font-display text-sm rounded hover:bg-realm-danger transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-2 bg-realm-danger text-realm-text-primary font-display text-sm rounded-sm hover:bg-realm-danger transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {purgeMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Purge Logs
@@ -805,7 +805,7 @@ function LogRow({
             {!log.resolved ? (
               <button
                 onClick={onResolve}
-                className="p-1.5 text-realm-text-secondary border border-realm-border rounded hover:bg-realm-bg-800 hover:text-realm-success transition-colors"
+                className="p-1.5 text-realm-text-secondary border border-realm-border rounded-sm hover:bg-realm-bg-800 hover:text-realm-success transition-colors"
                 title="Resolve"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -814,7 +814,7 @@ function LogRow({
               <button
                 onClick={onUnresolve}
                 disabled={isUnresolving}
-                className="p-1.5 text-realm-text-secondary border border-realm-border rounded hover:bg-realm-bg-800 hover:text-realm-gold-400 transition-colors disabled:opacity-50"
+                className="p-1.5 text-realm-text-secondary border border-realm-border rounded-sm hover:bg-realm-bg-800 hover:text-realm-gold-400 transition-colors disabled:opacity-50"
                 title="Reopen"
               >
                 {isUnresolving ? (
@@ -826,7 +826,7 @@ function LogRow({
             )}
             <button
               onClick={onToggle}
-              className="p-1.5 text-realm-text-secondary border border-realm-border rounded hover:bg-realm-bg-800 hover:text-realm-gold-400 transition-colors"
+              className="p-1.5 text-realm-text-secondary border border-realm-border rounded-sm hover:bg-realm-bg-800 hover:text-realm-gold-400 transition-colors"
               title="Details"
             >
               <Eye className="w-3.5 h-3.5" />
@@ -843,7 +843,7 @@ function LogRow({
               <div>
                 <h4 className="text-realm-text-muted font-display mb-2">Error Details</h4>
                 {log.detail && (
-                  <pre className="bg-realm-bg-900 border border-realm-border rounded p-3 text-realm-text-secondary text-xs overflow-x-auto max-h-48 whitespace-pre-wrap break-words">
+                  <pre className="bg-realm-bg-900 border border-realm-border rounded-sm p-3 text-realm-text-secondary text-xs overflow-x-auto max-h-48 whitespace-pre-wrap break-words">
                     {log.detail}
                   </pre>
                 )}
@@ -878,7 +878,7 @@ function LogRow({
                 {log.requestBody && Object.keys(log.requestBody).length > 0 && (
                   <>
                     <h4 className="text-realm-text-muted font-display mt-3 mb-1">Request Body</h4>
-                    <pre className="bg-realm-bg-900 border border-realm-border rounded p-3 text-realm-text-secondary text-xs overflow-x-auto max-h-32 whitespace-pre-wrap break-words">
+                    <pre className="bg-realm-bg-900 border border-realm-border rounded-sm p-3 text-realm-text-secondary text-xs overflow-x-auto max-h-32 whitespace-pre-wrap break-words">
                       {JSON.stringify(log.requestBody, null, 2)}
                     </pre>
                   </>

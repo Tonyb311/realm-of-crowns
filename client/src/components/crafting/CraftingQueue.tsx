@@ -92,7 +92,7 @@ export default function CraftingQueue({ queue, isLoading, onCollect, isCollectin
                 <button
                   onClick={onCollect}
                   disabled={isCollecting}
-                  className="px-4 py-1.5 bg-realm-success text-realm-text-primary font-display text-xs rounded
+                  className="px-4 py-1.5 bg-realm-success text-realm-text-primary font-display text-xs rounded-sm
                     hover:bg-realm-success/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                 >
                   {isCollecting ? 'Collecting...' : 'Collect'}

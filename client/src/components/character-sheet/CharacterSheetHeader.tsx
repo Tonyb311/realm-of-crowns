@@ -52,7 +52,7 @@ export function CharacterSheetHeader({ sheet, isOwnProfile }: Props) {
               )}
               <span className="text-realm-text-muted text-sm">Level {sheet.level}</span>
               {sheet.guild && (
-                <span className="text-xs bg-realm-bg-600/40 text-realm-gold-400 px-2 py-0.5 rounded">
+                <span className="text-xs bg-realm-bg-600/40 text-realm-gold-400 px-2 py-0.5 rounded-sm">
                   [{sheet.guild.tag}] {sheet.guild.name}
                 </span>
               )}

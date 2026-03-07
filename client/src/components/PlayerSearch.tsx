@@ -71,7 +71,7 @@ export default function PlayerSearch({ onSelect, placeholder = 'Search players..
           }}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className="w-full pl-9 pr-3 py-2 bg-realm-bg-800 border border-realm-border rounded text-sm text-realm-text-primary placeholder-realm-text-muted focus:outline-none focus:border-realm-gold-500"
+          className="w-full pl-9 pr-3 py-2 bg-realm-bg-800 border border-realm-border rounded-sm text-sm text-realm-text-primary placeholder-realm-text-muted focus:outline-hidden focus:border-realm-gold-500"
         />
       </div>
 

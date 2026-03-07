@@ -219,7 +219,7 @@ export default function DiplomacyPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-display transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-display transition-colors whitespace-nowrap ${
                 isActive
                   ? 'bg-realm-gold-500/15 text-realm-gold-400 border border-realm-gold-500/30'
                   : 'text-realm-text-muted hover:text-realm-text-primary hover:bg-realm-bg-800/50 border border-transparent'
@@ -233,7 +233,7 @@ export default function DiplomacyPage() {
         {isRuler && (
           <button
             onClick={() => setActiveTab('relations')}
-            className="ml-auto text-[10px] px-2 py-1 rounded bg-realm-gold-500/10 text-realm-gold-400 border border-realm-gold-500/30 font-display"
+            className="ml-auto text-[10px] px-2 py-1 rounded-sm bg-realm-gold-500/10 text-realm-gold-400 border border-realm-gold-500/30 font-display"
           >
             Ruler
           </button>
@@ -289,7 +289,7 @@ export default function DiplomacyPage() {
                       <button
                         key={type}
                         onClick={() => { setEventFilter(type); setEventPage(1); }}
-                        className={`text-[10px] px-2 py-0.5 rounded font-display transition-colors ${
+                        className={`text-[10px] px-2 py-0.5 rounded-sm font-display transition-colors ${
                           eventFilter === type
                             ? 'bg-realm-gold-500/15 text-realm-gold-400 border border-realm-gold-500/30'
                             : 'text-realm-text-muted hover:text-realm-text-secondary border border-transparent'
@@ -328,7 +328,7 @@ export default function DiplomacyPage() {
                         {evt.races && evt.races.length > 0 && (
                           <div className="flex gap-1 mt-1.5">
                             {evt.races.map(r => (
-                              <span key={r} className="text-[9px] px-1.5 py-0.5 rounded bg-realm-bg-900 text-realm-text-muted border border-realm-border">
+                              <span key={r} className="text-[9px] px-1.5 py-0.5 rounded-sm bg-realm-bg-900 text-realm-text-muted border border-realm-border">
                                 {r.replace(/_/g, ' ')}
                               </span>
                             ))}

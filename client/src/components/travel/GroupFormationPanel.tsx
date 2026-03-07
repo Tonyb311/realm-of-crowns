@@ -160,7 +160,7 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="Enter a name for your group..."
               maxLength={50}
-              className="w-full bg-realm-bg-900 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary placeholder:text-realm-text-muted/50 focus:border-realm-gold-400 focus:outline-none"
+              className="w-full bg-realm-bg-900 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary placeholder:text-realm-text-muted/50 focus:border-realm-gold-400 focus:outline-hidden"
             />
           </div>
 
@@ -168,7 +168,7 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
           <button
             onClick={() => createMutation.mutate()}
             disabled={createMutation.isPending}
-            className="w-full py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {createMutation.isPending ? (
               <>
@@ -238,13 +238,13 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
             {group.members.map((member) => (
               <div
                 key={member.id}
-                className="flex items-center justify-between py-2 px-3 bg-realm-bg-900/50 rounded"
+                className="flex items-center justify-between py-2 px-3 bg-realm-bg-900/50 rounded-sm"
               >
                 <div className="flex items-center gap-2">
                   <span className="text-realm-text-primary text-sm font-semibold">{member.name}</span>
                   <span className="text-realm-text-muted text-xs capitalize">{member.race?.toLowerCase()}</span>
                   {member.role === 'leader' && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-realm-gold-400/10 text-realm-gold-400 border border-realm-gold-400/30 font-display flex items-center gap-0.5">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-realm-gold-400/10 text-realm-gold-400 border border-realm-gold-400/30 font-display flex items-center gap-0.5">
                       <Crown className="w-2.5 h-2.5" />
                       Leader
                     </span>
@@ -272,7 +272,7 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
             <button
               onClick={() => startMutation.mutate(group.id)}
               disabled={!canStart || startMutation.isPending}
-              className="flex-1 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {startMutation.isPending ? (
                 <>
@@ -295,7 +295,7 @@ export default function GroupFormationPanel({ routeId, onClose }: GroupFormation
           <button
             onClick={() => leaveMutation.mutate()}
             disabled={leaveMutation.isPending}
-            className="py-3 px-4 border border-realm-danger/40 text-realm-danger font-display text-sm rounded hover:bg-realm-danger/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+            className="py-3 px-4 border border-realm-danger/40 text-realm-danger font-display text-sm rounded-sm hover:bg-realm-danger/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
           >
             {leaveMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />

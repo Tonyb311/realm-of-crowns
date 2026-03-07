@@ -175,7 +175,7 @@ export default function AdminUsersPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search by username or email..."
-            className="w-full pl-10 pr-3 py-2 bg-realm-bg-800 border border-realm-border rounded px-3 text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-none"
+            className="w-full pl-10 pr-3 py-2 bg-realm-bg-800 border border-realm-border rounded-sm px-3 text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-hidden"
           />
         </div>
       </div>
@@ -184,11 +184,11 @@ export default function AdminUsersPage() {
       {isLoading ? (
         <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden animate-pulse">
           <div className="border-b border-realm-border px-4 py-3 flex gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (<div key={i} className="flex-1 h-3 bg-realm-bg-800 rounded" />))}
+            {Array.from({ length: 6 }).map((_, i) => (<div key={i} className="flex-1 h-3 bg-realm-bg-800 rounded-sm" />))}
           </div>
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="px-4 py-3 flex gap-4 border-b border-realm-border last:border-0">
-              {Array.from({ length: 6 }).map((_, j) => (<div key={j} className="flex-1 h-3 bg-realm-bg-800 rounded" />))}
+              {Array.from({ length: 6 }).map((_, j) => (<div key={j} className="flex-1 h-3 bg-realm-bg-800 rounded-sm" />))}
             </div>
           ))}
         </div>
@@ -235,7 +235,7 @@ export default function AdminUsersPage() {
                         </div>
                         <div className="px-4 py-3 flex-shrink-0">
                           <span
-                            className={`inline-block text-[10px] font-semibold uppercase px-2 py-0.5 rounded border ${
+                            className={`inline-block text-[10px] font-semibold uppercase px-2 py-0.5 rounded-sm border ${
                               ROLE_STYLES[user.role] || ROLE_STYLES.player
                             }`}
                           >
@@ -252,13 +252,13 @@ export default function AdminUsersPage() {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => handleOpenEditRole(user)}
-                              className="px-2.5 py-1 text-xs border border-realm-gold-500/40 text-realm-gold-400 rounded hover:bg-realm-gold-500/10 transition-colors"
+                              className="px-2.5 py-1 text-xs border border-realm-gold-500/40 text-realm-gold-400 rounded-sm hover:bg-realm-gold-500/10 transition-colors"
                             >
                               Edit Role
                             </button>
                             <button
                               onClick={() => setResetPwUser(user)}
-                              className="px-2.5 py-1 text-xs border border-realm-border/30 text-realm-text-secondary rounded hover:bg-realm-bg-800 transition-colors"
+                              className="px-2.5 py-1 text-xs border border-realm-border/30 text-realm-text-secondary rounded-sm hover:bg-realm-bg-800 transition-colors"
                             >
                               Reset PW
                             </button>
@@ -307,7 +307,7 @@ export default function AdminUsersPage() {
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="p-2 rounded border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="p-2 rounded-sm border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -327,7 +327,7 @@ export default function AdminUsersPage() {
                 <button
                   key={pageNum}
                   onClick={() => setPage(pageNum)}
-                  className={`w-8 h-8 rounded text-xs font-display transition-colors ${
+                  className={`w-8 h-8 rounded-sm text-xs font-display transition-colors ${
                     page === pageNum
                       ? 'bg-realm-gold-500/20 text-realm-gold-400 border border-realm-gold-500/40'
                       : 'text-realm-text-secondary hover:bg-realm-bg-700 border border-transparent'
@@ -341,7 +341,7 @@ export default function AdminUsersPage() {
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="p-2 rounded border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="p-2 rounded-sm border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -375,7 +375,7 @@ export default function AdminUsersPage() {
               <select
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value)}
-                className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+                className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
               >
                 <option value="player">Player</option>
                 <option value="moderator">Moderator</option>
@@ -385,14 +385,14 @@ export default function AdminUsersPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setEditRoleUser(null)}
-                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveRole}
                 disabled={editRoleMutation.isPending || newRole === editRoleUser.role}
-                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {editRoleMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Save
@@ -431,20 +431,20 @@ export default function AdminUsersPage() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Minimum 6 characters"
-                className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-none"
+                className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-hidden"
               />
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => { setResetPwUser(null); setNewPassword(''); }}
-                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleResetPassword}
                 disabled={resetPwMutation.isPending || newPassword.length < 6}
-                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {resetPwMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Reset

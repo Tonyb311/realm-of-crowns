@@ -151,7 +151,7 @@ export default function CraftingResults({ data, onDismiss }: CraftingResultsProp
           {/* Crafted item */}
           <AnimatePresence>
             <motion.div
-              className={`flex items-center justify-between bg-realm-bg-900 rounded px-4 py-3 border ${style.border} mb-4`}
+              className={`flex items-center justify-between bg-realm-bg-900 rounded-sm px-4 py-3 border ${style.border} mb-4`}
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.4, duration: 0.3 }}
@@ -221,7 +221,7 @@ export default function CraftingResults({ data, onDismiss }: CraftingResultsProp
           {/* Dismiss button */}
           <button
             onClick={onDismiss}
-            className="w-full py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
+            className="w-full py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors"
           >
             Continue
           </button>

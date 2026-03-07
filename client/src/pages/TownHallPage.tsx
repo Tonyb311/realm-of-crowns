@@ -197,7 +197,7 @@ export default function TownHallPage() {
         <p className="text-realm-text-secondary mb-6">You must be in a town to visit the Town Hall.</p>
         <button
           onClick={() => navigate('/town')}
-          className="px-8 py-3 border border-realm-gold-500 text-realm-gold-400 font-display text-lg rounded hover:bg-realm-bg-700 transition-colors"
+          className="px-8 py-3 border border-realm-gold-500 text-realm-gold-400 font-display text-lg rounded-sm hover:bg-realm-bg-700 transition-colors"
         >
           Back to Town
         </button>
@@ -226,20 +226,20 @@ export default function TownHallPage() {
                 {isMayor && (
                   <button
                     onClick={() => navigate('/governance')}
-                    className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
+                    className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors"
                   >
                     Governance Panel
                   </button>
                 )}
                 <button
                   onClick={() => navigate('/elections')}
-                  className="px-5 py-2 border border-realm-gold-500/60 text-realm-gold-400 font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                  className="px-5 py-2 border border-realm-gold-500/60 text-realm-gold-400 font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
                 >
                   Elections
                 </button>
                 <button
                   onClick={() => navigate('/town')}
-                  className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                  className="px-5 py-2 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
                 >
                   Back to Town
                 </button>
@@ -381,7 +381,7 @@ export default function TownHallPage() {
                             <h4 className="font-display text-realm-text-primary text-sm">
                               {election.type === 'MAYOR' ? 'Mayoral' : 'Ruler'} Election
                             </h4>
-                            <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${PHASE_COLORS[election.phase] ?? ''}`}>
+                            <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-sm border ${PHASE_COLORS[election.phase] ?? ''}`}>
                               {election.phase}
                             </span>
                           </div>
@@ -454,7 +454,7 @@ export default function TownHallPage() {
                 </p>
                 <button
                   onClick={() => navigate('/housing')}
-                  className="mt-3 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
+                  className="mt-3 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors"
                 >
                   View My Home
                 </button>
@@ -470,16 +470,16 @@ export default function TownHallPage() {
                   )}
                 </p>
                 <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                  <div className="bg-realm-bg-800 rounded p-3">
+                  <div className="bg-realm-bg-800 rounded-sm p-3">
                     <p className="text-realm-text-muted text-xs">Cost</p>
                     <GoldAmount amount={500} className="text-realm-gold-400 font-display text-lg" />
                   </div>
-                  <div className="bg-realm-bg-800 rounded p-3">
+                  <div className="bg-realm-bg-800 rounded-sm p-3">
                     <p className="text-realm-text-muted text-xs">Cooldown</p>
                     <p className="text-realm-gold-400 font-display text-lg">30 days</p>
                   </div>
                 </div>
-                <div className="bg-realm-danger/5 border border-realm-danger/20 rounded p-3 mb-4">
+                <div className="bg-realm-danger/5 border border-realm-danger/20 rounded-sm p-3 mb-4">
                   <p className="text-realm-danger text-xs flex items-center gap-1.5">
                     <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
                     Warning: All fields, rancher buildings, workshops, livestock, and house storage items in your current home town will be permanently lost.
@@ -487,7 +487,7 @@ export default function TownHallPage() {
                 </div>
 
                 {relocateError && (
-                  <div className="bg-realm-danger/10 border border-realm-danger/30 rounded p-3 mb-4">
+                  <div className="bg-realm-danger/10 border border-realm-danger/30 rounded-sm p-3 mb-4">
                     <p className="text-realm-danger text-sm">{relocateError}</p>
                   </div>
                 )}
@@ -498,7 +498,7 @@ export default function TownHallPage() {
                     previewMutation.mutate();
                   }}
                   disabled={previewMutation.isPending}
-                  className="w-full px-5 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full px-5 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {previewMutation.isPending ? (
                     <>
@@ -530,26 +530,26 @@ export default function TownHallPage() {
           <div className="space-y-4">
             {/* Route summary */}
             <div className="flex items-center gap-3 text-sm">
-              <div className="bg-realm-bg-800 rounded px-3 py-2 flex-1 text-center">
+              <div className="bg-realm-bg-800 rounded-sm px-3 py-2 flex-1 text-center">
                 <p className="text-realm-text-muted text-xs">From</p>
                 <p className="text-realm-text-primary font-semibold">{relocatePreview.currentHomeTown?.name ?? 'None'}</p>
               </div>
               <ArrowRight className="w-5 h-5 text-realm-gold-400 flex-shrink-0" />
-              <div className="bg-realm-bg-800 rounded px-3 py-2 flex-1 text-center">
+              <div className="bg-realm-bg-800 rounded-sm px-3 py-2 flex-1 text-center">
                 <p className="text-realm-text-muted text-xs">To</p>
                 <p className="text-realm-gold-400 font-semibold">{relocatePreview.targetTown.name}</p>
               </div>
             </div>
 
             {/* Cost */}
-            <div className="flex items-center justify-between bg-realm-bg-800 rounded p-3 text-sm">
+            <div className="flex items-center justify-between bg-realm-bg-800 rounded-sm p-3 text-sm">
               <span className="text-realm-text-muted">Relocation cost</span>
               <GoldAmount amount={relocatePreview.cost} className="text-realm-gold-400 font-semibold" />
             </div>
 
             {/* Warnings */}
             {relocatePreview.warnings.length > 0 && (
-              <div className="bg-realm-danger/10 border border-realm-danger/30 rounded p-3 space-y-2">
+              <div className="bg-realm-danger/10 border border-realm-danger/30 rounded-sm p-3 space-y-2">
                 <p className="text-realm-danger text-xs font-semibold flex items-center gap-1.5">
                   <AlertTriangle className="w-3.5 h-3.5" />
                   Property Losses
@@ -562,7 +562,7 @@ export default function TownHallPage() {
 
             {/* Detailed losses */}
             {relocatePreview.losses.storageItems.length > 0 && (
-              <div className="bg-realm-bg-800 rounded p-3">
+              <div className="bg-realm-bg-800 rounded-sm p-3">
                 <p className="text-realm-text-muted text-xs font-semibold mb-2">Storage items that will be LOST:</p>
                 <div className="space-y-1">
                   {relocatePreview.losses.storageItems.map((item, i) => (
@@ -575,7 +575,7 @@ export default function TownHallPage() {
             )}
 
             {relocatePreview.losses.assets.length > 0 && (
-              <div className="bg-realm-bg-800 rounded p-3">
+              <div className="bg-realm-bg-800 rounded-sm p-3">
                 <p className="text-realm-text-muted text-xs font-semibold mb-2">Fields/rancher buildings that will be LOST:</p>
                 <div className="space-y-1">
                   {relocatePreview.losses.assets.map((a, i) => (
@@ -588,7 +588,7 @@ export default function TownHallPage() {
             )}
 
             {relocatePreview.losses.livestock.length > 0 && (
-              <div className="bg-realm-bg-800 rounded p-3">
+              <div className="bg-realm-bg-800 rounded-sm p-3">
                 <p className="text-realm-text-muted text-xs font-semibold mb-2">Livestock that will be LOST:</p>
                 <div className="space-y-1">
                   {relocatePreview.losses.livestock.map((l, i) => (
@@ -601,7 +601,7 @@ export default function TownHallPage() {
             )}
 
             {relocatePreview.losses.buildings.length > 0 && (
-              <div className="bg-realm-bg-800 rounded p-3">
+              <div className="bg-realm-bg-800 rounded-sm p-3">
                 <p className="text-realm-text-muted text-xs font-semibold mb-2">Workshops that will be LOST:</p>
                 <div className="space-y-1">
                   {relocatePreview.losses.buildings.map((b, i) => (
@@ -615,7 +615,7 @@ export default function TownHallPage() {
 
             {/* Error in modal */}
             {relocateError && (
-              <div className="bg-realm-danger/10 border border-realm-danger/30 rounded p-3">
+              <div className="bg-realm-danger/10 border border-realm-danger/30 rounded-sm p-3">
                 <p className="text-realm-danger text-sm">{relocateError}</p>
               </div>
             )}
@@ -624,7 +624,7 @@ export default function TownHallPage() {
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => { setShowRelocateModal(false); setRelocateError(null); }}
-                className="flex-1 px-4 py-2.5 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-600 transition-colors"
+                className="flex-1 px-4 py-2.5 border border-realm-text-muted/40 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-600 transition-colors"
               >
                 Cancel
               </button>
@@ -634,7 +634,7 @@ export default function TownHallPage() {
                   confirmMutation.mutate();
                 }}
                 disabled={confirmMutation.isPending}
-                className="flex-1 px-4 py-2.5 bg-realm-danger text-realm-text-primary font-display text-sm rounded hover:bg-realm-danger/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 bg-realm-danger text-realm-text-primary font-display text-sm rounded-sm hover:bg-realm-danger/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {confirmMutation.isPending ? (
                   <>

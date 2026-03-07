@@ -236,9 +236,9 @@ export default function CodexWorld({ searchQuery }: CodexWorldProps) {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="h-8 bg-realm-bg-700 rounded animate-pulse w-48" />
+        <div className="h-8 bg-realm-bg-700 rounded-sm animate-pulse w-48" />
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-20 bg-realm-bg-700 rounded animate-pulse" />
+          <div key={i} className="h-20 bg-realm-bg-700 rounded-sm animate-pulse" />
         ))}
       </div>
     );
@@ -388,7 +388,7 @@ export default function CodexWorld({ searchQuery }: CodexWorldProps) {
 
                           {/* Expanded town: gathering spot info */}
                           {isTownExpanded && (
-                            <div className="mt-3 ml-6 bg-realm-bg-800 border border-realm-border rounded p-3">
+                            <div className="mt-3 ml-6 bg-realm-bg-800 border border-realm-border rounded-sm p-3">
                               <h5 className="font-display text-sm text-realm-gold-400 mb-2">
                                 Gathering Spot
                               </h5>

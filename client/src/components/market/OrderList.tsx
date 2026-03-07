@@ -176,7 +176,7 @@ export default function OrderList() {
                         </RealmBadge>
                       )}
                       {isLost && (
-                        <span className="inline-flex items-center gap-1 font-display text-xs uppercase tracking-wider px-2 py-0.5 rounded-sm border border-realm-danger/50 text-realm-danger">
+                        <span className="inline-flex items-center gap-1 font-display text-xs uppercase tracking-wider px-2 py-0.5 rounded-xs border border-realm-danger/50 text-realm-danger">
                           <XCircle className="w-3 h-3" />
                           Lost
                         </span>

@@ -89,11 +89,11 @@ function statMod(value: number) {
 // ---------------------------------------------------------------------------
 // Element color map for Elementari sub-race styling
 // ---------------------------------------------------------------------------
-const ELEMENT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  fire: { bg: 'bg-realm-danger/20', border: 'border-realm-danger', text: 'text-realm-danger' },
-  water: { bg: 'bg-realm-teal-400/20', border: 'border-realm-teal-400', text: 'text-realm-teal-300' },
-  earth: { bg: 'bg-realm-gold-500/20', border: 'border-realm-gold-500', text: 'text-realm-gold-400' },
-  air: { bg: 'bg-realm-teal-300/20', border: 'border-realm-teal-300', text: 'text-realm-teal-300' },
+const ELEMENT_COLORS: Record<string, { bg: string; border: string; borderHover: string; text: string }> = {
+  fire: { bg: 'bg-realm-danger/20', border: 'border-realm-danger/40', borderHover: 'hover:border-realm-danger/80', text: 'text-realm-danger' },
+  water: { bg: 'bg-realm-teal-400/20', border: 'border-realm-teal-400/40', borderHover: 'hover:border-realm-teal-400/80', text: 'text-realm-teal-300' },
+  earth: { bg: 'bg-realm-gold-500/20', border: 'border-realm-gold-500/40', borderHover: 'hover:border-realm-gold-500/80', text: 'text-realm-gold-400' },
+  air: { bg: 'bg-realm-teal-300/20', border: 'border-realm-teal-300/40', borderHover: 'hover:border-realm-teal-300/80', text: 'text-realm-teal-300' },
 };
 
 // ---------------------------------------------------------------------------
@@ -291,7 +291,7 @@ export default function CharacterCreationPage() {
               <button
                 key={tier}
                 onClick={() => setRaceTierTab(tier)}
-                className={`px-6 py-2 font-display text-sm rounded border transition-colors
+                className={`px-6 py-2 font-display text-sm rounded-sm border transition-colors
                   ${raceTierTab === tier
                     ? 'bg-realm-gold-400 text-realm-bg-900 border-realm-gold-500'
                     : 'bg-realm-bg-700 text-realm-text-secondary border-realm-border hover:border-realm-gold-500/50'}`}
@@ -317,12 +317,12 @@ export default function CharacterCreationPage() {
               >
                 {/* Badges — flow layout above name */}
                 {race.id === 'human' && (
-                  <span className="self-start text-[10px] bg-realm-success/30 text-realm-success px-2 py-0.5 rounded mb-2">
+                  <span className="self-start text-[10px] bg-realm-success/30 text-realm-success px-2 py-0.5 rounded-sm mb-2">
                     Recommended for New Players
                   </span>
                 )}
                 {race.tier === 'exotic' && (
-                  <span className="self-start text-[10px] bg-realm-gold-500/30 text-realm-gold-300 px-2 py-0.5 rounded mb-2">
+                  <span className="self-start text-[10px] bg-realm-gold-500/30 text-realm-gold-300 px-2 py-0.5 rounded-sm mb-2">
                     Hard Mode
                   </span>
                 )}
@@ -483,7 +483,7 @@ export default function CharacterCreationPage() {
                   ${isSelected
                     ? 'border-realm-gold-500'
                     : elemColors
-                      ? `${elemColors.border} border-opacity-40 hover:border-opacity-80`
+                      ? `${elemColors.border} ${elemColors.borderHover}`
                       : 'border-realm-border hover:border-realm-gold-500/40'}
                   ${elemColors ? elemColors.bg : 'bg-realm-bg-700'}`}
               >
@@ -755,7 +755,7 @@ export default function CharacterCreationPage() {
         </RealmPanel>
 
         {submitError && (
-          <div className="mb-4 p-3 bg-realm-danger/20 border border-realm-danger/50 rounded text-realm-danger text-sm">
+          <div className="mb-4 p-3 bg-realm-danger/20 border border-realm-danger/50 rounded-sm text-realm-danger text-sm">
             {submitError}
           </div>
         )}

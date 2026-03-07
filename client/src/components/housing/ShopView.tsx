@@ -49,7 +49,7 @@ export default function ShopView({ buildingId, buildingName, onClose }: ShopView
               <Store className="w-5 h-5 text-realm-gold-400" />
               <span className="font-display text-sm text-realm-text-primary">Items for Sale</span>
             </div>
-            <div className="bg-realm-bg-900 border border-realm-border rounded p-6 text-center">
+            <div className="bg-realm-bg-900 border border-realm-border rounded-sm p-6 text-center">
               <Package className="w-8 h-8 text-realm-text-muted/30 mx-auto mb-2" />
               <p className="text-realm-text-muted text-sm">No items listed for sale.</p>
               <p className="text-realm-text-muted/60 text-xs mt-1">
@@ -64,14 +64,14 @@ export default function ShopView({ buildingId, buildingName, onClose }: ShopView
               <Coins className="w-5 h-5 text-realm-gold-400" />
               <span className="font-display text-sm text-realm-text-primary">Sales History</span>
             </div>
-            <div className="bg-realm-bg-900 border border-realm-border rounded p-4 text-center">
+            <div className="bg-realm-bg-900 border border-realm-border rounded-sm p-4 text-center">
               <p className="text-realm-text-muted text-xs">No sales yet.</p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="w-full py-2.5 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+            className="w-full py-2.5 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
           >
             Close
           </button>

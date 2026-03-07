@@ -193,11 +193,11 @@ export default function AdminWorldPage() {
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 space-y-3 animate-pulse">
               <div className="flex items-center justify-between">
-                <div className="w-2/5 h-5 bg-realm-bg-800 rounded" />
-                <div className="w-16 h-4 bg-realm-bg-800 rounded" />
+                <div className="w-2/5 h-5 bg-realm-bg-800 rounded-sm" />
+                <div className="w-16 h-4 bg-realm-bg-800 rounded-sm" />
               </div>
-              <div className="w-full h-3 bg-realm-bg-800 rounded" />
-              <div className="w-4/5 h-3 bg-realm-bg-800 rounded" />
+              <div className="w-full h-3 bg-realm-bg-800 rounded-sm" />
+              <div className="w-4/5 h-3 bg-realm-bg-800 rounded-sm" />
             </div>
           ))}
         </div>
@@ -261,7 +261,7 @@ export default function AdminWorldPage() {
                       value={editPopulation}
                       onChange={(e) => setEditPopulation(parseInt(e.target.value, 10) || 0)}
                       min="0"
-                      className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+                      className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
                     />
                   </div>
                   <div>
@@ -270,13 +270,13 @@ export default function AdminWorldPage() {
                       value={editDescription}
                       onChange={(e) => setEditDescription(e.target.value)}
                       rows={3}
-                      className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none resize-none"
+                      className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden resize-none"
                     />
                   </div>
                   <button
                     onClick={handleSaveTown}
                     disabled={updateTownMutation.isPending}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {updateTownMutation.isPending ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -305,7 +305,7 @@ export default function AdminWorldPage() {
                 {townDetailLoading ? (
                   <div className="space-y-2 animate-pulse">
                     {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="h-10 bg-realm-bg-900 rounded" />
+                      <div key={i} className="h-10 bg-realm-bg-900 rounded-sm" />
                     ))}
                   </div>
                 ) : editResources.length > 0 ? (
@@ -318,7 +318,7 @@ export default function AdminWorldPage() {
                     {editResources.map((resource, idx) => (
                       <div
                         key={resource.resourceId}
-                        className="grid grid-cols-[1fr_100px_100px] gap-2 items-center bg-realm-bg-900/50 rounded px-2 py-1.5"
+                        className="grid grid-cols-[1fr_100px_100px] gap-2 items-center bg-realm-bg-900/50 rounded-sm px-2 py-1.5"
                       >
                         <span className="text-realm-text-secondary text-sm truncate">{resource.resourceName}</span>
                         <input
@@ -327,7 +327,7 @@ export default function AdminWorldPage() {
                           onChange={(e) => updateResource(idx, 'abundance', parseFloat(e.target.value) || 0)}
                           min="0"
                           step="0.1"
-                          className="w-full bg-realm-bg-800 border border-realm-border rounded px-2 py-1 text-realm-text-secondary text-xs focus:border-realm-gold-500 focus:outline-none"
+                          className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-2 py-1 text-realm-text-secondary text-xs focus:border-realm-gold-500 focus:outline-hidden"
                         />
                         <input
                           type="number"
@@ -335,14 +335,14 @@ export default function AdminWorldPage() {
                           onChange={(e) => updateResource(idx, 'respawnRate', parseFloat(e.target.value) || 0)}
                           min="0"
                           step="0.1"
-                          className="w-full bg-realm-bg-800 border border-realm-border rounded px-2 py-1 text-realm-text-secondary text-xs focus:border-realm-gold-500 focus:outline-none"
+                          className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-2 py-1 text-realm-text-secondary text-xs focus:border-realm-gold-500 focus:outline-hidden"
                         />
                       </div>
                     ))}
                     <button
                       onClick={handleSaveResources}
                       disabled={updateResourcesMutation.isPending}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                     >
                       {updateResourcesMutation.isPending ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -467,7 +467,7 @@ function RegionAccordion({
                 >
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="font-display text-realm-text-primary text-sm">{town.name}</h4>
-                    <span className="text-[10px] text-realm-text-muted bg-realm-bg-800 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] text-realm-text-muted bg-realm-bg-800 px-1.5 py-0.5 rounded-sm">
                       {town.biome}
                     </span>
                   </div>

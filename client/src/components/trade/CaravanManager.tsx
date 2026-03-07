@@ -228,7 +228,7 @@ export default function CaravanManager() {
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 text-realm-danger text-xs bg-realm-danger/10 border border-realm-danger/20 rounded px-3 py-2 mb-4">
+            <div className="flex items-center gap-2 text-realm-danger text-xs bg-realm-danger/10 border border-realm-danger/20 rounded-sm px-3 py-2 mb-4">
               <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
               {error}
             </div>
@@ -312,7 +312,7 @@ export default function CaravanManager() {
                 <button
                   onClick={() => departMutation.mutate(selectedCaravan.id)}
                   disabled={departMutation.isPending || selectedCaravan.totalItems === 0}
-                  className="w-full px-4 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full px-4 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {departMutation.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -347,7 +347,7 @@ export default function CaravanManager() {
           <h3 className="font-display text-realm-text-primary mb-4">New Caravan</h3>
 
           {error && (
-            <div className="flex items-center gap-2 text-realm-danger text-xs bg-realm-danger/10 border border-realm-danger/20 rounded px-3 py-2 mb-4">
+            <div className="flex items-center gap-2 text-realm-danger text-xs bg-realm-danger/10 border border-realm-danger/20 rounded-sm px-3 py-2 mb-4">
               <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
               {error}
             </div>
@@ -426,7 +426,7 @@ export default function CaravanManager() {
             <button
               onClick={() => createMutation.mutate()}
               disabled={createMutation.isPending || !selectedDestination}
-              className="w-full px-4 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full px-4 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {createMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -452,7 +452,7 @@ export default function CaravanManager() {
         <button
           onClick={() => { setView('create'); setError(''); setSelectedDestination(''); }}
           disabled={!currentTownId}
-          className="px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           New Caravan

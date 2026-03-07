@@ -189,17 +189,17 @@ function AbilityDetail({ ability }: { ability: SkillAbility }) {
 
       <div className="grid grid-cols-2 gap-2 mb-4">
         {ability.cooldown > 0 && (
-          <div className="flex items-center gap-1.5 text-xs bg-realm-bg-900 rounded px-3 py-2">
+          <div className="flex items-center gap-1.5 text-xs bg-realm-bg-900 rounded-sm px-3 py-2">
             <Clock className="w-3 h-3 text-realm-text-muted" />
             <span className="text-realm-text-secondary">{ability.cooldown} turn cooldown</span>
           </div>
         )}
 
-        <div className="flex items-center gap-1.5 text-xs bg-realm-bg-900 rounded px-3 py-2">
+        <div className="flex items-center gap-1.5 text-xs bg-realm-bg-900 rounded-sm px-3 py-2">
           <Zap className="w-3 h-3 text-realm-gold-400" />
           <span className="text-realm-text-secondary">Tier {ability.tier}</span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs bg-realm-bg-900 rounded px-3 py-2">
+        <div className="flex items-center gap-1.5 text-xs bg-realm-bg-900 rounded-sm px-3 py-2">
           <ChevronRight className="w-3 h-3 text-realm-text-muted" />
           <span className="text-realm-text-secondary">Lv. {ability.levelRequired} req.</span>
         </div>
@@ -211,7 +211,7 @@ function AbilityDetail({ ability }: { ability: SkillAbility }) {
           <h4 className="text-realm-text-muted text-[10px] uppercase tracking-wider mb-1.5 font-display">Effects</h4>
           <div className="flex flex-wrap gap-1.5">
             {Object.entries(ability.effects ?? {}).map(([k, v]) => (
-              <span key={k} className="text-[10px] bg-realm-bg-900 border border-realm-border rounded px-2 py-0.5 text-realm-text-secondary">
+              <span key={k} className="text-[10px] bg-realm-bg-900 border border-realm-border rounded-sm px-2 py-0.5 text-realm-text-secondary">
                 {k}: {String(v)}
               </span>
             ))}
@@ -265,7 +265,7 @@ function Tier0ChoiceSection({
           Level {group.level}
         </span>
         {hasAvailable && (
-          <span className="text-[10px] bg-realm-teal-500/20 text-realm-teal-300 px-2 py-0.5 rounded font-display">
+          <span className="text-[10px] bg-realm-teal-500/20 text-realm-teal-300 px-2 py-0.5 rounded-sm font-display">
             Choose One
           </span>
         )}
@@ -314,12 +314,12 @@ function Tier0ChoiceSection({
 
             <div className="flex flex-wrap gap-1">
               {Object.entries(ability.effects ?? {}).filter(([k]) => k !== 'type').map(([k, v]) => (
-                <span key={k} className="text-[9px] bg-realm-bg-900/50 border border-realm-border/30 rounded px-1.5 py-0.5 text-realm-text-muted">
+                <span key={k} className="text-[9px] bg-realm-bg-900/50 border border-realm-border/30 rounded-sm px-1.5 py-0.5 text-realm-text-muted">
                   {k}: {String(v)}
                 </span>
               ))}
               {ability.cooldown > 0 && (
-                <span className="text-[9px] bg-realm-bg-900/50 border border-realm-border/30 rounded px-1.5 py-0.5 text-realm-text-muted">
+                <span className="text-[9px] bg-realm-bg-900/50 border border-realm-border/30 rounded-sm px-1.5 py-0.5 text-realm-text-muted">
                   cd: {ability.cooldown}
                 </span>
               )}
@@ -385,14 +385,14 @@ function ConfirmChoiceModal({
         <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 py-2.5 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+            className="flex-1 py-2.5 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
             disabled={isPending}
-            className="flex-1 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
             Confirm
@@ -591,12 +591,12 @@ export default function SkillTreePage() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="bg-realm-bg-700 border border-realm-border rounded px-4 py-2 text-sm">
+              <div className="bg-realm-bg-700 border border-realm-border rounded-sm px-4 py-2 text-sm">
                 <span className="text-realm-text-muted">Level: </span>
                 <span className="text-realm-gold-400 font-display">{character.level}</span>
               </div>
               {character.unspentStatPoints > 0 && (
-                <div className="bg-realm-bg-700 border border-realm-gold-500/30 shadow-realm-glow rounded px-4 py-2 text-sm">
+                <div className="bg-realm-bg-700 border border-realm-gold-500/30 shadow-realm-glow rounded-sm px-4 py-2 text-sm">
                   <span className="text-realm-text-muted">Stat Points: </span>
                   <span className="text-realm-gold-400 font-display">{character.unspentStatPoints}</span>
                 </div>
@@ -629,7 +629,7 @@ export default function SkillTreePage() {
               <Zap className="w-5 h-5 text-realm-teal-300" />
               <h2 className="text-lg font-display text-realm-text-primary">Early Abilities</h2>
               {pendingTier0.length > 0 && (
-                <span className="text-[10px] bg-realm-teal-500/20 text-realm-teal-300 px-2 py-0.5 rounded font-display">
+                <span className="text-[10px] bg-realm-teal-500/20 text-realm-teal-300 px-2 py-0.5 rounded-sm font-display">
                   {pendingTier0.length} pending
                 </span>
               )}

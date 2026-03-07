@@ -229,11 +229,11 @@ export default function AdminEconomyPage() {
           {listingsLoading ? (
             <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden animate-pulse">
               <div className="border-b border-realm-border px-4 py-3 flex gap-4">
-                {Array.from({ length: 6 }).map((_, i) => (<div key={i} className="flex-1 h-3 bg-realm-bg-800 rounded" />))}
+                {Array.from({ length: 6 }).map((_, i) => (<div key={i} className="flex-1 h-3 bg-realm-bg-800 rounded-sm" />))}
               </div>
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="px-4 py-3 flex gap-4 border-b border-realm-border last:border-0">
-                  {Array.from({ length: 6 }).map((_, j) => (<div key={j} className="flex-1 h-3 bg-realm-bg-800 rounded" />))}
+                  {Array.from({ length: 6 }).map((_, j) => (<div key={j} className="flex-1 h-3 bg-realm-bg-800 rounded-sm" />))}
                 </div>
               ))}
             </div>
@@ -279,7 +279,7 @@ export default function AdminEconomyPage() {
                           <button
                             onClick={() => deleteMutation.mutate(listing.id)}
                             disabled={deleteMutation.isPending}
-                            className="p-1.5 text-blood-light/70 hover:text-blood-light border border-blood-dark/30 rounded hover:bg-blood-dark/10 transition-colors disabled:opacity-50"
+                            className="p-1.5 text-blood-light/70 hover:text-blood-light border border-blood-dark/30 rounded-sm hover:bg-blood-dark/10 transition-colors disabled:opacity-50"
                             title="Remove listing"
                           >
                             {deleteMutation.isPending ? (
@@ -300,7 +300,7 @@ export default function AdminEconomyPage() {
                   <button
                     disabled={listingsPage <= 1}
                     onClick={() => setListingsPage((p) => Math.max(1, p - 1))}
-                    className="p-2 rounded border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="p-2 rounded-sm border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
@@ -310,7 +310,7 @@ export default function AdminEconomyPage() {
                   <button
                     disabled={listingsPage >= listingsTotalPages}
                     onClick={() => setListingsPage((p) => Math.min(listingsTotalPages, p + 1))}
-                    className="p-2 rounded border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="p-2 rounded-sm border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
@@ -327,11 +327,11 @@ export default function AdminEconomyPage() {
           {txLoading ? (
             <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden animate-pulse">
               <div className="border-b border-realm-border px-4 py-3 flex gap-4">
-                {Array.from({ length: 6 }).map((_, i) => (<div key={i} className="flex-1 h-3 bg-realm-bg-800 rounded" />))}
+                {Array.from({ length: 6 }).map((_, i) => (<div key={i} className="flex-1 h-3 bg-realm-bg-800 rounded-sm" />))}
               </div>
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="px-4 py-3 flex gap-4 border-b border-realm-border last:border-0">
-                  {Array.from({ length: 6 }).map((_, j) => (<div key={j} className="flex-1 h-3 bg-realm-bg-800 rounded" />))}
+                  {Array.from({ length: 6 }).map((_, j) => (<div key={j} className="flex-1 h-3 bg-realm-bg-800 rounded-sm" />))}
                 </div>
               ))}
             </div>
@@ -383,7 +383,7 @@ export default function AdminEconomyPage() {
                   <button
                     disabled={txPage <= 1}
                     onClick={() => setTxPage((p) => Math.max(1, p - 1))}
-                    className="p-2 rounded border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="p-2 rounded-sm border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
@@ -393,7 +393,7 @@ export default function AdminEconomyPage() {
                   <button
                     disabled={txPage >= txTotalPages}
                     onClick={() => setTxPage((p) => Math.min(txTotalPages, p + 1))}
-                    className="p-2 rounded border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="p-2 rounded-sm border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
@@ -413,11 +413,11 @@ export default function AdminEconomyPage() {
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 space-y-3 animate-pulse">
                     <div className="flex items-center justify-between">
-                      <div className="w-2/5 h-5 bg-realm-bg-800 rounded" />
-                      <div className="w-16 h-4 bg-realm-bg-800 rounded" />
+                      <div className="w-2/5 h-5 bg-realm-bg-800 rounded-sm" />
+                      <div className="w-16 h-4 bg-realm-bg-800 rounded-sm" />
                     </div>
-                    <div className="w-full h-3 bg-realm-bg-800 rounded" />
-                    <div className="w-4/5 h-3 bg-realm-bg-800 rounded" />
+                    <div className="w-full h-3 bg-realm-bg-800 rounded-sm" />
+                    <div className="w-4/5 h-3 bg-realm-bg-800 rounded-sm" />
                   </div>
                 ))}
               </div>

@@ -55,7 +55,7 @@ export default function CombatActions({ isPlayerTurn, combatType, spells, items,
         <button
           onClick={() => { setSubmenu(null); onAction('attack'); }}
           disabled={disabled}
-          className="flex items-center gap-2 px-4 py-2.5 bg-realm-danger/20 border border-realm-danger/40 text-realm-danger font-display text-sm rounded
+          className="flex items-center gap-2 px-4 py-2.5 bg-realm-danger/20 border border-realm-danger/40 text-realm-danger font-display text-sm rounded-sm
             hover:bg-realm-danger/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <Swords className="w-4 h-4" />
@@ -67,7 +67,7 @@ export default function CombatActions({ isPlayerTurn, combatType, spells, items,
           <button
             onClick={() => setSubmenu(submenu === 'spells' ? null : 'spells')}
             disabled={disabled}
-            className={`flex items-center gap-2 px-4 py-2.5 border font-display text-sm rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed
+            className={`flex items-center gap-2 px-4 py-2.5 border font-display text-sm rounded-sm transition-colors disabled:opacity-30 disabled:cursor-not-allowed
               ${submenu === 'spells'
                 ? 'bg-realm-teal-400/20 border-realm-teal-300/50 text-realm-teal-300'
                 : 'bg-realm-teal-400/10 border-realm-teal-300/30 text-realm-teal-300 hover:bg-realm-teal-400/30'}`}
@@ -87,7 +87,7 @@ export default function CombatActions({ isPlayerTurn, combatType, spells, items,
                         key={spell.id}
                         onClick={() => { onAction('cast_spell', { spellId: spell.id }); setSubmenu(null); }}
                         disabled={isPending}
-                        className="w-full text-left px-3 py-2 rounded text-xs hover:bg-realm-bg-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="w-full text-left px-3 py-2 rounded-sm text-xs hover:bg-realm-bg-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         <span className="text-realm-text-primary font-semibold">{spell.name}</span>
                         <p className="text-realm-text-muted mt-0.5">{spell.description}</p>
@@ -104,7 +104,7 @@ export default function CombatActions({ isPlayerTurn, combatType, spells, items,
           <button
             onClick={() => setSubmenu(submenu === 'items' ? null : 'items')}
             disabled={disabled}
-            className={`flex items-center gap-2 px-4 py-2.5 border font-display text-sm rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed
+            className={`flex items-center gap-2 px-4 py-2.5 border font-display text-sm rounded-sm transition-colors disabled:opacity-30 disabled:cursor-not-allowed
               ${submenu === 'items'
                 ? 'bg-realm-success/20 border-realm-success/50 text-realm-success'
                 : 'bg-realm-success/10 border-realm-success/30 text-realm-success hover:bg-realm-success/30'}`}
@@ -124,7 +124,7 @@ export default function CombatActions({ isPlayerTurn, combatType, spells, items,
                       key={item.id}
                       onClick={() => { onAction('use_item', { itemId: item.id }); setSubmenu(null); }}
                       disabled={isPending}
-                      className="w-full text-left px-3 py-2 rounded text-xs hover:bg-realm-bg-700 transition-colors disabled:opacity-40"
+                      className="w-full text-left px-3 py-2 rounded-sm text-xs hover:bg-realm-bg-700 transition-colors disabled:opacity-40"
                     >
                       <div className="flex justify-between items-baseline">
                         <span className="text-realm-text-primary font-semibold">{item.name}</span>
@@ -143,7 +143,7 @@ export default function CombatActions({ isPlayerTurn, combatType, spells, items,
         <button
           onClick={() => { setSubmenu(null); onAction('defend'); }}
           disabled={disabled}
-          className="flex items-center gap-2 px-4 py-2.5 bg-realm-gold-400/10 border border-realm-gold-500/30 text-realm-gold-400 font-display text-sm rounded
+          className="flex items-center gap-2 px-4 py-2.5 bg-realm-gold-400/10 border border-realm-gold-500/30 text-realm-gold-400 font-display text-sm rounded-sm
             hover:bg-realm-gold-400/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <Shield className="w-4 h-4" />
@@ -155,7 +155,7 @@ export default function CombatActions({ isPlayerTurn, combatType, spells, items,
           <button
             onClick={() => { setSubmenu(null); onAction('flee'); }}
             disabled={disabled}
-            className="flex items-center gap-2 px-4 py-2.5 bg-realm-bg-800 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded
+            className="flex items-center gap-2 px-4 py-2.5 bg-realm-bg-800 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded-sm
               hover:bg-realm-bg-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <Footprints className="w-4 h-4" />

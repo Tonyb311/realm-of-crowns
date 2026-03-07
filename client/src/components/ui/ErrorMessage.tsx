@@ -62,7 +62,7 @@ export default function ErrorMessage({
       {onRetry && (
         <button
           onClick={onRetry}
-          className="inline-flex items-center gap-2 px-5 py-2 border border-realm-gold-500/50 text-realm-gold-400 font-display text-sm rounded hover:bg-realm-bg-600 transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2 border border-realm-gold-500/50 text-realm-gold-400 font-display text-sm rounded-sm hover:bg-realm-bg-600 transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
           Try Again

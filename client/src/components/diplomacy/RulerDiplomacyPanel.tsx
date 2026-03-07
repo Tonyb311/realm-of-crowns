@@ -267,7 +267,7 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
           </h4>
           <div className="space-y-2">
             {pendingForMe.map(p => (
-              <div key={p.id} className="flex items-center justify-between bg-realm-bg-900 rounded p-2">
+              <div key={p.id} className="flex items-center justify-between bg-realm-bg-900 rounded-sm p-2">
                 <div>
                   <span className="text-realm-text-secondary text-xs">
                     <span className="text-realm-gold-400 font-display">{p.senderName}</span>
@@ -280,14 +280,14 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
                   <button
                     onClick={() => respondTreaty.mutate({ proposalId: p.id, accept: true })}
                     disabled={respondTreaty.isPending}
-                    className="p-1 rounded bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors"
+                    className="p-1 rounded-sm bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors"
                   >
                     <Check className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => respondTreaty.mutate({ proposalId: p.id, accept: false })}
                     disabled={respondTreaty.isPending}
-                    className="p-1 rounded bg-realm-danger/15 text-realm-danger hover:bg-realm-danger/25 transition-colors"
+                    className="p-1 rounded-sm bg-realm-danger/15 text-realm-danger hover:bg-realm-danger/25 transition-colors"
                   >
                     <Ban className="w-3.5 h-3.5" />
                   </button>
@@ -307,7 +307,7 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
           </h4>
           <button
             onClick={() => setShowProposeForm(true)}
-            className="text-[10px] px-2 py-1 rounded bg-realm-gold-500/10 text-realm-gold-400 border border-realm-gold-500/30 hover:bg-realm-gold-500/20 transition-colors font-display"
+            className="text-[10px] px-2 py-1 rounded-sm bg-realm-gold-500/10 text-realm-gold-400 border border-realm-gold-500/30 hover:bg-realm-gold-500/20 transition-colors font-display"
           >
             Propose Treaty
           </button>
@@ -322,7 +322,7 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
             {myTreaties.map(t => {
               const partner = t.party1KingdomId === kingdomId ? t.party2Name : t.party1Name;
               return (
-                <div key={t.id} className="flex items-center justify-between bg-realm-bg-900 rounded p-2">
+                <div key={t.id} className="flex items-center justify-between bg-realm-bg-900 rounded-sm p-2">
                   <div className="text-xs text-realm-text-secondary">
                     <span className="text-emerald-400 font-display">{formatTreatyType(t.type)}</span>
                     {' with '}
@@ -331,7 +331,7 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
                   </div>
                   <button
                     onClick={() => setBreakTreatyId(t.id)}
-                    className="text-[10px] px-1.5 py-0.5 rounded text-realm-danger hover:bg-realm-danger/15 transition-colors"
+                    className="text-[10px] px-1.5 py-0.5 rounded-sm text-realm-danger hover:bg-realm-danger/15 transition-colors"
                   >
                     Break
                   </button>
@@ -351,7 +351,7 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
           </h4>
           <button
             onClick={() => setShowWarConfirm(true)}
-            className="text-[10px] px-2 py-1 rounded bg-realm-danger/10 text-realm-danger border border-realm-danger/30 hover:bg-realm-danger/20 transition-colors font-display"
+            className="text-[10px] px-2 py-1 rounded-sm bg-realm-danger/10 text-realm-danger border border-realm-danger/30 hover:bg-realm-danger/20 transition-colors font-display"
           >
             Declare War
           </button>
@@ -369,7 +369,7 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
               const myScore = isAttacker ? w.attackerScore : w.defenderScore;
               const theirScore = isAttacker ? w.defenderScore : w.attackerScore;
               return (
-                <div key={w.id} className="bg-realm-bg-900 rounded p-2">
+                <div key={w.id} className="bg-realm-bg-900 rounded-sm p-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-realm-text-secondary">
                       War vs <span className="text-realm-danger font-display">{enemy}</span>
@@ -377,7 +377,7 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
                     <button
                       onClick={() => negotiatePeace.mutate(w.id)}
                       disabled={negotiatePeace.isPending}
-                      className="text-[10px] px-1.5 py-0.5 rounded text-sky-400 hover:bg-sky-500/15 transition-colors font-display"
+                      className="text-[10px] px-1.5 py-0.5 rounded-sm text-sky-400 hover:bg-sky-500/15 transition-colors font-display"
                     >
                       Negotiate Peace
                     </button>
@@ -428,7 +428,7 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
                   <select
                     value={receiverKingdomId}
                     onChange={e => setReceiverKingdomId(e.target.value)}
-                    className="w-full bg-realm-bg-900 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500/50 outline-none"
+                    className="w-full bg-realm-bg-900 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500/50 outline-hidden"
                   >
                     <option value="">Select a kingdom...</option>
                     {otherKingdoms.map(k => (
@@ -442,7 +442,7 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
                   <select
                     value={treatyType}
                     onChange={e => setTreatyType(e.target.value)}
-                    className="w-full bg-realm-bg-900 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500/50 outline-none"
+                    className="w-full bg-realm-bg-900 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500/50 outline-hidden"
                   >
                     {TREATY_TYPES.map(t => (
                       <option key={t} value={t}>{formatTreatyType(t)}</option>
@@ -456,7 +456,7 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
                       type="checkbox"
                       checked={useIntermediary}
                       onChange={e => setUseIntermediary(e.target.checked)}
-                      className="rounded border-realm-border bg-realm-bg-900 text-realm-gold-500"
+                      className="rounded-sm border-realm-border bg-realm-bg-900 text-realm-gold-500"
                     />
                     <span className="text-realm-text-secondary text-xs">Use Changeling Intermediary</span>
                   </label>
@@ -468,7 +468,7 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
                         value={intermediaryId}
                         onChange={e => setIntermediaryId(e.target.value)}
                         placeholder="Changeling character ID"
-                        className="w-full bg-realm-bg-900 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500/50 outline-none"
+                        className="w-full bg-realm-bg-900 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500/50 outline-hidden"
                       />
                     </div>
                   )}
@@ -477,7 +477,7 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
                 <button
                   onClick={() => proposeTreaty.mutate()}
                   disabled={!receiverKingdomId || proposeTreaty.isPending}
-                  className="w-full py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {proposeTreaty.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -523,7 +523,7 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
                   <select
                     value={warTargetId}
                     onChange={e => setWarTargetId(e.target.value)}
-                    className="w-full bg-realm-bg-900 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-danger/50 outline-none"
+                    className="w-full bg-realm-bg-900 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-danger/50 outline-hidden"
                   >
                     <option value="">Select a kingdom...</option>
                     {otherKingdoms.map(k => (
@@ -539,21 +539,21 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
                     onChange={e => setWarReason(e.target.value)}
                     placeholder="State your reason for war..."
                     rows={3}
-                    className="w-full bg-realm-bg-900 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-danger/50 outline-none resize-none"
+                    className="w-full bg-realm-bg-900 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-danger/50 outline-hidden resize-none"
                   />
                 </div>
 
                 <div className="flex gap-2">
                   <button
                     onClick={() => setShowWarConfirm(false)}
-                    className="flex-1 py-2 bg-realm-bg-900 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors border border-realm-border"
+                    className="flex-1 py-2 bg-realm-bg-900 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors border border-realm-border"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={() => declareWar.mutate()}
                     disabled={!warTargetId || !warReason.trim() || declareWar.isPending}
-                    className="flex-1 py-2 bg-realm-danger text-realm-text-primary font-display text-sm rounded hover:bg-realm-danger/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="flex-1 py-2 bg-realm-danger text-realm-text-primary font-display text-sm rounded-sm hover:bg-realm-danger/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {declareWar.isPending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -596,14 +596,14 @@ export default function RulerDiplomacyPanel({ kingdomId, kingdoms }: RulerDiplom
               <div className="flex gap-2">
                 <button
                   onClick={() => setBreakTreatyId(null)}
-                  className="flex-1 py-2 bg-realm-bg-900 text-realm-text-secondary font-display text-xs rounded hover:bg-realm-bg-700 transition-colors border border-realm-border"
+                  className="flex-1 py-2 bg-realm-bg-900 text-realm-text-secondary font-display text-xs rounded-sm hover:bg-realm-bg-700 transition-colors border border-realm-border"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => breakTreaty.mutate(breakTreatyId)}
                   disabled={breakTreaty.isPending}
-                  className="flex-1 py-2 bg-realm-gold-500 text-realm-text-primary font-display text-xs rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+                  className="flex-1 py-2 bg-realm-gold-500 text-realm-text-primary font-display text-xs rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
                 >
                   {breakTreaty.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
                   Break Treaty

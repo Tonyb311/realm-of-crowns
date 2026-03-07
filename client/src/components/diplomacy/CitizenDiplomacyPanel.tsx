@@ -280,7 +280,7 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
           {myRelations.map(r => {
             const c = STATUS_COLORS[r.status] ?? STATUS_COLORS.NEUTRAL;
             return (
-              <div key={r.race} className={`${c.bg} rounded px-2 py-1.5 flex items-center justify-between`}>
+              <div key={r.race} className={`${c.bg} rounded-sm px-2 py-1.5 flex items-center justify-between`}>
                 <span className="text-realm-text-secondary text-[11px]">{formatRaceName(r.race)}</span>
                 <span className={`text-[10px] font-display ${c.text}`}>
                   {r.status.replace(/_/g, ' ')}
@@ -349,7 +349,7 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
           </h4>
           <button
             onClick={() => setShowPetitionForm(!showPetitionForm)}
-            className="text-[10px] px-2 py-1 rounded bg-realm-gold-500/10 text-realm-gold-400 border border-realm-gold-500/30 hover:bg-realm-gold-500/20 transition-colors font-display flex items-center gap-1"
+            className="text-[10px] px-2 py-1 rounded-sm bg-realm-gold-500/10 text-realm-gold-400 border border-realm-gold-500/30 hover:bg-realm-gold-500/20 transition-colors font-display flex items-center gap-1"
           >
             <PenLine className="w-3 h-3" />
             New Petition
@@ -361,26 +361,26 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
-            className="mb-3 bg-realm-bg-900 rounded p-3 space-y-2"
+            className="mb-3 bg-realm-bg-900 rounded-sm p-3 space-y-2"
           >
             <input
               type="text"
               value={petitionTitle}
               onChange={e => setPetitionTitle(e.target.value)}
               placeholder="Petition title"
-              className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500/50 outline-none"
+              className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500/50 outline-hidden"
             />
             <textarea
               value={petitionDesc}
               onChange={e => setPetitionDesc(e.target.value)}
               placeholder="Describe what you want to change..."
               rows={3}
-              className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500/50 outline-none resize-none"
+              className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500/50 outline-hidden resize-none"
             />
             <select
               value={petitionAction}
               onChange={e => setPetitionAction(e.target.value)}
-              className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500/50 outline-none"
+              className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500/50 outline-hidden"
             >
               {ACTION_TYPES.map(t => (
                 <option key={t} value={t}>{formatActionType(t)}</option>
@@ -389,7 +389,7 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
             <button
               onClick={() => createPetition.mutate()}
               disabled={!petitionTitle.trim() || createPetition.isPending}
-              className="w-full py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+              className="w-full py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
             >
               {createPetition.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <PenLine className="w-3 h-3" />}
               Submit Petition
@@ -405,7 +405,7 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
             {petitions.map(p => {
               const pct = Math.min(100, Math.round((p.signatureCount / Math.max(1, p.threshold)) * 100));
               return (
-                <div key={p.id} className="bg-realm-bg-900 rounded p-2">
+                <div key={p.id} className="bg-realm-bg-900 rounded-sm p-2">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-realm-text-primary text-xs font-display">{p.title}</span>
                     <span className="text-realm-text-muted text-[10px]">{formatActionType(p.actionType)}</span>
@@ -425,7 +425,7 @@ export default function CitizenDiplomacyPanel({ playerRace, kingdomId }: Citizen
                       <button
                         onClick={() => signPetition.mutate(p.id)}
                         disabled={signPetition.isPending}
-                        className="text-[10px] px-1.5 py-0.5 rounded bg-realm-gold-500/10 text-realm-gold-400 hover:bg-realm-gold-500/20 transition-colors flex items-center gap-0.5"
+                        className="text-[10px] px-1.5 py-0.5 rounded-sm bg-realm-gold-500/10 text-realm-gold-400 hover:bg-realm-gold-500/20 transition-colors flex items-center gap-0.5"
                       >
                         <Check className="w-3 h-3" />
                         Sign

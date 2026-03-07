@@ -77,7 +77,7 @@ export default function CodexPage() {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search the codex..."
-            className="w-full pl-9 pr-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary placeholder-realm-text-muted focus:border-realm-gold-500/50 focus:shadow-realm-glow focus:outline-none font-body text-sm transition-all duration-200"
+            className="w-full pl-9 pr-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary placeholder-realm-text-muted focus:border-realm-gold-500/50 focus:shadow-realm-glow focus:outline-hidden font-body text-sm transition-all duration-200"
           />
           {searchQuery && (
             <button

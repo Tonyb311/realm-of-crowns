@@ -92,7 +92,7 @@ function HUDWidget({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`bg-realm-bg-800/90 backdrop-blur-sm border rounded-lg shadow-lg transition-all ${
+      className={`bg-realm-bg-800/90 backdrop-blur-xs border rounded-lg shadow-lg transition-all ${
         pulse ? `border-${accentColor}-500/60 animate-pulse` : `border-${accentColor}-500/30`
       }`}
       style={{ minWidth: 180 }}
@@ -170,7 +170,7 @@ function ChangelingHUD() {
           <button
             onClick={() => revertMutation.mutate()}
             disabled={revertMutation.isPending}
-            className="w-full mt-1 px-2 py-1.5 text-[10px] font-display rounded border
+            className="w-full mt-1 px-2 py-1.5 text-[10px] font-display rounded-sm border
               border-realm-magic/40 text-realm-magic-light hover:bg-realm-magic/10 transition-colors
               disabled:opacity-40 disabled:cursor-not-allowed"
           >
@@ -246,7 +246,7 @@ function ForgebornHUD() {
           <button
             onClick={() => selfRepairMutation.mutate()}
             disabled={selfRepairMutation.isPending}
-            className="w-full px-2 py-1.5 text-[10px] font-display rounded border
+            className="w-full px-2 py-1.5 text-[10px] font-display rounded-sm border
               border-amber-500/40 text-amber-300 hover:bg-amber-900/30 transition-colors
               disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1"
           >
@@ -292,7 +292,7 @@ function NightborneHUD() {
           <span className="text-realm-text-primary capitalize">{data.currentTime}</span>
         </div>
         {data.inSunlight && (
-          <div className="flex items-center gap-1.5 text-[10px] text-realm-gold-400 bg-realm-gold-500/20 rounded px-2 py-1">
+          <div className="flex items-center gap-1.5 text-[10px] text-realm-gold-400 bg-realm-gold-500/20 rounded-sm px-2 py-1">
             <Sun className="w-3 h-3" />
             {data.penalty}
           </div>
@@ -374,7 +374,7 @@ function FaefolkHUD() {
           </span>
         </div>
         {data.heavyLoad && (
-          <div className="flex items-center gap-1.5 text-[10px] text-realm-gold-400 bg-realm-gold-500/20 rounded px-2 py-1">
+          <div className="flex items-center gap-1.5 text-[10px] text-realm-gold-400 bg-realm-gold-500/20 rounded-sm px-2 py-1">
             <AlertTriangle className="w-3 h-3" />
             Heavy load - flight impaired
           </div>

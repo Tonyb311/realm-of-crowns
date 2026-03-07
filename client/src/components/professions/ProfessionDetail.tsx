@@ -199,7 +199,7 @@ export default function ProfessionDetail({
                   {info.townTypeAffinity.map((t) => (
                     <span
                       key={t}
-                      className="px-2 py-0.5 bg-realm-bg-700 border border-realm-border rounded text-xs text-realm-text-secondary capitalize"
+                      className="px-2 py-0.5 bg-realm-bg-700 border border-realm-border rounded-sm text-xs text-realm-text-secondary capitalize"
                     >
                       {t}
                     </span>
@@ -236,7 +236,7 @@ export default function ProfessionDetail({
                   return (
                     <div
                       key={tierDef.tier}
-                      className={`p-3 rounded border ${tc.bg} ${tc.border} ${isCurrent ? 'ring-1 ring-realm-gold-400/50' : ''}`}
+                      className={`p-3 rounded-sm border ${tc.bg} ${tc.border} ${isCurrent ? 'ring-1 ring-realm-gold-400/50' : ''}`}
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className={`text-xs font-display ${tc.text}`}>
@@ -268,7 +268,7 @@ export default function ProfessionDetail({
               {isAvailable && onLearn && (
                 <button
                   onClick={onLearn}
-                  className="flex-1 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
+                  className="flex-1 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors"
                 >
                   Learn This Profession
                 </button>
@@ -276,14 +276,14 @@ export default function ProfessionDetail({
               {isLearned && onAbandon && (
                 <button
                   onClick={onAbandon}
-                  className="flex-1 py-2.5 border border-realm-danger/40 text-realm-danger font-display text-sm rounded hover:bg-realm-danger/10 transition-colors"
+                  className="flex-1 py-2.5 border border-realm-danger/40 text-realm-danger font-display text-sm rounded-sm hover:bg-realm-danger/10 transition-colors"
                 >
                   Abandon Profession
                 </button>
               )}
               <button
                 onClick={onClose}
-                className="px-6 py-2.5 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                className="px-6 py-2.5 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
               >
                 Close
               </button>

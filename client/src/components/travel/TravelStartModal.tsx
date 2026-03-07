@@ -120,7 +120,7 @@ function RouteCard({ route, onTravelSolo, onFormGroup, isTraveling, actionUsed }
               <span className="text-xs text-realm-text-secondary">{route.destinationTownName}</span>
             </div>
           </div>
-          <span className={`text-[10px] px-2 py-0.5 rounded border ${getDifficultyStyle(route.difficulty)}`}>
+          <span className={`text-[10px] px-2 py-0.5 rounded-sm border ${getDifficultyStyle(route.difficulty)}`}>
             {route.difficulty}
           </span>
         </div>
@@ -131,7 +131,7 @@ function RouteCard({ route, onTravelSolo, onFormGroup, isTraveling, actionUsed }
             <Footprints className="w-3 h-3 text-realm-text-muted" />
             <span className="text-xs text-realm-text-secondary">~{route.nodeCount} day{route.nodeCount !== 1 ? 's' : ''} journey</span>
           </div>
-          <span className="text-[10px] px-2 py-0.5 rounded bg-realm-border/40 text-realm-text-muted capitalize">
+          <span className="text-[10px] px-2 py-0.5 rounded-sm bg-realm-border/40 text-realm-text-muted capitalize">
             {(route.terrain || 'mixed').replace(/_/g, ' ')}
           </span>
           <div className="flex items-center gap-1">
@@ -171,7 +171,7 @@ function RouteCard({ route, onTravelSolo, onFormGroup, isTraveling, actionUsed }
                 {(route.nodes || []).map((node, i) => (
                   <div
                     key={node.id}
-                    className="flex items-center gap-2 py-1.5 px-2 bg-realm-bg-900/50 rounded text-xs"
+                    className="flex items-center gap-2 py-1.5 px-2 bg-realm-bg-900/50 rounded-sm text-xs"
                   >
                     <span className="text-realm-text-muted w-4 text-center text-[10px]">{i + 1}</span>
                     <span className="text-realm-text-secondary flex-1">{node.name}</span>
@@ -289,7 +289,7 @@ export default function TravelStartModal({ isOpen, onClose, destinationTownId }:
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/70 backdrop-blur-xs"
         onClick={onClose}
       />
 

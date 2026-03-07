@@ -183,14 +183,14 @@ function PvpChallengePanel({
               <button
                 onClick={() => onAccept(ch.sessionId)}
                 disabled={acceptPending}
-                className="px-4 py-1.5 bg-realm-gold-400 text-realm-bg-900 font-display text-xs rounded hover:bg-realm-gold-300 transition-colors disabled:opacity-50"
+                className="px-4 py-1.5 bg-realm-gold-400 text-realm-bg-900 font-display text-xs rounded-sm hover:bg-realm-gold-300 transition-colors disabled:opacity-50"
               >
                 Accept
               </button>
               <button
                 onClick={() => onDecline(ch.sessionId)}
                 disabled={declinePending}
-                className="px-4 py-1.5 border border-realm-danger/40 text-realm-danger font-display text-xs rounded hover:bg-realm-danger/20 transition-colors disabled:opacity-50"
+                className="px-4 py-1.5 border border-realm-danger/40 text-realm-danger font-display text-xs rounded-sm hover:bg-realm-danger/20 transition-colors disabled:opacity-50"
               >
                 Decline
               </button>
@@ -291,7 +291,7 @@ function ChallengeModal({
           <div>
             <label className="text-realm-text-muted text-xs mb-1 block">Search Player</label>
             {targetName ? (
-              <div className="flex items-center justify-between px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm">
+              <div className="flex items-center justify-between px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm">
                 <span>{targetName}</span>
                 <button
                   onClick={() => { setTargetId(''); setTargetName(''); }}
@@ -318,13 +318,13 @@ function ChallengeModal({
               onChange={(e) => setWager(e.target.value)}
               placeholder="0"
               min="0"
-              className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-none"
+              className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-hidden"
             />
           </div>
         </div>
 
         {error && (
-          <div className="mt-3 p-2 bg-realm-danger/20 border border-realm-danger/50 rounded text-realm-danger text-xs flex items-center gap-2">
+          <div className="mt-3 p-2 bg-realm-danger/20 border border-realm-danger/50 rounded-sm text-realm-danger text-xs flex items-center gap-2">
             <AlertCircle className="w-3 h-3 flex-shrink-0" />
             {error}
           </div>
@@ -333,14 +333,14 @@ function ChallengeModal({
         <div className="flex gap-3 mt-6">
           <button
             onClick={onClose}
-            className="flex-1 py-2 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+            className="flex-1 py-2 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={() => onChallenge(targetId, wager ? parseInt(wager, 10) : undefined)}
             disabled={isPending || !targetId.trim()}
-            className="flex-1 py-2 bg-realm-gold-400 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 py-2 bg-realm-gold-400 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isPending ? 'Sending...' : 'Challenge'}
           </button>
@@ -627,7 +627,7 @@ export default function CombatPage() {
             </div>
             <div className="flex items-center gap-3">
               {activeCombat?.wager != null && activeCombat.wager > 0 && (
-                <div className="bg-realm-bg-700 border border-realm-gold-500/30 rounded px-3 py-1.5 text-xs">
+                <div className="bg-realm-bg-700 border border-realm-gold-500/30 rounded-sm px-3 py-1.5 text-xs">
                   <span className="text-realm-text-muted">Wager: </span>
                   <span className="text-realm-gold-400 font-display">{activeCombat.wager} gold</span>
                 </div>
@@ -785,7 +785,7 @@ export default function CombatPage() {
 
                     {/* Error display */}
                     {(pveActionMutation.isError || pvpActionMutation.isError) && (
-                      <div className="p-3 bg-realm-danger/20 border border-realm-danger/50 rounded text-realm-danger text-sm flex items-center gap-2">
+                      <div className="p-3 bg-realm-danger/20 border border-realm-danger/50 rounded-sm text-realm-danger text-sm flex items-center gap-2">
                         <AlertCircle className="w-4 h-4 flex-shrink-0" />
                         Action failed. Please try again.
                       </div>

@@ -127,14 +127,14 @@ function RecipeRow({ recipe }: { recipe: RecipeData }) {
   const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
 
   return (
-    <div className="bg-realm-bg-800 border border-realm-border rounded p-3">
+    <div className="bg-realm-bg-800 border border-realm-border rounded-sm p-3">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <span className="font-display text-sm text-realm-text-primary">{recipe.name}</span>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-realm-text-muted">
             Lvl {recipe.levelRequired ?? '?'}
           </span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-realm-bg-700 text-realm-text-muted border border-realm-border">
+          <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-realm-bg-700 text-realm-text-muted border border-realm-border">
             {TIER_LABEL[recipe.tier] || recipe.tier}
           </span>
         </div>
@@ -197,7 +197,7 @@ function TierUnlockSection({
           return (
             <div
               key={tier}
-              className={`bg-realm-bg-800 border rounded p-2 ${
+              className={`bg-realm-bg-800 border rounded-sm p-2 ${
                 isComingSoon ? 'border-realm-border/50 opacity-60' : 'border-realm-border'
               }`}
             >
@@ -455,7 +455,7 @@ export default function CodexProfessions({ searchQuery }: CodexProfessionsProps)
                         {profession.name}
                       </h3>
                       <span
-                        className={`text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm border inline-block ${CATEGORY_BG_COLORS[profession.category]}`}
+                        className={`text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-xs border inline-block ${CATEGORY_BG_COLORS[profession.category]}`}
                       >
                         {profession.category}
                       </span>

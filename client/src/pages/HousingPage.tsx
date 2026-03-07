@@ -181,7 +181,7 @@ export default function HousingPage() {
                 <MapPin className="w-3.5 h-3.5" />
                 {homeTownName || 'Loading...'}
                 {isHome && (
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-realm-success/10 border border-realm-success/30 text-realm-success ml-1">
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-realm-success/10 border border-realm-success/30 text-realm-success ml-1">
                     You are here
                   </span>
                 )}
@@ -380,7 +380,7 @@ function MyHomeTab({ house, isLoading, isHome, homeTownName, onViewHouse }: MyHo
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="font-display text-lg text-realm-gold-400">{house.name}</h3>
-              <span className="text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-realm-gold-500/20 text-realm-gold-400">
+              <span className="text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded-sm bg-realm-gold-500/20 text-realm-gold-400">
                 Tier {house.tier}
               </span>
             </div>
@@ -388,7 +388,7 @@ function MyHomeTab({ house, isLoading, isHome, homeTownName, onViewHouse }: MyHo
               <MapPin className="w-3 h-3" />
               {house.townName}
               {isHome && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-realm-success/10 border border-realm-success/30 text-realm-success ml-1">
+                <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-realm-success/10 border border-realm-success/30 text-realm-success ml-1">
                   Here
                 </span>
               )}
@@ -444,7 +444,7 @@ function MyPropertiesTab({ buildings, isLoading, onBuildingClick, onBuildNew, ha
         {hasTown && (
           <button
             onClick={onBuildNew}
-            className="px-6 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
+            className="px-6 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors"
           >
             Build Your First Property
           </button>

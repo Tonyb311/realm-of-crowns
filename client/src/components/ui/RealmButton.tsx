@@ -32,7 +32,7 @@ export function RealmButton({
   return (
     <button
       className={[
-        'font-display uppercase tracking-wider transition-all duration-200 rounded',
+        'font-display uppercase tracking-wider transition-all duration-200 rounded-sm',
         'hover:scale-[1.02]',
         'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100',
         variantClasses[variant],

@@ -198,7 +198,7 @@ function CombatContent() {
         {['Poisoned', 'Stunned', 'Blessed', 'Burning', 'Frozen'].map((effect) => (
           <span
             key={effect}
-            className="inline-block px-2.5 py-1 rounded text-xs font-display bg-realm-bg-800 border border-realm-border text-realm-text-primary"
+            className="inline-block px-2.5 py-1 rounded-sm text-xs font-display bg-realm-bg-800 border border-realm-border text-realm-text-primary"
           >
             {effect}
           </span>
@@ -364,7 +364,7 @@ function CraftingContent() {
         ].map((tier, i) => (
           <span
             key={tier}
-            className={`inline-block px-2.5 py-1 rounded text-xs font-display border ${
+            className={`inline-block px-2.5 py-1 rounded-sm text-xs font-display border ${
               i < 2
                 ? 'bg-realm-bg-800 border-realm-border text-realm-text-secondary'
                 : i < 4
@@ -381,7 +381,7 @@ function CraftingContent() {
       <p>
         Every crafted item undergoes a <Highlight>quality roll</Highlight>:
       </p>
-      <div className="bg-realm-bg-800 border border-realm-border rounded p-3 my-2 font-mono text-xs text-realm-teal-300">
+      <div className="bg-realm-bg-800 border border-realm-border rounded-sm p-3 my-2 font-mono text-xs text-realm-teal-300">
         d20 + (professionLevel / 5) + toolBonus + workshopBonus + racialBonus
       </div>
       <p>The roll determines which quality tier the finished item achieves:</p>
@@ -396,7 +396,7 @@ function CraftingContent() {
         ].map((tier) => (
           <span
             key={tier.name}
-            className={`inline-block px-2.5 py-1 rounded text-xs font-display bg-realm-bg-800 border ${tier.color}`}
+            className={`inline-block px-2.5 py-1 rounded-sm text-xs font-display bg-realm-bg-800 border ${tier.color}`}
           >
             {tier.name}
           </span>
@@ -479,7 +479,7 @@ function LevelingContent() {
       <p>
         The XP required to reach the next level follows this formula:
       </p>
-      <div className="bg-realm-bg-800 border border-realm-border rounded p-3 my-2 font-mono text-xs text-realm-teal-300">
+      <div className="bg-realm-bg-800 border border-realm-border rounded-sm p-3 my-2 font-mono text-xs text-realm-teal-300">
         XP per level = floor(10 x level^1.15) + 30
       </div>
       <BulletList
@@ -648,7 +648,7 @@ function PoliticsContent() {
             {i > 0 && (
               <ChevronRight className="w-4 h-4 text-realm-text-muted flex-shrink-0" />
             )}
-            <span className="inline-block px-3 py-1.5 rounded text-xs font-display bg-realm-bg-800 border border-realm-gold-400/30 text-realm-gold-400">
+            <span className="inline-block px-3 py-1.5 rounded-sm text-xs font-display bg-realm-bg-800 border border-realm-gold-400/30 text-realm-gold-400">
               {step}
             </span>
           </div>

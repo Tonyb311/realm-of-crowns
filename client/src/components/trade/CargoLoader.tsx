@@ -132,7 +132,7 @@ export default function CargoLoader({
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 text-realm-danger text-xs bg-realm-danger/10 border border-realm-danger/20 rounded px-3 py-2">
+        <div className="flex items-center gap-2 text-realm-danger text-xs bg-realm-danger/10 border border-realm-danger/20 rounded-sm px-3 py-2">
           <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
           {error}
         </div>
@@ -153,7 +153,7 @@ export default function CargoLoader({
           ) : (
             <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
               {inventory.map(item => (
-                <div key={item.id} className="flex items-center gap-2 bg-realm-bg-800 border border-realm-border rounded p-2">
+                <div key={item.id} className="flex items-center gap-2 bg-realm-bg-800 border border-realm-border rounded-sm p-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-realm-text-primary text-xs truncate">{item.name}</p>
                     <p className="text-realm-text-muted/60 text-[10px]">
@@ -169,12 +169,12 @@ export default function CargoLoader({
                       ...prev,
                       [item.itemId]: Math.max(1, Math.min(item.quantity, parseInt(e.target.value) || 1)),
                     }))}
-                    className="w-12 text-center bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-xs py-1"
+                    className="w-12 text-center bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-xs py-1"
                   />
                   <button
                     onClick={() => handleLoad(item.itemId)}
                     disabled={isLoading || slotsRemaining <= 0}
-                    className="p-1.5 bg-realm-gold-500/20 text-realm-gold-400 rounded hover:bg-realm-gold-500/30 transition-colors disabled:opacity-30"
+                    className="p-1.5 bg-realm-gold-500/20 text-realm-gold-400 rounded-sm hover:bg-realm-gold-500/30 transition-colors disabled:opacity-30"
                     title="Load into caravan"
                   >
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -198,7 +198,7 @@ export default function CargoLoader({
           ) : (
             <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
               {currentCargo.map(item => (
-                <div key={item.itemId} className="flex items-center gap-2 bg-realm-bg-800 border border-realm-border rounded p-2">
+                <div key={item.itemId} className="flex items-center gap-2 bg-realm-bg-800 border border-realm-border rounded-sm p-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-realm-text-primary text-xs truncate">{item.itemName}</p>
                     <p className="text-realm-text-muted/60 text-[10px]">
@@ -215,12 +215,12 @@ export default function CargoLoader({
                       ...prev,
                       [item.itemId]: Math.max(1, Math.min(item.quantity, parseInt(e.target.value) || 1)),
                     }))}
-                    className="w-12 text-center bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-xs py-1"
+                    className="w-12 text-center bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-xs py-1"
                   />
                   <button
                     onClick={() => handleUnload(item.itemId)}
                     disabled={isLoading}
-                    className="p-1.5 bg-realm-danger/20 text-realm-danger rounded hover:bg-realm-danger/30 transition-colors disabled:opacity-30"
+                    className="p-1.5 bg-realm-danger/20 text-realm-danger rounded-sm hover:bg-realm-danger/30 transition-colors disabled:opacity-30"
                     title="Unload from caravan"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" />

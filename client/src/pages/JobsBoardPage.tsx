@@ -56,7 +56,7 @@ const TIER_COLORS: Record<number, string> = {
 function TierBadge({ tier }: { tier: number }) {
   const colorClass = TIER_COLORS[tier] ?? 'text-realm-text-muted border-realm-border';
   return (
-    <span className={`text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded border ${colorClass}`}>
+    <span className={`text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded-sm border ${colorClass}`}>
       T{tier}
     </span>
   );
@@ -205,8 +205,8 @@ export default function JobsBoardPage() {
 
         {isLoading ? (
           <div className="space-y-3">
-            <div className="h-20 bg-realm-bg-800 rounded animate-pulse" />
-            <div className="h-20 bg-realm-bg-800 rounded animate-pulse" />
+            <div className="h-20 bg-realm-bg-800 rounded-sm animate-pulse" />
+            <div className="h-20 bg-realm-bg-800 rounded-sm animate-pulse" />
           </div>
         ) : error ? (
           <p className="text-xs text-realm-danger">Failed to load job listings.</p>

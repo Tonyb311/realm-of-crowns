@@ -163,18 +163,18 @@ function WeaponStats({ stats }: { stats: Record<string, unknown> }) {
           <span className="text-realm-text-muted">Damage:</span>
           <span className="text-realm-text-primary font-semibold">{dmg}</span>
           {dmgType && (
-            <span className={`px-1.5 py-0.5 rounded text-[10px] border ${DAMAGE_TYPE_COLORS[dmgType] ?? 'bg-realm-bg-600 text-realm-text-secondary border-realm-border'}`}>
+            <span className={`px-1.5 py-0.5 rounded-sm text-[10px] border ${DAMAGE_TYPE_COLORS[dmgType] ?? 'bg-realm-bg-600 text-realm-text-secondary border-realm-border'}`}>
               {dmgType}
             </span>
           )}
         </div>
       )}
       <div className="flex flex-wrap gap-2">
-        <span className={`px-1.5 py-0.5 rounded text-[10px] border ${twoHanded ? 'bg-realm-bg-600 text-realm-text-secondary border-realm-border' : 'bg-realm-bg-600 text-realm-text-muted border-realm-border'}`}>
+        <span className={`px-1.5 py-0.5 rounded-sm text-[10px] border ${twoHanded ? 'bg-realm-bg-600 text-realm-text-secondary border-realm-border' : 'bg-realm-bg-600 text-realm-text-muted border-realm-border'}`}>
           {twoHanded ? 'Two-Handed' : 'One-Handed'}
         </span>
         {range != null && (
-          <span className="px-1.5 py-0.5 rounded text-[10px] border bg-realm-bg-600 text-realm-text-secondary border-realm-border">
+          <span className="px-1.5 py-0.5 rounded-sm text-[10px] border bg-realm-bg-600 text-realm-text-secondary border-realm-border">
             Range: {range}
           </span>
         )}
@@ -371,7 +371,7 @@ function ItemStatsBlock({ item }: { item: ItemTemplate }) {
   if (!content) return null;
 
   return (
-    <div className={`bg-realm-bg-900/30 rounded px-3 py-2 border-l-2 ${borderColor}`}>
+    <div className={`bg-realm-bg-900/30 rounded-sm px-3 py-2 border-l-2 ${borderColor}`}>
       {content}
     </div>
   );
@@ -496,7 +496,7 @@ export default function CodexItems({ searchQuery }: CodexItemsProps) {
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setActiveType('All')}
-          className={`px-3 py-1.5 rounded text-sm font-body transition-colors ${
+          className={`px-3 py-1.5 rounded-sm text-sm font-body transition-colors ${
             activeType === 'All'
               ? 'bg-realm-gold-400/20 text-realm-gold-400 border border-realm-gold-400/40'
               : 'bg-realm-bg-700 text-realm-text-secondary border border-realm-border hover:border-realm-border-strong hover:text-realm-text-primary'
@@ -511,7 +511,7 @@ export default function CodexItems({ searchQuery }: CodexItemsProps) {
             <button
               key={type}
               onClick={() => setActiveType(type)}
-              className={`px-3 py-1.5 rounded text-sm font-body transition-colors ${
+              className={`px-3 py-1.5 rounded-sm text-sm font-body transition-colors ${
                 activeType === type
                   ? 'bg-realm-gold-400/20 text-realm-gold-400 border border-realm-gold-400/40'
                   : 'bg-realm-bg-700 text-realm-text-secondary border border-realm-border hover:border-realm-border-strong hover:text-realm-text-primary'
@@ -634,7 +634,7 @@ export default function CodexItems({ searchQuery }: CodexItemsProps) {
                                 {producedBy.map((ref, i) => (
                                   <div
                                     key={i}
-                                    className="flex items-center gap-2 bg-realm-bg-800 rounded px-3 py-1.5"
+                                    className="flex items-center gap-2 bg-realm-bg-800 rounded-sm px-3 py-1.5"
                                   >
                                     <span className="text-sm text-realm-text-primary font-body">
                                       {ref.name}
@@ -662,7 +662,7 @@ export default function CodexItems({ searchQuery }: CodexItemsProps) {
                                 {usedIn.map((ref, i) => (
                                   <div
                                     key={i}
-                                    className="flex items-center gap-2 bg-realm-bg-800 rounded px-3 py-1.5"
+                                    className="flex items-center gap-2 bg-realm-bg-800 rounded-sm px-3 py-1.5"
                                   >
                                     <span className="text-sm text-realm-text-primary font-body">
                                       {ref.name}

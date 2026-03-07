@@ -1,6 +1,95 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  /* === Legacy colors (admin pages still use blood) === */
+  --color-blood: #8B0000;
+  --color-blood-light: #B22222;
+  --color-blood-dark: #5C0000;
+
+  /* === Arcane design system colors === */
+  /* Primary backgrounds */
+  --color-realm-bg-900: #07040F;
+  --color-realm-bg-800: #0D0618;
+  --color-realm-bg-700: #130B22;
+  --color-realm-bg-600: #1A0F2E;
+  --color-realm-bg-500: #251840;
+
+  /* Gold accent system */
+  --color-realm-gold-100: #FFF3D4;
+  --color-realm-gold-200: #F5E0A0;
+  --color-realm-gold-300: #F5C542;
+  --color-realm-gold-400: #D4A843;
+  --color-realm-gold-500: #C9952B;
+  --color-realm-gold-600: #8B6914;
+  --color-realm-gold-700: #6B4F10;
+
+  /* Bronze/copper secondary */
+  --color-realm-bronze-300: #D4956B;
+  --color-realm-bronze-400: #B87333;
+  --color-realm-bronze-500: #8B5A2B;
+  --color-realm-bronze-600: #6B4226;
+
+  /* Teal secondary */
+  --color-realm-teal-300: #4D8FA8;
+  --color-realm-teal-400: #2D5F7C;
+  --color-realm-teal-500: #1B3A4B;
+  --color-realm-teal-600: #142D3B;
+
+  /* Purple accent (magic/rare) */
+  --color-realm-purple-300: #A855C7;
+  --color-realm-purple-400: #7B2D8E;
+  --color-realm-purple-500: #4A1942;
+
+  /* Text colors */
+  --color-realm-text-primary: #E8DCC8;
+  --color-realm-text-secondary: #B0A48E;
+  --color-realm-text-muted: #6B6358;
+  --color-realm-text-gold: #D4A843;
+
+  /* Status colors */
+  --color-realm-hp: #C44536;
+  --color-realm-hp-bg: #3D1515;
+  --color-realm-success: #5A8F6E;
+  --color-realm-danger: #8B2E2E;
+  --color-realm-danger-light: #B22222;
+  --color-realm-warning: #C9952B;
+
+  /* Semantic effect colors */
+  --color-realm-damage: #EF4444;
+  --color-realm-damage-light: #F87171;
+  --color-realm-damage-muted: #FCA5A5;
+  --color-realm-heal: #4ADE80;
+  --color-realm-heal-light: #86EFAC;
+  --color-realm-magic: #C084FC;
+  --color-realm-magic-light: #D8B4FE;
+  --color-realm-info: #60A5FA;
+  --color-realm-info-light: #93C5FD;
+  --color-realm-caution: #FBBF24;
+  --color-realm-caution-light: #FDE047;
+  --color-realm-neutral: #9CA3AF;
+  --color-realm-neutral-light: #D1D5DB;
+  --color-realm-neutral-dark: #6B7280;
+
+  /* Border colors */
+  --color-realm-border: rgba(212, 168, 67, 0.15);
+  --color-realm-border-strong: rgba(212, 168, 67, 0.3);
+
+  /* Fonts */
+  --font-display: 'Cinzel', serif;
+  --font-body: 'Inter', sans-serif;
+  --font-accent: 'Cinzel', serif;
+  --font-mono: 'Fira Code', monospace;
+
+  /* Box Shadows */
+  --shadow-realm-glow: 0 0 15px rgba(212, 168, 67, 0.15);
+  --shadow-realm-glow-strong: 0 0 25px rgba(212, 168, 67, 0.3);
+  --shadow-realm-inner: inset 0 1px 0 rgba(212, 168, 67, 0.1);
+  --shadow-realm-panel: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(212, 168, 67, 0.08);
+
+  /* Background Images */
+  --bg-image-realm-vignette: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.4) 100%);
+  --bg-image-realm-panel-gradient: linear-gradient(180deg, rgba(212,168,67,0.05) 0%, transparent 30%);
+}
 
 @layer base {
   body {
@@ -58,18 +147,16 @@
   }
 }
 
-@layer utilities {
-  .animate-float-up {
-    animation: floatUp 1.5s ease-out forwards;
-  }
+@utility animate-float-up {
+  animation: floatUp 1.5s ease-out forwards;
+}
 
-  .safe-area-pb {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
+@utility safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
 
-  .animate-pulse-subtle {
-    animation: pulseSubtle 3s ease-in-out infinite;
-  }
+@utility animate-pulse-subtle {
+  animation: pulseSubtle 3s ease-in-out infinite;
 }
 
 @keyframes floatUp {

@@ -31,19 +31,19 @@ export default function LevelUpCelebration({ data, onDismiss }: LevelUpCelebrati
 
         <div className="space-y-2 mb-6">
           {data.statPoints > 0 && (
-            <div className="flex justify-between text-sm bg-realm-bg-900 rounded px-4 py-2">
+            <div className="flex justify-between text-sm bg-realm-bg-900 rounded-sm px-4 py-2">
               <span className="text-realm-text-muted">Stat Points</span>
               <span className="text-realm-success font-display">+{data.statPoints}</span>
             </div>
           )}
           {data.abilitiesGranted && data.abilitiesGranted.length > 0 && (
-            <div className="flex justify-between text-sm bg-realm-bg-900 rounded px-4 py-2">
+            <div className="flex justify-between text-sm bg-realm-bg-900 rounded-sm px-4 py-2">
               <span className="text-realm-text-muted">New Abilities</span>
               <span className="text-realm-teal-300 font-display">+{data.abilitiesGranted.length}</span>
             </div>
           )}
           {data.maxHealthGain > 0 && (
-            <div className="flex justify-between text-sm bg-realm-bg-900 rounded px-4 py-2">
+            <div className="flex justify-between text-sm bg-realm-bg-900 rounded-sm px-4 py-2">
               <span className="text-realm-text-muted">Max HP</span>
               <span className="text-realm-danger font-display">+{data.maxHealthGain}</span>
             </div>
@@ -51,7 +51,7 @@ export default function LevelUpCelebration({ data, onDismiss }: LevelUpCelebrati
         </div>
 
         {data.tier0Pending && data.tier0Pending > 0 && (
-          <div className="mb-4 px-4 py-2 bg-realm-teal-500/10 border border-realm-teal-500/30 rounded text-sm text-realm-teal-300">
+          <div className="mb-4 px-4 py-2 bg-realm-teal-500/10 border border-realm-teal-500/30 rounded-sm text-sm text-realm-teal-300">
             {data.tier0Pending} ability {data.tier0Pending === 1 ? 'choice' : 'choices'} available!
           </div>
         )}
@@ -59,21 +59,21 @@ export default function LevelUpCelebration({ data, onDismiss }: LevelUpCelebrati
         <div className="flex gap-3">
           <button
             onClick={onDismiss}
-            className="flex-1 py-2.5 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+            className="flex-1 py-2.5 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
           >
             Continue
           </button>
           {data.tier0Pending && data.tier0Pending > 0 ? (
             <button
               onClick={() => { onDismiss(); navigate('/skills'); }}
-              className="flex-1 py-2.5 bg-realm-teal-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-teal-400 transition-colors"
+              className="flex-1 py-2.5 bg-realm-teal-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-teal-400 transition-colors"
             >
               Choose Abilities
             </button>
           ) : (
             <button
               onClick={() => { onDismiss(); navigate('/skills'); }}
-              className="flex-1 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
+              className="flex-1 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors"
             >
               Allocate Stats
             </button>

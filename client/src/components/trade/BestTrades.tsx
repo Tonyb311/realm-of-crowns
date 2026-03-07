@@ -121,14 +121,14 @@ export default function BestTrades({ onStartTrade }: BestTradesProps) {
 
             {/* Right: profit badge + start trade button */}
             <div className="flex flex-col items-end gap-2 flex-shrink-0">
-              <div className="flex items-center gap-1 px-2 py-1 bg-realm-success/10 border border-realm-success/20 rounded text-realm-success text-xs font-display">
+              <div className="flex items-center gap-1 px-2 py-1 bg-realm-success/10 border border-realm-success/20 rounded-sm text-realm-success text-xs font-display">
                 <Coins className="w-3 h-3" />
                 +{route.estimatedProfit}g
               </div>
               {onStartTrade && (
                 <button
                   onClick={() => onStartTrade(route.buyTown.id, route.sellTown.id)}
-                  className="flex items-center gap-1 px-2.5 py-1 bg-realm-gold-500/15 text-realm-gold-400 text-[10px] font-display rounded hover:bg-realm-gold-500/25 transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-1 bg-realm-gold-500/15 text-realm-gold-400 text-[10px] font-display rounded-sm hover:bg-realm-gold-500/25 transition-colors"
                 >
                   <Truck className="w-3 h-3" />
                   Start Trade

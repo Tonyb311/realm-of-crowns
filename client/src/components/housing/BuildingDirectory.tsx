@@ -79,7 +79,7 @@ export default function BuildingDirectory({ townId, onSelectBuilding }: Building
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="appearance-none bg-realm-bg-700 border border-realm-border rounded px-3 py-1.5 text-sm text-realm-text-primary pr-8 focus:border-realm-gold-500 focus:outline-none"
+            className="appearance-none bg-realm-bg-700 border border-realm-border rounded-sm px-3 py-1.5 text-sm text-realm-text-primary pr-8 focus:border-realm-gold-500 focus:outline-hidden"
           >
             <option value="ALL">All Types</option>
             {uniqueTypes.map(t => (
@@ -95,7 +95,7 @@ export default function BuildingDirectory({ townId, onSelectBuilding }: Building
             <select
               value={ownerFilter}
               onChange={(e) => setOwnerFilter(e.target.value)}
-              className="appearance-none bg-realm-bg-700 border border-realm-border rounded px-3 py-1.5 text-sm text-realm-text-primary pr-8 focus:border-realm-gold-500 focus:outline-none"
+              className="appearance-none bg-realm-bg-700 border border-realm-border rounded-sm px-3 py-1.5 text-sm text-realm-text-primary pr-8 focus:border-realm-gold-500 focus:outline-hidden"
             >
               <option value="">All Owners</option>
               {uniqueOwners.map(o => (
@@ -109,7 +109,7 @@ export default function BuildingDirectory({ townId, onSelectBuilding }: Building
         {/* Workshops toggle */}
         <button
           onClick={() => setShowWorkshopsOnly(!showWorkshopsOnly)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-display rounded border transition-colors
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-display rounded-sm border transition-colors
             ${showWorkshopsOnly
               ? 'bg-realm-gold-500/20 text-realm-gold-400 border-realm-gold-500/30'
               : 'bg-realm-bg-700 text-realm-text-secondary border-realm-border hover:border-realm-gold-500/40'}`}

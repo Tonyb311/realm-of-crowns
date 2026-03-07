@@ -97,7 +97,7 @@ export default function BidModal({ listing, onClose, onSuccess }: BidModalProps)
     <RealmModal isOpen onClose={onClose} title="Place Buy Order">
       <div className="space-y-4">
         {/* Item info */}
-        <div className="bg-realm-bg-900 border border-realm-border rounded p-3">
+        <div className="bg-realm-bg-900 border border-realm-border rounded-sm p-3">
           <h4
             className={`font-display text-sm mb-1 ${
               RARITY_TEXT_COLORS[listing.item.rarity] ?? 'text-realm-text-primary'
@@ -138,7 +138,7 @@ export default function BidModal({ listing, onClose, onSuccess }: BidModalProps)
             value={bidPrice}
             onChange={(e) => setBidPrice(Math.max(0, parseInt(e.target.value, 10) || 0))}
             min={listing.price}
-            className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-none"
+            className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-hidden"
           />
           {!validBid && bidPrice > 0 && (
             <p className="text-realm-danger text-xs mt-1">
@@ -148,7 +148,7 @@ export default function BidModal({ listing, onClose, onSuccess }: BidModalProps)
         </div>
 
         {/* Gold available */}
-        <div className="bg-realm-bg-900 border border-realm-border rounded p-3">
+        <div className="bg-realm-bg-900 border border-realm-border rounded-sm p-3">
           <div className="flex items-center justify-between text-xs">
             <span className="text-realm-text-muted">Available Gold</span>
             <GoldAmount amount={availableGold} className="text-realm-text-primary" />

@@ -159,7 +159,7 @@ export default function WorkTab({
             <button
               onClick={onCollect}
               disabled={isCollecting}
-              className="flex-1 py-3 bg-realm-success text-realm-text-primary font-display text-base rounded
+              className="flex-1 py-3 bg-realm-success text-realm-text-primary font-display text-base rounded-sm
                 hover:bg-realm-success/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isCollecting ? 'Collecting...' : 'Collect Resources'}
@@ -171,7 +171,7 @@ export default function WorkTab({
                   <button
                     onClick={() => { onCancel(); setShowCancelConfirm(false); }}
                     disabled={isCancelling}
-                    className="flex-1 py-2.5 bg-realm-danger text-realm-text-primary font-display text-sm rounded
+                    className="flex-1 py-2.5 bg-realm-danger text-realm-text-primary font-display text-sm rounded-sm
                       hover:bg-realm-danger/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isCancelling && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -179,7 +179,7 @@ export default function WorkTab({
                   </button>
                   <button
                     onClick={() => setShowCancelConfirm(false)}
-                    className="px-4 py-2.5 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-800 transition-colors"
+                    className="px-4 py-2.5 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-800 transition-colors"
                   >
                     Keep Working
                   </button>
@@ -187,7 +187,7 @@ export default function WorkTab({
               ) : (
                 <button
                   onClick={() => setShowCancelConfirm(true)}
-                  className="flex-1 py-2.5 border border-realm-danger/40 text-realm-danger font-display text-sm rounded
+                  className="flex-1 py-2.5 border border-realm-danger/40 text-realm-danger font-display text-sm rounded-sm
                     hover:bg-realm-danger/10 transition-colors flex items-center justify-center gap-2"
                 >
                   <XCircle className="w-4 h-4" />
@@ -216,7 +216,7 @@ export default function WorkTab({
   return (
     <div className="space-y-6">
       {startError && (
-        <div className="p-3 bg-realm-danger/20 border border-realm-danger/50 rounded text-realm-danger text-sm flex items-center gap-2">
+        <div className="p-3 bg-realm-danger/20 border border-realm-danger/50 rounded-sm text-realm-danger text-sm flex items-center gap-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {startError}
         </div>
@@ -233,7 +233,7 @@ export default function WorkTab({
               <button
                 key={pt}
                 onClick={() => setSelectedProfession(pt)}
-                className={`px-3 py-1.5 text-xs font-display rounded border transition-colors
+                className={`px-3 py-1.5 text-xs font-display rounded-sm border transition-colors
                   ${isSelected
                     ? 'bg-realm-gold-500 text-realm-bg-900 border-realm-gold-500'
                     : 'bg-realm-bg-800 text-realm-text-secondary border-realm-border hover:border-realm-gold-400/40'}`}
@@ -283,7 +283,7 @@ export default function WorkTab({
                 <button
                   key={tr.id}
                   onClick={() => setSelectedResource(tr.id)}
-                  className={`p-3 text-left rounded border transition-all
+                  className={`p-3 text-left rounded-sm border transition-all
                     ${isSelected
                       ? 'border-realm-gold-400 bg-realm-gold-400/10'
                       : `border-realm-border bg-realm-bg-800/50 hover:border-realm-border/80 ${aStyle.bg}`}`}
@@ -315,7 +315,7 @@ export default function WorkTab({
         onClick={onStartWork}
         disabled={!selectedProfession || !selectedResource || isStarting || actionUsed}
         title={actionUsed ? 'Daily action already committed' : undefined}
-        className="w-full py-3 bg-realm-success text-realm-text-primary font-display text-base rounded
+        className="w-full py-3 bg-realm-success text-realm-text-primary font-display text-base rounded-sm
           hover:bg-realm-success/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {actionUsed ? 'Daily Action Used' : isStarting ? 'Starting...' : 'Start Working'}

@@ -48,7 +48,7 @@ export default function MarketFilters({
               value={searchText}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Item name..."
-              className="w-full pl-9 pr-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-400/50 focus:outline-none"
+              className="w-full pl-9 pr-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-400/50 focus:outline-hidden"
             />
           </div>
         </div>
@@ -59,7 +59,7 @@ export default function MarketFilters({
           <select
             value={filterType}
             onChange={(e) => onFilterTypeChange(e.target.value)}
-            className="px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-none"
+            className="px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-hidden"
           >
             {ITEM_TYPES.map((t) => (
               <option key={t} value={t}>{t}</option>
@@ -73,7 +73,7 @@ export default function MarketFilters({
           <select
             value={filterRarity}
             onChange={(e) => onFilterRarityChange(e.target.value)}
-            className="px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-none"
+            className="px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-hidden"
           >
             <option value="All">All</option>
             {RARITY_ORDER.map((r) => (
@@ -92,7 +92,7 @@ export default function MarketFilters({
               onChange={(e) => onPriceMinChange(e.target.value)}
               placeholder="0"
               min="0"
-              className="w-24 px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-400/50 focus:outline-none"
+              className="w-24 px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-400/50 focus:outline-hidden"
             />
           </div>
           <span className="text-realm-text-muted pb-2">-</span>
@@ -104,7 +104,7 @@ export default function MarketFilters({
               onChange={(e) => onPriceMaxChange(e.target.value)}
               placeholder="Any"
               min="0"
-              className="w-24 px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-400/50 focus:outline-none"
+              className="w-24 px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-400/50 focus:outline-hidden"
             />
           </div>
         </div>
@@ -124,7 +124,7 @@ export default function MarketFilters({
                 <button
                   key={s.key}
                   onClick={() => onSortChange(s.key)}
-                  className={`flex items-center gap-1 px-2.5 py-2 rounded text-xs transition-colors ${
+                  className={`flex items-center gap-1 px-2.5 py-2 rounded-sm text-xs transition-colors ${
                     sort === s.key
                       ? 'bg-realm-gold-400/20 text-realm-gold-400 border border-realm-gold-400/40'
                       : 'bg-realm-bg-900 text-realm-text-muted border border-realm-border hover:text-realm-text-secondary'

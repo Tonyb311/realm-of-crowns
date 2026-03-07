@@ -285,7 +285,7 @@ export default function AdminCharactersPage() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Character name..."
-                className="w-full pl-9 pr-3 py-2 bg-realm-bg-800 border border-realm-border rounded text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-none"
+                className="w-full pl-9 pr-3 py-2 bg-realm-bg-800 border border-realm-border rounded-sm text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-hidden"
               />
             </div>
           </div>
@@ -296,7 +296,7 @@ export default function AdminCharactersPage() {
             <select
               value={raceFilter}
               onChange={(e) => { setRaceFilter(e.target.value); setPage(1); }}
-              className="px-3 py-2 bg-realm-bg-800 border border-realm-border rounded text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+              className="px-3 py-2 bg-realm-bg-800 border border-realm-border rounded-sm text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
             >
               {ALL_RACES.map((r) => (
                 <option key={r} value={r}>{r}</option>
@@ -310,7 +310,7 @@ export default function AdminCharactersPage() {
             <select
               value={classFilter}
               onChange={(e) => { setClassFilter(e.target.value); setPage(1); }}
-              className="px-3 py-2 bg-realm-bg-800 border border-realm-border rounded text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+              className="px-3 py-2 bg-realm-bg-800 border border-realm-border rounded-sm text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
             >
               {ALL_CLASSES.map((c) => (
                 <option key={c} value={c}>{c}</option>
@@ -328,7 +328,7 @@ export default function AdminCharactersPage() {
                 onChange={(e) => { setLevelMin(e.target.value); setPage(1); }}
                 placeholder="1"
                 min="1"
-                className="w-20 px-3 py-2 bg-realm-bg-800 border border-realm-border rounded text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-none"
+                className="w-20 px-3 py-2 bg-realm-bg-800 border border-realm-border rounded-sm text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-hidden"
               />
             </div>
             <span className="text-realm-text-muted pb-2">-</span>
@@ -340,7 +340,7 @@ export default function AdminCharactersPage() {
                 onChange={(e) => { setLevelMax(e.target.value); setPage(1); }}
                 placeholder="100"
                 min="1"
-                className="w-20 px-3 py-2 bg-realm-bg-800 border border-realm-border rounded text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-none"
+                className="w-20 px-3 py-2 bg-realm-bg-800 border border-realm-border rounded-sm text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-hidden"
               />
             </div>
           </div>
@@ -352,13 +352,13 @@ export default function AdminCharactersPage() {
         <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-hidden animate-pulse">
           <div className="border-b border-realm-border px-4 py-3 flex gap-4">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex-1 h-3 bg-realm-bg-800 rounded" />
+              <div key={i} className="flex-1 h-3 bg-realm-bg-800 rounded-sm" />
             ))}
           </div>
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="px-4 py-3 flex gap-4 border-b border-realm-border last:border-0">
               {Array.from({ length: 8 }).map((_, j) => (
-                <div key={j} className="flex-1 h-3 bg-realm-bg-800 rounded" />
+                <div key={j} className="flex-1 h-3 bg-realm-bg-800 rounded-sm" />
               ))}
             </div>
           ))}
@@ -396,7 +396,7 @@ export default function AdminCharactersPage() {
                   <td className="px-4 py-3 text-sm text-realm-text-secondary">{char.race}</td>
                   <td className="px-4 py-3 text-sm text-realm-text-secondary">{char.className}</td>
                   <td className="px-4 py-3">
-                    <span className="text-xs text-realm-gold-400 bg-realm-gold-500/10 border border-realm-gold-500/30 rounded px-2 py-0.5 font-display">
+                    <span className="text-xs text-realm-gold-400 bg-realm-gold-500/10 border border-realm-gold-500/30 rounded-sm px-2 py-0.5 font-display">
                       {char.level}
                     </span>
                   </td>
@@ -416,14 +416,14 @@ export default function AdminCharactersPage() {
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => { setTeleportChar(char); setTeleportTownId(''); }}
-                        className="p-1.5 text-realm-text-secondary border border-realm-border rounded hover:bg-realm-bg-800 hover:text-realm-gold-400 transition-colors"
+                        className="p-1.5 text-realm-text-secondary border border-realm-border rounded-sm hover:bg-realm-bg-800 hover:text-realm-gold-400 transition-colors"
                         title="Teleport"
                       >
                         <MapPin className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => { setGiveGoldChar(char); setGiveGoldAmount(''); }}
-                        className="p-1.5 text-realm-text-secondary border border-realm-border rounded hover:bg-realm-bg-800 hover:text-realm-gold-400 transition-colors"
+                        className="p-1.5 text-realm-text-secondary border border-realm-border rounded-sm hover:bg-realm-bg-800 hover:text-realm-gold-400 transition-colors"
                         title="Give Gold"
                       >
                         <CircleDollarSign className="w-3.5 h-3.5" />
@@ -443,7 +443,7 @@ export default function AdminCharactersPage() {
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="p-2 rounded border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="p-2 rounded-sm border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -453,7 +453,7 @@ export default function AdminCharactersPage() {
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="p-2 rounded border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="p-2 rounded-sm border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -514,7 +514,7 @@ export default function AdminCharactersPage() {
                         onChange={(e) => updateField('level', parseInt(e.target.value, 10) || 0)}
                         min="1"
                         max="100"
-                        className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+                        className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
                       />
                     </div>
                     <div>
@@ -524,7 +524,7 @@ export default function AdminCharactersPage() {
                         value={editForm.xp ?? ''}
                         onChange={(e) => updateField('xp', parseInt(e.target.value, 10) || 0)}
                         min="0"
-                        className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+                        className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
                       />
                     </div>
                   </div>
@@ -536,7 +536,7 @@ export default function AdminCharactersPage() {
                         value={editForm.health ?? ''}
                         onChange={(e) => updateField('health', parseInt(e.target.value, 10) || 0)}
                         min="0"
-                        className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+                        className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
                       />
                     </div>
                     <div>
@@ -546,7 +546,7 @@ export default function AdminCharactersPage() {
                         value={editForm.maxHealth ?? ''}
                         onChange={(e) => updateField('maxHealth', parseInt(e.target.value, 10) || 0)}
                         min="1"
-                        className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+                        className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
                       />
                     </div>
                   </div>
@@ -564,7 +564,7 @@ export default function AdminCharactersPage() {
                         value={editForm.gold ?? ''}
                         onChange={(e) => updateField('gold', parseInt(e.target.value, 10) || 0)}
                         min="0"
-                        className="w-full pl-9 pr-3 py-2 bg-realm-bg-800 border border-realm-border rounded text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+                        className="w-full pl-9 pr-3 py-2 bg-realm-bg-800 border border-realm-border rounded-sm text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
                       />
                     </div>
                   </div>
@@ -578,7 +578,7 @@ export default function AdminCharactersPage() {
                     <select
                       value={editForm.currentTownId ?? ''}
                       onChange={(e) => updateField('currentTownId', e.target.value || null)}
-                      className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+                      className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
                     >
                       <option value="">Traveling (no town)</option>
                       {towns.map((t) => (
@@ -610,7 +610,7 @@ export default function AdminCharactersPage() {
                           onChange={(e) => updateField(key, parseInt(e.target.value, 10) || 0)}
                           min="1"
                           max="30"
-                          className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+                          className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
                         />
                       </div>
                     ))}
@@ -623,7 +623,7 @@ export default function AdminCharactersPage() {
                         value={editForm.unspentStatPoints ?? ''}
                         onChange={(e) => updateField('unspentStatPoints', parseInt(e.target.value, 10) || 0)}
                         min="0"
-                        className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+                        className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
                       />
                     </div>
                     <div>
@@ -637,14 +637,14 @@ export default function AdminCharactersPage() {
             <div className="px-6 py-4 border-t border-realm-border flex gap-3 flex-shrink-0">
               <button
                 onClick={() => setEditChar(null)}
-                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveEdit}
                 disabled={updateMutation.isPending}
-                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {updateMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Save Changes
@@ -680,7 +680,7 @@ export default function AdminCharactersPage() {
               <select
                 value={teleportTownId}
                 onChange={(e) => setTeleportTownId(e.target.value)}
-                className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+                className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
               >
                 <option value="">Select a town...</option>
                 {towns.map((t) => (
@@ -693,14 +693,14 @@ export default function AdminCharactersPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setTeleportChar(null)}
-                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleTeleport}
                 disabled={teleportMutation.isPending || !teleportTownId}
-                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {teleportMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Teleport
@@ -745,21 +745,21 @@ export default function AdminCharactersPage() {
                   onChange={(e) => setGiveGoldAmount(e.target.value)}
                   placeholder="Enter amount"
                   min="1"
-                  className="w-full pl-9 pr-3 py-2 bg-realm-bg-800 border border-realm-border rounded text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-none"
+                  className="w-full pl-9 pr-3 py-2 bg-realm-bg-800 border border-realm-border rounded-sm text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-hidden"
                 />
               </div>
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => setGiveGoldChar(null)}
-                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleGiveGold}
                 disabled={giveGoldMutation.isPending || !giveGoldAmount || parseInt(giveGoldAmount, 10) <= 0}
-                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {giveGoldMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Give Gold

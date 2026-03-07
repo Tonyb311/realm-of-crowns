@@ -144,8 +144,8 @@ export default function ApothecaryPage() {
 
         {isLoading ? (
           <div className="space-y-3">
-            <div className="h-16 bg-realm-bg-800 rounded animate-pulse" />
-            <div className="h-16 bg-realm-bg-800 rounded animate-pulse" />
+            <div className="h-16 bg-realm-bg-800 rounded-sm animate-pulse" />
+            <div className="h-16 bg-realm-bg-800 rounded-sm animate-pulse" />
           </div>
         ) : error ? (
           <p className="text-xs text-realm-danger">Failed to load apothecary inventory.</p>

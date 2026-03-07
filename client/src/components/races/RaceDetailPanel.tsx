@@ -65,7 +65,7 @@ export default function RaceDetailPanel({ race, onClose }: RaceDetailPanelProps)
           <h3 className="font-display text-realm-gold-400 text-xs uppercase tracking-wider mb-2">Stat Modifiers</h3>
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
             {STAT_KEYS.map(s => (
-              <div key={s} className="bg-realm-bg-800 rounded p-2 text-center">
+              <div key={s} className="bg-realm-bg-800 rounded-sm p-2 text-center">
                 <p className="text-[10px] text-realm-text-muted uppercase">{s}</p>
                 <p className="text-lg">{renderStatMod(race.statModifiers[s])}</p>
               </div>
@@ -76,7 +76,7 @@ export default function RaceDetailPanel({ race, onClose }: RaceDetailPanelProps)
         {/* Racial trait */}
         <div>
           <h3 className="font-display text-realm-gold-400 text-xs uppercase tracking-wider mb-2">Racial Trait</h3>
-          <div className="bg-realm-bg-800 border border-realm-gold-400/20 rounded p-3">
+          <div className="bg-realm-bg-800 border border-realm-gold-400/20 rounded-sm p-3">
             <p className="text-sm text-realm-gold-400 font-display">{race.trait.name}</p>
             <p className="text-xs text-realm-text-secondary mt-1">{race.trait.description}</p>
           </div>
@@ -91,7 +91,7 @@ export default function RaceDetailPanel({ race, onClose }: RaceDetailPanelProps)
               return (
                 <div
                   key={ability.name}
-                  className={`bg-realm-bg-800 rounded p-3 ${locked ? 'opacity-60' : ''}`}
+                  className={`bg-realm-bg-800 rounded-sm p-3 ${locked ? 'opacity-60' : ''}`}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     {locked ? (
@@ -100,7 +100,7 @@ export default function RaceDetailPanel({ race, onClose }: RaceDetailPanelProps)
                       <Unlock className="w-3.5 h-3.5 text-realm-success" />
                     )}
                     <span className="text-sm text-realm-text-primary font-display">{ability.name}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-sm ${
                       ability.type === 'active'
                         ? 'bg-realm-teal-300/20 text-realm-teal-300'
                         : 'bg-realm-border/50 text-realm-text-muted'
@@ -136,7 +136,7 @@ export default function RaceDetailPanel({ race, onClose }: RaceDetailPanelProps)
                 if (pb.xpBonus) bonuses.push(`XP +${(pb.xpBonus * 100).toFixed(0)}%`);
 
                 return (
-                  <div key={pb.professionType} className="flex items-center justify-between bg-realm-bg-800 rounded px-3 py-2">
+                  <div key={pb.professionType} className="flex items-center justify-between bg-realm-bg-800 rounded-sm px-3 py-2">
                     <span className="text-xs text-realm-text-primary capitalize">
                       {pb.professionType.replace(/_/g, ' ').toLowerCase()}
                     </span>
@@ -151,7 +151,7 @@ export default function RaceDetailPanel({ race, onClose }: RaceDetailPanelProps)
         {/* Homeland info */}
         <div>
           <h3 className="font-display text-realm-gold-400 text-xs uppercase tracking-wider mb-2">Homeland</h3>
-          <div className="bg-realm-bg-800 rounded p-3">
+          <div className="bg-realm-bg-800 rounded-sm p-3">
             <p className="text-sm text-realm-text-primary font-display">{race.homelandRegion}</p>
             {race.startingTowns.length > 0 && (
               <p className="text-xs text-realm-text-muted mt-1">

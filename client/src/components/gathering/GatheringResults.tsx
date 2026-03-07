@@ -121,7 +121,7 @@ export default function GatheringResults({ data, onDismiss }: GatheringResultsPr
                 return (
                   <motion.div
                     key={`${item.name}-${i}`}
-                    className="flex justify-between items-center bg-realm-bg-900 rounded px-3 py-2"
+                    className="flex justify-between items-center bg-realm-bg-900 rounded-sm px-3 py-2"
                     initial={{ x: -20, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ delay: 0.1 * i + 0.3, duration: 0.3 }}
@@ -190,7 +190,7 @@ export default function GatheringResults({ data, onDismiss }: GatheringResultsPr
           {/* Tool durability */}
           {data.toolName && data.toolDurabilityUsed != null && (
             <motion.div
-              className="mb-4 flex items-center gap-2 bg-realm-bg-900 rounded px-3 py-2"
+              className="mb-4 flex items-center gap-2 bg-realm-bg-900 rounded-sm px-3 py-2"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6 }}
@@ -215,7 +215,7 @@ export default function GatheringResults({ data, onDismiss }: GatheringResultsPr
           {/* Depletion warning */}
           {data.abundanceDropped && (
             <motion.div
-              className="mb-4 flex items-center gap-2 bg-realm-danger/10 border border-realm-danger/30 rounded px-3 py-2"
+              className="mb-4 flex items-center gap-2 bg-realm-danger/10 border border-realm-danger/30 rounded-sm px-3 py-2"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8 }}
@@ -230,7 +230,7 @@ export default function GatheringResults({ data, onDismiss }: GatheringResultsPr
           {/* Dismiss button */}
           <button
             onClick={onDismiss}
-            className="w-full py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
+            className="w-full py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors"
           >
             Continue
           </button>

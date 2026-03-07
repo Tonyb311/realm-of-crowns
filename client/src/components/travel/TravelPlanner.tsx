@@ -149,7 +149,7 @@ export default function TravelPlanner() {
           <select
             value={destinationTownId}
             onChange={(e) => setDestinationTownId(e.target.value)}
-            className="w-full appearance-none bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary pr-8 focus:border-realm-gold-400 focus:outline-none"
+            className="w-full appearance-none bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary pr-8 focus:border-realm-gold-400 focus:outline-hidden"
           >
             <option value="">Select destination...</option>
             {connectedTowns.map((t) => (
@@ -209,7 +209,7 @@ export default function TravelPlanner() {
               {route.nodes.map((node, i) => (
                 <div
                   key={node.id}
-                  className="flex items-center gap-2 p-2 bg-realm-bg-800/50 rounded text-xs"
+                  className="flex items-center gap-2 p-2 bg-realm-bg-800/50 rounded-sm text-xs"
                 >
                   <span className="text-realm-text-muted w-4 text-center">{i + 1}</span>
                   <span className="text-realm-text-primary flex-1 font-display">{node.name}</span>
@@ -233,7 +233,7 @@ export default function TravelPlanner() {
             {route.dangers.terrainTypes.map((type) => (
               <span
                 key={type}
-                className="text-[9px] px-2 py-0.5 rounded bg-realm-bg-800 text-realm-text-muted border border-realm-border capitalize"
+                className="text-[9px] px-2 py-0.5 rounded-sm bg-realm-bg-800 text-realm-text-muted border border-realm-border capitalize"
               >
                 {type.toLowerCase().replace(/_/g, ' ')}
               </span>
@@ -244,7 +244,7 @@ export default function TravelPlanner() {
           <button
             onClick={() => lockInMutation.mutate()}
             disabled={lockInMutation.isPending}
-            className="w-full py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {lockInMutation.isPending ? (
               <>

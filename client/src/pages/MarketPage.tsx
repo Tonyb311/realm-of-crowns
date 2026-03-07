@@ -225,7 +225,7 @@ export default function MarketPage() {
                   <h1 className="text-3xl font-display text-realm-gold-400">
                     {townName} Market
                   </h1>
-                  <span className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded bg-realm-success/10 border border-realm-success/30 text-realm-success">
+                  <span className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm bg-realm-success/10 border border-realm-success/30 text-realm-success">
                     Free Action
                   </span>
                 </div>
@@ -236,7 +236,7 @@ export default function MarketPage() {
             </div>
             <div className="flex items-center gap-3 flex-wrap">
               <AuctionTimer />
-              <div className="bg-realm-bg-700 border border-realm-border rounded px-4 py-2 flex items-center gap-2">
+              <div className="bg-realm-bg-700 border border-realm-border rounded-sm px-4 py-2 flex items-center gap-2">
                 <span className="text-realm-text-muted text-xs">Gold:</span>
                 <GoldAmount amount={gold} className="text-realm-gold-400 font-display text-sm" />
                 {escrowedGold > 0 && (
@@ -337,7 +337,7 @@ export default function MarketPage() {
                     <button
                       disabled={page <= 1}
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      className="p-2 rounded border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      className="p-2 rounded-sm border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
@@ -347,7 +347,7 @@ export default function MarketPage() {
                     <button
                       disabled={page >= totalPages}
                       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                      className="p-2 rounded border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      className="p-2 rounded-sm border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
@@ -463,7 +463,7 @@ export default function MarketPage() {
                             <RealmBadge variant="uncommon">Won</RealmBadge>
                           )}
                           {isLost && (
-                            <span className="inline-flex items-center gap-1 font-display text-xs uppercase tracking-wider px-2 py-0.5 rounded-sm border border-realm-danger/50 text-realm-danger">
+                            <span className="inline-flex items-center gap-1 font-display text-xs uppercase tracking-wider px-2 py-0.5 rounded-xs border border-realm-danger/50 text-realm-danger">
                               Lost
                             </span>
                           )}
@@ -572,7 +572,7 @@ export default function MarketPage() {
                       value={historyItemTemplateId}
                       onChange={(e) => setHistoryItemTemplateId(e.target.value)}
                       placeholder="Enter item template ID..."
-                      className="w-full max-w-sm px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-none placeholder:text-realm-text-muted/50"
+                      className="w-full max-w-sm px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-hidden placeholder:text-realm-text-muted/50"
                     />
                   </div>
 
@@ -675,7 +675,7 @@ export default function MarketPage() {
               )}
               {selectedListing.item.stats &&
                 Object.keys(selectedListing.item.stats).length > 0 && (
-                  <div className="bg-realm-bg-900 border border-realm-border rounded p-3">
+                  <div className="bg-realm-bg-900 border border-realm-border rounded-sm p-3">
                     <p className="text-realm-text-muted text-xs mb-2">Stats</p>
                     <div className="grid grid-cols-2 gap-1">
                       {Object.entries(selectedListing.item.stats).map(([key, val]) => (

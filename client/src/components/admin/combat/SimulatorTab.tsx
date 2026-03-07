@@ -235,7 +235,7 @@ export default function SimulatorTab() {
       <div className="flex items-center gap-2">
         <button
           onClick={() => setMode('1v1')}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-display rounded transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-display rounded-sm transition-colors ${
             mode === '1v1'
               ? 'bg-realm-gold-500/20 text-realm-gold-400 border border-realm-gold-500/50'
               : 'bg-realm-bg-700 text-realm-text-muted border border-realm-border hover:text-realm-text-secondary'
@@ -246,7 +246,7 @@ export default function SimulatorTab() {
         </button>
         <button
           onClick={() => setMode('batch')}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-display rounded transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-display rounded-sm transition-colors ${
             mode === 'batch'
               ? 'bg-realm-teal-300/20 text-realm-teal-300 border border-realm-teal-300/50'
               : 'bg-realm-bg-700 text-realm-text-muted border border-realm-border hover:text-realm-text-secondary'
@@ -269,7 +269,7 @@ export default function SimulatorTab() {
             <button
               key={preset.label}
               onClick={() => applyPreset(preset)}
-              className="px-3 py-1.5 text-xs font-display bg-realm-bg-600 text-realm-text-secondary hover:text-realm-text-primary hover:bg-realm-bg-500 rounded transition-colors border border-realm-border/50"
+              className="px-3 py-1.5 text-xs font-display bg-realm-bg-600 text-realm-text-secondary hover:text-realm-text-primary hover:bg-realm-bg-500 rounded-sm transition-colors border border-realm-border/50"
             >
               {preset.label}
             </button>
@@ -291,7 +291,7 @@ export default function SimulatorTab() {
                   type="number" min={1} max={100}
                   value={config.playerLevel}
                   onChange={(e) => updateConfig({ playerLevel: parseInt(e.target.value) || 1 })}
-                  className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary"
+                  className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary"
                 />
               </div>
               <div>
@@ -300,7 +300,7 @@ export default function SimulatorTab() {
                   type="number" min={1} max={30}
                   value={config.playerAC}
                   onChange={(e) => updateConfig({ playerAC: parseInt(e.target.value) || 10 })}
-                  className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary"
+                  className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary"
                 />
               </div>
             </div>
@@ -312,7 +312,7 @@ export default function SimulatorTab() {
                 value={config.playerHP ?? ''}
                 onChange={(e) => updateConfig({ playerHP: e.target.value ? parseInt(e.target.value) : undefined })}
                 placeholder="Auto-calculated"
-                className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary placeholder:text-realm-text-muted/50"
+                className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary placeholder:text-realm-text-muted/50"
               />
             </div>
 
@@ -327,7 +327,7 @@ export default function SimulatorTab() {
                       type="number" min={1} max={30}
                       value={config.playerStats[stat]}
                       onChange={(e) => updatePlayerStats(stat, parseInt(e.target.value) || 10)}
-                      className="w-full bg-realm-bg-800 border border-realm-border rounded px-1 py-1.5 text-xs text-center text-realm-text-primary"
+                      className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-1 py-1.5 text-xs text-center text-realm-text-primary"
                     />
                   </div>
                 ))}
@@ -342,14 +342,14 @@ export default function SimulatorTab() {
                   value={config.playerWeapon.name}
                   onChange={(e) => updatePlayerWeapon({ name: e.target.value })}
                   placeholder="Weapon name"
-                  className="bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary"
+                  className="bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary"
                 />
                 <div className="flex gap-1">
                   <input
                     type="number" min={1} max={10}
                     value={config.playerWeapon.diceCount}
                     onChange={(e) => updatePlayerWeapon({ diceCount: parseInt(e.target.value) || 1 })}
-                    className="w-14 bg-realm-bg-800 border border-realm-border rounded px-2 py-2 text-xs text-center text-realm-text-primary"
+                    className="w-14 bg-realm-bg-800 border border-realm-border rounded-sm px-2 py-2 text-xs text-center text-realm-text-primary"
                     title="Dice count"
                   />
                   <span className="flex items-center text-realm-text-muted text-xs">d</span>
@@ -357,7 +357,7 @@ export default function SimulatorTab() {
                     type="number" min={1} max={20}
                     value={config.playerWeapon.diceSides}
                     onChange={(e) => updatePlayerWeapon({ diceSides: parseInt(e.target.value) || 6 })}
-                    className="w-14 bg-realm-bg-800 border border-realm-border rounded px-2 py-2 text-xs text-center text-realm-text-primary"
+                    className="w-14 bg-realm-bg-800 border border-realm-border rounded-sm px-2 py-2 text-xs text-center text-realm-text-primary"
                     title="Dice sides"
                   />
                   <span className="flex items-center text-realm-text-muted text-xs">+</span>
@@ -365,7 +365,7 @@ export default function SimulatorTab() {
                     type="number" min={0} max={20}
                     value={config.playerWeapon.bonusDamage}
                     onChange={(e) => updatePlayerWeapon({ bonusDamage: parseInt(e.target.value) || 0 })}
-                    className="w-14 bg-realm-bg-800 border border-realm-border rounded px-2 py-2 text-xs text-center text-realm-text-primary"
+                    className="w-14 bg-realm-bg-800 border border-realm-border rounded-sm px-2 py-2 text-xs text-center text-realm-text-primary"
                     title="Bonus damage"
                   />
                 </div>
@@ -377,7 +377,7 @@ export default function SimulatorTab() {
                     type="number" min={0} max={20}
                     value={config.playerWeapon.bonusAttack}
                     onChange={(e) => updatePlayerWeapon({ bonusAttack: parseInt(e.target.value) || 0 })}
-                    className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-1.5 text-xs text-realm-text-primary"
+                    className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-1.5 text-xs text-realm-text-primary"
                   />
                 </div>
                 <div>
@@ -385,7 +385,7 @@ export default function SimulatorTab() {
                   <select
                     value={config.playerWeapon.damageModifierStat}
                     onChange={(e) => updatePlayerWeapon({ damageModifierStat: e.target.value as 'str' | 'dex', attackModifierStat: e.target.value as 'str' | 'dex' })}
-                    className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-1.5 text-xs text-realm-text-primary"
+                    className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-1.5 text-xs text-realm-text-primary"
                   >
                     <option value="str">STR</option>
                     <option value="dex">DEX</option>
@@ -411,7 +411,7 @@ export default function SimulatorTab() {
                     const m = monstersData.monsters.find((m) => m.id === e.target.value);
                     if (m) applyMonster(m);
                   }}
-                  className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary"
+                  className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary"
                 >
                   <option value="">Select a monster...</option>
                   {monstersData.monsters.map((m) => (
@@ -429,7 +429,7 @@ export default function SimulatorTab() {
                 <input
                   value={config.monsterName}
                   onChange={(e) => updateConfig({ monsterName: e.target.value })}
-                  className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary"
+                  className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary"
                 />
               </div>
               <div>
@@ -438,7 +438,7 @@ export default function SimulatorTab() {
                   type="number" min={1} max={100}
                   value={config.monsterLevel}
                   onChange={(e) => updateConfig({ monsterLevel: parseInt(e.target.value) || 1 })}
-                  className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary"
+                  className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary"
                 />
               </div>
             </div>
@@ -450,7 +450,7 @@ export default function SimulatorTab() {
                   type="number" min={1} max={1000}
                   value={config.monsterHP}
                   onChange={(e) => updateConfig({ monsterHP: parseInt(e.target.value) || 20 })}
-                  className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary"
+                  className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary"
                 />
               </div>
               <div>
@@ -459,7 +459,7 @@ export default function SimulatorTab() {
                   type="number" min={1} max={30}
                   value={config.monsterAC}
                   onChange={(e) => updateConfig({ monsterAC: parseInt(e.target.value) || 12 })}
-                  className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary"
+                  className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary"
                 />
               </div>
               <div>
@@ -468,7 +468,7 @@ export default function SimulatorTab() {
                   type="number" min={0} max={20}
                   value={config.monsterAttackBonus}
                   onChange={(e) => updateConfig({ monsterAttackBonus: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary"
+                  className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary"
                 />
               </div>
             </div>
@@ -479,7 +479,7 @@ export default function SimulatorTab() {
                 value={config.monsterDamage}
                 onChange={(e) => updateConfig({ monsterDamage: e.target.value })}
                 placeholder="1d6+2"
-                className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary"
+                className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary"
               />
             </div>
 
@@ -494,7 +494,7 @@ export default function SimulatorTab() {
                       type="number" min={1} max={30}
                       value={config.monsterStats[stat]}
                       onChange={(e) => updateMonsterStats(stat, parseInt(e.target.value) || 10)}
-                      className="w-full bg-realm-bg-800 border border-realm-border rounded px-1 py-1.5 text-xs text-center text-realm-text-primary"
+                      className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-1 py-1.5 text-xs text-center text-realm-text-primary"
                     />
                   </div>
                 ))}
@@ -513,7 +513,7 @@ export default function SimulatorTab() {
               type="number" min={1} max={1000}
               value={config.iterations}
               onChange={(e) => updateConfig({ iterations: Math.max(1, parseInt(e.target.value) || 1) })}
-              className="w-28 bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary"
+              className="w-28 bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary"
             />
           </div>
 
@@ -521,7 +521,7 @@ export default function SimulatorTab() {
             <button
               onClick={runSimulation}
               disabled={simMutation.isPending}
-              className="flex items-center gap-2 px-5 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50"
             >
               {simMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -534,7 +534,7 @@ export default function SimulatorTab() {
             {simResult && (
               <button
                 onClick={() => setSimResult(null)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-realm-bg-600 text-realm-text-secondary font-display text-sm rounded hover:text-realm-text-primary transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-realm-bg-600 text-realm-text-secondary font-display text-sm rounded-sm hover:text-realm-text-primary transition-colors"
               >
                 <RotateCcw className="w-4 h-4" />
                 Clear Results
@@ -600,7 +600,7 @@ export default function SimulatorTab() {
                     <h4 className="font-display text-realm-text-primary text-sm">
                       Iteration {idx + 1}
                     </h4>
-                    <span className={`text-xs font-display px-2 py-0.5 rounded ${
+                    <span className={`text-xs font-display px-2 py-0.5 rounded-sm ${
                       result.winner === 'player' ? 'bg-green-500/20 text-green-400' :
                       result.winner === 'monster' ? 'bg-red-500/20 text-red-400' :
                       'bg-gray-500/20 text-gray-400'

@@ -126,7 +126,7 @@ export default function ProfessionBonusDisplay({
             initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.05 }}
-            className={`flex items-center justify-between text-xs px-3 py-1.5 rounded ${
+            className={`flex items-center justify-between text-xs px-3 py-1.5 rounded-sm ${
               isNegative
                 ? 'bg-realm-danger/10 border border-realm-danger/20'
                 : 'bg-realm-success/10 border border-realm-success/20'
@@ -160,7 +160,7 @@ export default function ProfessionBonusDisplay({
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="flex items-center gap-2 px-3 py-2 rounded bg-realm-gold-500/10 border border-realm-gold-500/30"
+          className="flex items-center gap-2 px-3 py-2 rounded-sm bg-realm-gold-500/10 border border-realm-gold-500/30"
         >
           <Cog className="w-4 h-4 text-realm-gold-400 animate-spin" style={{ animationDuration: '3s' }} />
           <span className="text-xs text-realm-gold-400 font-display">2x Speed Active</span>
@@ -181,7 +181,7 @@ export default function ProfessionBonusDisplay({
           whileTap={{ scale: 0.98 }}
           onClick={() => eurekaMutation.mutate()}
           disabled={eurekaMutation.isPending}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-sm
             bg-realm-purple-300/10 border border-realm-purple-300/40 text-realm-purple-300 font-display text-xs
             hover:bg-realm-purple-300/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >

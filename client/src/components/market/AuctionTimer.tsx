@@ -48,7 +48,7 @@ export default function AuctionTimer() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-realm-bg-700 border border-realm-border rounded">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-realm-bg-700 border border-realm-border rounded-sm">
         <Loader2 className="w-3.5 h-3.5 text-realm-text-muted animate-spin" />
         <span className="text-realm-text-muted text-xs font-display">Loading...</span>
       </div>
@@ -67,7 +67,7 @@ export default function AuctionTimer() {
 
   return (
     <div
-      className={`flex items-center gap-2 px-3 py-1.5 rounded border ${
+      className={`flex items-center gap-2 px-3 py-1.5 rounded-sm border ${
         isResolving
           ? 'bg-realm-gold-400/10 border-realm-gold-400/40'
           : isUrgent

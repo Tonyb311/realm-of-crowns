@@ -67,7 +67,7 @@ function AttackResult({ result, participants }: { result: any; participants: Map
           d20({result.roll}) + {result.modifier} = {result.total} vs AC {result.targetAC}
         </span>
         {critical ? (
-          <span className="bg-realm-gold-500/20 text-realm-gold-400 px-2 py-0.5 rounded text-xs font-display">
+          <span className="bg-realm-gold-500/20 text-realm-gold-400 px-2 py-0.5 rounded-sm text-xs font-display">
             CRITICAL HIT!
           </span>
         ) : hit ? (
@@ -86,7 +86,7 @@ function AttackResult({ result, participants }: { result: any; participants: Map
           </span>
         )}
         {result.killed && (
-          <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-xs font-display">
+          <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded-sm text-xs font-display">
             KILLED
           </span>
         )}
@@ -131,7 +131,7 @@ function CastResult({ result, participants }: { result: any; participants: Map<s
           </span>
         )}
         {result.statusApplied && (
-          <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded text-xs font-display">
+          <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-sm text-xs font-display">
             {result.statusApplied}
           </span>
         )}
@@ -178,7 +178,7 @@ function ItemResult({ result, participants }: { result: any; participants: Map<s
           <span className="text-red-400">-{result.damage} dmg</span>
         )}
         {result.statusApplied && (
-          <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded text-xs font-display">
+          <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-sm text-xs font-display">
             {result.statusApplied}
           </span>
         )}
@@ -201,11 +201,11 @@ function FleeResult({ result, participants }: { result: any; participants: Map<s
         d20({result.roll}) vs DC {result.dc}
       </span>
       {result.success ? (
-        <span className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded text-xs font-display">
+        <span className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded-sm text-xs font-display">
           Escaped
         </span>
       ) : (
-        <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-xs font-display">
+        <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded-sm text-xs font-display">
           Failed
         </span>
       )}
@@ -241,7 +241,7 @@ function RacialAbilityResult({ result, participants }: { result: any; participan
             <span className="text-purple-400">{result.effects}</span>
           )}
           {result.statusApplied && (
-            <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded text-xs font-display">
+            <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-sm text-xs font-display">
               {result.statusApplied}
             </span>
           )}

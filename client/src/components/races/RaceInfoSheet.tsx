@@ -153,7 +153,7 @@ export default function RaceInfoSheet({ raceId, characterLevel, currentBiome }: 
             </h4>
             <div className="space-y-1">
               {activeBiomeBonuses.map((b, i) => (
-                <div key={i} className="flex justify-between bg-realm-bg-800 rounded px-3 py-1.5">
+                <div key={i} className="flex justify-between bg-realm-bg-800 rounded-sm px-3 py-1.5">
                   <span className="text-xs text-realm-text-primary capitalize">
                     {b.resourceType.replace(/_/g, ' ').toLowerCase()}
                   </span>
@@ -172,7 +172,7 @@ export default function RaceInfoSheet({ raceId, characterLevel, currentBiome }: 
             </h4>
             <div className="space-y-1">
               {nonNeutralRelations.slice(0, 10).map(([otherRace, rel]) => (
-                <div key={otherRace} className="flex items-center justify-between bg-realm-bg-800 rounded px-3 py-1.5">
+                <div key={otherRace} className="flex items-center justify-between bg-realm-bg-800 rounded-sm px-3 py-1.5">
                   <span className="text-xs text-realm-text-primary capitalize">
                     {otherRace.toLowerCase()}
                   </span>
@@ -196,7 +196,7 @@ export default function RaceInfoSheet({ raceId, characterLevel, currentBiome }: 
             </h4>
             <div className="space-y-1.5">
               {Object.entries(race.specialMechanics).map(([key, val]) => (
-                <div key={key} className="flex items-start gap-2 bg-realm-bg-800 rounded px-3 py-2">
+                <div key={key} className="flex items-start gap-2 bg-realm-bg-800 rounded-sm px-3 py-2">
                   <AlertTriangle className="w-3.5 h-3.5 text-realm-gold-400 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="text-xs text-realm-text-primary capitalize">{key.replace(/_/g, ' ')}</p>
@@ -219,7 +219,7 @@ export default function RaceInfoSheet({ raceId, characterLevel, currentBiome }: 
 // ---------------------------------------------------------------------------
 function AbilityRow({ ability, unlocked }: { ability: RacialAbility; unlocked: boolean }) {
   return (
-    <div className={`bg-realm-bg-800 rounded p-2.5 ${unlocked ? '' : 'opacity-50'}`}>
+    <div className={`bg-realm-bg-800 rounded-sm p-2.5 ${unlocked ? '' : 'opacity-50'}`}>
       <div className="flex items-center gap-2">
         {unlocked ? (
           <Unlock className="w-3 h-3 text-realm-success flex-shrink-0" />
@@ -227,7 +227,7 @@ function AbilityRow({ ability, unlocked }: { ability: RacialAbility; unlocked: b
           <Lock className="w-3 h-3 text-realm-text-muted flex-shrink-0" />
         )}
         <span className="text-xs text-realm-text-primary font-display">{ability.name}</span>
-        <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+        <span className={`text-[10px] px-1.5 py-0.5 rounded-sm ${
           ability.type === 'active'
             ? 'bg-realm-teal-300/20 text-realm-teal-300'
             : 'bg-realm-border/50 text-realm-text-muted'

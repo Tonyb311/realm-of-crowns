@@ -291,7 +291,7 @@ export default function GovernancePage() {
                   <button
                     onClick={() => setShowLawModal(true)}
                     disabled={!kingdomId}
-                    className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Propose Law
                   </button>
@@ -320,7 +320,7 @@ export default function GovernancePage() {
                           <div>
                             <h4 className="font-display text-realm-text-primary text-sm">{law.title}</h4>
                             <div className="flex items-center gap-2 mt-1">
-                              <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${STATUS_COLORS[law.status] ?? ''}`}>
+                              <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-sm border ${STATUS_COLORS[law.status] ?? ''}`}>
                                 {law.status}
                               </span>
                               <span className="text-realm-text-muted text-[10px] capitalize">{law.lawType}</span>
@@ -331,14 +331,14 @@ export default function GovernancePage() {
                               <button
                                 onClick={() => voteLawMutation.mutate({ lawId: law.id, vote: 'for' })}
                                 disabled={voteLawMutation.isPending}
-                                className="px-3 py-1 text-xs text-realm-success border border-realm-success/30 rounded hover:bg-realm-success/10 transition-colors disabled:opacity-50"
+                                className="px-3 py-1 text-xs text-realm-success border border-realm-success/30 rounded-sm hover:bg-realm-success/10 transition-colors disabled:opacity-50"
                               >
                                 Vote For
                               </button>
                               <button
                                 onClick={() => voteLawMutation.mutate({ lawId: law.id, vote: 'against' })}
                                 disabled={voteLawMutation.isPending}
-                                className="px-3 py-1 text-xs text-realm-danger border border-realm-danger/30 rounded hover:bg-realm-danger/10 transition-colors disabled:opacity-50"
+                                className="px-3 py-1 text-xs text-realm-danger border border-realm-danger/30 rounded-sm hover:bg-realm-danger/10 transition-colors disabled:opacity-50"
                               >
                                 Vote Against
                               </button>
@@ -394,7 +394,7 @@ export default function GovernancePage() {
                     <button
                       onClick={() => townId && setTaxMutation.mutate({ townId, taxRate: taxRate / 100 })}
                       disabled={setTaxMutation.isPending}
-                      className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50"
+                      className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50"
                     >
                       {setTaxMutation.isPending ? 'Saving...' : 'Apply'}
                     </button>
@@ -421,7 +421,7 @@ export default function GovernancePage() {
                           onChange={(e) => setAllocAmount(e.target.value)}
                           placeholder="0"
                           min="1"
-                          className="w-40 pl-9 pr-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-none"
+                          className="w-40 pl-9 pr-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-hidden"
                         />
                       </div>
                     </div>
@@ -430,7 +430,7 @@ export default function GovernancePage() {
                       <select
                         value={allocPurpose}
                         onChange={(e) => setAllocPurpose(e.target.value)}
-                        className="px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm focus:border-realm-gold-500/50 focus:outline-none"
+                        className="px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm focus:border-realm-gold-500/50 focus:outline-hidden"
                       >
                         <option value="buildings">Buildings</option>
                         <option value="military">Military</option>
@@ -446,7 +446,7 @@ export default function GovernancePage() {
                         }
                       }}
                       disabled={allocateMutation.isPending || !allocAmount || parseInt(allocAmount, 10) <= 0}
-                      className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {allocateMutation.isPending ? 'Allocating...' : 'Allocate'}
                     </button>
@@ -519,7 +519,7 @@ export default function GovernancePage() {
                           value={appointCharId}
                           onChange={(e) => setAppointCharId(e.target.value)}
                           placeholder="Enter character ID"
-                          className="w-56 px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-none"
+                          className="w-56 px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-hidden"
                         />
                       </div>
                       <div>
@@ -527,7 +527,7 @@ export default function GovernancePage() {
                         <select
                           value={appointRole}
                           onChange={(e) => setAppointRole(e.target.value)}
-                          className="px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm focus:border-realm-gold-500/50 focus:outline-none"
+                          className="px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm focus:border-realm-gold-500/50 focus:outline-hidden"
                         >
                           <option value="sheriff">Sheriff</option>
                           <option value="treasurer">Treasurer</option>
@@ -542,7 +542,7 @@ export default function GovernancePage() {
                           }
                         }}
                         disabled={appointMutation.isPending || !appointCharId.trim()}
-                        className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {appointMutation.isPending ? 'Appointing...' : 'Appoint'}
                       </button>
@@ -568,7 +568,7 @@ export default function GovernancePage() {
                 <section>
                   <h2 className="text-xl font-display text-realm-text-primary mb-4">Declare War</h2>
                   <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
-                    <div className="bg-realm-danger/20 border border-realm-danger/30 rounded p-3 mb-4">
+                    <div className="bg-realm-danger/20 border border-realm-danger/30 rounded-sm p-3 mb-4">
                       <p className="text-realm-danger text-xs flex items-center gap-2">
                         <AlertCircle className="w-3 h-3 flex-shrink-0" />
                         War declarations are serious actions. Only rulers can declare war on other kingdoms.
@@ -582,7 +582,7 @@ export default function GovernancePage() {
                           value={warTargetId}
                           onChange={(e) => setWarTargetId(e.target.value)}
                           placeholder="Enter kingdom ID"
-                          className="w-56 px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-none"
+                          className="w-56 px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-hidden"
                         />
                       </div>
                       <div className="flex-1 min-w-[200px]">
@@ -592,7 +592,7 @@ export default function GovernancePage() {
                           value={warReason}
                           onChange={(e) => setWarReason(e.target.value)}
                           placeholder="Casus belli..."
-                          className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-none"
+                          className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-hidden"
                         />
                       </div>
                       <button
@@ -602,7 +602,7 @@ export default function GovernancePage() {
                           }
                         }}
                         disabled={declareWarMutation.isPending || !warTargetId.trim()}
-                        className="px-5 py-2 bg-realm-danger/40 text-realm-danger border border-realm-danger/40 font-display text-sm rounded hover:bg-realm-danger/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-5 py-2 bg-realm-danger/40 text-realm-danger border border-realm-danger/40 font-display text-sm rounded-sm hover:bg-realm-danger/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {declareWarMutation.isPending ? 'Declaring...' : 'Declare War'}
                       </button>
@@ -645,7 +645,7 @@ export default function GovernancePage() {
                   onChange={(e) => setLawTitle(e.target.value)}
                   placeholder="Law title..."
                   maxLength={200}
-                  className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-none"
+                  className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-hidden"
                 />
               </div>
               <div>
@@ -655,7 +655,7 @@ export default function GovernancePage() {
                   onChange={(e) => setLawDescription(e.target.value)}
                   placeholder="Describe the law..."
                   rows={3}
-                  className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-none resize-none"
+                  className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-hidden resize-none"
                 />
               </div>
               <div>
@@ -663,7 +663,7 @@ export default function GovernancePage() {
                 <select
                   value={lawType}
                   onChange={(e) => setLawType(e.target.value)}
-                  className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm focus:border-realm-gold-500/50 focus:outline-none"
+                  className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm focus:border-realm-gold-500/50 focus:outline-hidden"
                 >
                   <option value="general">General</option>
                   <option value="tax">Tax</option>
@@ -677,14 +677,14 @@ export default function GovernancePage() {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowLawModal(false)}
-                className="flex-1 py-2 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                className="flex-1 py-2 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => kingdomId && proposeLawMutation.mutate({ kingdomId, title: lawTitle, description: lawDescription || undefined, lawType })}
                 disabled={proposeLawMutation.isPending || !lawTitle.trim()}
-                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {proposeLawMutation.isPending ? 'Proposing...' : 'Propose'}
               </button>

@@ -177,14 +177,14 @@ export default function ActionLockInPanel() {
               setSelectedType(locked.actionType);
               setActionTarget(locked.actionTarget);
             }}
-            className="flex-1 py-2 border border-realm-gold-500/40 text-realm-gold-400 font-display text-sm rounded hover:bg-realm-bg-800 transition-colors"
+            className="flex-1 py-2 border border-realm-gold-500/40 text-realm-gold-400 font-display text-sm rounded-sm hover:bg-realm-bg-800 transition-colors"
           >
             Change
           </button>
           <button
             onClick={() => cancelMutation.mutate()}
             disabled={cancelMutation.isPending}
-            className="flex-1 py-2 border border-realm-danger/40 text-realm-danger font-display text-sm rounded hover:bg-realm-danger/20 transition-colors disabled:opacity-50"
+            className="flex-1 py-2 border border-realm-danger/40 text-realm-danger font-display text-sm rounded-sm hover:bg-realm-danger/20 transition-colors disabled:opacity-50"
           >
             {cancelMutation.isPending ? 'Cancelling...' : 'Cancel'}
           </button>
@@ -198,7 +198,7 @@ export default function ActionLockInPanel() {
     <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-display text-realm-gold-400 text-sm">Choose Daily Action</h3>
-        <span className="text-[10px] text-realm-text-muted bg-realm-bg-800 px-2 py-0.5 rounded">
+        <span className="text-[10px] text-realm-text-muted bg-realm-bg-800 px-2 py-0.5 rounded-sm">
           Default: REST
         </span>
       </div>
@@ -279,7 +279,7 @@ export default function ActionLockInPanel() {
         <button
           onClick={() => lockInMutation.mutate({ actionType: selectedType, target: actionTarget })}
           disabled={lockInMutation.isPending}
-          className="w-full py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {lockInMutation.isPending ? (
             <>
@@ -296,7 +296,7 @@ export default function ActionLockInPanel() {
       )}
 
       {lockInMutation.isError && (
-        <div className="mt-3 p-3 bg-realm-danger/30 border border-realm-danger/50 rounded text-realm-danger text-xs flex items-center gap-2">
+        <div className="mt-3 p-3 bg-realm-danger/30 border border-realm-danger/50 rounded-sm text-realm-danger text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {(lockInMutation.error as any)?.response?.data?.error ?? 'Failed to lock in action'}
         </div>
@@ -329,7 +329,7 @@ function GatherSubPanel({
             <button
               key={r.id}
               onClick={() => onChange({ ...target, resourceId: r.id, resourceName: r.resourceName })}
-              className={`p-2 text-left rounded border text-xs transition-all
+              className={`p-2 text-left rounded-sm border text-xs transition-all
                 ${target.resourceId === r.id
                   ? 'border-realm-success bg-realm-success/10 text-realm-success'
                   : 'border-realm-border text-realm-text-secondary hover:border-realm-success/40'}`}
@@ -364,7 +364,7 @@ function CraftSubPanel({
             <button
               key={r.id}
               onClick={() => onChange({ ...target, recipeId: r.id, recipeName: r.name })}
-              className={`w-full p-2 text-left rounded border text-xs transition-all
+              className={`w-full p-2 text-left rounded-sm border text-xs transition-all
                 ${target.recipeId === r.id
                   ? 'border-realm-teal-300 bg-realm-teal-300/10 text-realm-teal-300'
                   : 'border-realm-border text-realm-text-secondary hover:border-realm-teal-300/40'}`}
@@ -410,7 +410,7 @@ function NodeSubPanel({
             <button
               key={n.id}
               onClick={() => onChange({ ...target, targetNodeId: n.id, nodeName: n.name })}
-              className={`w-full p-2 text-left rounded border text-xs transition-all flex items-center justify-between
+              className={`w-full p-2 text-left rounded-sm border text-xs transition-all flex items-center justify-between
                 ${target.targetNodeId === n.id
                   ? 'border-realm-gold-500 bg-realm-gold-500/10 text-realm-gold-400'
                   : 'border-realm-border text-realm-text-secondary hover:border-realm-gold-500/40'}`}

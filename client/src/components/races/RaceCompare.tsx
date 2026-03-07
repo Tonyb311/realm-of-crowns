@@ -122,7 +122,7 @@ export default function RaceCompare() {
             <select
               value={id}
               onChange={e => toggleRace(idx, e.target.value)}
-              className="appearance-none bg-realm-bg-700 border border-realm-border rounded px-4 py-2 text-sm text-realm-text-primary pr-8 focus:border-realm-gold-400 focus:outline-none min-w-[180px]"
+              className="appearance-none bg-realm-bg-700 border border-realm-border rounded-sm px-4 py-2 text-sm text-realm-text-primary pr-8 focus:border-realm-gold-400 focus:outline-hidden min-w-[180px]"
             >
               <option value="">Select race...</option>
               {allRaces.map(r => (
@@ -135,7 +135,7 @@ export default function RaceCompare() {
         {selectedIds.length < 3 && (
           <button
             onClick={addSlot}
-            className="px-4 py-2 border border-dashed border-realm-gold-400/40 text-realm-gold-400 text-sm font-display rounded hover:bg-realm-bg-700 transition-colors"
+            className="px-4 py-2 border border-dashed border-realm-gold-400/40 text-realm-gold-400 text-sm font-display rounded-sm hover:bg-realm-bg-700 transition-colors"
           >
             + Add Race
           </button>
@@ -196,7 +196,7 @@ export default function RaceCompare() {
                 <div key={race.id} className="space-y-2">
                   <p className="font-display text-sm text-realm-text-primary border-b border-realm-border pb-1">{race.name}</p>
                   {race.abilities.map(a => (
-                    <div key={a.name} className="bg-realm-bg-800 rounded p-2">
+                    <div key={a.name} className="bg-realm-bg-800 rounded-sm p-2">
                       <p className="text-xs text-realm-text-primary font-display">{a.name}</p>
                       <p className="text-[10px] text-realm-text-muted">
                         Lv.{a.levelRequired} | {a.type}
@@ -226,7 +226,7 @@ export default function RaceCompare() {
                       if (pb.yieldBonus) parts.push(`Yield +${(pb.yieldBonus * 100).toFixed(0)}%`);
                       if (pb.xpBonus) parts.push(`XP +${(pb.xpBonus * 100).toFixed(0)}%`);
                       return (
-                        <div key={pb.professionType} className="bg-realm-bg-800 rounded px-2 py-1.5">
+                        <div key={pb.professionType} className="bg-realm-bg-800 rounded-sm px-2 py-1.5">
                           <p className="text-xs text-realm-text-primary capitalize">
                             {pb.professionType.replace(/_/g, ' ').toLowerCase()}
                           </p>

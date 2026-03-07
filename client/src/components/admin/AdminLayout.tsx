@@ -89,7 +89,7 @@ export default function AdminLayout() {
       </aside>
 
       {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-30 bg-realm-bg-900/95 border-b border-realm-border backdrop-blur-sm">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-30 bg-realm-bg-900/95 border-b border-realm-border backdrop-blur-xs">
         <div className="flex items-center justify-between px-4 h-12">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-realm-gold-400" />

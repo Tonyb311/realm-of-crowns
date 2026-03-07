@@ -111,7 +111,7 @@ function formatDuration(seconds: number): string {
 function StatusBadge({ effect, duration }: { effect: string; duration?: number }) {
   const color = STATUS_COLORS[effect.toLowerCase()] || 'bg-realm-bg-600 text-realm-text-secondary';
   return (
-    <span className={`${color} px-1.5 py-0.5 rounded text-[10px] font-display inline-flex items-center gap-1`}>
+    <span className={`${color} px-1.5 py-0.5 rounded-sm text-[10px] font-display inline-flex items-center gap-1`}>
       {effect}
       {duration != null && <span className="opacity-70">({duration} rnd{duration !== 1 ? 's' : ''})</span>}
     </span>
@@ -132,7 +132,7 @@ function DiceFormula({ formula }: { formula: string }) {
 }
 
 function VsTag({ text }: { text: string }) {
-  return <span className="text-realm-text-muted bg-realm-bg-900/50 px-1 py-0.5 rounded text-[10px]">{text}</span>;
+  return <span className="text-realm-text-muted bg-realm-bg-900/50 px-1 py-0.5 rounded-sm text-[10px]">{text}</span>;
 }
 
 function deriveSaveDefault(effect: string): string {
@@ -615,7 +615,7 @@ export default function AbilityCard({
 
   return (
     <div
-      className="bg-realm-bg-800/50 border border-realm-border/50 rounded px-3 py-2 cursor-pointer hover:border-realm-border transition-colors"
+      className="bg-realm-bg-800/50 border border-realm-border/50 rounded-sm px-3 py-2 cursor-pointer hover:border-realm-border transition-colors"
       onClick={() => setExpanded(!expanded)}
     >
       {/* Header */}
@@ -631,16 +631,16 @@ export default function AbilityCard({
         {/* Badges */}
         <div className="flex items-center gap-1.5 ml-auto flex-wrap">
           {tier != null && tierClass && (
-            <span className={`${tierClass} px-2 py-0.5 rounded text-xs font-display`}>T{tier}</span>
+            <span className={`${tierClass} px-2 py-0.5 rounded-sm text-xs font-display`}>T{tier}</span>
           )}
           {levelRequired != null && (
-            <span className="bg-realm-bg-600 text-realm-text-secondary px-2 py-0.5 rounded text-xs font-display">
+            <span className="bg-realm-bg-600 text-realm-text-secondary px-2 py-0.5 rounded-sm text-xs font-display">
               Lv {levelRequired}
             </span>
           )}
           {derivedType && (
             <span
-              className={`px-2 py-0.5 rounded text-xs font-display ${
+              className={`px-2 py-0.5 rounded-sm text-xs font-display ${
                 derivedType === 'passive'
                   ? 'bg-teal-500/20 text-teal-400'
                   : 'bg-yellow-500/20 text-yellow-400'
@@ -650,17 +650,17 @@ export default function AbilityCard({
             </span>
           )}
           {classEffectType && classEffectType !== 'passive' && classEffectType !== 'active' && (
-            <span className="bg-realm-purple/20 text-realm-purple px-2 py-0.5 rounded text-xs font-display">
+            <span className="bg-realm-purple/20 text-realm-purple px-2 py-0.5 rounded-sm text-xs font-display">
               {classEffectType}
             </span>
           )}
           {attackType && ATTACK_TYPE_BADGE[attackType] && (
-            <span className={`${ATTACK_TYPE_BADGE[attackType].className} px-2 py-0.5 rounded text-[10px] font-display`}>
+            <span className={`${ATTACK_TYPE_BADGE[attackType].className} px-2 py-0.5 rounded-sm text-[10px] font-display`}>
               {ATTACK_TYPE_BADGE[attackType].label}
             </span>
           )}
           {damageType && (
-            <span className={`${DAMAGE_TYPE_BADGE[damageType] ?? 'bg-gray-500/20 text-gray-400'} px-2 py-0.5 rounded text-[10px] font-display`}>
+            <span className={`${DAMAGE_TYPE_BADGE[damageType] ?? 'bg-gray-500/20 text-gray-400'} px-2 py-0.5 rounded-sm text-[10px] font-display`}>
               {damageType}
             </span>
           )}
@@ -697,12 +697,12 @@ export default function AbilityCard({
           {(grantsSetupTag || requiresSetupTag) && (
             <div className="flex flex-wrap gap-2 text-xs">
               {grantsSetupTag && (
-                <span className="bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded font-display">
+                <span className="bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-sm font-display">
                   Grants: {grantsSetupTag}
                 </span>
               )}
               {requiresSetupTag && (
-                <span className="bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded font-display">
+                <span className="bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-sm font-display">
                   Requires: {requiresSetupTag}
                 </span>
               )}

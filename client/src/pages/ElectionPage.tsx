@@ -258,7 +258,7 @@ export default function ElectionPage() {
                           {election.type === 'MAYOR' ? 'Mayoral' : 'Ruler'} Election
                           {election.town && ` - ${election.town.name}`}
                         </h3>
-                        <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${PHASE_COLORS[election.phase] ?? ''}`}>
+                        <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-sm border ${PHASE_COLORS[election.phase] ?? ''}`}>
                           {election.phase}
                         </span>
                       </div>
@@ -278,7 +278,7 @@ export default function ElectionPage() {
                         {election.phase === 'NOMINATIONS' && (
                           <button
                             onClick={() => { setNominateElectionId(election.id); setShowNominateModal(true); }}
-                            className="px-4 py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded hover:bg-realm-gold-400 transition-colors"
+                            className="px-4 py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded-sm hover:bg-realm-gold-400 transition-colors"
                           >
                             Run for Office
                           </button>
@@ -314,7 +314,7 @@ export default function ElectionPage() {
                                 <button
                                   onClick={() => voteMutation.mutate({ electionId: election.id, candidateId: candidate.characterId })}
                                   disabled={voteMutation.isPending}
-                                  className="px-4 py-1.5 bg-realm-success/20 text-realm-success text-xs font-display rounded border border-realm-success/30 hover:bg-realm-success/30 transition-colors disabled:opacity-50"
+                                  className="px-4 py-1.5 bg-realm-success/20 text-realm-success text-xs font-display rounded-sm border border-realm-success/30 hover:bg-realm-success/30 transition-colors disabled:opacity-50"
                                 >
                                   {voteMutation.isPending ? 'Voting...' : 'Vote'}
                                 </button>
@@ -325,7 +325,7 @@ export default function ElectionPage() {
                       )}
 
                       {voteMutation.isError && (
-                        <div className="mt-3 p-2 bg-realm-danger/30 border border-realm-danger/50 rounded text-realm-danger text-xs flex items-center gap-2">
+                        <div className="mt-3 p-2 bg-realm-danger/30 border border-realm-danger/50 rounded-sm text-realm-danger text-xs flex items-center gap-2">
                           <AlertCircle className="w-3 h-3 flex-shrink-0" />
                           {(voteMutation.error as any)?.response?.data?.error ?? 'Failed to cast vote.'}
                         </div>
@@ -367,7 +367,7 @@ export default function ElectionPage() {
                     </div>
 
                     {result.winner && (
-                      <div className="bg-realm-gold-500/10 border border-realm-gold-500/30 rounded p-3 mb-3 flex items-center gap-2">
+                      <div className="bg-realm-gold-500/10 border border-realm-gold-500/30 rounded-sm p-3 mb-3 flex items-center gap-2">
                         <Trophy className="w-4 h-4 text-realm-gold-400" />
                         <span className="text-realm-gold-400 font-display text-sm">Winner: {result.winner.name}</span>
                       </div>
@@ -411,7 +411,7 @@ export default function ElectionPage() {
               <h2 className="text-xl font-display text-realm-text-primary">Impeachment</h2>
               <button
                 onClick={() => setShowImpeachModal(true)}
-                className="px-5 py-2 bg-realm-danger/30 border border-realm-danger/40 text-realm-danger font-display text-sm rounded hover:bg-realm-danger/50 transition-colors"
+                className="px-5 py-2 bg-realm-danger/30 border border-realm-danger/40 text-realm-danger font-display text-sm rounded-sm hover:bg-realm-danger/50 transition-colors"
               >
                 Start Impeachment
               </button>
@@ -452,7 +452,7 @@ export default function ElectionPage() {
                   placeholder="Share your vision for the town..."
                   maxLength={2000}
                   rows={4}
-                  className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-none resize-none"
+                  className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-hidden resize-none"
                 />
                 <p className="text-realm-text-muted/50 text-[10px] text-right mt-1">{platform.length}/2000</p>
               </div>
@@ -461,14 +461,14 @@ export default function ElectionPage() {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowNominateModal(false)}
-                className="flex-1 py-2 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                className="flex-1 py-2 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => nominateMutation.mutate({ electionId: nominateElectionId, platform })}
                 disabled={nominateMutation.isPending}
-                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {nominateMutation.isPending ? 'Submitting...' : 'Enter Race'}
               </button>
@@ -503,11 +503,11 @@ export default function ElectionPage() {
                   value={impeachTargetId}
                   onChange={(e) => setImpeachTargetId(e.target.value)}
                   placeholder="Character ID of the official"
-                  className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-none"
+                  className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500/50 focus:outline-hidden"
                 />
               </div>
 
-              <div className="bg-realm-danger/20 border border-realm-danger/30 rounded p-3">
+              <div className="bg-realm-danger/20 border border-realm-danger/30 rounded-sm p-3">
                 <p className="text-realm-danger text-xs">
                   This will start a 48-hour impeachment vote. All town residents can vote. A majority is required to remove the official.
                 </p>
@@ -517,14 +517,14 @@ export default function ElectionPage() {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowImpeachModal(false)}
-                className="flex-1 py-2 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                className="flex-1 py-2 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => impeachMutation.mutate({ targetId: impeachTargetId, townId: character?.currentTownId ?? undefined })}
                 disabled={impeachMutation.isPending || !impeachTargetId.trim()}
-                className="flex-1 py-2 bg-realm-danger/40 text-realm-danger border border-realm-danger/40 font-display text-sm rounded hover:bg-realm-danger/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-2 bg-realm-danger/40 text-realm-danger border border-realm-danger/40 font-display text-sm rounded-sm hover:bg-realm-danger/60 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {impeachMutation.isPending ? 'Starting...' : 'Start Vote'}
               </button>

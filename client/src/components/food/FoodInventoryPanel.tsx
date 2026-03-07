@@ -77,7 +77,7 @@ export default function FoodInventoryPanel() {
           <Apple className="w-4 h-4" />
           Food Supply
         </h3>
-        <span className="text-[10px] text-realm-text-muted bg-realm-bg-800 px-2 py-0.5 rounded">
+        <span className="text-[10px] text-realm-text-muted bg-realm-bg-800 px-2 py-0.5 rounded-sm">
           {totalCount} items / ~{daysOfFood} days
         </span>
       </div>
@@ -89,7 +89,7 @@ export default function FoodInventoryPanel() {
           <button
             key={mode}
             onClick={() => setSortBy(mode)}
-            className={`text-[10px] px-2 py-0.5 rounded font-display transition-colors capitalize
+            className={`text-[10px] px-2 py-0.5 rounded-sm font-display transition-colors capitalize
               ${sortBy === mode
                 ? 'bg-realm-gold-500/15 text-realm-gold-400 border border-realm-gold-500/30'
                 : 'text-realm-text-muted hover:text-realm-text-secondary border border-transparent'}`}
@@ -129,7 +129,7 @@ function FoodItemRow({ item }: { item: FoodItem }) {
         <div className="flex items-center gap-1.5">
           <span className="text-realm-text-primary text-xs font-display truncate">{item.name}</span>
           {item.isBeverage && (
-            <span className="text-[9px] text-realm-teal-300 bg-realm-teal-300/10 px-1 rounded">drink</span>
+            <span className="text-[9px] text-realm-teal-300 bg-realm-teal-300/10 px-1 rounded-sm">drink</span>
           )}
         </div>
         {item.foodBuff && (

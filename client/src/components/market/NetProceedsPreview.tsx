@@ -18,7 +18,7 @@ export default function NetProceedsPreview({
   const netProceeds = askingPrice - feeAmount;
 
   return (
-    <div className="bg-realm-bg-900 border border-realm-border rounded p-3">
+    <div className="bg-realm-bg-900 border border-realm-border rounded-sm p-3">
       <div className="flex items-center justify-between mb-1">
         <span className="text-realm-text-muted text-xs">
           After {feePercent}% fee:

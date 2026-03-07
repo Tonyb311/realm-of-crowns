@@ -78,7 +78,7 @@ export function AbilitiesPanel({
                 {group.map(ab => (
                   <div
                     key={ab.id}
-                    className={`rounded px-2 py-1.5 text-xs border ${
+                    className={`rounded-sm px-2 py-1.5 text-xs border ${
                       ab.chosen
                         ? 'bg-realm-bg-700 border-realm-gold-400/30 text-realm-text-primary'
                         : 'bg-realm-bg-800/30 border-realm-border/20 text-realm-text-muted/50'
@@ -87,7 +87,7 @@ export function AbilitiesPanel({
                     <div className="flex items-center gap-1.5">
                       <span className={`font-semibold ${ab.chosen ? 'text-realm-gold-400' : ''}`}>{ab.name}</span>
                       {ab.attackType && ab.attackType !== 'auto' && (
-                        <span className="text-[10px] text-realm-text-muted bg-realm-bg-800/50 px-1 rounded">{ab.attackType}</span>
+                        <span className="text-[10px] text-realm-text-muted bg-realm-bg-800/50 px-1 rounded-sm">{ab.attackType}</span>
                       )}
                     </div>
                     {ab.chosen && (
@@ -113,7 +113,7 @@ export function AbilitiesPanel({
             {specAbilities.map(ab => (
               <div
                 key={ab.id}
-                className={`rounded px-2 py-1.5 text-xs border ${
+                className={`rounded-sm px-2 py-1.5 text-xs border ${
                   ab.unlocked
                     ? 'bg-realm-bg-700 border-realm-border/40 text-realm-text-primary'
                     : 'bg-realm-bg-800/20 border-realm-border/10 text-realm-text-muted/40'
@@ -122,7 +122,7 @@ export function AbilitiesPanel({
                 <div className="flex items-center gap-1.5">
                   <span className={`font-semibold ${ab.unlocked ? '' : 'text-realm-text-muted/50'}`}>{ab.name}</span>
                   {ab.attackType && ab.attackType !== 'auto' && (
-                    <span className="text-[10px] text-realm-text-muted bg-realm-bg-800/50 px-1 rounded">{ab.attackType}</span>
+                    <span className="text-[10px] text-realm-text-muted bg-realm-bg-800/50 px-1 rounded-sm">{ab.attackType}</span>
                   )}
                   {!ab.unlocked && (
                     <span className="text-[10px] text-realm-text-muted ml-auto flex items-center gap-0.5">
@@ -143,11 +143,11 @@ export function AbilitiesPanel({
       {racial && (
         <Section title={`Racial — ${racial.name}`} defaultOpen={false}>
           {/* Passive trait */}
-          <div className="rounded px-2 py-1.5 text-xs bg-realm-bg-700 border border-realm-border/30 mb-2">
+          <div className="rounded-sm px-2 py-1.5 text-xs bg-realm-bg-700 border border-realm-border/30 mb-2">
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-3 h-3 text-realm-gold-400" />
               <span className="font-semibold text-realm-gold-400">{racial.trait.name}</span>
-              <span className="text-[10px] text-realm-text-muted bg-realm-bg-800/50 px-1 rounded">passive</span>
+              <span className="text-[10px] text-realm-text-muted bg-realm-bg-800/50 px-1 rounded-sm">passive</span>
             </div>
             <div className="text-realm-text-secondary mt-0.5">{racial.trait.description}</div>
           </div>
@@ -156,10 +156,10 @@ export function AbilitiesPanel({
           {racial.abilities.length > 0 && (
             <div className="space-y-1">
               {racial.abilities.map((ab, i) => (
-                <div key={i} className="rounded px-2 py-1.5 text-xs bg-realm-bg-700 border border-realm-border/30">
+                <div key={i} className="rounded-sm px-2 py-1.5 text-xs bg-realm-bg-700 border border-realm-border/30">
                   <div className="flex items-center gap-1.5">
                     <span className="font-semibold">{ab.name}</span>
-                    <span className="text-[10px] text-realm-text-muted bg-realm-bg-800/50 px-1 rounded">{ab.type}</span>
+                    <span className="text-[10px] text-realm-text-muted bg-realm-bg-800/50 px-1 rounded-sm">{ab.type}</span>
                   </div>
                   <div className="text-realm-text-secondary mt-0.5">{ab.description}</div>
                 </div>

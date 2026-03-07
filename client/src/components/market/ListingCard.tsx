@@ -8,7 +8,7 @@ export type { AuctionListing };
 export function RarityBadge({ rarity }: { rarity: string }) {
   return (
     <span
-      className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${
+      className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-sm border ${
         RARITY_BADGE_COLORS[rarity] ??
         'text-realm-text-primary bg-realm-text-primary/10 border-realm-text-primary/30'
       }`}
@@ -82,7 +82,7 @@ export default function ListingCard({
           e.stopPropagation();
           onPlaceOrder(listing);
         }}
-        className="mt-3 w-full py-1.5 bg-realm-gold-400/20 text-realm-gold-400 text-xs font-display rounded border border-realm-gold-400/30 hover:bg-realm-gold-400/30 transition-colors"
+        className="mt-3 w-full py-1.5 bg-realm-gold-400/20 text-realm-gold-400 text-xs font-display rounded-sm border border-realm-gold-400/30 hover:bg-realm-gold-400/30 transition-colors"
       >
         Place Order
       </button>

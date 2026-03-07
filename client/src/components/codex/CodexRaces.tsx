@@ -152,7 +152,7 @@ function AbilitiesTable({ abilities }: { abilities: RacialAbility[] }) {
               <td className="py-1.5 pr-3 text-realm-text-primary whitespace-nowrap">{ability.name}</td>
               <td className="py-1.5 pr-3">
                 <span
-                  className={`inline-block px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider font-display ${
+                  className={`inline-block px-1.5 py-0.5 rounded-sm text-[10px] uppercase tracking-wider font-display ${
                     ability.type === 'active'
                       ? 'bg-realm-teal-300/10 text-realm-teal-300 border border-realm-teal-300/30'
                       : 'bg-realm-purple-300/10 text-realm-purple-300 border border-realm-purple-300/30'
@@ -190,7 +190,7 @@ function SubRacesSection({ subRaces, raceName }: { subRaces: SubRaceOption[]; ra
         {(subRaces || []).map(sr => (
           <div
             key={sr.id}
-            className="bg-realm-bg-800 border border-realm-border/50 rounded p-2.5"
+            className="bg-realm-bg-800 border border-realm-border/50 rounded-sm p-2.5"
           >
             <div className="flex items-center gap-2 mb-1">
               <span className="text-sm text-realm-text-primary font-display">{sr.name}</span>
@@ -284,7 +284,7 @@ function RaceExpandedDetail({ race }: { race: RaceDefinition }) {
           <h4 className="font-display text-realm-gold-400 text-xs uppercase tracking-wider mb-1.5">
             Racial Trait
           </h4>
-          <div className="bg-realm-bg-800 border border-realm-border/50 rounded p-2.5">
+          <div className="bg-realm-bg-800 border border-realm-border/50 rounded-sm p-2.5">
             <span className="text-sm text-realm-text-primary font-display">{race.trait?.name}</span>
             <p className="text-xs text-realm-text-secondary mt-0.5">{race.trait?.description}</p>
           </div>
@@ -314,7 +314,7 @@ function RaceExpandedDetail({ race }: { race: RaceDefinition }) {
               {(race.startingTowns || []).map(town => (
                 <span
                   key={town}
-                  className="text-xs bg-realm-bg-800 text-realm-text-primary px-2 py-1 rounded border border-realm-border/30"
+                  className="text-xs bg-realm-bg-800 text-realm-text-primary px-2 py-1 rounded-sm border border-realm-border/30"
                 >
                   {town}
                 </span>

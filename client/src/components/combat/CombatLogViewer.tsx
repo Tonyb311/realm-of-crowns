@@ -183,13 +183,13 @@ export default function CombatLogViewer({ log }: CombatLogViewerProps) {
       {/* HP summary */}
       {(data.characterStartHp != null || data.opponentStartHp != null) && (
         <div className="grid grid-cols-2 gap-2 text-[10px]">
-          <div className="bg-realm-bg-900 rounded p-2">
+          <div className="bg-realm-bg-900 rounded-sm p-2">
             <p className="text-realm-text-muted mb-0.5">{playerName}</p>
             <p className="text-realm-text-primary">
               HP: {data.characterStartHp} &rarr; {data.characterEndHp}
             </p>
           </div>
-          <div className="bg-realm-bg-900 rounded p-2">
+          <div className="bg-realm-bg-900 rounded-sm p-2">
             <p className="text-realm-text-muted mb-0.5">{data.monsterName ?? 'Monster'}</p>
             <p className="text-realm-text-primary">
               HP: {data.opponentStartHp} &rarr; {data.opponentEndHp}
@@ -306,7 +306,7 @@ function RoundEntryRow({ entry, playerName }: { entry: RoundLogEntry; playerName
   }
 
   return (
-    <div className="p-2 bg-realm-bg-900/50 rounded mt-1.5">
+    <div className="p-2 bg-realm-bg-900/50 rounded-sm mt-1.5">
       {/* Narrator text — the story, prominent */}
       {entry.narratorText ? (
         <p className={`text-xs leading-relaxed ${isPlayer ? 'text-realm-text-primary' : 'text-realm-text-secondary'}`}>
@@ -419,7 +419,7 @@ function LegacyCombatLogViewer({ log }: { log: any }) {
       {log.combatants && log.combatants.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {log.combatants.map((c: any, i: number) => (
-            <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-realm-bg-800 text-realm-text-secondary border border-realm-border">
+            <span key={i} className="text-[10px] px-2 py-0.5 rounded-sm bg-realm-bg-800 text-realm-text-secondary border border-realm-border">
               {c.name}{c.level && <span className="text-realm-text-muted ml-1">Lv.{c.level}</span>}
             </span>
           ))}
@@ -454,7 +454,7 @@ function LegacyCombatLogViewer({ log }: { log: any }) {
                   >
                     <div className="border-t border-realm-border px-2.5 pb-2.5 space-y-1.5">
                       {round.actions.map((action, i) => (
-                        <div key={i} className="flex items-start gap-2 p-2 bg-realm-bg-900/50 rounded mt-1.5">
+                        <div key={i} className="flex items-start gap-2 p-2 bg-realm-bg-900/50 rounded-sm mt-1.5">
                           <span className="text-realm-text-primary text-[10px] font-display shrink-0 w-20 truncate">
                             {action.actor}
                           </span>

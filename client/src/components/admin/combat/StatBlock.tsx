@@ -65,7 +65,7 @@ export default function StatBlock({ stats, showCombatStats }: StatBlockProps) {
         {ABILITY_LABELS.map((label, i) => {
           const val = stats[ABILITY_KEYS[i]];
           return (
-            <div key={label} className="bg-realm-bg-800/60 rounded px-1 py-1">
+            <div key={label} className="bg-realm-bg-800/60 rounded-sm px-1 py-1">
               <div className="text-[10px] text-realm-text-muted uppercase tracking-wider">{label}</div>
               <div className="text-xs font-display text-realm-text-primary">{formatModifier(val)}</div>
             </div>

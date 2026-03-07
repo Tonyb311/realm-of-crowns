@@ -134,7 +134,7 @@ export default function HUD() {
                 {character.name}
               </span>
               <Tooltip content={`Level ${character.level}`}>
-                <span className="flex items-center gap-0.5 text-[10px] text-realm-gold-400 bg-realm-gold-500/10 border border-realm-gold-500/30 rounded px-1.5 py-0.5 font-display">
+                <span className="flex items-center gap-0.5 text-[10px] text-realm-gold-400 bg-realm-gold-500/10 border border-realm-gold-500/30 rounded-sm px-1.5 py-0.5 font-display">
                   <Crown className="w-2.5 h-2.5" />
                   {character.level}
                 </span>
@@ -205,7 +205,7 @@ export default function HUD() {
           <Tooltip content="Click to view journey">
             <Link
               to="/travel"
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400 hover:bg-realm-gold-500/15 transition-colors flex-shrink-0"
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-sm bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400 hover:bg-realm-gold-500/15 transition-colors flex-shrink-0"
             >
               <Compass className="w-3 h-3 animate-[spin_8s_linear_infinite]" />
               <span className="text-[10px] font-display truncate max-w-[80px]">

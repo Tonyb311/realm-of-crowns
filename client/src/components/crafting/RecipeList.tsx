@@ -176,7 +176,7 @@ export default function RecipeList({
           placeholder="Search recipes..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 bg-realm-bg-700 border border-realm-border rounded text-sm text-realm-text-primary placeholder:text-realm-text-muted/50 focus:border-realm-gold-400 focus:outline-none"
+          className="w-full pl-10 pr-4 py-2 bg-realm-bg-700 border border-realm-border rounded-sm text-sm text-realm-text-primary placeholder:text-realm-text-muted/50 focus:border-realm-gold-400 focus:outline-hidden"
         />
       </div>
 
@@ -187,7 +187,7 @@ export default function RecipeList({
           <select
             value={professionFilter}
             onChange={(e) => setProfessionFilter(e.target.value)}
-            className="appearance-none bg-realm-bg-700 border border-realm-border rounded px-3 py-1.5 text-sm text-realm-text-primary pr-8 focus:border-realm-gold-400 focus:outline-none"
+            className="appearance-none bg-realm-bg-700 border border-realm-border rounded-sm px-3 py-1.5 text-sm text-realm-text-primary pr-8 focus:border-realm-gold-400 focus:outline-hidden"
           >
             <option value="ALL">All Professions</option>
             {uniqueProfessions.map((p) => (
@@ -202,7 +202,7 @@ export default function RecipeList({
           <select
             value={tierFilter}
             onChange={(e) => setTierFilter(e.target.value)}
-            className="appearance-none bg-realm-bg-700 border border-realm-border rounded px-3 py-1.5 text-sm text-realm-text-primary pr-8 focus:border-realm-gold-400 focus:outline-none"
+            className="appearance-none bg-realm-bg-700 border border-realm-border rounded-sm px-3 py-1.5 text-sm text-realm-text-primary pr-8 focus:border-realm-gold-400 focus:outline-hidden"
           >
             <option value="ALL">All Tiers</option>
             {uniqueTiers.map((t) => (
@@ -215,7 +215,7 @@ export default function RecipeList({
         {/* What Can I Make toggle */}
         <button
           onClick={() => setShowCraftableOnly(!showCraftableOnly)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-display rounded border transition-colors
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-display rounded-sm border transition-colors
             ${showCraftableOnly
               ? 'bg-realm-success text-realm-text-primary border-realm-success'
               : 'bg-realm-bg-700 text-realm-text-secondary border-realm-border hover:border-realm-gold-400/40'}`}
@@ -226,7 +226,7 @@ export default function RecipeList({
       </div>
 
       {craftError && (
-        <div className="mb-4 p-3 bg-realm-danger/20 border border-realm-danger/50 rounded text-realm-danger text-sm flex items-center gap-2">
+        <div className="mb-4 p-3 bg-realm-danger/20 border border-realm-danger/50 rounded-sm text-realm-danger text-sm flex items-center gap-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {craftError}
         </div>
@@ -270,7 +270,7 @@ export default function RecipeList({
                     <p className="text-[10px] text-realm-text-muted flex items-center gap-1.5 flex-wrap">
                       <span>{professionLabel(recipe.professionType)} - {tierLabel(recipe.tier)} (Lv.{recipe.levelRequired})</span>
                       {recipe.specialization && (
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-display border ${
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-sm text-[9px] font-display border ${
                           meetsSpec
                             ? 'bg-realm-teal-300/15 text-realm-teal-300 border-realm-teal-300/30'
                             : 'bg-realm-danger/15 text-realm-danger border-realm-danger/30'
@@ -349,7 +349,7 @@ export default function RecipeList({
                 {/* Batch count + Craft button */}
                 <div className="flex gap-2">
                   {/* Batch counter */}
-                  <div className="flex items-center border border-realm-border rounded bg-realm-bg-800">
+                  <div className="flex items-center border border-realm-border rounded-sm bg-realm-bg-800">
                     <button
                       onClick={() => setBatchCount(recipe.id, batchCount - 1)}
                       disabled={batchCount <= 1}
@@ -379,7 +379,7 @@ export default function RecipeList({
                       }
                     }}
                     disabled={!(batchCount > 1 ? canBatch : (canCraftSingle && meetsSpec)) || isCraftStarting}
-                    className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded
+                    className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm
                       hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {isCraftStarting

@@ -173,11 +173,11 @@ function AbilityCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm text-realm-text-primary font-display">{ability.name}</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded ${badge.bg} ${badge.text}`}>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-sm ${badge.bg} ${badge.text}`}>
               {badge.label}
             </span>
             {subRace && ability.name.toLowerCase().includes(subRace.toLowerCase()) && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-realm-purple-300/50 text-realm-purple-300">
+              <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-realm-purple-300/50 text-realm-purple-300">
                 {subRace}
               </span>
             )}
@@ -246,7 +246,7 @@ function AbilityCard({
             <button
               onClick={() => onUse(ability.name)}
               disabled={isUsing}
-              className="px-3 py-1.5 bg-realm-teal-300/40 border border-realm-teal-300/40 text-realm-teal-300 font-display text-xs rounded
+              className="px-3 py-1.5 bg-realm-teal-300/40 border border-realm-teal-300/40 text-realm-teal-300 font-display text-xs rounded-sm
                 hover:bg-realm-teal-300/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isUsing ? (
@@ -311,7 +311,7 @@ export default function RacialAbilitiesTab({
           {race} Racial Abilities
         </h3>
         {subRace && (
-          <span className="text-[10px] bg-realm-purple-300/50 text-realm-purple-300 px-2 py-0.5 rounded">
+          <span className="text-[10px] bg-realm-purple-300/50 text-realm-purple-300 px-2 py-0.5 rounded-sm">
             {subRace}
           </span>
         )}

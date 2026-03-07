@@ -23,8 +23,8 @@ export function RealmInput({ label, error, className = '', id, ref, ...props }: 
         ref={ref}
         id={inputId}
         className={[
-          'w-full px-3 py-2 bg-realm-bg-900 border rounded text-realm-text-primary placeholder-realm-text-muted',
-          'focus:border-realm-gold-500/50 focus:shadow-realm-glow focus:outline-none',
+          'w-full px-3 py-2 bg-realm-bg-900 border rounded-sm text-realm-text-primary placeholder-realm-text-muted',
+          'focus:border-realm-gold-500/50 focus:shadow-realm-glow focus:outline-hidden',
           'font-body transition-all duration-200',
           error ? 'border-realm-danger' : 'border-realm-border',
           className,

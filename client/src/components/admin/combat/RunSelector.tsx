@@ -97,7 +97,7 @@ export default function RunSelector({
           <select
             value={selectedRunId ?? ''}
             onChange={e => onSelectRun(e.target.value || null)}
-            className="flex-1 bg-realm-bg-800 border border-realm-border rounded px-2 py-1.5 text-xs text-realm-text-primary"
+            className="flex-1 bg-realm-bg-800 border border-realm-border rounded-sm px-2 py-1.5 text-xs text-realm-text-primary"
           >
             <option value="">All Simulation Data</option>
             {runs.map(run => (
@@ -115,7 +115,7 @@ export default function RunSelector({
             <select
               value={compareRunId ?? ''}
               onChange={e => onSelectCompareRun(e.target.value || null)}
-              className="flex-1 bg-realm-bg-800 border border-realm-border rounded px-2 py-1.5 text-xs text-realm-text-primary"
+              className="flex-1 bg-realm-bg-800 border border-realm-border rounded-sm px-2 py-1.5 text-xs text-realm-text-primary"
             >
               <option value="">Select run to compare...</option>
               {runs.filter(r => r.id !== selectedRunId).map(run => (
@@ -131,7 +131,7 @@ export default function RunSelector({
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => onToggleCompare(!compareMode)}
-            className={`flex items-center gap-1 px-2 py-1.5 rounded text-xs transition-colors ${
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-sm text-xs transition-colors ${
               compareMode
                 ? 'bg-realm-purple-500/20 text-realm-purple-400 border border-realm-purple-500/30'
                 : 'bg-realm-bg-800 text-realm-text-secondary hover:text-realm-text-primary border border-realm-border'
@@ -147,7 +147,7 @@ export default function RunSelector({
               type="checkbox"
               checked={showArchived}
               onChange={e => setShowArchived(e.target.checked)}
-              className="rounded border-realm-border bg-realm-bg-800"
+              className="rounded-sm border-realm-border bg-realm-bg-800"
             />
             Archived
           </label>
@@ -167,7 +167,7 @@ export default function RunSelector({
                 onBlur={() => handleNotesBlur(selectedRun.id)}
                 onKeyDown={e => { if (e.key === 'Enter') handleNotesBlur(selectedRun.id); if (e.key === 'Escape') setEditingNotesId(null); }}
                 placeholder="Add notes..."
-                className="w-full bg-realm-bg-800 border border-realm-border rounded px-2 py-1 text-xs text-realm-text-primary"
+                className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-2 py-1 text-xs text-realm-text-primary"
               />
             ) : (
               <button
@@ -184,7 +184,7 @@ export default function RunSelector({
           <button
             onClick={() => archiveMutation.mutate(selectedRun.id)}
             disabled={archiveMutation.isPending}
-            className="p-1 rounded text-realm-text-muted hover:text-realm-warning transition-colors"
+            className="p-1 rounded-sm text-realm-text-muted hover:text-realm-warning transition-colors"
             title={selectedRun.archived ? 'Unarchive' : 'Archive'}
           >
             {selectedRun.archived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
@@ -195,7 +195,7 @@ export default function RunSelector({
             <div className="flex items-center gap-1">
               <button
                 onClick={() => { deleteMutation.mutate(selectedRun.id); setConfirmDeleteId(null); }}
-                className="px-2 py-0.5 rounded text-xs bg-realm-danger/20 text-realm-danger border border-realm-danger/30 hover:bg-realm-danger/30"
+                className="px-2 py-0.5 rounded-sm text-xs bg-realm-danger/20 text-realm-danger border border-realm-danger/30 hover:bg-realm-danger/30"
               >
                 Confirm
               </button>
@@ -209,7 +209,7 @@ export default function RunSelector({
           ) : (
             <button
               onClick={() => setConfirmDeleteId(selectedRun.id)}
-              className="p-1 rounded text-realm-text-muted hover:text-realm-danger transition-colors"
+              className="p-1 rounded-sm text-realm-text-muted hover:text-realm-danger transition-colors"
               title="Delete run"
             >
               <Trash2 size={14} />

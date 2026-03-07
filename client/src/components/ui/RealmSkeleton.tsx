@@ -2,7 +2,7 @@ import { RealmPanel } from './RealmPanel';
 
 export function RealmSkeleton({ className }: { className?: string }) {
   return (
-    <div className={`bg-realm-bg-600 rounded animate-pulse ${className || ''}`} />
+    <div className={`bg-realm-bg-600 rounded-sm animate-pulse ${className || ''}`} />
   );
 }
 

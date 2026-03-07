@@ -103,14 +103,14 @@ export default function StatAllocation({ currentStats, unspentStatPoints, onDone
               <button
                 onClick={() => decrement(key)}
                 disabled={allocations[key] <= 0}
-                className="w-7 h-7 rounded border border-realm-border flex items-center justify-center text-realm-text-secondary hover:bg-realm-bg-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="w-7 h-7 rounded-sm border border-realm-border flex items-center justify-center text-realm-text-secondary hover:bg-realm-bg-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <Minus className="w-3 h-3" />
               </button>
               <button
                 onClick={() => increment(key)}
                 disabled={remaining <= 0}
-                className="w-7 h-7 rounded border border-realm-border flex items-center justify-center text-realm-text-secondary hover:bg-realm-bg-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="w-7 h-7 rounded-sm border border-realm-border flex items-center justify-center text-realm-text-secondary hover:bg-realm-bg-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <Plus className="w-3 h-3" />
               </button>

@@ -99,12 +99,12 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
 
 function StatusBadge({ isReleased }: { isReleased: boolean }) {
   return isReleased ? (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded text-realm-success bg-realm-success/10 border border-realm-success/30">
+    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-sm text-realm-success bg-realm-success/10 border border-realm-success/30">
       <Unlock className="w-3 h-3" />
       Released
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded text-realm-text-muted bg-realm-bg-900/50 border border-realm-border">
+    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-sm text-realm-text-muted bg-realm-bg-900/50 border border-realm-border">
       <Lock className="w-3 h-3" />
       Locked
     </span>
@@ -114,7 +114,7 @@ function StatusBadge({ isReleased }: { isReleased: boolean }) {
 function TierBadge({ tier }: { tier: string }) {
   const style = TIER_STYLES[tier.toLowerCase()] || TIER_STYLES.common;
   return (
-    <span className={`inline-flex text-xs font-semibold px-2 py-0.5 rounded ${style.badge}`}>
+    <span className={`inline-flex text-xs font-semibold px-2 py-0.5 rounded-sm ${style.badge}`}>
       {style.label}
     </span>
   );
@@ -268,7 +268,7 @@ export default function ContentReleasePage() {
           </p>
           <button
             onClick={() => refetch()}
-            className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
+            className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors"
           >
             Retry
           </button>
@@ -384,7 +384,7 @@ export default function ContentReleasePage() {
                       <button
                         onClick={() => handleBulkReleaseRaceTier(tier)}
                         disabled={anyMutationPending}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {bulkReleaseMutation.isPending ? (
                           <Loader2 className="w-3 h-3 animate-spin" />
@@ -401,7 +401,7 @@ export default function ContentReleasePage() {
                     {races.map((race) => (
                       <div
                         key={race.id}
-                        className="flex items-center justify-between py-2.5 px-3 rounded hover:bg-realm-bg-800/30 transition-colors border border-transparent hover:border-realm-border"
+                        className="flex items-center justify-between py-2.5 px-3 rounded-sm hover:bg-realm-bg-800/30 transition-colors border border-transparent hover:border-realm-border"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <span className="text-realm-text-primary text-sm font-medium truncate">
@@ -424,7 +424,7 @@ export default function ContentReleasePage() {
                           <button
                             onClick={() => handleToggleRelease(race.contentType, race.contentId, race.isReleased, race.playerCount)}
                             disabled={anyMutationPending}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 font-display text-xs rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 font-display text-xs rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                               race.isReleased
                                 ? 'bg-realm-bg-900 text-realm-text-muted border border-realm-border hover:bg-realm-bg-800 hover:text-realm-text-secondary'
                                 : 'bg-realm-gold-500 text-realm-bg-900 hover:bg-realm-gold-400'
@@ -499,7 +499,7 @@ export default function ContentReleasePage() {
                       <button
                         onClick={() => handleBulkReleaseRegion(regionName)}
                         disabled={anyMutationPending}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {bulkReleaseMutation.isPending ? (
                           <Loader2 className="w-3 h-3 animate-spin" />
@@ -516,7 +516,7 @@ export default function ContentReleasePage() {
                     {towns.map((town) => (
                       <div
                         key={town.id}
-                        className="flex items-center justify-between py-2.5 px-3 rounded hover:bg-realm-bg-800/30 transition-colors border border-transparent hover:border-realm-border"
+                        className="flex items-center justify-between py-2.5 px-3 rounded-sm hover:bg-realm-bg-800/30 transition-colors border border-transparent hover:border-realm-border"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <span className="text-realm-text-primary text-sm font-medium truncate">
@@ -541,7 +541,7 @@ export default function ContentReleasePage() {
                           <button
                             onClick={() => handleToggleRelease('town', town.id, town.isReleased, town.playerCount)}
                             disabled={anyMutationPending}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 font-display text-xs rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 font-display text-xs rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                               town.isReleased
                                 ? 'bg-realm-bg-900 text-realm-text-muted border border-realm-border hover:bg-realm-bg-800 hover:text-realm-text-secondary'
                                 : 'bg-realm-gold-500 text-realm-bg-900 hover:bg-realm-gold-400'

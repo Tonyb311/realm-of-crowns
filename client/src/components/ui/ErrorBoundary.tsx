@@ -40,7 +40,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             )}
             <button
               onClick={() => window.location.reload()}
-              className="px-8 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-lg rounded hover:bg-realm-gold-400 transition-colors"
+              className="px-8 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-lg rounded-sm hover:bg-realm-gold-400 transition-colors"
             >
               Reload
             </button>

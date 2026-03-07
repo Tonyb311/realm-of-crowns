@@ -18,7 +18,7 @@ const variantClasses: Record<NonNullable<RealmBadgeProps['variant']>, string> = 
 export function RealmBadge({ variant = 'default', children, className = '' }: RealmBadgeProps) {
   return (
     <span
-      className={`font-display text-xs uppercase tracking-wider px-2 py-0.5 rounded-sm border inline-block ${variantClasses[variant]} ${className}`}
+      className={`font-display text-xs uppercase tracking-wider px-2 py-0.5 rounded-xs border inline-block ${variantClasses[variant]} ${className}`}
     >
       {children}
     </span>

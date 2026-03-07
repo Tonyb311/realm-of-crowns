@@ -25,7 +25,7 @@ export function RealmTooltip({
       {children}
       <div
         className={[
-          'absolute z-50 bg-realm-bg-700 border border-realm-border rounded px-3 py-2',
+          'absolute z-50 bg-realm-bg-700 border border-realm-border rounded-sm px-3 py-2',
           'shadow-realm-panel text-sm text-realm-text-primary whitespace-nowrap',
           'transition-all duration-200 opacity-0 invisible',
           'group-hover:opacity-100 group-hover:visible',

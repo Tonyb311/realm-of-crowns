@@ -174,7 +174,7 @@ function CollapsibleSection({
       >
         <span className="font-display text-sm text-realm-text-primary">{title}</span>
         <div className="flex items-center gap-2">
-          <span className="bg-realm-gold-500/20 text-realm-gold-400 px-2 py-0.5 rounded text-xs font-display">
+          <span className="bg-realm-gold-500/20 text-realm-gold-400 px-2 py-0.5 rounded-sm text-xs font-display">
             {count}
           </span>
           {open ? (
@@ -262,11 +262,11 @@ function RacesSubTab({ search }: { search: string }) {
               )}
               <span className="font-display text-sm text-realm-text-primary">{race.name}</span>
               <span
-                className={`${RACE_TIER_COLORS[race.tier] ?? 'bg-realm-bg-600 text-realm-text-muted'} px-2 py-0.5 rounded text-xs font-display`}
+                className={`${RACE_TIER_COLORS[race.tier] ?? 'bg-realm-bg-600 text-realm-text-muted'} px-2 py-0.5 rounded-sm text-xs font-display`}
               >
                 {race.tier}
               </span>
-              <span className="bg-realm-bg-600 text-realm-text-secondary px-2 py-0.5 rounded text-xs font-display ml-auto">
+              <span className="bg-realm-bg-600 text-realm-text-secondary px-2 py-0.5 rounded-sm text-xs font-display ml-auto">
                 {race.abilities.length} abilities
               </span>
             </button>
@@ -314,7 +314,7 @@ function RacesSubTab({ search }: { search: string }) {
                       {race.startingTowns.map((town) => (
                         <span
                           key={town}
-                          className="bg-realm-bg-600 text-realm-text-secondary px-2 py-0.5 rounded text-xs"
+                          className="bg-realm-bg-600 text-realm-text-secondary px-2 py-0.5 rounded-sm text-xs"
                         >
                           {town}
                         </span>
@@ -333,7 +333,7 @@ function RacesSubTab({ search }: { search: string }) {
                       {race.professionBonuses.map((bonus, i) => {
                         const b = bonus as Record<string, unknown>;
                         return (
-                          <div key={i} className="text-xs text-realm-text-secondary bg-realm-bg-800/50 rounded px-2 py-1">
+                          <div key={i} className="text-xs text-realm-text-secondary bg-realm-bg-800/50 rounded-sm px-2 py-1">
                             <span className="text-realm-gold-400">{String(b.profession ?? b.type ?? '--')}</span>
                             {b.bonus != null && <span className="ml-1">+{String(b.bonus)}</span>}
                             {b.description != null && <span className="text-realm-text-muted ml-1">({String(b.description)})</span>}
@@ -455,10 +455,10 @@ function ClassesSubTab({ search }: { search: string }) {
                 <ChevronRight className="w-4 h-4 text-realm-text-muted flex-shrink-0" />
               )}
               <span className="font-display text-sm text-realm-text-primary capitalize">{cls.name}</span>
-              <span className="bg-realm-bg-600 text-realm-text-secondary px-2 py-0.5 rounded text-xs font-display">
+              <span className="bg-realm-bg-600 text-realm-text-secondary px-2 py-0.5 rounded-sm text-xs font-display">
                 {cls.specializations.length} specs
               </span>
-              <span className="bg-realm-gold-500/20 text-realm-gold-400 px-2 py-0.5 rounded text-xs font-display ml-auto">
+              <span className="bg-realm-gold-500/20 text-realm-gold-400 px-2 py-0.5 rounded-sm text-xs font-display ml-auto">
                 {tier0Count > 0
                   ? `${tier0Count} tier 0 + ${specAbilities.length} spec = ${totalCount}`
                   : `${totalCount} abilities`}
@@ -472,7 +472,7 @@ function ClassesSubTab({ search }: { search: string }) {
                   {cls.specializations.map((spec) => (
                     <span
                       key={spec}
-                      className="bg-realm-purple/20 text-realm-purple px-2 py-0.5 rounded text-xs font-display"
+                      className="bg-realm-purple/20 text-realm-purple px-2 py-0.5 rounded-sm text-xs font-display"
                     >
                       {spec}
                     </span>
@@ -489,7 +489,7 @@ function ClassesSubTab({ search }: { search: string }) {
                       group.abilities.length > 0 && (
                         <div key={group.choiceLevel} className="space-y-1.5">
                           <div className="flex items-center gap-2 text-xs text-realm-text-muted">
-                            <span className="bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded font-display">
+                            <span className="bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded-sm font-display">
                               Level {group.choiceLevel}
                             </span>
                             <span>— Choose One</span>
@@ -625,7 +625,7 @@ function ItemsSubTab({ search }: { search: string }) {
               return (
                 <div
                   key={item.id ?? `${cat.key}-${i}`}
-                  className="flex items-start justify-between gap-2 bg-realm-bg-800/50 rounded px-3 py-2"
+                  className="flex items-start justify-between gap-2 bg-realm-bg-800/50 rounded-sm px-3 py-2"
                 >
                   <div className="min-w-0">
                     <span className="text-sm text-realm-text-primary">{item.name}</span>
@@ -638,12 +638,12 @@ function ItemsSubTab({ search }: { search: string }) {
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     {(item.profession || item.professionType) && (
-                      <span className="bg-realm-bg-600 text-realm-text-secondary px-2 py-0.5 rounded text-xs font-display">
+                      <span className="bg-realm-bg-600 text-realm-text-secondary px-2 py-0.5 rounded-sm text-xs font-display">
                         {item.profession ?? item.professionType}
                       </span>
                     )}
                     {item.levelRequired != null && (
-                      <span className="bg-realm-bg-600 text-realm-text-muted px-2 py-0.5 rounded text-xs font-display">
+                      <span className="bg-realm-bg-600 text-realm-text-muted px-2 py-0.5 rounded-sm text-xs font-display">
                         Lv {item.levelRequired}
                       </span>
                     )}
@@ -764,13 +764,13 @@ function StatusEffectsSubTab({ search }: { search: string }) {
             <div className="flex items-center gap-3 mb-2">
               <span className="text-sm text-realm-text-primary font-display font-bold">{formatEffectName(effect.name)}</span>
               {effect.preventsAction && (
-                <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-[10px] font-display">SKIPS TURN</span>
+                <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded-sm text-[10px] font-display">SKIPS TURN</span>
               )}
               {effect.hasDot && (
-                <span className="bg-red-500/10 text-red-400 px-2 py-0.5 rounded text-[10px] font-display">DoT {effect.dotDamageBase}/rd</span>
+                <span className="bg-red-500/10 text-red-400 px-2 py-0.5 rounded-sm text-[10px] font-display">DoT {effect.dotDamageBase}/rd</span>
               )}
               {effect.hasHot && (
-                <span className="bg-green-500/10 text-green-400 px-2 py-0.5 rounded text-[10px] font-display">HoT {effect.hotHealingBase}/rd</span>
+                <span className="bg-green-500/10 text-green-400 px-2 py-0.5 rounded-sm text-[10px] font-display">HoT {effect.hotHealingBase}/rd</span>
               )}
             </div>
             <p className="text-xs text-realm-text-secondary mb-2">{effect.description}</p>
@@ -844,7 +844,7 @@ export default function CodexTab() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search codex..."
-          className="w-full bg-realm-bg-700 border border-realm-border rounded-lg pl-10 pr-4 py-2.5 text-sm text-realm-text-primary placeholder-realm-text-muted focus:outline-none focus:border-realm-gold-500/50 transition-colors"
+          className="w-full bg-realm-bg-700 border border-realm-border rounded-lg pl-10 pr-4 py-2.5 text-sm text-realm-text-primary placeholder-realm-text-muted focus:outline-hidden focus:border-realm-gold-500/50 transition-colors"
         />
       </div>
 

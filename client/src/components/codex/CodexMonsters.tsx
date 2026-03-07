@@ -184,7 +184,7 @@ export default function CodexMonsters({ searchQuery }: CodexMonstersProps) {
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setBiomeFilter('ALL')}
-          className={`px-3 py-1.5 rounded text-sm font-body transition-colors ${
+          className={`px-3 py-1.5 rounded-sm text-sm font-body transition-colors ${
             biomeFilter === 'ALL'
               ? 'bg-realm-gold-400/20 text-realm-gold-400 border border-realm-gold-400/40'
               : 'bg-realm-bg-700 text-realm-text-secondary border border-realm-border hover:text-realm-text-primary'
@@ -198,7 +198,7 @@ export default function CodexMonsters({ searchQuery }: CodexMonstersProps) {
             <button
               key={biome}
               onClick={() => setBiomeFilter(biome)}
-              className={`px-3 py-1.5 rounded text-sm font-body transition-colors ${
+              className={`px-3 py-1.5 rounded-sm text-sm font-body transition-colors ${
                 biomeFilter === biome
                   ? 'bg-realm-gold-400/20 text-realm-gold-400 border border-realm-gold-400/40'
                   : 'bg-realm-bg-700 text-realm-text-secondary border border-realm-border hover:text-realm-text-primary'
@@ -239,7 +239,7 @@ export default function CodexMonsters({ searchQuery }: CodexMonstersProps) {
                       {monster.name}
                     </h3>
                     {monster.isLegendary && (
-                      <span className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      <span className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-xs bg-amber-500/20 text-amber-300 border border-amber-500/30">
                         Legendary
                       </span>
                     )}
@@ -251,20 +251,20 @@ export default function CodexMonsters({ searchQuery }: CodexMonstersProps) {
 
                 {/* Classification badges */}
                 <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                  <span className={`text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm ${CATEGORY_COLORS[monster.category] || 'bg-realm-bg-700 text-realm-text-muted'}`}>
+                  <span className={`text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-xs ${CATEGORY_COLORS[monster.category] || 'bg-realm-bg-700 text-realm-text-muted'}`}>
                     {formatCategory(monster.category)}
                   </span>
-                  <span className={`text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm ${DIFFICULTY_COLORS[monster.difficulty] || 'bg-realm-neutral/20 text-realm-neutral-light'}`}>
+                  <span className={`text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-xs ${DIFFICULTY_COLORS[monster.difficulty] || 'bg-realm-neutral/20 text-realm-neutral-light'}`}>
                     {monster.difficulty}
                   </span>
-                  <span className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm bg-realm-bg-600/50 text-realm-text-muted">
+                  <span className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-xs bg-realm-bg-600/50 text-realm-text-muted">
                     {formatSize(monster.size)}
                   </span>
                 </div>
 
                 {/* Biome badge */}
                 <div className="flex items-center gap-2 mb-2">
-                  <span className={`text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm border ${BIOME_COLORS[monster.biome] || 'bg-realm-bg-700 border-realm-border text-realm-text-muted'}`}>
+                  <span className={`text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-xs border ${BIOME_COLORS[monster.biome] || 'bg-realm-bg-700 border-realm-border text-realm-text-muted'}`}>
                     {formatBiome(monster.biome)}
                   </span>
                   {monster.regionName && (
@@ -292,23 +292,23 @@ export default function CodexMonsters({ searchQuery }: CodexMonstersProps) {
                         Combat Stats
                       </h4>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div className="bg-realm-bg-800 border border-realm-border/50 rounded p-2 text-center">
+                        <div className="bg-realm-bg-800 border border-realm-border/50 rounded-sm p-2 text-center">
                           <div className="text-lg font-display text-realm-danger">{monster.stats.hp}</div>
                           <div className="text-[10px] text-realm-text-muted uppercase">HP</div>
                         </div>
-                        <div className="bg-realm-bg-800 border border-realm-border/50 rounded p-2 text-center">
+                        <div className="bg-realm-bg-800 border border-realm-border/50 rounded-sm p-2 text-center">
                           <div className="text-lg font-display text-realm-teal-300">{monster.stats.ac}</div>
                           <div className="text-[10px] text-realm-text-muted uppercase">AC</div>
                         </div>
-                        <div className="bg-realm-bg-800 border border-realm-border/50 rounded p-2 text-center">
+                        <div className="bg-realm-bg-800 border border-realm-border/50 rounded-sm p-2 text-center">
                           <div className="text-lg font-display text-realm-gold-400">+{monster.stats.attack}</div>
                           <div className="text-[10px] text-realm-text-muted uppercase">Attack</div>
                         </div>
-                        <div className="bg-realm-bg-800 border border-realm-border/50 rounded p-2 text-center">
+                        <div className="bg-realm-bg-800 border border-realm-border/50 rounded-sm p-2 text-center">
                           <div className="text-lg font-display text-realm-text-primary">{monster.stats.damage}</div>
                           <div className="text-[10px] text-realm-text-muted uppercase">Damage</div>
                           {monster.damageType && (
-                            <span className={`inline-block mt-1 text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm ${DAMAGE_TYPE_COLORS[monster.damageType] || 'bg-realm-neutral/20 text-realm-neutral-light'}`}>
+                            <span className={`inline-block mt-1 text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-xs ${DAMAGE_TYPE_COLORS[monster.damageType] || 'bg-realm-neutral/20 text-realm-neutral-light'}`}>
                               {monster.damageType}
                             </span>
                           )}
@@ -352,7 +352,7 @@ export default function CodexMonsters({ searchQuery }: CodexMonstersProps) {
                         </h4>
                         <div className="flex flex-wrap gap-1.5">
                           {monster.vulnerabilities.map(v => (
-                            <span key={v} className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-sm bg-realm-damage/20 text-realm-damage-muted">
+                            <span key={v} className="text-[10px] font-display uppercase tracking-wider px-2 py-0.5 rounded-xs bg-realm-damage/20 text-realm-damage-muted">
                               {v}
                             </span>
                           ))}
@@ -368,7 +368,7 @@ export default function CodexMonsters({ searchQuery }: CodexMonstersProps) {
                         </h4>
                         <div className="space-y-2">
                           {monster.abilities.map(a => (
-                            <div key={a.name} className="bg-realm-bg-800 border border-realm-border/50 rounded p-2">
+                            <div key={a.name} className="bg-realm-bg-800 border border-realm-border/50 rounded-sm p-2">
                               <div className="font-display text-realm-text-primary text-sm">{a.name}</div>
                               <div className="text-realm-text-secondary text-xs mt-0.5">{a.description}</div>
                             </div>

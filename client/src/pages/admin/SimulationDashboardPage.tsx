@@ -254,7 +254,7 @@ function getActionColor(type: string): string {
 function ProfileBadge({ profile }: { profile: string }) {
   const style = PROFILE_COLORS[profile] || PROFILE_COLORS.balanced;
   return (
-    <span className={`inline-flex text-xs font-semibold px-2 py-0.5 rounded border ${style}`}>
+    <span className={`inline-flex text-xs font-semibold px-2 py-0.5 rounded-sm border ${style}`}>
       {profile}
     </span>
   );
@@ -269,7 +269,7 @@ function SimStatusBadge({ status }: { status: string }) {
   };
   const c = config[status] || config.idle;
   return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded border ${c.className}`}>
+    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-sm border ${c.className}`}>
       {c.pulse && <span className="w-2 h-2 rounded-full bg-realm-success animate-pulse" />}
       {status.toUpperCase()}
     </span>
@@ -661,7 +661,7 @@ export default function SimulationDashboardPage() {
           </p>
           <button
             onClick={() => refetchStatus()}
-            className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors"
+            className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors"
           >
             Retry
           </button>
@@ -683,7 +683,7 @@ export default function SimulationDashboardPage() {
         <h1 className="text-2xl font-display text-realm-gold-400">Simulation Dashboard</h1>
         <SimStatusBadge status={currentStatus} />
         {status?.runProgress && (
-          <span className="inline-flex items-center gap-1.5 text-sm font-display text-realm-gold-400 bg-realm-gold-500/10 border border-realm-gold-500/30 px-3 py-1 rounded">
+          <span className="inline-flex items-center gap-1.5 text-sm font-display text-realm-gold-400 bg-realm-gold-500/10 border border-realm-gold-500/30 px-3 py-1 rounded-sm">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
             Tick {status.runProgress.current} / {status.runProgress.total}
           </span>
@@ -724,14 +724,14 @@ export default function SimulationDashboardPage() {
                 onChange={(e) =>
                   setBotCount(Math.max(1, Math.min(500, parseInt(e.target.value, 10) || 1)))
                 }
-                className="w-20 bg-realm-bg-800 border border-realm-border rounded px-2 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+                className="w-20 bg-realm-bg-800 border border-realm-border rounded-sm px-2 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
               />
               <div className="flex gap-1">
                 {QUICK_BOT_COUNTS.map((n) => (
                   <button
                     key={n}
                     onClick={() => setBotCount(n)}
-                    className={`px-2 py-1 text-xs rounded border transition-colors ${
+                    className={`px-2 py-1 text-xs rounded-sm border transition-colors ${
                       botCount === n
                         ? 'bg-realm-gold-500/20 text-realm-gold-400 border-realm-gold-500/40'
                         : 'bg-realm-bg-800 text-realm-text-muted border-realm-border hover:border-realm-gold-500/40 hover:text-realm-text-secondary'
@@ -775,7 +775,7 @@ export default function SimulationDashboardPage() {
                 <button
                   key={String(opt)}
                   onClick={() => setStartingLevel(opt === 'diverse' ? 'diverse' : opt)}
-                  className={`px-2.5 py-1.5 text-xs rounded border transition-colors ${
+                  className={`px-2.5 py-1.5 text-xs rounded-sm border transition-colors ${
                     startingLevel === opt
                       ? 'bg-realm-gold-500/20 text-realm-gold-400 border-realm-gold-500/40'
                       : 'bg-realm-bg-800 text-realm-text-muted border-realm-border hover:border-realm-gold-500/40 hover:text-realm-text-secondary'
@@ -804,7 +804,7 @@ export default function SimulationDashboardPage() {
               onChange={(e) =>
                 setStartingGold(Math.max(0, Math.min(1000, parseInt(e.target.value, 10) || 0)))
               }
-              className="w-20 bg-realm-bg-800 border border-realm-border rounded px-2 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none"
+              className="w-20 bg-realm-bg-800 border border-realm-border rounded-sm px-2 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden"
             />
           </div>
         </div>
@@ -890,7 +890,7 @@ export default function SimulationDashboardPage() {
               if (e.target.value === 'all') setSelectedTowns('all');
               else setSelectedTowns([e.target.value]);
             }}
-            className="bg-realm-bg-800 border border-realm-border rounded px-2 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none w-full max-w-md"
+            className="bg-realm-bg-800 border border-realm-border rounded-sm px-2 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden w-full max-w-md"
           >
             <option value="all">All Towns (distributed by race)</option>
             {towns.map((town) => (
@@ -912,7 +912,7 @@ export default function SimulationDashboardPage() {
           <button
             onClick={() => seedMutation.mutate()}
             disabled={anyMutationPending || isRunning}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {seedMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -926,7 +926,7 @@ export default function SimulationDashboardPage() {
           <button
             onClick={() => tickMutation.mutate()}
             disabled={anyMutationPending}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {tickMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -958,7 +958,7 @@ export default function SimulationDashboardPage() {
               onChange={(e) =>
                 setRunTickCount(Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 1)))
               }
-              className="w-14 bg-realm-bg-800 border border-realm-border rounded-r px-2 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none text-center"
+              className="w-14 bg-realm-bg-800 border border-realm-border rounded-r px-2 py-2 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden text-center"
             />
             <span className="text-realm-text-muted text-xs">ticks</span>
           </div>
@@ -968,7 +968,7 @@ export default function SimulationDashboardPage() {
             <button
               onClick={() => startMutation.mutate()}
               disabled={anyMutationPending}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {startMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -984,7 +984,7 @@ export default function SimulationDashboardPage() {
             <button
               onClick={() => pauseMutation.mutate()}
               disabled={anyMutationPending}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {pauseMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -998,7 +998,7 @@ export default function SimulationDashboardPage() {
             <button
               onClick={() => resumeMutation.mutate()}
               disabled={anyMutationPending}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {resumeMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -1014,7 +1014,7 @@ export default function SimulationDashboardPage() {
             <button
               onClick={() => stopMutation.mutate()}
               disabled={anyMutationPending}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-danger text-realm-text-primary font-display text-sm rounded hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-danger text-realm-text-primary font-display text-sm rounded-sm hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {stopMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -1029,7 +1029,7 @@ export default function SimulationDashboardPage() {
           <button
             onClick={handleExport}
             disabled={(status?.botCount ?? 0) === 0}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="w-4 h-4" />
             Export Excel
@@ -1042,7 +1042,7 @@ export default function SimulationDashboardPage() {
           <button
             onClick={handleCleanup}
             disabled={anyMutationPending || isRunning}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-danger text-realm-text-primary font-display text-sm rounded hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-realm-danger text-realm-text-primary font-display text-sm rounded-sm hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {cleanupMutation.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -1142,7 +1142,7 @@ export default function SimulationDashboardPage() {
                       {Object.entries(lastTickResult.actionBreakdown).map(([action, count]) => (
                         <div
                           key={action}
-                          className="bg-realm-bg-800 rounded px-2.5 py-1.5 flex items-center justify-between"
+                          className="bg-realm-bg-800 rounded-sm px-2.5 py-1.5 flex items-center justify-between"
                         >
                           <span className={`text-xs ${getActionColorClass(action)}`}>{action}</span>
                           <span className="text-xs text-realm-text-primary font-medium">{count}</span>
@@ -1193,7 +1193,7 @@ export default function SimulationDashboardPage() {
                 <button
                   onClick={() => errorStormMutation.mutate()}
                   disabled={errorStormMutation.isPending || !isRunning}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-realm-danger text-realm-text-primary font-display text-xs rounded hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-realm-danger text-realm-text-primary font-display text-xs rounded-sm hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {errorStormMutation.isPending ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1214,7 +1214,7 @@ export default function SimulationDashboardPage() {
                     <select
                       value={focusSystem}
                       onChange={(e) => setFocusSystem(e.target.value)}
-                      className="appearance-none w-full bg-realm-bg-800 border border-realm-border rounded pl-3 pr-8 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-none cursor-pointer"
+                      className="appearance-none w-full bg-realm-bg-800 border border-realm-border rounded-sm pl-3 pr-8 py-1.5 text-realm-text-secondary text-sm focus:border-realm-gold-500 focus:outline-hidden cursor-pointer"
                     >
                       {FOCUS_SYSTEMS.map((sys) => (
                         <option key={sys} value={sys}>
@@ -1227,7 +1227,7 @@ export default function SimulationDashboardPage() {
                   <button
                     onClick={() => focusMutation.mutate(focusSystem)}
                     disabled={focusMutation.isPending || !isRunning}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {focusMutation.isPending ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1474,7 +1474,7 @@ export default function SimulationDashboardPage() {
                         </td>
                         <td className="px-3 py-2">
                           <span
-                            className={`inline-flex text-xs font-semibold px-2 py-0.5 rounded border ${
+                            className={`inline-flex text-xs font-semibold px-2 py-0.5 rounded-sm border ${
                               BOT_STATUS_STYLES[bot.status] || BOT_STATUS_STYLES.idle
                             }`}
                           >

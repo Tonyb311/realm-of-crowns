@@ -5,7 +5,7 @@ interface SkeletonProps {
 export function SkeletonText({ className = '' }: SkeletonProps) {
   return (
     <div
-      className={`h-4 bg-realm-bg-800 rounded animate-pulse ${className}`}
+      className={`h-4 bg-realm-bg-800 rounded-sm animate-pulse ${className}`}
     />
   );
 }
@@ -98,14 +98,14 @@ export function InventorySkeleton() {
             <SkeletonText className="w-40 h-7" />
             <SkeletonText className="w-24 h-4" />
           </div>
-          <SkeletonText className="w-32 h-9 rounded" />
+          <SkeletonText className="w-32 h-9 rounded-sm" />
         </div>
       </header>
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {Array.from({ length: 10 }).map((_, i) => (
             <div key={i} className="bg-realm-bg-700 border border-realm-border rounded-lg p-4 space-y-2">
-              <div className="w-12 h-12 bg-realm-bg-800 rounded mx-auto" />
+              <div className="w-12 h-12 bg-realm-bg-800 rounded-sm mx-auto" />
               <SkeletonText className="w-3/4 mx-auto h-4" />
               <SkeletonText className="w-1/2 mx-auto h-3" />
             </div>
@@ -124,7 +124,7 @@ export function CombatSkeleton() {
       <div className="bg-realm-bg-700 border border-realm-border rounded-lg px-4 py-3 flex items-center gap-2">
         <SkeletonText className="w-16 h-3" />
         {Array.from({ length: 4 }).map((_, i) => (
-          <SkeletonText key={i} className="w-20 h-7 rounded" />
+          <SkeletonText key={i} className="w-20 h-7 rounded-sm" />
         ))}
       </div>
       {/* Combatants */}
@@ -146,7 +146,7 @@ export function CombatSkeleton() {
       {/* Action bar */}
       <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4 flex gap-2">
         {Array.from({ length: 4 }).map((_, i) => (
-          <SkeletonText key={i} className="w-24 h-10 rounded" />
+          <SkeletonText key={i} className="w-24 h-10 rounded-sm" />
         ))}
       </div>
     </div>
@@ -160,7 +160,7 @@ export function KingdomSkeleton() {
       <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-realm-bg-700 rounded" />
+            <div className="w-8 h-8 bg-realm-bg-700 rounded-sm" />
             <div className="space-y-2">
               <SkeletonText className="w-48 h-7" />
               <SkeletonText className="w-28 h-4" />
@@ -195,7 +195,7 @@ export function TownHallSkeleton() {
       <header className="border-b border-realm-border bg-realm-bg-800/50">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-realm-bg-700 rounded" />
+            <div className="w-8 h-8 bg-realm-bg-700 rounded-sm" />
             <div className="space-y-2">
               <SkeletonText className="w-36 h-7" />
               <SkeletonText className="w-24 h-4" />

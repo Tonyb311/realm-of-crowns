@@ -146,9 +146,9 @@ function HpBar({ name, current, max, team }: { name: string; current: number; ma
       <span className="w-24 truncate text-realm-text-secondary font-display" title={name}>
         {name}
       </span>
-      <div className="flex-1 h-2 bg-realm-bg-800 rounded overflow-hidden">
+      <div className="flex-1 h-2 bg-realm-bg-800 rounded-sm overflow-hidden">
         <div
-          className={`h-full ${barColor} transition-all duration-300 rounded`}
+          className={`h-full ${barColor} transition-all duration-300 rounded-sm`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -291,7 +291,7 @@ export default function CombatReplay({ logs, participants, attackerParams, defen
 
   if (logs.length === 0) {
     return (
-      <div className="bg-realm-bg-800/50 rounded p-6 text-center text-realm-text-muted text-sm">
+      <div className="bg-realm-bg-800/50 rounded-sm p-6 text-center text-realm-text-muted text-sm">
         No combat logs available.
       </div>
     );
@@ -300,12 +300,12 @@ export default function CombatReplay({ logs, participants, attackerParams, defen
   return (
     <div className="space-y-4">
       {/* Step-through controls */}
-      <div className="flex items-center justify-between bg-realm-bg-800/50 rounded px-4 py-2.5">
+      <div className="flex items-center justify-between bg-realm-bg-800/50 rounded-sm px-4 py-2.5">
         <div className="flex items-center gap-2">
           <button
             onClick={() => goToRound(currentRound - 1)}
             disabled={currentRound <= 0}
-            className="p-1.5 rounded bg-realm-bg-600 text-realm-text-secondary hover:text-realm-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="p-1.5 rounded-sm bg-realm-bg-600 text-realm-text-secondary hover:text-realm-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -315,7 +315,7 @@ export default function CombatReplay({ logs, participants, attackerParams, defen
           <button
             onClick={() => goToRound(currentRound + 1)}
             disabled={currentRound >= totalRounds - 1}
-            className="p-1.5 rounded bg-realm-bg-600 text-realm-text-secondary hover:text-realm-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="p-1.5 rounded-sm bg-realm-bg-600 text-realm-text-secondary hover:text-realm-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -324,14 +324,14 @@ export default function CombatReplay({ logs, participants, attackerParams, defen
         <div className="flex items-center gap-2">
           <button
             onClick={expandAll}
-            className="flex items-center gap-1 px-2.5 py-1 rounded text-xs bg-realm-bg-600 text-realm-text-secondary hover:text-realm-text-primary transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-sm text-xs bg-realm-bg-600 text-realm-text-secondary hover:text-realm-text-primary transition-colors"
           >
             <ChevronsUpDown className="w-3 h-3" />
             Expand All
           </button>
           <button
             onClick={collapseAll}
-            className="flex items-center gap-1 px-2.5 py-1 rounded text-xs bg-realm-bg-600 text-realm-text-secondary hover:text-realm-text-primary transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-sm text-xs bg-realm-bg-600 text-realm-text-secondary hover:text-realm-text-primary transition-colors"
           >
             <ChevronsDownUp className="w-3 h-3" />
             Collapse All
@@ -341,7 +341,7 @@ export default function CombatReplay({ logs, participants, attackerParams, defen
 
       {/* HP bars */}
       {hpState.size > 0 && (
-        <div className="bg-realm-bg-800/50 rounded px-4 py-3 space-y-1.5">
+        <div className="bg-realm-bg-800/50 rounded-sm px-4 py-3 space-y-1.5">
           <div className="text-xs font-display text-realm-text-muted uppercase tracking-wider mb-1">
             HP after Round {currentRound + 1}
           </div>
@@ -363,7 +363,7 @@ export default function CombatReplay({ logs, participants, attackerParams, defen
           return (
             <div
               key={group.round}
-              className={`rounded border transition-colors ${
+              className={`rounded-sm border transition-colors ${
                 isCurrent
                   ? 'border-realm-gold-500/50 bg-realm-bg-700'
                   : 'border-realm-border/50 bg-realm-bg-700/60'

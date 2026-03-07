@@ -118,7 +118,7 @@ const TIER_COLORS: Record<number, string> = {
 function TierBadge({ tier }: { tier: number }) {
   const colorClass = TIER_COLORS[tier] ?? 'text-realm-text-muted border-realm-border';
   return (
-    <span className={`text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded border ${colorClass}`}>
+    <span className={`text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded-sm border ${colorClass}`}>
       T{tier}
     </span>
   );
@@ -192,7 +192,7 @@ function CropStateDisplay({
       return (
         <div className="space-y-2">
           <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs font-display uppercase tracking-wider px-2 py-0.5 rounded bg-realm-success/20 border border-realm-success/40 text-realm-success animate-pulse">
+            <span className="text-xs font-display uppercase tracking-wider px-2 py-0.5 rounded-sm bg-realm-success/20 border border-realm-success/40 text-realm-success animate-pulse">
               Ready to Harvest
             </span>
             <RealmButton
@@ -485,8 +485,8 @@ export default function AssetPanel({ townId, characterId, isHomeTown, homeTownNa
     return (
       <RealmPanel title="Your Properties">
         <div className="space-y-3">
-          <div className="h-20 bg-realm-bg-800 rounded animate-pulse" />
-          <div className="h-20 bg-realm-bg-800 rounded animate-pulse" />
+          <div className="h-20 bg-realm-bg-800 rounded-sm animate-pulse" />
+          <div className="h-20 bg-realm-bg-800 rounded-sm animate-pulse" />
         </div>
       </RealmPanel>
     );
@@ -612,8 +612,8 @@ export default function AssetPanel({ townId, characterId, isHomeTown, homeTownNa
       >
         {!availableData ? (
           <div className="space-y-3">
-            <div className="h-12 bg-realm-bg-800 rounded animate-pulse" />
-            <div className="h-12 bg-realm-bg-800 rounded animate-pulse" />
+            <div className="h-12 bg-realm-bg-800 rounded-sm animate-pulse" />
+            <div className="h-12 bg-realm-bg-800 rounded-sm animate-pulse" />
           </div>
         ) : availableData.professions.length === 0 ? (
           <p className="text-xs text-realm-text-muted">
@@ -640,7 +640,7 @@ export default function AssetPanel({ townId, characterId, isHomeTown, homeTownNa
                           return (
                             <div
                               key={t.tier}
-                              className={`flex items-center justify-between bg-realm-bg-800 border rounded px-3 py-2 ${
+                              className={`flex items-center justify-between bg-realm-bg-800 border rounded-sm px-3 py-2 ${
                                 locked
                                   ? 'border-realm-bg-600 opacity-50'
                                   : 'border-realm-bg-600 hover:border-realm-gold-500/30'

@@ -212,7 +212,7 @@ export default function DailyReportView({ onDismiss, asModal = false }: DailyRep
       {onDismiss && (
         <button
           onClick={onDismiss}
-          className="w-full py-2.5 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-800 transition-colors"
+          className="w-full py-2.5 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-800 transition-colors"
         >
           Dismiss Report
         </button>

@@ -103,7 +103,7 @@ function AttackTypeBadge({ attackType }: { attackType?: string }) {
   const style = ATTACK_TYPE_STYLE[attackType];
   if (!style) return null;
   return (
-    <span className={`${style.className} px-1.5 py-0 rounded text-[10px] font-display leading-4`}>
+    <span className={`${style.className} px-1.5 py-0 rounded-sm text-[10px] font-display leading-4`}>
       {style.label}
     </span>
   );
@@ -113,7 +113,7 @@ function DamageTypeBadge({ damageType }: { damageType?: string }) {
   if (!damageType) return null;
   const style = DAMAGE_TYPE_STYLE[damageType] ?? 'bg-realm-neutral/20 text-realm-neutral border border-realm-neutral/30';
   return (
-    <span className={`${style} px-1.5 py-0 rounded text-[10px] font-display leading-4`}>
+    <span className={`${style} px-1.5 py-0 rounded-sm text-[10px] font-display leading-4`}>
       {damageType}
     </span>
   );

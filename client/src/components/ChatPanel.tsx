@@ -318,7 +318,7 @@ export default function ChatPanel() {
               <button
                 key={conv.characterId}
                 onClick={() => setPrivateTarget({ id: conv.characterId, name: conv.characterName })}
-                className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-realm-bg-700 transition-colors text-left"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-sm hover:bg-realm-bg-700 transition-colors text-left"
               >
                 <div className="min-w-0">
                   <p className="text-sm text-realm-text-primary font-semibold truncate">{conv.characterName}</p>
@@ -384,7 +384,7 @@ export default function ChatPanel() {
               onKeyDown={handleKeyDown}
               placeholder={`Message ${activeTab === 'private' && privateTarget ? privateTarget.name : activeTab} chat...`}
               rows={1}
-              className="flex-1 bg-realm-bg-700 border border-realm-border rounded px-3 py-1.5 text-sm text-realm-text-primary placeholder-realm-text-muted resize-none focus:outline-none focus:border-realm-gold-500 max-h-20"
+              className="flex-1 bg-realm-bg-700 border border-realm-border rounded-sm px-3 py-1.5 text-sm text-realm-text-primary placeholder-realm-text-muted resize-none focus:outline-hidden focus:border-realm-gold-500 max-h-20"
             />
             <button
               onClick={sendMessage}

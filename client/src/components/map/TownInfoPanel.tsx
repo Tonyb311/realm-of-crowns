@@ -167,7 +167,7 @@ export default function TownInfoPanel({
             <p className="text-realm-text-muted text-xs uppercase tracking-wider mb-2">Resources</p>
             <div className="flex flex-wrap gap-1.5">
               {town.resources.map(r => (
-                <span key={r} className="px-2 py-0.5 bg-realm-bg-800 border border-realm-border rounded text-realm-text-secondary text-xs">
+                <span key={r} className="px-2 py-0.5 bg-realm-bg-800 border border-realm-border rounded-sm text-realm-text-secondary text-xs">
                   {r}
                 </span>
               ))}
@@ -223,7 +223,7 @@ export default function TownInfoPanel({
                   <button
                     key={r.id}
                     onClick={() => onSelectTown(other)}
-                    className="w-full flex items-center justify-between px-2 py-1.5 bg-realm-bg-800/50 rounded hover:bg-realm-bg-800 transition-colors text-left"
+                    className="w-full flex items-center justify-between px-2 py-1.5 bg-realm-bg-800/50 rounded-sm hover:bg-realm-bg-800 transition-colors text-left"
                   >
                     <span className="text-realm-text-primary text-xs">{other.name}</span>
                     <span className="text-realm-text-muted text-[10px]">
@@ -240,14 +240,14 @@ export default function TownInfoPanel({
         {!isPlayerHere && (
           <button
             onClick={() => onTravel(town.id)}
-            className="mt-auto w-full py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-base rounded hover:bg-realm-gold-400 transition-colors flex items-center justify-center gap-2"
+            className="mt-auto w-full py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-base rounded-sm hover:bg-realm-gold-400 transition-colors flex items-center justify-center gap-2"
           >
             <Footprints className="w-4 h-4" />
             Travel to {town.name}
           </button>
         )}
         {isPlayerHere && (
-          <div className="mt-auto w-full py-3 bg-realm-bg-800 text-realm-gold-400 font-display text-base rounded text-center border border-realm-gold-400/30">
+          <div className="mt-auto w-full py-3 bg-realm-bg-800 text-realm-gold-400 font-display text-base rounded-sm text-center border border-realm-gold-400/30">
             You are here
           </div>
         )}

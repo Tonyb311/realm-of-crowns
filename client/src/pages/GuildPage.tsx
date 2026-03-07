@@ -79,7 +79,7 @@ export default function GuildPage() {
     return (
       <div className="pt-16">
         <div className="max-w-5xl mx-auto px-4 py-8 sm:px-6 space-y-4">
-          <div className="h-10 bg-realm-bg-800 rounded animate-pulse w-48" />
+          <div className="h-10 bg-realm-bg-800 rounded-sm animate-pulse w-48" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-32 bg-realm-bg-800 rounded-lg animate-pulse" />
@@ -171,7 +171,7 @@ function GuildBrowser({ characterId }: { characterId: string }) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search guilds..."
-            className="w-full pl-10 pr-4 py-2.5 bg-realm-bg-700 border border-realm-border rounded-lg text-sm text-realm-text-primary placeholder-realm-text-muted focus:outline-none focus:border-realm-gold-500"
+            className="w-full pl-10 pr-4 py-2.5 bg-realm-bg-700 border border-realm-border rounded-lg text-sm text-realm-text-primary placeholder-realm-text-muted focus:outline-hidden focus:border-realm-gold-500"
           />
         </div>
 
@@ -205,7 +205,7 @@ function GuildBrowser({ characterId }: { characterId: string }) {
                   <button
                     onClick={() => joinGuild.mutate(guild.id)}
                     disabled={joinGuild.isPending}
-                    className="px-3 py-1.5 bg-realm-gold-500/20 text-realm-gold-400 text-xs font-display rounded hover:bg-realm-gold-500/30 transition-colors"
+                    className="px-3 py-1.5 bg-realm-gold-500/20 text-realm-gold-400 text-xs font-display rounded-sm hover:bg-realm-gold-500/30 transition-colors"
                   >
                     Join
                   </button>
@@ -242,7 +242,7 @@ function GuildBrowser({ characterId }: { characterId: string }) {
                   type="text"
                   value={createForm.name}
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-realm-bg-700 border border-realm-border rounded text-sm text-realm-text-primary focus:outline-none focus:border-realm-gold-500"
+                  className="w-full px-3 py-2 bg-realm-bg-700 border border-realm-border rounded-sm text-sm text-realm-text-primary focus:outline-hidden focus:border-realm-gold-500"
                   maxLength={32}
                 />
               </div>
@@ -252,7 +252,7 @@ function GuildBrowser({ characterId }: { characterId: string }) {
                   type="text"
                   value={createForm.tag}
                   onChange={(e) => setCreateForm({ ...createForm, tag: e.target.value.toUpperCase() })}
-                  className="w-full px-3 py-2 bg-realm-bg-700 border border-realm-border rounded text-sm text-realm-text-primary focus:outline-none focus:border-realm-gold-500"
+                  className="w-full px-3 py-2 bg-realm-bg-700 border border-realm-border rounded-sm text-sm text-realm-text-primary focus:outline-hidden focus:border-realm-gold-500"
                   maxLength={5}
                 />
               </div>
@@ -262,12 +262,12 @@ function GuildBrowser({ characterId }: { characterId: string }) {
                   value={createForm.description}
                   onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
                   rows={3}
-                  className="w-full px-3 py-2 bg-realm-bg-700 border border-realm-border rounded text-sm text-realm-text-primary focus:outline-none focus:border-realm-gold-500 resize-none"
+                  className="w-full px-3 py-2 bg-realm-bg-700 border border-realm-border rounded-sm text-sm text-realm-text-primary focus:outline-hidden focus:border-realm-gold-500 resize-none"
                   maxLength={200}
                 />
               </div>
 
-              <div className="bg-realm-bg-700/50 border border-realm-gold-500/30 rounded p-3">
+              <div className="bg-realm-bg-700/50 border border-realm-gold-500/30 rounded-sm p-3">
                 <p className="text-xs text-realm-gold-400 flex items-center gap-1">
                   <Coins className="w-3 h-3" />
                   Creating a guild costs 500 gold
@@ -277,7 +277,7 @@ function GuildBrowser({ characterId }: { characterId: string }) {
               <button
                 onClick={() => createGuild.mutate(createForm)}
                 disabled={!createForm.name || !createForm.tag || createForm.tag.length < 2 || createGuild.isPending}
-                className="w-full py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {createGuild.isPending ? 'Creating...' : 'Found Guild (500g)'}
               </button>
@@ -414,7 +414,7 @@ function GuildDashboard({ guildId, characterId }: { guildId: string; characterId
                       leaveGuild.mutate();
                     }
                   }}
-                  className="flex items-center gap-1.5 px-4 py-2 border border-realm-danger/60 text-realm-danger font-display text-sm rounded hover:bg-realm-danger/20 transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 border border-realm-danger/60 text-realm-danger font-display text-sm rounded-sm hover:bg-realm-danger/20 transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
                   Leave Guild
@@ -461,12 +461,12 @@ function GuildDashboard({ guildId, characterId }: { guildId: string; characterId
                   value={inviteInput}
                   onChange={(e) => setInviteInput(e.target.value)}
                   placeholder="Invite player by name..."
-                  className="flex-1 px-3 py-2 bg-realm-bg-700 border border-realm-border rounded text-sm text-realm-text-primary placeholder-realm-text-muted focus:outline-none focus:border-realm-gold-500"
+                  className="flex-1 px-3 py-2 bg-realm-bg-700 border border-realm-border rounded-sm text-sm text-realm-text-primary placeholder-realm-text-muted focus:outline-hidden focus:border-realm-gold-500"
                 />
                 <button
                   onClick={() => invite.mutate(inviteInput)}
                   disabled={!inviteInput.trim() || invite.isPending}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50"
                 >
                   <UserPlus className="w-4 h-4" />
                   Invite
@@ -541,7 +541,7 @@ function GuildDashboard({ guildId, characterId }: { guildId: string; characterId
                   onChange={(e) => setDonateAmount(e.target.value)}
                   placeholder="Amount..."
                   min={1}
-                  className="flex-1 px-3 py-2 bg-realm-bg-800 border border-realm-border rounded text-sm text-realm-text-primary placeholder-realm-text-muted focus:outline-none focus:border-realm-gold-500"
+                  className="flex-1 px-3 py-2 bg-realm-bg-800 border border-realm-border rounded-sm text-sm text-realm-text-primary placeholder-realm-text-muted focus:outline-hidden focus:border-realm-gold-500"
                 />
                 <button
                   onClick={() => {
@@ -549,7 +549,7 @@ function GuildDashboard({ guildId, characterId }: { guildId: string; characterId
                     if (amt > 0) donate.mutate(amt);
                   }}
                   disabled={!donateAmount || parseInt(donateAmount) <= 0 || donate.isPending}
-                  className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50"
+                  className="px-5 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50"
                 >
                   Donate
                 </button>
@@ -583,7 +583,7 @@ function GuildDashboard({ guildId, characterId }: { guildId: string; characterId
                   }
                 }}
                 disabled={disbandGuild.isPending}
-                className="px-5 py-2 bg-realm-danger/20 text-realm-danger font-display text-sm rounded border border-realm-danger/30 hover:bg-realm-danger/30 transition-colors disabled:opacity-50"
+                className="px-5 py-2 bg-realm-danger/20 text-realm-danger font-display text-sm rounded-sm border border-realm-danger/30 hover:bg-realm-danger/30 transition-colors disabled:opacity-50"
               >
                 {disbandGuild.isPending ? 'Disbanding...' : 'Disband Guild'}
               </button>

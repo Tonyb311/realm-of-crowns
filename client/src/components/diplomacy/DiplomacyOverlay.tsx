@@ -241,7 +241,7 @@ export default function DiplomacyOverlay({ regions, towns }: DiplomacyOverlayPro
       <div className="absolute top-4 right-16 z-10">
         <button
           onClick={() => setVisible(v => !v)}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-display transition-colors border ${
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-xs font-display transition-colors border ${
             visible
               ? 'bg-realm-gold-500/15 text-realm-gold-400 border-realm-gold-500/30'
               : 'bg-realm-bg-800/90 text-realm-text-muted border-realm-border hover:text-realm-text-secondary'

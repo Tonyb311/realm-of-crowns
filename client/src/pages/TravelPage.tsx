@@ -391,7 +391,7 @@ function CurrentNodePanel({ node, nextNode, terrain }: CurrentNodePanelProps) {
         {/* Info row */}
         <div className="flex flex-wrap items-center gap-3 mb-5">
           {/* Terrain badge */}
-          <span className={`text-xs px-2.5 py-1 rounded ${terrainStyle.badge}`}>
+          <span className={`text-xs px-2.5 py-1 rounded-sm ${terrainStyle.badge}`}>
             {(node.terrain || terrain || 'Unknown').replace(/_/g, ' ')}
           </span>
 
@@ -403,7 +403,7 @@ function CurrentNodePanel({ node, nextNode, terrain }: CurrentNodePanelProps) {
 
           {/* Special type badge */}
           {node.specialType && (
-            <span className="text-xs px-2.5 py-1 rounded bg-amber-900/40 text-amber-300 border border-amber-500/20 flex items-center gap-1">
+            <span className="text-xs px-2.5 py-1 rounded-sm bg-amber-900/40 text-amber-300 border border-amber-500/20 flex items-center gap-1">
               {(() => {
                 const SpecIcon = getSpecialIcon(node.specialType);
                 return SpecIcon ? <SpecIcon className="w-3 h-3" /> : null;
@@ -492,13 +492,13 @@ function GroupPanel({ groupName, members }: { groupName: string | null; members:
               <span className="text-realm-text-primary text-sm font-semibold">{m.name}</span>
               <span className="text-realm-text-muted text-xs capitalize">{m.race?.toLowerCase()}</span>
               {m.role === 'leader' && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-realm-gold-400/10 text-realm-gold-400 border border-realm-gold-400/30 font-display flex items-center gap-0.5">
+                <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-realm-gold-400/10 text-realm-gold-400 border border-realm-gold-400/30 font-display flex items-center gap-0.5">
                   <Crown className="w-2.5 h-2.5" />
                   Leader
                 </span>
               )}
               {m.role === 'member' && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-realm-border/40 text-realm-text-muted font-display">
+                <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-realm-border/40 text-realm-text-muted font-display">
                   Member
                 </span>
               )}
@@ -559,7 +559,7 @@ function ActionPanel({
             );
           }}
           disabled={isReversing}
-          className="flex-1 py-3 px-4 border border-realm-gold-400/40 text-realm-gold-400 font-display text-sm rounded hover:bg-realm-gold-400/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 py-3 px-4 border border-realm-gold-400/40 text-realm-gold-400 font-display text-sm rounded-sm hover:bg-realm-gold-400/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isReversing ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -573,7 +573,7 @@ function ActionPanel({
         {!showCancelConfirm ? (
           <button
             onClick={() => setShowCancelConfirm(true)}
-            className="flex-1 py-3 px-4 border border-realm-danger/40 text-realm-danger font-display text-sm rounded hover:bg-realm-danger/10 transition-colors flex items-center justify-center gap-2"
+            className="flex-1 py-3 px-4 border border-realm-danger/40 text-realm-danger font-display text-sm rounded-sm hover:bg-realm-danger/10 transition-colors flex items-center justify-center gap-2"
           >
             <XCircle className="w-4 h-4" />
             Cancel Journey
@@ -590,14 +590,14 @@ function ActionPanel({
                   setShowCancelConfirm(false);
                 }}
                 disabled={isCanceling}
-                className="flex-1 py-2 bg-realm-danger text-realm-text-primary font-display text-xs rounded hover:bg-realm-danger/80 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+                className="flex-1 py-2 bg-realm-danger text-realm-text-primary font-display text-xs rounded-sm hover:bg-realm-danger/80 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
               >
                 {isCanceling ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                 Confirm
               </button>
               <button
                 onClick={() => setShowCancelConfirm(false)}
-                className="flex-1 py-2 border border-realm-border text-realm-text-secondary font-display text-xs rounded hover:bg-realm-bg-800 transition-colors"
+                className="flex-1 py-2 border border-realm-border text-realm-text-secondary font-display text-xs rounded-sm hover:bg-realm-bg-800 transition-colors"
               >
                 Nevermind
               </button>

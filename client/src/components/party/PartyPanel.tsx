@@ -132,9 +132,9 @@ export default function PartyPanel({ characterId }: { characterId: string }) {
 function LoadingState() {
   return (
     <div className="space-y-2">
-      <div className="h-8 bg-realm-bg-600 rounded animate-pulse" />
-      <div className="h-6 bg-realm-bg-600 rounded animate-pulse w-3/4" />
-      <div className="h-6 bg-realm-bg-600 rounded animate-pulse w-1/2" />
+      <div className="h-8 bg-realm-bg-600 rounded-sm animate-pulse" />
+      <div className="h-6 bg-realm-bg-600 rounded-sm animate-pulse w-3/4" />
+      <div className="h-6 bg-realm-bg-600 rounded-sm animate-pulse w-1/2" />
     </div>
   );
 }
@@ -209,7 +209,7 @@ function NoPartyView({
           {pendingInvitations.map((inv) => (
             <div
               key={inv.id}
-              className="bg-realm-bg-800 rounded p-3 border border-realm-gold-500/20"
+              className="bg-realm-bg-800 rounded-sm p-3 border border-realm-gold-500/20"
             >
               <p className="text-sm text-realm-text-primary">
                 <span className="text-realm-gold-400 font-semibold">{inv.inviterName}</span>
@@ -222,7 +222,7 @@ function NoPartyView({
                 <button
                   onClick={() => acceptInvite.mutate(inv.partyId)}
                   disabled={acceptInvite.isPending}
-                  className="flex items-center gap-1 px-3 py-1 bg-realm-success/20 text-realm-success text-xs font-display rounded hover:bg-realm-success/30 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1 px-3 py-1 bg-realm-success/20 text-realm-success text-xs font-display rounded-sm hover:bg-realm-success/30 transition-colors disabled:opacity-50"
                 >
                   {acceptInvite.isPending ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -234,7 +234,7 @@ function NoPartyView({
                 <button
                   onClick={() => declineInvite.mutate(inv.partyId)}
                   disabled={declineInvite.isPending}
-                  className="flex items-center gap-1 px-3 py-1 bg-realm-danger/20 text-realm-danger text-xs font-display rounded hover:bg-realm-danger/30 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1 px-3 py-1 bg-realm-danger/20 text-realm-danger text-xs font-display rounded-sm hover:bg-realm-danger/30 transition-colors disabled:opacity-50"
                 >
                   {declineInvite.isPending ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -261,7 +261,7 @@ function NoPartyView({
           Create Party
         </RealmButton>
       ) : (
-        <div className="bg-realm-bg-800 rounded p-3 border border-realm-border space-y-2">
+        <div className="bg-realm-bg-800 rounded-sm p-3 border border-realm-border space-y-2">
           <RealmInput
             placeholder="Party name (optional)"
             value={partyName}
@@ -424,7 +424,7 @@ function InPartyView({
         <p className="text-xs text-realm-text-muted font-display uppercase tracking-wider">
           Members ({party.members.length})
         </p>
-        <div className="bg-realm-bg-800 rounded border border-realm-border divide-y divide-realm-border/50">
+        <div className="bg-realm-bg-800 rounded-sm border border-realm-border divide-y divide-realm-border/50">
           {sortedMembers.map((member) => {
             const isSelf = member.characterId === characterId;
             return (

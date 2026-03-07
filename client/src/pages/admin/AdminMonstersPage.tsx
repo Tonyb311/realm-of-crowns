@@ -187,7 +187,7 @@ function StatBlock({ stats }: { stats: MonsterStats }) {
   return (
     <div className="grid grid-cols-6 gap-2 text-center">
       {abilities.map(a => (
-        <div key={a.label} className="bg-realm-bg-900/80 rounded px-2 py-1.5 border border-realm-border/30">
+        <div key={a.label} className="bg-realm-bg-900/80 rounded-sm px-2 py-1.5 border border-realm-border/30">
           <div className="text-[10px] font-semibold text-realm-text-muted tracking-wider">{a.label}</div>
           <div className="text-sm font-bold text-realm-text-primary">{a.value}</div>
           <div className="text-xs text-realm-gold-400">{getModifier(a.value)}</div>
@@ -234,30 +234,30 @@ function MonsterCard({ monster }: { monster: Monster }) {
           {monster.name}
         </span>
 
-        <span className={`text-xs px-2 py-0.5 rounded border ${getLevelColor(monster.level)} flex-shrink-0`}>
+        <span className={`text-xs px-2 py-0.5 rounded-sm border ${getLevelColor(monster.level)} flex-shrink-0`}>
           Lv {monster.level}
         </span>
 
         {monster.formulaCR != null && (
-          <span className="text-xs px-2 py-0.5 rounded border bg-amber-900/60 text-amber-300 border-amber-700 flex-shrink-0">
+          <span className="text-xs px-2 py-0.5 rounded-sm border bg-amber-900/60 text-amber-300 border-amber-700 flex-shrink-0">
             CR {monster.formulaCR}
           </span>
         )}
 
         {monster.category && (
-          <span className={`text-xs px-2 py-0.5 rounded flex-shrink-0 ${CATEGORY_COLORS[monster.category] || 'bg-gray-500/20 text-gray-300'}`}>
+          <span className={`text-xs px-2 py-0.5 rounded-sm flex-shrink-0 ${CATEGORY_COLORS[monster.category] || 'bg-gray-500/20 text-gray-300'}`}>
             {monster.category}
           </span>
         )}
 
         {monster.encounterType && (
-          <span className={`text-xs px-2 py-0.5 rounded border flex-shrink-0 ${ENCOUNTER_TYPE_COLORS[monster.encounterType] || 'bg-gray-500/20 text-gray-300 border-gray-700/40'}`}>
+          <span className={`text-xs px-2 py-0.5 rounded-sm border flex-shrink-0 ${ENCOUNTER_TYPE_COLORS[monster.encounterType] || 'bg-gray-500/20 text-gray-300 border-gray-700/40'}`}>
             {monster.encounterType.replace('_', ' ')}
           </span>
         )}
 
         {monster.size && (
-          <span className="text-xs px-2 py-0.5 rounded bg-realm-bg-700/60 text-realm-text-secondary flex-shrink-0">
+          <span className="text-xs px-2 py-0.5 rounded-sm bg-realm-bg-700/60 text-realm-text-secondary flex-shrink-0">
             {monster.size}
           </span>
         )}
@@ -292,28 +292,28 @@ function MonsterCard({ monster }: { monster: Monster }) {
             <h4 className="text-xs font-semibold text-realm-text-muted uppercase tracking-wider mb-2">Core Stats</h4>
             <div className="flex flex-wrap items-center gap-3 mb-3">
               {monster.formulaCR != null && (
-                <div className="bg-amber-900/40 border border-amber-700/50 rounded px-3 py-1.5">
+                <div className="bg-amber-900/40 border border-amber-700/50 rounded-sm px-3 py-1.5">
                   <span className="text-xs text-amber-400/80">Formula CR</span>
                   <div className="text-lg font-bold text-amber-300">{monster.formulaCR}</div>
                 </div>
               )}
               {monster.simCR != null && (
-                <div className="bg-amber-900/40 border border-amber-700/50 rounded px-3 py-1.5">
+                <div className="bg-amber-900/40 border border-amber-700/50 rounded-sm px-3 py-1.5">
                   <span className="text-xs text-amber-400/80">Sim CR</span>
                   <div className="text-lg font-bold text-amber-300">{monster.simCR}</div>
                 </div>
               )}
-              <div className="bg-realm-bg-900/60 border border-realm-border/20 rounded px-3 py-1.5">
+              <div className="bg-realm-bg-900/60 border border-realm-border/20 rounded-sm px-3 py-1.5">
                 <span className="text-xs text-realm-text-muted">Proficiency</span>
                 <div className="text-lg font-bold text-realm-text-primary">+{profBonus}</div>
               </div>
               {monster.damageType && (
-                <span className={`text-xs px-3 py-1 rounded border ${getDamageTypeStyle(monster.damageType)}`}>
+                <span className={`text-xs px-3 py-1 rounded-sm border ${getDamageTypeStyle(monster.damageType)}`}>
                   {monster.damageType}
                 </span>
               )}
               {monster.sentient && (
-                <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-300">Sentient</span>
+                <span className="text-xs px-2 py-1 rounded-sm bg-blue-500/20 text-blue-300">Sentient</span>
               )}
             </div>
             <StatBlock stats={s} />
@@ -323,23 +323,23 @@ function MonsterCard({ monster }: { monster: Monster }) {
           <div>
             <h4 className="text-xs font-semibold text-realm-text-muted uppercase tracking-wider mb-2">Combat</h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-              <div className="bg-realm-bg-900/60 rounded px-3 py-2 border border-realm-border/20">
+              <div className="bg-realm-bg-900/60 rounded-sm px-3 py-2 border border-realm-border/20">
                 <span className="text-realm-text-muted text-xs">Attack Bonus</span>
                 <div className="text-realm-text-primary font-semibold">+{s.attack}</div>
               </div>
-              <div className="bg-realm-bg-900/60 rounded px-3 py-2 border border-realm-border/20">
+              <div className="bg-realm-bg-900/60 rounded-sm px-3 py-2 border border-realm-border/20">
                 <span className="text-realm-text-muted text-xs">Damage</span>
                 <div className="text-realm-text-primary font-semibold">{s.damage}</div>
               </div>
-              <div className="bg-realm-bg-900/60 rounded px-3 py-2 border border-realm-border/20">
+              <div className="bg-realm-bg-900/60 rounded-sm px-3 py-2 border border-realm-border/20">
                 <span className="text-realm-text-muted text-xs">Damage Type</span>
                 <div className="flex items-center gap-1">
-                  <span className={`text-xs px-2 py-0.5 rounded border ${getDamageTypeStyle(monster.damageType)}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-sm border ${getDamageTypeStyle(monster.damageType)}`}>
                     {monster.damageType}
                   </span>
                 </div>
               </div>
-              <div className="bg-realm-bg-900/60 rounded px-3 py-2 border border-realm-border/20">
+              <div className="bg-realm-bg-900/60 rounded-sm px-3 py-2 border border-realm-border/20">
                 <span className="text-realm-text-muted text-xs">Hit Points</span>
                 <div className="text-realm-text-primary font-semibold">{s.hp}</div>
               </div>
@@ -355,7 +355,7 @@ function MonsterCard({ monster }: { monster: Monster }) {
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-xs text-realm-text-muted w-28 flex-shrink-0">Resistances:</span>
                     {monster.resistances.map(r => (
-                      <span key={r} className={`text-xs px-2 py-0.5 rounded border ${getDamageTypeStyle(r)}`}>
+                      <span key={r} className={`text-xs px-2 py-0.5 rounded-sm border ${getDamageTypeStyle(r)}`}>
                         {r}
                       </span>
                     ))}
@@ -365,7 +365,7 @@ function MonsterCard({ monster }: { monster: Monster }) {
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-xs text-realm-text-muted w-28 flex-shrink-0">Immunities:</span>
                     {monster.immunities.map(r => (
-                      <span key={r} className={`text-xs px-2 py-0.5 rounded font-semibold ${getDamageTypeStyle(r)}`}>
+                      <span key={r} className={`text-xs px-2 py-0.5 rounded-sm font-semibold ${getDamageTypeStyle(r)}`}>
                         {r}
                       </span>
                     ))}
@@ -375,7 +375,7 @@ function MonsterCard({ monster }: { monster: Monster }) {
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-xs text-realm-text-muted w-28 flex-shrink-0">Vulnerabilities:</span>
                     {monster.vulnerabilities.map(r => (
-                      <span key={r} className="text-xs px-2 py-0.5 rounded bg-red-500/30 text-red-300 border border-red-700/50">
+                      <span key={r} className="text-xs px-2 py-0.5 rounded-sm bg-red-500/30 text-red-300 border border-red-700/50">
                         {r}
                       </span>
                     ))}
@@ -385,7 +385,7 @@ function MonsterCard({ monster }: { monster: Monster }) {
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-xs text-realm-text-muted w-28 flex-shrink-0">Cond. Immune:</span>
                     {monster.conditionImmunities.map(r => (
-                      <span key={r} className="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-700/40">
+                      <span key={r} className="text-xs px-2 py-0.5 rounded-sm bg-purple-500/20 text-purple-300 border border-purple-700/40">
                         {r}
                       </span>
                     ))}
@@ -415,14 +415,14 @@ function MonsterCard({ monster }: { monster: Monster }) {
               </h4>
               <div className="space-y-2">
                 {monster.abilities.map(ability => (
-                  <div key={ability.id} className="bg-realm-bg-900/60 rounded px-3 py-2 border border-realm-border/20">
+                  <div key={ability.id} className="bg-realm-bg-900/60 rounded-sm px-3 py-2 border border-realm-border/20">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-sm text-realm-text-primary">{ability.name}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${ABILITY_TYPE_COLORS[ability.type] || 'bg-gray-500/20 text-gray-300'}`}>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-sm ${ABILITY_TYPE_COLORS[ability.type] || 'bg-gray-500/20 text-gray-300'}`}>
                         {ability.type}
                       </span>
                       {ability.isLegendaryAction && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 flex items-center gap-0.5">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-amber-500/20 text-amber-300 flex items-center gap-0.5">
                           <Crown className="w-3 h-3" /> Legendary (cost: {ability.legendaryCost ?? 1})
                         </span>
                       )}
@@ -441,7 +441,7 @@ function MonsterCard({ monster }: { monster: Monster }) {
                           <Swords className="w-3 h-3 text-orange-400" />
                           {ability.damage}
                           {ability.damageType && (
-                            <span className={`px-1.5 py-0 rounded border text-[10px] ${getDamageTypeStyle(ability.damageType)}`}>
+                            <span className={`px-1.5 py-0 rounded-sm border text-[10px] ${getDamageTypeStyle(ability.damageType)}`}>
                               {ability.damageType}
                             </span>
                           )}
@@ -485,7 +485,7 @@ function MonsterCard({ monster }: { monster: Monster }) {
               <h4 className="text-xs font-semibold text-realm-text-muted uppercase tracking-wider mb-2">Legendary Mechanics</h4>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {monster.legendaryActions > 0 && (
-                  <div className="bg-amber-900/30 rounded px-3 py-2 border border-amber-700/30 flex items-center gap-2">
+                  <div className="bg-amber-900/30 rounded-sm px-3 py-2 border border-amber-700/30 flex items-center gap-2">
                     <Crown className="w-4 h-4 text-amber-400" />
                     <div>
                       <span className="text-realm-text-muted text-xs">Legendary Actions</span>
@@ -494,7 +494,7 @@ function MonsterCard({ monster }: { monster: Monster }) {
                   </div>
                 )}
                 {monster.legendaryResistances > 0 && (
-                  <div className="bg-amber-900/30 rounded px-3 py-2 border border-amber-700/30 flex items-center gap-2">
+                  <div className="bg-amber-900/30 rounded-sm px-3 py-2 border border-amber-700/30 flex items-center gap-2">
                     <Shield className="w-4 h-4 text-amber-400" />
                     <div>
                       <span className="text-realm-text-muted text-xs">Legendary Resistances</span>
@@ -512,7 +512,7 @@ function MonsterCard({ monster }: { monster: Monster }) {
               <h4 className="text-xs font-semibold text-realm-text-muted uppercase tracking-wider mb-2">Phase Transitions</h4>
               <div className="space-y-2">
                 {monster.phaseTransitions.map((phase, idx) => (
-                  <div key={idx} className="bg-realm-bg-900/60 rounded px-3 py-2 border border-realm-border/20">
+                  <div key={idx} className="bg-realm-bg-900/60 rounded-sm px-3 py-2 border border-realm-border/20">
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="w-3.5 h-3.5 text-orange-400 flex-shrink-0" />
                       <span className="text-sm font-semibold text-orange-300">
@@ -547,14 +547,14 @@ function MonsterCard({ monster }: { monster: Monster }) {
           <div>
             <h4 className="text-xs font-semibold text-realm-text-muted uppercase tracking-wider mb-2">Rewards</h4>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="bg-realm-bg-900/60 rounded px-3 py-2 border border-realm-border/20 flex items-center gap-2">
+              <div className="bg-realm-bg-900/60 rounded-sm px-3 py-2 border border-realm-border/20 flex items-center gap-2">
                 <Star className="w-4 h-4 text-purple-400" />
                 <div>
                   <span className="text-realm-text-muted text-xs">XP</span>
                   <div className="text-realm-text-primary font-semibold">{monster.rewards.xp}</div>
                 </div>
               </div>
-              <div className="bg-realm-bg-900/60 rounded px-3 py-2 border border-realm-border/20 flex items-center gap-2">
+              <div className="bg-realm-bg-900/60 rounded-sm px-3 py-2 border border-realm-border/20 flex items-center gap-2">
                 <Coins className="w-4 h-4 text-realm-gold-400" />
                 <div>
                   <span className="text-realm-text-muted text-xs">Gold</span>
@@ -759,7 +759,7 @@ export default function AdminMonstersPage() {
               placeholder="Search name, ability, damage type, category..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-realm-bg-900 border border-realm-border/40 rounded text-sm text-realm-text-primary placeholder:text-realm-text-muted focus:outline-none focus:border-realm-gold-400/60"
+              className="w-full pl-9 pr-3 py-2 bg-realm-bg-900 border border-realm-border/40 rounded-sm text-sm text-realm-text-primary placeholder:text-realm-text-muted focus:outline-hidden focus:border-realm-gold-400/60"
             />
           </div>
 
@@ -768,20 +768,20 @@ export default function AdminMonstersPage() {
             <input
               type="number" min="1" max="50" placeholder="Min Lv"
               value={levelMin} onChange={e => setLevelMin(e.target.value)}
-              className="w-20 px-2 py-2 bg-realm-bg-900 border border-realm-border/40 rounded text-sm text-realm-text-primary placeholder:text-realm-text-muted focus:outline-none focus:border-realm-gold-400/60"
+              className="w-20 px-2 py-2 bg-realm-bg-900 border border-realm-border/40 rounded-sm text-sm text-realm-text-primary placeholder:text-realm-text-muted focus:outline-hidden focus:border-realm-gold-400/60"
             />
             <span className="text-realm-text-muted">–</span>
             <input
               type="number" min="1" max="50" placeholder="Max Lv"
               value={levelMax} onChange={e => setLevelMax(e.target.value)}
-              className="w-20 px-2 py-2 bg-realm-bg-900 border border-realm-border/40 rounded text-sm text-realm-text-primary placeholder:text-realm-text-muted focus:outline-none focus:border-realm-gold-400/60"
+              className="w-20 px-2 py-2 bg-realm-bg-900 border border-realm-border/40 rounded-sm text-sm text-realm-text-primary placeholder:text-realm-text-muted focus:outline-hidden focus:border-realm-gold-400/60"
             />
           </div>
 
           {/* Biome Filter */}
           <select
             value={biomeFilter} onChange={e => setBiomeFilter(e.target.value)}
-            className="px-3 py-2 bg-realm-bg-900 border border-realm-border/40 rounded text-sm text-realm-text-primary focus:outline-none focus:border-realm-gold-400/60"
+            className="px-3 py-2 bg-realm-bg-900 border border-realm-border/40 rounded-sm text-sm text-realm-text-primary focus:outline-hidden focus:border-realm-gold-400/60"
           >
             <option value="All">All Biomes</option>
             {summary?.biomes.map(b => <option key={b} value={b}>{b}</option>)}
@@ -790,7 +790,7 @@ export default function AdminMonstersPage() {
           {/* Region Filter */}
           <select
             value={regionFilter} onChange={e => setRegionFilter(e.target.value)}
-            className="px-3 py-2 bg-realm-bg-900 border border-realm-border/40 rounded text-sm text-realm-text-primary focus:outline-none focus:border-realm-gold-400/60"
+            className="px-3 py-2 bg-realm-bg-900 border border-realm-border/40 rounded-sm text-sm text-realm-text-primary focus:outline-hidden focus:border-realm-gold-400/60"
           >
             <option value="All">All Regions</option>
             {summary?.regions.map(r => <option key={r} value={r}>{r}</option>)}
@@ -799,7 +799,7 @@ export default function AdminMonstersPage() {
           {/* Encounter Type Filter */}
           <select
             value={encounterTypeFilter} onChange={e => setEncounterTypeFilter(e.target.value)}
-            className="px-3 py-2 bg-realm-bg-900 border border-realm-border/40 rounded text-sm text-realm-text-primary focus:outline-none focus:border-realm-gold-400/60"
+            className="px-3 py-2 bg-realm-bg-900 border border-realm-border/40 rounded-sm text-sm text-realm-text-primary focus:outline-hidden focus:border-realm-gold-400/60"
           >
             <option value="All">All Encounter Types</option>
             <option value="standard">Standard</option>
@@ -816,7 +816,7 @@ export default function AdminMonstersPage() {
               <button
                 key={mode}
                 onClick={() => setGroupMode(mode)}
-                className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                className={`px-3 py-1.5 text-xs rounded-sm transition-colors ${
                   groupMode === mode
                     ? 'bg-realm-gold-400/20 text-realm-gold-400 border border-realm-gold-400/40'
                     : 'text-realm-text-muted hover:text-realm-text-secondary border border-transparent'

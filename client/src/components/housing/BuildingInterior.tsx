@@ -164,7 +164,7 @@ export default function BuildingInterior({ buildingId, onClose, onUpgrade }: Bui
 
         <div className="p-6 space-y-5">
           {error && (
-            <div className="p-3 bg-realm-danger/20 border border-realm-danger/50 rounded text-realm-danger text-sm flex items-center gap-2">
+            <div className="p-3 bg-realm-danger/20 border border-realm-danger/50 rounded-sm text-realm-danger text-sm flex items-center gap-2">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
@@ -189,7 +189,7 @@ export default function BuildingInterior({ buildingId, onClose, onUpgrade }: Bui
           {building.level >= 1 && building.level < 5 && !hasActiveConstruction && onUpgrade && (
             <button
               onClick={onUpgrade}
-              className="w-full py-2 border border-realm-gold-500/40 text-realm-gold-400 font-display text-sm rounded hover:bg-realm-gold-500/10 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2 border border-realm-gold-500/40 text-realm-gold-400 font-display text-sm rounded-sm hover:bg-realm-gold-500/10 transition-colors flex items-center justify-center gap-2"
             >
               <ArrowUpCircle className="w-4 h-4" />
               Upgrade to Level {building.level + 1}
@@ -211,7 +211,7 @@ export default function BuildingInterior({ buildingId, onClose, onUpgrade }: Bui
 
               {/* Stored items grid */}
               {storage.items.length === 0 ? (
-                <div className="bg-realm-bg-900 border border-realm-border rounded p-4 text-center">
+                <div className="bg-realm-bg-900 border border-realm-border rounded-sm p-4 text-center">
                   <Package className="w-6 h-6 text-realm-text-muted/30 mx-auto mb-2" />
                   <p className="text-realm-text-muted text-xs">Storage is empty.</p>
                 </div>
@@ -220,7 +220,7 @@ export default function BuildingInterior({ buildingId, onClose, onUpgrade }: Bui
                   {storage.items.map((item) => (
                     <div
                       key={item.itemId}
-                      className={`flex items-center gap-2 bg-realm-bg-900 rounded px-3 py-2 cursor-pointer transition-colors ${
+                      className={`flex items-center gap-2 bg-realm-bg-900 rounded-sm px-3 py-2 cursor-pointer transition-colors ${
                         withdrawItemId === item.itemId ? 'border border-realm-gold-500/40' : 'border border-transparent hover:border-realm-border/80'
                       }`}
                       onClick={() => {
@@ -238,7 +238,7 @@ export default function BuildingInterior({ buildingId, onClose, onUpgrade }: Bui
 
               {/* Withdraw panel */}
               {withdrawItemId && (
-                <div className="bg-realm-bg-900 border border-realm-border rounded p-3 mb-3">
+                <div className="bg-realm-bg-900 border border-realm-border rounded-sm p-3 mb-3">
                   <div className="flex items-center gap-2 mb-2">
                     <ArrowDownCircle className="w-4 h-4 text-realm-gold-400" />
                     <span className="text-xs font-display text-realm-text-primary">Withdraw to Inventory</span>
@@ -249,12 +249,12 @@ export default function BuildingInterior({ buildingId, onClose, onUpgrade }: Bui
                       min={1}
                       value={withdrawQty}
                       onChange={(e) => setWithdrawQty(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-20 px-2 py-1.5 bg-realm-bg-800 border border-realm-border rounded text-sm text-realm-text-primary focus:border-realm-gold-500 focus:outline-none"
+                      className="w-20 px-2 py-1.5 bg-realm-bg-800 border border-realm-border rounded-sm text-sm text-realm-text-primary focus:border-realm-gold-500 focus:outline-hidden"
                     />
                     <button
                       onClick={() => withdrawMutation.mutate({ itemId: withdrawItemId, quantity: withdrawQty })}
                       disabled={withdrawMutation.isPending}
-                      className="flex-1 py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50"
+                      className="flex-1 py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50"
                     >
                       {withdrawMutation.isPending ? 'Withdrawing...' : 'Withdraw'}
                     </button>
@@ -269,7 +269,7 @@ export default function BuildingInterior({ buildingId, onClose, onUpgrade }: Bui
               )}
 
               {/* Deposit from inventory */}
-              <div className="bg-realm-bg-900 border border-realm-border rounded p-3">
+              <div className="bg-realm-bg-900 border border-realm-border rounded-sm p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <ArrowUpCircle className="w-4 h-4 text-realm-success" />
                   <span className="text-xs font-display text-realm-text-primary">Deposit from Inventory</span>
@@ -281,7 +281,7 @@ export default function BuildingInterior({ buildingId, onClose, onUpgrade }: Bui
                     <select
                       value={depositItemId}
                       onChange={(e) => { setDepositItemId(e.target.value); setDepositQty(1); }}
-                      className="flex-1 bg-realm-bg-800 border border-realm-border rounded px-2 py-1.5 text-xs text-realm-text-primary focus:border-realm-gold-500 focus:outline-none"
+                      className="flex-1 bg-realm-bg-800 border border-realm-border rounded-sm px-2 py-1.5 text-xs text-realm-text-primary focus:border-realm-gold-500 focus:outline-hidden"
                     >
                       <option value="">Select item...</option>
                       {inventory.map((item) => (
@@ -295,12 +295,12 @@ export default function BuildingInterior({ buildingId, onClose, onUpgrade }: Bui
                       min={1}
                       value={depositQty}
                       onChange={(e) => setDepositQty(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-16 px-2 py-1.5 bg-realm-bg-800 border border-realm-border rounded text-sm text-realm-text-primary focus:border-realm-gold-500 focus:outline-none"
+                      className="w-16 px-2 py-1.5 bg-realm-bg-800 border border-realm-border rounded-sm text-sm text-realm-text-primary focus:border-realm-gold-500 focus:outline-hidden"
                     />
                     <button
                       onClick={() => depositMutation.mutate({ itemId: depositItemId, quantity: depositQty })}
                       disabled={!depositItemId || depositMutation.isPending}
-                      className="px-3 py-1.5 bg-realm-success text-realm-text-primary font-display text-xs rounded hover:bg-realm-success/80 transition-colors disabled:opacity-50"
+                      className="px-3 py-1.5 bg-realm-success text-realm-text-primary font-display text-xs rounded-sm hover:bg-realm-success/80 transition-colors disabled:opacity-50"
                     >
                       {depositMutation.isPending ? '...' : 'Store'}
                     </button>
@@ -318,9 +318,9 @@ export default function BuildingInterior({ buildingId, onClose, onUpgrade }: Bui
                 {['Main Hall', 'Bedroom', 'Study'].map((room) => (
                   <div
                     key={room}
-                    className="bg-realm-bg-900 border border-realm-border rounded p-3 text-center"
+                    className="bg-realm-bg-900 border border-realm-border rounded-sm p-3 text-center"
                   >
-                    <div className="w-8 h-8 bg-realm-bg-800 rounded border border-dashed border-realm-text-muted/20 mx-auto mb-1" />
+                    <div className="w-8 h-8 bg-realm-bg-800 rounded-sm border border-dashed border-realm-text-muted/20 mx-auto mb-1" />
                     <p className="text-[10px] text-realm-text-muted">{room}</p>
                   </div>
                 ))}

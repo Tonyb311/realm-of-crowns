@@ -86,7 +86,7 @@ export default function ToolSlot({ tool, onClick }: ToolSlotProps) {
         <div className="flex-1 text-left">
           <div className="flex items-center gap-2">
             <span className="text-sm text-realm-text-primary font-display">{tool.name}</span>
-            <span className={`text-[9px] px-1.5 py-0.5 rounded font-display ${tierBadge}`}>
+            <span className={`text-[9px] px-1.5 py-0.5 rounded-sm font-display ${tierBadge}`}>
               {tierLabel(tool.tier)}
             </span>
           </div>

@@ -96,7 +96,7 @@ export default function SellForm({ onClose, onSuccess }: SellFormProps) {
             <select
               value={listItemId}
               onChange={(e) => setListItemId(e.target.value)}
-              className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-none"
+              className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-hidden"
             >
               <option value="">Choose from inventory...</option>
               {inventory?.map((item) => (
@@ -118,7 +118,7 @@ export default function SellForm({ onClose, onSuccess }: SellFormProps) {
                 onChange={(e) => setListPrice(e.target.value)}
                 placeholder="0"
                 min="1"
-                className="w-full pl-9 pr-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-400/50 focus:outline-none"
+                className="w-full pl-9 pr-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-400/50 focus:outline-hidden"
               />
             </div>
           </div>
@@ -134,7 +134,7 @@ export default function SellForm({ onClose, onSuccess }: SellFormProps) {
               onChange={(e) => setListQty(e.target.value)}
               min="1"
               max={selectedItem?.quantity ?? undefined}
-              className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-none"
+              className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-realm-text-primary text-sm focus:border-realm-gold-400/50 focus:outline-hidden"
             />
           </div>
 

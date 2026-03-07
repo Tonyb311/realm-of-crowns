@@ -113,19 +113,19 @@ export default function QuestDialog({ quest, onClose, onAccepted }: QuestDialogP
             </h4>
             <div className="flex flex-wrap gap-3">
               {quest.rewards.xp > 0 && (
-                <div className="flex items-center gap-1.5 text-sm bg-realm-bg-900 rounded px-3 py-1.5">
+                <div className="flex items-center gap-1.5 text-sm bg-realm-bg-900 rounded-sm px-3 py-1.5">
                   <Star className="w-3.5 h-3.5 text-realm-success" />
                   <span className="text-realm-success font-display">{quest.rewards.xp} XP</span>
                 </div>
               )}
               {quest.rewards.gold > 0 && (
-                <div className="flex items-center gap-1.5 text-sm bg-realm-bg-900 rounded px-3 py-1.5">
+                <div className="flex items-center gap-1.5 text-sm bg-realm-bg-900 rounded-sm px-3 py-1.5">
                   <Coins className="w-3.5 h-3.5 text-realm-gold-400" />
                   <span className="text-realm-gold-400 font-display">{quest.rewards.gold} Gold</span>
                 </div>
               )}
               {quest.rewards.items?.map((item, i) => (
-                <div key={i} className="text-sm bg-realm-bg-900 rounded px-3 py-1.5 text-realm-text-primary">
+                <div key={i} className="text-sm bg-realm-bg-900 rounded-sm px-3 py-1.5 text-realm-text-primary">
                   {item.name} x{item.quantity}
                 </div>
               ))}
@@ -137,14 +137,14 @@ export default function QuestDialog({ quest, onClose, onAccepted }: QuestDialogP
         <div className="flex gap-3 p-5 border-t border-realm-border">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+            className="flex-1 py-2.5 border border-realm-text-muted/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
           >
             Decline
           </button>
           <button
             onClick={() => acceptMutation.mutate()}
             disabled={acceptMutation.isPending}
-            className="flex-1 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
             {acceptMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
             Accept Quest

@@ -315,7 +315,7 @@ export function BottomNav({ className }: { className?: string }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-50 bg-realm-bg-800/98 backdrop-blur-sm flex flex-col"
+            className="fixed inset-0 z-50 bg-realm-bg-800/98 backdrop-blur-xs flex flex-col"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-realm-border">
@@ -364,7 +364,7 @@ export function BottomNav({ className }: { className?: string }) {
 
       {/* Bottom navigation bar */}
       <nav
-        className={`fixed bottom-0 left-0 right-0 z-50 h-14 bg-realm-bg-800/95 backdrop-blur-sm border-t border-realm-border ${className ?? ''}`}
+        className={`fixed bottom-0 left-0 right-0 z-50 h-14 bg-realm-bg-800/95 backdrop-blur-xs border-t border-realm-border ${className ?? ''}`}
       >
         <div className="flex items-center h-full safe-area-pb">
           {primaryItems.map((item) => renderPrimaryTab(item))}

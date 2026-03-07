@@ -132,7 +132,7 @@ export default function WorkshopView({ buildingId, isOwner, onClose }: WorkshopV
 
         <div className="p-6 space-y-5">
           {error && (
-            <div className="p-3 bg-realm-danger/20 border border-realm-danger/50 rounded text-realm-danger text-sm flex items-center gap-2">
+            <div className="p-3 bg-realm-danger/20 border border-realm-danger/50 rounded-sm text-realm-danger text-sm flex items-center gap-2">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
@@ -181,12 +181,12 @@ export default function WorkshopView({ buildingId, isOwner, onClose }: WorkshopV
                       min={0}
                       value={rentalPrice}
                       onChange={(e) => setRentalPrice(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-20 px-2 py-1 bg-realm-bg-800 border border-realm-border rounded text-sm text-realm-text-primary focus:border-realm-gold-500 focus:outline-none"
+                      className="w-20 px-2 py-1 bg-realm-bg-800 border border-realm-border rounded-sm text-sm text-realm-text-primary focus:border-realm-gold-500 focus:outline-hidden"
                     />
                     <button
                       onClick={() => setPriceMutation.mutate(rentalPrice)}
                       disabled={setPriceMutation.isPending}
-                      className="px-2 py-1 bg-realm-gold-500 text-realm-bg-900 text-xs font-display rounded hover:bg-realm-gold-400"
+                      className="px-2 py-1 bg-realm-gold-500 text-realm-bg-900 text-xs font-display rounded-sm hover:bg-realm-gold-400"
                     >
                       {setPriceMutation.isPending ? '...' : 'Save'}
                     </button>
@@ -245,7 +245,7 @@ export default function WorkshopView({ buildingId, isOwner, onClose }: WorkshopV
                 <button
                   onClick={() => useWorkshopMutation.mutate()}
                   disabled={useWorkshopMutation.isPending || !rental.isAvailable}
-                  className="w-full py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="w-full py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {useWorkshopMutation.isPending ? 'Processing...' : 'Use Workshop'}
                 </button>

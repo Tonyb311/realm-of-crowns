@@ -185,7 +185,7 @@ export default function CombatParameterPanel() {
               type="checkbox"
               checked={neverRetreat}
               onChange={(e) => setNeverRetreat(e.target.checked)}
-              className="w-4 h-4 rounded border-realm-border bg-realm-bg-900 text-realm-gold-400 focus:ring-realm-gold-500 focus:ring-offset-0"
+              className="w-4 h-4 rounded-sm border-realm-border bg-realm-bg-900 text-realm-gold-400 focus:ring-realm-gold-500 focus:ring-offset-0"
             />
             <span className={`text-xs ${neverRetreat ? 'text-realm-danger font-display' : 'text-realm-text-secondary'}`}>
               Never Retreat (fight to the death)
@@ -256,7 +256,7 @@ export default function CombatParameterPanel() {
           {PVP_LOOT_OPTIONS.map((opt) => (
             <label
               key={opt.value}
-              className="flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-realm-bg-800 transition-colors"
+              className="flex items-center gap-2 p-2 rounded-sm cursor-pointer hover:bg-realm-bg-800 transition-colors"
             >
               <input
                 type="radio"
@@ -275,7 +275,7 @@ export default function CombatParameterPanel() {
       <button
         onClick={() => saveMutation.mutate()}
         disabled={saveMutation.isPending}
-        className="w-full py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {saveMutation.isPending ? (
           <Loader2 className="w-4 h-4 animate-spin" />
@@ -286,7 +286,7 @@ export default function CombatParameterPanel() {
       </button>
 
       {saveMutation.isError && (
-        <div className="p-3 bg-realm-danger/30 border border-realm-danger/50 rounded text-realm-danger text-xs flex items-center gap-2">
+        <div className="p-3 bg-realm-danger/30 border border-realm-danger/50 rounded-sm text-realm-danger text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {(saveMutation.error as any)?.response?.data?.error ?? 'Failed to save parameters'}
         </div>

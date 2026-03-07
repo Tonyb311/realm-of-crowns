@@ -254,7 +254,7 @@ export default function BatchGridMode() {
                     onClick={() => setSelectedRaces((prev) =>
                       prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r],
                     )}
-                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                    className={`px-2 py-1 text-xs rounded-sm transition-colors ${
                       selectedRaces.includes(r)
                         ? 'bg-realm-gold-500/30 text-realm-gold-400 border border-realm-gold-500/50'
                         : 'bg-realm-bg-600 text-realm-text-muted border border-realm-border/50 hover:text-realm-text-secondary'
@@ -287,7 +287,7 @@ export default function BatchGridMode() {
                     onClick={() => setSelectedClasses((prev) =>
                       prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c],
                     )}
-                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                    className={`px-2 py-1 text-xs rounded-sm transition-colors ${
                       selectedClasses.includes(c)
                         ? 'bg-realm-teal-300/30 text-realm-teal-300 border border-realm-teal-300/50'
                         : 'bg-realm-bg-600 text-realm-text-muted border border-realm-border/50 hover:text-realm-text-secondary'
@@ -307,7 +307,7 @@ export default function BatchGridMode() {
               {LEVEL_PRESETS.map((lvl) => (
                 <button key={lvl}
                   onClick={() => toggleLevel(lvl)}
-                  className={`w-10 h-8 text-xs font-display rounded transition-colors ${
+                  className={`w-10 h-8 text-xs font-display rounded-sm transition-colors ${
                     selectedLevels.includes(lvl)
                       ? 'bg-realm-purple-400/30 text-realm-purple-300 border border-realm-purple-400/50'
                       : 'bg-realm-bg-600 text-realm-text-muted border border-realm-border/50 hover:text-realm-text-secondary'
@@ -318,7 +318,7 @@ export default function BatchGridMode() {
               ))}
               <input
                 type="number" min={1} max={100} placeholder="+"
-                className="w-14 h-8 bg-realm-bg-800 border border-realm-border rounded px-2 text-xs text-center text-realm-text-primary"
+                className="w-14 h-8 bg-realm-bg-800 border border-realm-border rounded-sm px-2 text-xs text-center text-realm-text-primary"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     const val = parseInt((e.target as HTMLInputElement).value);
@@ -352,7 +352,7 @@ export default function BatchGridMode() {
                     onClick={() => setSelectedMonsters((prev) =>
                       prev.includes(m.name) ? prev.filter((x) => x !== m.name) : [...prev, m.name],
                     )}
-                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                    className={`px-2 py-1 text-xs rounded-sm transition-colors ${
                       selectedMonsters.includes(m.name)
                         ? 'bg-red-500/30 text-red-400 border border-red-500/50'
                         : 'bg-realm-bg-600 text-realm-text-muted border border-realm-border/50 hover:text-realm-text-secondary'
@@ -372,7 +372,7 @@ export default function BatchGridMode() {
               <input
                 type="number" min={1} max={1000} value={iterations}
                 onChange={(e) => setIterations(Math.max(1, parseInt(e.target.value) || 100))}
-                className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary"
+                className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary"
               />
             </div>
             <div className="flex items-end">
@@ -388,7 +388,7 @@ export default function BatchGridMode() {
               <input
                 value={notes} onChange={(e) => setNotes(e.target.value)}
                 placeholder="Label for this batch run..."
-                className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary placeholder:text-realm-text-muted/50"
+                className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary placeholder:text-realm-text-muted/50"
               />
             </div>
           </div>
@@ -424,7 +424,7 @@ export default function BatchGridMode() {
             <button
               onClick={() => batchMutation.mutate()}
               disabled={batchMutation.isPending || !canRun || (gridPreview?.fights ?? 0) > 500_000}
-              className="flex items-center gap-2 px-5 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50"
             >
               {batchMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -437,7 +437,7 @@ export default function BatchGridMode() {
             {batchResult && (
               <button
                 onClick={() => setBatchResult(null)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-realm-bg-600 text-realm-text-secondary font-display text-sm rounded hover:text-realm-text-primary transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-realm-bg-600 text-realm-text-secondary font-display text-sm rounded-sm hover:text-realm-text-primary transition-colors"
               >
                 <RotateCcw className="w-4 h-4" />
                 Clear
@@ -518,7 +518,7 @@ export default function BatchGridMode() {
               </h3>
               <div className="space-y-1.5">
                 {redFlags.map((r, i) => (
-                  <div key={i} className={`flex items-center justify-between text-xs px-3 py-1.5 rounded ${winRateBg(r.winRate)}`}>
+                  <div key={i} className={`flex items-center justify-between text-xs px-3 py-1.5 rounded-sm ${winRateBg(r.winRate)}`}>
                     <span className="text-realm-text-secondary">
                       {formatRace(r.race)} {formatClass(r.class)} L{r.level} vs {r.opponent}
                     </span>
@@ -540,21 +540,21 @@ export default function BatchGridMode() {
             {/* Filters */}
             <div className="flex flex-wrap gap-2 mb-3">
               <select value={filterRace} onChange={(e) => setFilterRace(e.target.value)}
-                className="bg-realm-bg-800 border border-realm-border rounded px-2 py-1 text-xs text-realm-text-primary">
+                className="bg-realm-bg-800 border border-realm-border rounded-sm px-2 py-1 text-xs text-realm-text-primary">
                 <option value="">All Races</option>
                 {[...new Set(batchResult.results.map((r) => r.race))].map((r) => (
                   <option key={r} value={r}>{formatRace(r)}</option>
                 ))}
               </select>
               <select value={filterClass} onChange={(e) => setFilterClass(e.target.value)}
-                className="bg-realm-bg-800 border border-realm-border rounded px-2 py-1 text-xs text-realm-text-primary">
+                className="bg-realm-bg-800 border border-realm-border rounded-sm px-2 py-1 text-xs text-realm-text-primary">
                 <option value="">All Classes</option>
                 {[...new Set(batchResult.results.map((r) => r.class))].map((c) => (
                   <option key={c} value={c}>{formatClass(c)}</option>
                 ))}
               </select>
               <select value={filterMonster} onChange={(e) => setFilterMonster(e.target.value)}
-                className="bg-realm-bg-800 border border-realm-border rounded px-2 py-1 text-xs text-realm-text-primary">
+                className="bg-realm-bg-800 border border-realm-border rounded-sm px-2 py-1 text-xs text-realm-text-primary">
                 <option value="">All Monsters</option>
                 {[...new Set(batchResult.results.map((r) => r.opponent))].map((m) => (
                   <option key={m} value={m}>{m}</option>

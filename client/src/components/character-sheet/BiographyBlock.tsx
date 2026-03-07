@@ -42,7 +42,7 @@ export function BiographyBlock({ bio, isOwnProfile, characterId }: Props) {
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value.slice(0, 500))}
-            className="w-full h-28 bg-realm-bg-800 border border-realm-border/50 rounded-lg px-3 py-2 text-sm text-realm-text-primary placeholder-realm-text-muted/50 resize-none focus:outline-none focus:border-realm-gold-500/50"
+            className="w-full h-28 bg-realm-bg-800 border border-realm-border/50 rounded-lg px-3 py-2 text-sm text-realm-text-primary placeholder-realm-text-muted/50 resize-none focus:outline-hidden focus:border-realm-gold-500/50"
             placeholder="Write your character's story..."
             maxLength={500}
           />

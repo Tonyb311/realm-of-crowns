@@ -309,7 +309,7 @@ export default function TownPage() {
   if (charLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <div className="h-10 bg-realm-bg-800 rounded animate-pulse w-48 mb-6" />
+        <div className="h-10 bg-realm-bg-800 rounded-sm animate-pulse w-48 mb-6" />
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           <div className="space-y-4">
             <div className="h-24 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
@@ -373,7 +373,7 @@ export default function TownPage() {
   if (townLoading || !town) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <div className="h-10 bg-realm-bg-800 rounded animate-pulse w-48 mb-6" />
+        <div className="h-10 bg-realm-bg-800 rounded-sm animate-pulse w-48 mb-6" />
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           <div className="space-y-4">
             <div className="h-24 bg-realm-bg-700 rounded-md animate-pulse border border-realm-border" />
@@ -428,7 +428,7 @@ export default function TownPage() {
                   <MapPin className="w-3.5 h-3.5" />
                   {typeof town.region === 'object' ? town.region.name : town.region}
                 </span>
-                <span className={`text-xs px-2 py-0.5 rounded ${getBiomeBadgeClass(town.biome)}`}>
+                <span className={`text-xs px-2 py-0.5 rounded-sm ${getBiomeBadgeClass(town.biome)}`}>
                   {town.biome.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                 </span>
               </div>
@@ -506,7 +506,7 @@ export default function TownPage() {
                     <Wheat className="w-3.5 h-3.5" />
                     Gathering
                   </h3>
-                  <span className="text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400">
+                  <span className="text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded-sm bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400">
                     Daily Action
                   </span>
                 </div>
@@ -532,7 +532,7 @@ export default function TownPage() {
                 {/* Gather result toast */}
                 {gatherResult?.success && (
                   <div className="px-4 pb-3">
-                    <div className="bg-realm-gold-500/10 border border-realm-gold-500/20 rounded p-2">
+                    <div className="bg-realm-gold-500/10 border border-realm-gold-500/20 rounded-sm p-2">
                       <div className="flex items-center gap-2">
                         <span>{gatherResult.gathered.item.icon}</span>
                         <span className="text-xs text-realm-gold-400 font-display">
@@ -601,7 +601,7 @@ export default function TownPage() {
                       className="group relative bg-realm-bg-700 border border-realm-border rounded-md p-5 transition-all hover:border-realm-gold-500/50 hover:bg-realm-bg-700/80"
                     >
                       <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-10 h-10 rounded bg-realm-bg-600/40 flex items-center justify-center group-hover:bg-realm-gold-400/10 transition-colors">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-sm bg-realm-bg-600/40 flex items-center justify-center group-hover:bg-realm-gold-400/10 transition-colors">
                           <Icon className="w-5 h-5 text-realm-gold-400" />
                         </div>
                         <div className="flex-1">
@@ -610,7 +610,7 @@ export default function TownPage() {
                               {building.name}
                             </h3>
                             {building.freeAction && (
-                              <span className="text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-realm-success/10 border border-realm-success/30 text-realm-success">
+                              <span className="text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded-sm bg-realm-success/10 border border-realm-success/30 text-realm-success">
                                 Free
                               </span>
                             )}
@@ -631,7 +631,7 @@ export default function TownPage() {
                     className="group relative bg-realm-bg-700 border border-realm-gold-500/30 rounded-md p-5 transition-all hover:border-realm-gold-500/50 hover:bg-realm-bg-700/80 block"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 w-10 h-10 rounded bg-realm-gold-400/10 flex items-center justify-center">
+                      <div className="flex-shrink-0 w-10 h-10 rounded-sm bg-realm-gold-400/10 flex items-center justify-center">
                         <Home className="w-5 h-5 text-realm-gold-400" />
                       </div>
                       <div className="flex-1">
@@ -639,7 +639,7 @@ export default function TownPage() {
                           <h3 className="font-display text-realm-gold-400 group-hover:text-realm-gold-300 transition-colors">
                             {houseData.house?.name ?? 'Your Cottage'}
                           </h3>
-                          <span className="text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded bg-realm-success/10 border border-realm-success/30 text-realm-success">
+                          <span className="text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded-sm bg-realm-success/10 border border-realm-success/30 text-realm-success">
                             Home
                           </span>
                         </div>
@@ -679,7 +679,7 @@ export default function TownPage() {
                             <button
                               key={quest.id}
                               onClick={() => setSelectedQuest({ ...quest, npcName: npc.name })}
-                              className="text-xs px-3 py-1.5 border border-realm-gold-500/30 text-realm-gold-400 rounded hover:bg-realm-gold-500/10 transition-colors"
+                              className="text-xs px-3 py-1.5 border border-realm-gold-500/30 text-realm-gold-400 rounded-sm hover:bg-realm-gold-500/10 transition-colors"
                             >
                               {quest.name}
                             </button>
@@ -701,7 +701,7 @@ export default function TownPage() {
               {charsLoading ? (
                 <div className="bg-realm-bg-700 border border-realm-border rounded-md p-4 space-y-3">
                   {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="h-6 bg-realm-bg-600 rounded animate-pulse" />
+                    <div key={i} className="h-6 bg-realm-bg-600 rounded-sm animate-pulse" />
                   ))}
                 </div>
               ) : otherCharacters.length === 0 ? (

@@ -124,7 +124,7 @@ export default function PriceCompare() {
             if (e.target.value.length < 2) setSelectedItemId(null);
           }}
           placeholder="Search for an item to compare prices..."
-          className="w-full pl-10 pr-4 py-2.5 bg-realm-bg-700 border border-realm-border rounded-lg text-realm-text-primary text-sm placeholder:text-realm-text-muted/60 focus:outline-none focus:border-realm-gold-500/50"
+          className="w-full pl-10 pr-4 py-2.5 bg-realm-bg-700 border border-realm-border rounded-lg text-realm-text-primary text-sm placeholder:text-realm-text-muted/60 focus:outline-hidden focus:border-realm-gold-500/50"
         />
       </div>
 

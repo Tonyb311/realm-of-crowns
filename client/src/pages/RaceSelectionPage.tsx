@@ -137,7 +137,7 @@ export default function RaceSelectionPage() {
             </div>
             <button
               onClick={() => setShowCompare(!showCompare)}
-              className={`flex items-center gap-2 px-5 py-2 border font-display text-sm rounded transition-colors
+              className={`flex items-center gap-2 px-5 py-2 border font-display text-sm rounded-sm transition-colors
                 ${showCompare
                   ? 'bg-realm-gold-500 text-realm-bg-900 border-realm-gold-500'
                   : 'border-realm-gold-400/60 text-realm-gold-400 hover:bg-realm-bg-700'}`}
@@ -190,7 +190,7 @@ export default function RaceSelectionPage() {
 
         {/* Tier badge */}
         {TIER_CONFIG[activeTier].badge && (
-          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded text-xs font-display mb-4 ${TIER_CONFIG[activeTier].badgeColor}`}>
+          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-sm text-xs font-display mb-4 ${TIER_CONFIG[activeTier].badgeColor}`}>
             <Sparkles className="w-3 h-3" />
             {TIER_CONFIG[activeTier].badge}
           </div>
@@ -286,7 +286,7 @@ export default function RaceSelectionPage() {
                           </p>
                           <div className="flex flex-wrap gap-1.5">
                             {raceDetail.startingTowns.map(town => (
-                              <span key={town} className="text-xs bg-realm-bg-800 text-realm-text-primary px-2 py-1 rounded">
+                              <span key={town} className="text-xs bg-realm-bg-800 text-realm-text-primary px-2 py-1 rounded-sm">
                                 {town}
                               </span>
                             ))}

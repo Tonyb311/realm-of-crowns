@@ -195,7 +195,7 @@ export default function HouseView({ houseId, isCurrentTown, onClose }: HouseView
           ) : (
             <div className="space-y-2">
               {storage.items.map(item => (
-                <div key={item.itemTemplateId} className="flex items-center justify-between bg-realm-bg-700 border border-realm-border rounded px-4 py-2.5">
+                <div key={item.itemTemplateId} className="flex items-center justify-between bg-realm-bg-700 border border-realm-border rounded-sm px-4 py-2.5">
                   <div>
                     <span className="text-sm text-realm-text-primary">{item.itemName}</span>
                     <span className="text-xs text-realm-text-muted ml-2">x{item.quantity}</span>
@@ -204,7 +204,7 @@ export default function HouseView({ houseId, isCurrentTown, onClose }: HouseView
                     {isCurrentTown && (
                       <button
                         onClick={() => { setWithdrawItem(item); setWithdrawQty(Math.min(1, item.quantity)); }}
-                        className="px-3 py-1 text-[11px] font-display border border-realm-text-muted/30 text-realm-text-secondary rounded hover:bg-realm-bg-600 transition-colors flex items-center gap-1"
+                        className="px-3 py-1 text-[11px] font-display border border-realm-text-muted/30 text-realm-text-secondary rounded-sm hover:bg-realm-bg-600 transition-colors flex items-center gap-1"
                       >
                         <ArrowUp className="w-3 h-3" />
                         Withdraw
@@ -212,7 +212,7 @@ export default function HouseView({ houseId, isCurrentTown, onClose }: HouseView
                     )}
                     <button
                       onClick={() => { setListItem(item); setListQty(Math.min(1, item.quantity)); setListPrice(1); }}
-                      className="px-3 py-1 text-[11px] font-display border border-realm-gold-500/30 text-realm-gold-400 rounded hover:bg-realm-gold-500/10 transition-colors flex items-center gap-1"
+                      className="px-3 py-1 text-[11px] font-display border border-realm-gold-500/30 text-realm-gold-400 rounded-sm hover:bg-realm-gold-500/10 transition-colors flex items-center gap-1"
                     >
                       <BarChart3 className="w-3 h-3" />
                       List
@@ -229,7 +229,7 @@ export default function HouseView({ houseId, isCurrentTown, onClose }: HouseView
           {isCurrentTown && (
             <button
               onClick={() => setDepositMode(true)}
-              className="px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors flex items-center gap-2"
             >
               <ArrowDown className="w-3.5 h-3.5" />
               Deposit Items
@@ -261,7 +261,7 @@ export default function HouseView({ houseId, isCurrentTown, onClose }: HouseView
                       key={inv.templateId}
                       onClick={() => depositMutation.mutate({ itemTemplateId: inv.templateId, quantity: inv.totalQty })}
                       disabled={depositMutation.isPending}
-                      className="w-full flex items-center justify-between bg-realm-bg-700 border border-realm-border rounded px-4 py-2.5 hover:border-realm-gold-500/40 transition-colors disabled:opacity-40"
+                      className="w-full flex items-center justify-between bg-realm-bg-700 border border-realm-border rounded-sm px-4 py-2.5 hover:border-realm-gold-500/40 transition-colors disabled:opacity-40"
                     >
                       <span className="text-sm text-realm-text-primary">{inv.templateName}</span>
                       <span className="text-xs text-realm-text-muted">x{inv.totalQty}</span>
@@ -294,18 +294,18 @@ export default function HouseView({ houseId, isCurrentTown, onClose }: HouseView
                     max={withdrawItem.quantity}
                     value={withdrawQty}
                     onChange={e => setWithdrawQty(Math.max(1, Math.min(withdrawItem.quantity, parseInt(e.target.value) || 1)))}
-                    className="mt-1 w-full bg-realm-bg-700 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary"
+                    className="mt-1 w-full bg-realm-bg-700 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary"
                   />
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => withdrawMutation.mutate({ itemTemplateId: withdrawItem.itemTemplateId, quantity: withdrawQty })}
                     disabled={withdrawMutation.isPending}
-                    className="flex-1 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 disabled:opacity-40"
+                    className="flex-1 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 disabled:opacity-40"
                   >
                     {withdrawMutation.isPending ? 'Withdrawing...' : 'Withdraw'}
                   </button>
-                  <button onClick={() => setWithdrawItem(null)} className="px-4 py-2 border border-realm-text-muted/30 text-realm-text-secondary text-sm rounded hover:bg-realm-bg-700">
+                  <button onClick={() => setWithdrawItem(null)} className="px-4 py-2 border border-realm-text-muted/30 text-realm-text-secondary text-sm rounded-sm hover:bg-realm-bg-700">
                     Cancel
                   </button>
                 </div>
@@ -336,7 +336,7 @@ export default function HouseView({ houseId, isCurrentTown, onClose }: HouseView
                     max={listItem.quantity}
                     value={listQty}
                     onChange={e => setListQty(Math.max(1, Math.min(listItem.quantity, parseInt(e.target.value) || 1)))}
-                    className="mt-1 w-full bg-realm-bg-700 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary"
+                    className="mt-1 w-full bg-realm-bg-700 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary"
                   />
                 </div>
                 <div>
@@ -346,7 +346,7 @@ export default function HouseView({ houseId, isCurrentTown, onClose }: HouseView
                     min={1}
                     value={listPrice}
                     onChange={e => setListPrice(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="mt-1 w-full bg-realm-bg-700 border border-realm-border rounded px-3 py-2 text-sm text-realm-text-primary"
+                    className="mt-1 w-full bg-realm-bg-700 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary"
                   />
                 </div>
                 <p className="text-[10px] text-realm-text-muted">
@@ -356,11 +356,11 @@ export default function HouseView({ houseId, isCurrentTown, onClose }: HouseView
                   <button
                     onClick={() => listMutation.mutate({ itemTemplateId: listItem.itemTemplateId, quantity: listQty, price: listPrice })}
                     disabled={listMutation.isPending}
-                    className="flex-1 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 disabled:opacity-40"
+                    className="flex-1 px-4 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 disabled:opacity-40"
                   >
                     {listMutation.isPending ? 'Listing...' : 'List on Market'}
                   </button>
-                  <button onClick={() => setListItem(null)} className="px-4 py-2 border border-realm-text-muted/30 text-realm-text-secondary text-sm rounded hover:bg-realm-bg-700">
+                  <button onClick={() => setListItem(null)} className="px-4 py-2 border border-realm-text-muted/30 text-realm-text-secondary text-sm rounded-sm hover:bg-realm-bg-700">
                     Cancel
                   </button>
                 </div>

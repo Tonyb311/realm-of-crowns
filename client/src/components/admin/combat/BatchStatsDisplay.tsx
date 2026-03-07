@@ -168,7 +168,7 @@ export default function BatchStatsDisplay({ results, summary, config }: BatchSta
                 <tr key={i} className="border-b border-realm-border/30 hover:bg-realm-bg-800/30">
                   <td className="py-1.5 px-2 text-realm-text-muted">{i + 1}</td>
                   <td className="py-1.5 px-2">
-                    <span className={`font-display text-xs px-2 py-0.5 rounded ${
+                    <span className={`font-display text-xs px-2 py-0.5 rounded-sm ${
                       r.winner === 'player' ? 'bg-green-500/20 text-green-400' :
                       r.winner === 'monster' ? 'bg-red-500/20 text-red-400' :
                       'bg-gray-500/20 text-gray-400'

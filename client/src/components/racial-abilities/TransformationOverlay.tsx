@@ -261,7 +261,7 @@ export default function TransformationOverlay({
         exit={{ opacity: 0, y: -10 }}
         className="fixed top-16 left-1/2 -translate-x-1/2 z-30"
       >
-        <div className={`relative bg-realm-bg-800/95 backdrop-blur-sm rounded-xl shadow-xl ${theme.glowColor} shadow-lg`}>
+        <div className={`relative bg-realm-bg-800/95 backdrop-blur-xs rounded-xl shadow-xl ${theme.glowColor} shadow-lg`}>
           {/* Animated border */}
           <AnimatedBorder style={theme.animateStyle} borderColor={theme.borderColor} />
 

@@ -357,7 +357,7 @@ export default function Navigation() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"
               onClick={() => setMoreOpen(false)}
             />
             {/* Panel */}
@@ -418,7 +418,7 @@ export default function Navigation() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-50 md:hidden bg-realm-bg-900/98 backdrop-blur-sm flex flex-col"
+            className="fixed inset-0 z-50 md:hidden bg-realm-bg-900/98 backdrop-blur-xs flex flex-col"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-realm-border">
@@ -471,7 +471,7 @@ export default function Navigation() {
       {renderMobileMorePanel()}
 
       {/* Desktop bottom nav bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-realm-bg-900/95 border-t border-realm-border backdrop-blur-sm hidden md:block">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-realm-bg-900/95 border-t border-realm-border backdrop-blur-xs hidden md:block">
         <div className="max-w-screen-2xl mx-auto px-4 flex items-center justify-center h-14">
           {primaryItems.map((item) => renderPrimaryDesktop(item))}
 
@@ -503,7 +503,7 @@ export default function Navigation() {
       </nav>
 
       {/* Mobile bottom nav bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-realm-bg-900/95 border-t border-realm-border backdrop-blur-sm md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-realm-bg-900/95 border-t border-realm-border backdrop-blur-xs md:hidden">
         <div className="flex items-center h-16 safe-area-bottom">
           {primaryItems.map((item) => renderPrimaryMobile(item))}
 

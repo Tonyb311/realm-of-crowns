@@ -212,7 +212,7 @@ export default function KingdomPage() {
                           </p>
                         </div>
                       </div>
-                      <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${
+                      <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-sm border ${
                         war.role === 'attacker'
                           ? 'bg-realm-danger/10 text-realm-danger border-realm-danger/30'
                           : 'bg-realm-teal-300/10 text-realm-teal-300 border-realm-teal-300/30'
@@ -247,7 +247,7 @@ export default function KingdomPage() {
                             {law.lawType}
                           </span>
                         </div>
-                        <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border bg-realm-success/10 text-realm-success border-realm-success/30">
+                        <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-sm border bg-realm-success/10 text-realm-success border-realm-success/30">
                           Active
                         </span>
                       </div>
@@ -277,7 +277,7 @@ export default function KingdomPage() {
                 </p>
                 <button
                   onClick={() => navigate('/elections')}
-                  className="px-5 py-2 border border-realm-gold-500/60 text-realm-gold-400 font-display text-sm rounded hover:bg-realm-bg-700 transition-colors"
+                  className="px-5 py-2 border border-realm-gold-500/60 text-realm-gold-400 font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
                 >
                   View Elections
                 </button>

@@ -119,7 +119,7 @@ export default function RelationsMatrix() {
       <div className="flex flex-wrap items-center gap-3 px-1">
         {Object.entries(STATUS_COLORS).map(([status, c]) => (
           <div key={status} className="flex items-center gap-1.5">
-            <span className={`w-3 h-3 rounded-sm ${c.bg}`} />
+            <span className={`w-3 h-3 rounded-xs ${c.bg}`} />
             <span className="text-realm-text-secondary text-xs">{c.label}</span>
           </div>
         ))}
@@ -170,7 +170,7 @@ export default function RelationsMatrix() {
                       }}
                     >
                       <div
-                        className={`w-5 h-5 rounded-sm ${colors.bg} ${
+                        className={`w-5 h-5 rounded-xs ${colors.bg} ${
                           isHovered ? 'ring-1 ring-realm-text-primary/50 scale-125' : ''
                         } ${isSelf ? 'opacity-30' : 'cursor-pointer hover:opacity-90'} transition-all`}
                       />

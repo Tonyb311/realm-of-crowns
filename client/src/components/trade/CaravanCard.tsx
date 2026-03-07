@@ -156,7 +156,7 @@ export default function CaravanCard({ caravan, onCollect, onResolveAmbush, onCli
         <button
           onClick={(e) => { e.stopPropagation(); onCollect(caravan.id); }}
           disabled={isCollecting}
-          className="mt-3 w-full px-4 py-2 bg-realm-success text-realm-text-primary font-display text-sm rounded hover:bg-realm-success/80 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          className="mt-3 w-full px-4 py-2 bg-realm-success text-realm-text-primary font-display text-sm rounded-sm hover:bg-realm-success/80 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {isCollecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
           Collect Cargo
@@ -166,7 +166,7 @@ export default function CaravanCard({ caravan, onCollect, onResolveAmbush, onCli
       {caravan.status === 'FAILED' && onResolveAmbush && (
         <button
           onClick={(e) => { e.stopPropagation(); onResolveAmbush(caravan.id); }}
-          className="mt-3 w-full px-4 py-2 bg-realm-danger text-realm-text-primary font-display text-sm rounded hover:bg-realm-danger/80 transition-colors flex items-center justify-center gap-2"
+          className="mt-3 w-full px-4 py-2 bg-realm-danger text-realm-text-primary font-display text-sm rounded-sm hover:bg-realm-danger/80 transition-colors flex items-center justify-center gap-2"
         >
           <AlertTriangle className="w-4 h-4" />
           Resolve Ambush

@@ -137,7 +137,7 @@ export function EnchantModal({ isOpen, onClose, targetItem, inventory }: Enchant
                     key={scroll.id}
                     onClick={() => status.canApply && setSelectedScrollId(scroll.id)}
                     disabled={!status.canApply}
-                    className={`w-full text-left px-3 py-2 rounded border transition-colors ${
+                    className={`w-full text-left px-3 py-2 rounded-sm border transition-colors ${
                       isSelected
                         ? 'border-realm-gold-500 bg-realm-gold-500/10'
                         : status.canApply

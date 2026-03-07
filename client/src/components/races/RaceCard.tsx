@@ -58,7 +58,7 @@ export default function RaceCard({ race, isSelected, onClick }: RaceCardProps) {
       transition={{ duration: 0.15 }}
     >
       {/* Tier badge */}
-      <span className={`absolute top-2 right-2 text-[10px] ${badge.bg} ${badge.text} px-2 py-0.5 rounded`}>
+      <span className={`absolute top-2 right-2 text-[10px] ${badge.bg} ${badge.text} px-2 py-0.5 rounded-sm`}>
         {badge.label}
       </span>
 

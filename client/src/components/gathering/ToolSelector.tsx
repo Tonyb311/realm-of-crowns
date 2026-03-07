@@ -151,11 +151,11 @@ export default function ToolSelector({ professionType, currentTool, onClose, onE
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-realm-text-primary font-display">{tool.name}</span>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-display ${tierBadge}`}>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-sm font-display ${tierBadge}`}>
                           {tierLabel(tool.tier)}
                         </span>
                         {isCurrentlyEquipped && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-realm-success/20 text-realm-success font-display flex items-center gap-0.5">
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-realm-success/20 text-realm-success font-display flex items-center gap-0.5">
                             <Check className="w-2.5 h-2.5" />
                             Equipped
                           </span>
@@ -197,7 +197,7 @@ export default function ToolSelector({ professionType, currentTool, onClose, onE
             <button
               onClick={() => unequipMutation.mutate()}
               disabled={isMutating}
-              className="flex-1 py-2.5 border border-realm-danger/30 text-realm-danger font-display text-sm rounded hover:bg-realm-danger/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 py-2.5 border border-realm-danger/30 text-realm-danger font-display text-sm rounded-sm hover:bg-realm-danger/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {unequipMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Unequip
@@ -208,7 +208,7 @@ export default function ToolSelector({ professionType, currentTool, onClose, onE
               if (selectedItemId) equipMutation.mutate(selectedItemId);
             }}
             disabled={!selectedItemId || isMutating || currentTool?.itemId === selectedItemId}
-            className="flex-1 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="flex-1 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {equipMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
             Equip

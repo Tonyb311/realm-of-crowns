@@ -14,15 +14,15 @@ interface SubRaceSelectorProps {
 // ---------------------------------------------------------------------------
 // Element colors for Elementari / Drakonid elements
 // ---------------------------------------------------------------------------
-const ELEMENT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  fire:      { bg: 'bg-realm-damage/10',    border: 'border-realm-damage',    text: 'text-realm-damage-light' },
-  water:     { bg: 'bg-realm-info/10',   border: 'border-realm-info',   text: 'text-realm-info' },
-  earth:     { bg: 'bg-amber-900/30',  border: 'border-amber-600',  text: 'text-amber-400' },
-  air:       { bg: 'bg-cyan-900/30',   border: 'border-cyan-400',   text: 'text-cyan-300' },
-  lightning: { bg: 'bg-realm-caution/10', border: 'border-realm-caution', text: 'text-realm-caution-light' },
-  ice:       { bg: 'bg-sky-900/30',    border: 'border-sky-400',    text: 'text-sky-300' },
-  acid:      { bg: 'bg-lime-900/30',   border: 'border-lime-500',   text: 'text-lime-400' },
-  poison:    { bg: 'bg-emerald-900/30', border: 'border-emerald-500', text: 'text-emerald-400' },
+const ELEMENT_COLORS: Record<string, { bg: string; border: string; borderHover: string; text: string }> = {
+  fire:      { bg: 'bg-realm-damage/10',    border: 'border-realm-damage/40',    borderHover: 'hover:border-realm-damage/80',    text: 'text-realm-damage-light' },
+  water:     { bg: 'bg-realm-info/10',   border: 'border-realm-info/40',   borderHover: 'hover:border-realm-info/80',   text: 'text-realm-info' },
+  earth:     { bg: 'bg-amber-900/30',  border: 'border-amber-600/40',  borderHover: 'hover:border-amber-600/80',  text: 'text-amber-400' },
+  air:       { bg: 'bg-cyan-900/30',   border: 'border-cyan-400/40',   borderHover: 'hover:border-cyan-400/80',   text: 'text-cyan-300' },
+  lightning: { bg: 'bg-realm-caution/10', border: 'border-realm-caution/40', borderHover: 'hover:border-realm-caution/80', text: 'text-realm-caution-light' },
+  ice:       { bg: 'bg-sky-900/30',    border: 'border-sky-400/40',    borderHover: 'hover:border-sky-400/80',    text: 'text-sky-300' },
+  acid:      { bg: 'bg-lime-900/30',   border: 'border-lime-500/40',   borderHover: 'hover:border-lime-500/80',   text: 'text-lime-400' },
+  poison:    { bg: 'bg-emerald-900/30', border: 'border-emerald-500/40', borderHover: 'hover:border-emerald-500/80', text: 'text-emerald-400' },
 };
 
 function getElementStyle(element?: string) {
@@ -55,7 +55,7 @@ export default function SubRaceSelector({ raceName, subRaces, selectedSubRace, o
                 ${isSelected
                   ? 'border-realm-gold-400'
                   : elemStyle
-                    ? `${elemStyle.border} border-opacity-40 hover:border-opacity-80`
+                    ? `${elemStyle.border} ${elemStyle.borderHover}`
                     : 'border-realm-border hover:border-realm-gold-400/40'}
                 ${elemStyle ? elemStyle.bg : 'bg-realm-bg-700'}`}
               initial={{ opacity: 0, y: 8 }}

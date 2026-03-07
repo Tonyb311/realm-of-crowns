@@ -77,7 +77,7 @@ function StatusBadge({ status }: { status: string }) {
   const isOk = status === 'ok' || status === 'connected' || status === 'healthy';
   return (
     <span
-      className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded ${
+      className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-sm ${
         isOk
           ? 'text-realm-success bg-realm-success/10 border border-realm-success/30'
           : 'text-blood-light bg-blood-dark/20 border border-blood-dark/40'
@@ -195,7 +195,7 @@ export default function AdminToolsPage() {
                   <span className="text-realm-text-muted text-xs ml-2">({gameDay.tickDate})</span>
                 </div>
                 {gameDay.offset > 0 && (
-                  <span className="text-xs text-realm-warning bg-realm-warning/10 border border-realm-warning/30 rounded px-2 py-0.5">
+                  <span className="text-xs text-realm-warning bg-realm-warning/10 border border-realm-warning/30 rounded-sm px-2 py-0.5">
                     +{gameDay.offset} day offset
                   </span>
                 )}
@@ -212,7 +212,7 @@ export default function AdminToolsPage() {
             <button
               onClick={handleTick}
               disabled={tickMutation.isPending}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {tickMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -226,7 +226,7 @@ export default function AdminToolsPage() {
               <button
                 onClick={() => resetDayMutation.mutate()}
                 disabled={resetDayMutation.isPending}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-realm-bg-800 text-realm-text-secondary font-display text-sm rounded border border-realm-border hover:border-realm-gold-500/50 hover:text-realm-text-primary transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-realm-bg-800 text-realm-text-secondary font-display text-sm rounded-sm border border-realm-border hover:border-realm-gold-500/50 hover:text-realm-text-primary transition-colors disabled:opacity-50"
               >
                 {resetDayMutation.isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -319,7 +319,7 @@ export default function AdminToolsPage() {
                 value={broadcastTitle}
                 onChange={(e) => setBroadcastTitle(e.target.value)}
                 placeholder="Announcement title..."
-                className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-none"
+                className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-hidden"
               />
             </div>
             <div>
@@ -329,13 +329,13 @@ export default function AdminToolsPage() {
                 onChange={(e) => setBroadcastMessage(e.target.value)}
                 placeholder="Write your announcement..."
                 rows={4}
-                className="w-full bg-realm-bg-800 border border-realm-border rounded px-3 py-2 text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-none resize-none"
+                className="w-full bg-realm-bg-800 border border-realm-border rounded-sm px-3 py-2 text-realm-text-secondary text-sm placeholder:text-realm-text-muted/50 focus:border-realm-gold-500 focus:outline-hidden resize-none"
               />
             </div>
             <button
               onClick={handleBroadcast}
               disabled={broadcastMutation.isPending || !broadcastTitle.trim() || !broadcastMessage.trim()}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {broadcastMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -360,7 +360,7 @@ export default function AdminToolsPage() {
           {healthLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-16 bg-realm-bg-900 rounded" />
+                <div key={i} className="h-16 bg-realm-bg-900 rounded-sm" />
               ))}
             </div>
           ) : healthError ? (

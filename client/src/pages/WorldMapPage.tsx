@@ -878,7 +878,7 @@ function MiniMap({ towns, playerTownId, viewBox, onClick }: MiniMapProps) {
       {/* Collapse toggle */}
       <button
         onClick={() => setCollapsed(true)}
-        className="absolute top-1 right-1 z-20 w-5 h-5 bg-realm-bg-800/80 border border-realm-border rounded text-realm-text-muted hover:text-realm-text-primary transition-colors flex items-center justify-center"
+        className="absolute top-1 right-1 z-20 w-5 h-5 bg-realm-bg-800/80 border border-realm-border rounded-sm text-realm-text-muted hover:text-realm-text-primary transition-colors flex items-center justify-center"
         title="Hide minimap"
       >
         <X className="w-3 h-3" />
@@ -983,14 +983,14 @@ function TownInfoPanel({
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
         {/* Badges */}
         <div className="flex flex-wrap gap-2">
-          <span className={`text-[10px] px-2 py-0.5 rounded border capitalize ${typeBadgeColor}`}>
+          <span className={`text-[10px] px-2 py-0.5 rounded-sm border capitalize ${typeBadgeColor}`}>
             {town.type ?? 'town'}
           </span>
-          <span className="text-[10px] px-2 py-0.5 rounded border text-realm-text-secondary bg-realm-bg-700/50 border-realm-border">
+          <span className="text-[10px] px-2 py-0.5 rounded-sm border text-realm-text-secondary bg-realm-bg-700/50 border-realm-border">
             {town.regionName}
           </span>
           {isPlayerHere && (
-            <span className="text-[10px] px-2 py-0.5 rounded border text-realm-gold-400 bg-realm-gold-400/10 border-realm-gold-400/30">
+            <span className="text-[10px] px-2 py-0.5 rounded-sm border text-realm-gold-400 bg-realm-gold-400/10 border-realm-gold-400/30">
               Current Location
             </span>
           )}
@@ -1026,7 +1026,7 @@ function TownInfoPanel({
                   <button
                     key={route.id}
                     onClick={() => otherTown && onSelectTown(otherTown)}
-                    className="w-full flex items-center justify-between px-3 py-2 bg-realm-bg-800 hover:bg-realm-bg-600 border border-realm-border rounded transition-colors text-left"
+                    className="w-full flex items-center justify-between px-3 py-2 bg-realm-bg-800 hover:bg-realm-bg-600 border border-realm-border rounded-sm transition-colors text-left"
                   >
                     <div className="min-w-0">
                       <span className="text-realm-text-primary text-xs block truncate">{otherTown?.name ?? otherTownId}</span>

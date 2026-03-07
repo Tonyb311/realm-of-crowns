@@ -286,7 +286,7 @@ export default function SupplyChainView() {
             <button
               key={fd.key}
               onClick={() => toggleFilter(fd.key)}
-              className="px-3 py-1 rounded text-xs font-display border transition-all"
+              className="px-3 py-1 rounded-sm text-xs font-display border transition-all"
               style={{
                 borderColor: active ? fd.color : 'rgba(168,154,128,0.15)',
                 color: active ? fd.color : 'rgba(168,154,128,0.35)',
@@ -306,12 +306,12 @@ export default function SupplyChainView() {
               value={searchTerm}
               onChange={e => { setSearchTerm(e.target.value); setSelectedNode(null); }}
               placeholder="Search items..."
-              className="pl-8 pr-3 py-1 rounded bg-realm-bg-800 border border-realm-border text-xs text-realm-text-primary placeholder:text-realm-text-muted/40 w-44 focus:outline-none focus:border-realm-gold-500/50"
+              className="pl-8 pr-3 py-1 rounded-sm bg-realm-bg-800 border border-realm-border text-xs text-realm-text-primary placeholder:text-realm-text-muted/40 w-44 focus:outline-hidden focus:border-realm-gold-500/50"
             />
           </div>
           <button
             onClick={reset}
-            className="p-1.5 rounded border border-realm-border text-realm-text-muted hover:text-realm-text-secondary transition-colors"
+            className="p-1.5 rounded-sm border border-realm-border text-realm-text-muted hover:text-realm-text-secondary transition-colors"
             title="Reset"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -436,7 +436,7 @@ export default function SupplyChainView() {
             </div>
 
             <span
-              className="inline-block px-2 py-0.5 rounded text-[10px] font-display uppercase mb-4"
+              className="inline-block px-2 py-0.5 rounded-sm text-[10px] font-display uppercase mb-4"
               style={{
                 color: NODE_STYLE[detail.node.type].text,
                 backgroundColor: NODE_STYLE[detail.node.type].fill,
@@ -470,7 +470,7 @@ export default function SupplyChainView() {
                   {detail.dependsOn.map(name => (
                     <span
                       key={name}
-                      className="px-2 py-0.5 rounded text-[10px] bg-realm-bg-800 border border-realm-border text-realm-text-secondary"
+                      className="px-2 py-0.5 rounded-sm text-[10px] bg-realm-bg-800 border border-realm-border text-realm-text-secondary"
                     >
                       {name}
                     </span>
@@ -486,7 +486,7 @@ export default function SupplyChainView() {
                   {detail.suppliesTo.map(name => (
                     <span
                       key={name}
-                      className="px-2 py-0.5 rounded text-[10px] bg-realm-bg-800 border border-realm-border text-realm-text-secondary"
+                      className="px-2 py-0.5 rounded-sm text-[10px] bg-realm-bg-800 border border-realm-border text-realm-text-secondary"
                     >
                       {name}
                     </span>

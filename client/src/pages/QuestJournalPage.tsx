@@ -64,7 +64,7 @@ const QUEST_TYPE_COLORS: Record<string, string> = {
 
 function getQuestTypeBadge(type: string) {
   const cls = QUEST_TYPE_COLORS[type] ?? 'bg-realm-bg-600/40 text-realm-text-secondary border-realm-border';
-  return `text-[10px] px-2 py-0.5 rounded border font-display uppercase tracking-wider ${cls}`;
+  return `text-[10px] px-2 py-0.5 rounded-sm border font-display uppercase tracking-wider ${cls}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -192,19 +192,19 @@ function QuestCard({
             </h4>
             <div className="flex flex-wrap gap-2">
               {(quest.rewards?.xp ?? 0) > 0 && (
-                <span className="flex items-center gap-1 text-xs bg-realm-bg-800 rounded px-2.5 py-1">
+                <span className="flex items-center gap-1 text-xs bg-realm-bg-800 rounded-sm px-2.5 py-1">
                   <Star className="w-3 h-3 text-realm-success" />
                   <span className="text-realm-success font-display">{quest.rewards.xp} XP</span>
                 </span>
               )}
               {(quest.rewards?.gold ?? 0) > 0 && (
-                <span className="flex items-center gap-1 text-xs bg-realm-bg-800 rounded px-2.5 py-1">
+                <span className="flex items-center gap-1 text-xs bg-realm-bg-800 rounded-sm px-2.5 py-1">
                   <Coins className="w-3 h-3 text-realm-gold-400" />
                   <span className="text-realm-gold-400 font-display">{quest.rewards.gold} Gold</span>
                 </span>
               )}
               {(quest.rewards?.items ?? []).map((item, i) => (
-                <span key={i} className="text-xs bg-realm-bg-800 rounded px-2.5 py-1 text-realm-text-primary">
+                <span key={i} className="text-xs bg-realm-bg-800 rounded-sm px-2.5 py-1 text-realm-text-primary">
                   {item.name} x{item.quantity}
                 </span>
               ))}

@@ -392,14 +392,14 @@ export default function OverviewTab({ dataSource = 'live', runId, compareRunId }
             type="date"
             value={customStart}
             onChange={(e) => handleCustomDate(e.target.value, customEnd)}
-            className="bg-realm-bg-800 border border-realm-border text-realm-text-secondary text-xs rounded px-2 py-1 focus:border-realm-gold-600/60 focus:outline-none"
+            className="bg-realm-bg-800 border border-realm-border text-realm-text-secondary text-xs rounded-sm px-2 py-1 focus:border-realm-gold-600/60 focus:outline-hidden"
           />
           <span className="text-realm-text-muted text-xs">to</span>
           <input
             type="date"
             value={customEnd}
             onChange={(e) => handleCustomDate(customStart, e.target.value)}
-            className="bg-realm-bg-800 border border-realm-border text-realm-text-secondary text-xs rounded px-2 py-1 focus:border-realm-gold-600/60 focus:outline-none"
+            className="bg-realm-bg-800 border border-realm-border text-realm-text-secondary text-xs rounded-sm px-2 py-1 focus:border-realm-gold-600/60 focus:outline-hidden"
           />
         </div>
       </div>
@@ -783,7 +783,7 @@ export default function OverviewTab({ dataSource = 'live', runId, compareRunId }
               <div className="flex-1">
                 <span className="text-sm text-realm-text-primary">{alert.message}</span>
               </div>
-              <span className="text-xs font-display uppercase tracking-wider text-realm-text-muted bg-realm-bg-800 px-2 py-1 rounded flex-shrink-0">
+              <span className="text-xs font-display uppercase tracking-wider text-realm-text-muted bg-realm-bg-800 px-2 py-1 rounded-sm flex-shrink-0">
                 {CATEGORY_LABELS[alert.category] ?? alert.category}
               </span>
             </div>

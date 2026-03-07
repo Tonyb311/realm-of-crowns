@@ -200,7 +200,7 @@ export default function CombatAbilityMenu({
                       }
                     }}
                     disabled={disabled || isOnCooldown || isThisUsing}
-                    className={`flex items-center gap-1.5 px-3 py-2 border font-display text-xs rounded transition-all
+                    className={`flex items-center gap-1.5 px-3 py-2 border font-display text-xs rounded-sm transition-all
                       disabled:opacity-30 disabled:cursor-not-allowed
                       ${
                         isToggle && isActive
@@ -248,7 +248,7 @@ export default function CombatAbilityMenu({
                         setTargetSelector(null);
                       }}
                       disabled={isThisUsing}
-                      className="w-full text-left px-3 py-2 text-xs text-realm-text-primary hover:bg-realm-bg-700 rounded transition-colors"
+                      className="w-full text-left px-3 py-2 text-xs text-realm-text-primary hover:bg-realm-bg-700 rounded-sm transition-colors"
                     >
                       <Crosshair className="w-3 h-3 inline mr-1.5" />
                       Use on Target

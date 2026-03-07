@@ -151,7 +151,7 @@ export function Sidebar({ className }: { className?: string }) {
 
   return (
     <nav
-      className={`fixed left-0 top-14 lg:top-16 bottom-0 w-16 bg-realm-bg-800/95 backdrop-blur-sm border-r border-realm-border flex flex-col items-center py-4 gap-1 z-40 ${className ?? ''}`}
+      className={`fixed left-0 top-14 lg:top-16 bottom-0 w-16 bg-realm-bg-800/95 backdrop-blur-xs border-r border-realm-border flex flex-col items-center py-4 gap-1 z-40 ${className ?? ''}`}
     >
       {/* Navigation sections */}
       {NAV_SECTIONS.map((section, sIdx) => (

@@ -98,7 +98,7 @@ export default function ProfessionCard({
     >
       {/* Header row */}
       <div className="flex items-start gap-3">
-        <div className={`flex-shrink-0 w-9 h-9 rounded flex items-center justify-center ${
+        <div className={`flex-shrink-0 w-9 h-9 rounded-sm flex items-center justify-center ${
           isLearned ? 'bg-realm-gold-400/15' : 'bg-realm-bg-800'
         }`}>
           {isLocked ? (
@@ -121,7 +121,7 @@ export default function ProfessionCard({
               </span>
             )}
             {isLearned && profession.specialization && (
-              <span className="text-[10px] font-display px-1.5 py-0.5 rounded bg-realm-teal-300/15 text-realm-teal-300 border border-realm-teal-300/30">
+              <span className="text-[10px] font-display px-1.5 py-0.5 rounded-sm bg-realm-teal-300/15 text-realm-teal-300 border border-realm-teal-300/30">
                 {profession.specialization.charAt(0) + profession.specialization.slice(1).toLowerCase()}
               </span>
             )}
@@ -129,7 +129,7 @@ export default function ProfessionCard({
 
           {/* Category badge + stat */}
           <div className="flex items-center gap-2 mt-0.5">
-            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded border ${catColor.badge}`}>
+            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded-sm border ${catColor.badge}`}>
               {profession.category.charAt(0) + profession.category.slice(1).toLowerCase()}
             </span>
             <span className="text-[10px] text-realm-text-muted">
@@ -211,7 +211,7 @@ export default function ProfessionCard({
           {profession.status === 'available' && levelLocked && (
             <button
               disabled
-              className="w-full py-1.5 bg-realm-bg-800 text-realm-text-muted font-display text-xs rounded cursor-not-allowed flex items-center justify-center gap-1"
+              className="w-full py-1.5 bg-realm-bg-800 text-realm-text-muted font-display text-xs rounded-sm cursor-not-allowed flex items-center justify-center gap-1"
             >
               <Lock className="w-3 h-3" /> Requires Level 3
             </button>
@@ -219,7 +219,7 @@ export default function ProfessionCard({
           {profession.status === 'available' && !levelLocked && onLearn && (
             <button
               onClick={(e) => { e.stopPropagation(); onLearn(); }}
-              className="w-full py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded hover:bg-realm-gold-400 transition-colors"
+              className="w-full py-1.5 bg-realm-gold-500 text-realm-bg-900 font-display text-xs rounded-sm hover:bg-realm-gold-400 transition-colors"
             >
               Learn
             </button>
@@ -227,7 +227,7 @@ export default function ProfessionCard({
           {profession.status === 'learned' && onAbandon && (
             <button
               onClick={(e) => { e.stopPropagation(); onAbandon(); }}
-              className="w-full py-1.5 border border-realm-danger/40 text-realm-danger font-display text-xs rounded hover:bg-realm-danger/10 transition-colors"
+              className="w-full py-1.5 border border-realm-danger/40 text-realm-danger font-display text-xs rounded-sm hover:bg-realm-danger/10 transition-colors"
             >
               Abandon
             </button>
