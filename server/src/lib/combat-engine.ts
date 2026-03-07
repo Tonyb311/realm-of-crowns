@@ -2498,6 +2498,51 @@ export function resolvePsionAbility(
   }
 }
 
+// ---- Extra Attacks Helper ----
+
+function resolveExtraAttacksAfterAbility(
+  current: CombatState,
+  actorId: string,
+  targetId: string | undefined,
+  weapon: WeaponInfo,
+  racialTracker?: RacialCombatTracker,
+): { state: CombatState; logs: TurnLogEntry[] } {
+  const actor = current.combatants.find(c => c.id === actorId);
+  if (!actor || !actor.isAlive) return { state: current, logs: [] };
+  const totalAttacks = actor.extraAttacks ?? 1;
+  if (totalAttacks <= 1) return { state: current, logs: [] };
+
+  const extraLogs: TurnLogEntry[] = [];
+  for (let i = 0; i < totalAttacks - 1; i++) {
+    current = checkCombatEnd(current);
+    if (current.status !== 'ACTIVE') break;
+
+    const actorNow = current.combatants.find(c => c.id === actorId);
+    if (!actorNow || !actorNow.isAlive) break;
+
+    let extraTargetId = targetId;
+    const origTarget = current.combatants.find(c => c.id === extraTargetId);
+    if (!origTarget || !origTarget.isAlive) {
+      const anyEnemy = current.combatants.find(
+        c => c.team !== actorNow.team && c.isAlive && !c.hasFled
+      );
+      if (!anyEnemy) break;
+      extraTargetId = anyEnemy.id;
+    }
+
+    const extraAtk = resolveAttack(current, actorId, extraTargetId!, weapon, racialTracker);
+    current = extraAtk.state;
+    extraLogs.push({
+      round: current.round,
+      actorId,
+      action: 'attack',
+      result: extraAtk.result,
+      statusTicks: [],
+    });
+  }
+  return { state: current, logs: extraLogs };
+}
+
 // ---- Main Turn Resolution ----
 
 /**
@@ -2828,48 +2873,10 @@ export function resolveTurn(
         result = atk.result;
 
         // === EXTRA ATTACKS ===
-        const totalAttacks = currentActor.extraAttacks ?? 1;
-        const extraAttackResults: TurnLogEntry[] = [];
-
-        if (totalAttacks > 1) {
-          for (let i = 1; i < totalAttacks; i++) {
-            // Check combat is still active
-            current = checkCombatEnd(current);
-            if (current.status !== 'ACTIVE') break;
-
-            // Re-fetch actor (may have taken damage from thorns/reflect)
-            const actorNow = current.combatants.find(c => c.id === actorId);
-            if (!actorNow || !actorNow.isAlive) break;
-
-            // Find a valid target: prefer original, fall back to any alive enemy
-            let extraTargetId = action.targetId;
-            const originalTarget = current.combatants.find(c => c.id === extraTargetId);
-            if (!originalTarget || !originalTarget.isAlive) {
-              const anyEnemy = current.combatants.find(
-                c => c.team !== actorNow.team && c.isAlive && !c.hasFled
-              );
-              if (!anyEnemy) break;
-              extraTargetId = anyEnemy.id;
-            }
-
-            // Resolve extra attack
-            const extraAtk = resolveAttack(current, actorId, extraTargetId, context.weapon, racialContext?.tracker);
-            current = extraAtk.state;
-
-            // Log as separate entry
-            extraAttackResults.push({
-              round: current.round,
-              actorId,
-              action: 'attack',
-              result: extraAtk.result,
-              statusTicks: [],
-            });
-          }
-
-          // Append all extra attack logs
-          if (extraAttackResults.length > 0) {
-            current = { ...current, log: [...current.log, ...extraAttackResults] };
-          }
+        const extraResult = resolveExtraAttacksAfterAbility(current, actorId, action.targetId, context.weapon, racialContext?.tracker);
+        current = extraResult.state;
+        if (extraResult.logs.length > 0) {
+          current = { ...current, log: [...current.log, ...extraResult.logs] };
         }
 
         // Check for Orcish Rampage: bonus attack on kill (only from FIRST attack)
@@ -3008,6 +3015,14 @@ export function resolveTurn(
             };
           }
         }
+        // Extra attacks after psion ability (ability counts as first attack)
+        if (context.weapon) {
+          const psiExtra = resolveExtraAttacksAfterAbility(current, actorId, action.targetId, context.weapon, racialContext?.tracker);
+          current = psiExtra.state;
+          if (psiExtra.logs.length > 0) {
+            current = { ...current, log: [...current.log, ...psiExtra.logs] };
+          }
+        }
         // Track lastAction for Temporal Echo — skip echo itself to prevent
         // infinite recursion (echo replaying echo replaying echo...)
         if (action.psionAbilityId !== 'psi-see-5') {
@@ -3070,6 +3085,14 @@ export function resolveTurn(
           const atk = resolveAttack(current, actorId, action.targetId, context.weapon, racialContext?.tracker);
           current = atk.state;
           result = atk.result;
+        }
+        // Extra attacks after class ability (ability counts as first attack)
+        if (context.weapon) {
+          const classExtra = resolveExtraAttacksAfterAbility(current, actorId, action.targetId, context.weapon, racialContext?.tracker);
+          current = classExtra.state;
+          if (classExtra.logs.length > 0) {
+            current = { ...current, log: [...current.log, ...classExtra.logs] };
+          }
         }
         // Track lastAction for Temporal Echo (psion tier 0 abilities route here)
         current = {
