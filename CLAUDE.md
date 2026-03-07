@@ -8,13 +8,18 @@
 - **Flag your confidence level.** If you're working from memory rather than verification, say so: "I believe X but haven't verified" is acceptable. "X is how it works" without checking is not.
 - **Never invent API endpoints, config keys, CLI flags, or feature names.** If you're unsure whether something exists, search for it first.
 
-### Deployment
-- **Azure Container Apps will NOT pull a new image if the tag hasn't changed.** Always use a unique tag: timestamp (`202602211159`) or commit hash. NEVER use `latest` or reuse a previous tag.
-- **Database seeds run on container startup.** If you change seed data (monsters, items, towns, routes), it updates on deploy.
-- **`az acr build` is deprecated** due to persistent Azure infrastructure failures. Always use the GitHub Actions deploy workflow.
-- **Standard deploy workflow:** `git commit` → `git push` → trigger deploy → verify.
-- **Deploy command:** `gh workflow run deploy.yml --ref main` — triggers the GitHub Actions workflow. Check status with `gh run list --workflow=deploy.yml --limit=1`.
-- Workflow auto-generates a timestamp tag, builds image on GitHub runners, pushes to ACR, updates Container App, and runs a health check.
+### Deployment — GITHUB ACTIONS ONLY
+- **NEVER run `az acr build`.** It is permanently broken (Azure ACR "failed to download context" errors). This is not a temporary issue — do not retry it, do not try workarounds, do not use the git URL variant. The command is dead.
+- **NEVER run `az containerapp update` manually.** The workflow handles this.
+- **The ONLY way to deploy is the GitHub Actions workflow:**
+  1. Pre-flight: `npx tsc -p server/tsconfig.build.json --noEmit` (catch TS errors before pushing)
+  2. `git add <specific files>` → `git commit -m "feat: ..."` → `git push`
+  3. `gh workflow run deploy.yml --ref main`
+  4. Wait ~30s, then: `gh run list --workflow=deploy.yml --limit=1`
+  5. On failure: `gh run view --log-failed`
+- **If you find yourself typing `az acr build` or `az containerapp update`, STOP. You are doing it wrong.** Go back to step 3 above.
+- Database seeds run on container startup. If seed data changed, it updates on deploy.
+- Azure Container Apps will NOT pull a new image if the tag hasn't changed. The workflow auto-generates unique timestamp tags.
 
 ### Package Manager
 - **This project uses pnpm**, not npm. All install/run commands use `pnpm`.
