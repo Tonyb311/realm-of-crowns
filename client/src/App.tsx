@@ -189,7 +189,7 @@ function NotFoundPage() {
       </p>
       <Link
         to="/"
-        className="px-8 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-lg rounded hover:bg-realm-gold-400 transition-colors"
+        className="px-8 py-3 bg-realm-gold-500 text-realm-bg-900 font-display text-lg rounded-sm hover:bg-realm-gold-400 transition-colors"
       >
         Return Home
       </Link>
