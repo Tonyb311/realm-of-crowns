@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { RaceDefinition, SubRaceOption, StatModifiers } from '@shared/types/race';
 import { getRacesByTier } from '@shared/data/races';

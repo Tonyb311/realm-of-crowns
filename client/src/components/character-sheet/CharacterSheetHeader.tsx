@@ -1,5 +1,5 @@
 import { ArrowLeft, UserPlus, MessageSquare } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
 import { RealmButton, RealmBadge, RealmProgress } from '../ui/realm-index';

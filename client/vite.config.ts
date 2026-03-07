@@ -14,7 +14,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
+          vendor: ['react', 'react-dom', 'react-router'],
           query: ['@tanstack/react-query', 'axios'],
           ui: ['framer-motion', 'lucide-react'],
           socket: ['socket.io-client'],

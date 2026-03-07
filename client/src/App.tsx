@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { Routes, Route, Navigate, Link, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, Outlet } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ui/ProtectedRoute';

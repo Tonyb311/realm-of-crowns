@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import {
   Heart,
 
@@ -11,7 +11,7 @@ import {
   Compass,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import Tooltip from './ui/Tooltip';

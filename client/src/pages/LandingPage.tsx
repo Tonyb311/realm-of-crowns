@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
 import {
   Crown,
@@ -85,7 +85,7 @@ const fadeUp = {
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, delay: i * 0.12, ease: 'easeOut' },
+    transition: { duration: 0.6, delay: i * 0.12, ease: 'easeOut' as const },
   }),
 };
 
@@ -94,7 +94,7 @@ const cardFade = {
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, delay: i * 0.1, ease: 'easeOut' },
+    transition: { duration: 0.5, delay: i * 0.1, ease: 'easeOut' as const },
   }),
 };
 
