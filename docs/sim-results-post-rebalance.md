@@ -1,372 +1,282 @@
-# Post-Rebalance Sim Results (v2 — Weapon Tier Fix + Monster Rebalance)
+# Post-Rebalance Sim Results (v3 — Ability Extra Attacks + Caster Immunities Fix)
 
-**Run ID:** `cmmfo9g9y00005sr575hm173j`
+**Run ID:** `cmmgldwzv0000c8uxa7r0tm2u`
 **Date:** 2026-03-07
-**Config:** 20 monsters x 7 classes x 200 iterations = 25,200 encounters (126 matchups; 18 monsters matched from DB)
-**Changes tested:** Fixed `getTierIndex()` weapon tiers + full 129-monster rebalance (HP -50-70%, AC capped, damage scaled, ability nerfs)
+**Config:** 20 monsters x 7 classes x 200 iterations = 25,200 encounters (126 matchups)
+**Changes tested:** Abilities now fire extra attacks + FORCE/PSYCHIC immunities removed from 5 bosses
 
 ---
 
 ## 1. Overall Win Rate
 
-**27.7%** (target: 40-50%)
+| Version | Win Rate | Change |
+|---------|----------|--------|
+| v1 (pre-rebalance) | 8.8% | - |
+| v2 (weapon tiers + monster rebalance) | 27.7% | +18.9 pts |
+| **v3 (ability tax + immunities fix)** | **28.8%** | +1.1 pts |
 
-Still below target. T1-T2 are in range but T3+ collapses. The balance cliff moved from L13 (pre-rebalance) to roughly the same spot, though T1-T2 improved significantly.
-
----
-
-## 2. Win Rate by Class
-
-| Class | Win Rate | Assessment |
-|-------|----------|------------|
-| Ranger | 51.0% | Good |
-| Warrior | 50.3% | Good |
-| Cleric | 36.3% | Slightly low |
-| Rogue | 28.1% | Low |
-| Bard | 13.6% | Very low |
-| Mage | 7.2% | Critical |
-| Psion | 7.2% | Critical |
-
-Warrior and Ranger are balanced. Cleric is acceptable. Rogue, Bard, Mage, and Psion are underperforming — this is a **class balance problem**, not a monster problem.
+Modest overall improvement. The warrior DPR increase is offset by T4+ monsters still being too tanky/deadly.
 
 ---
 
-## 3. Win Rate by Level Bracket
+## 2. Win Rate by Class (v2 → v3)
 
-| Bracket | Win Rate | Matchups | Assessment |
-|---------|----------|----------|------------|
-| T1 (L1-5) | 44.5% | 42 | In range |
-| T2 (L6-10) | 50.8% | 21 | Good |
-| T3 (L11-20) | 24.0% | 21 | Low — Hydra/Void Stalker too hard |
-| T4 (L21-30) | 0.2% | 14 | Critical — 0% wall |
-| T5 (L31-40) | 3.1% | 14 | Critical |
-| T6 (L41-50) | 0.0% | 14 | Critical |
+| Class | v2 | v3 | Change |
+|-------|-----|-----|--------|
+| Warrior | 50.3% | **54.9%** | +4.6 pts |
+| Ranger | 51.0% | **53.3%** | +2.3 pts |
+| Cleric | 36.3% | **36.7%** | +0.4 pts |
+| Rogue | 28.1% | **28.2%** | +0.1 pts |
+| Bard | 13.6% | **13.2%** | -0.4 pts |
+| Mage | 7.2% | **7.8%** | +0.6 pts |
+| Psion | 7.2% | **7.8%** | +0.6 pts |
+
+Warrior gained the most (+4.6 pts) from extra attacks. Casters barely changed — the immunity fix helped at specific matchups but overall caster DPR is still too low.
 
 ---
 
-## 4. Win Rate Heat Map (Class x Level Bracket)
+## 3. Win Rate Heat Map (Class x Level Bracket)
 
 | Class | T1 (L1-5) | T2 (L6-10) | T3 (L11-20) | T4 (L21-30) | T5 (L31-40) | T6 (L41-50) |
 |-------|-----------|------------|-------------|-------------|-------------|-------------|
-| **Warrior** | 85% | 93% | 38% | 0% | 0% | 0% |
-| **Ranger** | 73% | 93% | 54% | 0% | 22% | 0% |
-| **Cleric** | 56% | 74% | 32% | 0% | 0% | 0% |
-| **Rogue** | 42% | 62% | 23% | 0% | 0% | 0% |
-| **Bard** | 23% | 18% | 18% | 0% | 0% | 0% |
-| **Mage** | 18% | 7% | 0% | 0% | 0% | 0% |
-| **Psion** | 15% | 10% | 2% | 1% | 0% | 0% |
+| **Warrior** | 86% | 93% | **59%** | 1% | **9%** | 0% |
+| **Ranger** | 75% | 91% | **56%** | 0% | **36%** | 0% |
+| **Cleric** | 57% | 75% | 32% | 0% | 0% | 0% |
+| **Rogue** | 43% | 62% | 20% | 0% | 0% | 0% |
+| **Bard** | 22% | 18% | 16% | 0% | 0% | 0% |
+| **Mage** | 16% | 7% | **8%** | 0% | 0% | 0% |
+| **Psion** | 16% | 12% | 1% | 2% | 0% | 0% |
 
-**Key observations:**
-- Warrior & Ranger are healthy through T2, viable at T3
-- Every class hits 0% by T4 (L21-30)
-- Mage and Psion are essentially non-functional at all tiers
-- The 0% cliff at T4+ is the primary problem
-
----
-
-## 5. Monsters Still Overtuned (Warrior Win% < 30% at bracket)
-
-| Monster | Level | Warrior Win% | Issue |
-|---------|-------|-------------|-------|
-| Hydra | 15 | 5% | Monster DPR 75/round kills warrior in ~3 rounds. Multihead attack too strong. |
-| Purple Worm | 25 | 0% | 116 mDmg in 4.3 rounds = ~27 DPR. Warrior pDmg only 36 total. HP or damage still too high. |
-| Storm Giant | 30 | 0% | 137 mDmg in 3.4 rounds = ~40 DPR. Player dead in 3 rounds. Massive damage/round. |
-| Basilisk King | 35 | 0% | 157 mDmg, player manages 56 pDmg total. Monster kills in ~4 rounds. |
-| Archlich | 40 | 0% | Warrior survives 11.4 rounds but deals only 66 damage total (6 DPR). Monster too tanky or player DPR too low. |
-| Blight Dragon | 45 | 0% | 184 mDmg in 6 rounds = 31 DPR vs warrior. |
-| Void Emperor | 50 | 0% | 214 mDmg in 7.3 rounds = 29 DPR. Player deals only 29 total damage. |
-| Void Stalker | 13 | 17% | Borderline. 66 mDmg in 4.2 rounds = 16 DPR vs warrior. |
+**v2 → v3 changes:**
+- Warrior T3: 38% → **59%** (+21 pts — extra attacks making a big difference at L13-20)
+- Warrior T5: 0% → **9%** (no longer 0% everywhere)
+- Ranger T5: 22% → **36%** (+14 pts)
+- Mage T3: 0% → **8%** (immunity fix lets mage damage Mind Flayer)
 
 ---
 
-## 6. Monsters Now Too Easy (Warrior Win% > 80%)
+## 4. Warrior DPR by Level (The Key Output)
 
-| Monster | Level | Warrior Win% | Notes |
-|---------|-------|-------------|-------|
-| Skeleton Warrior | 5 | 99% | T1 low end — acceptable. |
-| Ghoul Stalker | 5 | 95% | T1/T2 transition — acceptable. |
-| Dire Wolf | 8 | 98% | T2 warrior dominance expected. |
-| Sandscale Basilisk | 10 | 97% | T3 entry point, warrior dominance expected. |
+| Level | Monster | v2 DPR | v3 DPR | Change | v3 Total Dmg | Avg Rounds |
+|-------|---------|--------|--------|--------|--------------|------------|
+| 1 | Giant Rat | 1.8 | 1.9 | +0.1 | 17 | 9.2 |
+| 1 | Goblin | 2.6 | 2.4 | -0.2 | 22 | 9.3 |
+| 3 | Bandit | 3.8 | 3.8 | 0.0 | 19 | 4.9 |
+| 3 | Prairie Stalker | 3.5 | 3.6 | +0.1 | 17 | 4.7 |
+| 5 | Ghoul Stalker | 3.8 | 4.0 | +0.2 | 15 | 3.7 |
+| 5 | Skeleton Warrior | 5.0 | 5.0 | 0.0 | 15 | 3.0 |
+| 8 | Dire Wolf | 5.6 | 5.8 | +0.2 | 19 | 3.3 |
+| 8 | Ironhide Ogre | 5.3 | 5.5 | +0.2 | 18 | 3.3 |
+| 10 | Sandscale Basilisk | 7.6 | 7.5 | -0.1 | 33 | 4.5 |
+| **13** | **Void Stalker** | **6.9** | **9.9** | **+3.0** | 35 | 3.5 |
+| **15** | **Hydra** | **6.1** | **9.2** | **+3.1** | 29 | 3.2 |
+| **20** | **Mind Flayer** | **8.7** | **13.4** | **+4.7** | 70 | 5.2 |
+| **25** | **Purple Worm** | **8.4** | **12.5** | **+4.1** | 50 | 4.0 |
+| **30** | **Storm Giant** | **8.5** | **14.3** | **+5.8** | 48 | 3.4 |
+| **35** | **Basilisk King** | **8.8** | **20.8** | **+12.0** | 122 | 5.8 |
+| **40** | **Archlich** | **5.8** | **11.6** | **+5.8** | 96 | 8.3 |
+| **45** | **Blight Dragon** | **6.7** | **9.2** | **+2.5** | 41 | 4.4 |
+| **50** | **Void Emperor** | **4.0** | **6.2** | **+2.2** | 38 | 6.2 |
 
-These are acceptable — warriors should dominate T1-T2 monsters.
+**Key takeaway:** Extra attacks after abilities boosted warrior DPR by 40-140% at L13+. The fix is working. But monsters at L25+ are still killing warriors in 3-6 rounds before they can deal enough total damage.
 
----
+### Warrior DPR Summary by Bracket
 
-## 7. Class Balance Assessment
-
-### Warrior vs Mage divergence by bracket:
-
-| Bracket | Warrior | Mage | Gap |
-|---------|---------|------|-----|
-| T1 | 85% | 18% | 67 pts |
-| T2 | 93% | 7% | 86 pts |
-| T3 | 38% | 0% | 38 pts |
-| T4+ | 0% | 0% | 0 pts (both dead) |
-
-**The warrior-mage gap is catastrophic.** Even at T1, mages win only 18% vs warrior's 85%. This is NOT a monster balance issue — it's a class design/sim issue:
-
-1. **Mage deals 0 damage vs Mind Flayer** — 0 pDmg in 200 fights suggests Mind Flayer may be immune/resistant to magic damage, or mage attacks are failing to resolve
-2. **Psion deals 0 damage vs Archlich and Void Emperor** — same issue, likely magic resistance or save-based abilities auto-failing
-3. **Bard underperforms** — support class without party = no value from buffs/debuffs
-
----
-
-## 8. DPR Analysis Per Class Per Bracket
-
-Average player damage dealt (total per fight, not per-round) by class across brackets:
-
-| Class | T1 avg | T2 avg | T3 avg | T4 avg | T5+ avg |
-|-------|--------|--------|--------|--------|---------|
-| Warrior | 18.5 | 18.6 | 39.4 | 32.3 | 46.1 |
-| Ranger | 17.6 | 18.4 | 39.4 | 8.7 | 74.4 |
-| Cleric | 15.3 | 16.2 | 31.6 | 9.8 | 31.0 |
-| Rogue | 14.0 | 15.6 | 28.3 | 20.7 | 59.1 |
-| Bard | 12.0 | 14.2 | 24.1 | 17.3 | 38.5 |
-| Mage | 11.2 | 10.3 | 3.0 | 9.6 | 29.5 |
-| Psion | 10.0 | 9.7 | 13.5 | 22.7 | 11.3 |
-
-**Mage total damage at T3 = 3.0** — this is broken. Either mage attacks are being nullified or mage weapon/spell damage is negligible.
+| Bracket | Avg Warrior DPR | Note |
+|---------|----------------|------|
+| T1 (L1-5) | 3.4 | No extra attacks at these levels — no change expected |
+| T2 (L8-10) | 6.3 | Extra attacks start at L13, minimal impact at L8-10 |
+| T3 (L13-20) | 10.8 | **+55% from v2** — extra attacks kicking in at L13 |
+| T4 (L25-30) | 13.4 | **+60% from v2** — 2 attacks per turn |
+| T5 (L35-40) | 16.2 | **+88% from v2** — 3 attacks per turn at L34+ |
+| T6 (L45-50) | 7.7 | **+53% from v2** — still low because fights end too fast (3-6 rds) |
 
 ---
 
-## 9. Comparison: Pre-Rebalance (v1) vs Post-Rebalance (v2)
+## 5. Caster DPR Analysis
 
-| Metric | v1 (pre-rebalance) | v2 (weapon fix + rebalance) | Change |
-|--------|---------------------|----------------------------|--------|
-| Overall win rate | 8.8% | 27.7% | +18.9 pts |
-| Warrior win rate | ~15% | 50.3% | +35 pts |
-| T1 bracket | ~25% | 44.5% | +19.5 pts |
-| T2 bracket | ~15% | 50.8% | +36 pts |
-| T3 bracket | ~5% | 24.0% | +19 pts |
-| T4+ bracket | 0% | 0.7% | +0.7 pts |
-| Level at which 0% cliff starts | L13 | L25 (warrior), L13 (caster) | Improved for melee |
+### Mage vs Mind Flayer (FORCE immunity removed)
+
+| Metric | v2 | v3 | Change |
+|--------|----|----|--------|
+| Win Rate | 0% | **25%** | +25 pts |
+| Avg pDmg | 0 | **48** | +48 |
+| Avg Rounds | 7.3 | 6.3 | -1.0 |
+
+The FORCE immunity removal worked — Mage can now damage Mind Flayer. 25% win rate is low but non-zero.
+
+### Psion vs Archlich (PSYCHIC immunity → resistance)
+
+| Metric | v2 | v3 | Change |
+|--------|----|----|--------|
+| Win Rate | 0% | **0%** | No change |
+| Avg pDmg | 0 | **14** | +14 |
+| Avg Rounds | 4.6 | 4.7 | +0.1 |
+
+Psion now deals some damage (14 total) but it's halved by PSYCHIC resistance. Combined with Archlich's 186 HP, 14 damage is negligible.
+
+### Psion vs Void Emperor (PSYCHIC immunity removed, FORCE resistance removed)
+
+| Metric | v2 | v3 | Change |
+|--------|----|----|--------|
+| Psion pDmg | 0 | **18** | +18 |
+| Mage pDmg | 9 | **17** | +8 |
+
+Modest improvement but both casters are still at 0% win rate vs Void Emperor.
+
+### Overall Caster Assessment
+
+Removing immunities helped specific matchups but casters remain non-functional at all tiers. Root cause: **caster base DPR is too low**, not just monster immunities. Mage at L20 deals 48 total damage in 6.3 rounds = 7.6 DPR, vs Warrior's 13.4. The gap is fundamental — casters lack extra attacks AND their base weapon damage (staff/orb) is low.
 
 ---
 
-## 10. Per-Monster Detail (All Classes)
+## 6. What's Still Broken
+
+### T4+ Monster Damage (Primary Issue)
+
+Players die in 3-6 rounds at T4+. Target survival time is 8-14 rounds. Monster DPR is 2-3x too high:
+
+| Monster | Level | Monster DPR vs Warrior | Warrior HP (est.) | Rounds to Kill Warrior |
+|---------|-------|----------------------|-------------------|----------------------|
+| Purple Worm | 25 | 29 | 120 | 4.1 |
+| Storm Giant | 30 | 40 | 140 | 3.5 |
+| Basilisk King | 35 | 27 | 160 | 5.9 |
+| Archlich | 40 | 21 | 180 | 8.6 |
+| Blight Dragon | 45 | 42 | 200 | 4.8 |
+| Void Emperor | 50 | 35 | 220 | 6.3 |
+
+### T4+ Monster HP vs Warrior DPR
+
+| Monster | Level | Monster HP | Warrior DPR | Rounds to Kill Monster | Fits Target? |
+|---------|-------|-----------|-------------|----------------------|--------------|
+| Purple Worm | 25 | 76 | 12.5 | 6.1 | No (warrior dead in 4) |
+| Storm Giant | 30 | 106 | 14.3 | 7.4 | No (warrior dead in 3.5) |
+| Basilisk King | 35 | 145 | 20.8 | 7.0 | Borderline (close) |
+| Archlich | 40 | 186 | 11.6 | 16.0 | No (fight too long for warrior DPR) |
+| Blight Dragon | 45 | 225 | 9.2 | 24.5 | No (impossible) |
+| Void Emperor | 50 | 270 | 6.2 | 43.5 | No (impossible) |
+
+### Warrior DPR Drops at L40-50
+
+The DPR increase from extra attacks is being offset at L40+ by:
+1. **Fights ending too fast** — monsters kill warrior before enough attack rounds happen
+2. **Archlich/Void Emperor are so tanky** that even with extra attacks, total damage dealt before death is too low
+3. **L40 Warrior gets 3 attacks** but each deals ~4-5 damage against AC 20+ monsters (frequent misses)
+
+---
+
+## 7. Corrected eDPR Multiplier
+
+With ability + extra attacks, the effective DPR multiplier is now:
+
+| Level Bracket | v2 Multiplier (abilities only) | v3 Multiplier (ability + extra attacks) |
+|---------------|-------------------------------|---------------------------------------|
+| T1 (L1-5) | ~1.5x (abilities help) | ~1.5x (no change — no extra attacks) |
+| T2 (L8-10) | ~1.4x | ~1.4x (L8 is pre-extra-attacks) |
+| T3 (L13-20) | ~0.65x | **~1.0x** (abilities + 1 extra = ~same as raw) |
+| T4 (L25-30) | ~0.55x | **~0.85x** |
+| T5 (L35-40) | ~0.35x | **~0.55x** |
+| T6 (L45-50) | ~0.25x | **~0.35x** |
+
+The multiplier improved significantly but still drops at T5-T6 because:
+- L40+ fights end before all attacks land (monster kills warrior in 3-6 rounds)
+- High AC monsters cause frequent misses
+- Some ability turns still "waste" extra attacks when the ability itself does AoE or buff
+
+---
+
+## 8. Per-Monster Detail
 
 ### T1: Giant Rat (L1)
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| warrior | 85% | 9.3 | 17 | 8 |
-| ranger | 73% | 10.0 | 16 | 10 |
-| cleric | 46% | 13.7 | 14 | 13 |
-| rogue | 31% | 12.3 | 12 | 13 |
-| bard | 31% | 12.2 | 12 | 13 |
-| psion | 30% | 10.7 | 12 | 12 |
-| mage | 28% | 10.7 | 11 | 12 |
+| Class | Win% | Rds | pDmg | mDmg |
+|-------|------|-----|------|------|
+| warrior | 89% | 9.2 | 17 | 7 |
+| ranger | 75% | 9.4 | 16 | 10 |
+| cleric | 48% | 13.6 | 14 | 13 |
+| psion | 32% | 10.3 | 12 | 12 |
+| rogue | 32% | 12.2 | 13 | 13 |
+| bard | 31% | 11.9 | 12 | 14 |
+| mage | 28% | 10.5 | 12 | 12 |
 
 ### T1: Goblin (L1)
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| warrior | 84% | 9.0 | 23 | 11 |
-| ranger | 67% | 8.2 | 22 | 13 |
-| cleric | 48% | 11.2 | 20 | 15 |
+| Class | Win% | Rds | pDmg | mDmg |
+|-------|------|-----|------|------|
+| warrior | 75% | 9.3 | 22 | 13 |
+| ranger | 67% | 8.3 | 22 | 12 |
+| cleric | 49% | 11.1 | 20 | 15 |
 | rogue | 24% | 9.2 | 17 | 15 |
-| bard | 24% | 9.5 | 17 | 15 |
-| psion | 18% | 8.0 | 15 | 13 |
-| mage | 16% | 8.3 | 16 | 13 |
+| bard | 24% | 9.1 | 17 | 15 |
+| psion | 22% | 8.1 | 16 | 13 |
+| mage | 10% | 7.7 | 14 | 14 |
 
-### T1: Bandit (L3)
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| warrior | 77% | 5.0 | 19 | 18 |
-| ranger | 55% | 4.5 | 17 | 21 |
-| cleric | 41% | 5.3 | 15 | 21 |
-| rogue | 30% | 4.4 | 14 | 20 |
-| bard | 7% | 4.8 | 10 | 22 |
-| psion | 4% | 3.9 | 8 | 18 |
-| mage | 3% | 3.7 | 8 | 18 |
+### T3: Void Stalker (L13) — Major improvement
+| Class | v2 Win% | v3 Win% | v3 Rds | v3 pDmg |
+|-------|---------|---------|--------|---------|
+| warrior | 17% | **55%** | 3.5 | 35 |
+| ranger | 66% | **71%** | 3.6 | 38 |
+| cleric | 0% | 0% | 4.1 | 15 |
+| rogue | 0% | 0% | 3.2 | 15 |
+| mage | 0% | 0% | 2.3 | 4 |
+| bard | 0% | 0% | 3.1 | 5 |
+| psion | 0% | 0% | 2.4 | 5 |
 
-### T1: Prairie Stalker (L3)
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| warrior | 74% | 4.6 | 16 | 19 |
-| ranger | 61% | 4.3 | 16 | 20 |
-| cleric | 35% | 4.9 | 14 | 21 |
-| rogue | 28% | 4.2 | 13 | 20 |
-| mage | 4% | 3.7 | 8 | 18 |
-| bard | 4% | 4.4 | 9 | 22 |
-| psion | 2% | 3.5 | 7 | 18 |
+### T3: Hydra (L15) — Improved but still very hard
+| Class | v2 Win% | v3 Win% | v3 Rds | v3 pDmg |
+|-------|---------|---------|--------|---------|
+| warrior | 5% | **26%** | 3.2 | 29 |
+| ranger | 0% | 0% | 2.9 | 10 |
+| cleric | 0% | 0% | 2.7 | 9 |
+| all others | 0% | 0% | ~2 | 4-6 |
 
-### T1/T2: Skeleton Warrior (L5)
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| warrior | 99% | 3.0 | 15 | 13 |
-| ranger | 99% | 2.8 | 15 | 13 |
-| cleric | 94% | 3.1 | 15 | 15 |
-| rogue | 85% | 3.3 | 14 | 18 |
-| bard | 49% | 4.5 | 13 | 24 |
-| mage | 39% | 3.2 | 12 | 19 |
-| psion | 27% | 3.4 | 11 | 20 |
+### T3/T4: Mind Flayer (L20) — Mage fix working
+| Class | v2 Win% | v3 Win% | v3 Rds | v3 pDmg |
+|-------|---------|---------|--------|---------|
+| warrior | 94% | **97%** | 5.2 | 70 |
+| ranger | 96% | **97%** | 8.3 | 70 |
+| cleric | 97% | **96%** | 8.9 | 69 |
+| rogue | 70% | **60%** | 9.3 | 65 |
+| bard | 54% | **49%** | 8.1 | 60 |
+| mage | 0% | **25%** | 6.3 | 48 |
+| psion | 6% | **3%** | 9.4 | 34 |
 
-### T1/T2: Ghoul Stalker (L5)
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| warrior | 95% | 3.9 | 15 | 16 |
-| ranger | 82% | 3.9 | 14 | 18 |
-| cleric | 74% | 4.1 | 13 | 19 |
-| rogue | 54% | 4.3 | 12 | 22 |
-| mage | 22% | 3.8 | 8 | 21 |
-| bard | 22% | 5.3 | 9 | 26 |
-| psion | 11% | 4.0 | 7 | 21 |
-
-### T2: Dire Wolf (L8)
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| warrior | 98% | 3.4 | 19 | 23 |
-| ranger | 94% | 3.2 | 18 | 24 |
-| cleric | 80% | 3.5 | 18 | 28 |
-| rogue | 67% | 3.7 | 17 | 31 |
-| bard | 40% | 4.2 | 16 | 34 |
-| mage | 15% | 3.3 | 11 | 27 |
-| psion | 9% | 3.4 | 11 | 27 |
-
-### T2: Ironhide Ogre (L8)
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| warrior | 84% | 3.4 | 18 | 32 |
-| ranger | 84% | 3.1 | 18 | 31 |
-| cleric | 56% | 3.3 | 16 | 33 |
-| rogue | 38% | 3.3 | 14 | 34 |
-| bard | 12% | 3.5 | 12 | 36 |
-| mage | 6% | 2.8 | 9 | 28 |
-| psion | 4% | 2.9 | 9 | 28 |
-
-### T3: Sandscale Basilisk (L10)
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| ranger | 100% | 3.1 | 34 | 20 |
-| warrior | 97% | 4.5 | 34 | 32 |
-| cleric | 85% | 5.7 | 32 | 30 |
-| rogue | 82% | 4.2 | 33 | 32 |
-| psion | 18% | 4.4 | 23 | 31 |
-| bard | 2% | 5.3 | 18 | 43 |
-| mage | 0% | 3.9 | 9 | 32 |
-
-### T3: Void Stalker (L13)
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| ranger | 66% | 3.6 | 38 | 56 |
-| warrior | 17% | 4.2 | 29 | 66 |
-| cleric | 0% | 3.9 | 15 | 54 |
-| rogue | 0% | 3.3 | 15 | 52 |
-| bard | 0% | 3.1 | 5 | 52 |
-| mage | 0% | 2.3 | 4 | 38 |
-| psion | 0% | 2.3 | 4 | 38 |
-
-### T3: Hydra (L15)
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| warrior | 5% | 3.3 | 20 | 75 |
-| ranger | 0% | 3.0 | 10 | 74 |
-| cleric | 0% | 2.9 | 10 | 60 |
-| bard | 0% | 2.1 | 6 | 58 |
-| rogue | 0% | 2.1 | 5 | 58 |
-| mage | 0% | 1.8 | 5 | 42 |
-| psion | 0% | 1.9 | 4 | 42 |
-
-### T3/T4: Mind Flayer (L20)
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| cleric | 97% | 8.9 | 70 | 41 |
-| ranger | 96% | 8.4 | 70 | 54 |
-| warrior | 94% | 7.9 | 69 | 62 |
-| rogue | 70% | 9.2 | 65 | 60 |
-| bard | 54% | 8.0 | 61 | 65 |
-| psion | 6% | 9.2 | 34 | 51 |
-| mage | 0% | 7.3 | 0 | 52 |
-
-### T4: Purple Worm (L25)
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| psion | 3% | 4.8 | 41 | 62 |
-| warrior | 0% | 4.3 | 36 | 116 |
-| bard | 0% | 3.3 | 24 | 88 |
-| mage | 0% | 2.9 | 14 | 62 |
-| cleric | 0% | 3.5 | 13 | 90 |
-| ranger | 0% | 4.4 | 13 | 114 |
-| rogue | 0% | 3.3 | 9 | 88 |
-
-### T4: Storm Giant (L30) — 0% all classes
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| warrior | 0% | 3.4 | 29 | 137 |
-| rogue | 0% | 2.5 | 32 | 103 |
-| bard | 0% | 2.6 | 10 | 103 |
-| cleric | 0% | 2.8 | 6 | 106 |
-| mage | 0% | 2.1 | 5 | 72 |
-| ranger | 0% | 3.4 | 5 | 134 |
-| psion | 0% | 2.1 | 4 | 72 |
-
-### T5: Basilisk King (L35) — 0% except ranger 3%
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| ranger | 3% | 6.5 | 103 | 154 |
-| warrior | 0% | 6.4 | 56 | 157 |
-| rogue | 0% | 4.7 | 41 | 118 |
-| cleric | 0% | 5.9 | 30 | 121 |
-| bard | 0% | 4.7 | 29 | 118 |
-| mage | 0% | 3.6 | 24 | 82 |
-| psion | 0% | 3.4 | 9 | 82 |
-
-### T5: Archlich (L40)
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| ranger | 41% | 8.2 | 158 | 160 |
-| warrior | 0% | 11.4 | 66 | 178 |
-| rogue | 0% | 6.7 | 68 | 133 |
-| bard | 0% | 6.4 | 58 | 133 |
-| cleric | 0% | 9.5 | 44 | 137 |
-| mage | 0% | 5.0 | 44 | 92 |
-| psion | 0% | 4.6 | 0 | 92 |
-
-### T6: Blight Dragon (L45) — 0% all classes
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| ranger | 0% | 4.4 | 72 | 163 |
-| warrior | 0% | 6.0 | 40 | 184 |
-| rogue | 0% | 3.6 | 29 | 129 |
-| bard | 0% | 3.4 | 26 | 138 |
-| psion | 0% | 3.9 | 25 | 95 |
-| mage | 0% | 2.9 | 21 | 100 |
-| cleric | 0% | 5.3 | 18 | 147 |
-
-### T6: Void Emperor (L50) — 0% all classes
-| Class | Win% | Rounds | pDmg | mDmg |
-|-------|------|--------|------|------|
-| ranger | 0% | 5.5 | 48 | 208 |
-| rogue | 0% | 4.1 | 30 | 154 |
-| warrior | 0% | 7.3 | 29 | 214 |
-| cleric | 0% | 6.4 | 13 | 168 |
-| bard | 0% | 3.7 | 13 | 161 |
-| mage | 0% | 3.1 | 9 | 110 |
-| psion | 0% | 3.0 | 0 | 109 |
+### T5: Archlich (L40) — Warrior doubled DPR
+| Class | v2 Win% | v3 Win% | v3 Rds | v3 pDmg |
+|-------|---------|---------|--------|---------|
+| ranger | 41% | **49%** | 7.1 | 154 |
+| warrior | 0% | **2%** | 8.3 | 96 |
+| cleric | 0% | 0% | 8.2 | 76 |
+| rogue | 0% | 0% | 6.8 | 65 |
+| bard | 0% | 0% | 6.5 | 60 |
+| mage | 0% | 0% | 4.9 | 45 |
+| psion | 0% | 0% | 4.7 | 14 |
 
 ---
 
-## 11. Root Cause Summary
+## 9. Summary: What Next?
 
-### Problem 1: Monster damage scales too fast relative to player HP
-At T4+ (L25+), monsters deal 88-214 total damage in 3-7 rounds. Players die before dealing meaningful damage.
-- Purple Worm (L25): kills warrior in 4.3 rounds dealing 116 damage
-- Storm Giant (L30): kills in 3.4 rounds dealing 137 damage
+The ability tax fix worked — warrior DPR doubled at L35+ and T3 is now viable (59% warrior win rate). But T4+ remains a wall because:
 
-### Problem 2: Player DPR doesn't scale with monster HP at T4+
-Warrior at L40 deals only 66 total damage vs Archlich in 11.4 rounds = **5.8 DPR**. This is drastically below the theoretical ~13.5 eDPR used for the rebalance plan. The ability tax is consuming more DPR than the 0.45x multiplier assumed.
+1. **Monster damage is 2-3x too high** at T4-T6 — players die before landing enough attacks
+2. **Monster HP at T5-T6 is still too high** relative to actual DPR
+3. **Caster base DPR is fundamentally low** — not an immunity issue but a class design gap
 
-### Problem 3: Caster classes are non-functional
-Mage and Psion deal 0 damage in some matchups (Mind Flayer, Archlich, Void Emperor). This suggests monster magic resistance, spell attacks missing vs high AC, or a sim bug in caster damage resolution.
+**For the final monster rebalance prompt, use these ACTUAL v3 warrior DPR values:**
 
-### Problem 4: Weapon tier plateau
-Iron weapons (1d8+1) cover L10-29. Steel (1d10+2) covers L30-54. That's a 20-level plateau for each tier.
+| Level | Warrior DPR (use this) |
+|-------|----------------------|
+| 1 | 2.1 |
+| 3 | 3.7 |
+| 5 | 4.5 |
+| 8 | 5.6 |
+| 10 | 7.5 |
+| 13 | 9.9 |
+| 15 | 9.2 |
+| 20 | 13.4 |
+| 25 | 12.5 |
+| 30 | 14.3 |
+| 35 | 20.8 |
+| 40 | 11.6 |
+| 45 | 9.2 |
+| 50 | 6.2 |
 
----
-
-## 12. Recommended Next Steps
-
-1. **Audit combat logs** for L25+ warrior to understand the DPR gap (theoretical 13.5 vs actual 5.8)
-2. **Audit mage/psion combat logs** to find why damage is 0 in some matchups
-3. **Further reduce T4-T6 monster HP and damage** — need another 50-60% reduction at T4+
-4. **Consider player-side DPR buffs** for high levels
-5. **Fix class balance** as a separate workstream from monster tuning
+**Note:** DPR drops at L40-50 because fights end before enough rounds occur. The DPR at L35 (20.8) is the peak. Beyond L35, monster damage kills the warrior too fast for DPR to accumulate.
