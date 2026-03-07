@@ -1,7 +1,7 @@
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 RUN apk add --no-cache openssl
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
 
 WORKDIR /app
 
@@ -30,10 +30,10 @@ RUN pnpm --filter @realm-of-crowns/server build
 RUN cd client && pnpm exec vite build
 
 # --- Production stage ---
-FROM node:20-alpine
+FROM node:22-alpine
 
 RUN apk add --no-cache openssl
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
 
 WORKDIR /app
 

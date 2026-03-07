@@ -4,7 +4,7 @@
 
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { validate } from '../../middleware/validate';
 import { handlePrismaError } from '../../lib/prisma-errors';
 import { logRouteError } from '../../lib/error-logger';
@@ -14,6 +14,15 @@ import { simulationController } from '../../lib/simulation/controller';
 import { getTestPlayerCount } from '../../lib/simulation/seed';
 
 const router = Router();
+
+/** Add a worksheet from an array of objects (replicates XLSX.utils.json_to_sheet + book_append_sheet) */
+function addJsonSheet(workbook: ExcelJS.Workbook, data: Record<string, unknown>[], name: string) {
+  const sheet = workbook.addWorksheet(name);
+  if (data.length === 0) return;
+  const keys = Object.keys(data[0]);
+  sheet.columns = keys.map(key => ({ header: key, key }));
+  for (const row of data) sheet.addRow(row);
+}
 
 // --- Schemas ---
 
@@ -436,7 +445,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
     const townNameMap = new Map(allTowns.map(t => [t.id, t.name]));
     function resolveTown(id: string): string { return townNameMap.get(id) ?? id; }
 
-    const workbook = XLSX.utils.book_new();
+    const workbook = new ExcelJS.Workbook();
 
     // ---- Summary sheet (computed first, inserted as first sheet) ----
     let totalEarned = 0;
@@ -485,7 +494,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       { Metric: 'Bots with Professions', Value: botsWithProf },
       { Metric: 'Most Popular Profession', Value: topProfession },
     ];
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(summaryData), 'Summary');
+    addJsonSheet(workbook, summaryData, 'Summary');
 
     // Sheet 2: Bot Details
     const botData = bots.map((b) => ({
@@ -501,27 +510,27 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       Status: b.status,
     }));
     if (botData.length > 0) {
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(botData), 'Bots');
+      addJsonSheet(workbook, botData, 'Bots');
     }
 
     // Sheet 3: Race Distribution
     if (stats.raceDistribution.length > 0) {
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.raceDistribution.map((d: { name: string; count: number }) => ({ Race: d.name, Count: d.count }))), 'Race Distribution');
+      addJsonSheet(workbook, stats.raceDistribution.map((d: { name: string; count: number }) => ({ Race: d.name, Count: d.count })), 'Race Distribution');
     }
 
     // Sheet 4: Class Distribution
     if (stats.classDistribution.length > 0) {
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.classDistribution.map((d: { name: string; count: number }) => ({ Class: d.name, Count: d.count }))), 'Class Distribution');
+      addJsonSheet(workbook, stats.classDistribution.map((d: { name: string; count: number }) => ({ Class: d.name, Count: d.count })), 'Class Distribution');
     }
 
     // Sheet 5: Profession Distribution
     if (stats.professionDistribution.length > 0) {
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.professionDistribution.map((d: { name: string; count: number }) => ({ Profession: d.name, Count: d.count }))), 'Prof Distribution');
+      addJsonSheet(workbook, stats.professionDistribution.map((d: { name: string; count: number }) => ({ Profession: d.name, Count: d.count })), 'Prof Distribution');
     }
 
     // Sheet 6: Town Distribution
     if (stats.townDistribution.length > 0) {
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stats.townDistribution.map((d: { name: string; count: number }) => ({ Town: resolveTown(d.name), Count: d.count }))), 'Town Distribution');
+      addJsonSheet(workbook, stats.townDistribution.map((d: { name: string; count: number }) => ({ Town: resolveTown(d.name), Count: d.count })), 'Town Distribution');
     }
 
     // Sheet 7: Tick History (with cumulative columns)
@@ -561,7 +570,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       };
     });
     if (tickData.length > 0) {
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(tickData), 'Tick History');
+      addJsonSheet(workbook, tickData, 'Tick History');
     }
 
     // Sheet 8: Gold by Profession (per tick)
@@ -582,7 +591,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       }
     });
     if (goldByProf.length > 0) {
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(goldByProf), 'Gold by Profession');
+      addJsonSheet(workbook, goldByProf, 'Gold by Profession');
     }
 
     // Sheet 9: Gold by Town
@@ -601,7 +610,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       }
     });
     if (goldByTown.length > 0) {
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(goldByTown), 'Gold by Town');
+      addJsonSheet(workbook, goldByTown, 'Gold by Town');
     }
 
     // Sheet 10: Activity Log
@@ -616,7 +625,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
         Detail: a.detail,
         DurationMs: a.durationMs,
       }));
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(actData), 'Activity Log');
+      addJsonSheet(workbook, actData, 'Activity Log');
     }
 
     // Sheet 11: Bot Daily Logs
@@ -636,7 +645,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
         ActionsUsed: l.actionsUsed,
         Summary: l.summary,
       }));
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(dailyData), 'Bot Daily Logs');
+      addJsonSheet(workbook, dailyData, 'Bot Daily Logs');
     }
 
     // Sheet 12: All Actions Detail
@@ -659,7 +668,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       });
     });
     if (actionsDetail.length > 0) {
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(actionsDetail), 'All Actions Detail');
+      addJsonSheet(workbook, actionsDetail, 'All Actions Detail');
     }
 
     // Sheet 13: Combat Encounter Logs
@@ -701,7 +710,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
           GoldAwarded: log.goldAwarded,
           Summary: log.summary,
         }));
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(combatData), 'Combat Logs');
+        addJsonSheet(workbook, combatData, 'Combat Logs');
       }
     } catch (combatLogErr) {
       // Don't fail the entire export if combat logs fail
@@ -734,7 +743,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
           DefenderHPAfter: r.defenderHPAfter,
           Notes: r.notes,
         }));
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(roundData), 'Combat Rounds');
+        addJsonSheet(workbook, roundData, 'Combat Rounds');
       }
     } catch (combatRoundErr) {
       console.error('Failed to add combat rounds sheet:', combatRoundErr);
@@ -813,7 +822,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
           };
         });
 
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(txData), 'Market Transactions');
+        addJsonSheet(workbook, txData, 'Market Transactions');
       }
     } catch { /* Don't fail export */ }
 
@@ -857,7 +866,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
           CompetingBids: o.listing._count.buyOrders,
         }));
 
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(orderData), 'Market Orders');
+        addJsonSheet(workbook, orderData, 'Market Orders');
       }
     } catch { /* Don't fail export */ }
 
@@ -893,7 +902,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
           ResolvedAt: cycle.resolvedAt?.toISOString() || '',
         }));
 
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(mktSummaryData), 'Market Summary');
+        addJsonSheet(workbook, mktSummaryData, 'Market Summary');
       }
     } catch { /* Don't fail export */ }
 
@@ -939,7 +948,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
           TotalGoldTraded: totalGoldTradedEcon._sum.price || 0,
         }];
 
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(overviewData), 'Economy Overview');
+        addJsonSheet(workbook, overviewData, 'Economy Overview');
       }
     } catch { /* Don't fail export */ }
 
@@ -969,7 +978,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
           Traveling: e.botState.isTraveling,
           DailyUsed: e.botState.dailyActionUsed,
         }));
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(actionLogData), 'Bot Action Log');
+        addJsonSheet(workbook, actionLogData, 'Bot Action Log');
       }
     } catch { /* Don't fail export */ }
 
@@ -993,7 +1002,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
           TownAfter: resolveTown(r.townAfter),
           TownChanged: r.townBefore !== r.townAfter ? 'Yes' : 'No',
         }));
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(resData), 'Tick Resolutions');
+        addJsonSheet(workbook, resData, 'Tick Resolutions');
       }
     } catch { /* Don't fail export */ }
 
@@ -1024,13 +1033,13 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
           ItemsCrafted: t.itemsCrafted,
           QuestsCompleted: t.questsCompleted,
         }));
-        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(timelineData), 'Bot Timelines');
+        addJsonSheet(workbook, timelineData, 'Bot Timelines');
       }
     } catch { /* Don't fail export */ }
 
     // If only summary sheet exists (no data sheets added), that's fine — summary has metadata
 
-    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    const buffer = await workbook.xlsx.writeBuffer();
 
     const gameDay = history.length > 0 ? (history[history.length - 1] as any).gameDay ?? 0 : 0;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
