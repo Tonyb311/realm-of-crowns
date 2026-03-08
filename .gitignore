@@ -63,5 +63,8 @@ generate_*.js
 # Combat simulator output
 server/src/scripts/combat-sim-results/*.json
 
+# Reviews (temporary working files)
+reviews/
+
 # External projects (separate repos)
 studio-website/
