@@ -76,6 +76,11 @@
 - Add diagnostic logging when debugging pipeline issues before making fixes.
 - For non-trivial architectural changes: pause and ask "is there a more elegant way?"
 
+### Code Navigation — Prefer LSP
+- **Always prefer LSP tools** (`goToDefinition`, `findReferences`, `hover`, `documentSymbol`) over Grep/Glob for code navigation tasks.
+- Fall back to text search (Grep, Glob) only when LSP returns no results or the file type isn't covered.
+- LSP gives exact file+line answers in ~50ms vs 30-60s grep scans. Use it for: tracing function definitions, finding all call sites before refactoring, checking type signatures, and catching errors after edits.
+
 ---
 
 ## Operating Mode
