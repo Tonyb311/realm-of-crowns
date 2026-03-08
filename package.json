@@ -9,9 +9,10 @@
     "dev:server": "pnpm --filter @realm-of-crowns/server dev",
     "build": "pnpm --filter @realm-of-crowns/shared build && pnpm --filter @realm-of-crowns/client build && pnpm --filter @realm-of-crowns/server build",
     "db:migrate": "pnpm --filter @realm-of-crowns/database migrate",
+    "db:push": "pnpm --filter @realm-of-crowns/database migrate:push",
     "db:seed": "pnpm --filter @realm-of-crowns/database seed",
     "db:studio": "pnpm --filter @realm-of-crowns/database studio",
-    "db:reset": "pnpm --filter @realm-of-crowns/database reset",
+    "db:introspect": "pnpm --filter @realm-of-crowns/database introspect",
     "test": "pnpm --filter @realm-of-crowns/server test",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
@@ -27,10 +28,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "@prisma/client",
-      "@prisma/engines",
       "esbuild",
-      "prisma",
       "unrs-resolver"
     ]
   }

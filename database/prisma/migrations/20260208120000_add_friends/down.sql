@@ -1,4 +1,0 @@
--- Rollback: 20260208120000_add_friends
-
-DROP TABLE IF EXISTS "friends" CASCADE;
-DROP TYPE IF EXISTS "FriendStatus" CASCADE;

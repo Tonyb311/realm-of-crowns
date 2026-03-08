@@ -22,9 +22,6 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Generate Prisma client
-        run: pnpm exec prisma generate --schema=database/prisma/schema.prisma
-
       - name: Type check shared
         run: pnpm --filter @realm-of-crowns/shared typecheck
 
@@ -77,11 +74,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Generate Prisma client
-        run: pnpm exec prisma generate --schema=database/prisma/schema.prisma
-
-      - name: Run migrations
-        run: pnpm exec prisma migrate deploy --schema=database/prisma/schema.prisma
+      - name: Run Drizzle migrations
+        run: pnpm --filter @realm-of-crowns/database migrate:deploy
 
       - name: Run tests
         run: pnpm --filter @realm-of-crowns/server test --if-present
@@ -100,9 +94,6 @@ jobs:
         run: corepack enable && corepack prepare pnpm@10.30.3 --activate
 
       - run: pnpm install --frozen-lockfile
-
-      - name: Generate Prisma client
-        run: pnpm exec prisma generate --schema=database/prisma/schema.prisma
 
       - name: Build all workspaces
         run: pnpm run build

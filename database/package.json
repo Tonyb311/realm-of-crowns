@@ -3,16 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "migrate": "prisma migrate dev",
-    "generate": "prisma generate",
+    "migrate": "drizzle-kit generate --config=drizzle.config.ts",
+    "migrate:push": "drizzle-kit push --config=drizzle.config.ts",
+    "migrate:deploy": "drizzle-kit migrate --config=drizzle.config.ts",
     "seed": "tsx --require tsconfig-paths/register seeds/index.ts",
-    "studio": "prisma studio",
-    "reset": "prisma migrate reset",
+    "studio": "drizzle-kit studio --config=drizzle.config.ts",
+    "introspect": "drizzle-kit introspect --config=drizzle.config.ts",
     "validate-sync": "tsx --tsconfig tsconfig.json scripts/validate-yaml-sync.ts",
     "build:schema": "tsc -p tsconfig.schema.json"
   },
   "dependencies": {
-    "@prisma/client": "5.22.0",
     "bcryptjs": "^2.4.3",
     "drizzle-orm": "^0.45.1",
     "pg": "^8.20.0",
@@ -23,11 +23,7 @@
     "@types/pg": "^8.18.0",
     "drizzle-kit": "^0.31.9",
     "js-yaml": "^4.1.1",
-    "prisma": "5.22.0",
     "tsx": "^4.15.0",
     "typescript": "^5.9.0"
-  },
-  "prisma": {
-    "seed": "tsx --require tsconfig-paths/register seeds/index.ts"
   }
 }

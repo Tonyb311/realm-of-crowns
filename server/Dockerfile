@@ -21,9 +21,6 @@ COPY database/ ./database/
 COPY server/ ./server/
 COPY client/ ./client/
 
-# Generate Prisma client
-RUN cd database && pnpm exec prisma generate --schema=prisma/schema.prisma
-
 # Build shared and database schema first, then server and client
 RUN pnpm --filter @realm-of-crowns/shared build
 RUN pnpm --filter @realm-of-crowns/database run build:schema
@@ -46,18 +43,16 @@ COPY database/package.json ./database/
 # Install production dependencies only
 RUN pnpm install --frozen-lockfile --prod
 
-# Copy generated Prisma client from builder (avoids needing prisma CLI in prod)
-COPY --from=builder /app/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/@prisma/client/ ./node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/@prisma/client/
-COPY --from=builder /app/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/ ./node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/
-
-# Copy Prisma schema for migrations at startup
-COPY database/prisma/ ./database/prisma/
-
 # Copy built output
 COPY --from=builder /app/shared/dist/ ./shared/dist/
 COPY --from=builder /app/database/dist/ ./database/dist/
 COPY --from=builder /app/server/dist/ ./server/dist/
 COPY --from=builder /app/client/dist/ ./client/dist/
+
+# Copy Drizzle schema, migrations, and config for startup
+COPY --from=builder /app/database/schema/ ./database/schema/
+COPY --from=builder /app/database/drizzle-migrations/ ./database/drizzle-migrations/
+COPY --from=builder /app/database/drizzle.config.ts ./database/drizzle.config.ts
 
 # Copy tsconfig for tsconfig-paths runtime resolution
 COPY server/tsconfig.production.json ./server/tsconfig.json
@@ -66,10 +61,10 @@ COPY server/tsconfig.production.json ./server/tsconfig.json
 COPY database/seeds/ ./database/seeds/
 COPY database/tsconfig.production.json ./database/tsconfig.json
 
-# Setup pnpm global bin and install tsx + prisma CLI for startup
+# Setup pnpm global bin and install tsx + drizzle-kit for startup
 ENV PNPM_HOME=/usr/local/share/pnpm
 ENV PATH=$PNPM_HOME:$PATH
-RUN pnpm add -g tsx prisma@5.22.0
+RUN pnpm add -g tsx drizzle-kit
 
 ENV NODE_ENV=production
 EXPOSE 4000
@@ -79,4 +74,4 @@ RUN chown -R app:app $PNPM_HOME
 USER app
 
 WORKDIR /app/server
-CMD ["sh", "-c", "prisma migrate deploy --schema=/app/database/prisma/schema.prisma && cd /app/database && tsx --require tsconfig-paths/register seeds/index.ts && cd /app/server && node -r tsconfig-paths/register dist/index.js"]
+CMD ["sh", "-c", "cd /app/database && drizzle-kit migrate --config=drizzle.config.ts && tsx --require tsconfig-paths/register seeds/index.ts && cd /app/server && node -r tsconfig-paths/register dist/index.js"]

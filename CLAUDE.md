@@ -163,9 +163,9 @@ npm shortcuts: `sim:run`, `sim:list`, `sim:delete`
 
 Browser-based fantasy MMORPG (Renaissance Kingdoms meets D&D). 20 races, 29 professions, 68 towns, player-driven economy/politics. All Phase 1-2B systems complete.
 
-**Tech:** React 18 + TypeScript + Vite + Tailwind + Zustand | Node.js + Express | PostgreSQL 15 + Prisma | Redis 7 | Socket.io | Docker + Azure Container Apps
+**Tech:** React 18 + TypeScript + Vite + Tailwind + Zustand | Node.js + Express | PostgreSQL 15 + Drizzle ORM | Redis 7 | Socket.io | Docker + Azure Container Apps
 
-**Monorepo:** `client/` (React), `server/` (Express API), `shared/` (types + game data), `database/` (Prisma + seeds), `docs/`, `prompts/`
+**Monorepo:** `client/` (React), `server/` (Express API), `shared/` (types + game data), `database/` (Drizzle schema + seeds), `docs/`, `prompts/`
 
 ### Frontend Design System
 - **Typography:** Cinzel (headers) + Inter (body) via Google Fonts
@@ -180,7 +180,11 @@ Browser-based fantasy MMORPG (Renaissance Kingdoms meets D&D). 20 races, 29 prof
 - Redis key pattern: `combat:pve:{sessionId}` (NOT `combat:{characterId}`)
 - Shared package must be built before server sees type changes: `npx tsc --build shared/tsconfig.json`
 - All static game data in `/shared/src/data/` as typed TypeScript constants
-- Database schema at `/database/prisma/schema.prisma`
+- Database schema at `/database/schema/` (Drizzle ORM). Relations in `schema/relations.ts`.
+- Drizzle config at `/database/drizzle.config.ts`. Migrations in `/database/drizzle-migrations/`.
+- Server DB instance: `server/src/lib/db.ts` — exports `db` (Drizzle) and `pool` (pg Pool).
+- Enums defined as `const` arrays in `shared/src/enums.ts` — import from `@shared/enums`, NOT from `@prisma/client`.
+- Seeds import schema via relative `../schema` path. Server imports via `@database/index` or `@database/tables`.
 
 ---
 
