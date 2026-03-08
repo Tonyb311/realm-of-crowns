@@ -38,6 +38,7 @@ interface FoodTemplateDef {
   foodBuff: FoodBuff | null;
   rarity: 'COMMON' | 'FINE' | 'SUPERIOR' | 'MASTERWORK';
   baseValue: number;
+  weight: number;
 }
 
 const FOOD_TEMPLATES: FoodTemplateDef[] = [
@@ -52,6 +53,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: null,
     rarity: 'COMMON',
     baseValue: 3,
+    weight: 1,
   },
   {
     name: 'Raw Meat',
@@ -63,6 +65,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: null,
     rarity: 'COMMON',
     baseValue: 5,
+    weight: 1,
   },
   {
     name: 'Fresh Dairy',
@@ -74,6 +77,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: null,
     rarity: 'COMMON',
     baseValue: 4,
+    weight: 1,
   },
   {
     name: 'Fresh Herbs',
@@ -85,6 +89,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: null,
     rarity: 'COMMON',
     baseValue: 5,
+    weight: 1,
   },
   {
     name: 'Fresh Produce',
@@ -96,6 +101,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: null,
     rarity: 'COMMON',
     baseValue: 4,
+    weight: 1,
   },
   {
     name: 'Grain Sack',
@@ -107,6 +113,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: null,
     rarity: 'COMMON',
     baseValue: 5,
+    weight: 1,
   },
 
   // ---- Basic Prepared Foods ----
@@ -120,6 +127,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: null,
     rarity: 'COMMON',
     baseValue: 20,
+    weight: 0.5,
   },
   {
     name: 'Porridge',
@@ -131,6 +139,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: null,
     rarity: 'COMMON',
     baseValue: 15,
+    weight: 1,
   },
   {
     name: 'Cooked Meat',
@@ -142,6 +151,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: null,
     rarity: 'COMMON',
     baseValue: 12,
+    weight: 1,
   },
   {
     name: 'Stew',
@@ -153,6 +163,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: null,
     rarity: 'COMMON',
     baseValue: 15,
+    weight: 1,
   },
   {
     name: 'Grilled Fish',
@@ -164,6 +175,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: null,
     rarity: 'COMMON',
     baseValue: 17,
+    weight: 1,
   },
   {
     name: 'Cheese Wheel',
@@ -175,6 +187,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: null,
     rarity: 'COMMON',
     baseValue: 10,
+    weight: 1.5,
   },
 
   // ---- Preserved Foods ----
@@ -188,6 +201,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: null,
     rarity: 'COMMON',
     baseValue: 8,
+    weight: 0.5,
   },
   {
     name: 'Smoked Fish',
@@ -199,6 +213,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: null,
     rarity: 'COMMON',
     baseValue: 10,
+    weight: 0.5,
   },
   {
     name: 'Salted Provisions',
@@ -210,6 +225,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: null,
     rarity: 'COMMON',
     baseValue: 12,
+    weight: 0.5,
   },
   {
     name: 'Pickled Vegetables',
@@ -221,6 +237,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: null,
     rarity: 'COMMON',
     baseValue: 8,
+    weight: 0.5,
   },
   {
     name: 'Hardtack',
@@ -232,6 +249,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: null,
     rarity: 'COMMON',
     baseValue: 5,
+    weight: 0.5,
   },
 
   // ---- Quality Meals (with buffs) ----
@@ -245,6 +263,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: { stat: 'STR', value: 1 },
     rarity: 'FINE',
     baseValue: 25,
+    weight: 1.5,
   },
   {
     name: "Fisherman's Feast",
@@ -256,6 +275,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: { stat: 'DEX', value: 1 },
     rarity: 'FINE',
     baseValue: 35,
+    weight: 1.5,
   },
   {
     name: 'Herbalist Salad',
@@ -267,6 +287,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: { stat: 'WIS', value: 1 },
     rarity: 'FINE',
     baseValue: 20,
+    weight: 1.5,
   },
   {
     name: "Miner's Pie",
@@ -278,6 +299,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: { stat: 'gather_bonus', value: 0.05 },
     rarity: 'FINE',
     baseValue: 30,
+    weight: 1.5,
   },
   {
     name: "Scholar's Broth",
@@ -289,6 +311,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: { stat: 'craft_bonus', value: 0.05 },
     rarity: 'FINE',
     baseValue: 25,
+    weight: 1.5,
   },
 
   // ---- Fine Cuisine (powerful buffs) ----
@@ -302,6 +325,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: { stat: 'chosen', value: 2 },
     rarity: 'SUPERIOR',
     baseValue: 60,
+    weight: 1.5,
   },
   {
     name: "Warrior's Banquet",
@@ -313,6 +337,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: { stat: 'combat_damage', value: 0.10 },
     rarity: 'SUPERIOR',
     baseValue: 50,
+    weight: 1.5,
   },
   {
     name: "Artisan's Delight",
@@ -324,6 +349,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: { stat: 'craft_quality', value: 0.10 },
     rarity: 'SUPERIOR',
     baseValue: 45,
+    weight: 1,
   },
   {
     name: "Explorer's Rations",
@@ -335,6 +361,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: { stat: 'all', value: 1 },
     rarity: 'SUPERIOR',
     baseValue: 40,
+    weight: 0.5,
   },
   {
     name: 'Elixir-Infused Meal',
@@ -346,6 +373,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: { stat: 'profession_bonus', value: 0.15 },
     rarity: 'MASTERWORK',
     baseValue: 80,
+    weight: 1,
   },
 
   // ---- Beverages ----
@@ -359,6 +387,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: { stat: 'CHA', value: 1 },
     rarity: 'COMMON',
     baseValue: 6,
+    weight: 1,
   },
   {
     name: 'Wine',
@@ -370,6 +399,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: { stat: 'CHA', value: 1 },
     rarity: 'FINE',
     baseValue: 15,
+    weight: 1,
   },
   {
     name: 'Mead',
@@ -381,6 +411,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: { stat: 'CON', value: 1 },
     rarity: 'COMMON',
     baseValue: 8,
+    weight: 1,
   },
   {
     name: 'Spirits',
@@ -392,6 +423,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: { stat: 'CHA', value: 2, penalty_stat: 'WIS', penalty_value: -1 },
     rarity: 'FINE',
     baseValue: 18,
+    weight: 1,
   },
   {
     name: 'Healing Draught',
@@ -403,6 +435,7 @@ const FOOD_TEMPLATES: FoodTemplateDef[] = [
     foodBuff: { stat: 'hp_recovery', value: 0.10 },
     rarity: 'FINE',
     baseValue: 25,
+    weight: 1,
   },
 ];
 
@@ -416,6 +449,7 @@ interface SoulEssenceTemplateDef {
   isPerishable: false;
   rarity: 'COMMON' | 'FINE' | 'SUPERIOR' | 'MASTERWORK';
   baseValue: number;
+  weight: number;
 }
 
 const SOUL_ESSENCE_TEMPLATES: SoulEssenceTemplateDef[] = [
@@ -425,6 +459,7 @@ const SOUL_ESSENCE_TEMPLATES: SoulEssenceTemplateDef[] = [
     isPerishable: false,
     rarity: 'COMMON',
     baseValue: 15,
+    weight: 0.5,
   },
   {
     name: 'Refined Soul Essence',
@@ -432,6 +467,7 @@ const SOUL_ESSENCE_TEMPLATES: SoulEssenceTemplateDef[] = [
     isPerishable: false,
     rarity: 'FINE',
     baseValue: 40,
+    weight: 0.5,
   },
 ];
 
@@ -446,6 +482,7 @@ const MAINTENANCE_KIT_TEMPLATES: SoulEssenceTemplateDef[] = [
     isPerishable: false,
     rarity: 'COMMON',
     baseValue: 20,
+    weight: 0.5,
   },
   {
     name: 'Precision Maintenance Kit',
@@ -453,6 +490,7 @@ const MAINTENANCE_KIT_TEMPLATES: SoulEssenceTemplateDef[] = [
     isPerishable: false,
     rarity: 'FINE',
     baseValue: 50,
+    weight: 0.5,
   },
 ];
 
@@ -487,6 +525,7 @@ export async function seedFoodItems(db: any) {
       isPerishable: food.isPerishable,
       isBeverage: food.isBeverage,
       baseValue: food.baseValue,
+      weight: food.weight ?? 0,
     };
 
     if (existing) {
@@ -520,6 +559,7 @@ export async function seedFoodItems(db: any) {
         isFood: false,
         isBeverage: false,
         baseValue: se.baseValue,
+        weight: se.weight ?? 0,
       }).where(eq(schema.itemTemplates.id, existing.id));
       seUpdated++;
     } else {
@@ -533,6 +573,7 @@ export async function seedFoodItems(db: any) {
         isFood: false,
         isBeverage: false,
         baseValue: se.baseValue,
+        weight: se.weight ?? 0,
       });
       seCreated++;
     }
@@ -555,6 +596,7 @@ export async function seedFoodItems(db: any) {
         isFood: false,
         isBeverage: false,
         baseValue: mk.baseValue,
+        weight: mk.weight ?? 0,
       }).where(eq(schema.itemTemplates.id, existing.id));
       mkUpdated++;
     } else {
@@ -568,6 +610,7 @@ export async function seedFoodItems(db: any) {
         isFood: false,
         isBeverage: false,
         baseValue: mk.baseValue,
+        weight: mk.weight ?? 0,
       });
       mkCreated++;
     }

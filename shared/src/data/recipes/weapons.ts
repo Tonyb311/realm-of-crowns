@@ -37,6 +37,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 5,
       durability: 60,
       levelToEquip: 1,
+      weight: 0.8,
     },
   },
   {
@@ -62,6 +63,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 4,
       durability: 70,
       levelToEquip: 1,
+      weight: 2.4,
     },
   },
   {
@@ -87,6 +89,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 3,
       durability: 80,
       levelToEquip: 1,
+      weight: 3.2,
     },
   },
   {
@@ -112,6 +115,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 3,
       durability: 75,
       levelToEquip: 1,
+      weight: 2.4,
     },
   },
   {
@@ -137,6 +141,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 5,
       durability: 65,
       levelToEquip: 1,
+      weight: 2.4,
     },
   },
 
@@ -166,6 +171,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 8,
       durability: 100,
       levelToEquip: 10,
+      weight: 1,
     },
   },
   {
@@ -192,6 +198,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 6,
       durability: 150,
       levelToEquip: 10,
+      weight: 3,
     },
   },
   {
@@ -217,6 +224,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 6,
       durability: 160,
       levelToEquip: 10,
+      weight: 4,
     },
   },
   {
@@ -242,6 +250,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 4,
       durability: 140,
       levelToEquip: 10,
+      weight: 3,
     },
   },
   {
@@ -268,6 +277,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       durability: 170,
       levelToEquip: 10,
       twoHanded: true,
+      weight: 5,
     },
   },
   {
@@ -293,6 +303,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 3,
       durability: 160,
       levelToEquip: 10,
+      weight: 4,
     },
   },
   {
@@ -319,6 +330,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       durability: 180,
       levelToEquip: 10,
       twoHanded: true,
+      weight: 8,
     },
   },
   {
@@ -344,6 +356,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 7,
       durability: 130,
       levelToEquip: 10,
+      weight: 3,
     },
   },
 
@@ -373,6 +386,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 12,
       durability: 160,
       levelToEquip: 30,
+      weight: 1,
     },
   },
   {
@@ -399,6 +413,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 8,
       durability: 220,
       levelToEquip: 30,
+      weight: 3,
     },
   },
   {
@@ -424,6 +439,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 8,
       durability: 240,
       levelToEquip: 30,
+      weight: 4,
     },
   },
   {
@@ -450,6 +466,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       durability: 260,
       levelToEquip: 30,
       twoHanded: true,
+      weight: 6,
     },
   },
   {
@@ -475,6 +492,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 5,
       durability: 210,
       levelToEquip: 30,
+      weight: 3,
     },
   },
   {
@@ -501,6 +519,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       durability: 250,
       levelToEquip: 30,
       twoHanded: true,
+      weight: 5,
     },
   },
   {
@@ -526,6 +545,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 4,
       durability: 230,
       levelToEquip: 30,
+      weight: 4,
     },
   },
   {
@@ -552,6 +572,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       durability: 260,
       levelToEquip: 30,
       twoHanded: true,
+      weight: 8,
     },
   },
   {
@@ -578,6 +599,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       durability: 240,
       levelToEquip: 30,
       twoHanded: true,
+      weight: 6,
     },
   },
   {
@@ -603,6 +625,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 10,
       durability: 200,
       levelToEquip: 30,
+      weight: 3,
     },
   },
 
@@ -633,6 +656,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 10,
       durability: 320,
       levelToEquip: 55,
+      weight: 1.8,
     },
   },
   {
@@ -658,6 +682,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 10,
       durability: 350,
       levelToEquip: 55,
+      weight: 2.4,
     },
   },
   {
@@ -683,6 +708,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 16,
       durability: 300,
       levelToEquip: 55,
+      weight: 0.6,
     },
   },
   {
@@ -708,6 +734,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 16,
       durability: 320,
       levelToEquip: 55,
+      weight: 1.2,
     },
   },
   {
@@ -734,6 +761,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       durability: 380,
       levelToEquip: 55,
       twoHanded: true,
+      weight: 3.6,
     },
   },
   {
@@ -760,6 +788,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       durability: 360,
       levelToEquip: 55,
       twoHanded: true,
+      weight: 3,
     },
   },
   {
@@ -786,6 +815,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       durability: 380,
       levelToEquip: 55,
       twoHanded: true,
+      weight: 4.8,
     },
   },
   {
@@ -812,6 +842,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       durability: 350,
       levelToEquip: 55,
       twoHanded: true,
+      weight: 3.6,
     },
   },
 
@@ -842,6 +873,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 10,
       durability: 420,
       levelToEquip: 75,
+      weight: 3.9,
     },
   },
   {
@@ -867,6 +899,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 10,
       durability: 450,
       levelToEquip: 75,
+      weight: 5.2,
     },
   },
   {
@@ -892,6 +925,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 18,
       durability: 400,
       levelToEquip: 75,
+      weight: 1.3,
     },
   },
   {
@@ -917,6 +951,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 18,
       durability: 430,
       levelToEquip: 75,
+      weight: 2.6,
     },
   },
   {
@@ -944,6 +979,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       durability: 500,
       levelToEquip: 75,
       twoHanded: true,
+      weight: 7.8,
     },
   },
   {
@@ -971,6 +1007,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       durability: 480,
       levelToEquip: 75,
       twoHanded: true,
+      weight: 6.5,
     },
   },
   {
@@ -998,6 +1035,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       durability: 500,
       levelToEquip: 75,
       twoHanded: true,
+      weight: 10.4,
     },
   },
   {
@@ -1025,6 +1063,7 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       durability: 470,
       levelToEquip: 75,
       twoHanded: true,
+      weight: 7.8,
     },
   },
 ];

@@ -1,6 +1,6 @@
-import { RecipeDefinition } from './types';
+import { FinishedGoodsRecipe } from './types';
 
-export const ACCESSORY_RECIPES: RecipeDefinition[] = [
+export const ACCESSORY_RECIPES: FinishedGoodsRecipe[] = [
   // ── Rings ──────────────────────────────────────────────────
   {
     recipeId: 'jewel-copper-ring',
@@ -15,6 +15,11 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     craftTime: 20,
     xpReward: 10,
     tier: 1,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'RING_1',
+    outputStats: {
+      weight: 0.1,
+    },
   },
   {
     recipeId: 'jewel-iron-ring',
@@ -29,6 +34,11 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     craftTime: 25,
     xpReward: 15,
     tier: 1,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'RING_1',
+    outputStats: {
+      weight: 0.1,
+    },
   },
   {
     recipeId: 'jewel-silver-ring',
@@ -43,6 +53,11 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     craftTime: 40,
     xpReward: 25,
     tier: 2,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'RING_1',
+    outputStats: {
+      weight: 0.1,
+    },
   },
   {
     recipeId: 'jewel-gold-ring',
@@ -57,6 +72,11 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     craftTime: 55,
     xpReward: 35,
     tier: 3,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'RING_1',
+    outputStats: {
+      weight: 0.1,
+    },
   },
   {
     recipeId: 'jewel-mithril-ring',
@@ -72,6 +92,11 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     craftTime: 90,
     xpReward: 60,
     tier: 4,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'RING_1',
+    outputStats: {
+      weight: 0.1,
+    },
   },
 
   {
@@ -88,6 +113,11 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     craftTime: 120,
     xpReward: 80,
     tier: 5,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'RING_1',
+    outputStats: {
+      weight: 0.1,
+    },
   },
 
   // ── Necklaces ──────────────────────────────────────────────
@@ -104,6 +134,11 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     craftTime: 25,
     xpReward: 12,
     tier: 1,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'NECK',
+    outputStats: {
+      weight: 0.3,
+    },
   },
   {
     recipeId: 'jewel-silver-necklace',
@@ -118,6 +153,11 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     craftTime: 45,
     xpReward: 28,
     tier: 2,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'NECK',
+    outputStats: {
+      weight: 0.3,
+    },
   },
   {
     recipeId: 'jewel-gold-necklace',
@@ -132,6 +172,11 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     craftTime: 60,
     xpReward: 40,
     tier: 3,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'NECK',
+    outputStats: {
+      weight: 0.3,
+    },
   },
 
   {
@@ -148,6 +193,11 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     craftTime: 90,
     xpReward: 60,
     tier: 4,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'NECK',
+    outputStats: {
+      weight: 0.3,
+    },
   },
   {
     recipeId: 'jewel-adamantine-necklace',
@@ -163,6 +213,11 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     craftTime: 130,
     xpReward: 90,
     tier: 5,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'NECK',
+    outputStats: {
+      weight: 0.3,
+    },
   },
 
   // ── Circlets & Crowns ──────────────────────────────────────
@@ -180,6 +235,11 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     craftTime: 70,
     xpReward: 35,
     tier: 3,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'HEAD',
+    outputStats: {
+      weight: 1,
+    },
   },
   {
     recipeId: 'jewel-crown-wisdom',
@@ -197,6 +257,11 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     craftTime: 120,
     xpReward: 70,
     tier: 4,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'HEAD',
+    outputStats: {
+      weight: 1,
+    },
   },
 
   // ── Brooches ───────────────────────────────────────────────
@@ -213,6 +278,11 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     craftTime: 35,
     xpReward: 20,
     tier: 2,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'NECK',
+    outputStats: {
+      weight: 0.2,
+    },
   },
   {
     recipeId: 'jewel-brooch-speed',
@@ -228,5 +298,10 @@ export const ACCESSORY_RECIPES: RecipeDefinition[] = [
     craftTime: 55,
     xpReward: 38,
     tier: 3,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'NECK',
+    outputStats: {
+      weight: 0.2,
+    },
   },
 ];

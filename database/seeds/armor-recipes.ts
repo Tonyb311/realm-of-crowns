@@ -12,6 +12,17 @@
 import * as schema from '../schema';
 import type { ItemType, ItemRarity, ProfessionType, ProfessionTier } from '@shared/enums';
 import { ALL_ARMOR_RECIPES } from '@shared/data/recipes/armor';
+import type { ArmorStats } from '@shared/data/recipes/types';
+
+// Build name→weight lookup from recipe outputStats
+const ARMOR_WEIGHT_MAP = new Map<string, number>();
+for (const recipe of ALL_ARMOR_RECIPES) {
+  const outputName = recipe.outputs[0].itemName;
+  const stats = recipe.outputStats as ArmorStats;
+  if (stats.weight != null) {
+    ARMOR_WEIGHT_MAP.set(outputName, stats.weight);
+  }
+}
 
 // ============================================================
 // ARMOR ITEM TEMPLATE DEFINITIONS
@@ -204,6 +215,7 @@ export async function seedArmorRecipes(db: any) {
       professionRequired: tmpl.professionRequired,
       levelRequired: tmpl.levelRequired,
       baseValue: tmpl.baseValue,
+      weight: ARMOR_WEIGHT_MAP.get(tmpl.name) ?? 0,
     };
     await db.insert(schema.itemTemplates).values({
       id: stableId,

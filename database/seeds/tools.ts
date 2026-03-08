@@ -54,6 +54,7 @@ export async function seedTools(db: any) {
         professionRequired: tool.professionType as any,
         levelRequired: 1,
         baseValue,
+        weight: tool.weight,
       }).where(eq(schema.itemTemplates.id, existing.id));
       updated++;
     } else {
@@ -68,6 +69,7 @@ export async function seedTools(db: any) {
         professionRequired: tool.professionType as any,
         levelRequired: 1,
         baseValue,
+        weight: tool.weight,
       });
       created++;
     }

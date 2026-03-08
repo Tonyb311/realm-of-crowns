@@ -88,6 +88,7 @@ export interface WeaponStats {
   diceSides?: number;     // e.g. 6 for 1d6 (caster weapons)
   bonusAttack?: number;   // flat attack bonus
   bonusDamage?: number;   // flat damage bonus
+  weight?: number;        // item weight in lbs
 }
 
 export interface QualityMultiplier {
@@ -138,6 +139,7 @@ export interface ArmorStats {
   requiredStr?: number;
   movementPenalty?: number;
   stealthPenalty?: number;
+  weight?: number;        // item weight in lbs
 }
 
 // --- Consumable stats ---
@@ -180,6 +182,7 @@ export interface ConsumableStats {
   stackSize: number;
   secondaryEffect?: ConsumableEffect;
   secondaryMagnitude?: number;
+  weight?: number;        // weight per unit in lbs
 }
 
 export type ConsumableProfession = 'ALCHEMIST' | 'COOK' | 'BREWER' | 'SCRIBE' | 'SMELTER' | 'TANNER';

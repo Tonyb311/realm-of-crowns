@@ -46,6 +46,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 4,
       movementPenalty: 0,
       stealthPenalty: 1,
+      weight: 4,
     },
   },
   {
@@ -71,6 +72,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 6,
       movementPenalty: 1,
       stealthPenalty: 2,
+      weight: 16,
     },
   },
   {
@@ -96,6 +98,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 3,
       movementPenalty: 0,
       stealthPenalty: 1,
+      weight: 2.4,
     },
   },
   {
@@ -121,6 +124,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 5,
       movementPenalty: 1,
       stealthPenalty: 1,
+      weight: 6.4,
     },
   },
   {
@@ -146,6 +150,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 5,
       movementPenalty: 0,
       stealthPenalty: 1,
+      weight: 4.8,
     },
   },
 
@@ -174,6 +179,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 7,
       movementPenalty: 0,
       stealthPenalty: 2,
+      weight: 5,
     },
   },
   {
@@ -199,6 +205,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 10,
       movementPenalty: 2,
       stealthPenalty: 3,
+      weight: 20,
     },
   },
   {
@@ -224,6 +231,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 6,
       movementPenalty: 0,
       stealthPenalty: 1,
+      weight: 3,
     },
   },
   {
@@ -249,6 +257,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 8,
       movementPenalty: 1,
       stealthPenalty: 2,
+      weight: 8,
     },
   },
   {
@@ -275,6 +284,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 8,
       movementPenalty: 0,
       stealthPenalty: 2,
+      weight: 6,
     },
   },
 
@@ -303,6 +313,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 10,
       movementPenalty: 0,
       stealthPenalty: 2,
+      weight: 5,
     },
   },
   {
@@ -328,6 +339,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 14,
       movementPenalty: 2,
       stealthPenalty: 4,
+      weight: 20,
     },
   },
   {
@@ -354,6 +366,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 9,
       movementPenalty: 0,
       stealthPenalty: 2,
+      weight: 3,
     },
   },
   {
@@ -380,6 +393,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 12,
       movementPenalty: 1,
       stealthPenalty: 3,
+      weight: 8,
     },
   },
   {
@@ -406,6 +420,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 12,
       movementPenalty: 0,
       stealthPenalty: 2,
+      weight: 6,
     },
   },
 
@@ -435,6 +450,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 10,
       movementPenalty: 0,
       stealthPenalty: 1,
+      weight: 3,
     },
   },
   {
@@ -462,6 +478,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 14,
       movementPenalty: 1,
       stealthPenalty: 2,
+      weight: 12,
     },
   },
   {
@@ -488,6 +505,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 8,
       movementPenalty: 0,
       stealthPenalty: 1,
+      weight: 1.8,
     },
   },
   {
@@ -515,6 +533,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 12,
       movementPenalty: 0,
       stealthPenalty: 1,
+      weight: 4.8,
     },
   },
   {
@@ -542,6 +561,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 10,
       movementPenalty: 0,
       stealthPenalty: 1,
+      weight: 3.6,
     },
   },
 
@@ -571,6 +591,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 14,
       movementPenalty: 0,
       stealthPenalty: 1,
+      weight: 6.5,
     },
   },
   {
@@ -598,6 +619,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 18,
       movementPenalty: 1,
       stealthPenalty: 2,
+      weight: 26,
     },
   },
   {
@@ -625,6 +647,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 12,
       movementPenalty: 0,
       stealthPenalty: 1,
+      weight: 3.9,
     },
   },
   {
@@ -651,6 +674,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 16,
       movementPenalty: 0,
       stealthPenalty: 1,
+      weight: 10.4,
     },
   },
   {
@@ -678,6 +702,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 14,
       movementPenalty: 0,
       stealthPenalty: 1,
+      weight: 7.8,
     },
   },
 
@@ -705,6 +730,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 4,
       movementPenalty: 0,
       stealthPenalty: 1,
+      weight: 3.2,
     },
   },
   {
@@ -731,6 +757,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 7,
       movementPenalty: 0,
       stealthPenalty: 2,
+      weight: 4,
     },
   },
   {
@@ -757,6 +784,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 10,
       movementPenalty: 0,
       stealthPenalty: 2,
+      weight: 4,
     },
   },
   {
@@ -784,6 +812,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 10,
       movementPenalty: 0,
       stealthPenalty: 1,
+      weight: 2.4,
     },
   },
   {
@@ -811,6 +840,7 @@ export const ARMORER_RECIPES: FinishedGoodsRecipe[] = [
       requiredStr: 12,
       movementPenalty: 0,
       stealthPenalty: 1,
+      weight: 5.2,
     },
   },
 ];
@@ -848,6 +878,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       dexBonus: 1,
       durability: 45,
       levelToEquip: 1,
+      weight: 0.5,
     },
   },
 
@@ -872,6 +903,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       dexBonus: 1,
       durability: 50,
       levelToEquip: 1,
+      weight: 2,
     },
   },
 
@@ -894,6 +926,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputStats: {
       durability: 60,
       levelToEquip: 3,
+      weight: 2,
     },
   },
 
@@ -915,6 +948,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputStats: {
       durability: 1,
       levelToEquip: 1,
+      weight: 1,
     },
   },
 
@@ -943,6 +977,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       dexBonus: 2,
       durability: 80,
       levelToEquip: 10,
+      weight: 0.5,
     },
   },
 
@@ -967,6 +1002,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       dexBonus: 2,
       durability: 90,
       levelToEquip: 12,
+      weight: 2,
     },
   },
 
@@ -990,6 +1026,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputStats: {
       durability: 80,
       levelToEquip: 10,
+      weight: 1,
     },
   },
 
@@ -1011,6 +1048,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputStats: {
       durability: 25,
       yieldBonus: 15,
+      weight: 2,
     },
   },
 
@@ -1034,6 +1072,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputStats: {
       durability: 100,
       levelToEquip: 15,
+      weight: 2,
     },
   },
 
@@ -1062,6 +1101,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       dexBonus: 3,
       durability: 120,
       levelToEquip: 25,
+      weight: 1,
     },
   },
 
@@ -1086,6 +1126,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       dexBonus: 3,
       durability: 130,
       levelToEquip: 25,
+      weight: 2.5,
     },
   },
 
@@ -1108,6 +1149,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputStats: {
       durability: 40,
       yieldBonus: 25,
+      weight: 2,
     },
   },
 
@@ -1131,6 +1173,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputStats: {
       durability: 150,
       levelToEquip: 30,
+      weight: 2,
     },
   },
   // ============================================================
@@ -1158,6 +1201,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       dexBonus: 3,
       durability: 200,
       levelToEquip: 40,
+      weight: 2,
     },
   },
 
@@ -1182,6 +1226,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       dexBonus: 3,
       durability: 260,
       levelToEquip: 40,
+      weight: 8,
     },
   },
 
@@ -1206,6 +1251,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       dexBonus: 3,
       durability: 180,
       levelToEquip: 40,
+      weight: 1,
     },
   },
 
@@ -1230,6 +1276,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       dexBonus: 3,
       durability: 220,
       levelToEquip: 40,
+      weight: 3,
     },
   },
 
@@ -1254,6 +1301,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       dexBonus: 3,
       durability: 200,
       levelToEquip: 40,
+      weight: 2,
     },
   },
 
@@ -1278,6 +1326,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       dexBonus: 3,
       durability: 240,
       levelToEquip: 45,
+      weight: 4.5,
     },
   },
 
@@ -1307,6 +1356,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 4,
       durability: 320,
       levelToEquip: 55,
+      weight: 2.5,
     },
   },
 
@@ -1332,6 +1382,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 6,
       durability: 400,
       levelToEquip: 55,
+      weight: 10,
     },
   },
 
@@ -1357,6 +1408,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 3,
       durability: 280,
       levelToEquip: 55,
+      weight: 1.5,
     },
   },
 
@@ -1382,6 +1434,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 4,
       durability: 340,
       levelToEquip: 55,
+      weight: 3.5,
     },
   },
 
@@ -1407,6 +1460,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 4,
       durability: 320,
       levelToEquip: 55,
+      weight: 2,
     },
   },
 
@@ -1432,6 +1486,7 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 5,
       durability: 360,
       levelToEquip: 60,
+      weight: 5,
     },
   },
 ];
@@ -1463,6 +1518,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 4,
       durability: 40,
       levelToEquip: 1,
+      weight: 3,
     },
   },
   {
@@ -1484,6 +1540,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 1,
       durability: 30,
       levelToEquip: 1,
+      weight: 0.2,
     },
   },
   {
@@ -1505,6 +1562,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 2,
       durability: 35,
       levelToEquip: 1,
+      weight: 1,
     },
   },
 
@@ -1527,6 +1585,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 3,
       durability: 30,
       levelToEquip: 3,
+      weight: 0.5,
     },
   },
   {
@@ -1549,6 +1608,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 2,
       durability: 25,
       levelToEquip: 3,
+      weight: 0.3,
     },
   },
   {
@@ -1571,6 +1631,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 5,
       durability: 35,
       levelToEquip: 4,
+      weight: 3,
     },
   },
   {
@@ -1592,6 +1653,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 3,
       durability: 30,
       levelToEquip: 4,
+      weight: 1.5,
     },
   },
 
@@ -1615,6 +1677,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 3,
       durability: 40,
       levelToEquip: 5,
+      weight: 0.5,
     },
   },
   {
@@ -1636,6 +1699,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 6,
       durability: 50,
       levelToEquip: 5,
+      weight: 3,
     },
   },
   {
@@ -1657,6 +1721,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 2,
       durability: 35,
       levelToEquip: 5,
+      weight: 0.2,
     },
   },
   {
@@ -1678,6 +1743,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 3,
       durability: 40,
       levelToEquip: 5,
+      weight: 1,
     },
   },
 
@@ -1702,6 +1768,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 8,
       durability: 45,
       levelToEquip: 5,
+      weight: 3,
     },
   },
   {
@@ -1724,6 +1791,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 5,
       durability: 45,
       levelToEquip: 5,
+      weight: 2,
     },
   },
   {
@@ -1746,6 +1814,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 5,
       durability: 35,
       levelToEquip: 6,
+      weight: 0.5,
     },
   },
   {
@@ -1768,6 +1837,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 4,
       durability: 40,
       levelToEquip: 6,
+      weight: 1,
     },
   },
 
@@ -1791,6 +1861,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 5,
       durability: 60,
       levelToEquip: 10,
+      weight: 0.5,
     },
   },
   {
@@ -1812,6 +1883,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 10,
       durability: 75,
       levelToEquip: 10,
+      weight: 3,
     },
   },
   {
@@ -1833,6 +1905,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 4,
       durability: 50,
       levelToEquip: 10,
+      weight: 0.2,
     },
   },
   {
@@ -1854,6 +1927,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 5,
       durability: 60,
       levelToEquip: 10,
+      weight: 1,
     },
   },
   {
@@ -1875,6 +1949,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 6,
       durability: 55,
       levelToEquip: 10,
+      weight: 2,
     },
   },
 
@@ -1898,6 +1973,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 12,
       durability: 100,
       levelToEquip: 40,
+      weight: 0.5,
     },
   },
   {
@@ -1919,6 +1995,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 22,
       durability: 120,
       levelToEquip: 40,
+      weight: 3,
     },
   },
   {
@@ -1940,6 +2017,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 8,
       durability: 80,
       levelToEquip: 40,
+      weight: 0.2,
     },
   },
   {
@@ -1961,6 +2039,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 12,
       durability: 100,
       levelToEquip: 40,
+      weight: 1,
     },
   },
   {
@@ -1982,6 +2061,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 14,
       durability: 90,
       levelToEquip: 40,
+      weight: 2,
     },
   },
 
@@ -2006,6 +2086,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 24,
       durability: 180,
       levelToEquip: 70,
+      weight: 0.5,
     },
   },
   {
@@ -2028,6 +2109,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 40,
       durability: 220,
       levelToEquip: 70,
+      weight: 3,
     },
   },
   {
@@ -2050,6 +2132,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 18,
       durability: 150,
       levelToEquip: 70,
+      weight: 0.2,
     },
   },
   {
@@ -2072,6 +2155,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 24,
       durability: 180,
       levelToEquip: 70,
+      weight: 1,
     },
   },
   {
@@ -2094,6 +2178,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 30,
       durability: 160,
       levelToEquip: 70,
+      weight: 2,
     },
   },
 
@@ -2119,6 +2204,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 14,
       durability: 60,
       levelToEquip: 7,
+      weight: 3,
     },
   },
   {
@@ -2142,6 +2228,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 12,
       durability: 55,
       levelToEquip: 7,
+      weight: 3,
     },
   },
   {
@@ -2164,6 +2251,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 10,
       durability: 50,
       levelToEquip: 7,
+      weight: 0.5,
     },
   },
   {
@@ -2186,6 +2274,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 8,
       durability: 50,
       levelToEquip: 8,
+      weight: 1.5,
     },
   },
   {
@@ -2210,6 +2299,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       magicResist: 16,
       durability: 65,
       levelToEquip: 8,
+      weight: 2,
     },
   },
 ];
@@ -2239,6 +2329,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       durability: 80,
       levelToEquip: 3,
       dexBonus: 1,
+      weight: 2,
     },
   },
   {
@@ -2260,6 +2351,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       durability: 100,
       levelToEquip: 4,
       dexBonus: 2,
+      weight: 5,
     },
   },
   {
@@ -2282,6 +2374,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       durability: 80,
       levelToEquip: 4,
       dexBonus: 1,
+      weight: 1.5,
     },
   },
   // ---- GAP-FILL: Hard Leather Cap (T2, Level 12) ----
@@ -2305,6 +2398,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       durability: 100,
       levelToEquip: 10,
       dexBonus: 2,
+      weight: 2,
     },
   },
 
@@ -2329,6 +2423,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       durability: 120,
       levelToEquip: 5,
       dexBonus: 3,
+      weight: 7,
     },
   },
   {
@@ -2351,6 +2446,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       durability: 90,
       levelToEquip: 5,
       dexBonus: 2,
+      weight: 1,
     },
   },
   {
@@ -2373,6 +2469,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       durability: 100,
       levelToEquip: 6,
       dexBonus: 2,
+      weight: 3,
     },
   },
   {
@@ -2392,6 +2489,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputStats: {
       durability: 35,
       yieldBonus: 25,
+      weight: 1,
     },
   },
   // ---- CRAFTSMAN (Tier 3, Level 7-8) ----
@@ -2416,6 +2514,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       durability: 150,
       levelToEquip: 7,
       dexBonus: 4,
+      weight: 7,
     },
   },
   {
@@ -2438,6 +2537,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       durability: 120,
       levelToEquip: 7,
       dexBonus: 3,
+      weight: 2.5,
     },
   },
   {
@@ -2462,6 +2562,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       levelToEquip: 8,
       dexBonus: 3,
       conBonus: 2,
+      weight: 10,
     },
   },
   // ---- GAP-FILL: Bear Leather Leggings (T3, Level 30) ----
@@ -2485,6 +2586,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       durability: 140,
       levelToEquip: 25,
       dexBonus: 3,
+      weight: 4.5,
     },
   },
 
@@ -2506,6 +2608,7 @@ export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputStats: {
       durability: 50,
       yieldBonus: 40,
+      weight: 1,
     },
   },
 ];

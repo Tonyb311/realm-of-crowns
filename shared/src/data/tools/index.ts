@@ -56,11 +56,30 @@ export interface ToolTemplate {
   durability: number;
   rarity: string;
   description: string;
+  weight: number;
 }
 
 function tierLabel(tier: ToolTier): string {
   return tier.charAt(0) + tier.slice(1).toLowerCase();
 }
+
+const TOOL_BASE_WEIGHTS: Record<string, number> = {
+  'Pickaxe': 4,
+  'Axe': 3,
+  'Hoe': 3,
+  'Fishing Rod': 2,
+  'Sickle': 1.5,
+  'Skinning Knife': 1,
+};
+
+const TIER_WEIGHT_MULTIPLIER: Record<ToolTier, number> = {
+  CRUDE: 0.8,
+  COPPER: 0.8,
+  IRON: 1.0,
+  STEEL: 1.0,
+  MITHRIL: 0.6,
+  ADAMANTINE: 1.3,
+};
 
 export const TOOL_TEMPLATES: ToolTemplate[] = TOOL_TYPES.flatMap((toolDef) =>
   TOOL_TIERS.map((tierDef): ToolTemplate => ({
@@ -73,6 +92,7 @@ export const TOOL_TEMPLATES: ToolTemplate[] = TOOL_TYPES.flatMap((toolDef) =>
     durability: tierDef.durability,
     rarity: tierDef.rarity,
     description: `${tierLabel(tierDef.tier)} quality ${toolDef.toolType.toLowerCase()}. ${toolDef.description}`,
+    weight: Math.round((TOOL_BASE_WEIGHTS[toolDef.toolType] ?? 2) * TIER_WEIGHT_MULTIPLIER[tierDef.tier] * 10) / 10,
   })),
 );
 

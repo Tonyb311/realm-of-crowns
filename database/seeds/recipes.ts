@@ -29,6 +29,7 @@ interface ItemTemplateDef {
   professionRequired: ProfessionType | null;
   levelRequired: number;
   baseValue: number;
+  weight: number;
   isFood?: boolean;
   foodBuff?: any;
   isPerishable?: boolean;
@@ -48,6 +49,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'SMELTER',
     levelRequired: 1,
     baseValue: 16,
+    weight: 1,
   },
   {
     name: 'Iron Ingot',
@@ -59,6 +61,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'SMELTER',
     levelRequired: 10,
     baseValue: 52,
+    weight: 1,
   },
   {
     name: 'Steel Ingot',
@@ -70,6 +73,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'SMELTER',
     levelRequired: 30,
     baseValue: 210,
+    weight: 1,
   },
   {
     name: 'Silver Ingot',
@@ -81,6 +85,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'SMELTER',
     levelRequired: 20,
     baseValue: 72,
+    weight: 1,
   },
   {
     name: 'Gold Ingot',
@@ -92,6 +97,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'SMELTER',
     levelRequired: 25,
     baseValue: 185,
+    weight: 1,
   },
   {
     name: 'Mithril Ingot',
@@ -103,6 +109,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'SMELTER',
     levelRequired: 55,
     baseValue: 700,
+    weight: 1,
   },
   {
     name: 'Adamantine Ingot',
@@ -114,6 +121,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'SMELTER',
     levelRequired: 75,
     baseValue: 2350,
+    weight: 1,
   },
   {
     name: 'Glass',
@@ -125,6 +133,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'SMELTER',
     levelRequired: 15,
     baseValue: 12,
+    weight: 1,
   },
   {
     name: 'Nails',
@@ -136,6 +145,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'SMELTER',
     levelRequired: 5,
     baseValue: 1,
+    weight: 0.5,
   },
   {
     name: 'Iron Fittings',
@@ -147,6 +157,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'SMELTER',
     levelRequired: 8,
     baseValue: 8,
+    weight: 1,
   },
 
   // --- Processed Materials: Tanner ---
@@ -160,6 +171,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'TANNER',
     levelRequired: 3,
     baseValue: 18,
+    weight: 1,
   },
   {
     name: 'Hard Leather',
@@ -171,6 +183,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'TANNER',
     levelRequired: 15,
     baseValue: 24,
+    weight: 1.5,
   },
   {
     name: 'Fur Leather',
@@ -182,6 +195,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'TANNER',
     levelRequired: 10,
     baseValue: 18,
+    weight: 1,
   },
   {
     name: 'Exotic Leather',
@@ -193,6 +207,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'TANNER',
     levelRequired: 50,
     baseValue: 120,
+    weight: 1,
   },
   {
     name: 'Dragonscale Leather',
@@ -204,6 +219,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'TANNER',
     levelRequired: 80,
     baseValue: 300,
+    weight: 1,
   },
   {
     name: 'Wolf Leather',
@@ -215,6 +231,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'TANNER',
     levelRequired: 7,
     baseValue: 73,
+    weight: 1,
   },
   {
     name: 'Bear Leather',
@@ -226,6 +243,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'TANNER',
     levelRequired: 7,
     baseValue: 91,
+    weight: 1,
   },
 
   // --- Processed Materials: Tailor ---
@@ -239,6 +257,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'TAILOR',
     levelRequired: 1,
     baseValue: 8,
+    weight: 0.3,
   },
   {
     name: 'Linen',
@@ -250,6 +269,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'TAILOR',
     levelRequired: 5,
     baseValue: 8,
+    weight: 0.3,
   },
 
   // --- Processed Materials: Tailor (recipe outputs with different names from above) ---
@@ -263,6 +283,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'TAILOR',
     levelRequired: 3,
     baseValue: 20,
+    weight: 0.3,
   },
   {
     name: 'Fine Cloth',
@@ -274,6 +295,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'TAILOR',
     levelRequired: 7,
     baseValue: 59,
+    weight: 0.3,
   },
   {
     name: 'Silk Fabric',
@@ -285,6 +307,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'TAILOR',
     levelRequired: 7,
     baseValue: 75,
+    weight: 0.3,
   },
 
   // --- Processed Materials: Mason ---
@@ -298,6 +321,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'MASON',
     levelRequired: 1,
     baseValue: 28,
+    weight: 5,
   },
   {
     name: 'Bricks',
@@ -309,6 +333,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'MASON',
     levelRequired: 10,
     baseValue: 65,
+    weight: 5,
   },
   {
     name: 'Polished Marble',
@@ -320,6 +345,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'MASON',
     levelRequired: 30,
     baseValue: 65,
+    weight: 5,
   },
   {
     name: 'Cut Sandstone',
@@ -331,6 +357,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'MASON',
     levelRequired: 5,
     baseValue: 50,
+    weight: 5,
   },
   {
     name: 'Stone Slab',
@@ -342,6 +369,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'MASON',
     levelRequired: 8,
     baseValue: 55,
+    weight: 5,
   },
   {
     name: 'Clay Pot',
@@ -353,6 +381,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'MASON',
     levelRequired: 12,
     baseValue: 30,
+    weight: 2,
   },
 
   // --- Processed Materials: Woodworker ---
@@ -366,6 +395,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'WOODWORKER',
     levelRequired: 1,
     baseValue: 3,
+    weight: 2,
   },
   {
     name: 'Hardwood Planks',
@@ -377,6 +407,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'WOODWORKER',
     levelRequired: 10,
     baseValue: 18,
+    weight: 2,
   },
   {
     name: 'Beams',
@@ -388,6 +419,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'WOODWORKER',
     levelRequired: 15,
     baseValue: 17,
+    weight: 8,
   },
   {
     name: 'Exotic Planks',
@@ -399,6 +431,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'WOODWORKER',
     levelRequired: 40,
     baseValue: 40,
+    weight: 2,
   },
   {
     name: 'Wooden Dowels',
@@ -410,6 +443,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'WOODWORKER',
     levelRequired: 3,
     baseValue: 4,
+    weight: 0.3,
   },
   {
     name: 'Wooden Handle',
@@ -421,6 +455,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'WOODWORKER',
     levelRequired: 5,
     baseValue: 5,
+    weight: 0.5,
   },
   {
     name: 'Bow Stave',
@@ -432,6 +467,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'WOODWORKER',
     levelRequired: 8,
     baseValue: 11,
+    weight: 1,
   },
   {
     name: 'Wooden Frame',
@@ -443,6 +479,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'WOODWORKER',
     levelRequired: 12,
     baseValue: 58,
+    weight: 3,
   },
 
   // --- Woodworker Finished Materials ---
@@ -456,6 +493,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'WOODWORKER',
     levelRequired: 1,
     baseValue: 4,
+    weight: 2,
   },
   {
     name: 'Barrel',
@@ -467,6 +505,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'WOODWORKER',
     levelRequired: 15,
     baseValue: 55,
+    weight: 10,
   },
   {
     name: 'Furniture',
@@ -478,6 +517,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'WOODWORKER',
     levelRequired: 15,
     baseValue: 63,
+    weight: 15,
   },
 
   // --- Fletcher Materials (animal drops) ---
@@ -491,6 +531,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 18,
+    weight: 0.1,
   },
   {
     name: 'Bear Claw',
@@ -502,6 +543,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 15,
+    weight: 0.2,
   },
 
   // --- Magical Components (monster encounter drops) ---
@@ -515,6 +557,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 15,
+    weight: 0.5,
   },
   {
     name: 'Frost Essence',
@@ -526,6 +569,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 15,
+    weight: 0.3,
   },
   {
     name: 'Storm Feather',
@@ -537,6 +581,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 15,
+    weight: 0.1,
   },
   {
     name: 'Earth Crystal',
@@ -548,6 +593,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 12,
+    weight: 1,
   },
   {
     name: 'Troll Blood',
@@ -559,6 +605,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 15,
+    weight: 0.5,
   },
   {
     name: 'Fey Tear',
@@ -570,6 +617,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 35,
+    weight: 0.1,
   },
   {
     name: 'Heartwood Sap',
@@ -581,6 +629,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 10,
+    weight: 0.3,
   },
   {
     name: 'Basilisk Scale',
@@ -592,6 +641,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 25,
+    weight: 0.5,
   },
   {
     name: 'Wyvern Scale',
@@ -603,6 +653,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 45,
+    weight: 0.5,
   },
   {
     name: 'Ogre Sinew',
@@ -614,6 +665,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 12,
+    weight: 0.3,
   },
   {
     name: 'Wind Mote',
@@ -625,6 +677,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 12,
+    weight: 0.1,
   },
   {
     name: 'Basilisk Eye',
@@ -636,6 +689,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 20,
+    weight: 0.3,
   },
   {
     name: 'Shadow Essence',
@@ -647,6 +701,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 30,
+    weight: 0.2,
   },
   {
     name: 'Spider Venom',
@@ -658,6 +713,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 12,
+    weight: 0.2,
   },
   {
     name: 'Living Bark',
@@ -669,6 +725,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 8,
+    weight: 0.5,
   },
   {
     name: 'Wisp Mote',
@@ -680,6 +737,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 8,
+    weight: 0.1,
   },
   {
     name: 'Spectral Dust',
@@ -691,6 +749,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 10,
+    weight: 0.1,
   },
   {
     name: 'Dryad Blossom',
@@ -702,6 +761,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 15,
+    weight: 0.1,
   },
 
   // --- Gemstones (mining resource) ---
@@ -715,6 +775,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: null,
     levelRequired: 1,
     baseValue: 25,
+    weight: 0.3,
   },
 
   // --- Enchantment Scrolls (ENCHANTER outputs) ---
@@ -728,6 +789,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'ENCHANTER',
     levelRequired: 35,
     baseValue: 250,
+    weight: 0.1,
   },
   {
     name: 'Vitality Enchantment Scroll',
@@ -739,6 +801,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'ENCHANTER',
     levelRequired: 35,
     baseValue: 220,
+    weight: 0.1,
   },
   {
     name: "Nature's Ward Enchantment Scroll",
@@ -750,6 +813,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'ENCHANTER',
     levelRequired: 40,
     baseValue: 300,
+    weight: 0.1,
   },
   {
     name: 'True Sight Enchantment Scroll',
@@ -761,6 +825,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'ENCHANTER',
     levelRequired: 45,
     baseValue: 350,
+    weight: 0.1,
   },
 
   // --- COOK Food Products ---
@@ -774,6 +839,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'COOK',
     levelRequired: 1,
     baseValue: 6,
+    weight: 0.5,
     isFood: true,
     foodBuff: { effect: 'sustenance', magnitude: 10, duration: 0 },
     isPerishable: true,
@@ -789,6 +855,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'COOK',
     levelRequired: 1,
     baseValue: 20,
+    weight: 0.5,
     isFood: true,
     isBeverage: true,
     foodBuff: { effect: 'hp_regen', magnitude: 5, duration: 30 },
@@ -805,6 +872,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'COOK',
     levelRequired: 11,
     baseValue: 27,
+    weight: 1,
     isFood: true,
     foodBuff: { effect: 'heal_hp', magnitude: 30, duration: 0 },
     isPerishable: true,
@@ -820,6 +888,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'COOK',
     levelRequired: 11,
     baseValue: 23,
+    weight: 0.5,
     isFood: true,
     foodBuff: { effect: 'heal_hp', magnitude: 25, duration: 0 },
     isPerishable: true,
@@ -835,6 +904,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'COOK',
     levelRequired: 11,
     baseValue: 19,
+    weight: 1,
     isFood: true,
     foodBuff: { effect: 'buff_constitution', magnitude: 2, duration: 60 },
     isPerishable: true,
@@ -850,6 +920,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'COOK',
     levelRequired: 26,
     baseValue: 60,
+    weight: 3,
     isFood: true,
     foodBuff: { effect: 'buff_all_stats', magnitude: 1, duration: 60 },
     isPerishable: true,
@@ -867,6 +938,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'BLACKSMITH',
     levelRequired: 1,
     baseValue: 23,
+    weight: 3,
   },
   {
     name: 'Wooden Bow',
@@ -878,6 +950,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'WOODWORKER',
     levelRequired: 1,
     baseValue: 45,
+    weight: 2,
   },
   {
     name: 'Oak Staff',
@@ -889,6 +962,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'WOODWORKER',
     levelRequired: 1,
     baseValue: 15,
+    weight: 3,
   },
 
   // --- Armor ---
@@ -902,6 +976,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'BLACKSMITH',
     levelRequired: 1,
     baseValue: 25,
+    weight: 6,
   },
   {
     name: 'Iron Chainmail',
@@ -913,6 +988,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'ARMORER',
     levelRequired: 1,
     baseValue: 48,
+    weight: 15,
   },
   {
     name: 'Leather Armor',
@@ -924,6 +1000,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'LEATHERWORKER',
     levelRequired: 1,
     baseValue: 30,
+    weight: 5,
   },
 
   // --- Consumables ---
@@ -937,6 +1014,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'ALCHEMIST',
     levelRequired: 1,
     baseValue: 27,
+    weight: 0.5,
   },
   {
     name: 'Bread',
@@ -948,6 +1026,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'COOK',
     levelRequired: 1,
     baseValue: 20,
+    weight: 0.5,
   },
   // --- Brewer Beverages ---
   {
@@ -960,6 +1039,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'BREWER',
     levelRequired: 3,
     baseValue: 6,
+    weight: 1,
     isBeverage: true,
     foodBuff: { effect: 'buff_constitution', magnitude: 1, duration: 30 },
   },
@@ -973,6 +1053,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'BREWER',
     levelRequired: 3,
     baseValue: 6,
+    weight: 1,
     isBeverage: true,
     foodBuff: { effect: 'buff_charisma', magnitude: 1, duration: 30 },
   },
@@ -986,6 +1067,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'BREWER',
     levelRequired: 4,
     baseValue: 8,
+    weight: 1,
     isBeverage: true,
     foodBuff: { effect: 'hp_regen', magnitude: 2, duration: 30 },
   },
@@ -999,6 +1081,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'BREWER',
     levelRequired: 5,
     baseValue: 12,
+    weight: 1,
     isBeverage: true,
     foodBuff: { effect: 'buff_strength', magnitude: 2, duration: 30 },
   },
@@ -1012,6 +1095,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'BREWER',
     levelRequired: 5,
     baseValue: 14,
+    weight: 1,
     isBeverage: true,
     foodBuff: { effect: 'buff_wisdom', magnitude: 2, duration: 30 },
   },
@@ -1025,6 +1109,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'BREWER',
     levelRequired: 6,
     baseValue: 15,
+    weight: 1,
     isBeverage: true,
     foodBuff: { effect: 'hp_regen', magnitude: 3, duration: 30 },
   },
@@ -1038,6 +1123,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'BREWER',
     levelRequired: 7,
     baseValue: 15,
+    weight: 1,
     isBeverage: true,
     foodBuff: { effect: 'buff_constitution', magnitude: 3, duration: 40, secondaryEffect: 'buff_strength', secondaryMagnitude: 1 },
   },
@@ -1051,6 +1137,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'BREWER',
     levelRequired: 7,
     baseValue: 15,
+    weight: 1,
     isBeverage: true,
     foodBuff: { effect: 'buff_charisma', magnitude: 3, duration: 40, secondaryEffect: 'buff_wisdom', secondaryMagnitude: 1 },
   },
@@ -1064,78 +1151,79 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     professionRequired: 'BREWER',
     levelRequired: 8,
     baseValue: 18,
+    weight: 1,
     isBeverage: true,
     foodBuff: { effect: 'buff_strength', magnitude: 2, duration: 40, secondaryEffect: 'buff_dexterity', secondaryMagnitude: 2 },
   },
 
   // --- Boss-Exclusive Rare Materials ---
-  { name: 'Dragon Scale', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'Iridescent scale still cold to the touch. Prized by armorers and weaponsmiths.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 800 },
-  { name: 'Demon Heart', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'A still-pulsing heart of infernal flame. Radiates malevolent heat.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 900 },
-  { name: 'Fey Heartwood', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'Living wood that glows with verdant light. Hums with ancient magic.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 750 },
-  { name: 'Lich Dust', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'Powdered remains suffused with necrotic energy. Handle with extreme care.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 1000 },
-  { name: 'Hydra Fang', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'One of many razor-sharp fangs with regenerative properties.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 600 },
-  { name: 'Mind Crystal', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'A crystal formed from concentrated psychic energy. Whispers at the edge of perception.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 1200 },
-  { name: 'Vampire Ichor', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'Dark blood with powerful regenerative properties. Must be stored in sealed vials.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 1200 },
-  { name: 'Beholder Lens', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'A crystallized eye lens that refracts magical energy into prismatic beams.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 1400 },
-  { name: "Death Knight's Seal", type: 'MATERIAL', rarity: 'MASTERWORK', description: 'A sigil of dark authority, etched in cursed metal. Cold to the touch.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 1400 },
-  { name: "Storm Giant's Heart", type: 'MATERIAL', rarity: 'MASTERWORK', description: 'A fist-sized crystal that crackles with lightning. The air smells of ozone nearby.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 1600 },
-  { name: 'Golem Core', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'The animating core of a construct, still warm with residual magic.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 1100 },
-  { name: 'Djinn Essence', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'Bottled elemental force, swirling endlessly. Contains the fury of storms.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 2000 },
-  { name: 'Archlich Phylactery Shard', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'A fragment of concentrated undeath. Pulses with malign intelligence.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 2200 },
-  { name: 'Dracolich Bone', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'Bone infused with both draconic and necrotic power. Neither alive nor dead.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 2000 },
-  { name: 'Phoenix Feather', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'Burns eternally without consuming itself. A miracle of creation.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 2500 },
-  { name: 'Pit Fiend Horn', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'Infernal horn that radiates malice. Shadows gather around it unbidden.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 2500 },
-  { name: 'Elder Wyrm Scale', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'Ancient scale harder than adamantine. Shimmers with elemental power.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 3000 },
-  { name: 'Titan Shard', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'A fragment of pure crystallized arcane power. Distorts reality nearby.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 3000 },
-  { name: 'Tarrasque Plate', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'The hardest natural material in Aethermere. Nearly indestructible.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 5000 },
-  { name: 'Void Fragment', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'A tear in reality, somehow contained. Gazing into it reveals nothing.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 5000 },
-  { name: 'Wyvern Scale', type: 'MATERIAL', rarity: 'FINE', description: 'Tough scale from a wyvern. Less rare than dragon scales but still prized.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 400 },
-  { name: 'Troll Blood', type: 'MATERIAL', rarity: 'FINE', description: 'Regenerative blood with alchemical applications. Spoils quickly.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 250 },
-  { name: "Giant's Knuckle", type: 'MATERIAL', rarity: 'FINE', description: 'A massive knuckle bone from a giant. Dense and heavy.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 350 },
-  { name: 'Aberrant Tissue', type: 'MATERIAL', rarity: 'FINE', description: 'Strange tissue from an aberrant creature. Writhes unsettlingly.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 300 },
-  { name: 'Elemental Core', type: 'MATERIAL', rarity: 'FINE', description: 'A concentrated source of magical energy from an elemental being.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 300 },
+  { name: 'Dragon Scale', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'Iridescent scale still cold to the touch. Prized by armorers and weaponsmiths.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 800, weight: 0.5 },
+  { name: 'Demon Heart', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'A still-pulsing heart of infernal flame. Radiates malevolent heat.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 900, weight: 1 },
+  { name: 'Fey Heartwood', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'Living wood that glows with verdant light. Hums with ancient magic.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 750, weight: 1 },
+  { name: 'Lich Dust', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'Powdered remains suffused with necrotic energy. Handle with extreme care.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 1000, weight: 0.1 },
+  { name: 'Hydra Fang', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'One of many razor-sharp fangs with regenerative properties.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 600, weight: 0.5 },
+  { name: 'Mind Crystal', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'A crystal formed from concentrated psychic energy. Whispers at the edge of perception.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 1200, weight: 0.3 },
+  { name: 'Vampire Ichor', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'Dark blood with powerful regenerative properties. Must be stored in sealed vials.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 1200, weight: 0.5 },
+  { name: 'Beholder Lens', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'A crystallized eye lens that refracts magical energy into prismatic beams.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 1400, weight: 0.3 },
+  { name: "Death Knight's Seal", type: 'MATERIAL', rarity: 'MASTERWORK', description: 'A sigil of dark authority, etched in cursed metal. Cold to the touch.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 1400, weight: 0.5 },
+  { name: "Storm Giant's Heart", type: 'MATERIAL', rarity: 'MASTERWORK', description: 'A fist-sized crystal that crackles with lightning. The air smells of ozone nearby.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 1600, weight: 2 },
+  { name: 'Golem Core', type: 'MATERIAL', rarity: 'MASTERWORK', description: 'The animating core of a construct, still warm with residual magic.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 1100, weight: 3 },
+  { name: 'Djinn Essence', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'Bottled elemental force, swirling endlessly. Contains the fury of storms.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 2000, weight: 0.3 },
+  { name: 'Archlich Phylactery Shard', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'A fragment of concentrated undeath. Pulses with malign intelligence.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 2200, weight: 0.5 },
+  { name: 'Dracolich Bone', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'Bone infused with both draconic and necrotic power. Neither alive nor dead.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 2000, weight: 2 },
+  { name: 'Phoenix Feather', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'Burns eternally without consuming itself. A miracle of creation.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 2500, weight: 0.1 },
+  { name: 'Pit Fiend Horn', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'Infernal horn that radiates malice. Shadows gather around it unbidden.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 2500, weight: 2 },
+  { name: 'Elder Wyrm Scale', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'Ancient scale harder than adamantine. Shimmers with elemental power.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 3000, weight: 1 },
+  { name: 'Titan Shard', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'A fragment of pure crystallized arcane power. Distorts reality nearby.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 3000, weight: 1 },
+  { name: 'Tarrasque Plate', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'The hardest natural material in Aethermere. Nearly indestructible.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 5000, weight: 5 },
+  { name: 'Void Fragment', type: 'MATERIAL', rarity: 'LEGENDARY', description: 'A tear in reality, somehow contained. Gazing into it reveals nothing.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 5000, weight: 0.1 },
+  { name: 'Wyvern Scale', type: 'MATERIAL', rarity: 'FINE', description: 'Tough scale from a wyvern. Less rare than dragon scales but still prized.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 400, weight: 0.5 },
+  { name: 'Troll Blood', type: 'MATERIAL', rarity: 'FINE', description: 'Regenerative blood with alchemical applications. Spoils quickly.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 250, weight: 0.5 },
+  { name: "Giant's Knuckle", type: 'MATERIAL', rarity: 'FINE', description: 'A massive knuckle bone from a giant. Dense and heavy.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 350, weight: 5 },
+  { name: 'Aberrant Tissue', type: 'MATERIAL', rarity: 'FINE', description: 'Strange tissue from an aberrant creature. Writhes unsettlingly.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 300, weight: 0.5 },
+  { name: 'Elemental Core', type: 'MATERIAL', rarity: 'FINE', description: 'A concentrated source of magical energy from an elemental being.', stats: {}, durability: 100, professionRequired: null, levelRequired: 1, baseValue: 300, weight: 0.5 },
 
   // --- Elite Crafted Weapons ---
-  { name: 'Dragonscale Longsword', type: 'WEAPON', rarity: 'MASTERWORK', description: 'A longsword forged with dragon scales woven into the blade. Shimmers with cold fire.', stats: { baseDamage: 30, bonusAttack: 2, bonusDamage: 2 }, durability: 300, professionRequired: 'BLACKSMITH', levelRequired: 35, baseValue: 2000 },
-  { name: 'Hellforged Greatsword', type: 'WEAPON', rarity: 'MASTERWORK', description: 'A massive blade forged in demonic flame. Edges glow with infernal heat.', stats: { baseDamage: 38, bonusDamage: 3 }, durability: 300, professionRequired: 'BLACKSMITH', levelRequired: 35, baseValue: 2200 },
-  { name: 'Soulreaper Blade', type: 'WEAPON', rarity: 'MASTERWORK', description: 'A blade infused with necrotic energy. Trails wisps of shadow when swung.', stats: { baseDamage: 28, bonusAttack: 2, bonusDamage: 3 }, durability: 280, professionRequired: 'BLACKSMITH', levelRequired: 40, baseValue: 2400 },
-  { name: 'Stormforged Warhammer', type: 'WEAPON', rarity: 'MASTERWORK', description: 'A warhammer crackling with captured lightning. Thunder follows each strike.', stats: { baseDamage: 56, bonusDamage: 4 }, durability: 440, professionRequired: 'BLACKSMITH', levelRequired: 60, baseValue: 4500 },
-  { name: 'Voidsteel Greatsword', type: 'WEAPON', rarity: 'LEGENDARY', description: 'Forged from adamantine infused with void energy. Reality bends around its edge.', stats: { baseDamage: 70, bonusDamage: 5 }, durability: 580, professionRequired: 'BLACKSMITH', levelRequired: 80, baseValue: 12000 },
-  { name: 'Tarrasque Cleaver', type: 'WEAPON', rarity: 'LEGENDARY', description: 'An impossibly heavy blade carved from tarrasque carapace. The hardest-hitting weapon known.', stats: { baseDamage: 74 }, durability: 600, professionRequired: 'BLACKSMITH', levelRequired: 80, baseValue: 14000 },
+  { name: 'Dragonscale Longsword', type: 'WEAPON', rarity: 'MASTERWORK', description: 'A longsword forged with dragon scales woven into the blade. Shimmers with cold fire.', stats: { baseDamage: 30, bonusAttack: 2, bonusDamage: 2 }, durability: 300, professionRequired: 'BLACKSMITH', levelRequired: 35, baseValue: 2000, weight: 3 },
+  { name: 'Hellforged Greatsword', type: 'WEAPON', rarity: 'MASTERWORK', description: 'A massive blade forged in demonic flame. Edges glow with infernal heat.', stats: { baseDamage: 38, bonusDamage: 3 }, durability: 300, professionRequired: 'BLACKSMITH', levelRequired: 35, baseValue: 2200, weight: 6 },
+  { name: 'Soulreaper Blade', type: 'WEAPON', rarity: 'MASTERWORK', description: 'A blade infused with necrotic energy. Trails wisps of shadow when swung.', stats: { baseDamage: 28, bonusAttack: 2, bonusDamage: 3 }, durability: 280, professionRequired: 'BLACKSMITH', levelRequired: 40, baseValue: 2400, weight: 3 },
+  { name: 'Stormforged Warhammer', type: 'WEAPON', rarity: 'MASTERWORK', description: 'A warhammer crackling with captured lightning. Thunder follows each strike.', stats: { baseDamage: 56, bonusDamage: 4 }, durability: 440, professionRequired: 'BLACKSMITH', levelRequired: 60, baseValue: 4500, weight: 8 },
+  { name: 'Voidsteel Greatsword', type: 'WEAPON', rarity: 'LEGENDARY', description: 'Forged from adamantine infused with void energy. Reality bends around its edge.', stats: { baseDamage: 70, bonusDamage: 5 }, durability: 580, professionRequired: 'BLACKSMITH', levelRequired: 80, baseValue: 12000, weight: 7 },
+  { name: 'Tarrasque Cleaver', type: 'WEAPON', rarity: 'LEGENDARY', description: 'An impossibly heavy blade carved from tarrasque carapace. The hardest-hitting weapon known.', stats: { baseDamage: 74 }, durability: 600, professionRequired: 'BLACKSMITH', levelRequired: 80, baseValue: 14000, weight: 10 },
 
   // --- Elite Crafted Plate Armor ---
-  { name: 'Dragonscale Plate', type: 'ARMOR', rarity: 'MASTERWORK', description: 'Plate armor reinforced with dragon scales. Grants cold resistance.', stats: { armor: 31, magicResist: 4, equipSlot: 'CHEST' }, durability: 300, professionRequired: 'ARMORER', levelRequired: 35, baseValue: 2500 },
-  { name: 'Golem-Forged Plate', type: 'ARMOR', rarity: 'MASTERWORK', description: 'Mithril plate infused with a golem core. Nearly impervious to critical strikes.', stats: { armor: 44, magicResist: 12, equipSlot: 'CHEST' }, durability: 480, professionRequired: 'ARMORER', levelRequired: 60, baseValue: 5500 },
-  { name: 'Wyrm Scale Plate', type: 'ARMOR', rarity: 'LEGENDARY', description: 'The finest plate armor ever forged. Elder wyrm scales make it virtually indestructible.', stats: { armor: 61, magicResist: 17, equipSlot: 'CHEST' }, durability: 700, professionRequired: 'ARMORER', levelRequired: 80, baseValue: 16000 },
-  { name: 'Tarrasque Shell', type: 'ARMOR', rarity: 'LEGENDARY', description: 'A shield carved from tarrasque carapace. No force in Aethermere can shatter it.', stats: { armor: 28, magicResist: 8, equipSlot: 'OFF_HAND' }, durability: 650, professionRequired: 'ARMORER', levelRequired: 80, baseValue: 13000 },
+  { name: 'Dragonscale Plate', type: 'ARMOR', rarity: 'MASTERWORK', description: 'Plate armor reinforced with dragon scales. Grants cold resistance.', stats: { armor: 31, magicResist: 4, equipSlot: 'CHEST' }, durability: 300, professionRequired: 'ARMORER', levelRequired: 35, baseValue: 2500, weight: 25 },
+  { name: 'Golem-Forged Plate', type: 'ARMOR', rarity: 'MASTERWORK', description: 'Mithril plate infused with a golem core. Nearly impervious to critical strikes.', stats: { armor: 44, magicResist: 12, equipSlot: 'CHEST' }, durability: 480, professionRequired: 'ARMORER', levelRequired: 60, baseValue: 5500, weight: 20 },
+  { name: 'Wyrm Scale Plate', type: 'ARMOR', rarity: 'LEGENDARY', description: 'The finest plate armor ever forged. Elder wyrm scales make it virtually indestructible.', stats: { armor: 61, magicResist: 17, equipSlot: 'CHEST' }, durability: 700, professionRequired: 'ARMORER', levelRequired: 80, baseValue: 16000, weight: 25 },
+  { name: 'Tarrasque Shell', type: 'ARMOR', rarity: 'LEGENDARY', description: 'A shield carved from tarrasque carapace. No force in Aethermere can shatter it.', stats: { armor: 28, magicResist: 8, equipSlot: 'OFF_HAND' }, durability: 650, professionRequired: 'ARMORER', levelRequired: 80, baseValue: 13000, weight: 12 },
 
   // --- Elite Crafted Caster Weapons ---
-  { name: 'Feywood Staff', type: 'WEAPON', rarity: 'MASTERWORK', description: 'A staff of living fey heartwood. Channels nature magic with extraordinary clarity.', stats: { baseDamage: 10, bonusAttack: 4, bonusDamage: 3 }, durability: 110, professionRequired: 'ENCHANTER', levelRequired: 35, baseValue: 2000 },
-  { name: 'Mindshatter Orb', type: 'WEAPON', rarity: 'MASTERWORK', description: 'An orb of crystallized psychic energy. Amplifies mental attacks to devastating effect.', stats: { baseDamage: 9, bonusAttack: 4, bonusDamage: 4 }, durability: 120, professionRequired: 'ENCHANTER', levelRequired: 60, baseValue: 4000 },
-  { name: 'Phoenix Staff', type: 'WEAPON', rarity: 'LEGENDARY', description: 'Crowned with an eternally burning phoenix feather. The pinnacle of caster staves.', stats: { baseDamage: 14, bonusAttack: 6, bonusDamage: 5 }, durability: 170, professionRequired: 'ENCHANTER', levelRequired: 80, baseValue: 14000 },
-  { name: "Titan's Focus", type: 'WEAPON', rarity: 'LEGENDARY', description: 'A focus orb containing a titan shard. Reality warps at the caster\'s command.', stats: { baseDamage: 11, bonusAttack: 5, bonusDamage: 5 }, durability: 150, professionRequired: 'ENCHANTER', levelRequired: 80, baseValue: 14000 },
+  { name: 'Feywood Staff', type: 'WEAPON', rarity: 'MASTERWORK', description: 'A staff of living fey heartwood. Channels nature magic with extraordinary clarity.', stats: { baseDamage: 10, bonusAttack: 4, bonusDamage: 3 }, durability: 110, professionRequired: 'ENCHANTER', levelRequired: 35, baseValue: 2000, weight: 3 },
+  { name: 'Mindshatter Orb', type: 'WEAPON', rarity: 'MASTERWORK', description: 'An orb of crystallized psychic energy. Amplifies mental attacks to devastating effect.', stats: { baseDamage: 9, bonusAttack: 4, bonusDamage: 4 }, durability: 120, professionRequired: 'ENCHANTER', levelRequired: 60, baseValue: 4000, weight: 1 },
+  { name: 'Phoenix Staff', type: 'WEAPON', rarity: 'LEGENDARY', description: 'Crowned with an eternally burning phoenix feather. The pinnacle of caster staves.', stats: { baseDamage: 14, bonusAttack: 6, bonusDamage: 5 }, durability: 170, professionRequired: 'ENCHANTER', levelRequired: 80, baseValue: 14000, weight: 3 },
+  { name: "Titan's Focus", type: 'WEAPON', rarity: 'LEGENDARY', description: 'A focus orb containing a titan shard. Reality warps at the caster\'s command.', stats: { baseDamage: 11, bonusAttack: 5, bonusDamage: 5 }, durability: 150, professionRequired: 'ENCHANTER', levelRequired: 80, baseValue: 14000, weight: 1 },
 
   // --- Elite Crafted Accessories ---
-  { name: 'Hydra Fang Amulet', type: 'ACCESSORY', rarity: 'MASTERWORK', description: 'An amulet set with a hydra fang. Grants unnatural vitality to its wearer.', stats: { constitution: 3, equipSlot: 'NECK' }, durability: 200, professionRequired: 'JEWELER', levelRequired: 35, baseValue: 1800 },
-  { name: 'Beholder Lens Ring', type: 'ACCESSORY', rarity: 'MASTERWORK', description: 'A ring set with a beholder lens fragment. Sharpens the mind and magical precision.', stats: { intelligence: 3, bonusAttack: 2, equipSlot: 'RING_1' }, durability: 250, professionRequired: 'JEWELER', levelRequired: 60, baseValue: 4200 },
-  { name: 'Phylactery Amulet', type: 'ACCESSORY', rarity: 'LEGENDARY', description: 'An amulet containing an archlich phylactery shard. Grants terrifying arcane insight.', stats: { intelligence: 3, wisdom: 2, equipSlot: 'NECK' }, durability: 300, professionRequired: 'JEWELER', levelRequired: 80, baseValue: 12000 },
-  { name: 'Void Crystal Ring', type: 'ACCESSORY', rarity: 'LEGENDARY', description: 'A ring set with a void fragment. All who gaze upon it feel the weight of infinity.', stats: { intelligence: 2, wisdom: 2, constitution: 2, equipSlot: 'RING_1' }, durability: 300, professionRequired: 'JEWELER', levelRequired: 80, baseValue: 14000 },
+  { name: 'Hydra Fang Amulet', type: 'ACCESSORY', rarity: 'MASTERWORK', description: 'An amulet set with a hydra fang. Grants unnatural vitality to its wearer.', stats: { constitution: 3, equipSlot: 'NECK' }, durability: 200, professionRequired: 'JEWELER', levelRequired: 35, baseValue: 1800, weight: 0.3 },
+  { name: 'Beholder Lens Ring', type: 'ACCESSORY', rarity: 'MASTERWORK', description: 'A ring set with a beholder lens fragment. Sharpens the mind and magical precision.', stats: { intelligence: 3, bonusAttack: 2, equipSlot: 'RING_1' }, durability: 250, professionRequired: 'JEWELER', levelRequired: 60, baseValue: 4200, weight: 0.1 },
+  { name: 'Phylactery Amulet', type: 'ACCESSORY', rarity: 'LEGENDARY', description: 'An amulet containing an archlich phylactery shard. Grants terrifying arcane insight.', stats: { intelligence: 3, wisdom: 2, equipSlot: 'NECK' }, durability: 300, professionRequired: 'JEWELER', levelRequired: 80, baseValue: 12000, weight: 0.3 },
+  { name: 'Void Crystal Ring', type: 'ACCESSORY', rarity: 'LEGENDARY', description: 'A ring set with a void fragment. All who gaze upon it feel the weight of infinity.', stats: { intelligence: 2, wisdom: 2, constitution: 2, equipSlot: 'RING_1' }, durability: 300, professionRequired: 'JEWELER', levelRequired: 80, baseValue: 14000, weight: 0.1 },
 
   // --- Elite Crafted Leather Armor ---
-  { name: 'Wyvern Scale Vest', type: 'ARMOR', rarity: 'MASTERWORK', description: 'A vest reinforced with wyvern scales. Light yet surprisingly tough.', stats: { armor: 18, equipSlot: 'CHEST' }, durability: 220, professionRequired: 'LEATHERWORKER', levelRequired: 35, baseValue: 1500 },
-  { name: 'Vampire Hide Armor', type: 'ARMOR', rarity: 'MASTERWORK', description: 'Leather treated with vampire ichor. The dark material seems to absorb light.', stats: { armor: 26, constitution: 2, equipSlot: 'CHEST' }, durability: 320, professionRequired: 'LEATHERWORKER', levelRequired: 60, baseValue: 4000 },
-  { name: 'Wyrm Hide Armor', type: 'ARMOR', rarity: 'LEGENDARY', description: 'The finest leather armor in Aethermere. Wyrm scales make it nearly impenetrable.', stats: { armor: 36, magicResist: 6, equipSlot: 'CHEST' }, durability: 450, professionRequired: 'LEATHERWORKER', levelRequired: 80, baseValue: 12000 },
+  { name: 'Wyvern Scale Vest', type: 'ARMOR', rarity: 'MASTERWORK', description: 'A vest reinforced with wyvern scales. Light yet surprisingly tough.', stats: { armor: 18, equipSlot: 'CHEST' }, durability: 220, professionRequired: 'LEATHERWORKER', levelRequired: 35, baseValue: 1500, weight: 6 },
+  { name: 'Vampire Hide Armor', type: 'ARMOR', rarity: 'MASTERWORK', description: 'Leather treated with vampire ichor. The dark material seems to absorb light.', stats: { armor: 26, constitution: 2, equipSlot: 'CHEST' }, durability: 320, professionRequired: 'LEATHERWORKER', levelRequired: 60, baseValue: 4000, weight: 8 },
+  { name: 'Wyrm Hide Armor', type: 'ARMOR', rarity: 'LEGENDARY', description: 'The finest leather armor in Aethermere. Wyrm scales make it nearly impenetrable.', stats: { armor: 36, magicResist: 6, equipSlot: 'CHEST' }, durability: 450, professionRequired: 'LEATHERWORKER', levelRequired: 80, baseValue: 12000, weight: 10 },
 
   // --- Elite Crafted Cloth Armor ---
-  { name: 'Fey-Touched Robe', type: 'ARMOR', rarity: 'MASTERWORK', description: 'A robe woven with fey heartwood fibers. Shimmers with protective enchantments.', stats: { armor: 8, magicResist: 10, wisdom: 2, equipSlot: 'CHEST' }, durability: 150, professionRequired: 'TAILOR', levelRequired: 35, baseValue: 1800 },
-  { name: "Death Knight's Mantle", type: 'ARMOR', rarity: 'MASTERWORK', description: 'A mantle bearing a death knight\'s seal. Wards against necrotic and arcane attacks.', stats: { armor: 12, magicResist: 16, intelligence: 2, equipSlot: 'CHEST' }, durability: 200, professionRequired: 'TAILOR', levelRequired: 60, baseValue: 4500 },
-  { name: 'Phoenix Silk Robe', type: 'ARMOR', rarity: 'LEGENDARY', description: 'A robe woven from silk infused with phoenix essence. The finest cloth armor known.', stats: { armor: 16, magicResist: 22, intelligence: 3, equipSlot: 'CHEST' }, durability: 260, professionRequired: 'TAILOR', levelRequired: 80, baseValue: 14000 },
+  { name: 'Fey-Touched Robe', type: 'ARMOR', rarity: 'MASTERWORK', description: 'A robe woven with fey heartwood fibers. Shimmers with protective enchantments.', stats: { armor: 8, magicResist: 10, wisdom: 2, equipSlot: 'CHEST' }, durability: 150, professionRequired: 'TAILOR', levelRequired: 35, baseValue: 1800, weight: 2 },
+  { name: "Death Knight's Mantle", type: 'ARMOR', rarity: 'MASTERWORK', description: 'A mantle bearing a death knight\'s seal. Wards against necrotic and arcane attacks.', stats: { armor: 12, magicResist: 16, intelligence: 2, equipSlot: 'CHEST' }, durability: 200, professionRequired: 'TAILOR', levelRequired: 60, baseValue: 4500, weight: 2 },
+  { name: 'Phoenix Silk Robe', type: 'ARMOR', rarity: 'LEGENDARY', description: 'A robe woven from silk infused with phoenix essence. The finest cloth armor known.', stats: { armor: 16, magicResist: 22, intelligence: 3, equipSlot: 'CHEST' }, durability: 260, professionRequired: 'TAILOR', levelRequired: 80, baseValue: 14000, weight: 1 },
 
   // --- Elite Crafted Bard/Ranged ---
-  { name: 'Feywood Lute', type: 'WEAPON', rarity: 'MASTERWORK', description: 'A lute carved from fey heartwood. Its melodies carry supernatural resonance.', stats: { baseDamage: 8, bonusAttack: 3, bonusDamage: 3 }, durability: 100, professionRequired: 'WOODWORKER', levelRequired: 35, baseValue: 1800 },
-  { name: 'Stormsong Harp', type: 'WEAPON', rarity: 'MASTERWORK', description: 'A harp strung with storm giant sinew. Each chord echoes with thunder.', stats: { baseDamage: 10, bonusAttack: 4, bonusDamage: 4 }, durability: 130, professionRequired: 'WOODWORKER', levelRequired: 60, baseValue: 4200 },
-  { name: 'Dragonbone Bow', type: 'WEAPON', rarity: 'MASTERWORK', description: 'A bow crafted from dragon bone. Arrows fly with preternatural accuracy.', stats: { baseDamage: 26, bonusAttack: 2, bonusDamage: 2 }, durability: 210, professionRequired: 'FLETCHER', levelRequired: 35, baseValue: 2000 },
-  { name: 'Wyrm Sinew Bow', type: 'WEAPON', rarity: 'LEGENDARY', description: 'A bow strung with elder wyrm sinew. The finest ranged weapon ever crafted.', stats: { baseDamage: 52, bonusAttack: 6, bonusDamage: 5 }, durability: 500, professionRequired: 'FLETCHER', levelRequired: 80, baseValue: 14000 },
+  { name: 'Feywood Lute', type: 'WEAPON', rarity: 'MASTERWORK', description: 'A lute carved from fey heartwood. Its melodies carry supernatural resonance.', stats: { baseDamage: 8, bonusAttack: 3, bonusDamage: 3 }, durability: 100, professionRequired: 'WOODWORKER', levelRequired: 35, baseValue: 1800, weight: 2 },
+  { name: 'Stormsong Harp', type: 'WEAPON', rarity: 'MASTERWORK', description: 'A harp strung with storm giant sinew. Each chord echoes with thunder.', stats: { baseDamage: 10, bonusAttack: 4, bonusDamage: 4 }, durability: 130, professionRequired: 'WOODWORKER', levelRequired: 60, baseValue: 4200, weight: 3 },
+  { name: 'Dragonbone Bow', type: 'WEAPON', rarity: 'MASTERWORK', description: 'A bow crafted from dragon bone. Arrows fly with preternatural accuracy.', stats: { baseDamage: 26, bonusAttack: 2, bonusDamage: 2 }, durability: 210, professionRequired: 'FLETCHER', levelRequired: 35, baseValue: 2000, weight: 2 },
+  { name: 'Wyrm Sinew Bow', type: 'WEAPON', rarity: 'LEGENDARY', description: 'A bow strung with elder wyrm sinew. The finest ranged weapon ever crafted.', stats: { baseDamage: 52, bonusAttack: 6, bonusDamage: 5 }, durability: 500, professionRequired: 'FLETCHER', levelRequired: 80, baseValue: 14000, weight: 2 },
 ];
 
 // ============================================================
@@ -1150,61 +1238,62 @@ interface ResourceItemDef {
   type: ItemType;
   description: string;
   baseValue: number;
+  weight: number;
 }
 
 const RESOURCE_ITEMS: ResourceItemDef[] = [
   // Ores & minerals
-  { name: 'Copper Ore', type: 'MATERIAL', description: 'Common copper ore found in hillside deposits.', baseValue: 4 },
-  { name: 'Iron Ore', type: 'MATERIAL', description: 'Raw iron ore mined from the earth.', baseValue: 6 },
-  { name: 'Coal', type: 'MATERIAL', description: 'Black coal used as fuel for smelting and forging.', baseValue: 12 },
-  { name: 'Silver Ore', type: 'MATERIAL', description: 'Gleaming silver ore from deep rock veins.', baseValue: 30 },
-  { name: 'Gold Ore', type: 'MATERIAL', description: 'Precious gold ore mined from mountain caves.', baseValue: 40 },
-  { name: 'Mithril Ore', type: 'MATERIAL', description: 'Legendary silvery-blue ore from the deepest mines.', baseValue: 80 },
-  { name: 'Adamantine Ore', type: 'MATERIAL', description: 'The hardest metal ore, found only in extreme depths.', baseValue: 150 },
-  { name: 'Silite Sand', type: 'MATERIAL', description: 'Fine crystalline sand used in glassmaking.', baseValue: 5 },
+  { name: 'Copper Ore', type: 'MATERIAL', description: 'Common copper ore found in hillside deposits.', baseValue: 4, weight: 3 },
+  { name: 'Iron Ore', type: 'MATERIAL', description: 'Raw iron ore mined from the earth.', baseValue: 6, weight: 3 },
+  { name: 'Coal', type: 'MATERIAL', description: 'Black coal used as fuel for smelting and forging.', baseValue: 12, weight: 2 },
+  { name: 'Silver Ore', type: 'MATERIAL', description: 'Gleaming silver ore from deep rock veins.', baseValue: 30, weight: 3 },
+  { name: 'Gold Ore', type: 'MATERIAL', description: 'Precious gold ore mined from mountain caves.', baseValue: 40, weight: 3 },
+  { name: 'Mithril Ore', type: 'MATERIAL', description: 'Legendary silvery-blue ore from the deepest mines.', baseValue: 80, weight: 2 },
+  { name: 'Adamantine Ore', type: 'MATERIAL', description: 'The hardest metal ore, found only in extreme depths.', baseValue: 150, weight: 4 },
+  { name: 'Silite Sand', type: 'MATERIAL', description: 'Fine crystalline sand used in glassmaking.', baseValue: 5, weight: 2 },
   // Stone
-  { name: 'Raw Stone', type: 'MATERIAL', description: 'Rough-hewn stone blocks quarried from mountainsides.', baseValue: 7 },
-  { name: 'Sandstone', type: 'MATERIAL', description: 'Warm-colored sandstone from arid regions.', baseValue: 7 },
-  { name: 'Marble', type: 'MATERIAL', description: 'Polished white marble veined with color.', baseValue: 15 },
+  { name: 'Raw Stone', type: 'MATERIAL', description: 'Rough-hewn stone blocks quarried from mountainsides.', baseValue: 7, weight: 5 },
+  { name: 'Sandstone', type: 'MATERIAL', description: 'Warm-colored sandstone from arid regions.', baseValue: 7, weight: 5 },
+  { name: 'Marble', type: 'MATERIAL', description: 'Polished white marble veined with color.', baseValue: 15, weight: 5 },
   // Wood
-  { name: 'Softwood', type: 'MATERIAL', description: 'Common softwood lumber from pine and fir trees.', baseValue: 3 },
-  { name: 'Hardwood', type: 'MATERIAL', description: 'Dense hardwood from ancient oaks and elms.', baseValue: 25 },
-  { name: 'Exotic Wood', type: 'MATERIAL', description: 'Rare timber from ancient or magical trees.', baseValue: 50 },
-  { name: 'Bark', type: 'MATERIAL', description: 'Stripped bark used in tanning and potion-making.', baseValue: 3 },
+  { name: 'Softwood', type: 'MATERIAL', description: 'Common softwood lumber from pine and fir trees.', baseValue: 3, weight: 2 },
+  { name: 'Hardwood', type: 'MATERIAL', description: 'Dense hardwood from ancient oaks and elms.', baseValue: 25, weight: 3 },
+  { name: 'Exotic Wood', type: 'MATERIAL', description: 'Rare timber from ancient or magical trees.', baseValue: 50, weight: 3 },
+  { name: 'Bark', type: 'MATERIAL', description: 'Stripped bark used in tanning and potion-making.', baseValue: 3, weight: 0.5 },
   // Animal products
-  { name: 'Raw Leather', type: 'MATERIAL', description: 'Untanned hides from common game.', baseValue: 6 },
-  { name: 'Animal Pelts', type: 'MATERIAL', description: 'Fur-bearing animal pelts from wolves, foxes, and bears.', baseValue: 8 },
-  { name: 'Wolf Pelts', type: 'MATERIAL', description: 'Thick pelts from wild wolves. Prized by tanners for durable leather.', baseValue: 28 },
-  { name: 'Bear Hides', type: 'MATERIAL', description: 'Heavy hides from bears. Exceptionally tough when tanned.', baseValue: 35 },
-  { name: 'Exotic Hide', type: 'MATERIAL', description: 'Tough hide from exotic and dangerous beasts.', baseValue: 50 },
-  { name: 'Dragon Hide', type: 'MATERIAL', description: 'Scaled hide stripped from a slain dragon. Nearly indestructible.', baseValue: 200 },
+  { name: 'Raw Leather', type: 'MATERIAL', description: 'Untanned hides from common game.', baseValue: 6, weight: 1 },
+  { name: 'Animal Pelts', type: 'MATERIAL', description: 'Fur-bearing animal pelts from wolves, foxes, and bears.', baseValue: 8, weight: 1 },
+  { name: 'Wolf Pelts', type: 'MATERIAL', description: 'Thick pelts from wild wolves. Prized by tanners for durable leather.', baseValue: 28, weight: 1.5 },
+  { name: 'Bear Hides', type: 'MATERIAL', description: 'Heavy hides from bears. Exceptionally tough when tanned.', baseValue: 35, weight: 2 },
+  { name: 'Exotic Hide', type: 'MATERIAL', description: 'Tough hide from exotic and dangerous beasts.', baseValue: 50, weight: 2 },
+  { name: 'Dragon Hide', type: 'MATERIAL', description: 'Scaled hide stripped from a slain dragon. Nearly indestructible.', baseValue: 200, weight: 3 },
   // Fibers
-  { name: 'Cotton', type: 'MATERIAL', description: 'Raw cotton fibers, ready for spinning.', baseValue: 4 },
-  { name: 'Flax', type: 'MATERIAL', description: 'Flax stalks processed into linen thread.', baseValue: 4 },
-  { name: 'Wool', type: 'MATERIAL', description: 'Sheared sheep wool, the warmest natural fiber.', baseValue: 10 },
-  { name: 'Silk Thread', type: 'MATERIAL', description: 'Delicate silk thread harvested from giant silkworms. Rare and valuable.', baseValue: 38 },
+  { name: 'Cotton', type: 'MATERIAL', description: 'Raw cotton fibers, ready for spinning.', baseValue: 4, weight: 0.3 },
+  { name: 'Flax', type: 'MATERIAL', description: 'Flax stalks processed into linen thread.', baseValue: 4, weight: 0.3 },
+  { name: 'Wool', type: 'MATERIAL', description: 'Sheared sheep wool, the warmest natural fiber.', baseValue: 10, weight: 0.5 },
+  { name: 'Silk Thread', type: 'MATERIAL', description: 'Delicate silk thread harvested from giant silkworms. Rare and valuable.', baseValue: 38, weight: 0.1 },
   // Other inputs
-  { name: 'Salt', type: 'MATERIAL', description: 'Sea salt harvested from tidal pools. Essential for preservation.', baseValue: 3 },
-  { name: 'Rare Herbs', type: 'MATERIAL', description: 'Elusive plants that grow only in specific conditions.', baseValue: 28 },
-  { name: 'Arcane Reagentss', type: 'MATERIAL', description: 'Volatile magical substances harvested from places of power.', baseValue: 35 },
+  { name: 'Salt', type: 'MATERIAL', description: 'Sea salt harvested from tidal pools. Essential for preservation.', baseValue: 3, weight: 0.5 },
+  { name: 'Rare Herbs', type: 'MATERIAL', description: 'Elusive plants that grow only in specific conditions.', baseValue: 28, weight: 0.1 },
+  { name: 'Arcane Reagentss', type: 'MATERIAL', description: 'Volatile magical substances harvested from places of power.', baseValue: 35, weight: 0.2 },
   // Town gathering spot items
-  { name: 'Apples', type: 'MATERIAL', description: 'Crisp apples picked from the royal orchards.', baseValue: 3 },
-  { name: 'Raw Fish', type: 'MATERIAL', description: 'Fresh fish caught from nearby waters.', baseValue: 4 },
-  { name: 'Wild Berries', type: 'MATERIAL', description: 'A handful of wild berries foraged from the bushes.', baseValue: 3 },
-  { name: 'Wild Herbs', type: 'MATERIAL', description: 'Fragrant herbs gathered from the wild.', baseValue: 5 },
-  { name: 'Iron Ore Chunks', type: 'MATERIAL', description: 'Rough chunks of iron ore from the mines.', baseValue: 4 },
-  { name: 'Wood Logs', type: 'MATERIAL', description: 'Freshly felled timber logs.', baseValue: 5 },
-  { name: 'Stone Blocks', type: 'MATERIAL', description: 'Rough-hewn stone blocks from the quarry.', baseValue: 7 },
-  { name: 'Clay', type: 'MATERIAL', description: 'Wet clay dug from river banks.', baseValue: 4 },
+  { name: 'Apples', type: 'MATERIAL', description: 'Crisp apples picked from the royal orchards.', baseValue: 3, weight: 0.3 },
+  { name: 'Raw Fish', type: 'MATERIAL', description: 'Fresh fish caught from nearby waters.', baseValue: 4, weight: 1 },
+  { name: 'Wild Berries', type: 'MATERIAL', description: 'A handful of wild berries foraged from the bushes.', baseValue: 3, weight: 0.3 },
+  { name: 'Wild Herbs', type: 'MATERIAL', description: 'Fragrant herbs gathered from the wild.', baseValue: 5, weight: 0.1 },
+  { name: 'Iron Ore Chunks', type: 'MATERIAL', description: 'Rough chunks of iron ore from the mines.', baseValue: 4, weight: 3 },
+  { name: 'Wood Logs', type: 'MATERIAL', description: 'Freshly felled timber logs.', baseValue: 5, weight: 4 },
+  { name: 'Stone Blocks', type: 'MATERIAL', description: 'Rough-hewn stone blocks from the quarry.', baseValue: 7, weight: 5 },
+  { name: 'Clay', type: 'MATERIAL', description: 'Wet clay dug from river banks.', baseValue: 4, weight: 3 },
   // Legacy references (used by non-processing recipes)
-  { name: 'Herbs', type: 'MATERIAL', description: 'A bundle of gathered herbs with medicinal properties.', baseValue: 5 },
-  { name: 'Grain', type: 'MATERIAL', description: 'Harvested grain, a staple crop.', baseValue: 3 },
-  { name: 'Hops', type: 'MATERIAL', description: 'Aromatic hop flowers, essential for brewing fine beer.', baseValue: 5 },
-  { name: 'Grapes', type: 'MATERIAL', description: 'Plump, juicy grapes, ready to be pressed into wine.', baseValue: 4 },
-  { name: 'Fiber', type: 'MATERIAL', description: 'Plant fibers used for stringing bows and binding.', baseValue: 3 },
-  { name: 'Lumber', type: 'MATERIAL', description: 'Cut and dried timber, ready for use.', baseValue: 5 },
-  { name: 'Hide', type: 'MATERIAL', description: 'An animal hide, not yet tanned.', baseValue: 8 },
-  { name: 'Arcane Reagents', type: 'MATERIAL', description: 'A shimmering reagent infused with magical energy.', baseValue: 35 },
+  { name: 'Herbs', type: 'MATERIAL', description: 'A bundle of gathered herbs with medicinal properties.', baseValue: 5, weight: 0.1 },
+  { name: 'Grain', type: 'MATERIAL', description: 'Harvested grain, a staple crop.', baseValue: 3, weight: 0.5 },
+  { name: 'Hops', type: 'MATERIAL', description: 'Aromatic hop flowers, essential for brewing fine beer.', baseValue: 5, weight: 0.5 },
+  { name: 'Grapes', type: 'MATERIAL', description: 'Plump, juicy grapes, ready to be pressed into wine.', baseValue: 4, weight: 0.5 },
+  { name: 'Fiber', type: 'MATERIAL', description: 'Plant fibers used for stringing bows and binding.', baseValue: 3, weight: 0.1 },
+  { name: 'Lumber', type: 'MATERIAL', description: 'Cut and dried timber, ready for use.', baseValue: 5, weight: 4 },
+  { name: 'Hide', type: 'MATERIAL', description: 'An animal hide, not yet tanned.', baseValue: 8, weight: 1 },
+  { name: 'Arcane Reagents', type: 'MATERIAL', description: 'A shimmering reagent infused with magical energy.', baseValue: 35, weight: 0.2 },
 ];
 
 // ============================================================
@@ -1328,6 +1417,7 @@ export async function seedRecipes(db: any) {
       type: res.type,
       description: res.description,
       baseValue: res.baseValue,
+      weight: res.weight ?? 0,
     };
     await db.insert(schema.itemTemplates).values({
       id: stableId,
@@ -1340,6 +1430,7 @@ export async function seedRecipes(db: any) {
       professionRequired: null,
       levelRequired: 1,
       baseValue: res.baseValue,
+      weight: res.weight ?? 0,
     }).onConflictDoUpdate({
       target: schema.itemTemplates.id,
       set: updateData,
@@ -1404,6 +1495,7 @@ export async function seedRecipes(db: any) {
       professionRequired: tmpl.professionRequired,
       levelRequired: tmpl.levelRequired,
       baseValue: tmpl.baseValue,
+      weight: tmpl.weight ?? 0,
       ...(tmpl.isFood != null && { isFood: tmpl.isFood }),
       ...(tmpl.foodBuff != null && { foodBuff: tmpl.foodBuff }),
       ...(tmpl.isPerishable != null && { isPerishable: tmpl.isPerishable }),

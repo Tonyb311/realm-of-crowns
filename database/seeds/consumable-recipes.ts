@@ -128,6 +128,7 @@ function buildConsumableTemplates(recipes: ConsumableRecipe[]) {
       professionRequired: recipe.professionRequired,
       levelRequired: recipe.levelRequired,
       baseValue,
+      weight: recipe.consumableStats.weight ?? 0,
     });
   }
 
@@ -156,6 +157,7 @@ export async function seedConsumableRecipes(db: any) {
       professionRequired: tmpl.professionRequired,
       levelRequired: tmpl.levelRequired,
       baseValue: tmpl.baseValue,
+      weight: (tmpl as any).weight ?? 0,
     };
     await db.insert(schema.itemTemplates).values({
       id: stableId,

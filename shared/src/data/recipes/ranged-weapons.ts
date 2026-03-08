@@ -32,7 +32,9 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     xpReward: 6,
     tier: 1,
     outputItemType: 'TOOL',
-    outputStats: {},
+    outputStats: {
+      weight: 0.1,
+    },
   },
 
   // Arrows — basic consumable ammunition
@@ -58,6 +60,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 0,
       durability: 1,
       levelToEquip: 1,
+      weight: 0.05,
     },
   },
 
@@ -87,6 +90,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       levelToEquip: 1,
       twoHanded: true,
       range: 20,
+      weight: 2.0,
     },
   },
 
@@ -117,6 +121,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       levelToEquip: 5,
       twoHanded: true,
       range: 25,
+      weight: 2.5,
     },
   },
 
@@ -151,6 +156,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       levelToEquip: 10,
       twoHanded: true,
       range: 35,
+      weight: 3.0,
     },
   },
 
@@ -177,6 +183,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 0,
       durability: 1,
       levelToEquip: 10,
+      weight: 0.05,
     },
   },
 
@@ -208,6 +215,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       levelToEquip: 15,
       twoHanded: true,
       range: 30,
+      weight: 3.5,
     },
   },
 
@@ -232,6 +240,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       armor: 1,
       durability: 60,
       levelToEquip: 10,
+      weight: 1.0,
     },
   },
 
@@ -262,6 +271,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 0,
       durability: 1,
       levelToEquip: 20,
+      weight: 0.05,
     },
   },
 
@@ -293,6 +303,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       levelToEquip: 25,
       twoHanded: true,
       range: 40,
+      weight: 3.0,
     },
   },
 
@@ -317,6 +328,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       armor: 3,
       durability: 100,
       levelToEquip: 25,
+      weight: 1.0,
     },
   },
 
@@ -343,6 +355,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       requiredDex: 0,
       durability: 1,
       levelToEquip: 30,
+      weight: 0.05,
     },
   },
 
@@ -375,6 +388,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       levelToEquip: 35,
       twoHanded: true,
       range: 45,
+      weight: 3.0,
     },
   },
 
@@ -406,6 +420,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       durability: 1,
       levelToEquip: 40,
       bonusDamage: 3,
+      weight: 0.05,
     },
   },
 
@@ -441,6 +456,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       levelToEquip: 45,
       twoHanded: true,
       range: 45,
+      weight: 1.8,
     },
   },
 
@@ -477,6 +493,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       levelToEquip: 45,
       twoHanded: true,
       range: 40,
+      weight: 1.8,
     },
   },
 
@@ -508,6 +525,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       durability: 1,
       levelToEquip: 55,
       bonusDamage: 4,
+      weight: 0.05,
     },
   },
 
@@ -543,6 +561,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       levelToEquip: 60,
       twoHanded: true,
       range: 50,
+      weight: 3.9,
     },
   },
 
@@ -579,6 +598,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       levelToEquip: 60,
       twoHanded: true,
       range: 45,
+      weight: 4.6,
     },
   },
 
@@ -608,6 +628,7 @@ const _RANGED_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
       durability: 1,
       levelToEquip: 10,
       range: 10,
+      weight: 0.5,
     },
   },
 ];

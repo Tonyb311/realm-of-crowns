@@ -196,6 +196,7 @@ export async function seedWeaponRecipes(db: any) {
       professionRequired: recipe.professionRequired as ProfessionType,
       levelRequired: recipe.levelRequired,
       baseValue,
+      weight: (stats as any).weight ?? 0,
     };
     await db.insert(schema.itemTemplates).values({
       id: stableId,

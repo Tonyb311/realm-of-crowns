@@ -18,6 +18,7 @@ export interface StarterWeaponDef {
     bonusDamage: number;
     bonusAttack: number;
     damageType: string;
+    weight: number;
   };
 }
 
@@ -29,7 +30,7 @@ export const STARTER_WEAPONS: Record<string, StarterWeaponDef> = {
     stats: {
       diceCount: 1, diceSides: 6,
       damageModifierStat: 'str', attackModifierStat: 'str',
-      bonusDamage: 0, bonusAttack: 0, damageType: 'SLASHING',
+      bonusDamage: 0, bonusAttack: 0, damageType: 'SLASHING', weight: 2.4,
     },
   },
   ranger: {
@@ -39,7 +40,7 @@ export const STARTER_WEAPONS: Record<string, StarterWeaponDef> = {
     stats: {
       diceCount: 1, diceSides: 6,
       damageModifierStat: 'dex', attackModifierStat: 'dex',
-      bonusDamage: 0, bonusAttack: 0, damageType: 'PIERCING',
+      bonusDamage: 0, bonusAttack: 0, damageType: 'PIERCING', weight: 1.6,
     },
   },
   rogue: {
@@ -49,7 +50,7 @@ export const STARTER_WEAPONS: Record<string, StarterWeaponDef> = {
     stats: {
       diceCount: 1, diceSides: 4,
       damageModifierStat: 'dex', attackModifierStat: 'dex',
-      bonusDamage: 0, bonusAttack: 0, damageType: 'PIERCING',
+      bonusDamage: 0, bonusAttack: 0, damageType: 'PIERCING', weight: 0.8,
     },
   },
   mage: {
@@ -59,7 +60,7 @@ export const STARTER_WEAPONS: Record<string, StarterWeaponDef> = {
     stats: {
       diceCount: 1, diceSides: 6,
       damageModifierStat: 'int', attackModifierStat: 'int',
-      bonusDamage: 0, bonusAttack: 0, damageType: 'BLUDGEONING',
+      bonusDamage: 0, bonusAttack: 0, damageType: 'BLUDGEONING', weight: 4,
     },
   },
   psion: {
@@ -69,7 +70,7 @@ export const STARTER_WEAPONS: Record<string, StarterWeaponDef> = {
     stats: {
       diceCount: 1, diceSides: 6,
       damageModifierStat: 'int', attackModifierStat: 'int',
-      bonusDamage: 0, bonusAttack: 0, damageType: 'FORCE',
+      bonusDamage: 0, bonusAttack: 0, damageType: 'FORCE', weight: 2,
     },
   },
   bard: {
@@ -79,7 +80,7 @@ export const STARTER_WEAPONS: Record<string, StarterWeaponDef> = {
     stats: {
       diceCount: 1, diceSides: 6,
       damageModifierStat: 'cha', attackModifierStat: 'cha',
-      bonusDamage: 0, bonusAttack: 0, damageType: 'SLASHING',
+      bonusDamage: 0, bonusAttack: 0, damageType: 'SLASHING', weight: 3,
     },
   },
   cleric: {
@@ -89,7 +90,7 @@ export const STARTER_WEAPONS: Record<string, StarterWeaponDef> = {
     stats: {
       diceCount: 1, diceSides: 6,
       damageModifierStat: 'wis', attackModifierStat: 'wis',
-      bonusDamage: 0, bonusAttack: 0, damageType: 'BLUDGEONING',
+      bonusDamage: 0, bonusAttack: 0, damageType: 'BLUDGEONING', weight: 3.2,
     },
   },
 };
@@ -115,6 +116,7 @@ export interface StarterArmorDef {
   description: string;
   stats: {
     ac: number;
+    weight: number;
   };
 }
 
@@ -122,5 +124,5 @@ export const STARTER_ARMOR: StarterArmorDef = {
   templateId: 'starter-rustic-leather-vest',
   name: 'Rustic Leather Vest',
   description: 'A worn but sturdy leather vest. It won\'t stop a dragon\'s claw, but it might save your life against a goblin.',
-  stats: { ac: 2 },
+  stats: { ac: 2, weight: 5 },
 };

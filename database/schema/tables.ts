@@ -651,6 +651,7 @@ export const itemTemplates = pgTable("item_templates", {
 	shelfLifeDays: integer("shelf_life_days"),
 	isPotion: boolean("is_potion").default(false).notNull(),
 	baseValue: integer("base_value").default(0).notNull(),
+	weight: doublePrecision().default(0).notNull(),
 }, (table) => [
 	index("item_templates_rarity_idx").using("btree", table.rarity.asc().nullsLast().op("enum_ops")),
 	index("item_templates_type_idx").using("btree", table.type.asc().nullsLast().op("enum_ops")),

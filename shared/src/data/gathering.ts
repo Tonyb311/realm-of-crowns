@@ -21,6 +21,7 @@ export interface GatheringItem {
   foodBuff: { stat: string; value: number } | null;
   baseValue: number;
   icon: string;
+  weight: number;
 }
 
 export interface GatheringSpotDef {
@@ -47,6 +48,7 @@ export const APPLES: GatheringItem = {
   foodBuff: { stat: 'constitution', value: 1 },
   baseValue: 3,
   icon: '\uD83C\uDF4E',
+  weight: 0.3,
 };
 
 export const RAW_FISH: GatheringItem = {
@@ -58,6 +60,7 @@ export const RAW_FISH: GatheringItem = {
   foodBuff: null,
   baseValue: 4,
   icon: '\uD83D\uDC1F',
+  weight: 1,
 };
 
 export const RIVER_TROUT: GatheringItem = {
@@ -69,6 +72,7 @@ export const RIVER_TROUT: GatheringItem = {
   foodBuff: null,
   baseValue: 22,
   icon: '\uD83D\uDC1F',
+  weight: 1,
 };
 
 export const LAKE_PERCH: GatheringItem = {
@@ -80,6 +84,7 @@ export const LAKE_PERCH: GatheringItem = {
   foodBuff: null,
   baseValue: 25,
   icon: '\uD83D\uDC1F',
+  weight: 1,
 };
 
 export const WILD_BERRIES: GatheringItem = {
@@ -91,6 +96,7 @@ export const WILD_BERRIES: GatheringItem = {
   foodBuff: { stat: 'wisdom', value: 1 },
   baseValue: 2,
   icon: '\uD83E\uDED0',
+  weight: 0.3,
 };
 
 export const WILD_HERBS: GatheringItem = {
@@ -102,6 +108,7 @@ export const WILD_HERBS: GatheringItem = {
   foodBuff: { stat: 'intelligence', value: 1 },
   baseValue: 5,
   icon: '\uD83C\uDF3F',
+  weight: 0.1,
 };
 
 export const IRON_ORE_CHUNKS: GatheringItem = {
@@ -113,6 +120,7 @@ export const IRON_ORE_CHUNKS: GatheringItem = {
   foodBuff: null,
   baseValue: 6,
   icon: '\u26CF\uFE0F',
+  weight: 3,
 };
 
 export const WOOD_LOGS: GatheringItem = {
@@ -124,6 +132,7 @@ export const WOOD_LOGS: GatheringItem = {
   foodBuff: null,
   baseValue: 5,
   icon: '\uD83E\uDEB5',
+  weight: 4,
 };
 
 export const STONE_BLOCKS: GatheringItem = {
@@ -135,6 +144,7 @@ export const STONE_BLOCKS: GatheringItem = {
   foodBuff: null,
   baseValue: 7,
   icon: '\uD83E\uDEA8',
+  weight: 5,
 };
 
 export const CLAY: GatheringItem = {
@@ -146,6 +156,7 @@ export const CLAY: GatheringItem = {
   foodBuff: null,
   baseValue: 4,
   icon: '\uD83C\uDFFA',
+  weight: 3,
 };
 
 export const GRAIN: GatheringItem = {
@@ -157,6 +168,7 @@ export const GRAIN: GatheringItem = {
   foodBuff: null,
   baseValue: 3,
   icon: '\uD83C\uDF3E',
+  weight: 0.5,
 };
 
 export const VEGETABLES: GatheringItem = {
@@ -168,6 +180,7 @@ export const VEGETABLES: GatheringItem = {
   foodBuff: { stat: 'constitution', value: 1 },
   baseValue: 3,
   icon: '\uD83E\uDD55',
+  weight: 0.5,
 };
 
 export const WILD_GAME_MEAT: GatheringItem = {
@@ -179,6 +192,7 @@ export const WILD_GAME_MEAT: GatheringItem = {
   foodBuff: { stat: 'strength', value: 1 },
   baseValue: 5,
   icon: '\uD83C\uDF56',
+  weight: 2,
 };
 
 // --- HUNTER Tiered Gathering Resources ---
@@ -192,6 +206,7 @@ export const ANIMAL_PELTS: GatheringItem = {
   foodBuff: null,
   baseValue: 8,
   icon: '\uD83E\uDDE4',
+  weight: 1,
 };
 
 export const WOLF_PELTS: GatheringItem = {
@@ -203,6 +218,7 @@ export const WOLF_PELTS: GatheringItem = {
   foodBuff: null,
   baseValue: 28,
   icon: '\uD83D\uDC3A',
+  weight: 1.5,
 };
 
 export const BEAR_HIDES: GatheringItem = {
@@ -214,6 +230,7 @@ export const BEAR_HIDES: GatheringItem = {
   foodBuff: null,
   baseValue: 35,
   icon: '\uD83D\uDC3B',
+  weight: 2,
 };
 
 // --- FARMER T2 Field Crops (Hops, Grapes) ---
@@ -227,6 +244,7 @@ export const HOPS: GatheringItem = {
   foodBuff: null,
   baseValue: 6,
   icon: '\uD83C\uDF3F',
+  weight: 0.5,
 };
 
 export const GRAPES: GatheringItem = {
@@ -238,6 +256,7 @@ export const GRAPES: GatheringItem = {
   foodBuff: null,
   baseValue: 6,
   icon: '\uD83C\uDF47',
+  weight: 0.5,
 };
 
 // --- FARMER T2 Cotton Field ---
@@ -251,6 +270,7 @@ export const COTTON: GatheringItem = {
   foodBuff: null,
   baseValue: 4,
   icon: '☁️',
+  weight: 0.3,
 };
 
 // --- MINER T2/T3 Private Assets (Coal, Silver Ore) ---
@@ -264,6 +284,7 @@ export const COAL: GatheringItem = {
   foodBuff: null,
   baseValue: 12,
   icon: '\u26AB',
+  weight: 2,
 };
 
 export const SILVER_ORE: GatheringItem = {
@@ -275,6 +296,7 @@ export const SILVER_ORE: GatheringItem = {
   foodBuff: null,
   baseValue: 30,
   icon: '\uD83E\uDEA8',
+  weight: 3,
 };
 
 // --- LUMBERJACK T2 Private Asset (Hardwood) + Public Softwood ---
@@ -288,6 +310,7 @@ export const SOFTWOOD: GatheringItem = {
   foodBuff: null,
   baseValue: 3,
   icon: '\uD83E\uDEB5',
+  weight: 2,
 };
 
 export const HARDWOOD: GatheringItem = {
@@ -299,6 +322,7 @@ export const HARDWOOD: GatheringItem = {
   foodBuff: null,
   baseValue: 25,
   icon: '\uD83E\uDEB5',
+  weight: 3,
 };
 
 // --- HERBALIST T3 Resources (L7+ at herb spots) ---
@@ -312,6 +336,7 @@ export const MEDICINAL_HERBS: GatheringItem = {
   foodBuff: null,
   baseValue: 28,
   icon: '\uD83C\uDF3F',
+  weight: 0.1,
 };
 
 export const GLOWCAP_MUSHROOMS: GatheringItem = {
@@ -323,6 +348,7 @@ export const GLOWCAP_MUSHROOMS: GatheringItem = {
   foodBuff: null,
   baseValue: 32,
   icon: '\uD83C\uDF44',
+  weight: 0.1,
 };
 
 // --- RANCHER Livestock Products ---
@@ -336,6 +362,7 @@ export const EGGS: GatheringItem = {
   foodBuff: { stat: 'constitution', value: 1 },
   baseValue: 5,
   icon: '\uD83E\uDD5A',
+  weight: 0.3,
 };
 
 export const MILK: GatheringItem = {
@@ -347,6 +374,7 @@ export const MILK: GatheringItem = {
   foodBuff: { stat: 'constitution', value: 1 },
   baseValue: 6,
   icon: '\uD83E\uDD5B',
+  weight: 1,
 };
 
 export const WOOL_ITEM: GatheringItem = {
@@ -358,6 +386,7 @@ export const WOOL_ITEM: GatheringItem = {
   foodBuff: null,
   baseValue: 15,
   icon: '\uD83E\uDDF6',
+  weight: 0.5,
 };
 
 export const FINE_WOOL: GatheringItem = {
@@ -369,6 +398,7 @@ export const FINE_WOOL: GatheringItem = {
   foodBuff: null,
   baseValue: 30,
   icon: '\uD83E\uDDF6',
+  weight: 0.5,
 };
 
 export const SILKWORM_COCOONS: GatheringItem = {
@@ -380,6 +410,7 @@ export const SILKWORM_COCOONS: GatheringItem = {
   foodBuff: null,
   baseValue: 38,
   icon: '\uD83D\uDC1B',
+  weight: 0.1,
 };
 
 // ============================================================
