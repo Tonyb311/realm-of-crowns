@@ -62,7 +62,7 @@ import {
   type RacialCombatTracker,
 } from './racial-combat-abilities';
 import { processItemDrops } from '../lib/loot-items';
-import { applyClassWeaponStat } from '../lib/road-encounter';
+import { applyClassWeaponStat, applyConsumableBuffs } from '../lib/road-encounter';
 import { ALL_ABILITIES } from '@shared/data/skills';
 import { classifyAbility } from './combat-simulator';
 
@@ -1087,6 +1087,9 @@ export async function resolveNodePvE(
     (playerCombatant as any).nonProficientWeapon = profCheck.nonProficientWeapon;
   }
 
+  // Apply consumable buffs (potions, food, scrolls)
+  await applyConsumableBuffs(playerCombatant, character.id);
+
   const monsterCombatant = createMonsterCombatant(
     `monster-${monster.id}`,
     monster.name,
@@ -1245,6 +1248,7 @@ export async function resolveNodePvP(
   ];
   (travelerCombatant as any).extraAttacks = getAttacksPerAction(traveler.class ?? '', traveler.level);
   (travelerCombatant as any).featIds = (traveler.feats as string[]) ?? [];
+  await applyConsumableBuffs(travelerCombatant, traveler.id);
 
   const ambusherCombatant = createCharacterCombatant(
     ambusher.id, ambusher.name, 1,
@@ -1263,6 +1267,7 @@ export async function resolveNodePvP(
   ];
   (ambusherCombatant as any).extraAttacks = getAttacksPerAction(ambusher.class ?? '', ambusher.level);
   (ambusherCombatant as any).featIds = (ambusher.feats as string[]) ?? [];
+  await applyConsumableBuffs(ambusherCombatant, ambusher.id);
 
   // Create combat state
   const sessionId = `tick-pvp-${travelerId}-${ambusherId}-${Date.now()}`;
@@ -1412,6 +1417,7 @@ export async function resolveGroupCombat(
     ];
     (combatant as any).extraAttacks = getAttacksPerAction(char.class ?? '', char.level);
     (combatant as any).featIds = (char.feats as string[]) ?? [];
+    await applyConsumableBuffs(combatant, char.id);
     combatants.push(combatant);
 
     const params = await buildCombatParams(char.id);
@@ -1455,6 +1461,7 @@ export async function resolveGroupCombat(
     ];
     (combatant as any).extraAttacks = getAttacksPerAction(char.class ?? '', char.level);
     (combatant as any).featIds = (char.feats as string[]) ?? [];
+    await applyConsumableBuffs(combatant, char.id);
     combatants.push(combatant);
 
     const params = await buildCombatParams(char.id);

@@ -31,7 +31,7 @@ import type {
   MonsterAbility,
 } from '@shared/types/combat';
 import { getModifier } from '@shared/types/combat';
-import { getProficiencyBonus, STAT_HARD_CAP } from '@shared/utils/bounded-accuracy';
+import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
 import { CLASS_SAVE_PROFICIENCIES, getAttacksPerAction } from '@shared/data/combat-constants';
 import {
   ACTION_XP,
@@ -351,8 +351,6 @@ export interface RoadEncounterResult {
 // Consumable Buff Application
 // ---------------------------------------------------------------------------
 
-const STAT_KEYS = ['str', 'dex', 'con', 'int', 'wis', 'cha'] as const;
-
 /**
  * Query active consumable effects for a character and apply them to a combatant.
  * Modifies the combatant in-place: stat buffs, AC buffs, poison immunity, prepared scrolls.
@@ -392,13 +390,6 @@ export async function applyConsumableBuffs(combatant: Combatant, characterId: st
     // Track CON changes for HP recalculation
     if (effect.effectType === 'buff_constitution' || effect.effectType2 === 'buff_constitution') {
       conBuffed = true;
-    }
-  }
-
-  // Cap all stats at STAT_HARD_CAP
-  for (const key of STAT_KEYS) {
-    if (combatant.stats[key] > STAT_HARD_CAP) {
-      combatant.stats[key] = STAT_HARD_CAP;
     }
   }
 
