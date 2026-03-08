@@ -1,19 +1,20 @@
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, lt, gt, and } from 'drizzle-orm';
+import { serviceReputations } from '@database/tables';
 import { getGameDay } from '../lib/game-day';
 
 export async function processReputationDecay(): Promise<void> {
   const gameDay = getGameDay();
   const decayThreshold = gameDay - 7; // 7 days of inactivity
 
-  const staleReps = await prisma.serviceReputation.findMany({
-    where: { lastActiveDay: { lt: decayThreshold }, reputation: { gt: 0 } },
+  const staleReps = await db.query.serviceReputations.findMany({
+    where: and(lt(serviceReputations.lastActiveDay, decayThreshold), gt(serviceReputations.reputation, 0)),
   });
 
   for (const rep of staleReps) {
-    await prisma.serviceReputation.update({
-      where: { id: rep.id },
-      data: { reputation: Math.max(0, rep.reputation - 1) },
-    });
+    await db.update(serviceReputations)
+      .set({ reputation: Math.max(0, rep.reputation - 1) })
+      .where(eq(serviceReputations.id, rep.id));
   }
 
   if (staleReps.length > 0) {

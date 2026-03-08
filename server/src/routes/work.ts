@@ -1,11 +1,26 @@
+import crypto from 'crypto';
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, sql, count } from 'drizzle-orm';
+import {
+  gatheringActions,
+  craftingActions,
+  resources,
+  townResources,
+  playerProfessions,
+  towns,
+  characterEquipment,
+  items,
+  itemTemplates,
+  inventories,
+  characters,
+} from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { ProfessionType, ResourceType, Race } from '@prisma/client';
+import type { ProfessionType, ResourceType, Race } from '@shared/enums';
 import { getRace } from '@shared/data/races';
 import { getProficiencyBonus, getModifier as getStatModifier } from '@shared/utils/bounded-accuracy';
 import { getProfessionByType } from '@shared/data/professions';
@@ -26,7 +41,7 @@ import {
   getMaxQueueSlots,
   applyGnomeEurekaMoment,
 } from '../services/racial-special-profession-mechanics';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
@@ -105,22 +120,23 @@ function getRacialXpBonus(race: Race, professionType: ProfessionType): number {
  * is equipped or if the equipped tool doesn't match the given profession.
  */
 async function getEquippedTool(characterId: string, professionType: ProfessionType) {
-  const equip = await prisma.characterEquipment.findUnique({
-    where: {
-      characterId_slot: { characterId, slot: 'TOOL' },
-    },
-    include: { item: { include: { template: true } } },
+  const equip = await db.query.characterEquipment.findFirst({
+    where: and(
+      eq(characterEquipment.characterId, characterId),
+      eq(characterEquipment.slot, 'TOOL'),
+    ),
+    with: { item: { with: { itemTemplate: true } } },
   });
 
-  if (!equip || equip.item.template.type !== 'TOOL') return null;
+  if (!equip || equip.item.itemTemplate.type !== 'TOOL') return null;
 
-  const stats = equip.item.template.stats as Record<string, unknown>;
+  const stats = equip.item.itemTemplate.stats as Record<string, unknown>;
   if (stats.professionType !== professionType) return null;
 
   return {
     equipmentId: equip.id,
     item: equip.item,
-    template: equip.item.template,
+    template: equip.item.itemTemplate,
     speedBonus: (stats.speedBonus as number) ?? 0,
     yieldBonus: (stats.yieldBonus as number) ?? 0,
   };
@@ -143,41 +159,49 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startWork
     }
 
     // Check not already gathering
-    const activeGathering = await prisma.gatheringAction.findFirst({
-      where: { characterId: character.id, status: 'IN_PROGRESS' },
+    const activeGathering = await db.query.gatheringActions.findFirst({
+      where: and(
+        eq(gatheringActions.characterId, character.id),
+        eq(gatheringActions.status, 'IN_PROGRESS'),
+      ),
     });
     if (activeGathering) {
       return res.status(400).json({ error: 'Already working on a gathering action' });
     }
 
     // Check not already crafting
-    const activeCrafting = await prisma.craftingAction.findFirst({
-      where: { characterId: character.id, status: 'IN_PROGRESS' },
+    const activeCrafting = await db.query.craftingActions.findFirst({
+      where: and(
+        eq(craftingActions.characterId, character.id),
+        eq(craftingActions.status, 'IN_PROGRESS'),
+      ),
     });
     if (activeCrafting) {
       return res.status(400).json({ error: 'Cannot work while crafting' });
     }
 
     // Validate resource exists
-    const resource = await prisma.resource.findUnique({ where: { id: resourceId } });
+    const resource = await db.query.resources.findFirst({
+      where: eq(resources.id, resourceId),
+    });
     if (!resource) {
       return res.status(404).json({ error: 'Resource not found' });
     }
 
     // Validate this profession can gather this resource type
     const allowedTypes = PROFESSION_RESOURCE_MAP[profEnum];
-    if (!allowedTypes || !allowedTypes.includes(resource.type)) {
+    if (!allowedTypes || !allowedTypes.includes(resource.type as ResourceType)) {
       return res.status(400).json({
         error: `${professionType} cannot gather ${resource.type} resources`,
       });
     }
 
     // Validate the character's town has this resource type
-    const townResource = await prisma.townResource.findFirst({
-      where: {
-        townId: character.currentTownId,
-        resourceType: resource.type,
-      },
+    const townResource = await db.query.townResources.findFirst({
+      where: and(
+        eq(townResources.townId, character.currentTownId),
+        eq(townResources.resourceType, resource.type),
+      ),
     });
     if (!townResource) {
       return res.status(400).json({ error: 'This resource type is not available in your current town' });
@@ -192,25 +216,23 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startWork
     }
 
     // Get or create the character's profession
-    let profession = await prisma.playerProfession.findUnique({
-      where: {
-        characterId_professionType: {
-          characterId: character.id,
-          professionType: profEnum,
-        },
-      },
+    let profession = await db.query.playerProfessions.findFirst({
+      where: and(
+        eq(playerProfessions.characterId, character.id),
+        eq(playerProfessions.professionType, profEnum),
+      ),
     });
 
     if (!profession) {
-      profession = await prisma.playerProfession.create({
-        data: {
-          characterId: character.id,
-          professionType: profEnum,
-          tier: 'APPRENTICE',
-          level: 1,
-          xp: 0,
-        },
-      });
+      const [created] = await db.insert(playerProfessions).values({
+        id: crypto.randomUUID(),
+        characterId: character.id,
+        professionType: profEnum,
+        tier: 'APPRENTICE',
+        level: 1,
+        xp: 0,
+      }).returning();
+      profession = created;
     }
 
     // Check equipped tool for speed bonus (or apply bare-hands penalty)
@@ -220,9 +242,13 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startWork
     // Calculate gather time with enhanced racial bonuses
     const levelBonus = getProfessionLevelBonus(profession.level);
     const subRaceData = character.subRace as { element?: string; chosenProfession?: string } | null;
-    const townBiome = character.currentTownId
-      ? (await prisma.town.findUnique({ where: { id: character.currentTownId }, select: { biome: true } }))?.biome ?? null
+    const townForBiome = character.currentTownId
+      ? await db.query.towns.findFirst({
+          where: eq(towns.id, character.currentTownId),
+          columns: { biome: true },
+        })
       : null;
+    const townBiome = townForBiome?.biome ?? null;
     const gatherBonus = getRacialGatheringBonus(character.race, subRaceData, profEnum, townBiome);
     const racialSpeedBonus = gatherBonus.speedModifier;
     const timeMultiplier = Math.max(0.25, 1 - levelBonus - racialSpeedBonus - toolSpeedBonus);
@@ -231,16 +257,15 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startWork
     const now = new Date();
     const completesAt = new Date(now.getTime() + gatherTimeMinutes * 60 * 1000);
 
-    const gatheringAction = await prisma.gatheringAction.create({
-      data: {
-        characterId: character.id,
-        resourceId: resource.id,
-        townId: character.currentTownId,
-        status: 'IN_PROGRESS',
-        quantity: 0,
-        tickDate: now,
-      },
-    });
+    const [gatheringAction] = await db.insert(gatheringActions).values({
+      id: crypto.randomUUID(),
+      characterId: character.id,
+      resourceId: resource.id,
+      townId: character.currentTownId,
+      status: 'IN_PROGRESS',
+      quantity: 0,
+      tickDate: now.toISOString(),
+    }).returning();
 
     return res.status(201).json({
       action: {
@@ -264,7 +289,7 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startWork
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'start-work', req)) return;
+    if (handleDbError(error, res, 'start-work', req)) return;
     logRouteError(req, 500, 'Start work error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -275,13 +300,15 @@ router.get('/status', authGuard, characterGuard, requireTown, async (req: Authen
   try {
     const character = req.character!;
 
-    const activeGathering = await prisma.gatheringAction.findFirst({
-      where: {
-        characterId: character.id,
-        status: 'IN_PROGRESS',
-      },
-      include: {
-        resource: { select: { id: true, name: true, type: true, tier: true } },
+    const activeGathering = await db.query.gatheringActions.findFirst({
+      where: and(
+        eq(gatheringActions.characterId, character.id),
+        eq(gatheringActions.status, 'IN_PROGRESS'),
+      ),
+      with: {
+        resource: {
+          columns: { id: true, name: true, type: true, tier: true },
+        },
       },
     });
 
@@ -291,12 +318,11 @@ router.get('/status', authGuard, characterGuard, requireTown, async (req: Authen
 
     // In the daily-tick model, gathering is locked in and resolved at tick.
     // Look up the profession for display
-    const profession = await prisma.playerProfession.findFirst({
-      where: {
-        characterId: character.id,
-        professionType: { in: GATHERING_PROFESSIONS },
-      },
-      orderBy: { updatedAt: 'desc' },
+    const profession = await db.query.playerProfessions.findFirst({
+      where: and(
+        eq(playerProfessions.characterId, character.id),
+      ),
+      orderBy: (t, { desc }) => [desc(t.updatedAt)],
     });
 
     return res.json({
@@ -305,8 +331,8 @@ router.get('/status', authGuard, characterGuard, requireTown, async (req: Authen
       action: {
         id: activeGathering.id,
         resource: activeGathering.resource,
-        lockedInAt: activeGathering.createdAt.toISOString(),
-        tickDate: activeGathering.tickDate?.toISOString() ?? null,
+        lockedInAt: activeGathering.createdAt,
+        tickDate: activeGathering.tickDate ?? null,
         message: 'Locked in for today. Will be resolved at the daily tick.',
       },
       profession: profession
@@ -314,7 +340,7 @@ router.get('/status', authGuard, characterGuard, requireTown, async (req: Authen
         : null,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'work-status', req)) return;
+    if (handleDbError(error, res, 'work-status', req)) return;
     logRouteError(req, 500, 'Work status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -329,12 +355,12 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const activeGathering = await prisma.gatheringAction.findFirst({
-      where: {
-        characterId: character.id,
-        status: 'IN_PROGRESS',
-      },
-      include: {
+    const activeGathering = await db.query.gatheringActions.findFirst({
+      where: and(
+        eq(gatheringActions.characterId, character.id),
+        eq(gatheringActions.status, 'IN_PROGRESS'),
+      ),
+      with: {
         resource: true,
       },
     });
@@ -350,7 +376,7 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
     }
 
     // Determine which profession was used
-    const resourceType = activeGathering.resource.type;
+    const resourceType = activeGathering.resource.type as ResourceType;
     const professionType = (Object.entries(PROFESSION_RESOURCE_MAP) as [ProfessionType, ResourceType[]][]).find(
       ([, types]) => types.includes(resourceType)
     )?.[0];
@@ -359,25 +385,23 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
       return res.status(500).json({ error: 'Could not determine profession for resource' });
     }
 
-    let profession = await prisma.playerProfession.findUnique({
-      where: {
-        characterId_professionType: {
-          characterId: character.id,
-          professionType,
-        },
-      },
+    let profession = await db.query.playerProfessions.findFirst({
+      where: and(
+        eq(playerProfessions.characterId, character.id),
+        eq(playerProfessions.professionType, professionType),
+      ),
     });
 
     if (!profession) {
-      profession = await prisma.playerProfession.create({
-        data: {
-          characterId: character.id,
-          professionType,
-          tier: 'APPRENTICE',
-          level: 1,
-          xp: 0,
-        },
-      });
+      const [created] = await db.insert(playerProfessions).values({
+        id: crypto.randomUUID(),
+        characterId: character.id,
+        professionType,
+        tier: 'APPRENTICE',
+        level: 1,
+        xp: 0,
+      }).returning();
+      profession = created;
     }
 
     // Roll for yield: base 1-3 + d20 + proficiency + stat modifier
@@ -391,11 +415,11 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
     let totalYield = baseYield + Math.max(0, d20Roll - 10); // bonus from roll exceeding DC 10
 
     // Apply town abundance modifier (abundance is 0-100, scale as percentage)
-    const townResource = await prisma.townResource.findFirst({
-      where: {
-        townId: activeGathering.townId,
-        resourceType: activeGathering.resource.type,
-      },
+    const townResource = await db.query.townResources.findFirst({
+      where: and(
+        eq(townResources.townId, activeGathering.townId),
+        eq(townResources.resourceType, activeGathering.resource.type),
+      ),
     });
     if (townResource) {
       const abundanceModifier = townResource.abundance / 100;
@@ -404,9 +428,9 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
 
     // Apply enhanced racial yield bonus
     const subRaceData = character.subRace as { element?: string; chosenProfession?: string } | null;
-    const townForBiome = await prisma.town.findUnique({
-      where: { id: activeGathering.townId },
-      select: { biome: true },
+    const townForBiome = await db.query.towns.findFirst({
+      where: eq(towns.id, activeGathering.townId),
+      columns: { biome: true },
     });
     const gatherBonus = getRacialGatheringBonus(
       character.race,
@@ -435,80 +459,75 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
     // Find or create an ItemTemplate for this resource material
     // Prefer stable-ID pattern so gathered items match recipe ingredient templateIds
     const stableResId = `resource-${activeGathering.resource.name.toLowerCase().replace(/\s+/g, '-')}`;
-    let itemTemplate = await prisma.itemTemplate.findUnique({
-      where: { id: stableResId },
+    let itemTemplate = await db.query.itemTemplates.findFirst({
+      where: eq(itemTemplates.id, stableResId),
     });
     if (!itemTemplate) {
-      itemTemplate = await prisma.itemTemplate.findFirst({
-        where: { name: activeGathering.resource.name, type: 'MATERIAL' },
+      itemTemplate = await db.query.itemTemplates.findFirst({
+        where: and(
+          eq(itemTemplates.name, activeGathering.resource.name),
+          eq(itemTemplates.type, 'MATERIAL'),
+        ),
       });
     }
 
     if (!itemTemplate) {
-      itemTemplate = await prisma.itemTemplate.create({
-        data: {
-          id: stableResId,
-          name: activeGathering.resource.name,
-          type: 'MATERIAL',
-          rarity: activeGathering.resource.tier <= 2 ? 'COMMON' : activeGathering.resource.tier <= 3 ? 'FINE' : 'SUPERIOR',
-          description: `Raw ${activeGathering.resource.name} gathered from the wilds.`,
-          levelRequired: 1,
-        },
-      });
+      const [created] = await db.insert(itemTemplates).values({
+        id: stableResId,
+        name: activeGathering.resource.name,
+        type: 'MATERIAL',
+        rarity: activeGathering.resource.tier <= 2 ? 'COMMON' : activeGathering.resource.tier <= 3 ? 'FINE' : 'SUPERIOR',
+        description: `Raw ${activeGathering.resource.name} gathered from the wilds.`,
+        levelRequired: 1,
+      }).returning();
+      itemTemplate = created;
     }
 
     // Create item and add to inventory, update profession, mark gathering complete — all in a transaction
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Create the item
-      const item = await tx.item.create({
-        data: {
-          templateId: itemTemplate!.id,
-          ownerId: character.id,
-          quality: activeGathering.resource.tier <= 2 ? 'COMMON' : activeGathering.resource.tier <= 3 ? 'FINE' : 'SUPERIOR',
-        },
-      });
+      const [item] = await tx.insert(items).values({
+        id: crypto.randomUUID(),
+        templateId: itemTemplate!.id,
+        ownerId: character.id,
+        quality: activeGathering.resource.tier <= 2 ? 'COMMON' : activeGathering.resource.tier <= 3 ? 'FINE' : 'SUPERIOR',
+      }).returning();
 
       // Check if player already has this item in inventory
-      const existingSlot = await tx.inventory.findFirst({
-        where: {
-          characterId: character.id,
-          item: { templateId: itemTemplate!.id },
-        },
+      // Load all inventory entries and filter in app code (nested where not supported in Drizzle with)
+      const charInventory = await tx.query.inventories.findMany({
+        where: eq(inventories.characterId, character.id),
+        with: { item: true },
       });
+      const existingSlot = charInventory.find(inv => inv.item.templateId === itemTemplate!.id);
 
       if (existingSlot) {
-        await tx.inventory.update({
-          where: { id: existingSlot.id },
-          data: { quantity: existingSlot.quantity + totalYield },
-        });
+        await tx.update(inventories).set({
+          quantity: existingSlot.quantity + totalYield,
+        }).where(eq(inventories.id, existingSlot.id));
         // Remove the extra item we just created since we're stacking
-        await tx.item.delete({ where: { id: item.id } });
+        await tx.delete(items).where(eq(items.id, item.id));
       } else {
-        await tx.inventory.create({
-          data: {
-            characterId: character.id,
-            itemId: item.id,
-            quantity: totalYield,
-          },
+        await tx.insert(inventories).values({
+          id: crypto.randomUUID(),
+          characterId: character.id,
+          itemId: item.id,
+          quantity: totalYield,
         });
       }
 
       // Mark gathering complete
-      await tx.gatheringAction.update({
-        where: { id: activeGathering.id },
-        data: {
-          status: 'COMPLETED',
-          quantity: totalYield,
-        },
-      });
+      await tx.update(gatheringActions).set({
+        status: 'COMPLETED',
+        quantity: totalYield,
+      }).where(eq(gatheringActions.id, activeGathering.id));
 
       // Reduce town resource abundance
       if (townResource) {
         const newAbundance = Math.max(0, townResource.abundance - ABUNDANCE_DEPLETION_PER_GATHER);
-        await tx.townResource.update({
-          where: { id: townResource.id },
-          data: { abundance: newAbundance },
-        });
+        await tx.update(townResources).set({
+          abundance: newAbundance,
+        }).where(eq(townResources.id, townResource.id));
         townResource.abundance = newAbundance;
       }
     });
@@ -531,23 +550,25 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
     );
 
     // Trigger quest progress for GATHER objectives
-    onResourceGather(character.id, activeGathering.resource.type, totalYield);
+    onResourceGather(character.id, activeGathering.resource.type as ResourceType, totalYield);
 
     // Grant character XP from gathering (half of profession XP)
     const characterXpGain = Math.max(1, Math.floor(xpGained / 2));
-    await prisma.character.update({
-      where: { id: character.id },
-      data: { xp: { increment: characterXpGain } },
-    });
+    await db.update(characters).set({
+      xp: sql`${characters.xp} + ${characterXpGain}`,
+    }).where(eq(characters.id, character.id));
 
     // Check for level up after character XP grant
     await checkLevelUp(character.id);
 
     // Check gathering achievements
-    const gatheringCount = await prisma.gatheringAction.count({
-      where: { characterId: character.id, status: 'COMPLETED' },
-    });
-    await checkAchievements(character.id, 'gathering', { completed: gatheringCount });
+    const [gatheringCountResult] = await db.select({ value: count() }).from(gatheringActions).where(
+      and(
+        eq(gatheringActions.characterId, character.id),
+        eq(gatheringActions.status, 'COMPLETED'),
+      ),
+    );
+    await checkAchievements(character.id, 'gathering', { completed: gatheringCountResult.value });
 
     // Decrement tool durability after successful gather
     let toolResult: { broken: boolean; name: string; remaining: number } | null = null;
@@ -555,15 +576,12 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
       const newDurability = tool.item.currentDurability - 1;
       if (newDurability <= 0) {
         // Tool breaks: remove from equipment and mark durability 0
-        await prisma.$transaction([
-          prisma.item.update({
-            where: { id: tool.item.id },
-            data: { currentDurability: 0 },
-          }),
-          prisma.characterEquipment.delete({
-            where: { id: tool.equipmentId },
-          }),
-        ]);
+        await db.transaction(async (tx) => {
+          await tx.update(items).set({
+            currentDurability: 0,
+          }).where(eq(items.id, tool.item.id));
+          await tx.delete(characterEquipment).where(eq(characterEquipment.id, tool.equipmentId));
+        });
         toolResult = { broken: true, name: tool.template.name, remaining: 0 };
 
         // Emit socket event for tool breakage
@@ -573,10 +591,9 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
           professionType,
         });
       } else {
-        await prisma.item.update({
-          where: { id: tool.item.id },
-          data: { currentDurability: newDurability },
-        });
+        await db.update(items).set({
+          currentDurability: newDurability,
+        }).where(eq(items.id, tool.item.id));
         toolResult = { broken: false, name: tool.template.name, remaining: newDurability };
       }
     }
@@ -601,7 +618,7 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
         : null,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'collect-work', req)) return;
+    if (handleDbError(error, res, 'collect-work', req)) return;
     logRouteError(req, 500, 'Collect work error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -616,12 +633,12 @@ router.post('/cancel', authGuard, characterGuard, requireTown, async (req: Authe
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const activeGathering = await prisma.gatheringAction.findFirst({
-      where: {
-        characterId: character.id,
-        status: 'IN_PROGRESS',
-      },
-      include: {
+    const activeGathering = await db.query.gatheringActions.findFirst({
+      where: and(
+        eq(gatheringActions.characterId, character.id),
+        eq(gatheringActions.status, 'IN_PROGRESS'),
+      ),
+      with: {
         resource: true,
       },
     });
@@ -631,7 +648,7 @@ router.post('/cancel', authGuard, characterGuard, requireTown, async (req: Authe
     }
 
     const now = new Date();
-    const elapsed = now.getTime() - activeGathering.createdAt.getTime();
+    const elapsed = now.getTime() - new Date(activeGathering.createdAt).getTime();
     // In the daily-tick model, there's no timer-based completion.
     // Use a fixed "1 day" window to approximate percent complete for partial yield.
     const dayMs = 24 * 60 * 60 * 1000;
@@ -645,63 +662,57 @@ router.post('/cancel', authGuard, characterGuard, requireTown, async (req: Authe
       partialYield = Math.max(1, Math.floor(baseYield * percentComplete));
     }
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Mark gathering as cancelled
-      await tx.gatheringAction.update({
-        where: { id: activeGathering.id },
-        data: {
-          status: 'CANCELLED',
-          quantity: partialYield,
-        },
-      });
+      await tx.update(gatheringActions).set({
+        status: 'CANCELLED',
+        quantity: partialYield,
+      }).where(eq(gatheringActions.id, activeGathering.id));
 
       // If partial yield, add items to inventory
       if (partialYield > 0) {
-        let itemTemplate = await tx.itemTemplate.findFirst({
-          where: {
-            name: activeGathering.resource.name,
-            type: 'MATERIAL',
-          },
+        let itemTemplate = await tx.query.itemTemplates.findFirst({
+          where: and(
+            eq(itemTemplates.name, activeGathering.resource.name),
+            eq(itemTemplates.type, 'MATERIAL'),
+          ),
         });
 
         if (!itemTemplate) {
-          itemTemplate = await tx.itemTemplate.create({
-            data: {
-              name: activeGathering.resource.name,
-              type: 'MATERIAL',
-              rarity: activeGathering.resource.tier <= 2 ? 'COMMON' : activeGathering.resource.tier <= 3 ? 'FINE' : 'SUPERIOR',
-              description: `Raw ${activeGathering.resource.name} gathered from the wilds.`,
-              levelRequired: 1,
-            },
-          });
+          const [created] = await tx.insert(itemTemplates).values({
+            id: crypto.randomUUID(),
+            name: activeGathering.resource.name,
+            type: 'MATERIAL',
+            rarity: activeGathering.resource.tier <= 2 ? 'COMMON' : activeGathering.resource.tier <= 3 ? 'FINE' : 'SUPERIOR',
+            description: `Raw ${activeGathering.resource.name} gathered from the wilds.`,
+            levelRequired: 1,
+          }).returning();
+          itemTemplate = created;
         }
 
-        const existingSlot = await tx.inventory.findFirst({
-          where: {
-            characterId: character.id,
-            item: { templateId: itemTemplate.id },
-          },
+        // Load all inventory entries and filter in app code
+        const charInventory = await tx.query.inventories.findMany({
+          where: eq(inventories.characterId, character.id),
+          with: { item: true },
         });
+        const existingSlot = charInventory.find(inv => inv.item.templateId === itemTemplate!.id);
 
         if (existingSlot) {
-          await tx.inventory.update({
-            where: { id: existingSlot.id },
-            data: { quantity: existingSlot.quantity + partialYield },
-          });
+          await tx.update(inventories).set({
+            quantity: existingSlot.quantity + partialYield,
+          }).where(eq(inventories.id, existingSlot.id));
         } else {
-          const item = await tx.item.create({
-            data: {
-              templateId: itemTemplate.id,
-              ownerId: character.id,
-              quality: activeGathering.resource.tier <= 2 ? 'COMMON' : activeGathering.resource.tier <= 3 ? 'FINE' : 'SUPERIOR',
-            },
-          });
-          await tx.inventory.create({
-            data: {
-              characterId: character.id,
-              itemId: item.id,
-              quantity: partialYield,
-            },
+          const [item] = await tx.insert(items).values({
+            id: crypto.randomUUID(),
+            templateId: itemTemplate.id,
+            ownerId: character.id,
+            quality: activeGathering.resource.tier <= 2 ? 'COMMON' : activeGathering.resource.tier <= 3 ? 'FINE' : 'SUPERIOR',
+          }).returning();
+          await tx.insert(inventories).values({
+            id: crypto.randomUUID(),
+            characterId: character.id,
+            itemId: item.id,
+            quantity: partialYield,
           });
         }
       }
@@ -715,7 +726,7 @@ router.post('/cancel', authGuard, characterGuard, requireTown, async (req: Authe
         : null,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'cancel-work', req)) return;
+    if (handleDbError(error, res, 'cancel-work', req)) return;
     logRouteError(req, 500, 'Cancel work error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -726,13 +737,13 @@ router.get('/professions', authGuard, characterGuard, requireTown, async (req: A
   try {
     const character = req.character!;
 
-    const professions = await prisma.playerProfession.findMany({
-      where: { characterId: character.id },
-      orderBy: { level: 'desc' },
+    const charProfessions = await db.query.playerProfessions.findMany({
+      where: eq(playerProfessions.characterId, character.id),
+      orderBy: (t, { desc }) => [desc(t.level)],
     });
 
     return res.json({
-      professions: professions.map((p) => ({
+      professions: charProfessions.map((p) => ({
         type: p.professionType,
         tier: p.tier,
         level: p.level,
@@ -741,7 +752,7 @@ router.get('/professions', authGuard, characterGuard, requireTown, async (req: A
       })),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get-professions', req)) return;
+    if (handleDbError(error, res, 'get-professions', req)) return;
     logRouteError(req, 500, 'Get professions error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

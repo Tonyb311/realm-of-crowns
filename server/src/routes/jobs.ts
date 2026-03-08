@@ -4,14 +4,16 @@
 
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { Prisma } from '@prisma/client';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, desc, sql } from 'drizzle-orm';
+import { ownedAssets, jobListings, dailyActions, playerProfessions, houses, houseStorage, itemTemplates, characters } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
+import crypto from 'crypto';
 import { getTodayTickDate, getNextTickTime, getGameDay } from '../lib/game-day';
 import { ASSET_TIERS, PROFESSION_ASSET_TYPES } from '@shared/data/assets';
 import { RESOURCE_MAP, GATHER_SPOT_PROFESSION_MAP } from '@shared/data/gathering';
@@ -55,7 +57,7 @@ router.post('/post', authGuard, characterGuard, validate(postJobSchema), async (
     const { assetId, jobType, pay } = req.body;
 
     // 1. Find asset, check ownership
-    const asset = await prisma.ownedAsset.findUnique({ where: { id: assetId } });
+    const asset = await db.query.ownedAssets.findFirst({ where: eq(ownedAssets.id, assetId) });
     if (!asset) {
       return res.status(404).json({ error: 'Asset not found' });
     }
@@ -69,8 +71,8 @@ router.post('/post', authGuard, characterGuard, validate(postJobSchema), async (
     }
 
     // 3. Check no existing OPEN job for this asset
-    const existingJob = await prisma.jobListing.findFirst({
-      where: { assetId, status: 'OPEN' },
+    const existingJob = await db.query.jobListings.findFirst({
+      where: and(eq(jobListings.assetId, assetId), eq(jobListings.status, 'OPEN')),
     });
     if (existingJob) {
       return res.status(400).json({ error: 'An open job already exists for this asset' });
@@ -102,16 +104,15 @@ router.post('/post', authGuard, characterGuard, validate(postJobSchema), async (
     }
 
     // 5. Create job listing
-    const job = await prisma.jobListing.create({
-      data: {
-        assetId,
-        ownerId: character.id,
-        townId: asset.townId,
-        jobType,
-        wage: pay,
-        status: 'OPEN',
-      },
-    });
+    const [job] = await db.insert(jobListings).values({
+      id: crypto.randomUUID(),
+      assetId,
+      ownerId: character.id,
+      townId: asset.townId,
+      jobType,
+      wage: pay,
+      status: 'OPEN',
+    }).returning();
 
     return res.status(201).json({
       success: true,
@@ -124,7 +125,7 @@ router.post('/post', authGuard, characterGuard, validate(postJobSchema), async (
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'jobs-post', req)) return;
+    if (handleDbError(error, res, 'jobs-post', req)) return;
     logRouteError(req, 500, 'Jobs post error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -140,13 +141,19 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
     const { id } = req.params;
 
     // 1. Find the job
-    const job = await prisma.jobListing.findUnique({
-      where: { id },
-      include: { asset: true, owner: { select: { id: true, gold: true } } },
+    const job = await db.query.jobListings.findFirst({
+      where: eq(jobListings.id, id),
+      with: {
+        ownedAsset: true,
+        character_ownerId: { columns: { id: true, gold: true } },
+      },
     });
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });
     }
+
+    const asset = job.ownedAsset;
+    const owner = job.character_ownerId;
 
     // 2. Validations
     if (job.status !== 'OPEN') {
@@ -161,8 +168,8 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
 
     // 3. Check daily action not used
     const todayTick = getTodayTickDate();
-    const existingAction = await prisma.dailyAction.findFirst({
-      where: { characterId: character.id, tickDate: todayTick },
+    const existingAction = await db.query.dailyActions.findFirst({
+      where: and(eq(dailyActions.characterId, character.id), eq(dailyActions.tickDate, todayTick.toISOString())),
     });
     if (existingAction) {
       return res.status(429).json({
@@ -173,10 +180,10 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
     }
 
     // 4. Determine profession match for yield/XP bonus
-    const assetProfession = GATHER_SPOT_PROFESSION_MAP[job.asset.spotType];
+    const assetProfession = GATHER_SPOT_PROFESSION_MAP[asset.spotType];
     const workerHasMatchingProf = assetProfession
-      ? await prisma.playerProfession.findFirst({
-          where: { characterId: character.id, professionType: assetProfession as any },
+      ? await db.query.playerProfessions.findFirst({
+          where: and(eq(playerProfessions.characterId, character.id), eq(playerProfessions.professionType, assetProfession as any)),
         })
       : null;
     const professionMatch = !!workerHasMatchingProf;
@@ -184,186 +191,189 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
     const xpMultiplier = professionMatch ? 1.0 : 0.5;
 
     // 5. Execute the job in a single transaction
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       // 5a. Determine yield and items
       let itemsProduced: { itemName: string; quantity: number; templateId: string } | null = null;
 
       if (job.jobType === 'harvest_field') {
         // Harvest: FARMER field -> products to house storage
-        if (job.asset.cropState !== 'READY') {
+        if (asset.cropState !== 'READY') {
           throw new Error('Asset is no longer ready for harvest');
         }
 
-        const tierData = ASSET_TIERS[job.asset.tier as 1 | 2 | 3];
+        const tierData = ASSET_TIERS[asset.tier as 1 | 2 | 3];
         if (!tierData) throw new Error('Invalid asset tier');
 
         const baseYield = Math.floor(Math.random() * (tierData.maxYield - tierData.minYield + 1)) + tierData.minYield;
         const finalYield = Math.max(1, Math.floor(baseYield * yieldMultiplier));
 
-        const resourceEntry = RESOURCE_MAP[job.asset.spotType];
-        if (!resourceEntry) throw new Error(`Unknown spot type: ${job.asset.spotType}`);
+        const resourceEntry = RESOURCE_MAP[asset.spotType];
+        if (!resourceEntry) throw new Error(`Unknown spot type: ${asset.spotType}`);
 
         const gatherItem = resourceEntry.item;
         const itemName = gatherItem.templateName;
         const itemType = gatherItem.type === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL';
 
         // Find/create template
-        let template = await tx.itemTemplate.findFirst({ where: { name: itemName } });
+        let template = await tx.query.itemTemplates.findFirst({ where: eq(itemTemplates.name, itemName) });
         if (!template) {
-          template = await tx.itemTemplate.create({
-            data: {
-              name: itemName,
-              type: itemType as any,
-              rarity: 'COMMON',
-              description: gatherItem.description,
-              stats: {},
-              durability: 0,
-              requirements: {},
-              isFood: gatherItem.isFood,
-              foodBuff: gatherItem.foodBuff ?? Prisma.JsonNull,
-              isPerishable: gatherItem.shelfLifeDays != null,
-              shelfLifeDays: gatherItem.shelfLifeDays,
-            },
-          });
+          [template] = await tx.insert(itemTemplates).values({
+            id: crypto.randomUUID(),
+            name: itemName,
+            type: itemType as any,
+            rarity: 'COMMON',
+            description: gatherItem.description,
+            stats: {},
+            durability: 0,
+            requirements: {},
+            isFood: gatherItem.isFood,
+            foodBuff: gatherItem.foodBuff ?? null,
+            isPerishable: gatherItem.shelfLifeDays != null,
+            shelfLifeDays: gatherItem.shelfLifeDays,
+          }).returning();
         }
 
         // Put items in owner's house storage
-        const house = await tx.house.findFirst({
-          where: { characterId: job.ownerId, townId: job.townId },
+        const house = await tx.query.houses.findFirst({
+          where: and(eq(houses.characterId, job.ownerId), eq(houses.townId, job.townId)),
         });
         if (house) {
-          await tx.houseStorage.upsert({
-            where: { houseId_itemTemplateId: { houseId: house.id, itemTemplateId: template.id } },
-            update: { quantity: { increment: finalYield } },
-            create: { houseId: house.id, itemTemplateId: template.id, quantity: finalYield },
+          const existingStorage = await tx.query.houseStorage.findFirst({
+            where: and(eq(houseStorage.houseId, house.id), eq(houseStorage.itemTemplateId, template.id)),
           });
+          if (existingStorage) {
+            await tx.update(houseStorage)
+              .set({ quantity: sql`${houseStorage.quantity} + ${finalYield}` })
+              .where(and(eq(houseStorage.houseId, house.id), eq(houseStorage.itemTemplateId, template.id)));
+          } else {
+            await tx.insert(houseStorage).values({ id: crypto.randomUUID(), houseId: house.id, itemTemplateId: template.id, quantity: finalYield });
+          }
         }
 
         // Reset asset to EMPTY
-        await tx.ownedAsset.update({
-          where: { id: job.asset.id },
-          data: { cropState: 'EMPTY', plantedAt: null, readyAt: null, witheringAt: null },
-        });
+        await tx.update(ownedAssets)
+          .set({ cropState: 'EMPTY', plantedAt: null, readyAt: null, witheringAt: null })
+          .where(eq(ownedAssets.id, asset.id));
 
         itemsProduced = { itemName, quantity: finalYield, templateId: template.id };
 
       } else if (job.jobType === 'plant_field') {
         // Plant: set GROWING state
-        if (job.asset.cropState !== 'EMPTY') {
+        if (asset.cropState !== 'EMPTY') {
           throw new Error('Asset is no longer empty for planting');
         }
 
-        const tierData = ASSET_TIERS[job.asset.tier as 1 | 2 | 3];
+        const tierData = ASSET_TIERS[asset.tier as 1 | 2 | 3];
         if (!tierData) throw new Error('Invalid asset tier');
 
         const plantedAt = getGameDay();
         const readyAt = plantedAt + tierData.growthTicks;
         const witheringAt = readyAt + 3; // WITHER_TICKS
 
-        await tx.ownedAsset.update({
-          where: { id: job.asset.id },
-          data: { cropState: 'GROWING', plantedAt, readyAt, witheringAt },
-        });
+        await tx.update(ownedAssets)
+          .set({ cropState: 'GROWING', plantedAt, readyAt, witheringAt })
+          .where(eq(ownedAssets.id, asset.id));
 
         // No items produced for planting
       } else {
         // RANCHER collection: gather_eggs, milk_cows, shear_sheep
-        const pendingYield = job.asset.pendingYield;
+        const pendingYield = asset.pendingYield;
         if (pendingYield <= 0) {
           throw new Error('No products ready for collection');
         }
 
         const finalYield = Math.max(1, Math.floor(pendingYield * yieldMultiplier));
 
-        const resourceEntry = RESOURCE_MAP[job.asset.spotType];
-        if (!resourceEntry) throw new Error(`Unknown spot type: ${job.asset.spotType}`);
+        const resourceEntry = RESOURCE_MAP[asset.spotType];
+        if (!resourceEntry) throw new Error(`Unknown spot type: ${asset.spotType}`);
 
         const gatherItem = resourceEntry.item;
         const itemName = gatherItem.templateName;
         const itemType = gatherItem.type === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL';
 
-        let template = await tx.itemTemplate.findFirst({ where: { name: itemName } });
+        let template = await tx.query.itemTemplates.findFirst({ where: eq(itemTemplates.name, itemName) });
         if (!template) {
-          template = await tx.itemTemplate.create({
-            data: {
-              name: itemName,
-              type: itemType as any,
-              rarity: 'COMMON',
-              description: gatherItem.description,
-              stats: {},
-              durability: 0,
-              requirements: {},
-              isFood: gatherItem.isFood,
-              foodBuff: gatherItem.foodBuff ?? Prisma.JsonNull,
-              isPerishable: gatherItem.shelfLifeDays != null,
-              shelfLifeDays: gatherItem.shelfLifeDays,
-            },
-          });
+          [template] = await tx.insert(itemTemplates).values({
+            id: crypto.randomUUID(),
+            name: itemName,
+            type: itemType as any,
+            rarity: 'COMMON',
+            description: gatherItem.description,
+            stats: {},
+            durability: 0,
+            requirements: {},
+            isFood: gatherItem.isFood,
+            foodBuff: gatherItem.foodBuff ?? null,
+            isPerishable: gatherItem.shelfLifeDays != null,
+            shelfLifeDays: gatherItem.shelfLifeDays,
+          }).returning();
         }
 
         // Put items in owner's house storage
-        const house = await tx.house.findFirst({
-          where: { characterId: job.ownerId, townId: job.townId },
+        const house = await tx.query.houses.findFirst({
+          where: and(eq(houses.characterId, job.ownerId), eq(houses.townId, job.townId)),
         });
         if (house) {
-          await tx.houseStorage.upsert({
-            where: { houseId_itemTemplateId: { houseId: house.id, itemTemplateId: template.id } },
-            update: { quantity: { increment: finalYield } },
-            create: { houseId: house.id, itemTemplateId: template.id, quantity: finalYield },
+          const existingStorage = await tx.query.houseStorage.findFirst({
+            where: and(eq(houseStorage.houseId, house.id), eq(houseStorage.itemTemplateId, template.id)),
           });
+          if (existingStorage) {
+            await tx.update(houseStorage)
+              .set({ quantity: sql`${houseStorage.quantity} + ${finalYield}` })
+              .where(and(eq(houseStorage.houseId, house.id), eq(houseStorage.itemTemplateId, template.id)));
+          } else {
+            await tx.insert(houseStorage).values({ id: crypto.randomUUID(), houseId: house.id, itemTemplateId: template.id, quantity: finalYield });
+          }
         }
 
         // Reset pending yield
-        await tx.ownedAsset.update({
-          where: { id: job.asset.id },
-          data: { pendingYield: 0, pendingYieldSince: null },
-        });
+        await tx.update(ownedAssets)
+          .set({ pendingYield: 0, pendingYieldSince: null })
+          .where(eq(ownedAssets.id, asset.id));
 
         itemsProduced = { itemName, quantity: finalYield, templateId: template.id };
       }
 
       // 5b. Transfer gold: owner -> worker
-      const actualPay = Math.min(job.wage, job.owner.gold);
+      const actualPay = Math.min(job.wage, owner.gold);
       if (actualPay > 0) {
-        await tx.character.update({ where: { id: job.ownerId }, data: { gold: { decrement: actualPay } } });
-        await tx.character.update({ where: { id: character.id }, data: { gold: { increment: actualPay } } });
+        await tx.update(characters).set({ gold: sql`${characters.gold} - ${actualPay}` }).where(eq(characters.id, job.ownerId));
+        await tx.update(characters).set({ gold: sql`${characters.gold} + ${actualPay}` }).where(eq(characters.id, character.id));
       }
 
       // 5c. Mark job completed
-      await tx.jobListing.update({
-        where: { id: job.id },
-        data: {
+      await tx.update(jobListings)
+        .set({
           status: 'COMPLETED',
           workerId: character.id,
-          completedAt: new Date(),
+          completedAt: new Date().toISOString(),
           productYield: itemsProduced
             ? { itemName: itemsProduced.itemName, quantity: itemsProduced.quantity }
-            : Prisma.JsonNull,
-        },
-      });
+            : null,
+        })
+        .where(eq(jobListings.id, job.id));
 
       // 5d. Create daily action (consume slot)
-      await tx.dailyAction.create({
-        data: {
-          characterId: character.id,
-          tickDate: todayTick,
-          actionType: 'JOB',
-          status: 'COMPLETED',
-          actionTarget: {
-            type: 'job_accepted',
-            jobId: job.id,
-            assetId: job.assetId,
-            townId: job.townId,
-          },
-          result: {
-            type: 'job_completed',
-            jobId: job.id,
-            jobType: job.jobType,
-            assetName: job.asset.name,
-            pay: actualPay,
-            items: itemsProduced,
-            professionMatch,
-          },
+      await tx.insert(dailyActions).values({
+        id: crypto.randomUUID(),
+        characterId: character.id,
+        tickDate: todayTick.toISOString(),
+        actionType: 'JOB',
+        status: 'COMPLETED',
+        actionTarget: {
+          type: 'job_accepted',
+          jobId: job.id,
+          assetId: job.assetId,
+          townId: job.townId,
+        },
+        result: {
+          type: 'job_completed',
+          jobId: job.id,
+          jobType: job.jobType,
+          assetName: asset.name,
+          pay: actualPay,
+          items: itemsProduced,
+          professionMatch,
         },
       });
 
@@ -374,7 +384,7 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
     let xpAwarded = 0;
     if (assetProfession) {
       try {
-        const baseXp = 10 + ((job.asset.tier || 1) * 5);
+        const baseXp = 10 + ((asset.tier || 1) * 5);
         xpAwarded = Math.floor(baseXp * xpMultiplier);
         if (xpAwarded > 0) {
           await addProfessionXP(character.id, assetProfession as any, xpAwarded, 'job');
@@ -389,7 +399,7 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
       job: {
         id: job.id,
         jobType: job.jobType,
-        assetName: job.asset.name,
+        assetName: asset.name,
       },
       reward: {
         gold: result.actualPay,
@@ -399,7 +409,7 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'jobs-accept', req)) return;
+    if (handleDbError(error, res, 'jobs-accept', req)) return;
     logRouteError(req, 500, 'Jobs accept error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -413,13 +423,13 @@ router.get('/town/:townId', authGuard, characterGuard, async (req: Authenticated
   try {
     const { townId } = req.params;
 
-    const jobs = await prisma.jobListing.findMany({
-      where: { townId, status: 'OPEN' },
-      include: {
-        asset: { select: { id: true, name: true, spotType: true, tier: true, professionType: true, pendingYield: true } },
-        owner: { select: { id: true, name: true } },
+    const jobs = await db.query.jobListings.findMany({
+      where: and(eq(jobListings.townId, townId), eq(jobListings.status, 'OPEN')),
+      with: {
+        ownedAsset: { columns: { id: true, name: true, spotType: true, tier: true, professionType: true, pendingYield: true } },
+        character_ownerId: { columns: { id: true, name: true } },
       },
-      orderBy: { wage: 'desc' },
+      orderBy: desc(jobListings.wage),
     });
 
     return res.json({
@@ -428,19 +438,19 @@ router.get('/town/:townId', authGuard, characterGuard, async (req: Authenticated
         jobType: j.jobType,
         jobLabel: JOB_TYPE_LABELS[j.jobType] || j.jobType,
         pay: j.wage,
-        assetId: j.asset.id,
-        assetName: j.asset.name,
-        assetType: j.asset.spotType,
-        assetTier: j.asset.tier,
-        professionType: j.asset.professionType,
-        ownerName: j.owner.name,
-        ownerId: j.owner.id,
+        assetId: j.ownedAsset.id,
+        assetName: j.ownedAsset.name,
+        assetType: j.ownedAsset.spotType,
+        assetTier: j.ownedAsset.tier,
+        professionType: j.ownedAsset.professionType,
+        ownerName: j.character_ownerId.name,
+        ownerId: j.character_ownerId.id,
         autoPosted: j.autoPosted,
-        createdAt: j.createdAt.toISOString(),
+        createdAt: j.createdAt,
       })),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'jobs-browse', req)) return;
+    if (handleDbError(error, res, 'jobs-browse', req)) return;
     logRouteError(req, 500, 'Jobs browse error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -455,7 +465,7 @@ router.post('/:id/cancel', authGuard, characterGuard, async (req: AuthenticatedR
     const character = req.character!;
     const { id } = req.params;
 
-    const job = await prisma.jobListing.findUnique({ where: { id } });
+    const job = await db.query.jobListings.findFirst({ where: eq(jobListings.id, id) });
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });
     }
@@ -466,14 +476,13 @@ router.post('/:id/cancel', authGuard, characterGuard, async (req: AuthenticatedR
       return res.status(400).json({ error: `Cannot cancel — job status is ${job.status}` });
     }
 
-    await prisma.jobListing.update({
-      where: { id },
-      data: { status: 'CANCELLED' },
-    });
+    await db.update(jobListings)
+      .set({ status: 'CANCELLED' })
+      .where(eq(jobListings.id, id));
 
     return res.json({ success: true, message: 'Job cancelled.' });
   } catch (error) {
-    if (handlePrismaError(error, res, 'jobs-cancel', req)) return;
+    if (handleDbError(error, res, 'jobs-cancel', req)) return;
     logRouteError(req, 500, 'Jobs cancel error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -487,12 +496,12 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
   try {
     const character = req.character!;
 
-    const jobs = await prisma.jobListing.findMany({
-      where: { ownerId: character.id, status: 'OPEN' },
-      include: {
-        asset: { select: { id: true, name: true, spotType: true, tier: true } },
+    const jobs = await db.query.jobListings.findMany({
+      where: and(eq(jobListings.ownerId, character.id), eq(jobListings.status, 'OPEN')),
+      with: {
+        ownedAsset: { columns: { id: true, name: true, spotType: true, tier: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: desc(jobListings.createdAt),
     });
 
     return res.json({
@@ -501,15 +510,15 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
         jobType: j.jobType,
         jobLabel: JOB_TYPE_LABELS[j.jobType] || j.jobType,
         pay: j.wage,
-        assetId: j.asset.id,
-        assetName: j.asset.name,
+        assetId: j.ownedAsset.id,
+        assetName: j.ownedAsset.name,
         status: j.status,
         autoPosted: j.autoPosted,
-        createdAt: j.createdAt.toISOString(),
+        createdAt: j.createdAt,
       })),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'jobs-mine', req)) return;
+    if (handleDbError(error, res, 'jobs-mine', req)) return;
     logRouteError(req, 500, 'Jobs mine error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

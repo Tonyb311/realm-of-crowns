@@ -4,7 +4,8 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import router from './routes';
-import { prisma } from './lib/prisma';
+import { db } from './lib/db';
+import { sql } from 'drizzle-orm';
 import { redis } from './lib/redis';
 import { logger } from './lib/logger';
 import { getMetrics, getMetricsContentType } from './lib/metrics';
@@ -61,7 +62,7 @@ app.get('/api/health', async (_req, res) => {
   const details: Record<string, string> = {};
 
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await db.execute(sql`SELECT 1`);
     checks.db = true;
   } catch (err: unknown) {
     details.db = err instanceof Error ? err.message : String(err);

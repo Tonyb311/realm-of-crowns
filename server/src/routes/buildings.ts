@@ -1,11 +1,13 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, gte, inArray, asc, desc, count, sql } from 'drizzle-orm';
+import { buildings, buildingConstructions, towns, townTreasuries, townPolicies, characters, inventories, items, itemTemplates } from '@database/tables';
+import { buildingType as buildingTypeEnum } from '@database/enums';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { BuildingType } from '@prisma/client';
 import {
   WORKSHOP_TYPES,
   STORAGE_TYPES,
@@ -22,18 +24,21 @@ import {
 } from '@shared/data/buildings/requirements';
 import { getEffectiveTaxRate } from '../services/law-effects';
 import { requireDailyAction } from '../middleware/daily-action';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
+import crypto from 'crypto';
+
+type BuildingType = typeof buildingTypeEnum.enumValues[number];
 
 const router = Router();
 
 // ── Zod schemas ──────────────────────────────────────────────
 
-const BUILDING_TYPES = Object.values(BuildingType) as [string, ...string[]];
+const BUILDING_TYPES = buildingTypeEnum.enumValues;
 
 const requestPermitSchema = z.object({
   townId: z.string().min(1, 'Town ID is required'),
-  buildingType: z.enum(BUILDING_TYPES as [BuildingType, ...BuildingType[]], {
+  buildingType: z.enum(BUILDING_TYPES, {
     error: 'Invalid building type',
   }),
   name: z.string().min(1).max(100, 'Name must be 100 characters or less'),
@@ -120,9 +125,9 @@ router.post('/request-permit', authGuard, characterGuard, requireTown, validate(
     }
 
     // Check town exists
-    const town = await prisma.town.findUnique({
-      where: { id: townId },
-      include: { townPolicy: true, buildings: { select: { id: true } } },
+    const town = await db.query.towns.findFirst({
+      where: eq(towns.id, townId),
+      with: { townPolicies: true, buildings: { columns: { id: true } } },
     });
 
     if (!town) {
@@ -130,7 +135,8 @@ router.post('/request-permit', authGuard, characterGuard, requireTown, validate(
     }
 
     // Check building permits are enabled
-    if (town.townPolicy && !town.townPolicy.buildingPermits) {
+    const policy = town.townPolicies?.[0];
+    if (policy && !policy.buildingPermits) {
       return res.status(403).json({ error: 'Building permits are not available in this town' });
     }
 
@@ -143,12 +149,12 @@ router.post('/request-permit', authGuard, characterGuard, requireTown, validate(
     }
 
     // Check player doesn't already own this building type in this town
-    const existingBuilding = await prisma.building.findFirst({
-      where: {
-        ownerId: character.id,
-        townId,
-        type: buildingType as BuildingType,
-      },
+    const existingBuilding = await db.query.buildings.findFirst({
+      where: and(
+        eq(buildings.ownerId, character.id),
+        eq(buildings.townId, townId),
+        eq(buildings.type, buildingType as BuildingType),
+      ),
     });
 
     if (existingBuilding) {
@@ -161,24 +167,22 @@ router.post('/request-permit', authGuard, characterGuard, requireTown, validate(
     const requirements = BUILDING_REQUIREMENTS[buildingType as BuildingType];
 
     // Create building at level 0 (under construction) + initial construction record
-    const building = await prisma.$transaction(async (tx) => {
-      const b = await tx.building.create({
-        data: {
-          ownerId: character.id,
-          townId,
-          type: buildingType as BuildingType,
-          name,
-          level: 0,
-          storage: {},
-        },
-      });
+    const building = await db.transaction(async (tx) => {
+      const [b] = await tx.insert(buildings).values({
+        id: crypto.randomUUID(),
+        ownerId: character.id,
+        townId,
+        type: buildingType as BuildingType,
+        name,
+        level: 0,
+        storage: {},
+      }).returning();
 
-      await tx.buildingConstruction.create({
-        data: {
-          buildingId: b.id,
-          status: 'PENDING',
-          materialsUsed: {},
-        },
+      await tx.insert(buildingConstructions).values({
+        id: crypto.randomUUID(),
+        buildingId: b.id,
+        status: 'PENDING',
+        materialsUsed: {},
       });
 
       return b;
@@ -198,7 +202,7 @@ router.post('/request-permit', authGuard, characterGuard, requireTown, validate(
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'request-permit', req)) return;
+    if (handleDbError(error, res, 'request-permit', req)) return;
     logRouteError(req, 500, 'Request permit error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -217,14 +221,10 @@ router.post('/deposit-materials', authGuard, characterGuard, requireTown, valida
     }
 
     // Load building + active construction
-    const building = await prisma.building.findUnique({
-      where: { id: buildingId },
-      include: {
-        constructions: {
-          where: { status: 'PENDING' },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-        },
+    const building = await db.query.buildings.findFirst({
+      where: eq(buildings.id, buildingId),
+      with: {
+        buildingConstructions: true,
       },
     });
 
@@ -236,7 +236,11 @@ router.post('/deposit-materials', authGuard, characterGuard, requireTown, valida
       return res.status(403).json({ error: 'You do not own this building' });
     }
 
-    const construction = building.constructions[0];
+    // Filter to PENDING constructions, sorted desc by createdAt, take first
+    const pendingConstructions = (building.buildingConstructions || [])
+      .filter((c: any) => c.status === 'PENDING')
+      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const construction = pendingConstructions[0];
     if (!construction) {
       return res.status(400).json({ error: 'No pending construction for this building' });
     }
@@ -252,19 +256,18 @@ router.post('/deposit-materials', authGuard, characterGuard, requireTown, valida
     }));
     const currentDeposited = (construction.materialsUsed ?? {}) as Record<string, number>;
 
-    // Build player inventory map by item name (only fetch materials being deposited)
+    // Build player inventory map by item name
     const materialNames = materials.map((m: { itemName: string }) => m.itemName);
-    const inventory = await prisma.inventory.findMany({
-      where: {
-        characterId: character.id,
-        item: { template: { name: { in: materialNames } } },
-      },
-      include: { item: { include: { template: true } } },
+    const allInventory = await db.query.inventories.findMany({
+      where: eq(inventories.characterId, character.id),
+      with: { item: { with: { itemTemplate: true } } },
     });
+    // Filter to matching template names
+    const inventory = allInventory.filter(inv => materialNames.includes(inv.item.itemTemplate.name));
 
     const inventoryByName = new Map<string, Array<{ invId: string; itemId: string; quantity: number }>>();
     for (const inv of inventory) {
-      const name = inv.item.template.name;
+      const name = inv.item.itemTemplate.name;
       const existing = inventoryByName.get(name) ?? [];
       existing.push({ invId: inv.id, itemId: inv.item.id, quantity: inv.quantity });
       inventoryByName.set(name, existing);
@@ -273,7 +276,7 @@ router.post('/deposit-materials', authGuard, characterGuard, requireTown, valida
     // Validate player has enough of each deposited material
     for (const mat of materials) {
       const entries = inventoryByName.get(mat.itemName) ?? [];
-      const available = entries.reduce((sum, e) => sum + e.quantity, 0);
+      const available = entries.reduce((sum: number, e: any) => sum + e.quantity, 0);
       if (available < mat.quantity) {
         return res.status(400).json({
           error: `Not enough ${mat.itemName}: need ${mat.quantity}, have ${available}`,
@@ -299,7 +302,7 @@ router.post('/deposit-materials', authGuard, characterGuard, requireTown, valida
     // Transaction: consume items from inventory, update construction materialsUsed
     const updatedDeposited = { ...currentDeposited };
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       for (const mat of materials) {
         let remaining = mat.quantity;
         const entries = inventoryByName.get(mat.itemName)!;
@@ -309,13 +312,10 @@ router.post('/deposit-materials', authGuard, characterGuard, requireTown, valida
 
           if (entry.quantity <= remaining) {
             remaining -= entry.quantity;
-            await tx.inventory.delete({ where: { id: entry.invId } });
-            await tx.item.delete({ where: { id: entry.itemId } });
+            await tx.delete(inventories).where(eq(inventories.id, entry.invId));
+            await tx.delete(items).where(eq(items.id, entry.itemId));
           } else {
-            await tx.inventory.update({
-              where: { id: entry.invId },
-              data: { quantity: entry.quantity - remaining },
-            });
+            await tx.update(inventories).set({ quantity: entry.quantity - remaining }).where(eq(inventories.id, entry.invId));
             remaining = 0;
           }
         }
@@ -323,10 +323,7 @@ router.post('/deposit-materials', authGuard, characterGuard, requireTown, valida
         updatedDeposited[mat.itemName] = (updatedDeposited[mat.itemName] ?? 0) + mat.quantity;
       }
 
-      await tx.buildingConstruction.update({
-        where: { id: construction.id },
-        data: { materialsUsed: updatedDeposited },
-      });
+      await tx.update(buildingConstructions).set({ materialsUsed: updatedDeposited }).where(eq(buildingConstructions.id, construction.id));
     });
 
     // Check if all materials are satisfied
@@ -342,7 +339,7 @@ router.post('/deposit-materials', authGuard, characterGuard, requireTown, valida
       readyToStartConstruction: allSatisfied,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'deposit-materials', req)) return;
+    if (handleDbError(error, res, 'deposit-materials', req)) return;
     logRouteError(req, 500, 'Deposit materials error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -350,7 +347,6 @@ router.post('/deposit-materials', authGuard, characterGuard, requireTown, valida
 
 // =========================================================================
 // POST /api/buildings/start-construction
-// Daily action candidate: add requireDailyAction('CONSTRUCT') middleware when daily action tracking is enabled
 // =========================================================================
 router.post('/start-construction', authGuard, characterGuard, requireTown, validate(buildingIdSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -361,15 +357,9 @@ router.post('/start-construction', authGuard, characterGuard, requireTown, valid
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const building = await prisma.building.findUnique({
-      where: { id: buildingId },
-      include: {
-        constructions: {
-          where: { status: 'PENDING' },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-        },
-      },
+    const building = await db.query.buildings.findFirst({
+      where: eq(buildings.id, buildingId),
+      with: { buildingConstructions: true },
     });
 
     if (!building) {
@@ -380,7 +370,10 @@ router.post('/start-construction', authGuard, characterGuard, requireTown, valid
       return res.status(403).json({ error: 'You do not own this building' });
     }
 
-    const construction = building.constructions[0];
+    const pendingConstructions = (building.buildingConstructions || [])
+      .filter((c: any) => c.status === 'PENDING')
+      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const construction = pendingConstructions[0];
     if (!construction) {
       return res.status(400).json({ error: 'No pending construction for this building' });
     }
@@ -416,14 +409,11 @@ router.post('/start-construction', authGuard, characterGuard, requireTown, valid
     const now = new Date();
     const completesAt = new Date(now.getTime() + constructionHours * 60 * 60 * 1000);
 
-    await prisma.buildingConstruction.update({
-      where: { id: construction.id },
-      data: {
-        status: 'IN_PROGRESS',
-        startedAt: now,
-        completesAt,
-      },
-    });
+    await db.update(buildingConstructions).set({
+      status: 'IN_PROGRESS',
+      startedAt: now.toISOString(),
+      completesAt: completesAt.toISOString(),
+    }).where(eq(buildingConstructions.id, construction.id));
 
     return res.json({
       construction: {
@@ -438,7 +428,7 @@ router.post('/start-construction', authGuard, characterGuard, requireTown, valid
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'start-construction', req)) return;
+    if (handleDbError(error, res, 'start-construction', req)) return;
     logRouteError(req, 500, 'Start construction error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -456,22 +446,20 @@ router.get('/construction-status', authGuard, characterGuard, requireTown, async
 
     const character = req.character!;
 
-    const building = await prisma.building.findUnique({
-      where: { id: buildingId },
-      include: {
-        constructions: {
-          where: { status: { in: ['PENDING', 'IN_PROGRESS'] } },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-        },
-      },
+    const building = await db.query.buildings.findFirst({
+      where: eq(buildings.id, buildingId),
+      with: { buildingConstructions: true },
     });
 
     if (!building) {
       return res.status(404).json({ error: 'Building not found' });
     }
 
-    const construction = building.constructions[0];
+    // Filter to PENDING or IN_PROGRESS constructions
+    const activeConstructions = (building.buildingConstructions || [])
+      .filter((c: any) => c.status === 'PENDING' || c.status === 'IN_PROGRESS')
+      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const construction = activeConstructions[0];
     if (!construction) {
       return res.json({
         building: { id: building.id, name: building.name, level: building.level },
@@ -492,17 +480,17 @@ router.get('/construction-status', authGuard, characterGuard, requireTown, async
     let timeProgress = null;
     if (construction.status === 'IN_PROGRESS' && construction.completesAt) {
       const now = new Date();
-      const totalMs = construction.completesAt.getTime() - construction.startedAt.getTime();
-      const elapsedMs = now.getTime() - construction.startedAt.getTime();
+      const totalMs = new Date(construction.completesAt).getTime() - new Date(construction.startedAt!).getTime();
+      const elapsedMs = now.getTime() - new Date(construction.startedAt!).getTime();
       const percent = Math.min(100, Math.max(0, Math.round((elapsedMs / totalMs) * 100)));
-      const remainingMs = Math.max(0, construction.completesAt.getTime() - now.getTime());
+      const remainingMs = Math.max(0, new Date(construction.completesAt).getTime() - now.getTime());
       const remainingMinutes = Math.ceil(remainingMs / 60000);
 
       timeProgress = {
         percent,
         remainingMinutes,
-        completesAt: construction.completesAt.toISOString(),
-        isComplete: now >= construction.completesAt,
+        completesAt: construction.completesAt,
+        isComplete: now >= new Date(construction.completesAt),
       };
     }
 
@@ -517,7 +505,7 @@ router.get('/construction-status', authGuard, characterGuard, requireTown, async
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'construction-status', req)) return;
+    if (handleDbError(error, res, 'construction-status', req)) return;
     logRouteError(req, 500, 'Construction status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -535,15 +523,9 @@ router.post('/complete-construction', authGuard, characterGuard, requireTown, va
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const building = await prisma.building.findUnique({
-      where: { id: buildingId },
-      include: {
-        constructions: {
-          where: { status: 'IN_PROGRESS' },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-        },
-      },
+    const building = await db.query.buildings.findFirst({
+      where: eq(buildings.id, buildingId),
+      with: { buildingConstructions: true },
     });
 
     if (!building) {
@@ -554,15 +536,18 @@ router.post('/complete-construction', authGuard, characterGuard, requireTown, va
       return res.status(403).json({ error: 'You do not own this building' });
     }
 
-    const construction = building.constructions[0];
+    const inProgressConstructions = (building.buildingConstructions || [])
+      .filter((c: any) => c.status === 'IN_PROGRESS')
+      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const construction = inProgressConstructions[0];
     if (!construction) {
       return res.status(400).json({ error: 'No active construction for this building' });
     }
 
     // Check timer is done
     const now = new Date();
-    if (construction.completesAt && construction.completesAt > now) {
-      const remainingMs = construction.completesAt.getTime() - now.getTime();
+    if (construction.completesAt && new Date(construction.completesAt) > now) {
+      const remainingMs = new Date(construction.completesAt).getTime() - now.getTime();
       const remainingMinutes = Math.ceil(remainingMs / 60000);
       return res.status(400).json({
         error: `Construction is not yet complete. ${remainingMinutes} minute(s) remaining.`,
@@ -571,16 +556,9 @@ router.post('/complete-construction', authGuard, characterGuard, requireTown, va
 
     const newLevel = building.level + 1;
 
-    await prisma.$transaction(async (tx) => {
-      await tx.building.update({
-        where: { id: building.id },
-        data: { level: newLevel },
-      });
-
-      await tx.buildingConstruction.update({
-        where: { id: construction.id },
-        data: { status: 'COMPLETED' },
-      });
+    await db.transaction(async (tx) => {
+      await tx.update(buildings).set({ level: newLevel }).where(eq(buildings.id, building.id));
+      await tx.update(buildingConstructions).set({ status: 'COMPLETED' }).where(eq(buildingConstructions.id, construction.id));
     });
 
     return res.json({
@@ -593,7 +571,7 @@ router.post('/complete-construction', authGuard, characterGuard, requireTown, va
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'complete-construction', req)) return;
+    if (handleDbError(error, res, 'complete-construction', req)) return;
     logRouteError(req, 500, 'Complete construction error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -611,13 +589,9 @@ router.post('/upgrade', authGuard, characterGuard, requireTown, validate(buildin
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const building = await prisma.building.findUnique({
-      where: { id: buildingId },
-      include: {
-        constructions: {
-          where: { status: { in: ['PENDING', 'IN_PROGRESS'] } },
-        },
-      },
+    const building = await db.query.buildings.findFirst({
+      where: eq(buildings.id, buildingId),
+      with: { buildingConstructions: true },
     });
 
     if (!building) {
@@ -637,7 +611,9 @@ router.post('/upgrade', authGuard, characterGuard, requireTown, validate(buildin
     }
 
     // Check no active construction
-    if (building.constructions.length > 0) {
+    const activeConstructions = (building.buildingConstructions || [])
+      .filter((c: any) => c.status === 'PENDING' || c.status === 'IN_PROGRESS');
+    if (activeConstructions.length > 0) {
       return res.status(400).json({ error: 'Building already has an active construction or upgrade' });
     }
 
@@ -646,13 +622,12 @@ router.post('/upgrade', authGuard, characterGuard, requireTown, validate(buildin
     const constructionHours = getConstructionTimeForLevel(building.type, targetLevel);
 
     // Create a new construction entry for the upgrade
-    const construction = await prisma.buildingConstruction.create({
-      data: {
-        buildingId: building.id,
-        status: 'PENDING',
-        materialsUsed: {},
-      },
-    });
+    const [construction] = await db.insert(buildingConstructions).values({
+      id: crypto.randomUUID(),
+      buildingId: building.id,
+      status: 'PENDING',
+      materialsUsed: {},
+    }).returning();
 
     return res.status(201).json({
       upgrade: {
@@ -668,7 +643,7 @@ router.post('/upgrade', authGuard, characterGuard, requireTown, validate(buildin
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'upgrade-building', req)) return;
+    if (handleDbError(error, res, 'upgrade-building', req)) return;
     logRouteError(req, 500, 'Upgrade building error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -681,32 +656,34 @@ router.get('/mine', authGuard, characterGuard, requireTown, async (req: Authenti
   try {
     const character = req.character!;
 
-    const buildings = await prisma.building.findMany({
-      where: { ownerId: character.id },
-      include: {
-        town: { select: { id: true, name: true } },
-        constructions: {
-          where: { status: { in: ['PENDING', 'IN_PROGRESS'] } },
-          take: 1,
-        },
+    const myBuildings = await db.query.buildings.findMany({
+      where: eq(buildings.ownerId, character.id),
+      with: {
+        town: { columns: { id: true, name: true } },
+        buildingConstructions: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: (b, { desc: d }) => [d(b.createdAt)],
     });
 
     return res.json({
-      buildings: buildings.map(b => ({
-        id: b.id,
-        type: b.type,
-        name: b.name,
-        level: b.level,
-        town: b.town,
-        underConstruction: b.constructions.length > 0,
-        constructionStatus: b.constructions[0]?.status ?? null,
-        completesAt: b.constructions[0]?.completesAt?.toISOString() ?? null,
-      })),
+      buildings: myBuildings.map(b => {
+        // Filter constructions to PENDING or IN_PROGRESS
+        const activeConstruction = (b.buildingConstructions || [])
+          .filter((c: any) => c.status === 'PENDING' || c.status === 'IN_PROGRESS')[0];
+        return {
+          id: b.id,
+          type: b.type,
+          name: b.name,
+          level: b.level,
+          town: b.town,
+          underConstruction: !!activeConstruction,
+          constructionStatus: activeConstruction?.status ?? null,
+          completesAt: activeConstruction?.completesAt ?? null,
+        };
+      }),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get-my-buildings', req)) return;
+    if (handleDbError(error, res, 'get-my-buildings', req)) return;
     logRouteError(req, 500, 'Get my buildings error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -719,33 +696,33 @@ router.get('/town/:townId', authGuard, async (req: AuthenticatedRequest, res: Re
   try {
     const { townId } = req.params;
 
-    const town = await prisma.town.findUnique({ where: { id: townId } });
+    const town = await db.query.towns.findFirst({ where: eq(towns.id, townId) });
     if (!town) {
       return res.status(404).json({ error: 'Town not found' });
     }
 
-    const buildings = await prisma.building.findMany({
-      where: { townId, level: { gte: 1 } },
-      include: {
-        owner: { select: { id: true, name: true } },
+    const townBuildings = await db.query.buildings.findMany({
+      where: and(eq(buildings.townId, townId), gte(buildings.level, 1)),
+      with: {
+        character: { columns: { id: true, name: true } },
       },
-      orderBy: [{ type: 'asc' }, { name: 'asc' }],
+      orderBy: (b, { asc: a }) => [a(b.type), a(b.name)],
     });
 
     return res.json({
       town: { id: town.id, name: town.name },
-      buildings: buildings.map(b => ({
+      buildings: townBuildings.map(b => ({
         id: b.id,
         type: b.type,
         name: b.name,
         level: b.level,
-        owner: b.owner,
+        owner: b.character,
         isWorkshop: isWorkshop(b.type),
         hasStorage: hasStorage(b.type),
       })),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get-town-buildings', req)) return;
+    if (handleDbError(error, res, 'get-town-buildings', req)) return;
     logRouteError(req, 500, 'Get town buildings error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -758,21 +735,23 @@ router.get('/:buildingId', authGuard, async (req: AuthenticatedRequest, res: Res
   try {
     const { buildingId } = req.params;
 
-    const building = await prisma.building.findUnique({
-      where: { id: buildingId },
-      include: {
-        owner: { select: { id: true, name: true } },
-        town: { select: { id: true, name: true } },
-        constructions: {
-          orderBy: { createdAt: 'desc' },
-          take: 3,
-        },
+    const building = await db.query.buildings.findFirst({
+      where: eq(buildings.id, buildingId),
+      with: {
+        character: { columns: { id: true, name: true } },
+        town: { columns: { id: true, name: true } },
+        buildingConstructions: true,
       },
     });
 
     if (!building) {
       return res.status(404).json({ error: 'Building not found' });
     }
+
+    // Sort constructions desc by createdAt and take first 3
+    const recentConstructions = (building.buildingConstructions || [])
+      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 3);
 
     const storageData = building.storage as Record<string, unknown>;
     const storageCapacity = STORAGE_CAPACITY[building.type] ?? 0;
@@ -800,7 +779,7 @@ router.get('/:buildingId', authGuard, async (req: AuthenticatedRequest, res: Res
         type: building.type,
         name: building.name,
         level: building.level,
-        owner: building.owner,
+        owner: building.character,
         town: building.town,
         condition,
         conditionEffects,
@@ -811,7 +790,7 @@ router.get('/:buildingId', authGuard, async (req: AuthenticatedRequest, res: Res
           used: usedSlots,
         } : null,
         rental,
-        constructions: building.constructions.map(c => ({
+        buildingConstructions: recentConstructions.map((c: any) => ({
           id: c.id,
           status: c.status,
           startedAt: c.startedAt.toISOString(),
@@ -820,7 +799,7 @@ router.get('/:buildingId', authGuard, async (req: AuthenticatedRequest, res: Res
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get-building-details', req)) return;
+    if (handleDbError(error, res, 'get-building-details', req)) return;
     logRouteError(req, 500, 'Get building details error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -839,7 +818,7 @@ router.post('/:buildingId/storage/deposit', authGuard, characterGuard, requireTo
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const building = await prisma.building.findUnique({ where: { id: buildingId } });
+    const building = await db.query.buildings.findFirst({ where: eq(buildings.id, buildingId) });
 
     if (!building) {
       return res.status(404).json({ error: 'Building not found' });
@@ -862,7 +841,6 @@ router.post('/:buildingId/storage/deposit', authGuard, characterGuard, requireTo
     const storedItems = ((storageData.items ?? []) as Array<{ itemId: string; itemName: string; quantity: number }>).slice();
 
     if (storedItems.length >= capacity) {
-      // Check if we're stacking onto an existing item
       const existingSlot = storedItems.find(s => s.itemId === itemId);
       if (!existingSlot) {
         return res.status(400).json({ error: `Storage is full (${capacity} slots)` });
@@ -870,9 +848,9 @@ router.post('/:buildingId/storage/deposit', authGuard, characterGuard, requireTo
     }
 
     // Verify player has the item
-    const invEntry = await prisma.inventory.findFirst({
-      where: { characterId: character.id, itemId },
-      include: { item: { include: { template: true } } },
+    const invEntry = await db.query.inventories.findFirst({
+      where: and(eq(inventories.characterId, character.id), eq(inventories.itemId, itemId)),
+      with: { item: { with: { itemTemplate: true } } },
     });
 
     if (!invEntry || invEntry.quantity < quantity) {
@@ -882,15 +860,12 @@ router.post('/:buildingId/storage/deposit', authGuard, characterGuard, requireTo
     }
 
     // Transfer item from inventory to storage
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Reduce/remove from inventory
       if (invEntry.quantity <= quantity) {
-        await tx.inventory.delete({ where: { id: invEntry.id } });
+        await tx.delete(inventories).where(eq(inventories.id, invEntry.id));
       } else {
-        await tx.inventory.update({
-          where: { id: invEntry.id },
-          data: { quantity: invEntry.quantity - quantity },
-        });
+        await tx.update(inventories).set({ quantity: invEntry.quantity - quantity }).where(eq(inventories.id, invEntry.id));
       }
 
       // Add to storage
@@ -900,24 +875,21 @@ router.post('/:buildingId/storage/deposit', authGuard, characterGuard, requireTo
       } else {
         storedItems.push({
           itemId,
-          itemName: invEntry.item.template.name,
+          itemName: invEntry.item.itemTemplate.name,
           quantity,
         });
       }
 
-      await tx.building.update({
-        where: { id: building.id },
-        data: { storage: { ...storageData, items: storedItems } },
-      });
+      await tx.update(buildings).set({ storage: { ...storageData, items: storedItems } }).where(eq(buildings.id, building.id));
     });
 
     return res.json({
-      deposited: { itemId, itemName: invEntry.item.template.name, quantity },
+      deposited: { itemId, itemName: invEntry.item.itemTemplate.name, quantity },
       storageUsed: storedItems.length,
       storageCapacity: capacity,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'storage-deposit', req)) return;
+    if (handleDbError(error, res, 'storage-deposit', req)) return;
     logRouteError(req, 500, 'Storage deposit error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -936,7 +908,7 @@ router.post('/:buildingId/storage/withdraw', authGuard, characterGuard, requireT
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const building = await prisma.building.findUnique({ where: { id: buildingId } });
+    const building = await db.query.buildings.findFirst({ where: eq(buildings.id, buildingId) });
 
     if (!building) {
       return res.status(404).json({ error: 'Building not found' });
@@ -961,24 +933,20 @@ router.post('/:buildingId/storage/withdraw', authGuard, characterGuard, requireT
     }
 
     // Transfer item from storage to inventory
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Add to inventory
-      const existingInv = await tx.inventory.findFirst({
-        where: { characterId: character.id, itemId },
+      const existingInv = await tx.query.inventories.findFirst({
+        where: and(eq(inventories.characterId, character.id), eq(inventories.itemId, itemId)),
       });
 
       if (existingInv) {
-        await tx.inventory.update({
-          where: { id: existingInv.id },
-          data: { quantity: existingInv.quantity + quantity },
-        });
+        await tx.update(inventories).set({ quantity: existingInv.quantity + quantity }).where(eq(inventories.id, existingInv.id));
       } else {
-        await tx.inventory.create({
-          data: {
-            characterId: character.id,
-            itemId,
-            quantity,
-          },
+        await tx.insert(inventories).values({
+          id: crypto.randomUUID(),
+          characterId: character.id,
+          itemId,
+          quantity,
         });
       }
 
@@ -990,10 +958,7 @@ router.post('/:buildingId/storage/withdraw', authGuard, characterGuard, requireT
         slot.quantity -= quantity;
       }
 
-      await tx.building.update({
-        where: { id: building.id },
-        data: { storage: { ...storageData, items: storedItems } },
-      });
+      await tx.update(buildings).set({ storage: { ...storageData, items: storedItems } }).where(eq(buildings.id, building.id));
     });
 
     return res.json({
@@ -1002,7 +967,7 @@ router.post('/:buildingId/storage/withdraw', authGuard, characterGuard, requireT
       storageCapacity: STORAGE_CAPACITY[building.type] ?? 0,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'storage-withdraw', req)) return;
+    if (handleDbError(error, res, 'storage-withdraw', req)) return;
     logRouteError(req, 500, 'Storage withdraw error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -1016,7 +981,7 @@ router.get('/:buildingId/storage', authGuard, characterGuard, requireTown, async
     const { buildingId } = req.params;
     const character = req.character!;
 
-    const building = await prisma.building.findUnique({ where: { id: buildingId } });
+    const building = await db.query.buildings.findFirst({ where: eq(buildings.id, buildingId) });
 
     if (!building) {
       return res.status(404).json({ error: 'Building not found' });
@@ -1043,7 +1008,7 @@ router.get('/:buildingId/storage', authGuard, characterGuard, requireTown, async
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'list-storage', req)) return;
+    if (handleDbError(error, res, 'list-storage', req)) return;
     logRouteError(req, 500, 'List storage error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -1062,7 +1027,7 @@ router.post('/:buildingId/rent/set-price', authGuard, characterGuard, requireTow
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const building = await prisma.building.findUnique({ where: { id: buildingId } });
+    const building = await db.query.buildings.findFirst({ where: eq(buildings.id, buildingId) });
 
     if (!building) {
       return res.status(404).json({ error: 'Building not found' });
@@ -1081,10 +1046,7 @@ router.post('/:buildingId/rent/set-price', authGuard, characterGuard, requireTow
     }
 
     const storageData = building.storage as Record<string, unknown>;
-    await prisma.building.update({
-      where: { id: building.id },
-      data: { storage: { ...storageData, rentalPrice: pricePerUse } },
-    });
+    await db.update(buildings).set({ storage: { ...storageData, rentalPrice: pricePerUse } }).where(eq(buildings.id, building.id));
 
     return res.json({
       rental: {
@@ -1095,7 +1057,7 @@ router.post('/:buildingId/rent/set-price', authGuard, characterGuard, requireTow
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'set-rent-price', req)) return;
+    if (handleDbError(error, res, 'set-rent-price', req)) return;
     logRouteError(req, 500, 'Set rent price error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -1113,9 +1075,9 @@ router.post('/:buildingId/rent/use', authGuard, characterGuard, requireTown, asy
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const building = await prisma.building.findUnique({
-      where: { id: buildingId },
-      include: { owner: { select: { id: true, name: true } } },
+    const building = await db.query.buildings.findFirst({
+      where: eq(buildings.id, buildingId),
+      with: { character: { columns: { id: true, name: true } } },
     });
 
     if (!building) {
@@ -1167,23 +1129,20 @@ router.post('/:buildingId/rent/use', authGuard, characterGuard, requireTown, asy
       const ownerShare = price - townTaxCut;
 
       // Transfer gold: renter pays, owner gets share, town gets tax cut
-      await prisma.$transaction(async (tx) => {
-        await tx.character.update({
-          where: { id: character.id },
-          data: { gold: { decrement: price } },
-        });
+      await db.transaction(async (tx) => {
+        await tx.update(characters).set({
+          gold: sql`${characters.gold} - ${price}`,
+        }).where(eq(characters.id, character.id));
 
-        await tx.character.update({
-          where: { id: building.ownerId },
-          data: { gold: { increment: ownerShare } },
-        });
+        await tx.update(characters).set({
+          gold: sql`${characters.gold} + ${ownerShare}`,
+        }).where(eq(characters.id, building.ownerId));
 
         // Deposit town tax cut into treasury
         if (townTaxCut > 0) {
-          await tx.townTreasury.updateMany({
-            where: { townId: building.townId },
-            data: { balance: { increment: townTaxCut } },
-          });
+          await tx.update(townTreasuries).set({
+            balance: sql`${townTreasuries.balance} + ${townTaxCut}`,
+          }).where(eq(townTreasuries.townId, building.townId));
         }
 
         // Log the rental transaction in the building's storage
@@ -1200,10 +1159,7 @@ router.post('/:buildingId/rent/use', authGuard, characterGuard, requireTown, asy
         // Keep only last 100 entries
         const trimmedLog = rentalLog.slice(-100);
 
-        await tx.building.update({
-          where: { id: building.id },
-          data: { storage: { ...storageData, rentalLog: trimmedLog as any } },
-        });
+        await tx.update(buildings).set({ storage: { ...storageData, rentalLog: trimmedLog as any } }).where(eq(buildings.id, building.id));
       });
 
       return res.json({
@@ -1211,7 +1167,7 @@ router.post('/:buildingId/rent/use', authGuard, characterGuard, requireTown, asy
           buildingId: building.id,
           workshopType: building.type,
           workshopLevel: building.level,
-          owner: building.owner,
+          owner: building.character,
           paid: price,
           ownerReceived: ownerShare,
           townTaxCut,
@@ -1224,12 +1180,12 @@ router.post('/:buildingId/rent/use', authGuard, characterGuard, requireTown, asy
         buildingId: building.id,
         workshopType: building.type,
         workshopLevel: building.level,
-        owner: building.owner,
+        owner: building.character,
         paid: 0,
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'use-rental', req)) return;
+    if (handleDbError(error, res, 'use-rental', req)) return;
     logRouteError(req, 500, 'Use rental error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -1242,9 +1198,9 @@ router.get('/:buildingId/rent', authGuard, async (req: AuthenticatedRequest, res
   try {
     const { buildingId } = req.params;
 
-    const building = await prisma.building.findUnique({
-      where: { id: buildingId },
-      include: { owner: { select: { id: true, name: true } } },
+    const building = await db.query.buildings.findFirst({
+      where: eq(buildings.id, buildingId),
+      with: { character: { columns: { id: true, name: true } } },
     });
 
     if (!building) {
@@ -1264,13 +1220,13 @@ router.get('/:buildingId/rent', authGuard, async (req: AuthenticatedRequest, res
         buildingName: building.name,
         type: building.type,
         level: building.level,
-        owner: building.owner,
+        owner: building.character,
         pricePerUse,
         isAvailable: building.level >= 1,
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get-rental-info', req)) return;
+    if (handleDbError(error, res, 'get-rental-info', req)) return;
     logRouteError(req, 500, 'Get rental info error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -1288,7 +1244,7 @@ router.post('/:buildingId/repair', authGuard, characterGuard, requireTown, async
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const building = await prisma.building.findUnique({ where: { id: buildingId } });
+    const building = await db.query.buildings.findFirst({ where: eq(buildings.id, buildingId) });
 
     if (!building) {
       return res.status(404).json({ error: 'Building not found' });
@@ -1310,7 +1266,6 @@ router.post('/:buildingId/repair', authGuard, characterGuard, requireTown, async
     }
 
     // Repair cost: 10% of original construction materials (gold equivalent)
-    // Simplified: base gold cost per building type
     const repairCostPerPoint = Math.max(1, Math.floor(building.level * 2));
     const pointsToRepair = 100 - currentCondition;
     const totalRepairCost = repairCostPerPoint * pointsToRepair;
@@ -1323,18 +1278,14 @@ router.post('/:buildingId/repair', authGuard, characterGuard, requireTown, async
       });
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.character.update({
-        where: { id: character.id },
-        data: { gold: { decrement: totalRepairCost } },
-      });
+    await db.transaction(async (tx) => {
+      await tx.update(characters).set({
+        gold: sql`${characters.gold} - ${totalRepairCost}`,
+      }).where(eq(characters.id, character.id));
 
-      await tx.building.update({
-        where: { id: building.id },
-        data: {
-          storage: { ...storageData, condition: 100 },
-        },
-      });
+      await tx.update(buildings).set({
+        storage: { ...storageData, condition: 100 },
+      }).where(eq(buildings.id, building.id));
     });
 
     return res.json({
@@ -1347,7 +1298,7 @@ router.post('/:buildingId/repair', authGuard, characterGuard, requireTown, async
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'repair-building', req)) return;
+    if (handleDbError(error, res, 'repair-building', req)) return;
     logRouteError(req, 500, 'Repair building error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -1361,7 +1312,7 @@ router.get('/:buildingId/rent/income', authGuard, characterGuard, requireTown, a
     const { buildingId } = req.params;
     const character = req.character!;
 
-    const building = await prisma.building.findUnique({ where: { id: buildingId } });
+    const building = await db.query.buildings.findFirst({ where: eq(buildings.id, buildingId) });
 
     if (!building) {
       return res.status(404).json({ error: 'Building not found' });
@@ -1394,7 +1345,7 @@ router.get('/:buildingId/rent/income', authGuard, characterGuard, requireTown, a
       recentRentals: rentalLog.slice(-50), // Last 50 entries
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get-rental-income', req)) return;
+    if (handleDbError(error, res, 'get-rental-income', req)) return;
     logRouteError(req, 500, 'Get rental income error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -1409,16 +1360,13 @@ router.get('/town/:townId/economics', authGuard, characterGuard, requireTown, as
     const character = req.character!;
 
     // Check if user is the mayor
-    const town = await prisma.town.findUnique({
-      where: { id: townId },
-      include: {
-        treasury: true,
-        townPolicy: true,
+    const town = await db.query.towns.findFirst({
+      where: eq(towns.id, townId),
+      with: {
+        townTreasuries: true,
+        townPolicies: true,
         buildings: {
-          where: { level: { gte: 1 } },
-          include: {
-            owner: { select: { id: true, name: true } },
-          },
+          with: { character: { columns: { id: true, name: true } } },
         },
       },
     });
@@ -1431,47 +1379,49 @@ router.get('/town/:townId/economics', authGuard, characterGuard, requireTown, as
       return res.status(403).json({ error: 'Only the mayor can view economic reports' });
     }
 
-    const buildings = town.buildings;
-    const totalBuildings = buildings.length;
+    // Filter to completed buildings (level >= 1) at application level
+    const completedBuildings = (town.buildings || []).filter((b: any) => b.level >= 1);
+    const totalBuildings = completedBuildings.length;
     const maxBuildings = Math.max(20, Math.floor(town.population / 100));
     const occupancyRate = totalBuildings / maxBuildings;
 
     // Count buildings by type
     const buildingsByType: Record<string, number> = {};
-    for (const b of buildings) {
+    for (const b of completedBuildings) {
       buildingsByType[b.type] = (buildingsByType[b.type] ?? 0) + 1;
     }
 
     // Count unique owners
-    const uniqueOwners = new Set(buildings.map(b => b.ownerId)).size;
+    const uniqueOwners = new Set(completedBuildings.map((b: any) => b.ownerId)).size;
 
     // Count delinquent buildings
-    const delinquentBuildings = buildings.filter(b => {
+    const delinquentBuildings = completedBuildings.filter((b: any) => {
       const storage = b.storage as Record<string, unknown>;
       return !!storage.taxDelinquentSince;
     });
 
     // Count low-condition buildings
-    const lowConditionBuildings = buildings.filter(b => {
+    const lowConditionBuildings = completedBuildings.filter((b: any) => {
       const storage = b.storage as Record<string, unknown>;
       const condition = (storage.condition as number) ?? 100;
       return condition < 50;
     });
 
-    // Pending constructions
-    const pendingConstructions = await prisma.buildingConstruction.count({
-      where: {
-        building: { townId },
-        status: { in: ['PENDING', 'IN_PROGRESS'] },
-      },
+    // Pending constructions — count via join
+    const pendingConstructionsList = await db.query.buildingConstructions.findMany({
+      where: and(
+        inArray(buildingConstructions.status, ['PENDING', 'IN_PROGRESS']),
+      ),
+      with: { building: { columns: { townId: true } } },
     });
+    const pendingConstructions = pendingConstructionsList.filter((c: any) => c.building?.townId === townId).length;
 
     return res.json({
       economics: {
         town: { id: town.id, name: town.name },
         treasury: {
-          balance: town.treasury?.balance ?? 0,
-          taxRate: town.townPolicy?.taxRate ?? 0.10,
+          balance: (town.townTreasuries as any)?.[0]?.balance ?? 0,
+          taxRate: (town.townPolicies as any)?.[0]?.taxRate ?? 0.10,
         },
         buildings: {
           total: totalBuildings,
@@ -1488,7 +1438,7 @@ router.get('/town/:townId/economics', authGuard, characterGuard, requireTown, as
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get-town-economics', req)) return;
+    if (handleDbError(error, res, 'get-town-economics', req)) return;
     logRouteError(req, 500, 'Get town economics error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

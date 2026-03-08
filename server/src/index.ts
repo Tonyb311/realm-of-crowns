@@ -5,7 +5,7 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import Redis from 'ioredis';
 import { app } from './app';
 import { redis } from './lib/redis';
-import { prisma } from './lib/prisma';
+import { pool } from './lib/db';
 import { logger } from './lib/logger';
 import { activeWsConnections, socketEventCounter } from './lib/metrics';
 import { startElectionLifecycle } from './jobs/election-lifecycle';
@@ -142,7 +142,7 @@ const gracefulShutdown = async (signal: string) => {
     httpServer.close();
     io.close();
     if (redis) await redis.quit();
-    await prisma.$disconnect();
+    await pool.end();
     clearTimeout(timeout);
     logger.info('graceful shutdown complete');
     process.exit(0);

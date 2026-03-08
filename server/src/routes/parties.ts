@@ -4,14 +4,22 @@
  * leaving, kicking, disbanding, viewing, and transferring leadership.
  */
 
+import crypto from 'crypto';
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, gt, ilike } from 'drizzle-orm';
+import {
+  parties,
+  partyMembers,
+  partyInvitations,
+  characters,
+} from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
@@ -40,7 +48,7 @@ const transferSchema = z.object({
 // ---- Helpers ----
 
 /** Select fields for character info included with party members. */
-const memberCharacterSelect = {
+const memberCharacterColumns = {
   id: true,
   name: true,
   level: true,
@@ -48,27 +56,24 @@ const memberCharacterSelect = {
   class: true,
   health: true,
   maxHealth: true,
-};
+} as const;
 
 /** Format a party with its active members and pending invitations for API responses. */
 async function formatPartyResponse(partyId: string) {
-  const party = await prisma.party.findUnique({
-    where: { id: partyId },
-    include: {
-      leader: { select: { id: true, name: true } },
-      town: { select: { id: true, name: true } },
-      members: {
-        where: { leftAt: null },
-        include: {
-          character: { select: memberCharacterSelect },
+  const party = await db.query.parties.findFirst({
+    where: eq(parties.id, partyId),
+    with: {
+      character: { columns: { id: true, name: true } },
+      town: { columns: { id: true, name: true } },
+      partyMembers: {
+        with: {
+          character: { columns: memberCharacterColumns },
         },
-        orderBy: { joinedAt: 'asc' },
       },
-      invitations: {
-        where: { status: 'pending' },
-        include: {
-          character: { select: { id: true, name: true } },
-          invitedBy: { select: { id: true, name: true } },
+      partyInvitations: {
+        with: {
+          character_characterId: { columns: { id: true, name: true } },
+          character_invitedById: { columns: { id: true, name: true } },
         },
       },
     },
@@ -76,16 +81,25 @@ async function formatPartyResponse(partyId: string) {
 
   if (!party) return null;
 
+  // Filter members: leftAt IS NULL (active members)
+  const activeMembers = party.partyMembers
+    .filter(m => m.leftAt === null)
+    .sort((a, b) => new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime());
+
+  // Filter invitations: status = 'pending'
+  const pendingInvitations = party.partyInvitations
+    .filter(inv => inv.status === 'pending');
+
   return {
     id: party.id,
     name: party.name,
-    leader: party.leader,
+    leader: party.character,
     town: party.town,
     status: party.status,
     maxSize: party.maxSize,
     createdAt: party.createdAt,
     disbandedAt: party.disbandedAt,
-    members: party.members.map(m => ({
+    members: activeMembers.map(m => ({
       id: m.id,
       characterId: m.character.id,
       name: m.character.name,
@@ -97,10 +111,10 @@ async function formatPartyResponse(partyId: string) {
       role: m.role,
       joinedAt: m.joinedAt,
     })),
-    pendingInvitations: party.invitations.map(inv => ({
+    pendingInvitations: pendingInvitations.map(inv => ({
       id: inv.id,
-      character: inv.character,
-      invitedBy: inv.invitedBy,
+      character: inv.character_characterId,
+      invitedBy: inv.character_invitedById,
       status: inv.status,
       createdAt: inv.createdAt,
       expiresAt: inv.expiresAt,
@@ -118,66 +132,67 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
     const character = (req as AuthenticatedRequest).character!;
 
     // Find caller's active party membership (leftAt IS NULL)
-    const membership = await prisma.partyMember.findFirst({
-      where: {
-        characterId: character.id,
-        leftAt: null,
-      },
-      include: {
-        party: { select: { id: true } },
+    const membership = await db.query.partyMembers.findFirst({
+      where: and(
+        eq(partyMembers.characterId, character.id),
+      ),
+      with: {
+        party: { columns: { id: true } },
       },
     });
+
+    // Filter for leftAt === null in app code
+    const activeMembership = membership && membership.leftAt === null ? membership : null;
 
     // Find pending invitations for this character
-    const pendingInvitations = await prisma.partyInvitation.findMany({
-      where: {
-        characterId: character.id,
-        status: 'pending',
-        expiresAt: { gt: new Date() },
-      },
-      include: {
+    const allInvitations = await db.query.partyInvitations.findMany({
+      where: and(
+        eq(partyInvitations.characterId, character.id),
+        eq(partyInvitations.status, 'pending'),
+        gt(partyInvitations.expiresAt, new Date().toISOString()),
+      ),
+      with: {
         party: {
-          select: {
-            id: true,
-            name: true,
-            status: true,
-            leader: { select: { id: true, name: true } },
-            town: { select: { id: true, name: true } },
+          columns: { id: true, name: true, status: true },
+          with: {
+            character: { columns: { id: true, name: true } },
+            town: { columns: { id: true, name: true } },
           },
         },
-        invitedBy: { select: { id: true, name: true } },
+        character_invitedById: { columns: { id: true, name: true } },
       },
     });
 
-    if (!membership) {
+    const pendingInvitations = allInvitations.map(inv => ({
+      id: inv.id,
+      party: {
+        id: inv.party.id,
+        name: inv.party.name,
+        status: inv.party.status,
+        leader: inv.party.character,
+        town: inv.party.town,
+      },
+      invitedBy: inv.character_invitedById,
+      status: inv.status,
+      createdAt: inv.createdAt,
+      expiresAt: inv.expiresAt,
+    }));
+
+    if (!activeMembership) {
       return res.json({
         party: null,
-        pendingInvitations: pendingInvitations.map(inv => ({
-          id: inv.id,
-          party: inv.party,
-          invitedBy: inv.invitedBy,
-          status: inv.status,
-          createdAt: inv.createdAt,
-          expiresAt: inv.expiresAt,
-        })),
+        pendingInvitations,
       });
     }
 
-    const party = await formatPartyResponse(membership.party.id);
+    const party = await formatPartyResponse(activeMembership.party.id);
 
     return res.json({
       party,
-      pendingInvitations: pendingInvitations.map(inv => ({
-        id: inv.id,
-        party: inv.party,
-        invitedBy: inv.invitedBy,
-        status: inv.status,
-        createdAt: inv.createdAt,
-        expiresAt: inv.expiresAt,
-      })),
+      pendingInvitations,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'party-me', req)) return;
+    if (handleDbError(error, res, 'party-me', req)) return;
     logRouteError(req, 500, 'Party me error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -200,35 +215,31 @@ router.post('/create', authGuard, characterGuard, validate(createPartySchema), a
     }
 
     // Must not already be in an active party
-    const existingMembership = await prisma.partyMember.findFirst({
-      where: {
-        characterId: character.id,
-        leftAt: null,
-      },
+    const allMemberships = await db.query.partyMembers.findMany({
+      where: eq(partyMembers.characterId, character.id),
     });
+    const existingMembership = allMemberships.find(m => m.leftAt === null);
 
     if (existingMembership) {
       return res.status(400).json({ error: 'You are already in an active party' });
     }
 
     // Create party + leader membership in transaction
-    const party = await prisma.$transaction(async (tx) => {
-      const newParty = await tx.party.create({
-        data: {
-          name: name || null,
-          leaderId: character.id,
-          townId: character.currentTownId!,
-          status: 'active',
-          maxSize: 5,
-        },
-      });
+    const party = await db.transaction(async (tx) => {
+      const [newParty] = await tx.insert(parties).values({
+        id: crypto.randomUUID(),
+        name: name || null,
+        leaderId: character.id,
+        townId: character.currentTownId!,
+        status: 'active',
+        maxSize: 5,
+      }).returning();
 
-      await tx.partyMember.create({
-        data: {
-          partyId: newParty.id,
-          characterId: character.id,
-          role: 'leader',
-        },
+      await tx.insert(partyMembers).values({
+        id: crypto.randomUUID(),
+        partyId: newParty.id,
+        characterId: character.id,
+        role: 'leader',
       });
 
       return newParty;
@@ -238,7 +249,7 @@ router.post('/create', authGuard, characterGuard, validate(createPartySchema), a
 
     return res.status(201).json({ party: partyResponse });
   } catch (error) {
-    if (handlePrismaError(error, res, 'party-create', req)) return;
+    if (handleDbError(error, res, 'party-create', req)) return;
     logRouteError(req, 500, 'Party create error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -251,13 +262,11 @@ router.post('/:partyId/invite', authGuard, characterGuard, validate(inviteSchema
     const { partyId } = req.params;
     const { characterId, characterName } = req.body;
 
-    // Find the party
-    const party = await prisma.party.findUnique({
-      where: { id: partyId },
-      include: {
-        members: {
-          where: { leftAt: null },
-        },
+    // Find the party with active members
+    const party = await db.query.parties.findFirst({
+      where: eq(parties.id, partyId),
+      with: {
+        partyMembers: true,
       },
     });
 
@@ -274,22 +283,23 @@ router.post('/:partyId/invite', authGuard, characterGuard, validate(inviteSchema
       return res.status(403).json({ error: 'Only the party leader can invite members' });
     }
 
-    // Check party has room
-    if (party.members.length >= party.maxSize) {
-      return res.status(400).json({ error: `Party is full (${party.members.length}/${party.maxSize})` });
+    // Check party has room (active members only)
+    const activeMembers = party.partyMembers.filter(m => m.leftAt === null);
+    if (activeMembers.length >= party.maxSize) {
+      return res.status(400).json({ error: `Party is full (${activeMembers.length}/${party.maxSize})` });
     }
 
     // Look up target character
     let target;
     if (characterId) {
-      target = await prisma.character.findUnique({
-        where: { id: characterId },
-        select: { id: true, name: true, currentTownId: true },
+      target = await db.query.characters.findFirst({
+        where: eq(characters.id, characterId),
+        columns: { id: true, name: true, currentTownId: true },
       });
     } else if (characterName) {
-      target = await prisma.character.findFirst({
-        where: { name: { equals: characterName, mode: 'insensitive' } },
-        select: { id: true, name: true, currentTownId: true },
+      target = await db.query.characters.findFirst({
+        where: ilike(characters.name, characterName),
+        columns: { id: true, name: true, currentTownId: true },
       });
     }
 
@@ -308,25 +318,23 @@ router.post('/:partyId/invite', authGuard, characterGuard, validate(inviteSchema
     }
 
     // Target must not already be in an active party
-    const targetMembership = await prisma.partyMember.findFirst({
-      where: {
-        characterId: target.id,
-        leftAt: null,
-      },
+    const targetMemberships = await db.query.partyMembers.findMany({
+      where: eq(partyMembers.characterId, target.id),
     });
+    const targetMembership = targetMemberships.find(m => m.leftAt === null);
 
     if (targetMembership) {
       return res.status(400).json({ error: 'Target is already in an active party' });
     }
 
     // Target must not have a pending invite to this party already
-    const existingInvite = await prisma.partyInvitation.findFirst({
-      where: {
-        partyId: party.id,
-        characterId: target.id,
-        status: 'pending',
-        expiresAt: { gt: new Date() },
-      },
+    const existingInvite = await db.query.partyInvitations.findFirst({
+      where: and(
+        eq(partyInvitations.partyId, party.id),
+        eq(partyInvitations.characterId, target.id),
+        eq(partyInvitations.status, 'pending'),
+        gt(partyInvitations.expiresAt, new Date().toISOString()),
+      ),
     });
 
     if (existingInvite) {
@@ -336,33 +344,37 @@ router.post('/:partyId/invite', authGuard, characterGuard, validate(inviteSchema
     // Create invitation with 10-minute expiry
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    const invitation = await prisma.partyInvitation.create({
-      data: {
-        partyId: party.id,
-        characterId: target.id,
-        invitedById: character.id,
-        status: 'pending',
-        expiresAt,
-      },
-      include: {
-        character: { select: { id: true, name: true } },
-        invitedBy: { select: { id: true, name: true } },
+    const [invitation] = await db.insert(partyInvitations).values({
+      id: crypto.randomUUID(),
+      partyId: party.id,
+      characterId: target.id,
+      invitedById: character.id,
+      status: 'pending',
+      expiresAt: expiresAt.toISOString(),
+    }).returning();
+
+    // Fetch with relations for response
+    const invitationWithRelations = await db.query.partyInvitations.findFirst({
+      where: eq(partyInvitations.id, invitation.id),
+      with: {
+        character_characterId: { columns: { id: true, name: true } },
+        character_invitedById: { columns: { id: true, name: true } },
       },
     });
 
     return res.status(201).json({
       invitation: {
-        id: invitation.id,
-        partyId: invitation.partyId,
-        character: invitation.character,
-        invitedBy: invitation.invitedBy,
-        status: invitation.status,
-        createdAt: invitation.createdAt,
-        expiresAt: invitation.expiresAt,
+        id: invitationWithRelations!.id,
+        partyId: invitationWithRelations!.partyId,
+        character: invitationWithRelations!.character_characterId,
+        invitedBy: invitationWithRelations!.character_invitedById,
+        status: invitationWithRelations!.status,
+        createdAt: invitationWithRelations!.createdAt,
+        expiresAt: invitationWithRelations!.expiresAt,
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'party-invite', req)) return;
+    if (handleDbError(error, res, 'party-invite', req)) return;
     logRouteError(req, 500, 'Party invite error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -375,13 +387,13 @@ router.post('/:partyId/accept', authGuard, characterGuard, async (req: Authentic
     const { partyId } = req.params;
 
     // Find pending, non-expired invitation for this character and party
-    const invitation = await prisma.partyInvitation.findFirst({
-      where: {
-        partyId,
-        characterId: character.id,
-        status: 'pending',
-        expiresAt: { gt: new Date() },
-      },
+    const invitation = await db.query.partyInvitations.findFirst({
+      where: and(
+        eq(partyInvitations.partyId, partyId),
+        eq(partyInvitations.characterId, character.id),
+        eq(partyInvitations.status, 'pending'),
+        gt(partyInvitations.expiresAt, new Date().toISOString()),
+      ),
     });
 
     if (!invitation) {
@@ -389,12 +401,10 @@ router.post('/:partyId/accept', authGuard, characterGuard, async (req: Authentic
     }
 
     // Party must still be active
-    const party = await prisma.party.findUnique({
-      where: { id: partyId },
-      include: {
-        members: {
-          where: { leftAt: null },
-        },
+    const party = await db.query.parties.findFirst({
+      where: eq(parties.id, partyId),
+      with: {
+        partyMembers: true,
       },
     });
 
@@ -411,36 +421,33 @@ router.post('/:partyId/accept', authGuard, characterGuard, async (req: Authentic
       return res.status(400).json({ error: 'You must be in the same town as the party to accept' });
     }
 
-    // Party must have room
-    if (party.members.length >= party.maxSize) {
-      return res.status(400).json({ error: `Party is full (${party.members.length}/${party.maxSize})` });
+    // Party must have room (active members only)
+    const activeMembers = party.partyMembers.filter(m => m.leftAt === null);
+    if (activeMembers.length >= party.maxSize) {
+      return res.status(400).json({ error: `Party is full (${activeMembers.length}/${party.maxSize})` });
     }
 
     // Caller must not already be in an active party
-    const existingMembership = await prisma.partyMember.findFirst({
-      where: {
-        characterId: character.id,
-        leftAt: null,
-      },
+    const allMemberships = await db.query.partyMembers.findMany({
+      where: eq(partyMembers.characterId, character.id),
     });
+    const existingMembership = allMemberships.find(m => m.leftAt === null);
 
     if (existingMembership) {
       return res.status(400).json({ error: 'You are already in an active party' });
     }
 
     // Accept: update invitation + create membership in transaction
-    await prisma.$transaction(async (tx) => {
-      await tx.partyInvitation.update({
-        where: { id: invitation.id },
-        data: { status: 'accepted' },
-      });
+    await db.transaction(async (tx) => {
+      await tx.update(partyInvitations).set({
+        status: 'accepted',
+      }).where(eq(partyInvitations.id, invitation.id));
 
-      await tx.partyMember.create({
-        data: {
-          partyId: party.id,
-          characterId: character.id,
-          role: 'member',
-        },
+      await tx.insert(partyMembers).values({
+        id: crypto.randomUUID(),
+        partyId: party.id,
+        characterId: character.id,
+        role: 'member',
       });
     });
 
@@ -451,7 +458,7 @@ router.post('/:partyId/accept', authGuard, characterGuard, async (req: Authentic
       party: partyResponse,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'party-accept', req)) return;
+    if (handleDbError(error, res, 'party-accept', req)) return;
     logRouteError(req, 500, 'Party accept error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -464,26 +471,25 @@ router.post('/:partyId/decline', authGuard, characterGuard, async (req: Authenti
     const { partyId } = req.params;
 
     // Find pending invitation
-    const invitation = await prisma.partyInvitation.findFirst({
-      where: {
-        partyId,
-        characterId: character.id,
-        status: 'pending',
-      },
+    const invitation = await db.query.partyInvitations.findFirst({
+      where: and(
+        eq(partyInvitations.partyId, partyId),
+        eq(partyInvitations.characterId, character.id),
+        eq(partyInvitations.status, 'pending'),
+      ),
     });
 
     if (!invitation) {
       return res.status(404).json({ error: 'No pending invitation found for this party' });
     }
 
-    await prisma.partyInvitation.update({
-      where: { id: invitation.id },
-      data: { status: 'declined' },
-    });
+    await db.update(partyInvitations).set({
+      status: 'declined',
+    }).where(eq(partyInvitations.id, invitation.id));
 
     return res.json({ message: 'Invitation declined' });
   } catch (error) {
-    if (handlePrismaError(error, res, 'party-decline', req)) return;
+    if (handleDbError(error, res, 'party-decline', req)) return;
     logRouteError(req, 500, 'Party decline error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -495,16 +501,14 @@ router.post('/:partyId/leave', authGuard, characterGuard, async (req: Authentica
     const character = (req as AuthenticatedRequest).character!;
     const { partyId } = req.params;
 
-    // Find party
-    const party = await prisma.party.findUnique({
-      where: { id: partyId },
-      include: {
-        members: {
-          where: { leftAt: null },
-          include: {
-            character: { select: { id: true, name: true, travelStatus: true } },
+    // Find party with all active members
+    const party = await db.query.parties.findFirst({
+      where: eq(parties.id, partyId),
+      with: {
+        partyMembers: {
+          with: {
+            character: { columns: { id: true, name: true, travelStatus: true } },
           },
-          orderBy: { joinedAt: 'asc' },
         },
       },
     });
@@ -513,8 +517,13 @@ router.post('/:partyId/leave', authGuard, characterGuard, async (req: Authentica
       return res.status(404).json({ error: 'Party not found' });
     }
 
+    // Get active members, sorted by joinedAt asc
+    const activeMembers = party.partyMembers
+      .filter(m => m.leftAt === null)
+      .sort((a, b) => new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime());
+
     // Must be a current member
-    const membership = party.members.find(m => m.characterId === character.id);
+    const membership = activeMembers.find(m => m.characterId === character.id);
     if (!membership) {
       return res.status(400).json({ error: 'You are not a member of this party' });
     }
@@ -524,24 +533,20 @@ router.post('/:partyId/leave', authGuard, characterGuard, async (req: Authentica
       return res.status(400).json({ error: 'Cannot leave a party during active group travel' });
     }
 
-    const now = new Date();
-    const otherMembers = party.members.filter(m => m.characterId !== character.id);
+    const nowStr = new Date().toISOString();
+    const otherMembers = activeMembers.filter(m => m.characterId !== character.id);
 
     if (otherMembers.length === 0) {
       // Last member leaving — disband the party
-      await prisma.$transaction(async (tx) => {
-        await tx.partyMember.update({
-          where: { id: membership.id },
-          data: { leftAt: now },
-        });
+      await db.transaction(async (tx) => {
+        await tx.update(partyMembers).set({
+          leftAt: nowStr,
+        }).where(eq(partyMembers.id, membership.id));
 
-        await tx.party.update({
-          where: { id: party.id },
-          data: {
-            status: 'disbanded',
-            disbandedAt: now,
-          },
-        });
+        await tx.update(parties).set({
+          status: 'disbanded',
+          disbandedAt: nowStr,
+        }).where(eq(parties.id, party.id));
       });
 
       return res.json({
@@ -554,21 +559,18 @@ router.post('/:partyId/leave', authGuard, characterGuard, async (req: Authentica
       // Transfer leadership to longest-standing member
       const newLeader = otherMembers[0]; // already ordered by joinedAt asc
 
-      await prisma.$transaction(async (tx) => {
-        await tx.partyMember.update({
-          where: { id: membership.id },
-          data: { leftAt: now },
-        });
+      await db.transaction(async (tx) => {
+        await tx.update(partyMembers).set({
+          leftAt: nowStr,
+        }).where(eq(partyMembers.id, membership.id));
 
-        await tx.partyMember.update({
-          where: { id: newLeader.id },
-          data: { role: 'leader' },
-        });
+        await tx.update(partyMembers).set({
+          role: 'leader',
+        }).where(eq(partyMembers.id, newLeader.id));
 
-        await tx.party.update({
-          where: { id: party.id },
-          data: { leaderId: newLeader.characterId },
-        });
+        await tx.update(parties).set({
+          leaderId: newLeader.characterId,
+        }).where(eq(parties.id, party.id));
       });
 
       return res.json({
@@ -579,17 +581,16 @@ router.post('/:partyId/leave', authGuard, characterGuard, async (req: Authentica
     }
 
     // Regular member leaving
-    await prisma.partyMember.update({
-      where: { id: membership.id },
-      data: { leftAt: now },
-    });
+    await db.update(partyMembers).set({
+      leftAt: nowStr,
+    }).where(eq(partyMembers.id, membership.id));
 
     return res.json({
       message: 'You left the party',
       disbanded: false,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'party-leave', req)) return;
+    if (handleDbError(error, res, 'party-leave', req)) return;
     logRouteError(req, 500, 'Party leave error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -602,14 +603,13 @@ router.post('/:partyId/kick', authGuard, characterGuard, validate(kickSchema), a
     const { partyId } = req.params;
     const { characterId: targetId } = req.body;
 
-    // Find party
-    const party = await prisma.party.findUnique({
-      where: { id: partyId },
-      include: {
-        members: {
-          where: { leftAt: null },
-          include: {
-            character: { select: { id: true, name: true, travelStatus: true } },
+    // Find party with active members
+    const party = await db.query.parties.findFirst({
+      where: eq(parties.id, partyId),
+      with: {
+        partyMembers: {
+          with: {
+            character: { columns: { id: true, name: true, travelStatus: true } },
           },
         },
       },
@@ -633,8 +633,9 @@ router.post('/:partyId/kick', authGuard, characterGuard, validate(kickSchema), a
       return res.status(400).json({ error: 'You cannot kick yourself. Use the leave endpoint instead.' });
     }
 
-    // Find the target member
-    const targetMember = party.members.find(m => m.characterId === targetId);
+    // Find the target member (active only)
+    const activeMembers = party.partyMembers.filter(m => m.leftAt === null);
+    const targetMember = activeMembers.find(m => m.characterId === targetId);
     if (!targetMember) {
       return res.status(404).json({ error: 'Target is not an active member of this party' });
     }
@@ -644,17 +645,16 @@ router.post('/:partyId/kick', authGuard, characterGuard, validate(kickSchema), a
       return res.status(400).json({ error: 'Cannot kick a member during active group travel' });
     }
 
-    await prisma.partyMember.update({
-      where: { id: targetMember.id },
-      data: { leftAt: new Date() },
-    });
+    await db.update(partyMembers).set({
+      leftAt: new Date().toISOString(),
+    }).where(eq(partyMembers.id, targetMember.id));
 
     return res.json({
       message: `${targetMember.character.name} has been kicked from the party`,
       kickedCharacterId: targetId,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'party-kick', req)) return;
+    if (handleDbError(error, res, 'party-kick', req)) return;
     logRouteError(req, 500, 'Party kick error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -667,13 +667,12 @@ router.post('/:partyId/disband', authGuard, characterGuard, async (req: Authenti
     const { partyId } = req.params;
 
     // Find party with all active members
-    const party = await prisma.party.findUnique({
-      where: { id: partyId },
-      include: {
-        members: {
-          where: { leftAt: null },
-          include: {
-            character: { select: { id: true, name: true, travelStatus: true } },
+    const party = await db.query.parties.findFirst({
+      where: eq(parties.id, partyId),
+      with: {
+        partyMembers: {
+          with: {
+            character: { columns: { id: true, name: true, travelStatus: true } },
           },
         },
       },
@@ -692,39 +691,38 @@ router.post('/:partyId/disband', authGuard, characterGuard, async (req: Authenti
       return res.status(403).json({ error: 'Only the party leader can disband the party' });
     }
 
+    // Active members only
+    const activeMembers = party.partyMembers.filter(m => m.leftAt === null);
+
     // Cannot disband during active group travel
-    const travelingMembers = party.members.filter(m => m.character.travelStatus === 'traveling_group');
+    const travelingMembers = activeMembers.filter(m => m.character.travelStatus === 'traveling_group');
     if (travelingMembers.length > 0) {
       return res.status(400).json({ error: 'Cannot disband a party while members are in group travel' });
     }
 
-    const now = new Date();
+    const nowStr = new Date().toISOString();
 
-    await prisma.$transaction(async (tx) => {
-      // Set all members' leftAt
-      for (const member of party.members) {
-        await tx.partyMember.update({
-          where: { id: member.id },
-          data: { leftAt: now },
-        });
+    await db.transaction(async (tx) => {
+      // Set all active members' leftAt
+      for (const member of activeMembers) {
+        await tx.update(partyMembers).set({
+          leftAt: nowStr,
+        }).where(eq(partyMembers.id, member.id));
       }
 
       // Disband the party
-      await tx.party.update({
-        where: { id: party.id },
-        data: {
-          status: 'disbanded',
-          disbandedAt: now,
-        },
-      });
+      await tx.update(parties).set({
+        status: 'disbanded',
+        disbandedAt: nowStr,
+      }).where(eq(parties.id, party.id));
     });
 
     return res.json({
       message: 'Party has been disbanded',
-      membersRemoved: party.members.length,
+      membersRemoved: activeMembers.length,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'party-disband', req)) return;
+    if (handleDbError(error, res, 'party-disband', req)) return;
     logRouteError(req, 500, 'Party disband error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -737,14 +735,13 @@ router.post('/:partyId/transfer', authGuard, characterGuard, validate(transferSc
     const { partyId } = req.params;
     const { characterId: targetId } = req.body;
 
-    // Find party
-    const party = await prisma.party.findUnique({
-      where: { id: partyId },
-      include: {
-        members: {
-          where: { leftAt: null },
-          include: {
-            character: { select: { id: true, name: true } },
+    // Find party with active members
+    const party = await db.query.parties.findFirst({
+      where: eq(parties.id, partyId),
+      with: {
+        partyMembers: {
+          with: {
+            character: { columns: { id: true, name: true } },
           },
         },
       },
@@ -768,36 +765,36 @@ router.post('/:partyId/transfer', authGuard, characterGuard, validate(transferSc
       return res.status(400).json({ error: 'You are already the leader' });
     }
 
+    // Active members only
+    const activeMembers = party.partyMembers.filter(m => m.leftAt === null);
+
     // Target must be an active member
-    const targetMember = party.members.find(m => m.characterId === targetId);
+    const targetMember = activeMembers.find(m => m.characterId === targetId);
     if (!targetMember) {
       return res.status(404).json({ error: 'Target is not an active member of this party' });
     }
 
     // Find the current leader's membership record
-    const leaderMember = party.members.find(m => m.characterId === character.id);
+    const leaderMember = activeMembers.find(m => m.characterId === character.id);
     if (!leaderMember) {
       return res.status(400).json({ error: 'You are not a member of this party' });
     }
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Demote old leader to member
-      await tx.partyMember.update({
-        where: { id: leaderMember.id },
-        data: { role: 'member' },
-      });
+      await tx.update(partyMembers).set({
+        role: 'member',
+      }).where(eq(partyMembers.id, leaderMember.id));
 
       // Promote target to leader
-      await tx.partyMember.update({
-        where: { id: targetMember.id },
-        data: { role: 'leader' },
-      });
+      await tx.update(partyMembers).set({
+        role: 'leader',
+      }).where(eq(partyMembers.id, targetMember.id));
 
       // Update party's leaderId
-      await tx.party.update({
-        where: { id: party.id },
-        data: { leaderId: targetId },
-      });
+      await tx.update(parties).set({
+        leaderId: targetId,
+      }).where(eq(parties.id, party.id));
     });
 
     const partyResponse = await formatPartyResponse(party.id);
@@ -807,7 +804,7 @@ router.post('/:partyId/transfer', authGuard, characterGuard, validate(transferSc
       party: partyResponse,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'party-transfer', req)) return;
+    if (handleDbError(error, res, 'party-transfer', req)) return;
     logRouteError(req, 500, 'Party transfer error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -820,13 +817,13 @@ router.get('/:partyId', authGuard, characterGuard, async (req: AuthenticatedRequ
     const { partyId } = req.params;
 
     // Verify caller is an active member of this party
-    const membership = await prisma.partyMember.findFirst({
-      where: {
-        partyId,
-        characterId: character.id,
-        leftAt: null,
-      },
+    const allMemberships = await db.query.partyMembers.findMany({
+      where: and(
+        eq(partyMembers.partyId, partyId),
+        eq(partyMembers.characterId, character.id),
+      ),
     });
+    const membership = allMemberships.find(m => m.leftAt === null);
 
     if (!membership) {
       return res.status(403).json({ error: 'You are not an active member of this party' });
@@ -840,7 +837,7 @@ router.get('/:partyId', authGuard, characterGuard, async (req: AuthenticatedRequ
 
     return res.json({ party: partyResponse });
   } catch (error) {
-    if (handlePrismaError(error, res, 'party-info', req)) return;
+    if (handleDbError(error, res, 'party-info', req)) return;
     logRouteError(req, 500, 'Party info error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

@@ -1,5 +1,7 @@
-import { prisma } from '../lib/prisma';
-import { Race, RelationStatus } from '@prisma/client';
+import { db } from '../lib/db';
+import { eq, sql } from 'drizzle-orm';
+import { characters, towns } from '@database/tables';
+import type { Race, RelationStatus } from '@shared/enums';
 import { lookupRelation } from './regional-mechanics';
 
 export interface BorderCheckResult {
@@ -25,17 +27,17 @@ export async function checkBorderCrossing(
   toTownId: string,
 ): Promise<BorderCheckResult> {
   const [character, fromTown, toTown] = await Promise.all([
-    prisma.character.findUnique({
-      where: { id: characterId },
-      select: { id: true, race: true },
+    db.query.characters.findFirst({
+      where: eq(characters.id, characterId),
+      columns: { id: true, race: true },
     }),
-    prisma.town.findUnique({
-      where: { id: fromTownId },
-      select: { id: true, name: true, regionId: true },
+    db.query.towns.findFirst({
+      where: eq(towns.id, fromTownId),
+      columns: { id: true, name: true, regionId: true },
     }),
-    prisma.town.findUnique({
-      where: { id: toTownId },
-      select: { id: true, name: true, regionId: true },
+    db.query.towns.findFirst({
+      where: eq(towns.id, toTownId),
+      columns: { id: true, name: true, regionId: true },
     }),
   ]);
 
@@ -81,9 +83,9 @@ export async function checkBorderCrossing(
   }
 
   // Get majority race in destination town
-  const destCharacters = await prisma.character.findMany({
-    where: { currentTownId: toTownId },
-    select: { race: true },
+  const destCharacters = await db.query.characters.findMany({
+    where: eq(characters.currentTownId, toTownId),
+    columns: { race: true },
   });
 
   let majorityRace: Race | null = null;
@@ -175,9 +177,9 @@ export async function applyTariff(
 ): Promise<{ tariffAmount: number; remainingGold: number; paid: boolean }> {
   const tariffAmount = Math.ceil(goodsValue * (tariffPercent / 100));
 
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { id: true, gold: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { id: true, gold: true },
   });
 
   if (!character) {
@@ -188,11 +190,10 @@ export async function applyTariff(
     return { tariffAmount, remainingGold: character.gold, paid: false };
   }
 
-  const updated = await prisma.character.update({
-    where: { id: characterId },
-    data: { gold: { decrement: tariffAmount } },
-    select: { gold: true },
-  });
+  const [updated] = await db.update(characters)
+    .set({ gold: sql`${characters.gold} - ${tariffAmount}` })
+    .where(eq(characters.id, characterId))
+    .returning({ gold: characters.gold });
 
   return { tariffAmount, remainingGold: updated.gold, paid: true };
 }

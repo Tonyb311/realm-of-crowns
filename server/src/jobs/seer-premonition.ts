@@ -4,7 +4,9 @@
  */
 
 import cron from 'node-cron';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and } from 'drizzle-orm';
+import { characters, notifications } from '@database/tables';
 import { logger } from '../lib/logger';
 import { cronJobExecutions } from '../lib/metrics';
 import { generateSeerPremonition } from '../services/psion-perks';
@@ -14,9 +16,9 @@ export function startSeerPremonitionJob() {
     logger.debug({ job: 'seerPremonition' }, 'cron job started');
 
     try {
-      const seers = await prisma.character.findMany({
-        where: { class: 'psion', specialization: 'seer' },
-        select: { id: true, name: true },
+      const seers = await db.query.characters.findMany({
+        where: and(eq(characters.class, 'psion'), eq(characters.specialization, 'seer')),
+        columns: { id: true, name: true },
       });
 
       let sent = 0;
@@ -24,14 +26,13 @@ export function startSeerPremonitionJob() {
         const premonition = await generateSeerPremonition(seer.id);
 
         if (premonition) {
-          await prisma.notification.create({
-            data: {
-              characterId: seer.id,
-              type: 'seer_premonition',
-              title: 'Premonition',
-              message: premonition,
-              data: { source: 'seer_perk', timestamp: new Date().toISOString() },
-            },
+          await db.insert(notifications).values({
+            id: crypto.randomUUID(),
+            characterId: seer.id,
+            type: 'seer_premonition',
+            title: 'Premonition',
+            message: premonition,
+            data: { source: 'seer_perk', timestamp: new Date().toISOString() },
           });
           sent++;
         }

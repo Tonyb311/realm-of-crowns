@@ -1,7 +1,9 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../../lib/prisma';
-import { handlePrismaError } from '../../lib/prisma-errors';
+import { db } from '../../lib/db';
+import { eq, and, asc } from 'drizzle-orm';
+import { contentReleases, towns } from '@database/tables';
+import { handleDbError } from '../../lib/db-errors';
 import { logRouteError } from '../../lib/error-logger';
 import { validate } from '../../middleware/validate';
 import { AuthenticatedRequest } from '../../types/express';
@@ -40,7 +42,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
     const map = await getContentReleaseMap();
     return res.json(map);
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-content-release-map', req)) return;
+    if (handleDbError(error, res, 'admin-content-release-map', req)) return;
     logRouteError(req, 500, '[Admin] Content release map error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -53,17 +55,20 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
 router.get('/plan', async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Fetch unreleased races from contentRelease table
-    const unreleasedRaces = await prisma.contentRelease.findMany({
-      where: { contentType: 'race', isReleased: false },
-      orderBy: [{ releaseOrder: 'asc' }, { contentName: 'asc' }],
+    const unreleasedRaces = await db.query.contentReleases.findMany({
+      where: and(
+        eq(contentReleases.contentType, 'race'),
+        eq(contentReleases.isReleased, false),
+      ),
+      orderBy: [asc(contentReleases.releaseOrder), asc(contentReleases.contentName)],
     });
 
     // Fetch unreleased towns
-    const unreleasedTowns = await prisma.town.findMany({
-      where: { isReleased: false },
-      orderBy: [{ releaseOrder: 'asc' }, { name: 'asc' }],
-      include: {
-        region: { select: { id: true, name: true } },
+    const unreleasedTowns = await db.query.towns.findMany({
+      where: eq(towns.isReleased, false),
+      orderBy: [asc(towns.releaseOrder), asc(towns.name)],
+      with: {
+        region: { columns: { id: true, name: true } },
       },
     });
 
@@ -104,7 +109,7 @@ router.get('/plan', async (req: AuthenticatedRequest, res: Response) => {
 
     return res.json({ races: racePlan, towns: townPlan });
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-content-release-plan', req)) return;
+    if (handleDbError(error, res, 'admin-content-release-plan', req)) return;
     logRouteError(req, 500, '[Admin] Content release plan error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -127,7 +132,7 @@ router.patch('/:contentType/:contentId/release', validate(releaseNotesSchema), a
 
     return res.json({ success: true, contentType, contentId });
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-content-release', req)) return;
+    if (handleDbError(error, res, 'admin-content-release', req)) return;
     logRouteError(req, 500, '[Admin] Content release error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -154,7 +159,7 @@ router.patch('/:contentType/:contentId/unrelease', validate(releaseNotesSchema),
 
     return res.json({ success: true, contentType, contentId });
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-content-unrelease', req)) return;
+    if (handleDbError(error, res, 'admin-content-unrelease', req)) return;
     logRouteError(req, 500, '[Admin] Content unrelease error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -188,7 +193,7 @@ router.post('/bulk-release', validate(bulkReleaseSchema), async (req: Authentica
 
     return res.json({ released: totalCount });
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-content-bulk-release', req)) return;
+    if (handleDbError(error, res, 'admin-content-bulk-release', req)) return;
     logRouteError(req, 500, '[Admin] Content bulk release error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

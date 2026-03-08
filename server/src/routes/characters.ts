@@ -1,18 +1,21 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, asc } from 'drizzle-orm';
+import { users, characters } from '@database/tables';
+import { race as raceEnum, dragonBloodline as dragonBloodlineEnum, beastClan as beastClanEnum, elementalType as elementalTypeEnum } from '@database/enums';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { Race, DragonBloodline, BeastClan, ElementalType } from '@prisma/client';
 import { getRace } from '@shared/data/races';
 import { getStatAllocationCost, STAT_HARD_CAP } from '@shared/utils/bounded-accuracy';
 import { FEAT_DEFINITIONS, getFeatById, MAX_FEATS } from '@shared/data/feats';
 import { CLASS_SAVE_PROFICIENCIES } from '@shared/data/combat-constants';
 import { getGameDay, getNextTickTime } from '../lib/game-day';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
+import crypto from 'crypto';
 import { isRaceReleased } from '../lib/content-release';
 import { assignStartingTown } from '../lib/starting-town';
 import { transformInventory } from '../lib/inventory-transform';
@@ -26,7 +29,7 @@ const router = Router();
 const VALID_CLASSES = ['warrior', 'mage', 'rogue', 'cleric', 'ranger', 'bard', 'psion'] as const;
 type CharacterClass = typeof VALID_CLASSES[number];
 
-const VALID_RACES = Object.values(Race);
+const VALID_RACES = raceEnum.enumValues;
 
 const createCharacterSchema = z.object({
   name: z
@@ -42,6 +45,11 @@ const createCharacterSchema = z.object({
     error: `Invalid class. Must be one of: ${VALID_CLASSES.join(', ')}`,
   }),
 });
+
+type Race = typeof raceEnum.enumValues[number];
+type DragonBloodline = typeof dragonBloodlineEnum.enumValues[number];
+type BeastClan = typeof beastClanEnum.enumValues[number];
+type ElementalType = typeof elementalTypeEnum.enumValues[number];
 
 function raceEnumToRegistryKey(race: Race): string {
   return race.toLowerCase();
@@ -68,17 +76,20 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
   try {
     const { name, race, subRace, characterClass } = req.body;
     const userId = req.user!.userId;
-    const raceEnum = race as Race;
+    const raceVal = race as Race;
     const charClass = characterClass as CharacterClass;
 
     // One character per user
-    const existing = await prisma.character.findFirst({ where: { userId }, orderBy: { createdAt: 'asc' } });
+    const existing = await db.query.characters.findFirst({
+      where: eq(characters.userId, userId),
+      orderBy: asc(characters.createdAt),
+    });
     if (existing) {
       return res.status(409).json({ error: 'You already have a character' });
     }
 
     // Validate race exists in registry
-    const registryKey = raceEnumToRegistryKey(raceEnum);
+    const registryKey = raceEnumToRegistryKey(raceVal);
     const raceDef = getRace(registryKey);
     if (!raceDef) {
       return res.status(400).json({ error: `Race data not found for ${race}` });
@@ -94,36 +105,36 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
     let beastClan: BeastClan | null = null;
     let elementalType: ElementalType | null = null;
 
-    if (raceEnum === Race.DRAKONID) {
+    if (raceVal === 'DRAKONID') {
       if (!subRace) {
         return res.status(400).json({ error: 'Drakonid requires dragonBloodline sub-race' });
       }
       const upper = subRace.toUpperCase();
-      if (!Object.values(DragonBloodline).includes(upper as DragonBloodline)) {
+      if (!(dragonBloodlineEnum.enumValues as readonly string[]).includes(upper)) {
         return res.status(400).json({
-          error: `Invalid dragon bloodline. Must be one of: ${Object.values(DragonBloodline).join(', ')}`,
+          error: `Invalid dragon bloodline. Must be one of: ${dragonBloodlineEnum.enumValues.join(', ')}`,
         });
       }
       dragonBloodline = upper as DragonBloodline;
-    } else if (raceEnum === Race.BEASTFOLK) {
+    } else if (raceVal === 'BEASTFOLK') {
       if (!subRace) {
         return res.status(400).json({ error: 'Beastfolk requires beastClan sub-race' });
       }
       const upper = subRace.toUpperCase();
-      if (!Object.values(BeastClan).includes(upper as BeastClan)) {
+      if (!(beastClanEnum.enumValues as readonly string[]).includes(upper)) {
         return res.status(400).json({
-          error: `Invalid beast clan. Must be one of: ${Object.values(BeastClan).join(', ')}`,
+          error: `Invalid beast clan. Must be one of: ${beastClanEnum.enumValues.join(', ')}`,
         });
       }
       beastClan = upper as BeastClan;
-    } else if (raceEnum === Race.ELEMENTARI) {
+    } else if (raceVal === 'ELEMENTARI') {
       if (!subRace) {
         return res.status(400).json({ error: 'Elementari requires elementalType sub-race' });
       }
       const upper = subRace.toUpperCase();
-      if (!Object.values(ElementalType).includes(upper as ElementalType)) {
+      if (!(elementalTypeEnum.enumValues as readonly string[]).includes(upper)) {
         return res.status(400).json({
-          error: `Invalid elemental type. Must be one of: ${Object.values(ElementalType).join(', ')}`,
+          error: `Invalid elemental type. Must be one of: ${elementalTypeEnum.enumValues.join(', ')}`,
         });
       }
       elementalType = upper as ElementalType;
@@ -153,27 +164,22 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
     // Auto-assign starting town based on race (least-populated home city)
     const startingTown = await assignStartingTown(registryKey);
 
-    const character = await prisma.character.create({
-      data: {
-        userId,
-        name,
-        race: raceEnum,
-        dragonBloodline,
-        beastClan,
-        elementalType,
-        class: charClass,
-        stats,
-        gold,
-        health: maxHealth,
-        maxHealth,
-        currentTownId: startingTown.id,
-        homeTownId: startingTown.id,
-      },
-      include: {
-        currentTown: { select: { id: true, name: true } },
-        homeTown: { select: { id: true, name: true } },
-      },
-    });
+    const [character] = await db.insert(characters).values({
+      id: crypto.randomUUID(),
+      userId,
+      name,
+      race: raceVal,
+      dragonBloodline,
+      beastClan,
+      elementalType,
+      class: charClass,
+      stats,
+      gold,
+      health: maxHealth,
+      maxHealth,
+      currentTownId: startingTown.id,
+      homeTownId: startingTown.id,
+    }).returning();
 
     // Give starting inventory (5 Basic Rations)
     await giveStartingInventory(character.id);
@@ -194,7 +200,7 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'character-create', req)) return;
+    if (handleDbError(error, res, 'character-create', req)) return;
     logRouteError(req, 500, 'Character creation error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -204,26 +210,26 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
 router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Re-query with town, inventory and equipment relations for frontend display
-    const character = await prisma.character.findUnique({
-      where: { id: req.character!.id },
-      include: {
-        currentTown: { select: { name: true } },
-        homeTown: { select: { id: true, name: true } },
-        professions: { select: { professionType: true, tier: true, level: true, isActive: true } },
-        inventory: {
-          include: {
+    const character = await db.query.characters.findFirst({
+      where: eq(characters.id, req.character!.id),
+      with: {
+        town_currentTownId: { columns: { name: true } },
+        town_homeTownId: { columns: { id: true, name: true } },
+        playerProfessions: { columns: { professionType: true, tier: true, level: true, isActive: true } },
+        inventories: {
+          with: {
             item: {
-              include: {
-                template: true,
-                craftedBy: { select: { id: true, name: true } },
+              with: {
+                itemTemplate: true,
+                character_craftedById: { columns: { id: true, name: true } },
               },
             },
           },
         },
-        equipment: {
-          include: {
+        characterEquipments: {
+          with: {
             item: {
-              include: { template: true },
+              with: { itemTemplate: true },
             },
           },
         },
@@ -233,7 +239,7 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
       return res.status(404).json({ error: 'Character not found' });
     }
 
-    const { currentTown, homeTown, professions, inventory, equipment, ...rest } = character;
+    const { town_currentTownId: currentTown, town_homeTownId: homeTown, playerProfessions: professions, inventories: inventory, characterEquipments: equipment, ...rest } = character;
 
     // Transform inventory into frontend-friendly shape
     const inventoryItems = transformInventory(inventory || [], true);
@@ -263,13 +269,13 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
           id: equip.item.id,
           templateId: equip.item.templateId,
           template: {
-            id: equip.item.template.id,
-            name: equip.item.template.name,
-            type: equip.item.template.type,
-            rarity: equip.item.template.rarity,
-            description: equip.item.template.description,
-            stats: equip.item.template.stats,
-            durability: equip.item.template.durability,
+            id: equip.item.itemTemplate.id,
+            name: equip.item.itemTemplate.name,
+            type: equip.item.itemTemplate.type,
+            rarity: equip.item.itemTemplate.rarity,
+            description: equip.item.itemTemplate.description,
+            stats: equip.item.itemTemplate.stats,
+            durability: equip.item.itemTemplate.durability,
           },
           quantity: 1,
           currentDurability: equip.item.currentDurability,
@@ -289,7 +295,7 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
       status: rest.travelStatus === 'idle' || rest.travelStatus === 'arrived' ? 'idle' : 'traveling',
       currentTownName: currentTown?.name ?? null,
       homeTownName: homeTown?.name ?? null,
-      professions: (professions || []).map(p => ({
+      professions: (professions || []).map((p: any) => ({
         type: p.professionType,
         professionType: p.professionType,
         tier: p.tier,
@@ -308,15 +314,15 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
 // GET /api/characters/me/inventory — Standalone inventory endpoint (used by MarketPage)
 router.get('/me/inventory', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await prisma.character.findUnique({
-      where: { id: req.character!.id },
-      include: {
-        inventory: {
-          include: {
+    const character = await db.query.characters.findFirst({
+      where: eq(characters.id, req.character!.id),
+      with: {
+        inventories: {
+          with: {
             item: {
-              include: {
-                template: true,
-                craftedBy: { select: { id: true, name: true } },
+              with: {
+                itemTemplate: true,
+                character_craftedById: { columns: { id: true, name: true } },
               },
             },
           },
@@ -327,7 +333,7 @@ router.get('/me/inventory', authGuard, characterGuard, async (req: Authenticated
       return res.status(404).json({ error: 'Character not found' });
     }
 
-    const items = transformInventory(character.inventory || []);
+    const items = transformInventory(character.inventories || []);
 
     return res.json(items);
   } catch (error) {
@@ -339,13 +345,13 @@ router.get('/me/inventory', authGuard, characterGuard, async (req: Authenticated
 // GET /api/characters/mine — List all characters for authenticated user
 router.get('/mine', authGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
-    const characters = await prisma.character.findMany({
-      where: { userId: req.user!.userId },
-      select: { id: true, name: true, race: true, class: true, level: true, currentTownId: true },
+    const user = await db.query.users.findFirst({ where: eq(users.id, req.user!.userId) });
+    const charList = await db.query.characters.findMany({
+      where: eq(characters.userId, req.user!.userId),
+      columns: { id: true, name: true, race: true, class: true, level: true, currentTownId: true },
     });
     return res.json({
-      characters: characters.map(c => ({
+      characters: charList.map(c => ({
         ...c,
         isActive: c.id === user?.activeCharacterId,
       })),
@@ -364,12 +370,12 @@ router.post('/switch', authGuard, async (req: AuthenticatedRequest, res: Respons
     const gameDay = getGameDay();
 
     // Validate character belongs to user
-    const character = await prisma.character.findFirst({
-      where: { id: characterId, userId: req.user!.userId },
+    const character = await db.query.characters.findFirst({
+      where: eq(characters.id, characterId),
     });
-    if (!character) return res.status(404).json({ error: 'Character not found' });
+    if (!character || character.userId !== req.user!.userId) return res.status(404).json({ error: 'Character not found' });
 
-    const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+    const user = await db.query.users.findFirst({ where: eq(users.id, req.user!.userId) });
     if (user?.activeCharacterId === characterId) {
       return res.status(400).json({ error: 'Character is already active' });
     }
@@ -377,10 +383,10 @@ router.post('/switch', authGuard, async (req: AuthenticatedRequest, res: Respons
       return res.status(429).json({ error: 'Already switched characters today', resetsAt: getNextTickTime().toISOString() });
     }
 
-    await prisma.user.update({
-      where: { id: req.user!.userId },
-      data: { activeCharacterId: characterId, lastSwitchDay: gameDay },
-    });
+    await db.update(users).set({
+      activeCharacterId: characterId,
+      lastSwitchDay: gameDay,
+    }).where(eq(users.id, req.user!.userId));
 
     return res.json({
       message: 'Character switch queued. Takes effect at next daily reset.',
@@ -388,7 +394,7 @@ router.post('/switch', authGuard, async (req: AuthenticatedRequest, res: Respons
       resetsAt: getNextTickTime().toISOString(),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'character-switch', req)) return;
+    if (handleDbError(error, res, 'character-switch', req)) return;
     logRouteError(req, 500, 'Switch character error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -426,10 +432,7 @@ const bioSchema = z.object({
 router.patch('/me/bio', authGuard, characterGuard, validate(bioSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { bio } = req.body;
-    await prisma.character.update({
-      where: { id: req.character!.id },
-      data: { bio } as any,
-    });
+    await db.update(characters).set({ bio } as any).where(eq(characters.id, req.character!.id));
     return res.json({ success: true, bio });
   } catch (error) {
     logRouteError(req, 500, 'Update bio error', error);
@@ -440,8 +443,8 @@ router.patch('/me/bio', authGuard, characterGuard, validate(bioSchema), async (r
 // GET /api/characters/:id
 router.get('/:id', authGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await prisma.character.findUnique({
-      where: { id: req.params.id },
+    const character = await db.query.characters.findFirst({
+      where: eq(characters.id, req.params.id),
     });
 
     if (!character) {
@@ -528,15 +531,12 @@ router.post('/allocate-stats', authGuard, characterGuard, validate(allocateStats
     const conIncrease = con;
     const hpBonus = conIncrease > 0 ? conIncrease * 2 : 0;
 
-    await prisma.character.update({
-      where: { id: character.id },
-      data: {
-        stats: newStats,
-        unspentStatPoints: character.unspentStatPoints - totalCost,
-        maxHealth: character.maxHealth + hpBonus,
-        health: character.health + hpBonus,
-      },
-    });
+    await db.update(characters).set({
+      stats: newStats,
+      unspentStatPoints: character.unspentStatPoints - totalCost,
+      maxHealth: character.maxHealth + hpBonus,
+      health: character.health + hpBonus,
+    }).where(eq(characters.id, character.id));
 
     return res.json({
       stats: newStats,
@@ -544,7 +544,7 @@ router.post('/allocate-stats', authGuard, characterGuard, validate(allocateStats
       maxHealth: character.maxHealth + hpBonus,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'allocate-stats', req)) return;
+    if (handleDbError(error, res, 'allocate-stats', req)) return;
     logRouteError(req, 500, 'Allocate stats error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -629,14 +629,11 @@ router.post('/choose-feat', authGuard, characterGuard, validate(chooseFeatSchema
       updateData.bonusSaveProficiencies = [...bonusSaves, saveProficiency];
     }
 
-    await prisma.character.update({
-      where: { id: character.id },
-      data: updateData,
-    });
+    await db.update(characters).set(updateData).where(eq(characters.id, character.id));
 
     return res.json({ success: true, feat: feat.name });
   } catch (error) {
-    if (handlePrismaError(error, res, 'choose-feat', req)) return;
+    if (handleDbError(error, res, 'choose-feat', req)) return;
     logRouteError(req, 500, 'Choose feat error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

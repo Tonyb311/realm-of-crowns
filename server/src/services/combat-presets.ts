@@ -4,8 +4,12 @@
  * item usage rules, and PvP loot behavior.
  */
 
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq } from 'drizzle-orm';
+import { characters, characterAbilities, inventories } from '@database/tables';
+import { sql } from 'drizzle-orm';
 import { calculateItemStats } from './item-stats';
+import type { ItemRarity } from '@shared/enums';
 
 // ---- Types ----
 
@@ -81,7 +85,7 @@ const DEFAULT_PRESETS: CombatPresets = {
  * Returns defaults if fields are not yet populated.
  */
 export async function getCombatPresets(characterId: string): Promise<CombatPresets> {
-  const character = await prisma.$queryRaw<{
+  const character = await db.execute<{
     combatStance: string | null;
     retreatHpThreshold: number | null;
     retreatOppositionRatio: number | null;
@@ -90,7 +94,7 @@ export async function getCombatPresets(characterId: string): Promise<CombatPrese
     abilityPriorityQueue: any;
     itemUsageRules: any;
     pvpLootBehavior: string | null;
-  }[]>`
+  }>(sql`
     SELECT
       "combat_stance" as "combatStance",
       "retreat_hp_threshold" as "retreatHpThreshold",
@@ -103,13 +107,14 @@ export async function getCombatPresets(characterId: string): Promise<CombatPrese
     FROM "characters"
     WHERE id = ${characterId}
     LIMIT 1
-  `;
+  `);
 
-  if (character.length === 0) {
+  const rows = character.rows ?? character as any;
+  if (!rows || rows.length === 0) {
     return { ...DEFAULT_PRESETS };
   }
 
-  const c = character[0];
+  const c = rows[0];
 
   return {
     stance: (c.combatStance as CombatStance) ?? DEFAULT_PRESETS.stance,
@@ -167,13 +172,7 @@ export async function updateCombatPresets(
 
   if (Object.keys(updates).length === 0) return;
 
-  // Build SET clause dynamically
-  const setClauses = Object.entries(updates)
-    .map(([key]) => `"${key}" = $${key}`)
-    .join(', ');
-
-  // Use Prisma's raw update to handle the new fields
-  await prisma.$executeRaw`
+  await db.execute(sql`
     UPDATE "characters"
     SET "combat_stance" = COALESCE(${presets.stance ?? null}, "combat_stance"),
         "retreat_hp_threshold" = COALESCE(${presets.retreat?.hpThreshold ?? null}, "retreat_hp_threshold"),
@@ -182,23 +181,23 @@ export async function updateCombatPresets(
         "never_retreat" = COALESCE(${presets.retreat?.neverRetreat ?? null}, "never_retreat"),
         "pvp_loot_behavior" = COALESCE(${presets.pvpLootBehavior ?? null}, "pvp_loot_behavior")
     WHERE id = ${characterId}
-  `;
+  `);
 
   // Update JSON fields separately if provided
   if (presets.abilityQueue !== undefined) {
-    await prisma.$executeRaw`
+    await db.execute(sql`
       UPDATE "characters"
       SET "ability_priority_queue" = ${JSON.stringify(presets.abilityQueue)}::jsonb
       WHERE id = ${characterId}
-    `;
+    `);
   }
 
   if (presets.itemUsageRules !== undefined) {
-    await prisma.$executeRaw`
+    await db.execute(sql`
       UPDATE "characters"
       SET "item_usage_rules" = ${JSON.stringify(presets.itemUsageRules)}::jsonb
       WHERE id = ${characterId}
-    `;
+    `);
   }
 }
 
@@ -217,23 +216,23 @@ export async function buildCombatParams(characterId: string): Promise<{
 }> {
   const [presets, character] = await Promise.all([
     getCombatPresets(characterId),
-    prisma.character.findUnique({
-      where: { id: characterId },
-      include: {
-        equipment: {
-          include: {
+    db.query.characters.findFirst({
+      where: eq(characters.id, characterId),
+      with: {
+        characterEquipments: {
+          with: {
             item: {
-              include: { template: true },
+              with: { itemTemplate: true },
             },
           },
         },
         characterAbilities: {
-          include: { ability: true },
+          with: { ability: true },
         },
-        inventory: {
-          include: {
+        inventories: {
+          with: {
             item: {
-              include: { template: true },
+              with: { itemTemplate: true },
             },
           },
         },
@@ -254,15 +253,19 @@ export async function buildCombatParams(characterId: string): Promise<{
   }
 
   // Find equipped weapon (MAIN_HAND slot)
-  const mainHand = character.equipment.find(e => e.slot === 'MAIN_HAND');
+  const mainHand = character.characterEquipments.find((e: any) => e.slot === 'MAIN_HAND');
   let equippedWeapon = null;
   if (mainHand) {
-    const calculated = calculateItemStats(mainHand.item);
-    const weaponStats = mainHand.item.template.stats as Record<string, any>;
+    const calculated = calculateItemStats({
+      quality: mainHand.item.quality,
+      enchantments: mainHand.item.enchantments,
+      template: { stats: mainHand.item.itemTemplate.stats },
+    });
+    const weaponStats = mainHand.item.itemTemplate.stats as Record<string, any>;
     const finalStats = calculated.finalStats;
     equippedWeapon = {
       id: mainHand.item.id,
-      name: mainHand.item.template.name,
+      name: mainHand.item.itemTemplate.name,
       diceCount: weaponStats.diceCount ?? 1,
       diceSides: weaponStats.diceSides ?? 6,
       damageModifierStat: weaponStats.damageModifierStat ?? 'str',
@@ -274,21 +277,21 @@ export async function buildCombatParams(characterId: string): Promise<{
   }
 
   // Available abilities (class + racial)
-  const availableAbilities = character.characterAbilities.map(ca => ({
+  const availableAbilities = character.characterAbilities.map((ca: any) => ({
     id: ca.ability.id,
     name: ca.ability.name,
     effects: ca.ability.effects,
   }));
 
   // Available consumable items in inventory
-  const availableItems = character.inventory
-    .filter(inv => inv.item.template.type === 'CONSUMABLE')
-    .map(inv => ({
+  const availableItems = character.inventories
+    .filter((inv: any) => inv.item.itemTemplate.type === 'CONSUMABLE')
+    .map((inv: any) => ({
       id: inv.item.id,
-      name: inv.item.template.name,
+      name: inv.item.itemTemplate.name,
       templateId: inv.item.templateId,
-      type: inv.item.template.type,
-      stats: inv.item.template.stats,
+      type: inv.item.itemTemplate.type,
+      stats: inv.item.itemTemplate.stats,
     }));
 
   return {
@@ -314,18 +317,18 @@ export async function validateAbilityQueue(
   const errors: string[] = [];
 
   // Get character's unlocked abilities (class abilities)
-  const unlockedAbilities = await prisma.characterAbility.findMany({
-    where: { characterId },
-    include: { ability: { select: { id: true, name: true } } },
+  const unlockedAbilities = await db.query.characterAbilities.findMany({
+    where: eq(characterAbilities.characterId, characterId),
+    with: { ability: { columns: { id: true, name: true } } },
   });
 
-  const unlockedIds = new Set(unlockedAbilities.map(a => a.ability.id));
-  const unlockedNames = new Set(unlockedAbilities.map(a => a.ability.name));
+  const unlockedIds = new Set(unlockedAbilities.map((a: any) => a.ability.id));
+  const unlockedNames = new Set(unlockedAbilities.map((a: any) => a.ability.name));
 
   // Get character's racial abilities
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { unlockedAbilities: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { unlockedAbilities: true },
   });
 
   const racialAbilities = Array.isArray(character?.unlockedAbilities)
@@ -356,12 +359,12 @@ export async function validateItemUsageRules(
 
   const errors: string[] = [];
 
-  const inventory = await prisma.inventory.findMany({
-    where: { characterId },
-    include: { item: { select: { templateId: true } } },
+  const inventory = await db.query.inventories.findMany({
+    where: eq(inventories.characterId, characterId),
+    with: { item: { columns: { templateId: true } } },
   });
 
-  const ownedTemplateIds = new Set(inventory.map(inv => inv.item.templateId));
+  const ownedTemplateIds = new Set(inventory.map((inv: any) => inv.item.templateId));
 
   for (const rule of rules) {
     if (!ownedTemplateIds.has(rule.itemTemplateId)) {

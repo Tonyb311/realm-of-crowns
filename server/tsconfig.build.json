@@ -3,6 +3,7 @@
   "compilerOptions": {
     "paths": {
       "@shared/*": ["../shared/dist/*"],
+      "@database/*": ["../database/dist/schema/*"],
       "@/*": ["src/*"]
     }
   }

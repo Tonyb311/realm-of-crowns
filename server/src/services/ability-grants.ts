@@ -1,4 +1,6 @@
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq } from 'drizzle-orm';
+import { characters, characterAbilities, abilities } from '@database/tables';
 import { ABILITIES_BY_CLASS } from '@shared/data/skills';
 import { CLASS_MILESTONE_SAVE_ORDER, SAVE_PROFICIENCY_MILESTONES } from '@shared/data/combat-constants';
 import { FEAT_UNLOCK_LEVELS } from '@shared/data/feats';
@@ -11,8 +13,8 @@ import { FEAT_UNLOCK_LEVELS } from '@shared/data/feats';
  * Called on: level-up, specialization selection.
  */
 export async function autoGrantAbilities(characterId: string): Promise<string[]> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
   });
 
   if (!character || !character.class || !character.specialization) return [];
@@ -32,9 +34,9 @@ export async function autoGrantAbilities(characterId: string): Promise<string[]>
   if (qualifyingAbilities.length === 0) return [];
 
   // Get already-unlocked ability IDs
-  const existing = await prisma.characterAbility.findMany({
-    where: { characterId },
-    select: { abilityId: true },
+  const existing = await db.query.characterAbilities.findMany({
+    where: eq(characterAbilities.characterId, characterId),
+    columns: { abilityId: true },
   });
   const existingSet = new Set(existing.map((e) => e.abilityId));
 
@@ -46,33 +48,30 @@ export async function autoGrantAbilities(characterId: string): Promise<string[]>
 
   for (const abilityDef of toGrant) {
     // Ensure the Ability row exists in DB (for the junction table)
-    let dbAbility = await prisma.ability.findFirst({
-      where: { name: abilityDef.name },
+    let dbAbility = await db.query.abilities.findFirst({
+      where: eq(abilities.name, abilityDef.name),
     });
 
     if (!dbAbility) {
-      dbAbility = await prisma.ability.create({
-        data: {
-          id: abilityDef.id,
-          name: abilityDef.name,
-          description: abilityDef.description,
-          class: abilityDef.class,
-          specialization: abilityDef.specialization,
-          tier: abilityDef.tier,
-          effects: abilityDef.effects as any,
-          cooldown: abilityDef.cooldown,
-          prerequisiteAbilityId: abilityDef.prerequisiteAbilityId ?? null,
-          levelRequired: abilityDef.levelRequired,
-        },
-      });
+      [dbAbility] = await db.insert(abilities).values({
+        id: abilityDef.id,
+        name: abilityDef.name,
+        description: abilityDef.description,
+        class: abilityDef.class,
+        specialization: abilityDef.specialization,
+        tier: abilityDef.tier,
+        effects: abilityDef.effects as any,
+        cooldown: abilityDef.cooldown,
+        prerequisiteAbilityId: abilityDef.prerequisiteAbilityId ?? null,
+        levelRequired: abilityDef.levelRequired,
+      }).returning();
     }
 
     // Create the CharacterAbility junction row
-    await prisma.characterAbility.create({
-      data: {
-        characterId,
-        abilityId: dbAbility.id,
-      },
+    await db.insert(characterAbilities).values({
+      id: crypto.randomUUID(),
+      characterId,
+      abilityId: dbAbility.id,
     });
 
     grantedIds.push(abilityDef.id);
@@ -87,9 +86,9 @@ export async function autoGrantAbilities(characterId: string): Promise<string[]>
  * Idempotent — safe to call on every level-up.
  */
 export async function autoGrantSaveProficiencies(characterId: string): Promise<string[]> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { level: true, class: true, bonusSaveProficiencies: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { level: true, class: true, bonusSaveProficiencies: true },
   });
 
   if (!character || !character.class) return [];
@@ -111,10 +110,7 @@ export async function autoGrantSaveProficiencies(characterId: string): Promise<s
   if (newSaves.length === 0) return [];
 
   const updatedBonus = [...currentBonus, ...newSaves];
-  await prisma.character.update({
-    where: { id: characterId },
-    data: { bonusSaveProficiencies: updatedBonus },
-  });
+  await db.update(characters).set({ bonusSaveProficiencies: updatedBonus }).where(eq(characters.id, characterId));
 
   return newSaves;
 }
@@ -126,9 +122,9 @@ export async function autoGrantSaveProficiencies(characterId: string): Promise<s
  * Idempotent — safe to call on every level-up.
  */
 export async function checkFeatMilestone(characterId: string): Promise<boolean> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { level: true, feats: true, pendingFeatChoice: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { level: true, feats: true, pendingFeatChoice: true },
   });
 
   if (!character) return false;
@@ -138,10 +134,7 @@ export async function checkFeatMilestone(characterId: string): Promise<boolean> 
 
   // If they have fewer feats than milestones reached and no pending choice, flag one
   if (currentFeats.length < milestonesReached && !character.pendingFeatChoice) {
-    await prisma.character.update({
-      where: { id: characterId },
-      data: { pendingFeatChoice: true },
-    });
+    await db.update(characters).set({ pendingFeatChoice: true }).where(eq(characters.id, characterId));
     return true;
   }
 

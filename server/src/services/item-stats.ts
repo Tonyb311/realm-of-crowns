@@ -1,5 +1,7 @@
-import { prisma } from '../lib/prisma';
-import { ItemRarity } from '@prisma/client';
+import { db } from '../lib/db';
+import { eq } from 'drizzle-orm';
+import { characterEquipment } from '@database/tables';
+import type { ItemRarity } from '@shared/enums';
 
 // Quality multipliers applied to base stats
 const QUALITY_MULTIPLIERS: Record<ItemRarity, number> = {
@@ -150,10 +152,10 @@ export function calculateItemStats(item: {
  * Aggregate all equipped item stats for a character.
  */
 export async function calculateEquipmentTotals(characterId: string): Promise<EquipmentTotals> {
-  const equipped = await prisma.characterEquipment.findMany({
-    where: { characterId },
-    include: {
-      item: { include: { template: true } },
+  const equipped = await db.query.characterEquipment.findMany({
+    where: eq(characterEquipment.characterId, characterId),
+    with: {
+      item: { with: { itemTemplate: true } },
     },
   });
 
@@ -166,7 +168,11 @@ export async function calculateEquipmentTotals(characterId: string): Promise<Equ
   };
 
   for (const equip of equipped) {
-    const calculated = calculateItemStats(equip.item);
+    const calculated = calculateItemStats({
+      quality: equip.item.quality,
+      enchantments: equip.item.enchantments,
+      template: { stats: equip.item.itemTemplate.stats },
+    });
     const final = calculated.finalStats;
 
     if (typeof final.armor === 'number') {
@@ -194,7 +200,7 @@ export async function calculateEquipmentTotals(characterId: string): Promise<Equ
     totals.items.push({
       slot: equip.slot,
       itemId: equip.item.id,
-      itemName: equip.item.template.name,
+      itemName: equip.item.itemTemplate.name,
       quality: equip.item.quality,
       stats: calculated,
     });

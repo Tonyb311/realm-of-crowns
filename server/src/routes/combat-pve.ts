@@ -1,7 +1,10 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
-import { Prisma, ItemRarity } from '@prisma/client';
+import { db } from '../lib/db';
+import { eq, and, gt, asc, inArray, count } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
+import { characters, characterEquipment, combatSessions, combatLogs, combatParticipants, monsters, items } from '@database/tables';
+import { itemRarity } from '@database/enums';
 import { calculateItemStats } from '../services/item-stats';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
@@ -28,13 +31,15 @@ import { checkLevelUp } from '../services/progression';
 import { checkAchievements } from '../services/achievements';
 import { redis } from '../lib/redis';
 import { ACTION_XP, DEATH_PENALTY, getMonsterKillXp, getDeathXpPenalty } from '@shared/data/progression';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { logPveCombat, COMBAT_LOGGING_ENABLED } from '../lib/combat-logger';
 import { processItemDrops } from '../lib/loot-items';
 import { COMBAT_TTL } from '@shared/data/combat-config';
 import { formatCombatLog } from '../lib/combat-narrator-formatter';
 import { applyClassWeaponStat } from '../lib/road-encounter';
+
+type ItemRarity = typeof itemRarity.enumValues[number];
 
 const router = Router();
 
@@ -99,10 +104,10 @@ const combatActionSchema = z.object({
 // ---- Helpers ----
 
 async function getCharacter(userId: string, characterId: string) {
-  return prisma.character.findFirst({
-    where: { id: characterId, userId },
-    include: {
-      currentTown: { select: { id: true, name: true, regionId: true } },
+  return db.query.characters.findFirst({
+    where: and(eq(characters.id, characterId), eq(characters.userId, userId)),
+    with: {
+      town_currentTownId: true,
     },
   });
 }
@@ -159,26 +164,26 @@ const UNARMED_WEAPON: WeaponInfo = {
 };
 
 async function getEquippedWeapon(characterId: string): Promise<WeaponInfo> {
-  const equip = await prisma.characterEquipment.findUnique({
-    where: { characterId_slot: { characterId, slot: 'MAIN_HAND' } },
-    include: { item: { include: { template: true } } },
+  const equip = await db.query.characterEquipment.findFirst({
+    where: and(eq(characterEquipment.characterId, characterId), eq(characterEquipment.slot, 'MAIN_HAND')),
+    with: { item: { with: { itemTemplate: true } } },
   });
 
-  if (!equip || equip.item.template.type !== 'WEAPON') {
+  if (!equip || equip.item.itemTemplate.type !== 'WEAPON') {
     return UNARMED_WEAPON;
   }
 
-  const stats = equip.item.template.stats as Record<string, unknown>;
+  const stats = equip.item.itemTemplate.stats as Record<string, unknown>;
   const calculated = calculateItemStats({
     quality: equip.item.quality ?? ('COMMON' as ItemRarity),
     enchantments: equip.item.enchantments,
-    template: { stats: equip.item.template.stats },
+    template: { stats: equip.item.itemTemplate.stats },
   });
   const multiplier = calculated.qualityMultiplier;
 
   return {
     id: equip.item.id,
-    name: equip.item.template.name,
+    name: equip.item.itemTemplate.name,
     diceCount: (typeof stats.diceCount === 'number') ? stats.diceCount : 1,
     diceSides: (typeof stats.diceSides === 'number') ? stats.diceSides : 4,
     damageModifierStat: stats.damageModifierStat === 'dex' ? 'dex' : 'str',
@@ -217,9 +222,9 @@ router.post('/action', authGuard, validate(combatActionSchema), async (req: Auth
 
     // Verify it is the player's turn (they can only submit actions for their own character)
     // Major-B12 FIX: Add orderBy for deterministic result
-    const character = await prisma.character.findFirst({
-      where: { userId: req.user!.userId },
-      orderBy: { createdAt: 'asc' },
+    const character = await db.query.characters.findFirst({
+      where: eq(characters.userId, req.user!.userId),
+      orderBy: (c, { asc }) => [asc(c.createdAt)],
     });
     if (!character) {
       return res.status(404).json({ error: 'Character not found' });
@@ -233,14 +238,13 @@ router.post('/action', authGuard, validate(combatActionSchema), async (req: Auth
       // Record monster action in DB log
       const lastEntry = monsterState.log[monsterState.log.length - 1];
       if (lastEntry) {
-        await prisma.combatLog.create({
-          data: {
-            sessionId,
-            round: lastEntry.round,
-            actorId: lastEntry.actorId,
-            action: lastEntry.action,
-            result: lastEntry.result as object,
-          },
+        await db.insert(combatLogs).values({
+          id: crypto.randomUUID(),
+          sessionId,
+          round: lastEntry.round,
+          actorId: lastEntry.actorId,
+          action: lastEntry.action,
+          result: lastEntry.result as object,
         });
       }
 
@@ -288,14 +292,13 @@ router.post('/action', authGuard, validate(combatActionSchema), async (req: Auth
     // Record in DB log
     const lastEntry = newState.log[newState.log.length - 1];
     if (lastEntry) {
-      await prisma.combatLog.create({
-        data: {
-          sessionId,
-          round: lastEntry.round,
-          actorId: lastEntry.actorId,
-          action: lastEntry.action,
-          result: lastEntry.result as object,
-        },
+      await db.insert(combatLogs).values({
+        id: crypto.randomUUID(),
+        sessionId,
+        round: lastEntry.round,
+        actorId: lastEntry.actorId,
+        action: lastEntry.action,
+        result: lastEntry.result as object,
       });
     }
 
@@ -310,14 +313,13 @@ router.post('/action', authGuard, validate(combatActionSchema), async (req: Auth
 
         const monsterEntry = finalState.log[finalState.log.length - 1];
         if (monsterEntry) {
-          await prisma.combatLog.create({
-            data: {
-              sessionId,
-              round: monsterEntry.round,
-              actorId: monsterEntry.actorId,
-              action: monsterEntry.action,
-              result: monsterEntry.result as object,
-            },
+          await db.insert(combatLogs).values({
+            id: crypto.randomUUID(),
+            sessionId,
+            round: monsterEntry.round,
+            actorId: monsterEntry.actorId,
+            action: monsterEntry.action,
+            result: monsterEntry.result as object,
           });
         }
       }
@@ -330,7 +332,7 @@ router.post('/action', authGuard, validate(combatActionSchema), async (req: Auth
 
     return res.json({ combat: formatCombatResponse(finalState) });
   } catch (error) {
-    if (handlePrismaError(error, res, 'pve-action', req)) return;
+    if (handleDbError(error, res, 'pve-action', req)) return;
     logRouteError(req, 500, 'PvE action error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -350,11 +352,11 @@ router.get('/state', authGuard, async (req: AuthenticatedRequest, res: Response)
     }
 
     // Try to load from DB (completed session)
-    const session = await prisma.combatSession.findUnique({
-      where: { id: sessionId },
-      include: {
-        combatLogs: { orderBy: { createdAt: 'asc' } },
-        participants: true,
+    const session = await db.query.combatSessions.findFirst({
+      where: eq(combatSessions.id, sessionId),
+      with: {
+        combatLogs: true,
+        combatParticipants: true,
       },
     });
 
@@ -362,18 +364,23 @@ router.get('/state', authGuard, async (req: AuthenticatedRequest, res: Response)
       return res.status(404).json({ error: 'Combat session not found' });
     }
 
+    // Sort combat logs by createdAt
+    const sortedLogs = (session.combatLogs || []).sort((a: any, b: any) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+
     return res.json({
       combat: {
         sessionId: session.id,
         status: session.status,
         type: session.type,
-        log: session.combatLogs.map((l) => ({
+        log: sortedLogs.map((l: any) => ({
           round: l.round,
           actorId: l.actorId,
           action: l.action,
           result: l.result,
         })),
-        participants: session.participants.map((p) => ({
+        participants: (session.combatParticipants || []).map((p: any) => ({
           characterId: p.characterId,
           team: p.team,
           initiative: p.initiative,
@@ -382,7 +389,7 @@ router.get('/state', authGuard, async (req: AuthenticatedRequest, res: Response)
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'pve-state', req)) return;
+    if (handleDbError(error, res, 'pve-state', req)) return;
     logRouteError(req, 500, 'PvE state error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -418,34 +425,28 @@ function resolveMonsterTurn(state: CombatState): CombatState {
 async function finishCombat(sessionId: string, state: CombatState, playerId: string): Promise<void> {
   const playerCombatant = state.combatants.find((c) => c.id === playerId);
 
-  await prisma.$transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     // Update session status in DB
-    await tx.combatSession.update({
-      where: { id: sessionId },
-      data: {
-        status: 'COMPLETED',
-        endedAt: new Date(),
-        log: state.log as object[],
-      },
-    });
+    await tx.update(combatSessions).set({
+      status: 'COMPLETED',
+      endedAt: new Date().toISOString(),
+      log: state.log as object[],
+    }).where(eq(combatSessions.id, sessionId));
 
     if (playerCombatant && !playerCombatant.isAlive && playerCombatant.hasFled) {
       // P2 #52 FIX: Player fled — apply minor penalty instead of full death penalties
-      const character = await tx.character.findUnique({ where: { id: playerId } });
+      const character = await tx.query.characters.findFirst({ where: eq(characters.id, playerId) });
       if (character) {
         // Minor flee penalty: half the level-scaled death XP penalty, no gold loss, no durability damage
         const minorXpLoss = Math.floor(getDeathXpPenalty(character.level) / 2);
-        await tx.character.update({
-          where: { id: playerId },
-          data: {
-            health: Math.max(1, Math.floor(character.maxHealth * 0.5)), // flee at half HP
-            xp: Math.max(0, character.xp - minorXpLoss),
-          },
-        });
+        await tx.update(characters).set({
+          health: Math.max(1, Math.floor(character.maxHealth * 0.5)), // flee at half HP
+          xp: Math.max(0, character.xp - minorXpLoss),
+        }).where(eq(characters.id, playerId));
       }
     } else if (playerCombatant && !playerCombatant.isAlive) {
       // Player died — apply full death penalties
-      const character = await tx.character.findUnique({ where: { id: playerId } });
+      const character = await tx.query.characters.findFirst({ where: eq(characters.id, playerId) });
       if (character) {
         const penalty = calculateDeathPenalty(
           playerId,
@@ -454,42 +455,38 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
           character.currentTownId ?? '',
         );
 
-        await tx.character.update({
-          where: { id: playerId },
-          data: {
-            health: character.maxHealth, // respawn at full HP
-            gold: Math.max(0, character.gold - penalty.goldLost),
-            xp: Math.max(0, character.xp - penalty.xpLost),
-          },
-        });
+        await tx.update(characters).set({
+          health: character.maxHealth, // respawn at full HP
+          gold: Math.max(0, character.gold - penalty.goldLost),
+          xp: Math.max(0, character.xp - penalty.xpLost),
+        }).where(eq(characters.id, playerId));
 
         // Damage equipment durability (batch update instead of N+1 loop)
-        const equipment = await tx.characterEquipment.findMany({
-          where: { characterId: playerId },
-          select: { itemId: true },
+        const equipment = await tx.query.characterEquipment.findMany({
+          where: eq(characterEquipment.characterId, playerId),
+          columns: { itemId: true },
         });
         if (equipment.length > 0) {
           const itemIds = equipment.map(e => e.itemId);
           // Use raw SQL for atomic GREATEST(0, durability - damage) in a single query
-          await tx.$executeRaw`
+          await tx.execute(sql`
             UPDATE "items"
             SET "current_durability" = GREATEST(0, "current_durability" - ${penalty.durabilityDamage})
-            WHERE "id" IN (${Prisma.join(itemIds)})
-          `;
+            WHERE "id" IN (${sql.join(itemIds.map(id => sql`${id}`), sql`, `)})
+          `);
         }
 
         // Grant survive XP (consolation prize for engaging in combat)
-        await tx.character.update({
-          where: { id: playerId },
-          data: { xp: { increment: ACTION_XP.PVE_SURVIVE } },
-        });
+        await tx.update(characters).set({
+          xp: sql`${characters.xp} + ${ACTION_XP.PVE_SURVIVE}`,
+        }).where(eq(characters.id, playerId));
       }
     } else {
       // Player won — award XP and loot
       const monsterCombatant = state.combatants.find((c) => c.entityType === 'monster');
       if (monsterCombatant) {
         const monsterId = monsterCombatant.id.replace('monster-', '');
-        const monster = await tx.monster.findUnique({ where: { id: monsterId } });
+        const monster = await tx.query.monsters.findFirst({ where: eq(monsters.id, monsterId) });
 
         if (monster) {
           const xpReward = getMonsterKillXp(monster.level);
@@ -505,14 +502,11 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
           // Process item drops (arcane reagents, etc.)
           const droppedItems = await processItemDrops(tx, playerId, lootTable);
 
-          await tx.character.update({
-            where: { id: playerId },
-            data: {
-              xp: { increment: xpReward },
-              gold: { increment: totalGold },
-              health: playerCombatant?.currentHp ?? 0,
-            },
-          });
+          await tx.update(characters).set({
+            xp: sql`${characters.xp} + ${xpReward}`,
+            gold: sql`${characters.gold} + ${totalGold}`,
+            health: playerCombatant?.currentHp ?? 0,
+          }).where(eq(characters.id, playerId));
         }
       }
     }
@@ -520,14 +514,11 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
     // Update participant HP
     for (const c of state.combatants) {
       if (c.entityType === 'character') {
-        const participant = await tx.combatParticipant.findFirst({
-          where: { sessionId, characterId: c.id },
+        const participant = await tx.query.combatParticipants.findFirst({
+          where: and(eq(combatParticipants.sessionId, sessionId), eq(combatParticipants.characterId, c.id)),
         });
         if (participant) {
-          await tx.combatParticipant.update({
-            where: { id: participant.id },
-            data: { currentHp: c.currentHp },
-          });
+          await tx.update(combatParticipants).set({ currentHp: c.currentHp }).where(eq(combatParticipants.id, participant.id));
         }
       }
     }
@@ -538,7 +529,7 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
     const monsterCombatant = state.combatants.find((c) => c.entityType === 'monster');
     if (monsterCombatant) {
       const monsterId = monsterCombatant.id.replace('monster-', '');
-      const monster = await prisma.monster.findUnique({ where: { id: monsterId } });
+      const monster = await db.query.monsters.findFirst({ where: eq(monsters.id, monsterId) });
       if (monster) {
         // Trigger quest progress for KILL objectives
         onMonsterKill(playerId, monster.name, 1);
@@ -547,13 +538,14 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
         await checkLevelUp(playerId);
 
         // Check PvE combat achievements
-        const pveWins = await prisma.combatParticipant.count({
-          where: {
-            characterId: playerId,
-            session: { type: 'PVE', status: 'COMPLETED' },
-            currentHp: { gt: 0 },
-          },
+        // Count completed PvE sessions where player survived
+        const allParticipations = await db.query.combatParticipants.findMany({
+          where: and(eq(combatParticipants.characterId, playerId), gt(combatParticipants.currentHp, 0)),
+          with: { combatSession: true },
         });
+        const pveWins = allParticipations.filter(
+          (p: any) => p.combatSession?.type === 'PVE' && p.combatSession?.status === 'COMPLETED'
+        ).length;
         await checkAchievements(playerId, 'combat_pve', { wins: pveWins });
       }
     }
@@ -572,9 +564,9 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
   // Write structured combat encounter log (async, non-blocking for combat flow)
   if (COMBAT_LOGGING_ENABLED) {
     const monsterCombatant = state.combatants.find(c => c.entityType === 'monster');
-    const character = await prisma.character.findUnique({
-      where: { id: playerId },
-      select: { name: true, currentTownId: true },
+    const character = await db.query.characters.findFirst({
+      where: eq(characters.id, playerId),
+      columns: { name: true, currentTownId: true },
     });
 
     // Calculate rewards that were applied in the transaction above
@@ -586,7 +578,7 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
     if (playerWon && monsterCombatant) {
       outcome = 'win';
       const monsterId = monsterCombatant.id.replace('monster-', '');
-      const monster = await prisma.monster.findUnique({ where: { id: monsterId } });
+      const monster = await db.query.monsters.findFirst({ where: eq(monsters.id, monsterId) });
       if (monster) {
         xpAwarded = getMonsterKillXp(monster.level);
       }
@@ -597,11 +589,11 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
     }
 
     // Look up equipped weapon name for the log
-    const equip = await prisma.characterEquipment.findUnique({
-      where: { characterId_slot: { characterId: playerId, slot: 'MAIN_HAND' } },
-      include: { item: { include: { template: { select: { name: true } } } } },
+    const equip = await db.query.characterEquipment.findFirst({
+      where: and(eq(characterEquipment.characterId, playerId), eq(characterEquipment.slot, 'MAIN_HAND')),
+      with: { item: { with: { itemTemplate: true } } },
     });
-    const weaponName = equip?.item?.template?.name ?? 'Unarmed Strike';
+    const weaponName = (equip?.item as any)?.itemTemplate?.name ?? 'Unarmed Strike';
 
     logPveCombat({
       sessionId,

@@ -1,6 +1,9 @@
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and } from 'drizzle-orm';
+import { characters, dailyActions } from '@database/tables';
 import { z } from 'zod';
-import { DailyActionType, DailyActionStatus, CombatStance, Prisma } from '@prisma/client';
+import { COMBAT_STANCES } from '@shared/enums';
+import type { DailyActionType, DailyActionStatus } from '@shared/enums';
 import { getTodayTickDate } from '../lib/game-day';
 
 // ---------------------------------------------------------------------------
@@ -8,7 +11,7 @@ import { getTodayTickDate } from '../lib/game-day';
 // ---------------------------------------------------------------------------
 
 export const combatParamsSchema = z.object({
-  combatStance: z.nativeEnum(CombatStance).optional(),
+  combatStance: z.enum(COMBAT_STANCES).optional(),
   retreatHpThreshold: z.number().min(0).max(1).optional(),
   retreatOppositionRatio: z.number().min(0).optional(),
   retreatRoundLimit: z.number().int().min(1).optional(),
@@ -30,9 +33,9 @@ function getTickDate(): Date {
 }
 
 async function getCharacterWithLocation(characterId: string) {
-  return prisma.character.findUnique({
-    where: { id: characterId },
-    select: {
+  return db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: {
       id: true,
       hungerState: true,
       currentTownId: true,
@@ -62,31 +65,29 @@ export async function lockInAction(
   const tickDate = getTickDate();
 
   // Upsert: create or replace today's action
-  const result = await prisma.dailyAction.upsert({
-    where: {
-      characterId_tickDate: { characterId, tickDate },
-    },
-    create: {
-      characterId,
-      tickDate,
+  const [result] = await db.insert(dailyActions).values({
+    id: crypto.randomUUID(),
+    characterId,
+    tickDate: tickDate.toISOString(),
+    actionType,
+    actionTarget: actionTarget,
+    combatParams: combatParams ? (combatParams as unknown as Record<string, unknown>) : undefined,
+    status: 'LOCKED_IN',
+  }).onConflictDoUpdate({
+    target: [dailyActions.characterId, dailyActions.tickDate],
+    set: {
       actionType,
-      actionTarget: actionTarget as Prisma.InputJsonValue,
-      combatParams: combatParams ? (combatParams as unknown as Prisma.InputJsonValue) : undefined,
+      actionTarget: actionTarget,
+      combatParams: combatParams ? (combatParams as unknown as Record<string, unknown>) : undefined,
       status: 'LOCKED_IN',
     },
-    update: {
-      actionType,
-      actionTarget: actionTarget as Prisma.InputJsonValue,
-      combatParams: combatParams ? (combatParams as unknown as Prisma.InputJsonValue) : undefined,
-      status: 'LOCKED_IN',
-    },
-  });
+  }).returning();
 
   return {
     id: result.id,
-    actionType: result.actionType,
+    actionType: result.actionType as DailyActionType,
     actionTarget: result.actionTarget,
-    status: result.status,
+    status: result.status as DailyActionStatus,
   };
 }
 
@@ -96,10 +97,11 @@ export async function lockInAction(
 
 export async function getLockedAction(characterId: string) {
   const tickDate = getTickDate();
-  return prisma.dailyAction.findUnique({
-    where: {
-      characterId_tickDate: { characterId, tickDate },
-    },
+  return db.query.dailyActions.findFirst({
+    where: and(
+      eq(dailyActions.characterId, characterId),
+      eq(dailyActions.tickDate, tickDate.toISOString()),
+    ),
   });
 }
 
@@ -109,24 +111,24 @@ export async function getLockedAction(characterId: string) {
 
 export async function cancelAction(characterId: string): Promise<void> {
   const tickDate = getTickDate();
-  const existing = await prisma.dailyAction.findUnique({
-    where: {
-      characterId_tickDate: { characterId, tickDate },
-    },
+  const existing = await db.query.dailyActions.findFirst({
+    where: and(
+      eq(dailyActions.characterId, characterId),
+      eq(dailyActions.tickDate, tickDate.toISOString()),
+    ),
   });
 
   if (!existing) return; // nothing to cancel, default is REST
 
   // Replace with REST
-  await prisma.dailyAction.update({
-    where: { id: existing.id },
-    data: {
+  await db.update(dailyActions)
+    .set({
       actionType: 'REST',
       actionTarget: {},
-      combatParams: undefined,
+      combatParams: null,
       status: 'LOCKED_IN',
-    },
-  });
+    })
+    .where(eq(dailyActions.id, existing.id));
 }
 
 // ---------------------------------------------------------------------------

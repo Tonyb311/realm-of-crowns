@@ -1,11 +1,12 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../../lib/prisma';
-import { handlePrismaError } from '../../lib/prisma-errors';
+import { db } from '../../lib/db';
+import { eq, and, gte, lte, like, desc, count, sql } from 'drizzle-orm';
+import { characters, towns } from '@database/tables';
+import { handleDbError } from '../../lib/db-errors';
 import { logRouteError } from '../../lib/error-logger';
 import { validate } from '../../middleware/validate';
 import { AuthenticatedRequest } from '../../types/express';
-import { Prisma } from '@prisma/client';
 
 const router = Router();
 
@@ -42,45 +43,46 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
     const characterClass = req.query.characterClass as string | undefined;
     const minLevel = req.query.minLevel ? parseInt(req.query.minLevel as string, 10) : undefined;
     const maxLevel = req.query.maxLevel ? parseInt(req.query.maxLevel as string, 10) : undefined;
-    const skip = (page - 1) * pageSize;
+    const offset = (page - 1) * pageSize;
 
-    const where: Prisma.CharacterWhereInput = {
-      ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
-      ...(race ? { race: race as any } : {}),
-      ...(characterClass ? { class: characterClass } : {}),
-      ...(minLevel !== undefined || maxLevel !== undefined
-        ? {
-            level: {
-              ...(minLevel !== undefined ? { gte: minLevel } : {}),
-              ...(maxLevel !== undefined ? { lte: maxLevel } : {}),
-            },
-          }
-        : {}),
-    };
+    const conditions: ReturnType<typeof eq>[] = [];
+    if (search) conditions.push(like(sql`lower(${characters.name})`, `%${search.toLowerCase()}%`));
+    if (race) conditions.push(eq(characters.race, race as any));
+    if (characterClass) conditions.push(eq(characters.class, characterClass));
+    if (minLevel !== undefined) conditions.push(gte(characters.level, minLevel));
+    if (maxLevel !== undefined) conditions.push(lte(characters.level, maxLevel));
 
-    const [data, total] = await Promise.all([
-      prisma.character.findMany({
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [data, [{ total }]] = await Promise.all([
+      db.query.characters.findMany({
         where,
-        skip,
-        take: pageSize,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          user: { select: { id: true, username: true } },
-          currentTown: { select: { id: true, name: true } },
+        offset,
+        limit: pageSize,
+        orderBy: desc(characters.createdAt),
+        with: {
+          user: { columns: { id: true, username: true } },
+          town_currentTownId: { columns: { id: true, name: true } },
         },
       }),
-      prisma.character.count({ where }),
+      db.select({ total: count() }).from(characters).where(where),
     ]);
 
+    // Reshape to match Prisma's shape: currentTown instead of town_currentTownId
+    const transformed = data.map(d => ({
+      ...d,
+      currentTown: d.town_currentTownId,
+    }));
+
     return res.json({
-      data,
+      data: transformed,
       total,
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-list-characters', req)) return;
+    if (handleDbError(error, res, 'admin-list-characters', req)) return;
     logRouteError(req, 500, '[Admin] Characters list error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -92,20 +94,20 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
  */
 router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await prisma.character.findUnique({
-      where: { id: req.params.id },
-      include: {
-        user: { select: { id: true, username: true } },
-        currentTown: { select: { id: true, name: true } },
-        professions: true,
-        inventory: {
-          include: {
-            item: { include: { template: true } },
+    const character = await db.query.characters.findFirst({
+      where: eq(characters.id, req.params.id),
+      with: {
+        user: { columns: { id: true, username: true } },
+        town_currentTownId: { columns: { id: true, name: true } },
+        playerProfessions: true,
+        inventories: {
+          with: {
+            item: { with: { itemTemplate: true } },
           },
         },
-        equipment: {
-          include: {
-            item: { include: { template: true } },
+        characterEquipments: {
+          with: {
+            item: { with: { itemTemplate: true } },
           },
         },
       },
@@ -115,9 +117,24 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
       return res.status(404).json({ error: 'Character not found' });
     }
 
-    return res.json(character);
+    // Reshape to match Prisma naming
+    const result = {
+      ...character,
+      currentTown: character.town_currentTownId,
+      professions: character.playerProfessions,
+      inventory: character.inventories.map(inv => ({
+        ...inv,
+        item: { ...inv.item, template: inv.item?.itemTemplate },
+      })),
+      equipment: character.characterEquipments.map(eq => ({
+        ...eq,
+        item: { ...eq.item, template: eq.item?.itemTemplate },
+      })),
+    };
+
+    return res.json(result);
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-character-detail', req)) return;
+    if (handleDbError(error, res, 'admin-character-detail', req)) return;
     logRouteError(req, 500, '[Admin] Character detail error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -129,20 +146,20 @@ router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
  */
 router.patch('/:id', validate(editCharacterSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await prisma.character.findUnique({ where: { id: req.params.id } });
+    const character = await db.query.characters.findFirst({ where: eq(characters.id, req.params.id) });
     if (!character) {
       return res.status(404).json({ error: 'Character not found' });
     }
 
-    const updated = await prisma.character.update({
-      where: { id: req.params.id },
-      data: req.body,
-    });
+    const [updated] = await db.update(characters)
+      .set(req.body)
+      .where(eq(characters.id, req.params.id))
+      .returning();
 
     console.log(`[Admin] Character ${character.name} edited by admin ${req.user!.userId}`);
     return res.json(updated);
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-edit-character', req)) return;
+    if (handleDbError(error, res, 'admin-edit-character', req)) return;
     logRouteError(req, 500, '[Admin] Edit character error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -156,26 +173,32 @@ router.post('/:id/teleport', validate(teleportSchema), async (req: Authenticated
   try {
     const { townId } = req.body;
 
-    const character = await prisma.character.findUnique({ where: { id: req.params.id } });
+    const character = await db.query.characters.findFirst({ where: eq(characters.id, req.params.id) });
     if (!character) {
       return res.status(404).json({ error: 'Character not found' });
     }
 
-    const town = await prisma.town.findUnique({ where: { id: townId } });
+    const town = await db.query.towns.findFirst({ where: eq(towns.id, townId) });
     if (!town) {
       return res.status(404).json({ error: 'Town not found' });
     }
 
-    const updated = await prisma.character.update({
-      where: { id: req.params.id },
-      data: { currentTownId: townId },
-      include: { currentTown: { select: { id: true, name: true } } },
+    await db.update(characters)
+      .set({ currentTownId: townId })
+      .where(eq(characters.id, req.params.id));
+
+    const updated = await db.query.characters.findFirst({
+      where: eq(characters.id, req.params.id),
+      with: { town_currentTownId: { columns: { id: true, name: true } } },
     });
 
     console.log(`[Admin] Character ${character.name} teleported to ${town.name} by admin ${req.user!.userId}`);
-    return res.json({ message: `Character teleported to ${town.name}`, character: updated });
+    return res.json({
+      message: `Character teleported to ${town.name}`,
+      character: { ...updated, currentTown: updated?.town_currentTownId },
+    });
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-teleport', req)) return;
+    if (handleDbError(error, res, 'admin-teleport', req)) return;
     logRouteError(req, 500, '[Admin] Teleport error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -189,7 +212,7 @@ router.post('/:id/give-gold', validate(giveGoldSchema), async (req: Authenticate
   try {
     const { amount } = req.body;
 
-    const character = await prisma.character.findUnique({ where: { id: req.params.id } });
+    const character = await db.query.characters.findFirst({ where: eq(characters.id, req.params.id) });
     if (!character) {
       return res.status(404).json({ error: 'Character not found' });
     }
@@ -201,16 +224,15 @@ router.post('/:id/give-gold', validate(giveGoldSchema), async (req: Authenticate
       });
     }
 
-    const updated = await prisma.character.update({
-      where: { id: req.params.id },
-      data: { gold: { increment: amount } },
-      select: { id: true, name: true, gold: true },
-    });
+    const [updated] = await db.update(characters)
+      .set({ gold: sql`${characters.gold} + ${amount}` })
+      .where(eq(characters.id, req.params.id))
+      .returning({ id: characters.id, name: characters.name, gold: characters.gold });
 
     console.log(`[Admin] Character ${character.name} gold adjusted by ${amount} (now ${updated.gold}) by admin ${req.user!.userId}`);
     return res.json(updated);
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-give-gold', req)) return;
+    if (handleDbError(error, res, 'admin-give-gold', req)) return;
     logRouteError(req, 500, '[Admin] Give gold error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

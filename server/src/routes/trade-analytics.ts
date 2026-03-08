@@ -1,6 +1,19 @@
 import { Router, Response } from 'express';
-import { prisma } from '../lib/prisma';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { db } from '../lib/db';
+import { eq, and, gte, lt, ne, or } from 'drizzle-orm';
+import {
+  itemTemplates,
+  priceHistories,
+  towns,
+  travelRoutes,
+  tradeTransactions,
+  items,
+  playerProfessions,
+  townTreasuries,
+  marketListings,
+  characters,
+} from '@database/tables';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
@@ -16,9 +29,9 @@ router.get('/prices/:itemTemplateId', authGuard, cache(60), async (req: Authenti
   try {
     const { itemTemplateId } = req.params;
 
-    const template = await prisma.itemTemplate.findUnique({
-      where: { id: itemTemplateId },
-      select: { id: true, name: true, type: true, rarity: true },
+    const template = await db.query.itemTemplates.findFirst({
+      where: eq(itemTemplates.id, itemTemplateId),
+      columns: { id: true, name: true, type: true, rarity: true },
     });
 
     if (!template) {
@@ -35,23 +48,24 @@ router.get('/prices/:itemTemplateId', authGuard, cache(60), async (req: Authenti
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
 
     // Get recent prices grouped by town (last 7 days)
-    const recentPrices = await prisma.priceHistory.findMany({
-      where: {
-        itemTemplateId,
-        date: { gte: oneWeekAgo },
+    const recentPrices = await db.query.priceHistories.findMany({
+      where: and(
+        eq(priceHistories.itemTemplateId, itemTemplateId),
+        gte(priceHistories.date, oneWeekAgo.toISOString()),
+      ),
+      with: {
+        town: { columns: { id: true, name: true } },
       },
-      include: {
-        town: { select: { id: true, name: true } },
-      },
-      orderBy: { date: 'desc' },
+      orderBy: (t, { desc }) => [desc(t.date)],
     });
 
     // Get previous week prices for trend comparison
-    const previousPrices = await prisma.priceHistory.findMany({
-      where: {
-        itemTemplateId,
-        date: { gte: twoWeeksAgo, lt: oneWeekAgo },
-      },
+    const previousPrices = await db.query.priceHistories.findMany({
+      where: and(
+        eq(priceHistories.itemTemplateId, itemTemplateId),
+        gte(priceHistories.date, twoWeeksAgo.toISOString()),
+        lt(priceHistories.date, oneWeekAgo.toISOString()),
+      ),
     });
 
     // Group by town
@@ -92,7 +106,7 @@ router.get('/prices/:itemTemplateId', authGuard, cache(60), async (req: Authenti
       }
     }
 
-    const towns = Array.from(townMap.values()).map(t => {
+    const townsList = Array.from(townMap.values()).map(t => {
       const avgPrice = t.totalVolume > 0 ? t.weightedPriceSum / t.totalVolume : 0;
       const prev = prevTownMap.get(t.townId);
       const prevAvgPrice = prev && prev.totalVolume > 0
@@ -116,11 +130,11 @@ router.get('/prices/:itemTemplateId', authGuard, cache(60), async (req: Authenti
     });
 
     // Sort by volume descending
-    towns.sort((a, b) => b.volume - a.volume);
+    townsList.sort((a, b) => b.volume - a.volume);
 
-    return res.json({ itemTemplate: template, towns });
+    return res.json({ itemTemplate: template, towns: townsList });
   } catch (error) {
-    if (handlePrismaError(error, res, 'trade prices', req)) return;
+    if (handleDbError(error, res, 'trade prices', req)) return;
     logRouteError(req, 500, 'Trade prices error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -134,9 +148,9 @@ router.get('/price-history/:itemTemplateId', authGuard, cache(60), async (req: A
     const townId = req.query.townId as string | undefined;
     const days = Math.min(365, Math.max(1, parseInt(req.query.days as string, 10) || 30));
 
-    const template = await prisma.itemTemplate.findUnique({
-      where: { id: itemTemplateId },
-      select: { id: true, name: true, type: true, rarity: true },
+    const template = await db.query.itemTemplates.findFirst({
+      where: eq(itemTemplates.id, itemTemplateId),
+      columns: { id: true, name: true, type: true, rarity: true },
     });
 
     if (!template) {
@@ -146,16 +160,20 @@ router.get('/price-history/:itemTemplateId', authGuard, cache(60), async (req: A
     const since = new Date();
     since.setDate(since.getDate() - days);
 
-    const history = await prisma.priceHistory.findMany({
-      where: {
-        itemTemplateId,
-        date: { gte: since },
-        ...(townId ? { townId } : {}),
+    const conditions = [
+      eq(priceHistories.itemTemplateId, itemTemplateId),
+      gte(priceHistories.date, since.toISOString()),
+    ];
+    if (townId) {
+      conditions.push(eq(priceHistories.townId, townId));
+    }
+
+    const history = await db.query.priceHistories.findMany({
+      where: and(...conditions),
+      with: {
+        town: { columns: { id: true, name: true } },
       },
-      include: {
-        town: { select: { id: true, name: true } },
-      },
-      orderBy: { date: 'asc' },
+      orderBy: (t, { asc }) => [asc(t.date)],
     });
 
     return res.json({
@@ -169,7 +187,7 @@ router.get('/price-history/:itemTemplateId', authGuard, cache(60), async (req: A
       })),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'trade price history', req)) return;
+    if (handleDbError(error, res, 'trade price history', req)) return;
     logRouteError(req, 500, 'Trade price-history error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -186,19 +204,19 @@ router.get('/best-routes', authGuard, cache(120), async (req: AuthenticatedReque
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
     // Get all recent price data
-    const recentPrices = await prisma.priceHistory.findMany({
-      where: { date: { gte: oneWeekAgo } },
-      include: {
-        itemTemplate: { select: { id: true, name: true, type: true, rarity: true } },
-        town: { select: { id: true, name: true } },
+    const recentPrices = await db.query.priceHistories.findMany({
+      where: gte(priceHistories.date, oneWeekAgo.toISOString()),
+      with: {
+        itemTemplate: { columns: { id: true, name: true, type: true, rarity: true } },
+        town: { columns: { id: true, name: true } },
       },
     });
 
     // Get all travel routes for distance info
-    const routes = await prisma.travelRoute.findMany({
-      include: {
-        fromTown: { select: { id: true, name: true } },
-        toTown: { select: { id: true, name: true } },
+    const routes = await db.query.travelRoutes.findMany({
+      with: {
+        town_fromTownId: { columns: { id: true, name: true } },
+        town_toTownId: { columns: { id: true, name: true } },
       },
     });
 
@@ -307,7 +325,7 @@ router.get('/best-routes', authGuard, cache(120), async (req: AuthenticatedReque
 
     return res.json({ routes: top10 });
   } catch (error) {
-    if (handlePrismaError(error, res, 'trade best routes', req)) return;
+    if (handleDbError(error, res, 'trade best routes', req)) return;
     logRouteError(req, 500, 'Trade best-routes error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -326,9 +344,9 @@ router.get('/profitability', authGuard, async (req: AuthenticatedRequest, res: R
       return res.status(400).json({ error: 'itemTemplateId, fromTownId, and toTownId are required' });
     }
 
-    const template = await prisma.itemTemplate.findUnique({
-      where: { id: itemTemplateId },
-      select: { id: true, name: true, type: true, rarity: true },
+    const template = await db.query.itemTemplates.findFirst({
+      where: eq(itemTemplates.id, itemTemplateId),
+      columns: { id: true, name: true, type: true, rarity: true },
     });
 
     if (!template) {
@@ -339,24 +357,31 @@ router.get('/profitability', authGuard, async (req: AuthenticatedRequest, res: R
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
     // Get recent prices in both towns
+    const oneWeekAgoStr = oneWeekAgo.toISOString();
     const [buyPrices, sellPrices, route, sellTownTax] = await Promise.all([
-      prisma.priceHistory.findMany({
-        where: { itemTemplateId, townId: fromTownId, date: { gte: oneWeekAgo } },
+      db.query.priceHistories.findMany({
+        where: and(
+          eq(priceHistories.itemTemplateId, itemTemplateId),
+          eq(priceHistories.townId, fromTownId),
+          gte(priceHistories.date, oneWeekAgoStr),
+        ),
       }),
-      prisma.priceHistory.findMany({
-        where: { itemTemplateId, townId: toTownId, date: { gte: oneWeekAgo } },
+      db.query.priceHistories.findMany({
+        where: and(
+          eq(priceHistories.itemTemplateId, itemTemplateId),
+          eq(priceHistories.townId, toTownId),
+          gte(priceHistories.date, oneWeekAgoStr),
+        ),
       }),
-      prisma.travelRoute.findFirst({
-        where: {
-          OR: [
-            { fromTownId, toTownId },
-            { fromTownId: toTownId, toTownId: fromTownId },
-          ],
-        },
+      db.query.travelRoutes.findFirst({
+        where: or(
+          and(eq(travelRoutes.fromTownId, fromTownId), eq(travelRoutes.toTownId, toTownId)),
+          and(eq(travelRoutes.fromTownId, toTownId), eq(travelRoutes.toTownId, fromTownId)),
+        ),
       }),
-      prisma.townTreasury.findUnique({
-        where: { townId: toTownId },
-        select: { taxRate: true },
+      db.query.townTreasuries.findFirst({
+        where: eq(townTreasuries.townId, toTownId),
+        columns: { taxRate: true },
       }),
     ]);
 
@@ -411,7 +436,7 @@ router.get('/profitability', authGuard, async (req: AuthenticatedRequest, res: R
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'trade profitability', req)) return;
+    if (handleDbError(error, res, 'trade profitability', req)) return;
     logRouteError(req, 500, 'Trade profitability error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -423,9 +448,9 @@ router.get('/town/:townId/dashboard', authGuard, characterGuard, cache(60), asyn
   try {
     const { townId } = req.params;
 
-    const town = await prisma.town.findUnique({
-      where: { id: townId },
-      select: { id: true, name: true, mayorId: true },
+    const town = await db.query.towns.findFirst({
+      where: eq(towns.id, townId),
+      columns: { id: true, name: true, mayorId: true },
     });
 
     if (!town) {
@@ -438,29 +463,43 @@ router.get('/town/:townId/dashboard', authGuard, characterGuard, cache(60), asyn
     const oneWeekAgo = new Date(today);
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-    const [recentPrices, recentTransactions, activeListings, treasury] = await Promise.all([
-      prisma.priceHistory.findMany({
-        where: { townId, date: { gte: oneWeekAgo } },
-        include: {
-          itemTemplate: { select: { id: true, name: true, type: true, rarity: true } },
+    const oneWeekAgoStr = oneWeekAgo.toISOString();
+    const [recentPrices, recentTransactions, activeListingsResult, treasury] = await Promise.all([
+      db.query.priceHistories.findMany({
+        where: and(
+          eq(priceHistories.townId, townId),
+          gte(priceHistories.date, oneWeekAgoStr),
+        ),
+        with: {
+          itemTemplate: { columns: { id: true, name: true, type: true, rarity: true } },
         },
-        orderBy: { date: 'desc' },
+        orderBy: (t, { desc }) => [desc(t.date)],
       }),
-      prisma.tradeTransaction.findMany({
-        where: { townId, timestamp: { gte: oneWeekAgo } },
-        select: { price: true, quantity: true, itemId: true },
+      db.query.tradeTransactions.findMany({
+        where: and(
+          eq(tradeTransactions.townId, townId),
+          gte(tradeTransactions.timestamp, oneWeekAgoStr),
+        ),
+        columns: { price: true, quantity: true, itemId: true },
       }),
-      prisma.marketListing.count({
-        where: {
-          townId,
-          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-        },
+      // Count active listings: load all matching, then count in app
+      db.query.marketListings.findMany({
+        where: and(
+          eq(marketListings.townId, townId),
+        ),
+        columns: { id: true, expiresAt: true, status: true },
       }),
-      prisma.townTreasury.findUnique({
-        where: { townId },
-        select: { balance: true, taxRate: true },
+      db.query.townTreasuries.findFirst({
+        where: eq(townTreasuries.townId, townId),
+        columns: { balance: true, taxRate: true },
       }),
     ]);
+
+    // Filter active listings in app code (OR conditions with null)
+    const nowStr = new Date().toISOString();
+    const activeListings = activeListingsResult.filter(l =>
+      l.status === 'active' && (l.expiresAt === null || l.expiresAt > nowStr)
+    ).length;
 
     // Aggregate: total volume and revenue
     let totalVolume = 0;
@@ -509,14 +548,10 @@ router.get('/town/:townId/dashboard', authGuard, characterGuard, cache(60), asyn
       .slice(0, 10);
 
     // Supply/demand: compare listing counts vs transaction volume
-    const listingsByItem = await prisma.marketListing.groupBy({
-      by: ['itemId'],
-      where: {
-        townId,
-        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-      },
-      _sum: { quantity: true },
-    });
+    // Note: Prisma's groupBy not available in Drizzle query API — load and aggregate in app
+    const activeListingsForItems = activeListingsResult.filter(l =>
+      l.status === 'active' && (l.expiresAt === null || l.expiresAt > nowStr)
+    );
 
     // Estimate tax revenue from recent transactions
     const taxRate = treasury?.taxRate ?? 0.10;
@@ -544,7 +579,7 @@ router.get('/town/:townId/dashboard', authGuard, characterGuard, cache(60), asyn
       } : {}),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'trade town dashboard', req)) return;
+    if (handleDbError(error, res, 'trade town dashboard', req)) return;
     logRouteError(req, 500, 'Trade town dashboard error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -556,9 +591,9 @@ router.get('/merchant/:characterId/stats', authGuard, cache(30), async (req: Aut
   try {
     const { characterId } = req.params;
 
-    const character = await prisma.character.findUnique({
-      where: { id: characterId },
-      select: { id: true, name: true, currentTownId: true },
+    const character = await db.query.characters.findFirst({
+      where: eq(characters.id, characterId),
+      columns: { id: true, name: true, currentTownId: true },
     });
 
     if (!character) {
@@ -566,32 +601,30 @@ router.get('/merchant/:characterId/stats', authGuard, cache(30), async (req: Aut
     }
 
     // Get merchant profession info
-    const merchantProfession = await prisma.playerProfession.findUnique({
-      where: {
-        characterId_professionType: {
-          characterId,
-          professionType: 'MERCHANT',
-        },
-      },
+    const merchantProfession = await db.query.playerProfessions.findFirst({
+      where: and(
+        eq(playerProfessions.characterId, characterId),
+        eq(playerProfessions.professionType, 'MERCHANT'),
+      ),
     });
 
     // Transactions as buyer and seller
     const [buyTransactions, sellTransactions] = await Promise.all([
-      prisma.tradeTransaction.findMany({
-        where: { buyerId: characterId },
-        include: {
-          item: { include: { template: { select: { name: true, type: true } } } },
-          town: { select: { id: true, name: true } },
+      db.query.tradeTransactions.findMany({
+        where: eq(tradeTransactions.buyerId, characterId),
+        with: {
+          item: { with: { itemTemplate: { columns: { name: true, type: true } } } },
+          town: { columns: { id: true, name: true } },
         },
-        orderBy: { timestamp: 'desc' },
+        orderBy: (t, { desc }) => [desc(t.timestamp)],
       }),
-      prisma.tradeTransaction.findMany({
-        where: { sellerId: characterId },
-        include: {
-          item: { include: { template: { select: { name: true, type: true } } } },
-          town: { select: { id: true, name: true } },
+      db.query.tradeTransactions.findMany({
+        where: eq(tradeTransactions.sellerId, characterId),
+        with: {
+          item: { with: { itemTemplate: { columns: { name: true, type: true } } } },
+          town: { columns: { id: true, name: true } },
         },
-        orderBy: { timestamp: 'desc' },
+        orderBy: (t, { desc }) => [desc(t.timestamp)],
       }),
     ]);
 
@@ -608,7 +641,7 @@ router.get('/merchant/:characterId/stats', authGuard, cache(30), async (req: Aut
 
     // Find cross-town trades (sold in a different town than bought)
     // Track items bought: itemId -> { townId, price, quantity }
-    const buyLog = new Map<string, Array<{ townId: string; price: number; timestamp: Date }>>();
+    const buyLog = new Map<string, Array<{ townId: string; price: number; timestamp: string }>>();
     for (const tx of buyTransactions) {
       const existing = buyLog.get(tx.itemId);
       if (existing) {
@@ -634,7 +667,7 @@ router.get('/merchant/:characterId/stats', authGuard, cache(30), async (req: Aut
     // Most profitable item types
     const itemTypeProfit = new Map<string, number>();
     for (const tx of sellTransactions) {
-      const type = tx.item.template.type;
+      const type = tx.item.itemTemplate.type;
       itemTypeProfit.set(type, (itemTypeProfit.get(type) ?? 0) + tx.price * tx.quantity);
     }
 
@@ -662,7 +695,7 @@ router.get('/merchant/:characterId/stats', authGuard, cache(30), async (req: Aut
       },
       topItemTypes,
       recentSales: sellTransactions.slice(0, 10).map(tx => ({
-        itemName: tx.item.template.name,
+        itemName: tx.item.itemTemplate.name,
         quantity: tx.quantity,
         price: tx.price,
         townName: tx.town.name,
@@ -670,7 +703,7 @@ router.get('/merchant/:characterId/stats', authGuard, cache(30), async (req: Aut
       })),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'trade merchant stats', req)) return;
+    if (handleDbError(error, res, 'trade merchant stats', req)) return;
     logRouteError(req, 500, 'Trade merchant stats error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -688,25 +721,23 @@ export async function awardMerchantXP(
 ): Promise<void> {
   try {
     // Check if buyer has Merchant profession
-    const merchantProfession = await prisma.playerProfession.findUnique({
-      where: {
-        characterId_professionType: {
-          characterId: buyerId,
-          professionType: 'MERCHANT',
-        },
-      },
+    const merchantProfession = await db.query.playerProfessions.findFirst({
+      where: and(
+        eq(playerProfessions.characterId, buyerId),
+        eq(playerProfessions.professionType, 'MERCHANT'),
+      ),
     });
 
     if (!merchantProfession) return;
 
     // Check if the buyer purchased this item in a different town
-    const previousBuy = await prisma.tradeTransaction.findFirst({
-      where: {
-        buyerId,
-        itemId,
-        townId: { not: sellTownId },
-      },
-      orderBy: { timestamp: 'desc' },
+    const previousBuy = await db.query.tradeTransactions.findFirst({
+      where: and(
+        eq(tradeTransactions.buyerId, buyerId),
+        eq(tradeTransactions.itemId, itemId),
+        ne(tradeTransactions.townId, sellTownId),
+      ),
+      orderBy: (t, { desc }) => [desc(t.timestamp)],
     });
 
     // This sale is the buyer SELLING. For merchant XP, we want to reward the seller
@@ -744,25 +775,23 @@ export async function awardCrossTownMerchantXP(
 ): Promise<void> {
   try {
     // Check if seller has Merchant profession
-    const merchantProfession = await prisma.playerProfession.findUnique({
-      where: {
-        characterId_professionType: {
-          characterId: sellerId,
-          professionType: 'MERCHANT',
-        },
-      },
+    const merchantProfession = await db.query.playerProfessions.findFirst({
+      where: and(
+        eq(playerProfessions.characterId, sellerId),
+        eq(playerProfessions.professionType, 'MERCHANT'),
+      ),
     });
 
     if (!merchantProfession) return;
 
     // Did the seller previously BUY this item in a different town?
-    const previousBuy = await prisma.tradeTransaction.findFirst({
-      where: {
-        buyerId: sellerId,
-        itemId,
-        townId: { not: sellTownId },
-      },
-      orderBy: { timestamp: 'desc' },
+    const previousBuy = await db.query.tradeTransactions.findFirst({
+      where: and(
+        eq(tradeTransactions.buyerId, sellerId),
+        eq(tradeTransactions.itemId, itemId),
+        ne(tradeTransactions.townId, sellTownId),
+      ),
+      orderBy: (t, { desc }) => [desc(t.timestamp)],
     });
 
     if (!previousBuy) return;
@@ -771,13 +800,11 @@ export async function awardCrossTownMerchantXP(
     const profitMargin = ((salePrice - previousBuy.price) / previousBuy.price) * 100;
 
     // Get distance between towns for bonus
-    const route = await prisma.travelRoute.findFirst({
-      where: {
-        OR: [
-          { fromTownId: previousBuy.townId, toTownId: sellTownId },
-          { fromTownId: sellTownId, toTownId: previousBuy.townId },
-        ],
-      },
+    const route = await db.query.travelRoutes.findFirst({
+      where: or(
+        and(eq(travelRoutes.fromTownId, previousBuy.townId), eq(travelRoutes.toTownId, sellTownId)),
+        and(eq(travelRoutes.fromTownId, sellTownId), eq(travelRoutes.toTownId, previousBuy.townId)),
+      ),
     });
 
     const baseXP = 15;

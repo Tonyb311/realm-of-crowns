@@ -1,4 +1,6 @@
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq } from 'drizzle-orm';
+import { items, characterEquipment } from '@database/tables';
 import { emitItemLowDurability, emitItemBroken } from '../socket/events';
 
 /**
@@ -7,9 +9,9 @@ import { emitItemLowDurability, emitItemBroken } from '../socket/events';
  * Returns the updated durability value.
  */
 export async function degradeItem(itemId: string, amount: number = 1): Promise<number> {
-  const item = await prisma.item.findUnique({
-    where: { id: itemId },
-    include: { template: true },
+  const item = await db.query.items.findFirst({
+    where: eq(items.id, itemId),
+    with: { itemTemplate: true },
   });
 
   if (!item) throw new Error(`Item not found: ${itemId}`);
@@ -17,21 +19,18 @@ export async function degradeItem(itemId: string, amount: number = 1): Promise<n
 
   const newDurability = Math.max(0, item.currentDurability - amount);
 
-  await prisma.item.update({
-    where: { id: itemId },
-    data: { currentDurability: newDurability },
-  });
+  await db.update(items).set({ currentDurability: newDurability }).where(eq(items.id, itemId));
 
   if (newDurability === 0) {
     await breakItem(itemId);
-  } else if (item.template.durability > 0) {
-    const percent = newDurability / item.template.durability;
+  } else if (item.itemTemplate.durability > 0) {
+    const percent = newDurability / item.itemTemplate.durability;
     if (percent < 0.2 && item.ownerId) {
       emitItemLowDurability(item.ownerId, {
         itemId: item.id,
-        itemName: item.template.name,
+        itemName: item.itemTemplate.name,
         currentDurability: newDurability,
-        maxDurability: item.template.durability,
+        maxDurability: item.itemTemplate.durability,
         percentRemaining: Math.round(percent * 100),
       });
     }
@@ -44,33 +43,28 @@ export async function degradeItem(itemId: string, amount: number = 1): Promise<n
  * Mark an item as broken (durability = 0), auto-unequip it, and notify the owner.
  */
 export async function breakItem(itemId: string): Promise<void> {
-  const item = await prisma.item.findUnique({
-    where: { id: itemId },
-    include: { template: true },
+  const item = await db.query.items.findFirst({
+    where: eq(items.id, itemId),
+    with: { itemTemplate: true },
   });
 
   if (!item) throw new Error(`Item not found: ${itemId}`);
 
-  await prisma.item.update({
-    where: { id: itemId },
-    data: { currentDurability: 0 },
-  });
+  await db.update(items).set({ currentDurability: 0 }).where(eq(items.id, itemId));
 
   // Auto-unequip if equipped
-  const equipped = await prisma.characterEquipment.findFirst({
-    where: { itemId },
+  const equipped = await db.query.characterEquipment.findFirst({
+    where: eq(characterEquipment.itemId, itemId),
   });
 
   if (equipped) {
-    await prisma.characterEquipment.delete({
-      where: { id: equipped.id },
-    });
+    await db.delete(characterEquipment).where(eq(characterEquipment.id, equipped.id));
   }
 
   if (item.ownerId) {
     emitItemBroken(item.ownerId, {
       itemId: item.id,
-      itemName: item.template.name,
+      itemName: item.itemTemplate.name,
       wasEquipped: !!equipped,
       slot: equipped?.slot ?? null,
     });
@@ -81,9 +75,9 @@ export async function breakItem(itemId: string): Promise<void> {
  * Check if an item is broken (currentDurability <= 0).
  */
 export async function isItemBroken(itemId: string): Promise<boolean> {
-  const item = await prisma.item.findUnique({
-    where: { id: itemId },
-    select: { currentDurability: true },
+  const item = await db.query.items.findFirst({
+    where: eq(items.id, itemId),
+    columns: { currentDurability: true },
   });
 
   if (!item) throw new Error(`Item not found: ${itemId}`);

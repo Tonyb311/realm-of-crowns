@@ -1,7 +1,9 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { db } from '../lib/db';
+import { eq, and, desc, asc, count } from 'drizzle-orm';
+import { petitions, petitionSignatures, notifications, towns, characters } from '@database/tables';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
@@ -36,12 +38,12 @@ router.post('/', authGuard, characterGuard, validate(createPetitionSchema), asyn
     const character = req.character!;
 
     // Check for existing active petition by same creator of same type
-    const existing = await prisma.petition.findFirst({
-      where: {
-        creatorId: character.id,
-        petitionType,
-        status: 'ACTIVE',
-      },
+    const existing = await db.query.petitions.findFirst({
+      where: and(
+        eq(petitions.creatorId, character.id),
+        eq(petitions.petitionType, petitionType),
+        eq(petitions.status, 'ACTIVE'),
+      ),
     });
 
     if (existing) {
@@ -51,27 +53,28 @@ router.post('/', authGuard, characterGuard, validate(createPetitionSchema), asyn
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + PETITION_DURATION_DAYS);
 
-    const petition = await prisma.petition.create({
-      data: {
-        creatorId: character.id,
-        petitionType,
-        title,
-        description,
-        targetData: targetData ?? {},
-        signatureGoal: signatureGoal ?? DEFAULT_SIGNATURE_GOAL,
-        expiresAt,
-      },
-      include: {
-        creator: { select: { id: true, name: true, race: true } },
-      },
+    const [petition] = await db.insert(petitions).values({
+      id: crypto.randomUUID(),
+      creatorId: character.id,
+      petitionType,
+      title,
+      description,
+      targetData: targetData ?? {},
+      signatureGoal: signatureGoal ?? DEFAULT_SIGNATURE_GOAL,
+      expiresAt: expiresAt.toISOString(),
+    }).returning();
+
+    // Fetch creator info
+    const creator = await db.query.characters.findFirst({
+      where: eq(characters.id, character.id),
+      columns: { id: true, name: true, race: true },
     });
 
     // Creator auto-signs their own petition
-    await prisma.petitionSignature.create({
-      data: {
-        petitionId: petition.id,
-        characterId: character.id,
-      },
+    await db.insert(petitionSignatures).values({
+      id: crypto.randomUUID(),
+      petitionId: petition.id,
+      characterId: character.id,
     });
 
     return res.status(201).json({
@@ -84,13 +87,13 @@ router.post('/', authGuard, characterGuard, validate(createPetitionSchema), asyn
         signatureGoal: petition.signatureGoal,
         signatureCount: 1,
         status: petition.status,
-        creator: petition.creator,
+        creator,
         expiresAt: petition.expiresAt,
         createdAt: petition.createdAt,
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'create petition', req)) return;
+    if (handleDbError(error, res, 'create petition', req)) return;
     logRouteError(req, 500, 'Create petition error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -102,11 +105,11 @@ router.post('/:id/sign', authGuard, characterGuard, async (req: AuthenticatedReq
     const { id } = req.params;
     const character = req.character!;
 
-    const petition = await prisma.petition.findUnique({
-      where: { id },
-      include: {
-        creator: { select: { id: true, name: true } },
-        _count: { select: { signatures: true } },
+    const petition = await db.query.petitions.findFirst({
+      where: eq(petitions.id, id),
+      with: {
+        character: { columns: { id: true, name: true } },
+        petitionSignatures: true,
       },
     });
 
@@ -118,54 +121,51 @@ router.post('/:id/sign', authGuard, characterGuard, async (req: AuthenticatedReq
       return res.status(400).json({ error: 'This petition is no longer active' });
     }
 
-    if (new Date() > petition.expiresAt) {
+    if (new Date().toISOString() > petition.expiresAt) {
       return res.status(400).json({ error: 'This petition has expired' });
     }
 
     // Check if already signed
-    const existingSig = await prisma.petitionSignature.findUnique({
-      where: { petitionId_characterId: { petitionId: id, characterId: character.id } },
+    const existingSig = await db.query.petitionSignatures.findFirst({
+      where: and(eq(petitionSignatures.petitionId, id), eq(petitionSignatures.characterId, character.id)),
     });
 
     if (existingSig) {
       return res.status(400).json({ error: 'You have already signed this petition' });
     }
 
-    await prisma.petitionSignature.create({
-      data: {
-        petitionId: id,
-        characterId: character.id,
-      },
+    await db.insert(petitionSignatures).values({
+      id: crypto.randomUUID(),
+      petitionId: id,
+      characterId: character.id,
     });
 
-    const newCount = petition._count.signatures + 1;
+    const newCount = petition.petitionSignatures.length + 1;
 
     // Check if signature goal is reached
     if (newCount >= petition.signatureGoal) {
-      await prisma.petition.update({
-        where: { id },
-        data: { status: 'FULFILLED' },
-      });
+      await db.update(petitions)
+        .set({ status: 'FULFILLED' })
+        .where(eq(petitions.id, id));
 
       // Find the kingdom ruler to notify
       if (character.currentTownId) {
         // Look up the kingdom the creator's town belongs to, and notify the ruler
-        const town = await prisma.town.findUnique({
-          where: { id: character.currentTownId },
-          select: { regionId: true },
+        const town = await db.query.towns.findFirst({
+          where: eq(towns.id, character.currentTownId),
+          columns: { regionId: true },
         });
 
         if (town) {
           // Notify the petition creator that it was fulfilled
-          const notification = await prisma.notification.create({
-            data: {
-              characterId: petition.creatorId,
-              type: 'petition_fulfilled',
-              title: 'Petition Fulfilled!',
-              message: `Your petition "${petition.title}" has reached its signature goal of ${petition.signatureGoal}.`,
-              data: { petitionId: id },
-            },
-          });
+          const [notification] = await db.insert(notifications).values({
+            id: crypto.randomUUID(),
+            characterId: petition.creatorId,
+            type: 'petition_fulfilled',
+            title: 'Petition Fulfilled!',
+            message: `Your petition "${petition.title}" has reached its signature goal of ${petition.signatureGoal}.`,
+            data: { petitionId: id },
+          }).returning();
 
           emitNotification(petition.creatorId, {
             id: notification.id,
@@ -184,7 +184,7 @@ router.post('/:id/sign', authGuard, characterGuard, async (req: AuthenticatedReq
       fulfilled: newCount >= petition.signatureGoal,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'sign petition', req)) return;
+    if (handleDbError(error, res, 'sign petition', req)) return;
     logRouteError(req, 500, 'Sign petition error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -195,41 +195,42 @@ router.get('/', authGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
-    const skip = (page - 1) * limit;
+    const offset = (page - 1) * limit;
     const status = (req.query.status as string) || 'ACTIVE';
 
-    const [petitions, total] = await Promise.all([
-      prisma.petition.findMany({
-        where: { status: status as any },
-        include: {
-          creator: { select: { id: true, name: true, race: true } },
-          _count: { select: { signatures: true } },
+    const [petitionRows, [{ total }]] = await Promise.all([
+      db.query.petitions.findMany({
+        where: eq(petitions.status, status as any),
+        with: {
+          character: { columns: { id: true, name: true, race: true } },
+          petitionSignatures: true,
         },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
+        orderBy: desc(petitions.createdAt),
+        offset,
+        limit,
       }),
-      prisma.petition.count({ where: { status: status as any } }),
+      db.select({ total: count() }).from(petitions)
+        .where(eq(petitions.status, status as any)),
     ]);
 
     return res.json({
-      petitions: petitions.map((p) => ({
+      petitions: petitionRows.map((p) => ({
         id: p.id,
         petitionType: p.petitionType,
         title: p.title,
         description: p.description,
         targetData: p.targetData,
         signatureGoal: p.signatureGoal,
-        signatureCount: p._count.signatures,
+        signatureCount: p.petitionSignatures.length,
         status: p.status,
-        creator: p.creator,
+        creator: p.character,
         expiresAt: p.expiresAt,
         createdAt: p.createdAt,
       })),
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'list petitions', req)) return;
+    if (handleDbError(error, res, 'list petitions', req)) return;
     logRouteError(req, 500, 'List petitions error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -240,15 +241,15 @@ router.get('/:id', authGuard, async (req: AuthenticatedRequest, res: Response) =
   try {
     const { id } = req.params;
 
-    const petition = await prisma.petition.findUnique({
-      where: { id },
-      include: {
-        creator: { select: { id: true, name: true, race: true } },
-        signatures: {
-          include: {
-            character: { select: { id: true, name: true, race: true } },
+    const petition = await db.query.petitions.findFirst({
+      where: eq(petitions.id, id),
+      with: {
+        character: { columns: { id: true, name: true, race: true } },
+        petitionSignatures: {
+          with: {
+            character: { columns: { id: true, name: true, race: true } },
           },
-          orderBy: { createdAt: 'asc' },
+          orderBy: asc(petitionSignatures.createdAt),
         },
       },
     });
@@ -265,12 +266,12 @@ router.get('/:id', authGuard, async (req: AuthenticatedRequest, res: Response) =
         description: petition.description,
         targetData: petition.targetData,
         signatureGoal: petition.signatureGoal,
-        signatureCount: petition.signatures.length,
+        signatureCount: petition.petitionSignatures.length,
         status: petition.status,
-        creator: petition.creator,
+        creator: petition.character,
         expiresAt: petition.expiresAt,
         createdAt: petition.createdAt,
-        signatures: petition.signatures.map((s) => ({
+        signatures: petition.petitionSignatures.map((s) => ({
           characterId: s.characterId,
           name: s.character.name,
           race: s.character.race,
@@ -279,7 +280,7 @@ router.get('/:id', authGuard, async (req: AuthenticatedRequest, res: Response) =
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get petition', req)) return;
+    if (handleDbError(error, res, 'get petition', req)) return;
     logRouteError(req, 500, 'Get petition error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

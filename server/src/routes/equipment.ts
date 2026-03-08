@@ -1,27 +1,32 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and } from 'drizzle-orm';
+import { items, inventories, characterEquipment } from '@database/tables';
+import { equipSlot as equipSlotEnum } from '@database/enums';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { EquipSlot, ItemType } from '@prisma/client';
 import { calculateItemStats, calculateEquipmentTotals } from '../services/item-stats';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { onEquipItem } from '../services/quest-triggers';
+import crypto from 'crypto';
 import { getEnchantmentEffect } from '@shared/data/enchantment-effects';
 import { checkEquipmentProficiency } from '@shared/utils/proficiency';
+
+type EquipSlot = typeof equipSlotEnum.enumValues[number];
 
 const router = Router();
 
 const equipSchema = z.object({
   itemId: z.string().min(1, 'Item ID is required'),
-  slot: z.nativeEnum(EquipSlot),
+  slot: z.enum(equipSlotEnum.enumValues),
 });
 
 const unequipSchema = z.object({
-  slot: z.nativeEnum(EquipSlot),
+  slot: z.enum(equipSlotEnum.enumValues),
 });
 
 const enchantSchema = z.object({
@@ -46,9 +51,9 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
     const character = req.character!;
 
     // Verify item exists and is owned by character
-    const item = await prisma.item.findUnique({
-      where: { id: itemId },
-      include: { template: true },
+    const item = await db.query.items.findFirst({
+      where: eq(items.id, itemId),
+      with: { itemTemplate: true },
     });
 
     if (!item || item.ownerId !== character.id) {
@@ -56,8 +61,8 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
     }
 
     // Verify item is in inventory (not just owned — must be in inventory table)
-    const inventoryEntry = await prisma.inventory.findFirst({
-      where: { characterId: character.id, itemId },
+    const inventoryEntry = await db.query.inventories.findFirst({
+      where: and(eq(inventories.characterId, character.id), eq(inventories.itemId, itemId)),
     });
 
     if (!inventoryEntry) {
@@ -65,10 +70,10 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
     }
 
     // Validate slot matches item type
-    const validSlots = ITEM_TYPE_SLOT_MAP[item.template.type];
+    const validSlots = ITEM_TYPE_SLOT_MAP[item.itemTemplate.type];
     if (!validSlots || !validSlots.includes(slot)) {
       return res.status(400).json({
-        error: `Cannot equip ${item.template.type} items in the ${slot} slot`,
+        error: `Cannot equip ${item.itemTemplate.type} items in the ${slot} slot`,
       });
     }
 
@@ -78,8 +83,8 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
     }
 
     // Check level requirement
-    const requirements = item.template.requirements as Record<string, unknown>;
-    const levelReq = (typeof requirements?.level === 'number') ? requirements.level : item.template.levelRequired;
+    const requirements = item.itemTemplate.requirements as Record<string, unknown>;
+    const levelReq = (typeof requirements?.level === 'number') ? requirements.level : item.itemTemplate.levelRequired;
     if (character.level < levelReq) {
       return res.status(400).json({
         error: `Requires level ${levelReq}, you are level ${character.level}`,
@@ -97,76 +102,67 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
     }
 
     // Handle swap if slot is already occupied
-    const existingEquip = await prisma.characterEquipment.findUnique({
-      where: {
-        characterId_slot: { characterId: character.id, slot },
-      },
-      include: { item: true },
+    const existingEquip = await db.query.characterEquipment.findFirst({
+      where: and(
+        eq(characterEquipment.characterId, character.id),
+        eq(characterEquipment.slot, slot),
+      ),
+      with: { item: true },
     });
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Unequip existing item if slot is occupied
       if (existingEquip) {
-        await tx.characterEquipment.delete({
-          where: { id: existingEquip.id },
-        });
+        await tx.delete(characterEquipment).where(eq(characterEquipment.id, existingEquip.id));
 
         // Return old item to inventory
-        const existingInv = await tx.inventory.findFirst({
-          where: { characterId: character.id, itemId: existingEquip.itemId },
+        const existingInv = await tx.query.inventories.findFirst({
+          where: and(eq(inventories.characterId, character.id), eq(inventories.itemId, existingEquip.itemId)),
         });
 
         if (existingInv) {
-          await tx.inventory.update({
-            where: { id: existingInv.id },
-            data: { quantity: existingInv.quantity + 1 },
-          });
+          await tx.update(inventories).set({ quantity: existingInv.quantity + 1 }).where(eq(inventories.id, existingInv.id));
         } else {
-          await tx.inventory.create({
-            data: {
-              characterId: character.id,
-              itemId: existingEquip.itemId,
-              quantity: 1,
-            },
+          await tx.insert(inventories).values({
+            id: crypto.randomUUID(),
+            characterId: character.id,
+            itemId: existingEquip.itemId,
+            quantity: 1,
           });
         }
       }
 
       // Equip the new item
-      await tx.characterEquipment.create({
-        data: {
-          characterId: character.id,
-          slot,
-          itemId: item.id,
-        },
+      await tx.insert(characterEquipment).values({
+        id: crypto.randomUUID(),
+        characterId: character.id,
+        slot,
+        itemId: item.id,
       });
 
       // Remove from inventory
       if (inventoryEntry.quantity <= 1) {
-        await tx.inventory.delete({ where: { id: inventoryEntry.id } });
+        await tx.delete(inventories).where(eq(inventories.id, inventoryEntry.id));
       } else {
-        await tx.inventory.update({
-          where: { id: inventoryEntry.id },
-          data: { quantity: inventoryEntry.quantity - 1 },
-        });
+        await tx.update(inventories).set({ quantity: inventoryEntry.quantity - 1 }).where(eq(inventories.id, inventoryEntry.id));
       }
     });
 
-    const calculated = calculateItemStats(item);
+    const calculated = calculateItemStats({ ...item, template: item.itemTemplate });
 
     onEquipItem(character.id).catch(() => {}); // fire-and-forget
 
     // Check proficiency after equip — fetch all equipped items for full check
     let proficiencyWarnings: string[] = [];
     if (character.class) {
-      const allEquipped = await prisma.characterEquipment.findMany({
-        where: { characterId: character.id },
-        include: { item: { include: { template: true } } },
+      const allEquipped = await db.query.characterEquipment.findMany({
+        where: eq(characterEquipment.characterId, character.id),
+        with: { item: { with: { itemTemplate: true } } },
       });
       const itemsForCheck = allEquipped.map(eq => ({
         slot: eq.slot,
-        stats: (eq.item.template.stats as Record<string, any>) ?? {},
-        itemName: eq.item.template.name,
+        stats: (eq.item.itemTemplate.stats as Record<string, any>) ?? {},
+        itemName: eq.item.itemTemplate.name,
       }));
       const profCheck = checkEquipmentProficiency(character.class, itemsForCheck);
       proficiencyWarnings = profCheck.warnings;
@@ -177,11 +173,11 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
         slot,
         item: {
           id: item.id,
-          name: item.template.name,
-          type: item.template.type,
+          name: item.itemTemplate.name,
+          type: item.itemTemplate.type,
           quality: item.quality,
           currentDurability: item.currentDurability,
-          maxDurability: item.template.durability,
+          maxDurability: item.itemTemplate.durability,
           stats: calculated.finalStats,
         },
         swapped: existingEquip ? {
@@ -192,7 +188,7 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
       proficiencyWarnings,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'equip-item', req)) return;
+    if (handleDbError(error, res, 'equip-item', req)) return;
     logRouteError(req, 500, 'Equip item error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -206,37 +202,34 @@ router.post('/unequip', authGuard, characterGuard, validate(unequipSchema), asyn
     const { slot } = req.body as { slot: EquipSlot };
     const character = req.character!;
 
-    const equip = await prisma.characterEquipment.findUnique({
-      where: {
-        characterId_slot: { characterId: character.id, slot },
-      },
-      include: { item: { include: { template: true } } },
+    const equip = await db.query.characterEquipment.findFirst({
+      where: and(
+        eq(characterEquipment.characterId, character.id),
+        eq(characterEquipment.slot, slot),
+      ),
+      with: { item: { with: { itemTemplate: true } } },
     });
 
     if (!equip) {
       return res.status(400).json({ error: `Nothing equipped in ${slot} slot` });
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.characterEquipment.delete({ where: { id: equip.id } });
+    await db.transaction(async (tx) => {
+      await tx.delete(characterEquipment).where(eq(characterEquipment.id, equip.id));
 
       // Return item to inventory
-      const existingInv = await tx.inventory.findFirst({
-        where: { characterId: character.id, itemId: equip.itemId },
+      const existingInv = await tx.query.inventories.findFirst({
+        where: and(eq(inventories.characterId, character.id), eq(inventories.itemId, equip.itemId)),
       });
 
       if (existingInv) {
-        await tx.inventory.update({
-          where: { id: existingInv.id },
-          data: { quantity: existingInv.quantity + 1 },
-        });
+        await tx.update(inventories).set({ quantity: existingInv.quantity + 1 }).where(eq(inventories.id, existingInv.id));
       } else {
-        await tx.inventory.create({
-          data: {
-            characterId: character.id,
-            itemId: equip.itemId,
-            quantity: 1,
-          },
+        await tx.insert(inventories).values({
+          id: crypto.randomUUID(),
+          characterId: character.id,
+          itemId: equip.itemId,
+          quantity: 1,
         });
       }
     });
@@ -245,12 +238,12 @@ router.post('/unequip', authGuard, characterGuard, validate(unequipSchema), asyn
       unequipped: {
         slot,
         itemId: equip.itemId,
-        name: equip.item.template.name,
+        name: equip.item.itemTemplate.name,
         returnedToInventory: true,
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'unequip-item', req)) return;
+    if (handleDbError(error, res, 'unequip-item', req)) return;
     logRouteError(req, 500, 'Unequip item error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -263,25 +256,25 @@ router.get('/equipped', authGuard, characterGuard, async (req: AuthenticatedRequ
   try {
     const character = req.character!;
 
-    const equipped = await prisma.characterEquipment.findMany({
-      where: { characterId: character.id },
-      include: {
-        item: { include: { template: true } },
+    const equipped = await db.query.characterEquipment.findMany({
+      where: eq(characterEquipment.characterId, character.id),
+      with: {
+        item: { with: { itemTemplate: true } },
       },
-      orderBy: { slot: 'asc' },
+      orderBy: (ce, { asc }) => [asc(ce.slot)],
     });
 
-    const items = equipped.map((equip) => {
-      const calculated = calculateItemStats(equip.item);
+    const itemsList = equipped.map((equip) => {
+      const calculated = calculateItemStats({ ...equip.item, template: equip.item.itemTemplate });
       return {
         slot: equip.slot,
         item: {
           id: equip.item.id,
-          name: equip.item.template.name,
-          type: equip.item.template.type,
+          name: equip.item.itemTemplate.name,
+          type: equip.item.itemTemplate.type,
           quality: equip.item.quality,
           currentDurability: equip.item.currentDurability,
-          maxDurability: equip.item.template.durability,
+          maxDurability: equip.item.itemTemplate.durability,
           enchantments: equip.item.enchantments,
           stats: calculated.finalStats,
           baseStats: calculated.baseStats,
@@ -291,9 +284,9 @@ router.get('/equipped', authGuard, characterGuard, async (req: AuthenticatedRequ
       };
     });
 
-    return res.json({ equipped: items });
+    return res.json({ equipped: itemsList });
   } catch (error) {
-    if (handlePrismaError(error, res, 'equipment-list', req)) return;
+    if (handleDbError(error, res, 'equipment-list', req)) return;
     logRouteError(req, 500, 'Get equipped items error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -316,7 +309,7 @@ router.get('/stats', authGuard, characterGuard, async (req: AuthenticatedRequest
       equippedCount: totals.items.length,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'equipment-stats', req)) return;
+    if (handleDbError(error, res, 'equipment-stats', req)) return;
     logRouteError(req, 500, 'Get equipment stats error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -332,8 +325,8 @@ router.post('/enchant', authGuard, characterGuard, validate(enchantSchema), asyn
 
     // Fetch both items with templates
     const [scrollItem, targetItem] = await Promise.all([
-      prisma.item.findUnique({ where: { id: scrollItemId }, include: { template: true } }),
-      prisma.item.findUnique({ where: { id: targetItemId }, include: { template: true } }),
+      db.query.items.findFirst({ where: eq(items.id, scrollItemId), with: { itemTemplate: true } }),
+      db.query.items.findFirst({ where: eq(items.id, targetItemId), with: { itemTemplate: true } }),
     ]);
 
     if (!scrollItem || scrollItem.ownerId !== character.id) {
@@ -344,34 +337,34 @@ router.post('/enchant', authGuard, characterGuard, validate(enchantSchema), asyn
     }
 
     // Scroll must be in inventory (not equipped)
-    const scrollInv = await prisma.inventory.findFirst({
-      where: { characterId: character.id, itemId: scrollItemId },
+    const scrollInv = await db.query.inventories.findFirst({
+      where: and(eq(inventories.characterId, character.id), eq(inventories.itemId, scrollItemId)),
     });
     if (!scrollInv) {
       return res.status(400).json({ error: 'Scroll is not in your inventory' });
     }
 
     // Validate scroll is an enchantment scroll
-    if (!scrollItem.template.name.includes('Enchantment Scroll')) {
+    if (!scrollItem.itemTemplate.name.includes('Enchantment Scroll')) {
       return res.status(400).json({ error: 'Item is not an enchantment scroll' });
     }
 
     // Target must be WEAPON or ARMOR
-    if (targetItem.template.type !== 'WEAPON' && targetItem.template.type !== 'ARMOR') {
+    if (targetItem.itemTemplate.type !== 'WEAPON' && targetItem.itemTemplate.type !== 'ARMOR') {
       return res.status(400).json({ error: 'Can only enchant weapons and armor' });
     }
 
     // Look up enchantment effect
-    const effect = getEnchantmentEffect(scrollItem.template.name);
+    const effect = getEnchantmentEffect(scrollItem.itemTemplate.name);
     if (!effect) {
       return res.status(400).json({ error: 'Unknown enchantment scroll type' });
     }
 
     // Validate target type constraint
-    if (effect.targetType === 'weapon' && targetItem.template.type !== 'WEAPON') {
+    if (effect.targetType === 'weapon' && targetItem.itemTemplate.type !== 'WEAPON') {
       return res.status(400).json({ error: 'This scroll can only be applied to weapons' });
     }
-    if (effect.targetType === 'armor' && targetItem.template.type !== 'ARMOR') {
+    if (effect.targetType === 'armor' && targetItem.itemTemplate.type !== 'ARMOR') {
       return res.status(400).json({ error: 'This scroll can only be applied to armor' });
     }
 
@@ -379,7 +372,7 @@ router.post('/enchant', authGuard, characterGuard, validate(enchantSchema), asyn
     const existingEnchantments = (targetItem.enchantments as Array<{ scrollName: string }>) || [];
 
     // No duplicate same-type enchantments
-    if (existingEnchantments.some(e => e.scrollName === scrollItem.template.name)) {
+    if (existingEnchantments.some(e => e.scrollName === scrollItem.itemTemplate.name)) {
       return res.status(400).json({ error: 'This enchantment is already applied to this item' });
     }
 
@@ -390,54 +383,52 @@ router.post('/enchant', authGuard, characterGuard, validate(enchantSchema), asyn
 
     // Build enchantment record
     const enchantmentRecord = {
-      scrollName: scrollItem.template.name,
+      scrollName: scrollItem.itemTemplate.name,
       bonuses: effect.bonuses,
       ...(effect.elementalDamage ? { elementalDamage: effect.elementalDamage } : {}),
       appliedAt: new Date().toISOString(),
     };
 
     // Apply in transaction
-    const updatedItem = await prisma.$transaction(async (tx) => {
+    const updatedItem = await db.transaction(async (tx) => {
       // Append enchantment to target item
-      const updated = await tx.item.update({
-        where: { id: targetItemId },
-        data: {
-          enchantments: [...existingEnchantments, enchantmentRecord],
-        },
-        include: { template: true },
-      });
+      const [updated] = await tx.update(items).set({
+        enchantments: [...existingEnchantments, enchantmentRecord],
+      }).where(eq(items.id, targetItemId)).returning();
 
       // Consume the scroll
       if (scrollInv.quantity <= 1) {
-        await tx.inventory.delete({ where: { id: scrollInv.id } });
-        await tx.item.delete({ where: { id: scrollItemId } });
+        await tx.delete(inventories).where(eq(inventories.id, scrollInv.id));
+        await tx.delete(items).where(eq(items.id, scrollItemId));
       } else {
-        await tx.inventory.update({
-          where: { id: scrollInv.id },
-          data: { quantity: scrollInv.quantity - 1 },
-        });
+        await tx.update(inventories).set({ quantity: scrollInv.quantity - 1 }).where(eq(inventories.id, scrollInv.id));
       }
 
-      return updated;
+      // Re-fetch with template for stats calculation
+      const itemWithTemplate = await tx.query.items.findFirst({
+        where: eq(items.id, targetItemId),
+        with: { itemTemplate: true },
+      });
+      return itemWithTemplate!;
     });
 
-    const calculatedStats = calculateItemStats(updatedItem);
+    const calculatedStats = calculateItemStats({ ...updatedItem, template: updatedItem.itemTemplate });
 
     return res.json({
       success: true,
       item: {
         id: updatedItem.id,
-        name: updatedItem.template.name,
-        type: updatedItem.template.type,
+        name: updatedItem.itemTemplate.name,
+        type: updatedItem.itemTemplate.type,
         quality: updatedItem.quality,
         enchantments: updatedItem.enchantments,
         stats: calculatedStats.finalStats,
         enchantmentBonuses: calculatedStats.enchantmentBonuses,
       },
-      message: `Applied ${scrollItem.template.name} to ${updatedItem.template.name}`,
+      message: `Applied ${scrollItem.itemTemplate.name} to ${updatedItem.itemTemplate.name}`,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'enchant-item', req)) return;
+    if (handleDbError(error, res, 'enchant-item', req)) return;
     logRouteError(req, 500, 'Enchant item error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

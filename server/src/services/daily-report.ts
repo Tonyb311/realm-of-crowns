@@ -1,5 +1,6 @@
-import { prisma } from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import { db } from '../lib/db';
+import { eq, and, desc } from 'drizzle-orm';
+import { dailyReports } from '@database/tables';
 import {
   narrateCombatEvent,
   narrateCombatOpening,
@@ -31,33 +32,32 @@ export async function createDailyReport(
   tickDate: string,
   data: DailyReportData,
 ) {
-  return prisma.dailyReport.upsert({
-    where: {
-      characterId_tickDate: { characterId, tickDate },
-    },
-    create: {
-      characterId,
-      tickDate,
-      foodConsumed: (data.foodConsumed ?? undefined) as Prisma.InputJsonValue | undefined,
-      actionResult: data.actionResult as Prisma.InputJsonValue,
+  const [result] = await db.insert(dailyReports).values({
+    id: crypto.randomUUID(),
+    characterId,
+    tickDate,
+    foodConsumed: data.foodConsumed ?? undefined,
+    actionResult: data.actionResult,
+    goldChange: data.goldChange,
+    xpEarned: data.xpEarned,
+    combatLogs: data.combatLogs,
+    questProgress: data.questProgress,
+    notifications: data.notifications,
+    worldEvents: data.worldEvents,
+  }).onConflictDoUpdate({
+    target: [dailyReports.characterId, dailyReports.tickDate],
+    set: {
+      foodConsumed: data.foodConsumed ?? undefined,
+      actionResult: data.actionResult,
       goldChange: data.goldChange,
       xpEarned: data.xpEarned,
-      combatLogs: data.combatLogs as unknown as Prisma.InputJsonValue,
-      questProgress: data.questProgress as unknown as Prisma.InputJsonValue,
+      combatLogs: data.combatLogs,
+      questProgress: data.questProgress,
       notifications: data.notifications,
-      worldEvents: data.worldEvents as unknown as Prisma.InputJsonValue,
+      worldEvents: data.worldEvents,
     },
-    update: {
-      foodConsumed: (data.foodConsumed ?? undefined) as Prisma.InputJsonValue | undefined,
-      actionResult: data.actionResult as Prisma.InputJsonValue,
-      goldChange: data.goldChange,
-      xpEarned: data.xpEarned,
-      combatLogs: data.combatLogs as unknown as Prisma.InputJsonValue,
-      questProgress: data.questProgress as unknown as Prisma.InputJsonValue,
-      notifications: data.notifications,
-      worldEvents: data.worldEvents as unknown as Prisma.InputJsonValue,
-    },
-  });
+  }).returning();
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -65,10 +65,10 @@ export async function createDailyReport(
 // ---------------------------------------------------------------------------
 
 export async function getLatestReport(characterId: string) {
-  return prisma.dailyReport.findFirst({
-    where: { characterId },
-    orderBy: { tickDate: 'desc' },
-  });
+  return db.query.dailyReports.findFirst({
+    where: eq(dailyReports.characterId, characterId),
+    orderBy: desc(dailyReports.tickDate),
+  }) ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -76,10 +76,10 @@ export async function getLatestReport(characterId: string) {
 // ---------------------------------------------------------------------------
 
 export async function getReportHistory(characterId: string, limit = 7) {
-  return prisma.dailyReport.findMany({
-    where: { characterId },
-    orderBy: { tickDate: 'desc' },
-    take: limit,
+  return db.query.dailyReports.findMany({
+    where: eq(dailyReports.characterId, characterId),
+    orderBy: desc(dailyReports.tickDate),
+    limit,
   });
 }
 
@@ -92,10 +92,8 @@ export async function getReportHistory(characterId: string, limit = 7) {
 // ---------------------------------------------------------------------------
 
 export async function dismissReport(reportId: string) {
-  return prisma.dailyReport.update({
-    where: { id: reportId },
-    data: { dismissedAt: new Date() },
-  });
+  const [result] = await db.update(dailyReports).set({ dismissedAt: new Date().toISOString() }).where(eq(dailyReports.id, reportId)).returning();
+  return result;
 }
 
 // ---------------------------------------------------------------------------

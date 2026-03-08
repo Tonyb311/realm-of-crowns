@@ -1,5 +1,7 @@
 import cron from 'node-cron';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, lte, gt, and, or } from 'drizzle-orm';
+import { caravans, travelRoutes } from '@database/tables';
 import { logger } from '../lib/logger';
 import { cronJobExecutions } from '../lib/metrics';
 import { emitNotification } from '../socket/events';
@@ -62,13 +64,13 @@ async function processCaravanEvents() {
   // -----------------------------------------------------------------------
   // 1. Auto-arrive completed caravans
   // -----------------------------------------------------------------------
-  const arrivedCaravans = await prisma.caravan.findMany({
-    where: {
-      status: 'IN_PROGRESS',
-      arrivesAt: { lte: now },
-    },
-    include: {
-      toTown: { select: { id: true, name: true } },
+  const arrivedCaravans = await db.query.caravans.findMany({
+    where: and(
+      eq(caravans.status, 'IN_PROGRESS'),
+      lte(caravans.arrivesAt, now.toISOString()),
+    ),
+    with: {
+      town_toTownId: { columns: { id: true, name: true } },
     },
   });
 
@@ -78,7 +80,7 @@ async function processCaravanEvents() {
       id: `caravan-ready-${caravan.id}`,
       type: 'caravan:arrived',
       title: 'Caravan Arrived!',
-      message: `Your caravan has arrived at ${caravan.toTown.name}. Visit the town to collect your goods.`,
+      message: `Your caravan has arrived at ${caravan.town_toTownId.name}. Visit the town to collect your goods.`,
       data: { caravanId: caravan.id, toTownId: caravan.toTownId },
     });
   }
@@ -90,11 +92,11 @@ async function processCaravanEvents() {
   // -----------------------------------------------------------------------
   // 2. Ambush checks for in-transit caravans (not yet arrived)
   // -----------------------------------------------------------------------
-  const inTransit = await prisma.caravan.findMany({
-    where: {
-      status: 'IN_PROGRESS',
-      arrivesAt: { gt: now },
-    },
+  const inTransit = await db.query.caravans.findMany({
+    where: and(
+      eq(caravans.status, 'IN_PROGRESS'),
+      gt(caravans.arrivesAt, now.toISOString()),
+    ),
   });
 
   if (inTransit.length === 0) return;
@@ -104,13 +106,13 @@ async function processCaravanEvents() {
     fromTownId: c.fromTownId,
     toTownId: c.toTownId,
   }));
-  const routes = await prisma.travelRoute.findMany({
-    where: {
-      OR: routePairs.flatMap(p => [
-        { fromTownId: p.fromTownId, toTownId: p.toTownId },
-        { fromTownId: p.toTownId, toTownId: p.fromTownId },
-      ]),
-    },
+  const routeConditions = routePairs.flatMap(p => [
+    and(eq(travelRoutes.fromTownId, p.fromTownId), eq(travelRoutes.toTownId, p.toTownId)),
+    and(eq(travelRoutes.fromTownId, p.toTownId), eq(travelRoutes.toTownId, p.fromTownId)),
+  ]);
+
+  const routes = await db.query.travelRoutes.findMany({
+    where: or(...routeConditions),
   });
 
   const routeMap = new Map<string, typeof routes[number]>();
@@ -136,10 +138,9 @@ async function processCaravanEvents() {
 
     if (Math.random() < ambushChance) {
       // Trigger ambush: set status to FAILED (representing AMBUSHED)
-      await prisma.caravan.update({
-        where: { id: caravan.id },
-        data: { status: 'FAILED' },
-      });
+      await db.update(caravans)
+        .set({ status: 'FAILED' })
+        .where(eq(caravans.id, caravan.id));
 
       emitNotification(caravan.ownerId, {
         id: `caravan-ambushed-${caravan.id}`,

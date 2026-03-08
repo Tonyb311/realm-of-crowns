@@ -1,13 +1,15 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, inArray, sql } from 'drizzle-orm';
+import { items, itemTemplates, playerProfessions, characters, characterEquipment } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { ProfessionType, ItemType } from '@prisma/client';
+import type { ProfessionType, ItemType } from '@shared/enums';
 import { calculateItemStats } from '../services/item-stats';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
@@ -36,9 +38,9 @@ router.post('/repair', authGuard, characterGuard, validate(repairSchema), async 
     const character = req.character!;
 
     // Find the item
-    const item = await prisma.item.findUnique({
-      where: { id: itemId },
-      include: { template: true },
+    const item = await db.query.items.findFirst({
+      where: eq(items.id, itemId),
+      with: { itemTemplate: true },
     });
 
     if (!item || item.ownerId !== character.id) {
@@ -46,22 +48,22 @@ router.post('/repair', authGuard, characterGuard, validate(repairSchema), async 
     }
 
     // Check if already at full durability
-    if (item.currentDurability >= item.template.durability) {
+    if (item.currentDurability >= item.itemTemplate.durability) {
       return res.status(400).json({ error: 'Item is already at full durability' });
     }
 
     // Check if character has a matching crafting profession
-    const requiredProfessions = REPAIR_PROFESSION_MAP[item.template.type];
+    const requiredProfessions = REPAIR_PROFESSION_MAP[item.itemTemplate.type as ItemType];
     if (!requiredProfessions) {
       return res.status(400).json({ error: 'This item type cannot be repaired' });
     }
 
-    const matchingProfession = await prisma.playerProfession.findFirst({
-      where: {
-        characterId: character.id,
-        professionType: { in: requiredProfessions },
-        isActive: true,
-      },
+    const matchingProfession = await db.query.playerProfessions.findFirst({
+      where: and(
+        eq(playerProfessions.characterId, character.id),
+        inArray(playerProfessions.professionType, requiredProfessions),
+        eq(playerProfessions.isActive, true),
+      ),
     });
 
     if (!matchingProfession) {
@@ -71,7 +73,7 @@ router.post('/repair', authGuard, characterGuard, validate(repairSchema), async 
     }
 
     // Calculate repair cost
-    const durabilityToRepair = item.template.durability - item.currentDurability;
+    const durabilityToRepair = item.itemTemplate.durability - item.currentDurability;
     const goldCost = durabilityToRepair * REPAIR_GOLD_PER_POINT;
 
     if (character.gold < goldCost) {
@@ -81,31 +83,29 @@ router.post('/repair', authGuard, characterGuard, validate(repairSchema), async 
     }
 
     // Perform repair
-    await prisma.$transaction(async (tx) => {
-      await tx.item.update({
-        where: { id: itemId },
-        data: { currentDurability: item.template.durability },
-      });
+    await db.transaction(async (tx) => {
+      await tx.update(items)
+        .set({ currentDurability: item.itemTemplate.durability })
+        .where(eq(items.id, itemId));
 
-      await tx.character.update({
-        where: { id: character.id },
-        data: { gold: { decrement: goldCost } },
-      });
+      await tx.update(characters)
+        .set({ gold: sql`${characters.gold} - ${goldCost}` })
+        .where(eq(characters.id, character.id));
     });
 
     return res.json({
       repaired: {
         itemId: item.id,
-        name: item.template.name,
+        name: item.itemTemplate.name,
         previousDurability: item.currentDurability,
-        currentDurability: item.template.durability,
-        maxDurability: item.template.durability,
+        currentDurability: item.itemTemplate.durability,
+        maxDurability: item.itemTemplate.durability,
         goldSpent: goldCost,
         repairedBy: matchingProfession.professionType,
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'item-repair', req)) return;
+    if (handleDbError(error, res, 'item-repair', req)) return;
     logRouteError(req, 500, 'Repair item error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -119,11 +119,11 @@ router.get('/details/:itemId', authGuard, characterGuard, async (req: Authentica
     const { itemId } = req.params;
     const character = req.character!;
 
-    const item = await prisma.item.findUnique({
-      where: { id: itemId },
-      include: {
-        template: true,
-        craftedBy: { select: { id: true, name: true } },
+    const item = await db.query.items.findFirst({
+      where: eq(items.id, itemId),
+      with: {
+        itemTemplate: true,
+        character_craftedById: { columns: { id: true, name: true } },
       },
     });
 
@@ -131,27 +131,27 @@ router.get('/details/:itemId', authGuard, characterGuard, async (req: Authentica
       return res.status(404).json({ error: 'Item not found' });
     }
 
-    const calculated = calculateItemStats(item);
+    const calculated = calculateItemStats({ ...item, template: item.itemTemplate });
 
     // Check if item is currently equipped
-    const equipped = await prisma.characterEquipment.findFirst({
-      where: { characterId: character.id, itemId },
+    const equipped = await db.query.characterEquipment.findFirst({
+      where: and(eq(characterEquipment.characterId, character.id), eq(characterEquipment.itemId, itemId)),
     });
 
     return res.json({
       item: {
         id: item.id,
-        name: item.template.name,
-        type: item.template.type,
-        rarity: item.template.rarity,
+        name: item.itemTemplate.name,
+        type: item.itemTemplate.type,
+        rarity: item.itemTemplate.rarity,
         quality: item.quality,
-        description: item.template.description,
+        description: item.itemTemplate.description,
         currentDurability: item.currentDurability,
-        maxDurability: item.template.durability,
-        levelRequired: item.template.levelRequired,
-        requirements: item.template.requirements,
+        maxDurability: item.itemTemplate.durability,
+        levelRequired: item.itemTemplate.levelRequired,
+        requirements: item.itemTemplate.requirements,
         enchantments: item.enchantments,
-        craftedBy: item.craftedBy ? { id: item.craftedBy.id, name: item.craftedBy.name } : null,
+        craftedBy: item.character_craftedById ? { id: item.character_craftedById.id, name: item.character_craftedById.name } : null,
         equippedSlot: equipped?.slot ?? null,
         stats: {
           base: calculated.baseStats,
@@ -162,7 +162,7 @@ router.get('/details/:itemId', authGuard, characterGuard, async (req: Authentica
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'item-details', req)) return;
+    if (handleDbError(error, res, 'item-details', req)) return;
     logRouteError(req, 500, 'Item details error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -181,13 +181,13 @@ router.get('/compare', authGuard, characterGuard, async (req: AuthenticatedReque
     }
 
     const [equippedItem, candidateItem] = await Promise.all([
-      prisma.item.findUnique({
-        where: { id: equippedId },
-        include: { template: true },
+      db.query.items.findFirst({
+        where: eq(items.id, equippedId),
+        with: { itemTemplate: true },
       }),
-      prisma.item.findUnique({
-        where: { id: candidateId },
-        include: { template: true },
+      db.query.items.findFirst({
+        where: eq(items.id, candidateId),
+        with: { itemTemplate: true },
       }),
     ]);
 
@@ -198,8 +198,8 @@ router.get('/compare', authGuard, characterGuard, async (req: AuthenticatedReque
       return res.status(404).json({ error: 'Candidate item not found' });
     }
 
-    const equippedStats = calculateItemStats(equippedItem);
-    const candidateStats = calculateItemStats(candidateItem);
+    const equippedStats = calculateItemStats({ ...equippedItem, template: equippedItem.itemTemplate });
+    const candidateStats = calculateItemStats({ ...candidateItem, template: candidateItem.itemTemplate });
 
     // Build diff: positive means candidate is better, negative means worse
     const diff: Record<string, number> = {};
@@ -235,20 +235,20 @@ router.get('/compare', authGuard, characterGuard, async (req: AuthenticatedReque
       comparison: {
         equipped: {
           id: equippedItem.id,
-          name: equippedItem.template.name,
-          type: equippedItem.template.type,
+          name: equippedItem.itemTemplate.name,
+          type: equippedItem.itemTemplate.type,
           quality: equippedItem.quality,
           currentDurability: equippedItem.currentDurability,
-          maxDurability: equippedItem.template.durability,
+          maxDurability: equippedItem.itemTemplate.durability,
           stats: equippedStats.finalStats,
         },
         candidate: {
           id: candidateItem.id,
-          name: candidateItem.template.name,
-          type: candidateItem.template.type,
+          name: candidateItem.itemTemplate.name,
+          type: candidateItem.itemTemplate.type,
           quality: candidateItem.quality,
           currentDurability: candidateItem.currentDurability,
-          maxDurability: candidateItem.template.durability,
+          maxDurability: candidateItem.itemTemplate.durability,
           stats: candidateStats.finalStats,
         },
         diff,
@@ -256,7 +256,7 @@ router.get('/compare', authGuard, characterGuard, async (req: AuthenticatedReque
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'item-compare', req)) return;
+    if (handleDbError(error, res, 'item-compare', req)) return;
     logRouteError(req, 500, 'Item compare error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

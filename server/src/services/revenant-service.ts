@@ -1,4 +1,6 @@
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and } from 'drizzle-orm';
+import { characters, racialAbilityCooldowns } from '@database/tables';
 
 // =========================================================================
 // Revenant Reduced Death Service
@@ -42,9 +44,9 @@ export interface LifeDrainResult {
  * Get death penalties: halved for Revenants.
  */
 export async function getDeathPenalties(characterId: string): Promise<DeathPenalties> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true },
   });
 
   if (!character || character.race !== 'REVENANT') {
@@ -68,9 +70,9 @@ export async function getDeathPenalties(characterId: string): Promise<DeathPenal
  * Get respawn timer: halved for Revenants.
  */
 export async function getRespawnTimer(characterId: string): Promise<RespawnInfo> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true },
   });
 
   if (!character || character.race !== 'REVENANT') {
@@ -90,9 +92,9 @@ export async function applyLifeDrain(
   characterId: string,
   damageDealt: number,
 ): Promise<LifeDrainResult> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true, level: true, health: true, maxHealth: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true, level: true, health: true, maxHealth: true },
   });
 
   if (!character || character.race !== 'REVENANT' || character.level < LIFE_DRAIN_LEVEL) {
@@ -102,10 +104,7 @@ export async function applyLifeDrain(
   const healAmount = Math.floor(damageDealt * LIFE_DRAIN_PERCENT);
   const newHealth = Math.min(character.maxHealth, character.health + healAmount);
 
-  await prisma.character.update({
-    where: { id: characterId },
-    data: { health: newHealth },
-  });
+  await db.update(characters).set({ health: newHealth }).where(eq(characters.id, characterId));
 
   return { healAmount, active: true };
 }
@@ -117,9 +116,9 @@ export async function applyLifeDrain(
 export async function checkUndyingFortitude(
   characterId: string,
 ): Promise<{ available: boolean; cooldownEnds: string | null; reason: string }> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true, level: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true, level: true },
   });
 
   if (!character || character.race !== 'REVENANT') {
@@ -132,24 +131,36 @@ export async function checkUndyingFortitude(
 
   const now = new Date();
   const abilityName = 'Undying Fortitude';
-  const existingCooldown = await prisma.racialAbilityCooldown.findUnique({
-    where: { characterId_abilityName: { characterId, abilityName } },
+  const existingCooldown = await db.query.racialAbilityCooldowns.findFirst({
+    where: and(
+      eq(racialAbilityCooldowns.characterId, characterId),
+      eq(racialAbilityCooldowns.abilityName, abilityName),
+    ),
   });
 
-  if (existingCooldown && existingCooldown.cooldownEnds > now) {
+  if (existingCooldown && new Date(existingCooldown.cooldownEnds) > now) {
     return {
       available: false,
-      cooldownEnds: existingCooldown.cooldownEnds.toISOString(),
+      cooldownEnds: existingCooldown.cooldownEnds,
       reason: 'On cooldown',
     };
   }
 
   // Trigger the cooldown
   const cooldownEnds = new Date(now.getTime() + UNDYING_FORTITUDE_COOLDOWN_SECONDS * 1000);
-  await prisma.racialAbilityCooldown.upsert({
-    where: { characterId_abilityName: { characterId, abilityName } },
-    update: { lastUsed: now, cooldownEnds },
-    create: { characterId, abilityName, lastUsed: now, cooldownEnds },
+  await db.insert(racialAbilityCooldowns).values({
+    id: crypto.randomUUID(),
+    characterId,
+    abilityName,
+    lastUsed: now.toISOString(),
+    cooldownEnds: cooldownEnds.toISOString(),
+    updatedAt: now.toISOString(),
+  }).onConflictDoUpdate({
+    target: [racialAbilityCooldowns.characterId, racialAbilityCooldowns.abilityName],
+    set: {
+      lastUsed: now.toISOString(),
+      cooldownEnds: cooldownEnds.toISOString(),
+    },
   });
 
   return {

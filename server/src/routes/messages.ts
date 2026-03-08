@@ -1,12 +1,14 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, or, desc, count } from 'drizzle-orm';
+import { messages, characters, guildMembers, users } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { getPsionSpec } from '../services/psion-perks';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
@@ -27,23 +29,9 @@ const sendMessageSchema = z.object({
 function parsePagination(query: Record<string, unknown>) {
   const page = Math.max(1, parseInt(query.page as string, 10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(query.limit as string, 10) || DEFAULT_PAGE_SIZE));
-  const skip = (page - 1) * limit;
-  return { page, limit, skip };
+  const offset = (page - 1) * limit;
+  return { page, limit, offset };
 }
-
-const messageSelect = {
-  id: true,
-  channelType: true,
-  content: true,
-  senderId: true,
-  recipientId: true,
-  guildId: true,
-  townId: true,
-  isRead: true,
-  timestamp: true,
-  sender: { select: { id: true, name: true } },
-  recipient: { select: { id: true, name: true } },
-};
 
 // POST /api/messages/send
 router.post('/send', authGuard, characterGuard, validate(sendMessageSchema), async (req: AuthenticatedRequest, res: Response) => {
@@ -60,7 +48,7 @@ router.post('/send', authGuard, characterGuard, validate(sendMessageSchema), asy
       if (recipientId === character.id) {
         return res.status(400).json({ error: 'You cannot whisper to yourself' });
       }
-      const recipient = await prisma.character.findUnique({ where: { id: recipientId } });
+      const recipient = await db.query.characters.findFirst({ where: eq(characters.id, recipientId) });
       if (!recipient) {
         return res.status(404).json({ error: 'Recipient not found' });
       }
@@ -76,8 +64,8 @@ router.post('/send', authGuard, characterGuard, validate(sendMessageSchema), asy
       if (!guildId) {
         return res.status(400).json({ error: 'guildId is required for guild messages' });
       }
-      const membership = await prisma.guildMember.findUnique({
-        where: { guildId_characterId: { guildId, characterId: character.id } },
+      const membership = await db.query.guildMembers.findFirst({
+        where: and(eq(guildMembers.guildId, guildId), eq(guildMembers.characterId, character.id)),
       });
       if (!membership) {
         return res.status(403).json({ error: 'You are not a member of this guild' });
@@ -85,7 +73,7 @@ router.post('/send', authGuard, characterGuard, validate(sendMessageSchema), asy
     }
 
     if (channelType === 'GLOBAL') {
-      const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+      const user = await db.query.users.findFirst({ where: eq(users.id, req.user!.userId) });
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ error: 'Only admins can send global messages' });
       }
@@ -100,67 +88,114 @@ router.post('/send', authGuard, characterGuard, validate(sendMessageSchema), asy
       }
     }
 
-    const message = await prisma.message.create({
-      data: {
-        channelType,
-        content,
-        senderId: character.id,
-        recipientId: channelType === 'WHISPER' ? recipientId : null,
-        guildId: channelType === 'GUILD' ? guildId : null,
-        townId: channelType === 'TOWN' ? resolvedTownId : null,
+    const [message] = await db.insert(messages).values({
+      id: crypto.randomUUID(),
+      channelType,
+      content,
+      senderId: character.id,
+      recipientId: channelType === 'WHISPER' ? recipientId : null,
+      guildId: channelType === 'GUILD' ? guildId : null,
+      townId: channelType === 'TOWN' ? resolvedTownId : null,
+    }).returning();
+
+    // Fetch with sender/recipient for response
+    const fullMessage = await db.query.messages.findFirst({
+      where: eq(messages.id, message.id),
+      columns: {
+        id: true,
+        channelType: true,
+        content: true,
+        senderId: true,
+        recipientId: true,
+        guildId: true,
+        townId: true,
+        isRead: true,
+        timestamp: true,
       },
-      select: messageSelect,
+      with: {
+        character_senderId: { columns: { id: true, name: true } },
+        character_recipientId: { columns: { id: true, name: true } },
+      },
     });
 
+    // Reshape to match original API response format
+    const responseMessage = fullMessage ? {
+      ...fullMessage,
+      sender: fullMessage.character_senderId,
+      recipient: fullMessage.character_recipientId,
+      character_senderId: undefined,
+      character_recipientId: undefined,
+    } : message;
+
     return res.status(201).json({
-      message,
+      message: responseMessage,
       ...(farWhisper ? { farWhisper: true } : {}),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'message-send', req)) return;
+    if (handleDbError(error, res, 'message-send', req)) return;
     logRouteError(req, 500, 'Message send error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// Helper to fetch messages with sender/recipient
+async function fetchMessages(whereClause: any, orderBy: any, offset: number, limit: number) {
+  const rows = await db.query.messages.findMany({
+    where: whereClause,
+    columns: {
+      id: true,
+      channelType: true,
+      content: true,
+      senderId: true,
+      recipientId: true,
+      guildId: true,
+      townId: true,
+      isRead: true,
+      timestamp: true,
+    },
+    with: {
+      character_senderId: { columns: { id: true, name: true } },
+      character_recipientId: { columns: { id: true, name: true } },
+    },
+    orderBy,
+    offset,
+    limit,
+  });
+  return rows.map(r => ({
+    ...r,
+    sender: r.character_senderId,
+    recipient: r.character_recipientId,
+    character_senderId: undefined,
+    character_recipientId: undefined,
+  }));
+}
 
 // GET /api/messages/inbox
 router.get('/inbox', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const character = req.character!;
 
-    const { page, limit, skip } = parsePagination(req.query);
+    const { page, limit, offset } = parsePagination(req.query);
 
-    const [messages, total] = await Promise.all([
-      prisma.message.findMany({
-        where: {
-          channelType: 'WHISPER',
-          OR: [
-            { recipientId: character.id },
-            { senderId: character.id },
-          ],
-        },
-        select: messageSelect,
-        orderBy: { timestamp: 'desc' },
-        skip,
-        take: limit,
-      }),
-      prisma.message.count({
-        where: {
-          channelType: 'WHISPER',
-          OR: [
-            { recipientId: character.id },
-            { senderId: character.id },
-          ],
-        },
-      }),
+    const whereClause = and(
+      eq(messages.channelType, 'WHISPER'),
+      or(
+        eq(messages.recipientId, character.id),
+        eq(messages.senderId, character.id),
+      ),
+    );
+
+    const [messageRows, [{ total }]] = await Promise.all([
+      fetchMessages(whereClause, desc(messages.timestamp), offset, limit),
+      db.select({ total: count() }).from(messages).where(whereClause),
     ]);
 
     return res.json({
-      messages,
+      messages: messageRows,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'message-inbox', req)) return;
+    if (handleDbError(error, res, 'message-inbox', req)) return;
     logRouteError(req, 500, 'Message inbox error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -172,33 +207,27 @@ router.get('/conversation/:characterId', authGuard, characterGuard, async (req: 
     const character = req.character!;
 
     const { characterId: otherId } = req.params;
-    const { page, limit, skip } = parsePagination(req.query);
+    const { page, limit, offset } = parsePagination(req.query);
 
-    const where = {
-      channelType: 'WHISPER' as const,
-      OR: [
-        { senderId: character.id, recipientId: otherId },
-        { senderId: otherId, recipientId: character.id },
-      ],
-    };
+    const whereClause = and(
+      eq(messages.channelType, 'WHISPER'),
+      or(
+        and(eq(messages.senderId, character.id), eq(messages.recipientId, otherId)),
+        and(eq(messages.senderId, otherId), eq(messages.recipientId, character.id)),
+      ),
+    );
 
-    const [messages, total] = await Promise.all([
-      prisma.message.findMany({
-        where,
-        select: messageSelect,
-        orderBy: { timestamp: 'desc' },
-        skip,
-        take: limit,
-      }),
-      prisma.message.count({ where }),
+    const [messageRows, [{ total }]] = await Promise.all([
+      fetchMessages(whereClause, desc(messages.timestamp), offset, limit),
+      db.select({ total: count() }).from(messages).where(whereClause),
     ]);
 
     return res.json({
-      messages,
+      messages: messageRows,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'message-conversation', req)) return;
+    if (handleDbError(error, res, 'message-conversation', req)) return;
     logRouteError(req, 500, 'Message conversation error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -215,49 +244,45 @@ router.get('/channel/:channelType', authGuard, characterGuard, async (req: Authe
       return res.status(400).json({ error: `Invalid channel type. Must be one of: ${validChannels.join(', ')}` });
     }
 
-    const { page, limit, skip } = parsePagination(req.query);
+    const { page, limit, offset } = parsePagination(req.query);
     const { townId, guildId } = req.query;
 
-    const where: Record<string, unknown> = { channelType };
+    const conditions = [eq(messages.channelType, channelType as any)];
 
     if (channelType === 'TOWN') {
       const resolvedTownId = (townId as string) || character.currentTownId;
       if (!resolvedTownId) {
         return res.status(400).json({ error: 'townId is required or you must be in a town' });
       }
-      where.townId = resolvedTownId;
+      conditions.push(eq(messages.townId, resolvedTownId));
     }
 
     if (channelType === 'GUILD') {
       if (!guildId) {
         return res.status(400).json({ error: 'guildId is required for guild channel' });
       }
-      const membership = await prisma.guildMember.findUnique({
-        where: { guildId_characterId: { guildId: guildId as string, characterId: character.id } },
+      const membership = await db.query.guildMembers.findFirst({
+        where: and(eq(guildMembers.guildId, guildId as string), eq(guildMembers.characterId, character.id)),
       });
       if (!membership) {
         return res.status(403).json({ error: 'You are not a member of this guild' });
       }
-      where.guildId = guildId;
+      conditions.push(eq(messages.guildId, guildId as string));
     }
 
-    const [messages, total] = await Promise.all([
-      prisma.message.findMany({
-        where,
-        select: messageSelect,
-        orderBy: { timestamp: 'desc' },
-        skip,
-        take: limit,
-      }),
-      prisma.message.count({ where }),
+    const whereClause = and(...conditions);
+
+    const [messageRows, [{ total }]] = await Promise.all([
+      fetchMessages(whereClause, desc(messages.timestamp), offset, limit),
+      db.select({ total: count() }).from(messages).where(whereClause),
     ]);
 
     return res.json({
-      messages,
+      messages: messageRows,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'message-channel', req)) return;
+    if (handleDbError(error, res, 'message-channel', req)) return;
     logRouteError(req, 500, 'Message channel error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -268,7 +293,7 @@ router.patch('/:id/read', authGuard, characterGuard, async (req: AuthenticatedRe
   try {
     const character = req.character!;
 
-    const message = await prisma.message.findUnique({ where: { id: req.params.id } });
+    const message = await db.query.messages.findFirst({ where: eq(messages.id, req.params.id) });
     if (!message) {
       return res.status(404).json({ error: 'Message not found' });
     }
@@ -277,15 +302,40 @@ router.patch('/:id/read', authGuard, characterGuard, async (req: AuthenticatedRe
       return res.status(403).json({ error: 'You can only mark your own received messages as read' });
     }
 
-    const updated = await prisma.message.update({
-      where: { id: req.params.id },
-      data: { isRead: true },
-      select: messageSelect,
+    await db.update(messages)
+      .set({ isRead: true })
+      .where(eq(messages.id, req.params.id));
+
+    const updated = await db.query.messages.findFirst({
+      where: eq(messages.id, req.params.id),
+      columns: {
+        id: true,
+        channelType: true,
+        content: true,
+        senderId: true,
+        recipientId: true,
+        guildId: true,
+        townId: true,
+        isRead: true,
+        timestamp: true,
+      },
+      with: {
+        character_senderId: { columns: { id: true, name: true } },
+        character_recipientId: { columns: { id: true, name: true } },
+      },
     });
 
-    return res.json({ message: updated });
+    const responseMessage = updated ? {
+      ...updated,
+      sender: updated.character_senderId,
+      recipient: updated.character_recipientId,
+      character_senderId: undefined,
+      character_recipientId: undefined,
+    } : null;
+
+    return res.json({ message: responseMessage });
   } catch (error) {
-    if (handlePrismaError(error, res, 'message-read', req)) return;
+    if (handleDbError(error, res, 'message-read', req)) return;
     logRouteError(req, 500, 'Message read error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -296,7 +346,7 @@ router.delete('/:id', authGuard, characterGuard, async (req: AuthenticatedReques
   try {
     const character = req.character!;
 
-    const message = await prisma.message.findUnique({ where: { id: req.params.id } });
+    const message = await db.query.messages.findFirst({ where: eq(messages.id, req.params.id) });
     if (!message) {
       return res.status(404).json({ error: 'Message not found' });
     }
@@ -305,11 +355,11 @@ router.delete('/:id', authGuard, characterGuard, async (req: AuthenticatedReques
       return res.status(403).json({ error: 'You can only delete your own messages' });
     }
 
-    await prisma.message.delete({ where: { id: req.params.id } });
+    await db.delete(messages).where(eq(messages.id, req.params.id));
 
     return res.json({ success: true });
   } catch (error) {
-    if (handlePrismaError(error, res, 'message-delete', req)) return;
+    if (handleDbError(error, res, 'message-delete', req)) return;
     logRouteError(req, 500, 'Message delete error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

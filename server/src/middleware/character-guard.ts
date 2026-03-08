@@ -1,6 +1,8 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../types/express';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, asc } from 'drizzle-orm';
+import { characters } from '@database/tables';
 
 /**
  * Middleware: reject mutating requests if the character is currently traveling.
@@ -15,9 +17,9 @@ export function requireTown(req: AuthenticatedRequest, res: Response, next: Next
 }
 
 export async function characterGuard(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  const character = await prisma.character.findFirst({
-    where: { userId: req.user!.userId },
-    orderBy: { createdAt: 'asc' },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.userId, req.user!.userId),
+    orderBy: asc(characters.createdAt),
   });
   if (!character) {
     return res.status(404).json({ error: 'No character found' });

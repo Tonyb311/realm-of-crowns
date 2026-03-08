@@ -1,7 +1,9 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { validate } from '../../middleware/validate';
-import { prisma } from '../../lib/prisma';
+import { db } from '../../lib/db';
+import { eq, and, asc, desc, sql } from 'drizzle-orm';
+import { combatEncounterLogs, combatSessions, combatLogs, combatParticipants, itemTemplates, monsters, simulationRuns } from '@database/tables';
 import { logRouteError } from '../../lib/error-logger';
 import { AuthenticatedRequest } from '../../types/express';
 import { getAllRaces } from '@shared/data/races';
@@ -48,10 +50,10 @@ const router = Router();
 
 // ---- Shared: data source filter helper ----
 function getSimFilter(dataSource: string, runId?: string) {
-  if (runId) return { simulationRunId: runId };
-  if (dataSource === 'live') return { simulationTick: null };
-  if (dataSource === 'sim') return { simulationTick: { not: null } } as const;
-  return {};
+  if (runId) return eq(combatEncounterLogs.simulationRunId, runId);
+  if (dataSource === 'live') return sql`${combatEncounterLogs.simulationTick} IS NULL`;
+  if (dataSource === 'sim') return sql`${combatEncounterLogs.simulationTick} IS NOT NULL`;
+  return undefined;
 }
 
 // ---- Codex Endpoints (static data) ----
@@ -214,7 +216,7 @@ router.get('/history', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 25));
-    const skip = (page - 1) * limit;
+    const offset = (page - 1) * limit;
 
     const dataSource = (req.query.dataSource as string) || 'live';
     const runId = req.query.runId as string | undefined;
@@ -231,37 +233,36 @@ router.get('/history', async (req: AuthenticatedRequest, res: Response) => {
     const validSorts = ['startedAt', 'totalRounds', 'xpAwarded', 'goldAwarded'];
     const validOrders = ['asc', 'desc'];
 
-    // Build where clause
-    const where: Record<string, unknown> = { ...simFilter };
-    if (type && type !== 'all') where.type = type;
-    if (outcome && outcome !== 'all') where.outcome = outcome;
+    // Build where conditions
+    const conditions: any[] = [];
+    if (simFilter) conditions.push(simFilter);
+    if (type && type !== 'all') conditions.push(eq(combatEncounterLogs.type, type));
+    if (outcome && outcome !== 'all') conditions.push(eq(combatEncounterLogs.outcome, outcome));
     if (search) {
-      where.OR = [
-        { characterName: { contains: search, mode: 'insensitive' } },
-        { opponentName: { contains: search, mode: 'insensitive' } },
-      ];
+      conditions.push(sql`(lower(${combatEncounterLogs.characterName}) LIKE ${`%${search.toLowerCase()}%`} OR lower(${combatEncounterLogs.opponentName}) LIKE ${`%${search.toLowerCase()}%`})`);
     }
-    if (startDate || endDate) {
-      where.startedAt = {
-        ...(startDate ? { gte: new Date(startDate) } : {}),
-        ...(endDate ? { lte: new Date(endDate) } : {}),
-      };
-    }
+    if (startDate) conditions.push(sql`${combatEncounterLogs.startedAt} >= ${new Date(startDate).toISOString()}`);
+    if (endDate) conditions.push(sql`${combatEncounterLogs.startedAt} <= ${new Date(endDate).toISOString()}`);
+
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     const orderField = validSorts.includes(sortBy) ? sortBy : 'startedAt';
     const orderDir = validOrders.includes(sortOrder) ? sortOrder : 'desc';
+    const orderByCol = orderDir === 'desc'
+      ? desc(combatEncounterLogs[orderField as keyof typeof combatEncounterLogs.$inferSelect] as any)
+      : asc(combatEncounterLogs[orderField as keyof typeof combatEncounterLogs.$inferSelect] as any);
 
-    const [encounters, total] = await Promise.all([
-      prisma.combatEncounterLog.findMany({
+    const [encounters, [{ total }]] = await Promise.all([
+      db.query.combatEncounterLogs.findMany({
         where,
-        include: {
-          character: { select: { race: true, class: true, level: true } },
+        with: {
+          character: { columns: { race: true, class: true, level: true } },
         },
-        orderBy: { [orderField]: orderDir },
-        skip,
-        take: limit,
+        orderBy: orderByCol,
+        offset,
+        limit,
       }),
-      prisma.combatEncounterLog.count({ where }),
+      db.select({ total: sql<number>`count(*)::int` }).from(combatEncounterLogs).where(where),
     ]);
 
     return res.json({
@@ -308,18 +309,18 @@ router.get('/history', async (req: AuthenticatedRequest, res: Response) => {
 // GET /session/:id — Single combat session with full logs
 router.get('/session/:id', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const session = await prisma.combatSession.findUnique({
-      where: { id: req.params.id },
-      include: {
-        combatLogs: { orderBy: { createdAt: 'asc' } },
-        participants: {
-          include: {
+    const session = await db.query.combatSessions.findFirst({
+      where: eq(combatSessions.id, req.params.id),
+      with: {
+        combatLogs: true,
+        combatParticipants: {
+          with: {
             character: {
-              select: { id: true, name: true, race: true, class: true, level: true },
+              columns: { id: true, name: true, race: true, class: true, level: true },
             },
           },
         },
-        locationTown: { select: { id: true, name: true } },
+        town: { columns: { id: true, name: true } },
       },
     });
 
@@ -333,10 +334,10 @@ router.get('/session/:id', async (req: AuthenticatedRequest, res: Response) => {
       status: session.status,
       startedAt: session.startedAt,
       endedAt: session.endedAt,
-      location: session.locationTown,
+      location: session.town,
       attackerParams: session.attackerParams,
       defenderParams: session.defenderParams,
-      participants: session.participants.map((p) => ({
+      participants: session.combatParticipants.map((p) => ({
         id: p.id,
         team: p.team,
         initiative: p.initiative,
@@ -396,15 +397,28 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     const compStart = isAllTime ? null : new Date(startDate.getTime() - periodMs);
     const compEnd = isAllTime ? null : new Date(startDate.getTime() - 1);
 
-    const dateWhere = isAllTime ? { ...simFilter } : { ...simFilter, startedAt: { gte: startDate, lte: endDate } };
-    const compWhere = compStart && compEnd ? { ...simFilter, startedAt: { gte: compStart, lte: compEnd } } : null;
+    const dateConditions: any[] = [];
+    if (simFilter) dateConditions.push(simFilter);
+    if (!isAllTime) {
+      dateConditions.push(sql`${combatEncounterLogs.startedAt} >= ${startDate.toISOString()}`);
+      dateConditions.push(sql`${combatEncounterLogs.startedAt} <= ${endDate.toISOString()}`);
+    }
+    const dateWhere = dateConditions.length > 0 ? and(...dateConditions) : undefined;
+
+    const compConditions: any[] = [];
+    if (simFilter) compConditions.push(simFilter);
+    if (compStart && compEnd) {
+      compConditions.push(sql`${combatEncounterLogs.startedAt} >= ${compStart.toISOString()}`);
+      compConditions.push(sql`${combatEncounterLogs.startedAt} <= ${compEnd.toISOString()}`);
+    }
+    const compWhere = compStart && compEnd && compConditions.length > 0 ? and(...compConditions) : null;
 
     const getBand = (lvl: number) => lvl <= 5 ? '1-5' : lvl <= 10 ? '6-10' : lvl <= 15 ? '11-15' : '16-20';
 
-    const [allEncounters, itemTemplates, compEncounters] = await Promise.all([
-      prisma.combatEncounterLog.findMany({
+    const [allEncounters, allItemTemplates, compEncounters] = await Promise.all([
+      db.query.combatEncounterLogs.findMany({
         where: dateWhere,
-        select: {
+        columns: {
           type: true,
           outcome: true,
           totalRounds: true,
@@ -418,16 +432,18 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
           characterId: true,
           partyId: true,
           sessionId: true,
-          character: { select: { level: true, race: true, class: true } },
+        },
+        with: {
+          character: { columns: { level: true, race: true, class: true } },
         },
       }),
-      prisma.itemTemplate.findMany({
-        select: { name: true, rarity: true },
+      db.query.itemTemplates.findMany({
+        columns: { name: true, rarity: true },
       }),
       compWhere
-        ? prisma.combatEncounterLog.findMany({
+        ? db.query.combatEncounterLogs.findMany({
             where: compWhere,
-            select: {
+            columns: {
               type: true,
               outcome: true,
               totalRounds: true,
@@ -439,24 +455,18 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
         : Promise.resolve([]),
     ]);
 
+    // --- All the in-memory analytics from here are identical to Prisma version ---
     const totalEncounters = allEncounters.length;
-
-    // --- PvE survival rate ---
     const pveEncounters = allEncounters.filter((e) => e.type === 'pve');
     const pveWins = pveEncounters.filter((e) => e.outcome === 'win').length;
     const pveSurvivalRate = pveEncounters.length > 0 ? +(pveWins / pveEncounters.length * 100).toFixed(1) : 0;
-
-    // --- Flee attempt rate (all encounters) ---
     const fleeCount = allEncounters.filter((e) => e.outcome === 'flee').length;
     const fleeAttemptRate = totalEncounters > 0 ? +(fleeCount / totalEncounters * 100).toFixed(1) : 0;
-
-    // --- Avg rounds ---
     const avgRounds = totalEncounters > 0
       ? +(allEncounters.reduce((s, e) => s + e.totalRounds, 0) / totalEncounters).toFixed(1)
       : 0;
 
-    // --- Economy: gold/day, items/day (over selected period) ---
-    const activeDays = new Set(allEncounters.map((e) => e.startedAt.toISOString().slice(0, 10))).size || 1;
+    const activeDays = new Set(allEncounters.map((e) => typeof e.startedAt === 'string' ? e.startedAt.slice(0, 10) : new Date(e.startedAt).toISOString().slice(0, 10))).size || 1;
     const effectiveDays = isAllTime ? activeDays : Math.max(1, Math.ceil(periodMs / 86400000));
     const totalGold = allEncounters.reduce((s, e) => s + e.goldAwarded, 0);
     let totalItemCount = 0;
@@ -472,7 +482,6 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     const goldPerDay = +(totalGold / effectiveDays).toFixed(0);
     const itemsDroppedPerDay = +(totalItemCount / effectiveDays).toFixed(1);
 
-    // --- Active level range ---
     const bandCounts: Record<string, number> = { '1-5': 0, '6-10': 0, '11-15': 0, '16-20': 0 };
     for (const e of allEncounters) {
       const lvl = e.character?.level;
@@ -480,7 +489,6 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     }
     const activeLevelRange = Object.entries(bandCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '1-5';
 
-    // --- Survival by level band (PvE only) ---
     const bandStats: Record<string, { encounters: number; wins: number; flees: number; totalRounds: number; hpSum: number; hpCount: number }> = {};
     for (const band of ['1-5', '6-10', '11-15', '16-20']) {
       bandStats[band] = { encounters: 0, wins: 0, flees: 0, totalRounds: 0, hpSum: 0, hpCount: 0 };
@@ -515,10 +523,9 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       };
     });
 
-    // --- Economy trend (daily breakdown of selected period) ---
     const dayEcon: Record<string, { gold: number; xp: number; itemsDropped: number }> = {};
     for (const e of allEncounters) {
-      const day = e.startedAt.toISOString().slice(0, 10);
+      const day = typeof e.startedAt === 'string' ? e.startedAt.slice(0, 10) : new Date(e.startedAt).toISOString().slice(0, 10);
       if (!dayEcon[day]) dayEcon[day] = { gold: 0, xp: 0, itemsDropped: 0 };
       dayEcon[day].gold += e.goldAwarded;
       dayEcon[day].xp += e.xpAwarded;
@@ -534,8 +541,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       .map(([date, d]) => ({ date, ...d }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
-    // --- Loot by rarity ---
-    const nameToRarity = new Map(itemTemplates.map((t) => [t.name.toLowerCase(), t.rarity]));
+    const nameToRarity = new Map(allItemTemplates.map((t) => [t.name.toLowerCase(), t.rarity]));
     const rarityCounts: Record<string, number> = {};
     let totalItemDrops = 0;
     for (const e of allEncounters) {
@@ -555,17 +561,11 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       .filter((r) => (rarityCounts[r] ?? 0) > 0)
       .map((r) => ({ rarity: r, count: rarityCounts[r] }));
 
-    // --- Pacing by level band ---
     const pacingByLevel = ['1-5', '6-10', '11-15', '16-20'].map((band) => {
       const b = bandStats[band];
-      return {
-        band,
-        avgRounds: b.encounters > 0 ? +(b.totalRounds / b.encounters).toFixed(1) : 0,
-        encounters: b.encounters,
-      };
+      return { band, avgRounds: b.encounters > 0 ? +(b.totalRounds / b.encounters).toFixed(1) : 0, encounters: b.encounters };
     });
 
-    // --- Top 5 monsters ---
     const monsterMap: Record<string, { count: number; wins: number }> = {};
     for (const e of pveEncounters) {
       if (!e.opponentName) continue;
@@ -576,13 +576,8 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     const topMonsters = Object.entries(monsterMap)
       .sort((a, b) => b[1].count - a[1].count)
       .slice(0, 5)
-      .map(([name, d]) => ({
-        name,
-        count: d.count,
-        playerWinRate: +(d.wins / d.count * 100).toFixed(1),
-      }));
+      .map(([name, d]) => ({ name, count: d.count, playerWinRate: +(d.wins / d.count * 100).toFixed(1) }));
 
-    // --- Top 5 races ---
     const raceMap: Record<string, { count: number; wins: number }> = {};
     for (const e of allEncounters) {
       const race = e.character?.race;
@@ -594,13 +589,8 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     const topRaces = Object.entries(raceMap)
       .sort((a, b) => b[1].count - a[1].count)
       .slice(0, 5)
-      .map(([race, d]) => ({
-        race,
-        count: d.count,
-        winRate: +(d.wins / d.count * 100).toFixed(1),
-      }));
+      .map(([race, d]) => ({ race, count: d.count, winRate: +(d.wins / d.count * 100).toFixed(1) }));
 
-    // --- Top 5 classes ---
     const classMap: Record<string, { count: number; wins: number }> = {};
     for (const e of allEncounters) {
       const cls = e.character?.class;
@@ -612,29 +602,17 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     const topClasses = Object.entries(classMap)
       .sort((a, b) => b[1].count - a[1].count)
       .slice(0, 5)
-      .map(([cls, d]) => ({
-        class: cls,
-        count: d.count,
-        winRate: +(d.wins / d.count * 100).toFixed(1),
-      }));
+      .map(([cls, d]) => ({ class: cls, count: d.count, winRate: +(d.wins / d.count * 100).toFixed(1) }));
 
     // --- Balance alerts ---
     type Alert = {
       category: 'race' | 'class' | 'monster' | 'level_band' | 'loot';
-      entity: string;
-      metric: string;
-      value: number;
-      expected: string;
-      severity: 'critical' | 'warning';
-      message: string;
+      entity: string; metric: string; value: number; expected: string;
+      severity: 'critical' | 'warning'; message: string;
     };
     const alerts: Alert[] = [];
 
-    // Race/Class PvE survival alerts
-    const checkPveSurvival = (
-      map: Record<string, { count: number; wins: number }>,
-      category: 'race' | 'class',
-    ) => {
+    const checkPveSurvival = (map: Record<string, { count: number; wins: number }>, category: 'race' | 'class') => {
       for (const [name, d] of Object.entries(map)) {
         if (d.count < 10) continue;
         const sr = +(d.wins / d.count * 100).toFixed(1);
@@ -648,7 +626,6 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     checkPveSurvival(raceMap, 'race');
     checkPveSurvival(classMap, 'class');
 
-    // Monster survival alerts
     for (const [name, d] of Object.entries(monsterMap)) {
       if (d.count < 10) continue;
       const sr = +(d.wins / d.count * 100).toFixed(1);
@@ -659,7 +636,6 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       }
     }
 
-    // Level band economy alerts
     const overallAvgGold = totalEncounters > 0 ? allEncounters.reduce((s, e) => s + e.goldAwarded, 0) / totalEncounters : 0;
     const overallAvgXp = totalEncounters > 0 ? allEncounters.reduce((s, e) => s + e.xpAwarded, 0) / totalEncounters : 0;
     for (const band of ['1-5', '6-10', '11-15', '16-20']) {
@@ -675,7 +651,6 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       }
     }
 
-    // Level band flee rate alerts
     for (const band of ['1-5', '6-10', '11-15', '16-20']) {
       const b = bandStats[band];
       if (b.encounters < 10) continue;
@@ -687,7 +662,6 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       }
     }
 
-    // Loot rarity alerts
     if (totalItemDrops > 0) {
       const mwCount = rarityCounts['MASTERWORK'] ?? 0;
       const legCount = rarityCounts['LEGENDARY'] ?? 0;
@@ -704,9 +678,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     // --- Player engagement ---
     const playerCounts = new Map<string, number>();
     for (const e of allEncounters) {
-      if (e.characterId) {
-        playerCounts.set(e.characterId, (playerCounts.get(e.characterId) ?? 0) + 1);
-      }
+      if (e.characterId) playerCounts.set(e.characterId, (playerCounts.get(e.characterId) ?? 0) + 1);
     }
     const uniquePlayers = playerCounts.size;
     const encountersPerPlayer = uniquePlayers > 0 ? +(totalEncounters / uniquePlayers).toFixed(1) : 0;
@@ -717,20 +689,16 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     const newPlayerEncounters = newPlayerPve.length;
     const newPlayerSurvivalRate = newPlayerEncounters > 0 ? +(newPlayerWins / newPlayerEncounters * 100).toFixed(1) : 0;
 
-    // --- Solo vs Group analysis (PvE only) ---
+    // --- Solo vs Group analysis ---
     const soloEncounters = pveEncounters.filter((e) => !e.partyId);
     const groupEncounters = pveEncounters.filter((e) => !!e.partyId);
 
     const computeGroupMetrics = (encs: typeof pveEncounters) => {
       const wins = encs.filter((e) => e.outcome === 'win');
       const flees = encs.filter((e) => e.outcome === 'flee');
-      let hpSum = 0;
-      let hpCount = 0;
+      let hpSum = 0; let hpCount = 0;
       for (const e of wins) {
-        if (e.characterStartHp > 0) {
-          hpSum += (e.characterEndHp / e.characterStartHp) * 100;
-          hpCount++;
-        }
+        if (e.characterStartHp > 0) { hpSum += (e.characterEndHp / e.characterStartHp) * 100; hpCount++; }
       }
       return {
         survivalRate: encs.length > 0 ? +(wins.length / encs.length * 100).toFixed(1) : 0,
@@ -744,9 +712,8 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
 
     const soloMetrics = computeGroupMetrics(soloEncounters);
     const groupMetrics = computeGroupMetrics(groupEncounters);
-    const survivalGap = +(groupMetrics.survivalRate - soloMetrics.survivalRate).toFixed(1);
+    const survivalGap = +(Number(groupMetrics.survivalRate) - Number(soloMetrics.survivalRate)).toFixed(1);
 
-    // Group balance alert
     if (soloEncounters.length >= 10 && groupEncounters.length >= 10) {
       if (survivalGap > 50) {
         alerts.push({ category: 'level_band', entity: 'Solo vs Group', metric: 'survival gap', value: survivalGap, expected: '<30pp', severity: 'critical', message: `Group survival rate (${groupMetrics.survivalRate}%) exceeds solo (${soloMetrics.survivalRate}%) by ${survivalGap}pp — grouping may trivialize combat` });
@@ -755,11 +722,10 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       }
     }
 
-    // Group size distribution: group by partyId+sessionId, count distinct characterIds
     const partyGroups = new Map<string, Set<string>>();
     const partyOutcomes = new Map<string, string>();
     for (const e of groupEncounters) {
-      const key = `${e.partyId}|${e.sessionId ?? e.startedAt.toISOString()}`;
+      const key = `${e.partyId}|${e.sessionId ?? (typeof e.startedAt === 'string' ? e.startedAt : new Date(e.startedAt).toISOString())}`;
       if (!partyGroups.has(key)) partyGroups.set(key, new Set());
       partyGroups.get(key)!.add(e.characterId);
       if (!partyOutcomes.has(key)) partyOutcomes.set(key, e.outcome);
@@ -772,11 +738,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       if (partyOutcomes.get(key) === 'win') sizeMap[size].wins++;
     }
     const sizeDistribution = Object.entries(sizeMap)
-      .map(([size, d]) => ({
-        size: parseInt(size),
-        encounters: d.encounters,
-        survivalRate: d.encounters > 0 ? +(d.wins / d.encounters * 100).toFixed(1) : 0,
-      }))
+      .map(([size, d]) => ({ size: parseInt(size), encounters: d.encounters, survivalRate: d.encounters > 0 ? +(d.wins / d.encounters * 100).toFixed(1) : 0 }))
       .sort((a, b) => a.size - b.size);
 
     const groupAnalysis = {
@@ -790,7 +752,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     };
 
     // --- Comparison deltas ---
-    let deltas: { totalEncounters: number; pveSurvivalRate: number; fleeAttemptRate: number; avgRounds: number; goldPerDay: number; itemsDroppedPerDay: number } | null = null;
+    let deltas: any = null;
     if (compEncounters.length > 0 && !isAllTime) {
       const compTotal = compEncounters.length;
       const compPve = compEncounters.filter((e) => e.type === 'pve');
@@ -819,45 +781,25 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
         totalEncounters: totalEncounters - compTotal,
         pveSurvivalRate: +(pveSurvivalRate - compPveSurvival).toFixed(1),
         fleeAttemptRate: +(fleeAttemptRate - compFleeRate).toFixed(1),
-        avgRounds: +(avgRounds - compAvgRnds).toFixed(1),
+        avgRounds: +(avgRounds - Number(compAvgRnds)).toFixed(1),
         goldPerDay: goldPerDay - compGoldPerDay,
         itemsDroppedPerDay: +(itemsDroppedPerDay - compItemsPerDay).toFixed(1),
       };
     }
 
     return res.json({
-      totalEncounters,
-      pveSurvivalRate,
-      fleeAttemptRate,
-      avgRounds,
-      goldPerDay,
-      itemsDroppedPerDay,
-      activeLevelRange,
-      survivalByLevel,
-      economyTrend,
-      lootByRarity,
-      pacingByLevel,
-      alerts,
-      topMonsters,
-      topRaces,
-      topClasses,
-      groupAnalysis,
+      totalEncounters, pveSurvivalRate, fleeAttemptRate, avgRounds,
+      goldPerDay, itemsDroppedPerDay, activeLevelRange, survivalByLevel,
+      economyTrend, lootByRarity, pacingByLevel, alerts, topMonsters,
+      topRaces, topClasses, groupAnalysis,
       dateRange: {
-        start: startDate.toISOString(),
-        end: endDate.toISOString(),
+        start: startDate.toISOString(), end: endDate.toISOString(),
         preset: effectivePreset,
         comparisonStart: compStart?.toISOString() ?? null,
         comparisonEnd: compEnd?.toISOString() ?? null,
       },
       deltas,
-      engagement: {
-        uniquePlayers,
-        encountersPerPlayer,
-        repeatCombatants,
-        repeatRate,
-        newPlayerSurvivalRate,
-        newPlayerEncounters,
-      },
+      engagement: { uniquePlayers, encountersPerPlayer, repeatCombatants, repeatRate, newPlayerSurvivalRate, newPlayerEncounters },
     });
   } catch (error) {
     logRouteError(req, 500, 'Admin combat stats error', error);
@@ -865,59 +807,31 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-// GET /stats/by-race — Combat stats broken down by character race
+// GET /stats/by-race
 router.get('/stats/by-race', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const dataSource = (req.query.dataSource as string) || 'live';
     const runId = req.query.runId as string | undefined;
     const simFilter = getSimFilter(dataSource, runId);
 
-    const encounters = await prisma.combatEncounterLog.findMany({
-      where: { ...simFilter },
-      select: {
-        outcome: true,
-        totalRounds: true,
-        characterStartHp: true,
-        characterEndHp: true,
-        xpAwarded: true,
-        characterWeapon: true,
-        opponentName: true,
-        type: true,
-        character: { select: { race: true } },
-      },
+    const encounters = await db.query.combatEncounterLogs.findMany({
+      where: simFilter,
+      columns: { outcome: true, totalRounds: true, characterStartHp: true, characterEndHp: true, xpAwarded: true, characterWeapon: true, opponentName: true, type: true },
+      with: { character: { columns: { race: true } } },
     });
 
-    const raceMap: Record<string, {
-      encounters: number; wins: number; losses: number; flees: number;
-      totalRounds: number; hpSum: number; hpCount: number; totalXp: number;
-      weapons: Record<string, number>;
-      monsters: Record<string, { count: number; wins: number }>;
-    }> = {};
-
+    const raceAgg: Record<string, { encounters: number; wins: number; losses: number; flees: number; totalRounds: number; hpSum: number; hpCount: number; totalXp: number; weapons: Record<string, number>; monsters: Record<string, { count: number; wins: number }> }> = {};
     for (const e of encounters) {
       const race = e.character?.race;
       if (!race) continue;
-      if (!raceMap[race]) {
-        raceMap[race] = {
-          encounters: 0, wins: 0, losses: 0, flees: 0,
-          totalRounds: 0, hpSum: 0, hpCount: 0, totalXp: 0,
-          weapons: {}, monsters: {},
-        };
-      }
-      const r = raceMap[race];
+      if (!raceAgg[race]) raceAgg[race] = { encounters: 0, wins: 0, losses: 0, flees: 0, totalRounds: 0, hpSum: 0, hpCount: 0, totalXp: 0, weapons: {}, monsters: {} };
+      const r = raceAgg[race];
       r.encounters++;
-      if (e.outcome === 'win') r.wins++;
-      else if (e.outcome === 'loss') r.losses++;
-      else if (e.outcome === 'flee') r.flees++;
+      if (e.outcome === 'win') r.wins++; else if (e.outcome === 'loss') r.losses++; else if (e.outcome === 'flee') r.flees++;
       r.totalRounds += e.totalRounds;
-      if (e.characterStartHp > 0) {
-        r.hpSum += (e.characterEndHp / e.characterStartHp) * 100;
-        r.hpCount++;
-      }
+      if (e.characterStartHp > 0) { r.hpSum += (e.characterEndHp / e.characterStartHp) * 100; r.hpCount++; }
       r.totalXp += e.xpAwarded;
-      if (e.characterWeapon) {
-        r.weapons[e.characterWeapon] = (r.weapons[e.characterWeapon] ?? 0) + 1;
-      }
+      if (e.characterWeapon) r.weapons[e.characterWeapon] = (r.weapons[e.characterWeapon] ?? 0) + 1;
       if (e.type === 'pve' && e.opponentName) {
         if (!r.monsters[e.opponentName]) r.monsters[e.opponentName] = { count: 0, wins: 0 };
         r.monsters[e.opponentName].count++;
@@ -925,28 +839,14 @@ router.get('/stats/by-race', async (req: AuthenticatedRequest, res: Response) =>
       }
     }
 
-    const races = Object.entries(raceMap).map(([race, r]) => ({
-      race,
-      encounters: r.encounters,
-      wins: r.wins,
-      losses: r.losses,
-      flees: r.flees,
+    const races = Object.entries(raceAgg).map(([race, r]) => ({
+      race, encounters: r.encounters, wins: r.wins, losses: r.losses, flees: r.flees,
       winRate: +(r.wins / r.encounters * 100).toFixed(1),
       avgRounds: +(r.totalRounds / r.encounters).toFixed(1),
       avgHpRemaining: r.hpCount > 0 ? +(r.hpSum / r.hpCount).toFixed(1) : 0,
       avgXpPerEncounter: +(r.totalXp / r.encounters).toFixed(0),
-      topWeapons: Object.entries(r.weapons)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
-        .map(([weapon, count]) => ({ weapon, count })),
-      topMonsters: Object.entries(r.monsters)
-        .sort((a, b) => b[1].count - a[1].count)
-        .slice(0, 3)
-        .map(([monster, d]) => ({
-          monster,
-          count: d.count,
-          winRate: +(d.wins / d.count * 100).toFixed(1),
-        })),
+      topWeapons: Object.entries(r.weapons).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([weapon, count]) => ({ weapon, count })),
+      topMonsters: Object.entries(r.monsters).sort((a, b) => b[1].count - a[1].count).slice(0, 3).map(([monster, d]) => ({ monster, count: d.count, winRate: +(d.wins / d.count * 100).toFixed(1) })),
     }));
 
     return res.json({ races });
@@ -956,59 +856,31 @@ router.get('/stats/by-race', async (req: AuthenticatedRequest, res: Response) =>
   }
 });
 
-// GET /stats/by-class — Combat stats broken down by character class
+// GET /stats/by-class
 router.get('/stats/by-class', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const dataSource = (req.query.dataSource as string) || 'live';
     const runId = req.query.runId as string | undefined;
     const simFilter = getSimFilter(dataSource, runId);
 
-    const encounters = await prisma.combatEncounterLog.findMany({
-      where: { ...simFilter },
-      select: {
-        outcome: true,
-        totalRounds: true,
-        characterStartHp: true,
-        characterEndHp: true,
-        xpAwarded: true,
-        characterWeapon: true,
-        opponentName: true,
-        type: true,
-        character: { select: { class: true } },
-      },
+    const encounters = await db.query.combatEncounterLogs.findMany({
+      where: simFilter,
+      columns: { outcome: true, totalRounds: true, characterStartHp: true, characterEndHp: true, xpAwarded: true, characterWeapon: true, opponentName: true, type: true },
+      with: { character: { columns: { class: true } } },
     });
 
-    const classMap: Record<string, {
-      encounters: number; wins: number; losses: number; flees: number;
-      totalRounds: number; hpSum: number; hpCount: number; totalXp: number;
-      weapons: Record<string, number>;
-      monsters: Record<string, { count: number; wins: number }>;
-    }> = {};
-
+    const classAgg: Record<string, { encounters: number; wins: number; losses: number; flees: number; totalRounds: number; hpSum: number; hpCount: number; totalXp: number; weapons: Record<string, number>; monsters: Record<string, { count: number; wins: number }> }> = {};
     for (const e of encounters) {
       const cls = e.character?.class;
       if (!cls) continue;
-      if (!classMap[cls]) {
-        classMap[cls] = {
-          encounters: 0, wins: 0, losses: 0, flees: 0,
-          totalRounds: 0, hpSum: 0, hpCount: 0, totalXp: 0,
-          weapons: {}, monsters: {},
-        };
-      }
-      const c = classMap[cls];
+      if (!classAgg[cls]) classAgg[cls] = { encounters: 0, wins: 0, losses: 0, flees: 0, totalRounds: 0, hpSum: 0, hpCount: 0, totalXp: 0, weapons: {}, monsters: {} };
+      const c = classAgg[cls];
       c.encounters++;
-      if (e.outcome === 'win') c.wins++;
-      else if (e.outcome === 'loss') c.losses++;
-      else if (e.outcome === 'flee') c.flees++;
+      if (e.outcome === 'win') c.wins++; else if (e.outcome === 'loss') c.losses++; else if (e.outcome === 'flee') c.flees++;
       c.totalRounds += e.totalRounds;
-      if (e.characterStartHp > 0) {
-        c.hpSum += (e.characterEndHp / e.characterStartHp) * 100;
-        c.hpCount++;
-      }
+      if (e.characterStartHp > 0) { c.hpSum += (e.characterEndHp / e.characterStartHp) * 100; c.hpCount++; }
       c.totalXp += e.xpAwarded;
-      if (e.characterWeapon) {
-        c.weapons[e.characterWeapon] = (c.weapons[e.characterWeapon] ?? 0) + 1;
-      }
+      if (e.characterWeapon) c.weapons[e.characterWeapon] = (c.weapons[e.characterWeapon] ?? 0) + 1;
       if (e.type === 'pve' && e.opponentName) {
         if (!c.monsters[e.opponentName]) c.monsters[e.opponentName] = { count: 0, wins: 0 };
         c.monsters[e.opponentName].count++;
@@ -1016,28 +888,14 @@ router.get('/stats/by-class', async (req: AuthenticatedRequest, res: Response) =
       }
     }
 
-    const classes = Object.entries(classMap).map(([cls, c]) => ({
-      class: cls,
-      encounters: c.encounters,
-      wins: c.wins,
-      losses: c.losses,
-      flees: c.flees,
+    const classes = Object.entries(classAgg).map(([cls, c]) => ({
+      class: cls, encounters: c.encounters, wins: c.wins, losses: c.losses, flees: c.flees,
       winRate: +(c.wins / c.encounters * 100).toFixed(1),
       avgRounds: +(c.totalRounds / c.encounters).toFixed(1),
       avgHpRemaining: c.hpCount > 0 ? +(c.hpSum / c.hpCount).toFixed(1) : 0,
       avgXpPerEncounter: +(c.totalXp / c.encounters).toFixed(0),
-      topWeapons: Object.entries(c.weapons)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
-        .map(([weapon, count]) => ({ weapon, count })),
-      topMonsters: Object.entries(c.monsters)
-        .sort((a, b) => b[1].count - a[1].count)
-        .slice(0, 3)
-        .map(([monster, d]) => ({
-          monster,
-          count: d.count,
-          winRate: +(d.wins / d.count * 100).toFixed(1),
-        })),
+      topWeapons: Object.entries(c.weapons).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([weapon, count]) => ({ weapon, count })),
+      topMonsters: Object.entries(c.monsters).sort((a, b) => b[1].count - a[1].count).slice(0, 3).map(([monster, d]) => ({ monster, count: d.count, winRate: +(d.wins / d.count * 100).toFixed(1) })),
     }));
 
     return res.json({ classes });
@@ -1047,49 +905,31 @@ router.get('/stats/by-class', async (req: AuthenticatedRequest, res: Response) =
   }
 });
 
-// GET /stats/by-monster — Combat stats broken down by monster name (PvE only)
+// GET /stats/by-monster
 router.get('/stats/by-monster', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const dataSource = (req.query.dataSource as string) || 'live';
     const runId = req.query.runId as string | undefined;
     const simFilter = getSimFilter(dataSource, runId);
 
-    const encounters = await prisma.combatEncounterLog.findMany({
-      where: { type: 'pve', ...simFilter },
-      select: {
-        opponentName: true,
-        outcome: true,
-        totalRounds: true,
-        characterStartHp: true,
-        characterEndHp: true,
-        character: { select: { race: true, level: true } },
-      },
+    const conditions: any[] = [eq(combatEncounterLogs.type, 'pve')];
+    if (simFilter) conditions.push(simFilter);
+
+    const encounters = await db.query.combatEncounterLogs.findMany({
+      where: and(...conditions),
+      columns: { opponentName: true, outcome: true, totalRounds: true, characterStartHp: true, characterEndHp: true },
+      with: { character: { columns: { race: true, level: true } } },
     });
 
-    const monsterMap: Record<string, {
-      encounters: number; playerWins: number;
-      totalRounds: number; hpSum: number; hpCount: number;
-      levels: number[];
-      races: Record<string, { count: number; wins: number }>;
-    }> = {};
-
+    const monsterAgg: Record<string, { encounters: number; playerWins: number; totalRounds: number; hpSum: number; hpCount: number; levels: number[]; races: Record<string, { count: number; wins: number }> }> = {};
     for (const e of encounters) {
       if (!e.opponentName) continue;
-      if (!monsterMap[e.opponentName]) {
-        monsterMap[e.opponentName] = {
-          encounters: 0, playerWins: 0,
-          totalRounds: 0, hpSum: 0, hpCount: 0,
-          levels: [], races: {},
-        };
-      }
-      const m = monsterMap[e.opponentName];
+      if (!monsterAgg[e.opponentName]) monsterAgg[e.opponentName] = { encounters: 0, playerWins: 0, totalRounds: 0, hpSum: 0, hpCount: 0, levels: [], races: {} };
+      const m = monsterAgg[e.opponentName];
       m.encounters++;
       if (e.outcome === 'win') m.playerWins++;
       m.totalRounds += e.totalRounds;
-      if (e.characterStartHp > 0) {
-        m.hpSum += (e.characterEndHp / e.characterStartHp) * 100;
-        m.hpCount++;
-      }
+      if (e.characterStartHp > 0) { m.hpSum += (e.characterEndHp / e.characterStartHp) * 100; m.hpCount++; }
       if (e.character?.level) m.levels.push(e.character.level);
       const race = e.character?.race;
       if (race) {
@@ -1099,27 +939,16 @@ router.get('/stats/by-monster', async (req: AuthenticatedRequest, res: Response)
       }
     }
 
-    const monsters = Object.entries(monsterMap).map(([name, m]) => ({
-      name,
-      encounters: m.encounters,
+    const monsterResults = Object.entries(monsterAgg).map(([name, m]) => ({
+      name, encounters: m.encounters,
       playerWinRate: +(m.playerWins / m.encounters * 100).toFixed(1),
       avgRounds: +(m.totalRounds / m.encounters).toFixed(1),
       avgPlayerHpRemaining: m.hpCount > 0 ? +(m.hpSum / m.hpCount).toFixed(1) : 0,
-      levelRange: {
-        min: m.levels.length > 0 ? Math.min(...m.levels) : 0,
-        max: m.levels.length > 0 ? Math.max(...m.levels) : 0,
-      },
-      topRacesAgainst: Object.entries(m.races)
-        .sort((a, b) => b[1].count - a[1].count)
-        .slice(0, 3)
-        .map(([race, d]) => ({
-          race,
-          count: d.count,
-          winRate: +(d.wins / d.count * 100).toFixed(1),
-        })),
+      levelRange: { min: m.levels.length > 0 ? Math.min(...m.levels) : 0, max: m.levels.length > 0 ? Math.max(...m.levels) : 0 },
+      topRacesAgainst: Object.entries(m.races).sort((a, b) => b[1].count - a[1].count).slice(0, 3).map(([race, d]) => ({ race, count: d.count, winRate: +(d.wins / d.count * 100).toFixed(1) })),
     }));
 
-    return res.json({ monsters });
+    return res.json({ monsters: monsterResults });
   } catch (error) {
     logRouteError(req, 500, 'Admin combat stats by-monster error', error);
     return res.status(500).json({ error: 'Failed to load monster combat stats' });
@@ -1131,33 +960,24 @@ router.get('/stats/by-monster', async (req: AuthenticatedRequest, res: Response)
 const simulateSchema = z.object({
   playerLevel: z.number().int().min(1).max(100).default(1),
   playerStats: z.object({
-    str: z.number().int().min(1).max(30).default(10),
-    dex: z.number().int().min(1).max(30).default(10),
-    con: z.number().int().min(1).max(30).default(10),
-    int: z.number().int().min(1).max(30).default(10),
-    wis: z.number().int().min(1).max(30).default(10),
-    cha: z.number().int().min(1).max(30).default(10),
+    str: z.number().int().min(1).max(30).default(10), dex: z.number().int().min(1).max(30).default(10),
+    con: z.number().int().min(1).max(30).default(10), int: z.number().int().min(1).max(30).default(10),
+    wis: z.number().int().min(1).max(30).default(10), cha: z.number().int().min(1).max(30).default(10),
   }).default({ str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }),
   playerAC: z.number().int().min(1).max(30).default(10),
   playerHP: z.number().int().min(1).max(500).optional(),
   playerWeapon: z.object({
-    name: z.string().default('Longsword'),
-    diceCount: z.number().int().min(1).default(1),
-    diceSides: z.number().int().min(1).default(8),
-    bonusDamage: z.number().int().default(0),
-    bonusAttack: z.number().int().default(0),
-    damageModifierStat: z.enum(['str', 'dex']).default('str'),
+    name: z.string().default('Longsword'), diceCount: z.number().int().min(1).default(1),
+    diceSides: z.number().int().min(1).default(8), bonusDamage: z.number().int().default(0),
+    bonusAttack: z.number().int().default(0), damageModifierStat: z.enum(['str', 'dex']).default('str'),
     attackModifierStat: z.enum(['str', 'dex']).default('str'),
   }).default({ name: 'Longsword', diceCount: 1, diceSides: 8, bonusDamage: 0, bonusAttack: 0, damageModifierStat: 'str', attackModifierStat: 'str' }),
   monsterName: z.string().default('Goblin'),
   monsterLevel: z.number().int().min(1).max(100).default(1),
   monsterStats: z.object({
-    str: z.number().int().min(1).max(30).default(10),
-    dex: z.number().int().min(1).max(30).default(10),
-    con: z.number().int().min(1).max(30).default(10),
-    int: z.number().int().min(1).max(30).default(10),
-    wis: z.number().int().min(1).max(30).default(10),
-    cha: z.number().int().min(1).max(30).default(10),
+    str: z.number().int().min(1).max(30).default(10), dex: z.number().int().min(1).max(30).default(10),
+    con: z.number().int().min(1).max(30).default(10), int: z.number().int().min(1).max(30).default(10),
+    wis: z.number().int().min(1).max(30).default(10), cha: z.number().int().min(1).max(30).default(10),
   }).default({ str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }),
   monsterHP: z.number().int().min(1).max(1000).default(20),
   monsterAC: z.number().int().min(1).max(30).default(12),
@@ -1166,155 +986,75 @@ const simulateSchema = z.object({
   iterations: z.number().int().min(1).max(1000).default(1),
 });
 
-// POST /simulate — Run combat simulations
+// POST /simulate
 router.post('/simulate', validate(simulateSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const config = req.body;
     const iterations = config.iterations;
-    const maxRounds = 50; // Safety cap
+    const maxRounds = 50;
 
-    // Build player weapon
     const playerWeapon: WeaponInfo = {
-      id: 'sim-weapon',
-      name: config.playerWeapon.name,
-      diceCount: config.playerWeapon.diceCount,
-      diceSides: config.playerWeapon.diceSides,
-      bonusDamage: config.playerWeapon.bonusDamage,
-      bonusAttack: config.playerWeapon.bonusAttack,
-      damageModifierStat: config.playerWeapon.damageModifierStat,
-      attackModifierStat: config.playerWeapon.attackModifierStat,
+      id: 'sim-weapon', name: config.playerWeapon.name,
+      diceCount: config.playerWeapon.diceCount, diceSides: config.playerWeapon.diceSides,
+      bonusDamage: config.playerWeapon.bonusDamage, bonusAttack: config.playerWeapon.bonusAttack,
+      damageModifierStat: config.playerWeapon.damageModifierStat, attackModifierStat: config.playerWeapon.attackModifierStat,
     };
 
-    // Build monster weapon from damage string
     const monsterDmgMatch = config.monsterDamage.match(/^(\d+)d(\d+)(?:\+(\d+))?$/);
     const monsterWeapon: WeaponInfo = {
-      id: 'monster-attack',
-      name: 'Natural Attack',
+      id: 'monster-attack', name: 'Natural Attack',
       diceCount: monsterDmgMatch ? parseInt(monsterDmgMatch[1]) : 1,
       diceSides: monsterDmgMatch ? parseInt(monsterDmgMatch[2]) : 6,
       bonusDamage: monsterDmgMatch?.[3] ? parseInt(monsterDmgMatch[3]) : 0,
-      bonusAttack: config.monsterAttackBonus,
-      damageModifierStat: 'str',
-      attackModifierStat: 'str',
+      bonusAttack: config.monsterAttackBonus, damageModifierStat: 'str', attackModifierStat: 'str',
     };
 
-    // Player HP defaults to 10 + CON mod * level
     const conMod = Math.floor((config.playerStats.con - 10) / 2);
     const playerHP = config.playerHP ?? Math.max(1, 10 + conMod + (config.playerLevel - 1) * (6 + conMod));
 
-    const results: Array<{
-      winner: string;
-      rounds: number;
-      playerHpRemaining: number;
-      monsterHpRemaining: number;
-      logs?: unknown[];
-    }> = [];
+    const results: Array<{ winner: string; rounds: number; playerHpRemaining: number; monsterHpRemaining: number; logs?: unknown[] }> = [];
 
     for (let i = 0; i < iterations; i++) {
-      const player = createCharacterCombatant(
-        'sim-player', 'Player', 0,
-        config.playerStats, config.playerLevel,
-        playerHP, playerHP,
-        config.playerAC, playerWeapon, {}, 2,
-      );
-
-      const monster = createMonsterCombatant(
-        'sim-monster', config.monsterName, 1,
-        config.monsterStats, config.monsterLevel,
-        config.monsterHP, config.monsterAC,
-        monsterWeapon, 2,
-      );
-
+      const player = createCharacterCombatant('sim-player', 'Player', 0, config.playerStats, config.playerLevel, playerHP, playerHP, config.playerAC, playerWeapon, {}, 2);
+      const monster = createMonsterCombatant('sim-monster', config.monsterName, 1, config.monsterStats, config.monsterLevel, config.monsterHP, config.monsterAC, monsterWeapon, 2);
       let state = createCombatState(`sim-${i}`, 'PVE', [player, monster]);
-      const combatLogs: unknown[] = [];
-
+      const combatLogEntries: unknown[] = [];
       let round = 0;
       while (state.status === 'ACTIVE' && round < maxRounds) {
         round++;
-        // Process turns for all combatants in the turn order
         for (let t = 0; t < state.turnOrder.length && state.status === 'ACTIVE'; t++) {
           const actorId = state.turnOrder[state.turnIndex];
           const actor = state.combatants.find((c) => c.id === actorId);
           if (!actor || !actor.isAlive) {
-            // Advance turn for dead combatant
-            state = resolveTurn(state, {
-              type: 'defend',
-              actorId,
-              targetId: actorId,
-            }, {});
+            state = resolveTurn(state, { type: 'defend', actorId, targetId: actorId }, {});
             continue;
           }
-
-          // Pick target: first alive enemy
           const isPlayer = actor.id === 'sim-player';
-          const target = state.combatants.find(
-            (c) => c.team !== actor.team && c.isAlive,
-          );
-
-          const action: CombatAction = {
-            type: 'attack',
-            actorId: actor.id,
-            targetId: target?.id ?? actor.id,
-          };
-
+          const target = state.combatants.find((c) => c.team !== actor.team && c.isAlive);
+          const action: CombatAction = { type: 'attack', actorId: actor.id, targetId: target?.id ?? actor.id };
           const weapon = isPlayer ? playerWeapon : monsterWeapon;
           state = resolveTurn(state, action, { weapon });
-
-          if (iterations <= 10 && state.log.length > combatLogs.length) {
-            combatLogs.push(...state.log.slice(combatLogs.length));
+          if (iterations <= 10 && state.log.length > combatLogEntries.length) {
+            combatLogEntries.push(...state.log.slice(combatLogEntries.length));
           }
         }
       }
-
       const playerResult = state.combatants.find((c) => c.id === 'sim-player');
       const monsterResult = state.combatants.find((c) => c.id === 'sim-monster');
-      const winner = state.winningTeam === 0 ? 'player'
-        : state.winningTeam === 1 ? 'monster'
-        : 'draw';
-
-      results.push({
-        winner,
-        rounds: state.round,
-        playerHpRemaining: playerResult?.currentHp ?? 0,
-        monsterHpRemaining: monsterResult?.currentHp ?? 0,
-        ...(iterations <= 10 ? { logs: combatLogs } : {}),
-      });
+      const winner = state.winningTeam === 0 ? 'player' : state.winningTeam === 1 ? 'monster' : 'draw';
+      results.push({ winner, rounds: state.round, playerHpRemaining: playerResult?.currentHp ?? 0, monsterHpRemaining: monsterResult?.currentHp ?? 0, ...(iterations <= 10 ? { logs: combatLogEntries } : {}) });
     }
 
-    // Compute aggregates
     const playerWins = results.filter((r) => r.winner === 'player').length;
     const monsterWins = results.filter((r) => r.winner === 'monster').length;
     const draws = results.filter((r) => r.winner === 'draw').length;
-    const avgRounds = results.reduce((sum, r) => sum + r.rounds, 0) / results.length;
-    const avgPlayerHpRemaining = results
-      .filter((r) => r.winner === 'player')
-      .reduce((sum, r) => sum + r.playerHpRemaining, 0) / (playerWins || 1);
+    const simAvgRounds = results.reduce((sum, r) => sum + r.rounds, 0) / results.length;
+    const avgPlayerHpRemaining = results.filter((r) => r.winner === 'player').reduce((sum, r) => sum + r.playerHpRemaining, 0) / (playerWins || 1);
 
     return res.json({
-      config: {
-        playerLevel: config.playerLevel,
-        playerHP,
-        playerAC: config.playerAC,
-        playerStats: config.playerStats,
-        playerWeapon: config.playerWeapon,
-        monsterName: config.monsterName,
-        monsterLevel: config.monsterLevel,
-        monsterHP: config.monsterHP,
-        monsterAC: config.monsterAC,
-        monsterDamage: config.monsterDamage,
-        iterations,
-      },
-      summary: {
-        playerWins,
-        monsterWins,
-        draws,
-        playerWinRate: +(playerWins / iterations * 100).toFixed(1),
-        avgRounds: +avgRounds.toFixed(1),
-        avgPlayerHpRemaining: +avgPlayerHpRemaining.toFixed(0),
-      },
-      results: iterations <= 10 ? results : results.map(({ winner, rounds, playerHpRemaining, monsterHpRemaining }) => ({
-        winner, rounds, playerHpRemaining, monsterHpRemaining,
-      })),
+      config: { playerLevel: config.playerLevel, playerHP, playerAC: config.playerAC, playerStats: config.playerStats, playerWeapon: config.playerWeapon, monsterName: config.monsterName, monsterLevel: config.monsterLevel, monsterHP: config.monsterHP, monsterAC: config.monsterAC, monsterDamage: config.monsterDamage, iterations },
+      summary: { playerWins, monsterWins, draws, playerWinRate: +(playerWins / iterations * 100).toFixed(1), avgRounds: +simAvgRounds.toFixed(1), avgPlayerHpRemaining: +avgPlayerHpRemaining.toFixed(0) },
+      results: iterations <= 10 ? results : results.map(({ winner, rounds, playerHpRemaining, monsterHpRemaining }) => ({ winner, rounds, playerHpRemaining, monsterHpRemaining })),
     });
   } catch (error: unknown) {
     logRouteError(req, 500, 'Admin combat simulate error', error);
@@ -1323,54 +1063,25 @@ router.post('/simulate', validate(simulateSchema), async (req: AuthenticatedRequ
 });
 
 // ---------------------------------------------------------------------------
-// POST /batch-simulate — Batch combat simulation with grid sweep
+// POST /batch-simulate
 // ---------------------------------------------------------------------------
 
-const batchMatchupSchema = z.object({
-  race: z.string(),
-  class: z.string(),
-  level: z.number().int().min(1).max(100),
-  opponent: z.string(),
-  iterations: z.number().int().min(1).max(1000).default(100),
-});
-
-const batchGridSchema = z.object({
-  races: z.array(z.string()).min(1),
-  classes: z.array(z.string()).min(1),
-  levels: z.array(z.number().int().min(1).max(100)).min(1),
-  monsters: z.array(z.string()).min(1),
-  iterationsPerMatchup: z.number().int().min(1).max(1000).default(100),
-});
-
-const batchSimulateSchema = z.object({
-  matchups: z.array(batchMatchupSchema).optional(),
-  grid: batchGridSchema.optional(),
-  persist: z.boolean().default(false),
-  notes: z.string().optional(),
-}).refine(
-  (d) => d.matchups || d.grid,
-  { message: 'Either matchups or grid is required' },
-);
+const batchMatchupSchema = z.object({ race: z.string(), class: z.string(), level: z.number().int().min(1).max(100), opponent: z.string(), iterations: z.number().int().min(1).max(1000).default(100) });
+const batchGridSchema = z.object({ races: z.array(z.string()).min(1), classes: z.array(z.string()).min(1), levels: z.array(z.number().int().min(1).max(100)).min(1), monsters: z.array(z.string()).min(1), iterationsPerMatchup: z.number().int().min(1).max(1000).default(100) });
+const batchSimulateSchema = z.object({ matchups: z.array(batchMatchupSchema).optional(), grid: batchGridSchema.optional(), persist: z.boolean().default(false), notes: z.string().optional() }).refine((d) => d.matchups || d.grid, { message: 'Either matchups or grid is required' });
 
 router.post('/batch-simulate', validate(batchSimulateSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const body = req.body;
     const maxTotalFights = 500_000;
-    const maxRounds = 50;
 
-    // Fetch all monsters from DB for lookup
-    const dbMonsters = await prisma.monster.findMany();
-    const monsterMap = new Map(dbMonsters.map((m) => [
-      m.name.toLowerCase(),
-      { name: m.name, level: m.level, stats: m.stats as unknown as MonsterStats },
-    ]));
+    const dbMonsters = await db.query.monsters.findMany();
+    const monsterLookup = new Map(dbMonsters.map((m) => [m.name.toLowerCase(), { name: m.name, level: m.level, stats: m.stats as unknown as MonsterStats }]));
 
-    // Expand ALL keywords
     const allRaces = getAllRaceIds();
     const allClasses = getAllClassNames();
     const allMonsterNames = dbMonsters.map((m) => m.name);
 
-    // Build matchup list
     interface Matchup { race: string; class: string; level: number; opponent: string; iterations: number }
     let matchups: Matchup[] = [];
 
@@ -1380,155 +1091,76 @@ router.post('/batch-simulate', validate(batchSimulateSchema), async (req: Authen
       const g = body.grid;
       const races = g.races[0] === 'ALL' ? allRaces : g.races;
       const classes = g.classes[0] === 'ALL' ? allClasses : g.classes;
-      const monsters = g.monsters[0] === 'ALL' ? allMonsterNames : g.monsters;
-
-      for (const race of races) {
-        for (const cls of classes) {
-          for (const lvl of g.levels) {
-            for (const mon of monsters) {
-              matchups.push({ race, class: cls, level: lvl, opponent: mon, iterations: g.iterationsPerMatchup });
-            }
-          }
-        }
-      }
+      const mons = g.monsters[0] === 'ALL' ? allMonsterNames : g.monsters;
+      for (const race of races) for (const cls of classes) for (const lvl of g.levels) for (const mon of mons) matchups.push({ race, class: cls, level: lvl, opponent: mon, iterations: g.iterationsPerMatchup });
     }
 
-    if (matchups.length === 0) {
-      return res.status(400).json({ error: 'No matchups generated. Check your grid or matchup configuration.' });
-    }
+    if (matchups.length === 0) return res.status(400).json({ error: 'No matchups generated.' });
 
     const totalFights = matchups.reduce((sum, m) => sum + m.iterations, 0);
-    if (totalFights > maxTotalFights) {
-      return res.status(400).json({
-        error: `Grid produces ${matchups.length} matchups × iterations = ${totalFights} fights. Max ${maxTotalFights} total fights per batch. Reduce grid or iterations.`,
-      });
-    }
+    if (totalFights > maxTotalFights) return res.status(400).json({ error: `Grid produces ${matchups.length} matchups x iterations = ${totalFights} fights. Max ${maxTotalFights}.` });
 
-    // Optional persistence
     let simulationRunId: string | null = null;
     if (body.persist) {
-      const run = await prisma.simulationRun.create({
-        data: {
-          tickCount: 0,
-          botCount: 0,
-          config: JSON.parse(JSON.stringify(body)),
-          status: 'running',
-          notes: body.notes || `Batch sim: ${matchups.length} matchups, ${totalFights} fights`,
-        },
-      });
+      const [run] = await db.insert(simulationRuns).values({
+        id: crypto.randomUUID(),
+        tickCount: 0,
+        botCount: 0,
+        config: JSON.parse(JSON.stringify(body)),
+        status: 'running',
+        notes: body.notes || `Batch sim: ${matchups.length} matchups, ${totalFights} fights`,
+      }).returning();
       simulationRunId = run.id;
     }
 
     const startTime = Date.now();
-    const results: Array<{
-      race: string; class: string; level: number; opponent: string;
-      iterations: number; playerWins: number; monsterWins: number; draws: number;
-      winRate: number; avgRounds: number; avgPlayerHpRemaining: number; avgMonsterHpRemaining: number;
-    }> = [];
-
+    const results: Array<{ race: string; class: string; level: number; opponent: string; iterations: number; playerWins: number; monsterWins: number; draws: number; winRate: number; avgRounds: number; avgPlayerHpRemaining: number; avgMonsterHpRemaining: number }> = [];
     const errors: string[] = [];
 
     for (const matchup of matchups) {
-      const player = buildSyntheticPlayer({
-        race: matchup.race,
-        class: matchup.class,
-        level: matchup.level,
-      });
-
-      if (!player) {
-        errors.push(`Invalid player config: ${matchup.race} ${matchup.class} L${matchup.level}`);
-        continue;
-      }
-
-      const monsterData = monsterMap.get(matchup.opponent.toLowerCase());
-      if (!monsterData) {
-        errors.push(`Monster not found: ${matchup.opponent}`);
-        continue;
-      }
-
+      const player = buildSyntheticPlayer({ race: matchup.race, class: matchup.class, level: matchup.level });
+      if (!player) { errors.push(`Invalid player config: ${matchup.race} ${matchup.class} L${matchup.level}`); continue; }
+      const monsterData = monsterLookup.get(matchup.opponent.toLowerCase());
+      if (!monsterData) { errors.push(`Monster not found: ${matchup.opponent}`); continue; }
       const monster = buildSyntheticMonster(monsterData.name, monsterData.level, monsterData.stats);
 
-      let playerWins = 0;
-      let monsterWins = 0;
-      let draws = 0;
-      let totalRounds = 0;
-      let totalPlayerHp = 0;
-      let totalMonsterHp = 0;
-
-      // Build reusable player combat params (presets + ability queue)
+      let playerWins = 0, monsterWins = 0, draws = 0, totalRnds = 0, totalPlayerHp = 0, totalMonsterHp = 0;
       const playerParams = buildPlayerCombatParams(player);
 
       for (let i = 0; i < matchup.iterations; i++) {
-        const playerCombatant = createCharacterCombatant(
-          'sim-player', player.name, 0,
-          player.stats, player.level,
-          player.hp, player.maxHp,
-          player.equipmentAC, player.weapon,
-          player.spellSlots, player.proficiencyBonus,
-        );
-        // Set class + race on combatant for ability resolution
+        const playerCombatant = createCharacterCombatant('sim-player', player.name, 0, player.stats, player.level, player.hp, player.maxHp, player.equipmentAC, player.weapon, player.spellSlots, player.proficiencyBonus);
         (playerCombatant as any).characterClass = player.class;
         (playerCombatant as any).race = player.race;
-
-        const monsterCombatant = createMonsterCombatant(
-          'sim-monster', monster.name, 1,
-          monster.stats, monster.level,
-          monster.hp, monster.ac,
-          monster.weapon, 0,
-        );
-
+        const monsterCombatant = createMonsterCombatant('sim-monster', monster.name, 1, monster.stats, monster.level, monster.hp, monster.ac, monster.weapon, 0);
         let state = createCombatState(`batch-${i}`, 'PVE', [playerCombatant, monsterCombatant]);
         state = rollAllInitiative(state);
-
-        // Use the full AI-driven combat resolver (abilities, stances, presets)
         const paramsMap = new Map<string, CombatantParams>();
         paramsMap.set('sim-player', playerParams);
-        // Monster gets default aggressive params via resolveTickCombat fallback
-
         const outcome = resolveTickCombat(state, paramsMap);
-
-        if (outcome.winner === 'team0') playerWins++;
-        else if (outcome.winner === 'team1') monsterWins++;
-        else draws++;
-
-        totalRounds += outcome.rounds;
+        if (outcome.winner === 'team0') playerWins++; else if (outcome.winner === 'team1') monsterWins++; else draws++;
+        totalRnds += outcome.rounds;
         const pSurvivor = outcome.survivors.find((s) => s.id === 'sim-player');
         const mSurvivor = outcome.survivors.find((s) => s.id === 'sim-monster');
         totalPlayerHp += pSurvivor?.hpRemaining ?? 0;
         totalMonsterHp += mSurvivor?.hpRemaining ?? 0;
       }
 
-      const result = {
-        race: matchup.race,
-        class: matchup.class,
-        level: matchup.level,
-        opponent: monsterData.name,
-        iterations: matchup.iterations,
-        playerWins,
-        monsterWins,
-        draws,
+      results.push({
+        race: matchup.race, class: matchup.class, level: matchup.level, opponent: monsterData.name,
+        iterations: matchup.iterations, playerWins, monsterWins, draws,
         winRate: +(playerWins / matchup.iterations).toFixed(3),
-        avgRounds: +(totalRounds / matchup.iterations).toFixed(1),
+        avgRounds: +(totalRnds / matchup.iterations).toFixed(1),
         avgPlayerHpRemaining: +(totalPlayerHp / (playerWins || 1)).toFixed(1),
         avgMonsterHpRemaining: +(totalMonsterHp / (monsterWins || 1)).toFixed(1),
-      };
-      results.push(result);
-    }
-
-    // Persist summary rows
-    if (simulationRunId && results.length > 0) {
-      await prisma.simulationRun.update({
-        where: { id: simulationRunId },
-        data: {
-          status: 'completed',
-          completedAt: new Date(),
-          encounterCount: results.length,
-          notes: body.notes || `Batch sim: ${results.length} matchups, ${totalFights} fights`,
-        },
       });
     }
 
-    // Compute summary aggregations
+    if (simulationRunId && results.length > 0) {
+      await db.update(simulationRuns)
+        .set({ status: 'completed', completedAt: new Date().toISOString(), encounterCount: results.length, notes: body.notes || `Batch sim: ${results.length} matchups, ${totalFights} fights` })
+        .where(eq(simulationRuns.id, simulationRunId));
+    }
+
     const overallWins = results.reduce((s, r) => s + r.playerWins, 0);
     const overallTotal = results.reduce((s, r) => s + r.iterations, 0);
     const overallRounds = results.reduce((s, r) => s + r.avgRounds * r.iterations, 0);
@@ -1537,61 +1169,22 @@ router.post('/batch-simulate', validate(batchSimulateSchema), async (req: Authen
     const classWinRates: Record<string, number> = {};
     const monsterDifficulty: Record<string, number> = {};
 
-    // Per-race aggregation
     const raceGroups = new Map<string, { wins: number; total: number }>();
-    for (const r of results) {
-      const key = r.race;
-      const existing = raceGroups.get(key) || { wins: 0, total: 0 };
-      existing.wins += r.playerWins;
-      existing.total += r.iterations;
-      raceGroups.set(key, existing);
-    }
-    for (const [race, data] of raceGroups) {
-      raceWinRates[race] = +(data.wins / data.total).toFixed(3);
-    }
+    for (const r of results) { const e = raceGroups.get(r.race) || { wins: 0, total: 0 }; e.wins += r.playerWins; e.total += r.iterations; raceGroups.set(r.race, e); }
+    for (const [race, data] of raceGroups) raceWinRates[race] = +(data.wins / data.total).toFixed(3);
 
-    // Per-class aggregation
     const classGroups = new Map<string, { wins: number; total: number }>();
-    for (const r of results) {
-      const key = r.class;
-      const existing = classGroups.get(key) || { wins: 0, total: 0 };
-      existing.wins += r.playerWins;
-      existing.total += r.iterations;
-      classGroups.set(key, existing);
-    }
-    for (const [cls, data] of classGroups) {
-      classWinRates[cls] = +(data.wins / data.total).toFixed(3);
-    }
+    for (const r of results) { const e = classGroups.get(r.class) || { wins: 0, total: 0 }; e.wins += r.playerWins; e.total += r.iterations; classGroups.set(r.class, e); }
+    for (const [cls, data] of classGroups) classWinRates[cls] = +(data.wins / data.total).toFixed(3);
 
-    // Per-monster aggregation (player death rate = monster win rate)
     const monsterGroups = new Map<string, { monsterWins: number; total: number }>();
-    for (const r of results) {
-      const key = r.opponent;
-      const existing = monsterGroups.get(key) || { monsterWins: 0, total: 0 };
-      existing.monsterWins += r.monsterWins;
-      existing.total += r.iterations;
-      monsterGroups.set(key, existing);
-    }
-    for (const [mon, data] of monsterGroups) {
-      monsterDifficulty[mon] = +(data.monsterWins / data.total).toFixed(3);
-    }
-
-    const durationMs = Date.now() - startTime;
+    for (const r of results) { const e = monsterGroups.get(r.opponent) || { monsterWins: 0, total: 0 }; e.monsterWins += r.monsterWins; e.total += r.iterations; monsterGroups.set(r.opponent, e); }
+    for (const [mon, data] of monsterGroups) monsterDifficulty[mon] = +(data.monsterWins / data.total).toFixed(3);
 
     return res.json({
-      simulationRunId,
-      totalMatchups: results.length,
-      totalFights: overallTotal,
-      durationMs,
-      errors: errors.length > 0 ? errors : undefined,
-      results,
-      summary: {
-        overallPlayerWinRate: +(overallWins / (overallTotal || 1)).toFixed(3),
-        avgRounds: +(overallRounds / (overallTotal || 1)).toFixed(1),
-        raceWinRates,
-        classWinRates,
-        monsterDifficulty,
-      },
+      simulationRunId, totalMatchups: results.length, totalFights: overallTotal, durationMs: Date.now() - startTime,
+      errors: errors.length > 0 ? errors : undefined, results,
+      summary: { overallPlayerWinRate: +(overallWins / (overallTotal || 1)).toFixed(3), avgRounds: +(overallRounds / (overallTotal || 1)).toFixed(1), raceWinRates, classWinRates, monsterDifficulty },
     });
   } catch (error: unknown) {
     logRouteError(req, 500, 'Batch combat simulation error', error);
@@ -1599,18 +1192,18 @@ router.post('/batch-simulate', validate(batchSimulateSchema), async (req: Authen
   }
 });
 
-// GET /batch-simulate/meta — Returns available races, classes, monsters for grid config
+// GET /batch-simulate/meta
 router.get('/batch-simulate/meta', async (_req: AuthenticatedRequest, res: Response) => {
   try {
-    const monsters = await prisma.monster.findMany({
-      select: { name: true, level: true, biome: true },
-      orderBy: { level: 'asc' },
+    const allMonsters = await db.query.monsters.findMany({
+      columns: { name: true, level: true, biome: true },
+      orderBy: asc(monsters.level),
     });
 
     return res.json({
       races: getAllRaceIds(),
       classes: getAllClassNames(),
-      monsters: monsters.map((m) => ({ name: m.name, level: m.level, biome: m.biome })),
+      monsters: allMonsters.map((m) => ({ name: m.name, level: m.level, biome: m.biome })),
     });
   } catch (error: unknown) {
     logRouteError(_req, 500, 'Batch simulate meta error', error);

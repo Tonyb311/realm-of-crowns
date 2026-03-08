@@ -1,5 +1,7 @@
 import cron from 'node-cron';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, lt } from 'drizzle-orm';
+import { townResources } from '@database/tables';
 import { logger } from '../lib/logger';
 import { cronJobExecutions } from '../lib/metrics';
 
@@ -26,8 +28,8 @@ export function startResourceRegenerationJob() {
 
 async function regenerateResources() {
   // Fetch all town resources that are below 100 abundance
-  const depleted = await prisma.townResource.findMany({
-    where: { abundance: { lt: 100 } },
+  const depleted = await db.query.townResources.findMany({
+    where: lt(townResources.abundance, 100),
   });
 
   if (depleted.length === 0) {
@@ -41,10 +43,9 @@ async function regenerateResources() {
     const newAbundance = Math.min(100, resource.abundance + increment);
 
     if (newAbundance !== resource.abundance) {
-      await prisma.townResource.update({
-        where: { id: resource.id },
-        data: { abundance: newAbundance },
-      });
+      await db.update(townResources)
+        .set({ abundance: newAbundance })
+        .where(eq(townResources.id, resource.id));
       restored++;
     }
   }

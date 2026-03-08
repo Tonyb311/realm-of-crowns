@@ -1,14 +1,19 @@
+import crypto from 'crypto';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { db } from '../lib/db';
+import { eq, and } from 'drizzle-orm';
+import { characters, racialAbilityCooldowns, changelingDisguises, forgebornMaintenance, exclusiveZones, towns } from '@database/tables';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { getRace, getRacesByTier } from '@shared/data/races';
-import { Race, ProfessionType } from '@prisma/client';
+import { RACES } from '@shared/enums';
+import type { Race, ProfessionType } from '@shared/enums';
+import { PROFESSION_TYPES } from '@shared/enums';
 import { getReleasedRaceKeys } from '../lib/content-release';
 import { getRacialRelations } from '../lib/racial-relations';
 import { calculateRacialBonuses } from '../services/racial-bonus-calculator';
@@ -31,11 +36,11 @@ const useRacialAbilitySchema = z.object({
 
 const changelingShiftSchema = z.object({
   disguisedAs: z.string().min(1, 'Disguise name is required'),
-  disguiseRace: z.nativeEnum(Race),
+  disguiseRace: z.enum(RACES),
 });
 
 const halfElfChosenProfessionSchema = z.object({
-  profession: z.nativeEnum(ProfessionType),
+  profession: z.enum(PROFESSION_TYPES),
 });
 
 // =========================================================================
@@ -63,7 +68,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     return res.json({ races: { core, common, exotic } });
   } catch (error) {
-    if (handlePrismaError(error, res, 'list races', req)) return;
+    if (handleDbError(error, res, 'list races', req)) return;
     logRouteError(req, 500, 'List races error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -79,7 +84,7 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/relations/matrix', async (req: Request, res: Response) => {
   try {
     const relations = await getRacialRelations();
-    const allRaces = Object.values(Race);
+    const allRaces = [...RACES];
 
     const matrix: Record<string, Record<string, { status: string; modifier: number }>> = {};
     for (const r1 of allRaces) {
@@ -98,7 +103,7 @@ router.get('/relations/matrix', async (req: Request, res: Response) => {
 
     return res.json({ matrix, races: allRaces });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get relations matrix', req)) return;
+    if (handleDbError(error, res, 'get relations matrix', req)) return;
     logRouteError(req, 500, 'Get relations matrix error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -136,21 +141,19 @@ router.post('/abilities/racial/use', authGuard, characterGuard, validate(useRaci
     }
 
     const now = new Date();
-    const existingCooldown = await prisma.racialAbilityCooldown.findUnique({
-      where: {
-        characterId_abilityName: {
-          characterId: character.id,
-          abilityName,
-        },
-      },
+    const existingCooldown = await db.query.racialAbilityCooldowns.findFirst({
+      where: and(
+        eq(racialAbilityCooldowns.characterId, character.id),
+        eq(racialAbilityCooldowns.abilityName, abilityName),
+      ),
     });
 
-    if (existingCooldown && existingCooldown.cooldownEnds > now) {
-      const remainingMs = existingCooldown.cooldownEnds.getTime() - now.getTime();
+    if (existingCooldown && existingCooldown.cooldownEnds > now.toISOString()) {
+      const remainingMs = new Date(existingCooldown.cooldownEnds).getTime() - now.getTime();
       const remainingSeconds = Math.ceil(remainingMs / 1000);
       return res.status(400).json({
         error: 'Ability is on cooldown',
-        cooldownEnds: existingCooldown.cooldownEnds.toISOString(),
+        cooldownEnds: existingCooldown.cooldownEnds,
         remainingSeconds,
       });
     }
@@ -158,24 +161,19 @@ router.post('/abilities/racial/use', authGuard, characterGuard, validate(useRaci
     const cooldownSeconds = ability.cooldownSeconds ?? 0;
     const cooldownEnds = new Date(now.getTime() + cooldownSeconds * 1000);
 
-    await prisma.racialAbilityCooldown.upsert({
-      where: {
-        characterId_abilityName: {
-          characterId: character.id,
-          abilityName,
-        },
-      },
-      update: {
-        lastUsed: now,
-        cooldownEnds,
-      },
-      create: {
+    if (existingCooldown) {
+      await db.update(racialAbilityCooldowns)
+        .set({ lastUsed: now.toISOString(), cooldownEnds: cooldownEnds.toISOString() })
+        .where(eq(racialAbilityCooldowns.id, existingCooldown.id));
+    } else {
+      await db.insert(racialAbilityCooldowns).values({
+        id: crypto.randomUUID(),
         characterId: character.id,
         abilityName,
-        lastUsed: now,
-        cooldownEnds,
-      },
-    });
+        lastUsed: now.toISOString(),
+        cooldownEnds: cooldownEnds.toISOString(),
+      });
+    }
 
     return res.json({
       used: true,
@@ -192,7 +190,7 @@ router.post('/abilities/racial/use', authGuard, characterGuard, validate(useRaci
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'use racial ability', req)) return;
+    if (handleDbError(error, res, 'use racial ability', req)) return;
     logRouteError(req, 500, 'Use racial ability error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -210,36 +208,40 @@ router.post('/changeling/shift', authGuard, characterGuard, validate(changelingS
       return res.status(400).json({ error: 'Only Changelings can shapeshift' });
     }
 
-    const disguise = await prisma.changelingDisguise.upsert({
-      where: { characterId: character.id },
-      update: {
-        disguisedAs,
-        disguiseRace,
-        startedAt: new Date(),
-      },
-      create: {
+    const existing = await db.query.changelingDisguises.findFirst({
+      where: eq(changelingDisguises.characterId, character.id),
+    });
+
+    let disguise;
+    if (existing) {
+      [disguise] = await db.update(changelingDisguises)
+        .set({ disguisedAs, disguiseRace, startedAt: new Date().toISOString() })
+        .where(eq(changelingDisguises.characterId, character.id))
+        .returning();
+    } else {
+      [disguise] = await db.insert(changelingDisguises).values({
+        id: crypto.randomUUID(),
         characterId: character.id,
         disguisedAs,
         disguiseRace,
-        startedAt: new Date(),
-      },
-    });
+        startedAt: new Date().toISOString(),
+      }).returning();
+    }
 
-    await prisma.character.update({
-      where: { id: character.id },
-      data: { currentAppearanceRace: disguiseRace },
-    });
+    await db.update(characters)
+      .set({ currentAppearanceRace: disguiseRace })
+      .where(eq(characters.id, character.id));
 
     return res.json({
       shifted: true,
       disguise: {
         disguisedAs: disguise.disguisedAs,
         disguiseRace: disguise.disguiseRace,
-        startedAt: disguise.startedAt.toISOString(),
+        startedAt: disguise.startedAt,
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'changeling shift', req)) return;
+    if (handleDbError(error, res, 'changeling shift', req)) return;
     logRouteError(req, 500, 'Changeling shift error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -256,8 +258,8 @@ router.get('/changeling/trueform', authGuard, characterGuard, async (req: Authen
       return res.status(400).json({ error: 'Only Changelings have a true form' });
     }
 
-    const disguise = await prisma.changelingDisguise.findUnique({
-      where: { characterId: character.id },
+    const disguise = await db.query.changelingDisguises.findFirst({
+      where: eq(changelingDisguises.characterId, character.id),
     });
 
     return res.json({
@@ -267,11 +269,11 @@ router.get('/changeling/trueform', authGuard, characterGuard, async (req: Authen
       currentDisguise: disguise ? {
         disguisedAs: disguise.disguisedAs,
         disguiseRace: disguise.disguiseRace,
-        since: disguise.startedAt.toISOString(),
+        since: disguise.startedAt,
       } : null,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get changeling trueform', req)) return;
+    if (handleDbError(error, res, 'get changeling trueform', req)) return;
     logRouteError(req, 500, 'Get changeling trueform error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -288,8 +290,8 @@ router.get('/forgeborn/maintenance', authGuard, characterGuard, async (req: Auth
       return res.status(400).json({ error: 'Only Forgeborn require maintenance' });
     }
 
-    const maintenance = await prisma.forgebornMaintenance.findUnique({
-      where: { characterId: character.id },
+    const maintenance = await db.query.forgebornMaintenance.findFirst({
+      where: eq(forgebornMaintenance.characterId, character.id),
     });
 
     if (!maintenance) {
@@ -300,15 +302,15 @@ router.get('/forgeborn/maintenance', authGuard, characterGuard, async (req: Auth
     }
 
     const now = new Date();
-    const overdue = maintenance.nextRequired < now;
-    const overdueMs = overdue ? now.getTime() - maintenance.nextRequired.getTime() : 0;
+    const overdue = maintenance.nextRequired < now.toISOString();
+    const overdueMs = overdue ? now.getTime() - new Date(maintenance.nextRequired).getTime() : 0;
     const overdueDays = Math.floor(overdueMs / (1000 * 60 * 60 * 24));
 
     return res.json({
       hasMaintenanceRecord: true,
       condition: maintenance.condition,
-      lastMaintenance: maintenance.lastMaintenance.toISOString(),
-      nextRequired: maintenance.nextRequired.toISOString(),
+      lastMaintenance: maintenance.lastMaintenance,
+      nextRequired: maintenance.nextRequired,
       overdue,
       overdueDays: overdue ? overdueDays : 0,
       degradation: overdue
@@ -316,7 +318,7 @@ router.get('/forgeborn/maintenance', authGuard, characterGuard, async (req: Auth
         : null,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get forgeborn maintenance', req)) return;
+    if (handleDbError(error, res, 'get forgeborn maintenance', req)) return;
     logRouteError(req, 500, 'Get forgeborn maintenance error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -333,8 +335,8 @@ router.get('/merfolk/underwater-nodes', authGuard, characterGuard, async (req: A
       return res.status(400).json({ error: 'Only Merfolk can access underwater nodes' });
     }
 
-    const zones = await prisma.exclusiveZone.findMany({
-      include: { region: true },
+    const zones = await db.query.exclusiveZones.findMany({
+      with: { region: true },
     });
 
     const merfolkZones = zones.filter(zone => {
@@ -356,7 +358,7 @@ router.get('/merfolk/underwater-nodes', authGuard, characterGuard, async (req: A
       total: merfolkZones.length,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get merfolk underwater nodes', req)) return;
+    if (handleDbError(error, res, 'get merfolk underwater nodes', req)) return;
     logRouteError(req, 500, 'Get merfolk underwater nodes error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -368,7 +370,7 @@ router.get('/merfolk/underwater-nodes', authGuard, characterGuard, async (req: A
 router.get('/profession-bonuses/:race', (req: Request, res: Response) => {
   try {
     const raceKey = req.params.race.toUpperCase() as Race;
-    if (!Object.values(Race).includes(raceKey)) {
+    if (!(RACES as readonly string[]).includes(raceKey)) {
       return res.status(404).json({ error: 'Race not found' });
     }
 
@@ -376,7 +378,7 @@ router.get('/profession-bonuses/:race', (req: Request, res: Response) => {
 
     return res.json({ race: raceKey, professionBonuses: bonuses });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get profession bonuses', req)) return;
+    if (handleDbError(error, res, 'get profession bonuses', req)) return;
     logRouteError(req, 500, 'Get profession bonuses error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -402,7 +404,7 @@ router.post('/half-elf-chosen-profession', authGuard, characterGuard, validate(h
       message: `Your chosen profession is now ${profession} (+20% bonus)`,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'set half-elf chosen profession', req)) return;
+    if (handleDbError(error, res, 'set half-elf chosen profession', req)) return;
     logRouteError(req, 500, 'Set half-elf chosen profession error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -427,7 +429,7 @@ router.post('/gnome-eureka', authGuard, characterGuard, async (req: Authenticate
       message: 'Eureka! Your crafting action has been instantly completed.',
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'gnome eureka', req)) return;
+    if (handleDbError(error, res, 'gnome eureka', req)) return;
     logRouteError(req, 500, 'Gnome eureka error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -452,7 +454,7 @@ router.post('/forgeborn-overclock', authGuard, characterGuard, async (req: Authe
       message: 'Overclock activated! 2x crafting speed for 1 hour.',
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'forgeborn overclock', req)) return;
+    if (handleDbError(error, res, 'forgeborn overclock', req)) return;
     logRouteError(req, 500, 'Forgeborn overclock error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -468,7 +470,7 @@ router.get('/bonuses/calculate', authGuard, characterGuard, async (req: Authenti
     const { profession } = req.query;
     const professionType = typeof profession === 'string' ? profession : null;
     const town = character.currentTownId
-      ? await prisma.town.findUnique({ where: { id: character.currentTownId }, select: { name: true, biome: true } })
+      ? await db.query.towns.findFirst({ where: eq(towns.id, character.currentTownId), columns: { name: true, biome: true } })
       : null;
     const currentTown = town?.name ?? null;
     const currentBiome = town?.biome ?? null;
@@ -486,7 +488,7 @@ router.get('/bonuses/calculate', authGuard, characterGuard, async (req: Authenti
 
     return res.json({ race: character.race, subRace, bonuses });
   } catch (error) {
-    if (handlePrismaError(error, res, 'calculate racial bonuses', req)) return;
+    if (handleDbError(error, res, 'calculate racial bonuses', req)) return;
     logRouteError(req, 500, 'Calculate racial bonuses error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -506,7 +508,7 @@ router.get('/:race', (req: Request, res: Response) => {
 
     return res.json({ race: raceDef });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get race details', req)) return;
+    if (handleDbError(error, res, 'get race details', req)) return;
     logRouteError(req, 500, 'Get race details error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -533,7 +535,7 @@ router.get('/:race/subraces', (req: Request, res: Response) => {
       hasSubRaces: subRaces.length > 0,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get sub-races', req)) return;
+    if (handleDbError(error, res, 'get sub-races', req)) return;
     logRouteError(req, 500, 'Get sub-races error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

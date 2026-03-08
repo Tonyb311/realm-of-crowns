@@ -1,5 +1,7 @@
 import { Server, Socket } from 'socket.io';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and } from 'drizzle-orm';
+import { characters, guildMembers, messages } from '@database/tables';
 
 const MAX_CONTENT_LENGTH = 2000;
 
@@ -20,7 +22,7 @@ interface ChatMessageEvent {
   channelType: string;
   content: string;
   sender: { id: string; name: string };
-  timestamp: Date;
+  timestamp: string;
   recipientId?: string;
   guildId?: string;
   townId?: string;
@@ -55,9 +57,9 @@ export function registerChatHandlers(io: Server, socket: Socket) {
         return;
       }
 
-      const character = await prisma.character.findUnique({
-        where: { id: characterId },
-        select: { id: true, name: true, currentTownId: true },
+      const character = await db.query.characters.findFirst({
+        where: eq(characters.id, characterId),
+        columns: { id: true, name: true, currentTownId: true },
       });
 
       if (!character) {
@@ -83,8 +85,11 @@ export function registerChatHandlers(io: Server, socket: Socket) {
       }
 
       if (channelType === 'GUILD' && guildId) {
-        const membership = await prisma.guildMember.findUnique({
-          where: { guildId_characterId: { guildId, characterId: character.id } },
+        const membership = await db.query.guildMembers.findFirst({
+          where: and(
+            eq(guildMembers.guildId, guildId),
+            eq(guildMembers.characterId, character.id),
+          ),
         });
         if (!membership) {
           socket.emit('chat:error', { error: 'You are not a member of this guild' });
@@ -106,16 +111,15 @@ export function registerChatHandlers(io: Server, socket: Socket) {
       const sanitizedContent = sanitizeText(content);
 
       // Save to database
-      const message = await prisma.message.create({
-        data: {
-          channelType: channelType as any,
-          content: sanitizedContent,
-          senderId: character.id,
-          recipientId: channelType === 'WHISPER' ? recipientId : null,
-          guildId: channelType === 'GUILD' ? guildId : null,
-          townId: channelType === 'TOWN' ? resolvedTownId : null,
-        },
-      });
+      const [message] = await db.insert(messages).values({
+        id: crypto.randomUUID(),
+        channelType: channelType as any,
+        content: sanitizedContent,
+        senderId: character.id,
+        recipientId: channelType === 'WHISPER' ? recipientId! : null,
+        guildId: channelType === 'GUILD' ? guildId! : null,
+        townId: channelType === 'TOWN' ? resolvedTownId! : null,
+      }).returning();
 
       const chatMessage: ChatMessageEvent = {
         id: message.id,
@@ -170,9 +174,12 @@ export function registerChatHandlers(io: Server, socket: Socket) {
   // Set character identity on socket
   socket.on('chat:identify', async (data: { characterId: string }) => {
     if (data.characterId) {
-      const character = await prisma.character.findFirst({
-        where: { id: data.characterId, userId: socket.data.userId },
-        select: { id: true, name: true },
+      const character = await db.query.characters.findFirst({
+        where: and(
+          eq(characters.id, data.characterId),
+          eq(characters.userId, socket.data.userId),
+        ),
+        columns: { id: true, name: true },
       });
       if (!character) {
         socket.emit('error', { message: 'Character not found or not owned by you' });

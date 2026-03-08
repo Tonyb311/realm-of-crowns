@@ -1,13 +1,17 @@
 import { Router, Response } from 'express';
+import crypto from 'crypto';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, asc, inArray } from 'drizzle-orm';
+import { sql, count } from 'drizzle-orm';
+import { recipes, playerProfessions, inventories, items, itemTemplates, craftingActions, characterEquipment, buildings, characters } from '@database/tables';
+import { professionTier as professionTierEnum, professionType as professionTypeEnum, buildingType as buildingTypeEnum } from '@database/enums';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { qualityRoll } from '@shared/utils/dice';
 import { getProficiencyBonus, getModifier } from '@shared/utils/bounded-accuracy';
-import { ProfessionTier, ProfessionType, BuildingType } from '@prisma/client';
 import {
   TIER_ORDER,
   TIER_LEVEL_REQUIRED,
@@ -30,10 +34,14 @@ import {
   getForgebornOverclockMultiplier,
   getMaxQueueSlots,
 } from '../services/racial-special-profession-mechanics';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { onCraftItem } from '../services/quest-triggers';
 // emitCraftingReady is in '../socket/events' — called by background autocomplete job
+
+type ProfessionTier = typeof professionTierEnum.enumValues[number];
+type ProfessionType = typeof professionTypeEnum.enumValues[number];
+type BuildingType = typeof buildingTypeEnum.enumValues[number];
 
 const router = Router();
 
@@ -64,11 +72,8 @@ async function findWorkshop(characterId: string, currentTownId: string | null, p
   const requiredBuildingType = PROFESSION_WORKSHOP_MAP[professionType];
   if (!requiredBuildingType || !currentTownId) return null;
 
-  return prisma.building.findFirst({
-    where: {
-      townId: currentTownId,
-      type: requiredBuildingType,
-    },
+  return db.query.buildings.findFirst({
+    where: and(eq(buildings.townId, currentTownId), eq(buildings.type, requiredBuildingType)),
   });
 }
 
@@ -76,9 +81,9 @@ async function findWorkshop(characterId: string, currentTownId: string | null, p
  * Build inventory map: templateId -> { total quantity, inventory entries with item/quality data }
  */
 async function buildInventoryMap(characterId: string) {
-  const inventory = await prisma.inventory.findMany({
-    where: { characterId },
-    include: { item: { include: { template: true } } },
+  const inventory = await db.query.inventories.findMany({
+    where: eq(inventories.characterId, characterId),
+    with: { item: { with: { itemTemplate: true } } },
   });
 
   const inventoryByTemplate = new Map<string, {
@@ -130,10 +135,10 @@ function calculateIngredientQualityBonus(
 }
 
 /**
- * Consume ingredients from inventory within a Prisma transaction.
+ * Consume ingredients from inventory within a Drizzle transaction.
  */
 async function consumeIngredients(
-  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   ingredients: Array<{ itemTemplateId: string; quantity: number }>,
   inventoryByTemplate: Map<string, { total: number; entries: Array<{ id: string; itemId: string; quantity: number; item: { quality: string } }> }>,
 ) {
@@ -146,13 +151,10 @@ async function consumeIngredients(
 
       if (inv.quantity <= remaining) {
         remaining -= inv.quantity;
-        await tx.inventory.delete({ where: { id: inv.id } });
-        await tx.item.delete({ where: { id: inv.itemId } });
+        await tx.delete(inventories).where(eq(inventories.id, inv.id));
+        await tx.delete(items).where(eq(items.id, inv.itemId));
       } else {
-        await tx.inventory.update({
-          where: { id: inv.id },
-          data: { quantity: inv.quantity - remaining },
-        });
+        await tx.update(inventories).set({ quantity: inv.quantity - remaining }).where(eq(inventories.id, inv.id));
         remaining = 0;
       }
     }
@@ -168,22 +170,27 @@ router.get('/recipes', authGuard, characterGuard, requireTown, async (req: Authe
 
     const { profession, tier, level } = req.query;
 
-    const where: Record<string, unknown> = {};
+    // Build filter conditions
+    const conditions = [];
     if (profession && typeof profession === 'string') {
-      where.professionType = profession;
+      conditions.push(eq(recipes.professionType, profession as any));
     }
     if (tier && typeof tier === 'string') {
-      where.tier = tier;
+      conditions.push(eq(recipes.tier, tier as any));
     }
 
-    const recipes = await prisma.recipe.findMany({
-      where,
-      orderBy: [{ professionType: 'asc' }, { tier: 'asc' }, { name: 'asc' }],
-    });
+    const allRecipes = conditions.length > 0
+      ? await db.query.recipes.findMany({
+          where: and(...conditions),
+          orderBy: (r, { asc }) => [asc(r.professionType), asc(r.tier), asc(r.name)],
+        })
+      : await db.query.recipes.findMany({
+          orderBy: (r, { asc }) => [asc(r.professionType), asc(r.tier), asc(r.name)],
+        });
 
     // Get character professions for requirement checking
-    const professions = await prisma.playerProfession.findMany({
-      where: { characterId: character.id },
+    const professions = await db.query.playerProfessions.findMany({
+      where: eq(playerProfessions.characterId, character.id),
     });
     const profMap = new Map(professions.map(p => [p.professionType, p]));
 
@@ -192,7 +199,7 @@ router.get('/recipes', authGuard, characterGuard, requireTown, async (req: Authe
 
     // Resolve ingredient template names
     const allTemplateIds = new Set<string>();
-    for (const recipe of recipes) {
+    for (const recipe of allRecipes) {
       const ingredients = recipe.ingredients as Array<{ itemTemplateId: string; quantity: number }>;
       for (const ing of ingredients) {
         if (ing.itemTemplateId) allTemplateIds.add(ing.itemTemplateId);
@@ -201,19 +208,19 @@ router.get('/recipes', authGuard, characterGuard, requireTown, async (req: Authe
     }
 
     const templateIdArray = [...allTemplateIds].filter(Boolean);
-    const templates = templateIdArray.length > 0 ? await prisma.itemTemplate.findMany({
-      where: { id: { in: templateIdArray } },
-      select: { id: true, name: true, type: true, rarity: true },
+    const templates = templateIdArray.length > 0 ? await db.query.itemTemplates.findMany({
+      where: inArray(itemTemplates.id, templateIdArray),
+      columns: { id: true, name: true, type: true, rarity: true },
     }) : [];
     const templateMap = new Map(templates.map(t => [t.id, t]));
 
-    let result = recipes.map(recipe => {
+    let result = allRecipes.map(recipe => {
       const ingredients = recipe.ingredients as Array<{ itemTemplateId: string; quantity: number }>;
       const prof = profMap.get(recipe.professionType);
-      const hasRequiredProfession = prof ? tierIndex(prof.tier) >= tierIndex(recipe.tier) : false;
+      const hasRequiredProfession = prof ? tierIndex(prof.tier as ProfessionTier) >= tierIndex(recipe.tier as ProfessionTier) : false;
       // Per-recipe levelRequired overrides tier-based level if set
       const recipeLevelRequired = (recipe as any).levelRequired as number | null;
-      const levelRequired = recipeLevelRequired ?? getLevelRequired(recipe.tier);
+      const levelRequired = recipeLevelRequired ?? getLevelRequired(recipe.tier as ProfessionTier);
       const meetsLevelRequirement = prof ? prof.level >= levelRequired : false;
 
       // Specialization gating
@@ -274,7 +281,7 @@ router.get('/recipes', authGuard, characterGuard, requireTown, async (req: Authe
 
     return res.json({ recipes: result });
   } catch (error) {
-    if (handlePrismaError(error, res, 'list recipes', req)) return;
+    if (handleDbError(error, res, 'list recipes', req)) return;
     logRouteError(req, 500, 'List recipes error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -293,17 +300,14 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startCraf
     }
 
     // Load the recipe
-    const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } });
+    const recipe = await db.query.recipes.findFirst({ where: eq(recipes.id, recipeId) });
     if (!recipe) {
       return res.status(404).json({ error: 'Recipe not found' });
     }
 
     // Check profession requirement
-    const profession = await prisma.playerProfession.findFirst({
-      where: {
-        characterId: character.id,
-        professionType: recipe.professionType,
-      },
+    const profession = await db.query.playerProfessions.findFirst({
+      where: and(eq(playerProfessions.characterId, character.id), eq(playerProfessions.professionType, recipe.professionType)),
     });
 
     if (!profession) {
@@ -312,14 +316,14 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startCraf
 
     // Level-based gating: per-recipe levelRequired overrides tier-based
     const recipeLevelRequired = (recipe as any).levelRequired as number | null;
-    const levelRequired = recipeLevelRequired ?? getLevelRequired(recipe.tier);
+    const levelRequired = recipeLevelRequired ?? getLevelRequired(recipe.tier as ProfessionTier);
     if (profession.level < levelRequired) {
       return res.status(400).json({
         error: `Requires level ${levelRequired} in ${recipe.professionType}, you are level ${profession.level}`,
       });
     }
 
-    if (tierIndex(profession.tier) < tierIndex(recipe.tier)) {
+    if (tierIndex(profession.tier as ProfessionTier) < tierIndex(recipe.tier as ProfessionTier)) {
       return res.status(400).json({
         error: `Requires ${recipe.tier} tier in ${recipe.professionType}, you are ${profession.tier}`,
       });
@@ -334,8 +338,8 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startCraf
     }
 
     // Check not already crafting
-    const activeCraft = await prisma.craftingAction.findFirst({
-      where: { characterId: character.id, status: 'IN_PROGRESS' },
+    const activeCraft = await db.query.craftingActions.findFirst({
+      where: and(eq(craftingActions.characterId, character.id), eq(craftingActions.status, 'IN_PROGRESS')),
     });
     if (activeCraft) {
       return res.status(400).json({ error: 'Already crafting something' });
@@ -347,11 +351,11 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startCraf
     }
 
     // Workshop check
-    const workshop = await findWorkshop(character.id, character.currentTownId, recipe.professionType);
+    const workshop = await findWorkshop(character.id, character.currentTownId, recipe.professionType as ProfessionType);
 
     // Higher-tier recipes require a workshop
     if (recipe.tier !== 'APPRENTICE' && !workshop) {
-      const requiredBuildingType = PROFESSION_WORKSHOP_MAP[recipe.professionType];
+      const requiredBuildingType = PROFESSION_WORKSHOP_MAP[recipe.professionType as ProfessionType];
       return res.status(400).json({
         error: `${recipe.tier} tier recipes require a ${requiredBuildingType ?? 'workshop'} in your current town`,
       });
@@ -374,7 +378,7 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startCraf
     for (const ing of ingredients) {
       const available = inventoryByTemplate.get(ing.itemTemplateId)?.total ?? 0;
       if (available < ing.quantity) {
-        const template = await prisma.itemTemplate.findUnique({ where: { id: ing.itemTemplateId } });
+        const template = await db.query.itemTemplates.findFirst({ where: eq(itemTemplates.id, ing.itemTemplateId) });
         return res.status(400).json({
           error: `Not enough ${template?.name ?? 'materials'}: need ${ing.quantity}, have ${available}`,
         });
@@ -384,7 +388,7 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startCraf
     // Calculate cascading quality bonus from ingredient qualities
     const ingredientQualityBonus = calculateIngredientQualityBonus(
       ingredients,
-      inventoryByTemplate as Map<string, { total: number; entries: Array<{ quantity: number; item: { quality: string } }> }>,
+      inventoryByTemplate as unknown as Map<string, { total: number; entries: Array<{ quantity: number; item: { quality: string } }> }>,
     );
 
     // Compute craft time with level bonus + workshop speed bonus + racial speed bonus
@@ -399,16 +403,15 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startCraf
     ));
     const completesAt = new Date(now.getTime() + adjustedCraftTime * 60 * 1000);
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       await consumeIngredients(tx, ingredients, inventoryByTemplate as any);
 
-      await tx.craftingAction.create({
-        data: {
-          characterId: character.id,
-          recipeId: recipe.id,
-          status: 'IN_PROGRESS',
-          tickDate: now,
-        },
+      await tx.insert(craftingActions).values({
+        id: crypto.randomUUID(),
+        characterId: character.id,
+        recipeId: recipe.id,
+        status: 'IN_PROGRESS',
+        tickDate: now.toISOString(),
       });
     });
 
@@ -430,7 +433,7 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startCraf
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'start crafting', req)) return;
+    if (handleDbError(error, res, 'start crafting', req)) return;
     logRouteError(req, 500, 'Start crafting error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -443,9 +446,9 @@ router.get('/status', authGuard, characterGuard, requireTown, async (req: Authen
   try {
     const character = req.character!;
 
-    const activeCraft = await prisma.craftingAction.findFirst({
-      where: { characterId: character.id, status: 'IN_PROGRESS' },
-      include: { recipe: true },
+    const activeCraft = await db.query.craftingActions.findFirst({
+      where: and(eq(craftingActions.characterId, character.id), eq(craftingActions.status, 'IN_PROGRESS')),
+      with: { recipe: true },
     });
 
     if (!activeCraft) {
@@ -453,7 +456,7 @@ router.get('/status', authGuard, characterGuard, requireTown, async (req: Authen
     }
 
     const now = new Date();
-    const elapsedMs = now.getTime() - activeCraft.createdAt.getTime();
+    const elapsedMs = now.getTime() - new Date(activeCraft.createdAt).getTime();
     const requiredMs = activeCraft.recipe.craftTime * 60 * 1000;
     const isReady = elapsedMs >= requiredMs;
     const remainingMinutes = isReady ? 0 : Math.ceil((requiredMs - elapsedMs) / 60000);
@@ -463,15 +466,15 @@ router.get('/status', authGuard, characterGuard, requireTown, async (req: Authen
       ready: isReady,
       recipeId: activeCraft.recipeId,
       recipeName: activeCraft.recipe.name,
-      lockedInAt: activeCraft.createdAt.toISOString(),
-      completesAt: new Date(activeCraft.createdAt.getTime() + requiredMs).toISOString(),
+      lockedInAt: activeCraft.createdAt,
+      completesAt: new Date(new Date(activeCraft.createdAt).getTime() + requiredMs).toISOString(),
       remainingMinutes,
       message: isReady
         ? 'Crafting complete! Collect your item.'
         : `Crafting in progress. ${remainingMinutes} minute(s) remaining.`,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'crafting status', req)) return;
+    if (handleDbError(error, res, 'crafting status', req)) return;
     logRouteError(req, 500, 'Crafting status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -489,34 +492,28 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
     }
 
     // Find the earliest completed crafting action (status COMPLETED, ready to collect)
-    let activeCraft = await prisma.craftingAction.findFirst({
-      where: {
-        characterId: character.id,
-        status: 'COMPLETED',
-      },
-      include: { recipe: true },
-      orderBy: { createdAt: 'asc' },
+    let activeCraft = await db.query.craftingActions.findFirst({
+      where: and(eq(craftingActions.characterId, character.id), eq(craftingActions.status, 'COMPLETED')),
+      with: { recipe: true },
+      orderBy: (c, { asc }) => [asc(c.createdAt)],
     });
 
     // Auto-complete: if no COMPLETED craft exists, check IN_PROGRESS crafts
     // whose craftTime has elapsed and transition them to COMPLETED.
     if (!activeCraft) {
-      const pendingCraft = await prisma.craftingAction.findFirst({
-        where: { characterId: character.id, status: 'IN_PROGRESS' },
-        include: { recipe: true },
-        orderBy: { createdAt: 'asc' },
+      const pendingCraft = await db.query.craftingActions.findFirst({
+        where: and(eq(craftingActions.characterId, character.id), eq(craftingActions.status, 'IN_PROGRESS')),
+        with: { recipe: true },
+        orderBy: (c, { asc }) => [asc(c.createdAt)],
       });
 
       if (pendingCraft) {
-        const elapsedMs = Date.now() - pendingCraft.createdAt.getTime();
+        const elapsedMs = Date.now() - new Date(pendingCraft.createdAt).getTime();
         const requiredMs = pendingCraft.recipe.craftTime * 60 * 1000;
 
         if (elapsedMs >= requiredMs) {
           // Auto-transition to COMPLETED
-          await prisma.craftingAction.update({
-            where: { id: pendingCraft.id },
-            data: { status: 'COMPLETED' },
-          });
+          await db.update(craftingActions).set({ status: 'COMPLETED' }).where(eq(craftingActions.id, pendingCraft.id));
           activeCraft = { ...pendingCraft, status: 'COMPLETED' };
         } else {
           const remainingMinutes = Math.ceil((requiredMs - elapsedMs) / 60000);
@@ -530,32 +527,27 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
     }
 
     // Get profession for quality roll
-    const profession = await prisma.playerProfession.findFirst({
-      where: {
-        characterId: character.id,
-        professionType: activeCraft.recipe.professionType,
-      },
+    const profession = await db.query.playerProfessions.findFirst({
+      where: and(eq(playerProfessions.characterId, character.id), eq(playerProfessions.professionType, activeCraft.recipe.professionType)),
     });
 
     const profLevel = profession?.level ?? 1;
 
     // Get equipped tool bonus
-    const equippedTool = await prisma.characterEquipment.findUnique({
-      where: {
-        characterId_slot: { characterId: character.id, slot: 'TOOL' },
-      },
-      include: { item: { include: { template: true } } },
+    const equippedTool = await db.query.characterEquipment.findFirst({
+      where: and(eq(characterEquipment.characterId, character.id), eq(characterEquipment.slot, 'TOOL')),
+      with: { item: { with: { itemTemplate: true } } },
     });
     let toolBonus = 0;
-    if (equippedTool && equippedTool.item.template.type === 'TOOL') {
-      const toolStats = equippedTool.item.template.stats as Record<string, unknown>;
+    if (equippedTool && equippedTool.item.itemTemplate.type === 'TOOL') {
+      const toolStats = equippedTool.item.itemTemplate.stats as Record<string, unknown>;
       if (toolStats.professionType === activeCraft.recipe.professionType) {
         toolBonus = (typeof toolStats.qualityBonus === 'number') ? toolStats.qualityBonus : 0;
       }
     }
 
     // Workshop quality bonus
-    const workshop = await findWorkshop(character.id, character.currentTownId, activeCraft.recipe.professionType);
+    const workshop = await findWorkshop(character.id, character.currentTownId, activeCraft.recipe.professionType as ProfessionType);
     const workshopBonus = workshop?.level ?? 0;
 
     // Racial quality bonus
@@ -583,8 +575,8 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
     const quality = QUALITY_MAP[qualityName] ?? 'COMMON';
 
     // Get result template
-    const resultTemplate = await prisma.itemTemplate.findUnique({
-      where: { id: activeCraft.recipe.result },
+    const resultTemplate = await db.query.itemTemplates.findFirst({
+      where: eq(itemTemplates.id, activeCraft.recipe.result),
     });
 
     if (!resultTemplate) {
@@ -592,36 +584,35 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
     }
 
     // Transaction: atomically mark collected, create item, add to inventory
-    // P0 #5 FIX: Use updateMany with status guard to prevent double-collect race condition
+    // P0 #5 FIX: Use status guard to prevent double-collect race condition
     const xpGain = Math.floor(activeCraft.recipe.xpReward * ACTION_XP.WORK_CRAFT_MULTIPLIER);
 
-    const craftedItem = await prisma.$transaction(async (tx) => {
-      const updated = await tx.craftingAction.updateMany({
-        where: { id: activeCraft.id, status: 'COMPLETED' },
-        data: { status: 'COLLECTED', quality },
-      });
+    const craftedItem = await db.transaction(async (tx) => {
+      // Guard: only update if still COMPLETED (prevents double-collect)
+      const updated = await tx.update(craftingActions)
+        .set({ status: 'COLLECTED' as any, quality })
+        .where(and(eq(craftingActions.id, activeCraft!.id), eq(craftingActions.status, 'COMPLETED')))
+        .returning();
 
-      if (updated.count === 0) {
+      if (updated.length === 0) {
         throw new Error('ALREADY_COLLECTED');
       }
 
-      const item = await tx.item.create({
-        data: {
-          templateId: resultTemplate.id,
-          ownerId: character.id,
-          currentDurability: resultTemplate.durability,
-          quality,
-          craftedById: character.id,
-          enchantments: [],
-        },
-      });
+      const [item] = await tx.insert(items).values({
+        id: crypto.randomUUID(),
+        templateId: resultTemplate.id,
+        ownerId: character.id,
+        currentDurability: resultTemplate.durability,
+        quality,
+        craftedById: character.id,
+        enchantments: [],
+      }).returning();
 
-      await tx.inventory.create({
-        data: {
-          characterId: character.id,
-          itemId: item.id,
-          quantity: 1,
-        },
+      await tx.insert(inventories).values({
+        id: crypto.randomUUID(),
+        characterId: character.id,
+        itemId: item.id,
+        quantity: 1,
       });
 
       return item;
@@ -639,17 +630,17 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
     }
 
     // Grant character XP
-    await prisma.character.update({
-      where: { id: character.id },
-      data: { xp: { increment: xpGain } },
-    });
+    await db.update(characters).set({ xp: sql`${characters.xp} + ${xpGain}` }).where(eq(characters.id, character.id));
 
     await checkLevelUp(character.id);
 
     // Check crafting achievements (count both COMPLETED and COLLECTED statuses)
-    const itemsCrafted = await prisma.craftingAction.count({
-      where: { characterId: character.id, status: { in: ['COMPLETED', 'COLLECTED'] } },
+    const allCraftActions = await db.query.craftingActions.findMany({
+      where: eq(craftingActions.characterId, character.id),
     });
+    const itemsCrafted = allCraftActions.filter(
+      (a: any) => a.status === 'COMPLETED' || a.status === 'COLLECTED'
+    ).length;
     await checkAchievements(character.id, 'crafting', {
       itemsCrafted,
       professionTier: xpResult?.newTier ?? profession?.tier ?? 'APPRENTICE',
@@ -658,9 +649,10 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
     onCraftItem(character.id).catch(() => {}); // fire-and-forget
 
     // Check remaining queue
-    const remainingInQueue = await prisma.craftingAction.count({
-      where: { characterId: character.id, status: 'IN_PROGRESS' },
+    const remainingActions = await db.query.craftingActions.findMany({
+      where: and(eq(craftingActions.characterId, character.id), eq(craftingActions.status, 'IN_PROGRESS')),
     });
+    const remainingInQueue = remainingActions.length;
 
     return res.json({
       collected: true,
@@ -686,7 +678,7 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
       remainingInQueue,
     });
   } catch (error: unknown) {
-    if (handlePrismaError(error, res, 'collect crafting', req)) return;
+    if (handleDbError(error, res, 'collect crafting', req)) return;
     // P0 #5 FIX: Return 409 if already collected (race condition guard)
     if (error instanceof Error && error.message === 'ALREADY_COLLECTED') {
       return res.status(409).json({ error: 'Crafting action already collected' });
@@ -701,24 +693,21 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
 // =========================================================================
 router.post('/queue', authGuard, characterGuard, requireTown, validate(queueCraftSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { recipeId, count } = req.body;
+    const { recipeId, count: batchCount } = req.body;
     const character = req.character!;
 
     if (character.travelStatus !== 'idle') {
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } });
+    const recipe = await db.query.recipes.findFirst({ where: eq(recipes.id, recipeId) });
     if (!recipe) {
       return res.status(404).json({ error: 'Recipe not found' });
     }
 
     // Check profession
-    const profession = await prisma.playerProfession.findFirst({
-      where: {
-        characterId: character.id,
-        professionType: recipe.professionType,
-      },
+    const profession = await db.query.playerProfessions.findFirst({
+      where: and(eq(playerProfessions.characterId, character.id), eq(playerProfessions.professionType, recipe.professionType)),
     });
 
     if (!profession) {
@@ -727,14 +716,14 @@ router.post('/queue', authGuard, characterGuard, requireTown, validate(queueCraf
 
     // Level-based gating: per-recipe levelRequired overrides tier-based
     const recipeLevelRequired = (recipe as any).levelRequired as number | null;
-    const levelRequired = recipeLevelRequired ?? getLevelRequired(recipe.tier);
+    const levelRequired = recipeLevelRequired ?? getLevelRequired(recipe.tier as ProfessionTier);
     if (profession.level < levelRequired) {
       return res.status(400).json({
         error: `Requires level ${levelRequired} in ${recipe.professionType}, you are level ${profession.level}`,
       });
     }
 
-    if (tierIndex(profession.tier) < tierIndex(recipe.tier)) {
+    if (tierIndex(profession.tier as ProfessionTier) < tierIndex(recipe.tier as ProfessionTier)) {
       return res.status(400).json({
         error: `Requires ${recipe.tier} tier in ${recipe.professionType}, you are ${profession.tier}`,
       });
@@ -754,10 +743,10 @@ router.post('/queue', authGuard, characterGuard, requireTown, validate(queueCraf
     }
 
     // Workshop check
-    const workshop = await findWorkshop(character.id, character.currentTownId, recipe.professionType);
+    const workshop = await findWorkshop(character.id, character.currentTownId, recipe.professionType as ProfessionType);
 
     if (recipe.tier !== 'APPRENTICE' && !workshop) {
-      const requiredBuildingType = PROFESSION_WORKSHOP_MAP[recipe.professionType];
+      const requiredBuildingType = PROFESSION_WORKSHOP_MAP[recipe.professionType as ProfessionType];
       return res.status(400).json({
         error: `${recipe.tier} tier recipes require a ${requiredBuildingType ?? 'workshop'} in your current town`,
       });
@@ -766,13 +755,14 @@ router.post('/queue', authGuard, characterGuard, requireTown, validate(queueCraf
     const workshopLevel = workshop?.level ?? 0;
 
     // Check queue slot limits (Forgeborn Tireless Worker gets 50% more)
-    const existingQueueCount = await prisma.craftingAction.count({
-      where: { characterId: character.id, status: 'IN_PROGRESS' },
+    const existingQueueActions = await db.query.craftingActions.findMany({
+      where: and(eq(craftingActions.characterId, character.id), eq(craftingActions.status, 'IN_PROGRESS')),
     });
+    const existingQueueCount = existingQueueActions.length;
     const maxSlots = await getMaxQueueSlots(character.id);
-    if (existingQueueCount + count > maxSlots) {
+    if (existingQueueCount + batchCount > maxSlots) {
       return res.status(400).json({
-        error: `Queue limit exceeded: ${existingQueueCount} in queue + ${count} requested > ${maxSlots} max slots`,
+        error: `Queue limit exceeded: ${existingQueueCount} in queue + ${batchCount} requested > ${maxSlots} max slots`,
       });
     }
 
@@ -788,12 +778,12 @@ router.post('/queue', authGuard, characterGuard, requireTown, validate(queueCraf
     const { inventoryByTemplate } = await buildInventoryMap(character.id);
 
     for (const ing of ingredients) {
-      const needed = ing.quantity * count;
+      const needed = ing.quantity * batchCount;
       const available = inventoryByTemplate.get(ing.itemTemplateId)?.total ?? 0;
       if (available < needed) {
-        const template = await prisma.itemTemplate.findUnique({ where: { id: ing.itemTemplateId } });
+        const template = await db.query.itemTemplates.findFirst({ where: eq(itemTemplates.id, ing.itemTemplateId) });
         return res.status(400).json({
-          error: `Not enough ${template?.name ?? 'materials'}: need ${needed} (${ing.quantity} x ${count}), have ${available}`,
+          error: `Not enough ${template?.name ?? 'materials'}: need ${needed} (${ing.quantity} x ${batchCount}), have ${available}`,
         });
       }
     }
@@ -801,8 +791,8 @@ router.post('/queue', authGuard, characterGuard, requireTown, validate(queueCraf
     // Calculate cascading quality bonus
     const ingredientQualityBonus = calculateIngredientQualityBonus(
       // Scale ingredient quantities by batch count for the bonus calc
-      ingredients.map(ing => ({ ...ing, quantity: ing.quantity * count })),
-      inventoryByTemplate as Map<string, { total: number; entries: Array<{ quantity: number; item: { quality: string } }> }>,
+      ingredients.map(ing => ({ ...ing, quantity: ing.quantity * batchCount })),
+      inventoryByTemplate as unknown as Map<string, { total: number; entries: Array<{ quantity: number; item: { quality: string } }> }>,
     );
 
     // Compute craft time per item with racial speed bonus + Overclock
@@ -818,25 +808,24 @@ router.post('/queue', authGuard, characterGuard, requireTown, validate(queueCraf
     const now = new Date();
 
     // Consume ALL materials and create crafting actions (daily-tick model: all resolve at tick)
-    const craftingActions = await prisma.$transaction(async (tx) => {
+    const craftingActionResults = await db.transaction(async (tx) => {
       // Consume ingredients for the full batch
       const batchIngredients = ingredients.map(ing => ({
         itemTemplateId: ing.itemTemplateId,
-        quantity: ing.quantity * count,
+        quantity: ing.quantity * batchCount,
       }));
       await consumeIngredients(tx, batchIngredients, inventoryByTemplate as any);
 
       // Create crafting actions (all locked in for today's tick)
       const actions = [];
-      for (let i = 0; i < count; i++) {
-        const action = await tx.craftingAction.create({
-          data: {
-            characterId: character.id,
-            recipeId: recipe.id,
-            status: 'IN_PROGRESS',
-            tickDate: now,
-          },
-        });
+      for (let i = 0; i < batchCount; i++) {
+        const [action] = await tx.insert(craftingActions).values({
+          id: crypto.randomUUID(),
+          characterId: character.id,
+          recipeId: recipe.id,
+          status: 'IN_PROGRESS',
+          tickDate: now.toISOString(),
+        }).returning();
         actions.push(action);
       }
 
@@ -847,14 +836,14 @@ router.post('/queue', authGuard, characterGuard, requireTown, validate(queueCraf
       queued: {
         recipeId: recipe.id,
         recipeName: recipe.name,
-        count,
+        count: batchCount,
         craftTimePerItem: adjustedCraftTime,
-        totalCraftTimeMinutes: adjustedCraftTime * count,
-        actions: craftingActions.map((a, i) => ({
+        totalCraftTimeMinutes: adjustedCraftTime * batchCount,
+        actions: craftingActionResults.map((a, i) => ({
           id: a.id,
           index: i + 1,
-          createdAt: a.createdAt.toISOString(),
-          tickDate: a.tickDate?.toISOString() ?? null,
+          createdAt: a.createdAt,
+          tickDate: a.tickDate ?? null,
         })),
         workshop: workshop ? {
           buildingId: workshop.id,
@@ -867,7 +856,7 @@ router.post('/queue', authGuard, characterGuard, requireTown, validate(queueCraf
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'queue crafting', req)) return;
+    if (handleDbError(error, res, 'queue crafting', req)) return;
     logRouteError(req, 500, 'Queue crafting error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -880,13 +869,10 @@ router.get('/queue', authGuard, characterGuard, requireTown, async (req: Authent
   try {
     const character = req.character!;
 
-    const actions = await prisma.craftingAction.findMany({
-      where: {
-        characterId: character.id,
-        status: 'IN_PROGRESS',
-      },
-      include: { recipe: true },
-      orderBy: { createdAt: 'asc' },
+    const actions = await db.query.craftingActions.findMany({
+      where: and(eq(craftingActions.characterId, character.id), eq(craftingActions.status, 'IN_PROGRESS')),
+      with: { recipe: true },
+      orderBy: (c, { asc }) => [asc(c.createdAt)],
     });
 
     const queue = actions.map((action, index) => ({
@@ -894,8 +880,8 @@ router.get('/queue', authGuard, characterGuard, requireTown, async (req: Authent
       index: index + 1,
       recipeId: action.recipeId,
       recipeName: action.recipe.name,
-      createdAt: action.createdAt.toISOString(),
-      tickDate: action.tickDate?.toISOString() ?? null,
+      createdAt: action.createdAt,
+      tickDate: action.tickDate ?? null,
       ready: false, // In daily-tick model, resolved at tick
     }));
 
@@ -907,7 +893,7 @@ router.get('/queue', authGuard, characterGuard, requireTown, async (req: Authent
       readyCount,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get crafting queue', req)) return;
+    if (handleDbError(error, res, 'get crafting queue', req)) return;
     logRouteError(req, 500, 'Get crafting queue error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

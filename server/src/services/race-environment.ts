@@ -1,5 +1,7 @@
-import { prisma } from '../lib/prisma';
-import { BiomeType } from '@prisma/client';
+import { db } from '../lib/db';
+import { eq } from 'drizzle-orm';
+import { towns, characters } from '@database/tables';
+import type { BiomeType } from '@shared/enums';
 
 // =========================================================================
 // Day/Night Cycle
@@ -69,13 +71,13 @@ export async function detectWaterTransition(
   toTownId: string,
 ): Promise<{ isWaterToLand: boolean; speedMultiplier: number }> {
   const [fromTown, toTown] = await Promise.all([
-    prisma.town.findUnique({
-      where: { id: fromTownId },
-      select: { biome: true },
+    db.query.towns.findFirst({
+      where: eq(towns.id, fromTownId),
+      columns: { biome: true },
     }),
-    prisma.town.findUnique({
-      where: { id: toTownId },
-      select: { biome: true },
+    db.query.towns.findFirst({
+      where: eq(towns.id, toTownId),
+      columns: { biome: true },
     }),
   ]);
 
@@ -109,9 +111,9 @@ export interface DrowPenalty {
  * current location. No penalty at night or in underground/underwater biomes.
  */
 export async function calculateDrowPenalty(characterId: string): Promise<DrowPenalty> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { id: true, race: true, currentTownId: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { id: true, race: true, currentTownId: true },
   });
 
   if (!character || character.race !== 'NIGHTBORNE') {
@@ -125,9 +127,9 @@ export async function calculateDrowPenalty(characterId: string): Promise<DrowPen
 
   // Check if underground/underwater — no sunlight there
   if (character.currentTownId) {
-    const town = await prisma.town.findUnique({
-      where: { id: character.currentTownId },
-      select: { biome: true },
+    const town = await db.query.towns.findFirst({
+      where: eq(towns.id, character.currentTownId),
+      columns: { biome: true },
     });
 
     const shelteredBiomes: BiomeType[] = ['UNDERGROUND', 'UNDERWATER'] as BiomeType[];

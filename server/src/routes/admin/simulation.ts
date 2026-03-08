@@ -6,10 +6,16 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import ExcelJS from 'exceljs';
 import { validate } from '../../middleware/validate';
-import { handlePrismaError } from '../../lib/prisma-errors';
+import { handleDbError } from '../../lib/db-errors';
 import { logRouteError } from '../../lib/error-logger';
 import { AuthenticatedRequest } from '../../types/express';
-import { prisma } from '../../lib/prisma';
+import { db } from '../../lib/db';
+import { eq, inArray, and, desc, asc, not, sql } from 'drizzle-orm';
+import {
+  simulationRuns, users, combatEncounterLogs, towns,
+  tradeTransactions, marketBuyOrders, auctionCycles,
+  marketListings, characters,
+} from '@database/tables';
 import { simulationController } from '../../lib/simulation/controller';
 import { getTestPlayerCount } from '../../lib/simulation/seed';
 
@@ -95,7 +101,7 @@ router.post('/seed', validate(seedSchema), async (req: AuthenticatedRequest, res
       bots: result.bots,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'simulation-seed', req)) return;
+    if (handleDbError(error, res, 'simulation-seed', req)) return;
     logRouteError(req, 500, '[Simulation] Seed error', error);
     return res.status(500).json({ error: 'Failed to seed bots' });
   }
@@ -239,14 +245,14 @@ router.patch('/config', validate(configPatchSchema), async (req: AuthenticatedRe
 router.delete('/cleanup', validate(cleanupSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Delete simulation runs (encounters FK is SET NULL, so this is safe)
-    await prisma.simulationRun.deleteMany({});
+    await db.delete(simulationRuns);
     const result = await simulationController.cleanup();
     return res.json({
       message: 'All test data cleaned up',
       ...result,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'simulation-cleanup', req)) return;
+    if (handleDbError(error, res, 'simulation-cleanup', req)) return;
     logRouteError(req, 500, '[Simulation] Cleanup error', error);
     return res.status(500).json({ error: 'Cleanup failed' });
   }
@@ -258,12 +264,12 @@ router.delete('/cleanup', validate(cleanupSchema), async (req: AuthenticatedRequ
 router.get('/runs', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const includeArchived = req.query.includeArchived === 'true';
-    const where = includeArchived ? {} : { archived: false };
+    const where = includeArchived ? undefined : eq(simulationRuns.archived, false);
 
-    const runs = await prisma.simulationRun.findMany({
+    const runs = await db.query.simulationRuns.findMany({
       where,
-      orderBy: { startedAt: 'desc' },
-      take: 100,
+      orderBy: desc(simulationRuns.startedAt),
+      limit: 100,
     });
 
     return res.json({ runs, total: runs.length });
@@ -278,8 +284,8 @@ router.get('/runs', async (req: AuthenticatedRequest, res: Response) => {
 // ---------------------------------------------------------------------------
 router.get('/runs/:id', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const run = await prisma.simulationRun.findUnique({
-      where: { id: req.params.id },
+    const run = await db.query.simulationRuns.findFirst({
+      where: eq(simulationRuns.id, req.params.id),
     });
     if (!run) return res.status(404).json({ error: 'Run not found' });
     return res.json(run);
@@ -303,13 +309,13 @@ router.patch('/runs/:id', async (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ error: 'Nothing to update' });
     }
 
-    const run = await prisma.simulationRun.update({
-      where: { id: req.params.id },
-      data,
-    });
+    const [run] = await db.update(simulationRuns)
+      .set(data)
+      .where(eq(simulationRuns.id, req.params.id))
+      .returning();
     return res.json(run);
   } catch (error) {
-    if (handlePrismaError(error, res, 'simulation-run-update', req)) return;
+    if (handleDbError(error, res, 'simulation-run-update', req)) return;
     logRouteError(req, 500, '[Simulation] Update run error', error);
     return res.status(500).json({ error: 'Failed to update simulation run' });
   }
@@ -320,19 +326,19 @@ router.patch('/runs/:id', async (req: AuthenticatedRequest, res: Response) => {
 // ---------------------------------------------------------------------------
 router.post('/runs/:id/archive', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const existing = await prisma.simulationRun.findUnique({
-      where: { id: req.params.id },
-      select: { archived: true },
+    const existing = await db.query.simulationRuns.findFirst({
+      where: eq(simulationRuns.id, req.params.id),
+      columns: { archived: true },
     });
     if (!existing) return res.status(404).json({ error: 'Run not found' });
 
-    const run = await prisma.simulationRun.update({
-      where: { id: req.params.id },
-      data: { archived: !existing.archived },
-    });
+    const [run] = await db.update(simulationRuns)
+      .set({ archived: !existing.archived })
+      .where(eq(simulationRuns.id, req.params.id))
+      .returning();
     return res.json(run);
   } catch (error) {
-    if (handlePrismaError(error, res, 'simulation-run-archive', req)) return;
+    if (handleDbError(error, res, 'simulation-run-archive', req)) return;
     logRouteError(req, 500, '[Simulation] Archive run error', error);
     return res.status(500).json({ error: 'Failed to archive simulation run' });
   }
@@ -346,24 +352,24 @@ router.delete('/runs/:id', async (req: AuthenticatedRequest, res: Response) => {
     const runId = req.params.id;
     const runShort = runId.slice(-8);
 
-    // 1. Delete batch-sim test users (cascade → Characters → EncounterLogs)
-    await prisma.user.deleteMany({
-      where: { isTestAccount: true, id: { startsWith: `bsim-u-${runShort}` } },
-    });
+    // 1. Delete batch-sim test users (cascade -> Characters -> EncounterLogs)
+    await db.delete(users)
+      .where(and(
+        eq(users.isTestAccount, true),
+        sql`${users.id} LIKE ${'bsim-u-' + runShort + '%'}`,
+      ));
 
     // 2. Delete remaining encounter logs (from bot tick sims or other sources)
-    await prisma.combatEncounterLog.deleteMany({
-      where: { simulationRunId: runId },
-    });
+    await db.delete(combatEncounterLogs)
+      .where(eq(combatEncounterLogs.simulationRunId, runId));
 
     // 3. Delete the run itself
-    await prisma.simulationRun.delete({
-      where: { id: runId },
-    });
+    await db.delete(simulationRuns)
+      .where(eq(simulationRuns.id, runId));
 
     return res.json({ message: 'Run deleted' });
   } catch (error) {
-    if (handlePrismaError(error, res, 'simulation-run-delete', req)) return;
+    if (handleDbError(error, res, 'simulation-run-delete', req)) return;
     logRouteError(req, 500, '[Simulation] Delete run error', error);
     return res.status(500).json({ error: 'Failed to delete simulation run' });
   }
@@ -441,7 +447,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
     const botLogs = simulationController.getBotDayLogs();
 
     // Resolve town UUIDs to human-readable names
-    const allTowns = await prisma.town.findMany({ select: { id: true, name: true } });
+    const allTowns = await db.query.towns.findMany({ columns: { id: true, name: true } });
     const townNameMap = new Map(allTowns.map(t => [t.id, t.name]));
     function resolveTown(id: string): string { return townNameMap.get(id) ?? id; }
 
@@ -676,20 +682,29 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
       // Get tick range from simulation history for filtering
       const tickNumbers = history.map((t) => t.tickNumber as number).filter((n: number) => n != null);
       const combatLogs = tickNumbers.length > 0
-        ? await prisma.combatEncounterLog.findMany({
-            where: { simulationTick: { in: tickNumbers } },
-            orderBy: { startedAt: 'asc' },
+        ? await db.query.combatEncounterLogs.findMany({
+            where: inArray(combatEncounterLogs.simulationTick, tickNumbers),
+            orderBy: asc(combatEncounterLogs.startedAt),
           })
-        : await prisma.combatEncounterLog.findMany({
-            where: {
-              character: { user: { isTestAccount: true } },
+        : await db.query.combatEncounterLogs.findMany({
+            with: {
+              character: {
+                columns: { id: true },
+                with: { user: { columns: { isTestAccount: true } } },
+              },
             },
-            orderBy: { startedAt: 'asc' },
-            take: 5000,
+            orderBy: asc(combatEncounterLogs.startedAt),
+            limit: 5000,
           });
 
-      if (combatLogs.length > 0) {
-        const combatData = combatLogs.map((log) => ({
+      // For the second query path, filter to test accounts in JS since Drizzle
+      // doesn't support nested where on relations in findMany
+      const filteredLogs = tickNumbers.length > 0
+        ? combatLogs
+        : (combatLogs as any[]).filter(log => log.character?.user?.isTestAccount === true);
+
+      if (filteredLogs.length > 0) {
+        const combatData = filteredLogs.map((log: any) => ({
           CombatId: log.sessionId ?? '',
           Tick: log.simulationTick ?? '',
           Type: log.type,
@@ -751,37 +766,34 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
 
     // Sheet 14: Market Transactions — one row per completed sale
     try {
-      const marketTransactions = await prisma.tradeTransaction.findMany({
-        where: { auctionCycleId: { not: null } },
-        include: {
-          buyer: {
-            select: {
-              name: true,
-              level: true,
-              professions: { where: { isActive: true }, select: { professionType: true } },
-            },
+      const marketTx = await db.query.tradeTransactions.findMany({
+        where: sql`${tradeTransactions.auctionCycleId} IS NOT NULL`,
+        with: {
+          character_buyerId: {
+            columns: { name: true, level: true },
+            with: { playerProfessions: { columns: { professionType: true } } },
           },
-          seller: {
-            select: {
-              name: true,
-              level: true,
-              professions: { where: { isActive: true }, select: { professionType: true } },
-            },
+          character_sellerId: {
+            columns: { name: true, level: true },
+            with: { playerProfessions: { columns: { professionType: true } } },
           },
-          item: { include: { template: { select: { name: true, type: true } } } },
-          town: { select: { name: true } },
-          cycle: { select: { cycleNumber: true } },
+          item: { with: { itemTemplate: { columns: { name: true, type: true } } } },
+          town: { columns: { name: true } },
+          auctionCycle: { columns: { cycleNumber: true } },
         },
-        orderBy: { timestamp: 'asc' },
+        orderBy: asc(tradeTransactions.timestamp),
       });
 
-      if (marketTransactions.length > 0) {
-        const txData = marketTransactions.map(tx => {
+      if (marketTx.length > 0) {
+        const txData = marketTx.map(tx => {
+          const buyer = tx.character_buyerId;
+          const seller = tx.character_sellerId;
+          const buyerProfs = (buyer as any)?.playerProfessions ?? [];
+          const sellerProfs = (seller as any)?.playerProfessions ?? [];
           const allBidders = (tx as any).allBidders as any[] | null;
           const numBidders = (tx as any).numBidders ?? 1;
           const contested = (tx as any).contested ?? false;
 
-          // Find winner and runner-up from allBidders
           let winnerScore = 0, winnerRoll = 0, runnerUpScore = 0, runnerUpRoll = 0;
           if (allBidders && allBidders.length > 0) {
             const winner = allBidders.find((b: { outcome: string; priorityScore?: number }) => b.outcome === 'won');
@@ -797,26 +809,26 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
           }
 
           return {
-            Tick: tx.cycle?.cycleNumber || 0,
-            Town: tx.town.name,
-            ItemName: tx.item.template.name,
-            ItemType: tx.item.template.type,
+            Tick: tx.auctionCycle?.cycleNumber || 0,
+            Town: tx.town?.name ?? '',
+            ItemName: tx.item?.itemTemplate?.name ?? '',
+            ItemType: tx.item?.itemTemplate?.type ?? '',
             Quantity: tx.quantity,
             AskingPrice: tx.price,
             SalePrice: tx.price,
-            SellerName: tx.seller.name,
-            SellerLevel: tx.seller.level,
-            SellerProfession: tx.seller.professions.map((p: { professionType: string }) => p.professionType).join(', ') || 'None',
-            BuyerName: tx.buyer.name,
-            BuyerLevel: tx.buyer.level,
-            BuyerProfession: tx.buyer.professions.map((p: { professionType: string }) => p.professionType).join(', ') || 'None',
+            SellerName: seller?.name ?? '',
+            SellerLevel: seller?.level ?? 0,
+            SellerProfession: sellerProfs.map((p: { professionType: string }) => p.professionType).join(', ') || 'None',
+            BuyerName: buyer?.name ?? '',
+            BuyerLevel: buyer?.level ?? 0,
+            BuyerProfession: buyerProfs.map((p: { professionType: string }) => p.professionType).join(', ') || 'None',
             NumBidders: numBidders,
             Contested: contested ? 'Yes' : 'No',
             WinnerPriorityScore: Math.round(winnerScore * 100) / 100,
             WinnerRollTotal: winnerRoll,
             RunnerUpScore: Math.round(runnerUpScore * 100) / 100,
             RunnerUpRoll: runnerUpRoll,
-            FeeRate: tx.seller.professions.some((p: { professionType: string }) => p.professionType === 'MERCHANT') ? '5%' : '10%',
+            FeeRate: sellerProfs.some((p: { professionType: string }) => p.professionType === 'MERCHANT') ? '5%' : '10%',
             FeeAmount: tx.sellerFee,
             SellerNetProceeds: tx.sellerNet,
           };
@@ -828,43 +840,43 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
 
     // Sheet 15: Market Orders — one row per buy order placed
     try {
-      const allOrders = await prisma.marketBuyOrder.findMany({
-        include: {
-          buyer: {
-            select: {
-              name: true,
-              professions: { where: { isActive: true }, select: { professionType: true } },
+      const allOrders = await db.query.marketBuyOrders.findMany({
+        with: {
+          character: {
+            columns: { name: true },
+            with: { playerProfessions: { columns: { professionType: true } } },
+          },
+          marketListing: {
+            columns: { itemName: true, price: true, townId: true },
+            with: {
+              town: { columns: { name: true } },
+              marketBuyOrders: { columns: { id: true } },
             },
           },
-          listing: {
-            select: {
-              itemName: true,
-              price: true,
-              townId: true,
-              town: { select: { name: true } },
-              _count: { select: { buyOrders: true } },
-            },
-          },
-          cycle: { select: { cycleNumber: true } },
+          auctionCycle: { columns: { cycleNumber: true } },
         },
-        orderBy: { placedAt: 'asc' },
+        orderBy: asc(marketBuyOrders.placedAt),
       });
 
       if (allOrders.length > 0) {
-        const orderData = allOrders.map(o => ({
-          Tick: o.cycle?.cycleNumber || 0,
-          Town: o.listing.town.name,
-          ItemName: o.listing.itemName || 'Unknown',
-          BuyerName: o.buyer.name,
-          BuyerProfession: o.buyer.professions.map((p: { professionType: string }) => p.professionType).join(', ') || 'None',
-          BidPrice: o.bidPrice,
-          AskingPrice: o.listing.price,
-          BidRatio: Math.round((o.bidPrice / Math.max(o.listing.price, 1)) * 100) + '%',
-          PriorityScore: o.priorityScore != null ? Math.round(o.priorityScore * 100) / 100 : '',
-          HagglingRoll: o.rollResult ?? '',
-          Outcome: o.status,
-          CompetingBids: o.listing._count.buyOrders,
-        }));
+        const orderData = allOrders.map(o => {
+          const listing = o.marketListing;
+          const buyerProfs = (o.character as any)?.playerProfessions ?? [];
+          return {
+            Tick: o.auctionCycle?.cycleNumber || 0,
+            Town: listing?.town?.name ?? '',
+            ItemName: listing?.itemName || 'Unknown',
+            BuyerName: o.character?.name ?? '',
+            BuyerProfession: buyerProfs.map((p: { professionType: string }) => p.professionType).join(', ') || 'None',
+            BidPrice: o.bidPrice,
+            AskingPrice: listing?.price ?? 0,
+            BidRatio: Math.round((o.bidPrice / Math.max(listing?.price ?? 1, 1)) * 100) + '%',
+            PriorityScore: o.priorityScore != null ? Math.round(o.priorityScore * 100) / 100 : '',
+            HagglingRoll: o.rollResult ?? '',
+            Outcome: o.status,
+            CompetingBids: listing?.marketBuyOrders?.length ?? 0,
+          };
+        });
 
         addJsonSheet(workbook, orderData, 'Market Orders');
       }
@@ -872,18 +884,18 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
 
     // Sheet 16: Market Summary — one row per resolved cycle
     try {
-      const cycles = await prisma.auctionCycle.findMany({
-        where: { status: 'resolved' },
-        include: {
-          town: { select: { name: true } },
+      const cycles = await db.query.auctionCycles.findMany({
+        where: eq(auctionCycles.status, 'resolved'),
+        with: {
+          town: { columns: { name: true } },
         },
-        orderBy: { resolvedAt: 'asc' },
+        orderBy: asc(auctionCycles.resolvedAt),
       });
 
       if (cycles.length > 0) {
         const mktSummaryData = cycles.map(cycle => ({
           Cycle: cycle.cycleNumber,
-          Town: cycle.town.name,
+          Town: cycle.town?.name ?? '',
           OrdersProcessed: cycle.ordersProcessed,
           TransactionsCompleted: cycle.transactionsCompleted,
           ContestedListings: (cycle as any).contestedListings ?? 0,
@@ -899,7 +911,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
             const total = mw + nmw;
             return total > 0 ? Math.round(mw / total * 100) + '%' : 'N/A';
           })(),
-          ResolvedAt: cycle.resolvedAt?.toISOString() || '',
+          ResolvedAt: cycle.resolvedAt || '',
         }));
 
         addJsonSheet(workbook, mktSummaryData, 'Market Summary');
@@ -909,17 +921,18 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
     // Sheet 17: Economy Overview — macro indicators
     try {
       // Get all characters for wealth distribution
-      const characters = await prisma.character.findMany({
-        select: { gold: true, escrowedGold: true, level: true },
-        where: { user: { isTestAccount: true } }, // Only sim bots
+      const simCharacters = await db.query.characters.findMany({
+        columns: { gold: true, escrowedGold: true, level: true },
+        with: { user: { columns: { isTestAccount: true } } },
       });
+      const testChars = simCharacters.filter(c => (c as any).user?.isTestAccount === true);
 
-      if (characters.length > 0) {
-        const totalGoldEcon = characters.reduce((sum, c) => sum + c.gold + c.escrowedGold, 0);
-        const avgGoldEcon = Math.round(totalGoldEcon / characters.length);
+      if (testChars.length > 0) {
+        const totalGoldEcon = testChars.reduce((sum, c) => sum + c.gold + c.escrowedGold, 0);
+        const avgGoldEcon = Math.round(totalGoldEcon / testChars.length);
 
         // Calculate Gini coefficient
-        const golds = characters.map(c => c.gold + c.escrowedGold).sort((a, b) => a - b);
+        const golds = testChars.map(c => c.gold + c.escrowedGold).sort((a, b) => a - b);
         const n = golds.length;
         let giniNumerator = 0;
         for (let i = 0; i < n; i++) {
@@ -928,15 +941,23 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
         const gini = n > 1 ? Math.round((giniNumerator / (n * golds.reduce((a, b) => a + b, 0) || 1)) * 1000) / 1000 : 0;
 
         // Count items and listings
-        const activeListings = await prisma.marketListing.count({ where: { status: 'active' } });
-        const totalTransactionsEcon = await prisma.tradeTransaction.count({ where: { auctionCycleId: { not: null } } });
-        const totalGoldTradedEcon = await prisma.tradeTransaction.aggregate({
-          where: { auctionCycleId: { not: null } },
-          _sum: { price: true },
-        });
+        const [{ activeListings }] = await db
+          .select({ activeListings: sql<number>`count(*)::int` })
+          .from(marketListings)
+          .where(eq(marketListings.status, 'active'));
+
+        const [{ totalTransactionsEcon }] = await db
+          .select({ totalTransactionsEcon: sql<number>`count(*)::int` })
+          .from(tradeTransactions)
+          .where(sql`${tradeTransactions.auctionCycleId} IS NOT NULL`);
+
+        const [{ totalGoldTradedEcon }] = await db
+          .select({ totalGoldTradedEcon: sql<number>`COALESCE(SUM(${tradeTransactions.price}), 0)::int` })
+          .from(tradeTransactions)
+          .where(sql`${tradeTransactions.auctionCycleId} IS NOT NULL`);
 
         const overviewData = [{
-          TotalCharacters: characters.length,
+          TotalCharacters: testChars.length,
           TotalGoldInCirculation: totalGoldEcon,
           AveragePlayerGold: avgGoldEcon,
           MedianPlayerGold: golds[Math.floor(n / 2)] || 0,
@@ -945,7 +966,7 @@ router.get('/export', async (req: AuthenticatedRequest, res: Response) => {
           GoldGini: gini,
           ActiveListings: activeListings,
           TotalTransactions: totalTransactionsEcon,
-          TotalGoldTraded: totalGoldTradedEcon._sum.price || 0,
+          TotalGoldTraded: totalGoldTradedEcon,
         }];
 
         addJsonSheet(workbook, overviewData, 'Economy Overview');
@@ -1059,18 +1080,25 @@ router.get('/combat-detail', async (req: AuthenticatedRequest, res: Response) =>
     const history = simulationController.getTickHistory();
     const tickNumbers = history.map((t) => t.tickNumber as number).filter((n: number) => n != null);
 
-    const combatLogs = tickNumbers.length > 0
-      ? await prisma.combatEncounterLog.findMany({
-          where: { simulationTick: { in: tickNumbers } },
-          orderBy: { startedAt: 'asc' },
-        })
-      : await prisma.combatEncounterLog.findMany({
-          where: {
-            character: { user: { isTestAccount: true } },
+    let combatLogs: any[];
+    if (tickNumbers.length > 0) {
+      combatLogs = await db.query.combatEncounterLogs.findMany({
+        where: inArray(combatEncounterLogs.simulationTick, tickNumbers),
+        orderBy: asc(combatEncounterLogs.startedAt),
+      });
+    } else {
+      const allLogs = await db.query.combatEncounterLogs.findMany({
+        with: {
+          character: {
+            columns: { id: true },
+            with: { user: { columns: { isTestAccount: true } } },
           },
-          orderBy: { startedAt: 'asc' },
-          take: 5000,
-        });
+        },
+        orderBy: asc(combatEncounterLogs.startedAt),
+        limit: 5000,
+      });
+      combatLogs = (allLogs as any[]).filter(log => log.character?.user?.isTestAccount === true);
+    }
 
     const detail = combatLogs.map((log) => ({
       id: log.id,

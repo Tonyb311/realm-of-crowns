@@ -1,5 +1,7 @@
-import { prisma } from '../lib/prisma';
-import { HungerState } from '@prisma/client';
+import { db } from '../lib/db';
+import { eq, and, inArray, isNotNull, sql } from 'drizzle-orm';
+import { characters, items, inventories, itemTemplates, marketListings } from '@database/tables';
+import type { HungerState } from '@shared/enums';
 
 // ---------------------------------------------------------------------------
 // Hunger thresholds (days since last meal -> hunger state)
@@ -54,48 +56,56 @@ export async function processSpoilage(): Promise<{ spoiledCount: number; locatio
   const locationBreakdown: Record<string, number> = {};
 
   // Find all perishable items (template.isPerishable = true, item.daysRemaining != null)
-  const perishableItems = await prisma.item.findMany({
-    where: {
-      daysRemaining: { not: null },
-      template: { isPerishable: true },
-    },
-    include: {
-      template: { select: { name: true } },
-      inventory: { select: { character: { select: { currentTownId: true } } } },
-    },
-  });
+  // Use join query since Drizzle relational API can't filter on nested relations
+  const perishableRows = await db
+    .select({
+      itemId: items.id,
+      daysRemaining: items.daysRemaining,
+      templateName: itemTemplates.name,
+    })
+    .from(items)
+    .innerJoin(itemTemplates, eq(items.templateId, itemTemplates.id))
+    .where(and(
+      isNotNull(items.daysRemaining),
+      eq(itemTemplates.isPerishable, true),
+    ));
 
   const toDelete: string[] = [];
   const toDecrement: string[] = [];
 
-  for (const item of perishableItems) {
-    const remaining = (item.daysRemaining ?? 0) - 1;
+  for (const row of perishableRows) {
+    const remaining = (row.daysRemaining ?? 0) - 1;
     if (remaining <= 0) {
-      toDelete.push(item.id);
-      // Attribute to character's town or 'unknown'
-      const townId = item.inventory[0]?.character?.currentTownId ?? 'unknown';
+      toDelete.push(row.itemId);
+      // Look up town for this item via inventory→character
+      const invRow = await db
+        .select({ currentTownId: characters.currentTownId })
+        .from(inventories)
+        .innerJoin(characters, eq(inventories.characterId, characters.id))
+        .where(eq(inventories.itemId, row.itemId))
+        .limit(1);
+      const townId = invRow[0]?.currentTownId ?? 'unknown';
       locationBreakdown[townId] = (locationBreakdown[townId] ?? 0) + 1;
     } else {
-      toDecrement.push(item.id);
+      toDecrement.push(row.itemId);
     }
   }
 
   // Batch decrement surviving items
   if (toDecrement.length > 0) {
-    await prisma.item.updateMany({
-      where: { id: { in: toDecrement } },
-      data: { daysRemaining: { decrement: 1 } },
-    });
+    await db.update(items)
+      .set({ daysRemaining: sql`${items.daysRemaining} - 1` })
+      .where(inArray(items.id, toDecrement));
   }
 
   // Delete spoiled items (cascades to inventory, market listings, etc.)
   if (toDelete.length > 0) {
     // Remove from inventory first
-    await prisma.inventory.deleteMany({ where: { itemId: { in: toDelete } } });
+    await db.delete(inventories).where(inArray(inventories.itemId, toDelete));
     // Remove market listings
-    await prisma.marketListing.deleteMany({ where: { itemId: { in: toDelete } } });
+    await db.delete(marketListings).where(inArray(marketListings.itemId, toDelete));
     // Delete the items
-    await prisma.item.deleteMany({ where: { id: { in: toDelete } } });
+    await db.delete(items).where(inArray(items.id, toDelete));
   }
 
   return {
@@ -113,9 +123,9 @@ export async function processAutoConsumption(characterId: string): Promise<{
   buff: Record<string, unknown> | null;
   hungerState: HungerState;
 }> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: {
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: {
       id: true,
       foodPriority: true,
       preferredFoodId: true,
@@ -130,38 +140,53 @@ export async function processAutoConsumption(characterId: string): Promise<{
   const priority = character.foodPriority ?? 'EXPIRING_FIRST';
 
   // Build query for food items in this character's inventory
-  const foodItems = await prisma.inventory.findMany({
-    where: {
-      characterId,
-      item: {
-        template: { isFood: true },
+  // Use join to filter by template.isFood
+  const foodRows = await db
+    .select({
+      invId: inventories.id,
+      invQuantity: inventories.quantity,
+      itemId: items.id,
+      itemDaysRemaining: items.daysRemaining,
+      itemTemplateId: items.templateId,
+      templateId: itemTemplates.id,
+      templateName: itemTemplates.name,
+      templateIsFood: itemTemplates.isFood,
+      templateFoodBuff: itemTemplates.foodBuff,
+      templateShelfLifeDays: itemTemplates.shelfLifeDays,
+    })
+    .from(inventories)
+    .innerJoin(items, eq(inventories.itemId, items.id))
+    .innerJoin(itemTemplates, eq(items.templateId, itemTemplates.id))
+    .where(and(
+      eq(inventories.characterId, characterId),
+      eq(itemTemplates.isFood, true),
+    ));
+
+  // Map to a format similar to original Prisma shape
+  const foodItems = foodRows.map(r => ({
+    id: r.invId,
+    quantity: r.invQuantity,
+    item: {
+      id: r.itemId,
+      daysRemaining: r.itemDaysRemaining,
+      templateId: r.itemTemplateId,
+      template: {
+        id: r.templateId,
+        name: r.templateName,
+        isFood: r.templateIsFood,
+        foodBuff: r.templateFoodBuff,
+        shelfLifeDays: r.templateShelfLifeDays,
       },
     },
-    include: {
-      item: {
-        include: {
-          template: {
-            select: {
-              id: true,
-              name: true,
-              isFood: true,
-              foodBuff: true,
-              shelfLifeDays: true,
-            },
-          },
-        },
-      },
-    },
-  });
+  }));
 
   if (foodItems.length === 0) {
     // No food available — increment hunger
     const newDays = (character.daysSinceLastMeal ?? 0) + 1;
     const newState = hungerStateFromDays(newDays);
-    await prisma.character.update({
-      where: { id: characterId },
-      data: { daysSinceLastMeal: newDays, hungerState: newState },
-    });
+    await db.update(characters)
+      .set({ daysSinceLastMeal: newDays, hungerState: newState })
+      .where(eq(characters.id, characterId));
     return { consumed: null, buff: null, hungerState: newState };
   }
 
@@ -218,10 +243,9 @@ export async function processAutoConsumption(characterId: string): Promise<{
         else {
           const newDays = (character.daysSinceLastMeal ?? 0) + 1;
           const newState = hungerStateFromDays(newDays);
-          await prisma.character.update({
-            where: { id: characterId },
-            data: { daysSinceLastMeal: newDays, hungerState: newState },
-          });
+          await db.update(characters)
+            .set({ daysSinceLastMeal: newDays, hungerState: newState })
+            .where(eq(characters.id, characterId));
           return { consumed: null, buff: null, hungerState: newState };
         }
       }
@@ -232,22 +256,20 @@ export async function processAutoConsumption(characterId: string): Promise<{
   const toConsume = sorted[0];
   const foodBuff = toConsume.item.template.foodBuff as Record<string, unknown> | null;
 
-  await prisma.$transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     if (toConsume.quantity > 1) {
-      await tx.inventory.update({
-        where: { id: toConsume.id },
-        data: { quantity: toConsume.quantity - 1 },
-      });
+      await tx.update(inventories)
+        .set({ quantity: toConsume.quantity - 1 })
+        .where(eq(inventories.id, toConsume.id));
     } else {
-      await tx.inventory.delete({ where: { id: toConsume.id } });
-      await tx.item.delete({ where: { id: toConsume.item.id } });
+      await tx.delete(inventories).where(eq(inventories.id, toConsume.id));
+      await tx.delete(items).where(eq(items.id, toConsume.item.id));
     }
 
     // Reset hunger
-    await tx.character.update({
-      where: { id: characterId },
-      data: { daysSinceLastMeal: 0, hungerState: 'FED' },
-    });
+    await tx.update(characters)
+      .set({ daysSinceLastMeal: 0, hungerState: 'FED' })
+      .where(eq(characters.id, characterId));
   });
 
   return {
@@ -301,9 +323,9 @@ export async function processRevenantSustenance(characterId: string): Promise<{
   buff: Record<string, unknown> | null;
   soulFadeStage: number;
 }> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { id: true, soulFadeStage: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { id: true, soulFadeStage: true },
   });
 
   if (!character) {
@@ -311,34 +333,51 @@ export async function processRevenantSustenance(characterId: string): Promise<{
   }
 
   // Look for Soul Essence items in inventory (prefer Refined over basic)
-  const soulEssenceItems = await prisma.inventory.findMany({
-    where: {
-      characterId,
+  // Use join to filter by template name, order by rarity desc
+  const soulEssenceRows = await db
+    .select({
+      invId: inventories.id,
+      invQuantity: inventories.quantity,
+      itemId: items.id,
+      itemTemplateId: items.templateId,
+      templateId: itemTemplates.id,
+      templateName: itemTemplates.name,
+      templateFoodBuff: itemTemplates.foodBuff,
+      templateRarity: itemTemplates.rarity,
+    })
+    .from(inventories)
+    .innerJoin(items, eq(inventories.itemId, items.id))
+    .innerJoin(itemTemplates, eq(items.templateId, itemTemplates.id))
+    .where(and(
+      eq(inventories.characterId, characterId),
+      inArray(itemTemplates.name, ['Refined Soul Essence', 'Soul Essence']),
+    ));
+
+  // Sort: Refined (FINE) before basic (COMMON) — rarity desc
+  const RARITY_ORDER: Record<string, number> = { LEGENDARY: 5, EPIC: 4, RARE: 3, FINE: 2, COMMON: 1 };
+  const soulEssenceItems = soulEssenceRows
+    .map(r => ({
+      id: r.invId,
+      quantity: r.invQuantity,
       item: {
+        id: r.itemId,
+        templateId: r.itemTemplateId,
         template: {
-          name: { in: ['Refined Soul Essence', 'Soul Essence'] },
+          id: r.templateId,
+          name: r.templateName,
+          foodBuff: r.templateFoodBuff,
         },
       },
-    },
-    include: {
-      item: {
-        include: {
-          template: {
-            select: { id: true, name: true, foodBuff: true },
-          },
-        },
-      },
-    },
-    orderBy: { item: { template: { rarity: 'desc' } } }, // Refined (FINE) sorts above basic (COMMON)
-  });
+      rarity: r.templateRarity,
+    }))
+    .sort((a, b) => (RARITY_ORDER[b.rarity] ?? 0) - (RARITY_ORDER[a.rarity] ?? 0));
 
   if (soulEssenceItems.length === 0) {
     // No Soul Essence — increment Soul Fade (cap at 3)
     const newStage = Math.min((character.soulFadeStage ?? 0) + 1, 3);
-    await prisma.character.update({
-      where: { id: characterId },
-      data: { soulFadeStage: newStage },
-    });
+    await db.update(characters)
+      .set({ soulFadeStage: newStage })
+      .where(eq(characters.id, characterId));
     return { consumed: null, buff: null, soulFadeStage: newStage };
   }
 
@@ -346,22 +385,20 @@ export async function processRevenantSustenance(characterId: string): Promise<{
   const toConsume = soulEssenceItems[0];
   const foodBuff = toConsume.item.template.foodBuff as Record<string, unknown> | null;
 
-  await prisma.$transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     if (toConsume.quantity > 1) {
-      await tx.inventory.update({
-        where: { id: toConsume.id },
-        data: { quantity: toConsume.quantity - 1 },
-      });
+      await tx.update(inventories)
+        .set({ quantity: toConsume.quantity - 1 })
+        .where(eq(inventories.id, toConsume.id));
     } else {
-      await tx.inventory.delete({ where: { id: toConsume.id } });
-      await tx.item.delete({ where: { id: toConsume.item.id } });
+      await tx.delete(inventories).where(eq(inventories.id, toConsume.id));
+      await tx.delete(items).where(eq(items.id, toConsume.item.id));
     }
 
     // Clear Soul Fade
-    await tx.character.update({
-      where: { id: characterId },
-      data: { soulFadeStage: 0 },
-    });
+    await tx.update(characters)
+      .set({ soulFadeStage: 0 })
+      .where(eq(characters.id, characterId));
   });
 
   return {
@@ -411,9 +448,9 @@ export async function processForgebornMaintenance(characterId: string): Promise<
   buff: Record<string, unknown> | null;
   structuralDecayStage: number;
 }> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { id: true, structuralDecayStage: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { id: true, structuralDecayStage: true },
   });
 
   if (!character) {
@@ -421,34 +458,50 @@ export async function processForgebornMaintenance(characterId: string): Promise<
   }
 
   // Look for Maintenance Kit items in inventory (prefer Precision over basic)
-  const maintenanceItems = await prisma.inventory.findMany({
-    where: {
-      characterId,
+  const maintenanceRows = await db
+    .select({
+      invId: inventories.id,
+      invQuantity: inventories.quantity,
+      itemId: items.id,
+      itemTemplateId: items.templateId,
+      templateId: itemTemplates.id,
+      templateName: itemTemplates.name,
+      templateFoodBuff: itemTemplates.foodBuff,
+      templateRarity: itemTemplates.rarity,
+    })
+    .from(inventories)
+    .innerJoin(items, eq(inventories.itemId, items.id))
+    .innerJoin(itemTemplates, eq(items.templateId, itemTemplates.id))
+    .where(and(
+      eq(inventories.characterId, characterId),
+      inArray(itemTemplates.name, ['Precision Maintenance Kit', 'Maintenance Kit']),
+    ));
+
+  // Sort: Precision (FINE) before basic (COMMON) — rarity desc
+  const RARITY_ORDER: Record<string, number> = { LEGENDARY: 5, EPIC: 4, RARE: 3, FINE: 2, COMMON: 1 };
+  const maintenanceItems = maintenanceRows
+    .map(r => ({
+      id: r.invId,
+      quantity: r.invQuantity,
       item: {
+        id: r.itemId,
+        templateId: r.itemTemplateId,
         template: {
-          name: { in: ['Precision Maintenance Kit', 'Maintenance Kit'] },
+          id: r.templateId,
+          name: r.templateName,
+          foodBuff: r.templateFoodBuff,
         },
       },
-    },
-    include: {
-      item: {
-        include: {
-          template: {
-            select: { id: true, name: true, foodBuff: true },
-          },
-        },
-      },
-    },
-    orderBy: { item: { template: { rarity: 'desc' } } }, // Precision (FINE) sorts above basic (COMMON)
-  });
+      rarity: r.templateRarity,
+    }))
+    .sort((a, b) => (RARITY_ORDER[b.rarity] ?? 0) - (RARITY_ORDER[a.rarity] ?? 0));
 
   if (maintenanceItems.length === 0) {
     // No kits — increment Structural Decay (cap at 3)
     const newStage = Math.min((character.structuralDecayStage ?? 0) + 1, 3);
-    await prisma.character.update({
-      where: { id: characterId },
-      data: { structuralDecayStage: newStage },
-    });
+    await db.update(characters)
+      .set({ structuralDecayStage: newStage })
+      .where(eq(characters.id, characterId));
     return { consumed: null, buff: null, structuralDecayStage: newStage };
   }
 
@@ -456,22 +509,20 @@ export async function processForgebornMaintenance(characterId: string): Promise<
   const toConsume = maintenanceItems[0];
   const foodBuff = toConsume.item.template.foodBuff as Record<string, unknown> | null;
 
-  await prisma.$transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     if (toConsume.quantity > 1) {
-      await tx.inventory.update({
-        where: { id: toConsume.id },
-        data: { quantity: toConsume.quantity - 1 },
-      });
+      await tx.update(inventories)
+        .set({ quantity: toConsume.quantity - 1 })
+        .where(eq(inventories.id, toConsume.id));
     } else {
-      await tx.inventory.delete({ where: { id: toConsume.id } });
-      await tx.item.delete({ where: { id: toConsume.item.id } });
+      await tx.delete(inventories).where(eq(inventories.id, toConsume.id));
+      await tx.delete(items).where(eq(items.id, toConsume.item.id));
     }
 
     // Clear Structural Decay
-    await tx.character.update({
-      where: { id: characterId },
-      data: { structuralDecayStage: 0 },
-    });
+    await tx.update(characters)
+      .set({ structuralDecayStage: 0 })
+      .where(eq(characters.id, characterId));
   });
 
   return {
@@ -490,18 +541,17 @@ export async function processForgebornMaintenance(characterId: string): Promise<
 // ---------------------------------------------------------------------------
 
 export async function updateHungerState(characterId: string): Promise<HungerState> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { daysSinceLastMeal: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { daysSinceLastMeal: true },
   });
 
   if (!character) return 'HUNGRY';
 
   const state = hungerStateFromDays(character.daysSinceLastMeal ?? 0);
-  await prisma.character.update({
-    where: { id: characterId },
-    data: { hungerState: state },
-  });
+  await db.update(characters)
+    .set({ hungerState: state })
+    .where(eq(characters.id, characterId));
 
   return state;
 }

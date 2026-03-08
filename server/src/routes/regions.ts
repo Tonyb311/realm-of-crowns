@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { prisma } from '../lib/prisma';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { db } from '../lib/db';
+import { eq, asc } from 'drizzle-orm';
+import { regions, characters } from '@database/tables';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
@@ -16,8 +18,8 @@ const router = Router();
 // =========================================================================
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const regions = await prisma.region.findMany({
-      select: {
+    const regionRows = await db.query.regions.findMany({
+      columns: {
         id: true,
         name: true,
         description: true,
@@ -25,12 +27,12 @@ router.get('/', async (req: Request, res: Response) => {
         levelMin: true,
         levelMax: true,
       },
-      orderBy: { name: 'asc' },
+      orderBy: asc(regions.name),
     });
 
-    return res.json({ regions });
+    return res.json({ regions: regionRows });
   } catch (error) {
-    if (handlePrismaError(error, res, 'list regions', req)) return;
+    if (handleDbError(error, res, 'list regions', req)) return;
     logRouteError(req, 500, 'List regions error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -45,11 +47,11 @@ router.get('/', async (req: Request, res: Response) => {
 // =========================================================================
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const region = await prisma.region.findUnique({
-      where: { id: req.params.id },
-      include: {
+    const region = await db.query.regions.findFirst({
+      where: eq(regions.id, req.params.id),
+      with: {
         towns: {
-          select: {
+          columns: {
             id: true,
             name: true,
             population: true,
@@ -57,11 +59,11 @@ router.get('/:id', async (req: Request, res: Response) => {
             description: true,
           },
         },
-        bordersA: {
-          include: { region2: { select: { id: true, name: true, biome: true } } },
+        regionBorders_regionId1: {
+          with: { region_regionId2: { columns: { id: true, name: true, biome: true } } },
         },
-        bordersB: {
-          include: { region1: { select: { id: true, name: true, biome: true } } },
+        regionBorders_regionId2: {
+          with: { region_regionId1: { columns: { id: true, name: true, biome: true } } },
         },
       },
     });
@@ -72,15 +74,15 @@ router.get('/:id', async (req: Request, res: Response) => {
 
     // Combine borders from both directions
     const borders = [
-      ...region.bordersA.map(b => ({
+      ...region.regionBorders_regionId1.map(b => ({
         id: b.id,
         type: b.type,
-        neighborRegion: b.region2,
+        neighborRegion: b.region_regionId2,
       })),
-      ...region.bordersB.map(b => ({
+      ...region.regionBorders_regionId2.map(b => ({
         id: b.id,
         type: b.type,
-        neighborRegion: b.region1,
+        neighborRegion: b.region_regionId1,
       })),
     ];
 
@@ -97,7 +99,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get region details', req)) return;
+    if (handleDbError(error, res, 'get region details', req)) return;
     logRouteError(req, 500, 'Get region error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -108,10 +110,10 @@ router.get('/:id', async (req: Request, res: Response) => {
 // =========================================================================
 router.get('/:id/demographics', async (req: Request, res: Response) => {
   try {
-    const region = await prisma.region.findUnique({
-      where: { id: req.params.id },
-      include: {
-        towns: { select: { id: true, name: true } },
+    const region = await db.query.regions.findFirst({
+      where: eq(regions.id, req.params.id),
+      with: {
+        towns: { columns: { id: true, name: true } },
       },
     });
 
@@ -129,7 +131,7 @@ router.get('/:id/demographics', async (req: Request, res: Response) => {
       towns: demographics.filter(Boolean),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get region demographics', req)) return;
+    if (handleDbError(error, res, 'get region demographics', req)) return;
     logRouteError(req, 500, 'Get region demographics error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -144,14 +146,14 @@ router.get('/:id/bonuses', authGuard, async (req: AuthenticatedRequest, res: Res
 
     let character;
     if (characterId) {
-      character = await prisma.character.findUnique({
-        where: { id: characterId },
-        select: { id: true, race: true, currentTownId: true },
+      character = await db.query.characters.findFirst({
+        where: eq(characters.id, characterId),
+        columns: { id: true, race: true, currentTownId: true },
       });
     } else {
-      character = await prisma.character.findFirst({
-        where: { userId: req.user!.userId },
-        select: { id: true, race: true, currentTownId: true },
+      character = await db.query.characters.findFirst({
+        where: eq(characters.userId, req.user!.userId),
+        columns: { id: true, race: true, currentTownId: true },
       });
     }
 
@@ -159,9 +161,9 @@ router.get('/:id/bonuses', authGuard, async (req: AuthenticatedRequest, res: Res
       return res.status(404).json({ error: 'Character not found' });
     }
 
-    const region = await prisma.region.findUnique({
-      where: { id: req.params.id },
-      include: { towns: { select: { id: true, name: true } } },
+    const region = await db.query.regions.findFirst({
+      where: eq(regions.id, req.params.id),
+      with: { towns: { columns: { id: true, name: true } } },
     });
 
     if (!region) {
@@ -186,7 +188,7 @@ router.get('/:id/bonuses', authGuard, async (req: AuthenticatedRequest, res: Res
       towns: townBonuses,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get region bonuses', req)) return;
+    if (handleDbError(error, res, 'get region bonuses', req)) return;
     logRouteError(req, 500, 'Get region bonuses error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

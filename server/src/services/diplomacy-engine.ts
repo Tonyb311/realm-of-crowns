@@ -5,7 +5,7 @@
  * and the Changeling diplomat bonus.
  */
 
-import { RelationStatus, Race } from '@prisma/client';
+import type { RelationStatus, Race } from '@shared/enums';
 
 // ─── Relation Hierarchy ──────────────────────────────────────────────
 

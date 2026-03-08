@@ -1,4 +1,6 @@
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, sql } from 'drizzle-orm';
+import { playerProfessions, serviceReputations, characters, serviceActions } from '@database/tables';
 import { getGameDay } from '../lib/game-day';
 
 // NPC income per day by tier
@@ -25,13 +27,13 @@ export async function processServiceNpcIncome(): Promise<void> {
   ];
   const gameDay = getGameDay();
 
-  const professions = await prisma.playerProfession.findMany({
-    where: {
-      professionType: { in: serviceProfTypes as any },
-      isActive: true,
-      tier: { not: 'APPRENTICE' },
-    },
-    include: { character: { select: { id: true } } },
+  const professions = await db.query.playerProfessions.findMany({
+    where: and(
+      sql`${playerProfessions.professionType} IN (${sql.join(serviceProfTypes.map(t => sql`${t}`), sql`, `)})`,
+      eq(playerProfessions.isActive, true),
+      sql`${playerProfessions.tier} != 'APPRENTICE'`,
+    ),
+    with: { character: { columns: { id: true } } },
   });
 
   let totalPaid = 0;
@@ -41,30 +43,31 @@ export async function processServiceNpcIncome(): Promise<void> {
     if (!tierInfo || tierInfo.clients === 0) continue;
 
     // Get reputation bonus
-    const rep = await prisma.serviceReputation.findUnique({
-      where: { characterId_professionType: { characterId: prof.characterId, professionType: prof.professionType } },
+    const rep = await db.query.serviceReputations.findFirst({
+      where: and(
+        eq(serviceReputations.characterId, prof.characterId),
+        eq(serviceReputations.professionType, prof.professionType),
+      ),
     });
     const repBonus = getReputationBonus(rep?.reputation ?? 0);
 
     const dailyIncome = Math.floor(tierInfo.clients * tierInfo.goldPer * (1 + repBonus));
     if (dailyIncome <= 0) continue;
 
-    await prisma.character.update({
-      where: { id: prof.characterId },
-      data: { gold: { increment: dailyIncome } },
-    });
+    await db.update(characters)
+      .set({ gold: sql`${characters.gold} + ${dailyIncome}` })
+      .where(eq(characters.id, prof.characterId));
 
     // Log as NPC ServiceAction
-    await prisma.serviceAction.create({
-      data: {
-        providerId: prof.characterId,
-        clientId: null,
-        professionType: prof.professionType,
-        actionType: 'npc_income',
-        price: dailyIncome,
-        details: { npcClients: tierInfo.clients, goldPerClient: tierInfo.goldPer, reputationBonus: repBonus },
-        gameDay,
-      },
+    await db.insert(serviceActions).values({
+      id: crypto.randomUUID(),
+      providerId: prof.characterId,
+      clientId: null,
+      professionType: prof.professionType,
+      actionType: 'npc_income',
+      price: dailyIncome,
+      details: { npcClients: tierInfo.clients, goldPerClient: tierInfo.goldPer, reputationBonus: repBonus },
+      gameDay,
     });
 
     totalPaid += dailyIncome;

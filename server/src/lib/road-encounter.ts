@@ -9,8 +9,10 @@
  * Lose → returned to origin town with death penalty
  */
 
-import { prisma } from './prisma';
-import { Prisma, BiomeType, ItemRarity } from '@prisma/client';
+import { db } from './db';
+import { eq, and, gte, lte, inArray, gt, count, sql } from 'drizzle-orm';
+import { characters, towns, monsters, characterEquipment, combatParticipants, combatSessions, combatEncounterLogs } from '@database/tables';
+import type { BiomeType, ItemRarity } from '@shared/enums';
 import { calculateItemStats, calculateEquipmentTotals } from '../services/item-stats';
 import { logger } from './logger';
 import {
@@ -74,18 +76,18 @@ export const DANGER_ENCOUNTER_CHANCE: Record<number, number> = {
  * Multiple terrain keywords can map to the same biome.
  */
 const TERRAIN_TO_BIOME: [RegExp, BiomeType][] = [
-  [/forest|wood|grove|glade|silverwood|elven|sacred/i, BiomeType.FOREST],
-  [/mountain|peak|altitude|mine|cavern|tunnel|descent|foothill/i, BiomeType.MOUNTAIN],
-  [/swamp|marsh|bog|mist|blighted|cursed/i, BiomeType.SWAMP],
-  [/plains|farm|meadow|cobblestone|paved|trade|country|border|highway|fortified/i, BiomeType.PLAINS],
-  [/hill|valley|river/i, BiomeType.HILLS],
-  [/volcanic|ember|lava|scorched/i, BiomeType.VOLCANIC],
-  [/tundra|frozen|frost|ice/i, BiomeType.TUNDRA],
-  [/coast|sea|ocean|coral|shallow|beach|seaside/i, BiomeType.COASTAL],
-  [/desert|arid|sand|rift/i, BiomeType.DESERT],
-  [/badland|waste|war|lawless|contested|frontier|hostile/i, BiomeType.BADLANDS],
-  [/underdark|subterranean|underground/i, BiomeType.UNDERGROUND],
-  [/fey|feywild|glimmer|moonpetal/i, BiomeType.FEYWILD],
+  [/forest|wood|grove|glade|silverwood|elven|sacred/i, 'FOREST'],
+  [/mountain|peak|altitude|mine|cavern|tunnel|descent|foothill/i, 'MOUNTAIN'],
+  [/swamp|marsh|bog|mist|blighted|cursed/i, 'SWAMP'],
+  [/plains|farm|meadow|cobblestone|paved|trade|country|border|highway|fortified/i, 'PLAINS'],
+  [/hill|valley|river/i, 'HILLS'],
+  [/volcanic|ember|lava|scorched/i, 'VOLCANIC'],
+  [/tundra|frozen|frost|ice/i, 'TUNDRA'],
+  [/coast|sea|ocean|coral|shallow|beach|seaside/i, 'COASTAL'],
+  [/desert|arid|sand|rift/i, 'DESERT'],
+  [/badland|waste|war|lawless|contested|frontier|hostile/i, 'BADLANDS'],
+  [/underdark|subterranean|underground/i, 'UNDERGROUND'],
+  [/fey|feywild|glimmer|moonpetal/i, 'FEYWILD'],
 ];
 
 /**
@@ -228,26 +230,26 @@ export function applyClassWeaponStat(weapon: WeaponInfo, characterClass: string 
  * Applies quality multiplier to bonusDamage and bonusAttack.
  */
 async function getEquippedWeapon(characterId: string): Promise<WeaponInfo> {
-  const equip = await prisma.characterEquipment.findUnique({
-    where: { characterId_slot: { characterId, slot: 'MAIN_HAND' } },
-    include: { item: { include: { template: true } } },
+  const equip = await db.query.characterEquipment.findFirst({
+    where: and(eq(characterEquipment.characterId, characterId), eq(characterEquipment.slot, 'MAIN_HAND')),
+    with: { item: { with: { itemTemplate: true } } },
   });
 
-  if (!equip || equip.item.template.type !== 'WEAPON') {
+  if (!equip || equip.item.itemTemplate.type !== 'WEAPON') {
     return UNARMED_WEAPON;
   }
 
-  const stats = equip.item.template.stats as Record<string, unknown>;
+  const stats = equip.item.itemTemplate.stats as Record<string, unknown>;
   const calculated = calculateItemStats({
     quality: equip.item.quality ?? ('COMMON' as ItemRarity),
     enchantments: equip.item.enchantments,
-    template: { stats: equip.item.template.stats },
+    template: { stats: equip.item.itemTemplate.stats },
   });
   const multiplier = calculated.qualityMultiplier;
 
   return {
     id: equip.item.id,
-    name: equip.item.template.name,
+    name: equip.item.itemTemplate.name,
     diceCount: (typeof stats.diceCount === 'number') ? stats.diceCount : 1,
     diceSides: (typeof stats.diceSides === 'number') ? stats.diceSides : 4,
     damageModifierStat: stats.damageModifierStat === 'dex' ? 'dex' : 'str',
@@ -369,9 +371,9 @@ export async function resolveRoadEncounter(
   routeInfo?: { dangerLevel: number; terrain: string },
 ): Promise<RoadEncounterResult> {
   // 1. Load character data (needed for level-based encounter chance)
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: {
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: {
       id: true,
       name: true,
       level: true,
@@ -415,46 +417,51 @@ export async function resolveRoadEncounter(
   const levelRange = getMonsterLevelRange(character.level);
   const routeBiome = routeInfo?.terrain ? terrainToBiome(routeInfo.terrain) : null;
 
-  const destTown = await prisma.town.findUnique({
-    where: { id: destinationTownId },
-    select: { regionId: true },
+  const destTown = await db.query.towns.findFirst({
+    where: eq(towns.id, destinationTownId),
+    columns: { regionId: true },
   });
 
-  let monsters: Awaited<ReturnType<typeof prisma.monster.findMany>> = [];
+  let monsterRows: (typeof monsters.$inferSelect)[] = [];
 
   // Try biome match first (most thematic — forest road gets forest monsters)
   if (routeBiome) {
-    monsters = await prisma.monster.findMany({
-      where: {
-        biome: routeBiome,
-        level: { gte: levelRange.min, lte: levelRange.max },
-      },
+    monsterRows = await db.query.monsters.findMany({
+      where: and(
+        eq(monsters.biome, routeBiome),
+        gte(monsters.level, levelRange.min),
+        lte(monsters.level, levelRange.max),
+      ),
     });
   }
 
   // Fallback to region match
-  if (monsters.length === 0 && destTown?.regionId) {
-    monsters = await prisma.monster.findMany({
-      where: {
-        regionId: destTown.regionId,
-        level: { gte: levelRange.min, lte: levelRange.max },
-      },
+  if (monsterRows.length === 0 && destTown?.regionId) {
+    monsterRows = await db.query.monsters.findMany({
+      where: and(
+        eq(monsters.regionId, destTown.regionId),
+        gte(monsters.level, levelRange.min),
+        lte(monsters.level, levelRange.max),
+      ),
     });
   }
 
-  if (monsters.length === 0) {
+  if (monsterRows.length === 0) {
     // Final fallback: any monster in level range
-    monsters = await prisma.monster.findMany({
-      where: { level: { gte: levelRange.min, lte: levelRange.max } },
+    monsterRows = await db.query.monsters.findMany({
+      where: and(
+        gte(monsters.level, levelRange.min),
+        lte(monsters.level, levelRange.max),
+      ),
     });
   }
 
-  if (monsters.length === 0) {
+  if (monsterRows.length === 0) {
     logger.warn({ characterId, levelRange }, 'Road encounter: no suitable monsters found');
     return { encountered: false };
   }
 
-  const monster = monsters[Math.floor(Math.random() * monsters.length)];
+  const monster = monsterRows[Math.floor(Math.random() * monsterRows.length)];
   const monsterStats = monster.stats as Record<string, number>;
   const charStats = parseStats(character.stats);
 
@@ -563,7 +570,7 @@ export async function resolveRoadEncounter(
   let droppedItems: { name: string; quantity: number; templateId: string }[] = [];
 
   // 8. Apply outcomes within a transaction
-  await prisma.$transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     if (playerWon) {
       // Win: award XP (front-loaded for low-tier monsters) and gold
       xpAwarded = getMonsterKillXp(monster.level);
@@ -584,14 +591,11 @@ export async function resolveRoadEncounter(
         );
       }
 
-      await tx.character.update({
-        where: { id: characterId },
-        data: {
-          xp: { increment: xpAwarded },
-          gold: { increment: goldAwarded },
-          health: playerResult?.currentHp ?? character.health,
-        },
-      });
+      await tx.update(characters).set({
+        xp: sql`${characters.xp} + ${xpAwarded}`,
+        gold: sql`${characters.gold} + ${goldAwarded}`,
+        health: playerResult?.currentHp ?? character.health,
+      }).where(eq(characters.id, characterId));
     } else {
       // Loss: apply death penalty
       const penalty = calculateDeathPenalty(
@@ -601,34 +605,30 @@ export async function resolveRoadEncounter(
         originTownId,
       );
 
-      await tx.character.update({
-        where: { id: characterId },
-        data: {
-          health: character.maxHealth, // respawn at full HP
-          gold: Math.max(0, character.gold - penalty.goldLost),
-          xp: Math.max(0, character.xp - penalty.xpLost),
-        },
-      });
+      await tx.update(characters).set({
+        health: character.maxHealth, // respawn at full HP
+        gold: Math.max(0, character.gold - penalty.goldLost),
+        xp: Math.max(0, character.xp - penalty.xpLost),
+      }).where(eq(characters.id, characterId));
 
       // Damage equipment durability
-      const equipment = await tx.characterEquipment.findMany({
-        where: { characterId },
-        select: { itemId: true },
+      const equipment = await tx.query.characterEquipment.findMany({
+        where: eq(characterEquipment.characterId, characterId),
+        columns: { itemId: true },
       });
       if (equipment.length > 0) {
         const itemIds = equipment.map(e => e.itemId);
-        await tx.$executeRaw`
+        await tx.execute(sql`
           UPDATE "items"
           SET "current_durability" = GREATEST(0, "current_durability" - ${penalty.durabilityDamage})
-          WHERE "id" IN (${Prisma.join(itemIds)})
-        `;
+          WHERE "id" = ANY(${itemIds})
+        `);
       }
 
       // Grant survive XP (consolation prize)
-      await tx.character.update({
-        where: { id: characterId },
-        data: { xp: { increment: ACTION_XP.PVE_SURVIVE } },
-      });
+      await tx.update(characters).set({
+        xp: sql`${characters.xp} + ${ACTION_XP.PVE_SURVIVE}`,
+      }).where(eq(characters.id, characterId));
     }
   });
 
@@ -643,14 +643,16 @@ export async function resolveRoadEncounter(
       onMonsterKill(characterId, monster.name, 1);
       await checkLevelUp(characterId);
 
-      const pveWins = await prisma.combatParticipant.count({
-        where: {
-          characterId,
-          session: { type: 'PVE', status: 'COMPLETED' },
-          currentHp: { gt: 0 },
-        },
-      });
-      await checkAchievements(characterId, 'combat_pve', { wins: pveWins });
+      const [{ total: pveWins }] = await db.select({ total: count() })
+        .from(combatParticipants)
+        .innerJoin(combatSessions, eq(combatParticipants.sessionId, combatSessions.id))
+        .where(and(
+          eq(combatParticipants.characterId, characterId),
+          eq(combatSessions.type, 'PVE'),
+          eq(combatSessions.status, 'COMPLETED'),
+          gt(combatParticipants.currentHp, 0),
+        ));
+      await checkAchievements(characterId, 'combat_pve', { wins: Number(pveWins) });
     }
   } catch (sideEffectErr: unknown) {
     logger.warn(
@@ -784,9 +786,9 @@ export async function resolveGroupRoadEncounter(
   }
 
   // 1. Load ALL member characters with their equipment data
-  const characters = await prisma.character.findMany({
-    where: { id: { in: memberCharacterIds } },
-    select: {
+  const charRows = await db.query.characters.findMany({
+    where: inArray(characters.id, memberCharacterIds),
+    columns: {
       id: true,
       name: true,
       level: true,
@@ -803,13 +805,13 @@ export async function resolveGroupRoadEncounter(
     },
   });
 
-  if (characters.length === 0) {
+  if (charRows.length === 0) {
     logger.warn({ memberCharacterIds }, 'Group road encounter: no characters found');
     return { encountered: false };
   }
 
   // 2. Find the highest level among members
-  const highestLevel = Math.max(...characters.map(c => c.level));
+  const highestLevel = Math.max(...charRows.map(c => c.level));
 
   // 3. Roll for encounter — chance scales with route danger + highest member level
   let encounterChance = getEncounterChance(routeInfo?.dangerLevel ?? 3);
@@ -830,45 +832,50 @@ export async function resolveGroupRoadEncounter(
   const levelRange = getMonsterLevelRange(highestLevel);
   const routeBiome = routeInfo?.terrain ? terrainToBiome(routeInfo.terrain) : null;
 
-  const destTown = await prisma.town.findUnique({
-    where: { id: destinationTownId },
-    select: { regionId: true },
+  const destTown = await db.query.towns.findFirst({
+    where: eq(towns.id, destinationTownId),
+    columns: { regionId: true },
   });
 
-  let monsters: Awaited<ReturnType<typeof prisma.monster.findMany>> = [];
+  let monsterRows: (typeof monsters.$inferSelect)[] = [];
 
   if (routeBiome) {
-    monsters = await prisma.monster.findMany({
-      where: {
-        biome: routeBiome,
-        level: { gte: levelRange.min, lte: levelRange.max },
-      },
+    monsterRows = await db.query.monsters.findMany({
+      where: and(
+        eq(monsters.biome, routeBiome),
+        gte(monsters.level, levelRange.min),
+        lte(monsters.level, levelRange.max),
+      ),
     });
   }
 
-  if (monsters.length === 0 && destTown?.regionId) {
-    monsters = await prisma.monster.findMany({
-      where: {
-        regionId: destTown.regionId,
-        level: { gte: levelRange.min, lte: levelRange.max },
-      },
+  if (monsterRows.length === 0 && destTown?.regionId) {
+    monsterRows = await db.query.monsters.findMany({
+      where: and(
+        eq(monsters.regionId, destTown.regionId),
+        gte(monsters.level, levelRange.min),
+        lte(monsters.level, levelRange.max),
+      ),
     });
   }
 
-  if (monsters.length === 0) {
-    monsters = await prisma.monster.findMany({
-      where: { level: { gte: levelRange.min, lte: levelRange.max } },
+  if (monsterRows.length === 0) {
+    monsterRows = await db.query.monsters.findMany({
+      where: and(
+        gte(monsters.level, levelRange.min),
+        lte(monsters.level, levelRange.max),
+      ),
     });
   }
 
-  if (monsters.length === 0) {
+  if (monsterRows.length === 0) {
     logger.warn({ memberCharacterIds, levelRange }, 'Group road encounter: no suitable monsters found');
     return { encountered: false };
   }
 
-  const monster = monsters[Math.floor(Math.random() * monsters.length)];
+  const monster = monsterRows[Math.floor(Math.random() * monsterRows.length)];
   const monsterStats = monster.stats as Record<string, number>;
-  const memberCount = characters.length;
+  const memberCount = charRows.length;
 
   // 5. Scale the monster: HP * partySize, bonusDamage + (partySize - 1)
   const scaledMonsterHp = (monsterStats.hp ?? 50) * memberCount;
@@ -884,7 +891,7 @@ export async function resolveGroupRoadEncounter(
 
   // Build player combatants and cache their weapons for combat resolution
   const playerWeapons: Record<string, WeaponInfo> = {};
-  for (const char of characters) {
+  for (const char of charRows) {
     const charStats = parseStats(char.stats);
     const rawWeapon = await getEquippedWeapon(char.id);
     const playerWeapon = applyClassWeaponStat(rawWeapon, char.class ?? null);
@@ -986,7 +993,7 @@ export async function resolveGroupRoadEncounter(
   // 9. Apply outcomes in a transaction
   const memberResults: GroupRoadEncounterResult['memberResults'] = [];
 
-  await prisma.$transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     if (partyWon) {
       // Win: split XP and gold among living members
       const totalXp = getMonsterKillXp(monster.level);
@@ -1002,19 +1009,16 @@ export async function resolveGroupRoadEncounter(
       }
       const goldPerMember = livingCount > 0 ? Math.floor(totalGold / livingCount) : 0;
 
-      for (const char of characters) {
+      for (const char of charRows) {
         const combatant = playerResults.find(p => p.id === char.id);
         const survived = combatant?.isAlive ?? false;
 
         if (survived) {
-          await tx.character.update({
-            where: { id: char.id },
-            data: {
-              xp: { increment: xpPerMember },
-              gold: { increment: goldPerMember },
-              health: combatant?.currentHp ?? char.health,
-            },
-          });
+          await tx.update(characters).set({
+            xp: sql`${characters.xp} + ${xpPerMember}`,
+            gold: sql`${characters.gold} + ${goldPerMember}`,
+            health: combatant?.currentHp ?? char.health,
+          }).where(eq(characters.id, char.id));
           memberResults.push({
             characterId: char.id,
             survived: true,
@@ -1023,12 +1027,9 @@ export async function resolveGroupRoadEncounter(
           });
         } else {
           // Dead member: no rewards
-          await tx.character.update({
-            where: { id: char.id },
-            data: {
-              health: char.maxHealth, // respawn at full HP
-            },
-          });
+          await tx.update(characters).set({
+            health: char.maxHealth, // respawn at full HP
+          }).where(eq(characters.id, char.id));
           memberResults.push({
             characterId: char.id,
             survived: false,
@@ -1039,7 +1040,7 @@ export async function resolveGroupRoadEncounter(
       }
     } else {
       // Loss: dead members get death penalty, all members get consolation XP
-      for (const char of characters) {
+      for (const char of charRows) {
         const combatant = playerResults.find(p => p.id === char.id);
         const survived = combatant?.isAlive ?? false;
 
@@ -1052,27 +1053,24 @@ export async function resolveGroupRoadEncounter(
             originTownId,
           );
 
-          await tx.character.update({
-            where: { id: char.id },
-            data: {
-              health: char.maxHealth, // respawn at full HP
-              gold: Math.max(0, char.gold - penalty.goldLost),
-              xp: Math.max(0, char.xp - penalty.xpLost),
-            },
-          });
+          await tx.update(characters).set({
+            health: char.maxHealth, // respawn at full HP
+            gold: Math.max(0, char.gold - penalty.goldLost),
+            xp: Math.max(0, char.xp - penalty.xpLost),
+          }).where(eq(characters.id, char.id));
 
           // Damage equipment durability
-          const equipment = await tx.characterEquipment.findMany({
-            where: { characterId: char.id },
-            select: { itemId: true },
+          const equipment = await tx.query.characterEquipment.findMany({
+            where: eq(characterEquipment.characterId, char.id),
+            columns: { itemId: true },
           });
           if (equipment.length > 0) {
             const itemIds = equipment.map(e => e.itemId);
-            await tx.$executeRaw`
+            await tx.execute(sql`
               UPDATE "items"
               SET "current_durability" = GREATEST(0, "current_durability" - ${penalty.durabilityDamage})
-              WHERE "id" IN (${Prisma.join(itemIds)})
-            `;
+              WHERE "id" = ANY(${itemIds})
+            `);
           }
 
           memberResults.push({
@@ -1097,10 +1095,9 @@ export async function resolveGroupRoadEncounter(
         }
 
         // All members get consolation XP
-        await tx.character.update({
-          where: { id: char.id },
-          data: { xp: { increment: ACTION_XP.PVE_SURVIVE } },
-        });
+        await tx.update(characters).set({
+          xp: sql`${characters.xp} + ${ACTION_XP.PVE_SURVIVE}`,
+        }).where(eq(characters.id, char.id));
       }
     }
   });
@@ -1113,14 +1110,16 @@ export async function resolveGroupRoadEncounter(
           onMonsterKill(mr.characterId, monster.name, 1);
           await checkLevelUp(mr.characterId);
 
-          const pveWins = await prisma.combatParticipant.count({
-            where: {
-              characterId: mr.characterId,
-              session: { type: 'PVE', status: 'COMPLETED' },
-              currentHp: { gt: 0 },
-            },
-          });
-          await checkAchievements(mr.characterId, 'combat_pve', { wins: pveWins });
+          const [{ total: pveWins }] = await db.select({ total: count() })
+            .from(combatParticipants)
+            .innerJoin(combatSessions, eq(combatParticipants.sessionId, combatSessions.id))
+            .where(and(
+              eq(combatParticipants.characterId, mr.characterId),
+              eq(combatSessions.type, 'PVE'),
+              eq(combatSessions.status, 'COMPLETED'),
+              gt(combatParticipants.currentHp, 0),
+            ));
+          await checkAchievements(mr.characterId, 'combat_pve', { wins: Number(pveWins) });
         }
       }
     }
@@ -1140,14 +1139,14 @@ export async function resolveGroupRoadEncounter(
     const encounterCtx = buildEncounterContext(combatState);
     const roundsWithContext = [{ _encounterContext: encounterCtx }, ...roundsData];
 
-    for (let ci = 0; ci < characters.length; ci++) {
-      const char = characters[ci];
+    for (let ci = 0; ci < charRows.length; ci++) {
+      const char = charRows[ci];
       const combatant = playerResults.find(p => p.id === char.id);
       const mr = memberResults.find(m => m.characterId === char.id);
 
       try {
-        await prisma.combatEncounterLog.create({
-          data: {
+        await db.insert(combatEncounterLogs).values({
+            id: crypto.randomUUID(),
             type: 'pve',
             sessionId,
             characterId: char.id,
@@ -1156,8 +1155,8 @@ export async function resolveGroupRoadEncounter(
             opponentName: monster.name,
             townId: null, // road encounter, not in a town
             partyId: partyId ?? null,
-            startedAt: new Date(Date.now() - (totalRounds * 6000)),
-            endedAt: new Date(),
+            startedAt: new Date(Date.now() - (totalRounds * 6000)).toISOString(),
+            endedAt: new Date().toISOString(),
             outcome,
             totalRounds,
             characterStartHp: char.maxHealth,
@@ -1176,7 +1175,6 @@ export async function resolveGroupRoadEncounter(
             destinationTownId,
             simulationTick: getSimulationTick(),
             simulationRunId: getSimulationRunId(),
-          },
         });
       } catch (logErr: unknown) {
         logger.error(

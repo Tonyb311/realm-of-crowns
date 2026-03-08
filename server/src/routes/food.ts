@@ -1,11 +1,13 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq } from 'drizzle-orm';
+import { characters, inventories, items, itemTemplates, marketListings } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
@@ -18,50 +20,39 @@ router.get('/inventory', authGuard, characterGuard, async (req: AuthenticatedReq
   try {
     const character = req.character!;
 
-    const foodItems = await prisma.inventory.findMany({
-      where: {
-        characterId: character.id,
+    const foodItems = await db.query.inventories.findMany({
+      where: eq(inventories.characterId, character.id),
+      with: {
         item: {
-          template: { isFood: true },
-        },
-      },
-      include: {
-        item: {
-          include: {
-            template: {
-              select: {
-                id: true,
-                name: true,
-                description: true,
-                isFood: true,
-                isBeverage: true,
-                foodBuff: true,
-                shelfLifeDays: true,
-                isPerishable: true,
-              },
-            },
+          with: {
+            itemTemplate: true,
           },
         },
       },
-      orderBy: { item: { daysRemaining: 'asc' } },
     });
 
+    // Filter to food items in application code (Drizzle doesn't support nested where on relations)
+    const filtered = foodItems.filter(inv => inv.item?.itemTemplate?.isFood);
+
+    // Sort by daysRemaining ascending
+    filtered.sort((a, b) => (a.item.daysRemaining ?? Infinity) - (b.item.daysRemaining ?? Infinity));
+
     return res.json({
-      food: foodItems.map(inv => ({
+      food: filtered.map(inv => ({
         inventoryId: inv.id,
         itemId: inv.item.id,
         templateId: inv.item.templateId,
-        name: inv.item.template.name,
-        description: inv.item.template.description,
+        name: inv.item.itemTemplate.name,
+        description: inv.item.itemTemplate.description,
         quantity: inv.quantity,
         daysRemaining: inv.item.daysRemaining,
-        isPerishable: inv.item.template.isPerishable,
-        isBeverage: inv.item.template.isBeverage,
-        foodBuff: inv.item.template.foodBuff,
+        isPerishable: inv.item.itemTemplate.isPerishable,
+        isBeverage: inv.item.itemTemplate.isBeverage,
+        foodBuff: inv.item.itemTemplate.foodBuff,
       })),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'food-inventory', req)) return;
+    if (handleDbError(error, res, 'food-inventory', req)) return;
     logRouteError(req, 500, 'Food inventory error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -80,7 +71,7 @@ router.get('/settings', authGuard, characterGuard, async (req: AuthenticatedRequ
       preferredFoodId: character.preferredFoodId,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'food-settings', req)) return;
+    if (handleDbError(error, res, 'food-settings', req)) return;
     logRouteError(req, 500, 'Food settings error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -101,20 +92,17 @@ router.put('/settings', authGuard, characterGuard, validate(updateFoodSettingsSc
 
     const { foodPriority, preferredFoodId } = req.body;
 
-    await prisma.character.update({
-      where: { id: character.id },
-      data: {
-        foodPriority,
-        preferredFoodId: preferredFoodId ?? null,
-      },
-    });
+    await db.update(characters).set({
+      foodPriority,
+      preferredFoodId: preferredFoodId ?? null,
+    }).where(eq(characters.id, character.id));
 
     return res.json({
       foodPriority,
       preferredFoodId: preferredFoodId ?? null,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'update-food-settings', req)) return;
+    if (handleDbError(error, res, 'update-food-settings', req)) return;
     logRouteError(req, 500, 'Update food settings error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -130,55 +118,44 @@ router.get('/market-freshness/:townId', authGuard, characterGuard, async (req: A
 
     const { townId } = req.params;
 
-    const listings = await prisma.marketListing.findMany({
-      where: {
-        townId,
+    const listings = await db.query.marketListings.findMany({
+      where: eq(marketListings.townId, townId),
+      with: {
         item: {
-          template: { isFood: true },
-        },
-      },
-      include: {
-        item: {
-          include: {
-            template: {
-              select: {
-                id: true,
-                name: true,
-                description: true,
-                isFood: true,
-                isBeverage: true,
-                foodBuff: true,
-                shelfLifeDays: true,
-                isPerishable: true,
-              },
-            },
+          with: {
+            itemTemplate: true,
           },
         },
-        seller: {
-          select: { id: true, name: true },
+        character: {
+          columns: { id: true, name: true },
         },
       },
-      orderBy: { price: 'asc' },
     });
 
+    // Filter to food items in application code
+    const foodListings = listings.filter(l => l.item?.itemTemplate?.isFood);
+
+    // Sort by price ascending
+    foodListings.sort((a, b) => a.price - b.price);
+
     return res.json({
-      listings: listings.map(listing => ({
+      listings: foodListings.map(listing => ({
         listingId: listing.id,
-        seller: { id: listing.seller.id, name: listing.seller.name },
+        seller: { id: listing.character.id, name: listing.character.name },
         itemId: listing.item.id,
-        name: listing.item.template.name,
-        description: listing.item.template.description,
+        name: listing.item.itemTemplate.name,
+        description: listing.item.itemTemplate.description,
         price: listing.price,
         quantity: listing.quantity,
         daysRemaining: listing.item.daysRemaining,
-        shelfLifeDays: listing.item.template.shelfLifeDays,
-        isPerishable: listing.item.template.isPerishable,
-        isBeverage: listing.item.template.isBeverage,
-        foodBuff: listing.item.template.foodBuff,
+        shelfLifeDays: listing.item.itemTemplate.shelfLifeDays,
+        isPerishable: listing.item.itemTemplate.isPerishable,
+        isBeverage: listing.item.itemTemplate.isBeverage,
+        foodBuff: listing.item.itemTemplate.foodBuff,
       })),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'market-freshness', req)) return;
+    if (handleDbError(error, res, 'market-freshness', req)) return;
     logRouteError(req, 500, 'Market freshness error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

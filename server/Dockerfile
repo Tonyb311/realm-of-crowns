@@ -24,8 +24,9 @@ COPY client/ ./client/
 # Generate Prisma client
 RUN cd database && pnpm exec prisma generate --schema=prisma/schema.prisma
 
-# Build shared first, then server and client
+# Build shared and database schema first, then server and client
 RUN pnpm --filter @realm-of-crowns/shared build
+RUN pnpm --filter @realm-of-crowns/database run build:schema
 RUN pnpm --filter @realm-of-crowns/server build
 RUN cd client && pnpm exec vite build
 
@@ -54,6 +55,7 @@ COPY database/prisma/ ./database/prisma/
 
 # Copy built output
 COPY --from=builder /app/shared/dist/ ./shared/dist/
+COPY --from=builder /app/database/dist/ ./database/dist/
 COPY --from=builder /app/server/dist/ ./server/dist/
 COPY --from=builder /app/client/dist/ ./client/dist/
 

@@ -1,4 +1,4 @@
-import { Race, ProfessionType, BiomeType, ElementalType } from '@prisma/client';
+import type { Race, ProfessionType, BiomeType, ElementalType } from '@shared/enums';
 
 // ---------------------------------------------------------------------------
 // Types

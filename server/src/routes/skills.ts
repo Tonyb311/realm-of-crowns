@@ -1,12 +1,14 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, inArray } from 'drizzle-orm';
+import { characterAbilities, abilities, characters } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { ABILITIES_BY_CLASS, SPECIALIZATIONS, TIER0_ABILITIES_BY_CLASS, TIER0_CHOICE_LEVELS } from '@shared/data/skills';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { autoGrantAbilities } from '../services/ability-grants';
 
@@ -39,10 +41,10 @@ router.get('/tree', authGuard, characterGuard, async (req: AuthenticatedRequest,
     }
 
     // Get character's unlocked abilities
-    const unlockedAbilities = await prisma.characterAbility.findMany({
-      where: { characterId: character.id },
-      select: { abilityId: true, unlockedAt: true },
-    });
+    const unlockedAbilities = await db.select({
+      abilityId: characterAbilities.abilityId,
+      unlockedAt: characterAbilities.unlockedAt,
+    }).from(characterAbilities).where(eq(characterAbilities.characterId, character.id));
     const unlockedSet = new Set(unlockedAbilities.map((a) => a.abilityId));
 
     const specializations = SPECIALIZATIONS[character.class] ?? [];
@@ -115,7 +117,7 @@ router.get('/tree', authGuard, characterGuard, async (req: AuthenticatedRequest,
       tree,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'skill-tree', req)) return;
+    if (handleDbError(error, res, 'skill-tree', req)) return;
     logRouteError(req, 500, 'Skill tree error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -138,10 +140,9 @@ router.get('/tier0-pending', authGuard, characterGuard, async (req: Authenticate
     }
 
     // Get character's unlocked ability IDs
-    const existing = await prisma.characterAbility.findMany({
-      where: { characterId: character.id },
-      select: { abilityId: true },
-    });
+    const existing = await db.select({
+      abilityId: characterAbilities.abilityId,
+    }).from(characterAbilities).where(eq(characterAbilities.characterId, character.id));
     const existingSet = new Set(existing.map((e) => e.abilityId));
 
     const pending: Array<{
@@ -165,7 +166,7 @@ router.get('/tier0-pending', authGuard, characterGuard, async (req: Authenticate
 
     return res.json({ pending });
   } catch (error) {
-    if (handlePrismaError(error, res, 'tier0-pending', req)) return;
+    if (handleDbError(error, res, 'tier0-pending', req)) return;
     logRouteError(req, 500, 'Tier0 pending error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -203,11 +204,11 @@ router.post('/choose-tier0', authGuard, characterGuard, validate(chooseTier0Sche
     const groupAbilities = tier0Abilities.filter((a) => a.choiceGroup === abilityDef.choiceGroup);
     const groupAbilityIds = groupAbilities.map((a) => a.id);
 
-    const existingChoice = await prisma.characterAbility.findFirst({
-      where: {
-        characterId: character.id,
-        abilityId: { in: groupAbilityIds },
-      },
+    const existingChoice = await db.query.characterAbilities.findFirst({
+      where: and(
+        eq(characterAbilities.characterId, character.id),
+        inArray(characterAbilities.abilityId, groupAbilityIds),
+      ),
     });
 
     if (existingChoice) {
@@ -215,33 +216,30 @@ router.post('/choose-tier0', authGuard, characterGuard, validate(chooseTier0Sche
     }
 
     // Ensure the Ability DB row exists
-    let dbAbility = await prisma.ability.findFirst({
-      where: { name: abilityDef.name },
+    let dbAbility = await db.query.abilities.findFirst({
+      where: eq(abilities.name, abilityDef.name),
     });
 
     if (!dbAbility) {
-      dbAbility = await prisma.ability.create({
-        data: {
-          id: abilityDef.id,
-          name: abilityDef.name,
-          description: abilityDef.description,
-          class: abilityDef.class,
-          specialization: abilityDef.specialization,
-          tier: abilityDef.tier,
-          effects: abilityDef.effects as any,
-          cooldown: abilityDef.cooldown,
-          prerequisiteAbilityId: abilityDef.prerequisiteAbilityId ?? null,
-          levelRequired: abilityDef.levelRequired,
-        },
-      });
+      [dbAbility] = await db.insert(abilities).values({
+        id: abilityDef.id,
+        name: abilityDef.name,
+        description: abilityDef.description,
+        class: abilityDef.class,
+        specialization: abilityDef.specialization,
+        tier: abilityDef.tier,
+        effects: abilityDef.effects as any,
+        cooldown: abilityDef.cooldown,
+        prerequisiteAbilityId: abilityDef.prerequisiteAbilityId ?? null,
+        levelRequired: abilityDef.levelRequired,
+      }).returning();
     }
 
     // Create CharacterAbility row
-    await prisma.characterAbility.create({
-      data: {
-        characterId: character.id,
-        abilityId: dbAbility.id,
-      },
+    await db.insert(characterAbilities).values({
+      id: crypto.randomUUID(),
+      characterId: character.id,
+      abilityId: dbAbility.id,
     });
 
     return res.json({
@@ -257,7 +255,7 @@ router.post('/choose-tier0', authGuard, characterGuard, validate(chooseTier0Sche
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'choose-tier0', req)) return;
+    if (handleDbError(error, res, 'choose-tier0', req)) return;
     logRouteError(req, 500, 'Choose tier0 error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -291,10 +289,9 @@ router.post('/specialize', authGuard, characterGuard, validate(specializeSchema)
       });
     }
 
-    await prisma.character.update({
-      where: { id: character.id },
-      data: { specialization },
-    });
+    await db.update(characters)
+      .set({ specialization })
+      .where(eq(characters.id, character.id));
 
     // Auto-grant all abilities the character qualifies for at their current level
     const grantedAbilities = await autoGrantAbilities(character.id);
@@ -306,7 +303,7 @@ router.post('/specialize', authGuard, characterGuard, validate(specializeSchema)
       abilitiesGranted: grantedAbilities,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'skill-specialize', req)) return;
+    if (handleDbError(error, res, 'skill-specialize', req)) return;
     logRouteError(req, 500, 'Specialize error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -319,12 +316,12 @@ router.get('/abilities', authGuard, characterGuard, async (req: AuthenticatedReq
   try {
     const character = req.character!;
 
-    const characterAbilities = await prisma.characterAbility.findMany({
-      where: { characterId: character.id },
-      include: { ability: true },
+    const charAbilities = await db.query.characterAbilities.findMany({
+      where: eq(characterAbilities.characterId, character.id),
+      with: { ability: true },
     });
 
-    const abilities = characterAbilities.map((ca) => ({
+    const abilityList = charAbilities.map((ca) => ({
       id: ca.ability.id,
       name: ca.ability.name,
       description: ca.ability.description,
@@ -334,12 +331,12 @@ router.get('/abilities', authGuard, characterGuard, async (req: AuthenticatedReq
       effects: ca.ability.effects,
       cooldown: ca.ability.cooldown,
       levelRequired: ca.ability.levelRequired,
-      unlockedAt: ca.unlockedAt.toISOString(),
+      unlockedAt: ca.unlockedAt,
     }));
 
-    return res.json({ abilities });
+    return res.json({ abilities: abilityList });
   } catch (error) {
-    if (handlePrismaError(error, res, 'skill-abilities', req)) return;
+    if (handleDbError(error, res, 'skill-abilities', req)) return;
     logRouteError(req, 500, 'Get abilities error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

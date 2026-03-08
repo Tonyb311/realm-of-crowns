@@ -1,4 +1,6 @@
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq } from 'drizzle-orm';
+import { characters, characterAbilities } from '@database/tables';
 import { emitLevelUp } from '../socket/events';
 import {
   xpToNextLevel,
@@ -54,8 +56,8 @@ export interface LevelUpResult {
  * Returns null if no level up occurred, or the details of the level-up(s).
  */
 export async function checkLevelUp(characterId: string): Promise<LevelUpResult | null> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
   });
 
   if (!character) return null;
@@ -71,15 +73,12 @@ export async function checkLevelUp(characterId: string): Promise<LevelUpResult |
 
   const newMaxHealth = character.maxHealth + maxHealthGained;
 
-  await prisma.character.update({
-    where: { id: characterId },
-    data: {
-      level: newLevel,
-      unspentStatPoints: character.unspentStatPoints + statPointsGained,
-      maxHealth: newMaxHealth,
-      health: newMaxHealth, // heal to full
-    },
-  });
+  await db.update(characters).set({
+    level: newLevel,
+    unspentStatPoints: character.unspentStatPoints + statPointsGained,
+    maxHealth: newMaxHealth,
+    health: newMaxHealth, // heal to full
+  }).where(eq(characters.id, characterId));
 
   // Auto-grant any abilities the character now qualifies for
   const abilitiesGranted = await autoGrantAbilities(characterId);
@@ -107,9 +106,9 @@ export async function checkLevelUp(characterId: string): Promise<LevelUpResult |
   let tier0Pending = 0;
   if (character.class) {
     const tier0Abilities = TIER0_ABILITIES_BY_CLASS[character.class] ?? [];
-    const existingAbilities = await prisma.characterAbility.findMany({
-      where: { characterId },
-      select: { abilityId: true },
+    const existingAbilities = await db.query.characterAbilities.findMany({
+      where: eq(characterAbilities.characterId, characterId),
+      columns: { abilityId: true },
     });
     const existingSet = new Set(existingAbilities.map((e) => e.abilityId));
 

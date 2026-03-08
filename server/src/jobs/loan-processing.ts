@@ -1,19 +1,20 @@
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, lt, and } from 'drizzle-orm';
+import { loans } from '@database/tables';
 import { getGameDay } from '../lib/game-day';
 
 export async function processLoans(): Promise<void> {
   const gameDay = getGameDay();
 
   // Find active loans past due
-  const defaultedLoans = await prisma.loan.findMany({
-    where: { status: 'ACTIVE', dueDay: { lt: gameDay } },
+  const defaultedLoans = await db.query.loans.findMany({
+    where: and(eq(loans.status, 'ACTIVE'), lt(loans.dueDay, gameDay)),
   });
 
   for (const loan of defaultedLoans) {
-    await prisma.loan.update({
-      where: { id: loan.id },
-      data: { status: 'DEFAULTED' },
-    });
+    await db.update(loans)
+      .set({ status: 'DEFAULTED' })
+      .where(eq(loans.id, loan.id));
   }
 
   if (defaultedLoans.length > 0) {

@@ -1,6 +1,8 @@
 import { Router, Response } from 'express';
-import { prisma } from '../lib/prisma';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { db } from '../lib/db';
+import { eq, and } from 'drizzle-orm';
+import { dailyReports } from '@database/tables';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
@@ -25,7 +27,7 @@ router.get('/latest', authGuard, characterGuard, async (req: AuthenticatedReques
 
     return res.json({ report: transformReport(report) });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get latest report', req)) return;
+    if (handleDbError(error, res, 'get latest report', req)) return;
     logRouteError(req, 500, 'Get latest report error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -44,7 +46,7 @@ router.get('/history', authGuard, characterGuard, async (req: AuthenticatedReque
 
     return res.json({ reports: reports.map(transformReport) });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get report history', req)) return;
+    if (handleDbError(error, res, 'get report history', req)) return;
     logRouteError(req, 500, 'Get report history error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -65,10 +67,8 @@ router.get('/:tickDate', authGuard, characterGuard, async (req: AuthenticatedReq
       return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
     }
 
-    const report = await prisma.dailyReport.findUnique({
-      where: {
-        characterId_tickDate: { characterId: character.id, tickDate },
-      },
+    const report = await db.query.dailyReports.findFirst({
+      where: and(eq(dailyReports.characterId, character.id), eq(dailyReports.tickDate, tickDate)),
     });
 
     if (!report) {
@@ -77,7 +77,7 @@ router.get('/:tickDate', authGuard, characterGuard, async (req: AuthenticatedReq
 
     return res.json({ report: transformReport(report) });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get report by date', req)) return;
+    if (handleDbError(error, res, 'get report by date', req)) return;
     logRouteError(req, 500, 'Get report by date error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -93,8 +93,8 @@ router.post('/:id/dismiss', authGuard, characterGuard, async (req: Authenticated
     const { id } = req.params;
 
     // Verify the report belongs to this character
-    const report = await prisma.dailyReport.findFirst({
-      where: { id, characterId: character.id },
+    const report = await db.query.dailyReports.findFirst({
+      where: and(eq(dailyReports.id, id), eq(dailyReports.characterId, character.id)),
     });
 
     if (!report) {
@@ -104,7 +104,7 @@ router.post('/:id/dismiss', authGuard, characterGuard, async (req: Authenticated
     await dismissReport(id);
     return res.json({ success: true });
   } catch (error) {
-    if (handlePrismaError(error, res, 'dismiss report', req)) return;
+    if (handleDbError(error, res, 'dismiss report', req)) return;
     logRouteError(req, 500, 'Dismiss report error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

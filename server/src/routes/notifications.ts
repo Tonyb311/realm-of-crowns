@@ -1,9 +1,11 @@
 import { Router, Response } from 'express';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, desc, count } from 'drizzle-orm';
+import { notifications } from '@database/tables';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
@@ -17,32 +19,31 @@ router.get('/', authGuard, characterGuard, async (req: AuthenticatedRequest, res
     const unreadOnly = req.query.unreadOnly === 'true';
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
-    const skip = (page - 1) * limit;
+    const offset = (page - 1) * limit;
 
-    const where = {
-      characterId: character.id,
-      ...(unreadOnly ? { read: false } : {}),
-    };
+    const whereClause = unreadOnly
+      ? and(eq(notifications.characterId, character.id), eq(notifications.read, false))
+      : eq(notifications.characterId, character.id);
 
-    const [notifications, total] = await Promise.all([
-      prisma.notification.findMany({
-        where,
-        orderBy: { timestamp: 'desc' },
-        skip,
-        take: limit,
-      }),
-      prisma.notification.count({ where }),
+    const [notificationRows, [{ total }]] = await Promise.all([
+      db.select().from(notifications)
+        .where(whereClause)
+        .orderBy(desc(notifications.timestamp))
+        .offset(offset)
+        .limit(limit),
+      db.select({ total: count() }).from(notifications)
+        .where(whereClause),
     ]);
 
     return res.json({
-      notifications,
+      notifications: notificationRows,
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'notification-list', req)) return;
+    if (handleDbError(error, res, 'notification-list', req)) return;
     logRouteError(req, 500, 'Get notifications error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -55,14 +56,13 @@ router.patch('/read-all', authGuard, characterGuard, async (req: AuthenticatedRe
   try {
     const character = req.character!;
 
-    const result = await prisma.notification.updateMany({
-      where: { characterId: character.id, read: false },
-      data: { read: true },
-    });
+    const result = await db.update(notifications)
+      .set({ read: true })
+      .where(and(eq(notifications.characterId, character.id), eq(notifications.read, false)));
 
-    return res.json({ updated: result.count });
+    return res.json({ updated: result.rowCount ?? 0 });
   } catch (error) {
-    if (handlePrismaError(error, res, 'notification-read-all', req)) return;
+    if (handleDbError(error, res, 'notification-read-all', req)) return;
     logRouteError(req, 500, 'Mark all notifications read error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -74,8 +74,8 @@ router.patch('/:id/read', authGuard, characterGuard, async (req: AuthenticatedRe
   try {
     const character = req.character!;
 
-    const notification = await prisma.notification.findUnique({
-      where: { id: req.params.id },
+    const notification = await db.query.notifications.findFirst({
+      where: eq(notifications.id, req.params.id),
     });
 
     if (!notification) {
@@ -86,14 +86,14 @@ router.patch('/:id/read', authGuard, characterGuard, async (req: AuthenticatedRe
       return res.status(403).json({ error: 'Not your notification' });
     }
 
-    const updated = await prisma.notification.update({
-      where: { id: notification.id },
-      data: { read: true },
-    });
+    const [updated] = await db.update(notifications)
+      .set({ read: true })
+      .where(eq(notifications.id, notification.id))
+      .returning();
 
     return res.json({ notification: updated });
   } catch (error) {
-    if (handlePrismaError(error, res, 'notification-read', req)) return;
+    if (handleDbError(error, res, 'notification-read', req)) return;
     logRouteError(req, 500, 'Mark notification read error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -105,8 +105,8 @@ router.delete('/:id', authGuard, characterGuard, async (req: AuthenticatedReques
   try {
     const character = req.character!;
 
-    const notification = await prisma.notification.findUnique({
-      where: { id: req.params.id },
+    const notification = await db.query.notifications.findFirst({
+      where: eq(notifications.id, req.params.id),
     });
 
     if (!notification) {
@@ -117,11 +117,11 @@ router.delete('/:id', authGuard, characterGuard, async (req: AuthenticatedReques
       return res.status(403).json({ error: 'Not your notification' });
     }
 
-    await prisma.notification.delete({ where: { id: notification.id } });
+    await db.delete(notifications).where(eq(notifications.id, notification.id));
 
     return res.json({ message: 'Notification deleted' });
   } catch (error) {
-    if (handlePrismaError(error, res, 'notification-delete', req)) return;
+    if (handleDbError(error, res, 'notification-delete', req)) return;
     logRouteError(req, 500, 'Delete notification error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

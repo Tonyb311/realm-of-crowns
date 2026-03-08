@@ -1,11 +1,13 @@
 import { Router, Response } from 'express';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and } from 'drizzle-orm';
+import { towns, dailyActions } from '@database/tables';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { getTodayTickDate, getNextTickTime } from '../lib/game-day';
 import { getGatheringSpot } from '@shared/data/gathering';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
@@ -23,7 +25,9 @@ router.get('/spot', authGuard, characterGuard, async (req: AuthenticatedRequest,
       return res.json({ spot: null, canGather: false, actionsRemaining: 0, reason: 'traveling' });
     }
 
-    const town = await prisma.town.findUnique({ where: { id: character.currentTownId } });
+    const town = await db.query.towns.findFirst({
+      where: eq(towns.id, character.currentTownId),
+    });
     if (!town) {
       return res.json({ spot: null, canGather: false, actionsRemaining: 0, reason: 'no_town' });
     }
@@ -34,8 +38,8 @@ router.get('/spot', authGuard, characterGuard, async (req: AuthenticatedRequest,
     }
 
     const todayTick = getTodayTickDate();
-    const existing = await prisma.dailyAction.findFirst({
-      where: { characterId: character.id, tickDate: todayTick },
+    const existing = await db.query.dailyActions.findFirst({
+      where: and(eq(dailyActions.characterId, character.id), eq(dailyActions.tickDate, todayTick.toISOString())),
     });
 
     const canGather = !existing;
@@ -68,7 +72,7 @@ router.get('/spot', authGuard, characterGuard, async (req: AuthenticatedRequest,
       } : null,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'gathering-spot', req)) return;
+    if (handleDbError(error, res, 'gathering-spot', req)) return;
     logRouteError(req, 500, 'Gathering spot error', error);
     return res.status(500).json({ error: 'An unexpected error occurred.' });
   }
@@ -90,8 +94,8 @@ router.post('/gather', authGuard, characterGuard, async (req: AuthenticatedReque
 
     // Check daily action availability
     const todayTick = getTodayTickDate();
-    const existing = await prisma.dailyAction.findFirst({
-      where: { characterId: character.id, tickDate: todayTick },
+    const existing = await db.query.dailyActions.findFirst({
+      where: and(eq(dailyActions.characterId, character.id), eq(dailyActions.tickDate, todayTick.toISOString())),
     });
     if (existing) {
       return res.status(429).json({
@@ -102,7 +106,9 @@ router.post('/gather', authGuard, characterGuard, async (req: AuthenticatedReque
     }
 
     // Look up town and spot
-    const town = await prisma.town.findUnique({ where: { id: character.currentTownId } });
+    const town = await db.query.towns.findFirst({
+      where: eq(towns.id, character.currentTownId),
+    });
     if (!town) {
       return res.status(404).json({ error: 'Town not found.' });
     }
@@ -113,28 +119,27 @@ router.post('/gather', authGuard, characterGuard, async (req: AuthenticatedReque
     }
 
     // Create LOCKED_IN daily action — items and XP are awarded at tick resolution
-    await prisma.dailyAction.create({
-      data: {
-        characterId: character.id,
-        tickDate: todayTick,
-        actionType: 'GATHER',
-        actionTarget: {
-          type: 'town_gathering',
-          townId: town.id,
-          spotName: spot.name,
-          resourceType: spot.resourceType,
-          itemName: spot.item.templateName,
-          templateName: spot.item.templateName,
-          itemType: spot.item.type === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL',
-          isFood: spot.item.isFood,
-          shelfLifeDays: spot.item.shelfLifeDays,
-          description: spot.item.description,
-          foodBuff: spot.item.foodBuff ?? null,
-          minYield: spot.minYield,
-          maxYield: spot.maxYield,
-        },
-        status: 'LOCKED_IN',
+    await db.insert(dailyActions).values({
+      id: crypto.randomUUID(),
+      characterId: character.id,
+      tickDate: todayTick.toISOString(),
+      actionType: 'GATHER',
+      actionTarget: {
+        type: 'town_gathering',
+        townId: town.id,
+        spotName: spot.name,
+        resourceType: spot.resourceType,
+        itemName: spot.item.templateName,
+        templateName: spot.item.templateName,
+        itemType: spot.item.type === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL',
+        isFood: spot.item.isFood,
+        shelfLifeDays: spot.item.shelfLifeDays,
+        description: spot.item.description,
+        foodBuff: spot.item.foodBuff ?? null,
+        minYield: spot.minYield,
+        maxYield: spot.maxYield,
       },
+      status: 'LOCKED_IN',
     });
 
     return res.json({
@@ -147,7 +152,7 @@ router.post('/gather', authGuard, characterGuard, async (req: AuthenticatedReque
       resetsAt: getNextTickTime().toISOString(),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'gathering-gather', req)) return;
+    if (handleDbError(error, res, 'gathering-gather', req)) return;
     logRouteError(req, 500, 'Gathering error', error);
     return res.status(500).json({ error: 'An unexpected error occurred.' });
   }

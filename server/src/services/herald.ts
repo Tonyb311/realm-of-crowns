@@ -1,5 +1,6 @@
-import { prisma } from '../lib/prisma';
-import { Race } from '@prisma/client';
+import { db } from '../lib/db';
+import { worldEvents } from '@database/tables';
+import type { Race } from '@shared/enums';
 import { emitWorldEvent } from '../socket/events';
 
 // ---------------------------------------------------------------------------
@@ -40,14 +41,13 @@ async function createWorldEvent(
   description: string,
   metadata: Record<string, unknown> = {},
 ) {
-  const event = await prisma.worldEvent.create({
-    data: {
-      eventType,
-      title,
-      description,
-      metadata: metadata as any,
-    },
-  });
+  const [event] = await db.insert(worldEvents).values({
+    id: crypto.randomUUID(),
+    eventType,
+    title,
+    description,
+    metadata: metadata as any,
+  }).returning();
 
   try {
     emitWorldEvent({
@@ -56,7 +56,7 @@ async function createWorldEvent(
       title: event.title,
       description: event.description,
       metadata: event.metadata,
-      createdAt: event.createdAt.toISOString(),
+      createdAt: event.createdAt,
     });
   } catch {
     console.warn('[Herald] Socket.io not available, skipping broadcast');

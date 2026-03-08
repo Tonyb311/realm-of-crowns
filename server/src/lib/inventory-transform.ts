@@ -2,7 +2,7 @@
 // Shared inventory transformation (characters.ts uses this in 2 endpoints)
 // ---------------------------------------------------------------------------
 
-/** Shape of a single inventory row from Prisma (with item.template + item.craftedBy includes). */
+/** Shape of a single inventory row (Drizzle relation names: itemTemplate + character_craftedById). */
 interface InventoryRow {
   quantity: number;
   item: {
@@ -12,8 +12,8 @@ interface InventoryRow {
     quality: string | null;
     craftedById: string | null;
     enchantments: unknown;
-    craftedBy?: { id: string; name: string } | null;
-    template: {
+    character_craftedById?: { id: string; name: string } | null;
+    itemTemplate: {
       id: string;
       name: string;
       type: string;
@@ -67,28 +67,28 @@ export function transformInventory(
       id: inv.item.id,
       itemId: inv.item.id,
       templateId: inv.item.templateId,
-      templateName: inv.item.template.name,
-      name: inv.item.template.name,
-      type: inv.item.template.type,
-      rarity: inv.item.template.rarity,
-      description: inv.item.template.description,
+      templateName: inv.item.itemTemplate.name,
+      name: inv.item.itemTemplate.name,
+      type: inv.item.itemTemplate.type,
+      rarity: inv.item.itemTemplate.rarity,
+      description: inv.item.itemTemplate.description,
       quantity: inv.quantity,
       currentDurability: inv.item.currentDurability,
       quality: inv.item.quality,
       craftedById: inv.item.craftedById,
-      craftedByName: inv.item.craftedBy?.name ?? null,
+      craftedByName: inv.item.character_craftedById?.name ?? null,
       enchantments: inv.item.enchantments ?? [],
     };
 
     if (includeTemplate) {
       item.template = {
-        id: inv.item.template.id,
-        name: inv.item.template.name,
-        type: inv.item.template.type,
-        rarity: inv.item.template.rarity,
-        description: inv.item.template.description,
-        stats: inv.item.template.stats,
-        durability: inv.item.template.durability,
+        id: inv.item.itemTemplate.id,
+        name: inv.item.itemTemplate.name,
+        type: inv.item.itemTemplate.type,
+        rarity: inv.item.itemTemplate.rarity,
+        description: inv.item.itemTemplate.description,
+        stats: inv.item.itemTemplate.stats,
+        durability: inv.item.itemTemplate.durability,
       };
     }
 

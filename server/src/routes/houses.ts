@@ -4,13 +4,16 @@
 
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, asc, sql, count } from 'drizzle-orm';
+import { houses, houseStorage, inventories, items, marketListings, itemTemplates } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
+import crypto from 'crypto';
 import { LISTING_DURATION_DAYS } from '@shared/data/market';
 import { invalidateCache } from '../lib/redis';
 
@@ -42,29 +45,29 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
   try {
     const character = req.character!;
 
-    const houses = await prisma.house.findMany({
-      where: { characterId: character.id },
-      include: {
-        town: { select: { id: true, name: true } },
-        storage: true,
+    const houseRows = await db.query.houses.findMany({
+      where: eq(houses.characterId, character.id),
+      with: {
+        town: { columns: { id: true, name: true } },
+        houseStorages: true,
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: asc(houses.createdAt),
     });
 
     return res.json({
-      houses: houses.map(h => ({
+      houses: houseRows.map(h => ({
         id: h.id,
         townId: h.town.id,
         townName: h.town.name,
         tier: h.tier,
         name: h.name,
         storageSlots: h.storageSlots,
-        storageUsed: h.storage.length,
+        storageUsed: h.houseStorages.length,
         isCurrentTown: h.townId === character.currentTownId,
       })),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'houses-mine', req)) return;
+    if (handleDbError(error, res, 'houses-mine', req)) return;
     logRouteError(req, 500, 'List houses error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -79,11 +82,11 @@ router.get('/town/:townId', authGuard, characterGuard, async (req: Authenticated
     const character = req.character!;
     const { townId } = req.params;
 
-    const house = await prisma.house.findUnique({
-      where: { characterId_townId: { characterId: character.id, townId } },
-      include: {
-        town: { select: { id: true, name: true } },
-        storage: true,
+    const house = await db.query.houses.findFirst({
+      where: and(eq(houses.characterId, character.id), eq(houses.townId, townId)),
+      with: {
+        town: { columns: { id: true, name: true } },
+        houseStorages: true,
       },
     });
 
@@ -101,11 +104,11 @@ router.get('/town/:townId', authGuard, characterGuard, async (req: Authenticated
         tier: house.tier,
         name: house.name,
         storageSlots: house.storageSlots,
-        storageUsed: house.storage.length,
+        storageUsed: house.houseStorages.length,
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'houses-town-check', req)) return;
+    if (handleDbError(error, res, 'houses-town-check', req)) return;
     logRouteError(req, 500, 'Check house in town error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -130,13 +133,12 @@ router.get('/:houseId/storage', authGuard, characterGuard, async (req: Authentic
     const character = req.character!;
     const { houseId } = req.params;
 
-    const house = await prisma.house.findUnique({
-      where: { id: houseId },
-      include: {
-        town: { select: { id: true, name: true } },
-        storage: {
-          include: { itemTemplate: { select: { id: true, name: true, type: true, rarity: true } } },
-          orderBy: { itemTemplate: { name: 'asc' } },
+    const house = await db.query.houses.findFirst({
+      where: eq(houses.id, houseId),
+      with: {
+        town: { columns: { id: true, name: true } },
+        houseStorages: {
+          with: { itemTemplate: { columns: { id: true, name: true, type: true, rarity: true } } },
         },
       },
     });
@@ -147,6 +149,11 @@ router.get('/:houseId/storage', authGuard, characterGuard, async (req: Authentic
     if (house.characterId !== character.id) {
       return res.status(403).json({ error: 'You do not own this house' });
     }
+
+    // Sort by item name (Drizzle with: doesn't support nested orderBy)
+    const sortedStorage = house.houseStorages.sort((a, b) =>
+      a.itemTemplate.name.localeCompare(b.itemTemplate.name)
+    );
 
     return res.json({
       house: {
@@ -159,8 +166,8 @@ router.get('/:houseId/storage', authGuard, characterGuard, async (req: Authentic
       },
       storage: {
         capacity: house.storageSlots,
-        used: house.storage.length,
-        items: house.storage.map(s => ({
+        used: sortedStorage.length,
+        items: sortedStorage.map(s => ({
           itemTemplateId: s.itemTemplateId,
           itemName: s.itemTemplate.name,
           itemType: s.itemTemplate.type,
@@ -170,7 +177,7 @@ router.get('/:houseId/storage', authGuard, characterGuard, async (req: Authentic
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'houses-storage-view', req)) return;
+    if (handleDbError(error, res, 'houses-storage-view', req)) return;
     logRouteError(req, 500, 'View house storage error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -190,9 +197,9 @@ router.post('/:houseId/storage/deposit', authGuard, characterGuard, validate(dep
       return res.status(400).json({ error: 'You cannot do this while traveling.' });
     }
 
-    const house = await prisma.house.findUnique({
-      where: { id: houseId },
-      include: { storage: true },
+    const house = await db.query.houses.findFirst({
+      where: eq(houses.id, houseId),
+      with: { houseStorages: true },
     });
 
     if (!house) {
@@ -206,22 +213,21 @@ router.post('/:houseId/storage/deposit', authGuard, characterGuard, validate(dep
     }
 
     // Check slot limit — only if this is a new item type
-    const existingSlot = house.storage.find(s => s.itemTemplateId === itemTemplateId);
-    if (!existingSlot && house.storage.length >= house.storageSlots) {
+    const existingSlot = house.houseStorages.find(s => s.itemTemplateId === itemTemplateId);
+    if (!existingSlot && house.houseStorages.length >= house.storageSlots) {
       return res.status(400).json({ error: `Storage is full (${house.storageSlots} slots). Clear some items first.` });
     }
 
     // Find the item(s) in inventory matching this template
-    const inventoryEntries = await prisma.inventory.findMany({
-      where: {
-        characterId: character.id,
-        item: { templateId: itemTemplateId },
-      },
-      include: { item: { include: { template: true } } },
-      orderBy: { createdAt: 'asc' },
+    // Drizzle doesn't support nested where on relations, so join manually
+    const inventoryEntries = await db.query.inventories.findMany({
+      where: eq(inventories.characterId, character.id),
+      with: { item: { with: { itemTemplate: true } } },
+      orderBy: asc(inventories.createdAt),
     });
+    const matchingEntries = inventoryEntries.filter(e => e.item.itemTemplate.id === itemTemplateId);
 
-    const totalAvailable = inventoryEntries.reduce((sum, e) => sum + e.quantity, 0);
+    const totalAvailable = matchingEntries.reduce((sum, e) => sum + e.quantity, 0);
     if (totalAvailable < quantity) {
       return res.status(400).json({
         error: `Not enough items in inventory. Need ${quantity}, have ${totalAvailable}.`,
@@ -229,36 +235,36 @@ router.post('/:houseId/storage/deposit', authGuard, characterGuard, validate(dep
     }
 
     // Transaction: remove from inventory, add to storage
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Remove from inventory entries (consume from oldest first)
       let remaining = quantity;
-      for (const entry of inventoryEntries) {
+      for (const entry of matchingEntries) {
         if (remaining <= 0) break;
         if (entry.quantity <= remaining) {
           remaining -= entry.quantity;
-          await tx.inventory.delete({ where: { id: entry.id } });
+          await tx.delete(inventories).where(eq(inventories.id, entry.id));
         } else {
-          await tx.inventory.update({
-            where: { id: entry.id },
-            data: { quantity: { decrement: remaining } },
-          });
+          await tx.update(inventories)
+            .set({ quantity: sql`${inventories.quantity} - ${remaining}` })
+            .where(eq(inventories.id, entry.id));
           remaining = 0;
         }
       }
 
       // Upsert storage slot
-      await tx.houseStorage.upsert({
-        where: {
-          houseId_itemTemplateId: { houseId: house.id, itemTemplateId },
-        },
-        update: { quantity: { increment: quantity } },
-        create: { houseId: house.id, itemTemplateId, quantity },
-      });
+      if (existingSlot) {
+        await tx.update(houseStorage)
+          .set({ quantity: sql`${houseStorage.quantity} + ${quantity}` })
+          .where(and(eq(houseStorage.houseId, house.id), eq(houseStorage.itemTemplateId, itemTemplateId)));
+      } else {
+        await tx.insert(houseStorage).values({ id: crypto.randomUUID(), houseId: house.id, itemTemplateId, quantity });
+      }
     });
 
     // Fetch updated storage count
-    const updatedCount = await prisma.houseStorage.count({ where: { houseId: house.id } });
-    const itemName = inventoryEntries[0]?.item.template.name ?? 'Unknown';
+    const [countResult] = await db.select({ value: count() }).from(houseStorage).where(eq(houseStorage.houseId, house.id));
+    const updatedCount = countResult.value;
+    const itemName = matchingEntries[0]?.item.itemTemplate.name ?? 'Unknown';
 
     return res.json({
       deposited: { itemTemplateId, itemName, quantity },
@@ -266,7 +272,7 @@ router.post('/:houseId/storage/deposit', authGuard, characterGuard, validate(dep
       storageCapacity: house.storageSlots,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'houses-storage-deposit', req)) return;
+    if (handleDbError(error, res, 'houses-storage-deposit', req)) return;
     logRouteError(req, 500, 'Deposit to house storage error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -286,7 +292,7 @@ router.post('/:houseId/storage/withdraw', authGuard, characterGuard, validate(wi
       return res.status(400).json({ error: 'You cannot do this while traveling.' });
     }
 
-    const house = await prisma.house.findUnique({ where: { id: houseId } });
+    const house = await db.query.houses.findFirst({ where: eq(houses.id, houseId) });
 
     if (!house) {
       return res.status(404).json({ error: 'House not found' });
@@ -298,9 +304,9 @@ router.post('/:houseId/storage/withdraw', authGuard, characterGuard, validate(wi
       return res.status(400).json({ error: 'You must be in the same town as your house to withdraw items.' });
     }
 
-    const storageEntry = await prisma.houseStorage.findUnique({
-      where: { houseId_itemTemplateId: { houseId: house.id, itemTemplateId } },
-      include: { itemTemplate: { select: { id: true, name: true } } },
+    const storageEntry = await db.query.houseStorage.findFirst({
+      where: and(eq(houseStorage.houseId, house.id), eq(houseStorage.itemTemplateId, itemTemplateId)),
+      with: { itemTemplate: { columns: { id: true, name: true } } },
     });
 
     if (!storageEntry || storageEntry.quantity < quantity) {
@@ -309,50 +315,50 @@ router.post('/:houseId/storage/withdraw', authGuard, characterGuard, validate(wi
       });
     }
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Decrement or delete storage entry
       if (storageEntry.quantity <= quantity) {
-        await tx.houseStorage.delete({ where: { id: storageEntry.id } });
+        await tx.delete(houseStorage).where(eq(houseStorage.id, storageEntry.id));
       } else {
-        await tx.houseStorage.update({
-          where: { id: storageEntry.id },
-          data: { quantity: { decrement: quantity } },
-        });
+        await tx.update(houseStorage)
+          .set({ quantity: sql`${houseStorage.quantity} - ${quantity}` })
+          .where(eq(houseStorage.id, storageEntry.id));
       }
 
       // Create an Item instance from the template and add to inventory
-      const item = await tx.item.create({
-        data: {
-          templateId: itemTemplateId,
-          ownerId: character.id,
-          quality: 'COMMON',
-        },
-      });
+      const [item] = await tx.insert(items).values({
+        id: crypto.randomUUID(),
+        templateId: itemTemplateId,
+        ownerId: character.id,
+        quality: 'COMMON',
+      }).returning();
 
       // Try to stack onto existing inventory entry
-      const existingInv = await tx.inventory.findFirst({
-        where: { characterId: character.id, item: { templateId: itemTemplateId } },
+      // Drizzle doesn't support nested where on relations in findFirst, so load and filter
+      const invEntries = await tx.query.inventories.findMany({
+        where: eq(inventories.characterId, character.id),
+        with: { item: true },
       });
+      const existingInv = invEntries.find(e => e.item.templateId === itemTemplateId);
 
       if (existingInv) {
-        await tx.inventory.update({
-          where: { id: existingInv.id },
-          data: { quantity: { increment: quantity } },
-        });
+        await tx.update(inventories)
+          .set({ quantity: sql`${inventories.quantity} + ${quantity}` })
+          .where(eq(inventories.id, existingInv.id));
         // Delete the extra item since we're stacking
-        await tx.item.delete({ where: { id: item.id } });
+        await tx.delete(items).where(eq(items.id, item.id));
       } else {
-        await tx.inventory.create({
-          data: {
-            characterId: character.id,
-            itemId: item.id,
-            quantity,
-          },
+        await tx.insert(inventories).values({
+          id: crypto.randomUUID(),
+          characterId: character.id,
+          itemId: item.id,
+          quantity,
         });
       }
     });
 
-    const updatedCount = await prisma.houseStorage.count({ where: { houseId: house.id } });
+    const [countResult] = await db.select({ value: count() }).from(houseStorage).where(eq(houseStorage.houseId, house.id));
+    const updatedCount = countResult.value;
 
     return res.json({
       withdrawn: { itemTemplateId, itemName: storageEntry.itemTemplate.name, quantity },
@@ -360,7 +366,7 @@ router.post('/:houseId/storage/withdraw', authGuard, characterGuard, validate(wi
       storageCapacity: house.storageSlots,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'houses-storage-withdraw', req)) return;
+    if (handleDbError(error, res, 'houses-storage-withdraw', req)) return;
     logRouteError(req, 500, 'Withdraw from house storage error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -378,9 +384,9 @@ router.post('/:houseId/storage/list', authGuard, characterGuard, validate(listOn
 
     // No location requirement — remote listing is the feature
 
-    const house = await prisma.house.findUnique({
-      where: { id: houseId },
-      include: { town: { select: { id: true, name: true } } },
+    const house = await db.query.houses.findFirst({
+      where: eq(houses.id, houseId),
+      with: { town: { columns: { id: true, name: true } } },
     });
 
     if (!house) {
@@ -390,9 +396,9 @@ router.post('/:houseId/storage/list', authGuard, characterGuard, validate(listOn
       return res.status(403).json({ error: 'You do not own this house' });
     }
 
-    const storageEntry = await prisma.houseStorage.findUnique({
-      where: { houseId_itemTemplateId: { houseId: house.id, itemTemplateId } },
-      include: { itemTemplate: { select: { id: true, name: true } } },
+    const storageEntry = await db.query.houseStorage.findFirst({
+      where: and(eq(houseStorage.houseId, house.id), eq(houseStorage.itemTemplateId, itemTemplateId)),
+      with: { itemTemplate: { columns: { id: true, name: true } } },
     });
 
     if (!storageEntry || storageEntry.quantity < quantity) {
@@ -404,47 +410,45 @@ router.post('/:houseId/storage/list', authGuard, characterGuard, validate(listOn
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + LISTING_DURATION_DAYS);
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       // Decrement or delete storage entry
       if (storageEntry.quantity <= quantity) {
-        await tx.houseStorage.delete({ where: { id: storageEntry.id } });
+        await tx.delete(houseStorage).where(eq(houseStorage.id, storageEntry.id));
       } else {
-        await tx.houseStorage.update({
-          where: { id: storageEntry.id },
-          data: { quantity: { decrement: quantity } },
-        });
+        await tx.update(houseStorage)
+          .set({ quantity: sql`${houseStorage.quantity} - ${quantity}` })
+          .where(eq(houseStorage.id, storageEntry.id));
       }
 
       // Create an Item from the template for the listing
-      const item = await tx.item.create({
-        data: {
-          templateId: itemTemplateId,
-          ownerId: character.id,
-          quality: 'COMMON',
-        },
-      });
+      const [item] = await tx.insert(items).values({
+        id: crypto.randomUUID(),
+        templateId: itemTemplateId,
+        ownerId: character.id,
+        quality: 'COMMON',
+      }).returning();
 
       // Create the market listing in the house's town
-      const listing = await tx.marketListing.create({
-        data: {
-          sellerId: character.id,
-          itemId: item.id,
-          itemTemplateId,
-          itemName: storageEntry.itemTemplate.name,
-          price,
-          quantity,
-          townId: house.townId,
-          status: 'active',
-          expiresAt,
-        },
-      });
+      const [listing] = await tx.insert(marketListings).values({
+        id: crypto.randomUUID(),
+        sellerId: character.id,
+        itemId: item.id,
+        itemTemplateId,
+        itemName: storageEntry.itemTemplate.name,
+        price,
+        quantity,
+        townId: house.townId,
+        status: 'active',
+        expiresAt: expiresAt.toISOString(),
+      }).returning();
 
       return listing;
     });
 
     await invalidateCache('cache:/api/market/browse*');
 
-    const updatedCount = await prisma.houseStorage.count({ where: { houseId: house.id } });
+    const [countResult] = await db.select({ value: count() }).from(houseStorage).where(eq(houseStorage.houseId, house.id));
+    const updatedCount = countResult.value;
 
     return res.status(201).json({
       listing: {
@@ -459,7 +463,7 @@ router.post('/:houseId/storage/list', authGuard, characterGuard, validate(listOn
       storageCapacity: house.storageSlots,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'houses-storage-list', req)) return;
+    if (handleDbError(error, res, 'houses-storage-list', req)) return;
     logRouteError(req, 500, 'List from house storage error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

@@ -1,5 +1,7 @@
 import cron from 'node-cron';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, lte, and } from 'drizzle-orm';
+import { buildingConstructions } from '@database/tables';
 import { emitBuildingConstructed } from '../socket/events';
 import { logger } from '../lib/logger';
 import { cronJobExecutions } from '../lib/metrics';
@@ -30,20 +32,22 @@ export function startConstructionCompleteJob() {
 async function notifyCompletedConstructions() {
   const now = new Date();
 
-  const readyConstructions = await prisma.buildingConstruction.findMany({
-    where: {
-      status: 'IN_PROGRESS',
-      completesAt: { lte: now },
-    },
-    include: {
+  const readyConstructions = await db.query.buildingConstructions.findMany({
+    where: and(
+      eq(buildingConstructions.status, 'IN_PROGRESS'),
+      lte(buildingConstructions.completesAt, now.toISOString()),
+    ),
+    with: {
       building: {
-        select: {
+        columns: {
           id: true,
           name: true,
           type: true,
           level: true,
           ownerId: true,
-          town: { select: { id: true, name: true } },
+        },
+        with: {
+          town: { columns: { id: true, name: true } },
         },
       },
     },

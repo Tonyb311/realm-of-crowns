@@ -1,14 +1,15 @@
 import cron from 'node-cron';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, gte, sql } from 'drizzle-orm';
+import { buildings, characters, townTreasuries } from '@database/tables';
 import { logger } from '../lib/logger';
 import { cronJobExecutions } from '../lib/metrics';
-import { BuildingType } from '@prisma/client';
 import { emitBuildingTaxDue, emitBuildingDelinquent, emitBuildingSeized } from '../socket/events';
 
 /**
  * Base daily property tax rates per building type (gold per day).
  */
-const BASE_TAX_RATES: Record<BuildingType, number> = {
+const BASE_TAX_RATES: Record<string, number> = {
   HOUSE_SMALL: 5,
   HOUSE_MEDIUM: 15,
   HOUSE_LARGE: 30,
@@ -58,17 +59,15 @@ export function startPropertyTaxJob() {
 
 async function collectPropertyTaxes() {
   // Get all completed buildings (level >= 1) with their owners, towns, and policies
-  const buildings = await prisma.building.findMany({
-    where: { level: { gte: 1 } },
-    include: {
-      owner: { select: { id: true, name: true, gold: true, userId: true } },
+  const allBuildings = await db.query.buildings.findMany({
+    where: gte(buildings.level, 1),
+    with: {
+      character: { columns: { id: true, name: true, gold: true, userId: true } },
       town: {
-        select: {
-          id: true,
-          name: true,
-          mayorId: true,
-          townPolicy: { select: { taxRate: true } },
-          treasury: { select: { id: true } },
+        columns: { id: true, name: true, mayorId: true },
+        with: {
+          townPolicies: { columns: { taxRate: true } },
+          townTreasuries: { columns: { id: true } },
         },
       },
     },
@@ -78,39 +77,38 @@ async function collectPropertyTaxes() {
   let delinquentCount = 0;
   let seizedCount = 0;
 
-  for (const building of buildings) {
+  for (const building of allBuildings) {
     const baseTax = BASE_TAX_RATES[building.type] ?? 10;
     const levelMultiplier = building.level;
-    const policyTaxRate = building.town.townPolicy?.taxRate ?? 0.10;
+    const policyTaxRate = building.town.townPolicies?.[0]?.taxRate ?? 0.10;
     // Tax = baseTax * level * (1 + townPolicyRate)
     // The policy rate modifies the base tax (e.g. 0.10 = 10% surcharge)
     const dailyTax = Math.floor(baseTax * levelMultiplier * (1 + policyTaxRate));
 
     const storageData = building.storage as Record<string, unknown>;
+    const owner = building.character;
 
-    if (building.owner.gold >= dailyTax) {
+    if (owner.gold >= dailyTax) {
       // Owner can pay — collect tax
-      await prisma.$transaction(async (tx) => {
-        await tx.character.update({
-          where: { id: building.ownerId },
-          data: { gold: { decrement: dailyTax } },
-        });
+      await db.transaction(async (tx) => {
+        await tx.update(characters)
+          .set({ gold: sql`${characters.gold} - ${dailyTax}` })
+          .where(eq(characters.id, building.ownerId));
 
         // Deposit into town treasury
-        if (building.town.treasury) {
-          await tx.townTreasury.update({
-            where: { id: building.town.treasury.id },
-            data: { balance: { increment: dailyTax } },
-          });
+        const treasury = building.town.townTreasuries?.[0];
+        if (treasury) {
+          await tx.update(townTreasuries)
+            .set({ balance: sql`${townTreasuries.balance} + ${dailyTax}` })
+            .where(eq(townTreasuries.id, treasury.id));
         }
 
         // Clear any delinquency tracking
         if (storageData.taxDelinquentSince) {
           const { taxDelinquentSince, ...rest } = storageData;
-          await tx.building.update({
-            where: { id: building.id },
-            data: { storage: rest as Record<string, string | number | boolean | null> },
-          });
+          await tx.update(buildings)
+            .set({ storage: rest as Record<string, string | number | boolean | null> })
+            .where(eq(buildings.id, building.id));
         }
       });
 
@@ -124,7 +122,7 @@ async function collectPropertyTaxes() {
         townName: building.town.name,
         amount: dailyTax,
         paid: true,
-        remainingGold: building.owner.gold - dailyTax,
+        remainingGold: owner.gold - dailyTax,
       });
     } else {
       // Owner cannot pay — mark as delinquent
@@ -141,13 +139,12 @@ async function collectPropertyTaxes() {
         const newOwnerId = building.town.mayorId;
 
         if (newOwnerId) {
-          await prisma.building.update({
-            where: { id: building.id },
-            data: {
+          await db.update(buildings)
+            .set({
               ownerId: newOwnerId,
               storage: { ...storageData, taxDelinquentSince: undefined },
-            },
-          });
+            })
+            .where(eq(buildings.id, building.id));
         }
 
         emitBuildingSeized(building.ownerId, {
@@ -161,19 +158,18 @@ async function collectPropertyTaxes() {
 
         seizedCount++;
         console.log(
-          `[PropertyTax] SEIZED building "${building.name}" from ${building.owner.name} in ${building.town.name} (${daysSinceDelinquent} days delinquent)`
+          `[PropertyTax] SEIZED building "${building.name}" from ${owner.name} in ${building.town.name} (${daysSinceDelinquent} days delinquent)`
         );
       } else {
         // Update delinquency tracker
-        await prisma.building.update({
-          where: { id: building.id },
-          data: {
+        await db.update(buildings)
+          .set({
             storage: {
               ...storageData,
               taxDelinquentSince: delinquentSince.toISOString(),
             },
-          },
-        });
+          })
+          .where(eq(buildings.id, building.id));
 
         emitBuildingDelinquent(building.ownerId, {
           buildingId: building.id,
@@ -191,7 +187,7 @@ async function collectPropertyTaxes() {
   }
 
   console.log(
-    `[PropertyTax] Collected ${totalCollected}g from ${buildings.length} buildings. ` +
+    `[PropertyTax] Collected ${totalCollected}g from ${allBuildings.length} buildings. ` +
     `${delinquentCount} delinquent, ${seizedCount} seized.`
   );
 }

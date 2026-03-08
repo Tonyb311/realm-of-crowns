@@ -1,5 +1,7 @@
 import { Server } from 'socket.io';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, or } from 'drizzle-orm';
+import { characters, friends } from '@database/tables';
 import { redis } from '../lib/redis';
 import { logger } from '../lib/logger';
 import type { AuthenticatedSocket } from './middleware';
@@ -84,15 +86,15 @@ export function updatePresenceTown(characterId: string, townId: string | null): 
 // ---------------------------------------------------------------------------
 
 async function getFriendCharacterIds(characterId: string): Promise<string[]> {
-  const friends = await prisma.friend.findMany({
-    where: {
-      status: 'ACCEPTED',
-      OR: [{ requesterId: characterId }, { recipientId: characterId }],
-    },
-    select: { requesterId: true, recipientId: true },
+  const friendRows = await db.query.friends.findMany({
+    where: and(
+      eq(friends.status, 'ACCEPTED'),
+      or(eq(friends.requesterId, characterId), eq(friends.recipientId, characterId)),
+    ),
+    columns: { requesterId: true, recipientId: true },
   });
 
-  return friends.map((f) =>
+  return friendRows.map((f) =>
     f.requesterId === characterId ? f.recipientId : f.requesterId
   );
 }
@@ -109,9 +111,9 @@ export function setupPresence(io: Server) {
     if (!userId) return;
 
     // Look up the user's character
-    const character = await prisma.character.findFirst({
-      where: { userId },
-      select: { id: true, name: true, currentTownId: true },
+    const character = await db.query.characters.findFirst({
+      where: eq(characters.userId, userId),
+      columns: { id: true, name: true, currentTownId: true },
     });
 
     if (!character) return;

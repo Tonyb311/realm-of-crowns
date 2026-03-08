@@ -8,7 +8,8 @@
     "seed": "tsx --require tsconfig-paths/register seeds/index.ts",
     "studio": "prisma studio",
     "reset": "prisma migrate reset",
-    "validate-sync": "tsx --tsconfig tsconfig.json scripts/validate-yaml-sync.ts"
+    "validate-sync": "tsx --tsconfig tsconfig.json scripts/validate-yaml-sync.ts",
+    "build:schema": "tsc -p tsconfig.schema.json"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",

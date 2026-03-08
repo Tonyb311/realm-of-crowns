@@ -1,11 +1,12 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../../lib/prisma';
-import { handlePrismaError } from '../../lib/prisma-errors';
+import { db } from '../../lib/db';
+import { eq, and, like, asc, count, sql } from 'drizzle-orm';
+import { regions, towns, townResources } from '@database/tables';
+import { handleDbError } from '../../lib/db-errors';
 import { logRouteError } from '../../lib/error-logger';
 import { validate } from '../../middleware/validate';
 import { AuthenticatedRequest } from '../../types/express';
-import { Prisma } from '@prisma/client';
 
 const router = Router();
 
@@ -32,16 +33,23 @@ const editResourcesSchema = z.object({
  */
 router.get('/regions', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const regions = await prisma.region.findMany({
-      orderBy: { name: 'asc' },
-      include: {
-        _count: { select: { towns: true } },
+    const allRegions = await db.query.regions.findMany({
+      orderBy: asc(regions.name),
+      with: {
+        towns: { columns: { id: true } },
       },
     });
 
-    return res.json(regions);
+    // Transform to match Prisma's _count format
+    const transformed = allRegions.map(r => ({
+      ...r,
+      _count: { towns: r.towns.length },
+      towns: undefined,
+    }));
+
+    return res.json(transformed);
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-list-regions', req)) return;
+    if (handleDbError(error, res, 'admin-list-regions', req)) return;
     logRouteError(req, 500, '[Admin] Regions list error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -57,37 +65,49 @@ router.get('/towns', async (req: AuthenticatedRequest, res: Response) => {
     const pageSize = Math.max(1, Math.min(100, parseInt(req.query.pageSize as string, 10) || 20));
     const regionId = req.query.regionId as string | undefined;
     const search = req.query.search as string | undefined;
-    const skip = (page - 1) * pageSize;
+    const offset = (page - 1) * pageSize;
 
-    const where: Prisma.TownWhereInput = {
-      ...(regionId ? { regionId } : {}),
-      ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
-    };
+    const conditions: ReturnType<typeof eq>[] = [];
+    if (regionId) conditions.push(eq(towns.regionId, regionId));
+    if (search) conditions.push(like(sql`lower(${towns.name})`, `%${search.toLowerCase()}%`));
 
-    const [data, total] = await Promise.all([
-      prisma.town.findMany({
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [data, [{ total }]] = await Promise.all([
+      db.query.towns.findMany({
         where,
-        skip,
-        take: pageSize,
-        orderBy: { name: 'asc' },
-        include: {
-          region: { select: { name: true } },
-          mayor: { select: { name: true } },
-          _count: { select: { characters: true, buildings: true } },
+        offset,
+        limit: pageSize,
+        orderBy: asc(towns.name),
+        with: {
+          region: { columns: { name: true } },
+          character: { columns: { name: true } },
+          characters_currentTownId: { columns: { id: true } },
+          buildings: { columns: { id: true } },
         },
       }),
-      prisma.town.count({ where }),
+      db.select({ total: count() }).from(towns).where(where),
     ]);
 
+    // Transform to match Prisma's shape
+    const transformed = data.map(t => ({
+      ...t,
+      mayor: t.character,
+      _count: {
+        characters: t.characters_currentTownId.length,
+        buildings: t.buildings.length,
+      },
+    }));
+
     return res.json({
-      data,
+      data: transformed,
       total,
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-list-towns', req)) return;
+    if (handleDbError(error, res, 'admin-list-towns', req)) return;
     logRouteError(req, 500, '[Admin] Towns list error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -99,15 +119,15 @@ router.get('/towns', async (req: AuthenticatedRequest, res: Response) => {
  */
 router.get('/towns/:id', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const town = await prisma.town.findUnique({
-      where: { id: req.params.id },
-      include: {
+    const town = await db.query.towns.findFirst({
+      where: eq(towns.id, req.params.id),
+      with: {
         region: true,
-        mayor: { select: { id: true, name: true } },
-        resources: true,
+        character: { columns: { id: true, name: true } },
+        townResources: true,
         buildings: true,
-        townPolicy: true,
-        treasury: true,
+        townPolicies: true,
+        townTreasuries: true,
       },
     });
 
@@ -115,9 +135,18 @@ router.get('/towns/:id', async (req: AuthenticatedRequest, res: Response) => {
       return res.status(404).json({ error: 'Town not found' });
     }
 
-    return res.json(town);
+    // Reshape to match Prisma naming
+    const result = {
+      ...town,
+      mayor: town.character,
+      resources: town.townResources,
+      townPolicy: town.townPolicies,
+      treasury: town.townTreasuries,
+    };
+
+    return res.json(result);
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-town-detail', req)) return;
+    if (handleDbError(error, res, 'admin-town-detail', req)) return;
     logRouteError(req, 500, '[Admin] Town detail error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -129,20 +158,20 @@ router.get('/towns/:id', async (req: AuthenticatedRequest, res: Response) => {
  */
 router.patch('/towns/:id', validate(editTownSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const town = await prisma.town.findUnique({ where: { id: req.params.id } });
+    const town = await db.query.towns.findFirst({ where: eq(towns.id, req.params.id) });
     if (!town) {
       return res.status(404).json({ error: 'Town not found' });
     }
 
-    const updated = await prisma.town.update({
-      where: { id: req.params.id },
-      data: req.body,
-    });
+    const [updated] = await db.update(towns)
+      .set(req.body)
+      .where(eq(towns.id, req.params.id))
+      .returning();
 
     console.log(`[Admin] Town ${town.name} edited by admin ${req.user!.userId}`);
     return res.json(updated);
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-edit-town', req)) return;
+    if (handleDbError(error, res, 'admin-edit-town', req)) return;
     logRouteError(req, 500, '[Admin] Edit town error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -154,7 +183,7 @@ router.patch('/towns/:id', validate(editTownSchema), async (req: AuthenticatedRe
  */
 router.patch('/towns/:id/resources', validate(editResourcesSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const town = await prisma.town.findUnique({ where: { id: req.params.id } });
+    const town = await db.query.towns.findFirst({ where: eq(towns.id, req.params.id) });
     if (!town) {
       return res.status(404).json({ error: 'Town not found' });
     }
@@ -163,20 +192,21 @@ router.patch('/towns/:id/resources', validate(editResourcesSchema), async (req: 
 
     const updates = await Promise.all(
       resources.map((r) =>
-        prisma.townResource.update({
-          where: { id: r.id },
-          data: {
+        db.update(townResources)
+          .set({
             abundance: r.abundance,
             respawnRate: r.respawnRate,
-          },
-        })
+          })
+          .where(eq(townResources.id, r.id))
+          .returning()
+          .then(([row]) => row)
       )
     );
 
     console.log(`[Admin] Town ${town.name} resources edited (${resources.length} resources) by admin ${req.user!.userId}`);
     return res.json({ updated: updates });
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-edit-town-resources', req)) return;
+    if (handleDbError(error, res, 'admin-edit-town-resources', req)) return;
     logRouteError(req, 500, '[Admin] Edit town resources error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

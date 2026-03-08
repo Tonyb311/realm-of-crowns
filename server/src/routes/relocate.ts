@@ -4,12 +4,14 @@
 
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, inArray, sql } from 'drizzle-orm';
+import { characters, houses, houseStorage, livestock, ownedAssets, buildings, jobListings, towns, itemTemplates } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { getGameDay } from '../lib/game-day';
 import { giveStarterHouse } from '../lib/starting-house';
@@ -70,16 +72,16 @@ router.post('/preview', authGuard, characterGuard, validate(relocateSchema), asy
     const warnings: string[] = [];
 
     // Old house + storage
-    const oldHouse = oldHomeTownId ? await prisma.house.findFirst({
-      where: { characterId: character.id, townId: oldHomeTownId },
-      include: {
-        storage: {
-          include: { itemTemplate: { select: { name: true } } },
+    const oldHouse = oldHomeTownId ? await db.query.houses.findFirst({
+      where: and(eq(houses.characterId, character.id), eq(houses.townId, oldHomeTownId)),
+      with: {
+        houseStorages: {
+          with: { itemTemplate: { columns: { name: true } } },
         },
       },
     }) : null;
 
-    const storageItems = (oldHouse?.storage ?? []).map(s => ({
+    const storageItems = (oldHouse?.houseStorages ?? []).map(s => ({
       itemTemplateId: s.itemTemplateId,
       itemName: s.itemTemplate.name,
       quantity: s.quantity,
@@ -91,58 +93,49 @@ router.post('/preview', authGuard, characterGuard, validate(relocateSchema), asy
     }
 
     // Owned assets (fields, rancher buildings)
-    const assets = oldHomeTownId ? await prisma.ownedAsset.findMany({
-      where: { ownerId: character.id, townId: oldHomeTownId },
-      select: {
-        id: true,
-        spotType: true,
-        tier: true,
-        cropState: true,
-        professionType: true,
-      },
-    }) : [];
+    const assets = oldHomeTownId ? await db.select({
+      id: ownedAssets.id,
+      spotType: ownedAssets.spotType,
+      tier: ownedAssets.tier,
+      cropState: ownedAssets.cropState,
+      professionType: ownedAssets.professionType,
+    }).from(ownedAssets).where(and(eq(ownedAssets.ownerId, character.id), eq(ownedAssets.townId, oldHomeTownId))) : [];
 
     // Livestock on owned buildings (rancher)
-    const livestock = await prisma.livestock.findMany({
-      where: { ownerId: character.id },
-      select: {
-        id: true,
-        animalType: true,
-        name: true,
-        buildingId: true,
-      },
-    });
+    const livestockRows = await db.select({
+      id: livestock.id,
+      animalType: livestock.animalType,
+      name: livestock.name,
+      buildingId: livestock.buildingId,
+    }).from(livestock).where(eq(livestock.ownerId, character.id));
 
     // Buildings (workshops, etc.) in old home town
-    const buildings = oldHomeTownId ? await prisma.building.findMany({
-      where: { ownerId: character.id, townId: oldHomeTownId },
-      select: {
-        id: true,
-        type: true,
-        name: true,
-        level: true,
-      },
-    }) : [];
+    const buildingRows = oldHomeTownId ? await db.select({
+      id: buildings.id,
+      type: buildings.type,
+      name: buildings.name,
+      level: buildings.level,
+    }).from(buildings).where(and(eq(buildings.ownerId, character.id), eq(buildings.townId, oldHomeTownId))) : [];
 
     if (assets.length > 0) {
       warnings.push(`You will lose ${assets.length} field/asset${assets.length !== 1 ? 's' : ''}.`);
     }
-    if (livestock.length > 0) {
-      warnings.push(`You will lose ${livestock.length} animal${livestock.length !== 1 ? 's' : ''}.`);
+    if (livestockRows.length > 0) {
+      warnings.push(`You will lose ${livestockRows.length} animal${livestockRows.length !== 1 ? 's' : ''}.`);
     }
-    if (buildings.length > 0) {
-      warnings.push(`You will lose ${buildings.length} building${buildings.length !== 1 ? 's' : ''}.`);
+    if (buildingRows.length > 0) {
+      warnings.push(`You will lose ${buildingRows.length} building${buildingRows.length !== 1 ? 's' : ''}.`);
     }
 
     // Get target town name
-    const targetTown = await prisma.town.findUnique({
-      where: { id: targetTownId },
-      select: { name: true },
+    const targetTown = await db.query.towns.findFirst({
+      where: eq(towns.id, targetTownId),
+      columns: { name: true },
     });
 
-    const oldTown = oldHomeTownId ? await prisma.town.findUnique({
-      where: { id: oldHomeTownId },
-      select: { name: true },
+    const oldTown = oldHomeTownId ? await db.query.towns.findFirst({
+      where: eq(towns.id, oldHomeTownId),
+      columns: { name: true },
     }) : null;
 
     return res.json({
@@ -160,12 +153,12 @@ router.post('/preview', authGuard, characterGuard, validate(relocateSchema), asy
           cropState: a.cropState,
           professionType: a.professionType,
         })),
-        livestock: livestock.map(l => ({
+        livestock: livestockRows.map(l => ({
           id: l.id,
           animalType: l.animalType,
           name: l.name,
         })),
-        buildings: buildings.map(b => ({
+        buildings: buildingRows.map(b => ({
           id: b.id,
           type: b.type,
           name: b.name,
@@ -175,7 +168,7 @@ router.post('/preview', authGuard, characterGuard, validate(relocateSchema), asy
       warnings,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'relocate-preview', req)) return;
+    if (handleDbError(error, res, 'relocate-preview', req)) return;
     logRouteError(req, 500, 'Relocate preview error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -204,9 +197,9 @@ router.post('/confirm', authGuard, characterGuard, validate(relocateSchema), asy
     }
 
     // Re-read gold from DB to prevent race conditions
-    const freshChar = await prisma.character.findUnique({
-      where: { id: character.id },
-      select: { gold: true, name: true, lastRelocationGameDay: true },
+    const freshChar = await db.query.characters.findFirst({
+      where: eq(characters.id, character.id),
+      columns: { gold: true, name: true, lastRelocationGameDay: true },
     });
 
     if (!freshChar || freshChar.gold < RELOCATION_COST) {
@@ -230,68 +223,63 @@ router.post('/confirm', authGuard, characterGuard, validate(relocateSchema), asy
     const oldHomeTownId = character.homeTownId;
 
     // Execute in a single transaction
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // 1. Delete house storage items in old home
       if (oldHomeTownId) {
-        const oldHouse = await tx.house.findFirst({
-          where: { characterId: character.id, townId: oldHomeTownId },
+        const oldHouse = await tx.query.houses.findFirst({
+          where: and(eq(houses.characterId, character.id), eq(houses.townId, oldHomeTownId)),
         });
         if (oldHouse) {
-          await tx.houseStorage.deleteMany({ where: { houseId: oldHouse.id } });
-          await tx.house.delete({ where: { id: oldHouse.id } });
+          await tx.delete(houseStorage).where(eq(houseStorage.houseId, oldHouse.id));
+          await tx.delete(houses).where(eq(houses.id, oldHouse.id));
         }
       }
 
       // 2. Delete livestock on owned buildings
-      await tx.livestock.deleteMany({ where: { ownerId: character.id } });
+      await tx.delete(livestock).where(eq(livestock.ownerId, character.id));
 
       // 3. Delete owned assets (fields, rancher buildings)
       if (oldHomeTownId) {
         // Delete job listings associated with assets first
-        const assetIds = (await tx.ownedAsset.findMany({
-          where: { ownerId: character.id, townId: oldHomeTownId },
-          select: { id: true },
-        })).map(a => a.id);
+        const assetRows = await tx.select({ id: ownedAssets.id })
+          .from(ownedAssets)
+          .where(and(eq(ownedAssets.ownerId, character.id), eq(ownedAssets.townId, oldHomeTownId)));
+        const assetIds = assetRows.map(a => a.id);
 
         if (assetIds.length > 0) {
-          await tx.jobListing.deleteMany({ where: { assetId: { in: assetIds } } });
+          await tx.delete(jobListings).where(inArray(jobListings.assetId, assetIds));
         }
 
-        await tx.ownedAsset.deleteMany({
-          where: { ownerId: character.id, townId: oldHomeTownId },
-        });
+        await tx.delete(ownedAssets).where(and(eq(ownedAssets.ownerId, character.id), eq(ownedAssets.townId, oldHomeTownId)));
       }
 
       // 4. Delete buildings in old home town
       if (oldHomeTownId) {
-        await tx.building.deleteMany({
-          where: { ownerId: character.id, townId: oldHomeTownId },
-        });
+        await tx.delete(buildings).where(and(eq(buildings.ownerId, character.id), eq(buildings.townId, oldHomeTownId)));
       }
 
       // 5. Update character: new home town, deduct gold, set cooldown
-      await tx.character.update({
-        where: { id: character.id },
-        data: {
+      await tx.update(characters)
+        .set({
           homeTownId: targetTownId,
-          gold: { decrement: RELOCATION_COST },
+          gold: sql`${characters.gold} - ${RELOCATION_COST}`,
           lastRelocationGameDay: currentDay,
-        },
-      });
+        })
+        .where(eq(characters.id, character.id));
     });
 
     // 6. Create new house in new town (outside transaction for idempotent upsert)
     await giveStarterHouse(character.id, targetTownId, freshChar.name);
 
     // Fetch new house for response
-    const newHouse = await prisma.house.findUnique({
-      where: { characterId_townId: { characterId: character.id, townId: targetTownId } },
-      select: { id: true, name: true },
+    const newHouse = await db.query.houses.findFirst({
+      where: and(eq(houses.characterId, character.id), eq(houses.townId, targetTownId)),
+      columns: { id: true, name: true },
     });
 
-    const targetTown = await prisma.town.findUnique({
-      where: { id: targetTownId },
-      select: { name: true },
+    const targetTown = await db.query.towns.findFirst({
+      where: eq(towns.id, targetTownId),
+      columns: { name: true },
     });
 
     return res.json({
@@ -301,7 +289,7 @@ router.post('/confirm', authGuard, characterGuard, validate(relocateSchema), asy
       newHouse: newHouse ? { id: newHouse.id, name: newHouse.name } : null,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'relocate-confirm', req)) return;
+    if (handleDbError(error, res, 'relocate-confirm', req)) return;
     logRouteError(req, 500, 'Relocate confirm error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

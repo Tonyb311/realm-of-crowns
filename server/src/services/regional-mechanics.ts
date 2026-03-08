@@ -1,5 +1,7 @@
-import { prisma } from '../lib/prisma';
-import { Race, RelationStatus } from '@prisma/client';
+import { db } from '../lib/db';
+import { eq, or, and } from 'drizzle-orm';
+import { towns, characters, racialRelations } from '@database/tables';
+import type { Race, RelationStatus } from '@shared/enums';
 
 export interface TownDemographics {
   townId: string;
@@ -21,19 +23,19 @@ export interface RacialBonusModifiers {
  * Count characters by race in a town and return the majority race + percentages.
  */
 export async function calculateTownDemographics(townId: string): Promise<TownDemographics | null> {
-  const town = await prisma.town.findUnique({
-    where: { id: townId },
-    select: { id: true, name: true },
+  const town = await db.query.towns.findFirst({
+    where: eq(towns.id, townId),
+    columns: { id: true, name: true },
   });
 
   if (!town) return null;
 
-  const characters = await prisma.character.findMany({
-    where: { currentTownId: townId },
-    select: { race: true },
+  const townCharacters = await db.query.characters.findMany({
+    where: eq(characters.currentTownId, townId),
+    columns: { race: true },
   });
 
-  const total = characters.length;
+  const total = townCharacters.length;
   if (total === 0) {
     return {
       townId: town.id,
@@ -46,7 +48,7 @@ export async function calculateTownDemographics(townId: string): Promise<TownDem
   }
 
   const counts = new Map<Race, number>();
-  for (const c of characters) {
+  for (const c of townCharacters) {
     counts.set(c.race, (counts.get(c.race) ?? 0) + 1);
   }
 
@@ -80,13 +82,11 @@ export async function lookupRelation(
     return { status: 'NEUTRAL' as RelationStatus, modifier: 0 };
   }
 
-  const relation = await prisma.racialRelation.findFirst({
-    where: {
-      OR: [
-        { race1: raceA, race2: raceB },
-        { race1: raceB, race2: raceA },
-      ],
-    },
+  const relation = await db.query.racialRelations.findFirst({
+    where: or(
+      and(eq(racialRelations.race1, raceA), eq(racialRelations.race2, raceB)),
+      and(eq(racialRelations.race1, raceB), eq(racialRelations.race2, raceA)),
+    ),
   });
 
   if (!relation) {

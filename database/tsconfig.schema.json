@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": "dist/schema",
+    "rootDir": "schema",
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true
+  },
+  "include": ["schema"]
+}

@@ -1,5 +1,7 @@
 import cron from 'node-cron';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, lte, and, sql } from 'drizzle-orm';
+import { laws } from '@database/tables';
 import { logger } from '../lib/logger';
 import { cronJobExecutions } from '../lib/metrics';
 
@@ -27,17 +29,15 @@ export function startLawExpirationJob() {
 async function expireLaws() {
   const now = new Date();
 
-  const result = await prisma.law.updateMany({
-    where: {
-      status: 'ACTIVE',
-      expiresAt: { lte: now },
-    },
-    data: {
-      status: 'EXPIRED',
-    },
-  });
+  const result = await db.update(laws)
+    .set({ status: 'EXPIRED' })
+    .where(and(
+      eq(laws.status, 'ACTIVE'),
+      lte(laws.expiresAt, now.toISOString()),
+    ));
 
-  if (result.count > 0) {
-    console.log(`[LawExpiration] Expired ${result.count} law(s)`);
+  const count = result.rowCount ?? 0;
+  if (count > 0) {
+    console.log(`[LawExpiration] Expired ${count} law(s)`);
   }
 }

@@ -1,4 +1,6 @@
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq } from 'drizzle-orm';
+import { characters, characterEquipment } from '@database/tables';
 
 // =========================================================================
 // Faefolk Flight Service
@@ -17,9 +19,9 @@ export interface FlightStatus {
  * Returns true if the character is Faefolk (Flutter ability is level 1 passive).
  */
 export async function canFly(characterId: string): Promise<boolean> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true },
   });
 
   return character?.race === 'FAEFOLK';
@@ -33,9 +35,9 @@ export async function canBypassObstacle(
   characterId: string,
   obstacleType: string,
 ): Promise<{ canBypass: boolean; reason: string }> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true },
   });
 
   if (!character || character.race !== 'FAEFOLK') {
@@ -62,11 +64,11 @@ export async function canBypassObstacle(
  * Check if the Faefolk is carrying too much heavy equipment to fly.
  */
 export async function isCarryingHeavyLoad(characterId: string): Promise<boolean> {
-  const equipped = await prisma.characterEquipment.findMany({
-    where: { characterId },
-    include: {
+  const equipped = await db.query.characterEquipment.findMany({
+    where: eq(characterEquipment.characterId, characterId),
+    with: {
       item: {
-        include: { template: true },
+        with: { itemTemplate: true },
       },
     },
   });
@@ -74,7 +76,7 @@ export async function isCarryingHeavyLoad(characterId: string): Promise<boolean>
   // Count heavy items (armor + heavy weapons)
   let heavyCount = 0;
   for (const eq of equipped) {
-    const itemType = eq.item.template.type;
+    const itemType = eq.item.itemTemplate.type;
     if (itemType === 'ARMOR' || itemType === 'WEAPON') {
       heavyCount++;
     }
@@ -89,9 +91,9 @@ export async function isCarryingHeavyLoad(characterId: string): Promise<boolean>
 export async function getFlightCombatBonus(
   characterId: string,
 ): Promise<{ acBonus: number; active: boolean }> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true },
   });
 
   if (!character || character.race !== 'FAEFOLK') {
@@ -113,9 +115,9 @@ export async function canCrossWithoutBridge(
   characterId: string,
   terrainType: string,
 ): Promise<{ canCross: boolean; reason: string }> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true },
   });
 
   if (!character || character.race !== 'FAEFOLK') {

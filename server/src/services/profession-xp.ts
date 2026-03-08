@@ -1,5 +1,7 @@
-import { ProfessionType, ProfessionTier } from '@prisma/client';
-import { prisma } from '../lib/prisma';
+import type { ProfessionType, ProfessionTier } from '@shared/enums';
+import { db } from '../lib/db';
+import { eq, and } from 'drizzle-orm';
+import { playerProfessions, professionXp } from '@database/tables';
 import { getXpForLevel, getTierForLevel } from '@shared/data/professions';
 import { emitNotification } from '../socket/events';
 
@@ -25,10 +27,11 @@ export async function addProfessionXP(
   amount: number,
   source: string,
 ): Promise<XPResult> {
-  const profession = await prisma.playerProfession.findUnique({
-    where: {
-      characterId_professionType: { characterId, professionType },
-    },
+  const profession = await db.query.playerProfessions.findFirst({
+    where: and(
+      eq(playerProfessions.characterId, characterId),
+      eq(playerProfessions.professionType, professionType),
+    ),
   });
 
   if (!profession) {
@@ -60,23 +63,19 @@ export async function addProfessionXP(
   const leveledUp = currentLevel > previousLevel;
   const tierChanged = newTier !== previousTier;
 
-  await prisma.$transaction(async (tx) => {
-    await tx.playerProfession.update({
-      where: { id: profession.id },
-      data: {
-        xp: currentXp,
-        level: currentLevel,
-        tier: newTier,
-      },
-    });
+  await db.transaction(async (tx) => {
+    await tx.update(playerProfessions).set({
+      xp: currentXp,
+      level: currentLevel,
+      tier: newTier,
+    }).where(eq(playerProfessions.id, profession.id));
 
-    await tx.professionXP.create({
-      data: {
-        characterId,
-        professionType,
-        xpGained: amount,
-        source,
-      },
+    await tx.insert(professionXp).values({
+      id: crypto.randomUUID(),
+      characterId,
+      professionType,
+      xpGained: amount,
+      source,
     });
   });
 

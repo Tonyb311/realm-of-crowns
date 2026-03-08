@@ -1,6 +1,10 @@
 import { Router, Response } from 'express';
+import crypto from 'crypto';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, gt, gte, inArray, count } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
+import { characters, characterEquipment, combatSessions, combatLogs, combatParticipants, craftingActions, towns } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
@@ -24,7 +28,7 @@ import { checkAchievements } from '../services/achievements';
 import { redis } from '../lib/redis';
 import { ACTION_XP } from '@shared/data/progression';
 import { isSameAccount } from '../lib/alt-guard';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { logPvpCombat, COMBAT_LOGGING_ENABLED } from '../lib/combat-logger';
 import { formatCombatLog } from '../lib/combat-narrator-formatter';
@@ -119,19 +123,19 @@ const UNARMED_WEAPON: WeaponInfo = {
 };
 
 async function getEquippedWeapon(characterId: string): Promise<WeaponInfo> {
-  const equip = await prisma.characterEquipment.findUnique({
-    where: { characterId_slot: { characterId, slot: 'MAIN_HAND' } },
-    include: { item: { include: { template: true } } },
+  const equip = await db.query.characterEquipment.findFirst({
+    where: and(eq(characterEquipment.characterId, characterId), eq(characterEquipment.slot, 'MAIN_HAND')),
+    with: { item: { with: { itemTemplate: true } } },
   });
 
-  if (!equip || equip.item.template.type !== 'WEAPON') {
+  if (!equip || equip.item.itemTemplate.type !== 'WEAPON') {
     return UNARMED_WEAPON;
   }
 
-  const stats = equip.item.template.stats as Record<string, unknown>;
+  const stats = equip.item.itemTemplate.stats as Record<string, unknown>;
   return {
     id: equip.item.id,
-    name: equip.item.template.name,
+    name: equip.item.itemTemplate.name,
     diceCount: (typeof stats.diceCount === 'number') ? stats.diceCount : 1,
     diceSides: (typeof stats.diceSides === 'number') ? stats.diceSides : 4,
     damageModifierStat: stats.damageModifierStat === 'dex' ? 'dex' : 'str',
@@ -144,26 +148,25 @@ async function getEquippedWeapon(characterId: string): Promise<WeaponInfo> {
 // ---- Helpers ----
 
 async function isInActiveCombat(characterId: string): Promise<boolean> {
-  const active = await prisma.combatParticipant.findFirst({
-    where: {
-      characterId,
-      session: { status: { in: ['ACTIVE', 'PENDING'] } },
-    },
+  // Fetch all participations, then filter by session status at app level
+  const participations = await db.query.combatParticipants.findMany({
+    where: eq(combatParticipants.characterId, characterId),
+    with: { combatSession: true },
   });
-  return !!active;
+  return participations.some((p: any) => p.session && ['ACTIVE', 'PENDING'].includes(p.session.status));
 }
 
 async function isTraveling(characterId: string): Promise<boolean> {
-  const char = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { travelStatus: true },
+  const char = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { travelStatus: true },
   });
   return char?.travelStatus !== 'idle';
 }
 
 async function isCrafting(characterId: string): Promise<boolean> {
-  const crafting = await prisma.craftingAction.findFirst({
-    where: { characterId, status: 'IN_PROGRESS' },
+  const crafting = await db.query.craftingActions.findFirst({
+    where: and(eq(craftingActions.characterId, characterId), eq(craftingActions.status, 'IN_PROGRESS')),
   });
   return !!crafting;
 }
@@ -173,19 +176,16 @@ async function getRecentChallenge(
   targetId: string
 ): Promise<boolean> {
   const cutoff = new Date(Date.now() - CHALLENGE_COOLDOWN_MS);
-  const recent = await prisma.combatSession.findFirst({
-    where: {
-      type: 'DUEL',
-      startedAt: { gte: cutoff },
-      participants: {
-        every: {
-          characterId: { in: [challengerId, targetId] },
-        },
-      },
-    },
-    orderBy: { startedAt: 'desc' },
+  // Fetch recent DUEL sessions and check participants at app level
+  const recentSessions = await db.query.combatSessions.findMany({
+    where: and(eq(combatSessions.type, 'DUEL'), gte(combatSessions.startedAt, cutoff.toISOString())),
+    with: { combatParticipants: true },
+    orderBy: (s, { desc }) => [desc(s.startedAt)],
   });
-  return !!recent;
+  return recentSessions.some((s: any) => {
+    const ids = (s.combatParticipants || []).map((p: any) => p.characterId);
+    return ids.includes(challengerId) && ids.includes(targetId);
+  });
 }
 
 // ---- POST /challenge ----
@@ -208,8 +208,8 @@ router.post(
         return res.status(400).json({ error: 'Cannot challenge your own characters' });
       }
 
-      const target = await prisma.character.findUnique({
-        where: { id: targetCharacterId },
+      const target = await db.query.characters.findFirst({
+        where: eq(characters.id, targetCharacterId),
       });
 
       if (!target) {
@@ -269,22 +269,19 @@ router.post(
       }
 
       // Create pending combat session
-      const session = await prisma.combatSession.create({
-        data: {
-          type: 'DUEL',
-          status: 'PENDING',
-          locationTownId: challenger.currentTownId,
-          log: { challengerId: challenger.id, targetId: target.id, wager: wagerAmount },
-        },
-      });
+      const [session] = await db.insert(combatSessions).values({
+        id: crypto.randomUUID(),
+        type: 'DUEL',
+        status: 'PENDING',
+        locationTownId: challenger.currentTownId,
+        log: { challengerId: challenger.id, targetId: target.id, wager: wagerAmount },
+      }).returning();
 
       // Create participant entries (both pending)
-      await prisma.combatParticipant.createMany({
-        data: [
-          { sessionId: session.id, characterId: challenger.id, team: 0, currentHp: challenger.health },
-          { sessionId: session.id, characterId: target.id, team: 1, currentHp: target.health },
-        ],
-      });
+      await db.insert(combatParticipants).values([
+        { id: crypto.randomUUID(), sessionId: session.id, characterId: challenger.id, team: 0, currentHp: challenger.health },
+        { id: crypto.randomUUID(), sessionId: session.id, characterId: target.id, team: 1, currentHp: target.health },
+      ]);
 
       return res.status(201).json({
         session: {
@@ -297,7 +294,7 @@ router.post(
         },
       });
     } catch (error) {
-      if (handlePrismaError(error, res, 'pvp-challenge', req)) return;
+      if (handleDbError(error, res, 'pvp-challenge', req)) return;
       logRouteError(req, 500, 'PvP challenge error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
@@ -315,11 +312,11 @@ router.post(
       const { sessionId } = req.body;
       const character = req.character!;
 
-      const session = await prisma.combatSession.findUnique({
-        where: { id: sessionId },
-        include: {
-          participants: {
-            include: {
+      const session = await db.query.combatSessions.findFirst({
+        where: eq(combatSessions.id, sessionId),
+        with: {
+          combatParticipants: {
+            with: {
               character: true,
             },
           },
@@ -343,15 +340,12 @@ router.post(
       // Re-check wager gold
       const wagerAmount = sessionLog.wager ?? 0;
       if (wagerAmount > 0) {
-        const challengerChar = session.participants.find(
-          (p) => p.characterId === sessionLog.challengerId
+        const challengerChar = session.combatParticipants.find(
+          (p: any) => p.characterId === sessionLog.challengerId
         )?.character;
         if (!challengerChar || challengerChar.gold < wagerAmount) {
           // Cancel the challenge if challenger can no longer afford it
-          await prisma.combatSession.update({
-            where: { id: sessionId },
-            data: { status: 'CANCELLED' },
-          });
+          await db.update(combatSessions).set({ status: 'CANCELLED' }).where(eq(combatSessions.id, sessionId));
           return res.status(400).json({ error: 'Challenger no longer has enough gold for the wager' });
         }
         if (character.gold < wagerAmount) {
@@ -360,7 +354,7 @@ router.post(
       }
 
       // Build combatants for the engine
-      const combatants = session.participants.map((p) => {
+      const combatants = session.combatParticipants.map((p: any) => {
         const stats = (p.character.stats as unknown as CharacterStats) ?? {
           str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10,
         };
@@ -390,18 +384,13 @@ router.post(
       await setPvpCombatState(sessionId, combatState);
 
       // Update DB: set session active, write initiative to participants
-      await prisma.$transaction([
-        prisma.combatSession.update({
-          where: { id: sessionId },
-          data: { status: 'ACTIVE', startedAt: new Date() },
-        }),
-        ...combatState.combatants.map((c) =>
-          prisma.combatParticipant.updateMany({
-            where: { sessionId, characterId: c.id },
-            data: { initiative: c.initiative, currentHp: c.currentHp },
-          })
-        ),
-      ]);
+      await db.transaction(async (tx) => {
+        await tx.update(combatSessions).set({ status: 'ACTIVE', startedAt: new Date().toISOString() }).where(eq(combatSessions.id, sessionId));
+        for (const c of combatState.combatants) {
+          await tx.update(combatParticipants).set({ initiative: c.initiative, currentHp: c.currentHp })
+            .where(and(eq(combatParticipants.sessionId, sessionId), eq(combatParticipants.characterId, c.id)));
+        }
+      });
 
       const currentTurnId = combatState.turnOrder[combatState.turnIndex];
 
@@ -425,7 +414,7 @@ router.post(
         },
       });
     } catch (error) {
-      if (handlePrismaError(error, res, 'pvp-accept', req)) return;
+      if (handleDbError(error, res, 'pvp-accept', req)) return;
       logRouteError(req, 500, 'PvP accept error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
@@ -443,8 +432,8 @@ router.post(
       const { sessionId } = req.body;
       const character = req.character!;
 
-      const session = await prisma.combatSession.findUnique({
-        where: { id: sessionId },
+      const session = await db.query.combatSessions.findFirst({
+        where: eq(combatSessions.id, sessionId),
       });
 
       if (!session) {
@@ -460,14 +449,11 @@ router.post(
         return res.status(403).json({ error: 'Only the challenged player can decline' });
       }
 
-      await prisma.combatSession.update({
-        where: { id: sessionId },
-        data: { status: 'CANCELLED', endedAt: new Date() },
-      });
+      await db.update(combatSessions).set({ status: 'CANCELLED', endedAt: new Date().toISOString() }).where(eq(combatSessions.id, sessionId));
 
       return res.json({ session: { id: sessionId, status: 'CANCELLED' } });
     } catch (error) {
-      if (handlePrismaError(error, res, 'pvp-decline', req)) return;
+      if (handleDbError(error, res, 'pvp-decline', req)) return;
       logRouteError(req, 500, 'PvP decline error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
@@ -490,10 +476,10 @@ router.post(
 
       if (!combatState) {
         // Try to restore from DB
-        const session = await prisma.combatSession.findUnique({
-          where: { id: sessionId },
-          include: {
-            participants: { include: { character: true } },
+        const session = await db.query.combatSessions.findFirst({
+          where: eq(combatSessions.id, sessionId),
+          with: {
+            combatParticipants: { with: { character: true } },
           },
         });
 
@@ -502,8 +488,8 @@ router.post(
         }
 
         // Verify player is a participant
-        const isParticipant = session.participants.some(
-          (p) => p.characterId === character.id
+        const isParticipant = (session.combatParticipants || []).some(
+          (p: any) => p.characterId === character.id
         );
         if (!isParticipant) {
           return res.status(403).json({ error: 'You are not a participant in this combat' });
@@ -548,23 +534,20 @@ router.post(
 
       // Log the action to DB
       const lastLog = combatState.log[combatState.log.length - 1];
-      await prisma.combatLog.create({
-        data: {
-          sessionId,
-          round: lastLog.round,
-          actorId: lastLog.actorId,
-          action: lastLog.action,
-          result: lastLog.result as any,
-        },
+      await db.insert(combatLogs).values({
+        id: crypto.randomUUID(),
+        sessionId,
+        round: lastLog.round,
+        actorId: lastLog.actorId,
+        action: lastLog.action,
+        result: lastLog.result as any,
       });
 
       // Update participant HP in DB
       await Promise.all(
         combatState.combatants.map((c) =>
-          prisma.combatParticipant.updateMany({
-            where: { sessionId, characterId: c.id },
-            data: { currentHp: c.currentHp },
-          })
+          db.update(combatParticipants).set({ currentHp: c.currentHp })
+            .where(and(eq(combatParticipants.sessionId, sessionId), eq(combatParticipants.characterId, c.id)))
         )
       );
 
@@ -614,7 +597,7 @@ router.post(
 
       return res.json(response);
     } catch (error) {
-      if (handlePrismaError(error, res, 'pvp-action', req)) return;
+      if (handleDbError(error, res, 'pvp-action', req)) return;
       logRouteError(req, 500, 'PvP action error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
@@ -633,24 +616,27 @@ router.get(
       const sessionId = req.query.sessionId as string | undefined;
 
       // Find the player's active PvP session
-      const participant = await prisma.combatParticipant.findFirst({
-        where: {
-          characterId: character.id,
-          session: {
-            type: { in: ['DUEL', 'ARENA', 'PVP'] },
-            status: 'ACTIVE',
-            ...(sessionId ? { id: sessionId } : {}),
-          },
-        },
-        include: {
-          session: {
-            include: {
-              participants: {
-                include: { character: { select: { id: true, name: true, level: true } } },
+      // Drizzle doesn't support nested where on relations, so fetch and filter
+      const allParticipations = await db.query.combatParticipants.findMany({
+        where: eq(combatParticipants.characterId, character.id),
+        with: {
+          combatSession: {
+            with: {
+              combatParticipants: {
+                with: { character: true },
               },
             },
           },
         },
+      });
+
+      const participant = allParticipations.find((p: any) => {
+        const s = p.session;
+        if (!s) return false;
+        if (!['DUEL', 'ARENA', 'PVP'].includes(s.type)) return false;
+        if (s.status !== 'ACTIVE') return false;
+        if (sessionId && s.id !== sessionId) return false;
+        return true;
       });
 
       if (!participant) {
@@ -665,8 +651,8 @@ router.get(
           inCombat: true,
           session: {
             id: participant.sessionId,
-            status: participant.session.status,
-            participants: participant.session.participants.map((p) => ({
+            status: (participant as any).session.status,
+            participants: ((participant as any).session.combatParticipants || []).map((p: any) => ({
               characterId: p.characterId,
               name: p.character.name,
               level: p.character.level,
@@ -709,7 +695,7 @@ router.get(
         },
       });
     } catch (error) {
-      if (handlePrismaError(error, res, 'pvp-state', req)) return;
+      if (handleDbError(error, res, 'pvp-state', req)) return;
       logRouteError(req, 500, 'PvP state error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
@@ -726,37 +712,36 @@ router.get(
       const character = req.character!;
 
       // Find all pending DUEL sessions where this player is a participant
-      const participations = await prisma.combatParticipant.findMany({
-        where: {
-          characterId: character.id,
-          session: { type: 'DUEL', status: 'PENDING' },
-        },
-        include: {
-          session: {
-            include: {
-              participants: {
-                include: {
-                  character: {
-                    select: { id: true, name: true, level: true },
-                  },
+      // Drizzle: fetch participations and filter by session type/status at app level
+      const allParticipations = await db.query.combatParticipants.findMany({
+        where: eq(combatParticipants.characterId, character.id),
+        with: {
+          combatSession: {
+            with: {
+              combatParticipants: {
+                with: {
+                  character: true,
                 },
               },
-              locationTown: { select: { id: true, name: true } },
+              town: true,
             },
           },
         },
-        orderBy: { session: { startedAt: 'desc' } },
       });
 
-      const challenges = participations.map((p) => {
+      const participations = allParticipations
+        .filter((p: any) => p.session?.type === 'DUEL' && p.session?.status === 'PENDING')
+        .sort((a: any, b: any) => new Date(b.session.startedAt).getTime() - new Date(a.session.startedAt).getTime());
+
+      const challenges = participations.map((p: any) => {
         const sessionLog = p.session.log as {
           challengerId: string;
           targetId: string;
           wager: number;
         };
         const isChallenger = sessionLog.challengerId === character.id;
-        const opponent = p.session.participants.find(
-          (part) => part.characterId !== character.id
+        const opponent = (p.session.combatParticipants || []).find(
+          (part: any) => part.characterId !== character.id
         );
 
         return {
@@ -770,14 +755,14 @@ router.get(
               }
             : null,
           wager: sessionLog.wager,
-          town: p.session.locationTown,
+          town: p.session.town ? { id: (p.session as any).town.id, name: (p.session as any).town.name } : null,
           createdAt: p.session.startedAt.toISOString(),
         };
       });
 
       return res.json({ challenges });
     } catch (error) {
-      if (handlePrismaError(error, res, 'pvp-challenges', req)) return;
+      if (handleDbError(error, res, 'pvp-challenges', req)) return;
       logRouteError(req, 500, 'PvP challenges error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
@@ -795,51 +780,55 @@ router.get(
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
       const skip = (page - 1) * limit;
 
-      // P1 #21 FIX: Use aggregation query instead of loading all sessions into memory.
-      // Count wins per character by counting completed PvP sessions where they survived (HP > 0).
-      const winCounts = await prisma.combatParticipant.groupBy({
-        by: ['characterId'],
-        where: {
-          session: {
-            type: { in: ['DUEL', 'ARENA'] },
-            status: 'COMPLETED',
-          },
-          currentHp: { gt: 0 },
-        },
-        _count: { characterId: true },
-        orderBy: { _count: { characterId: 'desc' } },
-        skip,
-        take: limit,
+      // P1 #21 FIX: Count wins per character
+      // Drizzle doesn't support groupBy with nested relation filters the same way,
+      // so we fetch completed PvP participants with HP > 0 and aggregate in app
+      const allWinners = await db.query.combatParticipants.findMany({
+        where: gt(combatParticipants.currentHp, 0),
+        with: { combatSession: true },
       });
 
-      // Count total matches per character (for win rate calculation)
-      const totalCounts = await prisma.combatParticipant.groupBy({
-        by: ['characterId'],
-        where: {
-          characterId: { in: winCounts.map((w) => w.characterId) },
-          session: {
-            type: { in: ['DUEL', 'ARENA'] },
-            status: 'COMPLETED',
-          },
-        },
-        _count: { characterId: true },
+      // Filter to completed DUEL/ARENA sessions
+      const pvpWinners = allWinners.filter((p: any) =>
+        p.session && ['DUEL', 'ARENA'].includes(p.session.type) && p.session.status === 'COMPLETED'
+      );
+
+      // Count wins per character
+      const winCountMap = new Map<string, number>();
+      for (const p of pvpWinners) {
+        winCountMap.set(p.characterId, (winCountMap.get(p.characterId) ?? 0) + 1);
+      }
+
+      // Count total matches per character
+      const allPvpParticipants = await db.query.combatParticipants.findMany({
+        where: inArray(combatParticipants.characterId, [...winCountMap.keys()]),
+        with: { combatSession: true },
       });
-      const totalMap = new Map(totalCounts.map((t) => [t.characterId, t._count.characterId]));
+      const totalCountMap = new Map<string, number>();
+      for (const p of allPvpParticipants) {
+        if ((p as any).session && ['DUEL', 'ARENA'].includes((p as any).session.type) && (p as any).session.status === 'COMPLETED') {
+          totalCountMap.set(p.characterId, (totalCountMap.get(p.characterId) ?? 0) + 1);
+        }
+      }
+
+      // Sort by wins descending and paginate
+      const sorted = [...winCountMap.entries()].sort((a, b) => b[1] - a[1]);
+      const pageEntries = sorted.slice(skip, skip + limit);
+      const charIds = pageEntries.map(([id]) => id);
 
       // Fetch character names for the leaderboard entries
-      const characters = await prisma.character.findMany({
-        where: { id: { in: winCounts.map((w) => w.characterId) } },
-        select: { id: true, name: true, level: true },
-      });
-      const charMap = new Map(characters.map((c) => [c.id, c]));
+      const chars = charIds.length > 0 ? await db.query.characters.findMany({
+        where: inArray(characters.id, charIds),
+        columns: { id: true, name: true, level: true },
+      }) : [];
+      const charMap = new Map(chars.map((c) => [c.id, c]));
 
-      const leaderboard = winCounts.map((entry) => {
-        const char = charMap.get(entry.characterId);
-        const wins = entry._count.characterId;
-        const totalMatches = totalMap.get(entry.characterId) ?? wins;
+      const leaderboard = pageEntries.map(([characterId, wins]) => {
+        const char = charMap.get(characterId);
+        const totalMatches = totalCountMap.get(characterId) ?? wins;
         const losses = totalMatches - wins;
         return {
-          id: entry.characterId,
+          id: characterId,
           name: char?.name ?? 'Unknown',
           level: char?.level ?? 0,
           wins,
@@ -851,7 +840,7 @@ router.get(
 
       return res.json({ leaderboard, page, limit });
     } catch (error) {
-      if (handlePrismaError(error, res, 'pvp-leaderboard', req)) return;
+      if (handleDbError(error, res, 'pvp-leaderboard', req)) return;
       logRouteError(req, 500, 'PvP leaderboard error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
@@ -873,8 +862,8 @@ async function finalizePvpMatch(
   if (!winner || !loser) return;
 
   // Read wager from session
-  const session = await prisma.combatSession.findUnique({
-    where: { id: sessionId },
+  const session = await db.query.combatSessions.findFirst({
+    where: eq(combatSessions.id, sessionId),
   });
   const sessionLog = (session?.log ?? {}) as {
     challengerId: string;
@@ -891,46 +880,39 @@ async function finalizePvpMatch(
   // Update session log with winner
   sessionLog.winnerId = winner.id;
 
-  await prisma.$transaction([
+  await db.transaction(async (tx) => {
     // End the session
-    prisma.combatSession.update({
-      where: { id: sessionId },
-      data: {
-        status: 'COMPLETED',
-        endedAt: new Date(),
-        log: sessionLog as any,
-      },
-    }),
+    await tx.update(combatSessions).set({
+      status: 'COMPLETED',
+      endedAt: new Date().toISOString(),
+      log: sessionLog as any,
+    }).where(eq(combatSessions.id, sessionId));
+
     // Winner: grant XP + wager winnings, heal to full
-    prisma.character.update({
-      where: { id: winner.id },
-      data: {
-        xp: { increment: xpReward },
-        gold: wager > 0 ? { increment: wagerWinnings - wager } : undefined,
-        health: winner.maxHp,
-      },
-    }),
+    await tx.update(characters).set({
+      xp: sql`${characters.xp} + ${xpReward}`,
+      gold: wager > 0 ? sql`${characters.gold} + ${wagerWinnings - wager}` : undefined,
+      health: winner.maxHp,
+    }).where(eq(characters.id, winner.id));
+
     // Loser: deduct wager, heal to full
-    prisma.character.update({
-      where: { id: loser.id },
-      data: {
-        gold: wager > 0 ? { decrement: wager } : undefined,
-        health: loser.maxHp,
-      },
-    }),
-  ]);
+    await tx.update(characters).set({
+      gold: wager > 0 ? sql`${characters.gold} - ${wager}` : undefined,
+      health: loser.maxHp,
+    }).where(eq(characters.id, loser.id));
+  });
 
   // Check for level up after XP grant
   await checkLevelUp(winner.id);
 
   // Check PvP combat achievements for winner
-  const pvpWins = await prisma.combatParticipant.count({
-    where: {
-      characterId: winner.id,
-      session: { type: { in: ['DUEL', 'ARENA', 'PVP'] }, status: 'COMPLETED' },
-      currentHp: { gt: 0 },
-    },
+  const allWinnerParticipations = await db.query.combatParticipants.findMany({
+    where: and(eq(combatParticipants.characterId, winner.id), gt(combatParticipants.currentHp, 0)),
+    with: { combatSession: true },
   });
+  const pvpWins = allWinnerParticipations.filter(
+    (p: any) => p.session && ['DUEL', 'ARENA', 'PVP'].includes(p.session.type) && p.session.status === 'COMPLETED'
+  ).length;
   await checkAchievements(winner.id, 'combat_pvp', { wins: pvpWins });
 
   // Notify both participants of the result
@@ -946,13 +928,13 @@ async function finalizePvpMatch(
 
   // Write structured combat encounter logs (one per participant)
   if (COMBAT_LOGGING_ENABLED) {
-    const winnerEquip = await prisma.characterEquipment.findUnique({
-      where: { characterId_slot: { characterId: winner.id, slot: 'MAIN_HAND' } },
-      include: { item: { include: { template: { select: { name: true } } } } },
+    const winnerEquip = await db.query.characterEquipment.findFirst({
+      where: and(eq(characterEquipment.characterId, winner.id), eq(characterEquipment.slot, 'MAIN_HAND')),
+      with: { item: { with: { itemTemplate: true } } },
     });
-    const loserEquip = await prisma.characterEquipment.findUnique({
-      where: { characterId_slot: { characterId: loser.id, slot: 'MAIN_HAND' } },
-      include: { item: { include: { template: { select: { name: true } } } } },
+    const loserEquip = await db.query.characterEquipment.findFirst({
+      where: and(eq(characterEquipment.characterId, loser.id), eq(characterEquipment.slot, 'MAIN_HAND')),
+      with: { item: { with: { itemTemplate: true } } },
     });
 
     logPvpCombat({
@@ -965,8 +947,8 @@ async function finalizePvpMatch(
       townId: session?.locationTownId ?? null,
       winnerStartHp: winner.maxHp,
       loserStartHp: loser.maxHp,
-      winnerWeapon: winnerEquip?.item?.template?.name ?? 'Unarmed Strike',
-      loserWeapon: loserEquip?.item?.template?.name ?? 'Unarmed Strike',
+      winnerWeapon: winnerEquip?.item?.itemTemplate?.name ?? 'Unarmed Strike',
+      loserWeapon: loserEquip?.item?.itemTemplate?.name ?? 'Unarmed Strike',
       xpAwarded: xpReward,
       wagerAmount: wager,
       isSpar: false,
@@ -1048,8 +1030,8 @@ router.post(
         return res.status(400).json({ error: 'Cannot challenge your own characters' });
       }
 
-      const target = await prisma.character.findUnique({
-        where: { id: targetCharacterId },
+      const target = await db.query.characters.findFirst({
+        where: eq(characters.id, targetCharacterId),
       });
 
       if (!target) {
@@ -1084,32 +1066,29 @@ router.post(
       }
 
       // Create pending SPAR session — save pre-spar HP for restoration
-      const session = await prisma.combatSession.create({
-        data: {
-          type: 'SPAR',
-          status: 'PENDING',
-          locationTownId: challenger.currentTownId,
-          log: {
-            challengerId: challenger.id,
-            targetId: target.id,
-            wager: 0,
-          },
-          attackerParams: {
-            hp: challenger.health,
-          },
-          defenderParams: {
-            hp: target.health,
-          },
+      const [session] = await db.insert(combatSessions).values({
+        id: crypto.randomUUID(),
+        type: 'SPAR',
+        status: 'PENDING',
+        locationTownId: challenger.currentTownId,
+        log: {
+          challengerId: challenger.id,
+          targetId: target.id,
+          wager: 0,
         },
-      });
+        attackerParams: {
+          hp: challenger.health,
+        },
+        defenderParams: {
+          hp: target.health,
+        },
+      }).returning();
 
       // Create participant entries
-      await prisma.combatParticipant.createMany({
-        data: [
-          { sessionId: session.id, characterId: challenger.id, team: 0, currentHp: challenger.health },
-          { sessionId: session.id, characterId: target.id, team: 1, currentHp: target.health },
-        ],
-      });
+      await db.insert(combatParticipants).values([
+        { id: crypto.randomUUID(), sessionId: session.id, characterId: challenger.id, team: 0, currentHp: challenger.health },
+        { id: crypto.randomUUID(), sessionId: session.id, characterId: target.id, team: 1, currentHp: target.health },
+      ]);
 
       // Emit socket event to target
       emitCombatResult([target.id], {
@@ -1129,7 +1108,7 @@ router.post(
         },
       });
     } catch (error) {
-      if (handlePrismaError(error, res, 'pvp-spar', req)) return;
+      if (handleDbError(error, res, 'pvp-spar', req)) return;
       logRouteError(req, 500, 'PvP spar challenge error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
@@ -1147,11 +1126,11 @@ router.post(
       const { sessionId } = req.body;
       const character = req.character!;
 
-      const session = await prisma.combatSession.findUnique({
-        where: { id: sessionId },
-        include: {
-          participants: {
-            include: { character: true },
+      const session = await db.query.combatSessions.findFirst({
+        where: eq(combatSessions.id, sessionId),
+        with: {
+          combatParticipants: {
+            with: { character: true },
           },
         },
       });
@@ -1174,7 +1153,7 @@ router.post(
       }
 
       // Build combatants for the engine
-      const combatants = session.participants.map((p) => {
+      const combatants = (session.combatParticipants || []).map((p: any) => {
         const stats = (p.character.stats as unknown as CharacterStats) ?? {
           str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10,
         };
@@ -1204,18 +1183,13 @@ router.post(
       await setPvpCombatState(sessionId, combatState);
 
       // Update DB: set session active, write initiative to participants
-      await prisma.$transaction([
-        prisma.combatSession.update({
-          where: { id: sessionId },
-          data: { status: 'ACTIVE', startedAt: new Date() },
-        }),
-        ...combatState.combatants.map((c) =>
-          prisma.combatParticipant.updateMany({
-            where: { sessionId, characterId: c.id },
-            data: { initiative: c.initiative, currentHp: c.currentHp },
-          })
-        ),
-      ]);
+      await db.transaction(async (tx) => {
+        await tx.update(combatSessions).set({ status: 'ACTIVE', startedAt: new Date().toISOString() }).where(eq(combatSessions.id, sessionId));
+        for (const c of combatState.combatants) {
+          await tx.update(combatParticipants).set({ initiative: c.initiative, currentHp: c.currentHp })
+            .where(and(eq(combatParticipants.sessionId, sessionId), eq(combatParticipants.characterId, c.id)));
+        }
+      });
 
       const currentTurnId = combatState.turnOrder[combatState.turnIndex];
 
@@ -1247,7 +1221,7 @@ router.post(
         },
       });
     } catch (error) {
-      if (handlePrismaError(error, res, 'pvp-spar-accept', req)) return;
+      if (handleDbError(error, res, 'pvp-spar-accept', req)) return;
       logRouteError(req, 500, 'PvP spar-accept error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
@@ -1265,8 +1239,8 @@ router.post(
       const { sessionId } = req.body;
       const character = req.character!;
 
-      const session = await prisma.combatSession.findUnique({
-        where: { id: sessionId },
+      const session = await db.query.combatSessions.findFirst({
+        where: eq(combatSessions.id, sessionId),
       });
 
       if (!session) {
@@ -1286,10 +1260,7 @@ router.post(
         return res.status(403).json({ error: 'Only the challenged player can decline' });
       }
 
-      await prisma.combatSession.update({
-        where: { id: sessionId },
-        data: { status: 'CANCELLED', endedAt: new Date() },
-      });
+      await db.update(combatSessions).set({ status: 'CANCELLED', endedAt: new Date().toISOString() }).where(eq(combatSessions.id, sessionId));
 
       // Notify challenger
       emitCombatResult([sessionLog.challengerId], {
@@ -1301,7 +1272,7 @@ router.post(
 
       return res.json({ session: { id: sessionId, status: 'CANCELLED' } });
     } catch (error) {
-      if (handlePrismaError(error, res, 'pvp-spar-decline', req)) return;
+      if (handleDbError(error, res, 'pvp-spar-decline', req)) return;
       logRouteError(req, 500, 'PvP spar-decline error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
@@ -1323,10 +1294,10 @@ router.post(
       let combatState = await getPvpCombatState(sessionId);
 
       if (!combatState) {
-        const session = await prisma.combatSession.findUnique({
-          where: { id: sessionId },
-          include: {
-            participants: { include: { character: true } },
+        const session = await db.query.combatSessions.findFirst({
+          where: eq(combatSessions.id, sessionId),
+          with: {
+            combatParticipants: { with: { character: true } },
           },
         });
 
@@ -1334,8 +1305,8 @@ router.post(
           return res.status(404).json({ error: 'No active spar session found' });
         }
 
-        const isParticipant = session.participants.some(
-          (p) => p.characterId === character.id
+        const isParticipant = (session.combatParticipants || []).some(
+          (p: any) => p.characterId === character.id
         );
         if (!isParticipant) {
           return res.status(403).json({ error: 'You are not a participant in this spar' });
@@ -1379,23 +1350,20 @@ router.post(
 
       // Log the action to DB
       const lastLog = combatState.log[combatState.log.length - 1];
-      await prisma.combatLog.create({
-        data: {
-          sessionId,
-          round: lastLog.round,
-          actorId: lastLog.actorId,
-          action: lastLog.action,
-          result: lastLog.result as any,
-        },
+      await db.insert(combatLogs).values({
+        id: crypto.randomUUID(),
+        sessionId,
+        round: lastLog.round,
+        actorId: lastLog.actorId,
+        action: lastLog.action,
+        result: lastLog.result as any,
       });
 
       // Update participant HP in DB
       await Promise.all(
         combatState.combatants.map((c) =>
-          prisma.combatParticipant.updateMany({
-            where: { sessionId, characterId: c.id },
-            data: { currentHp: c.currentHp },
-          })
+          db.update(combatParticipants).set({ currentHp: c.currentHp })
+            .where(and(eq(combatParticipants.sessionId, sessionId), eq(combatParticipants.characterId, c.id)))
         )
       );
 
@@ -1447,7 +1415,7 @@ router.post(
 
       return res.json(response);
     } catch (error) {
-      if (handlePrismaError(error, res, 'pvp-spar-action', req)) return;
+      if (handleDbError(error, res, 'pvp-spar-action', req)) return;
       logRouteError(req, 500, 'PvP spar-action error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
@@ -1464,24 +1432,22 @@ router.get(
       const character = req.character!;
 
       // Find the player's active SPAR session
-      const participant = await prisma.combatParticipant.findFirst({
-        where: {
-          characterId: character.id,
-          session: {
-            type: 'SPAR',
-            status: 'ACTIVE',
-          },
-        },
-        include: {
-          session: {
-            include: {
-              participants: {
-                include: { character: { select: { id: true, name: true, level: true } } },
+      const allParticipations = await db.query.combatParticipants.findMany({
+        where: eq(combatParticipants.characterId, character.id),
+        with: {
+          combatSession: {
+            with: {
+              combatParticipants: {
+                with: { character: true },
               },
             },
           },
         },
       });
+
+      const participant = allParticipations.find(
+        (p: any) => p.session?.type === 'SPAR' && p.session?.status === 'ACTIVE'
+      );
 
       if (!participant) {
         return res.json({ inCombat: false });
@@ -1495,8 +1461,8 @@ router.get(
           session: {
             id: participant.sessionId,
             type: 'SPAR',
-            status: participant.session.status,
-            participants: participant.session.participants.map((p) => ({
+            status: (participant as any).session.status,
+            participants: ((participant as any).session.combatParticipants || []).map((p: any) => ({
               characterId: p.characterId,
               name: p.character.name,
               level: p.character.level,
@@ -1541,7 +1507,7 @@ router.get(
         },
       });
     } catch (error) {
-      if (handlePrismaError(error, res, 'pvp-spar-state', req)) return;
+      if (handleDbError(error, res, 'pvp-spar-state', req)) return;
       logRouteError(req, 500, 'PvP spar-state error', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
@@ -1563,8 +1529,8 @@ async function finalizeSparMatch(
   if (!winner || !loser) return;
 
   // Read pre-spar HP from session
-  const session = await prisma.combatSession.findUnique({
-    where: { id: sessionId },
+  const session = await db.query.combatSessions.findFirst({
+    where: eq(combatSessions.id, sessionId),
   });
   const attackerParams = (session?.attackerParams ?? {}) as { hp?: number };
   const defenderParams = (session?.defenderParams ?? {}) as { hp?: number };
@@ -1573,31 +1539,24 @@ async function finalizeSparMatch(
   // Determine which combatant is attacker vs defender
   const challengerId = sessionLog.challengerId;
 
-  await prisma.$transaction([
+  await db.transaction(async (tx) => {
     // End the session
-    prisma.combatSession.update({
-      where: { id: sessionId },
-      data: {
-        status: 'COMPLETED',
-        endedAt: new Date(),
-        log: { ...sessionLog, winnerId: winner.id } as any,
-      },
-    }),
+    await tx.update(combatSessions).set({
+      status: 'COMPLETED',
+      endedAt: new Date().toISOString(),
+      log: { ...sessionLog, winnerId: winner.id } as any,
+    }).where(eq(combatSessions.id, sessionId));
+
     // Restore challenger to pre-spar HP
-    prisma.character.update({
-      where: { id: challengerId },
-      data: {
-        health: attackerParams.hp ?? winner.maxHp,
-      },
-    }),
+    await tx.update(characters).set({
+      health: attackerParams.hp ?? winner.maxHp,
+    }).where(eq(characters.id, challengerId));
+
     // Restore target to pre-spar HP
-    prisma.character.update({
-      where: { id: challengerId === winner.id ? loser.id : winner.id },
-      data: {
-        health: defenderParams.hp ?? loser.maxHp,
-      },
-    }),
-  ]);
+    await tx.update(characters).set({
+      health: defenderParams.hp ?? loser.maxHp,
+    }).where(eq(characters.id, challengerId === winner.id ? loser.id : winner.id));
+  });
 
   // Set 5-minute cooldown between these two players
   await setSparCooldown(winner.id, loser.id);

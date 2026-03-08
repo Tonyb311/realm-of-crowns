@@ -1,6 +1,7 @@
 import { Request } from 'express';
-import { prisma } from './prisma';
-import { LogLevel } from '@prisma/client';
+import { db } from './db';
+import { errorLogs } from '@database/tables';
+import type { LogLevel } from '@shared/enums';
 import { logger } from './logger';
 
 // ---------------------------------------------------------------------------
@@ -135,21 +136,20 @@ async function writeLog(input: ErrorLogInput & { level: string }): Promise<void>
   if (!shouldLog(level)) return;
 
   try {
-    const entry = await prisma.errorLog.create({
-      data: {
-        level,
-        category: input.category || 'general',
-        endpoint: input.endpoint,
-        statusCode: input.statusCode,
-        message: input.message,
-        detail: input.detail || null,
-        userId: input.userId || null,
-        characterId: input.characterId || null,
-        requestBody: input.requestBody ? (sanitizeBody(input.requestBody) as object) : undefined,
-        userAgent: input.userAgent || null,
-        ip: input.ip || null,
-      },
-    });
+    const [entry] = await db.insert(errorLogs).values({
+      id: crypto.randomUUID(),
+      level,
+      category: input.category || 'general',
+      endpoint: input.endpoint,
+      statusCode: input.statusCode,
+      message: input.message,
+      detail: input.detail || null,
+      userId: input.userId || null,
+      characterId: input.characterId || null,
+      requestBody: input.requestBody ? (sanitizeBody(input.requestBody) as object) : undefined,
+      userAgent: input.userAgent || null,
+      ip: input.ip || null,
+    }).returning();
 
     // Emit to admin dashboard in real time for ERROR and WARN
     if ((level === 'ERROR' || level === 'WARN') && emitToAdmins) {

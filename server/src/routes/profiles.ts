@@ -1,6 +1,8 @@
 import { Router, Response } from 'express';
-import { prisma } from '../lib/prisma';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { db } from '../lib/db';
+import { eq, and, or, inArray, ne, asc, ilike, sql, count } from 'drizzle-orm';
+import { characters, combatSessions, combatParticipants } from '@database/tables';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
@@ -14,24 +16,24 @@ const router = Router();
 
 router.get('/:id/profile', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await prisma.character.findUnique({
-      where: { id: req.params.id },
-      include: {
-        currentTown: { select: { id: true, name: true } },
-        guildMemberships: {
-          include: {
-            guild: { select: { id: true, name: true, tag: true } },
+    const character = await db.query.characters.findFirst({
+      where: eq(characters.id, req.params.id),
+      with: {
+        town_currentTownId: { columns: { id: true, name: true } },
+        guildMembers: {
+          with: {
+            guild: { columns: { id: true, name: true, tag: true } },
           },
-          take: 1,
+          limit: 1,
         },
-        professions: {
-          select: { professionType: true, tier: true, level: true },
-          orderBy: { level: 'desc' },
+        playerProfessions: {
+          columns: { professionType: true, tier: true, level: true },
+          orderBy: (pp: any, { desc }: any) => [desc(pp.level)],
         },
         playerAchievements: {
-          include: { achievement: { select: { name: true, description: true } } },
-          orderBy: { unlockedAt: 'desc' },
-          take: 5,
+          with: { achievement: { columns: { name: true, description: true } } },
+          orderBy: (pa: any, { desc }: any) => [desc(pa.unlockedAt)],
+          limit: 5,
         },
       },
     });
@@ -40,30 +42,37 @@ router.get('/:id/profile', authGuard, characterGuard, async (req: AuthenticatedR
       return res.status(404).json({ error: 'Character not found' });
     }
 
-    // Count PvP stats
-    const [pvpWins, pvpLosses] = await Promise.all([
-      prisma.combatSession.count({
-        where: {
-          type: { in: ['DUEL', 'ARENA'] },
-          status: 'COMPLETED',
-          participants: { some: { characterId: character.id } },
-          log: { path: ['winnerId'], equals: character.id },
-        },
-      }),
-      prisma.combatSession.count({
-        where: {
-          type: { in: ['DUEL', 'ARENA'] },
-          status: 'COMPLETED',
-          participants: { some: { characterId: character.id } },
-          NOT: { log: { path: ['winnerId'], equals: character.id } },
-        },
-      }),
-    ]);
+    // Count PvP stats using raw SQL for JSON path filter (Drizzle doesn't natively support JSON path queries)
+    const [pvpWinsResult] = await db.select({ total: count() })
+      .from(combatSessions)
+      .innerJoin(combatParticipants, eq(combatParticipants.sessionId, combatSessions.id))
+      .where(and(
+        inArray(combatSessions.type, ['DUEL', 'ARENA']),
+        eq(combatSessions.status, 'COMPLETED'),
+        eq(combatParticipants.characterId, character.id),
+        sql`${combatSessions.log}->>'winnerId' = ${character.id}`,
+      ));
 
-    const guild = character.guildMemberships[0]?.guild ?? null;
+    const [pvpLossesResult] = await db.select({ total: count() })
+      .from(combatSessions)
+      .innerJoin(combatParticipants, eq(combatParticipants.sessionId, combatSessions.id))
+      .where(and(
+        inArray(combatSessions.type, ['DUEL', 'ARENA']),
+        eq(combatSessions.status, 'COMPLETED'),
+        eq(combatParticipants.characterId, character.id),
+        sql`${combatSessions.log}->>'winnerId' != ${character.id}`,
+      ));
+
+    const pvpWins = pvpWinsResult.total;
+    const pvpLosses = pvpLossesResult.total;
+
+    const guild = character.guildMembers[0]?.guild ?? null;
 
     // Psion Telepath: Surface Read — show emotional state tag
-    const viewingCharacter = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
+    const viewingCharacter = await db.query.characters.findFirst({
+      where: eq(characters.userId, req.user!.userId),
+      orderBy: asc(characters.createdAt),
+    });
     let psionInsight: { emotionalState?: string } | undefined;
     if (viewingCharacter && viewingCharacter.id !== character.id) {
       const { isPsion, specialization } = await getPsionSpec(viewingCharacter.id);
@@ -92,11 +101,11 @@ router.get('/:id/profile', authGuard, characterGuard, async (req: AuthenticatedR
           wisdom: rawStats.wis ?? 10,
           charisma: rawStats.cha ?? 10,
         },
-        currentTown: character.currentTown,
+        currentTown: character.town_currentTownId,
         guildId: guild?.id,
         guildName: guild?.name,
         guildTag: guild?.tag,
-        professions: character.professions.map(p => p.professionType),
+        professions: character.playerProfessions.map(p => p.professionType),
         pvp: { wins: pvpWins, losses: pvpLosses },
         achievements: character.playerAchievements.map((pa) => ({
           name: pa.achievement.name,
@@ -109,7 +118,7 @@ router.get('/:id/profile', authGuard, characterGuard, async (req: AuthenticatedR
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get profile', req)) return;
+    if (handleDbError(error, res, 'get profile', req)) return;
     logRouteError(req, 500, 'Get profile error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -126,29 +135,25 @@ router.get('/search', authGuard, characterGuard, async (req: AuthenticatedReques
       return res.status(400).json({ error: 'Search query must be at least 2 characters' });
     }
 
-    const characters = await prisma.character.findMany({
-      where: {
-        name: { contains: q, mode: 'insensitive' },
-      },
-      select: {
-        id: true,
-        name: true,
-        race: true,
-        level: true,
-        currentTownId: true,
-      },
-      take: limit,
-      orderBy: { name: 'asc' },
-    });
+    const characterRows = await db.select({
+      id: characters.id,
+      name: characters.name,
+      race: characters.race,
+      level: characters.level,
+      currentTownId: characters.currentTownId,
+    }).from(characters)
+      .where(ilike(characters.name, `%${q}%`))
+      .limit(limit)
+      .orderBy(asc(characters.name));
 
     return res.json({
-      results: characters.map((c) => ({
+      results: characterRows.map((c) => ({
         ...c,
         online: isOnline(c.id),
       })),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'character search', req)) return;
+    if (handleDbError(error, res, 'character search', req)) return;
     logRouteError(req, 500, 'Character search error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

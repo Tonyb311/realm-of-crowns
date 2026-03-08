@@ -1,31 +1,47 @@
 import { Router, Response } from 'express';
-import { prisma } from '../lib/prisma';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { db } from '../lib/db';
+import { eq, asc } from 'drizzle-orm';
+import { exclusiveZones, characters, inventories, items, itemTemplates, playerProfessions, changelingDisguises } from '@database/tables';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
-import { Race } from '@prisma/client';
+import type { Race } from '@shared/enums';
 
 const router = Router();
 
 // ── Helpers ──────────────────────────────────────────────────
 
 async function getCharacterForUser(userId: string) {
-  return prisma.character.findFirst({
-    where: { userId },
-    orderBy: { createdAt: 'asc' },
-    include: {
-      inventory: {
-        include: {
-          item: { include: { template: true } },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.userId, userId),
+    orderBy: asc(characters.createdAt),
+    with: {
+      inventories: {
+        with: {
+          item: { with: { itemTemplate: true } },
         },
       },
-      professions: {
-        where: { isActive: true },
-      },
-      changelingDisguise: true,
+      playerProfessions: true,
+      changelingDisguises: true,
     },
   });
+
+  if (!character) return null;
+
+  // Map to match the expected shape
+  return {
+    ...character,
+    inventory: character.inventories.map(inv => ({
+      ...inv,
+      item: {
+        ...inv.item,
+        template: inv.item.itemTemplate,
+      },
+    })),
+    professions: character.playerProfessions.filter(p => p.isActive),
+    changelingDisguise: character.changelingDisguises[0] ?? null,
+  };
 }
 
 /**
@@ -139,11 +155,11 @@ function checkZoneAccess(
 // =========================================================================
 router.get('/exclusive', authGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const zones = await prisma.exclusiveZone.findMany({
-      include: {
-        region: { select: { id: true, name: true, biome: true } },
+    const zones = await db.query.exclusiveZones.findMany({
+      with: {
+        region: { columns: { id: true, name: true, biome: true } },
       },
-      orderBy: [{ dangerLevel: 'asc' }, { name: 'asc' }],
+      orderBy: [asc(exclusiveZones.dangerLevel), asc(exclusiveZones.name)],
     });
 
     return res.json({
@@ -164,7 +180,7 @@ router.get('/exclusive', authGuard, async (req: AuthenticatedRequest, res: Respo
       total: zones.length,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'list exclusive zones', req)) return;
+    if (handleDbError(error, res, 'list exclusive zones', req)) return;
     logRouteError(req, 500, 'List exclusive zones error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -177,10 +193,10 @@ router.get('/:id/access', authGuard, async (req: AuthenticatedRequest, res: Resp
   try {
     const { id } = req.params;
 
-    const zone = await prisma.exclusiveZone.findUnique({
-      where: { id },
-      include: {
-        region: { select: { id: true, name: true, biome: true } },
+    const zone = await db.query.exclusiveZones.findFirst({
+      where: eq(exclusiveZones.id, id),
+      with: {
+        region: { columns: { id: true, name: true, biome: true } },
       },
     });
 
@@ -212,7 +228,7 @@ router.get('/:id/access', authGuard, async (req: AuthenticatedRequest, res: Resp
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'check zone access', req)) return;
+    if (handleDbError(error, res, 'check zone access', req)) return;
     logRouteError(req, 500, 'Check zone access error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -225,10 +241,10 @@ router.post('/:id/enter', authGuard, async (req: AuthenticatedRequest, res: Resp
   try {
     const { id } = req.params;
 
-    const zone = await prisma.exclusiveZone.findUnique({
-      where: { id },
-      include: {
-        region: { select: { id: true, name: true, biome: true } },
+    const zone = await db.query.exclusiveZones.findFirst({
+      where: eq(exclusiveZones.id, id),
+      with: {
+        region: { columns: { id: true, name: true, biome: true } },
       },
     });
 
@@ -260,22 +276,19 @@ router.post('/:id/enter', authGuard, async (req: AuthenticatedRequest, res: Resp
     if (consumeOnEntry) {
       const entryReqs = zone.entryRequirements as string[];
       if (Array.isArray(entryReqs)) {
-        await prisma.$transaction(async (tx) => {
+        await db.transaction(async (tx) => {
           for (const reqItem of entryReqs) {
-            const inv = await tx.inventory.findFirst({
-              where: {
-                characterId: character.id,
-                item: { template: { name: reqItem } },
-              },
-            });
+            // Find matching inventory entry
+            const inv = character.inventory.find(
+              i => i.item.template.name === reqItem
+            );
             if (inv) {
               if (inv.quantity <= 1) {
-                await tx.inventory.delete({ where: { id: inv.id } });
+                await tx.delete(inventories).where(eq(inventories.id, inv.id));
               } else {
-                await tx.inventory.update({
-                  where: { id: inv.id },
-                  data: { quantity: inv.quantity - 1 },
-                });
+                await tx.update(inventories)
+                  .set({ quantity: inv.quantity - 1 })
+                  .where(eq(inventories.id, inv.id));
               }
             }
           }
@@ -298,7 +311,7 @@ router.post('/:id/enter', authGuard, async (req: AuthenticatedRequest, res: Resp
       accessReason: accessResult.reason,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'enter zone', req)) return;
+    if (handleDbError(error, res, 'enter zone', req)) return;
     logRouteError(req, 500, 'Enter zone error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -311,10 +324,10 @@ router.get('/:id/resources', authGuard, async (req: AuthenticatedRequest, res: R
   try {
     const { id } = req.params;
 
-    const zone = await prisma.exclusiveZone.findUnique({
-      where: { id },
-      include: {
-        region: { select: { id: true, name: true, biome: true } },
+    const zone = await db.query.exclusiveZones.findFirst({
+      where: eq(exclusiveZones.id, id),
+      with: {
+        region: { columns: { id: true, name: true, biome: true } },
       },
     });
 
@@ -341,7 +354,7 @@ router.get('/:id/resources', authGuard, async (req: AuthenticatedRequest, res: R
       total: Array.isArray(availableResources) ? availableResources.length : 0,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get zone resources', req)) return;
+    if (handleDbError(error, res, 'get zone resources', req)) return;
     logRouteError(req, 500, 'Get zone resources error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

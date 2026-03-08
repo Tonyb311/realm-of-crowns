@@ -2,10 +2,20 @@
 // Bot Account Creation & Cleanup
 // ---------------------------------------------------------------------------
 
-import { prisma } from '../../lib/prisma';
+import { db } from '../../lib/db';
+import { eq, and, ne, not, inArray, count, sql } from 'drizzle-orm';
+import {
+  users, characters, towns, itemTemplates, items, marketListings,
+  playerProfessions, resources, partyInvitations, partyMembers, parties,
+  travelGroups, travelGroupMembers, groupTravelStates, characterTravelStates,
+  marketBuyOrders, tradeTransactions, diplomacyEvents, treaties,
+  lawVotes, laws, councilMembers, guilds, kingdoms, dailyActions,
+  auctionCycles,
+} from '@database/tables';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { Race, DragonBloodline, BeastClan, ElementalType } from '@prisma/client';
+import { RACES, DRAGON_BLOODLINES, BEAST_CLANS, ELEMENTAL_TYPES } from '@shared/enums';
+import type { Race, DragonBloodline, BeastClan, ElementalType } from '@shared/enums';
 import { getRace } from '@shared/data/races';
 import { getTierForLevel, getCumulativeXpForLevel } from '@shared/data/professions/xp-curve';
 import { BotState, BotProfile, SeedConfig, DEFAULT_CONFIG, BOT_PROFILES } from './types';
@@ -57,7 +67,7 @@ function pickWeighted<T>(all: T[], favored: T[]): T {
 // Profile-based race and class preferences
 // ---------------------------------------------------------------------------
 
-const ALL_RACES = Object.values(Race);
+const ALL_RACES = [...RACES];
 const ALL_CLASSES = ['warrior', 'mage', 'rogue', 'cleric', 'ranger', 'bard', 'psion'] as const;
 
 const GATHERING_PROFESSIONS = ['MINER', 'FARMER', 'LUMBERJACK', 'HERBALIST', 'FISHERMAN', 'HUNTER', 'RANCHER'];
@@ -73,11 +83,11 @@ const ALL_SEED_PROFESSIONS = [
 ];
 
 const PROFILE_RACE_PREFERENCES: Record<BotProfile, Race[]> = {
-  gatherer: [Race.HUMAN, Race.HARTHFOLK, Race.MOSSKIN, Race.ELF],
-  crafter: [Race.DWARF, Race.GNOME, Race.FORGEBORN],
-  warrior: [Race.ORC, Race.HALF_ORC, Race.GOLIATH, Race.DRAKONID],
-  merchant: [Race.HARTHFOLK, Race.HUMAN, Race.HALF_ELF],
-  politician: [Race.HUMAN, Race.ELF, Race.HALF_ELF],
+  gatherer: ['HUMAN', 'HARTHFOLK', 'MOSSKIN', 'ELF'],
+  crafter: ['DWARF', 'GNOME', 'FORGEBORN'],
+  warrior: ['ORC', 'HALF_ORC', 'GOLIATH', 'DRAKONID'],
+  merchant: ['HARTHFOLK', 'HUMAN', 'HALF_ELF'],
+  politician: ['HUMAN', 'ELF', 'HALF_ELF'],
   socialite: [],
   balanced: [],
   explorer: [],
@@ -170,9 +180,9 @@ async function seedMarketItem(
     // Templates use 'crafted-' for processed materials or 'resource-' for raw.
     const hyphenName = name.toLowerCase().replace(/\s+/g, '-');
     const template =
-      await prisma.itemTemplate.findUnique({ where: { id: `crafted-${hyphenName}` } }) ??
-      await prisma.itemTemplate.findUnique({ where: { id: `resource-${hyphenName}` } }) ??
-      await prisma.itemTemplate.findFirst({ where: { name: { equals: name, mode: 'insensitive' } } });
+      await db.query.itemTemplates.findFirst({ where: eq(itemTemplates.id, `crafted-${hyphenName}`) }) ??
+      await db.query.itemTemplates.findFirst({ where: eq(itemTemplates.id, `resource-${hyphenName}`) }) ??
+      await db.query.itemTemplates.findFirst({ where: sql`LOWER(${itemTemplates.name}) = LOWER(${name})` });
     if (!template || bots.length === 0) {
       logger.warn(`${name} ItemTemplate not found or no bots — skipping market seeding`);
       return;
@@ -184,24 +194,22 @@ async function seedMarketItem(
 
     for (let i = 0; i < listingsToCreate; i++) {
       const seller = bots[i % bots.length];
-      const item = await prisma.item.create({
-        data: {
-          templateId: template.id,
-          ownerId: seller.characterId,
-        },
-      });
-      await prisma.marketListing.create({
-        data: {
-          sellerId: seller.characterId,
-          itemId: item.id,
-          itemTemplateId: template.id,
-          itemName: name,
-          price,
-          quantity: qtyPerListing,
-          townId: seller.currentTownId,
-          status: 'active',
-          expiresAt,
-        },
+      const [item] = await db.insert(items).values({
+        id: crypto.randomUUID(),
+        templateId: template.id,
+        ownerId: seller.characterId,
+      }).returning();
+      await db.insert(marketListings).values({
+        id: crypto.randomUUID(),
+        sellerId: seller.characterId,
+        itemId: item.id,
+        itemTemplateId: template.id,
+        itemName: name,
+        price,
+        quantity: qtyPerListing,
+        townId: seller.currentTownId,
+        status: 'active',
+        expiresAt: expiresAt.toISOString(),
       });
     }
     logger.info({ item: name, total: listingsToCreate * qtyPerListing, price }, 'Seeded market listings');
@@ -225,8 +233,8 @@ async function seedMarketItem(
  */
 export async function seedBots(config: SeedConfig): Promise<BotState[]> {
   // Clean up any existing test bots first (makes seed idempotent)
-  const existing = await prisma.user.count({ where: { isTestAccount: true } });
-  if (existing > 0) {
+  const [{ total: existing }] = await db.select({ total: count() }).from(users).where(eq(users.isTestAccount, true));
+  if (Number(existing) > 0) {
     logger.info({ existing }, 'Cleaning up existing test accounts before seeding');
     await cleanupBots();
   }
@@ -250,14 +258,14 @@ export async function seedBots(config: SeedConfig): Promise<BotState[]> {
   // Build town pool — only released towns
   let townPool: { id: string; name: string }[];
   if (config.townIds === 'all') {
-    townPool = await prisma.town.findMany({
-      where: { isReleased: true },
-      select: { id: true, name: true },
+    townPool = await db.query.towns.findMany({
+      where: eq(towns.isReleased, true),
+      columns: { id: true, name: true },
     });
   } else {
-    townPool = await prisma.town.findMany({
-      where: { id: { in: config.townIds }, isReleased: true },
-      select: { id: true, name: true },
+    townPool = await db.query.towns.findMany({
+      where: and(inArray(towns.id, config.townIds), eq(towns.isReleased, true)),
+      columns: { id: true, name: true },
     });
   }
   if (townPool.length === 0) throw new Error('No valid released towns found');
@@ -454,8 +462,11 @@ async function createSingleBot(
     // 'all' — use race-based defaults (released towns only)
     if (raceDef && raceDef.startingTowns.length > 0) {
       const townName = pick(raceDef.startingTowns);
-      const town = await prisma.town.findFirst({
-        where: { name: { equals: townName, mode: 'insensitive' }, isReleased: true },
+      const town = await db.query.towns.findFirst({
+        where: and(
+          sql`LOWER(${towns.name}) = LOWER(${townName})`,
+          eq(towns.isReleased, true),
+        ),
       });
       townId = town?.id ?? townPool[index % townPool.length].id;
     } else {
@@ -469,23 +480,22 @@ async function createSingleBot(
   let beastClan: BeastClan | null = null;
   let elementalType: ElementalType | null = null;
 
-  if (raceEnum === Race.DRAKONID) {
-    dragonBloodline = pick(Object.values(DragonBloodline));
-  } else if (raceEnum === Race.BEASTFOLK) {
-    beastClan = pick(Object.values(BeastClan));
-  } else if (raceEnum === Race.ELEMENTARI) {
-    elementalType = pick(Object.values(ElementalType));
+  if (raceEnum === 'DRAKONID') {
+    dragonBloodline = pick([...DRAGON_BLOODLINES]);
+  } else if (raceEnum === 'BEASTFOLK') {
+    beastClan = pick([...BEAST_CLANS]);
+  } else if (raceEnum === 'ELEMENTARI') {
+    elementalType = pick([...ELEMENTAL_TYPES]);
   }
 
   // 7. Create User
-  const user = await prisma.user.create({
-    data: {
-      email: `${config.namePrefix.toLowerCase()}${index}@simulation.roc`,
-      username: `${config.namePrefix.toLowerCase()}${index}`,
-      passwordHash: await bcrypt.hash('simbot', 4), // low rounds for speed
-      isTestAccount: true,
-    },
-  });
+  const [user] = await db.insert(users).values({
+    id: crypto.randomUUID(),
+    email: `${config.namePrefix.toLowerCase()}${index}@simulation.roc`,
+    username: `${config.namePrefix.toLowerCase()}${index}`,
+    passwordHash: await bcrypt.hash('simbot', 4), // low rounds for speed
+    isTestAccount: true,
+  }).returning();
 
   // 8. Calculate starting stats
 
@@ -527,25 +537,24 @@ async function createSingleBot(
   let startingProfession: string | null = profAssignments.get(index) || null;
 
   // 11. Create Character
-  const character = await prisma.character.create({
-    data: {
-      userId: user.id,
-      name: generateCharacterName(raceEnum.toString()),
-      race: raceEnum,
-      dragonBloodline,
-      beastClan,
-      elementalType,
-      class: charClass,
-      stats,
-      gold,
-      level: startLevel,
-      xp: accumulatedXP,
-      health: maxHealth,
-      maxHealth,
-      currentTownId: townId,
-      homeTownId: townId,
-    },
-  });
+  const [character] = await db.insert(characters).values({
+    id: crypto.randomUUID(),
+    userId: user.id,
+    name: generateCharacterName(raceEnum.toString()),
+    race: raceEnum,
+    dragonBloodline,
+    beastClan,
+    elementalType,
+    class: charClass,
+    stats,
+    gold,
+    level: startLevel,
+    xp: accumulatedXP,
+    health: maxHealth,
+    maxHealth,
+    currentTownId: townId,
+    homeTownId: townId,
+  }).returning();
 
   // 12. Give starting inventory (5 Basic Rations)
   await giveStartingInventory(character.id);
@@ -572,15 +581,14 @@ async function createSingleBot(
 
   if (startingProfession) {
     try {
-      await prisma.playerProfession.create({
-        data: {
-          characterId: character.id,
-          professionType: startingProfession as any,
-          level: profLevel,
-          xp: profXp,
-          tier: profTier as any,
-          isActive: true,
-        },
+      await db.insert(playerProfessions).values({
+        id: crypto.randomUUID(),
+        characterId: character.id,
+        professionType: startingProfession as any,
+        level: profLevel,
+        xp: profXp,
+        tier: profTier as any,
+        isActive: true,
       });
     } catch { /* ignore duplicate */ }
   }
@@ -643,9 +651,9 @@ async function createSingleBot(
  */
 export async function cleanupBots(): Promise<{ deletedUsers: number; deletedCharacters: number }> {
   // 1. Gather test user IDs (explicitly exclude admin accounts)
-  const testUsers = await prisma.user.findMany({
-    where: { isTestAccount: true, role: { not: 'admin' } },
-    select: { id: true },
+  const testUsers = await db.query.users.findMany({
+    where: and(eq(users.isTestAccount, true), ne(users.role, 'admin')),
+    columns: { id: true },
   });
   const userIds = testUsers.map((u) => u.id);
 
@@ -655,135 +663,100 @@ export async function cleanupBots(): Promise<{ deletedUsers: number; deletedChar
   }
 
   // 2. Gather their character IDs
-  const testCharacters = await prisma.character.findMany({
-    where: { userId: { in: userIds } },
-    select: { id: true },
+  const testCharacters = await db.query.characters.findMany({
+    where: inArray(characters.userId, userIds),
+    columns: { id: true },
   });
   const charIds = testCharacters.map((c) => c.id);
 
   // 3. Transactional cleanup — delete/nullify non-cascading FKs first
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     if (charIds.length > 0) {
       // ── Party system (Restrict FK on leaderId) ──
-      // Delete invitations, members, then parties
-      await tx.partyInvitation.deleteMany({
-        where: { OR: [{ characterId: { in: charIds } }, { invitedById: { in: charIds } }] },
-      });
-      await tx.partyMember.deleteMany({
-        where: { characterId: { in: charIds } },
-      });
-      await tx.party.deleteMany({
-        where: { leaderId: { in: charIds } },
-      });
+      await tx.delete(partyInvitations).where(
+        sql`${partyInvitations.characterId} = ANY(${charIds}) OR ${partyInvitations.invitedById} = ANY(${charIds})`,
+      );
+      await tx.delete(partyMembers).where(inArray(partyMembers.characterId, charIds));
+      await tx.delete(parties).where(inArray(parties.leaderId, charIds));
 
       // ── Travel groups (Restrict FK on leaderId) ──
-      // Delete group travel state, members, then groups
-      const botGroups = await tx.travelGroup.findMany({
-        where: { leaderId: { in: charIds } },
-        select: { id: true },
+      const botGroups = await tx.query.travelGroups.findMany({
+        where: inArray(travelGroups.leaderId, charIds),
+        columns: { id: true },
       });
       const groupIds = botGroups.map((g) => g.id);
       if (groupIds.length > 0) {
-        await tx.groupTravelState.deleteMany({ where: { groupId: { in: groupIds } } });
-        await tx.travelGroupMember.deleteMany({ where: { groupId: { in: groupIds } } });
-        await tx.travelGroup.deleteMany({ where: { id: { in: groupIds } } });
+        await tx.delete(groupTravelStates).where(inArray(groupTravelStates.groupId, groupIds));
+        await tx.delete(travelGroupMembers).where(inArray(travelGroupMembers.groupId, groupIds));
+        await tx.delete(travelGroups).where(inArray(travelGroups.id, groupIds));
       }
       // Also remove bot characters from non-bot travel groups
-      await tx.travelGroupMember.deleteMany({
-        where: { characterId: { in: charIds } },
-      });
+      await tx.delete(travelGroupMembers).where(inArray(travelGroupMembers.characterId, charIds));
 
       // ── Character travel state (in case bots are mid-travel) ──
-      await tx.characterTravelState.deleteMany({
-        where: { characterId: { in: charIds } },
-      });
+      await tx.delete(characterTravelStates).where(inArray(characterTravelStates.characterId, charIds));
 
       // ── Market buy orders (must clean before listings and items) ──
-      await tx.marketBuyOrder.deleteMany({
-        where: { buyer: { user: { isTestAccount: true } } },
-      });
+      // Delete orders placed by test account characters
+      await tx.delete(marketBuyOrders).where(inArray(marketBuyOrders.buyerId, charIds));
 
       // ── Trade transactions (Restrict on buyerId/sellerId — must delete BEFORE items) ──
-      await tx.tradeTransaction.deleteMany({
-        where: { OR: [{ buyerId: { in: charIds } }, { sellerId: { in: charIds } }] },
-      });
+      await tx.delete(tradeTransactions).where(
+        sql`${tradeTransactions.buyerId} = ANY(${charIds}) OR ${tradeTransactions.sellerId} = ANY(${charIds})`,
+      );
 
       // ── Market listings (references items — must delete BEFORE items) ──
-      await tx.marketListing.deleteMany({
-        where: { sellerId: { in: charIds } },
-      });
+      await tx.delete(marketListings).where(inArray(marketListings.sellerId, charIds));
 
       // ── Price history from test trades ──
       // (PriceHistory doesn't reference characters so skip)
 
       // ── Items (SetNull on ownerId/craftedById — after trade transactions + listings cleared) ──
-      await tx.item.deleteMany({ where: { ownerId: { in: charIds } } });
-      await tx.item.updateMany({
-        where: { craftedById: { in: charIds } },
-        data: { craftedById: null },
-      });
+      await tx.delete(items).where(inArray(items.ownerId, charIds));
+      await tx.update(items).set({ craftedById: null }).where(inArray(items.craftedById, charIds));
 
       // ── Auction cycles (clean up orphaned cycles with no remaining listings/orders) ──
-      await tx.auctionCycle.deleteMany({
-        where: {
-          AND: [
-            { listings: { none: {} } },
-            { orders: { none: {} } },
-          ],
-        },
-      });
+      // Use raw SQL for the "none" relation check which Drizzle doesn't support directly
+      await tx.execute(sql`
+        DELETE FROM "auction_cycles" ac
+        WHERE NOT EXISTS (SELECT 1 FROM "market_listings" ml WHERE ml."auction_cycle_id" = ac."id")
+          AND NOT EXISTS (SELECT 1 FROM "market_buy_orders" mbo WHERE mbo."auction_cycle_id" = ac."id")
+      `);
 
       // ── Diplomacy events (Restrict on initiatorId/targetId) ──
-      await tx.diplomacyEvent.deleteMany({
-        where: { OR: [{ initiatorId: { in: charIds } }, { targetId: { in: charIds } }] },
-      });
+      await tx.delete(diplomacyEvents).where(
+        sql`${diplomacyEvents.initiatorId} = ANY(${charIds}) OR ${diplomacyEvents.targetId} = ANY(${charIds})`,
+      );
 
       // ── Treaties (Restrict on proposedById) ──
-      await tx.treaty.deleteMany({
-        where: { proposedById: { in: charIds } },
-      });
+      await tx.delete(treaties).where(inArray(treaties.proposedById, charIds));
 
       // ── Laws (Restrict on enactedById) ──
-      await tx.lawVote.deleteMany({
-        where: { characterId: { in: charIds } },
-      });
-      await tx.law.deleteMany({
-        where: { enactedById: { in: charIds } },
-      });
+      await tx.delete(lawVotes).where(inArray(lawVotes.characterId, charIds));
+      await tx.delete(laws).where(inArray(laws.enactedById, charIds));
 
       // ── Council members (Restrict on appointedById) ──
-      await tx.councilMember.deleteMany({
-        where: { OR: [{ characterId: { in: charIds } }, { appointedById: { in: charIds } }] },
-      });
+      await tx.delete(councilMembers).where(
+        sql`${councilMembers.characterId} = ANY(${charIds}) OR ${councilMembers.appointedById} = ANY(${charIds})`,
+      );
 
       // ── Nullify shared-entity leader/mayor/ruler FKs ──
-      await tx.guild.updateMany({
-        where: { leaderId: { in: charIds } },
-        data: { leaderId: null },
-      });
-      await tx.town.updateMany({
-        where: { mayorId: { in: charIds } },
-        data: { mayorId: null },
-      });
-      await tx.kingdom.updateMany({
-        where: { rulerId: { in: charIds } },
-        data: { rulerId: null },
-      });
+      await tx.update(guilds).set({ leaderId: null }).where(inArray(guilds.leaderId, charIds));
+      await tx.update(towns).set({ mayorId: null }).where(inArray(towns.mayorId, charIds));
+      await tx.update(kingdoms).set({ rulerId: null }).where(inArray(kingdoms.rulerId, charIds));
 
       // ── DailyAction records ──
-      await tx.dailyAction.deleteMany({
-        where: { characterId: { in: charIds } },
-      });
+      await tx.delete(dailyActions).where(inArray(dailyActions.characterId, charIds));
     }
 
     // 4. Delete users (cascades to characters and all remaining Cascade FKs)
     // Explicitly exclude admin accounts as a safety measure
-    const deleted = await tx.user.deleteMany({
-      where: { isTestAccount: true, role: { not: 'admin' } },
-    });
+    const deleted = await tx.delete(users).where(
+      and(eq(users.isTestAccount, true), ne(users.role, 'admin')),
+    ).returning({ id: users.id });
 
-    return { deletedUsers: deleted.count, deletedCharacters: charIds.length };
-  }, { timeout: 30000 });
+    return { deletedUsers: deleted.length, deletedCharacters: charIds.length };
+  });
 
   logger.info(result, 'Bot cleanup complete');
   return result;
@@ -797,7 +770,8 @@ export async function cleanupBots(): Promise<{ deletedUsers: number; deletedChar
  * Returns the number of test accounts currently in the database.
  */
 export async function getTestPlayerCount(): Promise<number> {
-  return prisma.user.count({ where: { isTestAccount: true } });
+  const [{ total }] = await db.select({ total: count() }).from(users).where(eq(users.isTestAccount, true));
+  return Number(total);
 }
 
 // ---------------------------------------------------------------------------
@@ -812,16 +786,16 @@ let resourceCache: Map<string, { id: string; name: string; type: string }[]> | n
  * without repeated DB queries.
  */
 export async function initResourceCache(): Promise<void> {
-  const resources = await prisma.resource.findMany({
-    select: { id: true, name: true, type: true },
+  const resourceRows = await db.query.resources.findMany({
+    columns: { id: true, name: true, type: true },
   });
   resourceCache = new Map();
-  for (const r of resources) {
+  for (const r of resourceRows) {
     const list = resourceCache.get(r.type) || [];
     list.push({ id: r.id, name: r.name, type: r.type });
     resourceCache.set(r.type, list);
   }
-  logger.info({ resourceTypes: resourceCache.size, totalResources: resources.length }, 'Resource cache initialized');
+  logger.info({ resourceTypes: resourceCache.size, totalResources: resourceRows.length }, 'Resource cache initialized');
 }
 
 /**

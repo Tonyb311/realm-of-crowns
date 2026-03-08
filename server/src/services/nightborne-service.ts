@@ -1,5 +1,7 @@
-import { prisma } from '../lib/prisma';
-import { BiomeType } from '@prisma/client';
+import { db } from '../lib/db';
+import { eq } from 'drizzle-orm';
+import { characters, towns } from '@database/tables';
+import type { BiomeType } from '@shared/enums';
 import { isDaytime } from './race-environment';
 
 // =========================================================================
@@ -29,9 +31,9 @@ export interface EnvironmentStatus {
  * Returns sunlight penalties if the Nightborne is on the surface during daytime.
  */
 export async function getSunlightPenalties(characterId: string): Promise<SunlightPenalties> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true, currentTownId: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true, currentTownId: true },
   });
 
   if (!character || character.race !== 'NIGHTBORNE') {
@@ -70,9 +72,9 @@ export async function getSunlightPenalties(characterId: string): Promise<Sunligh
  * Check if the character is in an underground zone.
  */
 export async function isUnderground(characterId: string): Promise<boolean> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { currentTownId: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { currentTownId: true },
   });
 
   return checkUnderground(character?.currentTownId ?? null);
@@ -81,9 +83,9 @@ export async function isUnderground(characterId: string): Promise<boolean> {
 async function checkUnderground(townId: string | null): Promise<boolean> {
   if (!townId) return false;
 
-  const town = await prisma.town.findUnique({
-    where: { id: townId },
-    select: { biome: true },
+  const town = await db.query.towns.findFirst({
+    where: eq(towns.id, townId),
+    columns: { biome: true },
   });
 
   if (!town) return false;
@@ -100,9 +102,9 @@ export { isDaytime } from './race-environment';
  * Get full environment status: underground, daytime, penalties, deepsight bonus.
  */
 export async function getEnvironmentStatus(characterId: string): Promise<EnvironmentStatus> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true, currentTownId: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true, currentTownId: true },
   });
 
   if (!character || character.race !== 'NIGHTBORNE') {

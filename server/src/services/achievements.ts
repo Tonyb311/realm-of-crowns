@@ -1,4 +1,6 @@
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, sql } from 'drizzle-orm';
+import { achievements, playerAchievements, characters } from '@database/tables';
 import { emitAchievementUnlocked } from '../socket/events';
 
 export interface AchievementCheckResult {
@@ -27,18 +29,18 @@ export async function checkAchievements(
   data: Record<string, unknown>,
 ): Promise<AchievementCheckResult> {
   // Get all achievements (isCriteriaCategoryMatch filters by category downstream)
-  const achievements = await prisma.achievement.findMany();
+  const allAchievements = await db.query.achievements.findMany();
 
   // Get already earned achievements
-  const earned = await prisma.playerAchievement.findMany({
-    where: { characterId },
-    select: { achievementId: true },
+  const earned = await db.query.playerAchievements.findMany({
+    where: eq(playerAchievements.characterId, characterId),
+    columns: { achievementId: true },
   });
   const earnedIds = new Set(earned.map((e) => e.achievementId));
 
   const unlocked: string[] = [];
 
-  for (const achievement of achievements) {
+  for (const achievement of allAchievements) {
     if (earnedIds.has(achievement.id)) continue;
 
     const criteria = achievement.criteria as { type: string; target: number; [key: string]: unknown };
@@ -50,25 +52,21 @@ export async function checkAchievements(
     if (!met) continue;
 
     // Grant achievement
-    await prisma.playerAchievement.create({
-      data: {
-        characterId,
-        achievementId: achievement.id,
-      },
+    await db.insert(playerAchievements).values({
+      id: crypto.randomUUID(),
+      characterId,
+      achievementId: achievement.id,
     });
 
     // Apply rewards
     const reward = achievement.reward as { xp?: number; gold?: number; title?: string };
-    const updateData: Record<string, unknown> = {};
-    if (reward.xp) updateData.xp = { increment: reward.xp };
-    if (reward.gold) updateData.gold = { increment: reward.gold };
-    if (reward.title) updateData.title = reward.title;
+    const setData: Record<string, unknown> = {};
+    if (reward.xp) setData.xp = sql`${characters.xp} + ${reward.xp}`;
+    if (reward.gold) setData.gold = sql`${characters.gold} + ${reward.gold}`;
+    if (reward.title) setData.title = reward.title;
 
-    if (Object.keys(updateData).length > 0) {
-      await prisma.character.update({
-        where: { id: characterId },
-        data: updateData as any,
-      });
+    if (Object.keys(setData).length > 0) {
+      await db.update(characters).set(setData as any).where(eq(characters.id, characterId));
     }
 
     unlocked.push(achievement.name);
@@ -155,8 +153,8 @@ export async function seedAchievements(): Promise<{ created: number; skipped: nu
   let skipped = 0;
 
   for (const achievement of ACHIEVEMENTS) {
-    const existing = await prisma.achievement.findUnique({
-      where: { name: achievement.name },
+    const existing = await db.query.achievements.findFirst({
+      where: eq(achievements.name, achievement.name),
     });
 
     if (existing) {
@@ -164,13 +162,13 @@ export async function seedAchievements(): Promise<{ created: number; skipped: nu
       continue;
     }
 
-    await prisma.achievement.create({
-      data: {
-        name: achievement.name,
-        description: achievement.description,
-        criteria: achievement.criteria as any,
-        reward: achievement.reward as any,
-      },
+    await db.insert(achievements).values({
+      id: crypto.randomUUID(),
+      name: achievement.name,
+      description: achievement.description,
+      criteria: achievement.criteria as any,
+      reward: achievement.reward as any,
+      updatedAt: new Date().toISOString(),
     });
     created++;
   }

@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and } from 'drizzle-orm';
+import { characters, dailyActions } from '@database/tables';
 import { getGameDay, getNextTickTime, getTimeUntilReset, getTodayTickDate } from '../lib/game-day';
 
 const router = Router();
@@ -17,14 +19,14 @@ router.get('/day', (_req, res) => {
 
 // GET /action-status — Whether character has used daily action
 router.get('/action-status', authGuard, async (req: AuthenticatedRequest, res) => {
-  const character = await prisma.character.findFirst({
-    where: { userId: req.user!.userId },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.userId, req.user!.userId),
   });
   if (!character) return res.status(404).json({ error: 'No character found' });
 
   const todayTick = getTodayTickDate();
-  const action = await prisma.dailyAction.findFirst({
-    where: { characterId: character.id, tickDate: todayTick },
+  const action = await db.query.dailyActions.findFirst({
+    where: and(eq(dailyActions.characterId, character.id), eq(dailyActions.tickDate, todayTick.toISOString())),
   });
 
   return res.json({

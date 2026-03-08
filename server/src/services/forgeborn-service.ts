@@ -1,4 +1,6 @@
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, gte } from 'drizzle-orm';
+import { characters, inventories, racialAbilityCooldowns } from '@database/tables';
 import { getStructuralDecayStatPenalty, getStructuralDecaySpeedPenalty, getStructuralDecayHpPenalty } from './food-system';
 
 // =========================================================================
@@ -20,9 +22,9 @@ export interface MaintenanceStatus {
  * Check maintenance status: structural decay stage and penalties.
  */
 export async function checkMaintenanceStatus(characterId: string): Promise<MaintenanceStatus> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true, structuralDecayStage: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true, structuralDecayStage: true },
   });
 
   if (!character || character.race !== 'FORGEBORN') {
@@ -51,23 +53,23 @@ export async function performMaintenance(
   characterId: string,
   repairKitItemId: string,
 ): Promise<{ success: boolean; structuralDecayStage: number }> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { id: true, race: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { id: true, race: true },
   });
 
   if (!character || character.race !== 'FORGEBORN') {
     throw new Error('Only Forgeborn require maintenance');
   }
 
-  const inventoryEntry = await prisma.inventory.findFirst({
-    where: {
-      characterId,
-      itemId: repairKitItemId,
-      quantity: { gte: 1 },
-    },
-    include: {
-      item: { include: { template: true } },
+  const inventoryEntry = await db.query.inventories.findFirst({
+    where: and(
+      eq(inventories.characterId, characterId),
+      eq(inventories.itemId, repairKitItemId),
+      gte(inventories.quantity, 1),
+    ),
+    with: {
+      item: { with: { itemTemplate: true } },
     },
   });
 
@@ -75,26 +77,20 @@ export async function performMaintenance(
     throw new Error('Maintenance Kit not found in inventory');
   }
 
-  const templateName = inventoryEntry.item.template.name;
+  const templateName = inventoryEntry.item.itemTemplate.name;
   if (templateName !== 'Maintenance Kit' && templateName !== 'Precision Maintenance Kit') {
     throw new Error('Item is not a Maintenance Kit');
   }
 
   // Consume one unit
   if (inventoryEntry.quantity > 1) {
-    await prisma.inventory.update({
-      where: { id: inventoryEntry.id },
-      data: { quantity: inventoryEntry.quantity - 1 },
-    });
+    await db.update(inventories).set({ quantity: inventoryEntry.quantity - 1 }).where(eq(inventories.id, inventoryEntry.id));
   } else {
-    await prisma.inventory.delete({ where: { id: inventoryEntry.id } });
+    await db.delete(inventories).where(eq(inventories.id, inventoryEntry.id));
   }
 
   // Clear structural decay
-  await prisma.character.update({
-    where: { id: characterId },
-    data: { structuralDecayStage: 0 },
-  });
+  await db.update(characters).set({ structuralDecayStage: 0 }).where(eq(characters.id, characterId));
 
   return { success: true, structuralDecayStage: 0 };
 }
@@ -103,9 +99,9 @@ export async function performMaintenance(
  * Get stat penalties based on structural decay stage.
  */
 export async function getStatPenalties(characterId: string): Promise<{ penalty: number }> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { structuralDecayStage: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { structuralDecayStage: true },
   });
   return { penalty: getStructuralDecayStatPenalty(character?.structuralDecayStage ?? 0) };
 }
@@ -116,9 +112,9 @@ export async function getStatPenalties(characterId: string): Promise<{ penalty: 
 export async function applySelfRepair(
   characterId: string,
 ): Promise<{ success: boolean; healedHp: number; cooldownEnds: string }> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true, level: true, health: true, maxHealth: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true, level: true, health: true, maxHealth: true },
   });
 
   if (!character || character.race !== 'FORGEBORN') {
@@ -131,12 +127,15 @@ export async function applySelfRepair(
   // Check cooldown
   const now = new Date();
   const abilityName = 'Self-Repair';
-  const existingCooldown = await prisma.racialAbilityCooldown.findUnique({
-    where: { characterId_abilityName: { characterId, abilityName } },
+  const existingCooldown = await db.query.racialAbilityCooldowns.findFirst({
+    where: and(
+      eq(racialAbilityCooldowns.characterId, characterId),
+      eq(racialAbilityCooldowns.abilityName, abilityName),
+    ),
   });
 
-  if (existingCooldown && existingCooldown.cooldownEnds > now) {
-    const remainingMs = existingCooldown.cooldownEnds.getTime() - now.getTime();
+  if (existingCooldown && new Date(existingCooldown.cooldownEnds) > now) {
+    const remainingMs = new Date(existingCooldown.cooldownEnds).getTime() - now.getTime();
     throw new Error(`Self-Repair on cooldown (${Math.ceil(remainingMs / 1000)}s remaining)`);
   }
 
@@ -144,17 +143,23 @@ export async function applySelfRepair(
   const healAmount = Math.floor(character.maxHealth * 0.30);
   const newHp = Math.min(character.maxHealth, character.health + healAmount);
 
-  await prisma.character.update({
-    where: { id: characterId },
-    data: { health: newHp },
-  });
+  await db.update(characters).set({ health: newHp }).where(eq(characters.id, characterId));
 
   // Set cooldown (8 hours = 28800 seconds)
   const cooldownEnds = new Date(now.getTime() + 28800 * 1000);
-  await prisma.racialAbilityCooldown.upsert({
-    where: { characterId_abilityName: { characterId, abilityName } },
-    update: { lastUsed: now, cooldownEnds },
-    create: { characterId, abilityName, lastUsed: now, cooldownEnds },
+  await db.insert(racialAbilityCooldowns).values({
+    id: crypto.randomUUID(),
+    characterId,
+    abilityName,
+    lastUsed: now.toISOString(),
+    cooldownEnds: cooldownEnds.toISOString(),
+    updatedAt: now.toISOString(),
+  }).onConflictDoUpdate({
+    target: [racialAbilityCooldowns.characterId, racialAbilityCooldowns.abilityName],
+    set: {
+      lastUsed: now.toISOString(),
+      cooldownEnds: cooldownEnds.toISOString(),
+    },
   });
 
   return { success: true, healedHp: healAmount, cooldownEnds: cooldownEnds.toISOString() };
@@ -166,9 +171,9 @@ export async function applySelfRepair(
 export async function getQueueSlotBonus(
   characterId: string,
 ): Promise<{ bonusPercent: number }> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true, level: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true, level: true },
   });
 
   if (!character || character.race !== 'FORGEBORN' || character.level < 10) {

@@ -5,6 +5,9 @@
  * creating Item + Inventory records for the winning character.
  * Stacks with existing inventory when possible.
  */
+import crypto from 'crypto';
+import { eq, and } from 'drizzle-orm';
+import { items, itemTemplates, inventories } from '@database/tables';
 
 interface LootEntry {
   dropChance: number;
@@ -24,13 +27,13 @@ export interface DroppedItem {
  * Process item drops from a monster's loot table.
  * Call this AFTER rolling gold for each entry that has `itemTemplateName`.
  *
- * @param db - Prisma client or transaction client
+ * @param tx - Drizzle transaction or db instance
  * @param characterId - The character receiving the items
  * @param lootTable - The monster's loot table (JSON from DB)
  * @returns Array of items that were actually dropped
  */
 export async function processItemDrops(
-  db: any, // PrismaClient or transaction client — both have .itemTemplate/.item/.inventory
+  tx: any, // Drizzle transaction or db instance
   characterId: string,
   lootTable: LootEntry[],
 ): Promise<DroppedItem[]> {
@@ -40,8 +43,8 @@ export async function processItemDrops(
     if (!entry.itemTemplateName) continue;
     if (Math.random() > entry.dropChance) continue;
 
-    const template = await db.itemTemplate.findFirst({
-      where: { name: entry.itemTemplateName },
+    const template = await tx.query.itemTemplates.findFirst({
+      where: eq(itemTemplates.name, entry.itemTemplateName),
     });
 
     if (!template) {
@@ -52,29 +55,26 @@ export async function processItemDrops(
     const qty = Math.floor(Math.random() * (entry.maxQty - entry.minQty + 1)) + entry.minQty;
 
     // Check for existing inventory stack of this template
-    const existingSlot = await db.inventory.findFirst({
-      where: { characterId, item: { templateId: template.id } },
+    const allInv = await tx.query.inventories.findMany({
+      where: eq(inventories.characterId, characterId),
+      with: { item: true },
     });
+    const existingSlot = allInv.find((inv: any) => inv.item?.templateId === template.id);
 
     if (existingSlot) {
-      await db.inventory.update({
-        where: { id: existingSlot.id },
-        data: { quantity: existingSlot.quantity + qty },
-      });
+      await tx.update(inventories).set({ quantity: existingSlot.quantity + qty }).where(eq(inventories.id, existingSlot.id));
     } else {
-      const item = await db.item.create({
-        data: {
-          templateId: template.id,
-          ownerId: characterId,
-          quality: 'COMMON',
-        },
-      });
-      await db.inventory.create({
-        data: {
-          characterId,
-          itemId: item.id,
-          quantity: qty,
-        },
+      const [item] = await tx.insert(items).values({
+        id: crypto.randomUUID(),
+        templateId: template.id,
+        ownerId: characterId,
+        quality: 'COMMON',
+      }).returning();
+      await tx.insert(inventories).values({
+        id: crypto.randomUUID(),
+        characterId,
+        itemId: item.id,
+        quantity: qty,
       });
     }
 

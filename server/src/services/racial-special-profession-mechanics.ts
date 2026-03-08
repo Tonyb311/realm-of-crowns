@@ -1,5 +1,7 @@
-import { ProfessionType, Race } from '@prisma/client';
-import { prisma } from '../lib/prisma';
+import type { ProfessionType, Race } from '@shared/enums';
+import { db } from '../lib/db';
+import { eq, and, asc } from 'drizzle-orm';
+import { characters, racialAbilityCooldowns, craftingActions, inventories, items, itemTemplates } from '@database/tables';
 
 // ---------------------------------------------------------------------------
 // Gnome Eureka Moment — instant completion of one crafting action (1/day)
@@ -16,7 +18,7 @@ const EUREKA_LEVEL_REQUIRED = 25;
 export async function applyGnomeEurekaMoment(
   characterId: string,
 ): Promise<{ success: boolean; craftingActionId?: string; error?: string }> {
-  const character = await prisma.character.findUnique({ where: { id: characterId } });
+  const character = await db.query.characters.findFirst({ where: eq(characters.id, characterId) });
   if (!character) return { success: false, error: 'Character not found' };
   if (character.race !== 'GNOME') return { success: false, error: 'Only Gnomes can use Eureka Moment' };
   if (character.level < EUREKA_LEVEL_REQUIRED) {
@@ -25,21 +27,25 @@ export async function applyGnomeEurekaMoment(
 
   // Check cooldown
   const now = new Date();
-  const cooldown = await prisma.racialAbilityCooldown.findUnique({
-    where: {
-      characterId_abilityName: { characterId, abilityName: EUREKA_ABILITY_NAME },
-    },
+  const cooldown = await db.query.racialAbilityCooldowns.findFirst({
+    where: and(
+      eq(racialAbilityCooldowns.characterId, characterId),
+      eq(racialAbilityCooldowns.abilityName, EUREKA_ABILITY_NAME),
+    ),
   });
 
-  if (cooldown && cooldown.cooldownEnds > now) {
-    const remainingSeconds = Math.ceil((cooldown.cooldownEnds.getTime() - now.getTime()) / 1000);
+  if (cooldown && new Date(cooldown.cooldownEnds) > now) {
+    const remainingSeconds = Math.ceil((new Date(cooldown.cooldownEnds).getTime() - now.getTime()) / 1000);
     return { success: false, error: `Eureka Moment is on cooldown (${remainingSeconds}s remaining)` };
   }
 
   // Find the earliest in-progress crafting action
-  const craftAction = await prisma.craftingAction.findFirst({
-    where: { characterId, status: 'IN_PROGRESS' },
-    orderBy: { createdAt: 'asc' },
+  const craftAction = await db.query.craftingActions.findFirst({
+    where: and(
+      eq(craftingActions.characterId, characterId),
+      eq(craftingActions.status, 'IN_PROGRESS'),
+    ),
+    orderBy: asc(craftingActions.createdAt),
   });
 
   if (!craftAction) {
@@ -47,27 +53,23 @@ export async function applyGnomeEurekaMoment(
   }
 
   // Instantly complete it + set cooldown
-  await prisma.$transaction([
-    prisma.craftingAction.update({
-      where: { id: craftAction.id },
-      data: { status: 'COMPLETED' },
-    }),
-    prisma.racialAbilityCooldown.upsert({
-      where: {
-        characterId_abilityName: { characterId, abilityName: EUREKA_ABILITY_NAME },
+  await db.transaction(async (tx) => {
+    await tx.update(craftingActions).set({ status: 'COMPLETED' }).where(eq(craftingActions.id, craftAction.id));
+    await tx.insert(racialAbilityCooldowns).values({
+      id: crypto.randomUUID(),
+      characterId,
+      abilityName: EUREKA_ABILITY_NAME,
+      lastUsed: now.toISOString(),
+      cooldownEnds: new Date(now.getTime() + EUREKA_COOLDOWN_SECONDS * 1000).toISOString(),
+      updatedAt: now.toISOString(),
+    }).onConflictDoUpdate({
+      target: [racialAbilityCooldowns.characterId, racialAbilityCooldowns.abilityName],
+      set: {
+        lastUsed: now.toISOString(),
+        cooldownEnds: new Date(now.getTime() + EUREKA_COOLDOWN_SECONDS * 1000).toISOString(),
       },
-      update: {
-        lastUsed: now,
-        cooldownEnds: new Date(now.getTime() + EUREKA_COOLDOWN_SECONDS * 1000),
-      },
-      create: {
-        characterId,
-        abilityName: EUREKA_ABILITY_NAME,
-        lastUsed: now,
-        cooldownEnds: new Date(now.getTime() + EUREKA_COOLDOWN_SECONDS * 1000),
-      },
-    }),
-  ]);
+    });
+  });
 
   return { success: true, craftingActionId: craftAction.id };
 }
@@ -89,7 +91,7 @@ const OVERCLOCK_LEVEL_REQUIRED = 25;
 export async function applyForgebornOverclock(
   characterId: string,
 ): Promise<{ success: boolean; expiresAt?: string; error?: string }> {
-  const character = await prisma.character.findUnique({ where: { id: characterId } });
+  const character = await db.query.characters.findFirst({ where: eq(characters.id, characterId) });
   if (!character) return { success: false, error: 'Character not found' };
   if (character.race !== 'FORGEBORN') return { success: false, error: 'Only Forgeborn can use Overclock' };
   if (character.level < OVERCLOCK_LEVEL_REQUIRED) {
@@ -99,37 +101,42 @@ export async function applyForgebornOverclock(
   const now = new Date();
 
   // Check cooldown on the main ability
-  const cooldown = await prisma.racialAbilityCooldown.findUnique({
-    where: {
-      characterId_abilityName: { characterId, abilityName: OVERCLOCK_ABILITY_NAME },
-    },
+  const cooldown = await db.query.racialAbilityCooldowns.findFirst({
+    where: and(
+      eq(racialAbilityCooldowns.characterId, characterId),
+      eq(racialAbilityCooldowns.abilityName, OVERCLOCK_ABILITY_NAME),
+    ),
   });
 
-  if (cooldown && cooldown.cooldownEnds > now) {
-    const remainingSeconds = Math.ceil((cooldown.cooldownEnds.getTime() - now.getTime()) / 1000);
+  if (cooldown && new Date(cooldown.cooldownEnds) > now) {
+    const remainingSeconds = Math.ceil((new Date(cooldown.cooldownEnds).getTime() - now.getTime()) / 1000);
     return { success: false, error: `Overclock is on cooldown (${remainingSeconds}s remaining)` };
   }
 
   const expiresAt = new Date(now.getTime() + OVERCLOCK_DURATION_SECONDS * 1000);
-  const cooldownEnds = new Date(now.getTime() + OVERCLOCK_COOLDOWN_SECONDS * 1000);
+  const cooldownEndsDate = new Date(now.getTime() + OVERCLOCK_COOLDOWN_SECONDS * 1000);
 
   // Store the buff as "Overclock_Active" and the cooldown as "Overclock"
-  await prisma.$transaction([
-    prisma.racialAbilityCooldown.upsert({
-      where: {
-        characterId_abilityName: { characterId, abilityName: OVERCLOCK_ABILITY_NAME },
-      },
-      update: { lastUsed: now, cooldownEnds },
-      create: { characterId, abilityName: OVERCLOCK_ABILITY_NAME, lastUsed: now, cooldownEnds },
-    }),
-    prisma.racialAbilityCooldown.upsert({
-      where: {
-        characterId_abilityName: { characterId, abilityName: 'Overclock_Active' },
-      },
-      update: { lastUsed: now, cooldownEnds: expiresAt },
-      create: { characterId, abilityName: 'Overclock_Active', lastUsed: now, cooldownEnds: expiresAt },
-    }),
-  ]);
+  await db.transaction(async (tx) => {
+    await tx.insert(racialAbilityCooldowns).values({
+      id: crypto.randomUUID(),
+      characterId, abilityName: OVERCLOCK_ABILITY_NAME,
+      lastUsed: now.toISOString(), cooldownEnds: cooldownEndsDate.toISOString(),
+      updatedAt: now.toISOString(),
+    }).onConflictDoUpdate({
+      target: [racialAbilityCooldowns.characterId, racialAbilityCooldowns.abilityName],
+      set: { lastUsed: now.toISOString(), cooldownEnds: cooldownEndsDate.toISOString() },
+    });
+    await tx.insert(racialAbilityCooldowns).values({
+      id: crypto.randomUUID(),
+      characterId, abilityName: 'Overclock_Active',
+      lastUsed: now.toISOString(), cooldownEnds: expiresAt.toISOString(),
+      updatedAt: now.toISOString(),
+    }).onConflictDoUpdate({
+      target: [racialAbilityCooldowns.characterId, racialAbilityCooldowns.abilityName],
+      set: { lastUsed: now.toISOString(), cooldownEnds: expiresAt.toISOString() },
+    });
+  });
 
   return { success: true, expiresAt: expiresAt.toISOString() };
 }
@@ -141,13 +148,14 @@ export async function applyForgebornOverclock(
 export async function getForgebornOverclockMultiplier(
   characterId: string,
 ): Promise<number> {
-  const buff = await prisma.racialAbilityCooldown.findUnique({
-    where: {
-      characterId_abilityName: { characterId, abilityName: 'Overclock_Active' },
-    },
+  const buff = await db.query.racialAbilityCooldowns.findFirst({
+    where: and(
+      eq(racialAbilityCooldowns.characterId, characterId),
+      eq(racialAbilityCooldowns.abilityName, 'Overclock_Active'),
+    ),
   });
 
-  if (buff && buff.cooldownEnds > new Date()) {
+  if (buff && new Date(buff.cooldownEnds) > new Date()) {
     return 2.0;
   }
   return 1.0;
@@ -167,7 +175,7 @@ const BASE_QUEUE_SLOTS = 5;
 export async function getMaxQueueSlots(
   characterId: string,
 ): Promise<number> {
-  const character = await prisma.character.findUnique({ where: { id: characterId } });
+  const character = await db.query.characters.findFirst({ where: eq(characters.id, characterId) });
   if (!character) return BASE_QUEUE_SLOTS;
 
   if (character.race === 'FORGEBORN' && character.level >= TIRELESS_WORKER_LEVEL) {
@@ -189,7 +197,7 @@ export async function applyHalfElfChosenProfession(
   characterId: string,
   profession: ProfessionType,
 ): Promise<{ success: boolean; error?: string }> {
-  const character = await prisma.character.findUnique({ where: { id: characterId } });
+  const character = await db.query.characters.findFirst({ where: eq(characters.id, characterId) });
   if (!character) return { success: false, error: 'Character not found' };
   if (character.race !== 'HALF_ELF') return { success: false, error: 'Only Half-Elves can set a chosen profession' };
 
@@ -197,10 +205,7 @@ export async function applyHalfElfChosenProfession(
   const existing = (character.subRace as Record<string, unknown>) ?? {};
   const updated = { ...existing, chosenProfession: profession };
 
-  await prisma.character.update({
-    where: { id: characterId },
-    data: { subRace: updated },
-  });
+  await db.update(characters).set({ subRace: updated }).where(eq(characters.id, characterId));
 
   return { success: true };
 }
@@ -211,7 +216,7 @@ export async function applyHalfElfChosenProfession(
 export async function getHalfElfChosenProfession(
   characterId: string,
 ): Promise<ProfessionType | null> {
-  const character = await prisma.character.findUnique({ where: { id: characterId } });
+  const character = await db.query.characters.findFirst({ where: eq(characters.id, characterId) });
   if (!character || character.race !== 'HALF_ELF') return null;
 
   const subRace = character.subRace as Record<string, unknown> | null;

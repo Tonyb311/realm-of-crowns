@@ -1,4 +1,6 @@
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, or, inArray, isNotNull, count } from 'drizzle-orm';
+import { treaties, wars } from '@database/tables';
 
 // ---------------------------------------------------------------------------
 // Diplomatic reputation — calculates a kingdom's standing based on history
@@ -38,42 +40,33 @@ function tierFromScore(score: number): ReputationTier {
 
 export async function calculateKingdomReputation(kingdomId: string): Promise<ReputationResult> {
   // Treaties kept (ACTIVE or EXPIRED normally) = +2 each
-  const keptTreaties = await prisma.treaty.count({
-    where: {
-      OR: [
-        { proposerKingdomId: kingdomId },
-        { receiverKingdomId: kingdomId },
-      ],
-      status: { in: ['ACTIVE', 'EXPIRED'] },
-    },
-  });
+  const [{ total: keptTreaties }] = await db.select({ total: count() }).from(treaties).where(
+    and(
+      or(eq(treaties.proposerKingdomId, kingdomId), eq(treaties.receiverKingdomId, kingdomId)),
+      inArray(treaties.status, ['ACTIVE', 'EXPIRED']),
+    ),
+  );
 
   // Treaties broken = -5 each
-  const brokenTreaties = await prisma.treaty.count({
-    where: {
-      OR: [
-        { proposerKingdomId: kingdomId },
-        { receiverKingdomId: kingdomId },
-      ],
-      status: 'BROKEN',
-    },
-  });
+  const [{ total: brokenTreaties }] = await db.select({ total: count() }).from(treaties).where(
+    and(
+      or(eq(treaties.proposerKingdomId, kingdomId), eq(treaties.receiverKingdomId, kingdomId)),
+      eq(treaties.status, 'BROKEN'),
+    ),
+  );
 
   // Wars declared (as attacker) = -2 each
-  const warsDeclared = await prisma.war.count({
-    where: { attackerKingdomId: kingdomId },
-  });
+  const [{ total: warsDeclared }] = await db.select({ total: count() }).from(wars).where(
+    eq(wars.attackerKingdomId, kingdomId),
+  );
 
   // Peace treaties ended (wars with endedAt set) = +3 each
-  const peacesReached = await prisma.war.count({
-    where: {
-      OR: [
-        { attackerKingdomId: kingdomId },
-        { defenderKingdomId: kingdomId },
-      ],
-      endedAt: { not: null },
-    },
-  });
+  const [{ total: peacesReached }] = await db.select({ total: count() }).from(wars).where(
+    and(
+      or(eq(wars.attackerKingdomId, kingdomId), eq(wars.defenderKingdomId, kingdomId)),
+      isNotNull(wars.endedAt),
+    ),
+  );
 
   const score =
     (keptTreaties * 2) +

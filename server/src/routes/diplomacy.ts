@@ -1,11 +1,15 @@
+import crypto from 'crypto';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, or, inArray, desc, asc } from 'drizzle-orm';
+import { sql, count } from 'drizzle-orm';
+import { kingdoms, racialRelations, treaties, wars, diplomacyEvents, notifications, characters, towns } from '@database/tables';
+import { race as raceEnum, relationStatus as relationStatusEnum } from '@database/enums';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { Race, RelationStatus, Prisma } from '@prisma/client';
 import {
   calculateRelationChangeCost,
   validateTreaty,
@@ -19,9 +23,12 @@ import {
 } from '../services/diplomacy-engine';
 import { getPsionSpec, assessTreatyCredibility, calculateTensionIndex } from '../services/psion-perks';
 import { emitNotification } from '../socket/events';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { getRacialRelations } from '../lib/racial-relations';
+
+type Race = typeof raceEnum.enumValues[number];
+type RelationStatus = typeof relationStatusEnum.enumValues[number];
 
 const router = Router();
 
@@ -52,43 +59,47 @@ const negotiatePeaceSchema = z.object({
 // =========================================================================
 
 async function getRulerKingdom(characterId: string) {
-  return prisma.kingdom.findFirst({
-    where: { rulerId: characterId },
-    include: { ruler: true },
+  const k = await db.query.kingdoms.findFirst({
+    where: eq(kingdoms.rulerId, characterId),
+    with: { character: true },
   });
+  return k;
 }
 
 async function getRelation(race1: Race, race2: Race) {
   const [sorted1, sorted2] = [race1, race2].sort() as [Race, Race];
-  return prisma.racialRelation.findUnique({
-    where: { race1_race2: { race1: sorted1, race2: sorted2 } },
+  return db.query.racialRelations.findFirst({
+    where: and(eq(racialRelations.race1, sorted1), eq(racialRelations.race2, sorted2)),
   });
 }
 
 async function upsertRelation(race1: Race, race2: Race, status: RelationStatus, modifier: number) {
   const [sorted1, sorted2] = [race1, race2].sort() as [Race, Race];
-  return prisma.racialRelation.upsert({
-    where: { race1_race2: { race1: sorted1, race2: sorted2 } },
-    update: { status, modifier },
-    create: { race1: sorted1, race2: sorted2, status, modifier },
+  // Try update first, then insert if not found
+  const existing = await db.query.racialRelations.findFirst({
+    where: and(eq(racialRelations.race1, sorted1), eq(racialRelations.race2, sorted2)),
   });
+  if (existing) {
+    return db.update(racialRelations).set({ status, modifier })
+      .where(and(eq(racialRelations.race1, sorted1), eq(racialRelations.race2, sorted2)));
+  } else {
+    return db.insert(racialRelations).values({ id: crypto.randomUUID(), race1: sorted1, race2: sorted2, status, modifier });
+  }
 }
 
 async function hasActiveTradeAgreement(kingdomId1: string, kingdomId2: string): Promise<boolean> {
-  const treaty = await prisma.treaty.findFirst({
-    where: {
-      type: 'TRADE_AGREEMENT',
-      status: 'ACTIVE',
-      OR: [
-        { proposerKingdomId: kingdomId1, receiverKingdomId: kingdomId2 },
-        { proposerKingdomId: kingdomId2, receiverKingdomId: kingdomId1 },
-      ],
-    },
+  const allTreaties = await db.query.treaties.findMany({
+    where: and(eq(treaties.type, 'TRADE_AGREEMENT'), eq(treaties.status, 'ACTIVE')),
   });
+
+  const treaty = allTreaties.find(t =>
+    (t.proposerKingdomId === kingdomId1 && t.receiverKingdomId === kingdomId2) ||
+    (t.proposerKingdomId === kingdomId2 && t.receiverKingdomId === kingdomId1)
+  );
 
   if (!treaty || !treaty.startsAt) return false;
 
-  const daysSinceStart = (Date.now() - treaty.startsAt.getTime()) / (1000 * 60 * 60 * 24);
+  const daysSinceStart = (Date.now() - new Date(treaty.startsAt).getTime()) / (1000 * 60 * 60 * 24);
   return daysSinceStart >= 14;
 }
 
@@ -98,13 +109,12 @@ async function logDiplomacyEvent(
   targetId: string,
   details: Record<string, unknown>,
 ) {
-  return prisma.diplomacyEvent.create({
-    data: {
-      type,
-      initiatorId,
-      targetId,
-      details: details as Prisma.InputJsonValue,
-    },
+  return db.insert(diplomacyEvents).values({
+    id: crypto.randomUUID(),
+    type,
+    initiatorId,
+    targetId,
+    details,
   });
 }
 
@@ -114,7 +124,7 @@ async function logDiplomacyEvent(
 router.get('/relations', async (_req: Request, res: Response) => {
   try {
     const relations = await getRacialRelations();
-    const allRaces = Object.values(Race);
+    const allRaces = raceEnum.enumValues;
 
     const matrix: Record<string, Record<string, { status: string; modifier: number }>> = {};
     for (const r1 of allRaces) {
@@ -133,7 +143,7 @@ router.get('/relations', async (_req: Request, res: Response) => {
 
     return res.json({ matrix, races: allRaces });
   } catch (error) {
-    if (handlePrismaError(error, res, 'diplomacy-relations', _req)) return;
+    if (handleDbError(error, res, 'diplomacy-relations', _req)) return;
     logRouteError(_req, 500, 'Get relations matrix error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -148,7 +158,7 @@ router.get('/relations/:race1/:race2', async (req: Request, res: Response) => {
     const r1 = race1.toUpperCase() as Race;
     const r2 = race2.toUpperCase() as Race;
 
-    if (!Object.values(Race).includes(r1) || !Object.values(Race).includes(r2)) {
+    if (!raceEnum.enumValues.includes(r1) || !raceEnum.enumValues.includes(r2)) {
       return res.status(400).json({ error: 'Invalid race name' });
     }
 
@@ -165,7 +175,7 @@ router.get('/relations/:race1/:race2', async (req: Request, res: Response) => {
       modifier: relation?.modifier ?? 0,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'diplomacy-relation', req)) return;
+    if (handleDbError(error, res, 'diplomacy-relation', req)) return;
     logRouteError(req, 500, 'Get specific relation error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -186,24 +196,23 @@ router.post('/propose-treaty', authGuard, characterGuard, validate(proposeTreaty
       return res.status(400).json({ error: 'Cannot propose treaty with yourself' });
     }
 
-    const targetKingdom = await prisma.kingdom.findUnique({
-      where: { id: targetKingdomId },
-      include: { ruler: true },
+    const targetKingdom = await db.query.kingdoms.findFirst({
+      where: eq(kingdoms.id, targetKingdomId),
+      with: { character: true },
     });
     if (!targetKingdom) return res.status(404).json({ error: 'Target kingdom not found' });
-    if (!targetKingdom.ruler) return res.status(400).json({ error: 'Target kingdom has no ruler' });
+    if (!targetKingdom.character) return res.status(400).json({ error: 'Target kingdom has no ruler' });
 
     // Check for existing pending or active treaty of same type between these kingdoms
-    const existingTreaty = await prisma.treaty.findFirst({
-      where: {
-        type,
-        status: { in: ['PENDING', 'ACTIVE'] },
-        OR: [
-          { proposerKingdomId: myKingdom.id, receiverKingdomId: targetKingdomId },
-          { proposerKingdomId: targetKingdomId, receiverKingdomId: myKingdom.id },
-        ],
-      },
+    const allTreaties = await db.query.treaties.findMany({
+      where: eq(treaties.type, type),
     });
+    const existingTreaty = allTreaties.find(t =>
+      ['PENDING', 'ACTIVE'].includes(t.status) && (
+        (t.proposerKingdomId === myKingdom.id && t.receiverKingdomId === targetKingdomId) ||
+        (t.proposerKingdomId === targetKingdomId && t.receiverKingdomId === myKingdom.id)
+      )
+    );
     if (existingTreaty) {
       return res.status(409).json({
         error: `A ${type} between these kingdoms is already ${existingTreaty.status.toLowerCase()}`,
@@ -211,8 +220,8 @@ router.post('/propose-treaty', authGuard, characterGuard, validate(proposeTreaty
     }
 
     // Get racial relation between the two kingdoms' rulers' races
-    const myRace = myKingdom.ruler!.race;
-    const targetRace = targetKingdom.ruler.race;
+    const myRace = myKingdom.character!.race as Race;
+    const targetRace = targetKingdom.character.race as Race;
     const relation = await getRelation(myRace, targetRace);
     const currentStatus = relation?.status ?? 'NEUTRAL';
 
@@ -231,20 +240,19 @@ router.post('/propose-treaty', authGuard, characterGuard, validate(proposeTreaty
       });
     }
 
-    const treaty = await prisma.treaty.create({
-      data: {
-        type,
-        proposerKingdomId: myKingdom.id,
-        receiverKingdomId: targetKingdomId,
-        proposedById: character.id,
-        status: 'PENDING',
-        goldCost: validation.goldCost,
-        requiredDays: validation.requiredDays,
-        metadata: { changelingDiplomat },
-      },
-    });
+    const [treaty] = await db.insert(treaties).values({
+      id: crypto.randomUUID(),
+      type,
+      proposerKingdomId: myKingdom.id,
+      receiverKingdomId: targetKingdomId,
+      proposedById: character.id,
+      status: 'PENDING',
+      goldCost: validation.goldCost,
+      requiredDays: validation.requiredDays,
+      metadata: { changelingDiplomat },
+    }).returning();
 
-    await logDiplomacyEvent('PROPOSE_TREATY', character.id, targetKingdom.ruler.id, {
+    await logDiplomacyEvent('PROPOSE_TREATY', character.id, targetKingdom.character.id, {
       treatyId: treaty.id,
       type,
       goldCost: validation.goldCost,
@@ -255,15 +263,14 @@ router.post('/propose-treaty', authGuard, characterGuard, validate(proposeTreaty
     const { isPsion, specialization } = await getPsionSpec(character.id);
     if (isPsion && specialization === 'nomad' && targetKingdom.rulerId) {
       instantCourier = true;
-      const notification = await prisma.notification.create({
-        data: {
-          characterId: targetKingdom.rulerId,
-          type: 'diplomatic_courier',
-          title: 'Urgent Diplomatic Message',
-          message: `A Psion courier has delivered a ${type.replace(/_/g, ' ').toLowerCase()} proposal instantly. Respond at your earliest convenience.`,
-          data: { treatyId: treaty.id, instant: true },
-        },
-      });
+      const [notification] = await db.insert(notifications).values({
+        id: crypto.randomUUID(),
+        characterId: targetKingdom.rulerId,
+        type: 'diplomatic_courier',
+        title: 'Urgent Diplomatic Message',
+        message: `A Psion courier has delivered a ${type.replace(/_/g, ' ').toLowerCase()} proposal instantly. Respond at your earliest convenience.`,
+        data: { treatyId: treaty.id, instant: true },
+      }).returning();
       emitNotification(targetKingdom.rulerId, {
         id: notification.id,
         type: 'diplomatic_courier',
@@ -287,7 +294,7 @@ router.post('/propose-treaty', authGuard, characterGuard, validate(proposeTreaty
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'diplomacy-propose-treaty', req)) return;
+    if (handleDbError(error, res, 'diplomacy-propose-treaty', req)) return;
     logRouteError(req, 500, 'Propose treaty error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -302,11 +309,11 @@ router.post('/respond-treaty/:proposalId', authGuard, characterGuard, validate(r
     const { accept } = req.body as { accept: boolean };
     const character = req.character!;
 
-    const treaty = await prisma.treaty.findUnique({
-      where: { id: proposalId },
-      include: {
-        proposerKingdom: { include: { ruler: true } },
-        receiverKingdom: { include: { ruler: true } },
+    const treaty = await db.query.treaties.findFirst({
+      where: eq(treaties.id, proposalId),
+      with: {
+        kingdom_proposerKingdomId: { with: { character: true } },
+        kingdom_receiverKingdomId: { with: { character: true } },
       },
     });
 
@@ -316,16 +323,12 @@ router.post('/respond-treaty/:proposalId', authGuard, characterGuard, validate(r
     }
 
     // Only the receiver kingdom's ruler can respond
-    if (treaty.receiverKingdom.rulerId !== character.id) {
+    if (treaty.kingdom_receiverKingdomId.rulerId !== character.id) {
       return res.status(403).json({ error: 'Only the receiving kingdom ruler can respond to this treaty' });
     }
 
     if (!accept) {
-      await prisma.treaty.update({
-        where: { id: treaty.id },
-        data: { status: 'EXPIRED' },
-      });
-
+      await db.update(treaties).set({ status: 'EXPIRED' }).where(eq(treaties.id, treaty.id));
       return res.json({ treaty: { id: treaty.id, status: 'EXPIRED', message: 'Treaty rejected' } });
     }
 
@@ -335,31 +338,26 @@ router.post('/respond-treaty/:proposalId', authGuard, characterGuard, validate(r
 
     // Major-B03 FIX: Check treasury balance inside the transaction to prevent
     // accepting a treaty when the proposer kingdom can no longer afford the cost.
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Re-read proposer kingdom treasury inside tx for consistency
-      const proposer = await tx.kingdom.findUnique({
-        where: { id: treaty.proposerKingdomId },
-        select: { treasury: true },
+      const proposer = await tx.query.kingdoms.findFirst({
+        where: eq(kingdoms.id, treaty.proposerKingdomId),
+        columns: { treasury: true },
       });
       if (!proposer || proposer.treasury < treaty.goldCost) {
         throw new Error('INSUFFICIENT_TREASURY');
       }
 
       // Deduct gold from proposer kingdom
-      await tx.kingdom.update({
-        where: { id: treaty.proposerKingdomId },
-        data: { treasury: { decrement: treaty.goldCost } },
-      });
+      await tx.update(kingdoms).set({ treasury: sql`${kingdoms.treasury} - ${treaty.goldCost}` })
+        .where(eq(kingdoms.id, treaty.proposerKingdomId));
 
       // Activate the treaty
-      await tx.treaty.update({
-        where: { id: treaty.id },
-        data: {
-          status: 'ACTIVE',
-          startsAt: now,
-          expiresAt,
-        },
-      });
+      await tx.update(treaties).set({
+        status: 'ACTIVE',
+        startsAt: now.toISOString(),
+        expiresAt: expiresAt?.toISOString() ?? null,
+      }).where(eq(treaties.id, treaty.id));
     }).catch((err) => {
       if (err.message === 'INSUFFICIENT_TREASURY') {
         return res.status(400).json({
@@ -372,8 +370,8 @@ router.post('/respond-treaty/:proposalId', authGuard, characterGuard, validate(r
     // If res was already sent by the catch above, stop here
     if (res.headersSent) return;
 
-    const proposerRace = treaty.proposerKingdom.ruler?.race;
-    const receiverRace = treaty.receiverKingdom.ruler?.race;
+    const proposerRace = treaty.kingdom_proposerKingdomId.character?.race;
+    const receiverRace = treaty.kingdom_receiverKingdomId.character?.race;
 
     await logDiplomacyEvent(
       treaty.type as 'TRADE_AGREEMENT' | 'NON_AGGRESSION_PACT' | 'ALLIANCE',
@@ -390,12 +388,12 @@ router.post('/respond-treaty/:proposalId', authGuard, characterGuard, validate(r
         startsAt: now.toISOString(),
         expiresAt: expiresAt?.toISOString() ?? null,
         goldDeducted: treaty.goldCost,
-        proposerKingdom: treaty.proposerKingdom.name,
-        receiverKingdom: treaty.receiverKingdom.name,
+        proposerKingdom: treaty.kingdom_proposerKingdomId.name,
+        receiverKingdom: treaty.kingdom_receiverKingdomId.name,
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'diplomacy-respond-treaty', req)) return;
+    if (handleDbError(error, res, 'diplomacy-respond-treaty', req)) return;
     logRouteError(req, 500, 'Respond treaty error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -416,54 +414,51 @@ router.post('/declare-war', authGuard, characterGuard, validate(declareWarSchema
       return res.status(400).json({ error: 'Cannot declare war on yourself' });
     }
 
-    const targetKingdom = await prisma.kingdom.findUnique({
-      where: { id: targetKingdomId },
-      include: { ruler: true },
+    const targetKingdom = await db.query.kingdoms.findFirst({
+      where: eq(kingdoms.id, targetKingdomId),
+      with: { character: true },
     });
     if (!targetKingdom) return res.status(404).json({ error: 'Target kingdom not found' });
 
     // Check for existing active war
-    const existingWar = await prisma.war.findFirst({
-      where: {
-        status: 'ACTIVE',
-        OR: [
-          { attackerKingdomId: myKingdom.id, defenderKingdomId: targetKingdomId },
-          { attackerKingdomId: targetKingdomId, defenderKingdomId: myKingdom.id },
-        ],
-      },
+    const allWars = await db.query.wars.findMany({
+      where: eq(wars.status, 'ACTIVE'),
     });
+    const existingWar = allWars.find(w =>
+      (w.attackerKingdomId === myKingdom.id && w.defenderKingdomId === targetKingdomId) ||
+      (w.attackerKingdomId === targetKingdomId && w.defenderKingdomId === myKingdom.id)
+    );
     if (existingWar) {
       return res.status(409).json({ error: 'Already at war with this kingdom' });
     }
 
     // Worsen racial relation
-    const myRace = myKingdom.ruler!.race;
-    const targetRace = targetKingdom.ruler?.race;
+    const myRace = myKingdom.character!.race as Race;
+    const targetRace = targetKingdom.character?.race as Race;
 
     let newRelationStatus: RelationStatus | null = null;
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Create war record
-      await tx.war.create({
-        data: {
-          attackerKingdomId: myKingdom.id,
-          defenderKingdomId: targetKingdomId,
-          reason,
-          status: 'ACTIVE',
-        },
+      await tx.insert(wars).values({
+        id: crypto.randomUUID(),
+        attackerKingdomId: myKingdom.id,
+        defenderKingdomId: targetKingdomId,
+        reason,
+        status: 'ACTIVE',
       });
 
       // Break any active treaties between these kingdoms
-      await tx.treaty.updateMany({
-        where: {
-          status: 'ACTIVE',
-          OR: [
-            { proposerKingdomId: myKingdom.id, receiverKingdomId: targetKingdomId },
-            { proposerKingdomId: targetKingdomId, receiverKingdomId: myKingdom.id },
-          ],
-        },
-        data: { status: 'BROKEN' },
+      const activeTreaties = await tx.query.treaties.findMany({
+        where: eq(treaties.status, 'ACTIVE'),
       });
+      const toBreak = activeTreaties.filter(t =>
+        (t.proposerKingdomId === myKingdom.id && t.receiverKingdomId === targetKingdomId) ||
+        (t.proposerKingdomId === targetKingdomId && t.receiverKingdomId === myKingdom.id)
+      );
+      for (const t of toBreak) {
+        await tx.update(treaties).set({ status: 'BROKEN' }).where(eq(treaties.id, t.id));
+      }
 
       // Worsen racial relation if both rulers have races
       if (targetRace) {
@@ -478,7 +473,7 @@ router.post('/declare-war', authGuard, characterGuard, validate(declareWarSchema
       }
     });
 
-    const targetCharId = targetKingdom.ruler?.id;
+    const targetCharId = targetKingdom.character?.id;
     if (targetCharId) {
       await logDiplomacyEvent('DECLARE_WAR', character.id, targetCharId, {
         attackerKingdom: myKingdom.name,
@@ -499,7 +494,7 @@ router.post('/declare-war', authGuard, characterGuard, validate(declareWarSchema
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'diplomacy-declare-war', req)) return;
+    if (handleDbError(error, res, 'diplomacy-declare-war', req)) return;
     logRouteError(req, 500, 'Declare war error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -513,11 +508,11 @@ router.post('/break-treaty/:treatyId', authGuard, characterGuard, async (req: Au
     const { treatyId } = req.params;
     const character = req.character!;
 
-    const treaty = await prisma.treaty.findUnique({
-      where: { id: treatyId },
-      include: {
-        proposerKingdom: { include: { ruler: true } },
-        receiverKingdom: { include: { ruler: true } },
+    const treaty = await db.query.treaties.findFirst({
+      where: eq(treaties.id, treatyId),
+      with: {
+        kingdom_proposerKingdomId: { with: { character: true } },
+        kingdom_receiverKingdomId: { with: { character: true } },
       },
     });
 
@@ -527,32 +522,28 @@ router.post('/break-treaty/:treatyId', authGuard, characterGuard, async (req: Au
     }
 
     // Only rulers of involved kingdoms can break
-    const isProposerRuler = treaty.proposerKingdom.rulerId === character.id;
-    const isReceiverRuler = treaty.receiverKingdom.rulerId === character.id;
+    const isProposerRuler = treaty.kingdom_proposerKingdomId.rulerId === character.id;
+    const isReceiverRuler = treaty.kingdom_receiverKingdomId.rulerId === character.id;
     if (!isProposerRuler && !isReceiverRuler) {
       return res.status(403).json({ error: 'Only rulers of involved kingdoms can break treaties' });
     }
 
-    const breakerKingdom = isProposerRuler ? treaty.proposerKingdom : treaty.receiverKingdom;
-    const otherKingdom = isProposerRuler ? treaty.receiverKingdom : treaty.proposerKingdom;
+    const breakerKingdom = isProposerRuler ? treaty.kingdom_proposerKingdomId : treaty.kingdom_receiverKingdomId;
+    const otherKingdom = isProposerRuler ? treaty.kingdom_receiverKingdomId : treaty.kingdom_proposerKingdomId;
 
     const penalty = calculateTreatyBreakPenalty(treaty.type as TreatyType);
 
-    await prisma.$transaction(async (tx) => {
-      await tx.treaty.update({
-        where: { id: treaty.id },
-        data: { status: 'BROKEN' },
-      });
+    await db.transaction(async (tx) => {
+      await tx.update(treaties).set({ status: 'BROKEN' }).where(eq(treaties.id, treaty.id));
 
       // Gold penalty from the breaker's kingdom treasury
-      await tx.kingdom.update({
-        where: { id: breakerKingdom.id },
-        data: { treasury: { decrement: Math.min(penalty.goldPenalty, breakerKingdom.treasury) } },
-      });
+      const penaltyAmount = Math.min(penalty.goldPenalty, breakerKingdom.treasury);
+      await tx.update(kingdoms).set({ treasury: sql`${kingdoms.treasury} - ${penaltyAmount}` })
+        .where(eq(kingdoms.id, breakerKingdom.id));
 
       // Worsen racial relation
-      const breakerRace = breakerKingdom.ruler?.race;
-      const otherRace = otherKingdom.ruler?.race;
+      const breakerRace = breakerKingdom.character?.race as Race;
+      const otherRace = otherKingdom.character?.race as Race;
       if (breakerRace && otherRace) {
         const relation = await getRelation(breakerRace, otherRace);
         const currentStatus = relation?.status ?? 'NEUTRAL';
@@ -562,7 +553,7 @@ router.post('/break-treaty/:treatyId', authGuard, characterGuard, async (req: Au
       }
     });
 
-    const targetCharId = otherKingdom.ruler?.id;
+    const targetCharId = otherKingdom.character?.id;
     if (targetCharId) {
       await logDiplomacyEvent('BREAK_TREATY', character.id, targetCharId, {
         treatyId: treaty.id,
@@ -581,7 +572,7 @@ router.post('/break-treaty/:treatyId', authGuard, characterGuard, async (req: Au
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'diplomacy-break-treaty', req)) return;
+    if (handleDbError(error, res, 'diplomacy-break-treaty', req)) return;
     logRouteError(req, 500, 'Break treaty error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -592,34 +583,39 @@ router.post('/break-treaty/:treatyId', authGuard, characterGuard, async (req: Au
 // =========================================================================
 router.get('/treaties', async (req: Request, res: Response) => {
   try {
-    const treaties = await prisma.treaty.findMany({
-      where: { status: { in: ['ACTIVE', 'PENDING'] } },
-      include: {
-        proposerKingdom: { select: { id: true, name: true } },
-        receiverKingdom: { select: { id: true, name: true } },
-        proposedBy: { select: { id: true, name: true, race: true } },
+    const allTreaties = await db.query.treaties.findMany({
+      with: {
+        kingdom_proposerKingdomId: true,
+        kingdom_receiverKingdomId: true,
+        character: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: (t, { desc }) => [desc(t.createdAt)],
     });
 
-    const baseTreaties = treaties.map(t => ({
+    // Filter to ACTIVE or PENDING at app level
+    const filteredTreaties = allTreaties.filter(t => ['ACTIVE', 'PENDING'].includes(t.status));
+
+    const baseTreaties = filteredTreaties.map(t => ({
       id: t.id,
       type: t.type,
       status: t.status,
-      proposerKingdom: t.proposerKingdom,
+      proposerKingdom: { id: t.kingdom_proposerKingdomId.id, name: t.kingdom_proposerKingdomId.name },
       proposerKingdomId: t.proposerKingdomId,
-      receiverKingdom: t.receiverKingdom,
-      proposedBy: t.proposedBy,
+      receiverKingdom: { id: t.kingdom_receiverKingdomId.id, name: t.kingdom_receiverKingdomId.name },
+      proposedBy: t.character ? { id: t.character.id, name: t.character.name, race: t.character.race } : null,
       goldCost: t.goldCost,
-      startsAt: t.startsAt?.toISOString() ?? null,
-      expiresAt: t.expiresAt?.toISOString() ?? null,
+      startsAt: t.startsAt ?? null,
+      expiresAt: t.expiresAt ?? null,
     }));
 
     // Psion Telepath: Deception Detection — add credibility flag to pending treaties
     let enrichedTreaties: (typeof baseTreaties[number] & { psionInsight?: unknown })[] = baseTreaties;
     const authReq = req as AuthenticatedRequest;
     if (authReq.user?.userId) {
-      const character = await prisma.character.findFirst({ where: { userId: authReq.user.userId }, orderBy: { createdAt: 'asc' } });
+      const character = await db.query.characters.findFirst({
+        where: eq(characters.userId, authReq.user.userId),
+        orderBy: (c, { asc }) => [asc(c.createdAt)],
+      });
       if (character) {
         const { isPsion, specialization } = await getPsionSpec(character.id);
         if (isPsion && specialization === 'telepath') {
@@ -641,7 +637,7 @@ router.get('/treaties', async (req: Request, res: Response) => {
       total: enrichedTreaties.length,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'diplomacy-treaties', req)) return;
+    if (handleDbError(error, res, 'diplomacy-treaties', req)) return;
     logRouteError(req, 500, 'List treaties error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -677,7 +673,7 @@ router.get('/tension/:kingdomId1/:kingdomId2', authGuard, characterGuard, async 
               : 'Peaceful',
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'diplomacy-tension', req)) return;
+    if (handleDbError(error, res, 'diplomacy-tension', req)) return;
     logRouteError(req, 500, 'Tension index error', error);
     return res.status(500).json({ error: 'Failed to calculate tension index' });
   }
@@ -688,30 +684,30 @@ router.get('/tension/:kingdomId1/:kingdomId2', authGuard, characterGuard, async 
 // =========================================================================
 router.get('/wars', async (_req: Request, res: Response) => {
   try {
-    const wars = await prisma.war.findMany({
-      where: { status: 'ACTIVE' },
-      include: {
-        attackerKingdom: { select: { id: true, name: true } },
-        defenderKingdom: { select: { id: true, name: true } },
+    const allWars = await db.query.wars.findMany({
+      where: eq(wars.status, 'ACTIVE'),
+      with: {
+        kingdom_attackerKingdomId: true,
+        kingdom_defenderKingdomId: true,
       },
-      orderBy: { startedAt: 'desc' },
+      orderBy: (w, { desc }) => [desc(w.startedAt)],
     });
 
     return res.json({
-      wars: wars.map(w => ({
+      wars: allWars.map(w => ({
         id: w.id,
-        attackerKingdom: w.attackerKingdom,
-        defenderKingdom: w.defenderKingdom,
+        attackerKingdom: { id: w.kingdom_attackerKingdomId.id, name: w.kingdom_attackerKingdomId.name },
+        defenderKingdom: { id: w.kingdom_defenderKingdomId.id, name: w.kingdom_defenderKingdomId.name },
         reason: w.reason,
         status: w.status,
         attackerScore: w.attackerScore,
         defenderScore: w.defenderScore,
-        startedAt: w.startedAt.toISOString(),
+        startedAt: w.startedAt,
       })),
-      total: wars.length,
+      total: allWars.length,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'diplomacy-wars', _req)) return;
+    if (handleDbError(error, res, 'diplomacy-wars', _req)) return;
     logRouteError(_req, 500, 'List wars error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -724,11 +720,11 @@ router.get('/wars/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const war = await prisma.war.findUnique({
-      where: { id },
-      include: {
-        attackerKingdom: { select: { id: true, name: true } },
-        defenderKingdom: { select: { id: true, name: true } },
+    const war = await db.query.wars.findFirst({
+      where: eq(wars.id, id),
+      with: {
+        kingdom_attackerKingdomId: true,
+        kingdom_defenderKingdomId: true,
       },
     });
 
@@ -751,12 +747,12 @@ router.get('/wars/:id', async (req: Request, res: Response) => {
     return res.json({
       war: {
         id: war.id,
-        attackerKingdom: war.attackerKingdom,
-        defenderKingdom: war.defenderKingdom,
+        attackerKingdom: { id: war.kingdom_attackerKingdomId.id, name: war.kingdom_attackerKingdomId.name },
+        defenderKingdom: { id: war.kingdom_defenderKingdomId.id, name: war.kingdom_defenderKingdomId.name },
         reason: war.reason,
         status: war.status,
-        startedAt: war.startedAt.toISOString(),
-        endedAt: war.endedAt?.toISOString() ?? null,
+        startedAt: war.startedAt,
+        endedAt: war.endedAt ?? null,
         scores: {
           attacker: attackerScore,
           defender: defenderScore,
@@ -764,7 +760,7 @@ router.get('/wars/:id', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'diplomacy-war-details', req)) return;
+    if (handleDbError(error, res, 'diplomacy-war-details', req)) return;
     logRouteError(req, 500, 'Get war details error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -779,11 +775,11 @@ router.post('/wars/:id/negotiate-peace', authGuard, characterGuard, validate(neg
     const { terms } = req.body as { terms?: string };
     const character = req.character!;
 
-    const war = await prisma.war.findUnique({
-      where: { id },
-      include: {
-        attackerKingdom: { include: { ruler: true } },
-        defenderKingdom: { include: { ruler: true } },
+    const war = await db.query.wars.findFirst({
+      where: eq(wars.id, id),
+      with: {
+        kingdom_attackerKingdomId: { with: { character: true } },
+        kingdom_defenderKingdomId: { with: { character: true } },
       },
     });
 
@@ -793,28 +789,25 @@ router.post('/wars/:id/negotiate-peace', authGuard, characterGuard, validate(neg
     }
 
     // Only rulers of warring kingdoms can negotiate
-    const isAttackerRuler = war.attackerKingdom.rulerId === character.id;
-    const isDefenderRuler = war.defenderKingdom.rulerId === character.id;
+    const isAttackerRuler = war.kingdom_attackerKingdomId.rulerId === character.id;
+    const isDefenderRuler = war.kingdom_defenderKingdomId.rulerId === character.id;
     if (!isAttackerRuler && !isDefenderRuler) {
       return res.status(403).json({ error: 'Only rulers of warring kingdoms can negotiate peace' });
     }
 
     // End the war
-    await prisma.war.update({
-      where: { id: war.id },
-      data: {
-        status: 'ENDED',
-        endedAt: new Date(),
-      },
-    });
+    await db.update(wars).set({
+      status: 'ENDED',
+      endedAt: new Date().toISOString(),
+    }).where(eq(wars.id, war.id));
 
     return res.json({
       peace: {
         warId: war.id,
         status: 'ENDED',
         terms: terms ?? 'Unconditional peace',
-        attackerKingdom: war.attackerKingdom.name,
-        defenderKingdom: war.defenderKingdom.name,
+        attackerKingdom: war.kingdom_attackerKingdomId.name,
+        defenderKingdom: war.kingdom_defenderKingdomId.name,
         finalScores: {
           attacker: war.attackerScore,
           defender: war.defenderScore,
@@ -822,7 +815,7 @@ router.post('/wars/:id/negotiate-peace', authGuard, characterGuard, validate(neg
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'diplomacy-negotiate-peace', req)) return;
+    if (handleDbError(error, res, 'diplomacy-negotiate-peace', req)) return;
     logRouteError(req, 500, 'Negotiate peace error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -836,34 +829,36 @@ router.get('/history', async (req: Request, res: Response) => {
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
     const offset = parseInt(req.query.offset as string) || 0;
 
-    const [events, total] = await Promise.all([
-      prisma.diplomacyEvent.findMany({
-        include: {
-          initiator: { select: { id: true, name: true, race: true } },
-          target: { select: { id: true, name: true, race: true } },
+    const [events, totalResult] = await Promise.all([
+      db.query.diplomacyEvents.findMany({
+        with: {
+          character_initiatorId: true,
+          character_targetId: true,
         },
-        orderBy: { timestamp: 'desc' },
-        take: limit,
-        skip: offset,
+        orderBy: (e, { desc }) => [desc(e.timestamp)],
+        limit,
+        offset,
       }),
-      prisma.diplomacyEvent.count(),
+      db.select({ total: count() }).from(diplomacyEvents),
     ]);
+
+    const total = totalResult[0]?.total ?? 0;
 
     return res.json({
       events: events.map(e => ({
         id: e.id,
         type: e.type,
-        initiator: e.initiator,
-        target: e.target,
+        initiator: e.character_initiatorId ? { id: e.character_initiatorId.id, name: e.character_initiatorId.name, race: e.character_initiatorId.race } : null,
+        target: e.character_targetId ? { id: e.character_targetId.id, name: e.character_targetId.name, race: e.character_targetId.race } : null,
         details: e.details,
-        timestamp: e.timestamp.toISOString(),
+        timestamp: e.timestamp,
       })),
       total,
       limit,
       offset,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'diplomacy-history', req)) return;
+    if (handleDbError(error, res, 'diplomacy-history', req)) return;
     logRouteError(req, 500, 'Get diplomacy history error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

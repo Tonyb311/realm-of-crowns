@@ -5,8 +5,16 @@
  * DailyActions in strict order with per-step error isolation.
  */
 
-import { prisma } from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import { db } from '../lib/db';
+import { eq, and, gte, lte, lt, gt, inArray, desc, asc, sql, count } from 'drizzle-orm';
+import {
+  dailyActions, characters, townResources, resources, playerProfessions,
+  inventories, items, itemTemplates, buildings, characterEquipment,
+  laws, townTreasuries, townPolicies, tradeTransactions, caravans,
+  elections, electionVotes, electionCandidates, impeachments, towns, kingdoms,
+  worldEvents, combatEncounterLogs, notifications, recipes,
+  ownedAssets, livestock, jobListings, houses, houseStorage,
+} from '@database/tables';
 import { processSpoilage, processAutoConsumption, getHungerModifier, processRevenantSustenance, processForgebornMaintenance } from '../services/food-system';
 import { resolveNodePvE, resolveNodePvP } from '../services/tick-combat-resolver';
 import { createDailyReport, compileReport } from '../services/daily-report';
@@ -42,7 +50,6 @@ import {
   emitToolBroken,
   emitTickComplete,
 } from '../socket/events';
-import type { HungerState, ProfessionType, ResourceType, BuildingType } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -54,7 +61,7 @@ const ABUNDANCE_DEPLETION_PER_GATHER = 2;
 const MIN_ABUNDANCE_TO_GATHER = 10;
 const BARE_HANDS_YIELD_PENALTY = 0.25;
 
-const PROFESSION_RESOURCE_MAP: Partial<Record<ProfessionType, ResourceType[]>> = {
+const PROFESSION_RESOURCE_MAP: Partial<Record<string, string[]>> = {
   MINER: ['ORE', 'STONE'],
   LUMBERJACK: ['WOOD'],
   FARMER: ['GRAIN', 'FIBER'],
@@ -63,7 +70,7 @@ const PROFESSION_RESOURCE_MAP: Partial<Record<ProfessionType, ResourceType[]>> =
   HUNTER: ['HIDE', 'ANIMAL_PRODUCT'],
 };
 
-const PROFESSION_WORKSHOP_MAP: Partial<Record<ProfessionType, BuildingType>> = {
+const PROFESSION_WORKSHOP_MAP: Partial<Record<string, string>> = {
   SMELTER: 'SMELTERY',
   BLACKSMITH: 'SMITHY',
   TANNER: 'TANNERY',
@@ -179,7 +186,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   }
 
   // Per-character hunger state cache (populated in Step 1)
-  const hungerStates = new Map<string, HungerState>();
+  const hungerStates = new Map<string, string>();
 
   // Per-character food buff cache
   const foodBuffs = new Map<string, Record<string, unknown> | null>();
@@ -211,15 +218,16 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   // -----------------------------------------------------------------------
   await runStep('Work Actions', 4, async () => {
     // --- Gathering ---
-    const gatherActions = await prisma.dailyAction.findMany({
-      where: {
-        tickDate: { gte: new Date(tickDateStr + 'T00:00:00.000Z'), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
-        actionType: 'GATHER',
-        status: 'LOCKED_IN',
-      },
-      include: {
+    const gatherActions = await db.query.dailyActions.findMany({
+      where: and(
+        gte(dailyActions.tickDate, new Date(tickDateStr + 'T00:00:00.000Z').toISOString()),
+        lt(dailyActions.tickDate, new Date(tickDateStr + 'T23:59:59.999Z').toISOString()),
+        eq(dailyActions.actionType, 'GATHER'),
+        eq(dailyActions.status, 'LOCKED_IN'),
+      ),
+      with: {
         character: {
-          select: {
+          columns: {
             id: true, race: true, subRace: true, level: true,
             currentTownId: true, hungerState: true, stats: true,
           },
@@ -232,7 +240,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
       const batch = gatherActions.slice(i, i + BATCH_SIZE);
       await Promise.all(batch.map(async (action) => {
         try {
-          await processGatherAction(action, tickDateStr, hungerStates, foodBuffs, getResults);
+          await processGatherAction(action as any, tickDateStr, hungerStates, foodBuffs, getResults);
         } catch (err) {
           console.error(`[DailyTick] Step 4 gather error for ${action.characterId}:`, err);
           getResults(action.characterId).notifications.push('Gathering failed due to an error.');
@@ -241,15 +249,16 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     }
 
     // --- Crafting ---
-    const craftActions = await prisma.dailyAction.findMany({
-      where: {
-        tickDate: { gte: new Date(tickDateStr + 'T00:00:00.000Z'), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
-        actionType: 'CRAFT',
-        status: 'LOCKED_IN',
-      },
-      include: {
+    const craftActions = await db.query.dailyActions.findMany({
+      where: and(
+        gte(dailyActions.tickDate, new Date(tickDateStr + 'T00:00:00.000Z').toISOString()),
+        lt(dailyActions.tickDate, new Date(tickDateStr + 'T23:59:59.999Z').toISOString()),
+        eq(dailyActions.actionType, 'CRAFT'),
+        eq(dailyActions.status, 'LOCKED_IN'),
+      ),
+      with: {
         character: {
-          select: {
+          columns: {
             id: true, race: true, subRace: true, level: true,
             currentTownId: true, hungerState: true, stats: true,
           },
@@ -262,7 +271,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
       const batch = craftActions.slice(i, i + BATCH_SIZE);
       await Promise.all(batch.map(async (action) => {
         try {
-          await processCraftAction(action, tickDateStr, hungerStates, foodBuffs, getResults);
+          await processCraftAction(action as any, tickDateStr, hungerStates, foodBuffs, getResults);
         } catch (err) {
           console.error(`[DailyTick] Step 4 craft error for ${action.characterId}:`, err);
           getResults(action.characterId).notifications.push('Crafting failed due to an error.');
@@ -271,15 +280,16 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     }
 
     // --- Harvesting (private asset harvesting) ---
-    const harvestActions = await prisma.dailyAction.findMany({
-      where: {
-        tickDate: { gte: new Date(tickDateStr + 'T00:00:00.000Z'), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
-        actionType: 'HARVEST',
-        status: 'LOCKED_IN',
-      },
-      include: {
+    const harvestActions = await db.query.dailyActions.findMany({
+      where: and(
+        gte(dailyActions.tickDate, new Date(tickDateStr + 'T00:00:00.000Z').toISOString()),
+        lt(dailyActions.tickDate, new Date(tickDateStr + 'T23:59:59.999Z').toISOString()),
+        eq(dailyActions.actionType, 'HARVEST'),
+        eq(dailyActions.status, 'LOCKED_IN'),
+      ),
+      with: {
         character: {
-          select: {
+          columns: {
             id: true, race: true, subRace: true, level: true,
             currentTownId: true, hungerState: true, stats: true,
           },
@@ -292,7 +302,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
       const batch = harvestActions.slice(i, i + BATCH_SIZE);
       await Promise.all(batch.map(async (action) => {
         try {
-          await processHarvestAction(action, tickDateStr, hungerStates, foodBuffs, getResults);
+          await processHarvestAction(action as any, tickDateStr, hungerStates, foodBuffs, getResults);
         } catch (err) {
           console.error(`[DailyTick] Step 4 harvest error for ${action.characterId}:`, err);
           getResults(action.characterId).notifications.push('Harvesting failed due to an error.');
@@ -306,22 +316,22 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   // -----------------------------------------------------------------------
   await runStep('Food Auto-Consumption', 4.5, async () => {
     // Per-character auto-consumption with cursor-based pagination
-    let charCursor: string | undefined;
+    let lastId: string | undefined;
     let hasMoreChars = true;
 
     while (hasMoreChars) {
-      const charPage = await prisma.character.findMany({
-        select: { id: true, race: true },
-        take: CURSOR_PAGE_SIZE,
-        orderBy: { id: 'asc' },
-        ...(charCursor ? { skip: 1, cursor: { id: charCursor } } : {}),
+      const charPage = await db.query.characters.findMany({
+        columns: { id: true, race: true },
+        limit: CURSOR_PAGE_SIZE,
+        orderBy: asc(characters.id),
+        ...(lastId ? { where: gt(characters.id, lastId) } : {}),
       });
 
       if (charPage.length < CURSOR_PAGE_SIZE) {
         hasMoreChars = false;
       }
       if (charPage.length > 0) {
-        charCursor = charPage[charPage.length - 1].id;
+        lastId = charPage[charPage.length - 1].id;
       }
 
       // Process this page in sub-batches
@@ -332,7 +342,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
           if (char.race === 'REVENANT') {
             const seResult = await processRevenantSustenance(char.id);
             // Map soulFadeStage to hunger-equivalent for downstream steps
-            const hungerEquiv: HungerState =
+            const hungerEquiv =
               seResult.soulFadeStage === 0 ? 'FED' :
               seResult.soulFadeStage === 1 ? 'HUNGRY' :
               seResult.soulFadeStage === 2 ? 'STARVING' : 'INCAPACITATED';
@@ -359,12 +369,11 @@ export async function processDailyTick(): Promise<DailyTickResult> {
                 'Your soul strains against the mortal plane. Without Soul Essence, you risk unraveling entirely. (-3 all stats, -25% speed, -10% max HP)'
               );
             } else if (seResult.consumed && seResult.soulFadeStage === 0) {
-              // Only notify "stabilized" if they were previously fading (consumed something)
               results.notifications.push('The Soul Essence anchors your spirit. Your form solidifies.');
             }
           } else if (char.race === 'FORGEBORN') {
             const mkResult = await processForgebornMaintenance(char.id);
-            const hungerEquiv: HungerState =
+            const hungerEquiv =
               mkResult.structuralDecayStage === 0 ? 'FED' :
               mkResult.structuralDecayStage === 1 ? 'HUNGRY' :
               mkResult.structuralDecayStage === 2 ? 'STARVING' : 'INCAPACITATED';
@@ -425,27 +434,25 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     const currentDay = getGameDay();
 
     // 1. GROWING -> READY (crops that finished growing)
-    const newlyReady = await prisma.ownedAsset.findMany({
-      where: { cropState: 'GROWING', readyAt: { lte: currentDay } },
-      include: { owner: { select: { id: true, name: true } }, town: { select: { name: true } } },
+    const newlyReady = await db.query.ownedAssets.findMany({
+      where: and(eq(ownedAssets.cropState, 'GROWING'), lte(ownedAssets.readyAt, currentDay)),
+      with: { character: { columns: { id: true, name: true } }, town: { columns: { name: true } } },
     });
 
     if (newlyReady.length > 0) {
-      await prisma.ownedAsset.updateMany({
-        where: { id: { in: newlyReady.map(a => a.id) } },
-        data: { cropState: 'READY' },
-      });
+      await db.update(ownedAssets)
+        .set({ cropState: 'READY' })
+        .where(inArray(ownedAssets.id, newlyReady.map(a => a.id)));
 
       // Notify owners
       for (const asset of newlyReady) {
-        await prisma.notification.create({
-          data: {
-            characterId: asset.ownerId,
-            type: 'asset:crop_ready',
-            title: 'Crop Ready!',
-            message: `Your ${asset.name} in ${asset.town.name} is ready to harvest!`,
-            data: { assetId: asset.id, spotType: asset.spotType },
-          },
+        await db.insert(notifications).values({
+          id: crypto.randomUUID(),
+          characterId: asset.ownerId,
+          type: 'asset:crop_ready',
+          title: 'Crop Ready!',
+          message: `Your ${asset.name} in ${asset.town.name} is ready to harvest!`,
+          data: { assetId: asset.id, spotType: asset.spotType },
         });
       }
 
@@ -453,27 +460,25 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     }
 
     // 2. READY -> WITHERED (crops that spoiled — reset to EMPTY)
-    const witheredAssets = await prisma.ownedAsset.findMany({
-      where: { cropState: 'READY', witheringAt: { lte: currentDay } },
-      include: { owner: { select: { id: true, name: true } }, town: { select: { name: true } } },
+    const witheredAssets = await db.query.ownedAssets.findMany({
+      where: and(eq(ownedAssets.cropState, 'READY'), lte(ownedAssets.witheringAt, currentDay)),
+      with: { character: { columns: { id: true, name: true } }, town: { columns: { name: true } } },
     });
 
     if (witheredAssets.length > 0) {
-      await prisma.ownedAsset.updateMany({
-        where: { id: { in: witheredAssets.map(a => a.id) } },
-        data: { cropState: 'EMPTY', plantedAt: null, readyAt: null, witheringAt: null },
-      });
+      await db.update(ownedAssets)
+        .set({ cropState: 'EMPTY', plantedAt: null, readyAt: null, witheringAt: null })
+        .where(inArray(ownedAssets.id, witheredAssets.map(a => a.id)));
 
       // Notify owners
       for (const asset of witheredAssets) {
-        await prisma.notification.create({
-          data: {
-            characterId: asset.ownerId,
-            type: 'asset:crop_withered',
-            title: 'Crop Withered!',
-            message: `Your ${asset.name} in ${asset.town.name} withered! The crop was lost.`,
-            data: { assetId: asset.id, spotType: asset.spotType },
-          },
+        await db.insert(notifications).values({
+          id: crypto.randomUUID(),
+          characterId: asset.ownerId,
+          type: 'asset:crop_withered',
+          title: 'Crop Withered!',
+          message: `Your ${asset.name} in ${asset.town.name} withered! The crop was lost.`,
+          data: { assetId: asset.id, spotType: asset.spotType },
         });
       }
 
@@ -489,11 +494,11 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     const isFeedDay = currentDay % 3 === 0;
 
     // Fetch all alive livestock grouped with building + owner info
-    const allLivestock = await prisma.livestock.findMany({
-      where: { isAlive: true },
-      include: {
-        building: { select: { id: true, spotType: true, townId: true, pendingYieldSince: true } },
-        owner: { select: { id: true, name: true } },
+    const allLivestock = await db.query.livestock.findMany({
+      where: eq(livestock.isAlive, true),
+      with: {
+        ownedAsset: { columns: { id: true, spotType: true, townId: true, pendingYieldSince: true } },
+        character: { columns: { id: true, name: true } },
       },
     });
 
@@ -516,31 +521,37 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     }
 
     for (const [ownerId, animals] of byOwner) {
-      await prisma.$transaction(async (tx) => {
+      await db.transaction(async (tx) => {
         // Look up owner's Grain inventory (for feeding)
         let grainStack: { id: string; quantity: number; itemId: string } | null = null;
         if (isFeedDay) {
-          grainStack = await tx.inventory.findFirst({
-            where: {
-              characterId: ownerId,
-              item: { template: { name: 'Grain' } },
-            },
-            select: { id: true, quantity: true, itemId: true },
+          const grainResult = await tx.query.inventories.findFirst({
+            where: eq(inventories.characterId, ownerId),
+            with: { item: { with: { itemTemplate: true } } },
           });
+          // Filter for grain in JS — Drizzle doesn't support nested where on relations
+          const allInv = await tx.query.inventories.findMany({
+            where: eq(inventories.characterId, ownerId),
+            with: { item: { with: { itemTemplate: true } } },
+          });
+          const grainEntry = allInv.find(inv => inv.item?.itemTemplate?.name === 'Grain');
+          if (grainEntry) {
+            grainStack = { id: grainEntry.id, quantity: grainEntry.quantity, itemId: grainEntry.itemId };
+          }
         }
 
         // Cache owner's RANCHER level for Fine Wool bonus
         let rancherLevel = 0;
-        const rancherProf = await tx.playerProfession.findFirst({
-          where: { characterId: ownerId, professionType: 'RANCHER' },
-          select: { level: true },
+        const rancherProf = await tx.query.playerProfessions.findFirst({
+          where: and(eq(playerProfessions.characterId, ownerId), eq(playerProfessions.professionType, 'RANCHER' as any)),
+          columns: { level: true },
         });
         if (rancherProf) rancherLevel = rancherProf.level;
 
         // Pre-fetch Fine Wool template for L7+ sheep bonus
         let fineWoolTemplateId: string | null = null;
         if (rancherLevel >= 7) {
-          const fwt = await tx.itemTemplate.findFirst({ where: { name: 'Fine Wool' } });
+          const fwt = await tx.query.itemTemplates.findFirst({ where: eq(itemTemplates.name, 'Fine Wool') });
           if (fwt) fineWoolTemplateId = fwt.id;
         }
 
@@ -587,20 +598,18 @@ export async function processDailyTick(): Promise<DailyTickResult> {
 
           // Handle death
           if (isDead) {
-            await tx.livestock.update({
-              where: { id: animal.id },
-              data: { isAlive: false, deathCause, age: newAge, health: Math.max(0, newHealth) },
-            });
+            await tx.update(livestock)
+              .set({ isAlive: false, deathCause, age: newAge, health: Math.max(0, newHealth) })
+              .where(eq(livestock.id, animal.id));
             deaths++;
 
-            await tx.notification.create({
-              data: {
-                characterId: ownerId,
-                type: 'rancher:animal_died',
-                title: 'Animal Died',
-                message: `Your ${def.name} "${animal.name || def.name}" died (${deathCause}).`,
-                data: { livestockId: animal.id, animalType: animal.animalType, cause: deathCause },
-              },
+            await tx.insert(notifications).values({
+              id: crypto.randomUUID(),
+              characterId: ownerId,
+              type: 'rancher:animal_died',
+              title: 'Animal Died',
+              message: `Your ${def.name} "${animal.name || def.name}" died (${deathCause}).`,
+              data: { livestockId: animal.id, animalType: animal.animalType, cause: deathCause },
             });
             continue;
           }
@@ -611,14 +620,13 @@ export async function processDailyTick(): Promise<DailyTickResult> {
               // Deduct grain
               grainStack.quantity -= def.feedCost;
               if (grainStack.quantity <= 0) {
-                await tx.inventory.delete({ where: { id: grainStack.id } });
-                await tx.item.delete({ where: { id: grainStack.itemId } });
+                await tx.delete(inventories).where(eq(inventories.id, grainStack.id));
+                await tx.delete(items).where(eq(items.id, grainStack.itemId));
                 grainStack = null;
               } else {
-                await tx.inventory.update({
-                  where: { id: grainStack.id },
-                  data: { quantity: grainStack.quantity },
-                });
+                await tx.update(inventories)
+                  .set({ quantity: grainStack.quantity })
+                  .where(eq(inventories.id, grainStack.id));
               }
               newHunger = 0;
               fed++;
@@ -635,47 +643,50 @@ export async function processDailyTick(): Promise<DailyTickResult> {
             const yield_ = def.minYield + Math.floor(Math.random() * (def.maxYield - def.minYield + 1));
 
             // Increment pending yield on the building (collection required)
-            const resourceEntry = RESOURCE_MAP[animal.building.spotType];
+            const resourceEntry = RESOURCE_MAP[animal.ownedAsset.spotType];
             if (resourceEntry) {
-              await tx.ownedAsset.update({
-                where: { id: animal.building.id },
-                data: {
-                  pendingYield: { increment: yield_ },
+              await tx.update(ownedAssets)
+                .set({
+                  pendingYield: sql`${ownedAssets.pendingYield} + ${yield_}`,
                   // Only set pendingYieldSince if not already tracking
-                  ...(animal.building.pendingYieldSince == null ? { pendingYieldSince: currentDay } : {}),
-                },
-              });
+                  ...(animal.ownedAsset.pendingYieldSince == null ? { pendingYieldSince: currentDay } : {}),
+                })
+                .where(eq(ownedAssets.id, animal.ownedAsset.id));
 
               produced += yield_;
               producedThisTick = true;
 
               // 5b. Fine Wool bonus — L7+ RANCHER sheep produce Fine Wool alongside Wool
               if (animal.animalType === 'sheep' && fineWoolTemplateId) {
-                const fwItem = await tx.item.create({
-                  data: { templateId: fineWoolTemplateId, quality: 'COMMON' },
-                });
-                await tx.inventory.create({
-                  data: { characterId: ownerId, itemId: fwItem.id, quantity: 1 },
+                const [fwItem] = await tx.insert(items).values({
+                  id: crypto.randomUUID(),
+                  templateId: fineWoolTemplateId,
+                  quality: 'COMMON',
+                }).returning();
+                await tx.insert(inventories).values({
+                  id: crypto.randomUUID(),
+                  characterId: ownerId,
+                  itemId: fwItem.id,
+                  quantity: 1,
                 });
               }
             }
           }
 
           // 6. Update animal state
-          await tx.livestock.update({
-            where: { id: animal.id },
-            data: {
+          await tx.update(livestock)
+            .set({
               age: newAge,
               hunger: newHunger,
               health: newHealth,
               ...(isFeedDay && newHunger === 0 ? { lastFedAt: currentDay } : {}),
               ...(producedThisTick ? { lastProducedAt: currentDay } : {}),
-            },
-          });
+            })
+            .where(eq(livestock.id, animal.id));
 
           // 7. Award RANCHER XP for production
           if (producedThisTick) {
-            await addProfessionXP(ownerId, 'RANCHER' as ProfessionType, 5, `livestock_${animal.animalType}_produce`);
+            await addProfessionXP(ownerId, 'RANCHER' as any, 5, `livestock_${animal.animalType}_produce`);
           }
         }
       });
@@ -683,26 +694,25 @@ export async function processDailyTick(): Promise<DailyTickResult> {
 
     // Silkworm House auto-production (non-livestock building, increments pendingYield on feed days)
     if (isFeedDay) {
-      const silkwormHouses = await prisma.ownedAsset.findMany({
-        where: { spotType: 'silkworm_house' },
+      const silkwormHouses = await db.query.ownedAssets.findMany({
+        where: eq(ownedAssets.spotType, 'silkworm_house'),
       });
 
       let silkwormProduced = 0;
       for (const house of silkwormHouses) {
         // Check owner has RANCHER L7+
-        const ownerRancherProf = await prisma.playerProfession.findFirst({
-          where: { characterId: house.ownerId, professionType: 'RANCHER' },
-          select: { level: true },
+        const ownerRancherProf = await db.query.playerProfessions.findFirst({
+          where: and(eq(playerProfessions.characterId, house.ownerId), eq(playerProfessions.professionType, 'RANCHER' as any)),
+          columns: { level: true },
         });
         if (!ownerRancherProf || ownerRancherProf.level < 7) continue;
 
-        await prisma.ownedAsset.update({
-          where: { id: house.id },
-          data: {
-            pendingYield: { increment: 1 },
+        await db.update(ownedAssets)
+          .set({
+            pendingYield: sql`${ownedAssets.pendingYield} + 1`,
             ...(house.pendingYieldSince == null ? { pendingYieldSince: currentDay } : {}),
-          },
-        });
+          })
+          .where(eq(ownedAssets.id, house.id));
         silkwormProduced++;
       }
       if (silkwormProduced > 0) {
@@ -715,14 +725,13 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     if (starved > 0) {
       for (const [ownerId] of byOwner) {
         // Only warn once per owner
-        await prisma.notification.create({
-          data: {
-            characterId: ownerId,
-            type: 'rancher:low_feed',
-            title: 'Low Feed Warning',
-            message: 'Some of your animals missed their feeding. Stock up on Grain to keep them fed!',
-            data: {},
-          },
+        await db.insert(notifications).values({
+          id: crypto.randomUUID(),
+          characterId: ownerId,
+          type: 'rancher:low_feed',
+          title: 'Low Feed Warning',
+          message: 'Some of your animals missed their feeding. Stock up on Grain to keep them fed!',
+          data: {},
         }).catch(() => {}); // Non-critical
       }
     }
@@ -737,15 +746,16 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     const currentDay = getGameDay();
 
     // 1. Expire old jobs
-    const expired = await prisma.jobListing.updateMany({
-      where: {
-        status: 'OPEN',
-        expiresAt: { not: null, lte: currentDay },
-      },
-      data: { status: 'EXPIRED' },
-    });
-    if (expired.count > 0) {
-      console.log(`[DailyTick]   Expired ${expired.count} job listings`);
+    const expired = await db.update(jobListings)
+      .set({ status: 'EXPIRED' })
+      .where(and(
+        eq(jobListings.status, 'OPEN'),
+        sql`${jobListings.expiresAt} IS NOT NULL`,
+        lte(jobListings.expiresAt, currentDay),
+      ));
+    const expiredCount = expired.rowCount ?? 0;
+    if (expiredCount > 0) {
+      console.log(`[DailyTick]   Expired ${expiredCount} job listings`);
     }
 
     // (Auto-posting removed — job posting is always a deliberate player/bot choice)
@@ -756,14 +766,15 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   // -----------------------------------------------------------------------
   await runStep('Service Professions', 5, async () => {
     // Innkeepers earn from resting characters in their town
-    const restingActions = await prisma.dailyAction.findMany({
-      where: {
-        tickDate: { gte: new Date(tickDateStr + 'T00:00:00.000Z'), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
-        actionType: 'REST',
-        status: 'LOCKED_IN',
-      },
-      include: {
-        character: { select: { id: true, currentTownId: true } },
+    const restingActions = await db.query.dailyActions.findMany({
+      where: and(
+        gte(dailyActions.tickDate, new Date(tickDateStr + 'T00:00:00.000Z').toISOString()),
+        lt(dailyActions.tickDate, new Date(tickDateStr + 'T23:59:59.999Z').toISOString()),
+        eq(dailyActions.actionType, 'REST'),
+        eq(dailyActions.status, 'LOCKED_IN'),
+      ),
+      with: {
+        character: { columns: { id: true, currentTownId: true } },
       },
     });
 
@@ -778,26 +789,25 @@ export async function processDailyTick(): Promise<DailyTickResult> {
 
     // Find innkeepers and award income per resting character
     for (const [townId, resterIds] of restByTown) {
-      const innkeepers = await prisma.playerProfession.findMany({
-        where: {
-          professionType: 'INNKEEPER',
-          isActive: true,
-          character: { currentTownId: townId },
-        },
-        include: { character: { select: { id: true, name: true } } },
+      const innkeepers = await db.query.playerProfessions.findMany({
+        where: and(
+          eq(playerProfessions.professionType, 'INNKEEPER' as any),
+          eq(playerProfessions.isActive, true),
+        ),
+        with: { character: { columns: { id: true, name: true, currentTownId: true } } },
       });
 
-      if (innkeepers.length === 0) continue;
+      const townInnkeepers = innkeepers.filter(ik => ik.character.currentTownId === townId);
+      if (townInnkeepers.length === 0) continue;
 
       const incomePerRester = 5; // base lodging fee
-      const totalIncome = Math.floor(resterIds.length * incomePerRester / innkeepers.length);
+      const totalIncome = Math.floor(resterIds.length * incomePerRester / townInnkeepers.length);
 
-      for (const innkeeper of innkeepers) {
+      for (const innkeeper of townInnkeepers) {
         if (totalIncome > 0) {
-          await prisma.character.update({
-            where: { id: innkeeper.characterId },
-            data: { gold: { increment: totalIncome } },
-          });
+          await db.update(characters)
+            .set({ gold: sql`${characters.gold} + ${totalIncome}` })
+            .where(eq(characters.id, innkeeper.characterId));
           const results = getResults(innkeeper.characterId);
           results.goldChange += totalIncome;
           results.notifications.push(`Earned ${totalIncome}g from ${resterIds.length} lodging guests.`);
@@ -812,27 +822,26 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   await runStep('Governance Processing', 6, async () => {
     // Check proposed laws: tally votes and activate or reject
     const now = new Date();
-    const proposedLaws = await prisma.law.findMany({
-      where: { status: 'PROPOSED', expiresAt: { lte: now } },
+    const proposedLaws = await db.query.laws.findMany({
+      where: and(eq(laws.status, 'PROPOSED'), lte(laws.expiresAt, now.toISOString())),
     });
     lawsCount = proposedLaws.length;
 
     for (const law of proposedLaws) {
       const passed = law.votesFor > law.votesAgainst;
-      await prisma.law.update({
-        where: { id: law.id },
-        data: { status: passed ? 'ACTIVE' : 'REJECTED' },
-      });
+      await db.update(laws)
+        .set({ status: passed ? 'ACTIVE' : 'REJECTED' })
+        .where(eq(laws.id, law.id));
       console.log(`[DailyTick]   Law "${law.title}" ${passed ? 'PASSED' : 'REJECTED'} (${law.votesFor}-${law.votesAgainst})`);
     }
 
     // Expire active laws past their expiresAt
-    const expired = await prisma.law.updateMany({
-      where: { status: 'ACTIVE', expiresAt: { lte: now } },
-      data: { status: 'EXPIRED' },
-    });
-    if (expired.count > 0) {
-      console.log(`[DailyTick]   Expired ${expired.count} law(s)`);
+    const expiredResult = await db.update(laws)
+      .set({ status: 'EXPIRED' })
+      .where(and(eq(laws.status, 'ACTIVE'), lte(laws.expiresAt, now.toISOString())));
+    const expiredCount = expiredResult.rowCount ?? 0;
+    if (expiredCount > 0) {
+      console.log(`[DailyTick]   Expired ${expiredCount} law(s)`);
     }
   });
 
@@ -843,32 +852,34 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     const now = new Date();
 
     // --- Tax Collection ---
-    const treasuries = await prisma.townTreasury.findMany();
-    for (const treasury of treasuries) {
-      const transactions = await prisma.tradeTransaction.findMany({
-        where: {
-          townId: treasury.townId,
-          timestamp: { gt: treasury.lastCollectedAt },
-        },
+    const allTreasuries = await db.query.townTreasuries.findMany();
+    for (const treasury of allTreasuries) {
+      const txList = await db.query.tradeTransactions.findMany({
+        where: and(
+          eq(tradeTransactions.townId, treasury.townId),
+          gt(tradeTransactions.timestamp, treasury.lastCollectedAt),
+        ),
       });
 
-      if (transactions.length === 0) continue;
+      if (txList.length === 0) continue;
 
-      const policy = await prisma.townPolicy.findUnique({
-        where: { townId: treasury.townId },
+      const policy = await db.query.townPolicies.findFirst({
+        where: eq(townPolicies.townId, treasury.townId),
       });
       const taxRate = policy?.taxRate ?? treasury.taxRate;
 
       let totalTax = 0;
-      for (const tx of transactions) {
+      for (const tx of txList) {
         totalTax += Math.floor(tx.price * tx.quantity * taxRate);
       }
 
       if (totalTax > 0) {
-        await prisma.townTreasury.update({
-          where: { id: treasury.id },
-          data: { balance: { increment: totalTax }, lastCollectedAt: now },
-        });
+        await db.update(townTreasuries)
+          .set({
+            balance: sql`${townTreasuries.balance} + ${totalTax}`,
+            lastCollectedAt: now.toISOString(),
+          })
+          .where(eq(townTreasuries.id, treasury.id));
         console.log(`[DailyTick]   Collected ${totalTax}g tax from town ${treasury.townId}`);
       }
     }
@@ -880,18 +891,17 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     await degradeBuildings();
 
     // --- Resource Regeneration ---
-    const depletedResources = await prisma.townResource.findMany({
-      where: { abundance: { lt: 100 } },
+    const depletedResources = await db.query.townResources.findMany({
+      where: lt(townResources.abundance, 100),
     });
     let resourcesRestored = 0;
     for (const resource of depletedResources) {
       const increment = Math.max(1, Math.round(resource.respawnRate));
       const newAbundance = Math.min(100, resource.abundance + increment);
       if (newAbundance !== resource.abundance) {
-        await prisma.townResource.update({
-          where: { id: resource.id },
-          data: { abundance: newAbundance },
-        });
+        await db.update(townResources)
+          .set({ abundance: newAbundance })
+          .where(eq(townResources.id, resource.id));
         resourcesRestored++;
       }
     }
@@ -901,16 +911,16 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     resourcesRestoredCount = resourcesRestored;
 
     // --- Caravan Arrivals ---
-    const arrivedCaravans = await prisma.caravan.findMany({
-      where: { status: 'IN_PROGRESS', arrivesAt: { lte: now } },
-      include: { toTown: { select: { name: true } } },
+    const arrivedCaravans = await db.query.caravans.findMany({
+      where: and(eq(caravans.status, 'IN_PROGRESS'), lte(caravans.arrivesAt, now.toISOString())),
+      with: { town_toTownId: { columns: { name: true } } },
     });
     for (const caravan of arrivedCaravans) {
       emitNotification(caravan.ownerId, {
         id: `caravan-ready-${caravan.id}`,
         type: 'caravan:arrived',
         title: 'Caravan Arrived!',
-        message: `Your caravan has arrived at ${caravan.toTown.name}. Visit the town to collect your goods.`,
+        message: `Your caravan has arrived at ${caravan.town_toTownId.name}. Visit the town to collect your goods.`,
         data: { caravanId: caravan.id, toTownId: caravan.toTownId },
       });
     }
@@ -923,15 +933,16 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   // -----------------------------------------------------------------------
   await runStep('Elections & Diplomacy', 8, async () => {
     await processElections();
-    await processImpeachments();
+    await processImpeachmentsLocal();
 
     // Check treaty expirations
-    const expiredTreaties = await prisma.treaty.updateMany({
-      where: { status: 'ACTIVE', expiresAt: { lte: now } },
-      data: { status: 'EXPIRED' },
-    });
-    if (expiredTreaties.count > 0) {
-      console.log(`[DailyTick]   Expired ${expiredTreaties.count} treaty/treaties`);
+    const { treaties } = await import('@database/tables');
+    const expiredResult = await db.update(treaties)
+      .set({ status: 'EXPIRED' })
+      .where(and(eq(treaties.status, 'ACTIVE'), lte(treaties.expiresAt, now.toISOString())));
+    const expiredCount = expiredResult.rowCount ?? 0;
+    if (expiredCount > 0) {
+      console.log(`[DailyTick]   Expired ${expiredCount} treaty/treaties`);
     }
   });
 
@@ -940,45 +951,47 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   // -----------------------------------------------------------------------
   await runStep('Rest/Idle Processing', 9, async () => {
     // Find characters with REST actions or no locked action for today
-    const restActions = await prisma.dailyAction.findMany({
-      where: {
-        tickDate: { gte: new Date(tickDateStr + 'T00:00:00.000Z'), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
-        actionType: 'REST',
-        status: 'LOCKED_IN',
-      },
-      select: { characterId: true },
+    const restActions = await db.query.dailyActions.findMany({
+      where: and(
+        gte(dailyActions.tickDate, new Date(tickDateStr + 'T00:00:00.000Z').toISOString()),
+        lt(dailyActions.tickDate, new Date(tickDateStr + 'T23:59:59.999Z').toISOString()),
+        eq(dailyActions.actionType, 'REST'),
+        eq(dailyActions.status, 'LOCKED_IN'),
+      ),
+      columns: { characterId: true },
     });
     restCount = restActions.length;
 
     const restingIds = new Set(restActions.map(a => a.characterId));
 
     // Characters with NO action default to rest
-    const allActive = await prisma.dailyAction.findMany({
-      where: {
-        tickDate: { gte: new Date(tickDateStr + 'T00:00:00.000Z'), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
-        status: 'LOCKED_IN',
-      },
-      select: { characterId: true },
+    const allActive = await db.query.dailyActions.findMany({
+      where: and(
+        gte(dailyActions.tickDate, new Date(tickDateStr + 'T00:00:00.000Z').toISOString()),
+        lt(dailyActions.tickDate, new Date(tickDateStr + 'T23:59:59.999Z').toISOString()),
+        eq(dailyActions.status, 'LOCKED_IN'),
+      ),
+      columns: { characterId: true },
     });
     const activeIds = new Set(allActive.map(a => a.characterId));
 
     // Cursor-based pagination for rest/heal processing
-    let restCursor: string | undefined;
+    let restLastId: string | undefined;
     let hasMoreRest = true;
 
     while (hasMoreRest) {
-      const restPage = await prisma.character.findMany({
-        select: { id: true, maxHealth: true, health: true, hungerState: true },
-        take: CURSOR_PAGE_SIZE,
-        orderBy: { id: 'asc' },
-        ...(restCursor ? { skip: 1, cursor: { id: restCursor } } : {}),
+      const restPage = await db.query.characters.findMany({
+        columns: { id: true, maxHealth: true, health: true, hungerState: true },
+        limit: CURSOR_PAGE_SIZE,
+        orderBy: asc(characters.id),
+        ...(restLastId ? { where: gt(characters.id, restLastId) } : {}),
       });
 
       if (restPage.length < CURSOR_PAGE_SIZE) {
         hasMoreRest = false;
       }
       if (restPage.length > 0) {
-        restCursor = restPage[restPage.length - 1].id;
+        restLastId = restPage[restPage.length - 1].id;
       }
 
       for (const char of restPage) {
@@ -992,23 +1005,18 @@ export async function processDailyTick(): Promise<DailyTickResult> {
           const healAmount = Math.floor(char.maxHealth * 0.15);
           const newHealth = Math.min(char.maxHealth, char.health + healAmount);
 
-          await prisma.character.update({
-            where: { id: char.id },
-            data: {
-              health: newHealth,
-              wellRested: true,
-            },
-          });
+          await db.update(characters)
+            .set({ health: newHealth, wellRested: true })
+            .where(eq(characters.id, char.id));
 
           const results = getResults(char.id);
           results.action = results.action ?? { type: 'REST' };
           results.notifications.push(`Rested well and recovered ${healAmount} HP.`);
         } else {
           // No recovery when not fed
-          await prisma.character.update({
-            where: { id: char.id },
-            data: { wellRested: false },
-          });
+          await db.update(characters)
+            .set({ wellRested: false })
+            .where(eq(characters.id, char.id));
 
           const results = getResults(char.id);
           results.action = results.action ?? { type: 'REST' };
@@ -1060,14 +1068,13 @@ export async function processDailyTick(): Promise<DailyTickResult> {
       .filter(r => (r.action as Record<string, unknown>)?.type === 'TRAVEL').length;
 
     if (totalCombats > 0 || totalGathers > 5 || totalTravelers > 5) {
-      const event = await prisma.worldEvent.create({
-        data: {
-          eventType: 'DAILY_SUMMARY',
-          title: `Day ${tickDateStr} Summary`,
-          description: `${totalTravelers} travelers, ${totalCombats} combats, ${totalGathers} gatherers.`,
-          metadata: { tickDate: tickDateStr, totalCombats, totalGathers, totalTravelers },
-        },
-      });
+      const [event] = await db.insert(worldEvents).values({
+        id: crypto.randomUUID(),
+        eventType: 'DAILY_SUMMARY',
+        title: `Day ${tickDateStr} Summary`,
+        description: `${totalTravelers} travelers, ${totalCombats} combats, ${totalGathers} gatherers.`,
+        metadata: { tickDate: tickDateStr, totalCombats, totalGathers, totalTravelers },
+      }).returning();
 
       emitWorldEvent({
         id: event.id,
@@ -1075,7 +1082,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
         title: event.title,
         description: event.description,
         metadata: event.metadata,
-        createdAt: event.createdAt.toISOString(),
+        createdAt: event.createdAt,
       });
 
       // Broadcast all accumulated world events to results
@@ -1103,13 +1110,14 @@ export async function processDailyTick(): Promise<DailyTickResult> {
           const todayEnd = new Date(todayStart);
           todayEnd.setDate(todayEnd.getDate() + 1);
 
-          const todayCombats = await prisma.combatEncounterLog.findMany({
-            where: {
-              characterId: charId,
-              triggerSource: { in: ['road_encounter', 'group_road_encounter'] },
-              createdAt: { gte: todayStart, lt: todayEnd },
-            },
-            select: {
+          const todayCombats = await db.query.combatEncounterLogs.findMany({
+            where: and(
+              eq(combatEncounterLogs.characterId, charId),
+              inArray(combatEncounterLogs.triggerSource, ['road_encounter', 'group_road_encounter']),
+              gte(combatEncounterLogs.createdAt, todayStart.toISOString()),
+              lt(combatEncounterLogs.createdAt, todayEnd.toISOString()),
+            ),
+            columns: {
               opponentName: true, outcome: true, totalRounds: true, summary: true,
               rounds: true, xpAwarded: true, goldAwarded: true, lootDropped: true,
               characterStartHp: true, characterEndHp: true,
@@ -1148,13 +1156,13 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     }
 
     // Mark all LOCKED_IN DailyActions as COMPLETED (or FAILED if they failed)
-    await prisma.dailyAction.updateMany({
-      where: {
-        tickDate: { gte: new Date(tickDateStr + 'T00:00:00.000Z'), lt: new Date(tickDateStr + 'T23:59:59.999Z') },
-        status: 'LOCKED_IN',
-      },
-      data: { status: 'COMPLETED' },
-    });
+    await db.update(dailyActions)
+      .set({ status: 'COMPLETED' })
+      .where(and(
+        gte(dailyActions.tickDate, new Date(tickDateStr + 'T00:00:00.000Z').toISOString()),
+        lt(dailyActions.tickDate, new Date(tickDateStr + 'T23:59:59.999Z').toISOString()),
+        eq(dailyActions.status, 'LOCKED_IN'),
+      ));
 
     // Emit tick complete
     try {
@@ -1240,7 +1248,7 @@ async function processGatherAction(
     };
   },
   tickDateStr: string,
-  hungerStates: Map<string, HungerState>,
+  hungerStates: Map<string, string>,
   foodBuffs: Map<string, Record<string, unknown> | null>,
   getResults: (id: string) => CharacterResults,
 ): Promise<void> {
@@ -1254,7 +1262,7 @@ async function processGatherAction(
 
   // Original resource-based logic continues below...
   const resourceId = target.resourceId as string;
-  const professionType = target.professionType as ProfessionType;
+  const professionType = target.professionType as string;
   const char = action.character;
 
   if (!resourceId || !professionType || !char.currentTownId) {
@@ -1263,14 +1271,14 @@ async function processGatherAction(
   }
 
   // Validate resource exists and town has abundance
-  const resource = await prisma.resource.findUnique({ where: { id: resourceId } });
+  const resource = await db.query.resources.findFirst({ where: eq(resources.id, resourceId) });
   if (!resource) {
     getResults(char.id).notifications.push('Gathering failed: resource not found.');
     return;
   }
 
-  const townResource = await prisma.townResource.findFirst({
-    where: { townId: char.currentTownId, resourceType: resource.type },
+  const townResource = await db.query.townResources.findFirst({
+    where: and(eq(townResources.townId, char.currentTownId), eq(townResources.resourceType, resource.type)),
   });
   if (!townResource || townResource.abundance < MIN_ABUNDANCE_TO_GATHER) {
     getResults(char.id).notifications.push('Gathering failed: resources depleted.');
@@ -1278,18 +1286,23 @@ async function processGatherAction(
   }
 
   // Get or create profession
-  let profession = await prisma.playerProfession.findUnique({
-    where: { characterId_professionType: { characterId: char.id, professionType } },
+  let profession = await db.query.playerProfessions.findFirst({
+    where: and(eq(playerProfessions.characterId, char.id), eq(playerProfessions.professionType, professionType as any)),
   });
   if (!profession) {
-    profession = await prisma.playerProfession.create({
-      data: { characterId: char.id, professionType, tier: 'APPRENTICE', level: 1, xp: 0 },
-    });
+    [profession] = await db.insert(playerProfessions).values({
+      id: crypto.randomUUID(),
+      characterId: char.id,
+      professionType: professionType as any,
+      tier: 'APPRENTICE',
+      level: 1,
+      xp: 0,
+    }).returning();
   }
 
   // Apply hunger modifier
-  const hungerState = hungerStates.get(char.id) ?? (char.hungerState as HungerState) ?? 'FED';
-  const hungerMod = getHungerModifier(hungerState);
+  const hungerState = hungerStates.get(char.id) ?? char.hungerState ?? 'FED';
+  const hungerMod = getHungerModifier(hungerState as any);
   if (hungerMod <= 0) {
     getResults(char.id).notifications.push('Too incapacitated from hunger to gather.');
     return;
@@ -1298,7 +1311,7 @@ async function processGatherAction(
   // Calculate yield (adapted from work.ts /collect)
   const baseYield = 1 + Math.floor(Math.random() * 3); // 1-3
   const d20 = 1 + Math.floor(Math.random() * 20); // 1-20
-  const gatherProfDef = getProfessionByType(professionType);
+  const gatherProfDef = getProfessionByType(professionType as any);
   const gatherCharStats = (char as any).stats as Record<string, number>;
   const gatherPrimaryStatKey = gatherProfDef?.primaryStat?.toLowerCase() ?? 'con';
   const gatherStatMod = getStatModifier(gatherCharStats[gatherPrimaryStatKey] ?? 10);
@@ -1311,14 +1324,14 @@ async function processGatherAction(
 
   // Racial yield bonus
   const subRaceData = char.subRace as { element?: string; chosenProfession?: string } | null;
-  const townForBiome = await prisma.town.findUnique({
-    where: { id: char.currentTownId },
-    select: { biome: true },
+  const townForBiome = await db.query.towns.findFirst({
+    where: eq(towns.id, char.currentTownId),
+    columns: { biome: true },
   });
   const gatherBonus = getRacialGatheringBonus(
     char.race as any,
     subRaceData,
-    professionType,
+    professionType as any,
     (townForBiome?.biome as any) ?? null,
   );
   const racialYieldBonus = gatherBonus.yieldMultiplier - gatherBonus.penalty;
@@ -1348,91 +1361,89 @@ async function processGatherAction(
   const xpGained = Math.round(baseXp * (1 + (gatherBonus.yieldMultiplier * 0.5)));
 
   // Execute in transaction
-  await prisma.$transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     // Find or create item template — prefer stable-ID pattern (matches recipe ingredient templateIds)
     const stableResId = `resource-${resource.name.toLowerCase().replace(/\s+/g, '-')}`;
-    let itemTemplate = await tx.itemTemplate.findUnique({
-      where: { id: stableResId },
+    let itemTemplate = await tx.query.itemTemplates.findFirst({
+      where: eq(itemTemplates.id, stableResId),
     });
     if (!itemTemplate) {
-      itemTemplate = await tx.itemTemplate.findFirst({
-        where: { name: resource.name, type: 'MATERIAL' },
+      itemTemplate = await tx.query.itemTemplates.findFirst({
+        where: and(eq(itemTemplates.name, resource.name), eq(itemTemplates.type, 'MATERIAL')),
       });
     }
     if (!itemTemplate) {
-      itemTemplate = await tx.itemTemplate.create({
-        data: {
-          id: stableResId,
-          name: resource.name,
-          type: 'MATERIAL',
-          rarity: resource.tier <= 2 ? 'COMMON' : resource.tier <= 3 ? 'FINE' : 'SUPERIOR',
-          description: `Raw ${resource.name} gathered from the wilds.`,
-          levelRequired: 1,
-        },
-      });
+      [itemTemplate] = await tx.insert(itemTemplates).values({
+        id: stableResId,
+        name: resource.name,
+        type: 'MATERIAL',
+        rarity: resource.tier <= 2 ? 'COMMON' : resource.tier <= 3 ? 'FINE' : 'SUPERIOR',
+        description: `Raw ${resource.name} gathered from the wilds.`,
+        levelRequired: 1,
+      }).returning();
     }
 
     // Check for existing stack
-    const existingSlot = await tx.inventory.findFirst({
-      where: { characterId: char.id, item: { templateId: itemTemplate.id } },
+    const allInv = await tx.query.inventories.findMany({
+      where: eq(inventories.characterId, char.id),
+      with: { item: true },
     });
+    const existingSlot = allInv.find(inv => inv.item?.templateId === itemTemplate!.id);
 
     if (existingSlot) {
-      await tx.inventory.update({
-        where: { id: existingSlot.id },
-        data: { quantity: existingSlot.quantity + totalYield },
-      });
+      await tx.update(inventories)
+        .set({ quantity: existingSlot.quantity + totalYield })
+        .where(eq(inventories.id, existingSlot.id));
     } else {
-      const item = await tx.item.create({
-        data: {
-          templateId: itemTemplate.id,
-          ownerId: char.id,
-          quality: resource.tier <= 2 ? 'COMMON' : resource.tier <= 3 ? 'FINE' : 'SUPERIOR',
-        },
-      });
-      await tx.inventory.create({
-        data: { characterId: char.id, itemId: item.id, quantity: totalYield },
+      const [item] = await tx.insert(items).values({
+        id: crypto.randomUUID(),
+        templateId: itemTemplate.id,
+        ownerId: char.id,
+        quality: resource.tier <= 2 ? 'COMMON' : resource.tier <= 3 ? 'FINE' : 'SUPERIOR',
+      }).returning();
+      await tx.insert(inventories).values({
+        id: crypto.randomUUID(),
+        characterId: char.id,
+        itemId: item.id,
+        quantity: totalYield,
       });
     }
 
     // Deplete town resource
-    await tx.townResource.update({
-      where: { id: townResource.id },
-      data: { abundance: Math.max(0, townResource.abundance - ABUNDANCE_DEPLETION_PER_GATHER) },
-    });
+    await tx.update(townResources)
+      .set({ abundance: Math.max(0, townResource.abundance - ABUNDANCE_DEPLETION_PER_GATHER) })
+      .where(eq(townResources.id, townResource.id));
   });
 
   // Award profession XP
-  await addProfessionXP(char.id, professionType, xpGained, `gathered_${resource.name.toLowerCase().replace(/\s+/g, '_')}`);
+  await addProfessionXP(char.id, professionType as any, xpGained, `gathered_${resource.name.toLowerCase().replace(/\s+/g, '_')}`);
 
   // Award character XP: base + professionBonus (always has matching profession here) + levelScaling
   const characterXpGain = ACTION_XP.GATHER_BASE
     + ACTION_XP.GATHER_PROFESSION_BONUS
     + (ACTION_XP.GATHER_LEVEL_SCALING * char.level);
-  await prisma.character.update({
-    where: { id: char.id },
-    data: { xp: { increment: characterXpGain } },
-  });
+  await db.update(characters)
+    .set({ xp: sql`${characters.xp} + ${characterXpGain}` })
+    .where(eq(characters.id, char.id));
   await checkLevelUp(char.id);
 
   // Decrement tool durability
   if (tool) {
     const newDurability = tool.item.currentDurability - 1;
     if (newDurability <= 0) {
-      await prisma.$transaction([
-        prisma.item.update({ where: { id: tool.item.id }, data: { currentDurability: 0 } }),
-        prisma.characterEquipment.delete({ where: { id: tool.equipmentId } }),
-      ]);
+      await db.transaction(async (tx) => {
+        await tx.update(items).set({ currentDurability: 0 }).where(eq(items.id, tool.item.id));
+        await tx.delete(characterEquipment).where(eq(characterEquipment.id, tool.equipmentId));
+      });
       emitToolBroken(char.id, {
         itemId: tool.item.id,
         toolName: tool.template.name,
         professionType,
       });
     } else {
-      await prisma.item.update({
-        where: { id: tool.item.id },
-        data: { currentDurability: newDurability },
-      });
+      await db.update(items)
+        .set({ currentDurability: newDurability })
+        .where(eq(items.id, tool.item.id));
     }
   }
 
@@ -1507,15 +1518,14 @@ async function processGatherSpotAction(
   let resolvedFoodBuff = foodBuff;
   let resolvedItemName = itemName;
   if (resourceType === 'herb') {
-    const herbProf = await prisma.playerProfession.findFirst({
-      where: { characterId: char.id, professionType: 'HERBALIST' },
+    const herbProf = await db.query.playerProfessions.findFirst({
+      where: and(eq(playerProfessions.characterId, char.id), eq(playerProfessions.professionType, 'HERBALIST' as any)),
     });
     if (herbProf && herbProf.level >= 7) {
       const roll = Math.random();
       if (roll < 0.30) {
         // 30% — Wild Herbs (default, no change)
       } else if (roll < 0.65) {
-        // 35% — Medicinal Herbs
         resolvedTemplateName = 'Medicinal Herbs';
         resolvedItemName = 'Medicinal Herbs';
         resolvedDescription = 'Potent herbs with proven healing properties, identifiable only by skilled herbalists.';
@@ -1523,7 +1533,6 @@ async function processGatherSpotAction(
         resolvedShelfLifeDays = null;
         resolvedFoodBuff = null;
       } else {
-        // 35% — Glowcap Mushrooms
         resolvedTemplateName = 'Glowcap Mushrooms';
         resolvedItemName = 'Glowcap Mushrooms';
         resolvedDescription = 'Luminescent fungi found in shaded groves, prized by alchemists for their arcane reagent properties.';
@@ -1536,89 +1545,61 @@ async function processGatherSpotAction(
 
   // Tiered fishing gathering: L7+ FISHERMAN at fishing spots gets premium fish
   if (resourceType === 'fishing') {
-    const fishProf = await prisma.playerProfession.findFirst({
-      where: { characterId: char.id, professionType: 'FISHERMAN' },
+    const fishProf = await db.query.playerProfessions.findFirst({
+      where: and(eq(playerProfessions.characterId, char.id), eq(playerProfessions.professionType, 'FISHERMAN' as any)),
     });
     if (fishProf && fishProf.level >= 7) {
       const roll = Math.random();
-      if (roll < 0.30) {
-        // 30% — Raw Fish (default, no change)
-      } else if (roll < 0.65) {
-        // 35% — River Trout
-        resolvedTemplateName = 'River Trout';
-        resolvedItemName = 'River Trout';
+      if (roll < 0.30) { /* default */ } else if (roll < 0.65) {
+        resolvedTemplateName = 'River Trout'; resolvedItemName = 'River Trout';
         resolvedDescription = 'A prized freshwater fish with firm, flavorful flesh. Only skilled fishermen can consistently land these.';
-        resolvedIsFood = false;
-        resolvedShelfLifeDays = null;
-        resolvedFoodBuff = null;
+        resolvedIsFood = false; resolvedShelfLifeDays = null; resolvedFoodBuff = null;
       } else {
-        // 35% — Lake Perch
-        resolvedTemplateName = 'Lake Perch';
-        resolvedItemName = 'Lake Perch';
+        resolvedTemplateName = 'Lake Perch'; resolvedItemName = 'Lake Perch';
         resolvedDescription = 'A large, meaty lake fish. Its delicate flavor makes it the centerpiece of fine cuisine.';
-        resolvedIsFood = false;
-        resolvedShelfLifeDays = null;
-        resolvedFoodBuff = null;
+        resolvedIsFood = false; resolvedShelfLifeDays = null; resolvedFoodBuff = null;
       }
     }
   }
 
-  // Tiered hunting gathering: L3+ HUNTER at hunting_ground gets Animal Pelts
-  // L7+ HUNTER gets premium pelts: 30% Animal Pelts, 35% Wolf Pelts, 35% Bear Hides
+  // Tiered hunting
   if (resourceType === 'hunting_ground') {
-    const huntProf = await prisma.playerProfession.findFirst({
-      where: { characterId: char.id, professionType: 'HUNTER' },
+    const huntProf = await db.query.playerProfessions.findFirst({
+      where: and(eq(playerProfessions.characterId, char.id), eq(playerProfessions.professionType, 'HUNTER' as any)),
     });
     if (huntProf && huntProf.level >= 3) {
       if (huntProf.level >= 7) {
         const roll = Math.random();
         if (roll < 0.30) {
-          // 30% — Animal Pelts
-          resolvedTemplateName = 'Animal Pelts';
-          resolvedItemName = 'Animal Pelts';
+          resolvedTemplateName = 'Animal Pelts'; resolvedItemName = 'Animal Pelts';
           resolvedDescription = 'Rough animal pelts stripped from hunted game. Essential for leatherworking.';
-          resolvedIsFood = false;
-          resolvedShelfLifeDays = null;
-          resolvedFoodBuff = null;
+          resolvedIsFood = false; resolvedShelfLifeDays = null; resolvedFoodBuff = null;
         } else if (roll < 0.65) {
-          // 35% — Wolf Pelts
-          resolvedTemplateName = 'Wolf Pelts';
-          resolvedItemName = 'Wolf Pelts';
+          resolvedTemplateName = 'Wolf Pelts'; resolvedItemName = 'Wolf Pelts';
           resolvedDescription = 'Thick, durable pelts from wolves. Their natural toughness makes superior leather for armor.';
-          resolvedIsFood = false;
-          resolvedShelfLifeDays = null;
-          resolvedFoodBuff = null;
+          resolvedIsFood = false; resolvedShelfLifeDays = null; resolvedFoodBuff = null;
         } else {
-          // 35% — Bear Hides
-          resolvedTemplateName = 'Bear Hides';
-          resolvedItemName = 'Bear Hides';
+          resolvedTemplateName = 'Bear Hides'; resolvedItemName = 'Bear Hides';
           resolvedDescription = 'Massive hides from bears. Incredibly dense and durable — the finest material for heavy leather armor.';
-          resolvedIsFood = false;
-          resolvedShelfLifeDays = null;
-          resolvedFoodBuff = null;
+          resolvedIsFood = false; resolvedShelfLifeDays = null; resolvedFoodBuff = null;
         }
       } else {
-        // L3-6: always Animal Pelts
-        resolvedTemplateName = 'Animal Pelts';
-        resolvedItemName = 'Animal Pelts';
+        resolvedTemplateName = 'Animal Pelts'; resolvedItemName = 'Animal Pelts';
         resolvedDescription = 'Rough animal pelts stripped from hunted game. Essential for leatherworking.';
-        resolvedIsFood = false;
-        resolvedShelfLifeDays = null;
-        resolvedFoodBuff = null;
+        resolvedIsFood = false; resolvedShelfLifeDays = null; resolvedFoodBuff = null;
       }
     }
-    // Non-HUNTER or <L3 HUNTER: keeps default Wild Game Meat
   }
 
   // Roll yield
   const quantity = Math.floor(Math.random() * (maxYield - minYield + 1)) + minYield;
 
-  // Universal tier-based gathering bonus (replaces hardcoded FARMER +50%)
+  // Universal tier-based gathering bonus
   let finalQuantity = quantity;
   const matchingProfession = GATHER_SPOT_PROFESSION_MAP[resourceType];
   if (matchingProfession) {
-    const prof = await prisma.playerProfession.findFirst({
-      where: { characterId: char.id, professionType: matchingProfession as any },
+    const prof = await db.query.playerProfessions.findFirst({
+      where: and(eq(playerProfessions.characterId, char.id), eq(playerProfessions.professionType, matchingProfession as any)),
     });
     if (prof) {
       const bonus = getGatheringBonus(matchingProfession, prof.level, resourceType);
@@ -1629,7 +1610,7 @@ async function processGatherSpotAction(
   }
 
   // Tool yield bonus (or bare-hands penalty)
-  const spotProfession = matchingProfession as ProfessionType | undefined;
+  const spotProfession = matchingProfession as string | undefined;
   const spotTool = spotProfession ? await getEquippedTool(char.id, spotProfession) : null;
   if (spotTool) {
     finalQuantity = Math.max(1, Math.ceil(finalQuantity * (1 + spotTool.yieldBonus)));
@@ -1638,95 +1619,85 @@ async function processGatherSpotAction(
   }
 
   // Create items in a transaction
-  await prisma.$transaction(async (tx) => {
-    // Find item template — prefer stable-ID pattern (matches recipe ingredient templateIds)
+  await db.transaction(async (tx) => {
     const stableId = `resource-${resolvedTemplateName.toLowerCase().replace(/\s+/g, '-')}`;
-    let itemTemplate = await tx.itemTemplate.findUnique({
-      where: { id: stableId },
-    });
-    if (!itemTemplate) {
-      // Fallback: name-based lookup (for templates without stable IDs)
-      itemTemplate = await tx.itemTemplate.findFirst({
-        where: { name: resolvedTemplateName },
-      });
+    let template = await tx.query.itemTemplates.findFirst({ where: eq(itemTemplates.id, stableId) });
+    if (!template) {
+      template = await tx.query.itemTemplates.findFirst({ where: eq(itemTemplates.name, resolvedTemplateName) });
     }
-    if (!itemTemplate) {
-      itemTemplate = await tx.itemTemplate.create({
-        data: {
-          name: resolvedTemplateName,
-          type: itemType === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL',
-          rarity: 'COMMON',
-          description: resolvedDescription || `Raw ${resolvedTemplateName} gathered from the wilds.`,
-          isFood: resolvedIsFood,
-          shelfLifeDays: resolvedShelfLifeDays,
-          isPerishable: resolvedShelfLifeDays != null,
-          foodBuff: resolvedFoodBuff ?? Prisma.JsonNull,
-          levelRequired: 1,
-        },
-      });
+    if (!template) {
+      [template] = await tx.insert(itemTemplates).values({
+        id: `resource-${resolvedTemplateName.toLowerCase().replace(/\s+/g, '-')}`,
+        name: resolvedTemplateName,
+        type: itemType === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL',
+        rarity: 'COMMON',
+        description: resolvedDescription || `Raw ${resolvedTemplateName} gathered from the wilds.`,
+        isFood: resolvedIsFood,
+        shelfLifeDays: resolvedShelfLifeDays,
+        isPerishable: resolvedShelfLifeDays != null,
+        foodBuff: resolvedFoodBuff ?? null,
+        levelRequired: 1,
+      }).returning();
     }
 
     // Find existing inventory slot for this template
-    const existingSlot = await tx.inventory.findFirst({
-      where: {
-        characterId: char.id,
-        item: { templateId: itemTemplate.id },
-      },
-      include: { item: true },
+    const allInv = await tx.query.inventories.findMany({
+      where: eq(inventories.characterId, char.id),
+      with: { item: true },
     });
+    const existingSlot = allInv.find(inv => inv.item?.templateId === template!.id);
 
     if (existingSlot) {
-      await tx.inventory.update({
-        where: { id: existingSlot.id },
-        data: { quantity: existingSlot.quantity + finalQuantity },
-      });
+      await tx.update(inventories)
+        .set({ quantity: existingSlot.quantity + finalQuantity })
+        .where(eq(inventories.id, existingSlot.id));
     } else {
-      const item = await tx.item.create({
-        data: {
-          templateId: itemTemplate.id,
-          ownerId: char.id,
-          quality: 'COMMON',
-          daysRemaining: resolvedShelfLifeDays,
-        },
-      });
-      await tx.inventory.create({
-        data: { characterId: char.id, itemId: item.id, quantity: finalQuantity },
+      const [item] = await tx.insert(items).values({
+        id: crypto.randomUUID(),
+        templateId: template.id,
+        ownerId: char.id,
+        quality: 'COMMON',
+        daysRemaining: resolvedShelfLifeDays,
+      }).returning();
+      await tx.insert(inventories).values({
+        id: crypto.randomUUID(),
+        characterId: char.id,
+        itemId: item.id,
+        quantity: finalQuantity,
       });
     }
 
     // Mark the action as COMPLETED
-    await tx.dailyAction.update({
-      where: { id: action.id },
-      data: {
+    await tx.update(dailyActions)
+      .set({
         status: 'COMPLETED',
         result: { item: resolvedTemplateName, quantity: finalQuantity, spotName: target.spotName as string },
-      },
-    });
+      })
+      .where(eq(dailyActions.id, action.id));
   });
 
-  // Award character XP for gathering: base + professionBonus + levelScaling
+  // Award character XP for gathering
   const matchingProfType = resourceType ? GATHER_SPOT_PROFESSION_MAP[resourceType] : undefined;
   let hasProfessionBonus = false;
   if (matchingProfType) {
-    const charProf = await prisma.playerProfession.findFirst({
-      where: { characterId: char.id, professionType: matchingProfType as any },
+    const charProf = await db.query.playerProfessions.findFirst({
+      where: and(eq(playerProfessions.characterId, char.id), eq(playerProfessions.professionType, matchingProfType as any)),
     });
     hasProfessionBonus = !!charProf;
   }
   const characterXpGain = ACTION_XP.GATHER_BASE
     + (hasProfessionBonus ? ACTION_XP.GATHER_PROFESSION_BONUS : 0)
     + (ACTION_XP.GATHER_LEVEL_SCALING * char.level);
-  await prisma.character.update({
-    where: { id: char.id },
-    data: { xp: { increment: characterXpGain } },
-  });
+  await db.update(characters)
+    .set({ xp: sql`${characters.xp} + ${characterXpGain}` })
+    .where(eq(characters.id, char.id));
   await checkLevelUp(char.id);
 
   // Award profession XP (spot-based gathering)
   let professionXpGained = 0;
   if (matchingProfType && hasProfessionBonus) {
-    const profXp = 10; // base profession XP per gather (same as tier-1 resource)
-    await addProfessionXP(char.id, matchingProfType as ProfessionType, profXp, `gathered_${(resolvedItemName || resolvedTemplateName).toLowerCase().replace(/\s+/g, '_')}`);
+    const profXp = 10;
+    await addProfessionXP(char.id, matchingProfType as any, profXp, `gathered_${(resolvedItemName || resolvedTemplateName).toLowerCase().replace(/\s+/g, '_')}`);
     professionXpGained = profXp;
   }
 
@@ -1734,10 +1705,10 @@ async function processGatherSpotAction(
   if (spotTool) {
     const newDurability = spotTool.item.currentDurability - 1;
     if (newDurability <= 0) {
-      await prisma.$transaction([
-        prisma.item.update({ where: { id: spotTool.item.id }, data: { currentDurability: 0 } }),
-        prisma.characterEquipment.delete({ where: { id: spotTool.equipmentId } }),
-      ]);
+      await db.transaction(async (tx) => {
+        await tx.update(items).set({ currentDurability: 0 }).where(eq(items.id, spotTool.item.id));
+        await tx.delete(characterEquipment).where(eq(characterEquipment.id, spotTool.equipmentId));
+      });
       emitToolBroken(char.id, {
         itemId: spotTool.item.id,
         toolName: spotTool.template.name,
@@ -1745,10 +1716,9 @@ async function processGatherSpotAction(
       });
       getResults(char.id).notifications.push(`Your ${spotTool.template.name} has broken!`);
     } else {
-      await prisma.item.update({
-        where: { id: spotTool.item.id },
-        data: { currentDurability: newDurability },
-      });
+      await db.update(items)
+        .set({ currentDurability: newDurability })
+        .where(eq(items.id, spotTool.item.id));
     }
   }
 
@@ -1775,168 +1745,120 @@ async function processHarvestAction(
     id: string;
     characterId: string;
     actionTarget: unknown;
-    character: {
-      id: string;
-      race: string;
-      subRace: unknown;
-      level: number;
-      currentTownId: string | null;
-      hungerState: string;
-    };
+    character: { id: string; race: string; subRace: unknown; level: number; currentTownId: string | null; hungerState: string };
   },
   tickDateStr: string,
-  hungerStates: Map<string, HungerState>,
+  hungerStates: Map<string, string>,
   foodBuffs: Map<string, Record<string, unknown> | null>,
   getResults: (id: string) => CharacterResults,
 ): Promise<void> {
   const char = action.character;
   const target = action.actionTarget as Record<string, unknown>;
 
-  // 1. Look up the OwnedAsset
-  const asset = await prisma.ownedAsset.findUnique({
-    where: { id: target.assetId as string },
-  });
+  const asset = await db.query.ownedAssets.findFirst({ where: eq(ownedAssets.id, target.assetId as string) });
 
   if (!asset || asset.cropState !== 'READY') {
-    await prisma.dailyAction.update({
-      where: { id: action.id },
-      data: { status: 'FAILED', result: { error: 'Asset not ready for harvest' } },
-    });
+    await db.update(dailyActions).set({ status: 'FAILED', result: { error: 'Asset not ready for harvest' } }).where(eq(dailyActions.id, action.id));
     return;
   }
 
-  // 2. Determine yield from tier
   const tierData = ASSET_TIERS[asset.tier as 1 | 2 | 3];
   if (!tierData) {
-    await prisma.dailyAction.update({
-      where: { id: action.id },
-      data: { status: 'FAILED', result: { error: 'Invalid asset tier' } },
-    });
+    await db.update(dailyActions).set({ status: 'FAILED', result: { error: 'Invalid asset tier' } }).where(eq(dailyActions.id, action.id));
     return;
   }
-  const quantity = Math.floor(Math.random() * (tierData.maxYield - tierData.minYield + 1)) + tierData.minYield;
+  const harvestQuantity = Math.floor(Math.random() * (tierData.maxYield - tierData.minYield + 1)) + tierData.minYield;
 
-  // 3. Look up the GatheringItem from RESOURCE_MAP
   const resourceEntry = RESOURCE_MAP[asset.spotType];
   if (!resourceEntry) {
-    await prisma.dailyAction.update({
-      where: { id: action.id },
-      data: { status: 'FAILED', result: { error: `Unknown spot type: ${asset.spotType}` } },
-    });
+    await db.update(dailyActions).set({ status: 'FAILED', result: { error: `Unknown spot type: ${asset.spotType}` } }).where(eq(dailyActions.id, action.id));
     return;
   }
 
   const gatherItem = resourceEntry.item;
-  const itemName = gatherItem.templateName;
-  const itemType = gatherItem.type === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL';
-
-  // 4. Items go to OWNER's house storage
+  const harvestItemName = gatherItem.templateName;
+  const harvestItemType = gatherItem.type === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL';
   const ownerId = asset.ownerId;
 
-  // 5. Transaction: create items in house storage, update asset
-  await prisma.$transaction(async (tx) => {
-    // Find or create ItemTemplate — prefer stable-ID pattern (matches recipe ingredient templateIds)
-    const stableResId = `resource-${itemName.toLowerCase().replace(/\s+/g, '-')}`;
-    let template = await tx.itemTemplate.findUnique({ where: { id: stableResId } });
+  await db.transaction(async (tx) => {
+    const stableResId = `resource-${harvestItemName.toLowerCase().replace(/\s+/g, '-')}`;
+    let template = await tx.query.itemTemplates.findFirst({ where: eq(itemTemplates.id, stableResId) });
     if (!template) {
-      template = await tx.itemTemplate.findFirst({ where: { name: itemName } });
+      template = await tx.query.itemTemplates.findFirst({ where: eq(itemTemplates.name, harvestItemName) });
     }
     if (!template) {
-      template = await tx.itemTemplate.create({
-        data: {
-          id: stableResId,
-          name: itemName,
-          type: itemType as any,
-          rarity: 'COMMON',
-          description: gatherItem.description,
-          stats: {},
-          durability: 0,
-          requirements: {},
-          isFood: gatherItem.isFood,
-          foodBuff: gatherItem.foodBuff ?? Prisma.JsonNull,
-          isPerishable: gatherItem.shelfLifeDays != null,
-          shelfLifeDays: gatherItem.shelfLifeDays,
-        },
-      });
+      [template] = await tx.insert(itemTemplates).values({
+        id: stableResId,
+        name: harvestItemName,
+        type: harvestItemType as any,
+        rarity: 'COMMON',
+        description: gatherItem.description,
+        stats: {},
+        durability: 0,
+        requirements: {},
+        isFood: gatherItem.isFood,
+        foodBuff: gatherItem.foodBuff ?? null,
+        isPerishable: gatherItem.shelfLifeDays != null,
+        shelfLifeDays: gatherItem.shelfLifeDays,
+      }).returning();
     }
 
     // Put items in owner's house storage (not inventory)
-    const house = await tx.house.findFirst({
-      where: { characterId: ownerId, townId: asset.townId },
+    const houseResult = await tx.query.houses.findFirst({
+      where: and(eq(houses.characterId, ownerId), eq(houses.townId, asset.townId)),
     });
-    if (house) {
-      await tx.houseStorage.upsert({
-        where: { houseId_itemTemplateId: { houseId: house.id, itemTemplateId: template.id } },
-        update: { quantity: { increment: quantity } },
-        create: { houseId: house.id, itemTemplateId: template.id, quantity },
+    if (houseResult) {
+      // Upsert house storage
+      const existing = await tx.query.houseStorage.findFirst({
+        where: and(eq(houseStorage.houseId, houseResult.id), eq(houseStorage.itemTemplateId, template.id)),
       });
+      if (existing) {
+        await tx.update(houseStorage)
+          .set({ quantity: sql`${houseStorage.quantity} + ${harvestQuantity}` })
+          .where(eq(houseStorage.id, existing.id));
+      } else {
+        await tx.insert(houseStorage).values({
+          id: crypto.randomUUID(),
+          houseId: houseResult.id,
+          itemTemplateId: template.id,
+          quantity: harvestQuantity,
+        });
+      }
     }
 
-    // Cancel any open job for this asset (owner harvested manually)
-    await tx.jobListing.updateMany({
-      where: { assetId: asset.id, status: 'OPEN' },
-      data: { status: 'CANCELLED' },
-    });
+    // Cancel any open job for this asset
+    await tx.update(jobListings)
+      .set({ status: 'CANCELLED' })
+      .where(and(eq(jobListings.assetId, asset.id), eq(jobListings.status, 'OPEN')));
 
     // Reset asset to EMPTY
-    await tx.ownedAsset.update({
-      where: { id: asset.id },
-      data: {
-        cropState: 'EMPTY',
-        plantedAt: null,
-        readyAt: null,
-        witheringAt: null,
-      },
-    });
+    await tx.update(ownedAssets)
+      .set({ cropState: 'EMPTY', plantedAt: null, readyAt: null, witheringAt: null })
+      .where(eq(ownedAssets.id, asset.id));
 
     // Mark action COMPLETED
-    await tx.dailyAction.update({
-      where: { id: action.id },
-      data: {
-        status: 'COMPLETED',
-        result: {
-          type: 'private_asset_harvest',
-          itemName,
-          quantity,
-          tier: asset.tier,
-          assetName: asset.name,
-          isWorker: false,
-          wage: 0,
-        },
-      },
-    });
+    await tx.update(dailyActions).set({
+      status: 'COMPLETED',
+      result: { type: 'private_asset_harvest', itemName: harvestItemName, quantity: harvestQuantity, tier: asset.tier, assetName: asset.name, isWorker: false, wage: 0 },
+    }).where(eq(dailyActions.id, action.id));
   });
 
-  // 6. Award XP to the harvester
-  const professionType = asset.professionType;
+  // Award XP to the harvester
   try {
-    const harvesterProf = await prisma.playerProfession.findFirst({
-      where: { characterId: char.id, professionType: professionType as any },
+    const harvesterProf = await db.query.playerProfessions.findFirst({
+      where: and(eq(playerProfessions.characterId, char.id), eq(playerProfessions.professionType, asset.professionType as any)),
     });
     if (harvesterProf) {
       const baseXp = 10 + (asset.tier * 5);
-      await addProfessionXP(char.id, professionType as any, baseXp, 'harvest');
+      await addProfessionXP(char.id, asset.professionType as any, baseXp, 'harvest');
     }
-  } catch (e) {
-    // XP award failure shouldn't break the harvest
-  }
+  } catch (e) { /* XP award failure shouldn't break the harvest */ }
 
-  // 7. Add to tick results
   const results = getResults(ownerId);
   if (!results.action) {
-    results.action = {
-      type: 'HARVEST',
-      itemName,
-      quantity,
-      assetName: asset.name,
-      tier: asset.tier,
-      isWorker: false,
-      wage: 0,
-    };
+    results.action = { type: 'HARVEST', itemName: harvestItemName, quantity: harvestQuantity, assetName: asset.name, tier: asset.tier, isWorker: false, wage: 0 };
   }
-  results.notifications.push(
-    `Harvested ${quantity}x ${itemName} from your ${asset.name}. Items stored in your house.`
-  );
+  results.notifications.push(`Harvested ${harvestQuantity}x ${harvestItemName} from your ${asset.name}. Items stored in your house.`);
 }
 
 // ---------------------------------------------------------------------------
@@ -1948,17 +1870,10 @@ async function processCraftAction(
     id: string;
     characterId: string;
     actionTarget: unknown;
-    character: {
-      id: string;
-      race: string;
-      subRace: unknown;
-      level: number;
-      currentTownId: string | null;
-      hungerState: string;
-    };
+    character: { id: string; race: string; subRace: unknown; level: number; currentTownId: string | null; hungerState: string };
   },
   tickDateStr: string,
-  hungerStates: Map<string, HungerState>,
+  hungerStates: Map<string, string>,
   foodBuffs: Map<string, Record<string, unknown> | null>,
   getResults: (id: string) => CharacterResults,
 ): Promise<void> {
@@ -1971,29 +1886,27 @@ async function processCraftAction(
     return;
   }
 
-  const recipe = await prisma.recipe.findUnique({ where: { id: recipeId } });
+  const recipe = await db.query.recipes.findFirst({ where: eq(recipes.id, recipeId) });
   if (!recipe) {
     getResults(char.id).notifications.push('Crafting failed: recipe not found.');
     return;
   }
 
-  // Check profession
-  const profession = await prisma.playerProfession.findFirst({
-    where: { characterId: char.id, professionType: recipe.professionType },
+  const profession = await db.query.playerProfessions.findFirst({
+    where: and(eq(playerProfessions.characterId, char.id), eq(playerProfessions.professionType, recipe.professionType)),
   });
   if (!profession) {
     getResults(char.id).notifications.push(`Crafting failed: you don't have the ${recipe.professionType} profession.`);
     return;
   }
 
-  // Workshop check
   const requiredBuildingType = PROFESSION_WORKSHOP_MAP[recipe.professionType];
   let workshop: { level: number } | null = null;
   if (requiredBuildingType) {
-    workshop = await prisma.building.findFirst({
-      where: { townId: char.currentTownId, type: requiredBuildingType },
-      select: { level: true },
-    });
+    workshop = await db.query.buildings.findFirst({
+      where: and(eq(buildings.townId, char.currentTownId), eq(buildings.type, requiredBuildingType as any)),
+      columns: { level: true },
+    }) ?? null;
   }
   if (recipe.tier !== 'APPRENTICE' && !workshop) {
     getResults(char.id).notifications.push(`Crafting failed: requires a workshop.`);
@@ -2001,35 +1914,27 @@ async function processCraftAction(
   }
   const workshopLevel = workshop?.level ?? 0;
 
-  // Check and consume ingredients
   const rawIngredients = recipe.ingredients as Array<{ itemTemplateId: string; quantity: number }>;
   const matReduction = getRacialMaterialReduction(char.race as any, char.level);
-  const ingredients = rawIngredients.map(ing => ({
+  const ingredients_ = rawIngredients.map(ing => ({
     ...ing,
-    quantity: matReduction.reduction > 0
-      ? Math.max(1, Math.round(ing.quantity * (1 - matReduction.reduction)))
-      : ing.quantity,
+    quantity: matReduction.reduction > 0 ? Math.max(1, Math.round(ing.quantity * (1 - matReduction.reduction))) : ing.quantity,
   }));
 
-  // Verify ingredient availability
-  const inventory = await prisma.inventory.findMany({
-    where: { characterId: char.id },
-    include: { item: { include: { template: true } } },
+  const inventory = await db.query.inventories.findMany({
+    where: eq(inventories.characterId, char.id),
+    with: { item: { with: { itemTemplate: true } } },
   });
 
   const inventoryByTemplate = new Map<string, { total: number; entries: typeof inventory }>();
   for (const inv of inventory) {
     const tid = inv.item.templateId;
     const existing = inventoryByTemplate.get(tid);
-    if (existing) {
-      existing.total += inv.quantity;
-      existing.entries.push(inv);
-    } else {
-      inventoryByTemplate.set(tid, { total: inv.quantity, entries: [inv] });
-    }
+    if (existing) { existing.total += inv.quantity; existing.entries.push(inv); }
+    else { inventoryByTemplate.set(tid, { total: inv.quantity, entries: [inv] }); }
   }
 
-  for (const ing of ingredients) {
+  for (const ing of ingredients_) {
     const available = inventoryByTemplate.get(ing.itemTemplateId)?.total ?? 0;
     if (available < ing.quantity) {
       getResults(char.id).notifications.push('Crafting failed: not enough materials.');
@@ -2037,11 +1942,10 @@ async function processCraftAction(
     }
   }
 
-  // Calculate ingredient quality bonus
   let totalQualityBonus = 0;
   let totalItems = 0;
   const QUALITY_BONUS_VALUES: Record<string, number> = { FINE: 1, SUPERIOR: 2, MASTERWORK: 3, LEGENDARY: 5 };
-  for (const ing of ingredients) {
+  for (const ing of ingredients_) {
     const entries = inventoryByTemplate.get(ing.itemTemplateId)?.entries ?? [];
     let remaining = ing.quantity;
     for (const inv of entries) {
@@ -2055,128 +1959,96 @@ async function processCraftAction(
   }
   const ingredientQualityBonus = totalItems > 0 ? totalQualityBonus / totalItems : 0;
 
-  // Consume ingredients and create item in transaction
   const subRaceData = char.subRace as { element?: string; chosenProfession?: string } | null;
-  const racialQuality = getRacialCraftQualityBonus(char.race as any, subRaceData, recipe.professionType);
+  const racialQuality = getRacialCraftQualityBonus(char.race as any, subRaceData, recipe.professionType as any);
   const toolBonus = await getCraftToolBonus(char.id, recipe.professionType);
 
-  // Profession tier bonus
   const professionTierBonus = PROFESSION_TIER_QUALITY_BONUS[profession.tier] ?? 0;
 
-  // Stat modifier from profession's primary stat
-  const profDef = getProfessionByType(recipe.professionType);
+  const profDef = getProfessionByType(recipe.professionType as any);
   const characterStats = (char as any).stats as Record<string, number>;
   const primaryStatKey = profDef?.primaryStat?.toLowerCase() ?? 'int';
   const statModifier = getStatModifier(characterStats[primaryStatKey] ?? 10);
 
   const { roll: diceRoll, total, quality: qualityName } = qualityRoll(
-    getProficiencyBonus(char.level),
-    statModifier,
-    toolBonus,
-    workshopLevel,
-    racialQuality.qualityBonus,
-    professionTierBonus,
-    Math.round(ingredientQualityBonus),
+    getProficiencyBonus(char.level), statModifier, toolBonus, workshopLevel,
+    racialQuality.qualityBonus, professionTierBonus, Math.round(ingredientQualityBonus),
   );
   const quality = QUALITY_MAP[qualityName] ?? 'COMMON';
 
-  const resultTemplate = await prisma.itemTemplate.findUnique({ where: { id: recipe.result } });
+  const resultTemplate = await db.query.itemTemplates.findFirst({ where: eq(itemTemplates.id, recipe.result) });
   if (!resultTemplate) {
     getResults(char.id).notifications.push('Crafting failed: result template not found.');
     return;
   }
 
-  await prisma.$transaction(async (tx) => {
-    // Consume ingredients
-    for (const ing of ingredients) {
+  await db.transaction(async (tx) => {
+    for (const ing of ingredients_) {
       let remaining = ing.quantity;
       const entries = inventoryByTemplate.get(ing.itemTemplateId)?.entries ?? [];
       for (const inv of entries) {
         if (remaining <= 0) break;
         if (inv.quantity <= remaining) {
           remaining -= inv.quantity;
-          await tx.inventory.delete({ where: { id: inv.id } });
-          await tx.item.delete({ where: { id: inv.itemId } });
+          await tx.delete(inventories).where(eq(inventories.id, inv.id));
+          await tx.delete(items).where(eq(items.id, inv.itemId));
         } else {
-          await tx.inventory.update({
-            where: { id: inv.id },
-            data: { quantity: inv.quantity - remaining },
-          });
+          await tx.update(inventories).set({ quantity: inv.quantity - remaining }).where(eq(inventories.id, inv.id));
           remaining = 0;
         }
       }
     }
 
-    // Create crafted item
-    const item = await tx.item.create({
-      data: {
-        templateId: resultTemplate.id,
-        ownerId: char.id,
-        currentDurability: resultTemplate.durability,
-        quality: quality as any,
-        craftedById: char.id,
-        enchantments: [],
-      },
-    });
+    const [item] = await tx.insert(items).values({
+      id: crypto.randomUUID(),
+      templateId: resultTemplate.id,
+      ownerId: char.id,
+      currentDurability: resultTemplate.durability,
+      quality: quality as any,
+      craftedById: char.id,
+      enchantments: [],
+    }).returning();
 
-    await tx.inventory.create({
-      data: { characterId: char.id, itemId: item.id, quantity: 1 },
+    await tx.insert(inventories).values({
+      id: crypto.randomUUID(),
+      characterId: char.id,
+      itemId: item.id,
+      quantity: 1,
     });
   });
 
-  // Award profession XP (recipe-based)
   const profXpGain = recipe.xpReward;
-  await addProfessionXP(char.id, recipe.professionType, profXpGain, `Crafted ${resultTemplate.name}`);
+  await addProfessionXP(char.id, recipe.professionType as any, profXpGain, `Crafted ${resultTemplate.name}`);
 
-  // Award character XP: base + professionBonus (always has matching profession here) + levelScaling
-  const characterXpGain = ACTION_XP.CRAFT_BASE
-    + ACTION_XP.CRAFT_PROFESSION_BONUS
-    + (ACTION_XP.CRAFT_LEVEL_SCALING * char.level);
-  await prisma.character.update({
-    where: { id: char.id },
-    data: { xp: { increment: characterXpGain } },
-  });
+  const characterXpGain = ACTION_XP.CRAFT_BASE + ACTION_XP.CRAFT_PROFESSION_BONUS + (ACTION_XP.CRAFT_LEVEL_SCALING * char.level);
+  await db.update(characters)
+    .set({ xp: sql`${characters.xp} + ${characterXpGain}` })
+    .where(eq(characters.id, char.id));
   await checkLevelUp(char.id);
 
   // Decrement tool durability
-  const equippedTool = await prisma.characterEquipment.findUnique({
-    where: { characterId_slot: { characterId: char.id, slot: 'TOOL' } },
-    include: { item: { include: { template: true } } },
+  const equippedTool = await db.query.characterEquipment.findFirst({
+    where: and(eq(characterEquipment.characterId, char.id), eq(characterEquipment.slot, 'TOOL')),
+    with: { item: { with: { itemTemplate: true } } },
   });
-  if (equippedTool && equippedTool.item.template.type === 'TOOL') {
-    const toolStats = equippedTool.item.template.stats as Record<string, unknown>;
+  if (equippedTool && equippedTool.item.itemTemplate.type === 'TOOL') {
+    const toolStats = equippedTool.item.itemTemplate.stats as Record<string, unknown>;
     if (toolStats.professionType === recipe.professionType) {
       const newDur = equippedTool.item.currentDurability - 1;
       if (newDur <= 0) {
-        await prisma.$transaction([
-          prisma.item.update({ where: { id: equippedTool.item.id }, data: { currentDurability: 0 } }),
-          prisma.characterEquipment.delete({ where: { id: equippedTool.id } }),
-        ]);
-        emitToolBroken(char.id, {
-          itemId: equippedTool.item.id,
-          toolName: equippedTool.item.template.name,
-          professionType: recipe.professionType,
+        await db.transaction(async (tx) => {
+          await tx.update(items).set({ currentDurability: 0 }).where(eq(items.id, equippedTool.item.id));
+          await tx.delete(characterEquipment).where(eq(characterEquipment.id, equippedTool.id));
         });
+        emitToolBroken(char.id, { itemId: equippedTool.item.id, toolName: equippedTool.item.itemTemplate.name, professionType: recipe.professionType });
       } else {
-        await prisma.item.update({
-          where: { id: equippedTool.item.id },
-          data: { currentDurability: newDur },
-        });
+        await db.update(items).set({ currentDurability: newDur }).where(eq(items.id, equippedTool.item.id));
       }
     }
   }
 
-  // Record results
   const results = getResults(char.id);
-  results.action = {
-    type: 'CRAFT',
-    recipeName: recipe.name,
-    resultName: resultTemplate.name,
-    quality,
-    qualityRoll: { roll: diceRoll, total },
-    xpGained: characterXpGain,
-    professionXpGained: profXpGain,
-  };
+  results.action = { type: 'CRAFT', recipeName: recipe.name, resultName: resultTemplate.name, quality, qualityRoll: { roll: diceRoll, total }, xpGained: characterXpGain, professionXpGained: profXpGain };
   results.xpEarned += characterXpGain;
 }
 
@@ -2184,35 +2056,35 @@ async function processCraftAction(
 // Tool helpers (adapted from work.ts)
 // ---------------------------------------------------------------------------
 
-async function getEquippedTool(characterId: string, professionType: ProfessionType) {
-  const equip = await prisma.characterEquipment.findUnique({
-    where: { characterId_slot: { characterId, slot: 'TOOL' } },
-    include: { item: { include: { template: true } } },
+async function getEquippedTool(characterId: string, professionType: string) {
+  const equip = await db.query.characterEquipment.findFirst({
+    where: and(eq(characterEquipment.characterId, characterId), eq(characterEquipment.slot, 'TOOL')),
+    with: { item: { with: { itemTemplate: true } } },
   });
 
-  if (!equip || equip.item.template.type !== 'TOOL') return null;
+  if (!equip || equip.item.itemTemplate.type !== 'TOOL') return null;
 
-  const stats = equip.item.template.stats as Record<string, unknown>;
+  const stats = equip.item.itemTemplate.stats as Record<string, unknown>;
   if (stats.professionType !== professionType) return null;
 
   return {
     equipmentId: equip.id,
     item: equip.item,
-    template: equip.item.template,
+    template: equip.item.itemTemplate,
     speedBonus: (stats.speedBonus as number) ?? 0,
     yieldBonus: (stats.yieldBonus as number) ?? 0,
   };
 }
 
-async function getCraftToolBonus(characterId: string, professionType: ProfessionType): Promise<number> {
-  const equip = await prisma.characterEquipment.findUnique({
-    where: { characterId_slot: { characterId, slot: 'TOOL' } },
-    include: { item: { include: { template: true } } },
+async function getCraftToolBonus(characterId: string, professionType: string): Promise<number> {
+  const equip = await db.query.characterEquipment.findFirst({
+    where: and(eq(characterEquipment.characterId, characterId), eq(characterEquipment.slot, 'TOOL')),
+    with: { item: { with: { itemTemplate: true } } },
   });
 
-  if (!equip || equip.item.template.type !== 'TOOL') return 0;
+  if (!equip || equip.item.itemTemplate.type !== 'TOOL') return 0;
 
-  const stats = equip.item.template.stats as Record<string, unknown>;
+  const stats = equip.item.itemTemplate.stats as Record<string, unknown>;
   if (stats.professionType !== professionType) return 0;
 
   return (typeof stats.qualityBonus === 'number') ? stats.qualityBonus : 0;
@@ -2223,17 +2095,15 @@ async function getCraftToolBonus(characterId: string, professionType: Profession
 // ---------------------------------------------------------------------------
 
 async function collectPropertyTaxes(): Promise<void> {
-  const buildings = await prisma.building.findMany({
-    where: { level: { gte: 1 } },
-    include: {
-      owner: { select: { id: true, name: true, gold: true, userId: true } },
+  const allBuildings = await db.query.buildings.findMany({
+    where: gte(buildings.level, 1),
+    with: {
+      character: { columns: { id: true, name: true, gold: true, userId: true } },
       town: {
-        select: {
-          id: true,
-          name: true,
-          mayorId: true,
-          townPolicy: { select: { taxRate: true } },
-          treasury: { select: { id: true } },
+        columns: { id: true, name: true, mayorId: true },
+        with: {
+          townPolicies: { columns: { taxRate: true } },
+          townTreasuries: { columns: { id: true } },
         },
       },
     },
@@ -2243,169 +2113,113 @@ async function collectPropertyTaxes(): Promise<void> {
   let delinquentCount = 0;
   let seizedCount = 0;
 
-  for (const building of buildings) {
+  for (const building of allBuildings) {
     const baseTax = BASE_PROPERTY_TAX_RATES[building.type] ?? 10;
     const levelMultiplier = building.level;
-    const policyTaxRate = building.town.townPolicy?.taxRate ?? 0.10;
+    const policyTaxRate = building.town.townPolicies?.[0]?.taxRate ?? 0.10;
     const dailyTax = Math.floor(baseTax * levelMultiplier * (1 + policyTaxRate));
 
     const storageData = building.storage as Record<string, unknown>;
 
-    if (building.owner.gold >= dailyTax) {
-      await prisma.$transaction(async (tx) => {
-        await tx.character.update({
-          where: { id: building.ownerId },
-          data: { gold: { decrement: dailyTax } },
-        });
+    if (building.character.gold >= dailyTax) {
+      await db.transaction(async (tx) => {
+        await tx.update(characters)
+          .set({ gold: sql`${characters.gold} - ${dailyTax}` })
+          .where(eq(characters.id, building.ownerId));
 
-        if (building.town.treasury) {
-          await tx.townTreasury.update({
-            where: { id: building.town.treasury.id },
-            data: { balance: { increment: dailyTax } },
-          });
+        const treasury = building.town.townTreasuries?.[0];
+        if (treasury) {
+          await tx.update(townTreasuries)
+            .set({ balance: sql`${townTreasuries.balance} + ${dailyTax}` })
+            .where(eq(townTreasuries.id, treasury.id));
         }
 
         if (storageData.taxDelinquentSince) {
           const { taxDelinquentSince, ...rest } = storageData;
-          await tx.building.update({
-            where: { id: building.id },
-            data: { storage: rest as Record<string, string | number | boolean | null> },
-          });
+          await tx.update(buildings).set({ storage: rest as Record<string, string | number | boolean | null> }).where(eq(buildings.id, building.id));
         }
       });
 
       totalCollected += dailyTax;
 
       emitBuildingTaxDue(building.ownerId, {
-        buildingId: building.id,
-        buildingName: building.name,
-        buildingType: building.type,
-        townName: building.town.name,
-        amount: dailyTax,
-        paid: true,
-        remainingGold: building.owner.gold - dailyTax,
+        buildingId: building.id, buildingName: building.name, buildingType: building.type,
+        townName: building.town.name, amount: dailyTax, paid: true, remainingGold: building.character.gold - dailyTax,
       });
     } else {
-      const delinquentSince = storageData.taxDelinquentSince
-        ? new Date(storageData.taxDelinquentSince as string)
-        : new Date();
-
-      const daysSinceDelinquent = storageData.taxDelinquentSince
-        ? Math.floor((Date.now() - delinquentSince.getTime()) / (1000 * 60 * 60 * 24))
-        : 0;
+      const delinquentSince = storageData.taxDelinquentSince ? new Date(storageData.taxDelinquentSince as string) : new Date();
+      const daysSinceDelinquent = storageData.taxDelinquentSince ? Math.floor((Date.now() - delinquentSince.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
       if (daysSinceDelinquent >= 7) {
         const newOwnerId = building.town.mayorId;
         if (newOwnerId) {
-          await prisma.building.update({
-            where: { id: building.id },
-            data: {
-              ownerId: newOwnerId,
-              storage: { ...storageData, taxDelinquentSince: undefined },
-            },
-          });
+          await db.update(buildings).set({ ownerId: newOwnerId, storage: { ...storageData, taxDelinquentSince: undefined } }).where(eq(buildings.id, building.id));
         }
 
         emitBuildingSeized(building.ownerId, {
-          buildingId: building.id,
-          buildingName: building.name,
-          buildingType: building.type,
-          townName: building.town.name,
-          daysDelinquent: daysSinceDelinquent,
-          seizedByMayor: !!newOwnerId,
+          buildingId: building.id, buildingName: building.name, buildingType: building.type,
+          townName: building.town.name, daysDelinquent: daysSinceDelinquent, seizedByMayor: !!newOwnerId,
         });
-
         seizedCount++;
       } else {
-        await prisma.building.update({
-          where: { id: building.id },
-          data: {
-            storage: { ...storageData, taxDelinquentSince: delinquentSince.toISOString() },
-          },
-        });
+        await db.update(buildings).set({ storage: { ...storageData, taxDelinquentSince: delinquentSince.toISOString() } }).where(eq(buildings.id, building.id));
 
         emitBuildingDelinquent(building.ownerId, {
-          buildingId: building.id,
-          buildingName: building.name,
-          buildingType: building.type,
-          townName: building.town.name,
-          amountOwed: dailyTax,
-          daysDelinquent: daysSinceDelinquent + 1,
-          daysUntilSeizure: 7 - (daysSinceDelinquent + 1),
+          buildingId: building.id, buildingName: building.name, buildingType: building.type,
+          townName: building.town.name, amountOwed: dailyTax, daysDelinquent: daysSinceDelinquent + 1, daysUntilSeizure: 7 - (daysSinceDelinquent + 1),
         });
-
         delinquentCount++;
       }
     }
   }
 
   if (totalCollected > 0 || delinquentCount > 0 || seizedCount > 0) {
-    console.log(
-      `[DailyTick]   Property tax: ${totalCollected}g collected, ${delinquentCount} delinquent, ${seizedCount} seized`
-    );
+    console.log(`[DailyTick]   Property tax: ${totalCollected}g collected, ${delinquentCount} delinquent, ${seizedCount} seized`);
   }
 }
 
 // ---------------------------------------------------------------------------
 // Building Degradation (adapted from building-maintenance.ts)
-// Daily tick degrades by 1 per day instead of 5 per week
 // ---------------------------------------------------------------------------
 
 async function degradeBuildings(): Promise<void> {
   let degradedCount = 0;
-  let bldgCursor: string | undefined;
+  let lastBldgId: string | undefined;
   let hasMoreBldg = true;
 
   while (hasMoreBldg) {
-    const buildings = await prisma.building.findMany({
-      where: { level: { gte: 1 } },
-      include: {
-        owner: { select: { id: true } },
-        town: { select: { name: true } },
+    const bldgPage = await db.query.buildings.findMany({
+      where: lastBldgId ? and(gte(buildings.level, 1), gt(buildings.id, lastBldgId)) : gte(buildings.level, 1),
+      with: {
+        character: { columns: { id: true } },
+        town: { columns: { name: true } },
       },
-      take: CURSOR_PAGE_SIZE,
-      orderBy: { id: 'asc' },
-      ...(bldgCursor ? { skip: 1, cursor: { id: bldgCursor } } : {}),
+      limit: CURSOR_PAGE_SIZE,
+      orderBy: asc(buildings.id),
     });
 
-    if (buildings.length < CURSOR_PAGE_SIZE) {
-      hasMoreBldg = false;
-    }
-    if (buildings.length > 0) {
-      bldgCursor = buildings[buildings.length - 1].id;
-    }
+    if (bldgPage.length < CURSOR_PAGE_SIZE) hasMoreBldg = false;
+    if (bldgPage.length > 0) lastBldgId = bldgPage[bldgPage.length - 1].id;
 
-    for (const building of buildings) {
+    for (const building of bldgPage) {
       const storageData = building.storage as Record<string, unknown>;
       const currentCondition = (storageData.condition as number) ?? 100;
-      const newCondition = Math.max(0, currentCondition - 1); // 1 per day
+      const newCondition = Math.max(0, currentCondition - 1);
 
       if (newCondition !== currentCondition) {
-        await prisma.building.update({
-          where: { id: building.id },
-          data: { storage: { ...storageData, condition: newCondition } },
-        });
+        await db.update(buildings).set({ storage: { ...storageData, condition: newCondition } }).where(eq(buildings.id, building.id));
         degradedCount++;
 
         if (newCondition <= LOW_CONDITION_THRESHOLD && newCondition > 0) {
           emitBuildingConditionLow(building.ownerId, {
-            buildingId: building.id,
-            buildingName: building.name,
-            buildingType: building.type,
-            townName: building.town.name,
-            condition: newCondition,
-            isFunctional: newCondition >= NONFUNCTIONAL_THRESHOLD,
-            isCondemned: false,
+            buildingId: building.id, buildingName: building.name, buildingType: building.type,
+            townName: building.town.name, condition: newCondition,
+            isFunctional: newCondition >= NONFUNCTIONAL_THRESHOLD, isCondemned: false,
           });
         } else if (newCondition <= 0) {
           emitBuildingConditionLow(building.ownerId, {
-            buildingId: building.id,
-            buildingName: building.name,
-            buildingType: building.type,
-            townName: building.town.name,
-            condition: 0,
-            isFunctional: false,
-            isCondemned: true,
+            buildingId: building.id, buildingName: building.name, buildingType: building.type,
+            townName: building.town.name, condition: 0, isFunctional: false, isCondemned: true,
           });
         }
       }
@@ -2422,21 +2236,20 @@ async function degradeBuildings(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function processElections(): Promise<void> {
-  // Auto-create elections for towns without one
-  const townsWithActiveElection = await prisma.election.findMany({
-    where: { phase: { not: 'COMPLETED' }, type: 'MAYOR' },
-    select: { townId: true },
+  const townsWithActiveElection = await db.query.elections.findMany({
+    where: and(sql`${elections.phase} != 'COMPLETED'`, eq(elections.type, 'MAYOR')),
+    columns: { townId: true },
   });
   const townIdsWithElection = new Set(townsWithActiveElection.map(e => e.townId));
 
-  const allTowns = await prisma.town.findMany({ select: { id: true, name: true } });
+  const allTowns = await db.query.towns.findMany({ columns: { id: true, name: true } });
   const townsNeedingElection = allTowns.filter(t => !townIdsWithElection.has(t.id));
 
   for (const town of townsNeedingElection) {
-    const lastElection = await prisma.election.findFirst({
-      where: { townId: town.id, type: 'MAYOR' },
-      orderBy: { termNumber: 'desc' },
-      select: { termNumber: true },
+    const lastElection = await db.query.elections.findFirst({
+      where: and(eq(elections.townId, town.id), eq(elections.type, 'MAYOR')),
+      orderBy: desc(elections.termNumber),
+      columns: { termNumber: true },
     });
     const termNumber = (lastElection?.termNumber ?? 0) + 1;
 
@@ -2444,111 +2257,85 @@ async function processElections(): Promise<void> {
     const endDate = new Date(now);
     endDate.setDate(endDate.getDate() + NOMINATION_TICKS + VOTING_TICKS);
 
-    await prisma.election.create({
-      data: {
-        townId: town.id,
-        type: 'MAYOR',
-        status: 'ACTIVE',
-        phase: 'NOMINATIONS',
-        termNumber,
-        startDate: now,
-        endDate,
-      },
+    await db.insert(elections).values({
+      id: crypto.randomUUID(),
+      townId: town.id,
+      type: 'MAYOR',
+      status: 'ACTIVE',
+      phase: 'NOMINATIONS',
+      termNumber,
+      startDate: now.toISOString(),
+      endDate: endDate.toISOString(),
     });
     console.log(`[DailyTick]   Created MAYOR election for "${town.name}" (term ${termNumber})`);
   }
 
-  // Transition NOMINATIONS -> VOTING after NOMINATION_TICKS days
-  // We use a tickCounter stored in election metadata, or count days from startDate
-  const nominationElections = await prisma.election.findMany({
-    where: { phase: 'NOMINATIONS' },
-    include: {
-      town: { select: { id: true, name: true } },
-      kingdom: { select: { id: true, name: true } },
-      candidates: { select: { characterId: true } },
+  // Transition NOMINATIONS -> VOTING
+  const nominationElections = await db.query.elections.findMany({
+    where: eq(elections.phase, 'NOMINATIONS'),
+    with: {
+      town: { columns: { id: true, name: true } },
+      kingdom: { columns: { id: true, name: true } },
+      electionCandidates: { columns: { characterId: true } },
     },
   });
 
   for (const election of nominationElections) {
-    const daysSinceStart = Math.floor(
-      (Date.now() - election.startDate.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    const daysSinceStart = Math.floor((Date.now() - new Date(election.startDate).getTime()) / (1000 * 60 * 60 * 24));
 
     if (daysSinceStart >= NOMINATION_TICKS) {
-      if (election.candidates.length === 0) {
-        await prisma.election.update({
-          where: { id: election.id },
-          data: { phase: 'COMPLETED', status: 'COMPLETED' },
-        });
+      if (election.electionCandidates.length === 0) {
+        await db.update(elections).set({ phase: 'COMPLETED', status: 'COMPLETED' }).where(eq(elections.id, election.id));
         console.log(`[DailyTick]   Election ${election.id} completed with no candidates`);
         continue;
       }
 
-      await prisma.election.update({
-        where: { id: election.id },
-        data: { phase: 'VOTING' },
-      });
+      await db.update(elections).set({ phase: 'VOTING' }).where(eq(elections.id, election.id));
       console.log(`[DailyTick]   Election in "${election.town?.name ?? election.kingdom?.name}" moved to VOTING`);
     }
   }
 
-  // Transition VOTING -> COMPLETED after NOMINATION_TICKS + VOTING_TICKS days
-  const votingElections = await prisma.election.findMany({
-    where: { phase: 'VOTING' },
-    include: {
-      town: { select: { id: true, name: true } },
-      kingdom: { select: { id: true, name: true } },
-      candidates: { include: { character: { select: { id: true, name: true } } } },
+  // Transition VOTING -> COMPLETED
+  const votingElections = await db.query.elections.findMany({
+    where: eq(elections.phase, 'VOTING'),
+    with: {
+      town: { columns: { id: true, name: true } },
+      kingdom: { columns: { id: true, name: true } },
+      electionCandidates: { with: { character: { columns: { id: true, name: true } } } },
     },
   });
 
   for (const election of votingElections) {
-    const daysSinceStart = Math.floor(
-      (Date.now() - election.startDate.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    const daysSinceStart = Math.floor((Date.now() - new Date(election.startDate).getTime()) / (1000 * 60 * 60 * 24));
 
     if (daysSinceStart >= NOMINATION_TICKS + VOTING_TICKS) {
-      // Tally votes
-      const voteCounts = await prisma.electionVote.groupBy({
-        by: ['candidateId'],
-        where: { electionId: election.id },
-        _count: { candidateId: true },
-      });
-      const voteMap = new Map(voteCounts.map(v => [v.candidateId, v._count.candidateId]));
+      const voteCounts = await db
+        .select({ candidateId: electionVotes.candidateId, voteCount: count() })
+        .from(electionVotes)
+        .where(eq(electionVotes.electionId, election.id))
+        .groupBy(electionVotes.candidateId);
+      const voteMap = new Map(voteCounts.map(v => [v.candidateId, v.voteCount]));
 
       let winnerId: string | null = null;
       let winnerName: string | null = null;
       let maxVotes = 0;
 
-      const sortedCandidates = [...election.candidates].sort(
-        (a, b) => a.nominatedAt.getTime() - b.nominatedAt.getTime()
+      const sortedCandidates = [...election.electionCandidates].sort(
+        (a, b) => new Date(a.nominatedAt).getTime() - new Date(b.nominatedAt).getTime()
       );
 
       for (const candidate of sortedCandidates) {
         const votes = voteMap.get(candidate.characterId) || 0;
-        if (votes > maxVotes) {
-          maxVotes = votes;
-          winnerId = candidate.characterId;
-          winnerName = candidate.character.name;
-        }
+        if (votes > maxVotes) { maxVotes = votes; winnerId = candidate.characterId; winnerName = candidate.character.name; }
       }
 
-      await prisma.election.update({
-        where: { id: election.id },
-        data: { phase: 'COMPLETED', status: 'COMPLETED', winnerId },
-      });
+      await db.update(elections).set({ phase: 'COMPLETED', status: 'COMPLETED', winnerId }).where(eq(elections.id, election.id));
 
       if (winnerId) {
         if (election.type === 'MAYOR' && election.townId) {
-          await prisma.town.update({
-            where: { id: election.townId },
-            data: { mayorId: winnerId },
-          });
+          await db.update(towns).set({ mayorId: winnerId }).where(eq(towns.id, election.townId));
         } else if (election.type === 'RULER' && election.kingdomId) {
-          await prisma.kingdom.update({
-            where: { id: election.kingdomId },
-            data: { rulerId: winnerId },
-          });
+          await db.update(kingdoms).set({ rulerId: winnerId }).where(eq(kingdoms.id, election.kingdomId));
         }
       }
 
@@ -2562,13 +2349,13 @@ async function processElections(): Promise<void> {
 // Impeachment Processing
 // ---------------------------------------------------------------------------
 
-async function processImpeachments(): Promise<void> {
-  const expired = await prisma.impeachment.findMany({
-    where: { status: 'ACTIVE', endsAt: { lte: new Date() } },
-    include: {
-      target: { select: { id: true, name: true } },
-      town: { select: { id: true, name: true } },
-      kingdom: { select: { id: true, name: true } },
+async function processImpeachmentsLocal(): Promise<void> {
+  const expired = await db.query.impeachments.findMany({
+    where: and(eq(impeachments.status, 'ACTIVE'), lte(impeachments.endsAt, new Date().toISOString())),
+    with: {
+      character: { columns: { id: true, name: true } },
+      town: { columns: { id: true, name: true } },
+      kingdom: { columns: { id: true, name: true } },
     },
   });
 
@@ -2576,30 +2363,19 @@ async function processImpeachments(): Promise<void> {
     const passed = impeachment.votesFor > impeachment.votesAgainst;
     const newStatus = passed ? 'PASSED' : 'FAILED';
 
-    await prisma.impeachment.update({
-      where: { id: impeachment.id },
-      data: { status: newStatus },
-    });
+    await db.update(impeachments).set({ status: newStatus }).where(eq(impeachments.id, impeachment.id));
 
     if (passed) {
       if (impeachment.townId) {
-        await prisma.town.update({
-          where: { id: impeachment.townId },
-          data: { mayorId: null },
-        });
+        await db.update(towns).set({ mayorId: null }).where(eq(towns.id, impeachment.townId));
       }
       if (impeachment.kingdomId) {
-        await prisma.kingdom.update({
-          where: { id: impeachment.kingdomId },
-          data: { rulerId: null },
-        });
+        await db.update(kingdoms).set({ rulerId: null }).where(eq(kingdoms.id, impeachment.kingdomId));
       }
     }
 
     const locationName = impeachment.town?.name || impeachment.kingdom?.name || 'Unknown';
-    console.log(
-      `[DailyTick]   Impeachment ${newStatus} against ${impeachment.target.name} in "${locationName}" (${impeachment.votesFor}-${impeachment.votesAgainst})`
-    );
+    console.log(`[DailyTick]   Impeachment ${newStatus} against ${impeachment.character.name} in "${locationName}" (${impeachment.votesFor}-${impeachment.votesAgainst})`);
   }
 }
 

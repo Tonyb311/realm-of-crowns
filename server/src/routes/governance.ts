@@ -1,13 +1,16 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, or, desc, sql, count } from 'drizzle-orm';
+import { kingdoms, towns, laws, lawVotes, councilMembers, townPolicies, townTreasuries, wars, characters } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { emitGovernanceEvent } from '../socket/events';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
+import crypto from 'crypto';
 
 const router = Router();
 
@@ -70,8 +73,8 @@ router.post('/propose-law', authGuard, characterGuard, requireTown, validate(pro
     }
 
     // Check if character is ruler of this kingdom or mayor of a town in it
-    const kingdom = await prisma.kingdom.findUnique({
-      where: { id: kingdomId },
+    const kingdom = await db.query.kingdoms.findFirst({
+      where: eq(kingdoms.id, kingdomId),
     });
 
     if (!kingdom) {
@@ -79,30 +82,29 @@ router.post('/propose-law', authGuard, characterGuard, requireTown, validate(pro
     }
 
     const isRuler = kingdom.rulerId === character.id;
-    const isMayor = await prisma.town.findFirst({
-      where: { mayorId: character.id },
+    const isMayor = await db.query.towns.findFirst({
+      where: eq(towns.mayorId, character.id),
     });
 
     if (!isRuler && !isMayor) {
       return res.status(403).json({ error: 'Only rulers or mayors can propose laws' });
     }
 
-    const law = await prisma.law.create({
-      data: {
-        kingdomId,
-        title,
-        description,
-        effects: effects ?? {},
-        enactedById: character.id,
-        status: 'PROPOSED',
-        lawType: lawType ?? 'general',
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-      },
-    });
+    const [law] = await db.insert(laws).values({
+      id: crypto.randomUUID(),
+      kingdomId,
+      title,
+      description,
+      effects: effects ?? {},
+      enactedById: character.id,
+      status: 'PROPOSED',
+      lawType: lawType ?? 'general',
+      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+    }).returning();
 
     return res.status(201).json({ law });
   } catch (error) {
-    if (handlePrismaError(error, res, 'governance-propose-law', req)) return;
+    if (handleDbError(error, res, 'governance-propose-law', req)) return;
     logRouteError(req, 500, 'Propose law error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -118,8 +120,8 @@ router.post('/vote-law', authGuard, characterGuard, requireTown, validate(voteLa
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const law = await prisma.law.findUnique({
-      where: { id: lawId },
+    const law = await db.query.laws.findFirst({
+      where: eq(laws.id, lawId),
     });
 
     if (!law) {
@@ -131,16 +133,13 @@ router.post('/vote-law', authGuard, characterGuard, requireTown, validate(voteLa
     }
 
     // Check if character is a council member for this kingdom
-    const councilMember = await prisma.councilMember.findFirst({
-      where: {
-        characterId: character.id,
-        kingdomId: law.kingdomId,
-      },
+    const councilMember = await db.query.councilMembers.findFirst({
+      where: and(eq(councilMembers.characterId, character.id), eq(councilMembers.kingdomId, law.kingdomId)),
     });
 
     // Also allow the ruler to vote
-    const kingdom = await prisma.kingdom.findUnique({
-      where: { id: law.kingdomId },
+    const kingdom = await db.query.kingdoms.findFirst({
+      where: eq(kingdoms.id, law.kingdomId),
     });
 
     if (!councilMember && kingdom?.rulerId !== character.id) {
@@ -148,8 +147,8 @@ router.post('/vote-law', authGuard, characterGuard, requireTown, validate(voteLa
     }
 
     // Check for existing vote (prevent vote stuffing)
-    const existingVote = await prisma.lawVote.findUnique({
-      where: { lawId_characterId: { lawId, characterId: character.id } },
+    const existingVote = await db.query.lawVotes.findFirst({
+      where: and(eq(lawVotes.lawId, lawId), eq(lawVotes.characterId, character.id)),
     });
 
     if (existingVote) {
@@ -157,38 +156,32 @@ router.post('/vote-law', authGuard, characterGuard, requireTown, validate(voteLa
     }
 
     // Record the vote
-    await prisma.lawVote.create({
-      data: {
-        lawId,
-        characterId: character.id,
-        vote: vote === 'for' ? 'FOR' : 'AGAINST',
-      },
+    await db.insert(lawVotes).values({
+      id: crypto.randomUUID(),
+      lawId,
+      characterId: character.id,
+      vote: vote === 'for' ? 'FOR' : 'AGAINST',
     });
 
     // Recalculate vote counts from LawVote records
-    const votesFor = await prisma.lawVote.count({
-      where: { lawId, vote: 'FOR' },
-    });
-    const votesAgainst = await prisma.lawVote.count({
-      where: { lawId, vote: 'AGAINST' },
-    });
+    const [forResult] = await db.select({ value: count() }).from(lawVotes)
+      .where(and(eq(lawVotes.lawId, lawId), eq(lawVotes.vote, 'FOR')));
+    const [againstResult] = await db.select({ value: count() }).from(lawVotes)
+      .where(and(eq(lawVotes.lawId, lawId), eq(lawVotes.vote, 'AGAINST')));
+    const votesFor = forResult.value;
+    const votesAgainst = againstResult.value;
 
-    const updatedLaw = await prisma.law.update({
-      where: { id: lawId },
-      data: {
-        status: 'VOTING',
-        votesFor,
-        votesAgainst,
-      },
-    });
+    const [updatedLaw] = await db.update(laws)
+      .set({ status: 'VOTING', votesFor, votesAgainst })
+      .where(eq(laws.id, lawId))
+      .returning();
 
     // Auto-activate if enough votes (simple majority: votesFor > votesAgainst and at least 3 total votes)
     const totalVotes = updatedLaw.votesFor + updatedLaw.votesAgainst;
     if (totalVotes >= 3 && updatedLaw.votesFor > updatedLaw.votesAgainst) {
-      await prisma.law.update({
-        where: { id: lawId },
-        data: { status: 'ACTIVE', enactedAt: new Date() },
-      });
+      await db.update(laws)
+        .set({ status: 'ACTIVE', enactedAt: new Date().toISOString() })
+        .where(eq(laws.id, lawId));
 
       emitGovernanceEvent('governance:law-passed', `kingdom:${law.kingdomId}`, {
         lawId: law.id,
@@ -200,7 +193,7 @@ router.post('/vote-law', authGuard, characterGuard, requireTown, validate(voteLa
 
     return res.json({ law: updatedLaw });
   } catch (error) {
-    if (handlePrismaError(error, res, 'governance-vote-law', req)) return;
+    if (handleDbError(error, res, 'governance-vote-law', req)) return;
     logRouteError(req, 500, 'Vote law error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -216,8 +209,8 @@ router.post('/set-tax', authGuard, characterGuard, requireTown, validate(setTaxS
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const town = await prisma.town.findUnique({
-      where: { id: townId },
+    const town = await db.query.towns.findFirst({
+      where: eq(towns.id, townId),
     });
 
     if (!town) {
@@ -228,18 +221,26 @@ router.post('/set-tax', authGuard, characterGuard, requireTown, validate(setTaxS
       return res.status(403).json({ error: 'Only the mayor can set the tax rate' });
     }
 
-    const policy = await prisma.townPolicy.upsert({
-      where: { townId },
-      update: { taxRate },
-      create: { townId, taxRate },
+    // Upsert townPolicy
+    const existingPolicy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
     });
+    let policy;
+    if (existingPolicy) {
+      [policy] = await db.update(townPolicies).set({ taxRate }).where(eq(townPolicies.townId, townId)).returning();
+    } else {
+      [policy] = await db.insert(townPolicies).values({ id: crypto.randomUUID(), townId, taxRate }).returning();
+    }
 
     // P1 #35: Sync tax rate to TownTreasury so all readers see consistent value
-    await prisma.townTreasury.upsert({
-      where: { townId },
-      update: { taxRate },
-      create: { townId, taxRate },
+    const existingTreasury = await db.query.townTreasuries.findFirst({
+      where: eq(townTreasuries.townId, townId),
     });
+    if (existingTreasury) {
+      await db.update(townTreasuries).set({ taxRate }).where(eq(townTreasuries.townId, townId));
+    } else {
+      await db.insert(townTreasuries).values({ id: crypto.randomUUID(), townId, taxRate });
+    }
 
     emitGovernanceEvent('governance:tax-changed', `town:${townId}`, {
       townId,
@@ -249,7 +250,7 @@ router.post('/set-tax', authGuard, characterGuard, requireTown, validate(setTaxS
 
     return res.json({ policy });
   } catch (error) {
-    if (handlePrismaError(error, res, 'governance-set-tax', req)) return;
+    if (handleDbError(error, res, 'governance-set-tax', req)) return;
     logRouteError(req, 500, 'Set tax error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -265,20 +266,26 @@ router.get('/laws', authGuard, characterGuard, requireTown, async (req: Authenti
       return res.status(400).json({ error: 'kingdomId is required' });
     }
 
-    const laws = await prisma.law.findMany({
-      where: {
-        kingdomId,
-        ...(status ? { status } : {}),
+    const conditions = [eq(laws.kingdomId, kingdomId)];
+    if (status) conditions.push(eq(laws.status, status));
+
+    const lawRows = await db.query.laws.findMany({
+      where: and(...conditions),
+      with: {
+        character: { columns: { id: true, name: true } },
       },
-      include: {
-        enactedBy: { select: { id: true, name: true } },
-      },
-      orderBy: { proposedAt: 'desc' },
+      orderBy: desc(laws.proposedAt),
     });
 
-    return res.json({ laws });
+    return res.json({
+      laws: lawRows.map(l => ({
+        ...l,
+        enactedBy: l.character,
+        character: undefined,
+      })),
+    });
   } catch (error) {
-    if (handlePrismaError(error, res, 'governance-get-laws', req)) return;
+    if (handleDbError(error, res, 'governance-get-laws', req)) return;
     logRouteError(req, 500, 'Get laws error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -289,51 +296,56 @@ router.get('/town-info/:townId', authGuard, characterGuard, requireTown, async (
   try {
     const { townId } = req.params;
 
-    const town = await prisma.town.findUnique({
-      where: { id: townId },
-      include: {
-        mayor: { select: { id: true, name: true, level: true } },
-        treasury: true,
-        // P1 #25: Include region to derive kingdomId
-        region: { select: { kingdomId: true } },
-        townPolicy: {
-          include: {
-            sheriff: { select: { id: true, name: true, level: true } },
+    const townRow = await db.query.towns.findFirst({
+      where: eq(towns.id, townId),
+      with: {
+        character: { columns: { id: true, name: true, level: true } }, // mayor
+        region: { columns: { kingdomId: true } },
+        townTreasuries: true,
+        townPolicies: {
+          with: {
+            character: { columns: { id: true, name: true, level: true } }, // sheriff
           },
         },
         councilMembers: {
-          include: {
-            character: { select: { id: true, name: true, level: true } },
+          with: {
+            character_characterId: { columns: { id: true, name: true, level: true } },
           },
         },
       },
     });
 
-    if (!town) {
+    if (!townRow) {
       return res.status(404).json({ error: 'Town not found' });
     }
 
+    const treasury = townRow.townTreasuries[0] ?? null;
+    const policy = townRow.townPolicies[0] ?? null;
+
     return res.json({
       town: {
-        id: town.id,
-        name: town.name,
-        population: town.population,
-        treasury: town.treasury?.balance ?? 0,
-        taxRate: town.treasury?.taxRate ?? 0.10,
+        id: townRow.id,
+        name: townRow.name,
+        population: townRow.population,
+        treasury: treasury?.balance ?? 0,
+        taxRate: treasury?.taxRate ?? 0.10,
         // P1 #25: Provide kingdomId from region so client doesn't hardcode it
-        kingdomId: town.region?.kingdomId ?? null,
-        mayor: town.mayor,
-        policy: town.townPolicy,
-        council: town.councilMembers.map(cm => ({
+        kingdomId: townRow.region?.kingdomId ?? null,
+        mayor: townRow.character, // mayor via towns.mayorId
+        policy: policy ? {
+          ...policy,
+          sheriff: policy.character, // sheriff via townPolicies.sheriffId
+        } : null,
+        council: townRow.councilMembers.map(cm => ({
           id: cm.id,
           role: cm.role,
-          character: cm.character,
+          character: cm.character_characterId,
           appointedAt: cm.appointedAt,
         })),
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'governance-town-info', req)) return;
+    if (handleDbError(error, res, 'governance-town-info', req)) return;
     logRouteError(req, 500, 'Town info error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -355,56 +367,69 @@ router.post('/appoint', authGuard, characterGuard, requireTown, validate(appoint
 
     // Sheriff appointment by mayor
     if (townId && role === 'sheriff') {
-      const town = await prisma.town.findUnique({ where: { id: townId } });
+      const town = await db.query.towns.findFirst({ where: eq(towns.id, townId) });
       if (!town || town.mayorId !== character.id) {
         return res.status(403).json({ error: 'Only the mayor can appoint a sheriff' });
       }
 
-      const targetChar = await prisma.character.findUnique({ where: { id: characterId } });
+      const targetChar = await db.query.characters.findFirst({ where: eq(characters.id, characterId) });
       if (!targetChar || targetChar.currentTownId !== townId) {
         return res.status(400).json({ error: 'Target character must be in this town' });
       }
 
-      const policy = await prisma.townPolicy.upsert({
-        where: { townId },
-        update: { sheriffId: characterId },
-        create: { townId, sheriffId: characterId },
-      });
+      // Upsert townPolicy for sheriff
+      const existingPolicy = await db.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId) });
+      let policy;
+      if (existingPolicy) {
+        [policy] = await db.update(townPolicies).set({ sheriffId: characterId }).where(eq(townPolicies.townId, townId)).returning();
+      } else {
+        [policy] = await db.insert(townPolicies).values({ id: crypto.randomUUID(), townId, sheriffId: characterId }).returning();
+      }
 
       return res.json({ message: `${targetChar.name} appointed as sheriff`, policy });
     }
 
     // Council appointment by ruler or mayor
     if (kingdomId) {
-      const kingdom = await prisma.kingdom.findUnique({ where: { id: kingdomId } });
+      const kingdom = await db.query.kingdoms.findFirst({ where: eq(kingdoms.id, kingdomId) });
       if (!kingdom || kingdom.rulerId !== character.id) {
         return res.status(403).json({ error: 'Only the ruler can appoint kingdom council members' });
       }
     }
 
     if (townId && role !== 'sheriff') {
-      const town = await prisma.town.findUnique({ where: { id: townId } });
+      const town = await db.query.towns.findFirst({ where: eq(towns.id, townId) });
       if (!town || town.mayorId !== character.id) {
         return res.status(403).json({ error: 'Only the mayor can appoint town council members' });
       }
     }
 
-    const councilMember = await prisma.councilMember.create({
-      data: {
-        kingdomId: kingdomId ?? null,
-        townId: townId ?? null,
-        characterId,
-        role,
-        appointedById: character.id,
-      },
-      include: {
-        character: { select: { id: true, name: true } },
+    const [newCouncilMember] = await db.insert(councilMembers).values({
+      id: crypto.randomUUID(),
+      kingdomId: kingdomId ?? null,
+      townId: townId ?? null,
+      characterId,
+      role,
+      appointedById: character.id,
+    }).returning();
+
+    // Fetch with character relation for response
+    const councilMemberWithChar = await db.query.councilMembers.findFirst({
+      where: eq(councilMembers.id, newCouncilMember.id),
+      with: {
+        character_characterId: { columns: { id: true, name: true } },
       },
     });
 
-    return res.status(201).json({ councilMember });
+    return res.status(201).json({
+      councilMember: councilMemberWithChar ? {
+        ...councilMemberWithChar,
+        character: councilMemberWithChar.character_characterId,
+        character_characterId: undefined,
+      } : newCouncilMember,
+    });
   } catch (error) {
-    if (handlePrismaError(error, res, 'governance-appoint', req)) return;
+    if (handleDbError(error, res, 'governance-appoint', req)) return;
     logRouteError(req, 500, 'Appoint error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -425,9 +450,9 @@ router.post('/allocate-treasury', authGuard, characterGuard, requireTown, valida
     }
 
     if (townId) {
-      const town = await prisma.town.findUnique({
-        where: { id: townId },
-        include: { treasury: true },
+      const town = await db.query.towns.findFirst({
+        where: eq(towns.id, townId),
+        with: { townTreasuries: true },
       });
       if (!town) {
         return res.status(404).json({ error: 'Town not found' });
@@ -435,15 +460,15 @@ router.post('/allocate-treasury', authGuard, characterGuard, requireTown, valida
       if (town.mayorId !== character.id) {
         return res.status(403).json({ error: 'Only the mayor can allocate town treasury' });
       }
-      const balance = town.treasury?.balance ?? 0;
+      const treasury = town.townTreasuries[0] ?? null;
+      const balance = treasury?.balance ?? 0;
       if (balance < amount) {
         return res.status(400).json({ error: `Insufficient treasury. Available: ${balance}` });
       }
 
-      await prisma.townTreasury.update({
-        where: { townId },
-        data: { balance: { decrement: amount } },
-      });
+      await db.update(townTreasuries)
+        .set({ balance: sql`${townTreasuries.balance} - ${amount}` })
+        .where(eq(townTreasuries.townId, townId));
 
       return res.json({
         message: `Allocated ${amount} gold from town treasury for ${purpose}`,
@@ -454,7 +479,7 @@ router.post('/allocate-treasury', authGuard, characterGuard, requireTown, valida
     }
 
     if (kingdomId) {
-      const kingdom = await prisma.kingdom.findUnique({ where: { id: kingdomId } });
+      const kingdom = await db.query.kingdoms.findFirst({ where: eq(kingdoms.id, kingdomId) });
       if (!kingdom) {
         return res.status(404).json({ error: 'Kingdom not found' });
       }
@@ -465,10 +490,9 @@ router.post('/allocate-treasury', authGuard, characterGuard, requireTown, valida
         return res.status(400).json({ error: `Insufficient treasury. Available: ${kingdom.treasury}` });
       }
 
-      await prisma.kingdom.update({
-        where: { id: kingdomId },
-        data: { treasury: { decrement: amount } },
-      });
+      await db.update(kingdoms)
+        .set({ treasury: sql`${kingdoms.treasury} - ${amount}` })
+        .where(eq(kingdoms.id, kingdomId));
 
       return res.json({
         message: `Allocated ${amount} gold from kingdom treasury for ${purpose}`,
@@ -478,7 +502,7 @@ router.post('/allocate-treasury', authGuard, characterGuard, requireTown, valida
       });
     }
   } catch (error) {
-    if (handlePrismaError(error, res, 'governance-allocate-treasury', req)) return;
+    if (handleDbError(error, res, 'governance-allocate-treasury', req)) return;
     logRouteError(req, 500, 'Allocate treasury error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -494,8 +518,8 @@ router.post('/declare-war', authGuard, characterGuard, requireTown, validate(dec
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const attackerKingdom = await prisma.kingdom.findFirst({
-      where: { rulerId: character.id },
+    const attackerKingdom = await db.query.kingdoms.findFirst({
+      where: eq(kingdoms.rulerId, character.id),
     });
 
     if (!attackerKingdom) {
@@ -506,8 +530,8 @@ router.post('/declare-war', authGuard, characterGuard, requireTown, validate(dec
       return res.status(400).json({ error: 'Cannot declare war on your own kingdom' });
     }
 
-    const targetKingdom = await prisma.kingdom.findUnique({
-      where: { id: targetKingdomId },
+    const targetKingdom = await db.query.kingdoms.findFirst({
+      where: eq(kingdoms.id, targetKingdomId),
     });
 
     if (!targetKingdom) {
@@ -515,48 +539,62 @@ router.post('/declare-war', authGuard, characterGuard, requireTown, validate(dec
     }
 
     // Check for existing active war between these kingdoms
-    const existingWar = await prisma.war.findFirst({
-      where: {
-        status: 'ACTIVE',
-        OR: [
-          { attackerKingdomId: attackerKingdom.id, defenderKingdomId: targetKingdomId },
-          { attackerKingdomId: targetKingdomId, defenderKingdomId: attackerKingdom.id },
-        ],
-      },
+    const existingWar = await db.query.wars.findFirst({
+      where: and(
+        eq(wars.status, 'ACTIVE'),
+        or(
+          and(eq(wars.attackerKingdomId, attackerKingdom.id), eq(wars.defenderKingdomId, targetKingdomId)),
+          and(eq(wars.attackerKingdomId, targetKingdomId), eq(wars.defenderKingdomId, attackerKingdom.id)),
+        ),
+      ),
     });
 
     if (existingWar) {
       return res.status(400).json({ error: 'Already at war with this kingdom' });
     }
 
-    const war = await prisma.war.create({
-      data: {
-        attackerKingdomId: attackerKingdom.id,
-        defenderKingdomId: targetKingdomId,
-        status: 'ACTIVE',
-      },
-      include: {
-        attackerKingdom: { select: { id: true, name: true } },
-        defenderKingdom: { select: { id: true, name: true } },
+    const [newWar] = await db.insert(wars).values({
+      id: crypto.randomUUID(),
+      attackerKingdomId: attackerKingdom.id,
+      defenderKingdomId: targetKingdomId,
+      status: 'ACTIVE',
+    }).returning();
+
+    // Fetch with relations for response
+    const war = await db.query.wars.findFirst({
+      where: eq(wars.id, newWar.id),
+      with: {
+        kingdom_attackerKingdomId: { columns: { id: true, name: true } },
+        kingdom_defenderKingdomId: { columns: { id: true, name: true } },
       },
     });
 
+    const attackerInfo = war?.kingdom_attackerKingdomId;
+    const defenderInfo = war?.kingdom_defenderKingdomId;
+
     emitGovernanceEvent('governance:war-declared', `kingdom:${attackerKingdom.id}`, {
-      warId: war.id,
-      attacker: war.attackerKingdom,
-      defender: war.defenderKingdom,
+      warId: newWar.id,
+      attacker: attackerInfo,
+      defender: defenderInfo,
       reason,
     });
     emitGovernanceEvent('governance:war-declared', `kingdom:${targetKingdomId}`, {
-      warId: war.id,
-      attacker: war.attackerKingdom,
-      defender: war.defenderKingdom,
+      warId: newWar.id,
+      attacker: attackerInfo,
+      defender: defenderInfo,
       reason,
     });
 
-    return res.status(201).json({ war, reason });
+    return res.status(201).json({
+      war: {
+        ...newWar,
+        attackerKingdom: attackerInfo,
+        defenderKingdom: defenderInfo,
+      },
+      reason,
+    });
   } catch (error) {
-    if (handlePrismaError(error, res, 'governance-declare-war', req)) return;
+    if (handleDbError(error, res, 'governance-declare-war', req)) return;
     logRouteError(req, 500, 'Declare war error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -572,11 +610,11 @@ router.post('/propose-peace', authGuard, characterGuard, requireTown, validate(p
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const war = await prisma.war.findUnique({
-      where: { id: warId },
-      include: {
-        attackerKingdom: true,
-        defenderKingdom: true,
+    const war = await db.query.wars.findFirst({
+      where: eq(wars.id, warId),
+      with: {
+        kingdom_attackerKingdomId: true,
+        kingdom_defenderKingdomId: true,
       },
     });
 
@@ -589,43 +627,57 @@ router.post('/propose-peace', authGuard, characterGuard, requireTown, validate(p
     }
 
     // Only rulers of involved kingdoms can propose peace
-    const isAttackerRuler = war.attackerKingdom.rulerId === character.id;
-    const isDefenderRuler = war.defenderKingdom.rulerId === character.id;
+    const isAttackerRuler = war.kingdom_attackerKingdomId.rulerId === character.id;
+    const isDefenderRuler = war.kingdom_defenderKingdomId.rulerId === character.id;
 
     if (!isAttackerRuler && !isDefenderRuler) {
       return res.status(403).json({ error: 'Only rulers of warring kingdoms can propose peace' });
     }
 
     // For simplicity, peace proposal immediately ends the war
-    const updatedWar = await prisma.war.update({
-      where: { id: warId },
-      data: {
-        status: 'PEACE_PROPOSED',
-      },
-      include: {
-        attackerKingdom: { select: { id: true, name: true } },
-        defenderKingdom: { select: { id: true, name: true } },
+    await db.update(wars)
+      .set({ status: 'PEACE_PROPOSED' })
+      .where(eq(wars.id, warId));
+
+    // Fetch updated war with relations for response
+    const updatedWar = await db.query.wars.findFirst({
+      where: eq(wars.id, warId),
+      with: {
+        kingdom_attackerKingdomId: { columns: { id: true, name: true } },
+        kingdom_defenderKingdomId: { columns: { id: true, name: true } },
       },
     });
+
+    const attackerInfo = updatedWar?.kingdom_attackerKingdomId;
+    const defenderInfo = updatedWar?.kingdom_defenderKingdomId;
 
     emitGovernanceEvent('governance:peace-proposed', `kingdom:${war.attackerKingdomId}`, {
       warId: war.id,
       proposedBy: isAttackerRuler ? 'attacker' : 'defender',
-      attacker: updatedWar.attackerKingdom,
-      defender: updatedWar.defenderKingdom,
+      attacker: attackerInfo,
+      defender: defenderInfo,
       terms,
     });
     emitGovernanceEvent('governance:peace-proposed', `kingdom:${war.defenderKingdomId}`, {
       warId: war.id,
       proposedBy: isAttackerRuler ? 'attacker' : 'defender',
-      attacker: updatedWar.attackerKingdom,
-      defender: updatedWar.defenderKingdom,
+      attacker: attackerInfo,
+      defender: defenderInfo,
       terms,
     });
 
-    return res.json({ war: updatedWar, terms });
+    return res.json({
+      war: {
+        ...updatedWar,
+        attackerKingdom: attackerInfo,
+        defenderKingdom: defenderInfo,
+        kingdom_attackerKingdomId: undefined,
+        kingdom_defenderKingdomId: undefined,
+      },
+      terms,
+    });
   } catch (error) {
-    if (handlePrismaError(error, res, 'governance-propose-peace', req)) return;
+    if (handleDbError(error, res, 'governance-propose-peace', req)) return;
     logRouteError(req, 500, 'Propose peace error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -636,32 +688,28 @@ router.get('/kingdom/:kingdomId', authGuard, characterGuard, requireTown, async 
   try {
     const { kingdomId } = req.params;
 
-    const kingdom = await prisma.kingdom.findUnique({
-      where: { id: kingdomId },
-      include: {
-        ruler: { select: { id: true, name: true, level: true } },
-        lawRecords: {
-          where: { status: 'ACTIVE' },
-          include: {
-            enactedBy: { select: { id: true, name: true } },
-          },
-          orderBy: { enactedAt: 'desc' },
-        },
-        warsAttacking: {
-          where: { status: 'ACTIVE' },
-          include: {
-            defenderKingdom: { select: { id: true, name: true } },
+    const kingdom = await db.query.kingdoms.findFirst({
+      where: eq(kingdoms.id, kingdomId),
+      with: {
+        character: { columns: { id: true, name: true, level: true } }, // ruler
+        laws: {
+          with: {
+            character: { columns: { id: true, name: true } }, // enactedBy
           },
         },
-        warsDefending: {
-          where: { status: 'ACTIVE' },
-          include: {
-            attackerKingdom: { select: { id: true, name: true } },
+        wars_attackerKingdomId: {
+          with: {
+            kingdom_defenderKingdomId: { columns: { id: true, name: true } },
+          },
+        },
+        wars_defenderKingdomId: {
+          with: {
+            kingdom_attackerKingdomId: { columns: { id: true, name: true } },
           },
         },
         councilMembers: {
-          include: {
-            character: { select: { id: true, name: true, level: true } },
+          with: {
+            character_characterId: { columns: { id: true, name: true, level: true } },
           },
         },
       },
@@ -671,37 +719,48 @@ router.get('/kingdom/:kingdomId', authGuard, characterGuard, requireTown, async 
       return res.status(404).json({ error: 'Kingdom not found' });
     }
 
+    // Filter active laws and wars in application code (Drizzle with: doesn't support where)
+    const activeLaws = kingdom.laws
+      .filter(l => l.status === 'ACTIVE')
+      .sort((a, b) => (b.enactedAt ? new Date(b.enactedAt).getTime() : 0) - (a.enactedAt ? new Date(a.enactedAt).getTime() : 0))
+      .map(l => ({ ...l, enactedBy: l.character, character: undefined }));
+
+    const activeWarsAttacking = kingdom.wars_attackerKingdomId
+      .filter(w => w.status === 'ACTIVE')
+      .map(w => ({
+        id: w.id,
+        role: 'attacker' as const,
+        opponent: w.kingdom_defenderKingdomId,
+        startedAt: w.startedAt,
+      }));
+
+    const activeWarsDefending = kingdom.wars_defenderKingdomId
+      .filter(w => w.status === 'ACTIVE')
+      .map(w => ({
+        id: w.id,
+        role: 'defender' as const,
+        opponent: w.kingdom_attackerKingdomId,
+        startedAt: w.startedAt,
+      }));
+
     return res.json({
       kingdom: {
         id: kingdom.id,
         name: kingdom.name,
         treasury: kingdom.treasury,
-        ruler: kingdom.ruler,
-        activeLaws: kingdom.lawRecords,
-        activeWars: [
-          ...kingdom.warsAttacking.map(w => ({
-            id: w.id,
-            role: 'attacker' as const,
-            opponent: w.defenderKingdom,
-            startedAt: w.startedAt,
-          })),
-          ...kingdom.warsDefending.map(w => ({
-            id: w.id,
-            role: 'defender' as const,
-            opponent: w.attackerKingdom,
-            startedAt: w.startedAt,
-          })),
-        ],
+        ruler: kingdom.character, // ruler via kingdoms.rulerId
+        activeLaws,
+        activeWars: [...activeWarsAttacking, ...activeWarsDefending],
         council: kingdom.councilMembers.map(cm => ({
           id: cm.id,
           role: cm.role,
-          character: cm.character,
+          character: cm.character_characterId,
           appointedAt: cm.appointedAt,
         })),
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'governance-kingdom-info', req)) return;
+    if (handleDbError(error, res, 'governance-kingdom-info', req)) return;
     logRouteError(req, 500, 'Kingdom info error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

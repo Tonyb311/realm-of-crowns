@@ -1,5 +1,7 @@
 import { Request } from 'express';
-import { Character } from '@prisma/client';
+import type { characters } from '@database/tables';
+
+type Character = typeof characters.$inferSelect;
 
 export interface AuthenticatedRequest extends Request {
   user?: {

@@ -1,8 +1,16 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq } from 'drizzle-orm';
+import {
+  regions,
+  towns,
+  travelRoutes,
+  characters,
+  characterTravelStates,
+} from '@database/tables';
 import { redis } from '../lib/redis';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { cache } from '../middleware/cache';
 import { getGameTime } from '../services/race-environment';
@@ -85,12 +93,12 @@ router.get('/map', async (req, res) => {
     if (!staticData) {
       // ── Fetch from database ───────────────────────────────────────
       const [dbRegions, dbTowns, dbRoutes] = await Promise.all([
-        prisma.region.findMany({
-          select: { id: true, name: true, biome: true },
+        db.query.regions.findMany({
+          columns: { id: true, name: true, biome: true },
         }),
-        prisma.town.findMany({
-          where: { isReleased: true },
-          select: {
+        db.query.towns.findMany({
+          where: eq(towns.isReleased, true),
+          columns: {
             id: true,
             name: true,
             regionId: true,
@@ -99,12 +107,14 @@ router.get('/map', async (req, res) => {
             description: true,
             mapX: true,
             mapY: true,
-            region: { select: { name: true } },
+          },
+          with: {
+            region: { columns: { name: true } },
           },
         }),
-        prisma.travelRoute.findMany({
-          where: { isReleased: true },
-          select: {
+        db.query.travelRoutes.findMany({
+          where: eq(travelRoutes.isReleased, true),
+          columns: {
             id: true,
             name: true,
             fromTownId: true,
@@ -113,8 +123,10 @@ router.get('/map', async (req, res) => {
             difficulty: true,
             dangerLevel: true,
             terrain: true,
+          },
+          with: {
             travelNodes: {
-              select: {
+              columns: {
                 id: true,
                 nodeIndex: true,
                 name: true,
@@ -125,7 +137,7 @@ router.get('/map', async (req, res) => {
                 offsetX: true,
                 offsetY: true,
               },
-              orderBy: { nodeIndex: 'asc' },
+              orderBy: (t: any, { asc }: any) => [asc(t.nodeIndex)],
             },
           },
         }),
@@ -139,7 +151,7 @@ router.get('/map', async (req, res) => {
 
       // Filter regions to only those with released towns
       const regionIdsWithTowns = new Set(dbTowns.map(t => t.regionId));
-      const regions = dbRegions
+      const regionsList = dbRegions
         .filter(r => regionIdsWithTowns.has(r.id))
         .map(r => ({
           id: r.id,
@@ -149,7 +161,7 @@ router.get('/map', async (req, res) => {
         }));
 
       // Transform towns
-      const towns = dbTowns.map(t => ({
+      const townsList = dbTowns.map(t => ({
         id: t.id,
         name: t.name,
         type: getTownType(t.population),
@@ -163,11 +175,11 @@ router.get('/map', async (req, res) => {
       }));
 
       // Transform routes with interpolated node positions
-      const routes = dbRoutes.map(route => {
+      const routesList = dbRoutes.map(route => {
         const fromTown = townLookup.get(route.fromTownId);
         const toTown = townLookup.get(route.toTownId);
 
-        const nodes = route.travelNodes.map(node => {
+        const nodes = route.travelNodes.map((node: any) => {
           let mapX: number | null = null;
           let mapY: number | null = null;
 
@@ -206,7 +218,7 @@ router.get('/map', async (req, res) => {
         };
       });
 
-      staticData = { towns, routes, regions };
+      staticData = { towns: townsList, routes: routesList, regions: regionsList };
 
       // ── Cache static data in Redis ──────────────────────────────────
       if (redis) {
@@ -232,20 +244,20 @@ router.get('/map', async (req, res) => {
     let playerTownId: string | null = null;
 
     if (userId) {
-      const character = await prisma.character.findFirst({
-        where: { userId },
-        select: {
+      const character = await db.query.characters.findFirst({
+        where: eq(characters.userId, userId),
+        columns: {
           id: true,
           currentTownId: true,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: (t, { desc }) => [desc(t.createdAt)],
       });
 
       if (character) {
         // Check if traveling
-        const travelState = await prisma.characterTravelState.findUnique({
-          where: { characterId: character.id },
-          select: {
+        const travelState = await db.query.characterTravelStates.findFirst({
+          where: eq(characterTravelStates.characterId, character.id),
+          columns: {
             routeId: true,
             currentNodeIndex: true,
             direction: true,
@@ -271,14 +283,16 @@ router.get('/map', async (req, res) => {
     }
 
     // Active travelers (all characters currently traveling)
-    const activeTravelers = await prisma.characterTravelState.findMany({
-      where: { status: 'traveling' },
-      select: {
+    const activeTravelers = await db.query.characterTravelStates.findMany({
+      where: eq(characterTravelStates.status, 'traveling'),
+      columns: {
         characterId: true,
         routeId: true,
         currentNodeIndex: true,
+      },
+      with: {
         character: {
-          select: { name: true },
+          columns: { name: true },
         },
       },
     });
@@ -291,20 +305,20 @@ router.get('/map', async (req, res) => {
     }));
 
     // ── Annotate towns with isPlayerHere ───────────────────────────────
-    const towns = staticData.towns.map(town => ({
+    const townsList = staticData.towns.map(town => ({
       ...town,
       isPlayerHere: playerTownId != null && town.id === playerTownId,
     }));
 
     return res.json({
-      towns,
+      towns: townsList,
       routes: staticData.routes,
       regions: staticData.regions,
       playerPosition,
       travelers,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'world map', req)) return;
+    if (handleDbError(error, res, 'world map', req)) return;
     logRouteError(req, 500, 'World map error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -313,25 +327,25 @@ router.get('/map', async (req, res) => {
 // GET /api/world/regions
 router.get('/regions', cache(300), async (req, res) => {
   try {
-    const regions = await prisma.region.findMany({
-      include: {
-        _count: { select: { towns: true } },
+    const allRegions = await db.query.regions.findMany({
+      with: {
+        towns: true,
       },
     });
 
-    const result = regions.map((r) => ({
+    const result = allRegions.map((r) => ({
       id: r.id,
       name: r.name,
       description: r.description,
       biome: r.biome,
       levelMin: r.levelMin,
       levelMax: r.levelMax,
-      townCount: r._count.towns,
+      townCount: r.towns.length,
     }));
 
     return res.json({ regions: result });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get regions', req)) return;
+    if (handleDbError(error, res, 'get regions', req)) return;
     logRouteError(req, 500, 'Get regions error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -340,11 +354,11 @@ router.get('/regions', cache(300), async (req, res) => {
 // GET /api/world/regions/:id
 router.get('/regions/:id', async (req, res) => {
   try {
-    const region = await prisma.region.findUnique({
-      where: { id: req.params.id },
-      include: {
+    const region = await db.query.regions.findFirst({
+      where: eq(regions.id, req.params.id),
+      with: {
         towns: {
-          select: {
+          columns: {
             id: true,
             name: true,
             population: true,
@@ -362,7 +376,7 @@ router.get('/regions/:id', async (req, res) => {
 
     return res.json({ region });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get region', req)) return;
+    if (handleDbError(error, res, 'get region', req)) return;
     logRouteError(req, 500, 'Get region error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -383,7 +397,7 @@ router.get('/time', (req, res) => {
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get game time', req)) return;
+    if (handleDbError(error, res, 'get game time', req)) return;
     logRouteError(req, 500, 'Get game time error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

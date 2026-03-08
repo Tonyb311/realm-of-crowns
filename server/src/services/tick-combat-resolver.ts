@@ -7,8 +7,10 @@
  * the existing combat-engine functions for all actual resolution.
  */
 
-import { prisma } from '../lib/prisma';
-import { ItemRarity } from '@prisma/client';
+import { db } from '../lib/db';
+import { eq, inArray, sql } from 'drizzle-orm';
+import { characters, monsters } from '@database/tables';
+import type { ItemRarity } from '@shared/enums';
 import { calculateItemStats } from './item-stats';
 import {
   createCombatState,
@@ -950,11 +952,11 @@ export async function resolveNodePvE(
   nodeContext: { dangerLevel: number },
 ): Promise<TickCombatOutcome & { xpReward: number; goldReward: number; deathPenalty?: any }> {
   // Load character data
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    include: {
-      equipment: {
-        include: { item: { include: { template: true } } },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    with: {
+      characterEquipments: {
+        with: { item: { with: { itemTemplate: true } } },
       },
     },
   });
@@ -964,8 +966,8 @@ export async function resolveNodePvE(
   }
 
   // Load monster data
-  const monster = await prisma.monster.findUnique({
-    where: { id: monsterId },
+  const monster = await db.query.monsters.findFirst({
+    where: eq(monsters.id, monsterId),
   });
 
   if (!monster) {
@@ -976,7 +978,7 @@ export async function resolveNodePvE(
   const monsterStats = monster.stats as Record<string, number>;
 
   // Apply equipment stat bonuses to combat stats
-  const equipBonuses = getEquipmentStatBonuses(character.equipment);
+  const equipBonuses = getEquipmentStatBonuses(character.characterEquipments);
   const effectiveStats: CharacterStats = {
     str: charStats.str + (equipBonuses.strength ?? 0),
     dex: charStats.dex + (equipBonuses.dexterity ?? 0),
@@ -985,10 +987,10 @@ export async function resolveNodePvE(
     wis: charStats.wis + (equipBonuses.wisdom ?? 0),
     cha: charStats.cha + (equipBonuses.charisma ?? 0),
   };
-  const playerAC = 10 + getModifier(effectiveStats.dex) + getEquipmentAC(character.equipment);
+  const playerAC = 10 + getModifier(effectiveStats.dex) + getEquipmentAC(character.characterEquipments);
 
   // Build combatants
-  const rawWeapon = getEquippedWeapon(character.equipment);
+  const rawWeapon = getEquippedWeapon(character.characterEquipments);
   const playerWeapon = rawWeapon ? applyClassWeaponStat(rawWeapon, character.class) : null;
   const playerCombatant = createCharacterCombatant(
     character.id,
@@ -1016,12 +1018,12 @@ export async function resolveNodePvE(
   (playerCombatant as any).featIds = (character.feats as string[]) ?? [];
 
   // Set proficiency flags based on equipped items
-  if (character.class && character.equipment) {
+  if (character.class && character.characterEquipments) {
     const { checkEquipmentProficiency } = await import('@shared/utils/proficiency');
-    const itemsForCheck = character.equipment.map((eq: any) => ({
+    const itemsForCheck = character.characterEquipments.map((eq: any) => ({
       slot: eq.slot,
-      stats: (eq.item?.template?.stats as Record<string, any>) ?? {},
-      itemName: eq.item?.template?.name,
+      stats: (eq.item?.itemTemplate?.stats as Record<string, any>) ?? {},
+      itemName: eq.item?.itemTemplate?.name,
     }));
     const profCheck = checkEquipmentProficiency(character.class, itemsForCheck);
     (playerCombatant as any).nonProficientArmor = profCheck.nonProficientArmor;
@@ -1086,17 +1088,14 @@ export async function resolveNodePvE(
     }
 
     // Process item drops (arcane reagents, etc.)
-    await processItemDrops(prisma, characterId, lootTable);
+    await processItemDrops(db, characterId, lootTable);
 
     // Apply rewards
-    await prisma.character.update({
-      where: { id: characterId },
-      data: {
-        xp: { increment: xpReward },
-        gold: { increment: goldReward },
-        health: outcome.survivors.find(s => s.id === characterId)?.hpRemaining ?? character.health,
-      },
-    });
+    await db.update(characters).set({
+      xp: sql`${characters.xp} + ${xpReward}`,
+      gold: sql`${characters.gold} + ${goldReward}`,
+      health: outcome.survivors.find(s => s.id === characterId)?.hpRemaining ?? character.health,
+    }).where(eq(characters.id, characterId));
   } else {
     // Player died
     deathPenalty = calculateDeathPenalty(
@@ -1106,14 +1105,11 @@ export async function resolveNodePvE(
       character.currentTownId ?? '',
     );
 
-    await prisma.character.update({
-      where: { id: characterId },
-      data: {
-        health: character.maxHealth, // respawn at full HP
-        gold: Math.max(0, character.gold - deathPenalty.goldLost),
-        xp: Math.max(0, character.xp - deathPenalty.xpLost),
-      },
-    });
+    await db.update(characters).set({
+      health: character.maxHealth, // respawn at full HP
+      gold: Math.max(0, character.gold - deathPenalty.goldLost),
+      xp: Math.max(0, character.xp - deathPenalty.xpLost),
+    }).where(eq(characters.id, characterId));
   }
 
   return { ...outcome, xpReward, goldReward, deathPenalty };
@@ -1132,16 +1128,16 @@ export async function resolveNodePvP(
 ): Promise<TickCombatOutcome> {
   // Load both characters
   const [traveler, ambusher] = await Promise.all([
-    prisma.character.findUnique({
-      where: { id: travelerId },
-      include: {
-        equipment: { include: { item: { include: { template: true } } } },
+    db.query.characters.findFirst({
+      where: eq(characters.id, travelerId),
+      with: {
+        characterEquipments: { with: { item: { with: { itemTemplate: true } } } },
       },
     }),
-    prisma.character.findUnique({
-      where: { id: ambusherId },
-      include: {
-        equipment: { include: { item: { include: { template: true } } } },
+    db.query.characters.findFirst({
+      where: eq(characters.id, ambusherId),
+      with: {
+        characterEquipments: { with: { item: { with: { itemTemplate: true } } } },
       },
     }),
   ]);
@@ -1154,7 +1150,7 @@ export async function resolveNodePvP(
   const ambusherStats = parseStats(ambusher.stats);
 
   // Apply equipment stat bonuses
-  const travelerBonuses = getEquipmentStatBonuses(traveler.equipment);
+  const travelerBonuses = getEquipmentStatBonuses(traveler.characterEquipments);
   const travelerEffective: CharacterStats = {
     str: travelerStats.str + (travelerBonuses.strength ?? 0),
     dex: travelerStats.dex + (travelerBonuses.dexterity ?? 0),
@@ -1163,7 +1159,7 @@ export async function resolveNodePvP(
     wis: travelerStats.wis + (travelerBonuses.wisdom ?? 0),
     cha: travelerStats.cha + (travelerBonuses.charisma ?? 0),
   };
-  const ambusherBonuses = getEquipmentStatBonuses(ambusher.equipment);
+  const ambusherBonuses = getEquipmentStatBonuses(ambusher.characterEquipments);
   const ambusherEffective: CharacterStats = {
     str: ambusherStats.str + (ambusherBonuses.strength ?? 0),
     dex: ambusherStats.dex + (ambusherBonuses.dexterity ?? 0),
@@ -1178,8 +1174,8 @@ export async function resolveNodePvP(
     traveler.id, traveler.name, 0,
     travelerEffective, traveler.level,
     traveler.health, traveler.maxHealth,
-    10 + getModifier(travelerEffective.dex) + getEquipmentAC(traveler.equipment),
-    (() => { const w = getEquippedWeapon(traveler.equipment); return w ? applyClassWeaponStat(w, traveler.class) : null; })(),
+    10 + getModifier(travelerEffective.dex) + getEquipmentAC(traveler.characterEquipments),
+    (() => { const w = getEquippedWeapon(traveler.characterEquipments); return w ? applyClassWeaponStat(w, traveler.class) : null; })(),
     {},
     getProficiencyBonus(traveler.level),
   );
@@ -1196,8 +1192,8 @@ export async function resolveNodePvP(
     ambusher.id, ambusher.name, 1,
     ambusherEffective, ambusher.level,
     ambusher.health, ambusher.maxHealth,
-    10 + getModifier(ambusherEffective.dex) + getEquipmentAC(ambusher.equipment),
-    (() => { const w = getEquippedWeapon(ambusher.equipment); return w ? applyClassWeaponStat(w, ambusher.class) : null; })(),
+    10 + getModifier(ambusherEffective.dex) + getEquipmentAC(ambusher.characterEquipments),
+    (() => { const w = getEquippedWeapon(ambusher.characterEquipments); return w ? applyClassWeaponStat(w, ambusher.class) : null; })(),
     {},
     getProficiencyBonus(ambusher.level),
   );
@@ -1273,43 +1269,31 @@ export async function resolveNodePvP(
   // Update HP for survivors
   if (travelerSurvived) {
     const hp = outcome.survivors.find(s => s.id === travelerId)?.hpRemaining ?? traveler.health;
-    await prisma.character.update({
-      where: { id: travelerId },
-      data: { health: hp },
-    });
+    await db.update(characters).set({ health: hp }).where(eq(characters.id, travelerId));
   }
 
   if (ambusherSurvived) {
     const hp = outcome.survivors.find(s => s.id === ambusherId)?.hpRemaining ?? ambusher.health;
-    await prisma.character.update({
-      where: { id: ambusherId },
-      data: { health: hp },
-    });
+    await db.update(characters).set({ health: hp }).where(eq(characters.id, ambusherId));
   }
 
   // Apply death penalties to the loser
   if (!travelerSurvived) {
     const penalty = calculateDeathPenalty(travelerId, traveler.level, traveler.gold, traveler.currentTownId ?? '');
-    await prisma.character.update({
-      where: { id: travelerId },
-      data: {
-        health: traveler.maxHealth,
-        gold: Math.max(0, traveler.gold - penalty.goldLost),
-        xp: Math.max(0, traveler.xp - penalty.xpLost),
-      },
-    });
+    await db.update(characters).set({
+      health: traveler.maxHealth,
+      gold: Math.max(0, traveler.gold - penalty.goldLost),
+      xp: Math.max(0, traveler.xp - penalty.xpLost),
+    }).where(eq(characters.id, travelerId));
   }
 
   if (!ambusherSurvived) {
     const penalty = calculateDeathPenalty(ambusherId, ambusher.level, ambusher.gold, ambusher.currentTownId ?? '');
-    await prisma.character.update({
-      where: { id: ambusherId },
-      data: {
-        health: ambusher.maxHealth,
-        gold: Math.max(0, ambusher.gold - penalty.goldLost),
-        xp: Math.max(0, ambusher.xp - penalty.xpLost),
-      },
-    });
+    await db.update(characters).set({
+      health: ambusher.maxHealth,
+      gold: Math.max(0, ambusher.gold - penalty.goldLost),
+      xp: Math.max(0, ambusher.xp - penalty.xpLost),
+    }).where(eq(characters.id, ambusherId));
   }
 
   return outcome;
@@ -1327,14 +1311,14 @@ export async function resolveGroupCombat(
 ): Promise<TickCombatOutcome> {
   // Load all characters
   const allIds = [...allyIds, ...enemyIds];
-  const characters = await prisma.character.findMany({
-    where: { id: { in: allIds } },
-    include: {
-      equipment: { include: { item: { include: { template: true } } } },
+  const allCharacters = await db.query.characters.findMany({
+    where: inArray(characters.id, allIds),
+    with: {
+      characterEquipments: { with: { item: { with: { itemTemplate: true } } } },
     },
   });
 
-  const charMap = new Map(characters.map(c => [c.id, c]));
+  const charMap = new Map(allCharacters.map(c => [c.id, c]));
 
   // Build combatants
   const combatants: Combatant[] = [];
@@ -1344,7 +1328,7 @@ export async function resolveGroupCombat(
     const char = charMap.get(id);
     if (!char) continue;
     const stats = parseStats(char.stats);
-    const bonuses = getEquipmentStatBonuses(char.equipment);
+    const bonuses = getEquipmentStatBonuses(char.characterEquipments);
     const effective: CharacterStats = {
       str: stats.str + (bonuses.strength ?? 0),
       dex: stats.dex + (bonuses.dexterity ?? 0),
@@ -1356,8 +1340,8 @@ export async function resolveGroupCombat(
     const combatant = createCharacterCombatant(
       char.id, char.name, 0, effective, char.level,
       char.health, char.maxHealth,
-      10 + getModifier(effective.dex) + getEquipmentAC(char.equipment),
-      (() => { const w = getEquippedWeapon(char.equipment); return w ? applyClassWeaponStat(w, char.class) : null; })(), {},
+      10 + getModifier(effective.dex) + getEquipmentAC(char.characterEquipments),
+      (() => { const w = getEquippedWeapon(char.characterEquipments); return w ? applyClassWeaponStat(w, char.class) : null; })(), {},
       getProficiencyBonus(char.level),
     );
     (combatant as any).race = char.race.toLowerCase();
@@ -1386,7 +1370,7 @@ export async function resolveGroupCombat(
     const char = charMap.get(id);
     if (!char) continue;
     const stats = parseStats(char.stats);
-    const bonuses = getEquipmentStatBonuses(char.equipment);
+    const bonuses = getEquipmentStatBonuses(char.characterEquipments);
     const effective: CharacterStats = {
       str: stats.str + (bonuses.strength ?? 0),
       dex: stats.dex + (bonuses.dexterity ?? 0),
@@ -1398,8 +1382,8 @@ export async function resolveGroupCombat(
     const combatant = createCharacterCombatant(
       char.id, char.name, 1, effective, char.level,
       char.health, char.maxHealth,
-      10 + getModifier(effective.dex) + getEquipmentAC(char.equipment),
-      (() => { const w = getEquippedWeapon(char.equipment); return w ? applyClassWeaponStat(w, char.class) : null; })(), {},
+      10 + getModifier(effective.dex) + getEquipmentAC(char.characterEquipments),
+      (() => { const w = getEquippedWeapon(char.characterEquipments); return w ? applyClassWeaponStat(w, char.class) : null; })(), {},
       getProficiencyBonus(char.level),
     );
     (combatant as any).race = char.race.toLowerCase();
@@ -1475,11 +1459,11 @@ function buildMonsterWeapon(monsterStats: Record<string, unknown>): WeaponInfo {
 function getEquipmentAC(equipment: any[]): number {
   let ac = 0;
   for (const equip of equipment) {
-    if (!equip.item?.template) continue;
+    if (!equip.item?.itemTemplate) continue;
     const calculated = calculateItemStats({
       quality: equip.item.quality ?? ('COMMON' as ItemRarity),
       enchantments: equip.item.enchantments ?? [],
-      template: { stats: equip.item.template.stats },
+      template: { stats: equip.item.itemTemplate.stats },
     });
     if (typeof calculated.finalStats.armor === 'number') {
       ac += calculated.finalStats.armor;
@@ -1495,19 +1479,19 @@ function getEquippedWeapon(equipment: any[]): WeaponInfo | null {
   const mainHand = equipment.find((e: any) => e.slot === 'MAIN_HAND');
   if (!mainHand) return null;
 
-  const stats = mainHand.item?.template?.stats as Record<string, any> | undefined;
+  const stats = mainHand.item?.itemTemplate?.stats as Record<string, any> | undefined;
   if (!stats) return null;
 
   const calculated = calculateItemStats({
     quality: mainHand.item.quality ?? ('COMMON' as ItemRarity),
     enchantments: mainHand.item.enchantments ?? [],
-    template: { stats: mainHand.item.template.stats },
+    template: { stats: mainHand.item.itemTemplate.stats },
   });
   const multiplier = calculated.qualityMultiplier;
 
   return {
     id: mainHand.item.id,
-    name: mainHand.item.template.name,
+    name: mainHand.item.itemTemplate.name,
     diceCount: stats.diceCount ?? 1,
     diceSides: stats.diceSides ?? 6,
     damageModifierStat: stats.damageModifierStat ?? 'str',
@@ -1524,11 +1508,11 @@ function getEquippedWeapon(equipment: any[]): WeaponInfo | null {
 function getEquipmentStatBonuses(equipment: any[]): Record<string, number> {
   const totals: Record<string, number> = {};
   for (const equip of equipment) {
-    if (!equip.item?.template) continue;
+    if (!equip.item?.itemTemplate) continue;
     const calculated = calculateItemStats({
       quality: equip.item.quality ?? ('COMMON' as ItemRarity),
       enchantments: equip.item.enchantments ?? [],
-      template: { stats: equip.item.template.stats },
+      template: { stats: equip.item.itemTemplate.stats },
     });
     const fs = calculated.finalStats;
     for (const key of ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma']) {

@@ -1,5 +1,7 @@
 import cron from 'node-cron';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, gt, and, count } from 'drizzle-orm';
+import { townTreasuries, tradeTransactions } from '@database/tables';
 import { logger } from '../lib/logger';
 import { cronJobExecutions } from '../lib/metrics';
 
@@ -29,26 +31,24 @@ async function collectTaxes() {
   // This cron job now only updates lastCollectedAt timestamps so the treasury tracking stays current.
   // If future non-marketplace tax types are added (e.g. property tax, income tax), collect them here.
 
-  const treasuries = await prisma.townTreasury.findMany();
+  const treasuries = await db.query.townTreasuries.findMany();
 
   for (const treasury of treasuries) {
     // Check if there were any transactions since last collection (for timestamp tracking)
-    const transactionCount = await prisma.tradeTransaction.count({
-      where: {
-        townId: treasury.townId,
-        timestamp: { gt: treasury.lastCollectedAt },
-      },
-    });
+    const [{ transactionCount }] = await db
+      .select({ transactionCount: count() })
+      .from(tradeTransactions)
+      .where(and(
+        eq(tradeTransactions.townId, treasury.townId),
+        gt(tradeTransactions.timestamp, treasury.lastCollectedAt),
+      ));
 
     if (transactionCount === 0) continue;
 
     // Update lastCollectedAt only — tax was already deposited at purchase time in market.ts
-    await prisma.townTreasury.update({
-      where: { id: treasury.id },
-      data: {
-        lastCollectedAt: new Date(),
-      },
-    });
+    await db.update(townTreasuries)
+      .set({ lastCollectedAt: new Date().toISOString() })
+      .where(eq(townTreasuries.id, treasury.id));
 
     console.log(
       `[TaxCollection] Updated timestamp for town ${treasury.townId} (${transactionCount} transactions already taxed at purchase)`

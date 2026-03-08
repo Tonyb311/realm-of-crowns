@@ -2,10 +2,25 @@
 // Market Routes — Batch Auction System
 // ---------------------------------------------------------------------------
 
+import crypto from 'crypto';
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import { db } from '../lib/db';
+import { eq, and, or, sql, count, inArray } from 'drizzle-orm';
+import {
+  marketListings,
+  marketBuyOrders,
+  inventories,
+  items,
+  itemTemplates,
+  characters,
+  characterEquipment,
+  playerProfessions,
+  tradeTransactions,
+  priceHistories,
+  townTreasuries,
+  auctionCycles,
+} from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
@@ -15,7 +30,7 @@ import { emitTradeCompleted } from '../socket/events';
 import { cache } from '../middleware/cache';
 import { invalidateCache } from '../lib/redis';
 import { getPsionSpec, calculateSellerUrgency, calculatePriceTrend } from '../services/psion-perks';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { isTownReleased } from '../lib/content-release';
 import { onMarketSell, onMarketBuy } from '../services/quest-triggers';
@@ -50,9 +65,12 @@ const cancelSchema = z.object({
 // --- Helpers ---
 
 async function getCharacterProfessionTypes(characterId: string): Promise<string[]> {
-  const profs = await prisma.playerProfession.findMany({
-    where: { characterId, isActive: true },
-    select: { professionType: true },
+  const profs = await db.query.playerProfessions.findMany({
+    where: and(
+      eq(playerProfessions.characterId, characterId),
+      eq(playerProfessions.isActive, true),
+    ),
+    columns: { professionType: true },
   });
   return profs.map(p => p.professionType);
 }
@@ -75,9 +93,12 @@ router.post('/list', authGuard, characterGuard, validate(listSchema), async (req
     }
 
     // Find item in inventory
-    const inventoryEntry = await prisma.inventory.findFirst({
-      where: { characterId: character.id, itemId },
-      include: { item: { include: { template: true } } },
+    const inventoryEntry = await db.query.inventories.findFirst({
+      where: and(
+        eq(inventories.characterId, character.id),
+        eq(inventories.itemId, itemId),
+      ),
+      with: { item: { with: { itemTemplate: true } } },
     });
 
     if (!inventoryEntry) {
@@ -89,8 +110,11 @@ router.post('/list', authGuard, characterGuard, validate(listSchema), async (req
     }
 
     // Check item is not equipped
-    const equipped = await prisma.characterEquipment.findFirst({
-      where: { characterId: character.id, itemId },
+    const equipped = await db.query.characterEquipment.findFirst({
+      where: and(
+        eq(characterEquipment.characterId, character.id),
+        eq(characterEquipment.itemId, itemId),
+      ),
     });
     if (equipped) {
       return res.status(400).json({ error: 'Cannot list an equipped item. Unequip it first.' });
@@ -99,40 +123,49 @@ router.post('/list', authGuard, characterGuard, validate(listSchema), async (req
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + LISTING_DURATION_DAYS);
 
-    const [listing] = await prisma.$transaction([
-      prisma.marketListing.create({
-        data: {
-          sellerId: character.id,
-          itemId,
-          itemTemplateId: inventoryEntry.item.templateId,
-          itemName: inventoryEntry.item.template.name,
-          price,
-          quantity,
-          townId: character.currentTownId,
-          status: 'active',
-          expiresAt,
-        },
-        include: {
-          item: { include: { template: true } },
-        },
-      }),
+    // Transaction: create listing + reduce inventory
+    const listing = await db.transaction(async (tx) => {
+      const [newListing] = await tx.insert(marketListings).values({
+        id: crypto.randomUUID(),
+        sellerId: character.id,
+        itemId,
+        itemTemplateId: inventoryEntry.item.templateId,
+        itemName: inventoryEntry.item.itemTemplate.name,
+        price,
+        quantity,
+        townId: character.currentTownId!,
+        status: 'active',
+        expiresAt: expiresAt.toISOString(),
+      }).returning();
+
       // Reduce or remove inventory
-      inventoryEntry.quantity === quantity
-        ? prisma.inventory.delete({ where: { id: inventoryEntry.id } })
-        : prisma.inventory.update({
-            where: { id: inventoryEntry.id },
-            data: { quantity: { decrement: quantity } },
-          }),
-    ]);
+      if (inventoryEntry.quantity === quantity) {
+        await tx.delete(inventories).where(eq(inventories.id, inventoryEntry.id));
+      } else {
+        await tx.update(inventories).set({
+          quantity: sql`${inventories.quantity} - ${quantity}`,
+        }).where(eq(inventories.id, inventoryEntry.id));
+      }
+
+      return newListing;
+    });
+
+    // Fetch listing with relations for response
+    const listingWithRelations = await db.query.marketListings.findFirst({
+      where: eq(marketListings.id, listing.id),
+      with: {
+        item: { with: { itemTemplate: true } },
+      },
+    });
 
     onMarketSell(character.id).catch((error: unknown) => {
       logRouteError(req, 500, 'Quest trigger failed after market sell', error);
     });
 
     await invalidateCache('cache:/api/market/browse*');
-    return res.status(201).json({ listing });
+    return res.status(201).json({ listing: listingWithRelations });
   } catch (error) {
-    if (handlePrismaError(error, res, 'market-list', req)) return;
+    if (handleDbError(error, res, 'market-list', req)) return;
     logRouteError(req, 500, 'Market list error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -163,7 +196,7 @@ router.get('/list-preview', authGuard, characterGuard, async (req: Authenticated
       isMerchant: isMerchant(professions),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'market-list-preview', req)) return;
+    if (handleDbError(error, res, 'market-list-preview', req)) return;
     logRouteError(req, 500, 'Market list-preview error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -202,95 +235,85 @@ router.get('/browse', authGuard, characterGuard, cache(30), async (req: Authenti
 
     const now = new Date();
 
-    const where: Prisma.MarketListingWhereInput = {
-      townId,
-      status: 'active',
-      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-      item: {
-        template: {
-          ...(type ? { type: type as any } : {}),
-          ...(rarity ? { rarity: rarity as any } : {}),
-          ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}),
-          ...(isBeverage ? { isBeverage: true } : {}),
-          ...(isPotion ? { isPotion: true } : {}),
-        },
+    // Drizzle doesn't support Prisma's nested where on relations in query API.
+    // Load all active listings for this town, then filter in app code.
+    const allListings = await db.query.marketListings.findMany({
+      where: and(
+        eq(marketListings.townId, townId),
+        eq(marketListings.status, 'active'),
+      ),
+      with: {
+        item: { with: { itemTemplate: true } },
+        character: { columns: { id: true, name: true } },
+        marketBuyOrders: true,
       },
-      ...(minPrice !== undefined || maxPrice !== undefined
-        ? {
-            price: {
-              ...(minPrice !== undefined ? { gte: minPrice } : {}),
-              ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
-            },
-          }
-        : {}),
-    };
+      orderBy: (t, { desc, asc }) => {
+        switch (sort) {
+          case 'price_asc': return [asc(t.price)];
+          case 'price_desc': return [desc(t.price)];
+          case 'newest':
+          default: return [desc(t.listedAt)];
+        }
+      },
+    });
 
-    let orderBy: Prisma.MarketListingOrderByWithRelationInput;
-    switch (sort) {
-      case 'price_asc':
-        orderBy = { price: 'asc' };
-        break;
-      case 'price_desc':
-        orderBy = { price: 'desc' };
-        break;
-      case 'rarity':
-        orderBy = { item: { template: { rarity: 'desc' } } };
-        break;
-      case 'newest':
-      default:
-        orderBy = { listedAt: 'desc' };
-        break;
+    // Filter: expiration, type, rarity, search, price range, beverage, potion
+    const nowStr = now.toISOString();
+    let filtered = allListings.filter(l => {
+      if (l.expiresAt !== null && l.expiresAt <= nowStr) return false;
+      const tmpl = l.item.itemTemplate;
+      if (type && tmpl.type !== type) return false;
+      if (rarity && tmpl.rarity !== rarity) return false;
+      if (search && !tmpl.name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (isBeverage && !tmpl.isBeverage) return false;
+      if (isPotion && !tmpl.isPotion) return false;
+      if (minPrice !== undefined && l.price < minPrice) return false;
+      if (maxPrice !== undefined && l.price > maxPrice) return false;
+      return true;
+    });
+
+    // Sort by rarity if requested (post-filter since it's on a nested field)
+    if (sort === 'rarity') {
+      const rarityOrder: Record<string, number> = { LEGENDARY: 5, EPIC: 4, SUPERIOR: 3, FINE: 2, COMMON: 1 };
+      filtered.sort((a, b) => (rarityOrder[b.item.itemTemplate.rarity] ?? 0) - (rarityOrder[a.item.itemTemplate.rarity] ?? 0));
     }
 
-    const [listings, total] = await Promise.all([
-      prisma.marketListing.findMany({
-        where,
-        orderBy,
-        skip,
-        take: limit,
-        include: {
-          item: { include: { template: true } },
-          seller: { select: { id: true, name: true } },
-          _count: {
-            select: {
-              buyOrders: { where: { status: 'pending' } },
-            },
-          },
-        },
-      }),
-      prisma.marketListing.count({ where }),
-    ]);
+    const total = filtered.length;
+    const paginated = filtered.slice(skip, skip + limit);
 
     // Check if browsing character is a merchant (for bid count visibility)
     const professions = await getCharacterProfessionTypes(character.id);
     const characterIsMerchant = isMerchant(professions);
 
     // Build base listing data
-    const baseListing = listings.map(l => ({
-      id: l.id,
-      price: l.price,
-      quantity: l.quantity,
-      listedAt: l.listedAt,
-      expiresAt: l.expiresAt,
-      status: l.status,
-      seller: l.seller,
-      sellerId: l.sellerId,
-      item: {
-        id: l.item.id,
-        templateId: l.item.templateId,
-        name: l.item.template.name,
-        type: l.item.template.type,
-        rarity: l.item.template.rarity,
-        description: l.item.template.description,
-        stats: l.item.template.stats,
-        quality: l.item.quality,
-        currentDurability: l.item.currentDurability,
-      },
-      // Merchants see exact bid count; non-merchants see boolean
-      ...(characterIsMerchant
-        ? { bidCount: l._count.buyOrders }
-        : { hasMultipleBids: l._count.buyOrders > 1 }),
-    }));
+    const baseListing = paginated.map(l => {
+      const pendingOrderCount = l.marketBuyOrders.filter(o => o.status === 'pending').length;
+      return {
+        id: l.id,
+        price: l.price,
+        quantity: l.quantity,
+        listedAt: l.listedAt,
+        expiresAt: l.expiresAt,
+        status: l.status,
+        seller: l.character,
+        sellerId: l.sellerId,
+        item: {
+          id: l.item.id,
+          templateId: l.item.templateId,
+          name: l.item.itemTemplate.name,
+          type: l.item.itemTemplate.type,
+          rarity: l.item.itemTemplate.rarity,
+          description: l.item.itemTemplate.description,
+          stats: l.item.itemTemplate.stats,
+          quality: l.item.quality,
+          currentDurability: l.item.currentDurability,
+        },
+        // Merchants see exact bid count; non-merchants see boolean
+        ...(characterIsMerchant
+          ? { bidCount: pendingOrderCount }
+          : { hasMultipleBids: pendingOrderCount > 1 }),
+      };
+    });
 
     // Psion perk enrichment (personalized, not cached)
     const { isPsion, specialization } = await getPsionSpec(character.id);
@@ -299,14 +322,14 @@ router.get('/browse', authGuard, characterGuard, cache(30), async (req: Authenti
     if (isPsion && specialization === 'telepath') {
       enrichedListings = await Promise.all(
         baseListing.map(async (listing) => {
-          const seller = await prisma.character.findUnique({
-            where: { id: listing.sellerId },
-            select: { gold: true },
+          const seller = await db.query.characters.findFirst({
+            where: eq(characters.id, listing.sellerId),
+            columns: { gold: true },
           });
           return {
             ...listing,
             psionInsight: {
-              sellerUrgency: calculateSellerUrgency(listing.listedAt, seller?.gold ?? 1000),
+              sellerUrgency: calculateSellerUrgency(new Date(listing.listedAt), seller?.gold ?? 1000),
             },
           };
         }),
@@ -331,7 +354,7 @@ router.get('/browse', authGuard, characterGuard, cache(30), async (req: Authenti
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'market-browse', req)) return;
+    if (handleDbError(error, res, 'market-browse', req)) return;
     logRouteError(req, 500, 'Market browse error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -354,11 +377,11 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
       return res.status(400).json({ error: 'You must be in a town to place a buy order' });
     }
 
-    const listing = await prisma.marketListing.findUnique({
-      where: { id: listingId },
-      include: {
-        item: { include: { template: true } },
-        seller: { select: { id: true, name: true } },
+    const listing = await db.query.marketListings.findFirst({
+      where: eq(marketListings.id, listingId),
+      with: {
+        item: { with: { itemTemplate: true } },
+        character: { columns: { id: true, name: true } },
       },
     });
 
@@ -370,7 +393,7 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
       return res.status(400).json({ error: 'Listing is no longer active' });
     }
 
-    if (listing.expiresAt && listing.expiresAt < new Date()) {
+    if (listing.expiresAt && listing.expiresAt < new Date().toISOString()) {
       return res.status(400).json({ error: 'Listing has expired' });
     }
 
@@ -387,13 +410,11 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
     }
 
     // Check if buyer already has an order on this listing
-    const existingOrder = await prisma.marketBuyOrder.findUnique({
-      where: {
-        buyerId_listingId: {
-          buyerId: character.id,
-          listingId,
-        },
-      },
+    const existingOrder = await db.query.marketBuyOrders.findFirst({
+      where: and(
+        eq(marketBuyOrders.buyerId, character.id),
+        eq(marketBuyOrders.listingId, listingId),
+      ),
     });
     if (existingOrder) {
       return res.status(400).json({ error: 'You already have an order on this listing' });
@@ -407,9 +428,9 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
 
     // Check available gold (gold minus already escrowed)
     // Re-fetch to get the most current gold values
-    const freshChar = await prisma.character.findUnique({
-      where: { id: character.id },
-      select: { gold: true, escrowedGold: true },
+    const freshChar = await db.query.characters.findFirst({
+      where: eq(characters.id, character.id),
+      columns: { gold: true, escrowedGold: true },
     });
     if (!freshChar) {
       return res.status(404).json({ error: 'Character not found' });
@@ -426,38 +447,36 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
     const cycle = await getOrCreateOpenCycle(listing.townId);
 
     // Create buy order in transaction (escrow gold)
-    const order = await prisma.$transaction(async (tx) => {
+    const order = await db.transaction(async (tx) => {
       // Escrow gold
-      await tx.character.update({
-        where: { id: character.id },
-        data: {
-          escrowedGold: { increment: bidPrice },
-        },
-      });
+      await tx.update(characters).set({
+        escrowedGold: sql`${characters.escrowedGold} + ${bidPrice}`,
+      }).where(eq(characters.id, character.id));
 
       // Create buy order
-      const newOrder = await tx.marketBuyOrder.create({
-        data: {
-          buyerId: character.id,
-          listingId,
-          bidPrice,
-          status: 'pending',
-          auctionCycleId: cycle.id,
-        },
-        include: {
-          listing: {
-            select: {
-              id: true,
-              price: true,
-              itemName: true,
-              quantity: true,
-              seller: { select: { id: true, name: true } },
-            },
-          },
-        },
-      });
+      const [newOrder] = await tx.insert(marketBuyOrders).values({
+        id: crypto.randomUUID(),
+        buyerId: character.id,
+        listingId,
+        bidPrice,
+        status: 'pending',
+        auctionCycleId: cycle.id,
+      }).returning();
 
       return newOrder;
+    });
+
+    // Fetch order with listing relations for response
+    const orderWithRelations = await db.query.marketBuyOrders.findFirst({
+      where: eq(marketBuyOrders.id, order.id),
+      with: {
+        marketListing: {
+          columns: { id: true, price: true, itemName: true, quantity: true },
+          with: {
+            character: { columns: { id: true, name: true } },
+          },
+        },
+      },
     });
 
     await invalidateCache('cache:/api/market/browse*');
@@ -469,7 +488,13 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
         bidPrice: order.bidPrice,
         status: order.status,
         placedAt: order.placedAt,
-        listing: order.listing,
+        listing: orderWithRelations ? {
+          id: orderWithRelations.marketListing.id,
+          price: orderWithRelations.marketListing.price,
+          itemName: orderWithRelations.marketListing.itemName,
+          quantity: orderWithRelations.marketListing.quantity,
+          seller: orderWithRelations.marketListing.character,
+        } : null,
         cycle: {
           id: cycle.id,
           cycleNumber: cycle.cycleNumber,
@@ -478,7 +503,7 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'market-buy', req)) return;
+    if (handleDbError(error, res, 'market-buy', req)) return;
     logRouteError(req, 500, 'Market buy error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -497,13 +522,10 @@ router.delete('/listings/:listingId', authGuard, characterGuard, async (req: Aut
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const listing = await prisma.marketListing.findUnique({
-      where: { id: listingId },
-      include: {
-        buyOrders: {
-          where: { status: 'pending' },
-          select: { id: true, buyerId: true, bidPrice: true },
-        },
+    const listing = await db.query.marketListings.findFirst({
+      where: eq(marketListings.id, listingId),
+      with: {
+        marketBuyOrders: true,
       },
     });
 
@@ -519,54 +541,54 @@ router.delete('/listings/:listingId', authGuard, characterGuard, async (req: Aut
       return res.status(400).json({ error: 'Can only cancel active listings' });
     }
 
-    await prisma.$transaction(async (tx) => {
-      // Refund all pending buy orders' escrow
-      for (const order of listing.buyOrders) {
-        await tx.character.update({
-          where: { id: order.buyerId },
-          data: {
-            gold: { increment: order.bidPrice },
-            escrowedGold: { decrement: order.bidPrice },
-          },
-        });
+    // Filter pending buy orders in app code
+    const pendingOrders = listing.marketBuyOrders.filter(o => o.status === 'pending');
 
-        await tx.marketBuyOrder.update({
-          where: { id: order.id },
-          data: { status: 'cancelled', resolvedAt: new Date() },
-        });
+    await db.transaction(async (tx) => {
+      // Refund all pending buy orders' escrow
+      for (const order of pendingOrders) {
+        await tx.update(characters).set({
+          gold: sql`${characters.gold} + ${order.bidPrice}`,
+          escrowedGold: sql`${characters.escrowedGold} - ${order.bidPrice}`,
+        }).where(eq(characters.id, order.buyerId));
+
+        await tx.update(marketBuyOrders).set({
+          status: 'cancelled',
+          resolvedAt: new Date().toISOString(),
+        }).where(eq(marketBuyOrders.id, order.id));
       }
 
       // Return item to seller's inventory
-      const existingInv = await tx.inventory.findFirst({
-        where: { characterId: character.id, itemId: listing.itemId },
+      const existingInv = await tx.query.inventories.findFirst({
+        where: and(
+          eq(inventories.characterId, character.id),
+          eq(inventories.itemId, listing.itemId),
+        ),
       });
 
       if (existingInv) {
-        await tx.inventory.update({
-          where: { id: existingInv.id },
-          data: { quantity: { increment: listing.quantity } },
-        });
+        await tx.update(inventories).set({
+          quantity: sql`${inventories.quantity} + ${listing.quantity}`,
+        }).where(eq(inventories.id, existingInv.id));
       } else {
-        await tx.inventory.create({
-          data: {
-            characterId: character.id,
-            itemId: listing.itemId,
-            quantity: listing.quantity,
-          },
+        await tx.insert(inventories).values({
+          id: crypto.randomUUID(),
+          characterId: character.id,
+          itemId: listing.itemId,
+          quantity: listing.quantity,
         });
       }
 
       // Mark listing as cancelled
-      await tx.marketListing.update({
-        where: { id: listingId },
-        data: { status: 'cancelled' },
-      });
+      await tx.update(marketListings).set({
+        status: 'cancelled',
+      }).where(eq(marketListings.id, listingId));
     });
 
     await invalidateCache('cache:/api/market/browse*');
     return res.json({ message: 'Listing cancelled, item returned, and all pending bids refunded' });
   } catch (error) {
-    if (handlePrismaError(error, res, 'market-cancel-listing', req)) return;
+    if (handleDbError(error, res, 'market-cancel-listing', req)) return;
     logRouteError(req, 500, 'Market cancel listing error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -581,8 +603,8 @@ router.delete('/orders/:orderId', authGuard, characterGuard, async (req: Authent
     const { orderId } = req.params;
     const character = req.character!;
 
-    const order = await prisma.marketBuyOrder.findUnique({
-      where: { id: orderId },
+    const order = await db.query.marketBuyOrders.findFirst({
+      where: eq(marketBuyOrders.id, orderId),
     });
 
     if (!order) {
@@ -597,27 +619,24 @@ router.delete('/orders/:orderId', authGuard, characterGuard, async (req: Authent
       return res.status(400).json({ error: 'Can only cancel pending orders' });
     }
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Refund escrow
-      await tx.character.update({
-        where: { id: character.id },
-        data: {
-          gold: { increment: order.bidPrice },
-          escrowedGold: { decrement: order.bidPrice },
-        },
-      });
+      await tx.update(characters).set({
+        gold: sql`${characters.gold} + ${order.bidPrice}`,
+        escrowedGold: sql`${characters.escrowedGold} - ${order.bidPrice}`,
+      }).where(eq(characters.id, character.id));
 
       // Mark order as cancelled
-      await tx.marketBuyOrder.update({
-        where: { id: orderId },
-        data: { status: 'cancelled', resolvedAt: new Date() },
-      });
+      await tx.update(marketBuyOrders).set({
+        status: 'cancelled',
+        resolvedAt: new Date().toISOString(),
+      }).where(eq(marketBuyOrders.id, orderId));
     });
 
     await invalidateCache('cache:/api/market/browse*');
     return res.json({ message: 'Order cancelled and gold refunded' });
   } catch (error) {
-    if (handlePrismaError(error, res, 'market-cancel-order', req)) return;
+    if (handleDbError(error, res, 'market-cancel-order', req)) return;
     logRouteError(req, 500, 'Market cancel order error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -631,18 +650,14 @@ router.get('/my-listings', authGuard, characterGuard, async (req: AuthenticatedR
   try {
     const character = req.character!;
 
-    const listings = await prisma.marketListing.findMany({
-      where: { sellerId: character.id },
-      include: {
-        item: { include: { template: true } },
-        town: { select: { id: true, name: true } },
-        _count: {
-          select: {
-            buyOrders: { where: { status: 'pending' } },
-          },
-        },
+    const listings = await db.query.marketListings.findMany({
+      where: eq(marketListings.sellerId, character.id),
+      with: {
+        item: { with: { itemTemplate: true } },
+        town: { columns: { id: true, name: true } },
+        marketBuyOrders: true,
       },
-      orderBy: { listedAt: 'desc' },
+      orderBy: (t, { desc }) => [desc(t.listedAt)],
     });
 
     return res.json({
@@ -656,20 +671,20 @@ router.get('/my-listings', authGuard, characterGuard, async (req: AuthenticatedR
         soldAt: l.soldAt,
         soldPrice: l.soldPrice,
         town: l.town,
-        pendingOrderCount: l._count.buyOrders,
+        pendingOrderCount: l.marketBuyOrders.filter(o => o.status === 'pending').length,
         item: {
           id: l.item.id,
           templateId: l.item.templateId,
-          name: l.item.template.name,
-          type: l.item.template.type,
-          rarity: l.item.template.rarity,
-          stats: l.item.template.stats,
+          name: l.item.itemTemplate.name,
+          type: l.item.itemTemplate.type,
+          rarity: l.item.itemTemplate.rarity,
+          stats: l.item.itemTemplate.stats,
           quality: l.item.quality,
         },
       })),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'market-my-listings', req)) return;
+    if (handleDbError(error, res, 'market-my-listings', req)) return;
     logRouteError(req, 500, 'Market my-listings error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -683,23 +698,19 @@ router.get('/my-orders', authGuard, characterGuard, async (req: AuthenticatedReq
   try {
     const character = req.character!;
 
-    const orders = await prisma.marketBuyOrder.findMany({
-      where: { buyerId: character.id },
-      include: {
-        listing: {
-          select: {
-            id: true,
-            price: true,
-            itemName: true,
-            quantity: true,
-            townId: true,
-            town: { select: { id: true, name: true } },
-            seller: { select: { id: true, name: true } },
+    const orders = await db.query.marketBuyOrders.findMany({
+      where: eq(marketBuyOrders.buyerId, character.id),
+      with: {
+        marketListing: {
+          columns: { id: true, price: true, itemName: true, quantity: true, townId: true },
+          with: {
+            town: { columns: { id: true, name: true } },
+            character: { columns: { id: true, name: true } },
           },
         },
       },
-      orderBy: { placedAt: 'desc' },
-      take: 50,
+      orderBy: (t, { desc }) => [desc(t.placedAt)],
+      limit: 50,
     });
 
     return res.json({
@@ -712,11 +723,19 @@ router.get('/my-orders', authGuard, characterGuard, async (req: AuthenticatedReq
         rollBreakdown: o.rollBreakdown,
         placedAt: o.placedAt,
         resolvedAt: o.resolvedAt,
-        listing: o.listing,
+        listing: {
+          id: o.marketListing.id,
+          price: o.marketListing.price,
+          itemName: o.marketListing.itemName,
+          quantity: o.marketListing.quantity,
+          townId: o.marketListing.townId,
+          town: o.marketListing.town,
+          seller: o.marketListing.character,
+        },
       })),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'market-my-orders', req)) return;
+    if (handleDbError(error, res, 'market-my-orders', req)) return;
     logRouteError(req, 500, 'Market my-orders error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -747,35 +766,33 @@ router.get('/price-history', authGuard, characterGuard, async (req: Authenticate
     }
 
     // Get item template info
-    const template = await prisma.itemTemplate.findUnique({
-      where: { id: itemTemplateId },
-      select: { name: true },
+    const template = await db.query.itemTemplates.findFirst({
+      where: eq(itemTemplates.id, itemTemplateId),
+      columns: { name: true },
     });
 
-    const transactions = await prisma.tradeTransaction.findMany({
-      where: {
-        item: { templateId: itemTemplateId },
-        townId: character.currentTownId,
-      },
-      orderBy: { timestamp: 'desc' },
-      take: queryLimit,
-      select: {
-        price: true,
-        quantity: true,
-        timestamp: true,
-      },
+    // Load transactions and filter by templateId in app code
+    // (Prisma's nested where `item: { templateId }` not supported in Drizzle with)
+    const allTransactions = await db.query.tradeTransactions.findMany({
+      where: eq(tradeTransactions.townId, character.currentTownId),
+      with: { item: { columns: { templateId: true } } },
+      orderBy: (t, { desc }) => [desc(t.timestamp)],
     });
+
+    const filteredTransactions = allTransactions
+      .filter(t => t.item.templateId === itemTemplateId)
+      .slice(0, queryLimit);
 
     return res.json({
       itemName: template?.name ?? 'Unknown',
-      transactions: transactions.map(t => ({
+      transactions: filteredTransactions.map(t => ({
         salePrice: t.price,
         soldAt: t.timestamp,
         quantity: t.quantity,
       })),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'market-price-history', req)) return;
+    if (handleDbError(error, res, 'market-price-history', req)) return;
     logRouteError(req, 500, 'Market price-history error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -789,35 +806,34 @@ router.get('/results', authGuard, characterGuard, async (req: AuthenticatedReque
   try {
     const character = req.character!;
 
-    const transactions = await prisma.tradeTransaction.findMany({
-      where: {
-        OR: [
-          { buyerId: character.id },
-          { sellerId: character.id },
-        ],
-      },
-      orderBy: { timestamp: 'desc' },
-      take: 20,
-      include: {
-        item: { include: { template: { select: { name: true, type: true, rarity: true } } } },
-        buyer: { select: { id: true, name: true } },
-        seller: { select: { id: true, name: true } },
-        town: { select: { id: true, name: true } },
+    // Load all transactions where character is buyer or seller
+    const allTransactions = await db.query.tradeTransactions.findMany({
+      where: or(
+        eq(tradeTransactions.buyerId, character.id),
+        eq(tradeTransactions.sellerId, character.id),
+      ),
+      orderBy: (t, { desc }) => [desc(t.timestamp)],
+      limit: 20,
+      with: {
+        item: { with: { itemTemplate: { columns: { name: true, type: true, rarity: true } } } },
+        character_buyerId: { columns: { id: true, name: true } },
+        character_sellerId: { columns: { id: true, name: true } },
+        town: { columns: { id: true, name: true } },
       },
     });
 
-    const results = transactions.map(t => ({
+    const results = allTransactions.map(t => ({
       id: t.id,
       role: t.buyerId === character.id ? 'buyer' : 'seller',
-      itemName: t.item.template.name,
-      itemType: t.item.template.type,
-      itemRarity: t.item.template.rarity,
+      itemName: t.item.itemTemplate.name,
+      itemType: t.item.itemTemplate.type,
+      itemRarity: t.item.itemTemplate.rarity,
       price: t.price,
       quantity: t.quantity,
       sellerFee: t.sellerFee,
       sellerNet: t.sellerNet,
-      buyer: t.buyer,
-      seller: t.seller,
+      buyer: t.character_buyerId,
+      seller: t.character_sellerId,
       town: t.town,
       timestamp: t.timestamp,
       auctionCycleId: t.auctionCycleId,
@@ -830,22 +846,22 @@ router.get('/results', authGuard, characterGuard, async (req: AuthenticatedReque
     if (isMerchant(professions) && character.currentTownId) {
       // Get unique item template IDs from this character's recent trades
       const tradedTemplateIds = [
-        ...new Set(transactions.map(t => t.item.templateId)),
+        ...new Set(allTransactions.map(t => t.item.templateId)),
       ].slice(0, 10);
 
       if (tradedTemplateIds.length > 0) {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        const priceData = await prisma.priceHistory.findMany({
-          where: {
-            itemTemplateId: { in: tradedTemplateIds },
-            townId: character.currentTownId,
-            date: { gte: thirtyDaysAgo },
-          },
-          orderBy: { date: 'desc' },
-          include: {
-            itemTemplate: { select: { name: true } },
+        const priceData = await db.query.priceHistories.findMany({
+          where: and(
+            inArray(priceHistories.itemTemplateId, tradedTemplateIds),
+            eq(priceHistories.townId, character.currentTownId),
+            sql`${priceHistories.date} >= ${thirtyDaysAgo}`,
+          ),
+          orderBy: (t, { desc }) => [desc(t.date)],
+          with: {
+            itemTemplate: { columns: { name: true } },
           },
         });
 
@@ -864,7 +880,7 @@ router.get('/results', authGuard, characterGuard, async (req: AuthenticatedReque
       ...(marketTrends ? { marketTrends } : {}),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'market-results', req)) return;
+    if (handleDbError(error, res, 'market-results', req)) return;
     logRouteError(req, 500, 'Market results error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -888,23 +904,24 @@ router.get('/cycle-status', authGuard, characterGuard, async (req: Authenticated
     const timeRemainingMs = Math.max(0, MARKET_CYCLE_DURATION_MS - cycleAgeMs);
 
     // Count pending orders in this town's active listings
-    const pendingOrderCount = await prisma.marketBuyOrder.count({
-      where: {
-        status: 'pending',
-        listing: {
-          townId: character.currentTownId,
-          status: 'active',
-        },
+    // Load buy orders with listing relation and filter in app code
+    const pendingOrders = await db.query.marketBuyOrders.findMany({
+      where: eq(marketBuyOrders.status, 'pending'),
+      with: {
+        marketListing: { columns: { townId: true, status: true } },
       },
     });
+    const pendingOrderCount = pendingOrders.filter(
+      o => o.marketListing.townId === character.currentTownId && o.marketListing.status === 'active'
+    ).length;
 
     // Count active listings in town
-    const activeListingCount = await prisma.marketListing.count({
-      where: {
-        townId: character.currentTownId,
-        status: 'active',
-      },
-    });
+    const [activeListingCountResult] = await db.select({ value: count() }).from(marketListings).where(
+      and(
+        eq(marketListings.townId, character.currentTownId),
+        eq(marketListings.status, 'active'),
+      ),
+    );
 
     return res.json({
       cycle: {
@@ -916,10 +933,10 @@ router.get('/cycle-status', authGuard, characterGuard, async (req: Authenticated
       timeRemainingMs,
       timeRemainingMinutes: Math.ceil(timeRemainingMs / 60_000),
       pendingOrderCount,
-      activeListingCount,
+      activeListingCount: activeListingCountResult.value,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'market-cycle-status', req)) return;
+    if (handleDbError(error, res, 'market-cycle-status', req)) return;
     logRouteError(req, 500, 'Market cycle-status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -938,13 +955,10 @@ router.post('/cancel', authGuard, characterGuard, validate(cancelSchema), async 
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const listing = await prisma.marketListing.findUnique({
-      where: { id: listingId },
-      include: {
-        buyOrders: {
-          where: { status: 'pending' },
-          select: { id: true, buyerId: true, bidPrice: true },
-        },
+    const listing = await db.query.marketListings.findFirst({
+      where: eq(marketListings.id, listingId),
+      with: {
+        marketBuyOrders: true,
       },
     });
 
@@ -960,53 +974,53 @@ router.post('/cancel', authGuard, characterGuard, validate(cancelSchema), async 
       return res.status(400).json({ error: 'Can only cancel active listings' });
     }
 
-    await prisma.$transaction(async (tx) => {
-      // Refund all pending buy orders' escrow
-      for (const order of listing.buyOrders) {
-        await tx.character.update({
-          where: { id: order.buyerId },
-          data: {
-            gold: { increment: order.bidPrice },
-            escrowedGold: { decrement: order.bidPrice },
-          },
-        });
+    // Filter pending buy orders in app code
+    const pendingOrders = listing.marketBuyOrders.filter(o => o.status === 'pending');
 
-        await tx.marketBuyOrder.update({
-          where: { id: order.id },
-          data: { status: 'cancelled', resolvedAt: new Date() },
-        });
+    await db.transaction(async (tx) => {
+      // Refund all pending buy orders' escrow
+      for (const order of pendingOrders) {
+        await tx.update(characters).set({
+          gold: sql`${characters.gold} + ${order.bidPrice}`,
+          escrowedGold: sql`${characters.escrowedGold} - ${order.bidPrice}`,
+        }).where(eq(characters.id, order.buyerId));
+
+        await tx.update(marketBuyOrders).set({
+          status: 'cancelled',
+          resolvedAt: new Date().toISOString(),
+        }).where(eq(marketBuyOrders.id, order.id));
       }
 
       // Return item to seller's inventory
-      const existingInv = await tx.inventory.findFirst({
-        where: { characterId: character.id, itemId: listing.itemId },
+      const existingInv = await tx.query.inventories.findFirst({
+        where: and(
+          eq(inventories.characterId, character.id),
+          eq(inventories.itemId, listing.itemId),
+        ),
       });
 
       if (existingInv) {
-        await tx.inventory.update({
-          where: { id: existingInv.id },
-          data: { quantity: { increment: listing.quantity } },
-        });
+        await tx.update(inventories).set({
+          quantity: sql`${inventories.quantity} + ${listing.quantity}`,
+        }).where(eq(inventories.id, existingInv.id));
       } else {
-        await tx.inventory.create({
-          data: {
-            characterId: character.id,
-            itemId: listing.itemId,
-            quantity: listing.quantity,
-          },
+        await tx.insert(inventories).values({
+          id: crypto.randomUUID(),
+          characterId: character.id,
+          itemId: listing.itemId,
+          quantity: listing.quantity,
         });
       }
 
-      await tx.marketListing.update({
-        where: { id: listingId },
-        data: { status: 'cancelled' },
-      });
+      await tx.update(marketListings).set({
+        status: 'cancelled',
+      }).where(eq(marketListings.id, listingId));
     });
 
     await invalidateCache('cache:/api/market/browse*');
     return res.json({ message: 'Listing cancelled and item returned to inventory' });
   } catch (error) {
-    if (handlePrismaError(error, res, 'market-cancel', req)) return;
+    if (handleDbError(error, res, 'market-cancel', req)) return;
     logRouteError(req, 500, 'Market cancel error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

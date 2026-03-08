@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { cache } from '../middleware/cache';
-import { prisma } from '../lib/prisma';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { db } from '../lib/db';
+import { asc } from 'drizzle-orm';
+import { recipes, itemTemplates, monsters } from '@database/tables';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 
 // Shared data (class/spec/ability/profession data lives in shared TS, not DB)
@@ -104,8 +106,8 @@ router.get('/classes', cache(300), (_req: Request, res: Response) => {
 router.get('/professions', cache(300), async (req: Request, res: Response) => {
   try {
     // Recipes from DB so changes are always live
-    const dbRecipes = await prisma.recipe.findMany({
-      orderBy: [{ professionType: 'asc' }, { tier: 'asc' }, { name: 'asc' }],
+    const dbRecipes = await db.query.recipes.findMany({
+      orderBy: [asc(recipes.professionType), asc(recipes.tier), asc(recipes.name)],
     });
 
     // Group recipes by profession type
@@ -144,7 +146,7 @@ router.get('/professions', cache(300), async (req: Request, res: Response) => {
       total: professions.length,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'codex professions', req)) return;
+    if (handleDbError(error, res, 'codex professions', req)) return;
     logRouteError(req, 500, 'Codex professions error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -155,9 +157,9 @@ router.get('/professions', cache(300), async (req: Request, res: Response) => {
 // =========================================================================
 router.get('/items', cache(300), async (req: Request, res: Response) => {
   try {
-    const items = await prisma.itemTemplate.findMany({
-      orderBy: [{ type: 'asc' }, { rarity: 'asc' }, { name: 'asc' }],
-      select: {
+    const items = await db.query.itemTemplates.findMany({
+      orderBy: [asc(itemTemplates.type), asc(itemTemplates.rarity), asc(itemTemplates.name)],
+      columns: {
         id: true,
         name: true,
         type: true,
@@ -173,7 +175,7 @@ router.get('/items', cache(300), async (req: Request, res: Response) => {
 
     return res.json({ items, total: items.length });
   } catch (error) {
-    if (handlePrismaError(error, res, 'codex items', req)) return;
+    if (handleDbError(error, res, 'codex items', req)) return;
     logRouteError(req, 500, 'Codex items error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -184,12 +186,12 @@ router.get('/items', cache(300), async (req: Request, res: Response) => {
 // =========================================================================
 router.get('/monsters', cache(300), async (req: Request, res: Response) => {
   try {
-    const monsters = await prisma.monster.findMany({
-      include: { region: { select: { name: true } } },
-      orderBy: [{ level: 'asc' }, { name: 'asc' }],
+    const allMonsters = await db.query.monsters.findMany({
+      with: { region: { columns: { name: true } } },
+      orderBy: [asc(monsters.level), asc(monsters.name)],
     });
 
-    const sanitized = monsters.map(m => {
+    const sanitized = allMonsters.map(m => {
       const stats = (m.stats as Record<string, any>) || {};
       const lootTable = (m.lootTable as any[]) || [];
 
@@ -245,7 +247,7 @@ router.get('/monsters', cache(300), async (req: Request, res: Response) => {
 
     return res.json({ monsters: sanitized, total: sanitized.length });
   } catch (error) {
-    if (handlePrismaError(error, res, 'codex monsters', req)) return;
+    if (handleDbError(error, res, 'codex monsters', req)) return;
     logRouteError(req, 500, 'Codex monsters error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -256,9 +258,9 @@ router.get('/monsters', cache(300), async (req: Request, res: Response) => {
 // =========================================================================
 router.get('/recipes', cache(300), async (req: Request, res: Response) => {
   try {
-    const recipes = await prisma.recipe.findMany({
-      orderBy: [{ professionType: 'asc' }, { tier: 'asc' }, { name: 'asc' }],
-      select: {
+    const allRecipes = await db.query.recipes.findMany({
+      orderBy: [asc(recipes.professionType), asc(recipes.tier), asc(recipes.name)],
+      columns: {
         id: true,
         name: true,
         professionType: true,
@@ -272,9 +274,9 @@ router.get('/recipes', cache(300), async (req: Request, res: Response) => {
       },
     });
 
-    return res.json({ recipes, total: recipes.length });
+    return res.json({ recipes: allRecipes, total: allRecipes.length });
   } catch (error) {
-    if (handlePrismaError(error, res, 'codex recipes', req)) return;
+    if (handleDbError(error, res, 'codex recipes', req)) return;
     logRouteError(req, 500, 'Codex recipes error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

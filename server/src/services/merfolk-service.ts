@@ -1,5 +1,7 @@
-import { prisma } from '../lib/prisma';
-import { BiomeType } from '@prisma/client';
+import { db } from '../lib/db';
+import { eq } from 'drizzle-orm';
+import { characters, towns } from '@database/tables';
+import type { BiomeType } from '@shared/enums';
 
 // =========================================================================
 // Merfolk Amphibious Service
@@ -31,9 +33,9 @@ export async function getMovementSpeed(
   characterId: string,
   zoneType: string,
 ): Promise<MovementSpeed> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true },
   });
 
   if (!character || character.race !== 'MERFOLK') {
@@ -53,9 +55,9 @@ export async function getMovementSpeed(
  * Returns true for Merfolk — they can always access underwater nodes.
  */
 export async function canAccessUnderwaterNode(characterId: string): Promise<boolean> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true },
   });
 
   return character?.race === 'MERFOLK';
@@ -68,18 +70,18 @@ export async function getWaterProximityBonus(
   characterId: string,
   townId: string,
 ): Promise<{ canFishAnywhere: boolean; townBiome: string | null }> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true },
   });
 
   if (!character || character.race !== 'MERFOLK') {
     return { canFishAnywhere: false, townBiome: null };
   }
 
-  const town = await prisma.town.findUnique({
-    where: { id: townId },
-    select: { biome: true },
+  const town = await db.query.towns.findFirst({
+    where: eq(towns.id, townId),
+    columns: { biome: true },
   });
 
   if (!town) {
@@ -98,18 +100,18 @@ export async function getWaterProximityBonus(
  * Check if the Merfolk character is currently in a water zone.
  */
 export async function isInWaterZone(characterId: string): Promise<boolean> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true, currentTownId: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true, currentTownId: true },
   });
 
   if (!character || character.race !== 'MERFOLK' || !character.currentTownId) {
     return false;
   }
 
-  const town = await prisma.town.findUnique({
-    where: { id: character.currentTownId },
-    select: { biome: true },
+  const town = await db.query.towns.findFirst({
+    where: eq(towns.id, character.currentTownId),
+    columns: { biome: true },
   });
 
   if (!town) return false;

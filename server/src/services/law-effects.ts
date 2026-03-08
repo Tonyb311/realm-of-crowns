@@ -1,17 +1,19 @@
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, or, gt, isNull, inArray } from 'drizzle-orm';
+import { townPolicies, towns, laws, characters, kingdoms, regions, wars } from '@database/tables';
 
 /**
  * Get the effective tax rate for a town, combining the base TownPolicy rate
  * with any active kingdom-level tax laws that modify it.
  */
 export async function getEffectiveTaxRate(townId: string): Promise<number> {
-  const policy = await prisma.townPolicy.findUnique({ where: { townId } });
+  const policy = await db.query.townPolicies.findFirst({ where: eq(townPolicies.townId, townId) });
   const baseTaxRate = policy?.taxRate ?? 0.10;
 
   // Find the kingdom this town belongs to via its region
-  const town = await prisma.town.findUnique({
-    where: { id: townId },
-    select: { regionId: true },
+  const town = await db.query.towns.findFirst({
+    where: eq(towns.id, townId),
+    columns: { regionId: true },
   });
   if (!town) return baseTaxRate;
 
@@ -19,15 +21,15 @@ export async function getEffectiveTaxRate(townId: string): Promise<number> {
   // Kingdoms don't directly own towns in the schema, but we can check if the town's mayor
   // is the ruler of a kingdom, or look for laws that target this town via effects.
   // For now, look for active tax laws whose effects reference this town or apply kingdom-wide.
-  const activeTaxLaws = await prisma.law.findMany({
-    where: {
-      status: 'ACTIVE',
-      lawType: 'tax',
-      OR: [
-        { expiresAt: null },
-        { expiresAt: { gt: new Date() } },
-      ],
-    },
+  const activeTaxLaws = await db.query.laws.findMany({
+    where: and(
+      eq(laws.status, 'ACTIVE'),
+      eq(laws.lawType, 'tax'),
+      or(
+        isNull(laws.expiresAt),
+        gt(laws.expiresAt, new Date().toISOString()),
+      ),
+    ),
   });
 
   let modifier = 0;
@@ -58,13 +60,13 @@ export async function getTradeRestrictions(
 ): Promise<{ blocked: boolean; reason?: string }> {
   // Get both characters' current towns and their kingdoms
   const [buyer, seller] = await Promise.all([
-    prisma.character.findUnique({
-      where: { id: buyerCharacterId },
-      select: { currentTownId: true },
+    db.query.characters.findFirst({
+      where: eq(characters.id, buyerCharacterId),
+      columns: { currentTownId: true },
     }),
-    prisma.character.findUnique({
-      where: { id: sellerCharacterId },
-      select: { currentTownId: true },
+    db.query.characters.findFirst({
+      where: eq(characters.id, sellerCharacterId),
+      columns: { currentTownId: true },
     }),
   ]);
 
@@ -73,15 +75,15 @@ export async function getTradeRestrictions(
   }
 
   // Check for active trade embargo laws
-  const embargoLaws = await prisma.law.findMany({
-    where: {
-      status: 'ACTIVE',
-      lawType: 'trade',
-      OR: [
-        { expiresAt: null },
-        { expiresAt: { gt: new Date() } },
-      ],
-    },
+  const embargoLaws = await db.query.laws.findMany({
+    where: and(
+      eq(laws.status, 'ACTIVE'),
+      eq(laws.lawType, 'trade'),
+      or(
+        isNull(laws.expiresAt),
+        gt(laws.expiresAt, new Date().toISOString()),
+      ),
+    ),
   });
 
   for (const law of embargoLaws) {
@@ -91,8 +93,8 @@ export async function getTradeRestrictions(
       if (targetKingdomId) {
         // Check if buyer or seller belongs to the embargoed kingdom
         // We check via kingdom ruler relationship
-        const targetKingdom = await prisma.kingdom.findUnique({
-          where: { id: targetKingdomId },
+        const targetKingdom = await db.query.kingdoms.findFirst({
+          where: eq(kingdoms.id, targetKingdomId),
         });
         if (targetKingdom) {
           return {
@@ -123,14 +125,14 @@ export async function getWarStatus(
   kingdomId1: string,
   kingdomId2: string
 ): Promise<{ atWar: boolean; war?: { id: string; attackerKingdomId: string; defenderKingdomId: string } }> {
-  const war = await prisma.war.findFirst({
-    where: {
-      status: 'ACTIVE',
-      OR: [
-        { attackerKingdomId: kingdomId1, defenderKingdomId: kingdomId2 },
-        { attackerKingdomId: kingdomId2, defenderKingdomId: kingdomId1 },
-      ],
-    },
+  const war = await db.query.wars.findFirst({
+    where: and(
+      eq(wars.status, 'ACTIVE'),
+      or(
+        and(eq(wars.attackerKingdomId, kingdomId1), eq(wars.defenderKingdomId, kingdomId2)),
+        and(eq(wars.attackerKingdomId, kingdomId2), eq(wars.defenderKingdomId, kingdomId1)),
+      ),
+    ),
   });
 
   if (war) {
@@ -151,10 +153,10 @@ export async function getWarStatus(
  * Check if a specific law is active and not expired.
  */
 export async function isLawActive(lawId: string): Promise<boolean> {
-  const law = await prisma.law.findUnique({ where: { id: lawId } });
+  const law = await db.query.laws.findFirst({ where: eq(laws.id, lawId) });
   if (!law) return false;
   if (law.status !== 'ACTIVE') return false;
-  if (law.expiresAt && law.expiresAt <= new Date()) return false;
+  if (law.expiresAt && new Date(law.expiresAt) <= new Date()) return false;
   return true;
 }
 
@@ -164,35 +166,37 @@ export async function isLawActive(lawId: string): Promise<boolean> {
  * falls back to matching Kingdom.capitalTownId against the character's region.
  */
 async function getCharacterKingdomId(characterId: string): Promise<string | null> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { currentTownId: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { currentTownId: true },
   });
   if (!character?.currentTownId) return null;
 
-  const town = await prisma.town.findUnique({
-    where: { id: character.currentTownId },
-    select: { regionId: true, region: { select: { id: true } } },
+  const town = await db.query.towns.findFirst({
+    where: eq(towns.id, character.currentTownId),
+    columns: { regionId: true },
   });
   if (!town) return null;
 
   // Try Region.kingdomId if the field exists (optional chaining for forward-compat)
-  const region = await prisma.region.findUnique({
-    where: { id: town.regionId },
+  const region = await db.query.regions.findFirst({
+    where: eq(regions.id, town.regionId),
   }) as { id: string; kingdomId?: string | null } | null;
   if (region?.kingdomId) return region.kingdomId;
 
   // Fallback: find kingdom whose capitalTownId is in the same region
-  const regionTowns = await prisma.town.findMany({
-    where: { regionId: town.regionId },
-    select: { id: true },
+  const regionTowns = await db.query.towns.findMany({
+    where: eq(towns.regionId, town.regionId),
+    columns: { id: true },
   });
   const regionTownIds = regionTowns.map(t => t.id);
 
-  const kingdom = await prisma.kingdom.findFirst({
-    where: { capitalTownId: { in: regionTownIds } },
-    select: { id: true },
-  });
+  const kingdom = regionTownIds.length > 0
+    ? await db.query.kingdoms.findFirst({
+        where: inArray(kingdoms.capitalTownId, regionTownIds),
+        columns: { id: true },
+      })
+    : undefined;
 
   return kingdom?.id ?? null;
 }
@@ -222,17 +226,17 @@ async function getWarBetweenCharacters(
  * Get all active wars for a kingdom.
  */
 export async function getActiveWarsForKingdom(kingdomId: string) {
-  return prisma.war.findMany({
-    where: {
-      status: 'ACTIVE',
-      OR: [
-        { attackerKingdomId: kingdomId },
-        { defenderKingdomId: kingdomId },
-      ],
-    },
-    include: {
-      attackerKingdom: { select: { id: true, name: true, capitalTownId: true } },
-      defenderKingdom: { select: { id: true, name: true, capitalTownId: true } },
+  return db.query.wars.findMany({
+    where: and(
+      eq(wars.status, 'ACTIVE'),
+      or(
+        eq(wars.attackerKingdomId, kingdomId),
+        eq(wars.defenderKingdomId, kingdomId),
+      ),
+    ),
+    with: {
+      kingdom_attackerKingdomId: { columns: { id: true, name: true, capitalTownId: true } },
+      kingdom_defenderKingdomId: { columns: { id: true, name: true, capitalTownId: true } },
     },
   });
 }

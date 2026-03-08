@@ -29,7 +29,9 @@ import { processDailyTick } from '../../jobs/daily-tick';
 import { processTravelTick } from '../../lib/travel-tick';
 import { logger } from '../../lib/logger';
 import { setSimulationTick, setSimulationRunId, getSimulationRunId } from '../../lib/simulation-context';
-import { prisma } from '../../lib/prisma';
+import { db } from '../../lib/db';
+import { eq, and, gte, lte, inArray, count, sum, sql } from 'drizzle-orm';
+import { simulationRuns, combatEncounterLogs, marketBuyOrders, tradeTransactions } from '@database/tables';
 import { SimulationLogger, captureBotState } from './sim-logger';
 
 // ---------------------------------------------------------------------------
@@ -160,14 +162,13 @@ class SimulationController {
     let standaloneRunId: string | null = null;
     if (isStandaloneTick) {
       try {
-        const run = await prisma.simulationRun.create({
-          data: {
-            tickCount: 1,
-            botCount: this.bots.filter(b => b.isActive).length,
-            config: { standalone: true, tickNumber: this.singleTickCount + 1 },
-            status: 'running',
-          },
-        });
+        const [run] = await db.insert(simulationRuns).values({
+          id: crypto.randomUUID(),
+          tickCount: 1,
+          botCount: this.bots.filter(b => b.isActive).length,
+          config: { standalone: true, tickNumber: this.singleTickCount + 1 },
+          status: 'running',
+        }).returning();
         standaloneRunId = run.id;
         setSimulationRunId(run.id);
       } catch (err) {
@@ -506,36 +507,61 @@ class SimulationController {
     let spentMap = new Map<string, number>();
     let earnedMap = new Map<string, number>();
     try {
-      const auctionWins = await prisma.marketBuyOrder.groupBy({
-        by: ['buyerId'],
-        where: { buyerId: { in: allBotIds }, status: 'won', resolvedAt: { gte: auctionResolvedBefore, lte: auctionResolvedAfter } },
-        _count: true,
-      });
-      winsMap = new Map(auctionWins.map(r => [r.buyerId, r._count]));
+      const auctionResolvedBeforeStr = auctionResolvedBefore.toISOString();
+      const auctionResolvedAfterStr = auctionResolvedAfter.toISOString();
+
+      const auctionWins = await db.select({
+        buyerId: marketBuyOrders.buyerId,
+        cnt: count(),
+      }).from(marketBuyOrders).where(
+        and(
+          inArray(marketBuyOrders.buyerId, allBotIds),
+          eq(marketBuyOrders.status, 'won'),
+          gte(marketBuyOrders.resolvedAt, auctionResolvedBeforeStr),
+          lte(marketBuyOrders.resolvedAt, auctionResolvedAfterStr),
+        ),
+      ).groupBy(marketBuyOrders.buyerId);
+      winsMap = new Map(auctionWins.map(r => [r.buyerId, Number(r.cnt)]));
 
       // 2. Bulk auction losses by buyer
-      const auctionLosses = await prisma.marketBuyOrder.groupBy({
-        by: ['buyerId'],
-        where: { buyerId: { in: allBotIds }, status: 'lost', resolvedAt: { gte: auctionResolvedBefore, lte: auctionResolvedAfter } },
-        _count: true,
-      });
-      lossesMap = new Map(auctionLosses.map(r => [r.buyerId, r._count]));
+      const auctionLosses = await db.select({
+        buyerId: marketBuyOrders.buyerId,
+        cnt: count(),
+      }).from(marketBuyOrders).where(
+        and(
+          inArray(marketBuyOrders.buyerId, allBotIds),
+          eq(marketBuyOrders.status, 'lost'),
+          gte(marketBuyOrders.resolvedAt, auctionResolvedBeforeStr),
+          lte(marketBuyOrders.resolvedAt, auctionResolvedAfterStr),
+        ),
+      ).groupBy(marketBuyOrders.buyerId);
+      lossesMap = new Map(auctionLosses.map(r => [r.buyerId, Number(r.cnt)]));
 
       // 3. Bulk gold spent (as buyer)
-      const goldSpent = await prisma.tradeTransaction.groupBy({
-        by: ['buyerId'],
-        where: { buyerId: { in: allBotIds }, createdAt: { gte: auctionResolvedBefore, lte: auctionResolvedAfter } },
-        _sum: { price: true },
-      });
-      spentMap = new Map(goldSpent.map(r => [r.buyerId, r._sum.price ?? 0]));
+      const goldSpent = await db.select({
+        buyerId: tradeTransactions.buyerId,
+        total: sum(tradeTransactions.price),
+      }).from(tradeTransactions).where(
+        and(
+          inArray(tradeTransactions.buyerId, allBotIds),
+          gte(tradeTransactions.createdAt, auctionResolvedBeforeStr),
+          lte(tradeTransactions.createdAt, auctionResolvedAfterStr),
+        ),
+      ).groupBy(tradeTransactions.buyerId);
+      spentMap = new Map(goldSpent.map(r => [r.buyerId, Number(r.total ?? 0)]));
 
       // 4. Bulk gold earned (as seller)
-      const goldEarned = await prisma.tradeTransaction.groupBy({
-        by: ['sellerId'],
-        where: { sellerId: { in: allBotIds }, createdAt: { gte: auctionResolvedBefore, lte: auctionResolvedAfter } },
-        _sum: { sellerNet: true },
-      });
-      earnedMap = new Map(goldEarned.map(r => [r.sellerId, r._sum.sellerNet ?? 0]));
+      const goldEarned = await db.select({
+        sellerId: tradeTransactions.sellerId,
+        total: sum(tradeTransactions.sellerNet),
+      }).from(tradeTransactions).where(
+        and(
+          inArray(tradeTransactions.sellerId, allBotIds),
+          gte(tradeTransactions.createdAt, auctionResolvedBeforeStr),
+          lte(tradeTransactions.createdAt, auctionResolvedAfterStr),
+        ),
+      ).groupBy(tradeTransactions.sellerId);
+      earnedMap = new Map(goldEarned.map(r => [r.sellerId, Number(r.total ?? 0)]));
     } catch { /* ignore bulk query errors */ }
 
     // 5. Batch refresh all bot states concurrently
@@ -698,18 +724,14 @@ class SimulationController {
     // Finalize standalone run
     if (isStandaloneTick && standaloneRunId) {
       try {
-        const encounterCount = await prisma.combatEncounterLog.count({
-          where: { simulationRunId: standaloneRunId },
-        });
-        await prisma.simulationRun.update({
-          where: { id: standaloneRunId },
-          data: {
-            completedAt: new Date(),
-            ticksCompleted: 1,
-            encounterCount,
-            status: 'completed',
-          },
-        });
+        const [{ total }] = await db.select({ total: count() }).from(combatEncounterLogs)
+          .where(eq(combatEncounterLogs.simulationRunId, standaloneRunId));
+        await db.update(simulationRuns).set({
+          completedAt: new Date().toISOString(),
+          ticksCompleted: 1,
+          encounterCount: Number(total),
+          status: 'completed',
+        }).where(eq(simulationRuns.id, standaloneRunId));
       } catch (err) {
         logger.error({ err }, 'Failed to finalize standalone SimulationRun');
       }
@@ -734,14 +756,13 @@ class SimulationController {
     // Create a SimulationRun record for this batch
     let runId: string | null = null;
     try {
-      const run = await prisma.simulationRun.create({
-        data: {
-          tickCount: n,
-          botCount: this.bots.filter(b => b.isActive).length,
-          config: JSON.parse(JSON.stringify({ ...this.config, seedConfig: this.seedConfig })),
-          status: 'running',
-        },
-      });
+      const [run] = await db.insert(simulationRuns).values({
+        id: crypto.randomUUID(),
+        tickCount: n,
+        botCount: this.bots.filter(b => b.isActive).length,
+        config: JSON.parse(JSON.stringify({ ...this.config, seedConfig: this.seedConfig })),
+        status: 'running',
+      }).returning();
       runId = run.id;
       setSimulationRunId(run.id);
     } catch (err) {
@@ -767,18 +788,14 @@ class SimulationController {
       // Finalize the SimulationRun record
       if (runId) {
         try {
-          const encounterCount = await prisma.combatEncounterLog.count({
-            where: { simulationRunId: runId },
-          });
-          await prisma.simulationRun.update({
-            where: { id: runId },
-            data: {
-              completedAt: new Date(),
-              ticksCompleted: results.length,
-              encounterCount,
-              status: finalStatus,
-            },
-          });
+          const [{ total }] = await db.select({ total: count() }).from(combatEncounterLogs)
+            .where(eq(combatEncounterLogs.simulationRunId, runId));
+          await db.update(simulationRuns).set({
+            completedAt: new Date().toISOString(),
+            ticksCompleted: results.length,
+            encounterCount: Number(total),
+            status: finalStatus,
+          }).where(eq(simulationRuns.id, runId));
         } catch (err) {
           logger.error({ err }, 'Failed to finalize SimulationRun record');
         }

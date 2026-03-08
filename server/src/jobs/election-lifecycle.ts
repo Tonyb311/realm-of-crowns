@@ -1,5 +1,7 @@
 import cron from 'node-cron';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, lte, and, count, desc, sql } from 'drizzle-orm';
+import { elections, electionVotes, towns, characters, impeachments, kingdoms } from '@database/tables';
 import { logger } from '../lib/logger';
 import { cronJobExecutions } from '../lib/metrics';
 import type { Server } from 'socket.io';
@@ -34,21 +36,21 @@ const MIN_ELECTION_POPULATION = 3;
 
 async function autoCreateElections(io: Server) {
   // Find towns without an active (non-COMPLETED) election
-  const townsWithActiveElection = await prisma.election.findMany({
-    where: {
-      phase: { not: 'COMPLETED' },
-      type: 'MAYOR',
-    },
-    select: { townId: true },
+  const townsWithActiveElection = await db.query.elections.findMany({
+    where: and(
+      sql`${elections.phase} != 'COMPLETED'`,
+      eq(elections.type, 'MAYOR'),
+    ),
+    columns: { townId: true },
   });
 
   const townIdsWithElection = new Set(townsWithActiveElection.map((e) => e.townId));
 
   // P1 #33 FIX: Count actual residents (characters with currentTownId) per town
   // Content gating: only create elections for released towns
-  const allTowns = await prisma.town.findMany({
-    where: { isReleased: true },
-    select: { id: true, name: true, mayorId: true },
+  const allTowns = await db.query.towns.findMany({
+    where: eq(towns.isReleased, true),
+    columns: { id: true, name: true, mayorId: true },
   });
 
   const townsNeedingElection: { id: string; name: string }[] = [];
@@ -57,9 +59,10 @@ async function autoCreateElections(io: Server) {
     if (town.mayorId) continue; // Town already has a mayor, no election needed
 
     // P1 #33 FIX: Skip towns with fewer than MIN_ELECTION_POPULATION residents
-    const residentCount = await prisma.character.count({
-      where: { currentTownId: town.id },
-    });
+    const [{ residentCount }] = await db
+      .select({ residentCount: count() })
+      .from(characters)
+      .where(eq(characters.currentTownId, town.id));
     if (residentCount < MIN_ELECTION_POPULATION) continue;
 
     townsNeedingElection.push(town);
@@ -67,10 +70,10 @@ async function autoCreateElections(io: Server) {
 
   for (const town of townsNeedingElection) {
     // Determine the next term number
-    const lastElection = await prisma.election.findFirst({
-      where: { townId: town.id, type: 'MAYOR' },
-      orderBy: { termNumber: 'desc' },
-      select: { termNumber: true },
+    const lastElection = await db.query.elections.findFirst({
+      where: and(eq(elections.townId, town.id), eq(elections.type, 'MAYOR')),
+      orderBy: desc(elections.termNumber),
+      columns: { termNumber: true },
     });
 
     const termNumber = (lastElection?.termNumber ?? 0) + 1;
@@ -79,17 +82,16 @@ async function autoCreateElections(io: Server) {
     const endDate = new Date(now);
     endDate.setHours(endDate.getHours() + NOMINATION_DURATION_HOURS + VOTING_DURATION_HOURS);
 
-    const election = await prisma.election.create({
-      data: {
-        townId: town.id,
-        type: 'MAYOR',
-        status: 'ACTIVE',
-        phase: 'NOMINATIONS',
-        termNumber,
-        startDate: now,
-        endDate,
-      },
-    });
+    const [election] = await db.insert(elections).values({
+      id: crypto.randomUUID(),
+      townId: town.id,
+      type: 'MAYOR',
+      status: 'ACTIVE',
+      phase: 'NOMINATIONS',
+      termNumber,
+      startDate: now.toISOString(),
+      endDate: endDate.toISOString(),
+    }).returning();
 
     console.log(`[ElectionLifecycle] Created MAYOR election for "${town.name}" (term ${termNumber})`);
 
@@ -113,25 +115,24 @@ async function transitionNominationsToVoting(io: Server) {
   const cutoff = new Date();
   cutoff.setHours(cutoff.getHours() - NOMINATION_DURATION_HOURS);
 
-  const elections = await prisma.election.findMany({
-    where: {
-      phase: 'NOMINATIONS',
-      startDate: { lte: cutoff },
-    },
-    include: {
-      town: { select: { id: true, name: true } },
-      kingdom: { select: { id: true, name: true } },
-      candidates: { select: { characterId: true } },
+  const electionList = await db.query.elections.findMany({
+    where: and(
+      eq(elections.phase, 'NOMINATIONS'),
+      lte(elections.startDate, cutoff.toISOString()),
+    ),
+    with: {
+      town: { columns: { id: true, name: true } },
+      kingdom: { columns: { id: true, name: true } },
+      electionCandidates: { columns: { characterId: true } },
     },
   });
 
-  for (const election of elections) {
+  for (const election of electionList) {
     // If no candidates nominated, skip to COMPLETED with no winner
-    if (election.candidates.length === 0) {
-      await prisma.election.update({
-        where: { id: election.id },
-        data: { phase: 'COMPLETED', status: 'COMPLETED' },
-      });
+    if (election.electionCandidates.length === 0) {
+      await db.update(elections)
+        .set({ phase: 'COMPLETED', status: 'COMPLETED' })
+        .where(eq(elections.id, election.id));
 
       console.log(`[ElectionLifecycle] Election ${election.id} completed with no candidates`);
 
@@ -149,10 +150,9 @@ async function transitionNominationsToVoting(io: Server) {
       continue;
     }
 
-    await prisma.election.update({
-      where: { id: election.id },
-      data: { phase: 'VOTING' },
-    });
+    await db.update(elections)
+      .set({ phase: 'VOTING' })
+      .where(eq(elections.id, election.id));
 
     const locationName = election.town?.name || election.kingdom?.name || 'Unknown';
     console.log(`[ElectionLifecycle] Election in "${locationName}" moved to VOTING phase`);
@@ -166,7 +166,7 @@ async function transitionNominationsToVoting(io: Server) {
       type: election.type,
       previousPhase: 'NOMINATIONS',
       newPhase: 'VOTING',
-      candidateCount: election.candidates.length,
+      candidateCount: election.electionCandidates.length,
     });
   }
 }
@@ -179,31 +179,34 @@ async function transitionNominationsToVoting(io: Server) {
 async function transitionVotingToCompleted(io: Server) {
   const now = new Date();
 
-  const elections = await prisma.election.findMany({
-    where: {
-      phase: 'VOTING',
-      endDate: { lte: now },
-    },
-    include: {
-      town: { select: { id: true, name: true } },
-      kingdom: { select: { id: true, name: true } },
-      candidates: {
-        include: {
-          character: { select: { id: true, name: true } },
+  const electionList = await db.query.elections.findMany({
+    where: and(
+      eq(elections.phase, 'VOTING'),
+      lte(elections.endDate, now.toISOString()),
+    ),
+    with: {
+      town: { columns: { id: true, name: true } },
+      kingdom: { columns: { id: true, name: true } },
+      electionCandidates: {
+        with: {
+          character: { columns: { id: true, name: true } },
         },
       },
     },
   });
 
-  for (const election of elections) {
-    // Tally votes per candidate
-    const voteCounts = await prisma.electionVote.groupBy({
-      by: ['candidateId'],
-      where: { electionId: election.id },
-      _count: { candidateId: true },
-    });
+  for (const election of electionList) {
+    // Tally votes per candidate using raw SQL groupBy
+    const voteCounts = await db
+      .select({
+        candidateId: electionVotes.candidateId,
+        voteCount: count(),
+      })
+      .from(electionVotes)
+      .where(eq(electionVotes.electionId, election.id))
+      .groupBy(electionVotes.candidateId);
 
-    const voteMap = new Map(voteCounts.map((v) => [v.candidateId, v._count.candidateId]));
+    const voteMap = new Map(voteCounts.map((v) => [v.candidateId, v.voteCount]));
 
     // Find the winner (most votes, ties broken by earliest nomination)
     let winnerId: string | null = null;
@@ -211,8 +214,8 @@ async function transitionVotingToCompleted(io: Server) {
     let maxVotes = 0;
 
     // Sort candidates by nomination time for tie-breaking
-    const sortedCandidates = [...election.candidates].sort(
-      (a, b) => a.nominatedAt.getTime() - b.nominatedAt.getTime()
+    const sortedCandidates = [...election.electionCandidates].sort(
+      (a, b) => new Date(a.nominatedAt).getTime() - new Date(b.nominatedAt).getTime()
     );
 
     for (const candidate of sortedCandidates) {
@@ -225,28 +228,21 @@ async function transitionVotingToCompleted(io: Server) {
     }
 
     // Update election as completed
-    await prisma.election.update({
-      where: { id: election.id },
-      data: {
-        phase: 'COMPLETED',
-        status: 'COMPLETED',
-        winnerId,
-      },
-    });
+    await db.update(elections)
+      .set({ phase: 'COMPLETED', status: 'COMPLETED', winnerId })
+      .where(eq(elections.id, election.id));
 
     // Appoint the winner
     if (winnerId) {
       if (election.type === 'MAYOR' && election.townId) {
-        await prisma.town.update({
-          where: { id: election.townId },
-          data: { mayorId: winnerId },
-        });
+        await db.update(towns)
+          .set({ mayorId: winnerId })
+          .where(eq(towns.id, election.townId));
         console.log(`[ElectionLifecycle] ${winnerName} appointed as mayor of "${election.town?.name}"`);
       } else if (election.type === 'RULER' && election.kingdomId) {
-        await prisma.kingdom.update({
-          where: { id: election.kingdomId },
-          data: { rulerId: winnerId },
-        });
+        await db.update(kingdoms)
+          .set({ rulerId: winnerId })
+          .where(eq(kingdoms.id, election.kingdomId));
         console.log(`[ElectionLifecycle] ${winnerName} appointed as ruler of "${election.kingdom?.name}"`);
       }
     }
@@ -263,7 +259,7 @@ async function transitionVotingToCompleted(io: Server) {
       type: election.type,
       winnerId,
       winnerName,
-      totalVotes: voteCounts.reduce((sum, v) => sum + v._count.candidateId, 0),
+      totalVotes: voteCounts.reduce((sum, v) => sum + v.voteCount, 0),
       candidateResults: sortedCandidates.map((c) => ({
         characterId: c.characterId,
         name: c.character.name,
@@ -279,15 +275,15 @@ async function transitionVotingToCompleted(io: Server) {
 async function resolveExpiredImpeachments(io: Server) {
   const now = new Date();
 
-  const expired = await prisma.impeachment.findMany({
-    where: {
-      status: 'ACTIVE',
-      endsAt: { lte: now },
-    },
-    include: {
-      target: { select: { id: true, name: true } },
-      town: { select: { id: true, name: true } },
-      kingdom: { select: { id: true, name: true } },
+  const expired = await db.query.impeachments.findMany({
+    where: and(
+      eq(impeachments.status, 'ACTIVE'),
+      lte(impeachments.endsAt, now.toISOString()),
+    ),
+    with: {
+      character: { columns: { id: true, name: true } },
+      town: { columns: { id: true, name: true } },
+      kingdom: { columns: { id: true, name: true } },
     },
   });
 
@@ -295,48 +291,47 @@ async function resolveExpiredImpeachments(io: Server) {
     // Major-POLI-02 FIX: Require majority of eligible voters, not just plurality of votes cast
     let totalEligible = 0;
     if (impeachment.townId) {
-      totalEligible = await prisma.character.count({
-        where: { currentTownId: impeachment.townId },
-      });
+      const [{ residentCount }] = await db
+        .select({ residentCount: count() })
+        .from(characters)
+        .where(eq(characters.currentTownId, impeachment.townId));
+      totalEligible = residentCount;
     }
     const passed = totalEligible > 0
       ? impeachment.votesFor > totalEligible / 2
       : impeachment.votesFor > impeachment.votesAgainst;
     const newStatus = passed ? 'PASSED' : 'FAILED';
 
-    await prisma.impeachment.update({
-      where: { id: impeachment.id },
-      data: { status: newStatus },
-    });
+    await db.update(impeachments)
+      .set({ status: newStatus })
+      .where(eq(impeachments.id, impeachment.id));
 
     if (passed) {
       // Remove the official from office
       if (impeachment.townId) {
-        await prisma.town.update({
-          where: { id: impeachment.townId },
-          data: { mayorId: null },
-        });
-        console.log(`[ElectionLifecycle] Impeachment PASSED: ${impeachment.target.name} removed as mayor of "${impeachment.town?.name}"`);
+        await db.update(towns)
+          .set({ mayorId: null })
+          .where(eq(towns.id, impeachment.townId));
+        console.log(`[ElectionLifecycle] Impeachment PASSED: ${impeachment.character.name} removed as mayor of "${impeachment.town?.name}"`);
       }
 
       if (impeachment.kingdomId) {
-        await prisma.kingdom.update({
-          where: { id: impeachment.kingdomId },
-          data: { rulerId: null },
-        });
-        console.log(`[ElectionLifecycle] Impeachment PASSED: ${impeachment.target.name} removed as ruler of "${impeachment.kingdom?.name}"`);
+        await db.update(kingdoms)
+          .set({ rulerId: null })
+          .where(eq(kingdoms.id, impeachment.kingdomId));
+        console.log(`[ElectionLifecycle] Impeachment PASSED: ${impeachment.character.name} removed as ruler of "${impeachment.kingdom?.name}"`);
       }
 
       // A new election will be auto-created on the next cron cycle for the now-vacant position
     } else {
       const locationName = impeachment.town?.name || impeachment.kingdom?.name || 'Unknown';
-      console.log(`[ElectionLifecycle] Impeachment FAILED against ${impeachment.target.name} in "${locationName}"`);
+      console.log(`[ElectionLifecycle] Impeachment FAILED against ${impeachment.character.name} in "${locationName}"`);
     }
 
     io.emit('impeachment:resolved', {
       impeachmentId: impeachment.id,
       targetId: impeachment.targetId,
-      targetName: impeachment.target.name,
+      targetName: impeachment.character.name,
       townId: impeachment.townId,
       townName: impeachment.town?.name,
       kingdomId: impeachment.kingdomId,

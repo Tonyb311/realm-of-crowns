@@ -1,6 +1,8 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq } from 'drizzle-orm';
+import { characters } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
@@ -13,9 +15,8 @@ import {
   validateCombatParams,
   combatParamsSchema,
 } from '../services/action-lock-in';
-import { Prisma } from '@prisma/client';
 import { emitActionLockedIn, emitActionCancelled } from '../socket/events';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
@@ -54,7 +55,7 @@ router.post('/lock-in', authGuard, characterGuard, validate(lockInSchema), async
 
     return res.status(201).json({ action: result });
   } catch (error) {
-    if (handlePrismaError(error, res, 'lock-in-action', req)) return;
+    if (handleDbError(error, res, 'lock-in-action', req)) return;
     if (error instanceof Error) {
       if (error.message.includes('INCAPACITATED') || error.message.includes('not found')) {
         return res.status(400).json({ error: error.message });
@@ -81,7 +82,7 @@ router.get('/current', authGuard, characterGuard, async (req: AuthenticatedReque
 
     return res.json({ action });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get-current-action', req)) return;
+    if (handleDbError(error, res, 'get-current-action', req)) return;
     logRouteError(req, 500, 'Get current action error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -101,7 +102,7 @@ router.delete('/current', authGuard, characterGuard, async (req: AuthenticatedRe
 
     return res.json({ cancelled: true, defaultAction: 'REST' });
   } catch (error) {
-    if (handlePrismaError(error, res, 'cancel-action', req)) return;
+    if (handleDbError(error, res, 'cancel-action', req)) return;
     logRouteError(req, 500, 'Cancel action error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -118,7 +119,7 @@ router.get('/available', authGuard, characterGuard, async (req: AuthenticatedReq
     const result = await getAvailableActions(character.id);
     return res.json(result);
   } catch (error) {
-    if (handlePrismaError(error, res, 'available-actions', req)) return;
+    if (handleDbError(error, res, 'available-actions', req)) return;
     logRouteError(req, 500, 'Available actions error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -145,23 +146,20 @@ router.put('/combat-params', authGuard, characterGuard, validate(updateCombatPar
 
     const params = validateCombatParams(req.body);
 
-    await prisma.character.update({
-      where: { id: character.id },
-      data: {
-        combatStance: params.combatStance,
-        retreatHpThreshold: params.retreatHpThreshold,
-        retreatOppositionRatio: params.retreatOppositionRatio,
-        retreatRoundLimit: params.retreatRoundLimit,
-        neverRetreat: params.neverRetreat,
-        abilityPriorityQueue: params.abilityPriorityQueue,
-        itemUsageRules: params.itemUsageRules as Prisma.InputJsonValue | undefined,
-        pvpLootBehavior: params.pvpLootBehavior,
-      },
-    });
+    await db.update(characters).set({
+      combatStance: params.combatStance,
+      retreatHpThreshold: params.retreatHpThreshold,
+      retreatOppositionRatio: params.retreatOppositionRatio,
+      retreatRoundLimit: params.retreatRoundLimit,
+      neverRetreat: params.neverRetreat,
+      abilityPriorityQueue: params.abilityPriorityQueue,
+      itemUsageRules: params.itemUsageRules,
+      pvpLootBehavior: params.pvpLootBehavior,
+    }).where(eq(characters.id, character.id));
 
     return res.json({ combatParams: params });
   } catch (error) {
-    if (handlePrismaError(error, res, 'update-combat-params', req)) return;
+    if (handleDbError(error, res, 'update-combat-params', req)) return;
     logRouteError(req, 500, 'Update combat params error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -175,9 +173,9 @@ router.get('/combat-params', authGuard, characterGuard, async (req: Authenticate
   try {
     const character = req.character!;
 
-    const data = await prisma.character.findUnique({
-      where: { id: character.id },
-      select: {
+    const data = await db.query.characters.findFirst({
+      where: eq(characters.id, character.id),
+      columns: {
         combatStance: true,
         retreatHpThreshold: true,
         retreatOppositionRatio: true,
@@ -191,7 +189,7 @@ router.get('/combat-params', authGuard, characterGuard, async (req: Authenticate
 
     return res.json({ combatParams: data });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get-combat-params', req)) return;
+    if (handleDbError(error, res, 'get-combat-params', req)) return;
     logRouteError(req, 500, 'Get combat params error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

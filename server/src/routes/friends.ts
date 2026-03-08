@@ -1,14 +1,17 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, or, desc } from 'drizzle-orm';
+import { characters, friends, notifications } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { isOnline } from '../socket/presence';
 import { emitFriendRequest, emitFriendAccepted, emitNotification } from '../socket/events';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
+import crypto from 'crypto';
 
 const router = Router();
 
@@ -29,19 +32,19 @@ router.post('/request', authGuard, characterGuard, validate(requestSchema), asyn
       return res.status(400).json({ error: 'Cannot send a friend request to yourself' });
     }
 
-    const target = await prisma.character.findUnique({ where: { id: targetId } });
+    const target = await db.query.characters.findFirst({
+      where: eq(characters.id, targetId),
+    });
     if (!target) {
       return res.status(404).json({ error: 'Target character not found' });
     }
 
     // Check if a friendship already exists in either direction
-    const existing = await prisma.friend.findFirst({
-      where: {
-        OR: [
-          { requesterId: character.id, recipientId: targetId },
-          { requesterId: targetId, recipientId: character.id },
-        ],
-      },
+    const existing = await db.query.friends.findFirst({
+      where: or(
+        and(eq(friends.requesterId, character.id), eq(friends.recipientId, targetId)),
+        and(eq(friends.requesterId, targetId), eq(friends.recipientId, character.id)),
+      ),
     });
 
     if (existing) {
@@ -55,27 +58,25 @@ router.post('/request', authGuard, characterGuard, validate(requestSchema), asyn
         return res.status(400).json({ error: 'Cannot send friend request' });
       }
       // DECLINED -> allow re-request by deleting old and creating new
-      await prisma.friend.delete({ where: { id: existing.id } });
+      await db.delete(friends).where(eq(friends.id, existing.id));
     }
 
-    const friendship = await prisma.friend.create({
-      data: {
-        requesterId: character.id,
-        recipientId: targetId,
-        status: 'PENDING',
-      },
-    });
+    const [friendship] = await db.insert(friends).values({
+      id: crypto.randomUUID(),
+      requesterId: character.id,
+      recipientId: targetId,
+      status: 'PENDING',
+    }).returning();
 
     // Create notification for recipient
-    const notification = await prisma.notification.create({
-      data: {
-        characterId: targetId,
-        type: 'friend_request',
-        title: 'Friend Request',
-        message: `${character.name} wants to be your friend!`,
-        data: { friendshipId: friendship.id, requesterId: character.id },
-      },
-    });
+    const [notification] = await db.insert(notifications).values({
+      id: crypto.randomUUID(),
+      characterId: targetId,
+      type: 'friend_request',
+      title: 'Friend Request',
+      message: `${character.name} wants to be your friend!`,
+      data: { friendshipId: friendship.id, requesterId: character.id },
+    }).returning();
 
     // Real-time: emit to recipient
     emitFriendRequest(targetId, {
@@ -101,7 +102,7 @@ router.post('/request', authGuard, characterGuard, validate(requestSchema), asyn
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'friend-request', req)) return;
+    if (handleDbError(error, res, 'friend-request', req)) return;
     logRouteError(req, 500, 'Friend request error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -113,9 +114,9 @@ router.post('/:id/accept', authGuard, characterGuard, async (req: AuthenticatedR
   try {
     const character = req.character!;
 
-    const friendship = await prisma.friend.findUnique({
-      where: { id: req.params.id },
-      include: { requester: { select: { id: true, name: true } } },
+    const friendship = await db.query.friends.findFirst({
+      where: eq(friends.id, req.params.id),
+      with: { character_requesterId: { columns: { id: true, name: true } } },
     });
 
     if (!friendship) {
@@ -130,21 +131,17 @@ router.post('/:id/accept', authGuard, characterGuard, async (req: AuthenticatedR
       return res.status(400).json({ error: 'Request is no longer pending' });
     }
 
-    const updated = await prisma.friend.update({
-      where: { id: friendship.id },
-      data: { status: 'ACCEPTED' },
-    });
+    const [updated] = await db.update(friends).set({ status: 'ACCEPTED' }).where(eq(friends.id, friendship.id)).returning();
 
     // Notify the requester
-    const notification = await prisma.notification.create({
-      data: {
-        characterId: friendship.requesterId,
-        type: 'friend_accepted',
-        title: 'Friend Request Accepted',
-        message: `${character.name} accepted your friend request!`,
-        data: { friendshipId: friendship.id, acceptedById: character.id },
-      },
-    });
+    const [notification] = await db.insert(notifications).values({
+      id: crypto.randomUUID(),
+      characterId: friendship.requesterId,
+      type: 'friend_accepted',
+      title: 'Friend Request Accepted',
+      message: `${character.name} accepted your friend request!`,
+      data: { friendshipId: friendship.id, acceptedById: character.id },
+    }).returning();
 
     emitFriendAccepted(friendship.requesterId, {
       friendshipId: friendship.id,
@@ -165,11 +162,11 @@ router.post('/:id/accept', authGuard, characterGuard, async (req: AuthenticatedR
         id: updated.id,
         status: updated.status,
         friendId: friendship.requesterId,
-        friendName: friendship.requester.name,
+        friendName: friendship.character_requesterId.name,
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'friend-accept', req)) return;
+    if (handleDbError(error, res, 'friend-accept', req)) return;
     logRouteError(req, 500, 'Friend accept error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -181,8 +178,8 @@ router.post('/:id/decline', authGuard, characterGuard, async (req: Authenticated
   try {
     const character = req.character!;
 
-    const friendship = await prisma.friend.findUnique({
-      where: { id: req.params.id },
+    const friendship = await db.query.friends.findFirst({
+      where: eq(friends.id, req.params.id),
     });
 
     if (!friendship) {
@@ -197,14 +194,11 @@ router.post('/:id/decline', authGuard, characterGuard, async (req: Authenticated
       return res.status(400).json({ error: 'Request is no longer pending' });
     }
 
-    const updated = await prisma.friend.update({
-      where: { id: friendship.id },
-      data: { status: 'DECLINED' },
-    });
+    const [updated] = await db.update(friends).set({ status: 'DECLINED' }).where(eq(friends.id, friendship.id)).returning();
 
     return res.json({ friendship: { id: updated.id, status: updated.status } });
   } catch (error) {
-    if (handlePrismaError(error, res, 'friend-decline', req)) return;
+    if (handleDbError(error, res, 'friend-decline', req)) return;
     logRouteError(req, 500, 'Friend decline error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -216,8 +210,8 @@ router.delete('/:id', authGuard, characterGuard, async (req: AuthenticatedReques
   try {
     const character = req.character!;
 
-    const friendship = await prisma.friend.findUnique({
-      where: { id: req.params.id },
+    const friendship = await db.query.friends.findFirst({
+      where: eq(friends.id, req.params.id),
     });
 
     if (!friendship) {
@@ -229,11 +223,11 @@ router.delete('/:id', authGuard, characterGuard, async (req: AuthenticatedReques
       return res.status(403).json({ error: 'Not your friendship' });
     }
 
-    await prisma.friend.delete({ where: { id: friendship.id } });
+    await db.delete(friends).where(eq(friends.id, friendship.id));
 
     return res.json({ message: 'Friend removed' });
   } catch (error) {
-    if (handlePrismaError(error, res, 'friend-remove', req)) return;
+    if (handleDbError(error, res, 'friend-remove', req)) return;
     logRouteError(req, 500, 'Friend delete error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -245,20 +239,20 @@ router.get('/', authGuard, characterGuard, async (req: AuthenticatedRequest, res
   try {
     const character = req.character!;
 
-    const friendships = await prisma.friend.findMany({
-      where: {
-        status: 'ACCEPTED',
-        OR: [{ requesterId: character.id }, { recipientId: character.id }],
+    const friendships = await db.query.friends.findMany({
+      where: and(
+        eq(friends.status, 'ACCEPTED'),
+        or(eq(friends.requesterId, character.id), eq(friends.recipientId, character.id)),
+      ),
+      with: {
+        character_requesterId: { columns: { id: true, name: true, level: true, race: true, currentTownId: true } },
+        character_recipientId: { columns: { id: true, name: true, level: true, race: true, currentTownId: true } },
       },
-      include: {
-        requester: { select: { id: true, name: true, level: true, race: true, currentTownId: true } },
-        recipient: { select: { id: true, name: true, level: true, race: true, currentTownId: true } },
-      },
-      orderBy: { createdAt: 'desc' },
+      orderBy: desc(friends.createdAt),
     });
 
-    const friends = friendships.map((f) => {
-      const friend = f.requesterId === character.id ? f.recipient : f.requester;
+    const friendList = friendships.map((f) => {
+      const friend = f.requesterId === character.id ? f.character_recipientId : f.character_requesterId;
       return {
         friendshipId: f.id,
         character: {
@@ -273,9 +267,9 @@ router.get('/', authGuard, characterGuard, async (req: AuthenticatedRequest, res
       };
     });
 
-    return res.json({ friends });
+    return res.json({ friends: friendList });
   } catch (error) {
-    if (handlePrismaError(error, res, 'friend-list', req)) return;
+    if (handleDbError(error, res, 'friend-list', req)) return;
     logRouteError(req, 500, 'Friends list error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -287,36 +281,36 @@ router.get('/requests', authGuard, characterGuard, async (req: AuthenticatedRequ
   try {
     const character = req.character!;
 
-    const incoming = await prisma.friend.findMany({
-      where: { recipientId: character.id, status: 'PENDING' },
-      include: {
-        requester: { select: { id: true, name: true, level: true, race: true } },
+    const incoming = await db.query.friends.findMany({
+      where: and(eq(friends.recipientId, character.id), eq(friends.status, 'PENDING')),
+      with: {
+        character_requesterId: { columns: { id: true, name: true, level: true, race: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: desc(friends.createdAt),
     });
 
-    const outgoing = await prisma.friend.findMany({
-      where: { requesterId: character.id, status: 'PENDING' },
-      include: {
-        recipient: { select: { id: true, name: true, level: true, race: true } },
+    const outgoing = await db.query.friends.findMany({
+      where: and(eq(friends.requesterId, character.id), eq(friends.status, 'PENDING')),
+      with: {
+        character_recipientId: { columns: { id: true, name: true, level: true, race: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: desc(friends.createdAt),
     });
 
     return res.json({
       incoming: incoming.map((f) => ({
         id: f.id,
-        from: f.requester,
+        from: f.character_requesterId,
         createdAt: f.createdAt,
       })),
       outgoing: outgoing.map((f) => ({
         id: f.id,
-        to: f.recipient,
+        to: f.character_recipientId,
         createdAt: f.createdAt,
       })),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'friend-requests', req)) return;
+    if (handleDbError(error, res, 'friend-requests', req)) return;
     logRouteError(req, 500, 'Friend requests error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

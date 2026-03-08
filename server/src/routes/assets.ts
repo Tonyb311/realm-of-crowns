@@ -4,14 +4,16 @@
 
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, count, sql } from 'drizzle-orm';
+import { ownedAssets, characters, playerProfessions, dailyActions, jobListings, itemTemplates, houses, houseStorage } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { ProfessionType } from '@prisma/client';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
+import crypto from 'crypto';
 import { getTodayTickDate, getNextTickTime, getGameDay } from '../lib/game-day';
 import {
   ASSET_TIERS,
@@ -43,21 +45,26 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
     const character = req.character!;
     const townId = req.query.townId as string | undefined;
 
-    const assets = await prisma.ownedAsset.findMany({
-      where: {
-        ownerId: character.id,
-        ...(townId ? { townId } : {}),
+    const assets = await db.query.ownedAssets.findMany({
+      where: townId
+        ? and(eq(ownedAssets.ownerId, character.id), eq(ownedAssets.townId, townId))
+        : eq(ownedAssets.ownerId, character.id),
+      with: {
+        town: { columns: { id: true, name: true } },
+        jobListings: true,
       },
-      include: {
-        town: { select: { id: true, name: true } },
-        jobListings: { where: { status: 'OPEN' }, take: 1 },
-      },
-      orderBy: [{ tier: 'asc' }, { slotNumber: 'asc' }],
+      orderBy: (oa, { asc }) => [asc(oa.tier), asc(oa.slotNumber)],
     });
 
-    return res.json({ assets, currentGameDay: getGameDay() });
+    // Filter jobListings to only OPEN ones (application-level since Drizzle doesn't support nested where on with)
+    const assetsWithFilteredJobs = assets.map(a => ({
+      ...a,
+      jobListings: (a.jobListings || []).filter((j: any) => j.status === 'OPEN').slice(0, 1),
+    }));
+
+    return res.json({ assets: assetsWithFilteredJobs, currentGameDay: getGameDay() });
   } catch (error) {
-    if (handlePrismaError(error, res, 'assets-mine', req)) return;
+    if (handleDbError(error, res, 'assets-mine', req)) return;
     logRouteError(req, 500, 'Assets mine error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -71,8 +78,8 @@ router.get('/available', authGuard, characterGuard, async (req: AuthenticatedReq
   try {
     const character = req.character!;
 
-    const professions = await prisma.playerProfession.findMany({
-      where: { characterId: character.id, isActive: true },
+    const professions = await db.query.playerProfessions.findMany({
+      where: and(eq(playerProfessions.characterId, character.id), eq(playerProfessions.isActive, true)),
     });
 
     const result = await Promise.all(
@@ -86,13 +93,13 @@ router.get('/available', authGuard, characterGuard, async (req: AuthenticatedReq
               const tiers = await Promise.all(
                 [1, 2, 3].map(async (tier) => {
                   const tierData = ASSET_TIERS[tier];
-                  const owned = await prisma.ownedAsset.count({
-                    where: {
-                      ownerId: character.id,
-                      professionType: prof.professionType,
-                      tier,
-                    },
-                  });
+                  const [{ total: owned }] = await db.select({ total: count() }).from(ownedAssets).where(
+                    and(
+                      eq(ownedAssets.ownerId, character.id),
+                      eq(ownedAssets.professionType, prof.professionType),
+                      eq(ownedAssets.tier, tier),
+                    ),
+                  );
                   const nextSlotNumber = owned + 1;
                   const effectiveLevelReq = at.levelRequired ?? tierData.levelRequired;
                   const locked = prof.level < effectiveLevelReq;
@@ -131,7 +138,7 @@ router.get('/available', authGuard, characterGuard, async (req: AuthenticatedReq
 
     return res.json({ professions: result });
   } catch (error) {
-    if (handlePrismaError(error, res, 'assets-available', req)) return;
+    if (handleDbError(error, res, 'assets-available', req)) return;
     logRouteError(req, 500, 'Assets available error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -164,10 +171,12 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
       return res.status(400).json({ error: 'Invalid tier' });
     }
 
-    const profEnum = professionType as ProfessionType;
-
-    const profession = await prisma.playerProfession.findFirst({
-      where: { characterId: character.id, professionType: profEnum, isActive: true },
+    const profession = await db.query.playerProfessions.findFirst({
+      where: and(
+        eq(playerProfessions.characterId, character.id),
+        eq(playerProfessions.professionType, professionType as any),
+        eq(playerProfessions.isActive, true),
+      ),
     });
 
     if (!profession) {
@@ -189,13 +198,13 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
     }
 
     // 4. Count existing assets for this profession + tier
-    const existingCount = await prisma.ownedAsset.count({
-      where: {
-        ownerId: character.id,
-        professionType: profEnum,
-        tier,
-      },
-    });
+    const [{ total: existingCount }] = await db.select({ total: count() }).from(ownedAssets).where(
+      and(
+        eq(ownedAssets.ownerId, character.id),
+        eq(ownedAssets.professionType, professionType),
+        eq(ownedAssets.tier, tier),
+      ),
+    );
 
     // 5. Check slot limit
     if (existingCount >= MAX_SLOTS_PER_TIER) {
@@ -221,25 +230,26 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
     const isRancherBuilding = professionType === 'RANCHER';
 
     // Transaction: deduct gold + create asset
-    const [asset] = await prisma.$transaction([
-      prisma.ownedAsset.create({
-        data: {
-          ownerId: character.id,
-          townId: character.homeTownId,
-          professionType: profEnum,
-          spotType: assetTypeDef.spotType,
-          tier,
-          slotNumber,
-          name: assetTypeDef.name,
-          purchasePrice: cost,
-          ...(isRancherBuilding ? { cropState: 'READY' } : {}),
-        },
-      }),
-      prisma.character.update({
-        where: { id: character.id },
-        data: { gold: { decrement: cost } },
-      }),
-    ]);
+    const asset = await db.transaction(async (tx) => {
+      const [newAsset] = await tx.insert(ownedAssets).values({
+        id: crypto.randomUUID(),
+        ownerId: character.id,
+        townId: character.homeTownId!,
+        professionType,
+        spotType: assetTypeDef.spotType,
+        tier,
+        slotNumber,
+        name: assetTypeDef.name,
+        purchasePrice: cost,
+        ...(isRancherBuilding ? { cropState: 'READY' } : {}),
+      }).returning();
+
+      await tx.update(characters).set({
+        gold: sql`${characters.gold} - ${cost}`,
+      }).where(eq(characters.id, character.id));
+
+      return newAsset;
+    });
 
     return res.status(201).json({
       success: true,
@@ -255,7 +265,7 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
       goldRemaining: character.gold - cost,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'assets-buy', req)) return;
+    if (handleDbError(error, res, 'assets-buy', req)) return;
     logRouteError(req, 500, 'Assets buy error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -271,7 +281,7 @@ router.post('/:id/plant', authGuard, characterGuard, requireTown, async (req: Au
     const { id } = req.params;
 
     // 1. Find asset, check ownership
-    const asset = await prisma.ownedAsset.findUnique({ where: { id } });
+    const asset = await db.query.ownedAssets.findFirst({ where: eq(ownedAssets.id, id) });
     if (!asset) {
       return res.status(404).json({ error: 'Asset not found' });
     }
@@ -295,15 +305,12 @@ router.post('/:id/plant', authGuard, characterGuard, requireTown, async (req: Au
     const readyAt = plantedAt + tierData.growthTicks;
     const witheringAt = readyAt + WITHER_TICKS;
 
-    const updated = await prisma.ownedAsset.update({
-      where: { id },
-      data: {
-        cropState: 'GROWING',
-        plantedAt,
-        readyAt,
-        witheringAt,
-      },
-    });
+    const [updated] = await db.update(ownedAssets).set({
+      cropState: 'GROWING',
+      plantedAt,
+      readyAt,
+      witheringAt,
+    }).where(eq(ownedAssets.id, id)).returning();
 
     return res.json({
       success: true,
@@ -317,7 +324,7 @@ router.post('/:id/plant', authGuard, characterGuard, requireTown, async (req: Au
       message: `You planted crops in your ${asset.name}. Ready in ${tierData.growthTicks} days.`,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'assets-plant', req)) return;
+    if (handleDbError(error, res, 'assets-plant', req)) return;
     logRouteError(req, 500, 'Assets plant error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -333,7 +340,7 @@ router.post('/:id/harvest', authGuard, characterGuard, requireTown, async (req: 
     const { id } = req.params;
 
     // 1. Find asset
-    const asset = await prisma.ownedAsset.findUnique({ where: { id } });
+    const asset = await db.query.ownedAssets.findFirst({ where: eq(ownedAssets.id, id) });
     if (!asset) {
       return res.status(404).json({ error: 'Asset not found' });
     }
@@ -359,9 +366,9 @@ router.post('/:id/harvest', authGuard, characterGuard, requireTown, async (req: 
     }
 
     // 6. Check no existing daily action for today
-    const todayTick = getTodayTickDate();
-    const existingAction = await prisma.dailyAction.findFirst({
-      where: { characterId: character.id, tickDate: todayTick },
+    const todayTick = getTodayTickDate().toISOString();
+    const existingAction = await db.query.dailyActions.findFirst({
+      where: and(eq(dailyActions.characterId, character.id), eq(dailyActions.tickDate, todayTick)),
     });
     if (existingAction) {
       return res.status(429).json({
@@ -372,29 +379,27 @@ router.post('/:id/harvest', authGuard, characterGuard, requireTown, async (req: 
     }
 
     // 7. Cancel any open job for this asset (owner harvesting manually)
-    await prisma.jobListing.updateMany({
-      where: { assetId: asset.id, status: 'OPEN' },
-      data: { status: 'CANCELLED' },
-    });
+    await db.update(jobListings).set({ status: 'CANCELLED' }).where(
+      and(eq(jobListings.assetId, asset.id), eq(jobListings.status, 'OPEN')),
+    );
 
     // 8. Create daily action
-    await prisma.dailyAction.create({
-      data: {
-        characterId: character.id,
-        tickDate: todayTick,
-        actionType: 'HARVEST',
-        status: 'LOCKED_IN',
-        actionTarget: {
-          type: 'private_asset_harvest',
-          assetId: asset.id,
-          spotType: asset.spotType,
-          ownerId: asset.ownerId,
-          harvesterId: character.id,
-          isWorker: false,
-          wage: 0,
-          tier: asset.tier,
-          assetName: asset.name,
-        },
+    await db.insert(dailyActions).values({
+      id: crypto.randomUUID(),
+      characterId: character.id,
+      tickDate: todayTick,
+      actionType: 'HARVEST',
+      status: 'LOCKED_IN',
+      actionTarget: {
+        type: 'private_asset_harvest',
+        assetId: asset.id,
+        spotType: asset.spotType,
+        ownerId: asset.ownerId,
+        harvesterId: character.id,
+        isWorker: false,
+        wage: 0,
+        tier: asset.tier,
+        assetName: asset.name,
       },
     });
 
@@ -407,7 +412,7 @@ router.post('/:id/harvest', authGuard, characterGuard, requireTown, async (req: 
       resetsAt: getNextTickTime().toISOString(),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'assets-harvest', req)) return;
+    if (handleDbError(error, res, 'assets-harvest', req)) return;
     logRouteError(req, 500, 'Assets harvest error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -423,7 +428,7 @@ router.post('/:id/collect', authGuard, characterGuard, requireTown, async (req: 
     const { id } = req.params;
 
     // 1. Find asset
-    const asset = await prisma.ownedAsset.findUnique({ where: { id } });
+    const asset = await db.query.ownedAssets.findFirst({ where: eq(ownedAssets.id, id) });
     if (!asset) {
       return res.status(404).json({ error: 'Asset not found' });
     }
@@ -441,9 +446,9 @@ router.post('/:id/collect', authGuard, characterGuard, requireTown, async (req: 
     }
 
     // 2. Check daily action
-    const todayTick = getTodayTickDate();
-    const existingAction = await prisma.dailyAction.findFirst({
-      where: { characterId: character.id, tickDate: todayTick },
+    const todayTick = getTodayTickDate().toISOString();
+    const existingAction = await db.query.dailyActions.findFirst({
+      where: and(eq(dailyActions.characterId, character.id), eq(dailyActions.tickDate, todayTick)),
     });
     if (existingAction) {
       return res.status(429).json({
@@ -463,70 +468,70 @@ router.post('/:id/collect', authGuard, characterGuard, requireTown, async (req: 
     const itemName = gatherItem.templateName;
     const quantity = asset.pendingYield;
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Find/create template
-      let template = await tx.itemTemplate.findFirst({ where: { name: itemName } });
+      let template = await tx.query.itemTemplates.findFirst({ where: eq(itemTemplates.name, itemName) });
       if (!template) {
-        const { Prisma: P } = await import('@prisma/client');
-        template = await tx.itemTemplate.create({
-          data: {
-            name: itemName,
-            type: (gatherItem.type === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL') as any,
-            rarity: 'COMMON',
-            description: gatherItem.description,
-            stats: {},
-            durability: 0,
-            requirements: {},
-            isFood: gatherItem.isFood,
-            foodBuff: gatherItem.foodBuff ?? P.JsonNull,
-            isPerishable: gatherItem.shelfLifeDays != null,
-            shelfLifeDays: gatherItem.shelfLifeDays,
-          },
-        });
+        [template] = await tx.insert(itemTemplates).values({
+          id: crypto.randomUUID(),
+          name: itemName,
+          type: (gatherItem.type === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL') as any,
+          rarity: 'COMMON',
+          description: gatherItem.description,
+          stats: {},
+          durability: 0,
+          requirements: {},
+          isFood: gatherItem.isFood,
+          foodBuff: gatherItem.foodBuff ?? null,
+          isPerishable: gatherItem.shelfLifeDays != null,
+          shelfLifeDays: gatherItem.shelfLifeDays,
+        }).returning();
       }
 
       // Put items in house storage
-      const house = await tx.house.findFirst({
-        where: { characterId: character.id, townId: asset.townId },
+      const house = await tx.query.houses.findFirst({
+        where: and(eq(houses.characterId, character.id), eq(houses.townId, asset.townId)),
       });
       if (house) {
-        await tx.houseStorage.upsert({
-          where: { houseId_itemTemplateId: { houseId: house.id, itemTemplateId: template.id } },
-          update: { quantity: { increment: quantity } },
-          create: { houseId: house.id, itemTemplateId: template.id, quantity },
+        await tx.insert(houseStorage).values({
+          id: crypto.randomUUID(),
+          houseId: house.id,
+          itemTemplateId: template.id,
+          quantity,
+        }).onConflictDoUpdate({
+          target: [houseStorage.houseId, houseStorage.itemTemplateId],
+          set: { quantity: sql`${houseStorage.quantity} + ${quantity}` },
         });
       }
 
       // Reset pending yield
-      await tx.ownedAsset.update({
-        where: { id: asset.id },
-        data: { pendingYield: 0, pendingYieldSince: null },
-      });
+      await tx.update(ownedAssets).set({
+        pendingYield: 0,
+        pendingYieldSince: null,
+      }).where(eq(ownedAssets.id, asset.id));
 
       // Cancel any open job for this asset
-      await tx.jobListing.updateMany({
-        where: { assetId: asset.id, status: 'OPEN' },
-        data: { status: 'CANCELLED' },
-      });
+      await tx.update(jobListings).set({ status: 'CANCELLED' }).where(
+        and(eq(jobListings.assetId, asset.id), eq(jobListings.status, 'OPEN')),
+      );
 
       // Create daily action
-      await tx.dailyAction.create({
-        data: {
-          characterId: character.id,
-          tickDate: todayTick,
-          actionType: 'HARVEST',
-          status: 'COMPLETED',
-          actionTarget: {
-            type: 'rancher_collection',
-            assetId: asset.id,
-            spotType: asset.spotType,
-          },
-          result: {
-            type: 'rancher_collection',
-            itemName,
-            quantity,
-            assetName: asset.name,
-          },
+      await tx.insert(dailyActions).values({
+        id: crypto.randomUUID(),
+        characterId: character.id,
+        tickDate: todayTick,
+        actionType: 'HARVEST',
+        status: 'COMPLETED',
+        actionTarget: {
+          type: 'rancher_collection',
+          assetId: asset.id,
+          spotType: asset.spotType,
+        },
+        result: {
+          type: 'rancher_collection',
+          itemName,
+          quantity,
+          assetName: asset.name,
         },
       });
     });
@@ -539,7 +544,7 @@ router.post('/:id/collect', authGuard, characterGuard, requireTown, async (req: 
       resetsAt: getNextTickTime().toISOString(),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'assets-collect', req)) return;
+    if (handleDbError(error, res, 'assets-collect', req)) return;
     logRouteError(req, 500, 'Assets collect error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

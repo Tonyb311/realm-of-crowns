@@ -1,6 +1,8 @@
 import { Router, Response } from 'express';
-import { prisma } from '../lib/prisma';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { db } from '../lib/db';
+import { eq, desc, inArray, count } from 'drizzle-orm';
+import { worldEvents, wars } from '@database/tables';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
@@ -12,19 +14,19 @@ router.get('/', authGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
-    const skip = (page - 1) * limit;
+    const offset = (page - 1) * limit;
     const eventType = req.query.eventType as string | undefined;
 
-    const where = eventType ? { eventType } : {};
+    const whereClause = eventType ? eq(worldEvents.eventType, eventType) : undefined;
 
-    const [events, total] = await Promise.all([
-      prisma.worldEvent.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-      prisma.worldEvent.count({ where }),
+    const [events, [{ total }]] = await Promise.all([
+      db.select().from(worldEvents)
+        .where(whereClause)
+        .orderBy(desc(worldEvents.createdAt))
+        .offset(offset)
+        .limit(limit),
+      db.select({ total: count() }).from(worldEvents)
+        .where(whereClause),
     ]);
 
     return res.json({
@@ -39,7 +41,7 @@ router.get('/', authGuard, async (req: AuthenticatedRequest, res: Response) => {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'list world events', req)) return;
+    if (handleDbError(error, res, 'list world events', req)) return;
     logRouteError(req, 500, 'List world events error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -48,36 +50,33 @@ router.get('/', authGuard, async (req: AuthenticatedRequest, res: Response) => {
 // GET /api/world-events/war-bulletin — active war bulletin board
 router.get('/war-bulletin', authGuard, async (_req: AuthenticatedRequest, res: Response) => {
   try {
-    const activeWars = await prisma.war.findMany({
-      where: { status: 'ACTIVE' },
-      include: {
-        attackerKingdom: { select: { id: true, name: true } },
-        defenderKingdom: { select: { id: true, name: true } },
+    const activeWars = await db.query.wars.findMany({
+      where: eq(wars.status, 'ACTIVE'),
+      with: {
+        kingdom_attackerKingdomId: { columns: { id: true, name: true } },
+        kingdom_defenderKingdomId: { columns: { id: true, name: true } },
       },
-      orderBy: { startedAt: 'desc' },
+      orderBy: desc(wars.startedAt),
     });
 
     // Also fetch recent war-related events
-    const recentWarEvents = await prisma.worldEvent.findMany({
-      where: {
-        eventType: { in: ['WAR_DECLARATION', 'PEACE_TREATY'] },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-    });
+    const recentWarEvents = await db.select().from(worldEvents)
+      .where(inArray(worldEvents.eventType, ['WAR_DECLARATION', 'PEACE_TREATY']))
+      .orderBy(desc(worldEvents.createdAt))
+      .limit(10);
 
     return res.json({
       activeWars: activeWars.map((w) => ({
         id: w.id,
-        attacker: w.attackerKingdom,
-        defender: w.defenderKingdom,
+        attacker: w.kingdom_attackerKingdomId,
+        defender: w.kingdom_defenderKingdomId,
         reason: w.reason,
         status: w.status,
         attackerScore: w.attackerScore,
         defenderScore: w.defenderScore,
         startedAt: w.startedAt,
         daysSinceStart: Math.floor(
-          (Date.now() - w.startedAt.getTime()) / (1000 * 60 * 60 * 24),
+          (Date.now() - new Date(w.startedAt).getTime()) / (1000 * 60 * 60 * 24),
         ),
       })),
       recentWarEvents: recentWarEvents.map((e) => ({
@@ -89,7 +88,7 @@ router.get('/war-bulletin', authGuard, async (_req: AuthenticatedRequest, res: R
       })),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'war bulletin', _req)) return;
+    if (handleDbError(error, res, 'war bulletin', _req)) return;
     logRouteError(_req, 500, 'War bulletin error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -98,9 +97,9 @@ router.get('/war-bulletin', authGuard, async (_req: AuthenticatedRequest, res: R
 // GET /api/world-events/state-report — latest State of Aethermere report
 router.get('/state-report', authGuard, async (_req: AuthenticatedRequest, res: Response) => {
   try {
-    const latestReport = await prisma.worldEvent.findFirst({
-      where: { eventType: 'STATE_REPORT' },
-      orderBy: { createdAt: 'desc' },
+    const latestReport = await db.query.worldEvents.findFirst({
+      where: eq(worldEvents.eventType, 'STATE_REPORT'),
+      orderBy: desc(worldEvents.createdAt),
     });
 
     if (!latestReport) {
@@ -117,7 +116,7 @@ router.get('/state-report', authGuard, async (_req: AuthenticatedRequest, res: R
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'state report', _req)) return;
+    if (handleDbError(error, res, 'state report', _req)) return;
     logRouteError(_req, 500, 'State report error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

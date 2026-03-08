@@ -6,12 +6,25 @@
 
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, or, ne } from 'drizzle-orm';
+import {
+  travelRoutes,
+  travelNodes,
+  characterTravelStates,
+  characters,
+  travelGroups,
+  travelGroupMembers,
+  groupTravelStates,
+  partyMembers,
+  parties,
+  towns,
+} from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { getNextTickTime } from '../lib/game-day';
 
@@ -78,25 +91,25 @@ router.get('/routes', authGuard, characterGuard, async (req: AuthenticatedReques
       return res.status(400).json({ error: 'You must be in a town to view available routes' });
     }
 
-    const routes = await prisma.travelRoute.findMany({
-      where: {
-        isReleased: true,
-        OR: [
-          { fromTownId: character.currentTownId },
-          { toTownId: character.currentTownId },
-        ],
-      },
-      include: {
-        fromTown: { select: { id: true, name: true } },
-        toTown: { select: { id: true, name: true } },
+    const routes = await db.query.travelRoutes.findMany({
+      where: and(
+        eq(travelRoutes.isReleased, true),
+        or(
+          eq(travelRoutes.fromTownId, character.currentTownId),
+          eq(travelRoutes.toTownId, character.currentTownId),
+        ),
+      ),
+      with: {
+        town_fromTownId: { columns: { id: true, name: true } },
+        town_toTownId: { columns: { id: true, name: true } },
       },
     });
 
     const routeList = routes.map(route => {
       // If character is at the toTown end, swap from/to in the response
       const isReverse = route.toTownId === character.currentTownId;
-      const origin = isReverse ? route.toTown : route.fromTown;
-      const destination = isReverse ? route.fromTown : route.toTown;
+      const origin = isReverse ? route.town_toTownId : route.town_fromTownId;
+      const destination = isReverse ? route.town_fromTownId : route.town_toTownId;
 
       return {
         id: route.id,
@@ -114,7 +127,7 @@ router.get('/routes', authGuard, characterGuard, async (req: AuthenticatedReques
 
     return res.json({ routes: routeList });
   } catch (error) {
-    if (handlePrismaError(error, res, 'travel-routes', req)) return;
+    if (handleDbError(error, res, 'travel-routes', req)) return;
     logRouteError(req, 500, 'Travel routes error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -125,13 +138,13 @@ router.get('/routes/:routeId', authGuard, characterGuard, async (req: Authentica
   try {
     const { routeId } = req.params;
 
-    const route = await prisma.travelRoute.findUnique({
-      where: { id: routeId },
-      include: {
-        fromTown: { select: { id: true, name: true } },
-        toTown: { select: { id: true, name: true } },
+    const route = await db.query.travelRoutes.findFirst({
+      where: eq(travelRoutes.id, routeId),
+      with: {
+        town_fromTownId: { columns: { id: true, name: true } },
+        town_toTownId: { columns: { id: true, name: true } },
         travelNodes: {
-          orderBy: { nodeIndex: 'asc' },
+          orderBy: (t: any, { asc }: any) => [asc(t.nodeIndex)],
         },
       },
     });
@@ -145,15 +158,15 @@ router.get('/routes/:routeId', authGuard, characterGuard, async (req: Authentica
         id: route.id,
         name: route.name,
         description: route.description,
-        fromTown: route.fromTown,
-        toTown: route.toTown,
+        fromTown: route.town_fromTownId,
+        toTown: route.town_toTownId,
         nodeCount: route.nodeCount,
         difficulty: route.difficulty,
         terrain: route.terrain,
         dangerLevel: route.dangerLevel,
         bidirectional: route.bidirectional,
         isReleased: route.isReleased,
-        nodes: route.travelNodes.map(node => ({
+        nodes: route.travelNodes.map((node: any) => ({
           id: node.id,
           nodeIndex: node.nodeIndex,
           name: node.name,
@@ -165,7 +178,7 @@ router.get('/routes/:routeId', authGuard, characterGuard, async (req: Authentica
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'travel-route-detail', req)) return;
+    if (handleDbError(error, res, 'travel-route-detail', req)) return;
     logRouteError(req, 500, 'Travel route detail error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -189,16 +202,15 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
     }
 
     // Check if character is in an active party
-    const partyMembership = await prisma.partyMember.findFirst({
-      where: { characterId: character.id, leftAt: null },
-      include: {
+    const allPartyMemberships = await db.query.partyMembers.findMany({
+      where: eq(partyMembers.characterId, character.id),
+      with: {
         party: {
-          include: {
-            members: {
-              where: { leftAt: null },
-              include: {
+          with: {
+            partyMembers: {
+              with: {
                 character: {
-                  select: { id: true, name: true, level: true, currentTownId: true, travelStatus: true },
+                  columns: { id: true, name: true, level: true, currentTownId: true, travelStatus: true },
                 },
               },
             },
@@ -207,7 +219,12 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
       },
     });
 
-    const isInParty = !!partyMembership && partyMembership.party.status === 'active';
+    // Filter for active membership (leftAt IS NULL) in an active party
+    const partyMembership = allPartyMemberships.find(
+      m => m.leftAt === null && m.party.status === 'active'
+    );
+
+    const isInParty = !!partyMembership;
     const isPartyLeader = isInParty && partyMembership!.role === 'leader';
 
     // Party member but not leader → reject
@@ -215,14 +232,14 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
       return res.status(403).json({ error: 'Only the party leader can initiate travel' });
     }
 
-    const route = await prisma.travelRoute.findUnique({
-      where: { id: routeId },
-      include: {
-        fromTown: { select: { id: true, name: true } },
-        toTown: { select: { id: true, name: true } },
+    const route = await db.query.travelRoutes.findFirst({
+      where: eq(travelRoutes.id, routeId),
+      with: {
+        town_fromTownId: { columns: { id: true, name: true } },
+        town_toTownId: { columns: { id: true, name: true } },
         travelNodes: {
-          orderBy: { nodeIndex: 'asc' },
-          take: 1,
+          orderBy: (t: any, { asc }: any) => [asc(t.nodeIndex)],
+          limit: 1,
         },
       },
     });
@@ -251,85 +268,80 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
     // ---- PARTY TRAVEL (leader initiates group travel) ----
     if (isPartyLeader) {
       const party = partyMembership!.party;
-      const partyMembers = party.members;
+      // Active members only
+      const activePartyMembers = party.partyMembers.filter((m: any) => m.leftAt === null);
 
       // Validate all members are in the correct town and idle
-      const invalidMembers = partyMembers.filter(
-        m => m.character.currentTownId !== character.currentTownId || m.character.travelStatus !== 'idle'
+      const invalidMembers = activePartyMembers.filter(
+        (m: any) => m.character.currentTownId !== character.currentTownId || m.character.travelStatus !== 'idle'
       );
 
       if (invalidMembers.length > 0) {
-        const names = invalidMembers.map(m => m.character.name).join(', ');
+        const names = invalidMembers.map((m: any) => m.character.name).join(', ');
         return res.status(400).json({
           error: `Some party members are not ready: ${names}. All members must be idle and in the same town.`,
         });
       }
 
-      const memberCharacterIds = partyMembers.map(m => m.character.id);
+      const memberCharacterIds = activePartyMembers.map((m: any) => m.character.id);
 
       // Create a TravelGroup linked to the party, with GroupTravelState
-      const groupTravelState = await prisma.$transaction(async (tx) => {
-        const travelGroup = await tx.travelGroup.create({
-          data: {
-            leaderId: character.id,
-            name: party.name || null,
-            status: 'traveling',
-            partyId: party.id,
-          },
-        });
+      const gts = await db.transaction(async (tx) => {
+        const [travelGroup] = await tx.insert(travelGroups).values({
+          id: crypto.randomUUID(),
+          leaderId: character.id,
+          name: party.name || null,
+          status: 'traveling',
+          partyId: party.id,
+        }).returning();
 
         // Create TravelGroupMembers
-        for (const member of partyMembers) {
-          await tx.travelGroupMember.create({
-            data: {
-              groupId: travelGroup.id,
-              characterId: member.character.id,
-              role: member.role,
-            },
+        for (const member of activePartyMembers) {
+          await tx.insert(travelGroupMembers).values({
+            id: crypto.randomUUID(),
+            groupId: travelGroup.id,
+            characterId: (member as any).character.id,
+            role: (member as any).role,
           });
         }
 
-        const gts = await tx.groupTravelState.create({
-          data: {
-            groupId: travelGroup.id,
-            routeId: route.id,
-            currentNodeIndex: 0,
-            direction,
-            status: 'traveling',
-            speedModifier: 1,
-          },
-        });
+        const [groupState] = await tx.insert(groupTravelStates).values({
+          id: crypto.randomUUID(),
+          groupId: travelGroup.id,
+          routeId: route.id,
+          currentNodeIndex: 0,
+          direction,
+          status: 'traveling',
+          speedModifier: 1,
+        }).returning();
 
         // Update all member characters
         for (const charId of memberCharacterIds) {
-          await tx.character.update({
-            where: { id: charId },
-            data: {
-              travelStatus: 'traveling_group',
-              currentTownId: null,
-            },
-          });
+          await tx.update(characters).set({
+            travelStatus: 'traveling_group',
+            currentTownId: null,
+          }).where(eq(characters.id, charId));
         }
 
-        return gts;
+        return groupState;
       });
 
-      const etaTicks = calculateEtaTicks(0, route.nodeCount, direction, groupTravelState.speedModifier);
+      const etaTicks = calculateEtaTicks(0, route.nodeCount, direction, gts.speedModifier);
 
       return res.status(201).json({
         type: 'party',
         travelState: {
-          id: groupTravelState.id,
-          routeId: groupTravelState.routeId,
-          currentNodeIndex: groupTravelState.currentNodeIndex,
-          direction: groupTravelState.direction,
-          status: groupTravelState.status,
-          startedAt: groupTravelState.startedAt,
+          id: gts.id,
+          routeId: gts.routeId,
+          currentNodeIndex: gts.currentNodeIndex,
+          direction: gts.direction,
+          status: gts.status,
+          startedAt: gts.startedAt,
         },
         route: {
           name: route.name,
-          fromTown: route.fromTown,
-          toTown: route.toTown,
+          fromTown: route.town_fromTownId,
+          toTown: route.town_toTownId,
           nodeCount: route.nodeCount,
         },
         party: {
@@ -343,25 +355,21 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
     }
 
     // ---- SOLO TRAVEL (no party) ----
-    const travelState = await prisma.$transaction(async (tx) => {
-      const state = await tx.characterTravelState.create({
-        data: {
-          characterId: character.id,
-          routeId: route.id,
-          currentNodeIndex: 0,
-          direction,
-          status: 'traveling',
-          speedModifier: 1,
-        },
-      });
+    const travelState = await db.transaction(async (tx) => {
+      const [state] = await tx.insert(characterTravelStates).values({
+        id: crypto.randomUUID(),
+        characterId: character.id,
+        routeId: route.id,
+        currentNodeIndex: 0,
+        direction,
+        status: 'traveling',
+        speedModifier: 1,
+      }).returning();
 
-      await tx.character.update({
-        where: { id: character.id },
-        data: {
-          travelStatus: 'traveling_solo',
-          currentTownId: null,
-        },
-      });
+      await tx.update(characters).set({
+        travelStatus: 'traveling_solo',
+        currentTownId: null,
+      }).where(eq(characters.id, character.id));
 
       return state;
     });
@@ -381,8 +389,8 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
       },
       route: {
         name: route.name,
-        fromTown: route.fromTown,
-        toTown: route.toTown,
+        fromTown: route.town_fromTownId,
+        toTown: route.town_toTownId,
         nodeCount: route.nodeCount,
       },
       currentNode: firstNode ? {
@@ -397,7 +405,7 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
       nextTickAt: getNextTickTime(),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'travel-start', req)) return;
+    if (handleDbError(error, res, 'travel-start', req)) return;
     logRouteError(req, 500, 'Travel start error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -410,9 +418,9 @@ router.get('/status', authGuard, characterGuard, async (req: AuthenticatedReques
 
     if (character.travelStatus === 'idle') {
       const town = character.currentTownId
-        ? await prisma.town.findUnique({
-            where: { id: character.currentTownId },
-            select: { id: true, name: true },
+        ? await db.query.towns.findFirst({
+            where: eq(towns.id, character.currentTownId),
+            columns: { id: true, name: true },
           })
         : null;
 
@@ -423,15 +431,15 @@ router.get('/status', authGuard, characterGuard, async (req: AuthenticatedReques
     }
 
     if (character.travelStatus === 'traveling_solo') {
-      const travelState = await prisma.characterTravelState.findUnique({
-        where: { characterId: character.id },
-        include: {
-          route: {
-            include: {
-              fromTown: { select: { id: true, name: true } },
-              toTown: { select: { id: true, name: true } },
+      const travelState = await db.query.characterTravelStates.findFirst({
+        where: eq(characterTravelStates.characterId, character.id),
+        with: {
+          travelRoute: {
+            with: {
+              town_fromTownId: { columns: { id: true, name: true } },
+              town_toTownId: { columns: { id: true, name: true } },
               travelNodes: {
-                orderBy: { nodeIndex: 'asc' },
+                orderBy: (t: any, { asc }: any) => [asc(t.nodeIndex)],
               },
             },
           },
@@ -443,13 +451,13 @@ router.get('/status', authGuard, characterGuard, async (req: AuthenticatedReques
       }
 
       // Find the current node by nodeIndex
-      const currentNode = travelState.route.travelNodes.find(
-        n => n.nodeIndex === travelState.currentNodeIndex
+      const currentNode = travelState.travelRoute.travelNodes.find(
+        (n: any) => n.nodeIndex === travelState.currentNodeIndex
       ) || null;
 
       const etaTicks = calculateEtaTicks(
         travelState.currentNodeIndex,
-        travelState.route.nodeCount,
+        travelState.travelRoute.nodeCount,
         travelState.direction,
         travelState.speedModifier,
       );
@@ -467,13 +475,13 @@ router.get('/status', authGuard, characterGuard, async (req: AuthenticatedReques
           lastTickAt: travelState.lastTickAt,
         },
         route: {
-          id: travelState.route.id,
-          name: travelState.route.name,
-          fromTown: travelState.route.fromTown,
-          toTown: travelState.route.toTown,
-          nodeCount: travelState.route.nodeCount,
-          terrain: travelState.route.terrain,
-          dangerLevel: travelState.route.dangerLevel,
+          id: travelState.travelRoute.id,
+          name: travelState.travelRoute.name,
+          fromTown: travelState.travelRoute.town_fromTownId,
+          toTown: travelState.travelRoute.town_toTownId,
+          nodeCount: travelState.travelRoute.nodeCount,
+          terrain: travelState.travelRoute.terrain,
+          dangerLevel: travelState.travelRoute.dangerLevel,
         },
         currentNode: currentNode ? {
           nodeIndex: currentNode.nodeIndex,
@@ -485,9 +493,9 @@ router.get('/status', authGuard, characterGuard, async (req: AuthenticatedReques
         } : null,
         progress: {
           current: travelState.currentNodeIndex,
-          total: travelState.route.nodeCount,
-          percent: travelState.route.nodeCount > 0
-            ? Math.round((travelState.currentNodeIndex / travelState.route.nodeCount) * 100)
+          total: travelState.travelRoute.nodeCount,
+          percent: travelState.travelRoute.nodeCount > 0
+            ? Math.round((travelState.currentNodeIndex / travelState.travelRoute.nodeCount) * 100)
             : 0,
         },
         etaTicks,
@@ -497,25 +505,25 @@ router.get('/status', authGuard, characterGuard, async (req: AuthenticatedReques
 
     if (character.travelStatus === 'traveling_group') {
       // Find group membership for this character
-      const membership = await prisma.travelGroupMember.findFirst({
-        where: { characterId: character.id },
-        include: {
-          group: {
-            include: {
-              leader: { select: { id: true, name: true } },
-              members: {
-                include: {
-                  character: { select: { id: true, name: true, level: true, race: true } },
+      const membership = await db.query.travelGroupMembers.findFirst({
+        where: eq(travelGroupMembers.characterId, character.id),
+        with: {
+          travelGroup: {
+            with: {
+              character: { columns: { id: true, name: true } },
+              travelGroupMembers: {
+                with: {
+                  character: { columns: { id: true, name: true, level: true, race: true } },
                 },
               },
-              travelState: {
-                include: {
-                  route: {
-                    include: {
-                      fromTown: { select: { id: true, name: true } },
-                      toTown: { select: { id: true, name: true } },
+              groupTravelStates: {
+                with: {
+                  travelRoute: {
+                    with: {
+                      town_fromTownId: { columns: { id: true, name: true } },
+                      town_toTownId: { columns: { id: true, name: true } },
                       travelNodes: {
-                        orderBy: { nodeIndex: 'asc' },
+                        orderBy: (t: any, { asc }: any) => [asc(t.nodeIndex)],
                       },
                     },
                   },
@@ -526,18 +534,20 @@ router.get('/status', authGuard, characterGuard, async (req: AuthenticatedReques
         },
       });
 
-      if (!membership || !membership.group.travelState) {
+      // groupTravelStates is many, take first as it's a 1:1 in practice
+      const groupState = membership?.travelGroup.groupTravelStates[0];
+
+      if (!membership || !groupState) {
         return res.status(404).json({ error: 'Group travel state not found' });
       }
 
-      const groupState = membership.group.travelState;
-      const currentNode = groupState.route.travelNodes.find(
-        n => n.nodeIndex === groupState.currentNodeIndex
+      const currentNode = groupState.travelRoute.travelNodes.find(
+        (n: any) => n.nodeIndex === groupState.currentNodeIndex
       ) || null;
 
       const etaTicks = calculateEtaTicks(
         groupState.currentNodeIndex,
-        groupState.route.nodeCount,
+        groupState.travelRoute.nodeCount,
         groupState.direction,
         groupState.speedModifier,
       );
@@ -546,10 +556,10 @@ router.get('/status', authGuard, characterGuard, async (req: AuthenticatedReques
         traveling: true,
         type: 'group',
         group: {
-          id: membership.group.id,
-          name: membership.group.name,
-          leader: membership.group.leader,
-          members: membership.group.members.map(m => ({
+          id: membership.travelGroup.id,
+          name: membership.travelGroup.name,
+          leader: membership.travelGroup.character,
+          members: membership.travelGroup.travelGroupMembers.map((m: any) => ({
             characterId: m.character.id,
             name: m.character.name,
             level: m.character.level,
@@ -567,13 +577,13 @@ router.get('/status', authGuard, characterGuard, async (req: AuthenticatedReques
           lastTickAt: groupState.lastTickAt,
         },
         route: {
-          id: groupState.route.id,
-          name: groupState.route.name,
-          fromTown: groupState.route.fromTown,
-          toTown: groupState.route.toTown,
-          nodeCount: groupState.route.nodeCount,
-          terrain: groupState.route.terrain,
-          dangerLevel: groupState.route.dangerLevel,
+          id: groupState.travelRoute.id,
+          name: groupState.travelRoute.name,
+          fromTown: groupState.travelRoute.town_fromTownId,
+          toTown: groupState.travelRoute.town_toTownId,
+          nodeCount: groupState.travelRoute.nodeCount,
+          terrain: groupState.travelRoute.terrain,
+          dangerLevel: groupState.travelRoute.dangerLevel,
         },
         currentNode: currentNode ? {
           nodeIndex: currentNode.nodeIndex,
@@ -585,9 +595,9 @@ router.get('/status', authGuard, characterGuard, async (req: AuthenticatedReques
         } : null,
         progress: {
           current: groupState.currentNodeIndex,
-          total: groupState.route.nodeCount,
-          percent: groupState.route.nodeCount > 0
-            ? Math.round((groupState.currentNodeIndex / groupState.route.nodeCount) * 100)
+          total: groupState.travelRoute.nodeCount,
+          percent: groupState.travelRoute.nodeCount > 0
+            ? Math.round((groupState.currentNodeIndex / groupState.travelRoute.nodeCount) * 100)
             : 0,
         },
         etaTicks,
@@ -601,7 +611,7 @@ router.get('/status', authGuard, characterGuard, async (req: AuthenticatedReques
       travelStatus: character.travelStatus,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'travel-status', req)) return;
+    if (handleDbError(error, res, 'travel-status', req)) return;
     logRouteError(req, 500, 'Travel status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -618,11 +628,11 @@ router.post('/cancel', authGuard, characterGuard, async (req: AuthenticatedReque
 
     // --- Solo travel cancel ---
     if (character.travelStatus === 'traveling_solo') {
-      const travelState = await prisma.characterTravelState.findUnique({
-        where: { characterId: character.id },
-        include: {
-          route: {
-            select: { fromTownId: true, toTownId: true, nodeCount: true },
+      const travelState = await db.query.characterTravelStates.findFirst({
+        where: eq(characterTravelStates.characterId, character.id),
+        with: {
+          travelRoute: {
+            columns: { fromTownId: true, toTownId: true, nodeCount: true },
           },
         },
       });
@@ -633,28 +643,25 @@ router.post('/cancel', authGuard, characterGuard, async (req: AuthenticatedReque
 
       const nearestTownId = getNearestTown(
         travelState.currentNodeIndex,
-        travelState.route.nodeCount,
+        travelState.travelRoute.nodeCount,
         travelState.direction,
-        travelState.route.fromTownId,
-        travelState.route.toTownId,
+        travelState.travelRoute.fromTownId,
+        travelState.travelRoute.toTownId,
       );
 
-      await prisma.$transaction([
-        prisma.characterTravelState.delete({
-          where: { characterId: character.id },
-        }),
-        prisma.character.update({
-          where: { id: character.id },
-          data: {
-            travelStatus: 'idle',
-            currentTownId: nearestTownId,
-          },
-        }),
-      ]);
+      await db.transaction(async (tx) => {
+        await tx.delete(characterTravelStates).where(
+          eq(characterTravelStates.characterId, character.id),
+        );
+        await tx.update(characters).set({
+          travelStatus: 'idle',
+          currentTownId: nearestTownId,
+        }).where(eq(characters.id, character.id));
+      });
 
-      const town = await prisma.town.findUnique({
-        where: { id: nearestTownId },
-        select: { id: true, name: true },
+      const town = await db.query.towns.findFirst({
+        where: eq(towns.id, nearestTownId),
+        columns: { id: true, name: true },
       });
 
       return res.json({
@@ -665,20 +672,20 @@ router.post('/cancel', authGuard, characterGuard, async (req: AuthenticatedReque
 
     // --- Group travel cancel (leader only) ---
     if (character.travelStatus === 'traveling_group') {
-      const membership = await prisma.travelGroupMember.findFirst({
-        where: { characterId: character.id },
-        include: {
-          group: {
-            include: {
-              members: {
-                include: {
-                  character: { select: { id: true } },
+      const membership = await db.query.travelGroupMembers.findFirst({
+        where: eq(travelGroupMembers.characterId, character.id),
+        with: {
+          travelGroup: {
+            with: {
+              travelGroupMembers: {
+                with: {
+                  character: { columns: { id: true } },
                 },
               },
-              travelState: {
-                include: {
-                  route: {
-                    select: { fromTownId: true, toTownId: true, nodeCount: true },
+              groupTravelStates: {
+                with: {
+                  travelRoute: {
+                    columns: { fromTownId: true, toTownId: true, nodeCount: true },
                   },
                 },
               },
@@ -695,53 +702,49 @@ router.post('/cancel', authGuard, characterGuard, async (req: AuthenticatedReque
         return res.status(403).json({ error: 'Only the group leader can cancel group travel' });
       }
 
-      const groupState = membership.group.travelState;
+      const groupState = membership.travelGroup.groupTravelStates[0];
       if (!groupState) {
         return res.status(400).json({ error: 'Group is not currently traveling' });
       }
 
       const nearestTownId = getNearestTown(
         groupState.currentNodeIndex,
-        groupState.route.nodeCount,
+        groupState.travelRoute.nodeCount,
         groupState.direction,
-        groupState.route.fromTownId,
-        groupState.route.toTownId,
+        groupState.travelRoute.fromTownId,
+        groupState.travelRoute.toTownId,
       );
 
-      const memberCharacterIds = membership.group.members.map(m => m.character.id);
+      const memberCharacterIds = membership.travelGroup.travelGroupMembers.map((m: any) => m.character.id);
 
-      await prisma.$transaction(async (tx) => {
+      await db.transaction(async (tx) => {
         // Delete group travel state
-        await tx.groupTravelState.delete({
-          where: { groupId: membership.group.id },
-        });
+        await tx.delete(groupTravelStates).where(
+          eq(groupTravelStates.groupId, membership.travelGroup.id),
+        );
 
         // Update group status
-        await tx.travelGroup.update({
-          where: { id: membership.group.id },
-          data: { status: 'disbanded' },
-        });
+        await tx.update(travelGroups).set({
+          status: 'disbanded',
+        }).where(eq(travelGroups.id, membership.travelGroup.id));
 
         // Return all members to nearest town
         for (const charId of memberCharacterIds) {
-          await tx.character.update({
-            where: { id: charId },
-            data: {
-              travelStatus: 'idle',
-              currentTownId: nearestTownId,
-            },
-          });
+          await tx.update(characters).set({
+            travelStatus: 'idle',
+            currentTownId: nearestTownId,
+          }).where(eq(characters.id, charId));
         }
 
         // Clean up memberships
-        await tx.travelGroupMember.deleteMany({
-          where: { groupId: membership.group.id },
-        });
+        await tx.delete(travelGroupMembers).where(
+          eq(travelGroupMembers.groupId, membership.travelGroup.id),
+        );
       });
 
-      const town = await prisma.town.findUnique({
-        where: { id: nearestTownId },
-        select: { id: true, name: true },
+      const town = await db.query.towns.findFirst({
+        where: eq(towns.id, nearestTownId),
+        columns: { id: true, name: true },
       });
 
       return res.json({
@@ -753,7 +756,7 @@ router.post('/cancel', authGuard, characterGuard, async (req: AuthenticatedReque
 
     return res.status(400).json({ error: 'Cannot cancel travel in current state' });
   } catch (error) {
-    if (handlePrismaError(error, res, 'travel-cancel', req)) return;
+    if (handleDbError(error, res, 'travel-cancel', req)) return;
     logRouteError(req, 500, 'Travel cancel error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -768,13 +771,13 @@ router.post('/reverse', authGuard, characterGuard, async (req: AuthenticatedRequ
       return res.status(400).json({ error: 'You must be traveling solo to reverse direction' });
     }
 
-    const travelState = await prisma.characterTravelState.findUnique({
-      where: { characterId: character.id },
-      include: {
-        route: {
-          include: {
-            fromTown: { select: { id: true, name: true } },
-            toTown: { select: { id: true, name: true } },
+    const travelState = await db.query.characterTravelStates.findFirst({
+      where: eq(characterTravelStates.characterId, character.id),
+      with: {
+        travelRoute: {
+          with: {
+            town_fromTownId: { columns: { id: true, name: true } },
+            town_toTownId: { columns: { id: true, name: true } },
           },
         },
       },
@@ -784,20 +787,19 @@ router.post('/reverse', authGuard, characterGuard, async (req: AuthenticatedRequ
       return res.status(404).json({ error: 'Travel state not found' });
     }
 
-    if (!travelState.route.bidirectional) {
+    if (!travelState.travelRoute.bidirectional) {
       return res.status(400).json({ error: 'This route cannot be traveled in reverse' });
     }
 
     const newDirection = travelState.direction === 'forward' ? 'backward' : 'forward';
 
-    const updated = await prisma.characterTravelState.update({
-      where: { characterId: character.id },
-      data: { direction: newDirection },
-    });
+    const [updated] = await db.update(characterTravelStates).set({
+      direction: newDirection,
+    }).where(eq(characterTravelStates.characterId, character.id)).returning();
 
     const etaTicks = calculateEtaTicks(
       updated.currentNodeIndex,
-      travelState.route.nodeCount,
+      travelState.travelRoute.nodeCount,
       newDirection,
       updated.speedModifier,
     );
@@ -812,16 +814,16 @@ router.post('/reverse', authGuard, characterGuard, async (req: AuthenticatedRequ
         speedModifier: updated.speedModifier,
       },
       route: {
-        name: travelState.route.name,
-        fromTown: travelState.route.fromTown,
-        toTown: travelState.route.toTown,
-        nodeCount: travelState.route.nodeCount,
+        name: travelState.travelRoute.name,
+        fromTown: travelState.travelRoute.town_fromTownId,
+        toTown: travelState.travelRoute.town_toTownId,
+        nodeCount: travelState.travelRoute.nodeCount,
       },
       etaTicks,
       nextTickAt: getNextTickTime(),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'travel-reverse', req)) return;
+    if (handleDbError(error, res, 'travel-reverse', req)) return;
     logRouteError(req, 500, 'Travel reverse error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -841,8 +843,8 @@ router.get('/node/players', authGuard, characterGuard, async (req: Authenticated
     let currentNodeIndex: number | null = null;
 
     if (character.travelStatus === 'traveling_solo') {
-      const travelState = await prisma.characterTravelState.findUnique({
-        where: { characterId: character.id },
+      const travelState = await db.query.characterTravelStates.findFirst({
+        where: eq(characterTravelStates.characterId, character.id),
       });
       if (travelState) {
         routeId = travelState.routeId;
@@ -850,17 +852,18 @@ router.get('/node/players', authGuard, characterGuard, async (req: Authenticated
       }
     } else {
       // traveling_group
-      const membership = await prisma.travelGroupMember.findFirst({
-        where: { characterId: character.id },
-        include: {
-          group: {
-            include: { travelState: true },
+      const mem = await db.query.travelGroupMembers.findFirst({
+        where: eq(travelGroupMembers.characterId, character.id),
+        with: {
+          travelGroup: {
+            with: { groupTravelStates: true },
           },
         },
       });
-      if (membership?.group.travelState) {
-        routeId = membership.group.travelState.routeId;
-        currentNodeIndex = membership.group.travelState.currentNodeIndex;
+      const gs = mem?.travelGroup.groupTravelStates[0];
+      if (gs) {
+        routeId = gs.routeId;
+        currentNodeIndex = gs.currentNodeIndex;
       }
     }
 
@@ -869,32 +872,32 @@ router.get('/node/players', authGuard, characterGuard, async (req: Authenticated
     }
 
     // Find solo travelers on the same route and node
-    const soloTravelers = await prisma.characterTravelState.findMany({
-      where: {
-        routeId,
-        currentNodeIndex,
-        characterId: { not: character.id },
-      },
-      include: {
+    const soloTravelers = await db.query.characterTravelStates.findMany({
+      where: and(
+        eq(characterTravelStates.routeId, routeId),
+        eq(characterTravelStates.currentNodeIndex, currentNodeIndex),
+        ne(characterTravelStates.characterId, character.id),
+      ),
+      with: {
         character: {
-          select: { id: true, name: true, level: true, race: true },
+          columns: { id: true, name: true, level: true, race: true },
         },
       },
     });
 
     // Find group travelers on the same route and node
-    const groupStates = await prisma.groupTravelState.findMany({
-      where: {
-        routeId,
-        currentNodeIndex,
-      },
-      include: {
-        group: {
-          include: {
-            members: {
-              include: {
+    const groupStatesList = await db.query.groupTravelStates.findMany({
+      where: and(
+        eq(groupTravelStates.routeId, routeId),
+        eq(groupTravelStates.currentNodeIndex, currentNodeIndex),
+      ),
+      with: {
+        travelGroup: {
+          with: {
+            travelGroupMembers: {
+              with: {
                 character: {
-                  select: { id: true, name: true, level: true, race: true },
+                  columns: { id: true, name: true, level: true, race: true },
                 },
               },
             },
@@ -922,15 +925,15 @@ router.get('/node/players', authGuard, characterGuard, async (req: Authenticated
     }
 
     // Add group travelers (exclude self)
-    for (const gs of groupStates) {
-      for (const member of gs.group.members) {
+    for (const gs of groupStatesList) {
+      for (const member of gs.travelGroup.travelGroupMembers) {
         if (member.character.id !== character.id) {
           players.push({
             characterId: member.character.id,
             name: member.character.name,
             level: member.character.level,
             race: member.character.race,
-            groupName: gs.group.name || undefined,
+            groupName: gs.travelGroup.name || undefined,
           });
         }
       }
@@ -938,7 +941,7 @@ router.get('/node/players', authGuard, characterGuard, async (req: Authenticated
 
     return res.json({ players });
   } catch (error) {
-    if (handlePrismaError(error, res, 'travel-node-players', req)) return;
+    if (handleDbError(error, res, 'travel-node-players', req)) return;
     logRouteError(req, 500, 'Travel node players error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -963,30 +966,32 @@ router.post('/group/create', authGuard, characterGuard, validate(createGroupSche
     }
 
     // Check if already in a group
-    const existingMembership = await prisma.travelGroupMember.findFirst({
-      where: { characterId: character.id },
-      include: { group: { select: { status: true } } },
+    const existingMemberships = await db.query.travelGroupMembers.findMany({
+      where: eq(travelGroupMembers.characterId, character.id),
+      with: { travelGroup: { columns: { status: true } } },
     });
 
-    if (existingMembership && (existingMembership.group.status === 'forming' || existingMembership.group.status === 'traveling')) {
+    const activeGroupMembership = existingMemberships.find(
+      m => m.travelGroup.status === 'forming' || m.travelGroup.status === 'traveling'
+    );
+
+    if (activeGroupMembership) {
       return res.status(400).json({ error: 'You are already in an active travel group' });
     }
 
-    const group = await prisma.$transaction(async (tx) => {
-      const newGroup = await tx.travelGroup.create({
-        data: {
-          leaderId: character.id,
-          name: name || null,
-          status: 'forming',
-        },
-      });
+    const group = await db.transaction(async (tx) => {
+      const [newGroup] = await tx.insert(travelGroups).values({
+        id: crypto.randomUUID(),
+        leaderId: character.id,
+        name: name || null,
+        status: 'forming',
+      }).returning();
 
-      await tx.travelGroupMember.create({
-        data: {
-          groupId: newGroup.id,
-          characterId: character.id,
-          role: 'leader',
-        },
+      await tx.insert(travelGroupMembers).values({
+        id: crypto.randomUUID(),
+        groupId: newGroup.id,
+        characterId: character.id,
+        role: 'leader',
       });
 
       return newGroup;
@@ -1010,7 +1015,7 @@ router.post('/group/create', authGuard, characterGuard, validate(createGroupSche
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'travel-group-create', req)) return;
+    if (handleDbError(error, res, 'travel-group-create', req)) return;
     logRouteError(req, 500, 'Travel group create error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -1030,13 +1035,13 @@ router.post('/group/:groupId/join', authGuard, characterGuard, async (req: Authe
       return res.status(400).json({ error: 'You must be in a town to join a travel group' });
     }
 
-    const group = await prisma.travelGroup.findUnique({
-      where: { id: groupId },
-      include: {
-        leader: { select: { id: true, currentTownId: true } },
-        members: {
-          include: {
-            character: { select: { id: true, name: true, level: true, race: true } },
+    const group = await db.query.travelGroups.findFirst({
+      where: eq(travelGroups.id, groupId),
+      with: {
+        character: { columns: { id: true, currentTownId: true } },
+        travelGroupMembers: {
+          with: {
+            character: { columns: { id: true, name: true, level: true, race: true } },
           },
         },
       },
@@ -1050,40 +1055,43 @@ router.post('/group/:groupId/join', authGuard, characterGuard, async (req: Authe
       return res.status(400).json({ error: 'This group is no longer accepting members' });
     }
 
-    if (group.members.length >= group.maxSize) {
+    if (group.travelGroupMembers.length >= group.maxSize) {
       return res.status(400).json({ error: `Group is full (${group.maxSize}/${group.maxSize})` });
     }
 
     // Ensure character is in the same town as the leader
-    if (character.currentTownId !== group.leader.currentTownId) {
+    if (character.currentTownId !== group.character.currentTownId) {
       return res.status(400).json({ error: 'You must be in the same town as the group leader' });
     }
 
     // Check not already in another active group
-    const existingMembership = await prisma.travelGroupMember.findFirst({
-      where: { characterId: character.id },
-      include: { group: { select: { status: true } } },
+    const existingMemberships = await db.query.travelGroupMembers.findMany({
+      where: eq(travelGroupMembers.characterId, character.id),
+      with: { travelGroup: { columns: { status: true } } },
     });
 
-    if (existingMembership && (existingMembership.group.status === 'forming' || existingMembership.group.status === 'traveling')) {
+    const activeGroupMembership = existingMemberships.find(
+      m => m.travelGroup.status === 'forming' || m.travelGroup.status === 'traveling'
+    );
+
+    if (activeGroupMembership) {
       return res.status(400).json({ error: 'You are already in an active travel group' });
     }
 
-    await prisma.travelGroupMember.create({
-      data: {
-        groupId: group.id,
-        characterId: character.id,
-        role: 'member',
-      },
+    await db.insert(travelGroupMembers).values({
+      id: crypto.randomUUID(),
+      groupId: group.id,
+      characterId: character.id,
+      role: 'member',
     });
 
     // Fetch updated group
-    const updatedGroup = await prisma.travelGroup.findUnique({
-      where: { id: groupId },
-      include: {
-        members: {
-          include: {
-            character: { select: { id: true, name: true, level: true, race: true } },
+    const updatedGroup = await db.query.travelGroups.findFirst({
+      where: eq(travelGroups.id, groupId),
+      with: {
+        travelGroupMembers: {
+          with: {
+            character: { columns: { id: true, name: true, level: true, race: true } },
           },
         },
       },
@@ -1097,7 +1105,7 @@ router.post('/group/:groupId/join', authGuard, characterGuard, async (req: Authe
         leaderId: updatedGroup!.leaderId,
         status: updatedGroup!.status,
         maxSize: updatedGroup!.maxSize,
-        members: updatedGroup!.members.map(m => ({
+        members: updatedGroup!.travelGroupMembers.map((m: any) => ({
           characterId: m.character.id,
           name: m.character.name,
           level: m.character.level,
@@ -1107,7 +1115,7 @@ router.post('/group/:groupId/join', authGuard, characterGuard, async (req: Authe
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'travel-group-join', req)) return;
+    if (handleDbError(error, res, 'travel-group-join', req)) return;
     logRouteError(req, 500, 'Travel group join error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -1119,14 +1127,14 @@ router.post('/group/:groupId/leave', authGuard, characterGuard, async (req: Auth
     const character = (req as AuthenticatedRequest).character!;
     const { groupId } = req.params;
 
-    const group = await prisma.travelGroup.findUnique({
-      where: { id: groupId },
-      include: {
-        members: {
-          include: {
-            character: { select: { id: true, name: true } },
+    const group = await db.query.travelGroups.findFirst({
+      where: eq(travelGroups.id, groupId),
+      with: {
+        travelGroupMembers: {
+          with: {
+            character: { columns: { id: true, name: true } },
           },
-          orderBy: { joinedAt: 'asc' },
+          orderBy: (t: any, { asc }: any) => [asc(t.joinedAt)],
         },
       },
     });
@@ -1139,40 +1147,41 @@ router.post('/group/:groupId/leave', authGuard, characterGuard, async (req: Auth
       return res.status(400).json({ error: 'Cannot leave a group that is already traveling. Ask the leader to cancel.' });
     }
 
-    const membership = group.members.find(m => m.characterId === character.id);
+    const membership = group.travelGroupMembers.find((m: any) => m.characterId === character.id);
     if (!membership) {
       return res.status(400).json({ error: 'You are not a member of this group' });
     }
 
     if (membership.role === 'leader') {
       // If leader leaves, promote next member or disband
-      const otherMembers = group.members.filter(m => m.characterId !== character.id);
+      const otherMembers = group.travelGroupMembers.filter((m: any) => m.characterId !== character.id);
 
       if (otherMembers.length === 0) {
         // No one left, disband
-        await prisma.$transaction([
-          prisma.travelGroupMember.deleteMany({ where: { groupId: group.id } }),
-          prisma.travelGroup.delete({ where: { id: group.id } }),
-        ]);
+        await db.transaction(async (tx) => {
+          await tx.delete(travelGroupMembers).where(eq(travelGroupMembers.groupId, group.id));
+          await tx.delete(travelGroups).where(eq(travelGroups.id, group.id));
+        });
 
         return res.json({ message: 'You left the group and it was disbanded (no members remaining)' });
       }
 
       // Promote the next member to leader
       const newLeader = otherMembers[0];
-      await prisma.$transaction([
-        prisma.travelGroupMember.delete({
-          where: { groupId_characterId: { groupId: group.id, characterId: character.id } },
-        }),
-        prisma.travelGroupMember.update({
-          where: { id: newLeader.id },
-          data: { role: 'leader' },
-        }),
-        prisma.travelGroup.update({
-          where: { id: group.id },
-          data: { leaderId: newLeader.characterId },
-        }),
-      ]);
+      await db.transaction(async (tx) => {
+        await tx.delete(travelGroupMembers).where(
+          and(
+            eq(travelGroupMembers.groupId, group.id),
+            eq(travelGroupMembers.characterId, character.id),
+          ),
+        );
+        await tx.update(travelGroupMembers).set({
+          role: 'leader',
+        }).where(eq(travelGroupMembers.id, newLeader.id));
+        await tx.update(travelGroups).set({
+          leaderId: newLeader.characterId,
+        }).where(eq(travelGroups.id, group.id));
+      });
 
       return res.json({
         message: `You left the group. ${newLeader.character.name} is now the leader.`,
@@ -1181,13 +1190,16 @@ router.post('/group/:groupId/leave', authGuard, characterGuard, async (req: Auth
     }
 
     // Regular member leaving
-    await prisma.travelGroupMember.delete({
-      where: { groupId_characterId: { groupId: group.id, characterId: character.id } },
-    });
+    await db.delete(travelGroupMembers).where(
+      and(
+        eq(travelGroupMembers.groupId, group.id),
+        eq(travelGroupMembers.characterId, character.id),
+      ),
+    );
 
     return res.json({ message: 'You left the travel group' });
   } catch (error) {
-    if (handlePrismaError(error, res, 'travel-group-leave', req)) return;
+    if (handleDbError(error, res, 'travel-group-leave', req)) return;
     logRouteError(req, 500, 'Travel group leave error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -1199,8 +1211,8 @@ router.delete('/group/:groupId', authGuard, characterGuard, async (req: Authenti
     const character = (req as AuthenticatedRequest).character!;
     const { groupId } = req.params;
 
-    const group = await prisma.travelGroup.findUnique({
-      where: { id: groupId },
+    const group = await db.query.travelGroups.findFirst({
+      where: eq(travelGroups.id, groupId),
     });
 
     if (!group) {
@@ -1215,14 +1227,14 @@ router.delete('/group/:groupId', authGuard, characterGuard, async (req: Authenti
       return res.status(400).json({ error: 'Cannot disband a group that is already traveling. Use cancel instead.' });
     }
 
-    await prisma.$transaction([
-      prisma.travelGroupMember.deleteMany({ where: { groupId: group.id } }),
-      prisma.travelGroup.delete({ where: { id: group.id } }),
-    ]);
+    await db.transaction(async (tx) => {
+      await tx.delete(travelGroupMembers).where(eq(travelGroupMembers.groupId, group.id));
+      await tx.delete(travelGroups).where(eq(travelGroups.id, group.id));
+    });
 
     return res.json({ message: 'Travel group disbanded' });
   } catch (error) {
-    if (handlePrismaError(error, res, 'travel-group-disband', req)) return;
+    if (handleDbError(error, res, 'travel-group-disband', req)) return;
     logRouteError(req, 500, 'Travel group disband error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -1235,13 +1247,13 @@ router.post('/group/:groupId/start', authGuard, characterGuard, validate(startGr
     const { groupId } = req.params;
     const { routeId } = req.body;
 
-    const group = await prisma.travelGroup.findUnique({
-      where: { id: groupId },
-      include: {
-        members: {
-          include: {
+    const group = await db.query.travelGroups.findFirst({
+      where: eq(travelGroups.id, groupId),
+      with: {
+        travelGroupMembers: {
+          with: {
             character: {
-              select: { id: true, name: true, level: true, race: true, currentTownId: true, travelStatus: true },
+              columns: { id: true, name: true, level: true, race: true, currentTownId: true, travelStatus: true },
             },
           },
         },
@@ -1260,15 +1272,15 @@ router.post('/group/:groupId/start', authGuard, characterGuard, validate(startGr
       return res.status(400).json({ error: 'Group is not in forming state' });
     }
 
-    if (group.members.length < 2) {
+    if (group.travelGroupMembers.length < 2) {
       return res.status(400).json({ error: 'Group must have at least 2 members to travel' });
     }
 
-    const route = await prisma.travelRoute.findUnique({
-      where: { id: routeId },
-      include: {
-        fromTown: { select: { id: true, name: true } },
-        toTown: { select: { id: true, name: true } },
+    const route = await db.query.travelRoutes.findFirst({
+      where: eq(travelRoutes.id, routeId),
+      with: {
+        town_fromTownId: { columns: { id: true, name: true } },
+        town_toTownId: { columns: { id: true, name: true } },
       },
     });
 
@@ -1295,69 +1307,64 @@ router.post('/group/:groupId/start', authGuard, characterGuard, validate(startGr
 
     // Validate all members are in the correct town and idle
     const requiredTownId = character.currentTownId;
-    const invalidMembers = group.members.filter(
-      m => m.character.currentTownId !== requiredTownId || m.character.travelStatus !== 'idle'
+    const invalidMembers = group.travelGroupMembers.filter(
+      (m: any) => m.character.currentTownId !== requiredTownId || m.character.travelStatus !== 'idle'
     );
 
     if (invalidMembers.length > 0) {
-      const names = invalidMembers.map(m => m.character.name).join(', ');
+      const names = invalidMembers.map((m: any) => m.character.name).join(', ');
       return res.status(400).json({
         error: `Some members are not ready: ${names}. All members must be idle and in the same town.`,
       });
     }
 
-    const memberCharacterIds = group.members.map(m => m.character.id);
+    const memberCharacterIds = group.travelGroupMembers.map((m: any) => m.character.id);
 
-    const groupTravelState = await prisma.$transaction(async (tx) => {
+    const gts = await db.transaction(async (tx) => {
       // Create group travel state
-      const gts = await tx.groupTravelState.create({
-        data: {
-          groupId: group.id,
-          routeId: route.id,
-          currentNodeIndex: 0,
-          direction,
-          status: 'traveling',
-          speedModifier: 1,
-        },
-      });
+      const [groupState] = await tx.insert(groupTravelStates).values({
+        id: crypto.randomUUID(),
+        groupId: group.id,
+        routeId: route.id,
+        currentNodeIndex: 0,
+        direction,
+        status: 'traveling',
+        speedModifier: 1,
+      }).returning();
 
       // Update group status
-      await tx.travelGroup.update({
-        where: { id: group.id },
-        data: { status: 'traveling' },
-      });
+      await tx.update(travelGroups).set({
+        status: 'traveling',
+      }).where(eq(travelGroups.id, group.id));
 
       // Update all member characters
       for (const charId of memberCharacterIds) {
-        await tx.character.update({
-          where: { id: charId },
-          data: {
-            travelStatus: 'traveling_group',
-            currentTownId: null,
-          },
-        });
+        await tx.update(characters).set({
+          travelStatus: 'traveling_group',
+          currentTownId: null,
+        }).where(eq(characters.id, charId));
       }
 
-      return gts;
+      return groupState;
     });
 
-    const etaTicks = calculateEtaTicks(0, route.nodeCount, direction, groupTravelState.speedModifier);
+    const etaTicks = calculateEtaTicks(0, route.nodeCount, direction, gts.speedModifier);
 
     return res.status(201).json({
       message: 'Group journey has begun',
       travelState: {
-        id: groupTravelState.id,
-        routeId: groupTravelState.routeId,
-        currentNodeIndex: groupTravelState.currentNodeIndex,
-        direction: groupTravelState.direction,
-        status: groupTravelState.status,
-        startedAt: groupTravelState.startedAt,
+        id: gts.id,
+        routeId: gts.routeId,
+        currentNodeIndex: gts.currentNodeIndex,
+        direction: gts.direction,
+        status: gts.status,
+        startedAt: gts.startedAt,
       },
       route: {
         id: route.id,
         name: route.name,
-        fromTown: route.fromTown,
-        toTown: route.toTown,
+        fromTown: route.town_fromTownId,
+        toTown: route.town_toTownId,
         nodeCount: route.nodeCount,
       },
       group: {
@@ -1369,7 +1376,7 @@ router.post('/group/:groupId/start', authGuard, characterGuard, validate(startGr
       nextTickAt: getNextTickTime(),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'travel-group-start', req)) return;
+    if (handleDbError(error, res, 'travel-group-start', req)) return;
     logRouteError(req, 500, 'Travel group start error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -1380,22 +1387,22 @@ router.get('/group/:groupId', authGuard, characterGuard, async (req: Authenticat
   try {
     const { groupId } = req.params;
 
-    const group = await prisma.travelGroup.findUnique({
-      where: { id: groupId },
-      include: {
-        leader: { select: { id: true, name: true } },
-        members: {
-          include: {
-            character: { select: { id: true, name: true, level: true, race: true } },
+    const group = await db.query.travelGroups.findFirst({
+      where: eq(travelGroups.id, groupId),
+      with: {
+        character: { columns: { id: true, name: true } },
+        travelGroupMembers: {
+          with: {
+            character: { columns: { id: true, name: true, level: true, race: true } },
           },
-          orderBy: { joinedAt: 'asc' },
+          orderBy: (t: any, { asc }: any) => [asc(t.joinedAt)],
         },
-        travelState: {
-          include: {
-            route: {
-              include: {
-                fromTown: { select: { id: true, name: true } },
-                toTown: { select: { id: true, name: true } },
+        groupTravelStates: {
+          with: {
+            travelRoute: {
+              with: {
+                town_fromTownId: { columns: { id: true, name: true } },
+                town_toTownId: { columns: { id: true, name: true } },
               },
             },
           },
@@ -1410,11 +1417,11 @@ router.get('/group/:groupId', authGuard, characterGuard, async (req: Authenticat
     const response: Record<string, unknown> = {
       id: group.id,
       name: group.name,
-      leader: group.leader,
+      leader: group.character,
       status: group.status,
       maxSize: group.maxSize,
       createdAt: group.createdAt,
-      members: group.members.map(m => ({
+      members: group.travelGroupMembers.map((m: any) => ({
         characterId: m.character.id,
         name: m.character.name,
         level: m.character.level,
@@ -1424,28 +1431,29 @@ router.get('/group/:groupId', authGuard, characterGuard, async (req: Authenticat
       })),
     };
 
-    if (group.travelState) {
+    const groupState = group.groupTravelStates[0];
+    if (groupState) {
       const etaTicks = calculateEtaTicks(
-        group.travelState.currentNodeIndex,
-        group.travelState.route.nodeCount,
-        group.travelState.direction,
-        group.travelState.speedModifier,
+        groupState.currentNodeIndex,
+        groupState.travelRoute.nodeCount,
+        groupState.direction,
+        groupState.speedModifier,
       );
 
       response.travelState = {
-        id: group.travelState.id,
-        currentNodeIndex: group.travelState.currentNodeIndex,
-        direction: group.travelState.direction,
-        status: group.travelState.status,
-        speedModifier: group.travelState.speedModifier,
-        startedAt: group.travelState.startedAt,
-        lastTickAt: group.travelState.lastTickAt,
+        id: groupState.id,
+        currentNodeIndex: groupState.currentNodeIndex,
+        direction: groupState.direction,
+        status: groupState.status,
+        speedModifier: groupState.speedModifier,
+        startedAt: groupState.startedAt,
+        lastTickAt: groupState.lastTickAt,
         route: {
-          id: group.travelState.route.id,
-          name: group.travelState.route.name,
-          fromTown: group.travelState.route.fromTown,
-          toTown: group.travelState.route.toTown,
-          nodeCount: group.travelState.route.nodeCount,
+          id: groupState.travelRoute.id,
+          name: groupState.travelRoute.name,
+          fromTown: groupState.travelRoute.town_fromTownId,
+          toTown: groupState.travelRoute.town_toTownId,
+          nodeCount: groupState.travelRoute.nodeCount,
         },
         etaTicks,
         nextTickAt: getNextTickTime(),
@@ -1454,7 +1462,7 @@ router.get('/group/:groupId', authGuard, characterGuard, async (req: Authenticat
 
     return res.json({ group: response });
   } catch (error) {
-    if (handlePrismaError(error, res, 'travel-group-info', req)) return;
+    if (handleDbError(error, res, 'travel-group-info', req)) return;
     logRouteError(req, 500, 'Travel group info error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

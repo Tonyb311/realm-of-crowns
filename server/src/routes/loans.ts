@@ -1,11 +1,13 @@
 import { Router, Response } from 'express';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, asc, sql } from 'drizzle-orm';
+import { characters, playerProfessions, loans } from '@database/tables';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { getGameDay } from '../lib/game-day';
 import { isSameAccount } from '../lib/alt-guard';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
@@ -25,7 +27,10 @@ const TIER_LOAN_LIMITS: Record<string, number> = {
 router.post('/issue', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { borrowerId, principal, interestRate, termDays } = req.body;
-    const banker = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
+    const banker = await db.query.characters.findFirst({
+      where: eq(characters.userId, req.user!.userId),
+      orderBy: asc(characters.createdAt),
+    });
     if (!banker) return res.status(404).json({ error: 'No character found' });
 
     if (banker.travelStatus !== 'idle') {
@@ -33,8 +38,12 @@ router.post('/issue', authGuard, characterGuard, async (req: AuthenticatedReques
     }
 
     // Validate banker has BANKER profession at JOURNEYMAN+
-    const bankerProfession = await prisma.playerProfession.findFirst({
-      where: { characterId: banker.id, professionType: 'BANKER', isActive: true },
+    const bankerProfession = await db.query.playerProfessions.findFirst({
+      where: and(
+        eq(playerProfessions.characterId, banker.id),
+        eq(playerProfessions.professionType, 'BANKER'),
+        eq(playerProfessions.isActive, true),
+      ),
     });
     if (!bankerProfession) {
       return res.status(400).json({ error: 'You do not have the Banker profession' });
@@ -45,7 +54,7 @@ router.post('/issue', authGuard, characterGuard, async (req: AuthenticatedReques
 
     // Validate borrower exists, in same town, not same account
     if (!borrowerId) return res.status(400).json({ error: 'borrowerId is required' });
-    const borrower = await prisma.character.findUnique({ where: { id: borrowerId } });
+    const borrower = await db.query.characters.findFirst({ where: eq(characters.id, borrowerId) });
     if (!borrower) return res.status(404).json({ error: 'Borrower not found' });
     if (borrower.currentTownId !== banker.currentTownId) {
       return res.status(400).json({ error: 'Borrower must be in the same town' });
@@ -79,35 +88,34 @@ router.post('/issue', authGuard, characterGuard, async (req: AuthenticatedReques
     const totalOwed = Math.ceil(principal * (1 + interestRate));
 
     // Transfer gold and create loan in transaction
-    const loan = await prisma.$transaction(async (tx) => {
-      await tx.character.update({
-        where: { id: banker.id },
-        data: { gold: { decrement: principal } },
-      });
-      await tx.character.update({
-        where: { id: borrowerId },
-        data: { gold: { increment: principal } },
-      });
+    const loan = await db.transaction(async (tx) => {
+      await tx.update(characters)
+        .set({ gold: sql`${characters.gold} - ${principal}` })
+        .where(eq(characters.id, banker.id));
+      await tx.update(characters)
+        .set({ gold: sql`${characters.gold} + ${principal}` })
+        .where(eq(characters.id, borrowerId));
 
-      return tx.loan.create({
-        data: {
-          bankerId: banker.id,
-          borrowerId,
-          principal,
-          interestRate,
-          totalOwed,
-          amountRepaid: 0,
-          termDays,
-          startDay: gameDay,
-          dueDay: gameDay + termDays,
-          status: 'ACTIVE',
-        },
-      });
+      const [newLoan] = await tx.insert(loans).values({
+        id: crypto.randomUUID(),
+        bankerId: banker.id,
+        borrowerId,
+        principal,
+        interestRate,
+        totalOwed,
+        amountRepaid: 0,
+        termDays,
+        startDay: gameDay,
+        dueDay: gameDay + termDays,
+        status: 'ACTIVE',
+      }).returning();
+
+      return newLoan;
     });
 
     return res.status(201).json({ loan });
   } catch (error) {
-    if (handlePrismaError(error, res, 'loan-issue', req)) return;
+    if (handleDbError(error, res, 'loan-issue', req)) return;
     logRouteError(req, 500, 'Loan issue error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -120,7 +128,10 @@ router.post('/issue', authGuard, characterGuard, async (req: AuthenticatedReques
 router.post('/repay', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { loanId, amount } = req.body;
-    const character = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
+    const character = await db.query.characters.findFirst({
+      where: eq(characters.userId, req.user!.userId),
+      orderBy: asc(characters.createdAt),
+    });
     if (!character) return res.status(404).json({ error: 'No character found' });
 
     if (character.travelStatus !== 'idle') {
@@ -131,7 +142,7 @@ router.post('/repay', authGuard, characterGuard, async (req: AuthenticatedReques
       return res.status(400).json({ error: 'loanId and a positive amount are required' });
     }
 
-    const loan = await prisma.loan.findUnique({ where: { id: loanId } });
+    const loan = await db.query.loans.findFirst({ where: eq(loans.id, loanId) });
     if (!loan) return res.status(404).json({ error: 'Loan not found' });
     if (loan.borrowerId !== character.id) {
       return res.status(403).json({ error: 'This is not your loan' });
@@ -151,23 +162,20 @@ router.post('/repay', authGuard, characterGuard, async (req: AuthenticatedReques
     const newAmountRepaid = loan.amountRepaid + repayAmount;
     const isFullyRepaid = newAmountRepaid >= loan.totalOwed;
 
-    await prisma.$transaction([
-      prisma.character.update({
-        where: { id: character.id },
-        data: { gold: { decrement: repayAmount } },
-      }),
-      prisma.character.update({
-        where: { id: loan.bankerId },
-        data: { gold: { increment: repayAmount } },
-      }),
-      prisma.loan.update({
-        where: { id: loan.id },
-        data: {
+    await db.transaction(async (tx) => {
+      await tx.update(characters)
+        .set({ gold: sql`${characters.gold} - ${repayAmount}` })
+        .where(eq(characters.id, character.id));
+      await tx.update(characters)
+        .set({ gold: sql`${characters.gold} + ${repayAmount}` })
+        .where(eq(characters.id, loan.bankerId));
+      await tx.update(loans)
+        .set({
           amountRepaid: newAmountRepaid,
           status: isFullyRepaid ? 'REPAID' : 'ACTIVE',
-        },
-      }),
-    ]);
+        })
+        .where(eq(loans.id, loan.id));
+    });
 
     return res.json({
       loanId: loan.id,
@@ -178,7 +186,7 @@ router.post('/repay', authGuard, characterGuard, async (req: AuthenticatedReques
       status: isFullyRepaid ? 'REPAID' : 'ACTIVE',
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'loan-repay', req)) return;
+    if (handleDbError(error, res, 'loan-repay', req)) return;
     logRouteError(req, 500, 'Loan repay error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -190,23 +198,29 @@ router.post('/repay', authGuard, characterGuard, async (req: AuthenticatedReques
 
 router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
+    const character = await db.query.characters.findFirst({
+      where: eq(characters.userId, req.user!.userId),
+      orderBy: asc(characters.createdAt),
+    });
     if (!character) return res.status(404).json({ error: 'No character found' });
 
     const [loansGiven, loansTaken] = await Promise.all([
-      prisma.loan.findMany({
-        where: { bankerId: character.id },
-        include: { borrower: { select: { id: true, name: true } } },
+      db.query.loans.findMany({
+        where: eq(loans.bankerId, character.id),
+        with: { character_borrowerId: { columns: { id: true, name: true } } },
       }),
-      prisma.loan.findMany({
-        where: { borrowerId: character.id },
-        include: { banker: { select: { id: true, name: true } } },
+      db.query.loans.findMany({
+        where: eq(loans.borrowerId, character.id),
+        with: { character_bankerId: { columns: { id: true, name: true } } },
       }),
     ]);
 
-    return res.json({ loansGiven, loansTaken });
+    return res.json({
+      loansGiven: loansGiven.map(l => ({ ...l, borrower: l.character_borrowerId, character_borrowerId: undefined })),
+      loansTaken: loansTaken.map(l => ({ ...l, banker: l.character_bankerId, character_bankerId: undefined })),
+    });
   } catch (error) {
-    if (handlePrismaError(error, res, 'loan-mine', req)) return;
+    if (handleDbError(error, res, 'loan-mine', req)) return;
     logRouteError(req, 500, 'Loan mine error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -218,14 +232,17 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
 
 router.get('/:id', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const character = await prisma.character.findFirst({ where: { userId: req.user!.userId }, orderBy: { createdAt: 'asc' } });
+    const character = await db.query.characters.findFirst({
+      where: eq(characters.userId, req.user!.userId),
+      orderBy: asc(characters.createdAt),
+    });
     if (!character) return res.status(404).json({ error: 'No character found' });
 
-    const loan = await prisma.loan.findUnique({
-      where: { id: req.params.id },
-      include: {
-        banker: { select: { id: true, name: true } },
-        borrower: { select: { id: true, name: true } },
+    const loan = await db.query.loans.findFirst({
+      where: eq(loans.id, req.params.id),
+      with: {
+        character_bankerId: { columns: { id: true, name: true } },
+        character_borrowerId: { columns: { id: true, name: true } },
       },
     });
 
@@ -234,9 +251,17 @@ router.get('/:id', authGuard, characterGuard, async (req: AuthenticatedRequest, 
       return res.status(403).json({ error: 'Not authorized to view this loan' });
     }
 
-    return res.json({ loan });
+    return res.json({
+      loan: {
+        ...loan,
+        banker: loan.character_bankerId,
+        borrower: loan.character_borrowerId,
+        character_bankerId: undefined,
+        character_borrowerId: undefined,
+      },
+    });
   } catch (error) {
-    if (handlePrismaError(error, res, 'loan-detail', req)) return;
+    if (handleDbError(error, res, 'loan-detail', req)) return;
     logRouteError(req, 500, 'Loan detail error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

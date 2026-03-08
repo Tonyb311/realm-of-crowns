@@ -13,9 +13,13 @@
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["../shared/src/*"],
+      "@database/*": ["../database/schema/*"],
       "@/*": ["src/*"]
     }
   },
   "include": ["src"],
-  "references": [{ "path": "../shared" }]
+  "references": [
+    { "path": "../shared" },
+    { "path": "../database/tsconfig.schema.json" }
+  ]
 }

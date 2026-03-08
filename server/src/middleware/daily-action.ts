@@ -1,5 +1,7 @@
 import { Response, NextFunction } from 'express';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and } from 'drizzle-orm';
+import { characters, dailyActions } from '@database/tables';
 import { AuthenticatedRequest } from '../types/express';
 import { getNextTickTime, getTodayTickDate } from '../lib/game-day';
 
@@ -12,8 +14,8 @@ import { getNextTickTime, getTodayTickDate } from '../lib/game-day';
 export function requireDailyAction(actionType: string) {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const character = await prisma.character.findFirst({
-        where: { userId: req.user!.userId },
+      const character = await db.query.characters.findFirst({
+        where: eq(characters.userId, req.user!.userId),
       });
 
       if (!character) {
@@ -23,11 +25,11 @@ export function requireDailyAction(actionType: string) {
       const todayTick = getTodayTickDate();
 
       // Check if character already has a major action for today
-      const existing = await prisma.dailyAction.findFirst({
-        where: {
-          characterId: character.id,
-          tickDate: todayTick,
-        },
+      const existing = await db.query.dailyActions.findFirst({
+        where: and(
+          eq(dailyActions.characterId, character.id),
+          eq(dailyActions.tickDate, todayTick.toISOString()),
+        ),
       });
 
       if (existing) {

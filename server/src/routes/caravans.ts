@@ -1,15 +1,19 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, or } from 'drizzle-orm';
+import { caravans, characters, inventories, items, itemTemplates, playerProfessions, travelRoutes } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { addProfessionXP } from '../services/profession-xp';
 import { emitNotification } from '../socket/events';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
+import crypto from 'crypto';
 import { isTownReleased } from '../lib/content-release';
+import { sql } from 'drizzle-orm';
 import {
   CARAVAN_TYPES,
   ESCORT_TYPES,
@@ -62,8 +66,8 @@ const resolveAmbushSchema = z.object({
 // ---------------------------------------------------------------------------
 
 async function getMerchantLevel(characterId: string): Promise<number> {
-  const prof = await prisma.playerProfession.findUnique({
-    where: { characterId_professionType: { characterId, professionType: 'MERCHANT' } },
+  const prof = await db.query.playerProfessions.findFirst({
+    where: and(eq(playerProfessions.characterId, characterId), eq(playerProfessions.professionType, 'MERCHANT')),
   });
   return prof?.level ?? 0;
 }
@@ -154,13 +158,11 @@ router.post('/create', authGuard, characterGuard, requireTown, validate(createSc
     }
 
     // Verify route exists
-    const route = await prisma.travelRoute.findFirst({
-      where: {
-        OR: [
-          { fromTownId, toTownId },
-          { fromTownId: toTownId, toTownId: fromTownId },
-        ],
-      },
+    const route = await db.query.travelRoutes.findFirst({
+      where: or(
+        and(eq(travelRoutes.fromTownId, fromTownId), eq(travelRoutes.toTownId, toTownId)),
+        and(eq(travelRoutes.fromTownId, toTownId), eq(travelRoutes.toTownId, fromTownId)),
+      ),
     });
     if (!route) {
       return res.status(400).json({ error: 'No route exists between these towns' });
@@ -168,17 +170,21 @@ router.post('/create', authGuard, characterGuard, requireTown, validate(createSc
 
     const meta: CaravanMeta = { caravanType };
 
-    const caravan = await prisma.caravan.create({
-      data: {
-        ownerId: character.id,
-        fromTownId,
-        toTownId,
-        cargo: serializeCargo([], meta),
-        status: 'PENDING',
-      },
-      include: {
-        fromTown: { select: { id: true, name: true } },
-        toTown: { select: { id: true, name: true } },
+    const [caravan] = await db.insert(caravans).values({
+      id: crypto.randomUUID(),
+      ownerId: character.id,
+      fromTownId,
+      toTownId,
+      cargo: serializeCargo([], meta),
+      status: 'PENDING',
+    }).returning();
+
+    // Fetch related towns for response
+    const caravanWithTowns = await db.query.caravans.findFirst({
+      where: eq(caravans.id, caravan.id),
+      with: {
+        town_fromTownId: true,
+        town_toTownId: true,
       },
     });
 
@@ -190,14 +196,14 @@ router.post('/create', authGuard, characterGuard, requireTown, validate(createSc
         capacity: typeDef.capacity,
         cost: typeDef.cost,
         speedMultiplier: typeDef.speedMultiplier,
-        from: caravan.fromTown,
-        to: caravan.toTown,
+        from: caravanWithTowns?.town_fromTownId ? { id: caravanWithTowns.town_fromTownId.id, name: caravanWithTowns.town_fromTownId.name } : null,
+        to: caravanWithTowns?.town_toTownId ? { id: caravanWithTowns.town_toTownId.id, name: caravanWithTowns.town_toTownId.name } : null,
         cargo: [],
         status: caravan.status,
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'caravan-create', req)) return;
+    if (handleDbError(error, res, 'caravan-create', req)) return;
     logRouteError(req, 500, 'Caravan create error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -213,7 +219,7 @@ router.post('/:caravanId/load', authGuard, characterGuard, requireTown, validate
     const { itemId, quantity } = req.body as { itemId: string; quantity: number };
     const character = req.character!;
 
-    const caravan = await prisma.caravan.findUnique({ where: { id: caravanId } });
+    const caravan = await db.query.caravans.findFirst({ where: eq(caravans.id, caravanId) });
     if (!caravan) return res.status(404).json({ error: 'Caravan not found' });
     if (caravan.ownerId !== character.id) return res.status(403).json({ error: 'Not your caravan' });
     if (caravan.status !== 'PENDING') return res.status(400).json({ error: 'Can only load while caravan is pending' });
@@ -229,9 +235,9 @@ router.post('/:caravanId/load', authGuard, characterGuard, requireTown, validate
     }
 
     // Find item in player inventory
-    const invEntry = await prisma.inventory.findFirst({
-      where: { characterId: character.id, itemId },
-      include: { item: { include: { template: true } } },
+    const invEntry = await db.query.inventories.findFirst({
+      where: and(eq(inventories.characterId, character.id), eq(inventories.itemId, itemId)),
+      with: { item: { with: { itemTemplate: true } } },
     });
     if (!invEntry) return res.status(404).json({ error: 'Item not in inventory' });
     if (invEntry.quantity < quantity) {
@@ -239,28 +245,30 @@ router.post('/:caravanId/load', authGuard, characterGuard, requireTown, validate
     }
 
     // Estimate unit value from template stats or a base price field
-    const unitValue = (invEntry.item.template.stats as any)?.basePrice ?? 10;
+    const unitValue = (invEntry.item.itemTemplate.stats as any)?.basePrice ?? 10;
 
     // Update cargo
     const existing = cargo.find(c => c.itemId === itemId);
     if (existing) {
       existing.quantity += quantity;
     } else {
-      cargo.push({ itemId, quantity, itemName: invEntry.item.template.name, unitValue });
+      cargo.push({ itemId, quantity, itemName: invEntry.item.itemTemplate.name, unitValue });
     }
 
-    await prisma.$transaction([
+    await db.transaction(async (tx) => {
       // Remove from inventory
-      invEntry.quantity === quantity
-        ? prisma.inventory.delete({ where: { id: invEntry.id } })
-        : prisma.inventory.update({ where: { id: invEntry.id }, data: { quantity: { decrement: quantity } } }),
+      if (invEntry.quantity === quantity) {
+        await tx.delete(inventories).where(eq(inventories.id, invEntry.id));
+      } else {
+        await tx.update(inventories).set({ quantity: sql`${inventories.quantity} - ${quantity}` }).where(eq(inventories.id, invEntry.id));
+      }
       // Update caravan cargo
-      prisma.caravan.update({ where: { id: caravanId }, data: { cargo: serializeCargo(cargo, meta) } }),
-    ]);
+      await tx.update(caravans).set({ cargo: serializeCargo(cargo, meta) }).where(eq(caravans.id, caravanId));
+    });
 
     return res.json({ cargo, totalItems: totalCargoQuantity(cargo), capacity: typeDef.capacity });
   } catch (error) {
-    if (handlePrismaError(error, res, 'caravan-load', req)) return;
+    if (handleDbError(error, res, 'caravan-load', req)) return;
     logRouteError(req, 500, 'Caravan load error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -276,7 +284,7 @@ router.post('/:caravanId/unload', authGuard, characterGuard, requireTown, valida
     const { itemId, quantity } = req.body as { itemId: string; quantity: number };
     const character = req.character!;
 
-    const caravan = await prisma.caravan.findUnique({ where: { id: caravanId } });
+    const caravan = await db.query.caravans.findFirst({ where: eq(caravans.id, caravanId) });
     if (!caravan) return res.status(404).json({ error: 'Caravan not found' });
     if (caravan.ownerId !== character.id) return res.status(403).json({ error: 'Not your caravan' });
     if (caravan.status !== 'PENDING') return res.status(400).json({ error: 'Can only unload while caravan is pending' });
@@ -290,23 +298,23 @@ router.post('/:caravanId/unload', authGuard, characterGuard, requireTown, valida
     entry.quantity -= quantity;
     const updatedCargo = cargo.filter(c => c.quantity > 0);
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Return items to inventory
-      const existingInv = await tx.inventory.findFirst({
-        where: { characterId: character.id, itemId },
+      const existingInv = await tx.query.inventories.findFirst({
+        where: and(eq(inventories.characterId, character.id), eq(inventories.itemId, itemId)),
       });
       if (existingInv) {
-        await tx.inventory.update({ where: { id: existingInv.id }, data: { quantity: { increment: quantity } } });
+        await tx.update(inventories).set({ quantity: sql`${inventories.quantity} + ${quantity}` }).where(eq(inventories.id, existingInv.id));
       } else {
-        await tx.inventory.create({ data: { characterId: character.id, itemId, quantity } });
+        await tx.insert(inventories).values({ id: crypto.randomUUID(), characterId: character.id, itemId, quantity });
       }
-      await tx.caravan.update({ where: { id: caravanId }, data: { cargo: serializeCargo(updatedCargo, meta) } });
+      await tx.update(caravans).set({ cargo: serializeCargo(updatedCargo, meta) }).where(eq(caravans.id, caravanId));
     });
 
     const typeDef = CARAVAN_TYPES[meta.caravanType];
     return res.json({ cargo: updatedCargo, totalItems: totalCargoQuantity(updatedCargo), capacity: typeDef.capacity });
   } catch (error) {
-    if (handlePrismaError(error, res, 'caravan-unload', req)) return;
+    if (handleDbError(error, res, 'caravan-unload', req)) return;
     logRouteError(req, 500, 'Caravan unload error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -322,7 +330,7 @@ router.post('/:caravanId/hire-escort', authGuard, characterGuard, requireTown, v
     const { escortType } = req.body as { escortType: EscortType };
     const character = req.character!;
 
-    const caravan = await prisma.caravan.findUnique({ where: { id: caravanId } });
+    const caravan = await db.query.caravans.findFirst({ where: eq(caravans.id, caravanId) });
     if (!caravan) return res.status(404).json({ error: 'Caravan not found' });
     if (caravan.ownerId !== character.id) return res.status(403).json({ error: 'Not your caravan' });
     if (caravan.status !== 'PENDING') return res.status(400).json({ error: 'Can only hire escorts before departure' });
@@ -335,17 +343,17 @@ router.post('/:caravanId/hire-escort', authGuard, characterGuard, requireTown, v
     const { cargo, meta } = parseMeta(caravan);
     meta.escort = escortType;
 
-    await prisma.$transaction([
-      prisma.character.update({ where: { id: character.id }, data: { gold: { decrement: escortDef.cost } } }),
-      prisma.caravan.update({ where: { id: caravanId }, data: { cargo: serializeCargo(cargo, meta) } }),
-    ]);
+    await db.transaction(async (tx) => {
+      await tx.update(characters).set({ gold: sql`${characters.gold} - ${escortDef.cost}` }).where(eq(characters.id, character.id));
+      await tx.update(caravans).set({ cargo: serializeCargo(cargo, meta) }).where(eq(caravans.id, caravanId));
+    });
 
     return res.json({
       escort: escortDef,
       remainingGold: character.gold - escortDef.cost,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'caravan-hire-escort', req)) return;
+    if (handleDbError(error, res, 'caravan-hire-escort', req)) return;
     logRouteError(req, 500, 'Caravan hire-escort error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -361,7 +369,7 @@ router.post('/:caravanId/insure', authGuard, characterGuard, requireTown, valida
     const { coverage } = req.body as { coverage: InsuranceCoverage };
     const character = req.character!;
 
-    const caravan = await prisma.caravan.findUnique({ where: { id: caravanId } });
+    const caravan = await db.query.caravans.findFirst({ where: eq(caravans.id, caravanId) });
     if (!caravan) return res.status(404).json({ error: 'Caravan not found' });
     if (caravan.ownerId !== character.id) return res.status(403).json({ error: 'Not your caravan' });
     if (caravan.status !== 'PENDING') return res.status(400).json({ error: 'Can only insure before departure' });
@@ -379,10 +387,10 @@ router.post('/:caravanId/insure', authGuard, characterGuard, requireTown, valida
 
     meta.insurance = coverage;
 
-    await prisma.$transaction([
-      prisma.character.update({ where: { id: character.id }, data: { gold: { decrement: premium } } }),
-      prisma.caravan.update({ where: { id: caravanId }, data: { cargo: serializeCargo(cargo, meta) } }),
-    ]);
+    await db.transaction(async (tx) => {
+      await tx.update(characters).set({ gold: sql`${characters.gold} - ${premium}` }).where(eq(characters.id, character.id));
+      await tx.update(caravans).set({ cargo: serializeCargo(cargo, meta) }).where(eq(caravans.id, caravanId));
+    });
 
     return res.json({
       insurance: insuranceDef,
@@ -391,7 +399,7 @@ router.post('/:caravanId/insure', authGuard, characterGuard, requireTown, valida
       remainingGold: character.gold - premium,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'caravan-insure', req)) return;
+    if (handleDbError(error, res, 'caravan-insure', req)) return;
     logRouteError(req, 500, 'Caravan insure error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -410,11 +418,11 @@ router.post('/:caravanId/depart', authGuard, characterGuard, requireTown, async 
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const caravan = await prisma.caravan.findUnique({
-      where: { id: caravanId },
-      include: {
-        fromTown: { select: { id: true, name: true } },
-        toTown: { select: { id: true, name: true } },
+    const caravan = await db.query.caravans.findFirst({
+      where: eq(caravans.id, caravanId),
+      with: {
+        town_fromTownId: true,
+        town_toTownId: true,
       },
     });
     if (!caravan) return res.status(404).json({ error: 'Caravan not found' });
@@ -431,13 +439,11 @@ router.post('/:caravanId/depart', authGuard, characterGuard, requireTown, async 
     }
 
     // Find route for travel time calculation
-    const route = await prisma.travelRoute.findFirst({
-      where: {
-        OR: [
-          { fromTownId: caravan.fromTownId, toTownId: caravan.toTownId },
-          { fromTownId: caravan.toTownId, toTownId: caravan.fromTownId },
-        ],
-      },
+    const route = await db.query.travelRoutes.findFirst({
+      where: or(
+        and(eq(travelRoutes.fromTownId, caravan.fromTownId), eq(travelRoutes.toTownId, caravan.toTownId)),
+        and(eq(travelRoutes.fromTownId, caravan.toTownId), eq(travelRoutes.toTownId, caravan.fromTownId)),
+      ),
     });
     if (!route) return res.status(400).json({ error: 'Route no longer exists' });
 
@@ -446,20 +452,17 @@ router.post('/:caravanId/depart', authGuard, characterGuard, requireTown, async 
     const travelMs = route.nodeCount * 5 * typeDef.speedMultiplier * 60 * 1000;
     const arrivesAt = new Date(now.getTime() + travelMs);
 
-    await prisma.$transaction([
-      prisma.character.update({ where: { id: character.id }, data: { gold: { decrement: typeDef.cost } } }),
-      prisma.caravan.update({
-        where: { id: caravanId },
-        data: { status: 'IN_PROGRESS', departedAt: now, arrivesAt },
-      }),
-    ]);
+    await db.transaction(async (tx) => {
+      await tx.update(characters).set({ gold: sql`${characters.gold} - ${typeDef.cost}` }).where(eq(characters.id, character.id));
+      await tx.update(caravans).set({ status: 'IN_PROGRESS', departedAt: now.toISOString(), arrivesAt: arrivesAt.toISOString() }).where(eq(caravans.id, caravanId));
+    });
 
     // Emit socket event
     emitNotification(character.id, {
       id: `caravan-departed-${caravanId}`,
       type: 'caravan:departed',
       title: 'Caravan Departed',
-      message: `Your ${typeDef.name} is on its way to ${caravan.toTown.name}.`,
+      message: `Your ${typeDef.name} is on its way to ${caravan.town_toTownId.name}.`,
       data: { caravanId, toTownId: caravan.toTownId, arrivesAt: arrivesAt.toISOString() },
     });
 
@@ -470,14 +473,14 @@ router.post('/:caravanId/depart', authGuard, characterGuard, requireTown, async 
         departedAt: now.toISOString(),
         arrivesAt: arrivesAt.toISOString(),
         travelMinutes: Math.ceil(route.nodeCount * 5 * typeDef.speedMultiplier),
-        from: caravan.fromTown,
-        to: caravan.toTown,
+        from: { id: caravan.town_fromTownId.id, name: caravan.town_fromTownId.name },
+        to: { id: caravan.town_toTownId.id, name: caravan.town_toTownId.name },
         cost: typeDef.cost,
         remainingGold: character.gold - typeDef.cost,
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'caravan-depart', req)) return;
+    if (handleDbError(error, res, 'caravan-depart', req)) return;
     logRouteError(req, 500, 'Caravan depart error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -491,45 +494,45 @@ router.get('/mine', authGuard, characterGuard, requireTown, async (req: Authenti
   try {
     const character = req.character!;
 
-    const caravans = await prisma.caravan.findMany({
-      where: { ownerId: character.id },
-      include: {
-        fromTown: { select: { id: true, name: true } },
-        toTown: { select: { id: true, name: true } },
+    const allCaravans = await db.query.caravans.findMany({
+      where: eq(caravans.ownerId, character.id),
+      with: {
+        town_fromTownId: true,
+        town_toTownId: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: (c, { desc }) => [desc(c.createdAt)],
     });
 
     const now = new Date();
 
     return res.json({
-      caravans: caravans.map(c => {
+      caravans: allCaravans.map(c => {
         const { cargo, meta } = parseMeta(c);
         const typeDef = CARAVAN_TYPES[meta.caravanType];
         const progress = c.status === 'IN_PROGRESS' && c.departedAt && c.arrivesAt
-          ? Math.min(100, Math.round(((now.getTime() - c.departedAt.getTime()) / (c.arrivesAt.getTime() - c.departedAt.getTime())) * 100))
+          ? Math.min(100, Math.round(((now.getTime() - new Date(c.departedAt).getTime()) / (new Date(c.arrivesAt).getTime() - new Date(c.departedAt).getTime())) * 100))
           : c.status === 'COMPLETED' ? 100 : 0;
 
         return {
           id: c.id,
           caravanType: meta.caravanType,
           caravanName: typeDef.name,
-          from: c.fromTown,
-          to: c.toTown,
+          from: { id: c.town_fromTownId.id, name: c.town_fromTownId.name },
+          to: { id: c.town_toTownId.id, name: c.town_toTownId.name },
           cargo,
           totalItems: totalCargoQuantity(cargo),
           capacity: typeDef.capacity,
           status: c.status,
           escort: meta.escort ?? null,
           insurance: meta.insurance ?? null,
-          departedAt: c.departedAt?.toISOString() ?? null,
-          arrivesAt: c.arrivesAt?.toISOString() ?? null,
+          departedAt: c.departedAt ?? null,
+          arrivesAt: c.arrivesAt ?? null,
           progress,
         };
       }),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'caravan-mine', req)) return;
+    if (handleDbError(error, res, 'caravan-mine', req)) return;
     logRouteError(req, 500, 'Caravan mine error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -544,11 +547,11 @@ router.get('/:caravanId', authGuard, characterGuard, requireTown, async (req: Au
     const { caravanId } = req.params;
     const character = req.character!;
 
-    const caravan = await prisma.caravan.findUnique({
-      where: { id: caravanId },
-      include: {
-        fromTown: { select: { id: true, name: true } },
-        toTown: { select: { id: true, name: true } },
+    const caravan = await db.query.caravans.findFirst({
+      where: eq(caravans.id, caravanId),
+      with: {
+        town_fromTownId: true,
+        town_toTownId: true,
       },
     });
     if (!caravan) return res.status(404).json({ error: 'Caravan not found' });
@@ -562,10 +565,10 @@ router.get('/:caravanId', authGuard, characterGuard, requireTown, async (req: Au
     let remainingMinutes: number | null = null;
 
     if (caravan.status === 'IN_PROGRESS' && caravan.departedAt && caravan.arrivesAt) {
-      const totalMs = caravan.arrivesAt.getTime() - caravan.departedAt.getTime();
-      const elapsedMs = now.getTime() - caravan.departedAt.getTime();
+      const totalMs = new Date(caravan.arrivesAt).getTime() - new Date(caravan.departedAt).getTime();
+      const elapsedMs = now.getTime() - new Date(caravan.departedAt).getTime();
       progress = Math.min(100, Math.round((elapsedMs / totalMs) * 100));
-      remainingMinutes = Math.max(0, Math.ceil((caravan.arrivesAt.getTime() - now.getTime()) / 60000));
+      remainingMinutes = Math.max(0, Math.ceil((new Date(caravan.arrivesAt).getTime() - now.getTime()) / 60000));
     } else if (caravan.status === 'COMPLETED') {
       progress = 100;
     }
@@ -576,22 +579,22 @@ router.get('/:caravanId', authGuard, characterGuard, requireTown, async (req: Au
         caravanType: meta.caravanType,
         caravanName: typeDef.name,
         capacity: typeDef.capacity,
-        from: caravan.fromTown,
-        to: caravan.toTown,
+        from: { id: caravan.town_fromTownId.id, name: caravan.town_fromTownId.name },
+        to: { id: caravan.town_toTownId.id, name: caravan.town_toTownId.name },
         cargo,
         totalItems: totalCargoQuantity(cargo),
         cargoValue: totalCargoValue(cargo),
         status: caravan.status,
         escort: meta.escort ?? null,
         insurance: meta.insurance ?? null,
-        departedAt: caravan.departedAt?.toISOString() ?? null,
-        arrivesAt: caravan.arrivesAt?.toISOString() ?? null,
+        departedAt: caravan.departedAt ?? null,
+        arrivesAt: caravan.arrivesAt ?? null,
         progress,
         remainingMinutes,
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'caravan-detail', req)) return;
+    if (handleDbError(error, res, 'caravan-detail', req)) return;
     logRouteError(req, 500, 'Caravan detail error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -606,15 +609,15 @@ router.post('/:caravanId/collect', authGuard, characterGuard, requireTown, async
     const { caravanId } = req.params;
     const character = req.character!;
 
-    const caravan = await prisma.caravan.findUnique({
-      where: { id: caravanId },
-      include: { toTown: { select: { id: true, name: true } } },
+    const caravan = await db.query.caravans.findFirst({
+      where: eq(caravans.id, caravanId),
+      with: { town_toTownId: true },
     });
     if (!caravan) return res.status(404).json({ error: 'Caravan not found' });
     if (caravan.ownerId !== character.id) return res.status(403).json({ error: 'Not your caravan' });
     if (caravan.status !== 'IN_PROGRESS') return res.status(400).json({ error: 'Caravan is not in transit' });
 
-    if (!caravan.arrivesAt || caravan.arrivesAt > new Date()) {
+    if (!caravan.arrivesAt || new Date(caravan.arrivesAt) > new Date()) {
       return res.status(400).json({ error: 'Caravan has not arrived yet' });
     }
 
@@ -626,31 +629,27 @@ router.post('/:caravanId/collect', authGuard, characterGuard, requireTown, async
     const { cargo, meta } = parseMeta(caravan);
     const cargoValue = totalCargoValue(cargo);
 
-    // Deposit all cargo items into player inventory at destination (batch upserts)
-    await prisma.$transaction([
-      ...cargo.map((item: { itemId: string; quantity: number }) =>
-        prisma.inventory.upsert({
-          where: {
-            characterId_itemId: { characterId: character.id, itemId: item.itemId },
-          },
-          update: { quantity: { increment: item.quantity } },
-          create: { characterId: character.id, itemId: item.itemId, quantity: item.quantity },
-        })
-      ),
-      prisma.caravan.update({
-        where: { id: caravanId },
-        data: { status: 'COMPLETED' },
-      }),
-    ]);
+    // Deposit all cargo items into player inventory at destination (upserts)
+    await db.transaction(async (tx) => {
+      for (const item of cargo) {
+        const existingInv = await tx.query.inventories.findFirst({
+          where: and(eq(inventories.characterId, character.id), eq(inventories.itemId, item.itemId)),
+        });
+        if (existingInv) {
+          await tx.update(inventories).set({ quantity: sql`${inventories.quantity} + ${item.quantity}` }).where(eq(inventories.id, existingInv.id));
+        } else {
+          await tx.insert(inventories).values({ id: crypto.randomUUID(), characterId: character.id, itemId: item.itemId, quantity: item.quantity });
+        }
+      }
+      await tx.update(caravans).set({ status: 'COMPLETED' }).where(eq(caravans.id, caravanId));
+    });
 
     // Get route distance for XP calculation
-    const route = await prisma.travelRoute.findFirst({
-      where: {
-        OR: [
-          { fromTownId: caravan.fromTownId, toTownId: caravan.toTownId },
-          { fromTownId: caravan.toTownId, toTownId: caravan.fromTownId },
-        ],
-      },
+    const route = await db.query.travelRoutes.findFirst({
+      where: or(
+        and(eq(travelRoutes.fromTownId, caravan.fromTownId), eq(travelRoutes.toTownId, caravan.toTownId)),
+        and(eq(travelRoutes.fromTownId, caravan.toTownId), eq(travelRoutes.toTownId, caravan.fromTownId)),
+      ),
     });
 
     // Award Merchant XP: base XP = (cargoValue / 10) + (nodeCount * 2)
@@ -667,19 +666,19 @@ router.post('/:caravanId/collect', authGuard, characterGuard, requireTown, async
       id: `caravan-arrived-${caravanId}`,
       type: 'caravan:arrived',
       title: 'Caravan Arrived!',
-      message: `Your caravan arrived at ${caravan.toTown.name}. ${cargo.length} item type(s) collected.`,
+      message: `Your caravan arrived at ${caravan.town_toTownId.name}. ${cargo.length} item type(s) collected.`,
       data: { caravanId, toTownId: caravan.toTownId, cargoValue, xpAmount },
     });
 
     return res.json({
       collected: true,
-      destination: caravan.toTown,
+      destination: { id: caravan.town_toTownId.id, name: caravan.town_toTownId.name },
       cargo,
       cargoValue,
       merchantXp: xpAmount,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'caravan-collect', req)) return;
+    if (handleDbError(error, res, 'caravan-collect', req)) return;
     logRouteError(req, 500, 'Caravan collect error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -695,11 +694,11 @@ router.post('/:caravanId/resolve-ambush', authGuard, characterGuard, requireTown
     const { choice } = req.body as { choice: AmbushChoice };
     const character = req.character!;
 
-    const caravan = await prisma.caravan.findUnique({
-      where: { id: caravanId },
-      include: {
-        fromTown: { select: { id: true, name: true } },
-        toTown: { select: { id: true, name: true } },
+    const caravan = await db.query.caravans.findFirst({
+      where: eq(caravans.id, caravanId),
+      with: {
+        town_fromTownId: true,
+        town_toTownId: true,
       },
     });
     if (!caravan) return res.status(404).json({ error: 'Caravan not found' });
@@ -726,23 +725,17 @@ router.post('/:caravanId/resolve-ambush', authGuard, characterGuard, requireTown
 
       if (success) {
         // Win — keep all cargo, resume transit
-        await prisma.caravan.update({
-          where: { id: caravanId },
-          data: { status: 'IN_PROGRESS' },
-        });
+        await db.update(caravans).set({ status: 'IN_PROGRESS' }).where(eq(caravans.id, caravanId));
         result = { outcome: 'victory', cargoLost: [], goldLost: 0, cargoRemaining: cargo };
       } else {
         // Lose — lose 40% of cargo
         const lossFraction = 0.40;
         const { remaining, lost } = removeRandomCargo(cargo, lossFraction);
 
-        await prisma.caravan.update({
-          where: { id: caravanId },
-          data: {
-            status: 'IN_PROGRESS',
-            cargo: serializeCargo(remaining, meta),
-          },
-        });
+        await db.update(caravans).set({
+          status: 'IN_PROGRESS',
+          cargo: serializeCargo(remaining, meta),
+        }).where(eq(caravans.id, caravanId));
         result = { outcome: 'defeat', cargoLost: lost, goldLost: 0, cargoRemaining: remaining };
       }
     } else if (choice === 'ransom') {
@@ -753,22 +746,19 @@ router.post('/:caravanId/resolve-ambush', authGuard, characterGuard, requireTown
         return res.status(400).json({ error: `Ransom costs ${ransomCost}g. You have ${character.gold}g.` });
       }
 
-      await prisma.$transaction([
-        prisma.character.update({ where: { id: character.id }, data: { gold: { decrement: ransomCost } } }),
-        prisma.caravan.update({ where: { id: caravanId }, data: { status: 'IN_PROGRESS' } }),
-      ]);
+      await db.transaction(async (tx) => {
+        await tx.update(characters).set({ gold: sql`${characters.gold} - ${ransomCost}` }).where(eq(characters.id, character.id));
+        await tx.update(caravans).set({ status: 'IN_PROGRESS' }).where(eq(caravans.id, caravanId));
+      });
       result = { outcome: 'ransomed', cargoLost: [], goldLost: ransomCost, cargoRemaining: cargo };
     } else {
       // Flee — lose 20% of cargo randomly
       const { remaining, lost } = removeRandomCargo(cargo, FLEE_CARGO_LOSS_FRACTION);
 
-      await prisma.caravan.update({
-        where: { id: caravanId },
-        data: {
-          status: 'IN_PROGRESS',
-          cargo: serializeCargo(remaining, meta),
-        },
-      });
+      await db.update(caravans).set({
+        status: 'IN_PROGRESS',
+        cargo: serializeCargo(remaining, meta),
+      }).where(eq(caravans.id, caravanId));
       result = { outcome: 'fled', cargoLost: lost, goldLost: 0, cargoRemaining: remaining };
     }
 
@@ -778,10 +768,7 @@ router.post('/:caravanId/resolve-ambush', authGuard, characterGuard, requireTown
       const lostValue = totalCargoValue(result.cargoLost);
       const payout = Math.floor(lostValue * insuranceDef.payoutRate);
       if (payout > 0) {
-        await prisma.character.update({
-          where: { id: character.id },
-          data: { gold: { increment: payout } },
-        });
+        await db.update(characters).set({ gold: sql`${characters.gold} + ${payout}` }).where(eq(characters.id, character.id));
         (result as any).insurancePayout = payout;
       }
     }
@@ -796,7 +783,7 @@ router.post('/:caravanId/resolve-ambush', authGuard, characterGuard, requireTown
 
     return res.json(result);
   } catch (error) {
-    if (handlePrismaError(error, res, 'caravan-resolve-ambush', req)) return;
+    if (handleDbError(error, res, 'caravan-resolve-ambush', req)) return;
     logRouteError(req, 500, 'Caravan resolve-ambush error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

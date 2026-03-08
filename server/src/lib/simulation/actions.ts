@@ -15,7 +15,9 @@ import { get, post } from './dispatcher';
 import { getResourcesByType } from './seed';
 import { TOWN_GATHERING_SPOTS } from '@shared/data/gathering';
 import { BUILDING_ANIMAL_MAP } from '@shared/data/assets';
-import { prisma } from '../../lib/prisma';
+import { db } from '../../lib/db';
+import { eq, and, ne, lte, gt, asc, sql } from 'drizzle-orm';
+import { marketListings, marketBuyOrders, characters, inventories, items, priceHistories, tradeTransactions, townTreasuries, towns } from '@database/tables';
 import { getOrCreateOpenCycle } from '../auction-engine';
 import { getSimulationTick } from '../simulation-context';
 import { getEffectiveTaxRate } from '../../services/law-effects';
@@ -1181,20 +1183,21 @@ export async function ensureToolEquipped(
       return { success: false, detail: `Not enough gold to buy a ${toolTypeName} (${bot.gold}g)`, endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
     }
 
-    const listings = await prisma.marketListing.findMany({
-      where: {
-        status: 'active',
-        itemName: { contains: toolTypeName, mode: 'insensitive' },
-        price: { gt: 0, lte: maxPrice },
-        sellerId: { not: bot.characterId },
-      },
-      orderBy: { price: 'asc' },
-      take: 1,
-      select: {
+    const listings = await db.query.marketListings.findMany({
+      where: and(
+        eq(marketListings.status, 'active'),
+        sql`LOWER(${marketListings.itemName}) LIKE LOWER(${'%' + toolTypeName + '%'})`,
+        gt(marketListings.price, 0),
+        lte(marketListings.price, maxPrice),
+        ne(marketListings.sellerId, bot.characterId),
+      ),
+      orderBy: asc(marketListings.price),
+      limit: 1,
+      columns: {
         id: true, price: true, itemName: true, quantity: true,
         townId: true, sellerId: true,
-        seller: { select: { name: true } },
       },
+      with: { character: { columns: { name: true } } },
     });
 
     if (listings.length === 0) {
@@ -1205,17 +1208,20 @@ export async function ensureToolEquipped(
     const bidPrice = Math.ceil(listing.price * 1.1);
 
     // Check for duplicate order
-    const existingOrder = await prisma.marketBuyOrder.findUnique({
-      where: { buyerId_listingId: { buyerId: bot.characterId, listingId: listing.id } },
+    const existingOrder = await db.query.marketBuyOrders.findFirst({
+      where: and(
+        eq(marketBuyOrders.buyerId, bot.characterId),
+        eq(marketBuyOrders.listingId, listing.id),
+      ),
     });
     if (existingOrder) {
       return { success: false, detail: `Already have order for ${listing.itemName}`, endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
     }
 
     // Fresh gold check from DB
-    const freshChar = await prisma.character.findUnique({
-      where: { id: bot.characterId },
-      select: { gold: true, escrowedGold: true },
+    const freshChar = await db.query.characters.findFirst({
+      where: eq(characters.id, bot.characterId),
+      columns: { gold: true, escrowedGold: true },
     });
     if (!freshChar) {
       return { success: false, detail: 'Character not found', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
@@ -1226,19 +1232,17 @@ export async function ensureToolEquipped(
     }
 
     const cycle = await getOrCreateOpenCycle(listing.townId);
-    await prisma.$transaction(async (tx) => {
-      await tx.character.update({
-        where: { id: bot.characterId },
-        data: { escrowedGold: { increment: bidPrice } },
-      });
-      return tx.marketBuyOrder.create({
-        data: {
-          buyerId: bot.characterId,
-          listingId: listing.id,
-          bidPrice,
-          status: 'pending',
-          auctionCycleId: cycle.id,
-        },
+    await db.transaction(async (tx) => {
+      await tx.update(characters).set({
+        escrowedGold: sql`${characters.escrowedGold} + ${bidPrice}`,
+      }).where(eq(characters.id, bot.characterId));
+      await tx.insert(marketBuyOrders).values({
+        id: crypto.randomUUID(),
+        buyerId: bot.characterId,
+        listingId: listing.id,
+        bidPrice,
+        status: 'pending',
+        auctionCycleId: cycle.id,
       });
     });
     bot.gold = freshChar.gold;
@@ -2367,16 +2371,17 @@ export async function buySpecificItem(bot: BotState, itemName: string, maxPrice?
   try {
     // Global market search — find active listings across ALL towns
     const max = maxPrice ?? bot.gold * 0.5;
-    const listings = await prisma.marketListing.findMany({
-      where: {
-        status: 'active',
-        itemName: { equals: itemName, mode: 'insensitive' },
-        price: { gt: 0, lte: Math.floor(max) },
-        sellerId: { not: bot.characterId }, // Don't buy own listings
-      },
-      orderBy: { price: 'asc' },
-      take: 5,
-      select: {
+    const listings = await db.query.marketListings.findMany({
+      where: and(
+        eq(marketListings.status, 'active'),
+        sql`LOWER(${marketListings.itemName}) = LOWER(${itemName})`,
+        gt(marketListings.price, 0),
+        lte(marketListings.price, Math.floor(max)),
+        ne(marketListings.sellerId, bot.characterId),
+      ),
+      orderBy: asc(marketListings.price),
+      limit: 5,
+      columns: {
         id: true,
         price: true,
         itemName: true,
@@ -2385,8 +2390,8 @@ export async function buySpecificItem(bot: BotState, itemName: string, maxPrice?
         quantity: true,
         townId: true,
         sellerId: true,
-        seller: { select: { name: true } },
       },
+      with: { character: { columns: { name: true } } },
     });
 
     if (listings.length === 0) {
@@ -2397,9 +2402,9 @@ export async function buySpecificItem(bot: BotState, itemName: string, maxPrice?
     const bidPrice = Math.ceil(listing.price * 1.1); // 10% above asking
 
     // Fresh gold check from DB
-    const freshChar = await prisma.character.findUnique({
-      where: { id: bot.characterId },
-      select: { gold: true, escrowedGold: true },
+    const freshChar = await db.query.characters.findFirst({
+      where: eq(characters.id, bot.characterId),
+      columns: { gold: true, escrowedGold: true },
     });
     if (!freshChar) {
       return { success: false, detail: 'Character not found in DB', endpoint, httpStatus: 0, requestBody: {}, responseBody: {} };
@@ -2419,105 +2424,100 @@ export async function buySpecificItem(bot: BotState, itemName: string, maxPrice?
       const sellerNet = bidPrice - fee;
       const taxRate = await getEffectiveTaxRate(listing.townId);
       const townTax = Math.floor(bidPrice * taxRate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const todayDate = new Date();
+      todayDate.setHours(0, 0, 0, 0);
+      const today = todayDate.toISOString().slice(0, 10);
 
-      await prisma.$transaction(async (tx) => {
+      await db.transaction(async (tx) => {
         // Deduct gold from buyer (direct, no escrow)
-        await tx.character.update({
-          where: { id: bot.characterId },
-          data: { gold: { decrement: bidPrice } },
-        });
+        await tx.update(characters).set({
+          gold: sql`${characters.gold} - ${bidPrice}`,
+        }).where(eq(characters.id, bot.characterId));
 
         // Credit seller
-        await tx.character.update({
-          where: { id: listing.sellerId },
-          data: { gold: { increment: sellerNet } },
-        });
+        await tx.update(characters).set({
+          gold: sql`${characters.gold} + ${sellerNet}`,
+        }).where(eq(characters.id, listing.sellerId));
 
         // Transfer item to buyer inventory
-        const existingInv = await tx.inventory.findFirst({
-          where: { characterId: bot.characterId, itemId: listing.itemId },
+        const existingInv = await tx.query.inventories.findFirst({
+          where: and(
+            eq(inventories.characterId, bot.characterId),
+            eq(inventories.itemId, listing.itemId),
+          ),
         });
         if (existingInv) {
-          await tx.inventory.update({
-            where: { id: existingInv.id },
-            data: { quantity: { increment: listing.quantity } },
-          });
+          await tx.update(inventories).set({
+            quantity: sql`${inventories.quantity} + ${listing.quantity}`,
+          }).where(eq(inventories.id, existingInv.id));
         } else {
-          await tx.inventory.create({
-            data: {
-              characterId: bot.characterId,
-              itemId: listing.itemId,
-              quantity: listing.quantity,
-            },
+          await tx.insert(inventories).values({
+            id: crypto.randomUUID(),
+            characterId: bot.characterId,
+            itemId: listing.itemId,
+            quantity: listing.quantity,
           });
         }
 
         // Mark listing as sold
-        await tx.marketListing.update({
-          where: { id: listing.id },
-          data: {
-            status: 'sold',
-            soldAt: new Date(),
-            soldTo: bot.characterId,
-            soldPrice: bidPrice,
-          },
-        });
+        await tx.update(marketListings).set({
+          status: 'sold',
+          soldAt: new Date().toISOString(),
+          soldTo: bot.characterId,
+          soldPrice: bidPrice,
+        }).where(eq(marketListings.id, listing.id));
 
         // Create TradeTransaction
-        await tx.tradeTransaction.create({
-          data: {
-            buyerId: bot.characterId,
-            sellerId: listing.sellerId,
-            itemId: listing.itemId,
-            price: bidPrice,
-            quantity: listing.quantity,
-            townId: listing.townId,
-            sellerFee: fee,
-            sellerNet,
-            numBidders: 1,
-            contested: false,
-            allBidders: [],
-          },
+        await tx.insert(tradeTransactions).values({
+          id: crypto.randomUUID(),
+          buyerId: bot.characterId,
+          sellerId: listing.sellerId,
+          itemId: listing.itemId,
+          price: bidPrice,
+          quantity: listing.quantity,
+          townId: listing.townId,
+          sellerFee: fee,
+          sellerNet,
+          numBidders: 1,
+          contested: false,
+          allBidders: [],
         });
 
         // Update PriceHistory
-        const existingHistory = await tx.priceHistory.findUnique({
-          where: {
-            itemTemplateId_townId_date: {
-              itemTemplateId: listing.itemTemplateId,
-              townId: listing.townId,
-              date: today,
-            },
-          },
+        const existingHistory = await tx.query.priceHistories.findFirst({
+          where: and(
+            eq(priceHistories.itemTemplateId, listing.itemTemplateId),
+            eq(priceHistories.townId, listing.townId),
+            eq(priceHistories.date, today),
+          ),
         });
         if (existingHistory) {
           const newVolume = existingHistory.volume + listing.quantity;
           const newAvgPrice =
             (existingHistory.avgPrice * existingHistory.volume + bidPrice * listing.quantity) / newVolume;
-          await tx.priceHistory.update({
-            where: { id: existingHistory.id },
-            data: { avgPrice: newAvgPrice, volume: newVolume },
-          });
+          await tx.update(priceHistories).set({
+            avgPrice: newAvgPrice, volume: newVolume,
+          }).where(eq(priceHistories.id, existingHistory.id));
         } else {
-          await tx.priceHistory.create({
-            data: {
-              itemTemplateId: listing.itemTemplateId,
-              townId: listing.townId,
-              avgPrice: bidPrice,
-              volume: listing.quantity,
-              date: today,
-            },
+          await tx.insert(priceHistories).values({
+            id: crypto.randomUUID(),
+            itemTemplateId: listing.itemTemplateId,
+            townId: listing.townId,
+            avgPrice: bidPrice,
+            volume: listing.quantity,
+            date: today,
           });
         }
 
         // Deposit town tax
         if (townTax > 0) {
-          await tx.townTreasury.upsert({
-            where: { townId: listing.townId },
-            update: { balance: { increment: townTax } },
-            create: { townId: listing.townId, balance: townTax },
+          await tx.insert(townTreasuries).values({
+            id: crypto.randomUUID(),
+            townId: listing.townId,
+            balance: townTax,
+          }).onConflictDoUpdate({
+            target: townTreasuries.townId,
+            set: { balance: sql`${townTreasuries.balance} + ${townTax}` },
           });
         }
       });
@@ -2527,7 +2527,7 @@ export async function buySpecificItem(bot: BotState, itemName: string, maxPrice?
 
       return {
         success: true,
-        detail: `[INSTANT] Bought ${listing.quantity}x ${listing.itemName} for ${bidPrice}g (asking ${listing.price}g) from ${listing.seller.name}`,
+        detail: `[INSTANT] Bought ${listing.quantity}x ${listing.itemName} for ${bidPrice}g (asking ${listing.price}g) from ${listing.character.name}`,
         endpoint,
         httpStatus: 200,
         requestBody: { listingId: listing.id, bidPrice, townId: listing.townId, instant: true },
@@ -2537,8 +2537,11 @@ export async function buySpecificItem(bot: BotState, itemName: string, maxPrice?
 
     // ── Normal auction path (non-simulation) ────────────────────────────
     // Check for duplicate order on this listing
-    const existingOrder = await prisma.marketBuyOrder.findUnique({
-      where: { buyerId_listingId: { buyerId: bot.characterId, listingId: listing.id } },
+    const existingOrder = await db.query.marketBuyOrders.findFirst({
+      where: and(
+        eq(marketBuyOrders.buyerId, bot.characterId),
+        eq(marketBuyOrders.listingId, listing.id),
+      ),
     });
     if (existingOrder) {
       return { success: false, detail: `Already have order on ${itemName} listing`, endpoint, httpStatus: 0, requestBody: { listingId: listing.id }, responseBody: {} };
@@ -2548,20 +2551,19 @@ export async function buySpecificItem(bot: BotState, itemName: string, maxPrice?
     const cycle = await getOrCreateOpenCycle(listing.townId);
 
     // Create buy order + escrow in transaction
-    const order = await prisma.$transaction(async (tx) => {
-      await tx.character.update({
-        where: { id: bot.characterId },
-        data: { escrowedGold: { increment: bidPrice } },
-      });
-      return tx.marketBuyOrder.create({
-        data: {
-          buyerId: bot.characterId,
-          listingId: listing.id,
-          bidPrice,
-          status: 'pending',
-          auctionCycleId: cycle.id,
-        },
-      });
+    const order = await db.transaction(async (tx) => {
+      await tx.update(characters).set({
+        escrowedGold: sql`${characters.escrowedGold} + ${bidPrice}`,
+      }).where(eq(characters.id, bot.characterId));
+      const [newOrder] = await tx.insert(marketBuyOrders).values({
+        id: crypto.randomUUID(),
+        buyerId: bot.characterId,
+        listingId: listing.id,
+        bidPrice,
+        status: 'pending',
+        auctionCycleId: cycle.id,
+      }).returning();
+      return newOrder;
     });
 
     // Update local bot state
@@ -2569,7 +2571,7 @@ export async function buySpecificItem(bot: BotState, itemName: string, maxPrice?
 
     return {
       success: true,
-      detail: `Placed buy order for ${listing.quantity}x ${listing.itemName} at ${bidPrice}g (asking ${listing.price}g) from ${listing.seller.name}`,
+      detail: `Placed buy order for ${listing.quantity}x ${listing.itemName} at ${bidPrice}g (asking ${listing.price}g) from ${listing.character.name}`,
       endpoint,
       httpStatus: 201,
       requestBody: { listingId: listing.id, bidPrice, townId: listing.townId },

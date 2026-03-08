@@ -22,7 +22,9 @@ import { PROFESSION_UNLOCK_LEVEL } from '@shared/data/progression/xp-curve';
 import { SimulationLogger } from './sim-logger';
 import { TOWN_GATHERING_SPOTS } from '@shared/data/gathering';
 import { getUnlockedSpotTypes } from '@shared/data/professions/tier-unlocks';
-import { prisma } from '../../lib/prisma';
+import { db } from '../../lib/db';
+import { eq } from 'drizzle-orm';
+import { playerProfessions, towns } from '@database/tables';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -192,8 +194,8 @@ async function ensureTownCache(): Promise<Map<string, { name: string; spotType: 
   if (_townCache) return _townCache;
   _townCache = new Map();
   try {
-    const towns = await prisma.town.findMany({ select: { id: true, name: true } });
-    for (const town of towns) {
+    const townRows = await db.query.towns.findMany({ columns: { id: true, name: true } });
+    for (const town of townRows) {
       const spot = TOWN_GATHERING_SPOTS[town.name];
       if (spot) {
         _townCache.set(town.id, { name: town.name, spotType: spot.resourceType });
@@ -687,9 +689,9 @@ export async function decideBotAction(
 
   // ── Refresh profession levels from DB (levels change from crafting/gathering XP) ──
   try {
-    const profRecords = await prisma.playerProfession.findMany({
-      where: { characterId: bot.characterId },
-      select: { professionType: true, level: true },
+    const profRecords = await db.query.playerProfessions.findMany({
+      where: eq(playerProfessions.characterId, bot.characterId),
+      columns: { professionType: true, level: true },
     });
     const freshLevels: Record<string, number> = {};
     for (const pr of profRecords) {

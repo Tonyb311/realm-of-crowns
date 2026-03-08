@@ -1,5 +1,7 @@
 import { Router, Response } from 'express';
-import { prisma } from '../../lib/prisma';
+import { db } from '../../lib/db';
+import { asc } from 'drizzle-orm';
+import { monsters } from '@database/tables';
 import { AuthenticatedRequest } from '../../types/express';
 import { logRouteError } from '../../lib/error-logger';
 
@@ -8,17 +10,17 @@ const router = Router();
 // GET /api/admin/monsters — Full monster compendium
 router.get('/', async (_req: AuthenticatedRequest, res: Response) => {
   try {
-    const monsters = await prisma.monster.findMany({
-      include: {
+    const allMonsters = await db.query.monsters.findMany({
+      with: {
         region: {
-          select: { id: true, name: true },
+          columns: { id: true, name: true },
         },
       },
-      orderBy: [{ level: 'asc' }, { name: 'asc' }],
+      orderBy: [asc(monsters.level), asc(monsters.name)],
     });
 
     // Compute XP reward: 5 * monster.level (ACTION_XP.PVE_WIN_PER_MONSTER_LEVEL = 5)
-    const enriched = monsters.map(m => {
+    const enriched = allMonsters.map(m => {
       const stats = m.stats as Record<string, any>;
       const lootTable = m.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number; itemTemplateName?: string }[];
 
@@ -56,8 +58,8 @@ router.get('/', async (_req: AuthenticatedRequest, res: Response) => {
         tags: m.tags as Record<string, unknown>,
         regionId: m.regionId,
         regionName: m.region?.name ?? null,
-        formulaCR: m.formulaCR,
-        simCR: m.simCR,
+        formulaCR: m.formulaCr,
+        simCR: m.simCr,
         damageType: m.damageType,
         stats: {
           hp: stats.hp ?? 0,

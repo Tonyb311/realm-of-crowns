@@ -1,9 +1,11 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../../lib/prisma';
+import { db } from '../../lib/db';
+import { eq, and, or, gte, lte, lt, like, inArray, desc, count, sql } from 'drizzle-orm';
+import { errorLogs } from '@database/tables';
 import { validate } from '../../middleware/validate';
 import { AuthenticatedRequest } from '../../types/express';
-import { Prisma, LogLevel } from '@prisma/client';
+import type { LogLevel } from '@shared/enums';
 import { logRouteError } from '../../lib/error-logger';
 
 const router = Router();
@@ -16,50 +18,55 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(200, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
-    const skip = (page - 1) * limit;
+    const offset = (page - 1) * limit;
 
-    const where: Prisma.ErrorLogWhereInput = {};
+    const conditions: ReturnType<typeof eq>[] = [];
 
     if (req.query.level) {
       const levels = (req.query.level as string).split(',') as LogLevel[];
-      where.level = { in: levels };
+      conditions.push(inArray(errorLogs.level, levels));
     }
     if (req.query.category) {
-      where.category = req.query.category as string;
+      conditions.push(eq(errorLogs.category, req.query.category as string));
     }
     if (req.query.statusCode) {
-      where.statusCode = parseInt(req.query.statusCode as string, 10);
+      conditions.push(eq(errorLogs.statusCode, parseInt(req.query.statusCode as string, 10)));
     }
     if (req.query.resolved !== undefined) {
-      where.resolved = req.query.resolved === 'true';
+      conditions.push(eq(errorLogs.resolved, req.query.resolved === 'true'));
     }
     if (req.query.userId) {
-      where.userId = req.query.userId as string;
+      conditions.push(eq(errorLogs.userId, req.query.userId as string));
     }
     if (req.query.characterId) {
-      where.characterId = req.query.characterId as string;
+      conditions.push(eq(errorLogs.characterId, req.query.characterId as string));
     }
-    if (req.query.startDate || req.query.endDate) {
-      where.timestamp = {};
-      if (req.query.startDate) where.timestamp.gte = new Date(req.query.startDate as string);
-      if (req.query.endDate) where.timestamp.lte = new Date(req.query.endDate as string);
+    if (req.query.startDate) {
+      conditions.push(gte(errorLogs.timestamp, new Date(req.query.startDate as string).toISOString()));
+    }
+    if (req.query.endDate) {
+      conditions.push(lte(errorLogs.timestamp, new Date(req.query.endDate as string).toISOString()));
     }
     if (req.query.search) {
-      const search = req.query.search as string;
-      where.OR = [
-        { message: { contains: search, mode: 'insensitive' } },
-        { detail: { contains: search, mode: 'insensitive' } },
-      ];
+      const search = `%${req.query.search as string}%`;
+      conditions.push(
+        or(
+          like(sql`lower(${errorLogs.message})`, search.toLowerCase()),
+          like(sql`lower(${errorLogs.detail})`, search.toLowerCase()),
+        )!
+      );
     }
 
-    const [logs, total] = await Promise.all([
-      prisma.errorLog.findMany({
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [logs, [{ total }]] = await Promise.all([
+      db.query.errorLogs.findMany({
         where,
-        orderBy: { timestamp: 'desc' },
-        skip,
-        take: limit,
+        orderBy: desc(errorLogs.timestamp),
+        offset,
+        limit,
       }),
-      prisma.errorLog.count({ where }),
+      db.select({ total: count() }).from(errorLogs).where(where),
     ]);
 
     return res.json({
@@ -85,23 +92,40 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
     const day7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const day30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    const [count24h, count7d, count30d, unresolved, byLevel, byCategory, byStatusCode, topMessages, hourlyRaw] = await Promise.all([
-      prisma.errorLog.count({ where: { timestamp: { gte: day1 } } }),
-      prisma.errorLog.count({ where: { timestamp: { gte: day7 } } }),
-      prisma.errorLog.count({ where: { timestamp: { gte: day30 } } }),
-      prisma.errorLog.count({ where: { resolved: false } }),
-      prisma.errorLog.groupBy({ by: ['level'], _count: true, where: { timestamp: { gte: day7 } } }),
-      prisma.errorLog.groupBy({ by: ['category'], _count: true, where: { timestamp: { gte: day7 } }, orderBy: { _count: { category: 'desc' } }, take: 15 }),
-      prisma.errorLog.groupBy({ by: ['statusCode'], _count: true, where: { timestamp: { gte: day7 } }, orderBy: { _count: { statusCode: 'desc' } } }),
-      prisma.errorLog.groupBy({ by: ['message'], _count: true, where: { timestamp: { gte: day7 } }, orderBy: { _count: { message: 'desc' } }, take: 10 }),
-      // Hourly counts for last 24h
-      prisma.$queryRaw<{ hour: Date; count: bigint }[]>`
-        SELECT date_trunc('hour', timestamp) as hour, count(*)::bigint as count
-        FROM "error_logs"
-        WHERE timestamp >= ${day1}
-        GROUP BY date_trunc('hour', timestamp)
+    const [
+      [{ count24h }],
+      [{ count7d }],
+      [{ count30d }],
+      [{ unresolvedCount }],
+      byLevelRaw,
+      byCategoryRaw,
+      byStatusCodeRaw,
+      topMessagesRaw,
+      hourlyRaw,
+    ] = await Promise.all([
+      db.select({ count24h: count() }).from(errorLogs).where(gte(errorLogs.timestamp, day1.toISOString())),
+      db.select({ count7d: count() }).from(errorLogs).where(gte(errorLogs.timestamp, day7.toISOString())),
+      db.select({ count30d: count() }).from(errorLogs).where(gte(errorLogs.timestamp, day30.toISOString())),
+      db.select({ unresolvedCount: count() }).from(errorLogs).where(eq(errorLogs.resolved, false)),
+      db.execute<{ level: string; cnt: string }>(sql`
+        SELECT level, count(*)::text as cnt FROM error_logs WHERE timestamp >= ${day7.toISOString()} GROUP BY level
+      `),
+      db.execute<{ category: string; cnt: string }>(sql`
+        SELECT category, count(*)::text as cnt FROM error_logs WHERE timestamp >= ${day7.toISOString()} GROUP BY category ORDER BY count(*) DESC LIMIT 15
+      `),
+      db.execute<{ status_code: number; cnt: string }>(sql`
+        SELECT status_code, count(*)::text as cnt FROM error_logs WHERE timestamp >= ${day7.toISOString()} GROUP BY status_code ORDER BY count(*) DESC
+      `),
+      db.execute<{ message: string; cnt: string }>(sql`
+        SELECT message, count(*)::text as cnt FROM error_logs WHERE timestamp >= ${day7.toISOString()} GROUP BY message ORDER BY count(*) DESC LIMIT 10
+      `),
+      db.execute<{ hour: string; cnt: string }>(sql`
+        SELECT date_trunc('hour', timestamp::timestamp) as hour, count(*)::text as cnt
+        FROM error_logs
+        WHERE timestamp >= ${day1.toISOString()}
+        GROUP BY date_trunc('hour', timestamp::timestamp)
         ORDER BY hour ASC
-      `,
+      `),
     ]);
 
     // Build hourly trend (fill in missing hours with 0)
@@ -110,16 +134,16 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       const h = new Date(now.getTime() - i * 60 * 60 * 1000);
       h.setMinutes(0, 0, 0);
       const hourKey = h.toISOString();
-      const match = hourlyRaw.find(r => new Date(r.hour).getHours() === h.getHours() && new Date(r.hour).getDate() === h.getDate());
-      hourlyTrend.push({ hour: hourKey, count: match ? Number(match.count) : 0 });
+      const match = hourlyRaw.rows.find(r => new Date(r.hour).getHours() === h.getHours() && new Date(r.hour).getDate() === h.getDate());
+      hourlyTrend.push({ hour: hourKey, count: match ? Number(match.cnt) : 0 });
     }
 
     return res.json({
-      totals: { last24h: count24h, last7d: count7d, last30d: count30d, unresolved },
-      byLevel: byLevel.map(g => ({ level: g.level, count: g._count })),
-      byCategory: byCategory.map(g => ({ category: g.category, count: g._count })),
-      byStatusCode: byStatusCode.map(g => ({ statusCode: g.statusCode, count: g._count })),
-      topMessages: topMessages.map(g => ({ message: g.message, count: g._count })),
+      totals: { last24h: count24h, last7d: count7d, last30d: count30d, unresolved: unresolvedCount },
+      byLevel: byLevelRaw.rows.map(g => ({ level: g.level, count: Number(g.cnt) })),
+      byCategory: byCategoryRaw.rows.map(g => ({ category: g.category, count: Number(g.cnt) })),
+      byStatusCode: byStatusCodeRaw.rows.map(g => ({ statusCode: g.status_code, count: Number(g.cnt) })),
+      topMessages: topMessagesRaw.rows.map(g => ({ message: g.message, count: Number(g.cnt) })),
       hourlyTrend,
     });
   } catch (error) {
@@ -134,7 +158,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
 
 router.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const log = await prisma.errorLog.findUnique({ where: { id: req.params.id } });
+    const log = await db.query.errorLogs.findFirst({ where: eq(errorLogs.id, req.params.id) });
     if (!log) return res.status(404).json({ error: 'Error log not found' });
     return res.json({ log });
   } catch (error) {
@@ -153,15 +177,16 @@ const resolveSchema = z.object({
 
 router.patch('/:id/resolve', validate(resolveSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const log = await prisma.errorLog.update({
-      where: { id: req.params.id },
-      data: {
+    const [log] = await db.update(errorLogs)
+      .set({
         resolved: true,
         resolvedBy: req.user!.userId,
-        resolvedAt: new Date(),
+        resolvedAt: new Date().toISOString(),
         notes: req.body.notes || null,
-      },
-    });
+      })
+      .where(eq(errorLogs.id, req.params.id))
+      .returning();
+    if (!log) return res.status(404).json({ error: 'Error log not found' });
     return res.json({ log });
   } catch (error) {
     logRouteError(req, 500, 'Resolve error log error', error);
@@ -175,14 +200,15 @@ router.patch('/:id/resolve', validate(resolveSchema), async (req: AuthenticatedR
 
 router.patch('/:id/unresolve', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const log = await prisma.errorLog.update({
-      where: { id: req.params.id },
-      data: {
+    const [log] = await db.update(errorLogs)
+      .set({
         resolved: false,
         resolvedBy: null,
         resolvedAt: null,
-      },
-    });
+      })
+      .where(eq(errorLogs.id, req.params.id))
+      .returning();
+    if (!log) return res.status(404).json({ error: 'Error log not found' });
     return res.json({ log });
   } catch (error) {
     logRouteError(req, 500, 'Unresolve error log error', error);
@@ -203,11 +229,11 @@ router.delete('/purge', validate(purgeSchema), async (req: AuthenticatedRequest,
     const { olderThanDays } = req.body;
     const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
 
-    const result = await prisma.errorLog.deleteMany({
-      where: { timestamp: { lt: cutoff } },
-    });
+    const deleted = await db.delete(errorLogs)
+      .where(lt(errorLogs.timestamp, cutoff.toISOString()))
+      .returning();
 
-    return res.json({ deleted: result.count, olderThan: cutoff.toISOString() });
+    return res.json({ deleted: deleted.length, olderThan: cutoff.toISOString() });
   } catch (error) {
     logRouteError(req, 500, 'Purge error logs error', error);
     return res.status(500).json({ error: 'Internal server error' });

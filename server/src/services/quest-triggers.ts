@@ -8,7 +8,9 @@
  * All functions are wrapped in try/catch — quest bugs must NEVER break game actions.
  */
 
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and } from 'drizzle-orm';
+import { questProgress, towns } from '@database/tables';
 import { emitNotification } from '../socket/events';
 import { autoCompleteTutorialQuest } from '../routes/quests';
 
@@ -27,9 +29,12 @@ async function updateQuestProgress(
   count: number = 1,
 ): Promise<void> {
   // Find the single active quest (one-at-a-time rule)
-  const qp = await prisma.questProgress.findFirst({
-    where: { characterId, status: 'IN_PROGRESS' },
-    include: { quest: true },
+  const qp = await db.query.questProgress.findFirst({
+    where: and(
+      eq(questProgress.characterId, characterId),
+      eq(questProgress.status, 'IN_PROGRESS'),
+    ),
+    with: { quest: true },
   });
   if (!qp) return;
 
@@ -51,10 +56,7 @@ async function updateQuestProgress(
 
   if (!updated) return;
 
-  await prisma.questProgress.update({
-    where: { id: qp.id },
-    data: { progress },
-  });
+  await db.update(questProgress).set({ progress }).where(eq(questProgress.id, qp.id));
 
   // Check if all objectives are now met
   const allMet = objectives.every(
@@ -110,9 +112,9 @@ export async function onVisitLocation(
 ): Promise<void> {
   try {
     // Resolve town name from ID for matching
-    const town = await prisma.town.findUnique({
-      where: { id: townId },
-      select: { name: true },
+    const town = await db.query.towns.findFirst({
+      where: eq(towns.id, townId),
+      columns: { name: true },
     });
     if (!town) return;
     await updateQuestProgress(characterId, 'VISIT', town.name, 1);

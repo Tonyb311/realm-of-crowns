@@ -6,7 +6,28 @@
  * that enhance marketplace, elections, travel, diplomacy, and social systems.
  */
 
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, or, gte, lte, inArray, count, desc, asc } from 'drizzle-orm';
+import {
+  characters,
+  electionVotes,
+  electionCandidates,
+  elections,
+  laws,
+  combatParticipants,
+  combatSessions,
+  questProgress,
+  tradeTransactions,
+  gatheringActions,
+  treaties,
+  wars,
+  kingdoms,
+  racialRelations,
+  diplomacyEvents,
+  priceHistories,
+  caravans,
+  townResources,
+} from '@database/tables';
 
 // ============================================================
 // HELPER: Check if character is a Psion with specific spec
@@ -18,9 +39,9 @@ interface PsionCheckResult {
 }
 
 export async function getPsionSpec(characterId: string): Promise<PsionCheckResult> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { class: true, specialization: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { class: true, specialization: true },
   });
 
   if (!character || character.class !== 'psion') {
@@ -39,28 +60,32 @@ export async function getPsionSpec(characterId: string): Promise<PsionCheckResul
  * Based on candidate's past voting record vs their current platform.
  */
 export async function calculateSincerityScore(candidateId: string): Promise<number> {
-  const pastVotes = await prisma.electionVote.findMany({
-    where: { voterId: candidateId },
-    include: {
+  const pastVotes = await db.query.electionVotes.findMany({
+    where: eq(electionVotes.voterId, candidateId),
+    with: {
       election: {
-        include: { candidates: true, town: true },
+        with: { electionCandidates: true, town: true },
       },
     },
-    take: 20,
+    limit: 20,
   });
 
   if (pastVotes.length === 0) return 50;
 
-  const latestCandidacy = await prisma.electionCandidate.findFirst({
-    where: { characterId: candidateId },
-    orderBy: { election: { startDate: 'desc' } },
+  const latestCandidacy = await db.query.electionCandidates.findFirst({
+    where: eq(electionCandidates.characterId, candidateId),
+    with: { election: true },
+    orderBy: desc(electionCandidates.id), // approximate ordering by most recent
   });
 
   if (!latestCandidacy || !latestCandidacy.platform) return 50;
 
-  const lawVotes = await prisma.law.findMany({
-    where: { enactedById: candidateId, status: 'ACTIVE' },
-    take: 10,
+  const lawVotes = await db.query.laws.findMany({
+    where: and(
+      eq(laws.enactedById, candidateId),
+      eq(laws.status, 'ACTIVE'),
+    ),
+    limit: 10,
   });
 
   const votingConsistency = Math.min(25, pastVotes.length * 2.5);
@@ -101,39 +126,44 @@ export async function calculateEmotionalState(
   targetCharacterId: string,
 ): Promise<string> {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const sinceStr = since.toISOString();
 
-  const [recentCombats, recentQuests, recentSales, recentPurchases, recentGathering] =
+  const [recentCombats, recentQuestsResult, recentSalesResult, recentPurchasesResult, recentGatheringResult] =
     await Promise.all([
-      prisma.combatParticipant.findMany({
-        where: {
-          characterId: targetCharacterId,
-          session: { endedAt: { gte: since }, status: 'COMPLETED' },
+      db.query.combatParticipants.findMany({
+        where: eq(combatParticipants.characterId, targetCharacterId),
+        with: {
+          combatSession: true,
         },
-        take: 10,
-      }),
-      prisma.questProgress.count({
-        where: {
-          characterId: targetCharacterId,
-          completedAt: { gte: since },
-          status: 'COMPLETED',
-        },
-      }),
-      prisma.tradeTransaction.count({
-        where: { sellerId: targetCharacterId, timestamp: { gte: since } },
-      }),
-      prisma.tradeTransaction.count({
-        where: { buyerId: targetCharacterId, timestamp: { gte: since } },
-      }),
-      prisma.gatheringAction.count({
-        where: {
-          characterId: targetCharacterId,
-          status: 'COMPLETED',
-          tickDate: { gte: since },
-        },
-      }),
+        limit: 10,
+      }).then(rows => rows.filter(r =>
+        r.combatSession.endedAt && r.combatSession.endedAt >= sinceStr && r.combatSession.status === 'COMPLETED'
+      )),
+      db.select({ total: count() }).from(questProgress).where(and(
+        eq(questProgress.characterId, targetCharacterId),
+        gte(questProgress.completedAt, sinceStr),
+        eq(questProgress.status, 'COMPLETED'),
+      )),
+      db.select({ total: count() }).from(tradeTransactions).where(and(
+        eq(tradeTransactions.sellerId, targetCharacterId),
+        gte(tradeTransactions.timestamp, sinceStr),
+      )),
+      db.select({ total: count() }).from(tradeTransactions).where(and(
+        eq(tradeTransactions.buyerId, targetCharacterId),
+        gte(tradeTransactions.timestamp, sinceStr),
+      )),
+      db.select({ total: count() }).from(gatheringActions).where(and(
+        eq(gatheringActions.characterId, targetCharacterId),
+        eq(gatheringActions.status, 'COMPLETED'),
+        gte(gatheringActions.tickDate, sinceStr),
+      )),
     ]);
 
   const combatCount = recentCombats.length;
+  const recentQuests = recentQuestsResult[0]?.total ?? 0;
+  const recentSales = recentSalesResult[0]?.total ?? 0;
+  const recentPurchases = recentPurchasesResult[0]?.total ?? 0;
+  const recentGathering = recentGatheringResult[0]?.total ?? 0;
   const economicActivity = recentSales + recentPurchases;
   const productiveActivity = recentQuests + recentGathering;
 
@@ -153,24 +183,23 @@ export async function calculateEmotionalState(
 export async function assessTreatyCredibility(
   proposerKingdomId: string,
 ): Promise<{ credible: boolean; brokenTreaties: number; reason?: string }> {
-  const brokenTreaties = await prisma.treaty.count({
-    where: {
-      OR: [
-        { proposerKingdomId, status: 'BROKEN' },
-        { receiverKingdomId: proposerKingdomId, status: 'BROKEN' },
-      ],
-    },
-  });
+  const brokenTreatiesResult = await db.select({ total: count() }).from(treaties).where(and(
+    or(
+      eq(treaties.proposerKingdomId, proposerKingdomId),
+      eq(treaties.receiverKingdomId, proposerKingdomId),
+    ),
+    eq(treaties.status, 'BROKEN'),
+  ));
+  const brokenTreaties = brokenTreatiesResult[0]?.total ?? 0;
 
-  const activeWars = await prisma.war.count({
-    where: {
-      OR: [
-        { attackerKingdomId: proposerKingdomId },
-        { defenderKingdomId: proposerKingdomId },
-      ],
-      status: 'ACTIVE',
-    },
-  });
+  const activeWarsResult = await db.select({ total: count() }).from(wars).where(and(
+    or(
+      eq(wars.attackerKingdomId, proposerKingdomId),
+      eq(wars.defenderKingdomId, proposerKingdomId),
+    ),
+    eq(wars.status, 'ACTIVE'),
+  ));
+  const activeWars = activeWarsResult[0]?.total ?? 0;
 
   if (brokenTreaties >= 3) {
     return { credible: false, brokenTreaties, reason: 'This kingdom has a history of broken agreements' };
@@ -197,40 +226,40 @@ export async function assessTreatyCredibility(
 export async function getElectionProjection(
   electionId: string,
 ): Promise<Array<{ candidateId: string; candidateName: string; votePercentage: number; trend: string }>> {
-  const election = await prisma.election.findUnique({
-    where: { id: electionId },
-    include: {
-      candidates: {
-        include: { character: { select: { name: true } } },
+  const election = await db.query.elections.findFirst({
+    where: eq(elections.id, electionId),
+    with: {
+      electionCandidates: {
+        with: { character: { columns: { name: true } } },
       },
-      votes: true,
+      electionVotes: true,
     },
   });
 
   if (!election || election.phase !== 'VOTING') return [];
 
-  const totalVotes = election.votes.length;
+  const totalVotes = election.electionVotes.length;
   if (totalVotes === 0) {
-    return election.candidates.map((c) => ({
+    return election.electionCandidates.map((c: any) => ({
       candidateId: c.characterId,
       candidateName: c.character.name,
-      votePercentage: Math.round(100 / election.candidates.length),
+      votePercentage: Math.round(100 / election.electionCandidates.length),
       trend: 'Unknown',
     }));
   }
 
   const voteCounts: Record<string, number> = {};
-  for (const candidate of election.candidates) {
+  for (const candidate of election.electionCandidates) {
     voteCounts[candidate.characterId] = 0;
   }
-  for (const vote of election.votes) {
+  for (const vote of election.electionVotes) {
     if (voteCounts[vote.candidateId] !== undefined) {
       voteCounts[vote.candidateId]++;
     }
   }
 
-  const sortedVotes = [...election.votes].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  const sortedVotes = [...election.electionVotes].sort(
+    (a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
   );
   const midpoint = Math.floor(sortedVotes.length / 2);
   const firstHalf = sortedVotes.slice(0, midpoint || 1);
@@ -238,7 +267,7 @@ export async function getElectionProjection(
 
   const firstHalfCounts: Record<string, number> = {};
   const secondHalfCounts: Record<string, number> = {};
-  for (const candidate of election.candidates) {
+  for (const candidate of election.electionCandidates) {
     firstHalfCounts[candidate.characterId] = 0;
     secondHalfCounts[candidate.characterId] = 0;
   }
@@ -249,7 +278,7 @@ export async function getElectionProjection(
     if (secondHalfCounts[vote.candidateId] !== undefined) secondHalfCounts[vote.candidateId]++;
   }
 
-  return election.candidates.map((c) => {
+  return election.electionCandidates.map((c: any) => {
     const votes = voteCounts[c.characterId] || 0;
     const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
 
@@ -275,18 +304,22 @@ export async function calculatePriceTrend(
 ): Promise<'rising' | 'stable' | 'falling'> {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const priceHistory = await prisma.priceHistory.findMany({
-    where: {
-      itemTemplateId,
-      ...(townId ? { townId } : {}),
-      date: { gte: sevenDaysAgo },
-    },
-    orderBy: { date: 'asc' },
+  const conditions = [
+    eq(priceHistories.itemTemplateId, itemTemplateId),
+    gte(priceHistories.date, sevenDaysAgo.toISOString()),
+  ];
+  if (townId) {
+    conditions.push(eq(priceHistories.townId, townId));
+  }
+
+  const priceHistory = await db.query.priceHistories.findMany({
+    where: and(...conditions),
+    orderBy: asc(priceHistories.date),
   });
 
   if (priceHistory.length < 2) return 'stable';
 
-  const prices = priceHistory.map((p) => p.avgPrice);
+  const prices = priceHistory.map((p: any) => p.avgPrice);
   const n = prices.length;
 
   let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
@@ -316,26 +349,24 @@ export async function calculateTensionIndex(
   const factors: string[] = [];
   let tension = 0;
 
-  const kingdoms = await prisma.kingdom.findMany({
-    where: { id: { in: [kingdomId1, kingdomId2] } },
-    include: {
-      ruler: { select: { race: true } },
+  const kingdomsList = await db.query.kingdoms.findMany({
+    where: inArray(kingdoms.id, [kingdomId1, kingdomId2]),
+    with: {
+      character: { columns: { race: true } },
     },
   });
 
-  if (kingdoms.length < 2) return { tensionIndex: 0, factors: ['Unknown kingdoms'] };
+  if (kingdomsList.length < 2) return { tensionIndex: 0, factors: ['Unknown kingdoms'] };
 
-  const k1 = kingdoms.find((k) => k.id === kingdomId1)!;
-  const k2 = kingdoms.find((k) => k.id === kingdomId2)!;
+  const k1 = kingdomsList.find((k: any) => k.id === kingdomId1)!;
+  const k2 = kingdomsList.find((k: any) => k.id === kingdomId2)!;
 
-  if (k1.ruler && k2.ruler) {
-    const relation = await prisma.racialRelation.findFirst({
-      where: {
-        OR: [
-          { race1: k1.ruler.race, race2: k2.ruler.race },
-          { race1: k2.ruler.race, race2: k1.ruler.race },
-        ],
-      },
+  if (k1.character && k2.character) {
+    const relation = await db.query.racialRelations.findFirst({
+      where: or(
+        and(eq(racialRelations.race1, k1.character.race), eq(racialRelations.race2, k2.character.race)),
+        and(eq(racialRelations.race1, k2.character.race), eq(racialRelations.race2, k1.character.race)),
+      ),
     });
 
     if (relation) {
@@ -350,15 +381,14 @@ export async function calculateTensionIndex(
     }
   }
 
-  const brokenTreaties = await prisma.treaty.count({
-    where: {
-      status: 'BROKEN',
-      OR: [
-        { proposerKingdomId: kingdomId1, receiverKingdomId: kingdomId2 },
-        { proposerKingdomId: kingdomId2, receiverKingdomId: kingdomId1 },
-      ],
-    },
-  });
+  const brokenTreatiesResult = await db.select({ total: count() }).from(treaties).where(and(
+    eq(treaties.status, 'BROKEN'),
+    or(
+      and(eq(treaties.proposerKingdomId, kingdomId1), eq(treaties.receiverKingdomId, kingdomId2)),
+      and(eq(treaties.proposerKingdomId, kingdomId2), eq(treaties.receiverKingdomId, kingdomId1)),
+    ),
+  ));
+  const brokenTreaties = brokenTreatiesResult[0]?.total ?? 0;
 
   if (brokenTreaties > 0) {
     const treaTension = brokenTreaties * 15;
@@ -366,15 +396,14 @@ export async function calculateTensionIndex(
     factors.push(`Broken treaties: ${brokenTreaties} (+${treaTension})`);
   }
 
-  const activeWars = await prisma.war.count({
-    where: {
-      status: 'ACTIVE',
-      OR: [
-        { attackerKingdomId: { in: [kingdomId1, kingdomId2] } },
-        { defenderKingdomId: { in: [kingdomId1, kingdomId2] } },
-      ],
-    },
-  });
+  const activeWarsResult = await db.select({ total: count() }).from(wars).where(and(
+    eq(wars.status, 'ACTIVE'),
+    or(
+      inArray(wars.attackerKingdomId, [kingdomId1, kingdomId2]),
+      inArray(wars.defenderKingdomId, [kingdomId1, kingdomId2]),
+    ),
+  ));
+  const activeWars = activeWarsResult[0]?.total ?? 0;
 
   if (activeWars > 0) {
     tension += activeWars * 10;
@@ -385,31 +414,32 @@ export async function calculateTensionIndex(
   // DiplomacyEvent uses character IDs (ruler), not kingdom IDs
   const rulerIds = [k1.rulerId, k2.rulerId].filter(Boolean) as string[];
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const hostileEvents = rulerIds.length > 0 ? await prisma.diplomacyEvent.count({
-    where: {
-      createdAt: { gte: thirtyDaysAgo },
-      type: { in: ['DECLARE_WAR', 'BREAK_TREATY'] },
-      OR: [
-        { initiatorId: { in: rulerIds } },
-        { targetId: { in: rulerIds } },
-      ],
-    },
-  }) : 0;
+  let hostileEvents = 0;
+  if (rulerIds.length > 0) {
+    const hostileResult = await db.select({ total: count() }).from(diplomacyEvents).where(and(
+      gte(diplomacyEvents.createdAt, thirtyDaysAgo.toISOString()),
+      inArray(diplomacyEvents.type, ['DECLARE_WAR', 'BREAK_TREATY']),
+      or(
+        inArray(diplomacyEvents.initiatorId, rulerIds),
+        inArray(diplomacyEvents.targetId, rulerIds),
+      ),
+    ));
+    hostileEvents = hostileResult[0]?.total ?? 0;
+  }
 
   if (hostileEvents > 0) {
     tension += hostileEvents * 5;
     factors.push(`Recent hostile events: ${hostileEvents} (+${hostileEvents * 5})`);
   }
 
-  const activeTreaties = await prisma.treaty.count({
-    where: {
-      status: 'ACTIVE',
-      OR: [
-        { proposerKingdomId: kingdomId1, receiverKingdomId: kingdomId2 },
-        { proposerKingdomId: kingdomId2, receiverKingdomId: kingdomId1 },
-      ],
-    },
-  });
+  const activeTreatiesResult = await db.select({ total: count() }).from(treaties).where(and(
+    eq(treaties.status, 'ACTIVE'),
+    or(
+      and(eq(treaties.proposerKingdomId, kingdomId1), eq(treaties.receiverKingdomId, kingdomId2)),
+      and(eq(treaties.proposerKingdomId, kingdomId2), eq(treaties.receiverKingdomId, kingdomId1)),
+    ),
+  ));
+  const activeTreaties = activeTreatiesResult[0]?.total ?? 0;
 
   if (activeTreaties > 0) {
     const reduction = activeTreaties * 10;
@@ -424,9 +454,9 @@ export async function calculateTensionIndex(
  * Premonition — Generate daily premonition notification for Seer characters.
  */
 export async function generateSeerPremonition(characterId: string): Promise<string | null> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: {
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: {
       currentTownId: true,
       name: true,
     },
@@ -436,43 +466,57 @@ export async function generateSeerPremonition(characterId: string): Promise<stri
 
   const premonitions: string[] = [];
 
-  const soonElections = await prisma.election.findFirst({
-    where: {
-      phase: 'VOTING',
-      endDate: { lte: new Date(Date.now() + 24 * 60 * 60 * 1000), gte: new Date() },
-      town: { id: character.currentTownId ?? undefined },
-    },
-  });
+  const now = new Date();
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  const soonElections = character.currentTownId
+    ? await db.query.elections.findFirst({
+        where: and(
+          eq(elections.phase, 'VOTING'),
+          lte(elections.endDate, tomorrow.toISOString()),
+          gte(elections.endDate, now.toISOString()),
+          eq(elections.townId, character.currentTownId),
+        ),
+      })
+    : undefined;
   if (soonElections) {
     premonitions.push('You sense a change in local leadership approaching. An election will conclude soon.');
   }
 
-  const dangerousCaravans = await prisma.caravan.findFirst({
-    where: { ownerId: characterId, status: 'IN_PROGRESS' },
-    include: { fromTown: true, toTown: true },
+  const dangerousCaravans = await db.query.caravans.findFirst({
+    where: and(
+      eq(caravans.ownerId, characterId),
+      eq(caravans.status, 'IN_PROGRESS'),
+    ),
+    with: { town_fromTownId: true, town_toTownId: true },
   });
   if (dangerousCaravans) {
     premonitions.push('A vision of your caravan flickers through your mind — the road ahead may not be smooth.');
   }
 
-  const activeWars = await prisma.war.findFirst({ where: { status: 'ACTIVE' } });
-  if (activeWars) {
+  const activeWar = await db.query.wars.findFirst({ where: eq(wars.status, 'ACTIVE') });
+  if (activeWar) {
     premonitions.push('The threads of fate tremble. Conflict stirs between kingdoms, and its shadow may reach you.');
   }
 
-  const expiringLaws = await prisma.law.findFirst({
-    where: {
-      status: 'ACTIVE',
-      expiresAt: { lte: new Date(Date.now() + 48 * 60 * 60 * 1000), gte: new Date() },
-    },
+  const twoDaysFromNow = new Date(Date.now() + 48 * 60 * 60 * 1000);
+  const expiringLaws = await db.query.laws.findFirst({
+    where: and(
+      eq(laws.status, 'ACTIVE'),
+      lte(laws.expiresAt, twoDaysFromNow.toISOString()),
+      gte(laws.expiresAt, now.toISOString()),
+    ),
   });
   if (expiringLaws) {
     premonitions.push('A law that shapes your world grows thin. Change is coming to the political landscape.');
   }
 
   if (character.currentTownId) {
-    const lowResources = await prisma.townResource.findFirst({
-      where: { townId: character.currentTownId, abundance: { lte: 20 } },
+    const lowResources = await db.query.townResources.findFirst({
+      where: and(
+        eq(townResources.townId, character.currentTownId),
+        lte(townResources.abundance, 20),
+      ),
     });
     if (lowResources) {
       premonitions.push('Resources grow scarce nearby. The land whispers of depletion.');

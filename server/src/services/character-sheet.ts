@@ -1,4 +1,6 @@
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, isNull, sql, count } from 'drizzle-orm';
+import { characters, characterAbilities, combatEncounterLogs } from '@database/tables';
 import { calculateEquipmentTotals } from './item-stats';
 import { getProficiencyBonus, getModifier } from '@shared/utils/bounded-accuracy';
 import { CLASS_SAVE_PROFICIENCIES, CLASS_PRIMARY_STAT, CLASS_ARMOR_PROFICIENCY, CLASS_WEAPON_PROFICIENCY } from '@shared/data/combat-constants';
@@ -30,57 +32,64 @@ export async function buildCharacterSheet(characterId: string, viewerId: string 
   const isOwner = viewerId === characterId;
 
   // Run all queries in parallel
-  const [character, characterAbilities, equipTotals, combatRecord] = await Promise.all([
-    prisma.character.findUnique({
-      where: { id: characterId },
-      include: {
-        currentTown: { select: { id: true, name: true } },
-        homeTown: { select: { id: true, name: true } },
-        professions: true,
-        equipment: {
-          include: { item: { include: { template: true } } },
+  const [character, charAbilities, equipTotals, combatRecord] = await Promise.all([
+    db.query.characters.findFirst({
+      where: eq(characters.id, characterId),
+      with: {
+        town_currentTownId: { columns: { id: true, name: true } },
+        town_homeTownId: { columns: { id: true, name: true } },
+        playerProfessions: true,
+        characterEquipments: {
+          with: { item: { with: { itemTemplate: true } } },
         },
-        guildMemberships: {
-          include: { guild: { select: { id: true, name: true, tag: true } } },
-          take: 1,
+        guildMembers: {
+          with: { guild: { columns: { id: true, name: true, tag: true } } },
+          limit: 1,
         },
       },
     }),
-    prisma.characterAbility.findMany({
-      where: { characterId },
-      select: { abilityId: true },
+    db.query.characterAbilities.findMany({
+      where: eq(characterAbilities.characterId, characterId),
+      columns: { abilityId: true },
     }),
     calculateEquipmentTotals(characterId),
-    prisma.combatEncounterLog.aggregate({
-      where: {
-        characterId,
-        simulationRunId: null, // real combat only
-      },
-      _count: { id: true },
-      _sum: { xpAwarded: true, goldAwarded: true },
-    }),
+    db.select({
+      _count: count(combatEncounterLogs.id),
+      _sumXp: sql<number>`COALESCE(SUM(${combatEncounterLogs.xpAwarded}), 0)`,
+      _sumGold: sql<number>`COALESCE(SUM(${combatEncounterLogs.goldAwarded}), 0)`,
+    }).from(combatEncounterLogs).where(
+      and(
+        eq(combatEncounterLogs.characterId, characterId),
+        isNull(combatEncounterLogs.simulationRunId),
+      ),
+    ),
   ]);
 
   if (!character) return null;
 
   // Combat record breakdown by outcome
-  const outcomeBreakdown = await prisma.combatEncounterLog.groupBy({
-    by: ['outcome'],
-    where: { characterId, simulationRunId: null },
-    _count: { id: true },
-  });
+  const outcomeBreakdown = await db.select({
+    outcome: combatEncounterLogs.outcome,
+    _count: count(combatEncounterLogs.id),
+  }).from(combatEncounterLogs).where(
+    and(
+      eq(combatEncounterLogs.characterId, characterId),
+      isNull(combatEncounterLogs.simulationRunId),
+    ),
+  ).groupBy(combatEncounterLogs.outcome);
 
+  const combatAgg = combatRecord[0];
   const combatStats = {
     wins: 0, losses: 0, flees: 0, draws: 0,
-    totalEncounters: combatRecord._count.id,
-    totalXpEarned: combatRecord._sum.xpAwarded ?? 0,
-    totalGoldEarned: combatRecord._sum.goldAwarded ?? 0,
+    totalEncounters: combatAgg?._count ?? 0,
+    totalXpEarned: combatAgg?._sumXp ?? 0,
+    totalGoldEarned: combatAgg?._sumGold ?? 0,
   };
   for (const row of outcomeBreakdown) {
-    if (row.outcome === 'win') combatStats.wins = row._count.id;
-    else if (row.outcome === 'loss') combatStats.losses = row._count.id;
-    else if (row.outcome === 'flee') combatStats.flees = row._count.id;
-    else if (row.outcome === 'draw') combatStats.draws = row._count.id;
+    if (row.outcome === 'win') combatStats.wins = row._count;
+    else if (row.outcome === 'loss') combatStats.losses = row._count;
+    else if (row.outcome === 'flee') combatStats.flees = row._count;
+    else if (row.outcome === 'draw') combatStats.draws = row._count;
   }
 
   const stats = (character.stats as Record<string, number>) ?? {};
@@ -130,7 +139,7 @@ export async function buildCharacterSheet(characterId: string, viewerId: string 
   const ac = 10 + dexMod + armorAC;
 
   // Resolve abilities
-  const unlockedIds = new Set(characterAbilities.map(a => a.abilityId));
+  const unlockedIds = new Set(charAbilities.map(a => a.abilityId));
 
   // Tier 0 abilities grouped by choice level
   const tier0Abilities = (TIER0_ABILITIES_BY_CLASS[charClass] ?? []).map(ab => ({
@@ -169,10 +178,10 @@ export async function buildCharacterSheet(characterId: string, viewerId: string 
   // Proficiency check
   const armorProficiencies = CLASS_ARMOR_PROFICIENCY[charClass] ?? [];
   const weaponProficiencies = CLASS_WEAPON_PROFICIENCY[charClass] ?? [];
-  const itemsForProfCheck = (character.equipment ?? []).map((eq: any) => ({
+  const itemsForProfCheck = (character.characterEquipments ?? []).map((eq: any) => ({
     slot: eq.slot,
-    stats: (eq.item?.template?.stats as Record<string, any>) ?? {},
-    itemName: eq.item?.template?.name ?? '',
+    stats: (eq.item?.itemTemplate?.stats as Record<string, any>) ?? {},
+    itemName: eq.item?.itemTemplate?.name ?? '',
   }));
   const profCheck = checkEquipmentProficiency(charClass, itemsForProfCheck);
 
@@ -187,16 +196,16 @@ export async function buildCharacterSheet(characterId: string, viewerId: string 
       Object.values(item.stats.enchantmentBonuses).some(v => typeof v === 'number' && v > 0)),
     nonProficient: isOwner ? isItemNonProficient(
       item.slot,
-      ((character.equipment ?? []).find((eq: any) => eq.slot === item.slot)?.item?.template?.stats as Record<string, any>) ?? {},
+      ((character.characterEquipments ?? []).find((eq: any) => eq.slot === item.slot)?.item?.itemTemplate?.stats as Record<string, any>) ?? {},
       charClass
     ) : undefined,
   }));
 
   // Guild info
-  const guild = character.guildMemberships[0]?.guild ?? null;
+  const guild = character.guildMembers[0]?.guild ?? null;
 
   // Profession info
-  const professions = character.professions.map((pp: any) => ({
+  const professions = character.playerProfessions.map((pp: any) => ({
     name: pp.professionType,
     tier: pp.tier,
     level: pp.level,
@@ -214,8 +223,8 @@ export async function buildCharacterSheet(characterId: string, viewerId: string 
     xpToNextLevel: 1000,
     title: character.title,
     bio: (character as any).bio,
-    currentTown: character.currentTown,
-    homeTown: character.homeTown,
+    currentTown: character.town_currentTownId,
+    homeTown: character.town_homeTownId,
     guild: guild ? { id: guild.id, name: guild.name, tag: guild.tag } : null,
     createdAt: character.createdAt,
 

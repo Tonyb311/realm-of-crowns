@@ -3,11 +3,13 @@
 // ---------------------------------------------------------------------------
 
 import { Router, Response } from 'express';
-import { handlePrismaError } from '../../lib/prisma-errors';
+import { db } from '../../lib/db';
+import { eq, and, desc } from 'drizzle-orm';
+import { towns, auctionCycles } from '@database/tables';
+import { handleDbError } from '../../lib/db-errors';
 import { logRouteError } from '../../lib/error-logger';
 import { AuthenticatedRequest } from '../../types/express';
 import { resolveAllTownAuctions, resolveAuctionCycle } from '../../lib/auction-engine';
-import { prisma } from '../../lib/prisma';
 
 const router = Router();
 
@@ -22,9 +24,9 @@ router.post('/resolve', async (req: AuthenticatedRequest, res: Response) => {
 
     if (townId) {
       // Validate town exists
-      const town = await prisma.town.findUnique({
-        where: { id: townId },
-        select: { id: true, name: true },
+      const town = await db.query.towns.findFirst({
+        where: eq(towns.id, townId),
+        columns: { id: true, name: true },
       });
 
       if (!town) {
@@ -32,9 +34,9 @@ router.post('/resolve', async (req: AuthenticatedRequest, res: Response) => {
       }
 
       // Force-resolve by temporarily setting the cycle's startedAt far enough in the past
-      const cycle = await prisma.auctionCycle.findFirst({
-        where: { townId, status: 'open' },
-        orderBy: { startedAt: 'desc' },
+      const cycle = await db.query.auctionCycles.findFirst({
+        where: and(eq(auctionCycles.townId, townId), eq(auctionCycles.status, 'open')),
+        orderBy: desc(auctionCycles.startedAt),
       });
 
       if (!cycle) {
@@ -48,10 +50,9 @@ router.post('/resolve', async (req: AuthenticatedRequest, res: Response) => {
       }
 
       // Temporarily backdate the cycle to force resolution
-      await prisma.auctionCycle.update({
-        where: { id: cycle.id },
-        data: { startedAt: new Date(0) }, // epoch — ensures it's old enough
-      });
+      await db.update(auctionCycles)
+        .set({ startedAt: new Date(0).toISOString() })
+        .where(eq(auctionCycles.id, cycle.id));
 
       const result = await resolveAuctionCycle(townId);
 
@@ -63,10 +64,9 @@ router.post('/resolve', async (req: AuthenticatedRequest, res: Response) => {
       });
     } else {
       // Force-resolve all towns: backdate all open cycles
-      await prisma.auctionCycle.updateMany({
-        where: { status: 'open' },
-        data: { startedAt: new Date(0) },
-      });
+      await db.update(auctionCycles)
+        .set({ startedAt: new Date(0).toISOString() })
+        .where(eq(auctionCycles.status, 'open'));
 
       const result = await resolveAllTownAuctions();
 
@@ -76,7 +76,7 @@ router.post('/resolve', async (req: AuthenticatedRequest, res: Response) => {
       });
     }
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-market-resolve', req)) return;
+    if (handleDbError(error, res, 'admin-market-resolve', req)) return;
     logRouteError(req, 500, '[Admin] Market resolve error', error);
     return res.status(500).json({ error: 'Failed to resolve auction cycles' });
   }
@@ -90,25 +90,24 @@ router.get('/cycles', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const status = req.query.status as string | undefined;
     const townId = req.query.townId as string | undefined;
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
+    const limitVal = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
 
-    const cycles = await prisma.auctionCycle.findMany({
-      where: {
-        ...(status ? { status } : {}),
-        ...(townId ? { townId } : {}),
+    const conditions: ReturnType<typeof eq>[] = [];
+    if (status) conditions.push(eq(auctionCycles.status, status));
+    if (townId) conditions.push(eq(auctionCycles.townId, townId));
+
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const cycles = await db.query.auctionCycles.findMany({
+      where,
+      with: {
+        town: { columns: { id: true, name: true } },
+        marketListings: { columns: { id: true } },
+        marketBuyOrders: { columns: { id: true } },
+        tradeTransactions: { columns: { id: true } },
       },
-      include: {
-        town: { select: { id: true, name: true } },
-        _count: {
-          select: {
-            orders: true,
-            transactions: true,
-            listings: true,
-          },
-        },
-      },
-      orderBy: { startedAt: 'desc' },
-      take: limit,
+      orderBy: desc(auctionCycles.startedAt),
+      limit: limitVal,
     });
 
     return res.json({
@@ -122,12 +121,16 @@ router.get('/cycles', async (req: AuthenticatedRequest, res: Response) => {
         resolvedAt: c.resolvedAt,
         ordersProcessed: c.ordersProcessed,
         transactionsCompleted: c.transactionsCompleted,
-        counts: c._count,
+        counts: {
+          orders: c.marketBuyOrders.length,
+          transactions: c.tradeTransactions.length,
+          listings: c.marketListings.length,
+        },
       })),
       total: cycles.length,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-market-cycles', req)) return;
+    if (handleDbError(error, res, 'admin-market-cycles', req)) return;
     logRouteError(req, 500, '[Admin] Market cycles error', error);
     return res.status(500).json({ error: 'Failed to fetch auction cycles' });
   }

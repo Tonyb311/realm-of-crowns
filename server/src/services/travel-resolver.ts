@@ -9,7 +9,10 @@
  * Replaces the old timer-based travel system with node-graph traversal.
  */
 
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, inArray } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
+import { characters, playerProfessions, monsters, wars } from '@database/tables';
 
 // ---- Types ----
 
@@ -76,10 +79,10 @@ export async function resolveTravel(
   characterId: string,
   targetNodeId: string,
 ): Promise<TravelResult> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    include: {
-      professions: { where: { isActive: true } },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    with: {
+      playerProfessions: true,
     },
   });
 
@@ -92,11 +95,12 @@ export async function resolveTravel(
   // If character is in a town, find the TOWN_GATE node for that town
   let effectiveCurrentNodeId = currentNodeId;
   if (!effectiveCurrentNodeId && character.currentTownId) {
-    const townGate = await prisma.$queryRaw<{ id: string }[]>`
+    const townGate = await db.execute<{ id: string }>(sql`
       SELECT id FROM "nodes" WHERE "town_id" = ${character.currentTownId} AND type = 'TOWN_GATE' LIMIT 1
-    `;
-    if (townGate.length > 0) {
-      effectiveCurrentNodeId = townGate[0].id;
+    `);
+    const rows = townGate.rows ?? townGate as any;
+    if (rows.length > 0) {
+      effectiveCurrentNodeId = rows[0].id;
     }
   }
 
@@ -128,17 +132,18 @@ export async function resolveTravel(
   }
 
   // Fetch target node details
-  const targetNode = await prisma.$queryRaw<NodeData[]>`
+  const targetNodeResult = await db.execute(sql`
     SELECT id, name, type, "region_id" as "regionId", "danger_level" as "dangerLevel",
            "encounter_chance" as "encounterChance", "town_id" as "townId", description
     FROM "nodes" WHERE id = ${targetNodeId} LIMIT 1
-  `;
+  `);
 
-  if (targetNode.length === 0) {
+  const targetNodeRows = targetNodeResult.rows ?? targetNodeResult as any;
+  if (targetNodeRows.length === 0) {
     return { success: false, error: 'Target node not found' };
   }
 
-  const node = targetNode[0];
+  const node = targetNodeRows[0] as unknown as NodeData;
 
   // Check racial terrain restrictions/bonuses
   // Merfolk can only use underwater/water nodes freely, but aren't blocked from others
@@ -148,18 +153,14 @@ export async function resolveTravel(
   const newTownId = node.type === 'TOWN_GATE' && node.townId ? node.townId : null;
 
   // Update character position
-  await prisma.character.update({
-    where: { id: characterId },
-    data: {
-      currentTownId: newTownId,
-      // currentNodeId will be set via raw query since Prisma schema may not have it yet
-    },
-  });
+  await db.update(characters)
+    .set({ currentTownId: newTownId })
+    .where(eq(characters.id, characterId));
 
   // Set currentNodeId via raw query (schema teammate is adding this field)
-  await prisma.$executeRaw`
+  await db.execute(sql`
     UPDATE "characters" SET "current_node_id" = ${targetNodeId} WHERE id = ${characterId}
-  `;
+  `);
 
   return {
     success: true,
@@ -176,9 +177,9 @@ export async function checkNodeEncounter(
   characterId: string,
   node: { encounterChance: number; regionId: string; dangerLevel: number },
 ): Promise<NodeEncounterResult> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true, level: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true, level: true },
   });
 
   if (!character) {
@@ -202,28 +203,29 @@ export async function checkNodeEncounter(
   const levelMin = Math.max(1, character.level - 3);
   const levelMax = character.level + 3 + node.dangerLevel;
 
-  let monsters = await prisma.monster.findMany({
-    where: {
-      regionId: node.regionId,
-      level: { gte: levelMin, lte: levelMax },
-    },
-    select: { id: true, name: true, level: true },
-  });
+  const regionMonstersResult = await db.execute<{ id: string; name: string; level: number }>(sql`
+    SELECT id, name, level FROM "monsters"
+    WHERE "region_id" = ${node.regionId}
+      AND level >= ${levelMin} AND level <= ${levelMax}
+  `);
 
-  if (monsters.length === 0) {
+  let monsterRows = regionMonstersResult.rows ?? regionMonstersResult as any;
+
+  if (monsterRows.length === 0) {
     // Fallback: any monster in level range
-    monsters = await prisma.monster.findMany({
-      where: { level: { gte: levelMin, lte: levelMax } },
-      select: { id: true, name: true, level: true },
-      take: 10,
-    });
+    const fallbackResult = await db.execute<{ id: string; name: string; level: number }>(sql`
+      SELECT id, name, level FROM "monsters"
+      WHERE level >= ${levelMin} AND level <= ${levelMax}
+      LIMIT 10
+    `);
+    monsterRows = fallbackResult.rows ?? fallbackResult as any;
   }
 
-  if (monsters.length === 0) {
+  if (monsterRows.length === 0) {
     return { triggered: false };
   }
 
-  const monster = monsters[Math.floor(Math.random() * monsters.length)];
+  const monster = monsterRows[Math.floor(Math.random() * monsterRows.length)];
 
   return {
     triggered: true,
@@ -243,9 +245,9 @@ export async function checkPvPEncounter(
   nodeId: string,
 ): Promise<PvPEncounterResult> {
   // Find characters on the same node with GUARD or AMBUSH daily actions
-  const hostiles = await prisma.$queryRaw<
-    { id: string; name: string; level: number; combatStance: string }[]
-  >`
+  const hostilesResult = await db.execute<
+    { id: string; name: string; level: number; combatStance: string }
+  >(sql`
     SELECT c.id, c.name, c.level,
            COALESCE(c."combat_stance", 'BALANCED') as "combatStance"
     FROM "characters" c
@@ -254,7 +256,9 @@ export async function checkPvPEncounter(
       AND c.id != ${characterId}
       AND da."action_type" IN ('GUARD', 'AMBUSH')
       AND da.status = 'PENDING'
-  `;
+  `);
+
+  const hostiles = hostilesResult.rows ?? hostilesResult as any;
 
   if (hostiles.length === 0) {
     return { triggered: false, hostileCharacters: [] };
@@ -265,7 +269,7 @@ export async function checkPvPEncounter(
 
   return {
     triggered: hostiles.length > 0,
-    hostileCharacters: hostiles.map(h => ({
+    hostileCharacters: hostiles.map((h: any) => ({
       id: h.id,
       name: h.name,
       level: h.level,
@@ -278,7 +282,7 @@ export async function checkPvPEncounter(
  * Get all nodes connected to a given node via NodeConnection.
  */
 export async function getConnectedNodes(nodeId: string): Promise<NodeData[]> {
-  const nodes = await prisma.$queryRaw<NodeData[]>`
+  const nodesResult = await db.execute(sql`
     SELECT n.id, n.name, n.type, n."region_id" as "regionId",
            n."danger_level" as "dangerLevel", n."encounter_chance" as "encounterChance",
            n."town_id" as "townId", n.description
@@ -287,9 +291,9 @@ export async function getConnectedNodes(nodeId: string): Promise<NodeData[]> {
       (nc."from_node_id" = ${nodeId} AND nc."to_node_id" = n.id)
       OR (nc."to_node_id" = ${nodeId} AND nc."from_node_id" = n.id AND nc.bidirectional = true)
     )
-  `;
+  `);
 
-  return nodes;
+  return (nodesResult.rows ?? nodesResult) as any as NodeData[];
 }
 
 /**
@@ -301,14 +305,17 @@ export async function getRouteBetweenTowns(
   toTownId: string,
 ): Promise<{ path: NodeData[]; distance: number } | null> {
   // Find the TOWN_GATE nodes for each town
-  const [startNodes, endNodes] = await Promise.all([
-    prisma.$queryRaw<{ id: string }[]>`
+  const [startResult, endResult] = await Promise.all([
+    db.execute<{ id: string }>(sql`
       SELECT id FROM "nodes" WHERE "town_id" = ${fromTownId} AND type = 'TOWN_GATE' LIMIT 1
-    `,
-    prisma.$queryRaw<{ id: string }[]>`
+    `),
+    db.execute<{ id: string }>(sql`
       SELECT id FROM "nodes" WHERE "town_id" = ${toTownId} AND type = 'TOWN_GATE' LIMIT 1
-    `,
+    `),
   ]);
+
+  const startNodes = startResult.rows ?? startResult as any;
+  const endNodes = endResult.rows ?? endResult as any;
 
   if (startNodes.length === 0 || endNodes.length === 0) {
     return null;
@@ -318,10 +325,12 @@ export async function getRouteBetweenTowns(
   const endId = endNodes[0].id;
 
   // Load the entire node graph into memory for BFS
-  const allConnections = await prisma.$queryRaw<ConnectionData[]>`
+  const allConnectionsResult = await db.execute(sql`
     SELECT id, "from_node_id" as "fromNodeId", "to_node_id" as "toNodeId", bidirectional
     FROM "node_connections"
-  `;
+  `);
+
+  const allConnections = (allConnectionsResult.rows ?? allConnectionsResult) as any as ConnectionData[];
 
   // Build adjacency list
   const adjacency = new Map<string, Set<string>>();
@@ -356,12 +365,14 @@ export async function getRouteBetweenTowns(
       // Fetch full node data for the path
       if (pathIds.length === 0) return null;
 
-      const pathNodes = await prisma.$queryRaw<NodeData[]>`
+      const pathNodesResult = await db.execute(sql`
         SELECT id, name, type, "region_id" as "regionId",
                "danger_level" as "dangerLevel", "encounter_chance" as "encounterChance",
                "town_id" as "townId", description
         FROM "nodes" WHERE id = ANY(${pathIds}::text[])
-      `;
+      `);
+
+      const pathNodes = (pathNodesResult.rows ?? pathNodesResult) as any as NodeData[];
 
       // Sort by path order
       const nodeMap = new Map(pathNodes.map(n => [n.id, n]));
@@ -395,9 +406,9 @@ export async function applyWartimeModifiers(
   node: { regionId: string; encounterChance: number },
 ): Promise<{ encounterChance: number; warActive: boolean }> {
   // Find which kingdom the character belongs to (via their current town's region)
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { currentTownId: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { currentTownId: true },
   });
 
   if (!character?.currentTownId) {
@@ -405,11 +416,11 @@ export async function applyWartimeModifiers(
   }
 
   // Check for active wars
-  const activeWars = await prisma.war.findMany({
-    where: { status: 'ACTIVE' },
-    include: {
-      attackerKingdom: { select: { id: true, capitalTownId: true } },
-      defenderKingdom: { select: { id: true, capitalTownId: true } },
+  const activeWars = await db.query.wars.findMany({
+    where: eq(wars.status, 'ACTIVE'),
+    with: {
+      kingdom_attackerKingdomId: { columns: { id: true, capitalTownId: true } },
+      kingdom_defenderKingdomId: { columns: { id: true, capitalTownId: true } },
     },
   });
 
@@ -430,9 +441,12 @@ export async function applyWartimeModifiers(
  * Check if a character has the Courier profession (allows 2-node movement per day).
  */
 export async function canMoveMultipleNodes(characterId: string): Promise<boolean> {
-  const professions = await prisma.playerProfession.findMany({
-    where: { characterId, isActive: true },
-    select: { professionType: true },
+  const professions = await db.query.playerProfessions.findMany({
+    where: and(
+      eq(playerProfessions.characterId, characterId),
+      eq(playerProfessions.isActive, true),
+    ),
+    columns: { professionType: true },
   });
 
   return professions.some(p => PROFESSIONS_WITH_DOUBLE_MOVE.includes(p.professionType));
@@ -442,9 +456,9 @@ export async function canMoveMultipleNodes(characterId: string): Promise<boolean
  * Check if a character's race allows them to skip a node (e.g., Faefolk flutter).
  */
 export async function canSkipNode(characterId: string): Promise<boolean> {
-  const character = await prisma.character.findUnique({
-    where: { id: characterId },
-    select: { race: true },
+  const character = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { race: true },
   });
 
   return character ? RACES_WITH_SKIP.includes(character.race) : false;

@@ -4,12 +4,14 @@
 
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, asc, desc, sql } from 'drizzle-orm';
+import { ownedAssets, livestock, playerProfessions, characters } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { getGameDay } from '../lib/game-day';
 import {
@@ -43,21 +45,24 @@ router.post('/buy-livestock', authGuard, characterGuard, requireTown, validate(b
     }
 
     // 2. Character must have RANCHER profession
-    const rancherProf = await prisma.playerProfession.findFirst({
-      where: { characterId: character.id, professionType: 'RANCHER', isActive: true },
+    const rancherProf = await db.query.playerProfessions.findFirst({
+      where: and(eq(playerProfessions.characterId, character.id), eq(playerProfessions.professionType, 'RANCHER'), eq(playerProfessions.isActive, true)),
     });
     if (!rancherProf) {
       return res.status(400).json({ error: 'You must have the RANCHER profession to buy livestock.' });
     }
 
     // 3. Find building, check ownership
-    const building = await prisma.ownedAsset.findUnique({
-      where: { id: buildingId },
-      include: { livestock: { where: { isAlive: true } } },
+    const building = await db.query.ownedAssets.findFirst({
+      where: eq(ownedAssets.id, buildingId),
+      with: { livestocks: true },
     });
     if (!building) {
       return res.status(404).json({ error: 'Building not found' });
     }
+    // Filter alive livestock in app code
+    const aliveLivestock = building.livestocks.filter(l => l.isAlive);
+
     if (building.ownerId !== character.id) {
       return res.status(403).json({ error: 'You do not own this building' });
     }
@@ -76,7 +81,7 @@ router.post('/buy-livestock', authGuard, characterGuard, requireTown, validate(b
     // 5. Check capacity
     const assetTypeDef = PROFESSION_ASSET_TYPES.RANCHER.find(t => t.spotType === building.spotType);
     const capacity = assetTypeDef?.capacity ?? 5;
-    const aliveCount = building.livestock.length;
+    const aliveCount = aliveLivestock.length;
     if (aliveCount >= capacity) {
       return res.status(400).json({
         error: `Building is at capacity (${aliveCount}/${capacity}). No room for more animals.`,
@@ -99,36 +104,37 @@ router.post('/buy-livestock', authGuard, characterGuard, requireTown, validate(b
     // 8. Transaction: deduct gold + create livestock
     const currentDay = getGameDay();
 
-    const [livestock] = await prisma.$transaction([
-      prisma.livestock.create({
-        data: {
-          buildingId: building.id,
-          ownerId: character.id,
-          animalType,
-          name: `${livestockDef.name} #${aliveCount + 1}`,
-          purchasedAt: currentDay,
-        },
-      }),
-      prisma.character.update({
-        where: { id: character.id },
-        data: { gold: { decrement: price } },
-      }),
-    ]);
+    const newLivestock = await db.transaction(async (tx) => {
+      const [created] = await tx.insert(livestock).values({
+        id: crypto.randomUUID(),
+        buildingId: building.id,
+        ownerId: character.id,
+        animalType,
+        name: `${livestockDef.name} #${aliveCount + 1}`,
+        purchasedAt: currentDay,
+      }).returning();
+
+      await tx.update(characters)
+        .set({ gold: sql`${characters.gold} - ${price}` })
+        .where(eq(characters.id, character.id));
+
+      return created;
+    });
 
     return res.status(201).json({
       success: true,
       livestock: {
-        id: livestock.id,
-        animalType: livestock.animalType,
-        name: livestock.name,
-        buildingId: livestock.buildingId,
-        purchasedAt: livestock.purchasedAt,
+        id: newLivestock.id,
+        animalType: newLivestock.animalType,
+        name: newLivestock.name,
+        buildingId: newLivestock.buildingId,
+        purchasedAt: newLivestock.purchasedAt,
       },
       goldRemaining: character.gold - price,
       message: `You purchased a ${livestockDef.name} for ${price}g.`,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'rancher-buy-livestock', req)) return;
+    if (handleDbError(error, res, 'rancher-buy-livestock', req)) return;
     logRouteError(req, 500, 'Rancher buy-livestock error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -142,24 +148,22 @@ router.get('/buildings', authGuard, characterGuard, async (req: AuthenticatedReq
   try {
     const character = req.character!;
 
-    const buildings = await prisma.ownedAsset.findMany({
-      where: {
-        ownerId: character.id,
-        professionType: 'RANCHER',
+    const buildings = await db.query.ownedAssets.findMany({
+      where: and(
+        eq(ownedAssets.ownerId, character.id),
+        eq(ownedAssets.professionType, 'RANCHER'),
+      ),
+      with: {
+        town: { columns: { id: true, name: true } },
+        livestocks: true,
       },
-      include: {
-        town: { select: { id: true, name: true } },
-        livestock: {
-          where: { isAlive: true },
-          select: { id: true, animalType: true, name: true, age: true, hunger: true, health: true },
-        },
-      },
-      orderBy: [{ tier: 'asc' }, { slotNumber: 'asc' }],
+      orderBy: [asc(ownedAssets.tier), asc(ownedAssets.slotNumber)],
     });
 
     const result = buildings.map((b) => {
       const assetTypeDef = PROFESSION_ASSET_TYPES.RANCHER.find(t => t.spotType === b.spotType);
       const capacity = assetTypeDef?.capacity ?? 5;
+      const aliveLivestock = b.livestocks.filter(l => l.isAlive);
 
       return {
         id: b.id,
@@ -167,15 +171,22 @@ router.get('/buildings', authGuard, characterGuard, async (req: AuthenticatedReq
         spotType: b.spotType,
         tier: b.tier,
         town: b.town,
-        aliveCount: b.livestock.length,
+        aliveCount: aliveLivestock.length,
         capacity,
-        livestock: b.livestock,
+        livestock: aliveLivestock.map(l => ({
+          id: l.id,
+          animalType: l.animalType,
+          name: l.name,
+          age: l.age,
+          hunger: l.hunger,
+          health: l.health,
+        })),
       };
     });
 
     return res.json({ buildings: result, currentGameDay: getGameDay() });
   } catch (error) {
-    if (handlePrismaError(error, res, 'rancher-buildings', req)) return;
+    if (handleDbError(error, res, 'rancher-buildings', req)) return;
     logRouteError(req, 500, 'Rancher buildings error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -191,7 +202,7 @@ router.get('/livestock/:buildingId', authGuard, characterGuard, async (req: Auth
     const { buildingId } = req.params;
 
     // Verify building ownership
-    const building = await prisma.ownedAsset.findUnique({ where: { id: buildingId } });
+    const building = await db.query.ownedAssets.findFirst({ where: eq(ownedAssets.id, buildingId) });
     if (!building) {
       return res.status(404).json({ error: 'Building not found' });
     }
@@ -199,15 +210,15 @@ router.get('/livestock/:buildingId', authGuard, characterGuard, async (req: Auth
       return res.status(403).json({ error: 'You do not own this building' });
     }
 
-    const livestock = await prisma.livestock.findMany({
-      where: { buildingId },
-      orderBy: [{ isAlive: 'desc' }, { purchasedAt: 'asc' }],
+    const livestockRows = await db.query.livestock.findMany({
+      where: eq(livestock.buildingId, buildingId),
+      orderBy: [desc(livestock.isAlive), asc(livestock.purchasedAt)],
     });
 
     return res.json({
       buildingId,
       buildingName: building.name,
-      livestock: livestock.map((l) => ({
+      livestock: livestockRows.map((l) => ({
         id: l.id,
         animalType: l.animalType,
         name: l.name,
@@ -222,7 +233,7 @@ router.get('/livestock/:buildingId', authGuard, characterGuard, async (req: Auth
       })),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'rancher-livestock-detail', req)) return;
+    if (handleDbError(error, res, 'rancher-livestock-detail', req)) return;
     logRouteError(req, 500, 'Rancher livestock detail error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

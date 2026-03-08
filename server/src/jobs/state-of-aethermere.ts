@@ -1,5 +1,7 @@
 import cron from 'node-cron';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, gte, desc, count, sql } from 'drizzle-orm';
+import { wars, treaties, worldEvents, kingdoms } from '@database/tables';
 import { logger } from '../lib/logger';
 import { cronJobExecutions } from '../lib/metrics';
 import { generateStateReport } from '../services/herald';
@@ -21,7 +23,7 @@ export function startStateOfAethermereJob() {
         id: event.id,
         title: event.title,
         description: event.description,
-        createdAt: event.createdAt.toISOString(),
+        createdAt: event.createdAt,
       });
 
       cronJobExecutions.inc({ job: 'stateOfAethermere', result: 'success' });
@@ -40,11 +42,11 @@ async function compileReport(): Promise<string> {
   sections.push('=== STATE OF AETHERMERE ===\n');
 
   // Active wars
-  const activeWars = await prisma.war.findMany({
-    where: { status: 'ACTIVE' },
-    include: {
-      attackerKingdom: { select: { name: true } },
-      defenderKingdom: { select: { name: true } },
+  const activeWars = await db.query.wars.findMany({
+    where: eq(wars.status, 'ACTIVE'),
+    with: {
+      kingdom_attackerKingdomId: { columns: { name: true } },
+      kingdom_defenderKingdomId: { columns: { name: true } },
     },
   });
 
@@ -52,10 +54,10 @@ async function compileReport(): Promise<string> {
     sections.push('-- ONGOING CONFLICTS --');
     for (const war of activeWars) {
       const duration = Math.floor(
-        (Date.now() - war.startedAt.getTime()) / (1000 * 60 * 60 * 24),
+        (Date.now() - new Date(war.startedAt).getTime()) / (1000 * 60 * 60 * 24),
       );
       sections.push(
-        `  ${war.attackerKingdom.name} vs ${war.defenderKingdom.name} ` +
+        `  ${war.kingdom_attackerKingdomId.name} vs ${war.kingdom_defenderKingdomId.name} ` +
         `(Day ${duration}) — Score: ${war.attackerScore}-${war.defenderScore}`,
       );
     }
@@ -65,11 +67,11 @@ async function compileReport(): Promise<string> {
   }
 
   // Active treaties
-  const activeTreaties = await prisma.treaty.findMany({
-    where: { status: 'ACTIVE' },
-    include: {
-      proposerKingdom: { select: { name: true } },
-      receiverKingdom: { select: { name: true } },
+  const activeTreaties = await db.query.treaties.findMany({
+    where: eq(treaties.status, 'ACTIVE'),
+    with: {
+      kingdom_proposerKingdomId: { columns: { name: true } },
+      kingdom_receiverKingdomId: { columns: { name: true } },
     },
   });
 
@@ -77,7 +79,7 @@ async function compileReport(): Promise<string> {
     sections.push('-- ACTIVE TREATIES --');
     for (const treaty of activeTreaties) {
       sections.push(
-        `  ${treaty.proposerKingdom.name} <-> ${treaty.receiverKingdom.name}: ` +
+        `  ${treaty.kingdom_proposerKingdomId.name} <-> ${treaty.kingdom_receiverKingdomId.name}: ` +
         `${treaty.type.replace('_', ' ')}`,
       );
     }
@@ -90,26 +92,23 @@ async function compileReport(): Promise<string> {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const recentEvents = await prisma.worldEvent.findMany({
-    where: {
-      createdAt: { gte: thirtyDaysAgo },
-      eventType: { not: 'STATE_REPORT' },
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 10,
+  const recentEvents = await db.query.worldEvents.findMany({
+    where: sql`${worldEvents.createdAt} >= ${thirtyDaysAgo.toISOString()} AND ${worldEvents.eventType} != 'STATE_REPORT'`,
+    orderBy: desc(worldEvents.createdAt),
+    limit: 10,
   });
 
   if (recentEvents.length > 0) {
     sections.push('-- RECENT DEVELOPMENTS --');
     for (const evt of recentEvents) {
-      const dateStr = evt.createdAt.toISOString().slice(0, 10);
+      const dateStr = new Date(evt.createdAt).toISOString().slice(0, 10);
       sections.push(`  [${dateStr}] ${evt.title}`);
     }
     sections.push('');
   }
 
   // Kingdom count
-  const kingdomCount = await prisma.kingdom.count();
+  const [{ kingdomCount }] = await db.select({ kingdomCount: count() }).from(kingdoms);
   sections.push(`-- REALM STATISTICS --`);
   sections.push(`  Kingdoms: ${kingdomCount}`);
   sections.push(`  Active Wars: ${activeWars.length}`);

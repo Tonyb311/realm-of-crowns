@@ -1,13 +1,15 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and } from 'drizzle-orm';
+import { characterEquipment, items, itemTemplates, inventories } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
-import { ProfessionType } from '@prisma/client';
+import type { ProfessionType } from '@shared/enums';
 import { TOOL_TYPES, ToolTypeDefinition } from '@shared/data/tools';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 
 const router = Router();
@@ -38,21 +40,21 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
     const character = req.character!;
 
     // Verify item exists, is owned by character, and is a TOOL
-    const item = await prisma.item.findUnique({
-      where: { id: itemId },
-      include: { template: true },
+    const item = await db.query.items.findFirst({
+      where: eq(items.id, itemId),
+      with: { itemTemplate: true },
     });
 
     if (!item || item.ownerId !== character.id) {
       return res.status(404).json({ error: 'Item not found in your inventory' });
     }
 
-    if (item.template.type !== 'TOOL') {
+    if (item.itemTemplate.type !== 'TOOL') {
       return res.status(400).json({ error: 'Item is not a tool' });
     }
 
     // Verify tool matches the profession
-    const toolStats = item.template.stats as Record<string, unknown>;
+    const toolStats = item.itemTemplate.stats as Record<string, unknown>;
     if (toolStats.professionType !== profEnum) {
       const expectedTool = TOOL_TYPES.find((t: ToolTypeDefinition) => t.professionType === profEnum);
       return res.status(400).json({
@@ -69,29 +71,21 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
     // We track which profession it's for via the item template's stats.professionType.
 
     // Unequip any existing TOOL first
-    const existingEquip = await prisma.characterEquipment.findUnique({
-      where: {
-        characterId_slot: {
-          characterId: character.id,
-          slot: 'TOOL',
-        },
-      },
+    const existingEquip = await db.query.characterEquipment.findFirst({
+      where: and(eq(characterEquipment.characterId, character.id), eq(characterEquipment.slot, 'TOOL')),
     });
 
     if (existingEquip) {
-      await prisma.characterEquipment.delete({
-        where: { id: existingEquip.id },
-      });
+      await db.delete(characterEquipment).where(eq(characterEquipment.id, existingEquip.id));
     }
 
     // Equip the new tool
-    const equipment = await prisma.characterEquipment.create({
-      data: {
-        characterId: character.id,
-        slot: 'TOOL',
-        itemId: item.id,
-      },
-    });
+    const [equipment] = await db.insert(characterEquipment).values({
+      id: crypto.randomUUID(),
+      characterId: character.id,
+      slot: 'TOOL',
+      itemId: item.id,
+    }).returning();
 
     return res.json({
       equipped: {
@@ -99,16 +93,16 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
         slot: 'TOOL',
         item: {
           id: item.id,
-          name: item.template.name,
+          name: item.itemTemplate.name,
           currentDurability: item.currentDurability,
-          maxDurability: item.template.durability,
+          maxDurability: item.itemTemplate.durability,
           stats: toolStats,
         },
         professionType: profEnum,
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'equip-tool', req)) return;
+    if (handleDbError(error, res, 'equip-tool', req)) return;
     logRouteError(req, 500, 'Equip tool error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -121,15 +115,10 @@ router.post('/unequip', authGuard, characterGuard, validate(unequipSchema), asyn
   try {
     const character = req.character!;
 
-    const existingEquip = await prisma.characterEquipment.findUnique({
-      where: {
-        characterId_slot: {
-          characterId: character.id,
-          slot: 'TOOL',
-        },
-      },
-      include: {
-        item: { include: { template: true } },
+    const existingEquip = await db.query.characterEquipment.findFirst({
+      where: and(eq(characterEquipment.characterId, character.id), eq(characterEquipment.slot, 'TOOL')),
+      with: {
+        item: { with: { itemTemplate: true } },
       },
     });
 
@@ -138,25 +127,23 @@ router.post('/unequip', authGuard, characterGuard, validate(unequipSchema), asyn
     }
 
     // Verify this is actually a tool for the requested profession
-    const toolStats = existingEquip.item.template.stats as Record<string, unknown>;
+    const toolStats = existingEquip.item.itemTemplate.stats as Record<string, unknown>;
     const { professionType } = req.body;
     if (toolStats.professionType !== professionType) {
       return res.status(400).json({ error: `No ${professionType} tool is currently equipped` });
     }
 
-    await prisma.characterEquipment.delete({
-      where: { id: existingEquip.id },
-    });
+    await db.delete(characterEquipment).where(eq(characterEquipment.id, existingEquip.id));
 
     return res.json({
       unequipped: {
         itemId: existingEquip.itemId,
-        name: existingEquip.item.template.name,
+        name: existingEquip.item.itemTemplate.name,
         professionType,
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'unequip-tool', req)) return;
+    if (handleDbError(error, res, 'unequip-tool', req)) return;
     logRouteError(req, 500, 'Unequip tool error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -169,23 +156,18 @@ router.get('/equipped', authGuard, characterGuard, async (req: AuthenticatedRequ
   try {
     const character = req.character!;
 
-    const equipped = await prisma.characterEquipment.findUnique({
-      where: {
-        characterId_slot: {
-          characterId: character.id,
-          slot: 'TOOL',
-        },
-      },
-      include: {
-        item: { include: { template: true } },
+    const equipped = await db.query.characterEquipment.findFirst({
+      where: and(eq(characterEquipment.characterId, character.id), eq(characterEquipment.slot, 'TOOL')),
+      with: {
+        item: { with: { itemTemplate: true } },
       },
     });
 
-    if (!equipped || equipped.item.template.type !== 'TOOL') {
+    if (!equipped || equipped.item.itemTemplate.type !== 'TOOL') {
       return res.json({ equipped: null });
     }
 
-    const toolStats = equipped.item.template.stats as Record<string, unknown>;
+    const toolStats = equipped.item.itemTemplate.stats as Record<string, unknown>;
 
     return res.json({
       equipped: {
@@ -193,16 +175,16 @@ router.get('/equipped', authGuard, characterGuard, async (req: AuthenticatedRequ
         slot: 'TOOL',
         item: {
           id: equipped.item.id,
-          name: equipped.item.template.name,
+          name: equipped.item.itemTemplate.name,
           currentDurability: equipped.item.currentDurability,
-          maxDurability: equipped.item.template.durability,
+          maxDurability: equipped.item.itemTemplate.durability,
           stats: toolStats,
         },
         professionType: toolStats.professionType,
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get-equipped-tools', req)) return;
+    if (handleDbError(error, res, 'get-equipped-tools', req)) return;
     logRouteError(req, 500, 'Get equipped tools error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -215,31 +197,31 @@ router.get('/inventory', authGuard, characterGuard, async (req: AuthenticatedReq
   try {
     const character = req.character!;
 
-    const toolItems = await prisma.inventory.findMany({
-      where: {
-        characterId: character.id,
-        item: { template: { type: 'TOOL' } },
-      },
-      include: {
-        item: { include: { template: true } },
+    const toolItems = await db.query.inventories.findMany({
+      where: eq(inventories.characterId, character.id),
+      with: {
+        item: { with: { itemTemplate: true } },
       },
     });
 
-    const tools = toolItems.map((inv) => {
-      const stats = inv.item.template.stats as Record<string, unknown>;
-      return {
-        inventoryId: inv.id,
-        itemId: inv.item.id,
-        name: inv.item.template.name,
-        currentDurability: inv.item.currentDurability,
-        maxDurability: inv.item.template.durability,
-        stats,
-      };
-    });
+    // Filter to only TOOL type items (Drizzle doesn't support nested where in `with`)
+    const tools = toolItems
+      .filter((inv) => inv.item.itemTemplate.type === 'TOOL')
+      .map((inv) => {
+        const stats = inv.item.itemTemplate.stats as Record<string, unknown>;
+        return {
+          inventoryId: inv.id,
+          itemId: inv.item.id,
+          name: inv.item.itemTemplate.name,
+          currentDurability: inv.item.currentDurability,
+          maxDurability: inv.item.itemTemplate.durability,
+          stats,
+        };
+      });
 
     return res.json({ tools });
   } catch (error) {
-    if (handlePrismaError(error, res, 'get-tool-inventory', req)) return;
+    if (handleDbError(error, res, 'get-tool-inventory', req)) return;
     logRouteError(req, 500, 'Get tool inventory error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

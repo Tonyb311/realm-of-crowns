@@ -1,9 +1,10 @@
 import { Router, Response } from 'express';
-import { prisma } from '../../lib/prisma';
-import { handlePrismaError } from '../../lib/prisma-errors';
+import { db } from '../../lib/db';
+import { eq, desc, gte, count, sum, sql, like } from 'drizzle-orm';
+import { characters, marketListings, items, itemTemplates, tradeTransactions, inventories } from '@database/tables';
+import { handleDbError } from '../../lib/db-errors';
 import { logRouteError } from '../../lib/error-logger';
 import { AuthenticatedRequest } from '../../types/express';
-import { Prisma } from '@prisma/client';
 
 const router = Router();
 
@@ -16,45 +17,77 @@ router.get('/listings', async (req: AuthenticatedRequest, res: Response) => {
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const pageSize = Math.max(1, Math.min(100, parseInt(req.query.pageSize as string, 10) || 20));
     const search = req.query.search as string | undefined;
-    const skip = (page - 1) * pageSize;
+    const offset = (page - 1) * pageSize;
 
-    const where: Prisma.MarketListingWhereInput = search
-      ? {
-          item: {
-            template: {
-              name: { contains: search, mode: 'insensitive' },
-            },
-          },
-        }
-      : {};
+    // For search, we need to use raw SQL since Drizzle query API doesn't easily support
+    // nested relation filters. For the non-search case we use the query builder.
+    if (search) {
+      // Use raw SQL for search with nested template name filter
+      const searchPattern = `%${search.toLowerCase()}%`;
+      const listingsRaw = await db.execute<any>(sql`
+        SELECT ml.*,
+               json_build_object('id', c.id, 'name', c.name) as seller,
+               json_build_object('id', i.id, 'template_id', i.template_id, 'quality', i.quality, 'current_durability', i.current_durability,
+                 'itemTemplate', json_build_object('id', it.id, 'name', it.name, 'type', it.type)) as item
+        FROM market_listings ml
+        JOIN characters c ON c.id = ml.seller_id
+        JOIN items i ON i.id = ml.item_id
+        JOIN item_templates it ON it.id = i.template_id
+        WHERE lower(it.name) LIKE ${searchPattern}
+        ORDER BY ml.created_at DESC
+        LIMIT ${pageSize} OFFSET ${offset}
+      `);
+      const [{ total }] = await db.execute<{ total: string }>(sql`
+        SELECT count(*)::text as total FROM market_listings ml
+        JOIN items i ON i.id = ml.item_id
+        JOIN item_templates it ON it.id = i.template_id
+        WHERE lower(it.name) LIKE ${searchPattern}
+      `).then(r => r.rows);
 
-    const [data, total] = await Promise.all([
-      prisma.marketListing.findMany({
-        where,
-        skip,
-        take: pageSize,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          seller: { select: { id: true, name: true } },
-          item: {
-            include: {
-              template: { select: { id: true, name: true, type: true } },
-            },
+      return res.json({
+        data: listingsRaw.rows,
+        total: Number(total),
+        page,
+        pageSize,
+        totalPages: Math.ceil(Number(total) / pageSize),
+      });
+    }
+
+    const data = await db.query.marketListings.findMany({
+      offset,
+      limit: pageSize,
+      orderBy: desc(marketListings.createdAt),
+      with: {
+        character: { columns: { id: true, name: true } },
+        item: {
+          with: {
+            itemTemplate: { columns: { id: true, name: true, type: true } },
           },
         },
-      }),
-      prisma.marketListing.count({ where }),
-    ]);
+      },
+    });
+
+    const [{ total }] = await db.select({ total: count() }).from(marketListings);
+
+    // Reshape to match old API: seller instead of character, template instead of itemTemplate
+    const transformed = data.map(d => ({
+      ...d,
+      seller: d.character,
+      item: {
+        ...d.item,
+        template: d.item?.itemTemplate,
+      },
+    }));
 
     return res.json({
-      data,
+      data: transformed,
       total,
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-economy-listings', req)) return;
+    if (handleDbError(error, res, 'admin-economy-listings', req)) return;
     logRouteError(req, 500, '[Admin] Economy listings error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -66,10 +99,10 @@ router.get('/listings', async (req: AuthenticatedRequest, res: Response) => {
  */
 router.delete('/listings/:id', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const listing = await prisma.marketListing.findUnique({
-      where: { id: req.params.id },
-      include: {
-        item: { include: { template: true } },
+    const listing = await db.query.marketListings.findFirst({
+      where: eq(marketListings.id, req.params.id),
+      with: {
+        item: { with: { itemTemplate: true } },
       },
     });
 
@@ -77,35 +110,33 @@ router.delete('/listings/:id', async (req: AuthenticatedRequest, res: Response) 
       return res.status(404).json({ error: 'Listing not found' });
     }
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Return item to seller inventory
-      const existingInv = await tx.inventory.findFirst({
-        where: { characterId: listing.sellerId, itemId: listing.itemId },
+      const existingInv = await tx.query.inventories.findFirst({
+        where: sql`${inventories.characterId} = ${listing.sellerId} AND ${inventories.itemId} = ${listing.itemId}`,
       });
 
       if (existingInv) {
-        await tx.inventory.update({
-          where: { id: existingInv.id },
-          data: { quantity: { increment: listing.quantity } },
-        });
+        await tx.update(inventories)
+          .set({ quantity: sql`${inventories.quantity} + ${listing.quantity}` })
+          .where(eq(inventories.id, existingInv.id));
       } else {
-        await tx.inventory.create({
-          data: {
-            characterId: listing.sellerId,
-            itemId: listing.itemId,
-            quantity: listing.quantity,
-          },
+        await tx.insert(inventories).values({
+          id: crypto.randomUUID(),
+          characterId: listing.sellerId,
+          itemId: listing.itemId,
+          quantity: listing.quantity,
         });
       }
 
       // Delete the listing
-      await tx.marketListing.delete({ where: { id: listing.id } });
+      await tx.delete(marketListings).where(eq(marketListings.id, listing.id));
     });
 
-    console.log(`[Admin] Listing ${listing.id} (${listing.item.template.name}) removed by admin ${req.user!.userId}`);
+    console.log(`[Admin] Listing ${listing.id} (${listing.item.itemTemplate.name}) removed by admin ${req.user!.userId}`);
     return res.json({ message: 'Listing removed and item returned to seller inventory' });
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-delete-listing', req)) return;
+    if (handleDbError(error, res, 'admin-delete-listing', req)) return;
     logRouteError(req, 500, '[Admin] Delete listing error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -119,35 +150,46 @@ router.get('/transactions', async (req: AuthenticatedRequest, res: Response) => 
   try {
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const pageSize = Math.max(1, Math.min(100, parseInt(req.query.pageSize as string, 10) || 20));
-    const skip = (page - 1) * pageSize;
+    const offset = (page - 1) * pageSize;
 
-    const [data, total] = await Promise.all([
-      prisma.tradeTransaction.findMany({
-        skip,
-        take: pageSize,
-        orderBy: { timestamp: 'desc' },
-        include: {
-          buyer: { select: { id: true, name: true } },
-          seller: { select: { id: true, name: true } },
+    const [data, [{ total }]] = await Promise.all([
+      db.query.tradeTransactions.findMany({
+        offset,
+        limit: pageSize,
+        orderBy: desc(tradeTransactions.timestamp),
+        with: {
+          character_buyerId: { columns: { id: true, name: true } },
+          character_sellerId: { columns: { id: true, name: true } },
           item: {
-            include: {
-              template: { select: { id: true, name: true } },
+            with: {
+              itemTemplate: { columns: { id: true, name: true } },
             },
           },
         },
       }),
-      prisma.tradeTransaction.count(),
+      db.select({ total: count() }).from(tradeTransactions),
     ]);
 
+    // Reshape to match old API shape
+    const transformed = data.map(d => ({
+      ...d,
+      buyer: d.character_buyerId,
+      seller: d.character_sellerId,
+      item: {
+        ...d.item,
+        template: d.item?.itemTemplate,
+      },
+    }));
+
     return res.json({
-      data,
+      data: transformed,
       total,
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-economy-transactions', req)) return;
+    if (handleDbError(error, res, 'admin-economy-transactions', req)) return;
     logRouteError(req, 500, '[Admin] Economy transactions error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -163,31 +205,26 @@ router.get('/summary', async (req: AuthenticatedRequest, res: Response) => {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const [
-      totalGoldResult,
-      activeListingCount,
-      activeListingValueResult,
-      transactionCount30d,
+      [{ totalGold }],
+      [{ activeListingCount }],
+      [{ activeListingTotalValue }],
+      [{ transactionCount30d }],
     ] = await Promise.all([
-      prisma.character.aggregate({ _sum: { gold: true } }),
-      prisma.marketListing.count(),
-      prisma.marketListing.aggregate({
-        _sum: {
-          price: true,
-        },
-      }),
-      prisma.tradeTransaction.count({
-        where: { timestamp: { gte: thirtyDaysAgo } },
-      }),
+      db.select({ totalGold: sum(characters.gold) }).from(characters),
+      db.select({ activeListingCount: count() }).from(marketListings),
+      db.select({ activeListingTotalValue: sum(marketListings.price) }).from(marketListings),
+      db.select({ transactionCount30d: count() }).from(tradeTransactions)
+        .where(gte(tradeTransactions.timestamp, thirtyDaysAgo.toISOString())),
     ]);
 
     return res.json({
-      totalGoldCirculation: totalGoldResult._sum.gold ?? 0,
+      totalGoldCirculation: Number(totalGold) ?? 0,
       activeListingCount,
-      activeListingTotalValue: activeListingValueResult._sum.price ?? 0,
+      activeListingTotalValue: Number(activeListingTotalValue) ?? 0,
       transactionCount30d,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-economy-summary', req)) return;
+    if (handleDbError(error, res, 'admin-economy-summary', req)) return;
     logRouteError(req, 500, '[Admin] Economy summary error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

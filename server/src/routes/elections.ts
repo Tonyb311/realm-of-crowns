@@ -1,12 +1,14 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, and, ne, gte, isNotNull, sql, desc, asc } from 'drizzle-orm';
+import { elections, electionCandidates, electionVotes, towns, kingdoms, impeachments, impeachmentVotes } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { getPsionSpec, calculateSincerityScore, getElectionProjection } from '../services/psion-perks';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { isTownReleased } from '../lib/content-release';
 
@@ -50,9 +52,9 @@ router.post('/nominate', authGuard, characterGuard, validate(nominateSchema), as
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const election = await prisma.election.findUnique({
-      where: { id: electionId },
-      include: { town: { select: { id: true, name: true } } },
+    const election = await db.query.elections.findFirst({
+      where: eq(elections.id, electionId),
+      with: { town: { columns: { id: true, name: true } } },
     });
 
     if (!election) {
@@ -79,20 +81,24 @@ router.post('/nominate', authGuard, characterGuard, validate(nominateSchema), as
     const [mayorCheck, previousWins, existingCandidate] = await Promise.all([
       // Only matters for RULER elections
       election.type === 'RULER'
-        ? prisma.town.findFirst({ where: { mayorId: character.id } })
+        ? db.query.towns.findFirst({ where: eq(towns.mayorId, character.id) })
         : Promise.resolve(true), // non-RULER: skip check
       // Term limits: max 3 consecutive terms
-      prisma.election.count({
-        where: {
-          townId: election.townId,
-          type: election.type,
-          winnerId: character.id,
-          termNumber: { gte: election.termNumber - MAX_CONSECUTIVE_TERMS },
-        },
-      }),
+      db.select({ total: sql<number>`count(*)::int` })
+        .from(elections)
+        .where(and(
+          eq(elections.townId, election.townId),
+          eq(elections.type, election.type),
+          eq(elections.winnerId, character.id),
+          gte(elections.termNumber, election.termNumber - MAX_CONSECUTIVE_TERMS),
+        ))
+        .then(rows => rows[0]?.total ?? 0),
       // Duplicate nomination check
-      prisma.electionCandidate.findUnique({
-        where: { electionId_characterId: { electionId, characterId: character.id } },
+      db.query.electionCandidates.findFirst({
+        where: and(
+          eq(electionCandidates.electionId, electionId),
+          eq(electionCandidates.characterId, character.id),
+        ),
       }),
     ]);
 
@@ -108,20 +114,26 @@ router.post('/nominate', authGuard, characterGuard, validate(nominateSchema), as
       return res.status(400).json({ error: 'You are already nominated for this election' });
     }
 
-    const candidate = await prisma.electionCandidate.create({
-      data: {
+    const [candidate] = await db.insert(electionCandidates)
+      .values({
+        id: crypto.randomUUID(),
         electionId,
         characterId: character.id,
         platform: platform || '',
-      },
-      include: {
-        character: { select: { id: true, name: true, level: true, race: true } },
+      })
+      .returning();
+
+    // Fetch the candidate with character info
+    const candidateWithCharacter = await db.query.electionCandidates.findFirst({
+      where: eq(electionCandidates.id, candidate.id),
+      with: {
+        character: { columns: { id: true, name: true, level: true, race: true } },
       },
     });
 
-    return res.status(201).json({ candidate });
+    return res.status(201).json({ candidate: candidateWithCharacter });
   } catch (error) {
-    if (handlePrismaError(error, res, 'election-nominate', req)) return;
+    if (handleDbError(error, res, 'election-nominate', req)) return;
     logRouteError(req, 500, 'Election nominate error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -137,8 +149,8 @@ router.post('/vote', authGuard, characterGuard, validate(voteSchema), async (req
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const election = await prisma.election.findUnique({
-      where: { id: electionId },
+    const election = await db.query.elections.findFirst({
+      where: eq(elections.id, electionId),
     });
 
     if (!election) {
@@ -155,8 +167,11 @@ router.post('/vote', authGuard, characterGuard, validate(voteSchema), async (req
     }
 
     // Verify candidate is actually running
-    const candidateEntry = await prisma.electionCandidate.findUnique({
-      where: { electionId_characterId: { electionId, characterId: candidateId } },
+    const candidateEntry = await db.query.electionCandidates.findFirst({
+      where: and(
+        eq(electionCandidates.electionId, electionId),
+        eq(electionCandidates.characterId, candidateId),
+      ),
     });
 
     if (!candidateEntry) {
@@ -169,25 +184,29 @@ router.post('/vote', authGuard, characterGuard, validate(voteSchema), async (req
     }
 
     // Check if already voted (unique constraint will also catch this)
-    const existingVote = await prisma.electionVote.findUnique({
-      where: { electionId_voterId: { electionId, voterId: character.id } },
+    const existingVote = await db.query.electionVotes.findFirst({
+      where: and(
+        eq(electionVotes.electionId, electionId),
+        eq(electionVotes.voterId, character.id),
+      ),
     });
 
     if (existingVote) {
       return res.status(400).json({ error: 'You have already voted in this election' });
     }
 
-    const vote = await prisma.electionVote.create({
-      data: {
+    const [vote] = await db.insert(electionVotes)
+      .values({
+        id: crypto.randomUUID(),
         electionId,
         voterId: character.id,
         candidateId,
-      },
-    });
+      })
+      .returning();
 
     return res.status(201).json({ vote: { id: vote.id, electionId, votedAt: vote.createdAt } });
   } catch (error) {
-    if (handlePrismaError(error, res, 'election-vote', req)) return;
+    if (handleDbError(error, res, 'election-vote', req)) return;
     logRouteError(req, 500, 'Election vote error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -198,72 +217,84 @@ router.get('/current', authGuard, characterGuard, async (req: AuthenticatedReque
   try {
     const character = req.character!;
 
-    const where: any = {
-      phase: { not: 'COMPLETED' },
-      OR: [] as any[],
-    };
-
     // Town elections for character's current town
+    const townConditions: any[] = [];
     if (character.currentTownId) {
-      where.OR.push({ townId: character.currentTownId });
+      townConditions.push(eq(elections.townId, character.currentTownId));
     }
 
     // Kingdom elections (ruler)
+    let kingdomElections: any[] = [];
     if (character.currentTownId) {
-      const town = await prisma.town.findUnique({
-        where: { id: character.currentTownId },
-        include: { region: true },
+      const town = await db.query.towns.findFirst({
+        where: eq(towns.id, character.currentTownId),
+        with: { region: true },
       });
 
       if (town) {
         // Find kingdoms that have elections
-        const kingdomElections = await prisma.election.findMany({
-          where: {
-            type: 'RULER',
-            phase: { not: 'COMPLETED' },
-            kingdomId: { not: null },
-          },
-          include: {
-            town: { select: { id: true, name: true } },
-            kingdom: { select: { id: true, name: true } },
-            candidates: {
-              include: {
-                character: { select: { id: true, name: true, level: true, race: true } },
+        const rulerElections = await db.query.elections.findMany({
+          where: and(
+            eq(elections.type, 'RULER'),
+            ne(elections.phase, 'COMPLETED'),
+            isNotNull(elections.kingdomId),
+          ),
+          with: {
+            town: { columns: { id: true, name: true } },
+            kingdom: { columns: { id: true, name: true } },
+            electionCandidates: {
+              with: {
+                character: { columns: { id: true, name: true, level: true, race: true } },
               },
             },
-            _count: { select: { votes: true } },
+            electionVotes: true,
           },
         });
 
-        if (kingdomElections.length > 0) {
-          // Add them to the result separately below
+        if (rulerElections.length > 0) {
+          kingdomElections = rulerElections;
         }
       }
     }
 
     // If no conditions, return empty
-    if (where.OR.length === 0) {
+    if (townConditions.length === 0 && kingdomElections.length === 0) {
       return res.json({ elections: [] });
     }
 
-    const elections = await prisma.election.findMany({
-      where,
-      include: {
-        town: { select: { id: true, name: true } },
-        kingdom: { select: { id: true, name: true } },
-        candidates: {
-          include: {
-            character: { select: { id: true, name: true, level: true, race: true } },
+    // Fetch town elections
+    let townElections: any[] = [];
+    if (townConditions.length > 0) {
+      townElections = await db.query.elections.findMany({
+        where: and(
+          ne(elections.phase, 'COMPLETED'),
+          townConditions[0],
+        ),
+        with: {
+          town: { columns: { id: true, name: true } },
+          kingdom: { columns: { id: true, name: true } },
+          electionCandidates: {
+            with: {
+              character: { columns: { id: true, name: true, level: true, race: true } },
+            },
           },
+          electionVotes: true,
         },
-        _count: { select: { votes: true } },
-      },
-      orderBy: { startDate: 'desc' },
-    });
+        orderBy: desc(elections.startDate),
+      });
+    }
+
+    // Combine and deduplicate (kingdom elections may overlap with town elections)
+    const allElections = [...townElections];
+    for (const ke of kingdomElections) {
+      if (!allElections.find(e => e.id === ke.id)) {
+        allElections.push(ke);
+      }
+    }
 
     // Psion Seer: Election Oracle — add projected outcome to voting-phase elections
     const { isPsion, specialization } = await getPsionSpec(character.id);
-    const baseElections = elections.map(e => ({
+    const baseElections = allElections.map(e => ({
       id: e.id,
       type: e.type,
       phase: e.phase,
@@ -272,9 +303,9 @@ router.get('/current', authGuard, characterGuard, async (req: AuthenticatedReque
       endDate: e.endDate,
       town: e.town,
       kingdom: e.kingdom,
-      candidateCount: e.candidates.length,
-      voteCount: e._count.votes,
-      candidates: e.candidates.map(c => ({
+      candidateCount: e.electionCandidates.length,
+      voteCount: e.electionVotes.length,
+      candidates: e.electionCandidates.map((c: any) => ({
         characterId: c.characterId,
         name: c.character.name,
         level: c.character.level,
@@ -299,7 +330,7 @@ router.get('/current', authGuard, characterGuard, async (req: AuthenticatedReque
 
     return res.json({ elections: enrichedElections });
   } catch (error) {
-    if (handlePrismaError(error, res, 'election-current', req)) return;
+    if (handleDbError(error, res, 'election-current', req)) return;
     logRouteError(req, 500, 'Election current error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -317,36 +348,38 @@ router.get('/results', authGuard, characterGuard, async (req: AuthenticatedReque
       return res.status(400).json({ error: 'No town specified and character is not in a town' });
     }
 
-    const elections = await prisma.election.findMany({
-      where: {
-        townId,
-        phase: 'COMPLETED',
-      },
-      include: {
-        town: { select: { id: true, name: true } },
-        kingdom: { select: { id: true, name: true } },
-        winner: { select: { id: true, name: true, level: true, race: true } },
-        candidates: {
-          include: {
-            character: { select: { id: true, name: true } },
+    const electionResults = await db.query.elections.findMany({
+      where: and(
+        eq(elections.townId, townId),
+        eq(elections.phase, 'COMPLETED'),
+      ),
+      with: {
+        town: { columns: { id: true, name: true } },
+        kingdom: { columns: { id: true, name: true } },
+        // winner is the `character` relation (winnerId -> characters.id)
+        character: { columns: { id: true, name: true, level: true, race: true } },
+        electionCandidates: {
+          with: {
+            character: { columns: { id: true, name: true } },
           },
         },
-        _count: { select: { votes: true } },
+        electionVotes: true,
       },
-      orderBy: { endDate: 'desc' },
-      take: limit,
+      orderBy: desc(elections.endDate),
+      limit,
     });
 
     // Get vote counts per candidate for each election
     const results = await Promise.all(
-      elections.map(async (election) => {
-        const voteCounts = await prisma.electionVote.groupBy({
-          by: ['candidateId'],
-          where: { electionId: election.id },
-          _count: { candidateId: true },
+      electionResults.map(async (election) => {
+        // Fetch all votes for this election and aggregate by candidateId
+        const votes = await db.query.electionVotes.findMany({
+          where: eq(electionVotes.electionId, election.id),
         });
-
-        const voteMap = new Map(voteCounts.map(v => [v.candidateId, v._count.candidateId]));
+        const voteMap = new Map<string, number>();
+        for (const v of votes) {
+          voteMap.set(v.candidateId, (voteMap.get(v.candidateId) || 0) + 1);
+        }
 
         return {
           id: election.id,
@@ -356,9 +389,9 @@ router.get('/results', authGuard, characterGuard, async (req: AuthenticatedReque
           endDate: election.endDate,
           town: election.town,
           kingdom: election.kingdom,
-          winner: election.winner,
-          totalVotes: election._count.votes,
-          candidates: election.candidates
+          winner: election.character, // `character` relation is the winner
+          totalVotes: election.electionVotes.length,
+          candidates: election.electionCandidates
             .map(c => ({
               characterId: c.characterId,
               name: c.character.name,
@@ -372,7 +405,7 @@ router.get('/results', authGuard, characterGuard, async (req: AuthenticatedReque
 
     return res.json({ results });
   } catch (error) {
-    if (handlePrismaError(error, res, 'election-results', req)) return;
+    if (handleDbError(error, res, 'election-results', req)) return;
     logRouteError(req, 500, 'Election results error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -383,14 +416,14 @@ router.get('/candidates/:electionId', authGuard, characterGuard, async (req: Aut
   try {
     const { electionId } = req.params;
 
-    const election = await prisma.election.findUnique({
-      where: { id: electionId },
-      include: {
-        candidates: {
-          include: {
-            character: { select: { id: true, name: true, level: true, race: true } },
+    const election = await db.query.elections.findFirst({
+      where: eq(elections.id, electionId),
+      with: {
+        electionCandidates: {
+          with: {
+            character: { columns: { id: true, name: true, level: true, race: true } },
           },
-          orderBy: { nominatedAt: 'asc' },
+          orderBy: asc(electionCandidates.nominatedAt),
         },
       },
     });
@@ -402,15 +435,16 @@ router.get('/candidates/:electionId', authGuard, characterGuard, async (req: Aut
     // If voting is completed, include vote counts
     let voteCounts: Map<string, number> | null = null;
     if (election.phase === 'COMPLETED' || election.phase === 'VOTING') {
-      const counts = await prisma.electionVote.groupBy({
-        by: ['candidateId'],
-        where: { electionId },
-        _count: { candidateId: true },
+      const votes = await db.query.electionVotes.findMany({
+        where: eq(electionVotes.electionId, electionId),
       });
-      voteCounts = new Map(counts.map(v => [v.candidateId, v._count.candidateId]));
+      voteCounts = new Map<string, number>();
+      for (const v of votes) {
+        voteCounts.set(v.candidateId, (voteCounts.get(v.candidateId) || 0) + 1);
+      }
     }
 
-    const baseCandidates = election.candidates.map(c => ({
+    const baseCandidates = election.electionCandidates.map(c => ({
       characterId: c.characterId,
       name: c.character.name,
       level: c.character.level,
@@ -443,7 +477,7 @@ router.get('/candidates/:electionId', authGuard, characterGuard, async (req: Aut
       candidates: enrichedCandidates,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'election-candidates', req)) return;
+    if (handleDbError(error, res, 'election-candidates', req)) return;
     logRouteError(req, 500, 'Election candidates error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -470,7 +504,7 @@ router.post('/impeach', authGuard, characterGuard, validate(impeachSchema), asyn
 
     // Verify the target actually holds the office
     if (townId) {
-      const town = await prisma.town.findUnique({ where: { id: townId } });
+      const town = await db.query.towns.findFirst({ where: eq(towns.id, townId) });
       if (!town) {
         return res.status(404).json({ error: 'Town not found' });
       }
@@ -484,7 +518,7 @@ router.post('/impeach', authGuard, characterGuard, validate(impeachSchema), asyn
     }
 
     if (kingdomId) {
-      const kingdom = await prisma.kingdom.findUnique({ where: { id: kingdomId } });
+      const kingdom = await db.query.kingdoms.findFirst({ where: eq(kingdoms.id, kingdomId) });
       if (!kingdom) {
         return res.status(404).json({ error: 'Kingdom not found' });
       }
@@ -494,13 +528,15 @@ router.post('/impeach', authGuard, characterGuard, validate(impeachSchema), asyn
     }
 
     // Check for existing active impeachment
-    const activeImpeachment = await prisma.impeachment.findFirst({
-      where: {
-        targetId,
-        status: 'ACTIVE',
-        ...(townId ? { townId } : {}),
-        ...(kingdomId ? { kingdomId } : {}),
-      },
+    const conditions = [
+      eq(impeachments.targetId, targetId),
+      eq(impeachments.status, 'ACTIVE'),
+    ];
+    if (townId) conditions.push(eq(impeachments.townId, townId));
+    if (kingdomId) conditions.push(eq(impeachments.kingdomId, kingdomId));
+
+    const activeImpeachment = await db.query.impeachments.findFirst({
+      where: and(...conditions),
     });
 
     if (activeImpeachment) {
@@ -510,24 +546,25 @@ router.post('/impeach', authGuard, characterGuard, validate(impeachSchema), asyn
     const endsAt = new Date();
     endsAt.setHours(endsAt.getHours() + IMPEACHMENT_DURATION_HOURS);
 
-    const impeachment = await prisma.impeachment.create({
-      data: {
+    const [impeachment] = await db.insert(impeachments)
+      .values({
+        id: crypto.randomUUID(),
         targetId,
         townId: townId || null,
         kingdomId: kingdomId || null,
         votesFor: 1, // Initiator automatically votes in favor
-        endsAt,
-      },
-    });
+        endsAt: endsAt.toISOString(),
+      })
+      .returning();
 
     // Record the initiator's vote
-    await prisma.impeachmentVote.create({
-      data: {
+    await db.insert(impeachmentVotes)
+      .values({
+        id: crypto.randomUUID(),
         impeachmentId: impeachment.id,
         voterId: character.id,
         support: true,
-      },
-    });
+      });
 
     return res.status(201).json({
       impeachment: {
@@ -543,7 +580,7 @@ router.post('/impeach', authGuard, characterGuard, validate(impeachSchema), asyn
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'election-impeach', req)) return;
+    if (handleDbError(error, res, 'election-impeach', req)) return;
     logRouteError(req, 500, 'Impeach error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -559,8 +596,8 @@ router.post('/impeach/vote', authGuard, characterGuard, validate(impeachVoteSche
       return res.status(400).json({ error: 'You cannot do this while traveling. You must be in a town.' });
     }
 
-    const impeachment = await prisma.impeachment.findUnique({
-      where: { id: impeachmentId },
+    const impeachment = await db.query.impeachments.findFirst({
+      where: eq(impeachments.id, impeachmentId),
     });
 
     if (!impeachment) {
@@ -571,7 +608,7 @@ router.post('/impeach/vote', authGuard, characterGuard, validate(impeachVoteSche
       return res.status(400).json({ error: 'This impeachment is no longer active' });
     }
 
-    if (new Date() > impeachment.endsAt) {
+    if (new Date() > new Date(impeachment.endsAt)) {
       return res.status(400).json({ error: 'Impeachment voting period has ended' });
     }
 
@@ -586,32 +623,35 @@ router.post('/impeach/vote', authGuard, characterGuard, validate(impeachVoteSche
     }
 
     // Check if already voted
-    const existingVote = await prisma.impeachmentVote.findUnique({
-      where: { impeachmentId_voterId: { impeachmentId, voterId: character.id } },
+    const existingVote = await db.query.impeachmentVotes.findFirst({
+      where: and(
+        eq(impeachmentVotes.impeachmentId, impeachmentId),
+        eq(impeachmentVotes.voterId, character.id),
+      ),
     });
 
     if (existingVote) {
       return res.status(400).json({ error: 'You have already voted on this impeachment' });
     }
 
-    await prisma.$transaction([
-      prisma.impeachmentVote.create({
-        data: {
+    await db.transaction(async (tx) => {
+      await tx.insert(impeachmentVotes)
+        .values({
+          id: crypto.randomUUID(),
           impeachmentId,
           voterId: character.id,
           support,
-        },
-      }),
-      prisma.impeachment.update({
-        where: { id: impeachmentId },
-        data: support
-          ? { votesFor: { increment: 1 } }
-          : { votesAgainst: { increment: 1 } },
-      }),
-    ]);
+        });
 
-    const updated = await prisma.impeachment.findUnique({
-      where: { id: impeachmentId },
+      await tx.update(impeachments)
+        .set(support
+          ? { votesFor: sql`${impeachments.votesFor} + 1` }
+          : { votesAgainst: sql`${impeachments.votesAgainst} + 1` })
+        .where(eq(impeachments.id, impeachmentId));
+    });
+
+    const updated = await db.query.impeachments.findFirst({
+      where: eq(impeachments.id, impeachmentId),
     });
 
     return res.status(201).json({
@@ -624,7 +664,7 @@ router.post('/impeach/vote', authGuard, characterGuard, validate(impeachVoteSche
       },
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'election-impeach-vote', req)) return;
+    if (handleDbError(error, res, 'election-impeach-vote', req)) return;
     logRouteError(req, 500, 'Impeach vote error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

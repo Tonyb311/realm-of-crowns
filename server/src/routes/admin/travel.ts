@@ -1,7 +1,9 @@
 import { Router, Response } from 'express';
-import { prisma } from '../../lib/prisma';
+import { db } from '../../lib/db';
+import { eq } from 'drizzle-orm';
+import { characterTravelStates, groupTravelStates } from '@database/tables';
 import { processTravelTick } from '../../lib/travel-tick';
-import { handlePrismaError } from '../../lib/prisma-errors';
+import { handleDbError } from '../../lib/db-errors';
 import { logRouteError } from '../../lib/error-logger';
 import { AuthenticatedRequest } from '../../types/express';
 
@@ -22,7 +24,7 @@ router.post('/trigger-tick', async (req: AuthenticatedRequest, res: Response) =>
       processedAt: new Date().toISOString(),
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-travel-trigger-tick', req)) return;
+    if (handleDbError(error, res, 'admin-travel-trigger-tick', req)) return;
     logRouteError(req, 500, '[Admin] Travel trigger-tick error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -35,39 +37,43 @@ router.post('/trigger-tick', async (req: AuthenticatedRequest, res: Response) =>
 router.get('/overview', async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Fetch all active solo travelers
-    const soloTravelers = await prisma.characterTravelState.findMany({
-      where: { status: 'traveling' },
-      include: {
-        route: {
-          select: {
+    const soloTravelers = await db.query.characterTravelStates.findMany({
+      where: eq(characterTravelStates.status, 'traveling'),
+      with: {
+        travelRoute: {
+          columns: {
             id: true,
             name: true,
             fromTownId: true,
             toTownId: true,
-            fromTown: { select: { name: true } },
-            toTown: { select: { name: true } },
+          },
+          with: {
+            town_fromTownId: { columns: { name: true } },
+            town_toTownId: { columns: { name: true } },
           },
         },
       },
     });
 
     // Fetch all active group travel states
-    const groupStates = await prisma.groupTravelState.findMany({
-      where: { status: 'traveling' },
-      include: {
-        route: {
-          select: {
+    const groupStates = await db.query.groupTravelStates.findMany({
+      where: eq(groupTravelStates.status, 'traveling'),
+      with: {
+        travelRoute: {
+          columns: {
             id: true,
             name: true,
             fromTownId: true,
             toTownId: true,
-            fromTown: { select: { name: true } },
-            toTown: { select: { name: true } },
+          },
+          with: {
+            town_fromTownId: { columns: { name: true } },
+            town_toTownId: { columns: { name: true } },
           },
         },
-        group: {
-          include: {
-            members: { select: { characterId: true } },
+        travelGroup: {
+          with: {
+            travelGroupMembers: { columns: { characterId: true } },
           },
         },
       },
@@ -86,16 +92,17 @@ router.get('/overview', async (req: AuthenticatedRequest, res: Response) => {
     }>();
 
     for (const t of soloTravelers) {
-      const key = t.route.id;
+      const route = t.travelRoute;
+      const key = route.id;
       const existing = byRouteMap.get(key);
       if (existing) {
         existing.travelerCount++;
       } else {
         byRouteMap.set(key, {
-          routeId: t.route.id,
-          routeName: t.route.name,
-          fromTown: t.route.fromTown.name,
-          toTown: t.route.toTown.name,
+          routeId: route.id,
+          routeName: route.name,
+          fromTown: route.town_fromTownId.name,
+          toTown: route.town_toTownId.name,
           travelerCount: 1,
         });
       }
@@ -103,17 +110,18 @@ router.get('/overview', async (req: AuthenticatedRequest, res: Response) => {
 
     // Include group members in the per-route counts
     for (const gs of groupStates) {
-      const key = gs.route.id;
-      const memberCount = gs.group.members.length;
+      const route = gs.travelRoute;
+      const key = route.id;
+      const memberCount = gs.travelGroup.travelGroupMembers.length;
       const existing = byRouteMap.get(key);
       if (existing) {
         existing.travelerCount += memberCount;
       } else {
         byRouteMap.set(key, {
-          routeId: gs.route.id,
-          routeName: gs.route.name,
-          fromTown: gs.route.fromTown.name,
-          toTown: gs.route.toTown.name,
+          routeId: route.id,
+          routeName: route.name,
+          fromTown: route.town_fromTownId.name,
+          toTown: route.town_toTownId.name,
           travelerCount: memberCount,
         });
       }
@@ -130,7 +138,7 @@ router.get('/overview', async (req: AuthenticatedRequest, res: Response) => {
     }
 
     for (const gs of groupStates) {
-      const memberCount = gs.group.members.length;
+      const memberCount = gs.travelGroup.travelGroupMembers.length;
       byNodeMap.set(gs.currentNodeIndex, (byNodeMap.get(gs.currentNodeIndex) || 0) + memberCount);
     }
 
@@ -145,7 +153,7 @@ router.get('/overview', async (req: AuthenticatedRequest, res: Response) => {
       travelersByNodeIndex,
     });
   } catch (error) {
-    if (handlePrismaError(error, res, 'admin-travel-overview', req)) return;
+    if (handleDbError(error, res, 'admin-travel-overview', req)) return;
     logRouteError(req, 500, '[Admin] Travel overview error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

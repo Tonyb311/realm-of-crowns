@@ -2,12 +2,15 @@ import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq, or } from 'drizzle-orm';
+import { users } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard, blacklistToken } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
-import { handlePrismaError } from '../lib/prisma-errors';
+import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
+import crypto from 'crypto';
 
 const router = Router();
 
@@ -38,10 +41,8 @@ router.post('/register', validate(registerSchema), async (req, res) => {
   try {
     const { email, username, password } = req.body;
 
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [{ email }, { username }],
-      },
+    const existingUser = await db.query.users.findFirst({
+      where: or(eq(users.email, email), eq(users.username, username)),
     });
 
     if (existingUser) {
@@ -51,13 +52,12 @@ router.post('/register', validate(registerSchema), async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        username,
-        passwordHash,
-      },
-    });
+    const [user] = await db.insert(users).values({
+      id: crypto.randomUUID(),
+      email,
+      username,
+      passwordHash,
+    }).returning();
 
     const token = generateToken(user.id, user.username, user.role);
 
@@ -71,7 +71,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
       },
     });
   } catch (error: unknown) {
-    if (handlePrismaError(error, res, 'register', req)) return;
+    if (handleDbError(error, res, 'register', req)) return;
     logRouteError(req, 500, 'Registration error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -82,7 +82,9 @@ router.post('/login', validate(loginSchema), async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, email),
+    });
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
@@ -114,9 +116,9 @@ router.post('/login', validate(loginSchema), async (req, res) => {
 // GET /api/auth/me (protected)
 router.get('/me', authGuard, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.userId },
-      select: {
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, req.user!.userId),
+      columns: {
         id: true,
         email: true,
         username: true,

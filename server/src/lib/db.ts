@@ -1,10 +1,7 @@
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-
-// NOTE: Schema import will be added in Phase 8b when queries are migrated.
-// The database/schema/ directory is outside server's rootDir, so a path alias
-// or project reference will be set up alongside the query migration.
+import * as schema from '@database/index';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -20,6 +17,7 @@ pool.connect().then(client => client.release()).catch(err => {
 });
 
 export const db = drizzle(pool, {
+  schema,
   logger: process.env.NODE_ENV === 'development',
 });
 
