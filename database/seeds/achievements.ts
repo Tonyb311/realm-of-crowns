@@ -6,18 +6,20 @@
  * server script at server/src/scripts/seed-achievements.ts.
  */
 
-import { PrismaClient } from '@prisma/client';
+import crypto from 'crypto';
+import { eq } from 'drizzle-orm';
+import * as schema from '../schema';
 import { ACHIEVEMENTS } from '@shared/data/achievements';
 
-export async function seedAchievements(prisma: PrismaClient) {
+export async function seedAchievements(db: any) {
   console.log('  Seeding achievements...');
 
   let created = 0;
   let skipped = 0;
 
   for (const achievement of ACHIEVEMENTS) {
-    const existing = await prisma.achievement.findUnique({
-      where: { name: achievement.name },
+    const existing = await db.query.achievements.findFirst({
+      where: eq(schema.achievements.name, achievement.name),
     });
 
     if (existing) {
@@ -25,13 +27,12 @@ export async function seedAchievements(prisma: PrismaClient) {
       continue;
     }
 
-    await prisma.achievement.create({
-      data: {
-        name: achievement.name,
-        description: achievement.description,
-        criteria: achievement.criteria as any,
-        reward: achievement.reward as any,
-      },
+    await db.insert(schema.achievements).values({
+      id: crypto.randomUUID(),
+      name: achievement.name,
+      description: achievement.description,
+      criteria: achievement.criteria as any,
+      reward: achievement.reward as any,
     });
     created++;
   }

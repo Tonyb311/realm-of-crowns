@@ -4,29 +4,30 @@
  * Tests recipe validation, crafting start/collect, the atomic collect
  * race condition guard (409 on double collect), and quality roll calculation.
  *
- * All external services (Prisma, Redis, Socket.io) are mocked.
+ * All external services (Drizzle, Redis, Socket.io) are mocked.
  */
 
 // --- Mocks must be declared before imports ---
 
-jest.mock('../../lib/prisma', () => ({
-  prisma: {
-    character: { findFirst: jest.fn(), update: jest.fn() },
-    recipe: { findUnique: jest.fn(), findMany: jest.fn() },
-    playerProfession: { findFirst: jest.fn(), findMany: jest.fn() },
-    craftingAction: {
-      findFirst: jest.fn(),
-      create: jest.fn(),
-      updateMany: jest.fn(),
-      count: jest.fn(),
+jest.mock('../../lib/db', () => ({
+  db: {
+    query: {
+      characters: { findFirst: jest.fn(), findMany: jest.fn() },
+      recipes: { findFirst: jest.fn(), findMany: jest.fn() },
+      playerProfessions: { findFirst: jest.fn(), findMany: jest.fn() },
+      craftingActions: { findFirst: jest.fn(), findMany: jest.fn() },
+      characterTravelStates: { findFirst: jest.fn() },
+      inventories: { findFirst: jest.fn(), findMany: jest.fn() },
+      items: { findFirst: jest.fn() },
+      itemTemplates: { findFirst: jest.fn(), findMany: jest.fn() },
+      buildings: { findFirst: jest.fn() },
+      characterEquipment: { findFirst: jest.fn() },
     },
-    characterTravelState: { findUnique: jest.fn() },
-    inventory: { findMany: jest.fn(), create: jest.fn(), delete: jest.fn(), update: jest.fn() },
-    item: { create: jest.fn(), delete: jest.fn() },
-    itemTemplate: { findUnique: jest.fn(), findMany: jest.fn() },
-    building: { findFirst: jest.fn() },
-    characterEquipment: { findUnique: jest.fn() },
-    $transaction: jest.fn(),
+    insert: jest.fn().mockReturnValue({ values: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]) }) }),
+    update: jest.fn().mockReturnValue({ set: jest.fn().mockReturnValue({ where: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]) }) }) }),
+    delete: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([]) }),
+    execute: jest.fn().mockResolvedValue([]),
+    transaction: jest.fn(),
   },
 }));
 
@@ -79,9 +80,9 @@ jest.mock('../../services/racial-special-profession-mechanics', () => ({
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import { app } from '../../app';
-import { prisma } from '../../lib/prisma';
+import { db } from '../../lib/db';
 
-const mockedPrisma = prisma as jest.Mocked<typeof prisma>;
+const mockedDb = db as jest.Mocked<typeof db>;
 
 // Helper: generate a valid JWT
 function makeToken(userId: string) {
@@ -133,14 +134,14 @@ describe('Crafting API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Default: character found
-    (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue(mockCharacter);
+    (mockedDb.query.characters.findFirst as jest.Mock).mockResolvedValue(mockCharacter);
   });
 
   // ---- POST /api/crafting/start ----
 
   describe('POST /api/crafting/start', () => {
     it('should reject when no character found', async () => {
-      (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue(null);
+      (mockedDb.query.characters.findFirst as jest.Mock).mockResolvedValue(undefined);
 
       const res = await request(app)
         .post('/api/crafting/start')
@@ -152,7 +153,7 @@ describe('Crafting API', () => {
     });
 
     it('should reject when recipe not found', async () => {
-      (mockedPrisma.recipe.findUnique as jest.Mock).mockResolvedValue(null);
+      (mockedDb.query.recipes.findFirst as jest.Mock).mockResolvedValue(undefined);
 
       const res = await request(app)
         .post('/api/crafting/start')
@@ -164,8 +165,8 @@ describe('Crafting API', () => {
     });
 
     it('should reject when character lacks the required profession', async () => {
-      (mockedPrisma.recipe.findUnique as jest.Mock).mockResolvedValue(mockRecipe);
-      (mockedPrisma.playerProfession.findFirst as jest.Mock).mockResolvedValue(null);
+      (mockedDb.query.recipes.findFirst as jest.Mock).mockResolvedValue(mockRecipe);
+      (mockedDb.query.playerProfessions.findFirst as jest.Mock).mockResolvedValue(undefined);
 
       const res = await request(app)
         .post('/api/crafting/start')
@@ -177,9 +178,9 @@ describe('Crafting API', () => {
     });
 
     it('should reject when already crafting', async () => {
-      (mockedPrisma.recipe.findUnique as jest.Mock).mockResolvedValue(mockRecipe);
-      (mockedPrisma.playerProfession.findFirst as jest.Mock).mockResolvedValue(mockProfession);
-      (mockedPrisma.craftingAction.findFirst as jest.Mock).mockResolvedValue({ id: 'active-craft' });
+      (mockedDb.query.recipes.findFirst as jest.Mock).mockResolvedValue(mockRecipe);
+      (mockedDb.query.playerProfessions.findFirst as jest.Mock).mockResolvedValue(mockProfession);
+      (mockedDb.query.craftingActions.findFirst as jest.Mock).mockResolvedValue({ id: 'active-craft' });
 
       const res = await request(app)
         .post('/api/crafting/start')
@@ -191,15 +192,15 @@ describe('Crafting API', () => {
     });
 
     it('should start crafting successfully with sufficient ingredients', async () => {
-      (mockedPrisma.recipe.findUnique as jest.Mock).mockResolvedValue(mockRecipe);
-      (mockedPrisma.playerProfession.findFirst as jest.Mock).mockResolvedValue(mockProfession);
+      (mockedDb.query.recipes.findFirst as jest.Mock).mockResolvedValue(mockRecipe);
+      (mockedDb.query.playerProfessions.findFirst as jest.Mock).mockResolvedValue(mockProfession);
       // No active craft or travel
-      (mockedPrisma.craftingAction.findFirst as jest.Mock).mockResolvedValue(null);
-      // travelAction removed — travel status checked via character.travelStatus
+      (mockedDb.query.craftingActions.findFirst as jest.Mock).mockResolvedValue(undefined);
+      (mockedDb.query.craftingActions.findMany as jest.Mock).mockResolvedValue([]);
       // No workshop (apprentice tier doesn't need one)
-      (mockedPrisma.building.findFirst as jest.Mock).mockResolvedValue(null);
+      (mockedDb.query.buildings.findFirst as jest.Mock).mockResolvedValue(undefined);
       // Sufficient inventory
-      (mockedPrisma.inventory.findMany as jest.Mock).mockResolvedValue([
+      (mockedDb.query.inventories.findMany as jest.Mock).mockResolvedValue([
         {
           id: 'inv-001',
           itemId: 'item-iron-bar',
@@ -214,7 +215,7 @@ describe('Crafting API', () => {
         },
       ]);
       // Transaction succeeds
-      (mockedPrisma.$transaction as jest.Mock).mockResolvedValue(undefined);
+      (mockedDb.transaction as jest.Mock).mockResolvedValue(undefined);
 
       const res = await request(app)
         .post('/api/crafting/start')
@@ -232,7 +233,7 @@ describe('Crafting API', () => {
 
   describe('POST /api/crafting/collect', () => {
     it('should return 400 when no active crafting action', async () => {
-      (mockedPrisma.craftingAction.findFirst as jest.Mock).mockResolvedValue(null);
+      (mockedDb.query.craftingActions.findFirst as jest.Mock).mockResolvedValue(undefined);
 
       const res = await request(app)
         .post('/api/crafting/collect')
@@ -245,9 +246,16 @@ describe('Crafting API', () => {
 
     it('should return 400 when crafting is still in progress', async () => {
       // First call: no COMPLETED craft; second call: finds IN_PROGRESS
-      (mockedPrisma.craftingAction.findFirst as jest.Mock)
-        .mockResolvedValueOnce(null)  // status=COMPLETED query
-        .mockResolvedValueOnce({ id: 'craft-001', status: 'IN_PROGRESS' }); // status=IN_PROGRESS query
+      (mockedDb.query.craftingActions.findFirst as jest.Mock)
+        .mockResolvedValueOnce(undefined)  // status=COMPLETED query
+        .mockResolvedValueOnce({
+          id: 'craft-001',
+          characterId: CHAR_ID,
+          recipeId: RECIPE_ID,
+          status: 'IN_PROGRESS',
+          recipe: mockRecipe,
+          createdAt: new Date(), // just started, so craftTime hasn't elapsed
+        }); // status=IN_PROGRESS query
 
       const res = await request(app)
         .post('/api/crafting/collect')
@@ -268,11 +276,12 @@ describe('Crafting API', () => {
         createdAt: new Date(),
       };
 
-      (mockedPrisma.craftingAction.findFirst as jest.Mock).mockResolvedValue(completedCraft);
-      (mockedPrisma.playerProfession.findFirst as jest.Mock).mockResolvedValue(mockProfession);
-      (mockedPrisma.characterEquipment.findUnique as jest.Mock).mockResolvedValue(null);
-      (mockedPrisma.building.findFirst as jest.Mock).mockResolvedValue(null);
-      (mockedPrisma.itemTemplate.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.craftingActions.findFirst as jest.Mock).mockResolvedValue(completedCraft);
+      (mockedDb.query.craftingActions.findMany as jest.Mock).mockResolvedValue([]);
+      (mockedDb.query.playerProfessions.findFirst as jest.Mock).mockResolvedValue(mockProfession);
+      (mockedDb.query.characterEquipment.findFirst as jest.Mock).mockResolvedValue(undefined);
+      (mockedDb.query.buildings.findFirst as jest.Mock).mockResolvedValue(undefined);
+      (mockedDb.query.itemTemplates.findFirst as jest.Mock).mockResolvedValue({
         id: 'template-iron-sword',
         name: 'Iron Sword',
         type: 'WEAPON',
@@ -280,9 +289,7 @@ describe('Crafting API', () => {
       });
 
       const mockItem = { id: 'crafted-item-001' };
-      (mockedPrisma.$transaction as jest.Mock).mockResolvedValue(mockItem);
-      (mockedPrisma.character.update as jest.Mock).mockResolvedValue(mockCharacter);
-      (mockedPrisma.craftingAction.count as jest.Mock).mockResolvedValue(1);
+      (mockedDb.transaction as jest.Mock).mockResolvedValue(mockItem);
 
       const res = await request(app)
         .post('/api/crafting/collect')
@@ -305,11 +312,11 @@ describe('Crafting API', () => {
         createdAt: new Date(),
       };
 
-      (mockedPrisma.craftingAction.findFirst as jest.Mock).mockResolvedValue(completedCraft);
-      (mockedPrisma.playerProfession.findFirst as jest.Mock).mockResolvedValue(mockProfession);
-      (mockedPrisma.characterEquipment.findUnique as jest.Mock).mockResolvedValue(null);
-      (mockedPrisma.building.findFirst as jest.Mock).mockResolvedValue(null);
-      (mockedPrisma.itemTemplate.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.craftingActions.findFirst as jest.Mock).mockResolvedValue(completedCraft);
+      (mockedDb.query.playerProfessions.findFirst as jest.Mock).mockResolvedValue(mockProfession);
+      (mockedDb.query.characterEquipment.findFirst as jest.Mock).mockResolvedValue(undefined);
+      (mockedDb.query.buildings.findFirst as jest.Mock).mockResolvedValue(undefined);
+      (mockedDb.query.itemTemplates.findFirst as jest.Mock).mockResolvedValue({
         id: 'template-iron-sword',
         name: 'Iron Sword',
         type: 'WEAPON',
@@ -317,7 +324,7 @@ describe('Crafting API', () => {
       });
 
       // Transaction throws ALREADY_COLLECTED error (race condition guard)
-      (mockedPrisma.$transaction as jest.Mock).mockRejectedValue(new Error('ALREADY_COLLECTED'));
+      (mockedDb.transaction as jest.Mock).mockRejectedValue(new Error('ALREADY_COLLECTED'));
 
       const res = await request(app)
         .post('/api/crafting/collect')
@@ -333,7 +340,7 @@ describe('Crafting API', () => {
 
   describe('GET /api/crafting/status', () => {
     it('should return false when no active craft', async () => {
-      (mockedPrisma.craftingAction.findFirst as jest.Mock).mockResolvedValue(null);
+      (mockedDb.query.craftingActions.findFirst as jest.Mock).mockResolvedValue(undefined);
 
       const res = await request(app)
         .get('/api/crafting/status')
@@ -344,11 +351,12 @@ describe('Crafting API', () => {
     });
 
     it('should return active craft status', async () => {
-      (mockedPrisma.craftingAction.findFirst as jest.Mock).mockResolvedValue({
+      (mockedDb.query.craftingActions.findFirst as jest.Mock).mockResolvedValue({
         id: 'craft-001',
+        characterId: CHAR_ID,
         recipeId: RECIPE_ID,
         status: 'IN_PROGRESS',
-        recipe: { name: 'Iron Sword' },
+        recipe: { name: 'Iron Sword', craftTime: 60 },
         createdAt: new Date(),
         tickDate: new Date(),
       });

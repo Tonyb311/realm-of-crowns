@@ -8,10 +8,17 @@
  * Run from project root:
  *   DATABASE_URL=... npx tsx database/seeds/seed-supply-chain.ts
  */
-import { PrismaClient, ProfessionType, ProfessionTier } from '@prisma/client';
+import 'dotenv/config';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import { eq } from 'drizzle-orm';
+import * as schema from '../schema';
 import { TAILOR_RECIPES } from '@shared/data/recipes/tailor';
 import { COOK_RECIPES } from '@shared/data/recipes/cook';
 import { BREWER_CONSUMABLES } from '@shared/data/recipes/consumables';
+
+type ProfessionTier = 'APPRENTICE' | 'JOURNEYMAN' | 'CRAFTSMAN' | 'EXPERT' | 'MASTER' | 'GRANDMASTER';
+type ProfessionType = 'FARMER' | 'RANCHER' | 'FISHERMAN' | 'LUMBERJACK' | 'MINER' | 'HERBALIST' | 'HUNTER' | 'SMELTER' | 'BLACKSMITH' | 'ARMORER' | 'WOODWORKER' | 'TANNER' | 'LEATHERWORKER' | 'TAILOR' | 'ALCHEMIST' | 'ENCHANTER' | 'COOK' | 'BREWER' | 'JEWELER' | 'FLETCHER' | 'MASON' | 'SCRIBE' | 'MERCHANT' | 'INNKEEPER' | 'HEALER' | 'STABLE_MASTER' | 'BANKER' | 'COURIER' | 'MERCENARY_CAPTAIN';
 
 function levelToTier(level: number): ProfessionTier {
   if (level >= 75) return 'MASTER';
@@ -34,7 +41,8 @@ function toId(prefix: string, name: string): string {
 }
 
 async function main() {
-  const prisma = new PrismaClient();
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const db = drizzle(pool, { schema });
   try {
     // =================================================================
     // Step A: Resource ItemTemplates (gathering outputs needing DB rows)
@@ -55,14 +63,13 @@ async function main() {
     ];
 
     for (const res of resourceTemplates) {
-      await prisma.itemTemplate.upsert({
-        where: { id: res.id },
-        update: { name: res.name, type: res.type, description: res.description },
-        create: {
-          id: res.id, name: res.name, type: res.type, rarity: 'COMMON',
-          description: res.description, stats: {}, durability: 100,
-          professionRequired: null, levelRequired: 1,
-        },
+      await db.insert(schema.itemTemplates).values({
+        id: res.id, name: res.name, type: res.type as any, rarity: 'COMMON' as any,
+        description: res.description, stats: {}, durability: 100,
+        professionRequired: null, levelRequired: 1,
+      } as any).onConflictDoUpdate({
+        target: schema.itemTemplates.id,
+        set: { name: res.name, type: res.type as any, description: res.description } as any,
       });
       console.log(`  + ${res.name} (${res.id})`);
     }
@@ -78,14 +85,13 @@ async function main() {
     ];
 
     for (const tmpl of tailorOutputs) {
-      await prisma.itemTemplate.upsert({
-        where: { id: tmpl.id },
-        update: { name: tmpl.name, rarity: tmpl.rarity, description: tmpl.description },
-        create: {
-          id: tmpl.id, name: tmpl.name, type: 'MATERIAL', rarity: tmpl.rarity,
-          description: tmpl.description, stats: {}, durability: tmpl.durability,
-          professionRequired: 'TAILOR', levelRequired: tmpl.levelRequired,
-        },
+      await db.insert(schema.itemTemplates).values({
+        id: tmpl.id, name: tmpl.name, type: 'MATERIAL' as any, rarity: tmpl.rarity as any,
+        description: tmpl.description, stats: {}, durability: tmpl.durability,
+        professionRequired: 'TAILOR' as any, levelRequired: tmpl.levelRequired,
+      } as any).onConflictDoUpdate({
+        target: schema.itemTemplates.id,
+        set: { name: tmpl.name, rarity: tmpl.rarity as any, description: tmpl.description } as any,
       });
       console.log(`  + ${tmpl.name} (${tmpl.id})`);
     }
@@ -116,14 +122,13 @@ async function main() {
     ];
 
     for (const tmpl of cookOutputs) {
-      await prisma.itemTemplate.upsert({
-        where: { id: tmpl.id },
-        update: { name: tmpl.name, type: tmpl.type, rarity: tmpl.rarity, description: tmpl.description },
-        create: {
-          id: tmpl.id, name: tmpl.name, type: tmpl.type, rarity: tmpl.rarity,
-          description: tmpl.description, stats: {}, durability: tmpl.type === 'MATERIAL' ? 100 : 1,
-          professionRequired: 'COOK', levelRequired: 1,
-        },
+      await db.insert(schema.itemTemplates).values({
+        id: tmpl.id, name: tmpl.name, type: tmpl.type as any, rarity: tmpl.rarity as any,
+        description: tmpl.description, stats: {}, durability: tmpl.type === 'MATERIAL' ? 100 : 1,
+        professionRequired: 'COOK' as any, levelRequired: 1,
+      } as any).onConflictDoUpdate({
+        target: schema.itemTemplates.id,
+        set: { name: tmpl.name, type: tmpl.type as any, rarity: tmpl.rarity as any, description: tmpl.description } as any,
       });
       console.log(`  + ${tmpl.name} (${tmpl.id})`);
     }
@@ -138,27 +143,26 @@ async function main() {
       const stableId = toId('consumable', name);
       const rarity = levelToRarity(recipe.levelRequired);
 
-      await prisma.itemTemplate.upsert({
-        where: { id: stableId },
-        update: {
-          name, type: 'CONSUMABLE', rarity, description: recipe.description,
+      await db.insert(schema.itemTemplates).values({
+        id: stableId, name, type: 'CONSUMABLE' as any, rarity: rarity as any, description: recipe.description,
+        stats: {
+          effect: recipe.consumableStats.effect,
+          magnitude: recipe.consumableStats.magnitude,
+          duration: recipe.consumableStats.duration,
+          stackSize: recipe.consumableStats.stackSize,
+        },
+        durability: 1, professionRequired: 'BREWER' as any, levelRequired: recipe.levelRequired,
+      } as any).onConflictDoUpdate({
+        target: schema.itemTemplates.id,
+        set: {
+          name, type: 'CONSUMABLE' as any, rarity: rarity as any, description: recipe.description,
           stats: {
             effect: recipe.consumableStats.effect,
             magnitude: recipe.consumableStats.magnitude,
             duration: recipe.consumableStats.duration,
             stackSize: recipe.consumableStats.stackSize,
           },
-        },
-        create: {
-          id: stableId, name, type: 'CONSUMABLE', rarity, description: recipe.description,
-          stats: {
-            effect: recipe.consumableStats.effect,
-            magnitude: recipe.consumableStats.magnitude,
-            duration: recipe.consumableStats.duration,
-            stackSize: recipe.consumableStats.stackSize,
-          },
-          durability: 1, professionRequired: 'BREWER', levelRequired: recipe.levelRequired,
-        },
+        } as any,
       });
       console.log(`  + ${name} (${stableId})`);
     }
@@ -167,8 +171,8 @@ async function main() {
     // Step E: Build template name → ID map
     // =================================================================
     console.log('\n=== Step E: Building template map ===');
-    const allTemplates = await prisma.itemTemplate.findMany({
-      select: { id: true, name: true },
+    const allTemplates = await db.query.itemTemplates.findMany({
+      columns: { id: true, name: true },
     });
     const templateMap = new Map<string, string>();
     for (const t of allTemplates) {
@@ -203,20 +207,18 @@ async function main() {
       const recipeId = `recipe-${recipe.recipeId}`;
       const tier = levelToTier(recipe.levelRequired);
 
-      await prisma.recipe.upsert({
-        where: { id: recipeId },
-        update: {
-          name: recipe.name,
-          professionType: recipe.professionRequired as ProfessionType,
-          tier, ingredients, result: resultId,
-          craftTime: recipe.craftTime, xpReward: recipe.xpReward,
-        },
-        create: {
-          id: recipeId, name: recipe.name,
-          professionType: recipe.professionRequired as ProfessionType,
-          tier, ingredients, result: resultId,
-          craftTime: recipe.craftTime, xpReward: recipe.xpReward,
-        },
+      const recipeData = {
+        name: recipe.name,
+        professionType: recipe.professionRequired as ProfessionType,
+        tier, ingredients, result: resultId,
+        craftTime: recipe.craftTime, xpReward: recipe.xpReward,
+      };
+
+      await db.insert(schema.recipes).values({
+        id: recipeId, ...recipeData,
+      } as any).onConflictDoUpdate({
+        target: schema.recipes.id,
+        set: recipeData as any,
       });
       totalCount++;
       console.log(`  + ${recipe.name} (TAILOR L${recipe.levelRequired} / ${tier})`);
@@ -245,20 +247,18 @@ async function main() {
       const recipeId = `recipe-${recipe.recipeId}`;
       const tier = levelToTier(recipe.levelRequired);
 
-      await prisma.recipe.upsert({
-        where: { id: recipeId },
-        update: {
-          name: recipe.name,
-          professionType: recipe.professionRequired as ProfessionType,
-          tier, ingredients, result: resultId,
-          craftTime: recipe.craftTime, xpReward: recipe.xpReward,
-        },
-        create: {
-          id: recipeId, name: recipe.name,
-          professionType: recipe.professionRequired as ProfessionType,
-          tier, ingredients, result: resultId,
-          craftTime: recipe.craftTime, xpReward: recipe.xpReward,
-        },
+      const recipeData = {
+        name: recipe.name,
+        professionType: recipe.professionRequired as ProfessionType,
+        tier, ingredients, result: resultId,
+        craftTime: recipe.craftTime, xpReward: recipe.xpReward,
+      };
+
+      await db.insert(schema.recipes).values({
+        id: recipeId, ...recipeData,
+      } as any).onConflictDoUpdate({
+        target: schema.recipes.id,
+        set: recipeData as any,
       });
       totalCount++;
       console.log(`  + ${recipe.name} (COOK L${recipe.levelRequired} / ${tier})`);
@@ -288,20 +288,18 @@ async function main() {
       const recipeId = `recipe-${recipe.recipeId}`;
       const tier = levelToTier(recipe.levelRequired);
 
-      await prisma.recipe.upsert({
-        where: { id: recipeId },
-        update: {
-          name: recipe.name,
-          professionType: recipe.professionRequired as ProfessionType,
-          tier, ingredients, result: resultId,
-          craftTime: recipe.craftTime, xpReward: recipe.xpReward,
-        },
-        create: {
-          id: recipeId, name: recipe.name,
-          professionType: recipe.professionRequired as ProfessionType,
-          tier, ingredients, result: resultId,
-          craftTime: recipe.craftTime, xpReward: recipe.xpReward,
-        },
+      const recipeData = {
+        name: recipe.name,
+        professionType: recipe.professionRequired as ProfessionType,
+        tier, ingredients, result: resultId,
+        craftTime: recipe.craftTime, xpReward: recipe.xpReward,
+      };
+
+      await db.insert(schema.recipes).values({
+        id: recipeId, ...recipeData,
+      } as any).onConflictDoUpdate({
+        target: schema.recipes.id,
+        set: recipeData as any,
       });
       totalCount++;
       console.log(`  + ${recipe.name} (BREWER L${recipe.levelRequired} / ${tier})`);
@@ -311,7 +309,7 @@ async function main() {
     console.log(`Done: ${totalCount} recipes seeded (4 TAILOR + 15 COOK + 9 BREWER)`);
     console.log(`==============================`);
   } finally {
-    await prisma.$disconnect();
+    await pool.end();
   }
 }
 

@@ -4,8 +4,7 @@ import {
   createTestUserWithCharacter,
   authHeader,
   cleanupTestData,
-  disconnectPrisma,
-  prisma,
+  disconnectDb,
 } from './setup';
 
 describe('Progression API (Skills & Abilities)', () => {
@@ -14,7 +13,7 @@ describe('Progression API (Skills & Abilities)', () => {
   });
 
   afterAll(async () => {
-    await disconnectPrisma();
+    await disconnectDb();
   });
 
   // ---- GET /api/skills/tree ----

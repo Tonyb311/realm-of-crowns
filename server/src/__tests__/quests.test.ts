@@ -1,13 +1,15 @@
 import request from 'supertest';
 import { app } from '../app';
+import { eq, and } from 'drizzle-orm';
+import { questProgress } from '@database/tables';
 import {
+  db,
   createTestUserWithCharacter,
   createTestTown,
   createTestQuest,
   authHeader,
   cleanupTestData,
-  disconnectPrisma,
-  prisma,
+  disconnectDb,
 } from './setup';
 
 describe('Quests API', () => {
@@ -16,7 +18,7 @@ describe('Quests API', () => {
   });
 
   afterAll(async () => {
-    await disconnectPrisma();
+    await disconnectDb();
   });
 
   // ---- GET /api/quests/available ----
@@ -163,10 +165,9 @@ describe('Quests API', () => {
         .send({ questId: quest.id });
 
       // Manually set progress to complete
-      await prisma.questProgress.updateMany({
-        where: { characterId: user.character.id, questId: quest.id },
-        data: { progress: { '0': 3 } },
-      });
+      await db.update(questProgress)
+        .set({ progress: { '0': 3 } })
+        .where(and(eq(questProgress.characterId, user.character.id), eq(questProgress.questId, quest.id)));
 
       // Complete
       const res = await request(app)

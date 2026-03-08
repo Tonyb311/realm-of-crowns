@@ -1,4 +1,7 @@
-import { prisma } from './prisma';
+import crypto from 'crypto';
+import { db } from './db';
+import { eq, and } from 'drizzle-orm';
+import { itemTemplates, items, inventories, characterEquipment } from '@database/tables';
 import { logger } from './logger';
 import { STARTER_WEAPONS, FALLBACK_STARTER_WEAPON, StarterWeaponDef, STARTER_ARMOR } from '@shared/data/starter-weapons';
 
@@ -23,38 +26,38 @@ export async function ensureStarterWeaponTemplates(): Promise<void> {
 
   for (const def of Object.values(STARTER_WEAPONS)) {
     const baseValue = STARTER_WEAPON_BASE_VALUES[def.name] ?? 5;
-    await prisma.itemTemplate.upsert({
-      where: { id: def.templateId },
-      update: { baseValue },
-      create: {
-        id: def.templateId,
-        name: def.name,
-        type: 'WEAPON',
-        rarity: 'COMMON',
-        description: def.description,
-        durability: 100,
-        levelRequired: 1,
-        stats: def.stats,
-        baseValue,
-      },
+    await db.insert(itemTemplates).values({
+      id: def.templateId,
+      name: def.name,
+      type: 'WEAPON',
+      rarity: 'COMMON',
+      description: def.description,
+      durability: 100,
+      levelRequired: 1,
+      stats: def.stats,
+      baseValue,
+      updatedAt: new Date().toISOString(),
+    }).onConflictDoUpdate({
+      target: itemTemplates.id,
+      set: { baseValue },
     });
   }
 
   // Ensure starter armor template exists
-  await prisma.itemTemplate.upsert({
-    where: { id: STARTER_ARMOR.templateId },
-    update: { baseValue: 8 },
-    create: {
-      id: STARTER_ARMOR.templateId,
-      name: STARTER_ARMOR.name,
-      type: 'ARMOR',
-      rarity: 'COMMON',
-      description: STARTER_ARMOR.description,
-      durability: 100,
-      levelRequired: 1,
-      stats: STARTER_ARMOR.stats,
-      baseValue: 8,
-    },
+  await db.insert(itemTemplates).values({
+    id: STARTER_ARMOR.templateId,
+    name: STARTER_ARMOR.name,
+    type: 'ARMOR',
+    rarity: 'COMMON',
+    description: STARTER_ARMOR.description,
+    durability: 100,
+    levelRequired: 1,
+    stats: STARTER_ARMOR.stats,
+    baseValue: 8,
+    updatedAt: new Date().toISOString(),
+  }).onConflictDoUpdate({
+    target: itemTemplates.id,
+    set: { baseValue: 8 },
   });
 
   templatesEnsured = true;
@@ -71,36 +74,36 @@ export async function giveStarterWeapon(characterId: string, characterClass: str
   await ensureStarterWeaponTemplates();
 
   // Idempotency check: don't give if already has MAIN_HAND equipped
-  const existingEquip = await prisma.characterEquipment.findFirst({
-    where: { characterId, slot: 'MAIN_HAND' },
+  const existingEquip = await db.query.characterEquipment.findFirst({
+    where: and(eq(characterEquipment.characterId, characterId), eq(characterEquipment.slot, 'MAIN_HAND')),
   });
   if (existingEquip) return;
 
   const def = STARTER_WEAPONS[characterClass.toLowerCase()] ?? FALLBACK_STARTER_WEAPON;
 
-  const item = await prisma.item.create({
-    data: {
-      templateId: def.templateId,
-      ownerId: characterId,
-      quality: 'COMMON',
-      currentDurability: 100,
-    },
+  const [item] = await db.insert(items).values({
+    id: crypto.randomUUID(),
+    templateId: def.templateId,
+    ownerId: characterId,
+    quality: 'COMMON',
+    currentDurability: 100,
+    updatedAt: new Date().toISOString(),
+  }).returning();
+
+  await db.insert(inventories).values({
+    id: crypto.randomUUID(),
+    characterId,
+    itemId: item.id,
+    quantity: 1,
+    updatedAt: new Date().toISOString(),
   });
 
-  await prisma.inventory.create({
-    data: {
-      characterId,
-      itemId: item.id,
-      quantity: 1,
-    },
-  });
-
-  await prisma.characterEquipment.create({
-    data: {
-      characterId,
-      slot: 'MAIN_HAND',
-      itemId: item.id,
-    },
+  await db.insert(characterEquipment).values({
+    id: crypto.randomUUID(),
+    characterId,
+    slot: 'MAIN_HAND',
+    itemId: item.id,
+    updatedAt: new Date().toISOString(),
   });
 }
 
@@ -114,33 +117,33 @@ export async function giveStarterArmor(characterId: string): Promise<void> {
   await ensureStarterWeaponTemplates();
 
   // Idempotency check: don't give if already has CHEST equipped
-  const existingEquip = await prisma.characterEquipment.findFirst({
-    where: { characterId, slot: 'CHEST' },
+  const existingEquip = await db.query.characterEquipment.findFirst({
+    where: and(eq(characterEquipment.characterId, characterId), eq(characterEquipment.slot, 'CHEST')),
   });
   if (existingEquip) return;
 
-  const item = await prisma.item.create({
-    data: {
-      templateId: STARTER_ARMOR.templateId,
-      ownerId: characterId,
-      quality: 'COMMON',
-      currentDurability: 100,
-    },
+  const [item] = await db.insert(items).values({
+    id: crypto.randomUUID(),
+    templateId: STARTER_ARMOR.templateId,
+    ownerId: characterId,
+    quality: 'COMMON',
+    currentDurability: 100,
+    updatedAt: new Date().toISOString(),
+  }).returning();
+
+  await db.insert(inventories).values({
+    id: crypto.randomUUID(),
+    characterId,
+    itemId: item.id,
+    quantity: 1,
+    updatedAt: new Date().toISOString(),
   });
 
-  await prisma.inventory.create({
-    data: {
-      characterId,
-      itemId: item.id,
-      quantity: 1,
-    },
-  });
-
-  await prisma.characterEquipment.create({
-    data: {
-      characterId,
-      slot: 'CHEST',
-      itemId: item.id,
-    },
+  await db.insert(characterEquipment).values({
+    id: crypto.randomUUID(),
+    characterId,
+    slot: 'CHEST',
+    itemId: item.id,
+    updatedAt: new Date().toISOString(),
   });
 }

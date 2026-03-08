@@ -4,17 +4,23 @@
  * Tests building construction with material requirements and workshop bonuses.
  */
 
-jest.mock('../../lib/prisma', () => ({
-  prisma: {
-    character: { findFirst: jest.fn(), update: jest.fn() },
-    building: { findFirst: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), create: jest.fn(), update: jest.fn() },
-    buildingConstruction: { create: jest.fn(), update: jest.fn(), count: jest.fn() },
-    town: { findUnique: jest.fn() },
-    townPolicy: { upsert: jest.fn() },
-    townTreasury: { updateMany: jest.fn() },
-    inventory: { findFirst: jest.fn(), findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
-    item: { delete: jest.fn() },
-    $transaction: jest.fn(),
+jest.mock('../../lib/db', () => ({
+  db: {
+    query: {
+      characters: { findFirst: jest.fn(), findMany: jest.fn() },
+      buildings: { findFirst: jest.fn(), findMany: jest.fn() },
+      buildingConstructions: { findFirst: jest.fn(), findMany: jest.fn() },
+      towns: { findFirst: jest.fn() },
+      townPolicies: { findFirst: jest.fn() },
+      townTreasuries: { findFirst: jest.fn() },
+      inventories: { findFirst: jest.fn(), findMany: jest.fn() },
+      items: { findFirst: jest.fn() },
+    },
+    insert: jest.fn().mockReturnValue({ values: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]), onConflictDoUpdate: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]) }) }) }),
+    update: jest.fn().mockReturnValue({ set: jest.fn().mockReturnValue({ where: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]) }) }) }),
+    delete: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([]) }),
+    execute: jest.fn().mockResolvedValue([]),
+    transaction: jest.fn(),
   },
 }));
 
@@ -51,9 +57,9 @@ jest.mock('../../middleware/daily-action', () => ({
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import { app } from '../../app';
-import { prisma } from '../../lib/prisma';
+import { db } from '../../lib/db';
 
-const mockedPrisma = prisma as jest.Mocked<typeof prisma>;
+const mockedDb = db as jest.Mocked<typeof db>;
 
 function makeToken(userId: string) {
   return jwt.sign({ userId, username: 'tester' }, process.env.JWT_SECRET || 'test-secret-key-for-integration-tests');
@@ -72,27 +78,28 @@ const mockCharacter = {
   level: 10,
   gold: 5000,
   currentTownId: TOWN_ID,
+  homeTownId: TOWN_ID,
   travelStatus: 'idle',
 };
 
 describe('Buildings API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue(mockCharacter);
+    (mockedDb.query.characters.findFirst as jest.Mock).mockResolvedValue(mockCharacter);
   });
 
   // ---- POST /api/buildings/request-permit ----
 
   describe('POST /api/buildings/request-permit', () => {
     it('should create a building permit successfully', async () => {
-      (mockedPrisma.town.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.towns.findFirst as jest.Mock).mockResolvedValue({
         id: TOWN_ID,
         name: 'TestTown',
         population: 5000,
-        townPolicy: null,
+        townPolicies: [],
         buildings: [], // no buildings yet
       });
-      (mockedPrisma.building.findFirst as jest.Mock).mockResolvedValue(null); // no existing building of this type
+      (mockedDb.query.buildings.findFirst as jest.Mock).mockResolvedValue(undefined); // no existing building of this type
 
       const newBuilding = {
         id: 'building-001',
@@ -103,7 +110,7 @@ describe('Buildings API', () => {
         ownerId: CHAR_ID,
       };
 
-      (mockedPrisma.$transaction as jest.Mock).mockResolvedValue(newBuilding);
+      (mockedDb.transaction as jest.Mock).mockResolvedValue(newBuilding);
 
       const res = await request(app)
         .post('/api/buildings/request-permit')
@@ -121,8 +128,28 @@ describe('Buildings API', () => {
       expect(res.body.requirements).toBeDefined();
     });
 
+    it('should reject when not a resident of the town', async () => {
+      const res = await request(app)
+        .post('/api/buildings/request-permit')
+        .set('Authorization', `Bearer ${TOKEN}`)
+        .send({
+          townId: 'nonexistent',
+          buildingType: 'SMITHY',
+          name: 'My Smithy',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('resident of this town');
+    });
+
     it('should reject when town not found', async () => {
-      (mockedPrisma.town.findUnique as jest.Mock).mockResolvedValue(null);
+      // Set homeTownId to match the requested town so residency passes
+      (mockedDb.query.characters.findFirst as jest.Mock).mockResolvedValue({
+        ...mockCharacter,
+        homeTownId: 'nonexistent',
+        currentTownId: 'nonexistent',
+      });
+      (mockedDb.query.towns.findFirst as jest.Mock).mockResolvedValue(undefined);
 
       const res = await request(app)
         .post('/api/buildings/request-permit')
@@ -138,13 +165,13 @@ describe('Buildings API', () => {
     });
 
     it('should reject when player already owns this type in this town', async () => {
-      (mockedPrisma.town.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.towns.findFirst as jest.Mock).mockResolvedValue({
         id: TOWN_ID,
         population: 5000,
-        townPolicy: null,
+        townPolicies: [],
         buildings: [],
       });
-      (mockedPrisma.building.findFirst as jest.Mock).mockResolvedValue({
+      (mockedDb.query.buildings.findFirst as jest.Mock).mockResolvedValue({
         id: 'existing-smithy',
         type: 'SMITHY',
         ownerId: CHAR_ID,
@@ -166,12 +193,12 @@ describe('Buildings API', () => {
     it('should reject when town is at building capacity', async () => {
       // Population 100, capacity = max(20, 100/100) = 20
       // Fill it with 20 buildings
-      const buildings = Array.from({ length: 20 }, (_, i) => ({ id: `b-${i}` }));
-      (mockedPrisma.town.findUnique as jest.Mock).mockResolvedValue({
+      const buildingsArr = Array.from({ length: 20 }, (_, i) => ({ id: `b-${i}` }));
+      (mockedDb.query.towns.findFirst as jest.Mock).mockResolvedValue({
         id: TOWN_ID,
         population: 100,
-        townPolicy: null,
-        buildings,
+        townPolicies: [],
+        buildings: buildingsArr,
       });
 
       const res = await request(app)
@@ -192,12 +219,12 @@ describe('Buildings API', () => {
 
   describe('POST /api/buildings/start-construction', () => {
     it('should reject when not all materials deposited', async () => {
-      (mockedPrisma.building.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.buildings.findFirst as jest.Mock).mockResolvedValue({
         id: 'building-001',
         ownerId: CHAR_ID,
         type: 'SMITHY',
         level: 0,
-        constructions: [{
+        buildingConstructions: [{
           id: 'const-001',
           status: 'PENDING',
           materialsUsed: {}, // nothing deposited
@@ -214,12 +241,12 @@ describe('Buildings API', () => {
     });
 
     it('should reject when building not owned by character', async () => {
-      (mockedPrisma.building.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.buildings.findFirst as jest.Mock).mockResolvedValue({
         id: 'building-001',
         ownerId: 'someone-else',
         type: 'SMITHY',
         level: 0,
-        constructions: [{
+        buildingConstructions: [{
           id: 'const-001',
           status: 'PENDING',
           materialsUsed: {},
@@ -241,12 +268,12 @@ describe('Buildings API', () => {
   describe('POST /api/buildings/complete-construction', () => {
     it('should reject when construction timer not done', async () => {
       const futureDate = new Date(Date.now() + 3600000); // 1 hour from now
-      (mockedPrisma.building.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.buildings.findFirst as jest.Mock).mockResolvedValue({
         id: 'building-001',
         ownerId: CHAR_ID,
         type: 'SMITHY',
         level: 0,
-        constructions: [{
+        buildingConstructions: [{
           id: 'const-001',
           status: 'IN_PROGRESS',
           completesAt: futureDate,
@@ -265,12 +292,12 @@ describe('Buildings API', () => {
 
     it('should complete construction when timer is done', async () => {
       const pastDate = new Date(Date.now() - 1000); // in the past
-      (mockedPrisma.building.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.buildings.findFirst as jest.Mock).mockResolvedValue({
         id: 'building-001',
         ownerId: CHAR_ID,
         type: 'SMITHY',
         level: 0,
-        constructions: [{
+        buildingConstructions: [{
           id: 'const-001',
           status: 'IN_PROGRESS',
           completesAt: pastDate,
@@ -278,7 +305,7 @@ describe('Buildings API', () => {
         }],
       });
 
-      (mockedPrisma.$transaction as jest.Mock).mockResolvedValue(undefined);
+      (mockedDb.transaction as jest.Mock).mockResolvedValue(undefined);
 
       const res = await request(app)
         .post('/api/buildings/complete-construction')
@@ -295,7 +322,7 @@ describe('Buildings API', () => {
 
   describe('GET /api/buildings/mine', () => {
     it('should return buildings owned by the character', async () => {
-      (mockedPrisma.building.findMany as jest.Mock).mockResolvedValue([
+      (mockedDb.query.buildings.findMany as jest.Mock).mockResolvedValue([
         {
           id: 'building-001',
           type: 'SMITHY',

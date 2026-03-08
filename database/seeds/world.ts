@@ -8,7 +8,11 @@
  * All 69 towns across Aethermere (68 racial + 1 neutral Changeling hub)
  */
 
-import { PrismaClient, BiomeType, ResourceType } from '@prisma/client';
+import crypto from 'crypto';
+import { eq, and } from 'drizzle-orm';
+import * as schema from '../schema';
+import type { BiomeType } from '@shared/enums';
+import type { ResourceType } from '@shared/enums';
 
 // ============================================================
 // REGION DEFINITIONS
@@ -1878,27 +1882,29 @@ const EXCLUSIVE_ZONES: ExclusiveZoneDef[] = [
 // SEED FUNCTION
 // ============================================================
 
-export async function seedWorld(prisma: PrismaClient) {
+export async function seedWorld(db: any) {
   console.log('--- Seeding Regions ---');
   const regionMap = new Map<string, string>(); // name -> id
 
   for (const region of REGIONS) {
-    const created = await prisma.region.upsert({
-      where: { name: region.name },
-      update: {
+    const [created] = await db.insert(schema.regions).values({
+      id: crypto.randomUUID(),
+      name: region.name,
+      description: region.description,
+      biome: region.biome,
+      levelMin: region.levelMin,
+      levelMax: region.levelMax,
+      updatedAt: new Date().toISOString(),
+    }).onConflictDoUpdate({
+      target: schema.regions.name,
+      set: {
         description: region.description,
         biome: region.biome,
         levelMin: region.levelMin,
         levelMax: region.levelMax,
+        updatedAt: new Date().toISOString(),
       },
-      create: {
-        name: region.name,
-        description: region.description,
-        biome: region.biome,
-        levelMin: region.levelMin,
-        levelMax: region.levelMax,
-      },
-    });
+    }).returning();
     regionMap.set(region.name, created.id);
   }
   console.log(`  Created ${regionMap.size} regions`);
@@ -1921,24 +1927,26 @@ export async function seedWorld(prisma: PrismaClient) {
       availableBuildings: town.availableBuildings,
     };
 
-    const created = await prisma.town.upsert({
-      where: { name: town.name },
-      update: {
+    const [created] = await db.insert(schema.towns).values({
+      id: crypto.randomUUID(),
+      name: town.name,
+      regionId,
+      population: town.population,
+      biome: town.biome,
+      description: town.description,
+      features,
+      updatedAt: new Date().toISOString(),
+    }).onConflictDoUpdate({
+      target: schema.towns.name,
+      set: {
         regionId,
         population: town.population,
         biome: town.biome,
         description: town.description,
         features,
+        updatedAt: new Date().toISOString(),
       },
-      create: {
-        name: town.name,
-        regionId,
-        population: town.population,
-        biome: town.biome,
-        description: town.description,
-        features,
-      },
-    });
+    }).returning();
     townMap.set(town.name, created.id);
   }
   console.log(`  Created ${townMap.size} towns`);
@@ -1955,35 +1963,37 @@ export async function seedWorld(prisma: PrismaClient) {
     }
 
     // Create bidirectional routes
-    await prisma.travelRoute.upsert({
-      where: { fromTownId_toTownId: { fromTownId: fromId, toTownId: toId } },
-      update: {
-        distance: route.distance,
+    // Forward direction
+    await db.insert(schema.travelRoutes).values({
+      id: crypto.randomUUID(),
+      fromTownId: fromId,
+      toTownId: toId,
+      dangerLevel: route.dangerLevel,
+      terrain: route.terrain,
+      updatedAt: new Date().toISOString(),
+    }).onConflictDoUpdate({
+      target: [schema.travelRoutes.fromTownId, schema.travelRoutes.toTownId],
+      set: {
         dangerLevel: route.dangerLevel,
         terrain: route.terrain,
-      },
-      create: {
-        fromTownId: fromId,
-        toTownId: toId,
-        distance: route.distance,
-        dangerLevel: route.dangerLevel,
-        terrain: route.terrain,
+        updatedAt: new Date().toISOString(),
       },
     });
 
-    await prisma.travelRoute.upsert({
-      where: { fromTownId_toTownId: { fromTownId: toId, toTownId: fromId } },
-      update: {
-        distance: route.distance,
+    // Reverse direction
+    await db.insert(schema.travelRoutes).values({
+      id: crypto.randomUUID(),
+      fromTownId: toId,
+      toTownId: fromId,
+      dangerLevel: route.dangerLevel,
+      terrain: route.terrain,
+      updatedAt: new Date().toISOString(),
+    }).onConflictDoUpdate({
+      target: [schema.travelRoutes.fromTownId, schema.travelRoutes.toTownId],
+      set: {
         dangerLevel: route.dangerLevel,
         terrain: route.terrain,
-      },
-      create: {
-        fromTownId: toId,
-        toTownId: fromId,
-        distance: route.distance,
-        dangerLevel: route.dangerLevel,
-        terrain: route.terrain,
+        updatedAt: new Date().toISOString(),
       },
     });
 
@@ -2001,17 +2011,19 @@ export async function seedWorld(prisma: PrismaClient) {
     const resources = getResourcesForTown(town.name, town.regionName, town.biome);
 
     for (const resource of resources) {
-      await prisma.townResource.upsert({
-        where: { townId_resourceType: { townId, resourceType: resource.type } },
-        update: {
+      await db.insert(schema.townResources).values({
+        id: crypto.randomUUID(),
+        townId,
+        resourceType: resource.type,
+        abundance: resource.abundance,
+        respawnRate: resource.respawnRate,
+        updatedAt: new Date().toISOString(),
+      }).onConflictDoUpdate({
+        target: [schema.townResources.townId, schema.townResources.resourceType],
+        set: {
           abundance: resource.abundance,
           respawnRate: resource.respawnRate,
-        },
-        create: {
-          townId,
-          resourceType: resource.type,
-          abundance: resource.abundance,
-          respawnRate: resource.respawnRate,
+          updatedAt: new Date().toISOString(),
         },
       });
       resourceCount++;
@@ -2035,14 +2047,14 @@ export async function seedWorld(prisma: PrismaClient) {
       ? [regionId1, regionId2]
       : [regionId2, regionId1];
 
-    await prisma.regionBorder.upsert({
-      where: { regionId1_regionId2: { regionId1: sortedId1, regionId2: sortedId2 } },
-      update: {
-        type: border.type,
-      },
-      create: {
-        regionId1: sortedId1,
-        regionId2: sortedId2,
+    await db.insert(schema.regionBorders).values({
+      id: crypto.randomUUID(),
+      regionId1: sortedId1,
+      regionId2: sortedId2,
+      type: border.type,
+    }).onConflictDoUpdate({
+      target: [schema.regionBorders.regionId1, schema.regionBorders.regionId2],
+      set: {
         type: border.type,
       },
     });
@@ -2060,27 +2072,28 @@ export async function seedWorld(prisma: PrismaClient) {
       continue;
     }
 
-    // Use upsert by checking existing zone with same name in the region
-    const existing = await prisma.exclusiveZone.findFirst({
-      where: { name: zone.name, regionId },
+    // Use findFirst + update/create since exclusiveZones has no unique name constraint
+    const existing = await db.query.exclusiveZones.findFirst({
+      where: and(
+        eq(schema.exclusiveZones.name, zone.name),
+        eq(schema.exclusiveZones.regionId, regionId),
+      ),
     });
 
     if (existing) {
-      await prisma.exclusiveZone.update({
-        where: { id: existing.id },
-        data: {
-          description: zone.description,
-          requiredRaces: zone.requiredRaces,
-        },
-      });
+      await db.update(schema.exclusiveZones).set({
+        description: zone.description,
+        requiredRaces: zone.requiredRaces,
+        updatedAt: new Date().toISOString(),
+      }).where(eq(schema.exclusiveZones.id, existing.id));
     } else {
-      await prisma.exclusiveZone.create({
-        data: {
-          name: zone.name,
-          description: zone.description,
-          regionId,
-          requiredRaces: zone.requiredRaces,
-        },
+      await db.insert(schema.exclusiveZones).values({
+        id: crypto.randomUUID(),
+        name: zone.name,
+        description: zone.description,
+        regionId,
+        requiredRaces: zone.requiredRaces,
+        updatedAt: new Date().toISOString(),
       });
     }
     zoneCount++;

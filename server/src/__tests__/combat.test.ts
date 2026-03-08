@@ -1,13 +1,15 @@
 import request from 'supertest';
 import { app } from '../app';
+import { eq } from 'drizzle-orm';
+import { combatParticipants, combatSessions } from '@database/tables';
 import {
+  db,
   createTestUserWithCharacter,
   createTestTown,
   createTestMonster,
   authHeader,
   cleanupTestData,
-  disconnectPrisma,
-  prisma,
+  disconnectDb,
 } from './setup';
 
 describe('Combat API (PvE & PvP)', () => {
@@ -16,7 +18,7 @@ describe('Combat API (PvE & PvP)', () => {
   });
 
   afterAll(async () => {
-    await disconnectPrisma();
+    await disconnectDb();
   });
 
   // ---- POST /api/combat/pve/start ----
@@ -41,8 +43,8 @@ describe('Combat API (PvE & PvP)', () => {
       expect(res.body.combat.monster).toBeDefined();
 
       // Clean up combat session
-      await prisma.combatParticipant.deleteMany({ where: { sessionId: res.body.sessionId } });
-      await prisma.combatSession.delete({ where: { id: res.body.sessionId } });
+      await db.delete(combatParticipants).where(eq(combatParticipants.sessionId, res.body.sessionId));
+      await db.delete(combatSessions).where(eq(combatSessions.id, res.body.sessionId));
     });
 
     it('should reject when character not found', async () => {
@@ -92,8 +94,8 @@ describe('Combat API (PvE & PvP)', () => {
       expect(secondRes.body.error).toContain('already in combat');
 
       // Clean up
-      await prisma.combatParticipant.deleteMany({ where: { sessionId: firstRes.body.sessionId } });
-      await prisma.combatSession.delete({ where: { id: firstRes.body.sessionId } });
+      await db.delete(combatParticipants).where(eq(combatParticipants.sessionId, firstRes.body.sessionId));
+      await db.delete(combatSessions).where(eq(combatSessions.id, firstRes.body.sessionId));
     });
   });
 
@@ -171,8 +173,8 @@ describe('Combat API (PvE & PvP)', () => {
       expect(res.body.session.target.id).toBe(target.character.id);
 
       // Clean up
-      await prisma.combatParticipant.deleteMany({ where: { sessionId: res.body.session.id } });
-      await prisma.combatSession.delete({ where: { id: res.body.session.id } });
+      await db.delete(combatParticipants).where(eq(combatParticipants.sessionId, res.body.session.id));
+      await db.delete(combatSessions).where(eq(combatSessions.id, res.body.session.id));
     });
 
     it('should reject challenge when target not found', async () => {
@@ -229,8 +231,8 @@ describe('Combat API (PvE & PvP)', () => {
       expect(declineRes.body.session.status).toBe('cancelled');
 
       // Clean up
-      await prisma.combatParticipant.deleteMany({ where: { sessionId } });
-      await prisma.combatSession.delete({ where: { id: sessionId } });
+      await db.delete(combatParticipants).where(eq(combatParticipants.sessionId, sessionId));
+      await db.delete(combatSessions).where(eq(combatSessions.id, sessionId));
     });
 
     it('should reject decline from non-target', async () => {
@@ -254,8 +256,8 @@ describe('Combat API (PvE & PvP)', () => {
       expect(declineRes.status).toBe(403);
 
       // Clean up
-      await prisma.combatParticipant.deleteMany({ where: { sessionId } });
-      await prisma.combatSession.delete({ where: { id: sessionId } });
+      await db.delete(combatParticipants).where(eq(combatParticipants.sessionId, sessionId));
+      await db.delete(combatSessions).where(eq(combatSessions.id, sessionId));
     });
   });
 });

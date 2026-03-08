@@ -5,11 +5,11 @@
  * a comprehensive analysis written to docs/group-combat-deep-analysis.md.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { db, pool } from '../lib/db';
+import { eq, desc, asc } from 'drizzle-orm';
+import * as schema from '@database/index';
 import * as fs from 'fs';
 import * as path from 'path';
-
-const prisma = new PrismaClient();
 
 // ---- Types for parsed log data ----
 
@@ -888,11 +888,15 @@ function generateReport(combats: ParsedCombat[]): string {
 async function main() {
   try {
     // Find most recent group sim run
-    const latestRun = await prisma.simulationRun.findFirst({
-      where: {
-        config: { path: ['source'], equals: 'batch-cli-group' },
-      },
-      orderBy: { startedAt: 'desc' },
+    // Drizzle doesn't support JSON path queries directly; query recent and filter
+    const allRuns = await db.query.simulationRuns.findMany({
+      orderBy: desc(schema.simulationRuns.startedAt),
+      limit: 50,
+    });
+
+    const latestRun = allRuns.find(r => {
+      const config = r.config as any;
+      return config?.source === 'batch-cli-group';
     });
 
     if (!latestRun) {
@@ -903,9 +907,9 @@ async function main() {
     console.log(`Found sim run: ${latestRun.id} (${latestRun.startedAt})`);
 
     // Pull all encounter logs
-    const logs = await prisma.combatEncounterLog.findMany({
-      where: { simulationRunId: latestRun.id },
-      orderBy: { startedAt: 'asc' },
+    const logs = await db.query.combatEncounterLogs.findMany({
+      where: eq(schema.combatEncounterLogs.simulationRunId, latestRun.id),
+      orderBy: asc(schema.combatEncounterLogs.startedAt),
     });
 
     console.log(`Loaded ${logs.length} encounter logs`);
@@ -995,7 +999,7 @@ async function main() {
     console.log(`  First monster death (avg round): ${flow.firstMonsterDeathRound.toFixed(1)}`);
 
   } finally {
-    await prisma.$disconnect();
+    await pool.end();
   }
 }
 

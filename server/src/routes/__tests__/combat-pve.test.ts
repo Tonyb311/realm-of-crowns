@@ -6,21 +6,22 @@
  * and death penalty.
  */
 
-jest.mock('../../lib/prisma', () => ({
-  prisma: {
-    character: { findFirst: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
-    monster: { findMany: jest.fn(), findUnique: jest.fn() },
-    combatSession: { create: jest.fn(), update: jest.fn(), findUnique: jest.fn() },
-    combatParticipant: {
-      create: jest.fn(),
-      findFirst: jest.fn(),
-      update: jest.fn(),
-      count: jest.fn(),
+jest.mock('../../lib/db', () => ({
+  db: {
+    query: {
+      characters: { findFirst: jest.fn(), findMany: jest.fn() },
+      monsters: { findMany: jest.fn(), findFirst: jest.fn() },
+      combatSessions: { findFirst: jest.fn(), findMany: jest.fn() },
+      combatParticipants: { findFirst: jest.fn(), findMany: jest.fn() },
+      combatLogs: { findFirst: jest.fn() },
+      characterEquipment: { findFirst: jest.fn(), findMany: jest.fn() },
+      items: { findFirst: jest.fn() },
     },
-    combatLog: { create: jest.fn() },
-    characterEquipment: { findUnique: jest.fn(), findMany: jest.fn() },
-    item: { update: jest.fn() },
-    $transaction: jest.fn(),
+    insert: jest.fn().mockReturnValue({ values: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]) }) }),
+    update: jest.fn().mockReturnValue({ set: jest.fn().mockReturnValue({ where: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]) }) }) }),
+    delete: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([]) }),
+    execute: jest.fn().mockResolvedValue([]),
+    transaction: jest.fn(),
   },
 }));
 
@@ -61,9 +62,9 @@ jest.mock('../../services/achievements', () => ({
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import { app } from '../../app';
-import { prisma } from '../../lib/prisma';
+import { db } from '../../lib/db';
 
-const mockedPrisma = prisma as jest.Mocked<typeof prisma>;
+const mockedDb = db as jest.Mocked<typeof db>;
 
 function makeToken(userId: string) {
   return jwt.sign({ userId, username: 'tester' }, process.env.JWT_SECRET || 'test-secret-key-for-integration-tests');
@@ -105,92 +106,22 @@ describe('Combat PvE API', () => {
   });
 
   // ---- POST /api/combat/pve/start ----
+  // Standalone PvE combat is disabled — combat now only occurs as road encounters during travel.
 
   describe('POST /api/combat/pve/start', () => {
-    it('should reject when character not found', async () => {
-      (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue(null);
+    it('should always return 400 because standalone PvE is disabled', async () => {
+      (mockedDb.query.characters.findFirst as jest.Mock).mockResolvedValue(mockCharacter);
 
+      // Note: characterId must be a valid RFC 4122 UUID (variant bits [89ab] in 4th group)
+      // to pass Zod's z.string().uuid() before reaching the disabled route handler
+      const validUUID = '22222222-2222-4222-a222-222222222222';
       const res = await request(app)
         .post('/api/combat/pve/start')
         .set('Authorization', `Bearer ${TOKEN}`)
-        .send({ characterId: CHAR_ID });
-
-      expect(res.status).toBe(404);
-      expect(res.body.error).toContain('Character not found');
-    });
-
-    it('should reject when character is not in a town', async () => {
-      (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue({
-        ...mockCharacter,
-        currentTown: null,
-        currentTownId: null,
-      });
-
-      const res = await request(app)
-        .post('/api/combat/pve/start')
-        .set('Authorization', `Bearer ${TOKEN}`)
-        .send({ characterId: CHAR_ID });
+        .send({ characterId: validUUID });
 
       expect(res.status).toBe(400);
-      expect(res.body.error).toContain('not in a town');
-    });
-
-    it('should reject when already in combat', async () => {
-      (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue(mockCharacter);
-      (mockedPrisma.combatParticipant.findFirst as jest.Mock).mockResolvedValue({
-        id: 'participant-001',
-        sessionId: 'session-001',
-      });
-
-      const res = await request(app)
-        .post('/api/combat/pve/start')
-        .set('Authorization', `Bearer ${TOKEN}`)
-        .send({ characterId: CHAR_ID });
-
-      expect(res.status).toBe(400);
-      expect(res.body.error).toContain('already in combat');
-    });
-
-    it('should start combat successfully', async () => {
-      (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue(mockCharacter);
-      (mockedPrisma.combatParticipant.findFirst as jest.Mock)
-        .mockResolvedValueOnce(null) // not in combat
-        .mockResolvedValueOnce({ id: 'part-001' }); // for initiative update
-      (mockedPrisma.monster.findMany as jest.Mock).mockResolvedValue([mockMonster]);
-      (mockedPrisma.combatSession.create as jest.Mock).mockResolvedValue({
-        id: 'session-new',
-        type: 'PVE',
-        status: 'ACTIVE',
-      });
-      (mockedPrisma.combatParticipant.create as jest.Mock).mockResolvedValue({
-        id: 'part-001',
-      });
-      (mockedPrisma.combatParticipant.update as jest.Mock).mockResolvedValue({});
-
-      const res = await request(app)
-        .post('/api/combat/pve/start')
-        .set('Authorization', `Bearer ${TOKEN}`)
-        .send({ characterId: CHAR_ID });
-
-      expect(res.status).toBe(201);
-      expect(res.body.sessionId).toBeDefined();
-      expect(res.body.combat).toBeDefined();
-      expect(res.body.combat.combatants).toHaveLength(2);
-      expect(res.body.combat.monster.name).toBe('Goblin Scout');
-    });
-
-    it('should return 404 when no suitable monsters exist', async () => {
-      (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue(mockCharacter);
-      (mockedPrisma.combatParticipant.findFirst as jest.Mock).mockResolvedValue(null);
-      (mockedPrisma.monster.findMany as jest.Mock).mockResolvedValue([]);
-
-      const res = await request(app)
-        .post('/api/combat/pve/start')
-        .set('Authorization', `Bearer ${TOKEN}`)
-        .send({ characterId: CHAR_ID });
-
-      expect(res.status).toBe(404);
-      expect(res.body.error).toContain('No suitable monsters');
+      expect(res.body.error).toContain('road encounters during travel');
     });
   });
 
@@ -198,7 +129,7 @@ describe('Combat PvE API', () => {
 
   describe('POST /api/combat/pve/action', () => {
     it('should return 404 when session not found', async () => {
-      (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue(mockCharacter);
+      (mockedDb.query.characters.findFirst as jest.Mock).mockResolvedValue(mockCharacter);
 
       const res = await request(app)
         .post('/api/combat/pve/action')
@@ -226,7 +157,7 @@ describe('Combat PvE API', () => {
     });
 
     it('should return 404 for unknown session', async () => {
-      (mockedPrisma.combatSession.findUnique as jest.Mock).mockResolvedValue(null);
+      (mockedDb.query.combatSessions.findFirst as jest.Mock).mockResolvedValue(undefined);
 
       const res = await request(app)
         .get('/api/combat/pve/state')

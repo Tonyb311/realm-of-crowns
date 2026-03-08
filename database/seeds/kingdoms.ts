@@ -11,7 +11,9 @@
  * The Suncoast (Free Cities) is its own neutral kingdom.
  */
 
-import { PrismaClient } from '@prisma/client';
+import crypto from 'crypto';
+import { eq } from 'drizzle-orm';
+import * as schema from '../schema';
 
 interface KingdomDef {
   name: string;
@@ -68,15 +70,15 @@ const KINGDOMS: KingdomDef[] = [
   // These remain with kingdomId = null
 ];
 
-export async function seedKingdoms(prisma: PrismaClient) {
+export async function seedKingdoms(db: any) {
   console.log('--- Seeding Kingdoms ---');
 
   let kingdomCount = 0;
 
   for (const kingdomDef of KINGDOMS) {
     // Find the capital town
-    const capitalTown = await prisma.town.findUnique({
-      where: { name: kingdomDef.capitalTownName },
+    const capitalTown = await db.query.towns.findFirst({
+      where: eq(schema.towns.name, kingdomDef.capitalTownName),
     });
 
     if (!capitalTown) {
@@ -85,22 +87,22 @@ export async function seedKingdoms(prisma: PrismaClient) {
     }
 
     // Upsert the kingdom
-    const kingdom = await prisma.kingdom.upsert({
-      where: { name: kingdomDef.name },
-      update: {
+    const [kingdom] = await db.insert(schema.kingdoms).values({
+      id: crypto.randomUUID(),
+      name: kingdomDef.name,
+      capitalTownId: capitalTown.id,
+      treasury: 10000,
+    }).onConflictDoUpdate({
+      target: schema.kingdoms.name,
+      set: {
         capitalTownId: capitalTown.id,
       },
-      create: {
-        name: kingdomDef.name,
-        capitalTownId: capitalTown.id,
-        treasury: 10000, // Starting treasury
-      },
-    });
+    }).returning();
 
     // Link regions to this kingdom
     for (const regionName of kingdomDef.regionNames) {
-      const region = await prisma.region.findUnique({
-        where: { name: regionName },
+      const region = await db.query.regions.findFirst({
+        where: eq(schema.regions.name, regionName),
       });
 
       if (!region) {
@@ -108,10 +110,7 @@ export async function seedKingdoms(prisma: PrismaClient) {
         continue;
       }
 
-      await prisma.region.update({
-        where: { id: region.id },
-        data: { kingdomId: kingdom.id },
-      });
+      await db.update(schema.regions).set({ kingdomId: kingdom.id }).where(eq(schema.regions.id, region.id));
     }
 
     kingdomCount++;

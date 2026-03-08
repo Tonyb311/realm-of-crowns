@@ -1,19 +1,26 @@
 /**
  * Node seed for Realm of Crowns
  *
- * Converts all existing TravelRoutes into node chains for the tick-based travel system.
- * For each route: [FromTown TOWN_GATE] -> [intermediate nodes] -> [ToTown TOWN_GATE]
+ * Converts all existing TravelRoutes into travel node chains for the tick-based travel system.
+ * For each route, creates intermediate nodes indexed by nodeIndex (0-based).
  *
- * Node count per route based on distance:
- *   distance 1-15  = 2 intermediate nodes
- *   distance 16-25 = 3 intermediate nodes
- *   distance 26-40 = 5 intermediate nodes
- *   distance 41+   = 7 intermediate nodes
+ * Node count per route based on the route's nodeCount field (default 3).
+ * The terrain type for each node is derived from the route's terrain string.
  *
- * Uses upsert pattern (findFirst + update/create) since Node has no unique name constraint.
+ * Uses upsert pattern via onConflictDoUpdate on the (routeId, nodeIndex) unique constraint.
  */
 
-import { PrismaClient, NodeType } from '@prisma/client';
+import crypto from 'crypto';
+import { eq } from 'drizzle-orm';
+import * as schema from '../schema';
+
+// ============================================================
+// NODE TYPE (string values for terrain column)
+// ============================================================
+
+type NodeType = 'ROAD' | 'WILDERNESS' | 'MOUNTAIN_PASS' | 'RIVER_CROSSING'
+  | 'BORDER_CROSSING' | 'FOREST_TRAIL' | 'SWAMP_PATH' | 'UNDERGROUND_TUNNEL'
+  | 'COASTAL_PATH' | 'TOWN_GATE';
 
 // ============================================================
 // TERRAIN -> NODE TYPE MAPPING
@@ -43,98 +50,23 @@ function terrainToNodeType(terrain: string): NodeType {
 }
 
 // ============================================================
-// ENCOUNTER CHANCES PER NODE TYPE
-// ============================================================
-
-const ENCOUNTER_CHANCES: Record<NodeType, number> = {
-  ROAD: 0.10,
-  WILDERNESS: 0.30,
-  MOUNTAIN_PASS: 0.25,
-  RIVER_CROSSING: 0.15,
-  BORDER_CROSSING: 0.10,
-  FOREST_TRAIL: 0.25,
-  SWAMP_PATH: 0.40,
-  UNDERGROUND_TUNNEL: 0.35,
-  COASTAL_PATH: 0.15,
-  TOWN_GATE: 0.0,
-};
-
-// ============================================================
-// NODE COUNT FROM DISTANCE
-// ============================================================
-
-function getIntermediateNodeCount(distance: number): number {
-  if (distance <= 15) return 2;
-  if (distance <= 25) return 3;
-  if (distance <= 40) return 5;
-  return 7;
-}
-
-// ============================================================
 // SEED FUNCTION
 // ============================================================
 
-export async function seedNodes(prisma: PrismaClient) {
-  console.log('--- Seeding Nodes ---');
+export async function seedNodes(db: any) {
+  console.log('--- Seeding Travel Nodes ---');
 
-  // Step 1: Get all towns and create TOWN_GATE nodes
-  const towns = await prisma.town.findMany({
-    include: { region: true },
-  });
-
-  const townGateMap = new Map<string, string>(); // townId -> nodeId
-  let gateCount = 0;
-
-  for (const town of towns) {
-    const gateName = `${town.name} Gate`;
-
-    // Upsert: find by townId (unique on Node)
-    const existing = await prisma.node.findUnique({
-      where: { townId: town.id },
-    });
-
-    if (existing) {
-      await prisma.node.update({
-        where: { id: existing.id },
-        data: {
-          name: gateName,
-          position: 0,
-          type: 'TOWN_GATE',
-          regionId: town.regionId,
-          dangerLevel: 0,
-          description: `The gates of ${town.name}`,
-          encounterChance: 0.0,
-        },
-      });
-      townGateMap.set(town.id, existing.id);
-    } else {
-      const created = await prisma.node.create({
-        data: {
-          name: gateName,
-          position: 0,
-          type: 'TOWN_GATE',
-          regionId: town.regionId,
-          dangerLevel: 0,
-          description: `The gates of ${town.name}`,
-          townId: town.id,
-          encounterChance: 0.0,
-        },
-      });
-      townGateMap.set(town.id, created.id);
-      gateCount++;
-    }
-  }
-  console.log(`  Created ${gateCount} town gate nodes (${towns.length} total towns)`);
-
-  // Step 2: Get all travel routes and create intermediate nodes + connections
-  const routes = await prisma.travelRoute.findMany({
-    include: { fromTown: true, toTown: true },
+  // Get all travel routes with their from/to town info via relations
+  const routes = await db.query.travelRoutes.findMany({
+    with: {
+      town_fromTownId: true,
+      town_toTownId: true,
+    },
   });
 
   // Track which route pairs we've already processed (since routes are bidirectional)
   const processedPairs = new Set<string>();
-  let intermediateCount = 0;
-  let connectionCount = 0;
+  let nodeCount = 0;
 
   for (const route of routes) {
     // Skip reverse direction (A->B and B->A are the same physical route)
@@ -142,119 +74,53 @@ export async function seedNodes(prisma: PrismaClient) {
     if (processedPairs.has(pairKey)) continue;
     processedPairs.add(pairKey);
 
-    const fromGateId = townGateMap.get(route.fromTownId);
-    const toGateId = townGateMap.get(route.toTownId);
-    if (!fromGateId || !toGateId) {
-      console.error(`  ERROR: Missing gate node for route "${route.fromTown.name}" -> "${route.toTown.name}"`);
+    const fromTown = route.town_fromTownId;
+    const toTown = route.town_toTownId;
+    if (!fromTown || !toTown) {
+      console.error(`  ERROR: Missing town data for route ${route.id}`);
       continue;
     }
 
-    const nodeType = terrainToNodeType(route.terrain);
-    const nodeCount = getIntermediateNodeCount(route.distance);
-    const dangerBase = route.dangerLevel / 7; // Normalize 1-7 to ~0.14-1.0
-    const encounterChance = ENCOUNTER_CHANCES[nodeType];
+    const terrain = terrainToNodeType(route.terrain);
+    const totalNodes = route.nodeCount || 3;
+    const dangerBase = route.dangerLevel;
 
-    // Create intermediate nodes
-    const chainNodeIds: string[] = [fromGateId];
+    // Delete existing nodes for this route, then re-create
+    await db.delete(schema.travelNodes).where(eq(schema.travelNodes.routeId, route.id));
 
-    for (let i = 1; i <= nodeCount; i++) {
-      const nodeName = `${route.fromTown.name}-${route.toTown.name} ${getNodeLabel(nodeType, i, nodeCount)}`;
-      const position = i;
+    // Create intermediate nodes for this route
+    const nodes = [];
+    for (let i = 0; i < totalNodes; i++) {
+      const nodeName = `${fromTown.name}-${toTown.name} ${getNodeLabel(terrain, i, totalNodes)}`;
+      const description = getNodeDescription(terrain, fromTown.name, toTown.name, i, totalNodes);
 
-      // Find existing node by route + position
-      const existing = await prisma.node.findFirst({
-        where: {
-          routeId: route.id,
-          position,
-        },
+      nodes.push({
+        id: crypto.randomUUID(),
+        routeId: route.id,
+        nodeIndex: i,
+        name: nodeName,
+        description,
+        terrain: terrain,
+        dangerLevel: dangerBase,
       });
-
-      let nodeId: string;
-      if (existing) {
-        await prisma.node.update({
-          where: { id: existing.id },
-          data: {
-            name: nodeName,
-            type: nodeType,
-            regionId: route.fromTown.regionId,
-            dangerLevel: Math.round(dangerBase * 100) / 100,
-            description: getNodeDescription(nodeType, route.fromTown.name, route.toTown.name, i, nodeCount),
-            encounterChance,
-          },
-        });
-        nodeId = existing.id;
-      } else {
-        const created = await prisma.node.create({
-          data: {
-            name: nodeName,
-            routeId: route.id,
-            position,
-            type: nodeType,
-            regionId: route.fromTown.regionId,
-            dangerLevel: Math.round(dangerBase * 100) / 100,
-            description: getNodeDescription(nodeType, route.fromTown.name, route.toTown.name, i, nodeCount),
-            encounterChance,
-          },
-        });
-        nodeId = created.id;
-        intermediateCount++;
-      }
-
-      chainNodeIds.push(nodeId);
     }
 
-    chainNodeIds.push(toGateId);
-
-    // Create connections between consecutive nodes
-    for (let i = 0; i < chainNodeIds.length - 1; i++) {
-      const fromId = chainNodeIds[i];
-      const toId = chainNodeIds[i + 1];
-
-      // Upsert connection (fromNode -> toNode)
-      const existingConn = await prisma.nodeConnection.findUnique({
-        where: { fromNodeId_toNodeId: { fromNodeId: fromId, toNodeId: toId } },
-      });
-
-      if (!existingConn) {
-        await prisma.nodeConnection.create({
-          data: {
-            fromNodeId: fromId,
-            toNodeId: toId,
-            bidirectional: true,
-          },
-        });
-        connectionCount++;
-      }
-
-      // Also create the reverse direction for easy querying
-      const existingReverse = await prisma.nodeConnection.findUnique({
-        where: { fromNodeId_toNodeId: { fromNodeId: toId, toNodeId: fromId } },
-      });
-
-      if (!existingReverse) {
-        await prisma.nodeConnection.create({
-          data: {
-            fromNodeId: toId,
-            toNodeId: fromId,
-            bidirectional: true,
-          },
-        });
-        connectionCount++;
-      }
+    if (nodes.length > 0) {
+      await db.insert(schema.travelNodes).values(nodes);
+      nodeCount += nodes.length;
     }
   }
 
-  console.log(`  Created ${intermediateCount} intermediate nodes across ${processedPairs.size} unique routes`);
-  console.log(`  Created ${connectionCount} node connections`);
+  console.log(`  Created ${nodeCount} travel nodes across ${processedPairs.size} unique routes`);
 }
 
 // ============================================================
 // HELPERS
 // ============================================================
 
-function getNodeLabel(type: NodeType, position: number, total: number): string {
-  if (position === 1) return 'Outskirts';
-  if (position === total) return 'Approach';
+function getNodeLabel(type: NodeType, index: number, total: number): string {
+  if (index === 0) return 'Outskirts';
+  if (index === total - 1) return 'Approach';
 
   const labels: Record<NodeType, string[]> = {
     ROAD: ['Crossroads', 'Waypoint', 'Milestone', 'Rest Stop', 'Junction'],
@@ -270,18 +136,18 @@ function getNodeLabel(type: NodeType, position: number, total: number): string {
   };
 
   const options = labels[type];
-  return options[(position - 2) % options.length];
+  return options[(index - 1) % options.length];
 }
 
 function getNodeDescription(
   type: NodeType,
   fromTown: string,
   toTown: string,
-  position: number,
+  index: number,
   total: number,
 ): string {
-  if (position === 1) return `The road leading away from ${fromTown} toward ${toTown}.`;
-  if (position === total) return `The final stretch before reaching ${toTown}.`;
+  if (index === 0) return `The road leading away from ${fromTown} toward ${toTown}.`;
+  if (index === total - 1) return `The final stretch before reaching ${toTown}.`;
 
   const descriptions: Record<NodeType, string> = {
     ROAD: `A well-traveled stretch of road between ${fromTown} and ${toTown}.`,

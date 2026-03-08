@@ -17,13 +17,13 @@
 
 process.env.DATABASE_URL = 'postgresql://rocadmin:RoC-Dev-2026!@roc-db-server.postgres.database.azure.com:5432/realm_of_crowns?sslmode=require';
 
-import { PrismaClient } from '@prisma/client';
+import { db, pool } from '../lib/db';
+import { eq, desc } from 'drizzle-orm';
+import * as schema from '@database/index';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ABILITIES_BY_CLASS, VALID_CLASSES } from '@shared/data/skills/index';
 import type { AbilityDefinition } from '@shared/data/skills/types';
-
-const prisma = new PrismaClient();
 
 // ---- CLI Argument Parsing ----
 
@@ -229,24 +229,24 @@ async function main() {
     console.log(`Using provided run ID: ${simRunId}`);
   } else {
     console.log('No --run-id provided, querying most recent completed sim run...');
-    const latestRun = await prisma.simulationRun.findFirst({
-      orderBy: { startedAt: 'desc' },
-      where: { status: 'completed' },
+    const latestRun = await db.query.simulationRuns.findFirst({
+      orderBy: desc(schema.simulationRuns.startedAt),
+      where: eq(schema.simulationRuns.status, 'completed'),
     });
     if (!latestRun) {
       console.error('No completed simulation runs found in the database.');
-      await prisma.$disconnect();
+      await pool.end();
       process.exit(1);
     }
     simRunId = latestRun.id;
-    console.log(`Using most recent completed run: ${simRunId} (started ${latestRun.startedAt.toISOString()})`);
+    console.log(`Using most recent completed run: ${simRunId} (started ${latestRun.startedAt})`);
   }
 
   console.log(`Auditing ${classLabel} abilities (${classAbilities.length} total)...`);
   console.log('Fetching combat logs...');
-  const logs = await prisma.combatEncounterLog.findMany({
-    where: { simulationRunId: simRunId },
-    select: {
+  const logs = await db.query.combatEncounterLogs.findMany({
+    where: eq(schema.combatEncounterLogs.simulationRunId, simRunId),
+    columns: {
       id: true,
       characterName: true,
       opponentName: true,
@@ -896,7 +896,7 @@ async function main() {
   console.log(`Cooldown violations: ${cooldownViolations}`);
   console.log(`Untestable abilities: ${untestableAbilities.length}`);
 
-  await prisma.$disconnect();
+  await pool.end();
 }
 
 // ---- Report Generator ----

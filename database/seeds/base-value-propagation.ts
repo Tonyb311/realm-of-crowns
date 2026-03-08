@@ -18,7 +18,8 @@
  * Source: docs/zero-value-items-pricing.md + docs/profession-economy-master.yaml
  */
 
-import { PrismaClient } from '@prisma/client';
+import { eq, and, asc } from 'drizzle-orm';
+import * as schema from '../schema';
 
 // ============================================================
 // COMPREHENSIVE NAME → BASE VALUE MAP
@@ -622,7 +623,7 @@ const BASE_VALUES: Record<string, number> = {
   'Linen Cloth': 10,
 };
 
-export async function seedBaseValuePropagation(prisma: PrismaClient): Promise<void> {
+export async function seedBaseValuePropagation(db: any): Promise<void> {
   console.log('--- Base Value Propagation (catch-all) ---');
 
   let updated = 0;
@@ -632,21 +633,17 @@ export async function seedBaseValuePropagation(prisma: PrismaClient): Promise<vo
   const entries = Object.entries(BASE_VALUES);
 
   for (const [name, baseValue] of entries) {
-    const result = await prisma.itemTemplate.updateMany({
-      where: {
-        name,
-        baseValue: 0,
-      },
-      data: { baseValue },
-    });
+    const result = await db.update(schema.itemTemplates).set({ baseValue }).where(
+      and(eq(schema.itemTemplates.name, name), eq(schema.itemTemplates.baseValue, 0))
+    );
 
-    if (result.count > 0) {
-      updated += result.count;
+    if (result.rowCount > 0) {
+      updated += result.rowCount;
     } else {
       // Check if the item exists with a non-zero value already
-      const existing = await prisma.itemTemplate.findFirst({
-        where: { name },
-        select: { baseValue: true },
+      const existing = await db.query.itemTemplates.findFirst({
+        where: eq(schema.itemTemplates.name, name),
+        columns: { baseValue: true },
       });
       if (existing) {
         skipped++;
@@ -657,10 +654,10 @@ export async function seedBaseValuePropagation(prisma: PrismaClient): Promise<vo
   }
 
   // Count remaining zeros and log their names
-  const remainingItems = await prisma.itemTemplate.findMany({
-    where: { baseValue: 0 },
-    select: { id: true, name: true, type: true },
-    orderBy: { name: 'asc' },
+  const remainingItems = await db.query.itemTemplates.findMany({
+    where: eq(schema.itemTemplates.baseValue, 0),
+    columns: { id: true, name: true, type: true },
+    orderBy: asc(schema.itemTemplates.name),
   });
 
   console.log(`  Updated ${updated} item template(s) with base values`);

@@ -6,18 +6,19 @@
  * server script at server/src/scripts/seed-abilities.ts.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { eq } from 'drizzle-orm';
+import * as schema from '../schema';
 import { ALL_ABILITIES } from '@shared/data/skills';
 
-export async function seedAbilities(prisma: PrismaClient) {
+export async function seedAbilities(db: any) {
   console.log('  Seeding abilities...');
 
   let created = 0;
   let skipped = 0;
 
   for (const ability of ALL_ABILITIES) {
-    const existing = await prisma.ability.findFirst({
-      where: { name: ability.name },
+    const existing = await db.query.abilities.findFirst({
+      where: eq(schema.abilities.name, ability.name),
     });
 
     if (existing) {
@@ -30,27 +31,24 @@ export async function seedAbilities(prisma: PrismaClient) {
     if (ability.prerequisiteAbilityId) {
       const prereqDef = ALL_ABILITIES.find((a) => a.id === ability.prerequisiteAbilityId);
       if (prereqDef) {
-        const prereqDb = await prisma.ability.findFirst({
-          where: { name: prereqDef.name },
+        const prereqDb = await db.query.abilities.findFirst({
+          where: eq(schema.abilities.name, prereqDef.name),
         });
         prereqId = prereqDb?.id ?? null;
       }
     }
 
-    await prisma.ability.create({
-      data: {
-        id: ability.id,
-        name: ability.name,
-        description: ability.description,
-        class: ability.class,
-        specialization: ability.specialization,
-        tier: ability.tier,
-        effects: ability.effects as any,
-        cooldown: ability.cooldown,
-        manaCost: ability.manaCost,
-        prerequisiteAbilityId: prereqId,
-        levelRequired: ability.levelRequired,
-      },
+    await db.insert(schema.abilities).values({
+      id: ability.id,
+      name: ability.name,
+      description: ability.description,
+      class: ability.class,
+      specialization: ability.specialization,
+      tier: ability.tier,
+      effects: ability.effects as any,
+      cooldown: ability.cooldown,
+      prerequisiteAbilityId: prereqId,
+      levelRequired: ability.levelRequired,
     });
     created++;
   }

@@ -1,5 +1,7 @@
 import 'dotenv/config';
-import { prisma } from '../lib/prisma';
+import { db } from '../lib/db';
+import { eq } from 'drizzle-orm';
+import { abilities } from '@database/tables';
 import { ALL_ABILITIES } from '@shared/data/skills';
 
 async function main() {
@@ -9,8 +11,8 @@ async function main() {
   let skipped = 0;
 
   for (const ability of ALL_ABILITIES) {
-    const existing = await prisma.ability.findFirst({
-      where: { name: ability.name },
+    const existing = await db.query.abilities.findFirst({
+      where: eq(abilities.name, ability.name),
     });
 
     if (existing) {
@@ -23,26 +25,25 @@ async function main() {
     if (ability.prerequisiteAbilityId) {
       const prereqDef = ALL_ABILITIES.find((a) => a.id === ability.prerequisiteAbilityId);
       if (prereqDef) {
-        const prereqDb = await prisma.ability.findFirst({
-          where: { name: prereqDef.name },
+        const prereqDb = await db.query.abilities.findFirst({
+          where: eq(abilities.name, prereqDef.name),
         });
         prereqId = prereqDb?.id ?? null;
       }
     }
 
-    await prisma.ability.create({
-      data: {
-        id: ability.id,
-        name: ability.name,
-        description: ability.description,
-        class: ability.class,
-        specialization: ability.specialization,
-        tier: ability.tier,
-        effects: ability.effects as any,
-        cooldown: ability.cooldown,
-        prerequisiteAbilityId: prereqId,
-        levelRequired: ability.levelRequired,
-      },
+    await db.insert(abilities).values({
+      id: ability.id,
+      name: ability.name,
+      description: ability.description,
+      class: ability.class,
+      specialization: ability.specialization,
+      tier: ability.tier,
+      effects: ability.effects as any,
+      cooldown: ability.cooldown,
+      prerequisiteAbilityId: prereqId,
+      levelRequired: ability.levelRequired,
+      updatedAt: new Date().toISOString(),
     });
     created++;
   }

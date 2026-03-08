@@ -13,7 +13,9 @@
  * Uses findFirst + update/create since ItemTemplate has no unique name constraint.
  */
 
-import { PrismaClient } from '@prisma/client';
+import crypto from 'crypto';
+import { eq, and } from 'drizzle-orm';
+import * as schema from '../schema';
 
 // ============================================================
 // FOOD TEMPLATE DEFINITIONS
@@ -458,7 +460,7 @@ const MAINTENANCE_KIT_TEMPLATES: SoulEssenceTemplateDef[] = [
 // SEED FUNCTION
 // ============================================================
 
-export async function seedFoodItems(prisma: PrismaClient) {
+export async function seedFoodItems(db: any) {
   console.log('  Seeding food & beverage item templates...');
 
   let created = 0;
@@ -466,8 +468,8 @@ export async function seedFoodItems(prisma: PrismaClient) {
 
   for (const food of FOOD_TEMPLATES) {
     // Use name + type as the natural key for upserting
-    const existing = await prisma.itemTemplate.findFirst({
-      where: { name: food.name, type: 'CONSUMABLE' },
+    const existing = await db.query.itemTemplates.findFirst({
+      where: and(eq(schema.itemTemplates.name, food.name), eq(schema.itemTemplates.type, 'CONSUMABLE')),
     });
 
     const stats = food.foodBuff
@@ -488,18 +490,14 @@ export async function seedFoodItems(prisma: PrismaClient) {
     };
 
     if (existing) {
-      await prisma.itemTemplate.update({
-        where: { id: existing.id },
-        data,
-      });
+      await db.update(schema.itemTemplates).set(data).where(eq(schema.itemTemplates.id, existing.id));
       updated++;
     } else {
-      await prisma.itemTemplate.create({
-        data: {
-          name: food.name,
-          type: 'CONSUMABLE',
-          ...data,
-        },
+      await db.insert(schema.itemTemplates).values({
+        id: crypto.randomUUID(),
+        name: food.name,
+        type: 'CONSUMABLE' as any,
+        ...data,
       });
       created++;
     }
@@ -512,33 +510,29 @@ export async function seedFoodItems(prisma: PrismaClient) {
   let seUpdated = 0;
 
   for (const se of SOUL_ESSENCE_TEMPLATES) {
-    const existing = await prisma.itemTemplate.findFirst({ where: { name: se.name } });
+    const existing = await db.query.itemTemplates.findFirst({ where: eq(schema.itemTemplates.name, se.name) });
     if (existing) {
-      await prisma.itemTemplate.update({
-        where: { id: existing.id },
-        data: {
-          description: se.description,
-          type: 'CONSUMABLE',
-          rarity: se.rarity,
-          isPerishable: se.isPerishable,
-          isFood: false,
-          isBeverage: false,
-          baseValue: se.baseValue,
-        },
-      });
+      await db.update(schema.itemTemplates).set({
+        description: se.description,
+        type: 'CONSUMABLE' as any,
+        rarity: se.rarity,
+        isPerishable: se.isPerishable,
+        isFood: false,
+        isBeverage: false,
+        baseValue: se.baseValue,
+      }).where(eq(schema.itemTemplates.id, existing.id));
       seUpdated++;
     } else {
-      await prisma.itemTemplate.create({
-        data: {
-          name: se.name,
-          description: se.description,
-          type: 'CONSUMABLE',
-          rarity: se.rarity,
-          isPerishable: se.isPerishable,
-          isFood: false,
-          isBeverage: false,
-          baseValue: se.baseValue,
-        },
+      await db.insert(schema.itemTemplates).values({
+        id: crypto.randomUUID(),
+        name: se.name,
+        description: se.description,
+        type: 'CONSUMABLE' as any,
+        rarity: se.rarity,
+        isPerishable: se.isPerishable,
+        isFood: false,
+        isBeverage: false,
+        baseValue: se.baseValue,
       });
       seCreated++;
     }
@@ -551,33 +545,29 @@ export async function seedFoodItems(prisma: PrismaClient) {
   let mkUpdated = 0;
 
   for (const mk of MAINTENANCE_KIT_TEMPLATES) {
-    const existing = await prisma.itemTemplate.findFirst({ where: { name: mk.name } });
+    const existing = await db.query.itemTemplates.findFirst({ where: eq(schema.itemTemplates.name, mk.name) });
     if (existing) {
-      await prisma.itemTemplate.update({
-        where: { id: existing.id },
-        data: {
-          description: mk.description,
-          type: 'CONSUMABLE',
-          rarity: mk.rarity,
-          isPerishable: mk.isPerishable,
-          isFood: false,
-          isBeverage: false,
-          baseValue: mk.baseValue,
-        },
-      });
+      await db.update(schema.itemTemplates).set({
+        description: mk.description,
+        type: 'CONSUMABLE' as any,
+        rarity: mk.rarity,
+        isPerishable: mk.isPerishable,
+        isFood: false,
+        isBeverage: false,
+        baseValue: mk.baseValue,
+      }).where(eq(schema.itemTemplates.id, existing.id));
       mkUpdated++;
     } else {
-      await prisma.itemTemplate.create({
-        data: {
-          name: mk.name,
-          description: mk.description,
-          type: 'CONSUMABLE',
-          rarity: mk.rarity,
-          isPerishable: mk.isPerishable,
-          isFood: false,
-          isBeverage: false,
-          baseValue: mk.baseValue,
-        },
+      await db.insert(schema.itemTemplates).values({
+        id: crypto.randomUUID(),
+        name: mk.name,
+        description: mk.description,
+        type: 'CONSUMABLE' as any,
+        rarity: mk.rarity,
+        isPerishable: mk.isPerishable,
+        isFood: false,
+        isBeverage: false,
+        baseValue: mk.baseValue,
       });
       mkCreated++;
     }

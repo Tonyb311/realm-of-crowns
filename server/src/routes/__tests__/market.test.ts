@@ -5,23 +5,25 @@
  * double), and inventory record creation for the buyer.
  */
 
-jest.mock('../../lib/prisma', () => ({
-  prisma: {
-    character: { findFirst: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
-    inventory: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
-    marketListing: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      delete: jest.fn(),
-      update: jest.fn(),
-      count: jest.fn(),
+jest.mock('../../lib/db', () => ({
+  db: {
+    query: {
+      characters: { findFirst: jest.fn(), findMany: jest.fn() },
+      inventories: { findFirst: jest.fn(), findMany: jest.fn() },
+      marketListings: { findFirst: jest.fn(), findMany: jest.fn() },
+      tradeTransactions: { findFirst: jest.fn(), findMany: jest.fn() },
+      priceHistories: { findFirst: jest.fn() },
+      townTreasuries: { findFirst: jest.fn() },
+      playerProfessions: { findFirst: jest.fn(), findMany: jest.fn() },
+      marketBuyOrders: { findFirst: jest.fn(), findMany: jest.fn() },
+      characterEquipment: { findFirst: jest.fn() },
+      itemTemplates: { findFirst: jest.fn() },
     },
-    tradeTransaction: { create: jest.fn() },
-    priceHistory: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
-    townTreasury: { upsert: jest.fn() },
-    playerProfession: { findFirst: jest.fn() },
-    $transaction: jest.fn(),
+    insert: jest.fn().mockReturnValue({ values: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]), onConflictDoUpdate: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]) }) }) }),
+    update: jest.fn().mockReturnValue({ set: jest.fn().mockReturnValue({ where: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]) }) }) }),
+    delete: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([]) }),
+    execute: jest.fn().mockResolvedValue([]),
+    transaction: jest.fn(),
   },
 }));
 
@@ -75,9 +77,9 @@ jest.mock('../../services/psion-perks', () => ({
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import { app } from '../../app';
-import { prisma } from '../../lib/prisma';
+import { db } from '../../lib/db';
 
-const mockedPrisma = prisma as jest.Mocked<typeof prisma>;
+const mockedDb = db as jest.Mocked<typeof db>;
 
 function makeToken(userId: string) {
   return jwt.sign({ userId, username: 'tester' }, process.env.JWT_SECRET || 'test-secret-key-for-integration-tests');
@@ -102,19 +104,26 @@ const mockCharacter = {
 describe('Market API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue(mockCharacter);
+    (mockedDb.query.characters.findFirst as jest.Mock).mockResolvedValue(mockCharacter);
   });
 
   // ---- POST /api/market/list ----
 
   describe('POST /api/market/list', () => {
     it('should create a listing successfully', async () => {
-      (mockedPrisma.inventory.findFirst as jest.Mock).mockResolvedValue({
+      (mockedDb.query.inventories.findFirst as jest.Mock).mockResolvedValue({
         id: 'inv-001',
         characterId: CHAR_ID,
         itemId: 'item-001',
         quantity: 10,
+        item: {
+          id: 'item-001',
+          templateId: 'tmpl-001',
+          itemTemplate: { id: 'tmpl-001', name: 'Iron Sword', type: 'WEAPON', rarity: 'COMMON' },
+        },
       });
+      // Not equipped
+      (mockedDb.query.characterEquipment as any).findFirst = jest.fn().mockResolvedValue(undefined);
 
       const mockListing = {
         id: 'listing-001',
@@ -123,14 +132,19 @@ describe('Market API', () => {
         price: 50,
         quantity: 5,
         townId: 'town-001',
-        item: {
-          id: 'item-001',
-          template: { name: 'Iron Sword', type: 'WEAPON', rarity: 'COMMON' },
-        },
       };
 
-      // $transaction returns array [listing, inventoryUpdate]
-      (mockedPrisma.$transaction as jest.Mock).mockResolvedValue([mockListing, {}]);
+      // transaction returns the listing directly (not wrapped in array)
+      (mockedDb.transaction as jest.Mock).mockResolvedValue(mockListing);
+
+      // After transaction, the route fetches listing with relations
+      (mockedDb.query.marketListings.findFirst as jest.Mock).mockResolvedValue({
+        ...mockListing,
+        item: {
+          id: 'item-001',
+          itemTemplate: { name: 'Iron Sword', type: 'WEAPON', rarity: 'COMMON' },
+        },
+      });
 
       const res = await request(app)
         .post('/api/market/list')
@@ -144,7 +158,7 @@ describe('Market API', () => {
     });
 
     it('should reject when item not in inventory', async () => {
-      (mockedPrisma.inventory.findFirst as jest.Mock).mockResolvedValue(null);
+      (mockedDb.query.inventories.findFirst as jest.Mock).mockResolvedValue(undefined);
 
       const res = await request(app)
         .post('/api/market/list')
@@ -156,7 +170,7 @@ describe('Market API', () => {
     });
 
     it('should reject when not in a town', async () => {
-      (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue({
+      (mockedDb.query.characters.findFirst as jest.Mock).mockResolvedValue({
         ...mockCharacter,
         currentTownId: null,
       });
@@ -171,12 +185,19 @@ describe('Market API', () => {
     });
 
     it('should reject insufficient quantity', async () => {
-      (mockedPrisma.inventory.findFirst as jest.Mock).mockResolvedValue({
+      (mockedDb.query.inventories.findFirst as jest.Mock).mockResolvedValue({
         id: 'inv-001',
         characterId: CHAR_ID,
         itemId: 'item-001',
         quantity: 2,
+        item: {
+          id: 'item-001',
+          templateId: 'tmpl-001',
+          itemTemplate: { id: 'tmpl-001', name: 'Iron Sword', type: 'WEAPON', rarity: 'COMMON' },
+        },
       });
+      // Not equipped
+      (mockedDb.query.characterEquipment as any).findFirst = jest.fn().mockResolvedValue(undefined);
 
       const res = await request(app)
         .post('/api/market/list')
@@ -188,7 +209,7 @@ describe('Market API', () => {
     });
   });
 
-  // ---- POST /api/market/buy ----
+  // ---- POST /api/market/buy (now a bid system) ----
 
   describe('POST /api/market/buy', () => {
     const mockListing = {
@@ -198,51 +219,18 @@ describe('Market API', () => {
       price: 100,
       quantity: 5,
       townId: 'town-001',
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      status: 'active',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       item: {
         id: 'item-001',
         templateId: 'tmpl-001',
-        template: { name: 'Iron Sword', type: 'WEAPON', rarity: 'COMMON' },
+        itemTemplate: { name: 'Iron Sword', type: 'WEAPON', rarity: 'COMMON' },
       },
-      seller: { id: SELLER_ID, name: 'Seller' },
+      character: { id: SELLER_ID, name: 'Seller' },
     };
 
-    it('should complete a purchase with correct tax calculation', async () => {
-      (mockedPrisma.marketListing.findUnique as jest.Mock).mockResolvedValue(mockListing);
-
-      // getEffectiveTaxRate returns 0.10 (10%)
-      // subtotal = 100 * 2 = 200
-      // tax = floor(200 * 0.10) = 20
-      // totalCost = 220
-
-      const mockTransaction = {
-        id: 'tx-001',
-        buyerId: CHAR_ID,
-        sellerId: SELLER_ID,
-        quantity: 2,
-        price: 100,
-        timestamp: new Date(),
-      };
-
-      (mockedPrisma.$transaction as jest.Mock).mockImplementation(async (fn: any) => {
-        // Simulate the transaction callback
-        return mockTransaction;
-      });
-
-      const res = await request(app)
-        .post('/api/market/buy')
-        .set('Authorization', `Bearer ${TOKEN}`)
-        .send({ listingId: 'listing-001', quantity: 2 });
-
-      expect(res.status).toBe(200);
-      expect(res.body.transaction).toBeDefined();
-      expect(res.body.transaction.subtotal).toBe(200);
-      expect(res.body.transaction.tax).toBe(20);
-      expect(res.body.transaction.totalCost).toBe(220);
-    });
-
-    it('should reject buying your own listing', async () => {
-      (mockedPrisma.marketListing.findUnique as jest.Mock).mockResolvedValue({
+    it('should reject bidding on your own listing', async () => {
+      (mockedDb.query.marketListings.findFirst as jest.Mock).mockResolvedValue({
         ...mockListing,
         sellerId: CHAR_ID, // same as buyer
       });
@@ -250,69 +238,53 @@ describe('Market API', () => {
       const res = await request(app)
         .post('/api/market/buy')
         .set('Authorization', `Bearer ${TOKEN}`)
-        .send({ listingId: 'listing-001', quantity: 1 });
+        .send({ listingId: 'listing-001', bidPrice: 100 });
 
       expect(res.status).toBe(400);
-      expect(res.body.error).toContain('cannot buy your own');
+      expect(res.body.error).toContain('cannot bid on your own');
     });
 
     it('should reject when not in same town', async () => {
-      (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue({
+      (mockedDb.query.characters.findFirst as jest.Mock).mockResolvedValue({
         ...mockCharacter,
         currentTownId: 'town-002', // different town
       });
-      (mockedPrisma.marketListing.findUnique as jest.Mock).mockResolvedValue(mockListing);
+      (mockedDb.query.marketListings.findFirst as jest.Mock).mockResolvedValue(mockListing);
 
       const res = await request(app)
         .post('/api/market/buy')
         .set('Authorization', `Bearer ${TOKEN}`)
-        .send({ listingId: 'listing-001', quantity: 1 });
+        .send({ listingId: 'listing-001', bidPrice: 100 });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('same town');
     });
 
-    it('should reject when insufficient gold', async () => {
-      (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue({
-        ...mockCharacter,
-        gold: 10, // not enough
-      });
-      (mockedPrisma.marketListing.findUnique as jest.Mock).mockResolvedValue(mockListing);
-
-      const res = await request(app)
-        .post('/api/market/buy')
-        .set('Authorization', `Bearer ${TOKEN}`)
-        .send({ listingId: 'listing-001', quantity: 1 });
-
-      expect(res.status).toBe(400);
-      expect(res.body.error).toContain('Insufficient gold');
-    });
-
     it('should reject when listing has expired', async () => {
-      (mockedPrisma.marketListing.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.marketListings.findFirst as jest.Mock).mockResolvedValue({
         ...mockListing,
-        expiresAt: new Date(Date.now() - 1000), // expired
+        expiresAt: new Date(Date.now() - 1000).toISOString(), // expired
       });
 
       const res = await request(app)
         .post('/api/market/buy')
         .set('Authorization', `Bearer ${TOKEN}`)
-        .send({ listingId: 'listing-001', quantity: 1 });
+        .send({ listingId: 'listing-001', bidPrice: 100 });
 
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('expired');
     });
 
-    it('should reject when requesting more than available', async () => {
-      (mockedPrisma.marketListing.findUnique as jest.Mock).mockResolvedValue(mockListing);
+    it('should reject bid below asking price', async () => {
+      (mockedDb.query.marketListings.findFirst as jest.Mock).mockResolvedValue(mockListing);
 
       const res = await request(app)
         .post('/api/market/buy')
         .set('Authorization', `Bearer ${TOKEN}`)
-        .send({ listingId: 'listing-001', quantity: 10 });
+        .send({ listingId: 'listing-001', bidPrice: 50 });
 
       expect(res.status).toBe(400);
-      expect(res.body.error).toContain('Only 5 available');
+      expect(res.body.error).toContain('at least the asking price');
     });
   });
 
@@ -320,7 +292,7 @@ describe('Market API', () => {
 
   describe('POST /api/market/cancel', () => {
     it('should reject cancelling someone else\'s listing', async () => {
-      (mockedPrisma.marketListing.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.marketListings.findFirst as jest.Mock).mockResolvedValue({
         id: 'listing-001',
         sellerId: SELLER_ID, // not the current user
         itemId: 'item-001',

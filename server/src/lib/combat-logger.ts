@@ -11,7 +11,9 @@
  * Designed for balance analysis, debugging, and future player-facing combat replay.
  */
 
-import { prisma } from './prisma';
+import crypto from 'crypto';
+import { db } from './db';
+import { combatEncounterLogs } from '@database/tables';
 import { logger } from './logger';
 import { getSimulationTick, getSimulationRunId } from './simulation-context';
 import {
@@ -709,36 +711,35 @@ export async function logPveCombat(params: {
       ...rounds,
     ];
 
-    await prisma.combatEncounterLog.create({
-      data: {
-        type: 'pve',
-        sessionId: params.sessionId,
-        characterId,
-        characterName,
-        opponentId: monsterCombatant?.id ?? null,
-        opponentName,
-        townId,
-        startedAt: new Date(Date.now() - (totalRounds * 6000)), // approximate
-        endedAt: new Date(),
-        outcome: params.outcome,
-        totalRounds,
-        characterStartHp: params.characterStartHp,
-        characterEndHp,
-        opponentStartHp: params.opponentStartHp,
-        opponentEndHp,
-        characterWeapon: params.characterWeapon,
-        opponentWeapon: params.opponentWeapon,
-        xpAwarded: params.xpAwarded,
-        goldAwarded: params.goldAwarded,
-        lootDropped: params.lootDropped,
-        rounds: roundsWithContext as any,
-        summary,
-        triggerSource: params.triggerSource ?? 'town_pve',
-        originTownId: params.originTownId ?? null,
-        destinationTownId: params.destinationTownId ?? null,
-        simulationTick: params.simulationTick ?? getSimulationTick(),
-        simulationRunId: getSimulationRunId(),
-      },
+    await db.insert(combatEncounterLogs).values({
+      id: crypto.randomUUID(),
+      type: 'pve',
+      sessionId: params.sessionId,
+      characterId,
+      characterName,
+      opponentId: monsterCombatant?.id ?? null,
+      opponentName,
+      townId,
+      startedAt: new Date(Date.now() - (totalRounds * 6000)).toISOString(), // approximate
+      endedAt: new Date().toISOString(),
+      outcome: params.outcome,
+      totalRounds,
+      characterStartHp: params.characterStartHp,
+      characterEndHp,
+      opponentStartHp: params.opponentStartHp,
+      opponentEndHp,
+      characterWeapon: params.characterWeapon,
+      opponentWeapon: params.opponentWeapon,
+      xpAwarded: params.xpAwarded,
+      goldAwarded: params.goldAwarded,
+      lootDropped: params.lootDropped,
+      rounds: roundsWithContext as any,
+      summary,
+      triggerSource: params.triggerSource ?? 'town_pve',
+      originTownId: params.originTownId ?? null,
+      destinationTownId: params.destinationTownId ?? null,
+      simulationTick: params.simulationTick ?? getSimulationTick(),
+      simulationRunId: getSimulationRunId(),
     });
   } catch (err) {
     // Combat logging failures should NOT break combat resolution
@@ -800,59 +801,58 @@ export async function logPvpCombat(params: {
     const type = params.isSpar ? 'spar' : 'pvp';
     const triggerSource = params.isSpar ? 'pvp_spar' : 'pvp_duel';
 
-    await prisma.$transaction([
-      prisma.combatEncounterLog.create({
-        data: {
-          type,
-          triggerSource,
-          sessionId: params.sessionId,
-          characterId: winnerId,
-          characterName: winnerName,
-          opponentId: loserId,
-          opponentName: loserName,
-          townId,
-          startedAt: new Date(Date.now() - (totalRounds * 6000)),
-          endedAt: new Date(),
-          outcome: 'win',
-          totalRounds,
-          characterStartHp: params.winnerStartHp,
-          characterEndHp: winnerCombatant?.currentHp ?? 0,
-          opponentStartHp: params.loserStartHp,
-          opponentEndHp: loserCombatant?.currentHp ?? 0,
-          characterWeapon: params.winnerWeapon,
-          opponentWeapon: params.loserWeapon,
-          xpAwarded: params.xpAwarded,
-          goldAwarded: params.wagerAmount,
-          rounds: roundsWithContext as any,
-          summary: winnerSummary,
-        },
-      }),
-      prisma.combatEncounterLog.create({
-        data: {
-          type,
-          triggerSource,
-          sessionId: params.sessionId,
-          characterId: loserId,
-          characterName: loserName,
-          opponentId: winnerId,
-          opponentName: winnerName,
-          townId,
-          startedAt: new Date(Date.now() - (totalRounds * 6000)),
-          endedAt: new Date(),
-          outcome: 'loss',
-          totalRounds,
-          characterStartHp: params.loserStartHp,
-          characterEndHp: loserCombatant?.currentHp ?? 0,
-          opponentStartHp: params.winnerStartHp,
-          opponentEndHp: winnerCombatant?.currentHp ?? 0,
-          characterWeapon: params.loserWeapon,
-          opponentWeapon: params.winnerWeapon,
-          xpAwarded: 0,
-          goldAwarded: params.wagerAmount > 0 ? -params.wagerAmount : 0,
-          rounds: roundsWithContext as any,
-          summary: loserSummary,
-        },
-      }),
+    // Insert both logs in a single batch
+    await db.insert(combatEncounterLogs).values([
+      {
+        id: crypto.randomUUID(),
+        type,
+        triggerSource,
+        sessionId: params.sessionId,
+        characterId: winnerId,
+        characterName: winnerName,
+        opponentId: loserId,
+        opponentName: loserName,
+        townId,
+        startedAt: new Date(Date.now() - (totalRounds * 6000)).toISOString(),
+        endedAt: new Date().toISOString(),
+        outcome: 'win',
+        totalRounds,
+        characterStartHp: params.winnerStartHp,
+        characterEndHp: winnerCombatant?.currentHp ?? 0,
+        opponentStartHp: params.loserStartHp,
+        opponentEndHp: loserCombatant?.currentHp ?? 0,
+        characterWeapon: params.winnerWeapon,
+        opponentWeapon: params.loserWeapon,
+        xpAwarded: params.xpAwarded,
+        goldAwarded: params.wagerAmount,
+        rounds: roundsWithContext as any,
+        summary: winnerSummary,
+      },
+      {
+        id: crypto.randomUUID(),
+        type,
+        triggerSource,
+        sessionId: params.sessionId,
+        characterId: loserId,
+        characterName: loserName,
+        opponentId: winnerId,
+        opponentName: winnerName,
+        townId,
+        startedAt: new Date(Date.now() - (totalRounds * 6000)).toISOString(),
+        endedAt: new Date().toISOString(),
+        outcome: 'loss',
+        totalRounds,
+        characterStartHp: params.loserStartHp,
+        characterEndHp: loserCombatant?.currentHp ?? 0,
+        opponentStartHp: params.winnerStartHp,
+        opponentEndHp: winnerCombatant?.currentHp ?? 0,
+        characterWeapon: params.loserWeapon,
+        opponentWeapon: params.winnerWeapon,
+        xpAwarded: 0,
+        goldAwarded: params.wagerAmount > 0 ? -params.wagerAmount : 0,
+        rounds: roundsWithContext as any,
+        summary: loserSummary,
+      },
     ]);
   } catch (err) {
     logger.error({ err, sessionId: params.sessionId }, 'Failed to write PvP combat encounter log');

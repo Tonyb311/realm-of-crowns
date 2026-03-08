@@ -2,7 +2,14 @@
  * Targeted seed script: TAILOR items + recipes + RANCHER Craftsman resources.
  * Run: DATABASE_URL=... npx tsx seeds/run-tailor.ts
  */
-import { PrismaClient, ProfessionType, ProfessionTier } from '@prisma/client';
+import 'dotenv/config';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import { eq, inArray } from 'drizzle-orm';
+import * as schema from '../schema';
+
+type ProfessionTier = 'APPRENTICE' | 'JOURNEYMAN' | 'CRAFTSMAN' | 'EXPERT' | 'MASTER' | 'GRANDMASTER';
+type ProfessionType = 'FARMER' | 'RANCHER' | 'FISHERMAN' | 'LUMBERJACK' | 'MINER' | 'HERBALIST' | 'HUNTER' | 'SMELTER' | 'BLACKSMITH' | 'ARMORER' | 'WOODWORKER' | 'TANNER' | 'LEATHERWORKER' | 'TAILOR' | 'ALCHEMIST' | 'ENCHANTER' | 'COOK' | 'BREWER' | 'JEWELER' | 'FLETCHER' | 'MASON' | 'SCRIBE' | 'MERCHANT' | 'INNKEEPER' | 'HEALER' | 'STABLE_MASTER' | 'BANKER' | 'COURIER' | 'MERCENARY_CAPTAIN';
 
 function levelToTier(level: number): ProfessionTier {
   if (level >= 75) return 'MASTER';
@@ -13,29 +20,27 @@ function levelToTier(level: number): ProfessionTier {
 }
 
 async function main() {
-  const prisma = new PrismaClient();
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const db = drizzle(pool, { schema });
   try {
     // ---------------------------------------------------------------
     // Step 0: Remove old TAILOR recipes from DB
     // ---------------------------------------------------------------
     console.log('--- Removing old TAILOR recipes ---');
     // Delete referencing crafting_actions first (FK constraint)
-    const tailorRecipes = await prisma.recipe.findMany({
-      where: { professionType: 'TAILOR' },
-      select: { id: true },
+    const tailorRecipes = await db.query.recipes.findMany({
+      where: eq(schema.recipes.professionType, 'TAILOR'),
+      columns: { id: true },
     });
     if (tailorRecipes.length > 0) {
-      const deletedActions = await prisma.craftingAction.deleteMany({
-        where: { recipeId: { in: tailorRecipes.map(r => r.id) } },
-      });
-      if (deletedActions.count > 0) {
-        console.log(`  Removed ${deletedActions.count} crafting actions`);
+      const tailorRecipeIds = tailorRecipes.map((r: any) => r.id);
+      const deletedActions = await db.delete(schema.craftingActions).where(inArray(schema.craftingActions.recipeId, tailorRecipeIds));
+      if (deletedActions.rowCount > 0) {
+        console.log(`  Removed ${deletedActions.rowCount} crafting actions`);
       }
     }
-    const deleted = await prisma.recipe.deleteMany({
-      where: { professionType: 'TAILOR' },
-    });
-    console.log(`  Deleted ${deleted.count} old TAILOR recipes`);
+    const deleted = await db.delete(schema.recipes).where(eq(schema.recipes.professionType, 'TAILOR'));
+    console.log(`  Deleted ${deleted.rowCount} old TAILOR recipes`);
 
     // ---------------------------------------------------------------
     // Step 1: Upsert all TAILOR-related ItemTemplates
@@ -410,12 +415,14 @@ async function main() {
         isBeverage: item.isBeverage,
       };
 
-      const created = await prisma.itemTemplate.upsert({
-        where: { id: item.id },
-        update: data,
-        create: { id: item.id, ...data } as any,
+      await db.insert(schema.itemTemplates).values({
+        id: item.id,
+        ...data,
+      } as any).onConflictDoUpdate({
+        target: schema.itemTemplates.id,
+        set: data as any,
       });
-      templateMap.set(item.name, created.id);
+      templateMap.set(item.name, item.id);
       console.log(`  + ${item.name} (${item.type} / ${item.rarity})`);
     }
 
@@ -432,14 +439,14 @@ async function main() {
       if (templateMap.has(name)) continue;
       // Prefer stable-ID pattern (matches ingredient templateIds used by daily-tick.ts)
       const stableId = `resource-${name.toLowerCase().replace(/\s+/g, '-')}`;
-      let tmpl = await prisma.itemTemplate.findUnique({ where: { id: stableId } });
+      let tmpl = await db.query.itemTemplates.findFirst({ where: eq(schema.itemTemplates.id, stableId) });
       if (!tmpl) {
         // Try crafted-* stable ID pattern (for processed intermediates)
         const craftedId = `crafted-${name.toLowerCase().replace(/\s+/g, '-')}`;
-        tmpl = await prisma.itemTemplate.findUnique({ where: { id: craftedId } });
+        tmpl = await db.query.itemTemplates.findFirst({ where: eq(schema.itemTemplates.id, craftedId) });
       }
       if (!tmpl) {
-        tmpl = await prisma.itemTemplate.findFirst({ where: { name } });
+        tmpl = await db.query.itemTemplates.findFirst({ where: eq(schema.itemTemplates.name, name) });
       }
       if (tmpl) {
         templateMap.set(name, tmpl.id);
@@ -506,29 +513,23 @@ async function main() {
       const recipeId = `recipe-${recipe.recipeId}`;
       const tier = levelToTier(recipe.levelRequired);
 
-      await prisma.recipe.upsert({
-        where: { id: recipeId },
-        update: {
-          name: recipe.name,
-          professionType: 'TAILOR' as ProfessionType,
-          tier,
-          ingredients,
-          result: resultId,
-          craftTime: recipe.craftTime,
-          xpReward: recipe.xpReward,
-          levelRequired: recipe.levelRequired,
-        },
-        create: {
-          id: recipeId,
-          name: recipe.name,
-          professionType: 'TAILOR' as ProfessionType,
-          tier,
-          ingredients,
-          result: resultId,
-          craftTime: recipe.craftTime,
-          xpReward: recipe.xpReward,
-          levelRequired: recipe.levelRequired,
-        },
+      const recipeData = {
+        name: recipe.name,
+        professionType: 'TAILOR' as ProfessionType,
+        tier,
+        ingredients,
+        result: resultId,
+        craftTime: recipe.craftTime,
+        xpReward: recipe.xpReward,
+        levelRequired: recipe.levelRequired,
+      };
+
+      await db.insert(schema.recipes).values({
+        id: recipeId,
+        ...recipeData,
+      } as any).onConflictDoUpdate({
+        target: schema.recipes.id,
+        set: recipeData as any,
       });
 
       console.log(`  + ${recipe.name} (TAILOR ${tier}, Lvl ${recipe.levelRequired})`);
@@ -538,6 +539,8 @@ async function main() {
   } catch (error) {
     console.error('Seed failed:', error);
     process.exit(1);
+  } finally {
+    await pool.end();
   }
 }
 

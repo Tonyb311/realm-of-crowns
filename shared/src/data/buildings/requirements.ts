@@ -1,4 +1,4 @@
-import { BuildingType } from '@prisma/client';
+import type { BuildingType } from '../../enums';
 
 export interface MaterialRequirement {
   itemName: string;

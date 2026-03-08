@@ -7,7 +7,8 @@
  * Depends on: seedRecipes() having run first (for material templates).
  */
 
-import { PrismaClient, ProfessionType, ProfessionTier, ItemRarity } from '@prisma/client';
+import * as schema from '../schema';
+import type { ProfessionType, ProfessionTier, ItemRarity } from '@shared/enums';
 import { BLACKSMITH_WEAPON_RECIPES } from '@shared/data/recipes/weapons';
 import { RANGED_WEAPON_RECIPES } from '@shared/data/recipes/ranged-weapons';
 import { ALL_CASTER_WEAPON_RECIPES } from '@shared/data/recipes/caster-weapons';
@@ -115,7 +116,7 @@ const BASE_VALUE_MAP: Record<string, number> = {
 // SEED FUNCTION
 // ============================================================
 
-export async function seedWeaponRecipes(prisma: PrismaClient) {
+export async function seedWeaponRecipes(db: any) {
   const allWeaponRecipes: FinishedGoodsRecipe[] = [
     ...BLACKSMITH_WEAPON_RECIPES,
     ...RANGED_WEAPON_RECIPES,
@@ -125,9 +126,10 @@ export async function seedWeaponRecipes(prisma: PrismaClient) {
   console.log('--- Seeding Weapon Item Templates ---');
 
   // First, build a map of existing templates so we can resolve ingredient references
-  const existingTemplates = await prisma.itemTemplate.findMany({
-    select: { id: true, name: true },
-  });
+  const existingTemplates = await db.select({
+    id: schema.itemTemplates.id,
+    name: schema.itemTemplates.name,
+  }).from(schema.itemTemplates);
   const templateMap = new Map<string, string>();
   for (const t of existingTemplates) {
     const current = templateMap.get(t.name);
@@ -184,33 +186,25 @@ export async function seedWeaponRecipes(prisma: PrismaClient) {
     // Upsert the item template
     const stableId = `weapon-${outputName.toLowerCase().replace(/\s+/g, '-')}`;
     const baseValue = BASE_VALUE_MAP[outputName] ?? 0;
-    const created = await prisma.itemTemplate.upsert({
-      where: { id: stableId },
-      update: {
-        name: outputName,
-        type: itemType,
-        rarity,
-        description,
-        stats: recipe.outputStats as Record<string, unknown>,
-        durability: stats.durability,
-        professionRequired: recipe.professionRequired as ProfessionType,
-        levelRequired: recipe.levelRequired,
-        baseValue,
-      },
-      create: {
-        id: stableId,
-        name: outputName,
-        type: itemType,
-        rarity,
-        description,
-        stats: recipe.outputStats as Record<string, unknown>,
-        durability: stats.durability,
-        professionRequired: recipe.professionRequired as ProfessionType,
-        levelRequired: recipe.levelRequired,
-        baseValue,
-      },
+    const templateData = {
+      name: outputName,
+      type: itemType,
+      rarity,
+      description,
+      stats: recipe.outputStats as Record<string, unknown>,
+      durability: stats.durability,
+      professionRequired: recipe.professionRequired as ProfessionType,
+      levelRequired: recipe.levelRequired,
+      baseValue,
+    };
+    await db.insert(schema.itemTemplates).values({
+      id: stableId,
+      ...templateData,
+    }).onConflictDoUpdate({
+      target: schema.itemTemplates.id,
+      set: templateData,
     });
-    templateMap.set(outputName, created.id);
+    templateMap.set(outputName, stableId);
     templatesCreated++;
 
     // Now upsert the recipe
@@ -225,29 +219,23 @@ export async function seedWeaponRecipes(prisma: PrismaClient) {
     const recipeId = `recipe-${recipe.recipeId}`;
     const tier = levelToTier(recipe.levelRequired);
 
-    await prisma.recipe.upsert({
-      where: { id: recipeId },
-      update: {
-        name: recipe.name,
-        professionType: recipe.professionRequired as ProfessionType,
-        tier,
-        ingredients,
-        result: resultId,
-        craftTime: recipe.craftTime,
-        xpReward: recipe.xpReward,
-        levelRequired: recipe.levelRequired,
-      },
-      create: {
-        id: recipeId,
-        name: recipe.name,
-        professionType: recipe.professionRequired as ProfessionType,
-        tier,
-        ingredients,
-        result: resultId,
-        craftTime: recipe.craftTime,
-        xpReward: recipe.xpReward,
-        levelRequired: recipe.levelRequired,
-      },
+    const recipeData = {
+      name: recipe.name,
+      professionType: recipe.professionRequired as ProfessionType,
+      tier,
+      ingredients,
+      result: resultId,
+      craftTime: recipe.craftTime,
+      xpReward: recipe.xpReward,
+      levelRequired: recipe.levelRequired,
+    };
+
+    await db.insert(schema.recipes).values({
+      id: recipeId,
+      ...recipeData,
+    }).onConflictDoUpdate({
+      target: schema.recipes.id,
+      set: recipeData,
     });
 
     recipesCreated++;

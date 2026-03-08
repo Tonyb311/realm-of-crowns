@@ -5,17 +5,19 @@
  * level-up, the 3-profession limit, and abandon/reactivation.
  */
 
-jest.mock('../../lib/prisma', () => ({
-  prisma: {
-    character: { findFirst: jest.fn() },
-    playerProfession: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
+jest.mock('../../lib/db', () => ({
+  db: {
+    query: {
+      characters: { findFirst: jest.fn() },
+      playerProfessions: { findFirst: jest.fn(), findMany: jest.fn() },
+      gatheringActions: { findFirst: jest.fn() },
+      craftingActions: { findFirst: jest.fn() },
     },
-    gatheringAction: { findFirst: jest.fn() },
-    craftingAction: { findFirst: jest.fn() },
+    insert: jest.fn().mockReturnValue({ values: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]) }) }),
+    update: jest.fn().mockReturnValue({ set: jest.fn().mockReturnValue({ where: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]) }) }) }),
+    delete: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([]) }),
+    execute: jest.fn().mockResolvedValue([]),
+    transaction: jest.fn(),
   },
 }));
 
@@ -44,9 +46,9 @@ jest.mock('../../socket/events', () => ({
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import { app } from '../../app';
-import { prisma } from '../../lib/prisma';
+import { db } from '../../lib/db';
 
-const mockedPrisma = prisma as jest.Mocked<typeof prisma>;
+const mockedDb = db as jest.Mocked<typeof db>;
 
 function makeToken(userId: string) {
   return jwt.sign({ userId, username: 'tester' }, process.env.JWT_SECRET || 'test-secret-key-for-integration-tests');
@@ -73,22 +75,28 @@ function makeCharacter(overrides: Record<string, unknown> = {}) {
 describe('Professions API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue(makeCharacter());
+    (mockedDb.query.characters.findFirst as jest.Mock).mockResolvedValue(makeCharacter());
   });
 
   // ---- POST /api/professions/learn ----
 
   describe('POST /api/professions/learn', () => {
     it('should learn a new profession successfully', async () => {
-      (mockedPrisma.playerProfession.findUnique as jest.Mock).mockResolvedValue(null);
-      (mockedPrisma.playerProfession.findMany as jest.Mock).mockResolvedValue([]); // no active professions
-      (mockedPrisma.playerProfession.create as jest.Mock).mockResolvedValue({
-        id: 'prof-new',
-        professionType: 'FARMER',
-        tier: 'APPRENTICE',
-        level: 1,
-        xp: 0,
-        isActive: true,
+      (mockedDb.query.playerProfessions.findFirst as jest.Mock).mockResolvedValue(undefined);
+      (mockedDb.query.playerProfessions.findMany as jest.Mock).mockResolvedValue([]); // no active professions
+
+      // Mock insert for profession creation
+      (mockedDb.insert as jest.Mock).mockReturnValue({
+        values: jest.fn().mockReturnValue({
+          returning: jest.fn().mockResolvedValue([{
+            id: 'prof-new',
+            professionType: 'FARMER',
+            tier: 'APPRENTICE',
+            level: 1,
+            xp: 0,
+            isActive: true,
+          }]),
+        }),
       });
 
       const res = await request(app)
@@ -104,7 +112,7 @@ describe('Professions API', () => {
     });
 
     it('should reject when already have the profession active', async () => {
-      (mockedPrisma.playerProfession.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.playerProfessions.findFirst as jest.Mock).mockResolvedValue({
         id: 'prof-001',
         professionType: 'FARMER',
         isActive: true,
@@ -120,9 +128,9 @@ describe('Professions API', () => {
     });
 
     it('should enforce the 3-profession limit for non-humans', async () => {
-      (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue(makeCharacter({ race: 'ELF' }));
-      (mockedPrisma.playerProfession.findUnique as jest.Mock).mockResolvedValue(null);
-      (mockedPrisma.playerProfession.findMany as jest.Mock).mockResolvedValue([
+      (mockedDb.query.characters.findFirst as jest.Mock).mockResolvedValue(makeCharacter({ race: 'ELF' }));
+      (mockedDb.query.playerProfessions.findFirst as jest.Mock).mockResolvedValue(undefined);
+      (mockedDb.query.playerProfessions.findMany as jest.Mock).mockResolvedValue([
         { professionType: 'FARMER', isActive: true },
         { professionType: 'MINER', isActive: true },
         { professionType: 'BLACKSMITH', isActive: true },
@@ -138,20 +146,25 @@ describe('Professions API', () => {
     });
 
     it('should allow humans at level 15+ to have a 4th profession', async () => {
-      (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue(makeCharacter({ race: 'HUMAN', level: 15 }));
-      (mockedPrisma.playerProfession.findUnique as jest.Mock).mockResolvedValue(null);
-      (mockedPrisma.playerProfession.findMany as jest.Mock).mockResolvedValue([
+      (mockedDb.query.characters.findFirst as jest.Mock).mockResolvedValue(makeCharacter({ race: 'HUMAN', level: 15 }));
+      (mockedDb.query.playerProfessions.findFirst as jest.Mock).mockResolvedValue(undefined);
+      (mockedDb.query.playerProfessions.findMany as jest.Mock).mockResolvedValue([
         { professionType: 'FARMER', isActive: true },
         { professionType: 'MINER', isActive: true },
         { professionType: 'COOK', isActive: true },
       ]);
-      (mockedPrisma.playerProfession.create as jest.Mock).mockResolvedValue({
-        id: 'prof-004',
-        professionType: 'BLACKSMITH',
-        tier: 'APPRENTICE',
-        level: 1,
-        xp: 0,
-        isActive: true,
+
+      (mockedDb.insert as jest.Mock).mockReturnValue({
+        values: jest.fn().mockReturnValue({
+          returning: jest.fn().mockResolvedValue([{
+            id: 'prof-004',
+            professionType: 'BLACKSMITH',
+            tier: 'APPRENTICE',
+            level: 1,
+            xp: 0,
+            isActive: true,
+          }]),
+        }),
       });
 
       const res = await request(app)
@@ -164,9 +177,9 @@ describe('Professions API', () => {
     });
 
     it('should reject humans below level 15 from having a 4th profession', async () => {
-      (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue(makeCharacter({ race: 'HUMAN', level: 14 }));
-      (mockedPrisma.playerProfession.findUnique as jest.Mock).mockResolvedValue(null);
-      (mockedPrisma.playerProfession.findMany as jest.Mock).mockResolvedValue([
+      (mockedDb.query.characters.findFirst as jest.Mock).mockResolvedValue(makeCharacter({ race: 'HUMAN', level: 14 }));
+      (mockedDb.query.playerProfessions.findFirst as jest.Mock).mockResolvedValue(undefined);
+      (mockedDb.query.playerProfessions.findMany as jest.Mock).mockResolvedValue([
         { professionType: 'FARMER', isActive: true },
         { professionType: 'MINER', isActive: true },
         { professionType: 'COOK', isActive: true },
@@ -182,7 +195,7 @@ describe('Professions API', () => {
     });
 
     it('should reactivate a previously abandoned profession', async () => {
-      (mockedPrisma.playerProfession.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.playerProfessions.findFirst as jest.Mock).mockResolvedValue({
         id: 'prof-old',
         professionType: 'FARMER',
         isActive: false,
@@ -190,14 +203,22 @@ describe('Professions API', () => {
         level: 15,
         xp: 200,
       });
-      (mockedPrisma.playerProfession.findMany as jest.Mock).mockResolvedValue([]); // no active
-      (mockedPrisma.playerProfession.update as jest.Mock).mockResolvedValue({
-        id: 'prof-old',
-        professionType: 'FARMER',
-        isActive: true,
-        tier: 'JOURNEYMAN',
-        level: 15,
-        xp: 200,
+      (mockedDb.query.playerProfessions.findMany as jest.Mock).mockResolvedValue([]); // no active
+
+      // Mock update for reactivation
+      (mockedDb.update as jest.Mock).mockReturnValue({
+        set: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            returning: jest.fn().mockResolvedValue([{
+              id: 'prof-old',
+              professionType: 'FARMER',
+              isActive: true,
+              tier: 'JOURNEYMAN',
+              level: 15,
+              xp: 200,
+            }]),
+          }),
+        }),
       });
 
       const res = await request(app)
@@ -224,17 +245,25 @@ describe('Professions API', () => {
 
   describe('POST /api/professions/abandon', () => {
     it('should abandon an active profession', async () => {
-      (mockedPrisma.playerProfession.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.playerProfessions.findFirst as jest.Mock).mockResolvedValue({
         id: 'prof-001',
         professionType: 'FARMER',
         isActive: true,
       });
-      (mockedPrisma.gatheringAction.findFirst as jest.Mock).mockResolvedValue(null);
-      (mockedPrisma.craftingAction.findFirst as jest.Mock).mockResolvedValue(null);
-      (mockedPrisma.playerProfession.update as jest.Mock).mockResolvedValue({
-        id: 'prof-001',
-        professionType: 'FARMER',
-        isActive: false,
+      (mockedDb.query.gatheringActions.findFirst as jest.Mock).mockResolvedValue(undefined);
+      (mockedDb.query.craftingActions.findFirst as jest.Mock).mockResolvedValue(undefined);
+
+      // Mock update for deactivation
+      (mockedDb.update as jest.Mock).mockReturnValue({
+        set: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            returning: jest.fn().mockResolvedValue([{
+              id: 'prof-001',
+              professionType: 'FARMER',
+              isActive: false,
+            }]),
+          }),
+        }),
       });
 
       const res = await request(app)
@@ -247,7 +276,7 @@ describe('Professions API', () => {
     });
 
     it('should reject abandoning a non-active profession', async () => {
-      (mockedPrisma.playerProfession.findUnique as jest.Mock).mockResolvedValue(null);
+      (mockedDb.query.playerProfessions.findFirst as jest.Mock).mockResolvedValue(undefined);
 
       const res = await request(app)
         .post('/api/professions/abandon')
@@ -263,7 +292,7 @@ describe('Professions API', () => {
 
   describe('GET /api/professions/mine', () => {
     it('should return empty list when no professions', async () => {
-      (mockedPrisma.playerProfession.findMany as jest.Mock).mockResolvedValue([]);
+      (mockedDb.query.playerProfessions.findMany as jest.Mock).mockResolvedValue([]);
 
       const res = await request(app)
         .get('/api/professions/mine')

@@ -36,7 +36,10 @@
  * LootTable JSON: array of { dropChance, minQty, maxQty, gold, itemTemplateName? }
  */
 
-import { PrismaClient, BiomeType } from '@prisma/client';
+import crypto from 'crypto';
+import { eq, and } from 'drizzle-orm';
+import * as schema from '../schema';
+import type { BiomeType } from '@shared/enums';
 import { computeFormulaCR, CRInput } from '@shared/data/combat/cr-formula';
 
 interface MonsterAbilityDef {
@@ -4255,12 +4258,14 @@ export const MONSTERS: MonsterDef[] = [
   },
 ];
 
-export async function seedMonsters(prisma: PrismaClient): Promise<void> {
+export async function seedMonsters(db: any): Promise<void> {
   console.log('--- Seeding Monsters ---');
 
   // Look up regions by name
-  const regions = await prisma.region.findMany({ select: { id: true, name: true } });
-  const regionMap = new Map(regions.map((r) => [r.name, r.id]));
+  const regions = await db.query.regions.findMany({
+    columns: { id: true, name: true },
+  });
+  const regionMap = new Map(regions.map((r: any) => [r.name, r.id]));
 
   let count = 0;
   for (const monster of MONSTERS) {
@@ -4271,8 +4276,11 @@ export async function seedMonsters(prisma: PrismaClient): Promise<void> {
     }
 
     // Upsert by name+level to allow re-running safely
-    const existing = await prisma.monster.findFirst({
-      where: { name: monster.name, level: monster.level },
+    const existing = await db.query.monsters.findFirst({
+      where: and(
+        eq(schema.monsters.name, monster.name),
+        eq(schema.monsters.level, monster.level),
+      ),
     });
 
     // Compute formula CR
@@ -4323,7 +4331,7 @@ export async function seedMonsters(prisma: PrismaClient): Promise<void> {
       legendaryActions: monster.legendaryActions ?? 0,
       legendaryResistances: monster.legendaryResistances ?? 0,
       phaseTransitions: (monster.phaseTransitions ?? []) as any,
-      formulaCR,
+      formulaCr: formulaCR,
       encounterType: monster.encounterType ?? 'standard',
       category: monster.category ?? 'beast',
       sentient: monster.sentient ?? false,
@@ -4333,20 +4341,17 @@ export async function seedMonsters(prisma: PrismaClient): Promise<void> {
         isSolitary: monster.isSolitary,
         environment: monster.environment,
       },
+      updatedAt: new Date().toISOString(),
     };
 
     if (existing) {
-      await prisma.monster.update({
-        where: { id: existing.id },
-        data: monsterData,
-      });
+      await db.update(schema.monsters).set(monsterData).where(eq(schema.monsters.id, existing.id));
     } else {
-      await prisma.monster.create({
-        data: {
-          name: monster.name,
-          level: monster.level,
-          ...monsterData,
-        },
+      await db.insert(schema.monsters).values({
+        id: crypto.randomUUID(),
+        name: monster.name,
+        level: monster.level,
+        ...monsterData,
       });
     }
     count++;

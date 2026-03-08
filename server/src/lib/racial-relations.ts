@@ -2,7 +2,8 @@
  * Cached racial relations matrix — used by races.ts and diplomacy.ts routes.
  * The 190-row matrix only changes on deploy (seed data), so a 1-hour TTL is safe.
  */
-import { prisma } from './prisma';
+import { db } from './db';
+import { racialRelations } from '@database/tables';
 import { redis } from './redis';
 import { logger } from './logger';
 
@@ -30,7 +31,7 @@ export async function getRacialRelations(): Promise<RacialRelationRow[]> {
     }
   }
 
-  const relations = await prisma.racialRelation.findMany();
+  const relations = await db.query.racialRelations.findMany();
 
   if (redis) {
     try {

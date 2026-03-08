@@ -1,4 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import crypto from 'crypto';
+import { eq, and } from 'drizzle-orm';
+import * as schema from '../schema';
 import { TOOL_TEMPLATES } from '@shared/data/tools';
 
 // Base values for tools — estimated from tier material costs
@@ -21,7 +23,7 @@ const TOOL_BASE_VALUES: Record<string, number> = {
   'Adamantine Fishing Rod': 1200, 'Adamantine Herb Knife': 1200, 'Adamantine Skinning Knife': 1200,
 };
 
-export async function seedTools(prisma: PrismaClient) {
+export async function seedTools(db: any) {
   console.log('  Seeding tools...');
 
   let created = 0;
@@ -37,39 +39,35 @@ export async function seedTools(prisma: PrismaClient) {
     };
 
     // Use name + type as the natural key for upserting
-    const existing = await prisma.itemTemplate.findFirst({
-      where: { name: tool.name, type: 'TOOL' },
+    const existing = await db.query.itemTemplates.findFirst({
+      where: and(eq(schema.itemTemplates.name, tool.name), eq(schema.itemTemplates.type, 'TOOL')),
     });
 
     const baseValue = TOOL_BASE_VALUES[tool.name] ?? 0;
 
     if (existing) {
-      await prisma.itemTemplate.update({
-        where: { id: existing.id },
-        data: {
-          rarity: tool.rarity as any,
-          description: tool.description,
-          durability: tool.durability,
-          stats,
-          professionRequired: tool.professionType as any,
-          levelRequired: 1,
-          baseValue,
-        },
-      });
+      await db.update(schema.itemTemplates).set({
+        rarity: tool.rarity as any,
+        description: tool.description,
+        durability: tool.durability,
+        stats,
+        professionRequired: tool.professionType as any,
+        levelRequired: 1,
+        baseValue,
+      }).where(eq(schema.itemTemplates.id, existing.id));
       updated++;
     } else {
-      await prisma.itemTemplate.create({
-        data: {
-          name: tool.name,
-          type: 'TOOL',
-          rarity: tool.rarity as any,
-          description: tool.description,
-          durability: tool.durability,
-          stats,
-          professionRequired: tool.professionType as any,
-          levelRequired: 1,
-          baseValue,
-        },
+      await db.insert(schema.itemTemplates).values({
+        id: crypto.randomUUID(),
+        name: tool.name,
+        type: 'TOOL' as any,
+        rarity: tool.rarity as any,
+        description: tool.description,
+        durability: tool.durability,
+        stats,
+        professionRequired: tool.professionType as any,
+        levelRequired: 1,
+        baseValue,
       });
       created++;
     }

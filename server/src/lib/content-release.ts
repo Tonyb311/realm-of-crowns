@@ -1,4 +1,6 @@
-import { prisma } from './prisma';
+import { db } from './db';
+import { eq, and, sql, inArray, asc, desc } from 'drizzle-orm';
+import { contentReleases, towns, characters, regions } from '@database/tables';
 import { redis } from './redis';
 import { logger } from './logger';
 
@@ -24,9 +26,9 @@ export async function getReleasedRaceKeys(): Promise<Set<string>> {
     }
   }
 
-  const rows = await prisma.contentRelease.findMany({
-    where: { contentType: 'race', isReleased: true },
-    select: { contentId: true },
+  const rows = await db.query.contentReleases.findMany({
+    where: and(eq(contentReleases.contentType, 'race'), eq(contentReleases.isReleased, true)),
+    columns: { contentId: true },
   });
 
   const keys = rows.map(r => r.contentId);
@@ -56,9 +58,9 @@ export async function getReleasedTownIds(): Promise<Set<string>> {
     }
   }
 
-  const rows = await prisma.town.findMany({
-    where: { isReleased: true },
-    select: { id: true },
+  const rows = await db.query.towns.findMany({
+    where: eq(towns.isReleased, true),
+    columns: { id: true },
   });
 
   const ids = rows.map(r => r.id);
@@ -77,7 +79,10 @@ export async function getReleasedTownIds(): Promise<Set<string>> {
 export async function isRaceReleased(raceKey: string): Promise<boolean> {
   // If no ContentRelease rows exist at all (fresh DB before startup seed),
   // allow all races so character creation doesn't fail with 400.
-  const totalRows = await prisma.contentRelease.count({ where: { contentType: 'race' } });
+  const [result] = await db.select({ count: sql<number>`count(*)::int` })
+    .from(contentReleases)
+    .where(eq(contentReleases.contentType, 'race'));
+  const totalRows = result?.count ?? 0;
   if (totalRows === 0) return true;
 
   const released = await getReleasedRaceKeys();
@@ -95,19 +100,22 @@ export async function isTownReleased(townId: string): Promise<boolean> {
 
 export async function getContentReleaseMap() {
   // Races
-  const raceReleases = await prisma.contentRelease.findMany({
-    where: { contentType: 'race' },
-    orderBy: [{ tier: 'asc' }, { releaseOrder: 'asc' }, { contentName: 'asc' }],
+  const raceReleases = await db.query.contentReleases.findMany({
+    where: eq(contentReleases.contentType, 'race'),
+    orderBy: [asc(contentReleases.tier), asc(contentReleases.releaseOrder), asc(contentReleases.contentName)],
   });
 
-  // Count characters per race
-  const raceCounts = await prisma.character.groupBy({
-    by: ['race'],
-    _count: { race: true },
-  });
+  // Count characters per race — use raw SQL groupBy
+  const raceCounts = await db.select({
+    race: characters.race,
+    count: sql<number>`count(*)::int`,
+  })
+    .from(characters)
+    .groupBy(characters.race);
+
   const raceCountMap: Record<string, number> = {};
   for (const rc of raceCounts) {
-    raceCountMap[rc.race.toLowerCase()] = rc._count.race;
+    raceCountMap[rc.race.toLowerCase()] = rc.count;
   }
 
   const races = raceReleases.map(r => ({
@@ -115,9 +123,9 @@ export async function getContentReleaseMap() {
     playerCount: raceCountMap[r.contentId] ?? 0,
   }));
 
-  // Towns
-  const towns = await prisma.town.findMany({
-    select: {
+  // Towns with region and character count
+  const townRows = await db.query.towns.findMany({
+    columns: {
       id: true,
       name: true,
       regionId: true,
@@ -125,13 +133,28 @@ export async function getContentReleaseMap() {
       releasedAt: true,
       releaseOrder: true,
       releaseNotes: true,
-      region: { select: { id: true, name: true } },
-      _count: { select: { characters: true } },
     },
-    orderBy: [{ region: { name: 'asc' } }, { releaseOrder: 'asc' }, { name: 'asc' }],
+    with: {
+      region: { columns: { id: true, name: true } },
+    },
+    orderBy: [asc(towns.regionId), asc(towns.releaseOrder), asc(towns.name)],
   });
 
-  const townItems = towns.map(t => ({
+  // Count characters per town
+  const townCharCounts = await db.select({
+    currentTownId: characters.currentTownId,
+    count: sql<number>`count(*)::int`,
+  })
+    .from(characters)
+    .where(sql`${characters.currentTownId} IS NOT NULL`)
+    .groupBy(characters.currentTownId);
+
+  const townCharCountMap: Record<string, number> = {};
+  for (const tc of townCharCounts) {
+    if (tc.currentTownId) townCharCountMap[tc.currentTownId] = tc.count;
+  }
+
+  const townItems = townRows.map(t => ({
     id: t.id,
     name: t.name,
     regionId: t.regionId,
@@ -140,7 +163,7 @@ export async function getContentReleaseMap() {
     releasedAt: t.releasedAt,
     releaseOrder: t.releaseOrder,
     releaseNotes: t.releaseNotes,
-    playerCount: t._count.characters,
+    playerCount: townCharCountMap[t.id] ?? 0,
   }));
 
   const totalRaces = races.length;
@@ -172,18 +195,16 @@ export async function releaseContent(
   contentId: string,
   notes?: string,
 ): Promise<{ success: true }> {
-  const now = new Date();
+  const now = new Date().toISOString();
 
   if (contentType === 'town') {
-    await prisma.town.update({
-      where: { id: contentId },
-      data: { isReleased: true, releasedAt: now, releaseNotes: notes ?? undefined },
-    });
+    await db.update(towns)
+      .set({ isReleased: true, releasedAt: now, releaseNotes: notes ?? undefined })
+      .where(eq(towns.id, contentId));
   } else {
-    await prisma.contentRelease.update({
-      where: { contentType_contentId: { contentType, contentId } },
-      data: { isReleased: true, releasedAt: now, releaseNotes: notes ?? undefined },
-    });
+    await db.update(contentReleases)
+      .set({ isReleased: true, releasedAt: now, releaseNotes: notes ?? undefined })
+      .where(and(eq(contentReleases.contentType, contentType), eq(contentReleases.contentId, contentId)));
   }
 
   await invalidateContentCache();
@@ -198,7 +219,10 @@ export async function unreleaseContent(
   // Safety checks
   if (contentType === 'race') {
     const raceEnum = contentId.toUpperCase();
-    const count = await prisma.character.count({ where: { race: raceEnum as any } });
+    const [result] = await db.select({ count: sql<number>`count(*)::int` })
+      .from(characters)
+      .where(eq(characters.race, raceEnum as any));
+    const count = result?.count ?? 0;
     if (count > 0) {
       return {
         success: false,
@@ -208,7 +232,10 @@ export async function unreleaseContent(
   }
 
   if (contentType === 'town') {
-    const count = await prisma.character.count({ where: { currentTownId: contentId } });
+    const [result] = await db.select({ count: sql<number>`count(*)::int` })
+      .from(characters)
+      .where(eq(characters.currentTownId, contentId));
+    const count = result?.count ?? 0;
     if (count > 0) {
       return {
         success: false,
@@ -217,16 +244,16 @@ export async function unreleaseContent(
     }
   }
 
+  const now = new Date().toISOString();
+
   if (contentType === 'town') {
-    await prisma.town.update({
-      where: { id: contentId },
-      data: { isReleased: false, releasedAt: null, releaseNotes: notes ?? undefined },
-    });
+    await db.update(towns)
+      .set({ isReleased: false, releasedAt: null, releaseNotes: notes ?? undefined })
+      .where(eq(towns.id, contentId));
   } else {
-    await prisma.contentRelease.update({
-      where: { contentType_contentId: { contentType, contentId } },
-      data: { isReleased: false, releasedAt: null, releaseNotes: notes ?? undefined },
-    });
+    await db.update(contentReleases)
+      .set({ isReleased: false, releasedAt: null, releaseNotes: notes ?? undefined })
+      .where(and(eq(contentReleases.contentType, contentType), eq(contentReleases.contentId, contentId)));
   }
 
   await invalidateContentCache();
@@ -238,22 +265,20 @@ export async function bulkRelease(
   ids: string[],
   notes?: string,
 ): Promise<{ released: number }> {
-  const now = new Date();
+  const now = new Date().toISOString();
 
   if (contentType === 'town') {
-    const result = await prisma.town.updateMany({
-      where: { id: { in: ids } },
-      data: { isReleased: true, releasedAt: now, releaseNotes: notes ?? undefined },
-    });
+    const result = await db.update(towns)
+      .set({ isReleased: true, releasedAt: now, releaseNotes: notes ?? undefined })
+      .where(inArray(towns.id, ids));
     await invalidateContentCache();
-    return { released: result.count };
+    return { released: (result as any).rowCount ?? 0 };
   } else {
-    const result = await prisma.contentRelease.updateMany({
-      where: { contentType, contentId: { in: ids } },
-      data: { isReleased: true, releasedAt: now, releaseNotes: notes ?? undefined },
-    });
+    const result = await db.update(contentReleases)
+      .set({ isReleased: true, releasedAt: now, releaseNotes: notes ?? undefined })
+      .where(and(eq(contentReleases.contentType, contentType), inArray(contentReleases.contentId, ids)));
     await invalidateContentCache();
-    return { released: result.count };
+    return { released: (result as any).rowCount ?? 0 };
   }
 }
 

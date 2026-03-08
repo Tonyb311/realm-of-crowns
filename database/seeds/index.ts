@@ -4,10 +4,15 @@
  * Run with: npm run db:seed
  *
  * Seeds are added as features are built.
- * Each seed file exports an async function that receives the Prisma client.
+ * Each seed file exports an async function that receives the Drizzle client.
  */
 
-import { PrismaClient } from '@prisma/client';
+import 'dotenv/config';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import * as schema from '../schema';
+import { eq } from 'drizzle-orm';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { seedWorld } from './world';
 import { seedResources } from './resources';
@@ -30,31 +35,31 @@ import { seedAccessoryRecipes } from './accessory-recipes';
 import { seedBaseValuePropagation } from './base-value-propagation';
 import { seedTannerRecipes } from './run-tanner';
 
-const prisma = new PrismaClient();
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const db = drizzle(pool, { schema });
 
-async function seedAdmin(prisma: PrismaClient) {
+async function seedAdmin(db: any) {
   const ADMIN_EMAIL = 'admin@roc.com';
   const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'RealmAdmin2026!';
 
-  const existing = await prisma.user.findUnique({ where: { email: ADMIN_EMAIL } });
+  const existing = await db.query.users.findFirst({ where: eq(schema.users.email, ADMIN_EMAIL) });
   if (existing) {
     // Ensure role is admin
     if (existing.role !== 'admin') {
-      await prisma.user.update({ where: { id: existing.id }, data: { role: 'admin' } });
+      await db.update(schema.users).set({ role: 'admin' }).where(eq(schema.users.id, existing.id));
     }
     console.log('  Admin account (admin@roc.com) already exists — skipped');
     return;
   }
 
   const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
-  await prisma.user.create({
-    data: {
-      email: ADMIN_EMAIL,
-      username: 'admin',
-      passwordHash,
-      role: 'admin',
-      isTestAccount: false,
-    },
+  await db.insert(schema.users).values({
+    id: crypto.randomUUID(),
+    email: ADMIN_EMAIL,
+    username: 'admin',
+    passwordHash,
+    role: 'admin',
+    isTestAccount: false,
   });
   console.log('  Admin account (admin@roc.com) created');
 }
@@ -76,68 +81,68 @@ async function main() {
   let failed = 0;
 
   // Admin account: must exist before anything else
-  await seedAdmin(prisma);
+  await seedAdmin(db);
 
   // World geography: regions, towns, routes, resources
-  if (!await runSeed('world', () => seedWorld(prisma))) failed++;
+  if (!await runSeed('world', () => seedWorld(db))) failed++;
 
   // Kingdoms: links regions and towns to governing kingdoms (P1 #16 / MAJOR-01/04)
-  if (!await runSeed('kingdoms', () => seedKingdoms(prisma))) failed++;
+  if (!await runSeed('kingdoms', () => seedKingdoms(db))) failed++;
 
   // Resources: base gathering resources
-  if (!await runSeed('resources', () => seedResources(prisma))) failed++;
+  if (!await runSeed('resources', () => seedResources(db))) failed++;
 
   // Recipes and item templates
-  if (!await runSeed('recipes', () => seedRecipes(prisma))) failed++;
+  if (!await runSeed('recipes', () => seedRecipes(db))) failed++;
 
   // Monsters for PvE encounters
-  if (!await runSeed('monsters', () => seedMonsters(prisma))) failed++;
+  if (!await runSeed('monsters', () => seedMonsters(db))) failed++;
 
   // Quests and NPC quest givers
-  if (!await runSeed('quests', () => seedQuests(prisma))) failed++;
+  if (!await runSeed('quests', () => seedQuests(db))) failed++;
 
   // Tool templates (36 tools: 6 types x 6 material tiers)
-  if (!await runSeed('tools', () => seedTools(prisma))) failed++;
+  if (!await runSeed('tools', () => seedTools(db))) failed++;
 
   // Town-resource assignments (validates + logs biome->resource mappings)
-  if (!await runSeed('townResources', () => seedTownResources(prisma))) failed++;
+  if (!await runSeed('townResources', () => seedTownResources(db))) failed++;
 
   // Consumable recipes (potions, food, drinks, scrolls)
-  if (!await runSeed('consumableRecipes', () => seedConsumableRecipes(prisma))) failed++;
+  if (!await runSeed('consumableRecipes', () => seedConsumableRecipes(db))) failed++;
 
   // Armor recipes (metal, leather, cloth - 75 recipes)
-  if (!await runSeed('armorRecipes', () => seedArmorRecipes(prisma))) failed++;
+  if (!await runSeed('armorRecipes', () => seedArmorRecipes(db))) failed++;
 
   // Racial relations (190 unique pairings, 20x20 matrix)
-  if (!await runSeed('diplomacy', () => seedDiplomacy(prisma))) failed++;
+  if (!await runSeed('diplomacy', () => seedDiplomacy(db))) failed++;
 
   // Travel nodes: convert TravelRoutes into node chains for tick-based travel
-  if (!await runSeed('nodes', () => seedNodes(prisma))) failed++;
+  if (!await runSeed('nodes', () => seedNodes(db))) failed++;
 
   // Food & beverage item templates (32 items: raw, prepared, preserved, quality, fine, beverages)
-  if (!await runSeed('foodItems', () => seedFoodItems(prisma))) failed++;
+  if (!await runSeed('foodItems', () => seedFoodItems(db))) failed++;
 
   // Weapon recipes: blacksmith and fletcher weapon item templates + recipes (MINOR-07)
-  if (!await runSeed('weaponRecipes', () => seedWeaponRecipes(prisma))) failed++;
+  if (!await runSeed('weaponRecipes', () => seedWeaponRecipes(db))) failed++;
 
   // Crafted goods: woodworker finished goods (14) + blacksmith specializations (28)
-  if (!await runSeed('craftedGoodsRecipes', () => seedCraftedGoodsRecipes(prisma))) failed++;
+  if (!await runSeed('craftedGoodsRecipes', () => seedCraftedGoodsRecipes(db))) failed++;
 
   // Accessory recipes: accessories, enchantments, housing, mount gear (MINOR-07)
-  if (!await runSeed('accessoryRecipes', () => seedAccessoryRecipes(prisma))) failed++;
+  if (!await runSeed('accessoryRecipes', () => seedAccessoryRecipes(db))) failed++;
 
   // TANNER recipes: 16 recipes (Cured Leather, armor, tools)
-  if (!await runSeed('tannerRecipes', () => seedTannerRecipes(prisma))) failed++;
+  if (!await runSeed('tannerRecipes', () => seedTannerRecipes(db))) failed++;
 
   // Class abilities: 7 classes x 3 specs = 21 skill trees (P1 #17 / MAJOR-05)
-  if (!await runSeed('abilities', () => seedAbilities(prisma))) failed++;
+  if (!await runSeed('abilities', () => seedAbilities(db))) failed++;
 
   // Achievements: combat, crafting, social, exploration, economy (P1 #17 / MAJOR-05)
-  if (!await runSeed('achievements', () => seedAchievements(prisma))) failed++;
+  if (!await runSeed('achievements', () => seedAchievements(db))) failed++;
 
   // Base value propagation: catch-all pass that prices ANY remaining zero-value items
   // Must run LAST — after all other seeds have created their templates
-  if (!await runSeed('baseValuePropagation', () => seedBaseValuePropagation(prisma))) failed++;
+  if (!await runSeed('baseValuePropagation', () => seedBaseValuePropagation(db))) failed++;
 
   console.log('');
   if (failed > 0) {
@@ -153,5 +158,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await pool.end();
   });

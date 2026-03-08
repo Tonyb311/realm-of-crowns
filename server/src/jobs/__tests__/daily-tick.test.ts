@@ -9,49 +9,63 @@
  * the orchestration logic.
  */
 
-jest.mock('../../lib/prisma', () => ({
-  prisma: {
-    character: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
-    dailyAction: { findMany: jest.fn(), updateMany: jest.fn() },
-    gatheringAction: { findMany: jest.fn(), update: jest.fn() },
-    craftingAction: { findMany: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
-    characterTravelState: { findMany: jest.fn(), deleteMany: jest.fn() },
-    item: { create: jest.fn(), update: jest.fn() },
-    inventory: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
-    itemTemplate: { findUnique: jest.fn() },
-    playerProfession: { findFirst: jest.fn(), findMany: jest.fn() },
-    building: { findMany: jest.fn(), update: jest.fn() },
-    buildingConstruction: { findMany: jest.fn(), update: jest.fn() },
-    town: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
-    townResource: { findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
-    townTreasury: { findMany: jest.fn(), update: jest.fn(), upsert: jest.fn() },
-    townPolicy: { findMany: jest.fn() },
-    resource: { findFirst: jest.fn(), findUnique: jest.fn() },
-    recipe: { findUnique: jest.fn() },
-    characterEquipment: { findUnique: jest.fn() },
-    election: { findMany: jest.fn(), update: jest.fn(), create: jest.fn() },
-    electionCandidate: { findMany: jest.fn() },
-    electionVote: { findMany: jest.fn() },
-    impeachment: { findMany: jest.fn(), update: jest.fn() },
-    impeachmentVote: { findMany: jest.fn() },
-    kingdom: { findMany: jest.fn(), update: jest.fn() },
-    combatSession: { create: jest.fn() },
-    combatParticipant: { create: jest.fn() },
-    combatLog: { create: jest.fn() },
-    monster: { findMany: jest.fn() },
-    notification: { create: jest.fn(), createMany: jest.fn() },
-    dailyReport: { create: jest.fn(), upsert: jest.fn() },
-    $transaction: jest.fn().mockImplementation(async (fn: any) => {
-      if (typeof fn === 'function') return fn({
-        character: { update: jest.fn() },
-        item: { create: jest.fn() },
-        inventory: { create: jest.fn(), update: jest.fn() },
-        craftingAction: { update: jest.fn(), updateMany: jest.fn() },
-        gatheringAction: { update: jest.fn() },
-        characterTravelState: { deleteMany: jest.fn() },
-        townResource: { update: jest.fn() },
-      });
-      return fn;
+jest.mock('../../lib/db', () => ({
+  db: {
+    query: {
+      characters: { findMany: jest.fn(), findFirst: jest.fn() },
+      dailyActions: { findMany: jest.fn() },
+      gatheringActions: { findMany: jest.fn(), findFirst: jest.fn() },
+      craftingActions: { findMany: jest.fn(), findFirst: jest.fn() },
+      characterTravelStates: { findMany: jest.fn() },
+      items: { findFirst: jest.fn() },
+      inventories: { findFirst: jest.fn(), findMany: jest.fn() },
+      itemTemplates: { findFirst: jest.fn() },
+      playerProfessions: { findFirst: jest.fn(), findMany: jest.fn() },
+      buildings: { findMany: jest.fn(), findFirst: jest.fn() },
+      buildingConstructions: { findMany: jest.fn() },
+      towns: { findMany: jest.fn(), findFirst: jest.fn() },
+      townResources: { findMany: jest.fn(), findFirst: jest.fn() },
+      townTreasuries: { findMany: jest.fn(), findFirst: jest.fn() },
+      townPolicies: { findMany: jest.fn(), findFirst: jest.fn() },
+      resources: { findFirst: jest.fn() },
+      recipes: { findFirst: jest.fn() },
+      characterEquipment: { findFirst: jest.fn() },
+      elections: { findMany: jest.fn() },
+      electionCandidates: { findMany: jest.fn() },
+      electionVotes: { findMany: jest.fn() },
+      impeachments: { findMany: jest.fn() },
+      kingdoms: { findMany: jest.fn() },
+      combatSessions: { findFirst: jest.fn() },
+      combatParticipants: { findFirst: jest.fn() },
+      combatLogs: { findFirst: jest.fn() },
+      monsters: { findMany: jest.fn() },
+      notifications: { findFirst: jest.fn() },
+      ownedAssets: { findMany: jest.fn() },
+      livestock: { findMany: jest.fn() },
+      jobListings: { findMany: jest.fn() },
+      laws: { findMany: jest.fn() },
+      tradeTransactions: { findMany: jest.fn() },
+      caravans: { findMany: jest.fn() },
+    },
+    insert: jest.fn().mockReturnValue({ values: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]), onConflictDoUpdate: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]) }) }) }),
+    update: jest.fn().mockReturnValue({ set: jest.fn().mockReturnValue({ where: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]) }) }) }),
+    delete: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([]) }),
+    execute: jest.fn().mockResolvedValue([]),
+    transaction: jest.fn().mockImplementation(async (fn: any) => {
+      const tx = {
+        insert: jest.fn().mockReturnValue({ values: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]) }) }),
+        update: jest.fn().mockReturnValue({ set: jest.fn().mockReturnValue({ where: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]) }) }) }),
+        delete: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([]) }),
+        query: {
+          characters: { findFirst: jest.fn() },
+          inventories: { findFirst: jest.fn(), findMany: jest.fn() },
+          craftingActions: { findFirst: jest.fn() },
+          gatheringActions: { findFirst: jest.fn() },
+          characterTravelStates: { findFirst: jest.fn() },
+          townResources: { findFirst: jest.fn() },
+        },
+      };
+      return fn(tx);
     }),
   },
 }));
@@ -148,31 +162,36 @@ jest.mock('../../socket/events', () => ({
 
 jest.mock('../../index', () => ({}));
 
-import { prisma } from '../../lib/prisma';
+import { db } from '../../lib/db';
 import { processDailyTick, triggerManualTick } from '../daily-tick';
 import { processSpoilage, processAutoConsumption } from '../../services/food-system';
 import { emitTickComplete } from '../../socket/events';
 
-const mockedPrisma = prisma as jest.Mocked<typeof prisma>;
+const mockedDb = db as jest.Mocked<typeof db>;
 
 describe('Daily Tick Processor', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
     // Default: no characters, no buildings, no actions
-    (mockedPrisma.character.findMany as jest.Mock).mockResolvedValue([]);
-    (mockedPrisma.dailyAction.findMany as jest.Mock).mockResolvedValue([]);
-    (mockedPrisma.gatheringAction.findMany as jest.Mock).mockResolvedValue([]);
-    (mockedPrisma.craftingAction.findMany as jest.Mock).mockResolvedValue([]);
-    // travelAction removed — travel now handled by travel-tick.ts cron
-    (mockedPrisma.building.findMany as jest.Mock).mockResolvedValue([]);
-    (mockedPrisma.town.findMany as jest.Mock).mockResolvedValue([]);
-    (mockedPrisma.townResource.findMany as jest.Mock).mockResolvedValue([]);
-    (mockedPrisma.townTreasury.findMany as jest.Mock).mockResolvedValue([]);
-    (mockedPrisma.townPolicy.findMany as jest.Mock).mockResolvedValue([]);
-    (mockedPrisma.election.findMany as jest.Mock).mockResolvedValue([]);
-    (mockedPrisma.impeachment.findMany as jest.Mock).mockResolvedValue([]);
-    (mockedPrisma.kingdom.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.characters.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.dailyActions.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.gatheringActions.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.craftingActions.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.buildings.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.towns.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.townResources.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.townTreasuries.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.townPolicies.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.elections.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.impeachments.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.kingdoms.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.ownedAssets.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.livestock.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.jobListings.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.laws.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.tradeTransactions.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.caravans.findMany as jest.Mock).mockResolvedValue([]);
   });
 
   it('should complete tick with no data without errors', async () => {
@@ -189,7 +208,7 @@ describe('Daily Tick Processor', () => {
   });
 
   it('should process food consumption for each character', async () => {
-    (mockedPrisma.character.findMany as jest.Mock).mockResolvedValue([
+    (mockedDb.query.characters.findMany as jest.Mock).mockResolvedValue([
       { id: 'char-1', race: 'HUMAN' },
       { id: 'char-2', race: 'ELF' },
     ]);
@@ -225,7 +244,7 @@ describe('Daily Tick Processor', () => {
   });
 
   it('should handle resource regeneration for town resources', async () => {
-    (mockedPrisma.townResource.findMany as jest.Mock).mockResolvedValue([
+    (mockedDb.query.townResources.findMany as jest.Mock).mockResolvedValue([
       { id: 'tr-1', townId: 'town-1', resourceType: 'ORE', abundance: 50 },
       { id: 'tr-2', townId: 'town-1', resourceType: 'WOOD', abundance: 80 },
     ]);

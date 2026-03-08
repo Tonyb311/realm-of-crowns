@@ -5,7 +5,7 @@
  * and quality roll mappings. DO NOT duplicate these values elsewhere.
  */
 
-import type { ProfessionTier, ProfessionType, BuildingType } from '@prisma/client';
+import type { ProfessionTier, ProfessionType, BuildingType } from '../enums';
 
 /** Tier progression order (lowest → highest). */
 export const TIER_ORDER: ProfessionTier[] = [

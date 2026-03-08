@@ -2,7 +2,7 @@
  * Building system constants — extracted from server/src/routes/buildings.ts
  */
 
-import type { BuildingType } from '@prisma/client';
+import type { BuildingType } from '../enums';
 
 /** Workshop building types (used for rental features, crafting access). */
 export const WORKSHOP_TYPES: BuildingType[] = [

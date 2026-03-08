@@ -6,15 +6,17 @@
  *   cd server && npx tsx --tsconfig tsconfig.json src/scripts/seed-sample-report.ts
  */
 
-import { prisma } from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import { db, pool } from '../lib/db';
+import { eq, and } from 'drizzle-orm';
+import * as schema from '@database/index';
+import crypto from 'crypto';
 
 async function main() {
   // Target a specific character by ID, or fall back to first character
   const targetId = process.env.TARGET_CHAR_ID;
   const character = targetId
-    ? await prisma.character.findUnique({ where: { id: targetId }, select: { id: true, name: true } })
-    : await prisma.character.findFirst({ select: { id: true, name: true } });
+    ? await db.query.characters.findFirst({ where: eq(schema.characters.id, targetId), columns: { id: true, name: true } })
+    : await db.query.characters.findFirst({ columns: { id: true, name: true } });
   if (!character) {
     console.error('No character found.');
     process.exit(1);
@@ -24,6 +26,7 @@ async function main() {
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString();
 
   const foodConsumed = { itemName: 'Venison Stew', buff: { str: 2 } };
 
@@ -218,42 +221,48 @@ async function main() {
     },
   ];
 
-  const report = await prisma.dailyReport.upsert({
-    where: {
-      characterId_tickDate: { characterId: character.id, tickDate: today },
-    },
-    create: {
-      characterId: character.id,
-      tickDate: today,
-      foodConsumed: foodConsumed as unknown as Prisma.InputJsonValue,
-      actionResult: actionResult as unknown as Prisma.InputJsonValue,
-      goldChange: 35,
-      xpEarned: 120,
-      combatLogs: combatLogs as unknown as Prisma.InputJsonValue,
-      questProgress: questProgress as unknown as Prisma.InputJsonValue,
-      notifications: notifications as unknown as Prisma.InputJsonValue,
-      worldEvents: worldEvents as unknown as Prisma.InputJsonValue,
-      dismissedAt: null,
-    },
-    update: {
-      foodConsumed: foodConsumed as unknown as Prisma.InputJsonValue,
-      actionResult: actionResult as unknown as Prisma.InputJsonValue,
-      goldChange: 35,
-      xpEarned: 120,
-      combatLogs: combatLogs as unknown as Prisma.InputJsonValue,
-      questProgress: questProgress as unknown as Prisma.InputJsonValue,
-      notifications: notifications as unknown as Prisma.InputJsonValue,
-      worldEvents: worldEvents as unknown as Prisma.InputJsonValue,
-      dismissedAt: null,
-    },
+  // Upsert: try to find existing, then update or insert
+  const existing = await db.query.dailyReports.findFirst({
+    where: and(
+      eq(schema.dailyReports.characterId, character.id),
+      eq(schema.dailyReports.tickDate, todayStr),
+    ),
   });
 
+  const reportData = {
+    characterId: character.id,
+    tickDate: todayStr,
+    foodConsumed,
+    actionResult,
+    goldChange: 35,
+    xpEarned: 120,
+    combatLogs,
+    questProgress,
+    notifications,
+    worldEvents,
+    dismissedAt: null,
+  };
+
+  let report;
+  if (existing) {
+    const [updated] = await db.update(schema.dailyReports)
+      .set(reportData)
+      .where(eq(schema.dailyReports.id, existing.id))
+      .returning();
+    report = updated;
+  } else {
+    const [inserted] = await db.insert(schema.dailyReports)
+      .values({ id: crypto.randomUUID(), ...reportData })
+      .returning();
+    report = inserted;
+  }
+
   console.log(`Created sample DailyReport: ${report.id}`);
-  await prisma.$disconnect();
+  await pool.end();
 }
 
 main().catch((err) => {
   console.error(err);
-  prisma.$disconnect();
+  pool.end();
   process.exit(1);
 });

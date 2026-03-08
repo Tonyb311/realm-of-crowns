@@ -6,9 +6,8 @@ import {
   createTestTown,
   authHeader,
   cleanupTestData,
-  disconnectPrisma,
+  disconnectDb,
   trackGuildId,
-  prisma,
 } from './setup';
 
 describe('Social API (Guilds, Messages, Friends)', () => {
@@ -17,7 +16,7 @@ describe('Social API (Guilds, Messages, Friends)', () => {
   });
 
   afterAll(async () => {
-    await disconnectPrisma();
+    await disconnectDb();
   });
 
   // ---- POST /api/guilds (create) ----

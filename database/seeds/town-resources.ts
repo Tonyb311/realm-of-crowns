@@ -13,7 +13,7 @@
  * A future schema migration will add a per-resource town link table.
  */
 
-import { PrismaClient } from '@prisma/client';
+import * as schema from '../schema';
 import { ALL_RESOURCES, BiomeType } from '@shared/data/resources';
 
 // ============================================================
@@ -389,7 +389,7 @@ export function getResourcesForTown(
 // SEED FUNCTION
 // ============================================================
 
-export async function seedTownResources(prisma: PrismaClient) {
+export async function seedTownResources(db: any) {
   console.log('--- Seeding Town-Resource Assignments ---');
 
   // Validate that all referenced resource IDs exist in our shared data
@@ -407,7 +407,7 @@ export async function seedTownResources(prisma: PrismaClient) {
   }
 
   // Count totals
-  const towns = await prisma.town.findMany({ select: { id: true, name: true, biome: true } });
+  const towns = await db.query.towns.findMany({ columns: { id: true, name: true, biome: true } });
   let totalAssignments = 0;
   for (const town of towns) {
     const resources = getResourcesForTown(town.name, town.biome as BiomeType);

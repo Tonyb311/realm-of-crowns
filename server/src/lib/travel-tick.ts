@@ -1,4 +1,6 @@
-import { prisma } from './prisma';
+import { db } from './db';
+import { eq, sql, inArray } from 'drizzle-orm';
+import { characters, characterTravelStates, groupTravelStates, travelGroups, parties } from '@database/tables';
 import { logger } from './logger';
 import { resolveRoadEncounter, resolveGroupRoadEncounter } from './road-encounter';
 import { ACTION_XP } from '@shared/data/progression';
@@ -51,11 +53,11 @@ export async function processTravelTick(): Promise<TravelTickResult> {
   // -----------------------------------------------------------------------
   // 1. Fetch all active solo travelers
   // -----------------------------------------------------------------------
-  const soloTravelers = await prisma.characterTravelState.findMany({
-    where: { status: 'traveling' },
-    include: {
-      route: {
-        select: { nodeCount: true, fromTownId: true, toTownId: true, dangerLevel: true, terrain: true },
+  const soloTravelers = await db.query.characterTravelStates.findMany({
+    where: eq(characterTravelStates.status, 'traveling'),
+    with: {
+      travelRoute: {
+        columns: { nodeCount: true, fromTownId: true, toTownId: true, dangerLevel: true, terrain: true },
       },
     },
   });
@@ -63,18 +65,18 @@ export async function processTravelTick(): Promise<TravelTickResult> {
   // -----------------------------------------------------------------------
   // 2. Fetch all active group travel states
   // -----------------------------------------------------------------------
-  const groupTravelers = await prisma.groupTravelState.findMany({
-    where: { status: 'traveling' },
-    include: {
-      route: {
-        select: { nodeCount: true, fromTownId: true, toTownId: true, dangerLevel: true, terrain: true },
+  const groupTravelerRows = await db.query.groupTravelStates.findMany({
+    where: eq(groupTravelStates.status, 'traveling'),
+    with: {
+      travelRoute: {
+        columns: { nodeCount: true, fromTownId: true, toTownId: true, dangerLevel: true, terrain: true },
       },
-      group: {
-        include: {
-          party: { select: { id: true } },
-          members: {
-            include: {
-              character: { select: { id: true } },
+      travelGroup: {
+        with: {
+          party: { columns: { id: true } },
+          travelGroupMembers: {
+            with: {
+              character: { columns: { id: true } },
             },
           },
         },
@@ -82,37 +84,38 @@ export async function processTravelTick(): Promise<TravelTickResult> {
     },
   });
 
-  const now = new Date();
+  const now = new Date().toISOString();
 
   // -----------------------------------------------------------------------
   // 3. Process solo travelers
   // -----------------------------------------------------------------------
   for (const traveler of soloTravelers) {
     try {
+      const route = traveler.travelRoute;
       const step = traveler.direction === 'forward'
         ? traveler.speedModifier
         : -traveler.speedModifier;
       const newIndex = traveler.currentNodeIndex + step;
 
       // Check if the traveler has arrived
-      const arrivedForward = traveler.direction === 'forward' && newIndex > traveler.route.nodeCount;
+      const arrivedForward = traveler.direction === 'forward' && newIndex > route.nodeCount;
       const arrivedBackward = traveler.direction !== 'forward' && newIndex < 1;
 
       if (arrivedForward || arrivedBackward) {
         // Determine origin and destination based on travel direction
         const destinationTownId = traveler.direction === 'forward'
-          ? traveler.route.toTownId
-          : traveler.route.fromTownId;
+          ? route.toTownId
+          : route.fromTownId;
         const originTownId = traveler.direction === 'forward'
-          ? traveler.route.fromTownId
-          : traveler.route.toTownId;
+          ? route.fromTownId
+          : route.toTownId;
 
         // --- Road Encounter Check ---
         const encounter = await resolveRoadEncounter(
           traveler.characterId,
           originTownId,
           destinationTownId,
-          { dangerLevel: traveler.route.dangerLevel, terrain: traveler.route.terrain },
+          { dangerLevel: route.dangerLevel, terrain: route.terrain },
         );
 
         if (encounter.encountered) {
@@ -122,20 +125,18 @@ export async function processTravelTick(): Promise<TravelTickResult> {
           if (encounter.won) {
             // Won encounter: arrive at destination with combat + travel XP
             result.soloEncounterWins++;
-            const travelXp = ACTION_XP.TRAVEL_PER_NODE * traveler.route.nodeCount;
-            await prisma.$transaction([
-              prisma.character.update({
-                where: { id: traveler.characterId },
-                data: {
+            const travelXp = ACTION_XP.TRAVEL_PER_NODE * route.nodeCount;
+            await db.transaction(async (tx) => {
+              await tx.update(characters)
+                .set({
                   currentTownId: destinationTownId,
                   travelStatus: 'idle',
-                  xp: { increment: travelXp },
-                },
-              }),
-              prisma.characterTravelState.delete({
-                where: { id: traveler.id },
-              }),
-            ]);
+                  xp: sql`${characters.xp} + ${travelXp}`,
+                })
+                .where(eq(characters.id, traveler.characterId));
+              await tx.delete(characterTravelStates)
+                .where(eq(characterTravelStates.id, traveler.id));
+            });
 
             try { await checkLevelUp(traveler.characterId); } catch { /* non-fatal */ }
 
@@ -152,20 +153,18 @@ export async function processTravelTick(): Promise<TravelTickResult> {
           } else {
             // Lost encounter: return to origin town (penalties already applied, travel XP still granted)
             result.soloEncounterLosses++;
-            const lostTravelXp = ACTION_XP.TRAVEL_PER_NODE * traveler.route.nodeCount;
-            await prisma.$transaction([
-              prisma.character.update({
-                where: { id: traveler.characterId },
-                data: {
+            const lostTravelXp = ACTION_XP.TRAVEL_PER_NODE * route.nodeCount;
+            await db.transaction(async (tx) => {
+              await tx.update(characters)
+                .set({
                   currentTownId: originTownId,
                   travelStatus: 'idle',
-                  xp: { increment: lostTravelXp },
-                },
-              }),
-              prisma.characterTravelState.delete({
-                where: { id: traveler.id },
-              }),
-            ]);
+                  xp: sql`${characters.xp} + ${lostTravelXp}`,
+                })
+                .where(eq(characters.id, traveler.characterId));
+              await tx.delete(characterTravelStates)
+                .where(eq(characterTravelStates.id, traveler.id));
+            });
 
             try { await checkLevelUp(traveler.characterId); } catch { /* non-fatal */ }
 
@@ -181,38 +180,35 @@ export async function processTravelTick(): Promise<TravelTickResult> {
           }
         } else {
           // No encounter: arrive at destination with travel XP
-          const safeTravelXp = ACTION_XP.TRAVEL_PER_NODE * traveler.route.nodeCount;
-          await prisma.$transaction([
-            prisma.character.update({
-              where: { id: traveler.characterId },
-              data: {
+          const safeTravelXp = ACTION_XP.TRAVEL_PER_NODE * route.nodeCount;
+          await db.transaction(async (tx) => {
+            await tx.update(characters)
+              .set({
                 currentTownId: destinationTownId,
                 travelStatus: 'idle',
-                xp: { increment: safeTravelXp },
-              },
-            }),
-            prisma.characterTravelState.delete({
-              where: { id: traveler.id },
-            }),
-          ]);
+                xp: sql`${characters.xp} + ${safeTravelXp}`,
+              })
+              .where(eq(characters.id, traveler.characterId));
+            await tx.delete(characterTravelStates)
+              .where(eq(characterTravelStates.id, traveler.id));
+          });
 
           try { await checkLevelUp(traveler.characterId); } catch { /* non-fatal */ }
 
           result.soloArrived++;
           logger.info(
-            { characterId: traveler.characterId, destinationTownId, travelXp: safeTravelXp, routeNodeCount: traveler.route.nodeCount },
+            { characterId: traveler.characterId, destinationTownId, travelXp: safeTravelXp, routeNodeCount: route.nodeCount },
             'Solo traveler arrived at destination (safe journey)',
           );
         }
       } else {
         // Still en route: advance node index
-        await prisma.characterTravelState.update({
-          where: { id: traveler.id },
-          data: {
+        await db.update(characterTravelStates)
+          .set({
             currentNodeIndex: newIndex,
             lastTickAt: now,
-          },
-        });
+          })
+          .where(eq(characterTravelStates.id, traveler.id));
 
         result.soloMoved++;
       }
@@ -228,39 +224,40 @@ export async function processTravelTick(): Promise<TravelTickResult> {
   // -----------------------------------------------------------------------
   // 4. Process group travelers (with group road encounters)
   // -----------------------------------------------------------------------
-  for (const groupState of groupTravelers) {
+  for (const groupState of groupTravelerRows) {
     try {
+      const route = groupState.travelRoute;
       // Group speed: 1 per tick (future: min of all member speed modifiers)
       const groupSpeed = 1;
       const step = groupState.direction === 'forward' ? groupSpeed : -groupSpeed;
       const newIndex = groupState.currentNodeIndex + step;
 
       // Check if the group has arrived
-      const arrivedForward = groupState.direction === 'forward' && newIndex > groupState.route.nodeCount;
+      const arrivedForward = groupState.direction === 'forward' && newIndex > route.nodeCount;
       const arrivedBackward = groupState.direction !== 'forward' && newIndex < 1;
 
       if (arrivedForward || arrivedBackward) {
         const destinationTownId = groupState.direction === 'forward'
-          ? groupState.route.toTownId
-          : groupState.route.fromTownId;
+          ? route.toTownId
+          : route.fromTownId;
         const originTownId = groupState.direction === 'forward'
-          ? groupState.route.fromTownId
-          : groupState.route.toTownId;
+          ? route.fromTownId
+          : route.toTownId;
 
         // Collect all member character IDs
-        const memberCharacterIds = groupState.group.members.map((m) => m.character.id);
-        const groupPartyId = groupState.group.party?.id ?? undefined;
+        const memberCharacterIds = groupState.travelGroup.travelGroupMembers.map((m) => m.character.id);
+        const groupPartyId = groupState.travelGroup.party?.id ?? undefined;
 
         // --- Group Road Encounter Check ---
         const encounter = await resolveGroupRoadEncounter(
           memberCharacterIds,
           originTownId,
           destinationTownId,
-          { dangerLevel: groupState.route.dangerLevel, terrain: groupState.route.terrain },
+          { dangerLevel: route.dangerLevel, terrain: route.terrain },
           groupPartyId,
         );
 
-        const groupTravelXp = ACTION_XP.TRAVEL_PER_NODE * groupState.route.nodeCount;
+        const groupTravelXp = ACTION_XP.TRAVEL_PER_NODE * route.nodeCount;
 
         if (encounter.encountered) {
           result.groupEncountered++;
@@ -269,27 +266,25 @@ export async function processTravelTick(): Promise<TravelTickResult> {
           if (encounter.won) {
             // Won encounter: all members arrive at destination with travel XP
             result.groupEncounterWins++;
-            const winOps: any[] = [
-              prisma.character.updateMany({
-                where: { id: { in: memberCharacterIds } },
-                data: {
+            await db.transaction(async (tx) => {
+              await tx.update(characters)
+                .set({
                   currentTownId: destinationTownId,
                   travelStatus: 'idle',
-                  xp: { increment: groupTravelXp },
-                },
-              }),
-              prisma.groupTravelState.delete({
-                where: { id: groupState.id },
-              }),
-              prisma.travelGroup.update({
-                where: { id: groupState.groupId },
-                data: { status: 'arrived' },
-              }),
-            ];
-            if (groupPartyId) {
-              winOps.push(prisma.party.update({ where: { id: groupPartyId }, data: { townId: destinationTownId } }));
-            }
-            await prisma.$transaction(winOps);
+                  xp: sql`${characters.xp} + ${groupTravelXp}`,
+                })
+                .where(inArray(characters.id, memberCharacterIds));
+              await tx.delete(groupTravelStates)
+                .where(eq(groupTravelStates.id, groupState.id));
+              await tx.update(travelGroups)
+                .set({ status: 'arrived' })
+                .where(eq(travelGroups.id, groupState.groupId));
+              if (groupPartyId) {
+                await tx.update(parties)
+                  .set({ townId: destinationTownId })
+                  .where(eq(parties.id, groupPartyId));
+              }
+            });
 
             // Level-up check for each member (non-fatal)
             for (const charId of memberCharacterIds) {
@@ -309,27 +304,25 @@ export async function processTravelTick(): Promise<TravelTickResult> {
           } else {
             // Lost encounter: all members return to origin town (penalties already applied)
             result.groupEncounterLosses++;
-            const lossOps: any[] = [
-              prisma.character.updateMany({
-                where: { id: { in: memberCharacterIds } },
-                data: {
+            await db.transaction(async (tx) => {
+              await tx.update(characters)
+                .set({
                   currentTownId: originTownId,
                   travelStatus: 'idle',
-                  xp: { increment: groupTravelXp },
-                },
-              }),
-              prisma.groupTravelState.delete({
-                where: { id: groupState.id },
-              }),
-              prisma.travelGroup.update({
-                where: { id: groupState.groupId },
-                data: { status: 'arrived' },
-              }),
-            ];
-            if (groupPartyId) {
-              lossOps.push(prisma.party.update({ where: { id: groupPartyId }, data: { townId: originTownId } }));
-            }
-            await prisma.$transaction(lossOps);
+                  xp: sql`${characters.xp} + ${groupTravelXp}`,
+                })
+                .where(inArray(characters.id, memberCharacterIds));
+              await tx.delete(groupTravelStates)
+                .where(eq(groupTravelStates.id, groupState.id));
+              await tx.update(travelGroups)
+                .set({ status: 'arrived' })
+                .where(eq(travelGroups.id, groupState.groupId));
+              if (groupPartyId) {
+                await tx.update(parties)
+                  .set({ townId: originTownId })
+                  .where(eq(parties.id, groupPartyId));
+              }
+            });
 
             // Level-up check for each member (non-fatal)
             for (const charId of memberCharacterIds) {
@@ -348,27 +341,25 @@ export async function processTravelTick(): Promise<TravelTickResult> {
           }
         } else {
           // No encounter: arrive at destination with travel XP
-          const safeOps: any[] = [
-            prisma.character.updateMany({
-              where: { id: { in: memberCharacterIds } },
-              data: {
+          await db.transaction(async (tx) => {
+            await tx.update(characters)
+              .set({
                 currentTownId: destinationTownId,
                 travelStatus: 'idle',
-                xp: { increment: groupTravelXp },
-              },
-            }),
-            prisma.groupTravelState.delete({
-              where: { id: groupState.id },
-            }),
-            prisma.travelGroup.update({
-              where: { id: groupState.groupId },
-              data: { status: 'arrived' },
-            }),
-          ];
-          if (groupPartyId) {
-            safeOps.push(prisma.party.update({ where: { id: groupPartyId }, data: { townId: destinationTownId } }));
-          }
-          await prisma.$transaction(safeOps);
+                xp: sql`${characters.xp} + ${groupTravelXp}`,
+              })
+              .where(inArray(characters.id, memberCharacterIds));
+            await tx.delete(groupTravelStates)
+              .where(eq(groupTravelStates.id, groupState.id));
+            await tx.update(travelGroups)
+              .set({ status: 'arrived' })
+              .where(eq(travelGroups.id, groupState.groupId));
+            if (groupPartyId) {
+              await tx.update(parties)
+                .set({ townId: destinationTownId })
+                .where(eq(parties.id, groupPartyId));
+            }
+          });
 
           // Level-up check for each member (non-fatal)
           for (const charId of memberCharacterIds) {
@@ -381,20 +372,19 @@ export async function processTravelTick(): Promise<TravelTickResult> {
               groupId: groupState.groupId,
               destinationTownId,
               memberCount: memberCharacterIds.length,
-              routeNodeCount: groupState.route.nodeCount,
+              routeNodeCount: route.nodeCount,
             },
             'Travel group arrived at destination (safe journey)',
           );
         }
       } else {
         // Still en route: advance node index
-        await prisma.groupTravelState.update({
-          where: { id: groupState.id },
-          data: {
+        await db.update(groupTravelStates)
+          .set({
             currentNodeIndex: newIndex,
             lastTickAt: now,
-          },
-        });
+          })
+          .where(eq(groupTravelStates.id, groupState.id));
 
         result.groupsMoved++;
       }

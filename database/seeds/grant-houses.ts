@@ -5,14 +5,21 @@
  * Usage: npx tsx database/seeds/grant-houses.ts
  */
 
-import { PrismaClient } from '@prisma/client';
+import 'dotenv/config';
+import crypto from 'crypto';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import { sql } from 'drizzle-orm';
+import * as schema from '../schema';
 
-const prisma = new PrismaClient();
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const db = drizzle(pool, { schema });
 
 async function main() {
-  const characters = await prisma.character.findMany({
-    where: { houses: { none: {} } },
-    select: { id: true, name: true, homeTownId: true },
+  // Find characters without any house (relation filter via raw SQL subquery)
+  const characters = await db.query.characters.findMany({
+    where: sql`${schema.characters.id} NOT IN (SELECT character_id FROM houses)`,
+    columns: { id: true, name: true, homeTownId: true },
   });
 
   console.log(`Found ${characters.length} characters without houses`);
@@ -26,21 +33,16 @@ async function main() {
       continue;
     }
 
-    await prisma.house.upsert({
-      where: {
-        characterId_townId: {
-          characterId: char.id,
-          townId: char.homeTownId,
-        },
-      },
-      update: {},
-      create: {
-        characterId: char.id,
-        townId: char.homeTownId,
-        tier: 1,
-        name: `${char.name}'s Cottage`,
-        storageSlots: 20,
-      },
+    await db.insert(schema.houses).values({
+      id: crypto.randomUUID(),
+      characterId: char.id,
+      townId: char.homeTownId,
+      tier: 1,
+      name: `${char.name}'s Cottage`,
+      storageSlots: 20,
+    }).onConflictDoUpdate({
+      target: [schema.houses.characterId, schema.houses.townId],
+      set: {},
     });
     created++;
   }
@@ -53,4 +55,4 @@ main()
     console.error('Error granting houses:', e);
     process.exit(1);
   })
-  .finally(() => prisma.$disconnect());
+  .finally(() => pool.end());

@@ -10,7 +10,8 @@
  *   6. Did any AoE abilities fire against the monster group?
  */
 
-import { PrismaClient } from '@prisma/client';
+import { db, pool } from '../lib/db';
+import * as schema from '@database/index';
 import {
   buildSyntheticPlayer,
   buildSyntheticParty,
@@ -32,8 +33,6 @@ import {
 } from '../lib/combat-engine';
 import { resolveTickCombat, type CombatantParams } from '../services/tick-combat-resolver';
 import type { CombatDamageType, MonsterAbilityInstance, MonsterAbility, TurnLogEntry } from '@shared/types/combat';
-
-const prisma = new PrismaClient();
 
 function buildMonsterAbilityInstances(abilities: any[]): MonsterAbilityInstance[] {
   if (!Array.isArray(abilities) || abilities.length === 0) return [];
@@ -110,7 +109,7 @@ async function main() {
   console.log('=== Group Combat Diagnostic: Balanced L20 Medium ===\n');
 
   // Fetch monsters
-  const dbMonsters = await prisma.monster.findMany();
+  const dbMonsters = await db.query.monsters.findMany();
   const monsterMap = new Map(dbMonsters.map(m => [
     m.name.toLowerCase(),
     {
@@ -515,7 +514,7 @@ async function main() {
   console.log(`Fights with AoE usage: ${aoeCount}/${NUM_FIGHTS}`);
   console.log(`Avg monster HP pool: ${(allFightData.reduce((s, f) => s + f.totalMonsterHp, 0) / NUM_FIGHTS).toFixed(0)} vs Party HP: ${totalPartyHp}`);
 
-  await prisma.$disconnect();
+  await pool.end();
 }
 
 main().catch(err => {

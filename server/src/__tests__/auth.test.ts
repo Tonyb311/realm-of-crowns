@@ -1,12 +1,14 @@
 import request from 'supertest';
 import { app } from '../app';
+import { eq } from 'drizzle-orm';
+import { users } from '@database/tables';
 import {
-  prisma,
+  db,
   createTestUser,
   generateToken,
   authHeader,
   cleanupTestData,
-  disconnectPrisma,
+  disconnectDb,
 } from './setup';
 
 describe('Auth API', () => {
@@ -15,7 +17,7 @@ describe('Auth API', () => {
   });
 
   afterAll(async () => {
-    await disconnectPrisma();
+    await disconnectDb();
   });
 
   // ---- POST /api/auth/register ----
@@ -38,7 +40,7 @@ describe('Auth API', () => {
       expect(res.body.user.id).toBeDefined();
 
       // Clean up the manually created user
-      await prisma.user.delete({ where: { id: res.body.user.id } });
+      await db.delete(users).where(eq(users.id, res.body.user.id));
     });
 
     it('should reject duplicate email', async () => {
@@ -144,7 +146,7 @@ describe('Auth API', () => {
       expect(res.body.user.email).toBe('login@test.com');
 
       // Clean up
-      await prisma.user.delete({ where: { id: userId } });
+      await db.delete(users).where(eq(users.id, userId));
     });
 
     it('should reject wrong password', async () => {
@@ -168,7 +170,7 @@ describe('Auth API', () => {
       expect(res.status).toBe(401);
       expect(res.body.error).toBe('Invalid email or password');
 
-      await prisma.user.delete({ where: { id: userId } });
+      await db.delete(users).where(eq(users.id, userId));
     });
 
     it('should reject nonexistent user', async () => {

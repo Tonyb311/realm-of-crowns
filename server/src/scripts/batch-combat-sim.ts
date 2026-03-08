@@ -14,7 +14,11 @@
  *   npm run sim:delete -- --run-id clxxxxxxxxxx
  */
 
-import { PrismaClient, Race } from '@prisma/client';
+import { db, pool } from '../lib/db';
+import { eq, and, like, inArray, desc } from 'drizzle-orm';
+import * as schema from '@database/index';
+import type { Race } from '@shared/enums';
+import crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
@@ -91,36 +95,30 @@ function buildMonsterCombatOptions(cd: MonsterCombatData) {
 }
 
 // ---------------------------------------------------------------------------
-// Prisma (standalone — not the server singleton)
-// ---------------------------------------------------------------------------
-
-const prisma = new PrismaClient();
-
-// ---------------------------------------------------------------------------
-// Race ID → Prisma Race enum mapping
+// Race ID → Race enum string mapping
 // ---------------------------------------------------------------------------
 
 const RACE_ID_TO_ENUM: Record<string, Race> = {
-  human: Race.HUMAN,
-  elf: Race.ELF,
-  dwarf: Race.DWARF,
-  harthfolk: Race.HARTHFOLK,
-  orc: Race.ORC,
-  nethkin: Race.NETHKIN,
-  drakonid: Race.DRAKONID,
-  half_elf: Race.HALF_ELF,
-  half_orc: Race.HALF_ORC,
-  gnome: Race.GNOME,
-  merfolk: Race.MERFOLK,
-  beastfolk: Race.BEASTFOLK,
-  faefolk: Race.FAEFOLK,
-  goliath: Race.GOLIATH,
-  nightborne: Race.NIGHTBORNE,
-  mosskin: Race.MOSSKIN,
-  forgeborn: Race.FORGEBORN,
-  elementari: Race.ELEMENTARI,
-  revenant: Race.REVENANT,
-  changeling: Race.CHANGELING,
+  human: 'HUMAN',
+  elf: 'ELF',
+  dwarf: 'DWARF',
+  harthfolk: 'HARTHFOLK',
+  orc: 'ORC',
+  nethkin: 'NETHKIN',
+  drakonid: 'DRAKONID',
+  half_elf: 'HALF_ELF',
+  half_orc: 'HALF_ORC',
+  gnome: 'GNOME',
+  merfolk: 'MERFOLK',
+  beastfolk: 'BEASTFOLK',
+  faefolk: 'FAEFOLK',
+  goliath: 'GOLIATH',
+  nightborne: 'NIGHTBORNE',
+  mosskin: 'MOSSKIN',
+  forgeborn: 'FORGEBORN',
+  elementari: 'ELEMENTARI',
+  revenant: 'REVENANT',
+  changeling: 'CHANGELING',
 };
 
 // ---------------------------------------------------------------------------
@@ -311,7 +309,7 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
 
   // Fetch all monsters from DB
   console.log('Fetching monsters from database...');
-  const dbMonsters = await prisma.monster.findMany();
+  const dbMonsters = await db.query.monsters.findMany();
   const monsterMap = new Map(dbMonsters.map(m => [
     m.name.toLowerCase(),
     {
@@ -346,15 +344,14 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
   console.log(`Matchups: ${matchups.length} | Total fights: ${totalFights.toLocaleString()}`);
 
   // Create SimulationRun
-  const run = await prisma.simulationRun.create({
-    data: {
-      tickCount: 0,
-      botCount: 0,
-      config: { source: 'batch-cli', matchups: matchups.length, totalFights, grid: args.config ?? null },
-      status: 'running',
-      notes: args.notes || `Batch CLI: ${matchups.length} matchups, ${totalFights} fights`,
-    },
-  });
+  const [run] = await db.insert(schema.simulationRuns).values({
+    id: crypto.randomUUID(),
+    tickCount: 0,
+    botCount: 0,
+    config: { source: 'batch-cli', matchups: matchups.length, totalFights, grid: args.config ?? null },
+    status: 'running',
+    notes: args.notes || `Batch CLI: ${matchups.length} matchups, ${totalFights} fights`,
+  }).returning();
   const runId = run.id;
   currentRunId = runId; // for SIGINT handler
   const runShort = runId.slice(-8);
@@ -391,30 +388,26 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
     const charId = `bsim-c-${runShort}-${race}-${cls}-${level}`;
     const userId = `bsim-u-${runShort}-${race}-${cls}-${level}`;
 
-    await prisma.user.create({
-      data: {
-        id: userId,
-        username: `BatchSim_${race}_${cls}_L${level}_${runShort}`,
-        email: `bs-${runShort}-${race}-${cls}-${level}@sim.local`,
-        passwordHash: 'batch-sim-no-login',
-        isTestAccount: true,
-      },
+    await db.insert(schema.users).values({
+      id: userId,
+      username: `BatchSim_${race}_${cls}_L${level}_${runShort}`,
+      email: `bs-${runShort}-${race}-${cls}-${level}@sim.local`,
+      passwordHash: 'batch-sim-no-login',
+      isTestAccount: true,
     });
 
-    await prisma.character.create({
-      data: {
-        id: charId,
-        userId,
-        name: player.name,
-        race: raceEnum,
-        class: cls,
-        level,
-        health: player.hp,
-        maxHealth: player.maxHp,
-        stats: player.stats,
-        gold: 0,
-        xp: 0,
-      },
+    await db.insert(schema.characters).values({
+      id: charId,
+      userId,
+      name: player.name,
+      race: raceEnum,
+      class: cls,
+      level,
+      health: player.hp,
+      maxHealth: player.maxHp,
+      stats: player.stats,
+      gold: 0,
+      xp: 0,
     });
 
     charMap.set(combo, charId);
@@ -438,7 +431,7 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
 
   async function flushRows(): Promise<void> {
     if (pendingRows.length === 0) return;
-    await prisma.combatEncounterLog.createMany({ data: pendingRows });
+    await db.insert(schema.combatEncounterLogs).values(pendingRows);
     pendingRows = [];
   }
 
@@ -532,6 +525,7 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
         );
 
         pendingRows.push({
+          id: crypto.randomUUID(),
           type: 'pve',
           sessionId: `batch-${mIdx}-${i}`,
           characterId,
@@ -596,14 +590,13 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
   console.log(''); // newline after progress
 
   // Update SimulationRun
-  await prisma.simulationRun.update({
-    where: { id: runId },
-    data: {
+  await db.update(schema.simulationRuns)
+    .set({
       status: 'completed',
-      completedAt: new Date(),
+      completedAt: new Date().toISOString(),
       encounterCount: completedFights,
-    },
-  });
+    })
+    .where(eq(schema.simulationRuns.id, runId));
 
   // Clear context
   setSimulationRunId(null);
@@ -673,7 +666,7 @@ async function runGroupCommand(args: ReturnType<typeof parseArgs>): Promise<void
 
   // Fetch all monsters from DB
   console.log('Fetching monsters from database...');
-  const dbMonsters = await prisma.monster.findMany();
+  const dbMonsters = await db.query.monsters.findMany();
   const monsterMap = new Map(dbMonsters.map(m => [
     m.name.toLowerCase(),
     {
@@ -718,15 +711,14 @@ async function runGroupCommand(args: ReturnType<typeof parseArgs>): Promise<void
   console.log(`Group matchups: ${matchups.length} | Total fights: ${totalFights.toLocaleString()}`);
 
   // Create SimulationRun
-  const run = await prisma.simulationRun.create({
-    data: {
-      tickCount: 0,
-      botCount: 0,
-      config: { source: 'batch-cli-group', matchups: matchups.length, totalFights, configFile: args.config },
-      status: 'running',
-      notes: args.notes || `Group CLI: ${matchups.length} matchups, ${totalFights} fights`,
-    },
-  });
+  const [run] = await db.insert(schema.simulationRuns).values({
+    id: crypto.randomUUID(),
+    tickCount: 0,
+    botCount: 0,
+    config: { source: 'batch-cli-group', matchups: matchups.length, totalFights, configFile: args.config },
+    status: 'running',
+    notes: args.notes || `Group CLI: ${matchups.length} matchups, ${totalFights} fights`,
+  }).returning();
   const runId = run.id;
   currentRunId = runId;
   const runShort = runId.slice(-8);
@@ -758,30 +750,26 @@ async function runGroupCommand(args: ReturnType<typeof parseArgs>): Promise<void
     const charId = `bsim-g-${runShort}-${race}-${cls}-${level}`;
     const userId = `bsim-gu-${runShort}-${race}-${cls}-${level}`;
 
-    await prisma.user.create({
-      data: {
-        id: userId,
-        username: `GrpSim_${race}_${cls}_L${level}_${runShort}`,
-        email: `gs-${runShort}-${race}-${cls}-${level}@sim.local`,
-        passwordHash: 'batch-sim-no-login',
-        isTestAccount: true,
-      },
+    await db.insert(schema.users).values({
+      id: userId,
+      username: `GrpSim_${race}_${cls}_L${level}_${runShort}`,
+      email: `gs-${runShort}-${race}-${cls}-${level}@sim.local`,
+      passwordHash: 'batch-sim-no-login',
+      isTestAccount: true,
     });
 
-    await prisma.character.create({
-      data: {
-        id: charId,
-        userId,
-        name: player.name,
-        race: raceEnum,
-        class: cls,
-        level,
-        health: player.hp,
-        maxHealth: player.maxHp,
-        stats: player.stats,
-        gold: 0,
-        xp: 0,
-      },
+    await db.insert(schema.characters).values({
+      id: charId,
+      userId,
+      name: player.name,
+      race: raceEnum,
+      class: cls,
+      level,
+      health: player.hp,
+      maxHealth: player.maxHp,
+      stats: player.stats,
+      gold: 0,
+      xp: 0,
     });
 
     charMap.set(combo, charId);
@@ -809,7 +797,7 @@ async function runGroupCommand(args: ReturnType<typeof parseArgs>): Promise<void
 
   async function flushRows(): Promise<void> {
     if (pendingRows.length === 0) return;
-    await prisma.combatEncounterLog.createMany({ data: pendingRows });
+    await db.insert(schema.combatEncounterLogs).values(pendingRows);
     pendingRows = [];
   }
 
@@ -965,6 +953,7 @@ async function runGroupCommand(args: ReturnType<typeof parseArgs>): Promise<void
         );
 
         pendingRows.push({
+          id: crypto.randomUUID(),
           type: 'pve',
           sessionId,
           characterId: primaryCharId,
@@ -1013,14 +1002,13 @@ async function runGroupCommand(args: ReturnType<typeof parseArgs>): Promise<void
   console.log('');
 
   // Update SimulationRun
-  await prisma.simulationRun.update({
-    where: { id: runId },
-    data: {
+  await db.update(schema.simulationRuns)
+    .set({
       status: 'completed',
-      completedAt: new Date(),
+      completedAt: new Date().toISOString(),
       encounterCount: completedFights,
-    },
-  });
+    })
+    .where(eq(schema.simulationRuns.id, runId));
   setSimulationRunId(null);
 
   // Print summary table
@@ -1070,14 +1058,15 @@ async function runGroupCommand(args: ReturnType<typeof parseArgs>): Promise<void
 // ---------------------------------------------------------------------------
 
 async function listCommand(): Promise<void> {
-  const runs = await prisma.simulationRun.findMany({
-    where: {
-      OR: [
-        { config: { path: ['source'], equals: 'batch-cli' } },
-        { config: { path: ['source'], equals: 'batch-cli-group' } },
-      ],
-    },
-    orderBy: { startedAt: 'desc' },
+  // Drizzle doesn't support JSON path queries; query all recent and filter
+  const allRuns = await db.query.simulationRuns.findMany({
+    orderBy: desc(schema.simulationRuns.startedAt),
+    limit: 200,
+  });
+
+  const runs = allRuns.filter(r => {
+    const config = r.config as any;
+    return config?.source === 'batch-cli' || config?.source === 'batch-cli-group';
   });
 
   if (runs.length === 0) {
@@ -1089,7 +1078,7 @@ async function listCommand(): Promise<void> {
   console.log('-'.repeat(100));
 
   for (const run of runs) {
-    const started = run.startedAt.toISOString().replace('T', ' ').slice(0, 16);
+    const started = run.startedAt.replace('T', ' ').slice(0, 16);
     const notes = (run.notes || '').slice(0, 40);
     console.log(
       `${run.id.padEnd(28)} | ${started.padEnd(18)} | ${run.status.padEnd(10)} | ${String(run.encounterCount).padEnd(8)} | ${notes}`,
@@ -1102,7 +1091,9 @@ async function listCommand(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function deleteCommand(runId: string): Promise<void> {
-  const run = await prisma.simulationRun.findUnique({ where: { id: runId } });
+  const run = await db.query.simulationRuns.findFirst({
+    where: eq(schema.simulationRuns.id, runId),
+  });
   if (!run) {
     console.error(`SimulationRun not found: ${runId}`);
     process.exit(1);
@@ -1112,24 +1103,26 @@ async function deleteCommand(runId: string): Promise<void> {
   console.log(`Deleting run ${runId}...`);
 
   // 1. Delete test users (cascade → characters → encounter logs)
-  const userResult = await prisma.user.deleteMany({
-    where: {
-      isTestAccount: true,
-      id: { startsWith: `bsim-u-${runShort}` },
-    },
-  });
-  console.log(`  Deleted ${userResult.count} test users (+ cascaded characters & logs)`);
+  const userResult = await db.delete(schema.users).where(
+    and(
+      eq(schema.users.isTestAccount, true),
+      like(schema.users.id, `bsim-u-${runShort}%`),
+    ),
+  );
+  const userCount = userResult.rowCount ?? 0;
+  console.log(`  Deleted ${userCount} test users (+ cascaded characters & logs)`);
 
   // 2. Delete any remaining encounter logs for this run (safety net for non-batch logs)
-  const logResult = await prisma.combatEncounterLog.deleteMany({
-    where: { simulationRunId: runId },
-  });
-  if (logResult.count > 0) {
-    console.log(`  Deleted ${logResult.count} remaining encounter logs`);
+  const logResult = await db.delete(schema.combatEncounterLogs).where(
+    eq(schema.combatEncounterLogs.simulationRunId, runId),
+  );
+  const logCount = logResult.rowCount ?? 0;
+  if (logCount > 0) {
+    console.log(`  Deleted ${logCount} remaining encounter logs`);
   }
 
   // 3. Delete the SimulationRun
-  await prisma.simulationRun.delete({ where: { id: runId } });
+  await db.delete(schema.simulationRuns).where(eq(schema.simulationRuns.id, runId));
   console.log(`  Deleted SimulationRun record`);
   console.log('Done.');
 }
@@ -1140,10 +1133,11 @@ async function deleteAllCommand(confirm: boolean): Promise<void> {
     process.exit(1);
   }
 
-  const runs = await prisma.simulationRun.findMany({
-    where: {
-      config: { path: ['source'], equals: 'batch-cli' },
-    },
+  // Drizzle doesn't support JSON path queries; query all and filter
+  const allRuns = await db.query.simulationRuns.findMany();
+  const runs = allRuns.filter(r => {
+    const config = r.config as any;
+    return config?.source === 'batch-cli';
   });
 
   if (runs.length === 0) {
@@ -1158,14 +1152,15 @@ async function deleteAllCommand(confirm: boolean): Promise<void> {
   }
 
   // Safety net: delete any orphaned batch-sim users
-  const orphanedUsers = await prisma.user.deleteMany({
-    where: {
-      isTestAccount: true,
-      username: { startsWith: 'BatchSim_' },
-    },
-  });
-  if (orphanedUsers.count > 0) {
-    console.log(`Cleaned up ${orphanedUsers.count} orphaned batch-sim users`);
+  const orphanedUsers = await db.delete(schema.users).where(
+    and(
+      eq(schema.users.isTestAccount, true),
+      like(schema.users.username, 'BatchSim_%'),
+    ),
+  );
+  const orphanCount = orphanedUsers.rowCount ?? 0;
+  if (orphanCount > 0) {
+    console.log(`Cleaned up ${orphanCount} orphaned batch-sim users`);
   }
 
   console.log('All batch-cli runs deleted.');
@@ -1181,17 +1176,16 @@ process.on('SIGINT', async () => {
   console.log('\nInterrupted. Cleaning up...');
   if (currentRunId) {
     try {
-      await prisma.simulationRun.update({
-        where: { id: currentRunId },
-        data: { status: 'stopped', completedAt: new Date() },
-      });
+      await db.update(schema.simulationRuns)
+        .set({ status: 'stopped', completedAt: new Date().toISOString() })
+        .where(eq(schema.simulationRuns.id, currentRunId));
       console.log(`Run ${currentRunId} marked as stopped.`);
     } catch {
       // ignore cleanup errors
     }
   }
   setSimulationRunId(null);
-  await prisma.$disconnect();
+  await pool.end();
   process.exit(1);
 });
 
@@ -1234,10 +1228,9 @@ async function main(): Promise<void> {
     console.error('Fatal error:', err);
     if (currentRunId) {
       try {
-        await prisma.simulationRun.update({
-          where: { id: currentRunId },
-          data: { status: 'failed', completedAt: new Date() },
-        });
+        await db.update(schema.simulationRuns)
+          .set({ status: 'failed', completedAt: new Date().toISOString() })
+          .where(eq(schema.simulationRuns.id, currentRunId));
       } catch {
         // ignore
       }
@@ -1245,7 +1238,7 @@ async function main(): Promise<void> {
     setSimulationRunId(null);
     process.exit(1);
   } finally {
-    await prisma.$disconnect();
+    await pool.end();
   }
 }
 

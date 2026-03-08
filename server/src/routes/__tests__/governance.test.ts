@@ -5,17 +5,25 @@
  * and election lifecycle.
  */
 
-jest.mock('../../lib/prisma', () => ({
-  prisma: {
-    character: { findFirst: jest.fn() },
-    kingdom: { findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
-    town: { findUnique: jest.fn(), findFirst: jest.fn() },
-    law: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), findMany: jest.fn() },
-    lawVote: { findUnique: jest.fn(), create: jest.fn(), count: jest.fn() },
-    councilMember: { findFirst: jest.fn(), create: jest.fn() },
-    townPolicy: { upsert: jest.fn() },
-    townTreasury: { upsert: jest.fn(), update: jest.fn() },
-    war: { findFirst: jest.fn(), create: jest.fn() },
+jest.mock('../../lib/db', () => ({
+  db: {
+    query: {
+      characters: { findFirst: jest.fn() },
+      kingdoms: { findFirst: jest.fn() },
+      towns: { findFirst: jest.fn() },
+      laws: { findFirst: jest.fn(), findMany: jest.fn() },
+      lawVotes: { findFirst: jest.fn() },
+      councilMembers: { findFirst: jest.fn() },
+      townPolicies: { findFirst: jest.fn() },
+      townTreasuries: { findFirst: jest.fn() },
+      wars: { findFirst: jest.fn() },
+    },
+    insert: jest.fn().mockReturnValue({ values: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]), onConflictDoUpdate: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]) }) }) }),
+    update: jest.fn().mockReturnValue({ set: jest.fn().mockReturnValue({ where: jest.fn().mockReturnValue({ returning: jest.fn().mockResolvedValue([{}]) }) }) }),
+    delete: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([]) }),
+    execute: jest.fn().mockResolvedValue([]),
+    select: jest.fn().mockReturnValue({ from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([]) }) }),
+    transaction: jest.fn(),
   },
 }));
 
@@ -44,9 +52,9 @@ jest.mock('../../socket/events', () => ({
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import { app } from '../../app';
-import { prisma } from '../../lib/prisma';
+import { db } from '../../lib/db';
 
-const mockedPrisma = prisma as jest.Mocked<typeof prisma>;
+const mockedDb = db as jest.Mocked<typeof db>;
 
 function makeToken(userId: string) {
   return jwt.sign({ userId, username: 'tester' }, process.env.JWT_SECRET || 'test-secret-key-for-integration-tests');
@@ -79,20 +87,26 @@ const mockKingdom = {
 describe('Governance API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (mockedPrisma.character.findFirst as jest.Mock).mockResolvedValue(mockCharacter);
+    (mockedDb.query.characters.findFirst as jest.Mock).mockResolvedValue(mockCharacter);
   });
 
   // ---- POST /api/governance/propose-law ----
 
   describe('POST /api/governance/propose-law', () => {
     it('should allow a ruler to propose a law', async () => {
-      (mockedPrisma.kingdom.findUnique as jest.Mock).mockResolvedValue(mockKingdom);
-      (mockedPrisma.town.findFirst as jest.Mock).mockResolvedValue(null);
-      (mockedPrisma.law.create as jest.Mock).mockResolvedValue({
-        id: 'new-law',
-        kingdomId: KINGDOM_ID,
-        title: 'Tax Reform',
-        status: 'PROPOSED',
+      (mockedDb.query.kingdoms.findFirst as jest.Mock).mockResolvedValue(mockKingdom);
+      (mockedDb.query.towns.findFirst as jest.Mock).mockResolvedValue(undefined);
+
+      // Mock insert for law creation
+      (mockedDb.insert as jest.Mock).mockReturnValue({
+        values: jest.fn().mockReturnValue({
+          returning: jest.fn().mockResolvedValue([{
+            id: 'new-law',
+            kingdomId: KINGDOM_ID,
+            title: 'Tax Reform',
+            status: 'PROPOSED',
+          }]),
+        }),
       });
 
       const res = await request(app)
@@ -112,11 +126,11 @@ describe('Governance API', () => {
     });
 
     it('should reject when character is neither ruler nor mayor', async () => {
-      (mockedPrisma.kingdom.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.kingdoms.findFirst as jest.Mock).mockResolvedValue({
         ...mockKingdom,
         rulerId: 'someone-else',
       });
-      (mockedPrisma.town.findFirst as jest.Mock).mockResolvedValue(null);
+      (mockedDb.query.towns.findFirst as jest.Mock).mockResolvedValue(undefined);
 
       const res = await request(app)
         .post('/api/governance/propose-law')
@@ -132,19 +146,24 @@ describe('Governance API', () => {
     });
 
     it('should allow a mayor to propose a law', async () => {
-      (mockedPrisma.kingdom.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.kingdoms.findFirst as jest.Mock).mockResolvedValue({
         ...mockKingdom,
         rulerId: 'someone-else',
       });
-      (mockedPrisma.town.findFirst as jest.Mock).mockResolvedValue({
+      (mockedDb.query.towns.findFirst as jest.Mock).mockResolvedValue({
         id: 'town-001',
         mayorId: CHAR_ID,
       });
-      (mockedPrisma.law.create as jest.Mock).mockResolvedValue({
-        id: 'new-law',
-        kingdomId: KINGDOM_ID,
-        title: 'Building Code',
-        status: 'PROPOSED',
+
+      (mockedDb.insert as jest.Mock).mockReturnValue({
+        values: jest.fn().mockReturnValue({
+          returning: jest.fn().mockResolvedValue([{
+            id: 'new-law',
+            kingdomId: KINGDOM_ID,
+            title: 'Building Code',
+            status: 'PROPOSED',
+          }]),
+        }),
       });
 
       const res = await request(app)
@@ -173,23 +192,43 @@ describe('Governance API', () => {
     };
 
     it('should allow a council member to vote on a law', async () => {
-      (mockedPrisma.law.findUnique as jest.Mock).mockResolvedValue(mockLaw);
-      (mockedPrisma.councilMember.findFirst as jest.Mock).mockResolvedValue({
+      (mockedDb.query.laws.findFirst as jest.Mock).mockResolvedValue(mockLaw);
+      (mockedDb.query.councilMembers.findFirst as jest.Mock).mockResolvedValue({
         id: 'cm-001',
         characterId: CHAR_ID,
         kingdomId: KINGDOM_ID,
       });
-      (mockedPrisma.kingdom.findUnique as jest.Mock).mockResolvedValue(mockKingdom);
-      (mockedPrisma.lawVote.findUnique as jest.Mock).mockResolvedValue(null); // no existing vote
-      (mockedPrisma.lawVote.create as jest.Mock).mockResolvedValue({ id: 'vote-001' });
-      (mockedPrisma.lawVote.count as jest.Mock)
-        .mockResolvedValueOnce(1) // votesFor
-        .mockResolvedValueOnce(0); // votesAgainst
-      (mockedPrisma.law.update as jest.Mock).mockResolvedValue({
-        ...mockLaw,
-        status: 'VOTING',
-        votesFor: 1,
-        votesAgainst: 0,
+      (mockedDb.query.kingdoms.findFirst as jest.Mock).mockResolvedValue(mockKingdom);
+      (mockedDb.query.lawVotes.findFirst as jest.Mock).mockResolvedValue(undefined); // no existing vote
+
+      // Mock insert for vote creation
+      (mockedDb.insert as jest.Mock).mockReturnValue({
+        values: jest.fn().mockReturnValue({
+          returning: jest.fn().mockResolvedValue([{ id: 'vote-001' }]),
+        }),
+      });
+
+      // Mock select().from().where() for vote counts
+      (mockedDb.select as jest.Mock).mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn()
+            .mockResolvedValueOnce([{ count: 1 }]) // votesFor
+            .mockResolvedValueOnce([{ count: 0 }]), // votesAgainst
+        }),
+      });
+
+      // Mock update for law vote counts
+      (mockedDb.update as jest.Mock).mockReturnValue({
+        set: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            returning: jest.fn().mockResolvedValue([{
+              ...mockLaw,
+              status: 'VOTING',
+              votesFor: 1,
+              votesAgainst: 0,
+            }]),
+          }),
+        }),
       });
 
       const res = await request(app)
@@ -203,15 +242,15 @@ describe('Governance API', () => {
     });
 
     it('should reject duplicate votes (vote stuffing prevention)', async () => {
-      (mockedPrisma.law.findUnique as jest.Mock).mockResolvedValue(mockLaw);
-      (mockedPrisma.councilMember.findFirst as jest.Mock).mockResolvedValue({
+      (mockedDb.query.laws.findFirst as jest.Mock).mockResolvedValue(mockLaw);
+      (mockedDb.query.councilMembers.findFirst as jest.Mock).mockResolvedValue({
         id: 'cm-001',
         characterId: CHAR_ID,
         kingdomId: KINGDOM_ID,
       });
-      (mockedPrisma.kingdom.findUnique as jest.Mock).mockResolvedValue(mockKingdom);
+      (mockedDb.query.kingdoms.findFirst as jest.Mock).mockResolvedValue(mockKingdom);
       // Already voted
-      (mockedPrisma.lawVote.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.lawVotes.findFirst as jest.Mock).mockResolvedValue({
         id: 'vote-001',
         lawId: LAW_ID,
         characterId: CHAR_ID,
@@ -228,7 +267,7 @@ describe('Governance API', () => {
     });
 
     it('should reject votes on non-voting laws', async () => {
-      (mockedPrisma.law.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.laws.findFirst as jest.Mock).mockResolvedValue({
         ...mockLaw,
         status: 'ACTIVE',
       });
@@ -243,9 +282,9 @@ describe('Governance API', () => {
     });
 
     it('should reject votes from non-council members', async () => {
-      (mockedPrisma.law.findUnique as jest.Mock).mockResolvedValue(mockLaw);
-      (mockedPrisma.councilMember.findFirst as jest.Mock).mockResolvedValue(null);
-      (mockedPrisma.kingdom.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.laws.findFirst as jest.Mock).mockResolvedValue(mockLaw);
+      (mockedDb.query.councilMembers.findFirst as jest.Mock).mockResolvedValue(undefined);
+      (mockedDb.query.kingdoms.findFirst as jest.Mock).mockResolvedValue({
         ...mockKingdom,
         rulerId: 'someone-else',
       });
@@ -264,15 +303,37 @@ describe('Governance API', () => {
 
   describe('POST /api/governance/set-tax', () => {
     it('should allow the mayor to set tax rate', async () => {
-      (mockedPrisma.town.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.towns.findFirst as jest.Mock).mockResolvedValue({
         id: 'town-001',
         mayorId: CHAR_ID,
       });
-      (mockedPrisma.townPolicy.upsert as jest.Mock).mockResolvedValue({
-        townId: 'town-001',
-        taxRate: 0.15,
+      (mockedDb.query.townPolicies.findFirst as jest.Mock).mockResolvedValue(undefined);
+      (mockedDb.query.townTreasuries.findFirst as jest.Mock).mockResolvedValue(undefined);
+
+      // Mock insert/update for policy upsert
+      (mockedDb.insert as jest.Mock).mockReturnValue({
+        values: jest.fn().mockReturnValue({
+          returning: jest.fn().mockResolvedValue([{
+            townId: 'town-001',
+            taxRate: 0.15,
+          }]),
+          onConflictDoUpdate: jest.fn().mockReturnValue({
+            returning: jest.fn().mockResolvedValue([{
+              townId: 'town-001',
+              taxRate: 0.15,
+            }]),
+          }),
+        }),
       });
-      (mockedPrisma.townTreasury.upsert as jest.Mock).mockResolvedValue({});
+
+      // Mock update for treasury
+      (mockedDb.update as jest.Mock).mockReturnValue({
+        set: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            returning: jest.fn().mockResolvedValue([{}]),
+          }),
+        }),
+      });
 
       const res = await request(app)
         .post('/api/governance/set-tax')
@@ -284,7 +345,7 @@ describe('Governance API', () => {
     });
 
     it('should reject non-mayor from setting tax', async () => {
-      (mockedPrisma.town.findUnique as jest.Mock).mockResolvedValue({
+      (mockedDb.query.towns.findFirst as jest.Mock).mockResolvedValue({
         id: 'town-001',
         mayorId: 'someone-else',
       });
@@ -321,7 +382,7 @@ describe('Governance API', () => {
     });
 
     it('should return laws for a kingdom', async () => {
-      (mockedPrisma.law.findMany as jest.Mock).mockResolvedValue([
+      (mockedDb.query.laws.findMany as jest.Mock).mockResolvedValue([
         {
           id: 'law-001',
           title: 'Tax Reform',

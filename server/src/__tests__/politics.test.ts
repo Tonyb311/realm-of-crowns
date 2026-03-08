@@ -1,14 +1,17 @@
 import request from 'supertest';
+import crypto from 'crypto';
 import { app } from '../app';
+import { eq } from 'drizzle-orm';
+import { electionCandidates, towns } from '@database/tables';
 import {
+  db,
   createTestUserWithCharacter,
   createTestTown,
   createTestElection,
   createTestKingdom,
   authHeader,
   cleanupTestData,
-  disconnectPrisma,
-  prisma,
+  disconnectDb,
 } from './setup';
 
 describe('Politics API (Elections & Governance)', () => {
@@ -17,7 +20,7 @@ describe('Politics API (Elections & Governance)', () => {
   });
 
   afterAll(async () => {
-    await disconnectPrisma();
+    await disconnectDb();
   });
 
   // ---- POST /api/elections/nominate ----
@@ -114,12 +117,11 @@ describe('Politics API (Elections & Governance)', () => {
       const election = await createTestElection(town.id, { phase: 'VOTING' });
 
       // Register candidate
-      await prisma.electionCandidate.create({
-        data: {
-          electionId: election.id,
-          characterId: candidate.character.id,
-          platform: 'I will lead',
-        },
+      await db.insert(electionCandidates).values({
+        id: crypto.randomUUID(),
+        electionId: election.id,
+        characterId: candidate.character.id,
+        platform: 'I will lead',
       });
 
       const res = await request(app)
@@ -141,8 +143,10 @@ describe('Politics API (Elections & Governance)', () => {
       const voter = await createTestUserWithCharacter({}, { townId: town.id });
       const election = await createTestElection(town.id, { phase: 'VOTING' });
 
-      await prisma.electionCandidate.create({
-        data: { electionId: election.id, characterId: candidate.character.id },
+      await db.insert(electionCandidates).values({
+        id: crypto.randomUUID(),
+        electionId: election.id,
+        characterId: candidate.character.id,
       });
 
       // First vote
@@ -166,8 +170,10 @@ describe('Politics API (Elections & Governance)', () => {
       const candidate = await createTestUserWithCharacter({}, { townId: town.id });
       const election = await createTestElection(town.id, { phase: 'VOTING' });
 
-      await prisma.electionCandidate.create({
-        data: { electionId: election.id, characterId: candidate.character.id },
+      await db.insert(electionCandidates).values({
+        id: crypto.randomUUID(),
+        electionId: election.id,
+        characterId: candidate.character.id,
       });
 
       const res = await request(app)
@@ -205,10 +211,7 @@ describe('Politics API (Elections & Governance)', () => {
       const mayor = await createTestUserWithCharacter({}, { townId: town.id });
 
       // Make the character mayor
-      await prisma.town.update({
-        where: { id: town.id },
-        data: { mayorId: mayor.character.id },
-      });
+      await db.update(towns).set({ mayorId: mayor.character.id }).where(eq(towns.id, town.id));
 
       const res = await request(app)
         .post('/api/governance/set-tax')
@@ -236,10 +239,7 @@ describe('Politics API (Elections & Governance)', () => {
     it('should reject invalid tax rate', async () => {
       const { town } = await createTestTown();
       const mayor = await createTestUserWithCharacter({}, { townId: town.id });
-      await prisma.town.update({
-        where: { id: town.id },
-        data: { mayorId: mayor.character.id },
-      });
+      await db.update(towns).set({ mayorId: mayor.character.id }).where(eq(towns.id, town.id));
 
       const res = await request(app)
         .post('/api/governance/set-tax')

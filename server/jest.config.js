@@ -8,6 +8,7 @@ module.exports = {
   setupFiles: ['<rootDir>/src/__tests__/jest.setup.ts'],
   moduleNameMapper: {
     '^@shared/(.*)$': '<rootDir>/../shared/src/$1',
+    '^@database/(.*)$': '<rootDir>/../database/schema/$1',
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   transform: {

@@ -1,26 +1,29 @@
 import request from 'supertest';
+import crypto from 'crypto';
 import { app } from '../app';
+import { eq, like } from 'drizzle-orm';
+import { contentReleases, towns, characters } from '@database/tables';
 import {
+  db,
   createTestUser,
   createTestUserWithCharacter,
   createTestTown,
   authHeader,
   cleanupTestData,
-  disconnectPrisma,
-  prisma,
+  disconnectDb,
 } from './setup';
 
 describe('Characters API', () => {
   afterEach(async () => {
     await cleanupTestData();
     // Clean up any content release records created during tests
-    await prisma.contentRelease.deleteMany({
-      where: { contentId: { startsWith: 'test_' } },
-    }).catch(() => {});
+    try {
+      await db.delete(contentReleases).where(like(contentReleases.contentId, 'test_%'));
+    } catch (_) {}
   });
 
   afterAll(async () => {
-    await disconnectPrisma();
+    await disconnectDb();
   });
 
   // ---- POST /api/characters/create ----
@@ -30,15 +33,20 @@ describe('Characters API', () => {
       const testUser = await createTestUser();
       // Create a released town matching a Human starting town name
       const { town } = await createTestTown('Kingshold');
-      await prisma.town.update({
-        where: { id: town.id },
-        data: { isReleased: true },
-      });
+      await db.update(towns).set({ isReleased: true }).where(eq(towns.id, town.id));
       // Ensure HUMAN race is marked as released in ContentRelease table
-      await prisma.contentRelease.upsert({
-        where: { contentType_contentId: { contentType: 'race', contentId: 'human' } },
-        create: { contentType: 'race', contentId: 'human', contentName: 'Humans', tier: 'core', isReleased: true, releasedAt: new Date() },
-        update: { isReleased: true, releasedAt: new Date() },
+      await db.insert(contentReleases).values({
+        id: crypto.randomUUID(),
+        contentType: 'race',
+        contentId: 'human',
+        contentName: 'Humans',
+        tier: 'core',
+        isReleased: true,
+        releasedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }).onConflictDoUpdate({
+        target: [contentReleases.contentType, contentReleases.contentId],
+        set: { isReleased: true, releasedAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
       });
 
       const res = await request(app)
@@ -62,7 +70,7 @@ describe('Characters API', () => {
       expect(res.body.character.gold).toBeGreaterThan(0);
 
       // Clean up character
-      await prisma.character.delete({ where: { id: res.body.character.id } });
+      await db.delete(characters).where(eq(characters.id, res.body.character.id));
     });
 
     it('should reject duplicate character (one per user)', async () => {

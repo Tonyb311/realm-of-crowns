@@ -9,10 +9,14 @@
  * Usage: cd database && DATABASE_URL=... npx tsx seeds/run-pipeline-fixes.ts
  */
 
-import { PrismaClient } from '@prisma/client';
+import 'dotenv/config';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import * as schema from '../schema';
 import { seedCraftedGoodsRecipes } from './crafted-goods-recipes';
 
-const prisma = new PrismaClient();
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const db = drizzle(pool, { schema });
 
 // Fix 1: TANNER intermediate templates
 const TANNER_TEMPLATES = [
@@ -106,10 +110,28 @@ async function main() {
   // Fix 1: Upsert 3 TANNER intermediate templates
   console.log('--- Fix 1: TANNER templates ---');
   for (const tmpl of TANNER_TEMPLATES) {
-    await prisma.itemTemplate.upsert({
-      where: { id: tmpl.id },
-      update: { name: tmpl.name, type: tmpl.type, rarity: tmpl.rarity, description: tmpl.description, stats: tmpl.stats, durability: tmpl.durability, professionRequired: tmpl.professionRequired, levelRequired: tmpl.levelRequired },
-      create: { id: tmpl.id, name: tmpl.name, type: tmpl.type, rarity: tmpl.rarity, description: tmpl.description, stats: tmpl.stats, durability: tmpl.durability, professionRequired: tmpl.professionRequired, levelRequired: tmpl.levelRequired },
+    await db.insert(schema.itemTemplates).values({
+      id: tmpl.id,
+      name: tmpl.name,
+      type: tmpl.type as any,
+      rarity: tmpl.rarity as any,
+      description: tmpl.description,
+      stats: tmpl.stats,
+      durability: tmpl.durability,
+      professionRequired: tmpl.professionRequired as any,
+      levelRequired: tmpl.levelRequired,
+    }).onConflictDoUpdate({
+      target: schema.itemTemplates.id,
+      set: {
+        name: tmpl.name,
+        type: tmpl.type as any,
+        rarity: tmpl.rarity as any,
+        description: tmpl.description,
+        stats: tmpl.stats,
+        durability: tmpl.durability,
+        professionRequired: tmpl.professionRequired as any,
+        levelRequired: tmpl.levelRequired,
+      },
     });
     console.log(`  + ${tmpl.name}`);
   }
@@ -117,17 +139,35 @@ async function main() {
   // Fix 2A: Upsert 4 WOODWORKER intermediate templates
   console.log('--- Fix 2A: WOODWORKER templates ---');
   for (const tmpl of WOODWORKER_TEMPLATES) {
-    await prisma.itemTemplate.upsert({
-      where: { id: tmpl.id },
-      update: { name: tmpl.name, type: tmpl.type, rarity: tmpl.rarity, description: tmpl.description, stats: tmpl.stats, durability: tmpl.durability, professionRequired: tmpl.professionRequired, levelRequired: tmpl.levelRequired },
-      create: { id: tmpl.id, name: tmpl.name, type: tmpl.type, rarity: tmpl.rarity, description: tmpl.description, stats: tmpl.stats, durability: tmpl.durability, professionRequired: tmpl.professionRequired, levelRequired: tmpl.levelRequired },
+    await db.insert(schema.itemTemplates).values({
+      id: tmpl.id,
+      name: tmpl.name,
+      type: tmpl.type as any,
+      rarity: tmpl.rarity as any,
+      description: tmpl.description,
+      stats: tmpl.stats,
+      durability: tmpl.durability,
+      professionRequired: tmpl.professionRequired as any,
+      levelRequired: tmpl.levelRequired,
+    }).onConflictDoUpdate({
+      target: schema.itemTemplates.id,
+      set: {
+        name: tmpl.name,
+        type: tmpl.type as any,
+        rarity: tmpl.rarity as any,
+        description: tmpl.description,
+        stats: tmpl.stats,
+        durability: tmpl.durability,
+        professionRequired: tmpl.professionRequired as any,
+        levelRequired: tmpl.levelRequired,
+      },
     });
     console.log(`  + ${tmpl.name}`);
   }
 
   // Fix 2B + Fix 6: Seed 14 WW finished goods + 28 BS specialization recipes
   console.log('--- Fix 2B + Fix 6: Crafted goods recipes ---');
-  await seedCraftedGoodsRecipes(prisma);
+  await seedCraftedGoodsRecipes(db);
 
   console.log('');
   console.log('✅ Pipeline fixes seeded successfully!');
@@ -142,5 +182,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await pool.end();
   });

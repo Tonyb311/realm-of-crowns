@@ -1,4 +1,6 @@
-import { prisma } from './prisma';
+import { db } from './db';
+import { eq } from 'drizzle-orm';
+import { characters } from '@database/tables';
 
 /**
  * Check if two characters belong to the same account (same userId).
@@ -12,13 +14,13 @@ export async function isSameAccount(
   if (characterId1 === characterId2) return true;
 
   const [c1, c2] = await Promise.all([
-    prisma.character.findUnique({
-      where: { id: characterId1 },
-      select: { userId: true },
+    db.query.characters.findFirst({
+      where: eq(characters.id, characterId1),
+      columns: { userId: true },
     }),
-    prisma.character.findUnique({
-      where: { id: characterId2 },
-      select: { userId: true },
+    db.query.characters.findFirst({
+      where: eq(characters.id, characterId2),
+      columns: { userId: true },
     }),
   ]);
 

@@ -1,4 +1,7 @@
-import { prisma } from './prisma';
+import crypto from 'crypto';
+import { db } from './db';
+import { eq } from 'drizzle-orm';
+import { itemTemplates, items, inventories } from '@database/tables';
 import { logger } from './logger';
 
 let basicRationsTemplateId: string | null = null;
@@ -11,32 +14,33 @@ export async function ensureBasicRationsTemplate(): Promise<string> {
   if (basicRationsTemplateId) return basicRationsTemplateId;
 
   // Try to find existing — prefer stable ID
-  let template = await prisma.itemTemplate.findUnique({
-    where: { id: 'consumable-basic-rations' },
+  let template = await db.query.itemTemplates.findFirst({
+    where: eq(itemTemplates.id, 'consumable-basic-rations'),
   });
   if (!template) {
-    template = await prisma.itemTemplate.findFirst({
-      where: { name: 'Basic Rations' },
+    template = await db.query.itemTemplates.findFirst({
+      where: eq(itemTemplates.name, 'Basic Rations'),
     });
   }
 
   if (!template) {
     // Create it
-    template = await prisma.itemTemplate.create({
-      data: {
-        name: 'Basic Rations',
-        type: 'CONSUMABLE',
-        rarity: 'COMMON',
-        description: 'Simple travel food — dried meat, hardtack, and a few berries. Enough to keep you going for a day.',
-        durability: 1,
-        isFood: true,
-        isPerishable: false,
-        isBeverage: false,
-        shelfLifeDays: 30,
-        foodBuff: JSON.stringify({ stat: 'con', value: 1 }),
-        stats: JSON.stringify({ hpRestore: 5 }),
-      },
-    });
+    const [created] = await db.insert(itemTemplates).values({
+      id: 'consumable-basic-rations',
+      name: 'Basic Rations',
+      type: 'CONSUMABLE',
+      rarity: 'COMMON',
+      description: 'Simple travel food — dried meat, hardtack, and a few berries. Enough to keep you going for a day.',
+      durability: 1,
+      isFood: true,
+      isPerishable: false,
+      isBeverage: false,
+      shelfLifeDays: 30,
+      foodBuff: JSON.stringify({ stat: 'con', value: 1 }),
+      stats: JSON.stringify({ hpRestore: 5 }),
+      updatedAt: new Date().toISOString(),
+    }).returning();
+    template = created;
     logger.info({ templateId: template.id }, 'Created Basic Rations item template');
   }
 
@@ -52,19 +56,19 @@ export async function giveStartingInventory(characterId: string): Promise<void> 
   const templateId = await ensureBasicRationsTemplate();
 
   // Create a single item instance and give quantity 5
-  const item = await prisma.item.create({
-    data: {
-      templateId,
-      ownerId: characterId,
-      quality: 'COMMON',
-    },
-  });
+  const [item] = await db.insert(items).values({
+    id: crypto.randomUUID(),
+    templateId,
+    ownerId: characterId,
+    quality: 'COMMON',
+    updatedAt: new Date().toISOString(),
+  }).returning();
 
-  await prisma.inventory.create({
-    data: {
-      characterId,
-      itemId: item.id,
-      quantity: 5,
-    },
+  await db.insert(inventories).values({
+    id: crypto.randomUUID(),
+    characterId,
+    itemId: item.id,
+    quantity: 5,
+    updatedAt: new Date().toISOString(),
   });
 }

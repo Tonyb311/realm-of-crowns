@@ -2,7 +2,14 @@
  * Targeted seed script: TANNER items + recipes + HUNTER resources.
  * Run: DATABASE_URL=... npx tsx seeds/run-tanner.ts
  */
-import { PrismaClient, ProfessionType, ProfessionTier } from '@prisma/client';
+import 'dotenv/config';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+import { eq, inArray } from 'drizzle-orm';
+import * as schema from '../schema';
+
+type ProfessionTier = 'APPRENTICE' | 'JOURNEYMAN' | 'CRAFTSMAN' | 'EXPERT' | 'MASTER' | 'GRANDMASTER';
+type ProfessionType = 'FARMER' | 'RANCHER' | 'FISHERMAN' | 'LUMBERJACK' | 'MINER' | 'HERBALIST' | 'HUNTER' | 'SMELTER' | 'BLACKSMITH' | 'ARMORER' | 'WOODWORKER' | 'TANNER' | 'LEATHERWORKER' | 'TAILOR' | 'ALCHEMIST' | 'ENCHANTER' | 'COOK' | 'BREWER' | 'JEWELER' | 'FLETCHER' | 'MASON' | 'SCRIBE' | 'MERCHANT' | 'INNKEEPER' | 'HEALER' | 'STABLE_MASTER' | 'BANKER' | 'COURIER' | 'MERCENARY_CAPTAIN';
 
 function levelToTier(level: number): ProfessionTier {
   if (level >= 75) return 'MASTER';
@@ -12,28 +19,25 @@ function levelToTier(level: number): ProfessionTier {
   return 'APPRENTICE';
 }
 
-export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
+export async function seedTannerRecipes(db: any): Promise<void> {
     // ---------------------------------------------------------------
     // Step 0: Remove old TANNER recipes from DB
     // ---------------------------------------------------------------
     console.log('--- Removing old TANNER recipes ---');
     // Delete referencing crafting_actions first (FK constraint)
-    const tannerRecipes = await prisma.recipe.findMany({
-      where: { professionType: 'TANNER' },
-      select: { id: true },
+    const tannerRecipes = await db.query.recipes.findMany({
+      where: eq(schema.recipes.professionType, 'TANNER'),
+      columns: { id: true },
     });
     if (tannerRecipes.length > 0) {
-      const deletedActions = await prisma.craftingAction.deleteMany({
-        where: { recipeId: { in: tannerRecipes.map(r => r.id) } },
-      });
-      if (deletedActions.count > 0) {
-        console.log(`  Removed ${deletedActions.count} crafting actions`);
+      const tannerRecipeIds = tannerRecipes.map((r: any) => r.id);
+      const deletedActions = await db.delete(schema.craftingActions).where(inArray(schema.craftingActions.recipeId, tannerRecipeIds));
+      if (deletedActions.rowCount > 0) {
+        console.log(`  Removed ${deletedActions.rowCount} crafting actions`);
       }
     }
-    const deleted = await prisma.recipe.deleteMany({
-      where: { professionType: 'TANNER' },
-    });
-    console.log(`  Deleted ${deleted.count} old TANNER recipes`);
+    const deleted = await db.delete(schema.recipes).where(eq(schema.recipes.professionType, 'TANNER'));
+    console.log(`  Deleted ${deleted.rowCount} old TANNER recipes`);
 
     // ---------------------------------------------------------------
     // Step 1: Upsert all TANNER-related ItemTemplates
@@ -387,12 +391,14 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
         isBeverage: item.isBeverage,
       };
 
-      const created = await prisma.itemTemplate.upsert({
-        where: { id: item.id },
-        update: data,
-        create: { id: item.id, ...data } as any,
+      await db.insert(schema.itemTemplates).values({
+        id: item.id,
+        ...data,
+      } as any).onConflictDoUpdate({
+        target: schema.itemTemplates.id,
+        set: data as any,
       });
-      templateMap.set(item.name, created.id);
+      templateMap.set(item.name, item.id);
       console.log(`  + ${item.name} (${item.type} / ${item.rarity})`);
     }
 
@@ -404,9 +410,9 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
       if (templateMap.has(name)) continue;
       // Prefer stable-ID pattern (matches ingredient templateIds used by daily-tick.ts)
       const stableId = `resource-${name.toLowerCase().replace(/\s+/g, '-')}`;
-      let tmpl = await prisma.itemTemplate.findUnique({ where: { id: stableId } });
+      let tmpl = await db.query.itemTemplates.findFirst({ where: eq(schema.itemTemplates.id, stableId) });
       if (!tmpl) {
-        tmpl = await prisma.itemTemplate.findFirst({ where: { name } });
+        tmpl = await db.query.itemTemplates.findFirst({ where: eq(schema.itemTemplates.name, name) });
       }
       if (tmpl) {
         templateMap.set(name, tmpl.id);
@@ -471,29 +477,23 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
       const recipeId = `recipe-${recipe.recipeId}`;
       const tier = levelToTier(recipe.levelRequired);
 
-      await prisma.recipe.upsert({
-        where: { id: recipeId },
-        update: {
-          name: recipe.name,
-          professionType: 'TANNER' as ProfessionType,
-          tier,
-          ingredients,
-          result: resultId,
-          craftTime: recipe.craftTime,
-          xpReward: recipe.xpReward,
-          levelRequired: recipe.levelRequired,
-        },
-        create: {
-          id: recipeId,
-          name: recipe.name,
-          professionType: 'TANNER' as ProfessionType,
-          tier,
-          ingredients,
-          result: resultId,
-          craftTime: recipe.craftTime,
-          xpReward: recipe.xpReward,
-          levelRequired: recipe.levelRequired,
-        },
+      const recipeData = {
+        name: recipe.name,
+        professionType: 'TANNER' as ProfessionType,
+        tier,
+        ingredients,
+        result: resultId,
+        craftTime: recipe.craftTime,
+        xpReward: recipe.xpReward,
+        levelRequired: recipe.levelRequired,
+      };
+
+      await db.insert(schema.recipes).values({
+        id: recipeId,
+        ...recipeData,
+      } as any).onConflictDoUpdate({
+        target: schema.recipes.id,
+        set: recipeData as any,
       });
 
       console.log(`  + ${recipe.name} (TANNER ${tier}, Lvl ${recipe.levelRequired})`);
@@ -504,8 +504,9 @@ export async function seedTannerRecipes(prisma: PrismaClient): Promise<void> {
 
 // Standalone execution support
 if (require.main === module) {
-  const prisma = new PrismaClient();
-  seedTannerRecipes(prisma)
+  const standalonePool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const standaloneDb = drizzle(standalonePool, { schema });
+  seedTannerRecipes(standaloneDb)
     .catch((e) => { console.error('Seed failed:', e); process.exit(1); })
-    .finally(() => prisma.$disconnect());
+    .finally(() => standalonePool.end());
 }

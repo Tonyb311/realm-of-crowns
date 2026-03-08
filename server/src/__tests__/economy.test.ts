@@ -1,14 +1,16 @@
 import request from 'supertest';
+import crypto from 'crypto';
 import { app } from '../app';
+import { inventories } from '@database/tables';
 import {
+  db,
   createTestUserWithCharacter,
   createTestTown,
   createTestItem,
   createTestResource,
   authHeader,
   cleanupTestData,
-  disconnectPrisma,
-  prisma,
+  disconnectDb,
 } from './setup';
 
 describe('Economy API (Market, Crafting, Work)', () => {
@@ -17,7 +19,7 @@ describe('Economy API (Market, Crafting, Work)', () => {
   });
 
   afterAll(async () => {
-    await disconnectPrisma();
+    await disconnectDb();
   });
 
   // ---- POST /api/market/list ----
@@ -29,12 +31,12 @@ describe('Economy API (Market, Crafting, Work)', () => {
       const { item } = await createTestItem(seller.character.id);
 
       // Add to inventory
-      await prisma.inventory.create({
-        data: {
-          characterId: seller.character.id,
-          itemId: item.id,
-          quantity: 5,
-        },
+      await db.insert(inventories).values({
+        id: crypto.randomUUID(),
+        characterId: seller.character.id,
+        itemId: item.id,
+        quantity: 5,
+        updatedAt: new Date().toISOString(),
       });
 
       const res = await request(app)
@@ -94,8 +96,12 @@ describe('Economy API (Market, Crafting, Work)', () => {
       const seller = await createTestUserWithCharacter({}, { townId: town.id, gold: 1000 });
       const { item } = await createTestItem(seller.character.id);
 
-      await prisma.inventory.create({
-        data: { characterId: seller.character.id, itemId: item.id, quantity: 5 },
+      await db.insert(inventories).values({
+        id: crypto.randomUUID(),
+        characterId: seller.character.id,
+        itemId: item.id,
+        quantity: 5,
+        updatedAt: new Date().toISOString(),
       });
 
       const listRes = await request(app)
@@ -120,8 +126,12 @@ describe('Economy API (Market, Crafting, Work)', () => {
       const buyer = await createTestUserWithCharacter({}, { townId: town.id, gold: 10 });
       const { item } = await createTestItem(seller.character.id);
 
-      await prisma.inventory.create({
-        data: { characterId: seller.character.id, itemId: item.id, quantity: 5 },
+      await db.insert(inventories).values({
+        id: crypto.randomUUID(),
+        characterId: seller.character.id,
+        itemId: item.id,
+        quantity: 5,
+        updatedAt: new Date().toISOString(),
       });
 
       const listRes = await request(app)

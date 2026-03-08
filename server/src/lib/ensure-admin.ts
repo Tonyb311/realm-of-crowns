@@ -4,7 +4,10 @@
  */
 
 import bcrypt from 'bcryptjs';
-import { prisma } from './prisma';
+import crypto from 'crypto';
+import { db } from './db';
+import { eq } from 'drizzle-orm';
+import { users } from '@database/tables';
 import { logger } from './logger';
 
 const ADMIN_EMAIL = 'admin@roc.com';
@@ -13,15 +16,16 @@ const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'RealmAdmin2026!';
 
 export async function ensureAdminAccount(): Promise<void> {
   try {
-    const existing = await prisma.user.findUnique({ where: { email: ADMIN_EMAIL } });
+    const existing = await db.query.users.findFirst({
+      where: eq(users.email, ADMIN_EMAIL),
+    });
 
     if (existing) {
       // Always reset password + role so the admin can log in after DB resets
       const passwordHash = await bcrypt.hash(DEFAULT_ADMIN_PASSWORD, 12);
-      await prisma.user.update({
-        where: { id: existing.id },
-        data: { role: 'admin', passwordHash },
-      });
+      await db.update(users)
+        .set({ role: 'admin', passwordHash })
+        .where(eq(users.id, existing.id));
       if (existing.role !== 'admin') {
         logger.warn('Admin account role was not "admin" — fixed');
       }
@@ -30,14 +34,14 @@ export async function ensureAdminAccount(): Promise<void> {
 
     // Admin doesn't exist — create it
     const passwordHash = await bcrypt.hash(DEFAULT_ADMIN_PASSWORD, 12);
-    await prisma.user.create({
-      data: {
-        email: ADMIN_EMAIL,
-        username: ADMIN_USERNAME,
-        passwordHash,
-        role: 'admin',
-        isTestAccount: false,
-      },
+    await db.insert(users).values({
+      id: crypto.randomUUID(),
+      email: ADMIN_EMAIL,
+      username: ADMIN_USERNAME,
+      passwordHash,
+      role: 'admin',
+      isTestAccount: false,
+      updatedAt: new Date().toISOString(),
     });
 
     logger.warn('Admin account (admin@roc.com) was missing — created automatically');

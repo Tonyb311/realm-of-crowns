@@ -8,7 +8,9 @@
  * plus existing crafting recipes (blacksmith, armorer, leatherworker, alchemist, cook, brewer).
  */
 
-import { PrismaClient, ItemType, ItemRarity, ProfessionType, ProfessionTier, Prisma } from '@prisma/client';
+import { eq, and, ne, inArray, sql } from 'drizzle-orm';
+import * as schema from '../schema';
+import type { ItemType, ItemRarity, ProfessionType, ProfessionTier } from '@shared/enums';
 import { ALL_PROCESSING_RECIPES, ALL_ARMOR_RECIPES, ALL_WEAPON_RECIPES } from '@shared/data/recipes';
 import { COOK_RECIPES } from '@shared/data/recipes/cook';
 import { BREWER_CONSUMABLES } from '@shared/data/recipes/consumables';
@@ -28,7 +30,7 @@ interface ItemTemplateDef {
   levelRequired: number;
   baseValue: number;
   isFood?: boolean;
-  foodBuff?: Prisma.InputJsonValue;
+  foodBuff?: any;
   isPerishable?: boolean;
   shelfLifeDays?: number;
   isBeverage?: boolean;
@@ -606,7 +608,7 @@ const ITEM_TEMPLATES: ItemTemplateDef[] = [
     name: 'Ogre Sinew',
     type: 'MATERIAL',
     rarity: 'COMMON',
-    description: 'A thick, fibrous tendon strip from an ogre. Impossibly strong — a single strand can support a man\'s weight.',
+    description: 'A thick, fibrous tendon strip from an ogre. Impossibly strong \u2014 a single strand can support a man\'s weight.',
     stats: {},
     durability: 100,
     professionRequired: null,
@@ -1287,14 +1289,17 @@ function levelToTier(level: number): ProfessionTier {
 // SEED FUNCTION
 // ============================================================
 
-export async function seedRecipes(prisma: PrismaClient) {
+export async function seedRecipes(db: any) {
   console.log('--- Seeding Item Templates ---');
 
   const templateMap = new Map<string, string>(); // name -> id
 
   // Pre-load ALL existing templates from DB so recipes can reference them.
   // When duplicates exist, prefer stable-ID templates (resource-* / crafted-*).
-  const existingTemplates = await prisma.itemTemplate.findMany({ select: { id: true, name: true } });
+  const existingTemplates = await db.select({
+    id: schema.itemTemplates.id,
+    name: schema.itemTemplates.name,
+  }).from(schema.itemTemplates);
   for (const t of existingTemplates) {
     const current = templateMap.get(t.name);
     if (!current || t.id.startsWith('resource-') || t.id.startsWith('crafted-')) {
@@ -1318,28 +1323,28 @@ export async function seedRecipes(prisma: PrismaClient) {
   // Seed resource item templates (raw materials)
   for (const res of RESOURCE_ITEMS) {
     const stableId = `resource-${res.name.toLowerCase().replace(/\s+/g, '-')}`;
-    const created = await prisma.itemTemplate.upsert({
-      where: { id: stableId },
-      update: {
-        name: res.name,
-        type: res.type,
-        description: res.description,
-        baseValue: res.baseValue,
-      },
-      create: {
-        id: stableId,
-        name: res.name,
-        type: res.type,
-        rarity: 'COMMON',
-        description: res.description,
-        stats: {},
-        durability: 100,
-        professionRequired: null,
-        levelRequired: 1,
-        baseValue: res.baseValue,
-      },
+    const updateData = {
+      name: res.name,
+      type: res.type,
+      description: res.description,
+      baseValue: res.baseValue,
+    };
+    await db.insert(schema.itemTemplates).values({
+      id: stableId,
+      name: res.name,
+      type: res.type,
+      rarity: 'COMMON',
+      description: res.description,
+      stats: {},
+      durability: 100,
+      professionRequired: null,
+      levelRequired: 1,
+      baseValue: res.baseValue,
+    }).onConflictDoUpdate({
+      target: schema.itemTemplates.id,
+      set: updateData,
     });
-    templateMap.set(res.name, created.id);
+    templateMap.set(res.name, stableId);
   }
   console.log(`  Resource templates: ${RESOURCE_ITEMS.length}`);
 
@@ -1348,44 +1353,38 @@ export async function seedRecipes(prisma: PrismaClient) {
   // templates with random UUIDs, causing templateId mismatch with recipe ingredients.
   for (const res of RESOURCE_ITEMS) {
     const stableId = `resource-${res.name.toLowerCase().replace(/\s+/g, '-')}`;
-    const duplicates = await prisma.itemTemplate.findMany({
-      where: { name: res.name, id: { not: stableId } },
-      select: { id: true },
-    });
+    const duplicates = await db.select({ id: schema.itemTemplates.id })
+      .from(schema.itemTemplates)
+      .where(and(eq(schema.itemTemplates.name, res.name), ne(schema.itemTemplates.id, stableId)));
     if (duplicates.length > 0) {
-      const dupIds = duplicates.map(d => d.id);
+      const dupIds = duplicates.map((d: any) => d.id);
       // Re-point items from duplicate templates to the stable template
-      await prisma.item.updateMany({
-        where: { templateId: { in: dupIds } },
-        data: { templateId: stableId },
-      });
+      await db.update(schema.items)
+        .set({ templateId: stableId })
+        .where(inArray(schema.items.templateId, dupIds));
       // Re-point price_histories, house_storage, and market_listings before deleting
       try {
-        await prisma.priceHistory.updateMany({
-          where: { itemTemplateId: { in: dupIds } },
-          data: { itemTemplateId: stableId },
-        });
+        await db.update(schema.priceHistories)
+          .set({ itemTemplateId: stableId })
+          .where(inArray(schema.priceHistories.itemTemplateId, dupIds));
       } catch { /* FK table may not have entries */ }
       try {
-        await prisma.houseStorage.updateMany({
-          where: { itemTemplateId: { in: dupIds } },
-          data: { itemTemplateId: stableId },
-        });
+        await db.update(schema.houseStorage)
+          .set({ itemTemplateId: stableId })
+          .where(inArray(schema.houseStorage.itemTemplateId, dupIds));
       } catch { /* FK table may not have entries */ }
       // v28: Also re-point market listings (no FK but affects what bots buy)
       try {
-        await prisma.marketListing.updateMany({
-          where: { itemTemplateId: { in: dupIds } },
-          data: { itemTemplateId: stableId },
-        });
+        await db.update(schema.marketListings)
+          .set({ itemTemplateId: stableId })
+          .where(inArray(schema.marketListings.itemTemplateId, dupIds));
       } catch { /* non-critical */ }
       // Delete duplicate templates (skip if remaining FK constraints)
       try {
-        await prisma.itemTemplate.deleteMany({
-          where: { id: { in: dupIds } },
-        });
+        await db.delete(schema.itemTemplates)
+          .where(inArray(schema.itemTemplates.id, dupIds));
       } catch {
-        console.log(`  Dedup: re-pointed ${duplicates.length} duplicate "${res.name}" items (could not delete old templates — FK constraint)`);
+        console.log(`  Dedup: re-pointed ${duplicates.length} duplicate "${res.name}" items (could not delete old templates -- FK constraint)`);
         continue;
       }
       console.log(`  Dedup: merged ${duplicates.length} duplicate "${res.name}" templates into ${stableId}`);
@@ -1395,86 +1394,67 @@ export async function seedRecipes(prisma: PrismaClient) {
   // Seed crafted item templates
   for (const tmpl of ITEM_TEMPLATES) {
     const stableId = `crafted-${tmpl.name.toLowerCase().replace(/\s+/g, '-')}`;
-    const created = await prisma.itemTemplate.upsert({
-      where: { id: stableId },
-      update: {
-        name: tmpl.name,
-        type: tmpl.type,
-        rarity: tmpl.rarity,
-        description: tmpl.description,
-        stats: tmpl.stats,
-        durability: tmpl.durability,
-        professionRequired: tmpl.professionRequired,
-        levelRequired: tmpl.levelRequired,
-        baseValue: tmpl.baseValue,
-        ...(tmpl.isFood != null && { isFood: tmpl.isFood }),
-        ...(tmpl.foodBuff != null && { foodBuff: tmpl.foodBuff }),
-        ...(tmpl.isPerishable != null && { isPerishable: tmpl.isPerishable }),
-        ...(tmpl.shelfLifeDays != null && { shelfLifeDays: tmpl.shelfLifeDays }),
-        ...(tmpl.isBeverage != null && { isBeverage: tmpl.isBeverage }),
-      },
-      create: {
-        id: stableId,
-        name: tmpl.name,
-        type: tmpl.type,
-        rarity: tmpl.rarity,
-        description: tmpl.description,
-        stats: tmpl.stats,
-        durability: tmpl.durability,
-        professionRequired: tmpl.professionRequired,
-        levelRequired: tmpl.levelRequired,
-        baseValue: tmpl.baseValue,
-        ...(tmpl.isFood != null && { isFood: tmpl.isFood }),
-        ...(tmpl.foodBuff != null && { foodBuff: tmpl.foodBuff }),
-        ...(tmpl.isPerishable != null && { isPerishable: tmpl.isPerishable }),
-        ...(tmpl.shelfLifeDays != null && { shelfLifeDays: tmpl.shelfLifeDays }),
-        ...(tmpl.isBeverage != null && { isBeverage: tmpl.isBeverage }),
-      },
+    const data: Record<string, any> = {
+      name: tmpl.name,
+      type: tmpl.type,
+      rarity: tmpl.rarity,
+      description: tmpl.description,
+      stats: tmpl.stats,
+      durability: tmpl.durability,
+      professionRequired: tmpl.professionRequired,
+      levelRequired: tmpl.levelRequired,
+      baseValue: tmpl.baseValue,
+      ...(tmpl.isFood != null && { isFood: tmpl.isFood }),
+      ...(tmpl.foodBuff != null && { foodBuff: tmpl.foodBuff }),
+      ...(tmpl.isPerishable != null && { isPerishable: tmpl.isPerishable }),
+      ...(tmpl.shelfLifeDays != null && { shelfLifeDays: tmpl.shelfLifeDays }),
+      ...(tmpl.isBeverage != null && { isBeverage: tmpl.isBeverage }),
+    };
+    await db.insert(schema.itemTemplates).values({
+      id: stableId,
+      ...data,
+    }).onConflictDoUpdate({
+      target: schema.itemTemplates.id,
+      set: data,
     });
-    templateMap.set(tmpl.name, created.id);
+    templateMap.set(tmpl.name, stableId);
   }
   console.log(`  Crafted templates: ${ITEM_TEMPLATES.length}`);
 
   // Deduplicate crafted templates (same pattern as resource templates above)
   for (const tmpl of ITEM_TEMPLATES) {
     const stableId = `crafted-${tmpl.name.toLowerCase().replace(/\s+/g, '-')}`;
-    const duplicates = await prisma.itemTemplate.findMany({
-      where: { name: tmpl.name, id: { not: stableId } },
-      select: { id: true },
-    });
+    const duplicates = await db.select({ id: schema.itemTemplates.id })
+      .from(schema.itemTemplates)
+      .where(and(eq(schema.itemTemplates.name, tmpl.name), ne(schema.itemTemplates.id, stableId)));
     if (duplicates.length > 0) {
-      const dupIds = duplicates.map(d => d.id);
-      await prisma.item.updateMany({
-        where: { templateId: { in: dupIds } },
-        data: { templateId: stableId },
-      });
+      const dupIds = duplicates.map((d: any) => d.id);
+      await db.update(schema.items)
+        .set({ templateId: stableId })
+        .where(inArray(schema.items.templateId, dupIds));
       // Re-point price_histories, house_storage, and market_listings before deleting
       try {
-        await prisma.priceHistory.updateMany({
-          where: { itemTemplateId: { in: dupIds } },
-          data: { itemTemplateId: stableId },
-        });
+        await db.update(schema.priceHistories)
+          .set({ itemTemplateId: stableId })
+          .where(inArray(schema.priceHistories.itemTemplateId, dupIds));
       } catch { /* FK table may not have entries */ }
       try {
-        await prisma.houseStorage.updateMany({
-          where: { itemTemplateId: { in: dupIds } },
-          data: { itemTemplateId: stableId },
-        });
+        await db.update(schema.houseStorage)
+          .set({ itemTemplateId: stableId })
+          .where(inArray(schema.houseStorage.itemTemplateId, dupIds));
       } catch { /* FK table may not have entries */ }
       // v28: Also re-point market listings (no FK but affects what bots buy)
       try {
-        await prisma.marketListing.updateMany({
-          where: { itemTemplateId: { in: dupIds } },
-          data: { itemTemplateId: stableId },
-        });
+        await db.update(schema.marketListings)
+          .set({ itemTemplateId: stableId })
+          .where(inArray(schema.marketListings.itemTemplateId, dupIds));
       } catch { /* non-critical */ }
       // Delete duplicate templates (skip if remaining FK constraints)
       try {
-        await prisma.itemTemplate.deleteMany({
-          where: { id: { in: dupIds } },
-        });
+        await db.delete(schema.itemTemplates)
+          .where(inArray(schema.itemTemplates.id, dupIds));
       } catch {
-        console.log(`  Dedup: re-pointed ${duplicates.length} duplicate "${tmpl.name}" items (could not delete old templates — FK constraint)`);
+        console.log(`  Dedup: re-pointed ${duplicates.length} duplicate "${tmpl.name}" items (could not delete old templates -- FK constraint)`);
         continue;
       }
       console.log(`  Dedup: merged ${duplicates.length} duplicate "${tmpl.name}" templates into ${stableId}`);
@@ -1494,26 +1474,28 @@ export async function seedRecipes(prisma: PrismaClient) {
   ];
   for (const id of REMOVED_PROCESSING_RECIPES) {
     try {
-      await prisma.recipe.delete({ where: { id } });
-      console.log(`  ✗ Removed orphaned recipe: ${id}`);
-    } catch { /* doesn't exist — fine */ }
+      await db.delete(schema.recipes).where(eq(schema.recipes.id, id));
+      console.log(`  x Removed orphaned recipe: ${id}`);
+    } catch { /* doesn't exist -- fine */ }
   }
 
-  // v28: Nuclear cleanup — delete ANY recipe whose ingredients JSON contains "Soft Leather"
+  // v28: Nuclear cleanup -- delete ANY recipe whose ingredients JSON contains "Soft Leather"
   // Safety net for orphaned recipes from old seed runs that aren't in the explicit list above
   try {
-    const softLeatherRecipes = await prisma.$queryRawUnsafe<{ id: string; name: string }[]>(
-      `SELECT id, name FROM recipes WHERE ingredients::text ILIKE '%Soft Leather%'`
-    );
+    const softLeatherRecipes = await db.select({
+      id: schema.recipes.id,
+      name: schema.recipes.name,
+    }).from(schema.recipes)
+      .where(sql`${schema.recipes.ingredients}::text ILIKE '%Soft Leather%'`);
     for (const r of softLeatherRecipes) {
-      await prisma.recipe.delete({ where: { id: r.id } });
-      console.log(`  ✗ Removed Soft Leather recipe: ${r.id} (${r.name})`);
+      await db.delete(schema.recipes).where(eq(schema.recipes.id, r.id));
+      console.log(`  x Removed Soft Leather recipe: ${r.id} (${r.name})`);
     }
     if (softLeatherRecipes.length > 0) {
-      console.log(`  ✗ Total Soft Leather recipes purged: ${softLeatherRecipes.length}`);
+      console.log(`  x Total Soft Leather recipes purged: ${softLeatherRecipes.length}`);
     }
   } catch (err: any) {
-    console.log(`  ⚠ Soft Leather cleanup query failed: ${err.message}`);
+    console.log(`  ! Soft Leather cleanup query failed: ${err.message}`);
   }
 
   // ----- Seed Processing Recipes (from shared data) -----
@@ -1532,29 +1514,23 @@ export async function seedRecipes(prisma: PrismaClient) {
     const recipeId = `recipe-${recipe.recipeId}`;
     const tier = levelToTier(recipe.levelRequired);
 
-    await prisma.recipe.upsert({
-      where: { id: recipeId },
-      update: {
-        name: recipe.name,
-        professionType: recipe.professionRequired as ProfessionType,
-        tier,
-        ingredients,
-        result: resultId,
-        craftTime: recipe.craftTime,
-        xpReward: recipe.xpReward,
-        levelRequired: recipe.levelRequired,
-      },
-      create: {
-        id: recipeId,
-        name: recipe.name,
-        professionType: recipe.professionRequired as ProfessionType,
-        tier,
-        ingredients,
-        result: resultId,
-        craftTime: recipe.craftTime,
-        xpReward: recipe.xpReward,
-        levelRequired: recipe.levelRequired,
-      },
+    const recipeData = {
+      name: recipe.name,
+      professionType: recipe.professionRequired as ProfessionType,
+      tier,
+      ingredients,
+      result: resultId,
+      craftTime: recipe.craftTime,
+      xpReward: recipe.xpReward,
+      levelRequired: recipe.levelRequired,
+    };
+
+    await db.insert(schema.recipes).values({
+      id: recipeId,
+      ...recipeData,
+    }).onConflictDoUpdate({
+      target: schema.recipes.id,
+      set: recipeData,
     });
 
     console.log(`  + ${recipe.name} (${recipe.professionRequired} Lvl ${recipe.levelRequired})`);
@@ -1578,29 +1554,23 @@ export async function seedRecipes(prisma: PrismaClient) {
     const recipeId = `recipe-${recipe.recipeId}`;
     const tier = levelToTier(recipe.levelRequired);
 
-    await prisma.recipe.upsert({
-      where: { id: recipeId },
-      update: {
-        name: recipe.name,
-        professionType: recipe.professionRequired as ProfessionType,
-        tier,
-        ingredients,
-        result: resultId,
-        craftTime: recipe.craftTime,
-        xpReward: recipe.xpReward,
-        levelRequired: recipe.levelRequired,
-      },
-      create: {
-        id: recipeId,
-        name: recipe.name,
-        professionType: recipe.professionRequired as ProfessionType,
-        tier,
-        ingredients,
-        result: resultId,
-        craftTime: recipe.craftTime,
-        xpReward: recipe.xpReward,
-        levelRequired: recipe.levelRequired,
-      },
+    const recipeData = {
+      name: recipe.name,
+      professionType: recipe.professionRequired as ProfessionType,
+      tier,
+      ingredients,
+      result: resultId,
+      craftTime: recipe.craftTime,
+      xpReward: recipe.xpReward,
+      levelRequired: recipe.levelRequired,
+    };
+
+    await db.insert(schema.recipes).values({
+      id: recipeId,
+      ...recipeData,
+    }).onConflictDoUpdate({
+      target: schema.recipes.id,
+      set: recipeData,
     });
 
     console.log(`  + ${recipe.name} (COOK Lvl ${recipe.levelRequired})`);
@@ -1623,29 +1593,23 @@ export async function seedRecipes(prisma: PrismaClient) {
     const recipeId = `recipe-${recipe.recipeId}`;
     const tier = levelToTier(recipe.levelRequired);
 
-    await prisma.recipe.upsert({
-      where: { id: recipeId },
-      update: {
-        name: recipe.name,
-        professionType: recipe.professionRequired as ProfessionType,
-        tier,
-        ingredients,
-        result: resultId,
-        craftTime: recipe.craftTime,
-        xpReward: recipe.xpReward,
-        levelRequired: recipe.levelRequired,
-      },
-      create: {
-        id: recipeId,
-        name: recipe.name,
-        professionType: recipe.professionRequired as ProfessionType,
-        tier,
-        ingredients,
-        result: resultId,
-        craftTime: recipe.craftTime,
-        xpReward: recipe.xpReward,
-        levelRequired: recipe.levelRequired,
-      },
+    const recipeData = {
+      name: recipe.name,
+      professionType: recipe.professionRequired as ProfessionType,
+      tier,
+      ingredients,
+      result: resultId,
+      craftTime: recipe.craftTime,
+      xpReward: recipe.xpReward,
+      levelRequired: recipe.levelRequired,
+    };
+
+    await db.insert(schema.recipes).values({
+      id: recipeId,
+      ...recipeData,
+    }).onConflictDoUpdate({
+      target: schema.recipes.id,
+      set: recipeData,
     });
 
     console.log(`  + ${recipe.name} (BREWER Lvl ${recipe.levelRequired})`);
@@ -1669,29 +1633,23 @@ export async function seedRecipes(prisma: PrismaClient) {
     const recipeId = `recipe-${recipe.recipeId}`;
     const tier = levelToTier(recipe.levelRequired);
 
-    await prisma.recipe.upsert({
-      where: { id: recipeId },
-      update: {
-        name: recipe.name,
-        professionType: recipe.professionRequired as ProfessionType,
-        tier,
-        ingredients,
-        result: resultId,
-        craftTime: recipe.craftTime,
-        xpReward: recipe.xpReward,
-        levelRequired: recipe.levelRequired,
-      },
-      create: {
-        id: recipeId,
-        name: recipe.name,
-        professionType: recipe.professionRequired as ProfessionType,
-        tier,
-        ingredients,
-        result: resultId,
-        craftTime: recipe.craftTime,
-        xpReward: recipe.xpReward,
-        levelRequired: recipe.levelRequired,
-      },
+    const recipeData = {
+      name: recipe.name,
+      professionType: recipe.professionRequired as ProfessionType,
+      tier,
+      ingredients,
+      result: resultId,
+      craftTime: recipe.craftTime,
+      xpReward: recipe.xpReward,
+      levelRequired: recipe.levelRequired,
+    };
+
+    await db.insert(schema.recipes).values({
+      id: recipeId,
+      ...recipeData,
+    }).onConflictDoUpdate({
+      target: schema.recipes.id,
+      set: recipeData,
     });
 
     console.log(`  + ${recipe.name} (${recipe.professionRequired} Lvl ${recipe.levelRequired})`);
@@ -1715,29 +1673,23 @@ export async function seedRecipes(prisma: PrismaClient) {
     const recipeId = `recipe-${recipe.recipeId}`;
     const tier = levelToTier(recipe.levelRequired);
 
-    await prisma.recipe.upsert({
-      where: { id: recipeId },
-      update: {
-        name: recipe.name,
-        professionType: recipe.professionRequired as ProfessionType,
-        tier,
-        ingredients,
-        result: resultId,
-        craftTime: recipe.craftTime,
-        xpReward: recipe.xpReward,
-        levelRequired: recipe.levelRequired,
-      },
-      create: {
-        id: recipeId,
-        name: recipe.name,
-        professionType: recipe.professionRequired as ProfessionType,
-        tier,
-        ingredients,
-        result: resultId,
-        craftTime: recipe.craftTime,
-        xpReward: recipe.xpReward,
-        levelRequired: recipe.levelRequired,
-      },
+    const recipeData = {
+      name: recipe.name,
+      professionType: recipe.professionRequired as ProfessionType,
+      tier,
+      ingredients,
+      result: resultId,
+      craftTime: recipe.craftTime,
+      xpReward: recipe.xpReward,
+      levelRequired: recipe.levelRequired,
+    };
+
+    await db.insert(schema.recipes).values({
+      id: recipeId,
+      ...recipeData,
+    }).onConflictDoUpdate({
+      target: schema.recipes.id,
+      set: recipeData,
     });
 
     console.log(`  + ${recipe.name} (${recipe.professionRequired} Lvl ${recipe.levelRequired})`);
@@ -1759,27 +1711,22 @@ export async function seedRecipes(prisma: PrismaClient) {
 
     const recipeId = `recipe-${recipe.name.toLowerCase().replace(/\s+/g, '-')}`;
 
-    await prisma.recipe.upsert({
-      where: { id: recipeId },
-      update: {
-        name: recipe.name,
-        professionType: recipe.professionType,
-        tier: recipe.tier,
-        ingredients,
-        result: resultId,
-        craftTime: recipe.craftTime,
-        xpReward: recipe.xpReward,
-      },
-      create: {
-        id: recipeId,
-        name: recipe.name,
-        professionType: recipe.professionType,
-        tier: recipe.tier,
-        ingredients,
-        result: resultId,
-        craftTime: recipe.craftTime,
-        xpReward: recipe.xpReward,
-      },
+    const recipeData = {
+      name: recipe.name,
+      professionType: recipe.professionType,
+      tier: recipe.tier,
+      ingredients,
+      result: resultId,
+      craftTime: recipe.craftTime,
+      xpReward: recipe.xpReward,
+    };
+
+    await db.insert(schema.recipes).values({
+      id: recipeId,
+      ...recipeData,
+    }).onConflictDoUpdate({
+      target: schema.recipes.id,
+      set: recipeData,
     });
 
     console.log(`  + ${recipe.name} (${recipe.professionType}/${recipe.tier})`);

@@ -5,11 +5,11 @@
  * Usage: cd server && DATABASE_URL='...' npx tsx src/scripts/analyze-saving-throws.ts
  */
 
-import { PrismaClient } from '@prisma/client';
+import { db, pool } from '../lib/db';
+import { eq, desc } from 'drizzle-orm';
+import * as schema from '@database/index';
 import * as fs from 'fs';
 import * as path from 'path';
-
-const prisma = new PrismaClient();
 
 interface RoundLogEntry {
   round?: number;
@@ -77,9 +77,15 @@ async function main() {
   console.log('=== Saving Throw Log Analysis ===\n');
 
   // Find the most recent group sim run
-  const run = await prisma.simulationRun.findFirst({
-    where: { config: { path: ['source'], equals: 'batch-cli-group' } },
-    orderBy: { startedAt: 'desc' },
+  // Drizzle doesn't support JSON path queries directly; use raw SQL or query all and filter
+  const allRuns = await db.query.simulationRuns.findMany({
+    orderBy: desc(schema.simulationRuns.startedAt),
+    limit: 50,
+  });
+
+  const run = allRuns.find(r => {
+    const config = r.config as any;
+    return config?.source === 'batch-cli-group';
   });
 
   if (!run) {
@@ -89,9 +95,9 @@ async function main() {
 
   console.log(`Using sim run ${run.id} from ${run.startedAt}`);
 
-  const logs = await prisma.combatEncounterLog.findMany({
-    where: { simulationRunId: run.id },
-    select: { id: true, rounds: true, opponentName: true, summary: true, characterName: true },
+  const logs = await db.query.combatEncounterLogs.findMany({
+    where: eq(schema.combatEncounterLogs.simulationRunId, run.id),
+    columns: { id: true, rounds: true, opponentName: true, summary: true, characterName: true },
   });
 
   console.log(`Found ${logs.length} encounter logs\n`);
@@ -418,7 +424,7 @@ async function main() {
     console.log(`${cat}: ${events.length} events, ${rolled.length} saves rolled (${pct(rolled.length, events.length)}), ${pct(succeeded.length, rolled.length)} success rate`);
   }
 
-  await prisma.$disconnect();
+  await pool.end();
 }
 
 function pct(n: number, total: number): string {

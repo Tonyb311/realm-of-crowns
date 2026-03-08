@@ -2,7 +2,10 @@
 // Auction Engine — Core batch auction resolution for Realm of Crowns
 // ---------------------------------------------------------------------------
 
-import { prisma } from './prisma';
+import crypto from 'crypto';
+import { db } from './db';
+import { eq, and, sql, desc, inArray, lte } from 'drizzle-orm';
+import { auctionCycles, marketListings, marketBuyOrders, characters, playerProfessions, inventories, tradeTransactions, priceHistories, townTreasuries, items } from '@database/tables';
 import { logger } from './logger';
 import {
   STANDARD_FEE_RATE,
@@ -26,32 +29,33 @@ export async function getOrCreateOpenCycle(townId: string): Promise<{
   id: string;
   townId: string;
   cycleNumber: number;
-  startedAt: Date;
+  startedAt: string;
   status: string;
 }> {
-  const existing = await prisma.auctionCycle.findFirst({
-    where: { townId, status: 'open' },
-    orderBy: { startedAt: 'desc' },
+  const existing = await db.query.auctionCycles.findFirst({
+    where: and(eq(auctionCycles.townId, townId), eq(auctionCycles.status, 'open')),
+    orderBy: [desc(auctionCycles.startedAt)],
   });
 
   if (existing) return existing;
 
   // Find the last cycle number for this town
-  const lastCycle = await prisma.auctionCycle.findFirst({
-    where: { townId },
-    orderBy: { cycleNumber: 'desc' },
-    select: { cycleNumber: true },
+  const lastCycle = await db.query.auctionCycles.findFirst({
+    where: eq(auctionCycles.townId, townId),
+    orderBy: [desc(auctionCycles.cycleNumber)],
+    columns: { cycleNumber: true },
   });
 
   const newCycleNumber = (lastCycle?.cycleNumber ?? 0) + 1;
 
-  return prisma.auctionCycle.create({
-    data: {
-      townId,
-      cycleNumber: newCycleNumber,
-      status: 'open',
-    },
-  });
+  const [created] = await db.insert(auctionCycles).values({
+    id: crypto.randomUUID(),
+    townId,
+    cycleNumber: newCycleNumber,
+    status: 'open',
+  }).returning();
+
+  return created;
 }
 
 // ---------------------------------------------------------------------------
@@ -63,9 +67,9 @@ export async function resolveAuctionCycle(townId: string): Promise<{
   transactionsCompleted: number;
 }> {
   // 1. Find the current open cycle for this town
-  const cycle = await prisma.auctionCycle.findFirst({
-    where: { townId, status: 'open' },
-    orderBy: { startedAt: 'desc' },
+  const cycle = await db.query.auctionCycles.findFirst({
+    where: and(eq(auctionCycles.townId, townId), eq(auctionCycles.status, 'open')),
+    orderBy: [desc(auctionCycles.startedAt)],
   });
 
   if (!cycle) {
@@ -76,17 +80,16 @@ export async function resolveAuctionCycle(townId: string): Promise<{
   // In simulation mode, bypass the 15-minute waiting period so auctions resolve instantly
   const isSimulation = getSimulationTick() !== null;
   if (!isSimulation) {
-    const cycleAge = Date.now() - cycle.startedAt.getTime();
+    const cycleAge = Date.now() - new Date(cycle.startedAt).getTime();
     if (cycleAge < MARKET_CYCLE_DURATION_MS) {
       return { ordersProcessed: 0, transactionsCompleted: 0 };
     }
   }
 
   // 2. Mark cycle as processing
-  await prisma.auctionCycle.update({
-    where: { id: cycle.id },
-    data: { status: 'processing' },
-  });
+  await db.update(auctionCycles)
+    .set({ status: 'processing' })
+    .where(eq(auctionCycles.id, cycle.id));
 
   let totalOrdersProcessed = 0;
   let totalTransactionsCompleted = 0;
@@ -97,22 +100,20 @@ export async function resolveAuctionCycle(townId: string): Promise<{
 
   try {
     // 3. Query all active listings in this town that have at least one pending buy order
-    const listings = await prisma.marketListing.findMany({
-      where: {
-        townId,
-        status: 'active',
-        buyOrders: {
-          some: { status: 'pending' },
-        },
-      },
-      include: {
-        item: { include: { template: true } },
-        seller: { select: { id: true, name: true } },
-        buyOrders: {
-          where: { status: 'pending' },
-          include: {
-            buyer: {
-              select: {
+    // Drizzle doesn't support { some: ... } filter on relations directly, so we use a subquery approach
+    const listingsWithOrders = await db.query.marketListings.findMany({
+      where: and(
+        eq(marketListings.townId, townId),
+        eq(marketListings.status, 'active'),
+      ),
+      with: {
+        item: { with: { itemTemplate: true } },
+        character: { columns: { id: true, name: true } }, // seller
+        marketBuyOrders: {
+          where: eq(marketBuyOrders.status, 'pending'),
+          with: {
+            character: {
+              columns: {
                 id: true,
                 name: true,
                 stats: true,
@@ -125,29 +126,33 @@ export async function resolveAuctionCycle(townId: string): Promise<{
       },
     });
 
+    // Filter to only listings that actually have pending orders
+    const listings = listingsWithOrders.filter(l => l.marketBuyOrders && l.marketBuyOrders.length > 0);
+
     // 4. Process each listing
     for (const listing of listings) {
-      const pendingOrders = listing.buyOrders;
+      const pendingOrders = listing.marketBuyOrders;
       if (pendingOrders.length === 0) continue;
 
       // Load buyer professions for all buyers
-      const buyerProfessions = await prisma.playerProfession.findMany({
-        where: {
-          characterId: { in: pendingOrders.map(o => o.buyerId) },
-          isActive: true,
-        },
-        select: { characterId: true, professionType: true },
+      const buyerIds = pendingOrders.map(o => o.buyerId);
+      const buyerProfessionRows = await db.query.playerProfessions.findMany({
+        where: and(
+          inArray(playerProfessions.characterId, buyerIds),
+          eq(playerProfessions.isActive, true),
+        ),
+        columns: { characterId: true, professionType: true },
       });
 
       const buyerProfMap: Record<string, string[]> = {};
-      for (const pp of buyerProfessions) {
+      for (const pp of buyerProfessionRows) {
         if (!buyerProfMap[pp.characterId]) buyerProfMap[pp.characterId] = [];
         buyerProfMap[pp.characterId].push(pp.professionType);
       }
 
       // Calculate priority scores for each order
       const scoredOrders = pendingOrders.map(order => {
-        const stats = order.buyer.stats as Record<string, number> | null;
+        const stats = order.character.stats as Record<string, number> | null;
         const cha = stats?.CHA ?? 10;
         const chaMod = abilityModifier(cha);
         const profs = buyerProfMap[order.buyerId] || [];
@@ -173,13 +178,12 @@ export async function resolveAuctionCycle(townId: string): Promise<{
         losers = [];
 
         // Store priority score on the order
-        await prisma.marketBuyOrder.update({
-          where: { id: winner.order.id },
-          data: {
+        await db.update(marketBuyOrders)
+          .set({
             priorityScore: winner.priorityScore,
             rollBreakdown: { autoWin: true, priorityScore: winner.priorityScore },
-          },
-        });
+          })
+          .where(eq(marketBuyOrders.id, winner.order.id));
       } else {
         // Multiple buyers: sort by priority score descending
         scoredOrders.sort((a, b) => b.priorityScore - a.priorityScore);
@@ -210,7 +214,7 @@ export async function resolveAuctionCycle(townId: string): Promise<{
           // Sort by roll result descending, then by earliest placedAt
           rolledOrders.sort((a, b) => {
             if (b.rollResult !== a.rollResult) return b.rollResult - a.rollResult;
-            return a.order.placedAt.getTime() - b.order.placedAt.getTime();
+            return new Date(a.order.placedAt).getTime() - new Date(b.order.placedAt).getTime();
           });
 
           // Store roll data for all rolled orders (format: { raw, modifiers, total } for frontend)
@@ -219,9 +223,8 @@ export async function resolveAuctionCycle(townId: string): Promise<{
             if (ro.chaMod !== 0) modifiers.push({ source: 'CHA', value: ro.chaMod });
             if (ro.merchantRollBonus > 0) modifiers.push({ source: 'Merchant', value: ro.merchantRollBonus });
 
-            await prisma.marketBuyOrder.update({
-              where: { id: ro.order.id },
-              data: {
+            await db.update(marketBuyOrders)
+              .set({
                 priorityScore: ro.priorityScore,
                 rollResult: ro.rollResult,
                 rollBreakdown: {
@@ -229,8 +232,8 @@ export async function resolveAuctionCycle(townId: string): Promise<{
                   modifiers,
                   total: ro.rollResult,
                 },
-              },
-            });
+              })
+              .where(eq(marketBuyOrders.id, ro.order.id));
           }
 
           // Store priority score for non-tied orders (they didn't roll)
@@ -238,13 +241,12 @@ export async function resolveAuctionCycle(townId: string): Promise<{
             o => Math.abs(o.priorityScore - top.priorityScore) > PRIORITY_TIE_THRESHOLD
           );
           for (const nt of nonTied) {
-            await prisma.marketBuyOrder.update({
-              where: { id: nt.order.id },
-              data: {
+            await db.update(marketBuyOrders)
+              .set({
                 priorityScore: nt.priorityScore,
                 rollBreakdown: { priorityScore: nt.priorityScore, tieBreaker: false },
-              },
-            });
+              })
+              .where(eq(marketBuyOrders.id, nt.order.id));
           }
 
           winner = rolledOrders[0];
@@ -259,13 +261,12 @@ export async function resolveAuctionCycle(townId: string): Promise<{
 
           // Store priority scores
           for (const so of scoredOrders) {
-            await prisma.marketBuyOrder.update({
-              where: { id: so.order.id },
-              data: {
+            await db.update(marketBuyOrders)
+              .set({
                 priorityScore: so.priorityScore,
                 rollBreakdown: { priorityScore: so.priorityScore, tieBreaker: false },
-              },
-            });
+              })
+              .where(eq(marketBuyOrders.id, so.order.id));
           }
         }
       }
@@ -274,8 +275,6 @@ export async function resolveAuctionCycle(townId: string): Promise<{
       const contested = pendingOrders.length > 1;
       // Build a roll data lookup for bidders who went through tie-breaking
       const rollDataMap = new Map<string, { rollResult: number; d20: number; merchantRollBonus: number }>();
-      // The rolledOrders variable only exists in the tie-breaking scope above, so we
-      // re-derive roll info from the winner/losers which may carry roll data.
       if ('rollResult' in winner) {
         const w = winner as any;
         rollDataMap.set(w.order.buyerId, { rollResult: w.rollResult, d20: w.d20, merchantRollBonus: w.merchantRollBonus });
@@ -290,7 +289,7 @@ export async function resolveAuctionCycle(townId: string): Promise<{
       const allBidders = scoredOrders.map(so => {
         const rollInfo = rollDataMap.get(so.order.buyerId);
         return {
-          name: so.order.buyer.name,
+          name: so.order.character.name,
           buyerId: so.order.buyerId,
           isMerchant: (so.profs || []).includes('MERCHANT'),
           bidPrice: so.order.bidPrice,
@@ -303,11 +302,11 @@ export async function resolveAuctionCycle(townId: string): Promise<{
 
       if (contested) contestedCount++;
 
-      // 5. Winner processing (inside a $transaction)
+      // 5. Winner processing (inside a transaction)
       // Determine seller fee rate
-      const sellerProfs = await prisma.playerProfession.findMany({
-        where: { characterId: listing.sellerId, isActive: true },
-        select: { professionType: true },
+      const sellerProfs = await db.query.playerProfessions.findMany({
+        where: and(eq(playerProfessions.characterId, listing.sellerId), eq(playerProfessions.isActive, true)),
+        columns: { professionType: true },
       });
       const sellerIsMerchant = sellerProfs.some(p => p.professionType === 'MERCHANT');
       const feeRate = sellerIsMerchant ? MERCHANT_FEE_RATE : STANDARD_FEE_RATE;
@@ -321,93 +320,86 @@ export async function resolveAuctionCycle(townId: string): Promise<{
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
 
-      await prisma.$transaction(async (tx) => {
+      await db.transaction(async (tx) => {
         // Mark winning order
-        await tx.marketBuyOrder.update({
-          where: { id: winner.order.id },
-          data: {
+        await tx.update(marketBuyOrders)
+          .set({
             status: 'won',
-            resolvedAt: new Date(),
+            resolvedAt: new Date().toISOString(),
             auctionCycleId: cycle.id,
-          },
-        });
+          })
+          .where(eq(marketBuyOrders.id, winner.order.id));
 
         // Deduct escrow from winner
-        await tx.character.update({
-          where: { id: winner.order.buyerId },
-          data: {
-            escrowedGold: { decrement: bidPrice },
-          },
-        });
+        await tx.update(characters)
+          .set({
+            escrowedGold: sql`${characters.escrowedGold} - ${bidPrice}`,
+          })
+          .where(eq(characters.id, winner.order.buyerId));
 
         // Credit seller (net after fee)
-        await tx.character.update({
-          where: { id: listing.sellerId },
-          data: {
-            gold: { increment: sellerNet },
-          },
-        });
+        await tx.update(characters)
+          .set({
+            gold: sql`${characters.gold} + ${sellerNet}`,
+          })
+          .where(eq(characters.id, listing.sellerId));
 
         // Transfer item: create or update inventory entry for buyer
-        const existingInv = await tx.inventory.findFirst({
-          where: { characterId: winner.order.buyerId, itemId: listing.itemId },
+        const existingInv = await tx.query.inventories.findFirst({
+          where: and(eq(inventories.characterId, winner.order.buyerId), eq(inventories.itemId, listing.itemId)),
         });
 
         if (existingInv) {
-          await tx.inventory.update({
-            where: { id: existingInv.id },
-            data: { quantity: { increment: listing.quantity } },
-          });
+          await tx.update(inventories)
+            .set({ quantity: sql`${inventories.quantity} + ${listing.quantity}` })
+            .where(eq(inventories.id, existingInv.id));
         } else {
-          await tx.inventory.create({
-            data: {
-              characterId: winner.order.buyerId,
-              itemId: listing.itemId,
-              quantity: listing.quantity,
-            },
+          await tx.insert(inventories).values({
+            id: crypto.randomUUID(),
+            characterId: winner.order.buyerId,
+            itemId: listing.itemId,
+            quantity: listing.quantity,
+            updatedAt: new Date().toISOString(),
           });
         }
 
         // Mark listing as sold
-        await tx.marketListing.update({
-          where: { id: listing.id },
-          data: {
+        await tx.update(marketListings)
+          .set({
             status: 'sold',
-            soldAt: new Date(),
+            soldAt: new Date().toISOString(),
             soldTo: winner.order.buyerId,
             soldPrice: bidPrice,
             auctionCycleId: cycle.id,
-          },
-        });
+          })
+          .where(eq(marketListings.id, listing.id));
 
         // Create TradeTransaction
-        await tx.tradeTransaction.create({
-          data: {
-            buyerId: winner.order.buyerId,
-            sellerId: listing.sellerId,
-            itemId: listing.itemId,
-            price: bidPrice,
-            quantity: listing.quantity,
-            townId,
-            sellerFee: fee,
-            sellerNet: sellerNet,
-            numBidders: pendingOrders.length,
-            contested,
-            allBidders,
-            auctionCycleId: cycle.id,
-          },
+        await tx.insert(tradeTransactions).values({
+          id: crypto.randomUUID(),
+          buyerId: winner.order.buyerId,
+          sellerId: listing.sellerId,
+          itemId: listing.itemId,
+          price: bidPrice,
+          quantity: listing.quantity,
+          townId,
+          sellerFee: fee,
+          sellerNet: sellerNet,
+          numBidders: pendingOrders.length,
+          contested,
+          allBidders,
+          auctionCycleId: cycle.id,
         });
 
         // Update PriceHistory for today
-        const existingHistory = await tx.priceHistory.findUnique({
-          where: {
-            itemTemplateId_townId_date: {
-              itemTemplateId: listing.item.templateId,
-              townId,
-              date: today,
-            },
-          },
+        const existingHistory = await tx.query.priceHistories.findFirst({
+          where: and(
+            eq(priceHistories.itemTemplateId, listing.item.templateId),
+            eq(priceHistories.townId, townId),
+            eq(priceHistories.date, todayStr),
+          ),
         });
 
         if (existingHistory) {
@@ -415,50 +407,56 @@ export async function resolveAuctionCycle(townId: string): Promise<{
           const newAvgPrice =
             (existingHistory.avgPrice * existingHistory.volume + bidPrice * listing.quantity) /
             newVolume;
-          await tx.priceHistory.update({
-            where: { id: existingHistory.id },
-            data: { avgPrice: newAvgPrice, volume: newVolume },
-          });
+          await tx.update(priceHistories)
+            .set({ avgPrice: newAvgPrice, volume: newVolume })
+            .where(eq(priceHistories.id, existingHistory.id));
         } else {
-          await tx.priceHistory.create({
-            data: {
-              itemTemplateId: listing.item.templateId,
-              townId,
-              avgPrice: bidPrice,
-              volume: listing.quantity,
-              date: today,
-            },
+          await tx.insert(priceHistories).values({
+            id: crypto.randomUUID(),
+            itemTemplateId: listing.item.templateId,
+            townId,
+            avgPrice: bidPrice,
+            volume: listing.quantity,
+            date: todayStr,
           });
         }
 
         // Deposit town tax if applicable
         if (townTax > 0) {
-          await tx.townTreasury.upsert({
-            where: { townId },
-            update: { balance: { increment: townTax } },
-            create: { townId, balance: townTax },
+          const existingTreasury = await tx.query.townTreasuries.findFirst({
+            where: eq(townTreasuries.townId, townId),
           });
+          if (existingTreasury) {
+            await tx.update(townTreasuries)
+              .set({ balance: sql`${townTreasuries.balance} + ${townTax}` })
+              .where(eq(townTreasuries.townId, townId));
+          } else {
+            await tx.insert(townTreasuries).values({
+              id: crypto.randomUUID(),
+              townId,
+              balance: townTax,
+              updatedAt: new Date().toISOString(),
+            });
+          }
         }
 
         // 6. Loser processing
         for (const loser of losers) {
-          await tx.marketBuyOrder.update({
-            where: { id: loser.order.id },
-            data: {
+          await tx.update(marketBuyOrders)
+            .set({
               status: 'lost',
-              resolvedAt: new Date(),
+              resolvedAt: new Date().toISOString(),
               auctionCycleId: cycle.id,
-            },
-          });
+            })
+            .where(eq(marketBuyOrders.id, loser.order.id));
 
           // Refund escrow
-          await tx.character.update({
-            where: { id: loser.order.buyerId },
-            data: {
-              gold: { increment: loser.order.bidPrice },
-              escrowedGold: { decrement: loser.order.bidPrice },
-            },
-          });
+          await tx.update(characters)
+            .set({
+              gold: sql`${characters.gold} + ${loser.order.bidPrice}`,
+              escrowedGold: sql`${characters.escrowedGold} - ${loser.order.bidPrice}`,
+            })
+            .where(eq(characters.id, loser.order.buyerId));
         }
       });
 
@@ -470,7 +468,7 @@ export async function resolveAuctionCycle(townId: string): Promise<{
         townId,
         buyerId: winner.order.buyerId,
         sellerId: listing.sellerId,
-        itemName: listing.item.template.name,
+        itemName: listing.item.itemTemplate.name,
         quantity: listing.quantity,
         price: bidPrice,
       });
@@ -486,19 +484,18 @@ export async function resolveAuctionCycle(townId: string): Promise<{
     }
 
     // 7. Mark cycle as resolved
-    await prisma.auctionCycle.update({
-      where: { id: cycle.id },
-      data: {
+    await db.update(auctionCycles)
+      .set({
         status: 'resolved',
-        resolvedAt: new Date(),
+        resolvedAt: new Date().toISOString(),
         ordersProcessed: totalOrdersProcessed,
         transactionsCompleted: totalTransactionsCompleted,
         contestedListings: contestedCount,
         merchantWins: merchantWinCount,
         nonMerchantWins: nonMerchantWinCount,
         totalGoldTraded: totalGoldTraded,
-      },
-    });
+      })
+      .where(eq(auctionCycles.id, cycle.id));
 
     // 8. Create a new open cycle for the town
     await getOrCreateOpenCycle(townId);
@@ -514,10 +511,10 @@ export async function resolveAuctionCycle(townId: string): Promise<{
     };
   } catch (err: unknown) {
     // Revert cycle status on error
-    await prisma.auctionCycle.update({
-      where: { id: cycle.id },
-      data: { status: 'open' },
-    }).catch(() => {});
+    await db.update(auctionCycles)
+      .set({ status: 'open' })
+      .where(eq(auctionCycles.id, cycle.id))
+      .catch(() => {});
 
     logger.error({ err: err instanceof Error ? err.message : String(err), townId, cycleId: cycle.id }, 'Failed to resolve auction cycle');
     throw err;
@@ -536,27 +533,33 @@ export async function resolveAllTownAuctions(): Promise<{
   // Find all towns that have open cycles ready to resolve
   // In simulation mode, skip the cycle age check — resolve immediately
   const isSimulation = getSimulationTick() !== null;
-  const cutoff = new Date(Date.now() - MARKET_CYCLE_DURATION_MS);
+  const cutoff = new Date(Date.now() - MARKET_CYCLE_DURATION_MS).toISOString();
 
-  const openCycles = await prisma.auctionCycle.findMany({
-    where: {
-      status: 'open',
-      ...(isSimulation ? {} : { startedAt: { lte: cutoff } }),
-    },
-    select: { townId: true },
-    distinct: ['townId'],
-  });
+  const openCycles = isSimulation
+    ? await db.select({ townId: auctionCycles.townId })
+        .from(auctionCycles)
+        .where(eq(auctionCycles.status, 'open'))
+        .groupBy(auctionCycles.townId)
+    : await db.select({ townId: auctionCycles.townId })
+        .from(auctionCycles)
+        .where(and(eq(auctionCycles.status, 'open'), lte(auctionCycles.startedAt, cutoff)))
+        .groupBy(auctionCycles.townId);
 
   // Filter to only towns that actually have pending orders
   const townIds: string[] = [];
   for (const cycle of openCycles) {
-    const hasPending = await prisma.marketBuyOrder.findFirst({
-      where: {
-        status: 'pending',
-        listing: { townId: cycle.townId, status: 'active' },
+    const hasPending = await db.query.marketBuyOrders.findFirst({
+      where: and(
+        eq(marketBuyOrders.status, 'pending'),
+      ),
+      with: {
+        marketListing: {
+          columns: { townId: true, status: true },
+        },
       },
     });
-    if (hasPending) {
+    // Check if the pending order's listing matches the town
+    if (hasPending && (hasPending.marketListing as any)?.townId === cycle.townId && (hasPending.marketListing as any)?.status === 'active') {
       townIds.push(cycle.townId);
     }
   }
