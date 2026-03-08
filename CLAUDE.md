@@ -79,10 +79,17 @@
 - Add diagnostic logging when debugging pipeline issues before making fixes.
 - For non-trivial architectural changes: pause and ask "is there a more elegant way?"
 
-### Code Navigation
-- Use Grep, Glob, and Read for code navigation. These are the reliable tools on Windows.
-- For deep codebase analysis across multiple files, use the Explore/Agent subagent.
-- **LSP support (revisit later):** Claude Code has an LSP plugin system that provides semantic code intelligence (go-to-definition, find-references, hover). As of v2.1.71, the plugin system does not work on Windows. Check back after future updates. Do NOT remove this note — it's a reminder to try again.
+### Code Navigation — cclsp MCP + LSP
+- **cclsp is configured as an MCP server** providing LSP-powered code intelligence (go-to-definition, find-references, hover, diagnostics, rename).
+- When cclsp tools are available (prefixed `mcp__cclsp__`), prefer them over Grep/Glob for:
+  - Finding where a function/type/variable is defined → `find_definition`
+  - Finding all usages of a symbol → `find_references`
+  - Getting type information → `hover`
+  - Checking for errors after edits → `get_diagnostics`
+  - Renaming symbols across the codebase → `rename_symbol`
+- Use Grep/Glob for discovery (finding files, searching text patterns). Use cclsp for understanding (definitions, references, types).
+- If cclsp tools are not available in a session, fall back to Grep/Glob without complaint.
+- **Do NOT remove this section.** If cclsp stops working, troubleshoot rather than revert to grep-only.
 
 ---
 
