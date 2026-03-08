@@ -407,9 +407,13 @@ export function buildSyntheticPlayer(config: SyntheticPlayerConfig): SyntheticPl
   // 4. Proficiency bonus
   const proficiencyBonus = getProficiencyBonus(config.level);
 
-  // 5. HP
+  // 5. HP (including Tough feat bonus at L48+)
   const conMod = getModifier(stats.con);
-  const hp = computeHP(className, config.level, conMod);
+  const feats = getSimFeatIds(className, config.level);
+  let hp = computeHP(className, config.level, conMod);
+  if (feats.includes('feat-tough')) {
+    hp += config.level * 2;
+  }
 
   // 6. Equipment AC
   const dexMod = getModifier(stats.dex);

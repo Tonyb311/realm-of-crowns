@@ -156,7 +156,7 @@ Psychic damage from Psion abilities gets special resistance handling:
 ## 4. HP and Death
 
 ### Starting HP
-Characters: Set during character creation based on class + CON modifier. Grows by `+10 per level` (`LEVEL_UP_REWARDS.HP_PER_LEVEL = 10`, `xp-curve.ts:193`).
+Characters: Set during character creation based on class + CON modifier. Grows by class-varied HP per level: Martial (Warrior, Ranger) +4, Hybrid (Cleric, Rogue, Bard) +3, Caster (Mage, Psion) +2. See `getHpPerLevel()` in `xp-curve.ts`.
 
 Monsters: From `monsterStats.hp` in the Monster table, defaulting to 50.
 

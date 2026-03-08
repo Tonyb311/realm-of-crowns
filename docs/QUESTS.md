@@ -195,10 +195,8 @@ This formula is rebalanced for a **daily-action economy** where players perform 
 
 | Reward | Amount | Constant |
 |--------|--------|----------|
-| Stat Points | +2 | `LEVEL_UP_REWARDS.STAT_POINTS_PER_LEVEL = 2` |
-| Skill Points | +1 | `LEVEL_UP_REWARDS.SKILL_POINTS_PER_LEVEL = 1` |
-| Max Health | +10 | `LEVEL_UP_REWARDS.HP_PER_LEVEL = 10` |
-| Max Mana | +5 | `LEVEL_UP_REWARDS.MP_PER_LEVEL = 5` |
+| Stat Points | +1 | `LEVEL_UP_REWARDS.STAT_POINTS_PER_LEVEL = 1` |
+| Max Health | +2 to +4 (by class) | `getHpPerLevel(class)` — Martial +4, Hybrid +3, Caster +2 |
 
 - On level-up, the character is **healed to full HP and MP**.
 - Multiple levels can be gained at once (e.g., from a large XP quest reward).
