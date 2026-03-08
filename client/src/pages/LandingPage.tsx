@@ -435,12 +435,12 @@ export default function LandingPage() {
             <a href="#" className="hover:text-realm-gold-400 transition-colors">Terms</a>
             <a href="#" className="hover:text-realm-gold-400 transition-colors">Privacy</a>
             <a
-              href="https://babecraftstudios.com"
+              href="https://babecreststudios.com"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-realm-gold-400 transition-colors"
             >
-              A Babe Craft Studios game
+              A Babe Crest Studios game
             </a>
           </nav>
           <span className="text-[11px] text-realm-text-muted">

@@ -391,7 +391,7 @@ git commit -m "Cleanup: resolve 5 orphan client pages (delete dead / document pl
 
 **Action:**
 
-This is Tony's Babe Craft Studios website — it has its own `.git/` so it's a separate repo that was cloned inside the game project.
+This is Tony's Babe Crest Studios website — it has its own `.git/` so it's a separate repo that was cloned inside the game project.
 
 1. Check if it's in `.gitignore` already
 2. If NOT in `.gitignore`, add `studio-website/` to `.gitignore`
