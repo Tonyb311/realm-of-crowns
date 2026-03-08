@@ -80,15 +80,14 @@
 - For non-trivial architectural changes: pause and ask "is there a more elegant way?"
 
 ### Code Navigation — cclsp MCP + LSP
-- **cclsp is configured as an MCP server** providing LSP-powered code intelligence (go-to-definition, find-references, hover, diagnostics, rename).
-- When cclsp tools are available (prefixed `mcp__cclsp__`), prefer them over Grep/Glob for:
-  - Finding where a function/type/variable is defined → `find_definition`
-  - Finding all usages of a symbol → `find_references`
-  - Getting type information → `hover`
-  - Checking for errors after edits → `get_diagnostics`
-  - Renaming symbols across the codebase → `rename_symbol`
+- **cclsp is configured as an MCP server** providing LSP-powered code intelligence via `typescript-language-server`.
+- cclsp tools are prefixed `mcp__cclsp__`. Available operations: `find_definition`, `find_references`, `find_workspace_symbols`, `hover`, `get_diagnostics`, `rename_symbol`.
+- **IMPORTANT: Always use `find_definition` with a specific file path** rather than `find_workspace_symbols` for initial lookups. The TypeScript server needs a file opened to initialize the project. Once a file is opened, workspace-wide queries will work for the rest of the session.
+- Example good first call: `find_definition(file_path: "server/src/lib/combat-engine.ts", symbol_name: "calculateAC", symbol_kind: "function")`
+- After the first file is opened, `find_references` and `find_workspace_symbols` will work normally.
 - Use Grep/Glob for discovery (finding files, searching text patterns). Use cclsp for understanding (definitions, references, types).
-- If cclsp tools are not available in a session, fall back to Grep/Glob without complaint.
+- If cclsp tools are not available or return errors, fall back to Grep/Glob without complaint.
+- **cclsp config:** `C:\Users\rydhe\.claude\cclsp.json` — points to the server workspace root. Currently scoped to `server/` directory. If you need client or shared coverage, the rootUri in that config would need updating.
 - **Do NOT remove this section.** If cclsp stops working, troubleshoot rather than revert to grep-only.
 
 ---
