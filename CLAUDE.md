@@ -90,6 +90,14 @@
 - **cclsp config:** `C:\Users\rydhe\.claude\cclsp.json` — points to the server workspace root. Currently scoped to `server/` directory. If you need client or shared coverage, the rootUri in that config would need updating.
 - **Do NOT remove this section.** If cclsp stops working, troubleshoot rather than revert to grep-only.
 
+### Review Gate — Mandatory Pre-Execution Review
+- **Before executing ANY code changes, file modifications, git commits, or deployments, write a review file to `reviews/[task-name]-review.md` and STOP.**
+- The review file must include: summary, scope (files to modify/create), numbered plan, key decisions with rationale, risks/concerns, and questions for review.
+- After writing the review file, say: "Review file written. Please have this reviewed before I proceed."
+- **Do NOT execute until you receive explicit approval.** The user will return with "Approved, execute", "Approved with changes: [feedback]", or "Revise: [feedback]".
+- **Exceptions (no review needed):** Pure read-only tasks (audits, research, analysis), or tasks where the prompt explicitly says "skip review gate".
+- This review process exists because a second reviewer (Claude on claude.ai) checks all plans before execution. Respect the gate.
+
 ---
 
 ## Operating Mode
