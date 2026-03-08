@@ -167,7 +167,7 @@ if (process.env.NODE_ENV === 'production') {
     },
   }));
 
-  app.get('*', (req, res, next) => {
+  app.get('{*path}', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
       return next();
     }
