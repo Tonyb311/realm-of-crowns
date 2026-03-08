@@ -17,7 +17,8 @@ import {
   CircleDot,
 } from 'lucide-react';
 import api from '../services/api';
-import { getRarityStyle } from '../constants';
+import { getRarityStyle, TOAST_STYLE } from '../constants';
+import toast from 'react-hot-toast';
 import { RealmButton } from '../components/ui/realm-index';
 import { EnchantModal } from '../components/enchanting/EnchantModal';
 import { Sparkles } from 'lucide-react';
@@ -58,6 +59,7 @@ interface EquippedItemData {
     maxDurability: number;
     stats: Record<string, unknown>;
     baseStats?: Record<string, unknown>;
+    enchantments?: Array<{ scrollName: string; bonuses: Record<string, number> }>;
   };
 }
 
@@ -171,6 +173,8 @@ export default function InventoryPage() {
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [confirmEquip, setConfirmEquip] = useState<{ item: InventoryItem; slot: string; replacing: EquippedItemData | null } | null>(null);
   const [enchantTarget, setEnchantTarget] = useState<InventoryItem | null>(null);
+  const [selectedEquipped, setSelectedEquipped] = useState<EquippedItemData | null>(null);
+  const [slotChoice, setSlotChoice] = useState<{ item: InventoryItem; slots: { key: string; label: string; occupied: EquippedItemData | null }[] } | null>(null);
 
   // Fetch character data (inventory + gold)
   const {
@@ -216,7 +220,12 @@ export default function InventoryPage() {
       queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       setSelectedItem(null);
+      setSelectedEquipped(null);
       setConfirmEquip(null);
+      setSlotChoice(null);
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error ?? 'Failed to equip item', { style: TOAST_STYLE });
     },
   });
 
@@ -229,6 +238,10 @@ export default function InventoryPage() {
       queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       setSelectedItem(null);
+      setSelectedEquipped(null);
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error ?? 'Failed to unequip item', { style: TOAST_STYLE });
     },
   });
 
@@ -245,14 +258,49 @@ export default function InventoryPage() {
   }
 
   function handleEquipClick(item: InventoryItem) {
-    const slot = detectSlot(item);
+    let slot = detectSlot(item);
     if (!slot) return;
+
+    // Fix 3: Weapon off-hand choice
+    if (item.template.type === 'WEAPON') {
+      const mainHand = getEquippedInSlot('MAIN_HAND');
+      const offHand = getEquippedInSlot('OFF_HAND');
+      if (mainHand) {
+        setSlotChoice({
+          item,
+          slots: [
+            { key: 'MAIN_HAND', label: 'Main Hand', occupied: mainHand },
+            { key: 'OFF_HAND', label: 'Off Hand', occupied: offHand },
+          ],
+        });
+        return;
+      }
+    }
+
+    // Fix 4: Smart ring auto-fill
+    if (slot === 'RING_1' && getEquippedInSlot('RING_1') && !getEquippedInSlot('RING_2')) {
+      slot = 'RING_2';
+    } else if (slot === 'RING_2' && getEquippedInSlot('RING_2') && !getEquippedInSlot('RING_1')) {
+      slot = 'RING_1';
+    }
+
     const existing = getEquippedInSlot(slot);
     if (existing) {
       setConfirmEquip({ item, slot, replacing: existing });
     } else {
       equipMutation.mutate({ itemId: item.id, slot });
     }
+  }
+
+  function handleSlotChoice(slot: string) {
+    if (!slotChoice) return;
+    const existing = getEquippedInSlot(slot);
+    if (existing) {
+      setConfirmEquip({ item: slotChoice.item, slot, replacing: existing });
+    } else {
+      equipMutation.mutate({ itemId: slotChoice.item.id, slot });
+    }
+    setSlotChoice(null);
   }
 
   // -------------------------------------------------------------------------
@@ -336,9 +384,8 @@ export default function InventoryPage() {
                   key={slot.key}
                   onClick={() => {
                     if (equipped) {
-                      // Find matching inventory item to select it
-                      const invItem = inventory.find((i) => i.id === equipped.item.id);
-                      if (invItem) setSelectedItem(invItem);
+                      setSelectedEquipped(equipped);
+                      setSelectedItem(null);
                     }
                   }}
                   className={`relative flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all min-h-[90px]
@@ -426,7 +473,7 @@ export default function InventoryPage() {
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setSelectedItem(item)}
+                      onClick={() => { setSelectedItem(item); setSelectedEquipped(null); }}
                       className={`relative p-3 rounded-lg border-2 text-left transition-all
                         ${isSelected
                           ? `${rarityStyle.border} ${rarityStyle.bg} ring-1 ring-realm-gold-500/50`
@@ -462,7 +509,14 @@ export default function InventoryPage() {
 
           {/* Detail Panel */}
           <aside className="lg:col-span-1">
-            {selectedItem ? (
+            {selectedEquipped ? (
+              <EquippedDetailPanel
+                equipped={selectedEquipped}
+                onClose={() => setSelectedEquipped(null)}
+                onUnequip={(slot) => unequipMutation.mutate(slot)}
+                isUnequipping={unequipMutation.isPending}
+              />
+            ) : selectedItem ? (
               <ItemDetailPanel
                 item={selectedItem}
                 equippedSlot={isItemEquippedSlot(selectedItem)}
@@ -506,6 +560,33 @@ export default function InventoryPage() {
                 Cancel
               </RealmButton>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Weapon Slot Choice Modal */}
+      {slotChoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6 max-w-sm mx-4">
+            <h3 className="text-lg font-display text-realm-gold-400 mb-3">Which Hand?</h3>
+            <p className="text-sm text-realm-text-secondary mb-4">
+              Equip <span className="text-realm-text-primary font-semibold">{slotChoice.item.template.name}</span> to:
+            </p>
+            <div className="space-y-2 mb-4">
+              {slotChoice.slots.map((s) => (
+                <RealmButton
+                  key={s.key}
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => handleSlotChoice(s.key)}
+                >
+                  {s.label}{s.occupied ? ` — replace ${s.occupied.item.name}` : ''}
+                </RealmButton>
+              ))}
+            </div>
+            <RealmButton variant="ghost" className="w-full" onClick={() => setSlotChoice(null)}>
+              Cancel
+            </RealmButton>
           </div>
         </div>
       )}
@@ -697,6 +778,134 @@ function ItemDetailPanel({
             Enchant
           </RealmButton>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Equipped Item Detail Panel
+// ---------------------------------------------------------------------------
+interface EquippedDetailPanelProps {
+  equipped: EquippedItemData;
+  onClose: () => void;
+  onUnequip: (slot: string) => void;
+  isUnequipping: boolean;
+}
+
+function EquippedDetailPanel({ equipped, onClose, onUnequip, isUnequipping }: EquippedDetailPanelProps) {
+  const rarityStyle = getRarityStyle(equipped.item.quality);
+  const qualityLabel = equipped.item.quality || 'COMMON';
+  const slotLabel = PRIMARY_SLOTS.find((s) => s.key === equipped.slot)?.label ?? equipped.slot;
+
+  const durPct = equipped.item.maxDurability > 0
+    ? equipped.item.currentDurability / equipped.item.maxDurability
+    : 1;
+  const durColor = durPct > 0.5 ? 'bg-realm-success' : durPct > 0.25 ? 'bg-realm-gold-400' : 'bg-realm-danger';
+
+  // Filter out non-display stats
+  const displayStats = equipped.item.stats
+    ? Object.entries(equipped.item.stats).filter(
+        ([key]) => !['equipSlot', 'professionType', 'toolType', 'tier'].includes(key),
+      )
+    : [];
+
+  return (
+    <div className={`bg-realm-bg-700 border-2 ${rarityStyle.border} rounded-lg p-5 sticky top-8`}>
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h3 className={`font-display text-xl ${rarityStyle.text}`}>{equipped.item.name}</h3>
+          <p className={`text-xs ${rarityStyle.text} opacity-80`}>{qualityLabel}</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-realm-text-muted hover:text-realm-text-primary transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Slot */}
+      <div className="mb-4">
+        <span className="text-xs text-realm-text-muted uppercase tracking-wider">Equipped Slot</span>
+        <p className="text-realm-text-primary text-sm">{slotLabel}</p>
+      </div>
+
+      {/* Type */}
+      <div className="mb-4">
+        <span className="text-xs text-realm-text-muted uppercase tracking-wider">Type</span>
+        <p className="text-realm-text-primary text-sm capitalize">{equipped.item.type.toLowerCase()}</p>
+      </div>
+
+      {/* Stats */}
+      {displayStats.length > 0 && (
+        <div className="mb-4">
+          <span className="text-xs text-realm-text-muted uppercase tracking-wider">Stats</span>
+          <div className="mt-1 space-y-1">
+            {displayStats.map(([stat, value]) => {
+              const numVal = typeof value === 'number' ? value : 0;
+              const isPercentage = stat === 'yieldBonus' || stat === 'speedBonus';
+              const displayVal = isPercentage ? `${numVal > 0 ? '+' : ''}${Math.round(numVal * 100)}%` : `${numVal > 0 ? '+' : ''}${numVal}`;
+              return (
+                <div key={stat} className="flex justify-between text-xs">
+                  <span className="text-realm-text-secondary capitalize">{stat.replace(/([A-Z])/g, ' $1').trim()}</span>
+                  <span className={numVal > 0 ? 'text-realm-success' : numVal < 0 ? 'text-realm-danger' : 'text-realm-text-secondary'}>
+                    {displayVal}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Durability */}
+      {equipped.item.maxDurability > 0 && (
+        <div className="mb-4">
+          <span className="text-xs text-realm-text-muted uppercase tracking-wider">Durability</span>
+          <div className="mt-1 flex items-center gap-2">
+            <div className="flex-1 h-2 bg-realm-bg-900 rounded-full overflow-hidden">
+              <div
+                className={`h-full ${durColor} rounded-full transition-all`}
+                style={{ width: `${durPct * 100}%` }}
+              />
+            </div>
+            <span className="text-xs text-realm-text-secondary">
+              {equipped.item.currentDurability}/{equipped.item.maxDurability}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Enchantments */}
+      {Array.isArray(equipped.item.enchantments) && equipped.item.enchantments.length > 0 && (
+        <div className="mb-4">
+          <span className="text-xs text-realm-text-muted uppercase tracking-wider">Enchantments</span>
+          <div className="mt-1 space-y-1">
+            {equipped.item.enchantments.map((ench, i) => (
+              <div key={i} className="flex items-center gap-1 text-xs text-realm-purple-400">
+                <Sparkles className="w-3 h-3" />
+                <span>{ench.scrollName.replace(' Enchantment Scroll', '')}</span>
+                <span className="text-realm-text-muted">
+                  ({Object.entries(ench.bonuses).map(([k, v]) => `+${v} ${k.replace(/([A-Z])/g, ' $1').trim()}`).join(', ')})
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Unequip Action */}
+      <div className="mt-6">
+        <RealmButton
+          variant="danger"
+          className="w-full"
+          onClick={() => onUnequip(equipped.slot)}
+          disabled={isUnequipping}
+        >
+          {isUnequipping ? 'Unequipping...' : 'Unequip'}
+        </RealmButton>
       </div>
     </div>
   );
