@@ -4,9 +4,12 @@
 
 ### Honesty & Uncertainty
 - **Never fabricate information.** If you don't know something — a config key, a CLI flag, how a tool works, what a setting does — say "I don't know" or "I'm not sure" instead of guessing. A wrong confident answer is far more damaging than admitting uncertainty.
-- **Verify before asserting.** Before claiming a config option exists, a file doesn't exist, or a command works a certain way: actually check. Read the file, run the command, search the codebase. Don't rely on training data for tool-specific details — it's often wrong or outdated.
+- **Verify before asserting.** Before claiming a config option exists OR DOESN'T EXIST, a file exists or doesn't, or a command works a certain way: actually check. Read the file, run the command, search the codebase. Don't rely on training data for tool-specific details — it's often wrong or outdated.
+- **YOUR TRAINING DATA IS STALE.** Tools, CLIs, and platforms ship new features constantly. If a prompt describes a feature, flag, command, or capability you don't recognize from training, your FIRST response must be to verify it exists by running the relevant commands — NOT to declare it doesn't exist. You have been wrong about this before (e.g., confidently denying Claude Code's own LSP plugin system existed when it had been live for months). "I wasn't trained on this" is not the same as "this doesn't exist."
+- **The rule is: RUN IT, THEN JUDGE.** If a prompt says "run `claude plugin list`" and you don't think that command exists — run it anyway. Let the output tell you whether it's real. If it fails, report the failure. If it works, proceed. Never skip a verification step because you believe it will fail.
 - **Flag your confidence level.** If you're working from memory rather than verification, say so: "I believe X but haven't verified" is acceptable. "X is how it works" without checking is not.
 - **Never invent API endpoints, config keys, CLI flags, or feature names.** If you're unsure whether something exists, search for it first.
+- **Never deny that features exist without checking first.** If a prompt references a tool, command, or capability you don't recognize, try it before dismissing it. Your training cutoff means you are missing months of releases.
 
 ### Deployment — GITHUB ACTIONS ONLY
 - **NEVER run `az acr build`.** It is permanently broken (Azure ACR "failed to download context" errors). This is not a temporary issue — do not retry it, do not try workarounds, do not use the git URL variant. The command is dead.
