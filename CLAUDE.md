@@ -151,7 +151,7 @@ Unreleased: half_elf, half_orc, gnome, merfolk, beastfolk, faefolk, goliath, nig
 
 CLI: `server/src/scripts/batch-combat-sim.ts`. Configs in `server/src/scripts/sim-configs/`.
 Commands: `run` (--config or --grid), `list`, `delete` (--run-id), `delete-all` (--confirm)
-npm shortcuts: `sim:run`, `sim:list`, `sim:delete`
+pnpm shortcuts: `sim:run`, `sim:list`, `sim:delete`
 
 ### Key Files for Active Work
 
@@ -178,13 +178,13 @@ npm shortcuts: `sim:run`, `sim:list`, `sim:delete`
 
 Browser-based fantasy MMORPG (Renaissance Kingdoms meets D&D). 20 races, 29 professions, 68 towns, player-driven economy/politics. All Phase 1-2B systems complete.
 
-**Tech:** React 18 + TypeScript + Vite + Tailwind + Zustand | Node.js + Express | PostgreSQL 15 + Drizzle ORM | Redis 7 | Socket.io | Docker + Azure Container Apps
+**Tech:** React 19 + TypeScript 5.9 + Vite 7 + Tailwind CSS 4 + Zustand 5 | Node.js 22 + Express 5 | PostgreSQL 15 + Drizzle ORM | Redis 7 | Socket.io | Docker + Azure Container Apps
 
 **Monorepo:** `client/` (React), `server/` (Express API), `shared/` (types + game data), `database/` (Drizzle schema + seeds), `docs/`, `prompts/`
 
 ### Frontend Design System
 - **Typography:** Cinzel (headers) + Inter (body) via Google Fonts
-- **Theme:** `realm-*` design tokens in `tailwind.config.js` (realm-bg-900 to 500, realm-gold, realm-bronze, realm-teal, realm-purple, realm-text-primary/secondary/muted)
+- **Theme:** `realm-*` design tokens via `@theme` CSS custom properties in `client/src/index.css` (realm-bg-900 to 500, realm-gold, realm-bronze, realm-teal, realm-purple, realm-text-primary/secondary/muted)
 - **Aesthetic:** Dark fantasy / Arcane-inspired. Gold accents, deep backgrounds, glowing highlights.
 - **Primitives:** 9 `Realm*` components in `client/src/components/ui/` (Button, Panel, Card, Modal, Input, Badge, Progress, Tooltip, Skeleton)
 - **Rarity:** `getRarityStyle()`, `RARITY_COLORS` etc. in `client/src/constants/index.ts`
@@ -198,7 +198,7 @@ Browser-based fantasy MMORPG (Renaissance Kingdoms meets D&D). 20 races, 29 prof
 - Database schema at `/database/schema/` (Drizzle ORM). Relations in `schema/relations.ts`.
 - Drizzle config at `/database/drizzle.config.ts`. Migrations in `/database/drizzle-migrations/`.
 - Server DB instance: `server/src/lib/db.ts` — exports `db` (Drizzle) and `pool` (pg Pool).
-- Enums defined as `const` arrays in `shared/src/enums.ts` — import from `@shared/enums`, NOT from `@prisma/client`.
+- Enums defined as `const` arrays in `shared/src/enums.ts` — import from `@shared/enums`.
 - Seeds import schema via relative `../schema` path. Server imports via `@database/index` or `@database/tables`.
 
 ---
