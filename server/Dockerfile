@@ -64,7 +64,7 @@ COPY database/tsconfig.production.json ./database/tsconfig.json
 # Setup pnpm global bin and install tsx + drizzle-kit for startup
 ENV PNPM_HOME=/usr/local/share/pnpm
 ENV PATH=$PNPM_HOME:$PATH
-RUN pnpm add -g tsx drizzle-kit
+RUN pnpm add -g tsx
 
 ENV NODE_ENV=production
 EXPOSE 4000
@@ -74,4 +74,4 @@ RUN chown -R app:app $PNPM_HOME
 USER app
 
 WORKDIR /app/server
-CMD ["sh", "-c", "cd /app/database && drizzle-kit migrate --config=drizzle.config.ts && tsx --require tsconfig-paths/register seeds/index.ts && cd /app/server && node -r tsconfig-paths/register dist/index.js"]
+CMD ["sh", "-c", "cd /app/database && pnpm exec drizzle-kit migrate --config=drizzle.config.ts && tsx --require tsconfig-paths/register seeds/index.ts && cd /app/server && node -r tsconfig-paths/register dist/index.js"]
