@@ -1,8 +1,9 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
+import crypto from 'crypto';
 import { db } from '../lib/db';
-import { eq, and, inArray, sql } from 'drizzle-orm';
-import { items, itemTemplates, playerProfessions, characters, characterEquipment } from '@database/tables';
+import { eq, and, gt, inArray, sql } from 'drizzle-orm';
+import { items, itemTemplates, inventories, playerProfessions, characters, characterEquipment, characterActiveEffects } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
@@ -258,6 +259,232 @@ router.get('/compare', authGuard, characterGuard, async (req: AuthenticatedReque
   } catch (error) {
     if (handleDbError(error, res, 'item-compare', req)) return;
     logRouteError(req, 500, 'Item compare error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// -------------------------------------------------------------------------
+// Consumable system helpers
+// -------------------------------------------------------------------------
+
+/** Effects that are mid-combat healing (NOT usable via pre-tick API) */
+const MID_COMBAT_EFFECTS = new Set(['heal_hp']);
+
+/** Utility scroll effects that are out of scope */
+const UTILITY_EFFECTS = new Set(['reveal_map', 'identify']);
+
+/** Stat buff effect → combatant stat key map */
+const EFFECT_TO_STAT: Record<string, string> = {
+  buff_strength: 'str',
+  buff_dexterity: 'dex',
+  buff_constitution: 'con',
+  buff_intelligence: 'int',
+  buff_wisdom: 'wis',
+  buff_charisma: 'cha',
+};
+
+/**
+ * Normalize foodBuff formats into { effectType, magnitude }.
+ * Seeded food: { stat: 'strength', value: 2 }
+ * Crafted food: { effect: 'buff_strength', magnitude: 3, duration: ... }
+ */
+function normalizeFoodBuff(foodBuff: any): { effectType: string; magnitude: number; effectType2?: string; magnitude2?: number } | null {
+  if (!foodBuff) return null;
+  // Crafted format: { effect, magnitude }
+  if (foodBuff.effect) {
+    return {
+      effectType: foodBuff.effect,
+      magnitude: foodBuff.magnitude ?? 0,
+      effectType2: foodBuff.secondaryEffect,
+      magnitude2: foodBuff.secondaryMagnitude,
+    };
+  }
+  // Seeded format: { stat, value }
+  if (foodBuff.stat && foodBuff.value != null) {
+    const statLower = foodBuff.stat.toLowerCase();
+    const effectType = `buff_${statLower}`;
+    return { effectType, magnitude: foodBuff.value };
+  }
+  return null;
+}
+
+const useConsumableSchema = z.object({
+  itemId: z.string().min(1, 'Item ID is required'),
+});
+
+// -------------------------------------------------------------------------
+// POST /api/items/use-consumable — Use a pre-tick consumable item
+// -------------------------------------------------------------------------
+router.post('/use-consumable', authGuard, characterGuard, validate(useConsumableSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { itemId } = req.body;
+    const character = req.character!;
+
+    // 1. Must be idle
+    if (character.travelStatus !== 'idle') {
+      return res.status(400).json({ error: 'Cannot use consumables while traveling' });
+    }
+
+    // 2. Find item in character's inventory with template
+    const inventoryEntry = await db.query.inventories.findFirst({
+      where: and(
+        eq(inventories.characterId, character.id),
+        eq(inventories.itemId, itemId),
+      ),
+      with: {
+        item: {
+          with: { itemTemplate: true },
+        },
+      },
+    });
+
+    if (!inventoryEntry) {
+      return res.status(404).json({ error: 'Item not found in your inventory' });
+    }
+
+    const item = inventoryEntry.item;
+    const template = item.itemTemplate;
+    const stats = template.stats as any;
+
+    // 3. Determine source type and validate
+    let sourceType: 'POTION' | 'FOOD' | 'SCROLL';
+    let dailyFlag: 'potionBuffUsedToday' | 'foodUsedToday' | 'scrollUsedToday';
+
+    if (template.isPotion) {
+      // Check if this is a mid-combat healing potion (heal_hp) — reject
+      if (stats?.effect && MID_COMBAT_EFFECTS.has(stats.effect)) {
+        return res.status(400).json({
+          error: 'Healing potions are used automatically in combat based on your combat presets. Configure your healing threshold in combat settings.',
+        });
+      }
+      sourceType = 'POTION';
+      dailyFlag = 'potionBuffUsedToday';
+    } else if (template.isFood || template.isBeverage) {
+      sourceType = 'FOOD';
+      dailyFlag = 'foodUsedToday';
+    } else if (
+      template.type === 'CONSUMABLE' &&
+      template.professionRequired === 'SCRIBE' &&
+      stats?.effect &&
+      !UTILITY_EFFECTS.has(stats.effect)
+    ) {
+      sourceType = 'SCROLL';
+      dailyFlag = 'scrollUsedToday';
+    } else {
+      return res.status(400).json({ error: 'This item cannot be used as a consumable' });
+    }
+
+    // 4. Check daily flag
+    if ((character as any)[dailyFlag] === true) {
+      const typeLabel = sourceType === 'POTION' ? 'stat buff potion' : sourceType.toLowerCase();
+      return res.status(400).json({ error: `You have already used a ${typeLabel} today` });
+    }
+
+    // 5. Extract effect data
+    let effectType: string;
+    let magnitude: number;
+    let effectType2: string | undefined;
+    let magnitude2: number | undefined;
+
+    if (sourceType === 'FOOD') {
+      // Try foodBuff first, then stats
+      const normalized = normalizeFoodBuff(template.foodBuff) ?? normalizeFoodBuff(stats);
+      if (!normalized) {
+        return res.status(400).json({ error: 'This food has no buff effect' });
+      }
+      effectType = normalized.effectType;
+      magnitude = normalized.magnitude;
+      effectType2 = normalized.effectType2;
+      magnitude2 = normalized.magnitude2;
+    } else {
+      // Potions and scrolls use template.stats
+      effectType = stats?.effect;
+      magnitude = stats?.magnitude ?? 0;
+      effectType2 = stats?.secondaryEffect;
+      magnitude2 = stats?.secondaryMagnitude;
+      if (!effectType) {
+        return res.status(400).json({ error: 'This item has no consumable effect data' });
+      }
+    }
+
+    // 6. Create active effect and consume item in a transaction
+    const effectId = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+    await db.transaction(async (tx) => {
+      // Create active effect
+      await tx.insert(characterActiveEffects).values({
+        id: effectId,
+        characterId: character.id,
+        sourceType,
+        effectType,
+        magnitude,
+        effectType2: effectType2 ?? null,
+        magnitude2: magnitude2 ?? null,
+        itemName: template.name,
+        expiresAt,
+      });
+
+      // Set daily flag
+      await tx.update(characters)
+        .set({ [dailyFlag]: true })
+        .where(eq(characters.id, character.id));
+
+      // For food: reset hunger
+      if (sourceType === 'FOOD') {
+        await tx.update(characters)
+          .set({ daysSinceLastMeal: 0, hungerState: 'FED' })
+          .where(eq(characters.id, character.id));
+      }
+
+      // Consume item: decrement quantity or delete
+      if (inventoryEntry.quantity > 1) {
+        await tx.update(inventories)
+          .set({ quantity: inventoryEntry.quantity - 1 })
+          .where(eq(inventories.id, inventoryEntry.id));
+      } else {
+        await tx.delete(inventories).where(eq(inventories.id, inventoryEntry.id));
+        await tx.delete(items).where(eq(items.id, itemId));
+      }
+    });
+
+    return res.json({
+      effect: {
+        id: effectId,
+        sourceType,
+        effectType,
+        magnitude,
+        effectType2,
+        magnitude2,
+        itemName: template.name,
+        expiresAt,
+      },
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'use-consumable', req)) return;
+    logRouteError(req, 500, 'Use consumable error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// -------------------------------------------------------------------------
+// GET /api/items/active-effects — Current active consumable effects
+// -------------------------------------------------------------------------
+router.get('/active-effects', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+
+    const effects = await db.query.characterActiveEffects.findMany({
+      where: and(
+        eq(characterActiveEffects.characterId, character.id),
+        gt(characterActiveEffects.expiresAt, new Date().toISOString()),
+      ),
+    });
+
+    return res.json({ effects });
+  } catch (error) {
+    if (handleDbError(error, res, 'active-effects', req)) return;
+    logRouteError(req, 500, 'Active effects error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

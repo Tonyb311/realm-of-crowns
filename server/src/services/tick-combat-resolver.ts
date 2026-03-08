@@ -8,8 +8,8 @@
  */
 
 import { db } from '../lib/db';
-import { eq, inArray, sql } from 'drizzle-orm';
-import { characters, monsters } from '@database/tables';
+import { eq, and, inArray, sql } from 'drizzle-orm';
+import { characters, monsters, inventories, items } from '@database/tables';
 import type { ItemRarity } from '@shared/enums';
 import { calculateItemStats } from './item-stats';
 import {
@@ -146,6 +146,28 @@ export interface CombatantParams {
   race: string;
   level: number;
   subRace?: { id: string; element?: string } | null;
+  /** Available consumable items in inventory (loaded by buildCombatParams) */
+  availableItems?: { id: string; name: string; templateId: string; type: string; stats: any }[];
+}
+
+// ---- Healing Potion Consumption ----
+
+/**
+ * Consume a healing potion from a character's inventory after combat AI uses it.
+ * Decrements quantity or removes the inventory entry + item.
+ */
+async function consumeHealingPotionFromInventory(characterId: string, itemId: string): Promise<void> {
+  const inv = await db.query.inventories.findFirst({
+    where: and(eq(inventories.characterId, characterId), eq(inventories.itemId, itemId)),
+  });
+  if (!inv) return;
+
+  if (inv.quantity > 1) {
+    await db.update(inventories).set({ quantity: inv.quantity - 1 }).where(eq(inventories.id, inv.id));
+  } else {
+    await db.delete(inventories).where(eq(inventories.id, inv.id));
+    await db.delete(items).where(eq(items.id, itemId));
+  }
 }
 
 // ---- Swallow Helpers ----
@@ -182,6 +204,26 @@ function decideAction(
   const { presets } = params;
   const enemies = state.combatants.filter(c => c.team !== actor.team && c.isAlive);
   const allies = state.combatants.filter(c => c.team === actor.team && c.isAlive);
+
+  // ---- 0. Prepared scroll: fire on round 1 as opening salvo ----
+  if (state.round === 1 && actor.preparedScroll && !actor.preparedScrollUsed) {
+    const scroll = actor.preparedScroll;
+    if (scroll.effectType.startsWith('damage_') || scroll.effectType === 'heal_hp') {
+      const isHeal = scroll.effectType === 'heal_hp';
+      const targetId = isHeal ? actorId : (enemies[0]?.id ?? actorId);
+      return {
+        action: { type: 'item', actorId, targetId },
+        context: {
+          item: {
+            id: 'prepared-scroll',
+            name: scroll.itemName,
+            type: isHeal ? 'heal' : 'damage',
+            flatAmount: scroll.magnitude,
+          },
+        },
+      };
+    }
+  }
 
   // ---- 1. Check retreat conditions ----
   if (!presets.retreat.neverRetreat) {
@@ -506,48 +548,30 @@ function decideAction(
     }
   }
 
-  // ---- 3. Check item usage rules ----
-  for (const rule of presets.itemUsageRules) {
-    let shouldUse = false;
+  // ---- 3. Healing potion AI (mid-combat, after abilities) ----
+  {
     const hpPercent = (actor.currentHp / actor.maxHp) * 100;
+    const threshold = presets.healingPotionThreshold ?? 50;
+    const maxPotions = presets.maxHealingPotionsPerCombat ?? 1;
+    const potionsUsed = actor.healingPotionsUsedThisCombat ?? 0;
 
-    switch (rule.useWhen) {
-      case 'hp_below':
-        shouldUse = hpPercent <= (rule.threshold ?? 30);
-        break;
-      case 'status_effect':
-        shouldUse = rule.statusEffect
-          ? actor.statusEffects.some(e => e.name === rule.statusEffect)
-          : false;
-        break;
-      case 'first_round':
-        shouldUse = state.round <= 1;
-        break;
-    }
-
-    if (shouldUse) {
-      // For healing items, target self. For damage items, target enemy.
-      const isHeal = rule.useWhen === 'hp_below' || rule.useWhen === 'status_effect';
-      const targetId = isHeal ? actorId : (enemies[0]?.id ?? actorId);
-
-      return {
-        action: {
-          type: 'item',
-          actorId,
-          targetId,
-          resourceId: rule.itemTemplateId,
-        },
-        context: {
-          // Item info would need to be resolved from the template
-          // For tick resolution, we pass a minimal item object
-          item: {
-            id: rule.itemTemplateId,
-            name: rule.itemName,
-            type: isHeal ? 'heal' : 'damage',
-            flatAmount: 20, // Default healing potion amount — real items would be looked up
+    if (hpPercent <= threshold && potionsUsed < maxPotions && actor.entityType === 'character') {
+      // Find a healing potion in available items
+      const availableItems = params.availableItems ?? [];
+      const healingPotion = availableItems.find(i => i.stats?.effect === 'heal_hp');
+      if (healingPotion) {
+        return {
+          action: { type: 'item', actorId, targetId: actorId, resourceId: healingPotion.templateId },
+          context: {
+            item: {
+              id: healingPotion.id,
+              name: healingPotion.name,
+              type: 'heal' as const,
+              flatAmount: healingPotion.stats.magnitude ?? 20,
+            },
           },
-        },
-      };
+        };
+      }
     }
   }
 
@@ -620,6 +644,39 @@ export function resolveTickCombat(
       : undefined;
 
     state = resolveTurn(state, action, context, racialContext);
+
+    // === POST-TURN: Consumable bookkeeping ===
+    if (action.type === 'item') {
+      const actorAfterItem = state.combatants.find(c => c.id === actorId);
+      if (actorAfterItem) {
+        // Mark prepared scroll as used
+        if (context.item?.id === 'prepared-scroll' && actorAfterItem.preparedScroll) {
+          state = {
+            ...state,
+            combatants: state.combatants.map(c =>
+              c.id === actorId ? { ...c, preparedScrollUsed: true } : c
+            ),
+          };
+        }
+        // Increment healing potions used counter and consume from inventory
+        if (context.item?.type === 'heal' && context.item?.id !== 'prepared-scroll' && actorAfterItem.entityType === 'character') {
+          state = {
+            ...state,
+            combatants: state.combatants.map(c =>
+              c.id === actorId ? { ...c, healingPotionsUsedThisCombat: (c.healingPotionsUsedThisCombat ?? 0) + 1 } : c
+            ),
+          };
+          // Remove used potion from availableItems so it can't be used again
+          const pItems = params.availableItems ?? [];
+          const usedIdx = pItems.findIndex(i => i.id === context.item?.id);
+          if (usedIdx >= 0) pItems.splice(usedIdx, 1);
+          // Consume from DB (async, fire-and-forget during combat resolution)
+          if (context.item?.id && context.item.id !== 'prepared-scroll') {
+            consumeHealingPotionFromInventory(actorId, context.item.id).catch(() => {});
+          }
+        }
+      }
+    }
 
     // === SWALLOW PROCESSING — digestive damage + escape check ===
     const swallowResults: SwallowResult[] = [];
@@ -1059,6 +1116,7 @@ export async function resolveNodePvE(
     race: character.race,
     level: character.level,
     subRace: character.subRace as { id: string; element?: string } | null,
+    availableItems: params.availableItems,
   });
 
   // Monster gets default aggressive presets
@@ -1247,6 +1305,7 @@ export async function resolveNodePvP(
     race: traveler.race,
     level: traveler.level,
     subRace: traveler.subRace as { id: string; element?: string } | null,
+    availableItems: travelerParams.availableItems,
   });
 
   combatantParams.set(ambusherId, {
@@ -1257,6 +1316,7 @@ export async function resolveNodePvP(
     race: ambusher.race,
     level: ambusher.level,
     subRace: ambusher.subRace as { id: string; element?: string } | null,
+    availableItems: ambusherParams.availableItems,
   });
 
   // Resolve
@@ -1363,6 +1423,7 @@ export async function resolveGroupCombat(
       race: char.race,
       level: char.level,
       subRace: char.subRace as { id: string; element?: string } | null,
+      availableItems: params.availableItems,
     });
   }
 
@@ -1405,6 +1466,7 @@ export async function resolveGroupCombat(
       race: char.race,
       level: char.level,
       subRace: char.subRace as { id: string; element?: string } | null,
+      availableItems: params.availableItems,
     });
   }
 
@@ -1562,6 +1624,8 @@ function createDefaultMonsterParams(id: string, combatant: Combatant): Combatant
       abilityQueue: [],
       itemUsageRules: [],
       pvpLootBehavior: 'TAKE_NOTHING',
+      healingPotionThreshold: 50,
+      maxHealingPotionsPerCombat: 0, // Monsters don't use healing potions
     },
     weapon: combatant.weapon,
     racialTracker: createRacialCombatTracker(),

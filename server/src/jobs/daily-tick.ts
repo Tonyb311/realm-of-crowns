@@ -8,7 +8,7 @@
 import { db } from '../lib/db';
 import { eq, and, gte, lte, lt, gt, inArray, desc, asc, sql, count } from 'drizzle-orm';
 import {
-  dailyActions, characters, townResources, resources, playerProfessions,
+  dailyActions, characters, characterActiveEffects, townResources, resources, playerProfessions,
   inventories, items, itemTemplates, buildings, characterEquipment,
   laws, townTreasuries, townPolicies, tradeTransactions, caravans,
   elections, electionVotes, electionCandidates, impeachments, towns, kingdoms,
@@ -192,6 +192,21 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   const foodBuffs = new Map<string, Record<string, unknown> | null>();
 
   // -----------------------------------------------------------------------
+  // Step 0: Reset consumable flags and expire active effects
+  // -----------------------------------------------------------------------
+  await runStep('Reset Consumable Flags', 0, async () => {
+    await db.update(characters).set({
+      potionBuffUsedToday: false,
+      foodUsedToday: false,
+      scrollUsedToday: false,
+    });
+    const expired = await db.delete(characterActiveEffects)
+      .where(lte(characterActiveEffects.expiresAt, new Date().toISOString()));
+    const rowCount = (expired as any).rowCount ?? 0;
+    console.log(`[DailyTick]   Reset daily consumable flags, expired ${rowCount} active effects`);
+  });
+
+  // -----------------------------------------------------------------------
   // Step 1: Food Spoilage (consumption moved to Step 4b, after crafting)
   // -----------------------------------------------------------------------
   await runStep('Food Spoilage', 1, async () => {
@@ -321,7 +336,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
 
     while (hasMoreChars) {
       const charPage = await db.query.characters.findMany({
-        columns: { id: true, race: true },
+        columns: { id: true, race: true, foodUsedToday: true, daysSinceLastMeal: true },
         limit: CURSOR_PAGE_SIZE,
         orderBy: asc(characters.id),
         ...(lastId ? { where: gt(characters.id, lastId) } : {}),
@@ -403,20 +418,35 @@ export async function processDailyTick(): Promise<DailyTickResult> {
               results.notifications.push('Maintenance complete. Systems recalibrated. All components operating within parameters.');
             }
           } else {
-            const foodResult = await processAutoConsumption(char.id);
-            hungerStates.set(char.id, foodResult.hungerState);
-            foodBuffs.set(char.id, foodResult.buff);
+            // Player-initiated food consumption: check if they ate via API
+            if (!char.foodUsedToday) {
+              // Character didn't eat — increment hunger
+              const newDays = (char.daysSinceLastMeal ?? 0) + 1;
+              const newHungerState =
+                newDays <= 0 ? 'FED' :
+                newDays <= 2 ? 'HUNGRY' :
+                newDays <= 4 ? 'STARVING' : 'INCAPACITATED';
+              await db.update(characters).set({
+                daysSinceLastMeal: newDays,
+                hungerState: newHungerState,
+              }).where(eq(characters.id, char.id));
+              hungerStates.set(char.id, newHungerState);
+              foodBuffs.set(char.id, null);
 
-            const results = getResults(char.id);
-            results.food = {
-              consumed: foodResult.consumed ? { name: foodResult.consumed.name } : null,
-              buff: foodResult.buff,
-            };
+              const results = getResults(char.id);
+              results.food = { consumed: null, buff: null };
 
-            if (foodResult.hungerState === 'STARVING' || foodResult.hungerState === 'INCAPACITATED') {
-              results.notifications.push(
-                `You are ${foodResult.hungerState.toLowerCase()}! Acquire food urgently.`
-              );
+              if (newHungerState === 'STARVING' || newHungerState === 'INCAPACITATED') {
+                results.notifications.push(
+                  `You are ${newHungerState.toLowerCase()}! Acquire food urgently.`
+                );
+              }
+            } else {
+              // Character ate via API — hunger already reset, buff already in active effects
+              hungerStates.set(char.id, 'FED');
+              foodBuffs.set(char.id, null); // Buff is in character_active_effects, not here
+              const results = getResults(char.id);
+              results.food = { consumed: null, buff: null };
             }
           }
         } catch (err) {

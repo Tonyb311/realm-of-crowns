@@ -8,6 +8,13 @@
       "when": 1772924575799,
       "tag": "0000_clean_preak",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1772960400000,
+      "tag": "0001_add_consumable_system",
+      "breakpoints": true
     }
   ]
 }

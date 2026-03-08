@@ -1,6 +1,6 @@
 import { pgTable, varchar, timestamp, text, integer, uniqueIndex, index, foreignKey, doublePrecision, jsonb, date, boolean, type AnyPgColumn } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
-import { actionStatus, beastClan, biomeType, buildingType, combatSessionStatus, combatStance, combatType, dailyActionStatus, dailyActionType, diplomacyActionType, dragonBloodline, electionPhase, electionStatus, electionType, elementalType, equipSlot, foodPriority, friendStatus, hungerState, impeachmentStatus, itemRarity, itemType, lawStatus, loanStatus, logLevel, messageChannel, npcRole, petitionStatus, professionTier, professionType, questType, race, raceTier, relationStatus, resourceType, treatyStatus, treatyType, warStatus } from './enums'
+import { actionStatus, beastClan, biomeType, buildingType, combatSessionStatus, combatStance, combatType, consumableSourceType, dailyActionStatus, dailyActionType, diplomacyActionType, dragonBloodline, electionPhase, electionStatus, electionType, elementalType, equipSlot, foodPriority, friendStatus, hungerState, impeachmentStatus, itemRarity, itemType, lawStatus, loanStatus, logLevel, messageChannel, npcRole, petitionStatus, professionTier, professionType, questType, race, raceTier, relationStatus, resourceType, treatyStatus, treatyType, warStatus } from './enums'
 
 // ============================================================
 // AUTH
@@ -473,6 +473,11 @@ export const characters = pgTable("characters", {
 	bonusSaveProficiencies: jsonb("bonus_save_proficiencies").default([]).notNull(),
 	feats: jsonb().default([]).notNull(),
 	pendingFeatChoice: boolean("pending_feat_choice").default(false).notNull(),
+	potionBuffUsedToday: boolean("potion_buff_used_today").default(false).notNull(),
+	foodUsedToday: boolean("food_used_today").default(false).notNull(),
+	scrollUsedToday: boolean("scroll_used_today").default(false).notNull(),
+	healingPotionThreshold: integer("healing_potion_threshold").default(50).notNull(),
+	maxHealingPotionsPerCombat: integer("max_healing_potions_per_combat").default(1).notNull(),
 }, (table) => [
 	index("characters_current_town_id_idx").using("btree", table.currentTownId.asc().nullsLast().op("text_ops")),
 	index("characters_race_idx").using("btree", table.race.asc().nullsLast().op("enum_ops")),
@@ -492,6 +497,27 @@ export const characters = pgTable("characters", {
 			columns: [table.userId],
 			foreignColumns: [users.id],
 			name: "characters_user_id_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+]);
+
+export const characterActiveEffects = pgTable("character_active_effects", {
+	id: text().primaryKey().notNull(),
+	characterId: text("character_id").notNull(),
+	sourceType: consumableSourceType("source_type").notNull(),
+	effectType: text("effect_type").notNull(),
+	magnitude: integer().default(0).notNull(),
+	effectType2: text("effect_type_2"),
+	magnitude2: integer("magnitude_2"),
+	itemName: text("item_name").notNull(),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	expiresAt: timestamp("expires_at", { precision: 3, mode: 'string' }).notNull(),
+}, (table) => [
+	index("character_active_effects_character_id_idx").using("btree", table.characterId.asc().nullsLast().op("text_ops")),
+	index("character_active_effects_expires_at_idx").using("btree", table.expiresAt.asc().nullsLast()),
+	foreignKey({
+			columns: [table.characterId],
+			foreignColumns: [characters.id],
+			name: "character_active_effects_character_id_fkey"
 		}).onUpdate("cascade").onDelete("cascade"),
 ]);
 

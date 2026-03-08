@@ -46,6 +46,8 @@ export interface CombatPresets {
   abilityQueue: AbilityQueueEntry[];
   itemUsageRules: ItemUsageRule[];
   pvpLootBehavior: PvPLootBehavior;
+  healingPotionThreshold: number;
+  maxHealingPotionsPerCombat: number;
 }
 
 export interface StanceModifiers {
@@ -76,6 +78,8 @@ const DEFAULT_PRESETS: CombatPresets = {
   abilityQueue: [],
   itemUsageRules: [],
   pvpLootBehavior: 'TAKE_GOLD',
+  healingPotionThreshold: 50,
+  maxHealingPotionsPerCombat: 1,
 };
 
 // ---- Functions ----
@@ -94,6 +98,8 @@ export async function getCombatPresets(characterId: string): Promise<CombatPrese
     abilityPriorityQueue: any;
     itemUsageRules: any;
     pvpLootBehavior: string | null;
+    healingPotionThreshold: number | null;
+    maxHealingPotionsPerCombat: number | null;
   }>(sql`
     SELECT
       "combat_stance" as "combatStance",
@@ -103,7 +109,9 @@ export async function getCombatPresets(characterId: string): Promise<CombatPrese
       "never_retreat" as "neverRetreat",
       "ability_priority_queue" as "abilityPriorityQueue",
       "item_usage_rules" as "itemUsageRules",
-      "pvp_loot_behavior" as "pvpLootBehavior"
+      "pvp_loot_behavior" as "pvpLootBehavior",
+      "healing_potion_threshold" as "healingPotionThreshold",
+      "max_healing_potions_per_combat" as "maxHealingPotionsPerCombat"
     FROM "characters"
     WHERE id = ${characterId}
     LIMIT 1
@@ -131,6 +139,8 @@ export async function getCombatPresets(characterId: string): Promise<CombatPrese
       ? c.itemUsageRules
       : DEFAULT_PRESETS.itemUsageRules,
     pvpLootBehavior: (c.pvpLootBehavior as PvPLootBehavior) ?? DEFAULT_PRESETS.pvpLootBehavior,
+    healingPotionThreshold: c.healingPotionThreshold ?? DEFAULT_PRESETS.healingPotionThreshold,
+    maxHealingPotionsPerCombat: c.maxHealingPotionsPerCombat ?? DEFAULT_PRESETS.maxHealingPotionsPerCombat,
   };
 }
 
@@ -179,7 +189,9 @@ export async function updateCombatPresets(
         "retreat_opposition_ratio" = COALESCE(${presets.retreat?.oppositionRatio ?? null}, "retreat_opposition_ratio"),
         "retreat_round_limit" = COALESCE(${presets.retreat?.roundLimit ?? null}, "retreat_round_limit"),
         "never_retreat" = COALESCE(${presets.retreat?.neverRetreat ?? null}, "never_retreat"),
-        "pvp_loot_behavior" = COALESCE(${presets.pvpLootBehavior ?? null}, "pvp_loot_behavior")
+        "pvp_loot_behavior" = COALESCE(${presets.pvpLootBehavior ?? null}, "pvp_loot_behavior"),
+        "healing_potion_threshold" = COALESCE(${presets.healingPotionThreshold ?? null}, "healing_potion_threshold"),
+        "max_healing_potions_per_combat" = COALESCE(${presets.maxHealingPotionsPerCombat ?? null}, "max_healing_potions_per_combat")
     WHERE id = ${characterId}
   `);
 

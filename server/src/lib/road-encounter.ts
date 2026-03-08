@@ -11,7 +11,7 @@
 
 import { db } from './db';
 import { eq, and, gte, lte, inArray, gt, count, sql } from 'drizzle-orm';
-import { characters, towns, monsters, characterEquipment, combatParticipants, combatSessions, combatEncounterLogs } from '@database/tables';
+import { characters, towns, monsters, characterEquipment, combatParticipants, combatSessions, combatEncounterLogs, characterActiveEffects } from '@database/tables';
 import type { BiomeType, ItemRarity } from '@shared/enums';
 import { calculateItemStats, calculateEquipmentTotals } from '../services/item-stats';
 import { logger } from './logger';
@@ -31,7 +31,7 @@ import type {
   MonsterAbility,
 } from '@shared/types/combat';
 import { getModifier } from '@shared/types/combat';
-import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
+import { getProficiencyBonus, STAT_HARD_CAP } from '@shared/utils/bounded-accuracy';
 import { CLASS_SAVE_PROFICIENCIES, getAttacksPerAction } from '@shared/data/combat-constants';
 import {
   ACTION_XP,
@@ -47,7 +47,7 @@ import { checkAchievements } from '../services/achievements';
 import { logPveCombat, COMBAT_LOGGING_ENABLED, buildRoundsData, buildEncounterContext } from './combat-logger';
 import { getSimulationTick, getSimulationRunId } from './simulation-context';
 import type { CombatRound } from './simulation/types';
-import type { AttackResult } from '@shared/types/combat';
+import type { AttackResult, Combatant } from '@shared/types/combat';
 import { processItemDrops } from './loot-items';
 
 // ---------------------------------------------------------------------------
@@ -348,6 +348,110 @@ export interface RoadEncounterResult {
 }
 
 // ---------------------------------------------------------------------------
+// Consumable Buff Application
+// ---------------------------------------------------------------------------
+
+const STAT_KEYS = ['str', 'dex', 'con', 'int', 'wis', 'cha'] as const;
+
+/**
+ * Query active consumable effects for a character and apply them to a combatant.
+ * Modifies the combatant in-place: stat buffs, AC buffs, poison immunity, prepared scrolls.
+ * Returns the modified combatant.
+ */
+export async function applyConsumableBuffs(combatant: Combatant, characterId: string): Promise<Combatant> {
+  const effects = await db.select().from(characterActiveEffects)
+    .where(and(
+      eq(characterActiveEffects.characterId, characterId),
+      gt(characterActiveEffects.expiresAt, new Date().toISOString()),
+    ));
+
+  if (effects.length === 0) return combatant;
+
+  let conBuffed = false;
+  const oldConMod = getModifier(combatant.stats.con);
+
+  for (const effect of effects) {
+    // Damage scrolls → set prepared scroll directly (needs itemName from effect row)
+    if (effect.sourceType === 'SCROLL' && (
+      effect.effectType.startsWith('damage_') || effect.effectType === 'heal_hp'
+    )) {
+      combatant.preparedScroll = {
+        effectType: effect.effectType,
+        magnitude: effect.magnitude,
+        itemName: effect.itemName,
+      };
+      continue;
+    }
+
+    // Apply primary effect
+    applyEffect(combatant, effect.effectType, effect.magnitude, effect.sourceType);
+    // Apply secondary effect (dual buffs like Elixir of Fortitude)
+    if (effect.effectType2 && effect.magnitude2 != null) {
+      applyEffect(combatant, effect.effectType2, effect.magnitude2, effect.sourceType);
+    }
+    // Track CON changes for HP recalculation
+    if (effect.effectType === 'buff_constitution' || effect.effectType2 === 'buff_constitution') {
+      conBuffed = true;
+    }
+  }
+
+  // Cap all stats at STAT_HARD_CAP
+  for (const key of STAT_KEYS) {
+    if (combatant.stats[key] > STAT_HARD_CAP) {
+      combatant.stats[key] = STAT_HARD_CAP;
+    }
+  }
+
+  // Recalculate HP if CON was buffed
+  if (conBuffed) {
+    const newConMod = getModifier(combatant.stats.con);
+    const conModDiff = newConMod - oldConMod;
+    if (conModDiff > 0) {
+      // Scale HP proportionally based on new modifier
+      const hpBonus = conModDiff * (combatant.level ?? 1);
+      combatant.maxHp += hpBonus;
+      combatant.currentHp += hpBonus;
+    }
+  }
+
+  return combatant;
+}
+
+function applyEffect(combatant: Combatant, effectType: string, magnitude: number, sourceType: string): void {
+  // Stat buffs
+  const statMap: Record<string, keyof typeof combatant.stats> = {
+    buff_strength: 'str', buff_dexterity: 'dex', buff_constitution: 'con',
+    buff_intelligence: 'int', buff_wisdom: 'wis', buff_charisma: 'cha',
+  };
+  if (statMap[effectType]) {
+    combatant.stats[statMap[effectType]] += magnitude;
+    return;
+  }
+
+  // AC buff
+  if (effectType === 'buff_armor') {
+    combatant.ac += magnitude;
+    return;
+  }
+
+  // Poison immunity
+  if (effectType === 'poison_immunity' || effectType === 'cure_poison' || effectType === 'cure_all') {
+    combatant.poisonImmune = true;
+    return;
+  }
+
+  // hp_regen as a stat buff effect (Berry Salve) — store as activeBuffs isn't needed
+  // since it's pre-combat, we can treat it as a small HP boost
+  if (effectType === 'hp_regen') {
+    // hp_regen gives `magnitude` HP per round for `duration` rounds
+    // As pre-combat buff, give a flat HP bump approximation (magnitude * 3 rounds)
+    combatant.maxHp += magnitude * 3;
+    combatant.currentHp += magnitude * 3;
+    return;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Core: Resolve Road Encounter
 // ---------------------------------------------------------------------------
 
@@ -527,6 +631,9 @@ export async function resolveRoadEncounter(
   ];
   (playerCombatant as any).extraAttacks = getAttacksPerAction(character.class ?? '', character.level);
   (playerCombatant as any).featIds = (character.feats as string[]) ?? [];
+
+  // Apply pre-combat consumable buffs (stat potions, food buffs, scroll buffs)
+  await applyConsumableBuffs(playerCombatant, character.id);
 
   let combatState = createCombatState(sessionId, 'PVE', [playerCombatant, monsterCombatant]);
 
@@ -933,6 +1040,8 @@ export async function resolveGroupRoadEncounter(
     ];
     (combatant as any).extraAttacks = getAttacksPerAction(char.class ?? '', char.level);
     (combatant as any).featIds = (char.feats as string[]) ?? [];
+    // Apply pre-combat consumable buffs
+    await applyConsumableBuffs(combatant, char.id);
     combatants.push(combatant);
   }
 

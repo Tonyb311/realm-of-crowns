@@ -713,6 +713,8 @@ export function buildDefaultPresets(className: string, level: number, options?: 
     abilityQueue: buildAbilityQueue(className, level, options),
     itemUsageRules: [],
     pvpLootBehavior: 'TAKE_NOTHING',
+    healingPotionThreshold: 50,
+    maxHealingPotionsPerCombat: 1,
   };
 }
 

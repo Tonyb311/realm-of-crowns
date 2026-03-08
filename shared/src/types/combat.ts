@@ -592,6 +592,15 @@ export interface Combatant {
   extraAttacks?: number;
   /** Feat IDs this combatant has chosen */
   featIds?: string[];
+  // Consumable system fields
+  /** Prepared damage/heal scroll for round 1 AI usage */
+  preparedScroll?: { effectType: string; magnitude: number; itemName: string };
+  /** Whether the prepared scroll has been used this combat */
+  preparedScrollUsed?: boolean;
+  /** Number of healing potions consumed this combat by AI */
+  healingPotionsUsedThisCombat?: number;
+  /** Immune to poison status effects (from Poison Resistance Tonic / Universal Antidote) */
+  poisonImmune?: boolean;
 }
 
 export interface ClassAbilityAttackMods {
