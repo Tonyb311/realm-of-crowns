@@ -6,6 +6,19 @@
  *
  * NOTE: "Copper" weapons use Iron Ingots as materials (no Copper Ore exists).
  * "Copper" is flavor naming for T1 equipment — all T1 recipes use Iron-based materials.
+ *
+ * Dice progression per weapon type (diceCount×diceSides +bonusDamage/+bonusAttack):
+ *   Dagger:     1d4+0/0 → 1d6+1/1 → 1d8+2/2 → 1d10+3/3 → 1d10+4/4
+ *   Sword:      1d6+0/0 → 1d8+1/1 → 1d10+2/2 → 1d12+3/3 → 2d6+4/4
+ *   Mace:       1d6+0/0 → 1d8+1/1 → 1d10+2/2 → 1d12+3/3 → 2d6+4/4
+ *   Axe:        1d6+0/0 → 1d8+1/1 → 1d10+2/2 → 1d12+3/3 → 2d6+4/4
+ *   Spear:      1d6+0/0 → 1d8+1/1 → 1d10+2/2 → 1d12+3/3 → 2d6+4/4
+ *   Battleaxe(2H): — → 1d10+1/1 → 1d12+2/2 → 2d6+3/3 → 2d6+5/4
+ *   Warhammer(2H): — → 1d10+1/1 → 1d12+2/2 → 2d6+3/3 → 2d6+5/4
+ *   Greatsword(2H): — → — → 2d6+3/2 → 2d8+4/3 → 2d8+5/4
+ *   Halberd(2H):    — → — → 1d12+2/2 → 2d6+3/3 → 2d6+5/4
+ *   Longsword:  — → 1d8+1/1 → 1d10+2/2 → 1d12+3/3 → 2d6+4/4
+ *   Rapier:     — → — → — → 1d12+3/3 → 2d6+4/4
  */
 
 import { FinishedGoodsRecipe, tagRecipesWithCategories } from './types';
@@ -31,6 +44,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 4,
+      diceCount: 1,
+      diceSides: 4,
+      bonusDamage: 0,
+      bonusAttack: 0,
       damageType: 'piercing',
       speed: 12,
       requiredStr: 3,
@@ -57,6 +74,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 6,
+      diceCount: 1,
+      diceSides: 6,
+      bonusDamage: 0,
+      bonusAttack: 0,
       damageType: 'slashing',
       speed: 8,
       requiredStr: 5,
@@ -83,6 +104,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 7,
+      diceCount: 1,
+      diceSides: 6,
+      bonusDamage: 0,
+      bonusAttack: 0,
       damageType: 'bludgeoning',
       speed: 6,
       requiredStr: 6,
@@ -109,6 +134,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 7,
+      diceCount: 1,
+      diceSides: 6,
+      bonusDamage: 0,
+      bonusAttack: 0,
       damageType: 'slashing',
       speed: 7,
       requiredStr: 6,
@@ -135,6 +164,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 6,
+      diceCount: 1,
+      diceSides: 6,
+      bonusDamage: 0,
+      bonusAttack: 0,
       damageType: 'piercing',
       speed: 8,
       requiredStr: 4,
@@ -165,6 +198,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 8,
+      diceCount: 1,
+      diceSides: 6,
+      bonusDamage: 1,
+      bonusAttack: 1,
       damageType: 'piercing',
       speed: 12,
       requiredStr: 5,
@@ -192,6 +229,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 12,
+      diceCount: 1,
+      diceSides: 8,
+      bonusDamage: 1,
+      bonusAttack: 1,
       damageType: 'slashing',
       speed: 8,
       requiredStr: 8,
@@ -218,6 +259,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 14,
+      diceCount: 1,
+      diceSides: 8,
+      bonusDamage: 1,
+      bonusAttack: 1,
       damageType: 'slashing',
       speed: 7,
       requiredStr: 10,
@@ -244,6 +289,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 13,
+      diceCount: 1,
+      diceSides: 8,
+      bonusDamage: 1,
+      bonusAttack: 1,
       damageType: 'slashing',
       speed: 7,
       requiredStr: 9,
@@ -270,6 +319,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 18,
+      diceCount: 1,
+      diceSides: 10,
+      bonusDamage: 1,
+      bonusAttack: 1,
       damageType: 'slashing',
       speed: 5,
       requiredStr: 14,
@@ -297,6 +350,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 13,
+      diceCount: 1,
+      diceSides: 8,
+      bonusDamage: 1,
+      bonusAttack: 1,
       damageType: 'bludgeoning',
       speed: 6,
       requiredStr: 10,
@@ -323,6 +380,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 20,
+      diceCount: 1,
+      diceSides: 10,
+      bonusDamage: 1,
+      bonusAttack: 1,
       damageType: 'bludgeoning',
       speed: 4,
       requiredStr: 16,
@@ -350,6 +411,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 11,
+      diceCount: 1,
+      diceSides: 8,
+      bonusDamage: 1,
+      bonusAttack: 1,
       damageType: 'piercing',
       speed: 8,
       requiredStr: 7,
@@ -380,6 +445,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 14,
+      diceCount: 1,
+      diceSides: 8,
+      bonusDamage: 2,
+      bonusAttack: 2,
       damageType: 'piercing',
       speed: 13,
       requiredStr: 7,
@@ -407,6 +476,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 20,
+      diceCount: 1,
+      diceSides: 10,
+      bonusDamage: 2,
+      bonusAttack: 2,
       damageType: 'slashing',
       speed: 9,
       requiredStr: 12,
@@ -433,6 +506,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 24,
+      diceCount: 1,
+      diceSides: 10,
+      bonusDamage: 2,
+      bonusAttack: 2,
       damageType: 'slashing',
       speed: 7,
       requiredStr: 14,
@@ -459,6 +536,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 32,
+      diceCount: 2,
+      diceSides: 6,
+      bonusDamage: 3,
+      bonusAttack: 2,
       damageType: 'slashing',
       speed: 5,
       requiredStr: 18,
@@ -486,6 +567,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 22,
+      diceCount: 1,
+      diceSides: 10,
+      bonusDamage: 2,
+      bonusAttack: 2,
       damageType: 'slashing',
       speed: 7,
       requiredStr: 13,
@@ -512,6 +597,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 30,
+      diceCount: 1,
+      diceSides: 12,
+      bonusDamage: 2,
+      bonusAttack: 2,
       damageType: 'slashing',
       speed: 5,
       requiredStr: 18,
@@ -539,6 +628,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 22,
+      diceCount: 1,
+      diceSides: 10,
+      bonusDamage: 2,
+      bonusAttack: 2,
       damageType: 'bludgeoning',
       speed: 6,
       requiredStr: 14,
@@ -565,6 +658,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 34,
+      diceCount: 1,
+      diceSides: 12,
+      bonusDamage: 2,
+      bonusAttack: 2,
       damageType: 'bludgeoning',
       speed: 4,
       requiredStr: 20,
@@ -592,6 +689,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 28,
+      diceCount: 1,
+      diceSides: 12,
+      bonusDamage: 2,
+      bonusAttack: 2,
       damageType: 'slashing',
       speed: 5,
       requiredStr: 16,
@@ -619,6 +720,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 18,
+      diceCount: 1,
+      diceSides: 10,
+      bonusDamage: 2,
+      bonusAttack: 2,
       damageType: 'piercing',
       speed: 9,
       requiredStr: 10,
@@ -650,6 +755,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 30,
+      diceCount: 1,
+      diceSides: 12,
+      bonusDamage: 3,
+      bonusAttack: 3,
       damageType: 'slashing',
       speed: 10,
       requiredStr: 14,
@@ -676,6 +785,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 36,
+      diceCount: 1,
+      diceSides: 12,
+      bonusDamage: 3,
+      bonusAttack: 3,
       damageType: 'slashing',
       speed: 8,
       requiredStr: 16,
@@ -702,6 +815,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 28,
+      diceCount: 1,
+      diceSides: 10,
+      bonusDamage: 3,
+      bonusAttack: 3,
       damageType: 'piercing',
       speed: 12,
       requiredStr: 8,
@@ -728,6 +845,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 34,
+      diceCount: 1,
+      diceSides: 12,
+      bonusDamage: 3,
+      bonusAttack: 3,
       damageType: 'piercing',
       speed: 10,
       requiredStr: 10,
@@ -754,6 +875,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 46,
+      diceCount: 2,
+      diceSides: 8,
+      bonusDamage: 4,
+      bonusAttack: 3,
       damageType: 'slashing',
       speed: 6,
       requiredStr: 20,
@@ -781,6 +906,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 44,
+      diceCount: 2,
+      diceSides: 6,
+      bonusDamage: 3,
+      bonusAttack: 3,
       damageType: 'slashing',
       speed: 5,
       requiredStr: 22,
@@ -808,6 +937,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 48,
+      diceCount: 2,
+      diceSides: 6,
+      bonusDamage: 3,
+      bonusAttack: 3,
       damageType: 'bludgeoning',
       speed: 4,
       requiredStr: 24,
@@ -835,6 +968,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 42,
+      diceCount: 2,
+      diceSides: 6,
+      bonusDamage: 3,
+      bonusAttack: 3,
       damageType: 'slashing',
       speed: 5,
       requiredStr: 20,
@@ -867,6 +1004,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 38,
+      diceCount: 2,
+      diceSides: 6,
+      bonusDamage: 4,
+      bonusAttack: 4,
       damageType: 'slashing',
       speed: 10,
       requiredStr: 16,
@@ -893,6 +1034,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 45,
+      diceCount: 2,
+      diceSides: 6,
+      bonusDamage: 4,
+      bonusAttack: 4,
       damageType: 'slashing',
       speed: 8,
       requiredStr: 18,
@@ -919,6 +1064,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 36,
+      diceCount: 1,
+      diceSides: 10,
+      bonusDamage: 4,
+      bonusAttack: 4,
       damageType: 'piercing',
       speed: 12,
       requiredStr: 10,
@@ -945,6 +1094,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 44,
+      diceCount: 2,
+      diceSides: 6,
+      bonusDamage: 4,
+      bonusAttack: 4,
       damageType: 'piercing',
       speed: 10,
       requiredStr: 12,
@@ -972,6 +1125,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 60,
+      diceCount: 2,
+      diceSides: 8,
+      bonusDamage: 5,
+      bonusAttack: 4,
       damageType: 'slashing',
       speed: 6,
       requiredStr: 24,
@@ -1000,6 +1157,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 58,
+      diceCount: 2,
+      diceSides: 6,
+      bonusDamage: 5,
+      bonusAttack: 4,
       damageType: 'slashing',
       speed: 5,
       requiredStr: 26,
@@ -1028,6 +1189,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 62,
+      diceCount: 2,
+      diceSides: 6,
+      bonusDamage: 5,
+      bonusAttack: 4,
       damageType: 'bludgeoning',
       speed: 4,
       requiredStr: 28,
@@ -1056,6 +1221,10 @@ const _BLACKSMITH_WEAPON_RECIPES: FinishedGoodsRecipe[] = [
     equipSlot: 'MAIN_HAND',
     outputStats: {
       baseDamage: 56,
+      diceCount: 2,
+      diceSides: 6,
+      bonusDamage: 5,
+      bonusAttack: 4,
       damageType: 'slashing',
       speed: 5,
       requiredStr: 24,
