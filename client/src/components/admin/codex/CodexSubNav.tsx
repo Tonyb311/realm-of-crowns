@@ -1,19 +1,19 @@
-import { BarChart3, History, FlaskConical } from 'lucide-react';
+import { Users, Skull, Map } from 'lucide-react';
 
-export type CombatTab = 'overview' | 'history' | 'simulator';
+export type CodexTab = 'races-classes' | 'monsters' | 'encounters';
 
-const TABS: { key: CombatTab; label: string; icon: typeof BarChart3 }[] = [
-  { key: 'overview', label: 'Overview', icon: BarChart3 },
-  { key: 'history', label: 'History', icon: History },
-  { key: 'simulator', label: 'Simulator', icon: FlaskConical },
+const TABS: { key: CodexTab; label: string; icon: typeof Users }[] = [
+  { key: 'races-classes', label: 'Races & Classes', icon: Users },
+  { key: 'monsters', label: 'Monsters', icon: Skull },
+  { key: 'encounters', label: 'Encounters', icon: Map },
 ];
 
-interface CombatSubNavProps {
-  activeTab: CombatTab;
-  onTabChange: (tab: CombatTab) => void;
+interface CodexSubNavProps {
+  activeTab: CodexTab;
+  onTabChange: (tab: CodexTab) => void;
 }
 
-export default function CombatSubNav({ activeTab, onTabChange }: CombatSubNavProps) {
+export default function CodexSubNav({ activeTab, onTabChange }: CodexSubNavProps) {
   return (
     <div className="border-b border-realm-border mb-6">
       <nav className="flex gap-1">

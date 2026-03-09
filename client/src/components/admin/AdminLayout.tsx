@@ -10,7 +10,7 @@ import {
   AlertCircle,
   Bot,
   Layers,
-  Skull,
+  BookOpen,
   Swords,
   ArrowLeft,
   Menu,
@@ -28,7 +28,7 @@ const ADMIN_NAV = [
   { path: '/admin/error-logs', label: 'Error Logs', icon: AlertCircle },
   { path: '/admin/simulation', label: 'Simulation', icon: Bot },
   { path: '/admin/content-release', label: 'Content Release', icon: Layers },
-  { path: '/admin/monsters', label: 'Monsters', icon: Skull },
+  { path: '/admin/codex', label: 'Codex', icon: BookOpen },
   { path: '/admin/combat', label: 'Combat', icon: Swords },
 ];
 

@@ -3,7 +3,6 @@ import CombatSubNav, { type CombatTab } from '../../components/admin/combat/Comb
 import RunSelector from '../../components/admin/combat/RunSelector';
 
 const OverviewTab = lazy(() => import('../../components/admin/combat/OverviewTab'));
-const CodexTab = lazy(() => import('../../components/admin/combat/CodexTab'));
 const HistoryTab = lazy(() => import('../../components/admin/combat/HistoryTab'));
 const SimulatorTab = lazy(() => import('../../components/admin/combat/SimulatorTab'));
 
@@ -90,7 +89,6 @@ export default function AdminCombatPage() {
             compareRunId={compareMode ? compareRunId : null}
           />
         )}
-        {activeTab === 'codex' && <CodexTab />}
         {activeTab === 'history' && (
           <HistoryTab dataSource={dataSource} runId={selectedRunId} />
         )}

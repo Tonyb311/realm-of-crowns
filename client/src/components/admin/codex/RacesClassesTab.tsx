@@ -6,12 +6,14 @@ import {
   Swords,
   Package,
   Zap,
+  Shield,
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
 import api from '../../../services/api';
-import StatBlock from './StatBlock';
-import AbilityCard from './AbilityCard';
+import StatBlock from '../combat/StatBlock';
+import AbilityCard from '../combat/AbilityCard';
+import { FEAT_DEFINITIONS, FEAT_UNLOCK_LEVELS, type FeatDefinition } from '@shared/data/feats';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -127,14 +129,15 @@ interface StatusEffectEntry {
 }
 
 // ---------------------------------------------------------------------------
-// Sub-tab definition
+// Sub-section definition
 // ---------------------------------------------------------------------------
 
-type CodexSubTab = 'races' | 'classes' | 'items' | 'status-effects';
+type CodexSection = 'races' | 'classes' | 'feats' | 'items' | 'status-effects';
 
-const SUB_TABS: { key: CodexSubTab; label: string; icon: typeof Users }[] = [
+const SECTIONS: { key: CodexSection; label: string; icon: typeof Users }[] = [
   { key: 'races', label: 'Races', icon: Users },
   { key: 'classes', label: 'Classes', icon: Swords },
+  { key: 'feats', label: 'Feats', icon: Shield },
   { key: 'items', label: 'Items', icon: Package },
   { key: 'status-effects', label: 'Status Effects', icon: Zap },
 ];
@@ -216,10 +219,10 @@ function CodexError({ message }: { message: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Sub-tab: Races
+// Sub-section: Races
 // ---------------------------------------------------------------------------
 
-function RacesSubTab({ search }: { search: string }) {
+function RacesSection({ search }: { search: string }) {
   const { data, isLoading, error } = useQuery<{ races: RaceEntry[]; total: number }>({
     queryKey: ['admin', 'combat', 'codex', 'races'],
     queryFn: async () => (await api.get('/admin/combat/codex/races')).data,
@@ -250,7 +253,6 @@ function RacesSubTab({ search }: { search: string }) {
         const isExpanded = expandedId === race.id;
         return (
           <div key={race.id} className="bg-realm-bg-700 border border-realm-border rounded-lg">
-            {/* Header */}
             <button
               onClick={() => setExpandedId(isExpanded ? null : race.id)}
               className="w-full flex items-center gap-3 px-5 py-3 text-left"
@@ -271,14 +273,12 @@ function RacesSubTab({ search }: { search: string }) {
               </span>
             </button>
 
-            {/* Collapsed inline: stat modifiers */}
             {!isExpanded && (
               <div className="px-5 pb-3">
                 <StatBlock stats={race.statModifiers} />
               </div>
             )}
 
-            {/* Expanded detail */}
             {isExpanded && (
               <div className="px-5 pb-5 space-y-4">
                 <p className="text-xs text-realm-text-secondary leading-relaxed italic">{race.lore}</p>
@@ -296,39 +296,25 @@ function RacesSubTab({ search }: { search: string }) {
                   )}
                 </div>
 
-                {/* Stat modifiers */}
                 <div>
-                  <h4 className="text-xs text-realm-text-muted mb-1 font-display uppercase tracking-wider">
-                    Stat Modifiers
-                  </h4>
+                  <h4 className="text-xs text-realm-text-muted mb-1 font-display uppercase tracking-wider">Stat Modifiers</h4>
                   <StatBlock stats={race.statModifiers} />
                 </div>
 
-                {/* Starting towns */}
                 {race.startingTowns.length > 0 && (
                   <div>
-                    <h4 className="text-xs text-realm-text-muted mb-1 font-display uppercase tracking-wider">
-                      Starting Towns
-                    </h4>
+                    <h4 className="text-xs text-realm-text-muted mb-1 font-display uppercase tracking-wider">Starting Towns</h4>
                     <div className="flex flex-wrap gap-1.5">
                       {race.startingTowns.map((town) => (
-                        <span
-                          key={town}
-                          className="bg-realm-bg-600 text-realm-text-secondary px-2 py-0.5 rounded-sm text-xs"
-                        >
-                          {town}
-                        </span>
+                        <span key={town} className="bg-realm-bg-600 text-realm-text-secondary px-2 py-0.5 rounded-sm text-xs">{town}</span>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* Profession bonuses */}
                 {race.professionBonuses.length > 0 && (
                   <div>
-                    <h4 className="text-xs text-realm-text-muted mb-1 font-display uppercase tracking-wider">
-                      Profession Bonuses ({race.professionBonuses.length})
-                    </h4>
+                    <h4 className="text-xs text-realm-text-muted mb-1 font-display uppercase tracking-wider">Profession Bonuses ({race.professionBonuses.length})</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                       {race.professionBonuses.map((bonus, i) => {
                         const b = bonus as Record<string, unknown>;
@@ -344,11 +330,8 @@ function RacesSubTab({ search }: { search: string }) {
                   </div>
                 )}
 
-                {/* Abilities */}
                 <div>
-                  <h4 className="text-xs text-realm-text-muted mb-2 font-display uppercase tracking-wider">
-                    Abilities ({race.abilities.length})
-                  </h4>
+                  <h4 className="text-xs text-realm-text-muted mb-2 font-display uppercase tracking-wider">Abilities ({race.abilities.length})</h4>
                   <div className="space-y-1.5">
                     {race.abilities.map((ability, i) => (
                       <AbilityCard
@@ -380,10 +363,27 @@ function RacesSubTab({ search }: { search: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Sub-tab: Classes
+// Cantrip scaling formatter
 // ---------------------------------------------------------------------------
 
-function ClassesSubTab({ search }: { search: string }) {
+function formatCantripScaling(effects: Record<string, unknown>): string | null {
+  const diceCount = effects.diceCount as number | undefined;
+  const diceSides = effects.diceSides as number | undefined;
+  const scalingLevels = effects.scalingLevels as number[] | undefined;
+  if (!diceCount || !diceSides || !scalingLevels?.length) return null;
+
+  const parts = [`${diceCount}d${diceSides}`];
+  for (let i = 0; i < scalingLevels.length; i++) {
+    parts.push(`${diceCount + i + 1}d${diceSides} (L${scalingLevels[i]})`);
+  }
+  return parts.join(' \u2192 ');
+}
+
+// ---------------------------------------------------------------------------
+// Sub-section: Classes
+// ---------------------------------------------------------------------------
+
+function ClassesSection({ search }: { search: string }) {
   const { data, isLoading, error } = useQuery<{
     classes: ClassEntry[];
     totalClasses: number;
@@ -428,11 +428,13 @@ function ClassesSubTab({ search }: { search: string }) {
       </div>
       {filtered.map((cls) => {
         const isExpanded = expandedClass === cls.name;
-        // Spec abilities only (exclude tier 0)
-        const specAbilities = cls.specAbilities ?? cls.abilities.filter(a => !a.requiresChoice);
+        // Separate tier -1 abilities (cantrips + L1 defensive) from spec abilities
+        const allSpec = cls.specAbilities ?? cls.abilities.filter(a => !a.requiresChoice);
+        const innateAbilities = allSpec.filter(a => a.tier === -1);
+        const specAbilities = allSpec.filter(a => a.tier !== -1);
         const tier0Groups = cls.tier0Abilities ?? [];
         const tier0Count = tier0Groups.reduce((sum, g) => sum + g.abilities.length, 0);
-        const totalCount = specAbilities.length + tier0Count;
+        const totalCount = innateAbilities.length + tier0Count + specAbilities.length;
 
         // Group spec abilities by specialization
         const specGroups = new Map<string, ClassAbility[]>();
@@ -459,9 +461,7 @@ function ClassesSubTab({ search }: { search: string }) {
                 {cls.specializations.length} specs
               </span>
               <span className="bg-realm-gold-500/20 text-realm-gold-400 px-2 py-0.5 rounded-sm text-xs font-display ml-auto">
-                {tier0Count > 0
-                  ? `${tier0Count} tier 0 + ${specAbilities.length} spec = ${totalCount}`
-                  : `${totalCount} abilities`}
+                {totalCount} abilities
               </span>
             </button>
 
@@ -478,6 +478,42 @@ function ClassesSubTab({ search }: { search: string }) {
                     </span>
                   ))}
                 </div>
+
+                {/* Innate Abilities (Cantrips + L1 Defensive) — shown FIRST */}
+                {innateAbilities.length > 0 && (
+                  <div className="space-y-1.5">
+                    <h4 className="text-xs text-realm-text-muted font-display uppercase tracking-wider">
+                      Innate Abilities (Auto-Granted at L1)
+                    </h4>
+                    {innateAbilities.map((ability) => {
+                      const scaling = ability.effects?.type === 'cantrip' ? formatCantripScaling(ability.effects) : null;
+                      return (
+                        <div key={ability.id}>
+                          <AbilityCard
+                            name={ability.name}
+                            description={ability.description}
+                            tier={ability.tier}
+                            levelRequired={ability.levelRequired}
+                            cooldown={ability.cooldown}
+                            effects={ability.effects}
+                            specialization={ability.specialization || 'none'}
+                            abilitySource="class"
+                            attackType={ability.attackType}
+                            damageType={ability.damageType}
+                            grantsSetupTag={ability.grantsSetupTag}
+                            requiresSetupTag={ability.requiresSetupTag}
+                            characterClass={cls.name}
+                          />
+                          {scaling && (
+                            <div className="ml-5 mt-0.5 text-[10px] text-realm-text-muted font-mono">
+                              Scaling: {scaling}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* Tier 0 — Early Abilities */}
                 {tier0Groups.length > 0 && tier0Groups.some(g => g.abilities.length > 0) && (
@@ -563,7 +599,95 @@ function ClassesSubTab({ search }: { search: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Sub-tab: Items
+// Sub-section: Feats
+// ---------------------------------------------------------------------------
+
+const FEAT_CATEGORY_COLORS: Record<string, string> = {
+  combat: 'bg-red-500/20 text-red-400',
+  defense: 'bg-blue-500/20 text-blue-400',
+  utility: 'bg-yellow-500/20 text-yellow-400',
+  crafting: 'bg-green-500/20 text-green-400',
+  social: 'bg-purple-500/20 text-purple-400',
+  exploration: 'bg-teal-500/20 text-teal-400',
+};
+
+function FeatsSection({ search }: { search: string }) {
+  const filtered = useMemo(() => {
+    if (!search) return FEAT_DEFINITIONS;
+    const q = search.toLowerCase();
+    return FEAT_DEFINITIONS.filter(
+      (f) =>
+        f.name.toLowerCase().includes(q) ||
+        f.description.toLowerCase().includes(q) ||
+        f.category.toLowerCase().includes(q),
+    );
+  }, [search]);
+
+  // Group by category
+  const groups = useMemo(() => {
+    const map = new Map<string, FeatDefinition[]>();
+    for (const feat of filtered) {
+      const list = map.get(feat.category) ?? [];
+      list.push(feat);
+      map.set(feat.category, list);
+    }
+    return [...map.entries()];
+  }, [filtered]);
+
+  return (
+    <div className="space-y-3">
+      <div className="text-xs text-realm-text-muted">
+        {filtered.length} feats — unlocked at levels {FEAT_UNLOCK_LEVELS.join(' & ')} (max {FEAT_UNLOCK_LEVELS.length})
+      </div>
+      {groups.map(([category, feats]) => (
+        <CollapsibleSection key={category} title={`${category.charAt(0).toUpperCase() + category.slice(1)}`} count={feats.length} defaultOpen>
+          <div className="space-y-2">
+            {feats.map((feat) => (
+              <div key={feat.id} className="bg-realm-bg-800/50 border border-realm-border/50 rounded-sm px-3 py-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-realm-text-primary font-display">{feat.name}</span>
+                  <span className={`${FEAT_CATEGORY_COLORS[feat.category] ?? 'bg-gray-500/20 text-gray-400'} px-2 py-0.5 rounded-sm text-[10px] font-display`}>
+                    {feat.category}
+                  </span>
+                  {feat.excludedClasses && feat.excludedClasses.length > 0 && (
+                    <span className="bg-red-500/10 text-red-400/70 px-2 py-0.5 rounded-sm text-[10px] font-display ml-auto">
+                      Excluded: {feat.excludedClasses.join(', ')}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-realm-text-secondary mt-1">{feat.description}</p>
+                <div className="flex flex-wrap gap-2 mt-1.5">
+                  {Object.entries(feat.effects).map(([key, val]) => (
+                    <span key={key} className="text-[10px] text-realm-text-muted bg-realm-bg-900/50 px-1.5 py-0.5 rounded-sm">
+                      {formatFeatKey(key)}: {formatFeatValue(val)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CollapsibleSection>
+      ))}
+    </div>
+  );
+}
+
+function formatFeatKey(key: string): string {
+  return key.replace(/([A-Z])/g, ' $1').replace(/^\w/, c => c.toUpperCase()).trim();
+}
+
+function formatFeatValue(v: unknown): string {
+  if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+  if (typeof v === 'number') {
+    if (v > 0 && v < 1) return `${Math.round(v * 100)}%`;
+    return String(v);
+  }
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
+// ---------------------------------------------------------------------------
+// Sub-section: Items
 // ---------------------------------------------------------------------------
 
 interface ItemsResponse {
@@ -576,7 +700,7 @@ interface ItemsResponse {
   totals: Record<string, number>;
 }
 
-function ItemsSubTab({ search }: { search: string }) {
+function ItemsSection({ search }: { search: string }) {
   const { data, isLoading, error } = useQuery<ItemsResponse>({
     queryKey: ['admin', 'combat', 'codex', 'items'],
     queryFn: async () => (await api.get('/admin/combat/codex/items')).data,
@@ -673,7 +797,6 @@ function formatIngredients(
   return null;
 }
 
-/** Compact one-line stat summary for admin codex items */
 function formatCompactStats(item: RecipeEntry): string | null {
   const stats = item.outputStats as Record<string, unknown> | undefined;
   const cStats = item.consumableStats as Record<string, unknown> | undefined;
@@ -708,22 +831,17 @@ function formatCompactStats(item: RecipeEntry): string | null {
   const reqStr = typeof stats.requiredStr === 'number' ? stats.requiredStr : null;
   const reqDex = typeof stats.requiredDex === 'number' ? stats.requiredDex : null;
 
-  // Weapons
   if (baseDmg != null) {
     const parts = [`${baseDmg} ${dmgType ?? 'dmg'}`];
-    if (reqStr != null || reqDex != null) {
-      parts.push(`STR ${reqStr ?? '-'}/DEX ${reqDex ?? '-'}`);
-    }
+    if (reqStr != null || reqDex != null) parts.push(`STR ${reqStr ?? '-'}/DEX ${reqDex ?? '-'}`);
     return parts.join(', ');
   }
-  // Armor
   if (armor != null || magicResist != null) {
     const parts: string[] = [];
     if (armor != null) parts.push(`AC +${armor}`);
     if (magicResist != null) parts.push(`MR +${magicResist}`);
     return parts.join(', ');
   }
-  // Tools
   if (speedB != null || yieldB != null) {
     const parts: string[] = [];
     if (speedB != null) parts.push(`+${Math.round(speedB * 100)}% speed`);
@@ -735,10 +853,10 @@ function formatCompactStats(item: RecipeEntry): string | null {
 }
 
 // ---------------------------------------------------------------------------
-// Sub-tab: Status Effects
+// Sub-section: Status Effects
 // ---------------------------------------------------------------------------
 
-function StatusEffectsSubTab({ search }: { search: string }) {
+function StatusEffectsSection({ search }: { search: string }) {
   const { data, isLoading, error } = useQuery<{ effects: StatusEffectEntry[]; total: number }>({
     queryKey: ['admin', 'combat', 'codex', 'status-effects'],
     queryFn: async () => (await api.get('/admin/combat/codex/status-effects')).data,
@@ -803,23 +921,7 @@ function StatusEffectsSubTab({ search }: { search: string }) {
   );
 }
 
-function ModifierCell({ value }: { value: number }) {
-  if (value === 0) {
-    return (
-      <span className="text-center w-14 text-realm-text-muted text-xs">--</span>
-    );
-  }
-  return (
-    <span
-      className={`text-center w-14 text-xs font-display ${value > 0 ? 'text-green-400' : 'text-red-400'}`}
-    >
-      {value > 0 ? `+${value}` : value}
-    </span>
-  );
-}
-
 function formatEffectName(name: string): string {
-  // Convert SCREAMING_SNAKE or camelCase to Title Case
   return name
     .replace(/_/g, ' ')
     .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -827,11 +929,11 @@ function formatEffectName(name: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Main CodexTab Component
+// Main RacesClassesTab Component
 // ---------------------------------------------------------------------------
 
-export default function CodexTab() {
-  const [activeSubTab, setActiveSubTab] = useState<CodexSubTab>('races');
+export default function RacesClassesTab() {
+  const [activeSection, setActiveSection] = useState<CodexSection>('races');
   const [search, setSearch] = useState('');
 
   return (
@@ -848,17 +950,17 @@ export default function CodexTab() {
         />
       </div>
 
-      {/* Sub-tab buttons */}
+      {/* Section buttons */}
       <div className="border-b border-realm-border">
         <nav className="flex gap-1">
-          {SUB_TABS.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeSubTab === tab.key;
+          {SECTIONS.map((sec) => {
+            const Icon = sec.icon;
+            const isActive = activeSection === sec.key;
             return (
               <button
-                key={tab.key}
+                key={sec.key}
                 onClick={() => {
-                  setActiveSubTab(tab.key);
+                  setActiveSection(sec.key);
                   setSearch('');
                 }}
                 className={`flex items-center gap-2 px-4 py-2.5 font-display text-xs border-b-2 transition-colors ${
@@ -868,18 +970,19 @@ export default function CodexTab() {
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
-                {tab.label}
+                {sec.label}
               </button>
             );
           })}
         </nav>
       </div>
 
-      {/* Active sub-tab content */}
-      {activeSubTab === 'races' && <RacesSubTab search={search} />}
-      {activeSubTab === 'classes' && <ClassesSubTab search={search} />}
-      {activeSubTab === 'items' && <ItemsSubTab search={search} />}
-      {activeSubTab === 'status-effects' && <StatusEffectsSubTab search={search} />}
+      {/* Active section content */}
+      {activeSection === 'races' && <RacesSection search={search} />}
+      {activeSection === 'classes' && <ClassesSection search={search} />}
+      {activeSection === 'feats' && <FeatsSection search={search} />}
+      {activeSection === 'items' && <ItemsSection search={search} />}
+      {activeSection === 'status-effects' && <StatusEffectsSection search={search} />}
     </div>
   );
 }

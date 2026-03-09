@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import api from '../../services/api';
+import api from '../../../services/api';
 import { Search, ChevronDown, ChevronRight, Skull, Shield, Swords, Heart, Coins, Star, MapPin, TreePine, Loader2, Zap, Crown, AlertTriangle } from 'lucide-react';
 
 // Types
@@ -57,6 +57,7 @@ interface Monster {
   name: string;
   level: number;
   biome: string;
+  family: string | null;
   regionId: string | null;
   regionName: string | null;
   stats: MonsterStats;
@@ -85,13 +86,36 @@ interface Summary {
   totalMonsters: number;
   levelRange: { min: number; max: number };
   biomes: string[];
+  families: string[];
   regions: string[];
   categories: string[];
   encounterTypes: string[];
   tierBreakdown: { low: number; mid: number; high: number };
 }
 
-type GroupMode = 'level' | 'biome' | 'region';
+type GroupMode = 'level' | 'biome' | 'region' | 'family';
+
+const FAMILY_COLORS: Record<string, string> = {
+  wolves: 'bg-gray-500/20 text-gray-300',
+  goblins: 'bg-green-500/20 text-green-300',
+  bandits: 'bg-amber-500/20 text-amber-300',
+  undead: 'bg-purple-500/20 text-purple-300',
+  beasts: 'bg-emerald-500/20 text-emerald-300',
+  elementals: 'bg-cyan-500/20 text-cyan-300',
+  fey: 'bg-pink-500/20 text-pink-300',
+  desert: 'bg-yellow-500/20 text-yellow-300',
+  aquatic: 'bg-blue-500/20 text-blue-300',
+  insects: 'bg-orange-500/20 text-orange-300',
+  orcs: 'bg-red-500/20 text-red-300',
+  trolls: 'bg-lime-500/20 text-lime-300',
+  demons: 'bg-rose-500/20 text-rose-300',
+  dragons: 'bg-amber-500/20 text-amber-300',
+  liches: 'bg-violet-500/20 text-violet-300',
+  constructs: 'bg-slate-500/20 text-slate-300',
+  aberrations: 'bg-indigo-500/20 text-indigo-300',
+  plants: 'bg-lime-500/20 text-lime-300',
+  oozes: 'bg-yellow-500/20 text-yellow-300',
+};
 
 // Color constants
 const DAMAGE_TYPE_COLORS: Record<string, string> = {
@@ -244,6 +268,12 @@ function MonsterCard({ monster }: { monster: Monster }) {
           </span>
         )}
 
+        {monster.family && (
+          <span className={`text-xs px-2 py-0.5 rounded-sm flex-shrink-0 ${FAMILY_COLORS[monster.family] || 'bg-gray-500/20 text-gray-300'}`}>
+            {monster.family}
+          </span>
+        )}
+
         {monster.category && (
           <span className={`text-xs px-2 py-0.5 rounded-sm flex-shrink-0 ${CATEGORY_COLORS[monster.category] || 'bg-gray-500/20 text-gray-300'}`}>
             {monster.category}
@@ -303,6 +333,16 @@ function MonsterCard({ monster }: { monster: Monster }) {
                   <div className="text-lg font-bold text-amber-300">{monster.simCR}</div>
                 </div>
               )}
+              {monster.formulaCR != null && (() => {
+                const delta = monster.formulaCR - monster.level;
+                const deltaColor = Math.abs(delta) <= 3 ? 'text-green-400' : Math.abs(delta) <= 5 ? 'text-yellow-400' : 'text-red-400';
+                return (
+                  <div className="bg-realm-bg-900/60 border border-realm-border/20 rounded-sm px-3 py-1.5">
+                    <span className="text-xs text-realm-text-muted">CR Delta</span>
+                    <div className={`text-lg font-bold ${deltaColor}`}>{delta > 0 ? '+' : ''}{delta}</div>
+                  </div>
+                );
+              })()}
               <div className="bg-realm-bg-900/60 border border-realm-border/20 rounded-sm px-3 py-1.5">
                 <span className="text-xs text-realm-text-muted">Proficiency</span>
                 <div className="text-lg font-bold text-realm-text-primary">+{profBonus}</div>
@@ -636,11 +676,12 @@ function MonsterCard({ monster }: { monster: Monster }) {
 }
 
 // Main page
-export default function AdminMonstersPage() {
+export default function MonstersTab() {
   const [search, setSearch] = useState('');
   const [levelMin, setLevelMin] = useState('');
   const [levelMax, setLevelMax] = useState('');
   const [biomeFilter, setBiomeFilter] = useState('All');
+  const [familyFilter, setFamilyFilter] = useState('All');
   const [regionFilter, setRegionFilter] = useState('All');
   const [encounterTypeFilter, setEncounterTypeFilter] = useState('All');
   const [groupMode, setGroupMode] = useState<GroupMode>('level');
@@ -664,16 +705,18 @@ export default function AdminMonstersPage() {
         const immuneMatch = (m.immunities || []).some((r: string) => r.toLowerCase().includes(q));
         const categoryMatch = (m.category || '').toLowerCase().includes(q);
         const encounterMatch = (m.encounterType || '').toLowerCase().includes(q);
-        if (!nameMatch && !damageMatch && !abilityMatch && !resistMatch && !immuneMatch && !categoryMatch && !encounterMatch) return false;
+        const familyMatch = (m.family || '').toLowerCase().includes(q);
+        if (!nameMatch && !damageMatch && !abilityMatch && !resistMatch && !immuneMatch && !categoryMatch && !encounterMatch && !familyMatch) return false;
       }
       if (levelMin && m.level < parseInt(levelMin)) return false;
       if (levelMax && m.level > parseInt(levelMax)) return false;
       if (biomeFilter !== 'All' && m.biome !== biomeFilter) return false;
+      if (familyFilter !== 'All' && m.family !== familyFilter) return false;
       if (regionFilter !== 'All' && m.regionName !== regionFilter) return false;
       if (encounterTypeFilter !== 'All' && m.encounterType !== encounterTypeFilter) return false;
       return true;
     });
-  }, [data?.monsters, search, levelMin, levelMax, biomeFilter, regionFilter, encounterTypeFilter]);
+  }, [data?.monsters, search, levelMin, levelMax, biomeFilter, familyFilter, regionFilter, encounterTypeFilter]);
 
   // Group monsters
   const groups = useMemo(() => {
@@ -683,6 +726,7 @@ export default function AdminMonstersPage() {
       switch (groupMode) {
         case 'level': key = getLevelTier(m.level); break;
         case 'biome': key = m.biome; break;
+        case 'family': key = m.family ?? 'No Family'; break;
         case 'region': key = m.regionName ?? 'No Region'; break;
       }
       if (!map.has(key)) map.set(key, []);
@@ -787,6 +831,15 @@ export default function AdminMonstersPage() {
             {summary?.biomes.map(b => <option key={b} value={b}>{b}</option>)}
           </select>
 
+          {/* Family Filter */}
+          <select
+            value={familyFilter} onChange={e => setFamilyFilter(e.target.value)}
+            className="px-3 py-2 bg-realm-bg-900 border border-realm-border/40 rounded-sm text-sm text-realm-text-primary focus:outline-hidden focus:border-realm-gold-400/60"
+          >
+            <option value="All">All Families</option>
+            {summary?.families.map(f => <option key={f} value={f}>{f}</option>)}
+          </select>
+
           {/* Region Filter */}
           <select
             value={regionFilter} onChange={e => setRegionFilter(e.target.value)}
@@ -812,7 +865,7 @@ export default function AdminMonstersPage() {
         {/* View Toggle + Expand All */}
         <div className="flex items-center justify-between">
           <div className="flex gap-1">
-            {(['level', 'biome', 'region'] as GroupMode[]).map(mode => (
+            {(['level', 'biome', 'family', 'region'] as GroupMode[]).map(mode => (
               <button
                 key={mode}
                 onClick={() => setGroupMode(mode)}

@@ -37,6 +37,7 @@ interface AbilityCardProps {
 // ---------------------------------------------------------------------------
 
 const TIER_COLORS: Record<number, string> = {
+  [-1]: 'bg-amber-500/20 text-amber-400',
   0: 'bg-cyan-500/20 text-cyan-400',
   1: 'bg-green-500/20 text-green-400',
   2: 'bg-blue-500/20 text-blue-400',
@@ -608,7 +609,7 @@ export default function AbilityCard({
 }: AbilityCardProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const tierClass = tier ? TIER_COLORS[tier] ?? 'bg-realm-bg-600 text-realm-text-muted' : null;
+  const tierClass = tier != null ? TIER_COLORS[tier] ?? 'bg-realm-bg-600 text-realm-text-muted' : null;
   const classEffectType = effects?.type as string | undefined;
   const derivedType = type ?? (classEffectType === 'passive' ? 'passive' : undefined);
   const icon = getTypeIcon(effectType, effects);
@@ -631,7 +632,7 @@ export default function AbilityCard({
         {/* Badges */}
         <div className="flex items-center gap-1.5 ml-auto flex-wrap">
           {tier != null && tierClass && (
-            <span className={`${tierClass} px-2 py-0.5 rounded-sm text-xs font-display`}>T{tier}</span>
+            <span className={`${tierClass} px-2 py-0.5 rounded-sm text-xs font-display`}>{tier === -1 ? 'Cantrip' : `T${tier}`}</span>
           )}
           {levelRequired != null && (
             <span className="bg-realm-bg-600 text-realm-text-secondary px-2 py-0.5 rounded-sm text-xs font-display">
