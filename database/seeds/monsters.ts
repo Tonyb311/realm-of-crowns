@@ -40,7 +40,7 @@ import crypto from 'crypto';
 import { eq, and } from 'drizzle-orm';
 import * as schema from '../schema';
 import type { BiomeType } from '@shared/enums';
-import { computeFormulaCR, CRInput } from '@shared/data/combat/cr-formula';
+import { computeFormulaCR, type CRInput, type CRAbilityType } from '@shared/data/combat/cr-formula';
 
 interface MonsterAbilityDef {
   id: string;
@@ -112,6 +112,7 @@ interface MonsterDef {
   legendaryResistances?: number;
   phaseTransitions?: any[];
   // Classification tags
+  family?: string;         // Ecological/faction grouping: 'wolves' | 'goblins' | 'orcs' | 'bandits' | 'undead' | 'beasts' | 'insects' | 'elementals' | 'fey' | 'reptiles' | 'plants' | 'oozes' | 'constructs' | 'giants' | 'dragons' | 'fiends' | 'aberrations' | 'aquatic' | 'celestials'
   category?: string;       // 'beast' | 'humanoid' | 'undead' | 'fiend' | 'dragon' | 'construct' | 'elemental' | 'aberration' | 'fey' | 'monstrosity' | 'plant' | 'ooze'
   encounterType?: string;  // 'standard' | 'elite' | 'boss' | 'world_boss'
   sentient?: boolean;
@@ -130,6 +131,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 1,
     biome: 'HILLS',
     regionName: 'The Crossroads',
+    family: 'goblins',
     category: 'humanoid', encounterType: 'standard', sentient: true, size: 'small',
     damageType: 'SLASHING',
     stats: {
@@ -146,6 +148,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 2,
     biome: 'FOREST',
     regionName: 'Silverwood Forest',
+    family: 'wolves',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'PIERCING',
     abilities: [{
@@ -166,6 +169,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 3,
     biome: 'PLAINS',
     regionName: 'Verdant Heartlands',
+    family: 'bandits',
     category: 'humanoid', encounterType: 'standard', sentient: true, size: 'medium',
     damageType: 'SLASHING',
     stats: {
@@ -182,6 +186,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 1,
     biome: 'UNDERGROUND',
     regionName: "Vel'Naris Underdark",
+    family: 'beasts',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
     damageType: 'PIERCING',
     abilities: [{
@@ -202,6 +207,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 2,
     biome: 'SWAMP',
     regionName: 'Shadowmere Marshes',
+    family: 'oozes',
     category: 'ooze', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'ACID',
     resistances: ['SLASHING', 'PIERCING'],
@@ -222,6 +228,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 1,
     biome: 'DESERT',
     regionName: 'The Suncoast',
+    family: 'beasts',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'PIERCING',
     stats: {
@@ -237,6 +244,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 2,
     biome: 'BADLANDS',
     regionName: 'Ashenfang Wastes',
+    family: 'undead',
     category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'SLASHING',
     vulnerabilities: ['BLUDGEONING'],
@@ -255,6 +263,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 2,
     biome: 'FOREST',
     regionName: 'Thornwilds',
+    family: 'plants',
     category: 'plant', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'PIERCING',
     abilities: [{
@@ -275,6 +284,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 3,
     biome: 'COASTAL',
     regionName: 'The Suncoast',
+    family: 'aquatic',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'BLUDGEONING',
     stats: {
@@ -290,6 +300,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 3,
     biome: 'VOLCANIC',
     regionName: 'The Confluence',
+    family: 'insects',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
     damageType: 'FIRE',
     abilities: [{
@@ -311,6 +322,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 3,
     biome: 'TUNDRA',
     regionName: 'Frozen Reaches',
+    family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'tiny',
     damageType: 'COLD',
     abilities: [{
@@ -331,6 +343,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 3,
     biome: 'SWAMP',
     regionName: 'Ashenmoor',
+    family: 'undead',
     category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'BLUDGEONING',
     vulnerabilities: ['SLASHING'],
@@ -349,6 +362,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 3,
     biome: 'PLAINS',
     regionName: 'Verdant Heartlands',
+    family: 'beasts',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'SLASHING',
     abilities: [{
@@ -369,6 +383,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 4,
     biome: 'FEYWILD',
     regionName: 'Glimmerveil',
+    family: 'fey',
     category: 'fey', encounterType: 'standard', sentient: true, size: 'tiny',
     damageType: 'RADIANT',
     abilities: [{
@@ -392,6 +407,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 4,
     biome: 'HILLS',
     regionName: 'The Crossroads',
+    family: 'insects',
     category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'tiny',
     damageType: 'PIERCING',
     abilities: [{
@@ -412,6 +428,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 4,
     biome: 'DESERT',
     regionName: 'The Suncoast',
+    family: 'reptiles',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
     damageType: 'PIERCING',
     abilities: [{
@@ -432,6 +449,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 5,
     biome: 'MOUNTAIN',
     regionName: 'Ironvault Mountains',
+    family: 'constructs',
     category: 'construct', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'BLUDGEONING',
     conditionImmunities: ['poisoned', 'frightened', 'charmed'],
@@ -448,6 +466,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 5,
     biome: 'SWAMP',
     regionName: 'Shadowmere Marshes',
+    family: 'beasts',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
     damageType: 'BLUDGEONING',
     abilities: [
@@ -480,6 +499,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 5,
     biome: 'SWAMP',
     regionName: 'Ashenmoor',
+    family: 'undead',
     category: 'undead', encounterType: 'standard', sentient: true, size: 'medium',
     damageType: 'SLASHING',
     vulnerabilities: ['BLUDGEONING'],
@@ -499,6 +519,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 6,
     biome: 'BADLANDS',
     regionName: 'Ashenfang Wastes',
+    family: 'orcs',
     category: 'humanoid', encounterType: 'standard', sentient: true, size: 'medium',
     damageType: 'SLASHING',
     abilities: [{
@@ -520,6 +541,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 7,
     biome: 'UNDERGROUND',
     regionName: "Vel'Naris Underdark",
+    family: 'insects',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
     damageType: 'PIERCING',
     abilities: [
@@ -550,6 +572,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 8,
     biome: 'TUNDRA',
     regionName: 'Frozen Reaches',
+    family: 'wolves',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
     damageType: 'PIERCING',
     abilities: [{
@@ -571,6 +594,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 9,
     biome: 'SWAMP',
     regionName: 'Shadowmere Marshes',
+    family: 'giants',
     category: 'humanoid', encounterType: 'elite', sentient: true, size: 'large',
     damageType: 'SLASHING',
     vulnerabilities: ['FIRE', 'ACID'],
@@ -603,6 +627,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 5,
     biome: 'UNDERGROUND',
     regionName: "Vel'Naris Underdark",
+    family: 'undead',
     category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'SLASHING',
     immunities: ['POISON'],
@@ -625,6 +650,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 6,
     biome: 'DESERT',
     regionName: 'The Suncoast',
+    family: 'insects',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
     damageType: 'PIERCING',
     abilities: [
@@ -653,6 +679,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 6,
     biome: 'COASTAL',
     regionName: 'The Suncoast',
+    family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'BLUDGEONING',
     immunities: ['POISON'],
@@ -677,6 +704,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 7,
     biome: 'MOUNTAIN',
     regionName: 'Skypeak Plateaus',
+    family: 'constructs',
     category: 'construct', encounterType: 'elite', sentient: false, size: 'medium',
     damageType: 'SLASHING',
     resistances: ['PIERCING', 'SLASHING'],
@@ -694,6 +722,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 7,
     biome: 'FOREST',
     regionName: 'Silverwood Forest',
+    family: 'beasts',
     category: 'monstrosity', encounterType: 'elite', sentient: false, size: 'large',
     damageType: 'PIERCING',
     abilities: [{
@@ -715,6 +744,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 7,
     biome: 'MOUNTAIN',
     regionName: 'Ironvault Mountains',
+    family: 'aberrations',
     category: 'monstrosity', encounterType: 'standard', sentient: true, size: 'medium',
     damageType: 'SLASHING',
     abilities: [{
@@ -738,6 +768,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 8,
     biome: 'VOLCANIC',
     regionName: 'The Confluence',
+    family: 'elementals',
     category: 'elemental', encounterType: 'elite', sentient: false, size: 'large',
     damageType: 'FIRE',
     immunities: ['FIRE'],
@@ -756,6 +787,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 8,
     biome: 'TUNDRA',
     regionName: 'Frozen Reaches',
+    family: 'wolves',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
     damageType: 'COLD',
     abilities: [{
@@ -778,6 +810,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 8,
     biome: 'HILLS',
     regionName: 'Cogsworth Warrens',
+    family: 'giants',
     category: 'humanoid', encounterType: 'elite', sentient: true, size: 'large',
     damageType: 'BLUDGEONING',
     stats: {
@@ -795,6 +828,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 9,
     biome: 'FOREST',
     regionName: 'Thornwilds',
+    family: 'insects',
     category: 'beast', encounterType: 'elite', sentient: false, size: 'large',
     damageType: 'PIERCING',
     abilities: [
@@ -831,6 +865,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 9,
     biome: 'UNDERGROUND',
     regionName: "Vel'Naris Underdark",
+    family: 'aberrations',
     category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'ACID',
     abilities: [{
@@ -853,6 +888,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 12,
     biome: 'MOUNTAIN',
     regionName: 'Ironvault Mountains',
+    family: 'constructs',
     category: 'construct', encounterType: 'elite', sentient: false, size: 'large',
     damageType: 'BLUDGEONING',
     resistances: ['SLASHING', 'PIERCING'],
@@ -878,6 +914,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 14,
     biome: 'TUNDRA',
     regionName: 'Frozen Reaches',
+    family: 'dragons',
     category: 'dragon', encounterType: 'boss', sentient: true, size: 'large',
     damageType: 'PIERCING',
     immunities: ['COLD'],
@@ -926,6 +963,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 15,
     biome: 'COASTAL',
     regionName: 'The Suncoast',
+    family: 'reptiles',
     category: 'monstrosity', encounterType: 'elite', sentient: false, size: 'huge',
     damageType: 'PIERCING',
     abilities: [{
@@ -948,6 +986,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 16,
     biome: 'VOLCANIC',
     regionName: 'The Confluence',
+    family: 'fiends',
     category: 'fiend', encounterType: 'boss', sentient: true, size: 'large',
     damageType: 'FIRE',
     resistances: ['COLD', 'LIGHTNING'],
@@ -1001,6 +1040,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 18,
     biome: 'SWAMP',
     regionName: 'Ashenmoor',
+    family: 'undead',
     category: 'undead', encounterType: 'boss', sentient: true, size: 'medium',
     damageType: 'NECROTIC',
     resistances: ['COLD', 'LIGHTNING', 'NECROTIC'],
@@ -1070,6 +1110,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 10,
     biome: 'DESERT',
     regionName: 'The Suncoast',
+    family: 'reptiles',
     category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'PIERCING',
     abilities: [{
@@ -1092,6 +1133,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 11,
     biome: 'FOREST',
     regionName: 'Thornwilds',
+    family: 'plants',
     category: 'plant', encounterType: 'standard', sentient: false, size: 'large',
     damageType: 'PIERCING',
     vulnerabilities: ['FIRE'],
@@ -1122,6 +1164,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 11,
     biome: 'HILLS',
     regionName: 'The Crossroads',
+    family: 'beasts',
     category: 'monstrosity', encounterType: 'elite', sentient: false, size: 'large',
     damageType: 'PIERCING',
     abilities: [
@@ -1150,6 +1193,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 11,
     biome: 'UNDERGROUND',
     regionName: 'Vel\'Naris Underdark',
+    family: 'undead',
     category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'NECROTIC',
     immunities: ['POISON', 'NECROTIC'],
@@ -1173,6 +1217,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 12,
     biome: 'DESERT',
     regionName: 'The Suncoast',
+    family: 'undead',
     category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'SLASHING',
     immunities: ['POISON'],
@@ -1195,6 +1240,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 12,
     biome: 'MOUNTAIN',
     regionName: 'Skypeak Plateaus',
+    family: 'giants',
     category: 'humanoid', encounterType: 'standard', sentient: true, size: 'large',
     damageType: 'BLUDGEONING',
     abilities: [{
@@ -1217,6 +1263,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 13,
     biome: 'COASTAL',
     regionName: 'The Suncoast',
+    family: 'fey',
     category: 'fey', encounterType: 'standard', sentient: true, size: 'medium',
     damageType: 'PSYCHIC',
     abilities: [
@@ -1247,6 +1294,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 13,
     biome: 'VOLCANIC',
     regionName: 'The Confluence',
+    family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'large',
     damageType: 'FIRE',
     immunities: ['FIRE'],
@@ -1266,6 +1314,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 14,
     biome: 'PLAINS',
     regionName: 'Verdant Heartlands',
+    family: 'beasts',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
     damageType: 'SLASHING',
     abilities: [
@@ -1294,6 +1343,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 14,
     biome: 'BADLANDS',
     regionName: 'Ashenfang Wastes',
+    family: 'undead',
     category: 'undead', encounterType: 'elite', sentient: false, size: 'medium',
     damageType: 'NECROTIC',
     resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
@@ -1325,6 +1375,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 15,
     biome: 'SWAMP',
     regionName: 'Shadowmere Marshes',
+    family: 'plants',
     category: 'plant', encounterType: 'elite', sentient: false, size: 'huge',
     damageType: 'BLUDGEONING',
     immunities: ['LIGHTNING'],
@@ -1354,6 +1405,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 16,
     biome: 'MOUNTAIN',
     regionName: 'Ironvault Mountains',
+    family: 'beasts',
     category: 'monstrosity', encounterType: 'elite', sentient: false, size: 'large',
     damageType: 'BLUDGEONING',
     resistances: ['SLASHING', 'PIERCING'],
@@ -1378,6 +1430,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 16,
     biome: 'TUNDRA',
     regionName: 'Frozen Reaches',
+    family: 'beasts',
     category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'huge',
     damageType: 'PIERCING',
     immunities: ['FIRE', 'COLD'],
@@ -1396,6 +1449,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 17,
     biome: 'PLAINS',
     regionName: 'Verdant Heartlands',
+    family: 'beasts',
     category: 'humanoid', encounterType: 'standard', sentient: true, size: 'large',
     damageType: 'PIERCING',
     abilities: [
@@ -1424,6 +1478,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 18,
     biome: 'FEYWILD',
     regionName: 'Glimmerveil',
+    family: 'fey',
     category: 'fey', encounterType: 'boss', sentient: true, size: 'medium',
     damageType: 'RADIANT',
     legendaryActions: 1,
@@ -1471,6 +1526,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 19,
     biome: 'SWAMP',
     regionName: 'Ashenmoor',
+    family: 'aberrations',
     category: 'aberration', encounterType: 'standard', sentient: false, size: 'large',
     damageType: 'BLUDGEONING',
     abilities: [
@@ -1503,6 +1559,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 3,
     biome: 'SWAMP',
     regionName: 'Shadowmere Marshes',
+    family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'tiny',
     damageType: 'FORCE',
     resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
@@ -1520,6 +1577,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 4,
     biome: 'SWAMP',
     regionName: 'Ashenmoor',
+    family: 'undead',
     category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'NECROTIC',
     resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
@@ -1544,6 +1602,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 7,
     biome: 'VOLCANIC',
     regionName: 'The Confluence',
+    family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'FORCE',
     resistances: ['SLASHING', 'PIERCING'],
@@ -1569,6 +1628,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 9,
     biome: 'UNDERGROUND',
     regionName: "Vel'Naris Underdark",
+    family: 'undead',
     category: 'undead', encounterType: 'elite', sentient: false, size: 'medium',
     damageType: 'NECROTIC',
     resistances: ['COLD'],
@@ -1602,6 +1662,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 13,
     biome: 'UNDERGROUND',
     regionName: "Vel'Naris Underdark",
+    family: 'aberrations',
     category: 'aberration', encounterType: 'elite', sentient: false, size: 'large',
     damageType: 'PSYCHIC',
     resistances: ['COLD', 'NECROTIC'],
@@ -1631,6 +1692,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 16,
     biome: 'FOREST',
     regionName: 'Silverwood Forest',
+    family: 'fey',
     category: 'fey', encounterType: 'boss', sentient: true, size: 'large',
     damageType: 'FORCE',
     resistances: ['SLASHING', 'PIERCING'],
@@ -1674,6 +1736,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 17,
     biome: 'MOUNTAIN',
     regionName: 'Skypeak Plateaus',
+    family: 'dragons',
     category: 'dragon', encounterType: 'standard', sentient: false, size: 'large',
     damageType: 'PIERCING',
     resistances: ['BLUDGEONING'],
@@ -1705,6 +1768,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 18,
     biome: 'FOREST',
     regionName: 'Mistwood Glens',
+    family: 'plants',
     category: 'plant', encounterType: 'elite', sentient: true, size: 'huge',
     damageType: 'BLUDGEONING',
     resistances: ['BLUDGEONING', 'PIERCING'],
@@ -1740,6 +1804,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 19,
     biome: 'BADLANDS',
     regionName: 'Scarred Frontier',
+    family: 'aberrations',
     category: 'monstrosity', encounterType: 'elite', sentient: false, size: 'large',
     damageType: 'SLASHING',
     resistances: ['FIRE'],
@@ -1769,6 +1834,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 20,
     biome: 'UNDERGROUND',
     regionName: "Vel'Naris Underdark",
+    family: 'aberrations',
     category: 'aberration', encounterType: 'boss', sentient: true, size: 'medium',
     damageType: 'PSYCHIC',
     resistances: ['PSYCHIC'],
@@ -1809,6 +1875,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 21,
     biome: 'FOREST',
     regionName: 'Silverwood Forest',
+    family: 'undead',
     category: 'undead', encounterType: 'boss', sentient: true, size: 'medium',
     damageType: 'NECROTIC',
     resistances: ['NECROTIC', 'COLD'],
@@ -1861,6 +1928,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 22,
     biome: 'TUNDRA',
     regionName: 'Frozen Reaches',
+    family: 'giants',
     category: 'humanoid', encounterType: 'boss', sentient: true, size: 'huge',
     damageType: 'BLUDGEONING',
     immunities: ['COLD'],
@@ -1896,6 +1964,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 22,
     biome: 'COASTAL',
     regionName: 'The Suncoast',
+    family: 'aquatic',
     category: 'beast', encounterType: 'elite', sentient: false, size: 'huge',
     damageType: 'BLUDGEONING',
     resistances: ['COLD', 'LIGHTNING'],
@@ -1927,6 +1996,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 23,
     biome: 'MOUNTAIN',
     regionName: 'The Foundry',
+    family: 'constructs',
     category: 'construct', encounterType: 'boss', sentient: false, size: 'large',
     damageType: 'BLUDGEONING',
     resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
@@ -1964,6 +2034,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 24,
     biome: 'VOLCANIC',
     regionName: 'The Confluence',
+    family: 'giants',
     category: 'humanoid', encounterType: 'boss', sentient: true, size: 'huge',
     damageType: 'BLUDGEONING',
     resistances: ['BLUDGEONING'],
@@ -1993,6 +2064,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 25,
     biome: 'UNDERGROUND',
     regionName: "Vel'Naris Underdark",
+    family: 'beasts',
     category: 'monstrosity', encounterType: 'boss', sentient: false, size: 'gargantuan',
     damageType: 'PIERCING',
     resistances: ['BLUDGEONING', 'PIERCING'],
@@ -2043,6 +2115,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 26,
     biome: 'UNDERGROUND',
     regionName: "Vel'Naris Underdark",
+    family: 'aberrations',
     category: 'aberration', encounterType: 'boss', sentient: true, size: 'large',
     damageType: 'FORCE',
     resistances: ['PSYCHIC'],
@@ -2085,6 +2158,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 22,
     biome: 'FEYWILD',
     regionName: 'Glimmerveil',
+    family: 'dragons',
     category: 'dragon', encounterType: 'elite', sentient: true, size: 'large',
     damageType: 'FORCE',
     resistances: ['PSYCHIC', 'RADIANT'],
@@ -2121,6 +2195,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 28,
     biome: 'SWAMP',
     regionName: 'Ashenmoor',
+    family: 'undead',
     category: 'undead', encounterType: 'boss', sentient: true, size: 'medium',
     damageType: 'NECROTIC',
     resistances: ['COLD', 'NECROTIC'],
@@ -2183,6 +2258,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 30,
     biome: 'MOUNTAIN',
     regionName: 'Skypeak Plateaus',
+    family: 'giants',
     category: 'humanoid', encounterType: 'boss', sentient: true, size: 'huge',
     damageType: 'BLUDGEONING',
     resistances: ['COLD', 'THUNDER'],
@@ -2243,6 +2319,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 19,
     biome: 'FOREST',
     regionName: 'Silverwood Forest',
+    family: 'dragons',
     category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'large',
     damageType: 'PIERCING',
     abilities: [
@@ -2271,6 +2348,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 20,
     biome: 'DESERT',
     regionName: 'The Suncoast',
+    family: 'elementals',
     category: 'elemental', encounterType: 'elite', sentient: true, size: 'large',
     damageType: 'LIGHTNING',
     immunities: ['LIGHTNING', 'THUNDER'],
@@ -2294,6 +2372,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 21,
     biome: 'UNDERGROUND',
     regionName: 'Vel\'Naris Underdark',
+    family: 'fiends',
     category: 'fiend', encounterType: 'standard', sentient: true, size: 'medium',
     damageType: 'NECROTIC',
     immunities: ['FIRE', 'POISON'],
@@ -2325,6 +2404,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 21,
     biome: 'HILLS',
     regionName: 'Cogsworth Warrens',
+    family: 'giants',
     category: 'humanoid', encounterType: 'standard', sentient: true, size: 'large',
     damageType: 'BLUDGEONING',
     abilities: [{
@@ -2346,6 +2426,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 23,
     biome: 'COASTAL',
     regionName: 'The Suncoast',
+    family: 'aquatic',
     category: 'beast', encounterType: 'elite', sentient: false, size: 'huge',
     damageType: 'BLUDGEONING',
     abilities: [
@@ -2375,6 +2456,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 24,
     biome: 'VOLCANIC',
     regionName: 'The Confluence',
+    family: 'constructs',
     category: 'construct', encounterType: 'elite', sentient: false, size: 'large',
     damageType: 'BLUDGEONING',
     resistances: ['SLASHING', 'PIERCING'],
@@ -2399,6 +2481,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 25,
     biome: 'BADLANDS',
     regionName: 'Scarred Frontier',
+    family: 'dragons',
     category: 'dragon', encounterType: 'standard', sentient: true, size: 'huge',
     damageType: 'FIRE',
     abilities: [
@@ -2428,6 +2511,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 25,
     biome: 'FEYWILD',
     regionName: 'Glimmerveil',
+    family: 'fey',
     category: 'fey', encounterType: 'boss', sentient: true, size: 'large',
     damageType: 'RADIANT',
     legendaryActions: 1,
@@ -2476,6 +2560,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 26,
     biome: 'BADLANDS',
     regionName: 'Ashenfang Wastes',
+    family: 'beasts',
     category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'huge',
     damageType: 'LIGHTNING',
     abilities: [
@@ -2505,6 +2590,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 27,
     biome: 'COASTAL',
     regionName: 'The Suncoast',
+    family: 'aberrations',
     category: 'aberration', encounterType: 'standard', sentient: false, size: 'large',
     damageType: 'BLUDGEONING',
     abilities: [
@@ -2533,6 +2619,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 27,
     biome: 'TUNDRA',
     regionName: 'Frozen Reaches',
+    family: 'undead',
     category: 'undead', encounterType: 'elite', sentient: false, size: 'large',
     damageType: 'COLD',
     immunities: ['COLD', 'POISON'],
@@ -2555,6 +2642,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 28,
     biome: 'VOLCANIC',
     regionName: 'The Confluence',
+    family: 'fiends',
     category: 'fiend', encounterType: 'standard', sentient: true, size: 'large',
     damageType: 'FIRE',
     immunities: ['FIRE', 'POISON'],
@@ -2579,6 +2667,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 29,
     biome: 'MOUNTAIN',
     regionName: 'Ironvault Mountains',
+    family: 'constructs',
     category: 'construct', encounterType: 'boss', sentient: false, size: 'huge',
     damageType: 'BLUDGEONING',
     resistances: ['SLASHING', 'PIERCING'],
@@ -2624,6 +2713,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 29,
     biome: 'FEYWILD',
     regionName: 'Glimmerveil',
+    family: 'fey',
     category: 'fey', encounterType: 'standard', sentient: true, size: 'medium',
     damageType: 'RADIANT',
     abilities: [
@@ -2655,6 +2745,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 31,
     biome: 'DESERT',
     regionName: 'The Suncoast',
+    family: 'reptiles',
     category: 'monstrosity', encounterType: 'elite', sentient: false, size: 'gargantuan',
     damageType: 'PIERCING',
     resistances: ['FIRE'],
@@ -2695,6 +2786,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 32,
     biome: 'UNDERWATER',
     regionName: 'Pelagic Depths',
+    family: 'aquatic',
     category: 'monstrosity', encounterType: 'elite', sentient: false, size: 'huge',
     damageType: 'BLUDGEONING',
     resistances: ['COLD', 'LIGHTNING'],
@@ -2733,6 +2825,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 33,
     biome: 'PLAINS',
     regionName: 'Verdant Heartlands',
+    family: 'beasts',
     category: 'beast', encounterType: 'elite', sentient: false, size: 'huge',
     damageType: 'BLUDGEONING',
     resistances: ['COLD'],
@@ -2768,6 +2861,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 34,
     biome: 'RIVER',
     regionName: 'Verdant Heartlands',
+    family: 'aquatic',
     category: 'beast', encounterType: 'elite', sentient: false, size: 'gargantuan',
     damageType: 'PIERCING',
     resistances: ['COLD'],
@@ -2804,6 +2898,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 35,
     biome: 'HILLS',
     regionName: 'Cogsworth Warrens',
+    family: 'reptiles',
     category: 'monstrosity', encounterType: 'boss', sentient: false, size: 'large',
     damageType: 'PIERCING',
     immunities: ['POISON'],
@@ -2853,6 +2948,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 37,
     biome: 'UNDERWATER',
     regionName: 'Pelagic Depths',
+    family: 'aberrations',
     category: 'aberration', encounterType: 'boss', sentient: true, size: 'large',
     damageType: 'PSYCHIC',
     resistances: ['PSYCHIC', 'COLD'],
@@ -2898,6 +2994,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 38,
     biome: 'DESERT',
     regionName: 'The Suncoast',
+    family: 'elementals',
     category: 'elemental', encounterType: 'boss', sentient: true, size: 'large',
     damageType: 'LIGHTNING',
     immunities: ['LIGHTNING', 'THUNDER'],
@@ -2944,6 +3041,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 39,
     biome: 'MOUNTAIN',
     regionName: 'Ironvault Mountains',
+    family: 'beasts',
     category: 'beast', encounterType: 'elite', sentient: false, size: 'gargantuan',
     damageType: 'PIERCING',
     abilities: [
@@ -2980,6 +3078,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 40,
     biome: 'SWAMP',
     regionName: 'Ashenmoor',
+    family: 'undead',
     category: 'undead', encounterType: 'boss', sentient: true, size: 'medium',
     damageType: 'NECROTIC',
     resistances: ['COLD', 'LIGHTNING', 'NECROTIC', 'PSYCHIC'],
@@ -3035,6 +3134,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 31,
     biome: 'FOREST',
     regionName: 'Silverwood Forest',
+    family: 'plants',
     category: 'plant', encounterType: 'standard', sentient: false, size: 'huge',
     damageType: 'BLUDGEONING',
     vulnerabilities: ['FIRE'],
@@ -3066,6 +3166,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 32,
     biome: 'PLAINS',
     regionName: 'Verdant Heartlands',
+    family: 'beasts',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'huge',
     damageType: 'BLUDGEONING',
     abilities: [
@@ -3095,6 +3196,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 32,
     biome: 'DESERT',
     regionName: 'The Suncoast',
+    family: 'constructs',
     category: 'construct', encounterType: 'standard', sentient: false, size: 'huge',
     damageType: 'BLUDGEONING',
     conditionImmunities: ['poisoned', 'frightened', 'charmed'],
@@ -3125,6 +3227,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 33,
     biome: 'UNDERGROUND',
     regionName: 'Vel\'Naris Underdark',
+    family: 'undead',
     category: 'undead', encounterType: 'elite', sentient: false, size: 'huge',
     damageType: 'NECROTIC',
     immunities: ['POISON', 'NECROTIC'],
@@ -3158,6 +3261,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 34,
     biome: 'VOLCANIC',
     regionName: 'The Confluence',
+    family: 'dragons',
     category: 'dragon', encounterType: 'standard', sentient: true, size: 'large',
     damageType: 'FIRE',
     immunities: ['FIRE'],
@@ -3188,6 +3292,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 34,
     biome: 'FOREST',
     regionName: 'Thornwilds',
+    family: 'plants',
     category: 'plant', encounterType: 'elite', sentient: false, size: 'huge',
     damageType: 'POISON',
     immunities: ['POISON'],
@@ -3224,6 +3329,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 35,
     biome: 'DESERT',
     regionName: 'The Suncoast',
+    family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'large',
     damageType: 'BLUDGEONING',
     immunities: ['LIGHTNING', 'THUNDER'],
@@ -3251,6 +3357,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 35,
     biome: 'BADLANDS',
     regionName: 'Scarred Frontier',
+    family: 'undead',
     category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
     damageType: 'NECROTIC',
     immunities: ['POISON', 'NECROTIC'],
@@ -3282,6 +3389,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 36,
     biome: 'VOLCANIC',
     regionName: 'Ashenfang Wastes',
+    family: 'fiends',
     category: 'fiend', encounterType: 'elite', sentient: true, size: 'large',
     damageType: 'SLASHING',
     immunities: ['FIRE', 'POISON'],
@@ -3313,6 +3421,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 36,
     biome: 'COASTAL',
     regionName: 'The Suncoast',
+    family: 'dragons',
     category: 'dragon', encounterType: 'standard', sentient: true, size: 'large',
     damageType: 'ACID',
     resistances: ['ACID'],
@@ -3343,6 +3452,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 37,
     biome: 'FEYWILD',
     regionName: 'Glimmerveil',
+    family: 'fey',
     category: 'fey', encounterType: 'standard', sentient: true, size: 'large',
     damageType: 'RADIANT',
     abilities: [
@@ -3372,6 +3482,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 37,
     biome: 'TUNDRA',
     regionName: 'Frozen Reaches',
+    family: 'dragons',
     category: 'dragon', encounterType: 'standard', sentient: true, size: 'large',
     damageType: 'COLD',
     immunities: ['COLD'],
@@ -3402,6 +3513,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 38,
     biome: 'HILLS',
     regionName: 'Cogsworth Warrens',
+    family: 'giants',
     category: 'humanoid', encounterType: 'elite', sentient: true, size: 'huge',
     damageType: 'BLUDGEONING',
     legendaryActions: 1,
@@ -3438,6 +3550,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 39,
     biome: 'SWAMP',
     regionName: 'Shadowmere Marshes',
+    family: 'dragons',
     category: 'undead', encounterType: 'boss', sentient: true, size: 'huge',
     damageType: 'NECROTIC',
     immunities: ['POISON', 'NECROTIC', 'COLD'],
@@ -3494,6 +3607,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 42,
     biome: 'VOLCANIC',
     regionName: 'The Confluence',
+    family: 'elementals',
     category: 'elemental', encounterType: 'boss', sentient: true, size: 'huge',
     damageType: 'FIRE',
     immunities: ['FIRE', 'POISON'],
@@ -3539,6 +3653,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 43,
     biome: 'BADLANDS',
     regionName: 'Ashenfang Wastes',
+    family: 'fiends',
     category: 'fiend', encounterType: 'boss', sentient: true, size: 'large',
     damageType: 'SLASHING',
     immunities: ['FIRE', 'POISON'],
@@ -3596,6 +3711,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 44,
     biome: 'UNDERWATER',
     regionName: 'Pelagic Depths',
+    family: 'aquatic',
     category: 'monstrosity', encounterType: 'boss', sentient: true, size: 'gargantuan',
     damageType: 'BLUDGEONING',
     immunities: ['LIGHTNING', 'COLD'],
@@ -3642,6 +3758,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 46,
     biome: 'TUNDRA',
     regionName: 'Frozen Reaches',
+    family: 'dragons',
     category: 'dragon', encounterType: 'boss', sentient: true, size: 'gargantuan',
     damageType: 'PIERCING',
     immunities: ['COLD'],
@@ -3763,6 +3880,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 49,
     biome: 'PLAINS',
     regionName: 'Verdant Heartlands',
+    family: 'beasts',
     category: 'monstrosity', encounterType: 'world_boss', sentient: false, size: 'gargantuan',
     damageType: 'PIERCING',
     immunities: ['FIRE', 'POISON'],
@@ -3826,6 +3944,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 50,
     biome: 'UNDERGROUND',
     regionName: 'Vel\'Naris Underdark',
+    family: 'aberrations',
     category: 'aberration', encounterType: 'world_boss', sentient: true, size: 'large',
     damageType: 'PSYCHIC',
     immunities: ['NECROTIC', 'POISON'],
@@ -3899,6 +4018,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 41,
     biome: 'VOLCANIC',
     regionName: 'The Confluence',
+    family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'huge',
     damageType: 'FIRE',
     immunities: ['FIRE', 'POISON'],
@@ -3930,6 +4050,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 41,
     biome: 'FOREST',
     regionName: 'Silverwood Forest',
+    family: 'plants',
     category: 'plant', encounterType: 'elite', sentient: false, size: 'gargantuan',
     damageType: 'BLUDGEONING',
     immunities: ['LIGHTNING'],
@@ -3974,6 +4095,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 43,
     biome: 'SWAMP',
     regionName: 'Shadowmere Marshes',
+    family: 'reptiles',
     category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'huge',
     damageType: 'ACID',
     abilities: [
@@ -4004,6 +4126,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 44,
     biome: 'UNDERGROUND',
     regionName: 'Vel\'Naris Underdark',
+    family: 'aberrations',
     category: 'aberration', encounterType: 'standard', sentient: true, size: 'large',
     damageType: 'PSYCHIC',
     immunities: ['PSYCHIC'],
@@ -4039,6 +4162,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 44,
     biome: 'TUNDRA',
     regionName: 'Frozen Reaches',
+    family: 'constructs',
     category: 'construct', encounterType: 'standard', sentient: false, size: 'large',
     damageType: 'COLD',
     immunities: ['COLD', 'POISON'],
@@ -4070,6 +4194,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 45,
     biome: 'PLAINS',
     regionName: 'Verdant Heartlands',
+    family: 'beasts',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'huge',
     damageType: 'BLUDGEONING',
     abilities: [
@@ -4105,6 +4230,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 45,
     biome: 'HILLS',
     regionName: 'Cogsworth Warrens',
+    family: 'dragons',
     category: 'dragon', encounterType: 'boss', sentient: true, size: 'huge',
     damageType: 'POISON',
     immunities: ['POISON'],
@@ -4162,6 +4288,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 46,
     biome: 'MOUNTAIN',
     regionName: 'Ironvault Mountains',
+    family: 'constructs',
     category: 'construct', encounterType: 'standard', sentient: false, size: 'huge',
     damageType: 'BLUDGEONING',
     resistances: ['SLASHING', 'PIERCING'],
@@ -4194,6 +4321,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 48,
     biome: 'DESERT',
     regionName: 'The Suncoast',
+    family: 'beasts',
     category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'gargantuan',
     damageType: 'PIERCING',
     abilities: [
@@ -4229,6 +4357,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 48,
     biome: 'COASTAL',
     regionName: 'The Suncoast',
+    family: 'fiends',
     category: 'fiend', encounterType: 'elite', sentient: true, size: 'large',
     damageType: 'FIRE',
     immunities: ['FIRE', 'POISON'],
@@ -4254,6 +4383,578 @@ export const MONSTERS: MonsterDef[] = [
     lootTable: [
       { dropChance: 0.80, minQty: 300, maxQty: 450, gold: 35 },
       { dropChance: 0.50, minQty: 3, maxQty: 6, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+
+  // ---- New Monsters: Early-Game Expansion (L1-9) ----
+  // 26 new monsters across 10 families to fill biome gaps and enable encounter templates
+
+  // -- Family: Wolves --
+  {
+    name: 'Timber Wolf Pup',
+    level: 1,
+    biome: 'FOREST',
+    regionName: 'Silverwood Forest',
+    family: 'wolves',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
+    damageType: 'PIERCING',
+    stats: {
+      hp: 14, ac: 10, attack: 3, damage: '1d4+1',
+      str: 10, dex: 14, con: 10, int: 3, wis: 12, cha: 5,
+    },
+    lootTable: [
+      { dropChance: 0.70, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Animal Pelts' },
+    ],
+  },
+  {
+    name: 'Alpha Wolf',
+    level: 4,
+    biome: 'FOREST',
+    regionName: 'Silverwood Forest',
+    family: 'wolves',
+    category: 'beast', encounterType: 'elite', sentient: false, size: 'large',
+    damageType: 'PIERCING',
+    abilities: [
+      {
+        id: 'alphawolf_takedown', name: 'Takedown', type: 'on_hit',
+        saveType: 'str', saveDC: 12, statusEffect: 'knocked_down', statusDuration: 1,
+        description: 'The alpha lunges and drags you to the ground.',
+      },
+      {
+        id: 'alphawolf_howl', name: 'Rallying Howl', type: 'buff',
+        priority: 6, cooldown: 3,
+        description: 'The alpha howls, bolstering the pack\'s ferocity.',
+      },
+    ],
+    stats: {
+      hp: 22, ac: 11, attack: 5, damage: '1d6+2',
+      str: 14, dex: 14, con: 12, int: 4, wis: 12, cha: 8,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Animal Pelts' },
+      { dropChance: 0.25, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bear Claw' },
+    ],
+  },
+
+  // -- Family: Goblins --
+  {
+    name: 'Goblin Archer',
+    level: 2,
+    biome: 'HILLS',
+    regionName: 'The Crossroads',
+    family: 'goblins',
+    category: 'humanoid', encounterType: 'standard', sentient: true, size: 'small',
+    damageType: 'PIERCING',
+    stats: {
+      hp: 16, ac: 10, attack: 4, damage: '1d6',
+      str: 8, dex: 14, con: 10, int: 8, wis: 10, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 1, maxQty: 3, gold: 2 },
+      { dropChance: 0.30, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Goblin Shaman',
+    level: 3,
+    biome: 'HILLS',
+    regionName: 'The Crossroads',
+    family: 'goblins',
+    category: 'humanoid', encounterType: 'standard', sentient: true, size: 'small',
+    damageType: 'FIRE',
+    abilities: [
+      {
+        id: 'goblinshaman_hexbolt', name: 'Hex Bolt', type: 'aoe',
+        damage: '1d6', damageType: 'FIRE', saveType: 'dex', saveDC: 11,
+        priority: 8, cooldown: 3,
+        description: 'The shaman hurls a bolt of crackling green fire.',
+      },
+    ],
+    stats: {
+      hp: 18, ac: 10, attack: 3, damage: '1d6+1',
+      str: 6, dex: 12, con: 10, int: 12, wis: 12, cha: 8,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 1, maxQty: 4, gold: 3 },
+      { dropChance: 0.30, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Worg',
+    level: 3,
+    biome: 'BADLANDS',
+    regionName: 'Ashenfang Wastes',
+    family: 'beasts',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
+    damageType: 'PIERCING',
+    abilities: [
+      {
+        id: 'worg_pounce', name: 'Pounce', type: 'on_hit',
+        saveType: 'str', saveDC: 11, statusEffect: 'knocked_down', statusDuration: 1,
+        description: 'The worg leaps and pins you beneath its bulk.',
+      },
+    ],
+    stats: {
+      hp: 22, ac: 10, attack: 4, damage: '1d6+2',
+      str: 14, dex: 12, con: 12, int: 3, wis: 10, cha: 5,
+    },
+    lootTable: [
+      { dropChance: 0.60, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Animal Pelts' },
+      { dropChance: 0.40, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+
+  // -- Family: Bandits --
+  {
+    name: 'Bandit Marksman',
+    level: 4,
+    biome: 'PLAINS',
+    regionName: 'Verdant Heartlands',
+    family: 'bandits',
+    category: 'humanoid', encounterType: 'standard', sentient: true, size: 'medium',
+    damageType: 'PIERCING',
+    abilities: [
+      {
+        id: 'banditmarksman_aimed', name: 'Aimed Shot', type: 'damage',
+        damage: '2d6', damageType: 'PIERCING',
+        priority: 8, cooldown: 3,
+        description: 'The marksman takes careful aim and looses a devastating arrow.',
+      },
+    ],
+    stats: {
+      hp: 18, ac: 10, attack: 5, damage: '1d6+2',
+      str: 10, dex: 14, con: 10, int: 10, wis: 12, cha: 10,
+    },
+    lootTable: [
+      { dropChance: 0.80, minQty: 3, maxQty: 8, gold: 6 },
+    ],
+  },
+  {
+    name: 'Bandit Captain',
+    level: 6,
+    biome: 'PLAINS',
+    regionName: 'Verdant Heartlands',
+    family: 'bandits',
+    category: 'humanoid', encounterType: 'elite', sentient: true, size: 'medium',
+    damageType: 'SLASHING',
+    abilities: [
+      {
+        id: 'banditcaptain_slash', name: 'Captain\'s Cut', type: 'damage',
+        damage: '2d6', damageType: 'SLASHING',
+        priority: 5, cooldown: 2,
+        description: 'The captain delivers a powerful overhead slash.',
+      },
+      {
+        id: 'banditcaptain_rally', name: 'Rally', type: 'buff',
+        priority: 6, cooldown: 2,
+        description: 'The captain barks orders, bolstering nearby allies.',
+      },
+    ],
+    stats: {
+      hp: 26, ac: 12, attack: 6, damage: '1d6+2',
+      str: 14, dex: 14, con: 12, int: 12, wis: 12, cha: 14,
+    },
+    lootTable: [
+      { dropChance: 0.90, minQty: 10, maxQty: 25, gold: 18 },
+      { dropChance: 0.20, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Hide' },
+    ],
+  },
+
+  // -- Family: Undead --
+  {
+    name: 'Bone Archer',
+    level: 4,
+    biome: 'SWAMP',
+    regionName: 'Ashenmoor',
+    family: 'undead',
+    category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'PIERCING',
+    immunities: ['POISON'],
+    vulnerabilities: ['BLUDGEONING'],
+    conditionImmunities: ['poisoned'],
+    stats: {
+      hp: 16, ac: 10, attack: 5, damage: '1d6+2',
+      str: 10, dex: 14, con: 10, int: 3, wis: 6, cha: 3,
+    },
+    lootTable: [
+      { dropChance: 0.60, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Ghoul Pack Leader',
+    level: 5,
+    biome: 'UNDERGROUND',
+    regionName: "Vel'Naris Underdark",
+    family: 'undead',
+    category: 'undead', encounterType: 'elite', sentient: false, size: 'medium',
+    damageType: 'NECROTIC',
+    immunities: ['POISON'],
+    conditionImmunities: ['poisoned'],
+    abilities: [
+      {
+        id: 'ghoulpackleader_paralyze', name: 'Paralyzing Touch', type: 'on_hit',
+        saveType: 'con', saveDC: 12, statusEffect: 'paralyzed', statusDuration: 1,
+        description: 'The ghoul\'s claws carry a paralyzing venom.',
+      },
+      {
+        id: 'ghoulpackleader_shriek', name: 'Dread Shriek', type: 'status',
+        saveType: 'wis', saveDC: 12, statusEffect: 'frightened', statusDuration: 1,
+        priority: 8, cooldown: 3,
+        description: 'A horrifying shriek echoes through the darkness.',
+      },
+    ],
+    stats: {
+      hp: 24, ac: 11, attack: 5, damage: '1d6+2',
+      str: 14, dex: 14, con: 12, int: 6, wis: 10, cha: 8,
+    },
+    lootTable: [
+      { dropChance: 0.60, minQty: 1, maxQty: 2, gold: 0, itemTemplateName: 'Bones' },
+      { dropChance: 0.30, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+
+  // -- Family: Beasts --
+  {
+    name: 'Wild Boar',
+    level: 1,
+    biome: 'PLAINS',
+    regionName: 'Verdant Heartlands',
+    family: 'beasts',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'PIERCING',
+    stats: {
+      hp: 18, ac: 10, attack: 3, damage: '1d4+1',
+      str: 12, dex: 10, con: 12, int: 2, wis: 10, cha: 4,
+    },
+    lootTable: [
+      { dropChance: 0.70, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Animal Pelts' },
+      { dropChance: 0.40, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Marsh Rat',
+    level: 1,
+    biome: 'SWAMP',
+    regionName: 'Shadowmere Marshes',
+    family: 'beasts',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
+    damageType: 'PIERCING',
+    stats: {
+      hp: 14, ac: 10, attack: 2, damage: '1d4+1',
+      str: 6, dex: 14, con: 8, int: 2, wis: 10, cha: 3,
+    },
+    lootTable: [
+      { dropChance: 0.60, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+
+  // -- Family: Elementals --
+  {
+    name: 'Dust Sprite',
+    level: 1,
+    biome: 'MOUNTAIN',
+    regionName: 'Ironvault Mountains',
+    family: 'elementals',
+    category: 'elemental', encounterType: 'standard', sentient: false, size: 'tiny',
+    damageType: 'BLUDGEONING',
+    stats: {
+      hp: 12, ac: 10, attack: 3, damage: '1d4+1',
+      str: 4, dex: 14, con: 8, int: 3, wis: 10, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+  {
+    name: 'Cinder Wisp',
+    level: 1,
+    biome: 'VOLCANIC',
+    regionName: 'The Confluence',
+    family: 'elementals',
+    category: 'elemental', encounterType: 'standard', sentient: false, size: 'tiny',
+    damageType: 'FIRE',
+    stats: {
+      hp: 12, ac: 10, attack: 3, damage: '1d4+1',
+      str: 4, dex: 14, con: 8, int: 3, wis: 10, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Arcane Reagents' },
+      { dropChance: 0.20, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Ember Core' },
+    ],
+  },
+  {
+    name: 'Frost Sprite',
+    level: 1,
+    biome: 'TUNDRA',
+    regionName: 'Frozen Reaches',
+    family: 'elementals',
+    category: 'elemental', encounterType: 'standard', sentient: false, size: 'tiny',
+    damageType: 'COLD',
+    stats: {
+      hp: 12, ac: 10, attack: 3, damage: '1d4+1',
+      str: 4, dex: 14, con: 8, int: 3, wis: 10, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Arcane Reagents' },
+      { dropChance: 0.20, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Frost Essence' },
+    ],
+  },
+  {
+    name: 'Sea Spray',
+    level: 1,
+    biome: 'COASTAL',
+    regionName: 'The Suncoast',
+    family: 'elementals',
+    category: 'elemental', encounterType: 'standard', sentient: false, size: 'tiny',
+    damageType: 'COLD',
+    stats: {
+      hp: 12, ac: 10, attack: 3, damage: '1d4+1',
+      str: 4, dex: 14, con: 8, int: 3, wis: 10, cha: 6,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Arcane Reagents' },
+    ],
+  },
+
+  // -- Family: Fey --
+  {
+    name: 'Pixie Trickster',
+    level: 2,
+    biome: 'FEYWILD',
+    regionName: 'Glimmerveil',
+    family: 'fey',
+    category: 'fey', encounterType: 'standard', sentient: true, size: 'tiny',
+    damageType: 'FORCE',
+    abilities: [
+      {
+        id: 'pixie_glamour', name: 'Glamour Dust', type: 'on_hit',
+        saveType: 'wis', saveDC: 10, statusEffect: 'blinded', statusDuration: 1,
+        description: 'A shower of sparkling dust clouds your vision.',
+      },
+    ],
+    stats: {
+      hp: 10, ac: 10, attack: 4, damage: '1d6',
+      str: 3, dex: 16, con: 6, int: 12, wis: 12, cha: 16,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Arcane Reagents' },
+      { dropChance: 0.15, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Fey Tear' },
+    ],
+  },
+  {
+    name: 'Satyr Prankster',
+    level: 4,
+    biome: 'FEYWILD',
+    regionName: 'Glimmerveil',
+    family: 'fey',
+    category: 'fey', encounterType: 'standard', sentient: true, size: 'medium',
+    damageType: 'BLUDGEONING',
+    abilities: [
+      {
+        id: 'satyr_beguile', name: 'Beguiling Tune', type: 'status',
+        saveType: 'wis', saveDC: 12, statusEffect: 'charmed', statusDuration: 1,
+        priority: 8, cooldown: 3,
+        description: 'A haunting melody clouds your thoughts.',
+      },
+    ],
+    stats: {
+      hp: 16, ac: 10, attack: 5, damage: '1d6+1',
+      str: 12, dex: 14, con: 10, int: 12, wis: 10, cha: 16,
+    },
+    lootTable: [
+      { dropChance: 0.40, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Arcane Reagents' },
+      { dropChance: 0.20, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Fey Tear' },
+      { dropChance: 0.60, minQty: 1, maxQty: 4, gold: 3 },
+    ],
+  },
+
+  // -- Family: Desert/Reptiles/Insects --
+  {
+    name: 'Sand Beetle',
+    level: 1,
+    biome: 'BADLANDS',
+    regionName: 'Ashenfang Wastes',
+    family: 'insects',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
+    damageType: 'PIERCING',
+    stats: {
+      hp: 16, ac: 10, attack: 3, damage: '1d4+1',
+      str: 10, dex: 12, con: 12, int: 1, wis: 8, cha: 2,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Scorpion Swarm',
+    level: 2,
+    biome: 'DESERT',
+    regionName: 'The Suncoast',
+    family: 'insects',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'PIERCING',
+    abilities: [
+      {
+        id: 'scorpionswarm_sting', name: 'Stinging Mass', type: 'on_hit',
+        saveType: 'con', saveDC: 10, statusEffect: 'poisoned', statusDuration: 1,
+        description: 'Dozens of tiny stingers jab into exposed flesh.',
+      },
+    ],
+    stats: {
+      hp: 18, ac: 10, attack: 3, damage: '1d6',
+      str: 6, dex: 12, con: 12, int: 1, wis: 6, cha: 1,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Sand Lurker',
+    level: 3,
+    biome: 'DESERT',
+    regionName: 'The Suncoast',
+    family: 'reptiles',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'PIERCING',
+    abilities: [
+      {
+        id: 'sandlurker_ambush', name: 'Ambush Bite', type: 'on_hit',
+        saveType: 'con', saveDC: 11, statusEffect: 'bleeding', statusDuration: 1,
+        description: 'Jagged fangs tear flesh and leave a ragged wound.',
+      },
+    ],
+    stats: {
+      hp: 18, ac: 10, attack: 4, damage: '1d6+1',
+      str: 12, dex: 14, con: 10, int: 2, wis: 12, cha: 4,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+      { dropChance: 0.30, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Animal Pelts' },
+    ],
+  },
+
+  // -- Family: River/Aquatic --
+  {
+    name: 'River Pike',
+    level: 1,
+    biome: 'RIVER',
+    regionName: 'Verdant Heartlands',
+    family: 'aquatic',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'PIERCING',
+    stats: {
+      hp: 14, ac: 10, attack: 3, damage: '1d4+1',
+      str: 10, dex: 12, con: 10, int: 1, wis: 10, cha: 2,
+    },
+    lootTable: [
+      { dropChance: 0.60, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Snapping Turtle',
+    level: 2,
+    biome: 'RIVER',
+    regionName: 'Verdant Heartlands',
+    family: 'aquatic',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'PIERCING',
+    stats: {
+      hp: 18, ac: 10, attack: 3, damage: '1d6',
+      str: 14, dex: 8, con: 14, int: 1, wis: 10, cha: 2,
+    },
+    lootTable: [
+      { dropChance: 0.60, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+      { dropChance: 0.30, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'Giant Crayfish',
+    level: 3,
+    biome: 'RIVER',
+    regionName: 'Verdant Heartlands',
+    family: 'aquatic',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    damageType: 'BLUDGEONING',
+    abilities: [
+      {
+        id: 'giantcrayfish_grip', name: 'Claw Grip', type: 'on_hit',
+        saveType: 'str', saveDC: 11, statusEffect: 'restrained', statusDuration: 1,
+        description: 'Massive claws clamp down and hold tight.',
+      },
+    ],
+    stats: {
+      hp: 20, ac: 10, attack: 4, damage: '1d6+1',
+      str: 14, dex: 8, con: 12, int: 1, wis: 10, cha: 2,
+    },
+    lootTable: [
+      { dropChance: 0.60, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+      { dropChance: 0.30, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Parts' },
+    ],
+  },
+  {
+    name: 'River Serpent',
+    level: 5,
+    biome: 'RIVER',
+    regionName: 'Verdant Heartlands',
+    family: 'aquatic',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
+    damageType: 'PIERCING',
+    abilities: [
+      {
+        id: 'riverserpent_constrict', name: 'Constrict', type: 'on_hit',
+        saveType: 'str', saveDC: 12, statusEffect: 'restrained', statusDuration: 1,
+        description: 'Muscular coils wrap tight, crushing the breath from your lungs.',
+      },
+    ],
+    stats: {
+      hp: 22, ac: 11, attack: 5, damage: '1d6+2',
+      str: 16, dex: 12, con: 12, int: 2, wis: 10, cha: 4,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Monster Parts' },
+      { dropChance: 0.40, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+
+  // -- Family: Insects --
+  {
+    name: 'Giant Ant',
+    level: 2,
+    biome: 'UNDERGROUND',
+    regionName: "Vel'Naris Underdark",
+    family: 'insects',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
+    damageType: 'PIERCING',
+    stats: {
+      hp: 16, ac: 10, attack: 3, damage: '1d6+1',
+      str: 12, dex: 10, con: 12, int: 1, wis: 8, cha: 2,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+    ],
+  },
+  {
+    name: 'Spider Hatchling',
+    level: 3,
+    biome: 'FOREST',
+    regionName: 'Thornwilds',
+    family: 'insects',
+    category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
+    damageType: 'PIERCING',
+    abilities: [
+      {
+        id: 'spiderhatchling_venom', name: 'Weak Venom', type: 'on_hit',
+        saveType: 'con', saveDC: 10, statusEffect: 'poisoned', statusDuration: 1,
+        description: 'A weak but irritating venom courses through the wound.',
+      },
+    ],
+    stats: {
+      hp: 15, ac: 10, attack: 4, damage: '1d6+1',
+      str: 8, dex: 14, con: 10, int: 2, wis: 10, cha: 2,
+    },
+    lootTable: [
+      { dropChance: 0.50, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Bones' },
+      { dropChance: 0.15, minQty: 1, maxQty: 1, gold: 0, itemTemplateName: 'Spider Venom' },
     ],
   },
 ];
@@ -4284,6 +4985,11 @@ export async function seedMonsters(db: any): Promise<void> {
     });
 
     // Compute formula CR
+    // Extract regen from heal abilities (e.g. Troll Regeneration, Phoenix Healing Flames)
+    const healAbility = monster.abilities?.find(a => a.type === 'heal' && a.hpPerTurn);
+    const regenPerTurn = healAbility?.hpPerTurn ?? 0;
+    const regenDisableable = healAbility?.disabledBy && healAbility.disabledBy.length > 0;
+
     const crInput: CRInput = {
       hp: monster.stats.hp,
       ac: monster.stats.ac,
@@ -4293,8 +4999,11 @@ export async function seedMonsters(db: any): Promise<void> {
       resistances: monster.resistances,
       immunities: monster.immunities,
       vulnerabilities: monster.vulnerabilities,
+      conditionImmunities: monster.conditionImmunities,
+      regenPerTurn,
+      regenDisableable: regenDisableable ?? false,
       abilities: monster.abilities?.map(a => ({
-        type: a.type as CRInput['abilities'][0]['type'],
+        type: a.type as CRAbilityType,
         damage: a.damage,
         saveDC: a.saveDC,
         saveType: a.saveType,
@@ -4336,6 +5045,7 @@ export async function seedMonsters(db: any): Promise<void> {
       category: monster.category ?? 'beast',
       sentient: monster.sentient ?? false,
       size: monster.size ?? 'medium',
+      family: monster.family ?? null,
       tags: {
         subcategory: monster.subcategory,
         isSolitary: monster.isSolitary,

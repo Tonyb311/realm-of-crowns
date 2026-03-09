@@ -75,21 +75,22 @@ D&D uses XP multipliers for multiple monsters (2 = 1.5x, 3-6 = 2x, etc.). These 
 ### 2.1 Definition
 
 ```
-Combat Rating (CR) = The player level at which a SOLO character,
-averaged across all 7 classes, wins approximately 50% of 1v1 fights.
+Combat Rating (CR) = A monster-intrinsic power index on a 1-50 scale,
+computed purely from the monster's own stats and abilities.
 ```
 
-CR is a **per-monster, absolute, solo** rating. It answers one question: "What level player has a coin-flip chance of beating this monster alone?"
+CR is a **per-monster, absolute, intrinsic** rating. It measures relative danger between monsters without referencing player stats. Higher CR = more dangerous monster. The scale aligns with monster levels (CR 1 ≈ easiest encounter, CR 50 ≈ hardest encounter).
 
 ### 2.2 Why This Definition
 
 | Design Choice | Rationale |
 |---|---|
-| **Solo-based** | Our primary combat is 1v1 road encounters. Solo is the base case. |
-| **50% win rate anchor** | Clear, simulatable, unambiguous. "CR 7" means a level-7 player wins half the time. |
-| **Average across 7 classes** | Prevents class-specific distortion. The CR is the median difficulty. |
-| **Absolute (not relative)** | CR stays stable when monster stats change. A CR 7 monster is always CR 7. |
+| **Monster-intrinsic** | No player lookup tables. Formula uses only the monster's own stats (HP, AC, ATK, damage, abilities). Eliminates 200+ manually-maintained player stat values. |
+| **1-50 scale** | Aligns with the game's level range. CR 10 means "roughly L10 difficulty." |
+| **Geometric mean** | `sqrt(OP * DP)` ensures both offense and defense matter equally. A glass cannon and a damage sponge with the same OP×DP product get the same CR. |
+| **Logarithmic mapping** | Raw power spans ~550x (Goblin to Tarrasque). Log mapping distributes CR levels proportionally to relative power increases. |
 | **Encounter Difficulty is separate** | Group scaling, composition, terrain are handled by a separate Encounter Difficulty calculation. Keeps CR clean. |
+| **Sim CR as ground truth** | Formula CR is the fast estimate. Sim CR (from batch combat simulations) is the calibration baseline. Both are stored. |
 
 ### 2.3 Two-Track System: Formula CR + Sim CR
 
@@ -120,108 +121,101 @@ CR 6 (V:Extreme, Mage:9, Psion:9)  -- 5+ spread, flag worst-case classes
 ### 3.1 Core Formula
 
 ```
-CR = (EHP_Level + EDPR_Level + Lethality_Adjustment) / 2
+RawPower = sqrt(OP * DP) * lethality_adjustment
+CR = 7.61 * ln(RawPower) - 15.86     (clamped to minimum 1)
 ```
 
 Where:
-- **EHP_Level** = The player level whose average DPR kills this monster in ~5 rounds
-- **EDPR_Level** = The player level whose average HP is killed by this monster in ~5 rounds
-- **Lethality_Adjustment** = Bonus for save-or-suck abilities
+- **OP (Offensive Power)** = How much effective DPR this monster outputs
+- **DP (Defensive Power)** = How hard this monster is to kill (effective HP)
+- **Geometric mean** `sqrt(OP * DP)` ensures both axes contribute equally
+- **Lethality adjustment** = +0-15% for glass cannons (OP >> DP)
+- **Logarithmic mapping** calibrated to: Goblin (raw ~9) → CR 1, Tarrasque (raw ~5000) → CR 49
 
-5 rounds is the target "standard combat length" (our system averages 3-6 rounds).
+Implementation: `shared/src/data/combat/cr-formula.ts`
 
-### 3.2 Effective HP (EHP)
-
-```
-EHP = raw_HP * AC_multiplier * resistance_multiplier * regeneration_multiplier
-```
-
-**AC Multiplier** -- based on how often a "standard" attacker at the target level hits:
+### 3.2 Offensive Power (OP)
 
 ```
-AC_multiplier = 1 / hit_probability
-
-hit_probability = (21 - (AC - expected_attack_bonus)) / 20
-                  clamped to [0.05, 0.95]
+OP = (baseDPR + abilityDPR) * legendaryActionMultiplier * attackBonusFactor
 ```
 
-Expected attack bonus by player level (average across classes):
+**Base DPR:**
+```
+baseDPR = avg_damage * attacks_per_round
+```
 
-| Level | Avg Attack Bonus | Notes |
-|---|---|---|
-| 1 | +5 | +3 stat + 2 prof |
-| 5 | +6 | +3 stat + 2 prof + 1 weapon |
-| 10 | +9 | +3 stat + 4 prof + 2 weapon |
-| 15 | +11 | +3 stat + 5 prof + 3 weapon |
-| 20 | +12 | +3 stat + 5 prof + 4 weapon |
-| 30 | +14 | +4 stat + 7 prof + 3 weapon |
-| 40 | +16 | +4 stat + 8 prof + 4 weapon |
-| 50 | +18 | +5 stat + 8 prof + 5 weapon |
+**Ability DPR contributions:**
+- AoE abilities: `avg_damage * 0.65 * use_frequency` (65% accounts for saves)
+- Damage abilities: `avg_damage * 0.70 * use_frequency`
+- On-hit effects: `avg_damage * 0.50` (contact damage) + status lethality per hit
+- Fear aura: `+15% base DPR`
+- Death throes: `avg_damage * 0.50 / 5` (amortized over 5 rounds)
+- Damage aura: `avg_damage` (once per round)
+- Status abilities (stun/paralyze): `avg_base_damage * 0.5 * duration / 5`
+
+**Legendary Action Multiplier:** `1 + legendaryActions * 0.5` (each LA slot = +50% effective output)
+
+**Attack Bonus Factor (cubic):**
+```
+atkFactor = (1 + max(0, ATK - 3) * 0.12) ^ 3.0
+```
+
+Baseline ATK +3 = 1.0x. Each point adds 12% compounding, cubed. This produces accelerating returns at higher ATK values:
+
+| ATK | Factor | Notes |
+|-----|--------|-------|
+| +3 | 1.0x | Baseline (L1 monsters) |
+| +6 | 1.6x | T1-T2 transition |
+| +10 | 3.2x | T2-T3 transition |
+| +15 | 8.6x | T4-T5 transition |
+| +22 | 35.3x | World boss tier |
+
+### 3.3 Defensive Power (DP)
+
+```
+DP = HP * acFactor * resistMult * regenMult * LR_mult * phaseMult * condImmMult * vulnPenalty
+```
+
+**AC Factor (cubic):**
+```
+acFactor = (1 + max(0, AC - 10) * 0.10) ^ 3.0
+```
+
+| AC | Factor | Notes |
+|----|--------|-------|
+| 10 | 1.0x | Baseline |
+| 12 | 1.7x | T1-T2 |
+| 16 | 4.1x | T3 |
+| 20 | 8.0x | T4-T5 |
+| 24 | 13.8x | World boss |
 
 **Resistance Multiplier:**
 
 | Condition | Multiplier |
 |---|---|
 | No resistances | 1.0 |
-| Resist 1 common type | 1.25 |
-| Resist 2+ common types | 1.5 |
-| Immune to physical (nonmagical) | 2.0 (levels 1-10), 1.5 (levels 11+, assumes magic weapons) |
-| Immune to 2+ damage types | 1.5-2.0 depending on types |
+| 1 physical resistance | +0.20 |
+| 2+ physical resistances | +0.40 |
+| 2+ physical immunities | +0.75 |
+| Each elemental resistance | +0.06 |
+| Each elemental immunity | +0.12 |
+| 3+ elemental immunities | additional +0.12 |
 
 **Regeneration Multiplier:**
-
 ```
-regen_multiplier = 1 + (regen_per_round * expected_rounds) / raw_HP
-                   capped at 2.0
+regenMult = min(2.0, 1 + (regenPerTurn * 5) / HP)
+if disableable: regenMult = 1 + (regenMult - 1) * 0.5
 ```
+Regen is extracted from `heal` type abilities with `hpPerTurn`.
 
-If regeneration can be disabled (e.g., Troll by fire/acid), reduce by 0.5 (assumes competent party).
+**Legendary Resistances:** `+12% EHP per LR`
 
-### 3.3 Effective DPR (EDPR)
+**Phase Transitions:** Base `+10%` per phase, plus `+5%` stat boost, `+4%` AoE burst, `+6%` added ability.
 
-```
-EDPR = per_attack_damage * hit_probability * attacks_per_round
-     + ability_DPR
-     + status_effect_DPR
-```
+**Condition Immunities:** `+5%` per major immunity (stunned, paralyzed, frightened, charmed).
 
-**Per-attack damage** = average dice roll + modifiers
-
-**Hit probability** against expected player AC:
-
-Expected player AC by level (average across classes):
-
-| Level | Avg AC | Notes |
-|---|---|---|
-| 1 | 13 | 10 + 1 DEX + 2 starter armor |
-| 5 | 14 | Improved by equipment tier |
-| 10 | 16 | Steel tier equipment |
-| 15 | 18 | Mithril tier |
-| 20 | 19 | Adamantine tier |
-| 30 | 20 | +buffs |
-| 40 | 21 | +buffs |
-| 50 | 22 | +buffs |
-
-```
-hit_probability = (21 - (target_AC - attack_bonus)) / 20
-                  clamped to [0.05, 0.95]
-```
-
-**Ability DPR** -- for breath weapons, AoE, etc.:
-
-```
-ability_DPR = ability_avg_damage * (1 - save_probability) * use_frequency
-```
-
-Where `use_frequency` accounts for recharge (Recharge 5-6 = 33% chance per round = used roughly every 3 rounds).
-
-**Status Effect DPR** -- for effects that effectively deal "damage" via action denial:
-
-```
-status_DPR = (target_avg_DPR * duration_rounds * apply_probability) / expected_combat_rounds
-```
-
-A 2-round stun effectively "deals" the target's own DPR * 2 in lost damage. Weight at 0.5x since it's indirect.
+**Vulnerability Penalty:** `-10% EHP` if the monster has any vulnerabilities.
 
 ### 3.4 Lethality Adjustment
 

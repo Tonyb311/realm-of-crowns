@@ -7,6 +7,10 @@ import { logRouteError } from '../../lib/error-logger';
 
 const router = Router();
 
+// TODO: Any future PATCH/PUT endpoint MUST call recomputeMonsterCR()
+// and update both formulaCr and level in the same DB write.
+// The CR formula is in shared/src/data/combat/cr-formula.ts.
+
 // GET /api/admin/monsters — Full monster compendium
 router.get('/', async (_req: AuthenticatedRequest, res: Response) => {
   try {

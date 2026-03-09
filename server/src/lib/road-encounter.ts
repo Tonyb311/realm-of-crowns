@@ -52,6 +52,7 @@ import type { CombatRound } from './simulation/types';
 import type { AttackResult, Combatant } from '@shared/types/combat';
 import { processItemDrops } from './loot-items';
 import { computeFeatBonus } from '@shared/data/feats';
+import { ENCOUNTER_TEMPLATES, type EncounterTemplate } from '@shared/data/encounter-templates';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -123,6 +124,59 @@ export function getMonsterLevelRange(charLevel: number): { min: number; max: num
 
 /** Maximum combat rounds before auto-draw (safety valve). */
 const MAX_COMBAT_ROUNDS = 30;
+
+// ---------------------------------------------------------------------------
+// Encounter Template Selection
+// ---------------------------------------------------------------------------
+
+/**
+ * Select an encounter template matching biome, character level, and party context.
+ * Returns null if no template matches (caller should fall back to single-monster selection).
+ */
+function selectEncounterTemplate(
+  biome: BiomeType | null,
+  charLevel: number,
+  isSolo: boolean,
+): EncounterTemplate | null {
+  const eligible = ENCOUNTER_TEMPLATES.filter(t => {
+    if (biome && !t.biomes.includes(biome)) return false;
+    if (charLevel < t.levelRange.min || charLevel > t.levelRange.max) return false;
+    if (isSolo && !t.soloAppropriate) return false;
+    return true;
+  });
+
+  if (eligible.length === 0) return null;
+
+  // Weighted random selection
+  const totalWeight = eligible.reduce((sum, t) => sum + t.weight, 0);
+  let roll = Math.random() * totalWeight;
+  for (const t of eligible) {
+    roll -= t.weight;
+    if (roll <= 0) return t;
+  }
+  return eligible[eligible.length - 1];
+}
+
+/**
+ * Apply stat scaling for minion-role monsters in encounter templates.
+ * When statScale < 1.0, reduces HP and attack to make pack members weaker.
+ * Returns { scaledStats, displayName } — displayName appends "(Pack)" for scaled monsters.
+ */
+function applyStatScale(
+  stats: Record<string, number>,
+  name: string,
+  scale: number,
+): { scaledStats: Record<string, number>; displayName: string } {
+  if (scale >= 1.0) return { scaledStats: stats, displayName: name };
+  return {
+    scaledStats: {
+      ...stats,
+      hp: Math.max(1, Math.round(stats.hp * scale)),
+      attack: Math.max(1, stats.attack - (scale < 0.8 ? 1 : 0)),
+    },
+    displayName: `${name} (Pack)`,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Helpers (duplicated from combat-pve.ts to avoid circular deps)
@@ -516,8 +570,8 @@ export async function resolveRoadEncounter(
     return { encountered: false };
   }
 
-  // 3. Select a level-appropriate monster
-  //    Priority: biome match (from route terrain) → region match → any
+  // 3. Select a level-appropriate monster (or group via encounter template)
+  //    Priority: encounter template → biome match → region match → any
   const levelRange = getMonsterLevelRange(character.level);
   const routeBiome = routeInfo?.terrain ? terrainToBiome(routeInfo.terrain) : null;
 
@@ -526,46 +580,81 @@ export async function resolveRoadEncounter(
     columns: { regionId: true },
   });
 
-  let monsterRows: (typeof monsters.$inferSelect)[] = [];
+  // Try encounter template first (coherent themed encounters)
+  interface SelectedMonster {
+    row: typeof monsters.$inferSelect;
+    statScale: number;
+    displayName: string;
+  }
+  let selectedMonsters: SelectedMonster[] = [];
 
-  // Try biome match first (most thematic — forest road gets forest monsters)
-  if (routeBiome) {
-    monsterRows = await db.query.monsters.findMany({
-      where: and(
-        eq(monsters.biome, routeBiome),
-        gte(monsters.level, levelRange.min),
-        lte(monsters.level, levelRange.max),
-      ),
-    });
+  const template = selectEncounterTemplate(routeBiome, character.level, true /* solo */);
+  if (template) {
+    for (const comp of template.composition) {
+      const monsterRow = await db.query.monsters.findFirst({
+        where: eq(monsters.name, comp.monsterName),
+      });
+      if (monsterRow) {
+        const { scaledStats, displayName } = applyStatScale(
+          monsterRow.stats as Record<string, number>,
+          monsterRow.name,
+          comp.statScale ?? 1.0,
+        );
+        for (let i = 0; i < comp.count; i++) {
+          selectedMonsters.push({
+            row: { ...monsterRow, stats: scaledStats },
+            statScale: comp.statScale ?? 1.0,
+            displayName,
+          });
+        }
+      }
+    }
   }
 
-  // Fallback to region match
-  if (monsterRows.length === 0 && destTown?.regionId) {
-    monsterRows = await db.query.monsters.findMany({
-      where: and(
-        eq(monsters.regionId, destTown.regionId),
-        gte(monsters.level, levelRange.min),
-        lte(monsters.level, levelRange.max),
-      ),
-    });
+  // Fallback: original single-monster selection (biome → region → any)
+  if (selectedMonsters.length === 0) {
+    let monsterRows: (typeof monsters.$inferSelect)[] = [];
+
+    if (routeBiome) {
+      monsterRows = await db.query.monsters.findMany({
+        where: and(
+          eq(monsters.biome, routeBiome),
+          gte(monsters.level, levelRange.min),
+          lte(monsters.level, levelRange.max),
+        ),
+      });
+    }
+
+    if (monsterRows.length === 0 && destTown?.regionId) {
+      monsterRows = await db.query.monsters.findMany({
+        where: and(
+          eq(monsters.regionId, destTown.regionId),
+          gte(monsters.level, levelRange.min),
+          lte(monsters.level, levelRange.max),
+        ),
+      });
+    }
+
+    if (monsterRows.length === 0) {
+      monsterRows = await db.query.monsters.findMany({
+        where: and(
+          gte(monsters.level, levelRange.min),
+          lte(monsters.level, levelRange.max),
+        ),
+      });
+    }
+
+    if (monsterRows.length === 0) {
+      logger.warn({ characterId, levelRange }, 'Road encounter: no suitable monsters found');
+      return { encountered: false };
+    }
+
+    const picked = monsterRows[Math.floor(Math.random() * monsterRows.length)];
+    selectedMonsters = [{ row: picked, statScale: 1.0, displayName: picked.name }];
   }
 
-  if (monsterRows.length === 0) {
-    // Final fallback: any monster in level range
-    monsterRows = await db.query.monsters.findMany({
-      where: and(
-        gte(monsters.level, levelRange.min),
-        lte(monsters.level, levelRange.max),
-      ),
-    });
-  }
-
-  if (monsterRows.length === 0) {
-    logger.warn({ characterId, levelRange }, 'Road encounter: no suitable monsters found');
-    return { encountered: false };
-  }
-
-  const monster = monsterRows[Math.floor(Math.random() * monsterRows.length)];
+  // Primary monster (for logging, XP reference, result)
+  const monster = selectedMonsters[0].row;
   const monsterStats = monster.stats as Record<string, number>;
   const charStats = parseStats(character.stats);
 
@@ -609,18 +698,22 @@ export async function resolveRoadEncounter(
   // Monster proficiency = 0 because the seed `attack` stat already includes the
   // monster's total attack bonus (stat mod + proficiency equivalent).  Adding
   // getProficiencyBonus on top would double-count it.
-  const monsterCombatant = createMonsterCombatant(
-    `monster-${monster.id}`,
-    monster.name,
-    1,
-    parseStats(monster.stats),
-    monster.level,
-    monsterStats.hp ?? 50,
-    monsterStats.ac ?? 12,
-    buildMonsterWeapon(monsterStats),
-    0,
-    buildMonsterCombatOptions(monster),
-  );
+  const monsterCombatants = selectedMonsters.map((sm, i) => {
+    const mStats = sm.row.stats as Record<string, number>;
+    return createMonsterCombatant(
+      `monster-${sm.row.id}-${i}`,
+      sm.displayName,
+      1,
+      parseStats(sm.row.stats),
+      sm.row.level,
+      mStats.hp ?? 50,
+      mStats.ac ?? 12,
+      buildMonsterWeapon(mStats),
+      0,
+      buildMonsterCombatOptions(sm.row),
+    );
+  });
+  const monsterCombatant = monsterCombatants[0]; // primary for backward compat
 
   // Set race, class, and save proficiencies for racial ability + save DC resolution
   (playerCombatant as any).race = character.race.toLowerCase();
@@ -654,10 +747,11 @@ export async function resolveRoadEncounter(
   // Apply pre-combat consumable buffs (stat potions, food buffs, scroll buffs)
   await applyConsumableBuffs(playerCombatant, character.id);
 
-  let combatState = createCombatState(sessionId, 'PVE', [playerCombatant, monsterCombatant]);
+  let combatState = createCombatState(sessionId, 'PVE', [playerCombatant, ...monsterCombatants]);
 
-  // 6. Auto-resolve combat (alternating attacks, max rounds)
-  for (let round = 0; round < MAX_COMBAT_ROUNDS * 2; round++) {
+  // 6. Auto-resolve combat (turn-order based, max rounds scaled by combatant count)
+  const totalCombatants = combatState.combatants.length;
+  for (let round = 0; round < MAX_COMBAT_ROUNDS * totalCombatants; round++) {
     if (combatState.status !== 'ACTIVE') break;
 
     const currentActorId = combatState.turnOrder[combatState.turnIndex];
@@ -698,18 +792,20 @@ export async function resolveRoadEncounter(
   // 8. Apply outcomes within a transaction
   await db.transaction(async (tx) => {
     if (playerWon) {
-      // Win: award XP (front-loaded for low-tier monsters) and gold
-      xpAwarded = getMonsterKillXp(monster.level);
-      const lootTable = monster.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number; itemTemplateName?: string }[];
+      // Win: award XP and gold from each killed monster
+      for (const sm of selectedMonsters) {
+        xpAwarded += getMonsterKillXp(sm.row.level);
+        const lootTable = sm.row.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number; itemTemplateName?: string }[];
 
-      for (const entry of lootTable) {
-        if (Math.random() <= entry.dropChance) {
-          goldAwarded += entry.gold * (Math.floor(Math.random() * (entry.maxQty - entry.minQty + 1)) + entry.minQty);
+        for (const entry of lootTable) {
+          if (Math.random() <= entry.dropChance) {
+            goldAwarded += entry.gold * (Math.floor(Math.random() * (entry.maxQty - entry.minQty + 1)) + entry.minQty);
+          }
         }
-      }
 
-      // Process item drops (arcane reagents, etc.)
-      droppedItems = await processItemDrops(tx, characterId, lootTable);
+        const itemDrops = await processItemDrops(tx, characterId, lootTable);
+        droppedItems.push(...itemDrops);
+      }
       if (droppedItems.length > 0) {
         logger.info(
           { characterId, monster: monster.name, items: droppedItems },
@@ -766,7 +862,9 @@ export async function resolveRoadEncounter(
   //    a side-effect (e.g. achievement JSON path) errors.
   try {
     if (playerWon) {
-      onMonsterKill(characterId, monster.name, 1);
+      for (const sm of selectedMonsters) {
+        onMonsterKill(characterId, sm.row.name, 1);
+      }
       await checkLevelUp(characterId);
 
       const [{ total: pveWins }] = await db.select({ total: count() })

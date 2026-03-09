@@ -2659,6 +2659,399 @@ export const MONSTER_FLAVOR: Record<string, MonsterFlavor> = {
       'Brimstone erupts from the waterline — an Abyssal Ravager emerges, its burning gaze fixed on the living!',
     ],
   },
+
+  // ---- New Tier 1–6 Monsters ----
+
+  'Timber Wolf Pup': {
+    attack: [
+      'snaps at your ankles with milk teeth bared in a tiny snarl.',
+      'darts in low and nips at your shins, yipping fiercely.',
+      'lunges with clumsy ferocity, all teeth and no finesse.',
+    ],
+    wounded: [
+      'The pup whimpers, backing away with hackles still raised.',
+      'Blood mats its downy fur but the pup growls defiantly.',
+    ],
+    opening: [
+      'A young wolf pup scrambles from the brush, ears flat and teeth bared!',
+      'Tiny growls echo off the rocks — a timber wolf pup blocks the trail!',
+    ],
+  },
+  'Wild Boar': {
+    attack: [
+      'charges headlong, tusks lowered to gore.',
+      'slams into you with bristled shoulders and slashing tusks.',
+      'squeals with fury and rakes its tusks across your guard.',
+    ],
+    wounded: [
+      'The boar snorts through bloodied nostrils, pawing the dirt.',
+      'Foam flecks its jaws as the boar circles, wounded but unbroken.',
+    ],
+    opening: [
+      'Underbrush explodes as a wild boar bursts forth, tusks gleaming!',
+      'A massive boar lowers its head and charges from the thicket!',
+    ],
+  },
+  'Marsh Rat': {
+    attack: [
+      'lunges with yellowed teeth slick with filth.',
+      'scurries up your leg and bites with diseased jaws.',
+      'squeals and slashes with claws caked in swamp muck.',
+    ],
+    wounded: [
+      'The bloated rat hisses, matted fur oozing with something foul.',
+      'It drags itself forward, too vicious to stop despite the wound.',
+    ],
+    opening: [
+      'A bloated rat the size of a terrier crawls from the reeds, eyes gleaming!',
+      'Fetid water ripples as a swollen marsh rat hauls itself onto the path!',
+    ],
+  },
+  'Dust Sprite': {
+    attack: [
+      'hurls a fistful of stinging pebbles at your face.',
+      'swirls into a miniature dust devil and scours exposed skin.',
+      'pelts you with grit and sharp stones in a whirling gust.',
+    ],
+    wounded: [
+      'The sprite\'s form scatters into loose sand before reforming, smaller.',
+      'Pebbles clatter to the ground as the dust sprite flickers and dims.',
+    ],
+    opening: [
+      'A tiny whirlwind of dust and pebbles spins to life on the path!',
+      'Gravel rises into a swirling shape — a dust sprite forms, buzzing angrily!',
+    ],
+  },
+  'Cinder Wisp': {
+    attack: [
+      'flares bright and spits a tiny ember that stings on contact.',
+      'darts forward and brushes you with flickering flame.',
+      'pulses with heat and sends a ribbon of fire curling toward you.',
+    ],
+    wounded: [
+      'The wisp gutters like a candle in wind, its glow dimming.',
+      'Sparks sputter and die as the cinder wisp shrinks to a faint ember.',
+    ],
+    opening: [
+      'A dancing mote of fire bobs from the ashes, crackling with tiny sparks!',
+      'Warmth prickles your skin as a cinder wisp flickers into view!',
+    ],
+  },
+  'Frost Sprite': {
+    attack: [
+      'breathes a tiny gust of freezing air that numbs on contact.',
+      'hurls a sliver of ice that stings like a needle.',
+      'darts past and leaves a trail of biting frost across your skin.',
+    ],
+    wounded: [
+      'The sprite\'s crystalline form cracks, shedding flakes of ice.',
+      'Its glow fades to a pale flicker as frost melts from its edges.',
+    ],
+    opening: [
+      'The air bites cold as a tiny ice sprite crystallizes from the mist!',
+      'A shimmering point of frost drifts toward you, chilling everything it passes!',
+    ],
+  },
+  'Sea Spray': {
+    attack: [
+      'lashes out with a whip of pressurized salt water.',
+      'surges forward and slaps you with a briny wave.',
+      'spits a jet of stinging brine that burns your eyes.',
+    ],
+    wounded: [
+      'The elemental splashes apart, struggling to pull itself back together.',
+      'Salt water pools beneath it as the sea spray loses cohesion.',
+    ],
+    opening: [
+      'A small geyser of salt water spirals upward and takes hostile shape!',
+      'Brine swirls into a churning figure — a sea spray elemental blocks the way!',
+    ],
+  },
+  'Sand Beetle': {
+    attack: [
+      'snaps armored mandibles shut on your ankle.',
+      'charges forward, chitinous shell lowered like a battering ram.',
+      'clamps down with serrated jaws and refuses to let go.',
+    ],
+    wounded: [
+      'The beetle\'s carapace cracks, pale fluid seeping from the split.',
+      'It clicks its mandibles weakly, legs scrabbling in the sand.',
+    ],
+    opening: [
+      'Sand shifts as an armored beetle the size of a shield scuttles into view!',
+      'Mandibles click — a sand beetle burrows free and charges!',
+    ],
+  },
+  'River Pike': {
+    attack: [
+      'launches from the shallows and snaps with needle-lined jaws.',
+      'thrashes sideways and rakes you with razor-sharp fins.',
+      'darts in with blinding speed and clamps down on exposed flesh.',
+    ],
+    wounded: [
+      'The pike thrashes, dark blood clouding the shallow water.',
+      'It circles sluggishly, mouth still gaping for another strike.',
+    ],
+    opening: [
+      'The water erupts as an enormous pike lunges from the current, jaws wide!',
+      'A shadow beneath the surface arrows toward you — a river pike attacks!',
+    ],
+  },
+  'Goblin Archer': {
+    attack: [
+      'nocks a crooked arrow and lets fly with a cackle.',
+      'fires from behind a rock, the shaft whistling past your ear.',
+      'looses an arrow and ducks back, snickering from cover.',
+    ],
+    wounded: [
+      'The goblin fumbles an arrow with trembling hands, fear in its eyes.',
+      'It hisses through broken teeth, clutching a wound and reaching for another shaft.',
+    ],
+    opening: [
+      'A twang from the bushes — a goblin archer steps out, bow drawn and grinning!',
+      'Beady eyes gleam from cover as a goblin nocks an arrow, sighting down the path!',
+    ],
+  },
+  'Scorpion Swarm': {
+    attack: [
+      'surges forward in a clicking tide, stingers stabbing at every gap in your armor.',
+      'engulfs your feet in a carpet of chitinous bodies and barbed tails.',
+      'scatters and regroups, stingers flashing from every direction.',
+    ],
+    wounded: [
+      'Crushed shells crunch underfoot but the swarm flows around the dead and keeps coming.',
+      'The clicking grows frantic as the swarm thins but does not relent.',
+    ],
+    opening: [
+      'The sand ripples with movement — a carpet of scorpions boils toward you!',
+      'Clicking fills the air as a swarm of scorpions pours from a crevice!',
+    ],
+  },
+  'Giant Ant': {
+    attack: [
+      'clamps serrated mandibles shut on your forearm with mechanical force.',
+      'rears up and drives its head forward, jaws snapping like shears.',
+      'charges with antennae flattened, mandibles spread wide.',
+    ],
+    wounded: [
+      'The ant staggers on cracked legs, mandibles still opening and closing.',
+      'Ichor drips from its thorax but the ant lunges forward regardless.',
+    ],
+    opening: [
+      'A dog-sized ant crests the mound, mandibles clicking in silent menace!',
+      'Antennae twitch — a giant ant locks onto you and charges from the colony!',
+    ],
+  },
+  'Pixie Trickster': {
+    attack: [
+      'flits past and zaps you with a burst of sparkling magic.',
+      'giggles and flings a mote of blinding glamour at your eyes.',
+      'darts around your head, each pass leaving a stinging welt of fey light.',
+    ],
+    wounded: [
+      'The pixie\'s laughter turns to a shriek, wings trailing glittering dust.',
+      'It wobbles in the air, sparkle dimming and tiny face twisted in fury.',
+    ],
+    opening: [
+      'A high-pitched giggle echoes as a pixie appears in a shower of sparkles!',
+      'Tiny wings buzz and mischief gleams in its eyes — a pixie trickster swoops in!',
+    ],
+  },
+  'Snapping Turtle': {
+    attack: [
+      'lunges with a beak-like jaw that could sever fingers.',
+      'snaps its armored head forward with startling speed.',
+      'clamps down and holds, powerful jaws grinding with each twist.',
+    ],
+    wounded: [
+      'The turtle retreats into its shell, blood seeping from cracks in the carapace.',
+      'It hisses from behind its shell rim, beady eyes tracking every movement.',
+    ],
+    opening: [
+      'A massive turtle drags itself from the shallows, beak-jaw snapping the air!',
+      'The mud shifts and a boulder-sized snapping turtle surges forward!',
+    ],
+  },
+  'Goblin Shaman': {
+    attack: [
+      'shrieks a guttural curse and hurls a bolt of green flame.',
+      'waves a bone fetish and a wave of sickly energy washes over you.',
+      'stamps its staff and sends a crackling hex arcing toward you.',
+    ],
+    wounded: [
+      'The shaman clutches its totems, chanting faster as blood stains its robes.',
+      'Its eyes blaze with desperate fury as it fumbles through another incantation.',
+    ],
+    opening: [
+      'A goblin draped in bones and feathers steps forward, staff crackling with hex-fire!',
+      'Guttural chanting rises — a goblin shaman emerges, green flames dancing on its fingers!',
+    ],
+  },
+  'Worg': {
+    attack: [
+      'pounces with crushing weight, massive jaws snapping at your throat.',
+      'snarls and rakes with paws the size of dinner plates.',
+      'barrels into you, fangs tearing at armor and flesh alike.',
+    ],
+    wounded: [
+      'The worg snarls low, blood dripping from its muzzle, eyes burning with hate.',
+      'It circles on shaking legs, too stubborn and savage to flee.',
+    ],
+    opening: [
+      'A wolf the size of a pony stalks from the shadows, lips curled back!',
+      'Heavy paws thud against the earth — a worg crashes through the underbrush!',
+    ],
+  },
+  'Sand Lurker': {
+    attack: [
+      'erupts from the sand and strikes with barbed forelimbs.',
+      'drags you toward its buried jaws with hooked claws.',
+      'lashes out from beneath the surface, grit spraying in all directions.',
+    ],
+    wounded: [
+      'The lurker half-burrows, ichor darkening the sand around it.',
+      'It retreats beneath the surface, leaving a trail of blood in the dust.',
+    ],
+    opening: [
+      'The sand collapses inward — a lurker erupts from its ambush pit!',
+      'Something shifts beneath your feet and a sand lurker bursts upward, claws spread!',
+    ],
+  },
+  'Spider Hatchling': {
+    attack: [
+      'drops from a silk thread and sinks tiny venomous fangs into your neck.',
+      'scurries across your arm and bites before you can swat it away.',
+      'leaps with surprising speed, fangs glistening with fresh venom.',
+    ],
+    wounded: [
+      'The hatchling curls its legs inward, hissing faintly as ichor leaks from its body.',
+      'It drags itself along a silk line, wounded but still snapping its tiny jaws.',
+    ],
+    opening: [
+      'A young spider descends on a thread of silk, fangs bared and legs spread wide!',
+      'Silk strands glint in the light as a spider hatchling drops toward your face!',
+    ],
+  },
+  'Giant Crayfish': {
+    attack: [
+      'snaps a crushing claw shut with enough force to dent a shield.',
+      'lunges from the shallows and pins you with both armored pincers.',
+      'scuttles forward and hammers down with a barnacle-crusted claw.',
+    ],
+    wounded: [
+      'Shell fragments crack away as the crayfish retreats toward the waterline.',
+      'It clicks its claws erratically, one pincer dragging uselessly.',
+    ],
+    opening: [
+      'Water churns as an enormous crayfish surges from the river, claws raised!',
+      'A crayfish the size of a dog hauls itself onto the bank, pincers snapping!',
+    ],
+  },
+  'Alpha Wolf': {
+    attack: [
+      'charges with terrifying speed, jaws clamping down like a vise.',
+      'howls and lunges, massive fangs tearing through your guard.',
+      'feints left and strikes right, pack instinct honed to lethal precision.',
+    ],
+    wounded: [
+      'The alpha snarls, blood matting its scarred muzzle, refusing to yield.',
+      'It plants its paws and howls — wounded, but still the pack leader.',
+    ],
+    opening: [
+      'A massive wolf steps from the pack, scarred and fearless — the alpha!',
+      'The largest wolf you\'ve ever seen blocks the path, its howl silencing the forest!',
+    ],
+  },
+  'Bandit Marksman': {
+    attack: [
+      'takes careful aim and sends a crossbow bolt whistling toward your chest.',
+      'fires from a braced position, the bolt punching through the air.',
+      'lines up a shot with cold precision and squeezes the trigger.',
+    ],
+    wounded: [
+      'The marksman drops behind cover, hands shaking as they reload.',
+      'Blood stains the stock of the crossbow but steady eyes still track you.',
+    ],
+    opening: [
+      'A glint of metal from the ridgeline — a bandit marksman takes aim!',
+      'A cloaked figure raises a crossbow from behind a fallen log, eye on the sight!',
+    ],
+  },
+  'Satyr Prankster': {
+    attack: [
+      'plays a discordant note on its pipes that rattles your thoughts.',
+      'darts in with a reed-thin blade, laughing between every slash.',
+      'kicks with cloven hooves and spins away, cackling with glee.',
+    ],
+    wounded: [
+      'The satyr\'s laughter turns bitter, its melody wavering off-key.',
+      'It clutches a wound and bleats in outrage, hooves stamping the ground.',
+    ],
+    opening: [
+      'Mischievous laughter echoes through the glade — a satyr prankster leaps from the bushes!',
+      'Pan-pipes trill a mocking tune as a satyr saunters onto the path, grinning!',
+    ],
+  },
+  'River Serpent': {
+    attack: [
+      'coils around your torso and squeezes with crushing, sinuous strength.',
+      'strikes from the water with fangs bared, scales glistening.',
+      'whips its muscular body sideways, slamming you off your feet.',
+    ],
+    wounded: [
+      'The serpent writhes, dark blood swirling in the current around it.',
+      'It recoils into the shallows, scales torn and body heaving.',
+    ],
+    opening: [
+      'The river ripples unnaturally — a massive serpent rises from the current!',
+      'A sinuous shape breaks the surface, water streaming from glistening coils!',
+    ],
+  },
+  'Ghoul Pack Leader': {
+    attack: [
+      'rakes with claws that leave spreading numbness in every wound.',
+      'slams into you with unnatural speed, paralyzing grip closing on your arm.',
+      'tears at your guard with relentless hunger, eyes burning with dead malice.',
+    ],
+    wounded: [
+      'The pack leader snarls, gray flesh hanging in ribbons, but keeps advancing.',
+      'It stumbles but the hunger in its hollow eyes never wavers.',
+    ],
+    opening: [
+      'A hulking ghoul shoulders through the pack, larger and fiercer than the rest!',
+      'The lesser ghouls part — their leader steps forward, paralyzing cold radiating from its claws!',
+    ],
+  },
+  'Bandit Captain': {
+    attack: [
+      'barks a command and presses the attack with practiced swordsmanship.',
+      'feints with a dagger and follows through with a slashing cutlass.',
+      'fights with ruthless discipline, every strike probing for weakness.',
+    ],
+    wounded: [
+      'The captain grits their teeth and tightens their grip, refusing to show weakness.',
+      'Blood soaks through leather armor but the captain\'s stance remains steady.',
+    ],
+    opening: [
+      'A scarred figure in patchwork armor steps forward. "Take everything they have!"',
+      'A bandit captain draws steel and raises a fist — the ambush begins!',
+    ],
+  },
+  'Bone Archer': {
+    attack: [
+      'draws back a bow of sinew and bone and looses a shaft with eerie precision.',
+      'fires an arrow tipped with a splinter of its own rib, whistling through the air.',
+      'nocks and releases with mechanical, soulless accuracy.',
+    ],
+    wounded: [
+      'Bones crack and splinter but the archer keeps drawing, hollow eyes fixed on its target.',
+      'An arm hangs loose but the skeleton shifts the bow to the other hand.',
+    ],
+    opening: [
+      'A skeleton raises a cracked longbow, empty sockets locking onto you with cold intent!',
+      'Bones rattle as an undead archer steps from the shadows, arrow already nocked!',
+    ],
+  },
 };
 
 // ---------------------------------------------------------------------------
