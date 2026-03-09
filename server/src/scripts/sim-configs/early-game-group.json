@@ -1,0 +1,55 @@
+{
+  "groupGrid": {
+    "parties": [
+      {
+        "name": "Duo - Warrior + Cleric",
+        "members": [
+          { "race": "human", "class": "warrior", "level": 3 },
+          { "race": "human", "class": "cleric", "level": 3 }
+        ]
+      },
+      {
+        "name": "Trio - Balanced",
+        "members": [
+          { "race": "human", "class": "warrior", "level": 3 },
+          { "race": "human", "class": "mage", "level": 3 },
+          { "race": "human", "class": "cleric", "level": 3 }
+        ]
+      },
+      {
+        "name": "Quartet - Standard",
+        "members": [
+          { "race": "human", "class": "warrior", "level": 3 },
+          { "race": "human", "class": "rogue", "level": 3 },
+          { "race": "human", "class": "cleric", "level": 3 },
+          { "race": "human", "class": "ranger", "level": 3 }
+        ]
+      },
+      {
+        "name": "Full Party - Balanced",
+        "members": [
+          { "race": "human", "class": "warrior", "level": 3, "specialization": "guardian" },
+          { "race": "human", "class": "mage", "level": 3, "specialization": "elementalist" },
+          { "race": "human", "class": "cleric", "level": 3, "specialization": "healer" },
+          { "race": "human", "class": "rogue", "level": 3, "specialization": "assassin" },
+          { "race": "human", "class": "ranger", "level": 3, "specialization": "sharpshooter" }
+        ]
+      },
+      {
+        "name": "Full Party - Caster Heavy",
+        "members": [
+          { "race": "human", "class": "mage", "level": 3, "specialization": "elementalist" },
+          { "race": "human", "class": "psion", "level": 3, "specialization": "telepath" },
+          { "race": "human", "class": "bard", "level": 3, "specialization": "battlechanter" },
+          { "race": "human", "class": "cleric", "level": 3, "specialization": "healer" },
+          { "race": "human", "class": "ranger", "level": 3, "specialization": "sharpshooter" }
+        ]
+      }
+    ],
+    "levels": [3, 5, 8, 10],
+    "difficulties": ["easy", "medium", "hard"],
+    "method": "cr_match",
+    "iterationsPerMatchup": 50
+  },
+  "notes": "Early game group L1-10: 5 party comps x 4 levels x 3 difficulties x 50 iter = 3,000 fights"
+}
