@@ -1,0 +1,10 @@
+{
+  "grid": {
+    "races": ["human"],
+    "classes": ["ALL"],
+    "levels": [5, 25, 40],
+    "monsters": ["Wolf", "Orc Warrior", "Troll", "Djinn Lord", "Demon"],
+    "iterationsPerMatchup": 100
+  },
+  "notes": "AC pipeline fix validation: 7 classes x 3 tiers x 5 monsters x 100 = 10,500 fights"
+}
