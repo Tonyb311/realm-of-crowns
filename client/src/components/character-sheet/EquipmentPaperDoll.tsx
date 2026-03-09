@@ -1,5 +1,5 @@
 import {
-  Crown, Gem, Shield, Shirt, Swords, Hand, CircleDot, Footprints, Wrench,
+  Crown, Gem, Shield, Shirt, Swords, Hand, CircleDot, Footprints, Wrench, PackageOpen,
 } from 'lucide-react';
 import { RealmPanel, RealmTooltip } from '../ui/realm-index';
 import { getRarityStyle } from '../../constants';
@@ -17,6 +17,7 @@ const SLOT_META: { key: string; label: string; icon: any; gridArea: string }[] =
   { key: 'LEGS',      label: 'Legs',     icon: Shirt,     gridArea: 'legs' },
   { key: 'FEET',      label: 'Feet',     icon: Footprints,gridArea: 'feet' },
   { key: 'TOOL',      label: 'Tool',     icon: Wrench,    gridArea: 'tool' },
+  { key: 'BAG',       label: 'Bag',      icon: PackageOpen, gridArea: 'bag' },
 ];
 
 interface EquipmentItem {
@@ -50,7 +51,7 @@ export function EquipmentPaperDoll({ equipment, isOwnProfile }: Props) {
           "r1 hands r2"
           ". legs ."
           ". feet ."
-          ". tool ."
+          "tool . bag"
         `,
       }}>
         {SLOT_META.map((slot) => {

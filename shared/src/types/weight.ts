@@ -10,6 +10,7 @@ export interface WeightState {
   equipmentWeight: number;
   carryCapacity: number;
   bagBonus: number;
+  bagName: string | null;
   encumbrance: EncumbrancePenalties;
 }
 

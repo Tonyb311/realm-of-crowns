@@ -109,6 +109,35 @@
 | Brooch | 0.2 |
 | Circlet/Crown | 1.0 |
 
+## Bags & Carry Capacity
+
+Bags occupy the dedicated **BAG** equip slot (13th slot). One bag can be equipped at a time. The equipped bag's `carryBonus` is added to carry capacity.
+
+### Regular Bags (LEATHERWORKER)
+
+| Bag | Size | Crafting Lvl | Equip Lvl | carryBonus | Weight | Rarity |
+|-----|------|-------------|-----------|-----------|--------|--------|
+| Leather Pouch | XS | 1 | 1 | +10 lbs | 1 | COMMON |
+| Leather Backpack | S | 8 | 3 | +15 lbs | 2 | COMMON |
+| Ranger's Pack | M | 20 | 15 | +30 lbs | 2 | FINE |
+| Explorer's Pack | L | 40 | 30 | +50 lbs | 2 | SUPERIOR |
+| Adventurer's Haversack | XL | 55 | 45 | +70 lbs | 3 | MASTERWORK |
+
+### Magical Bags of Holding (ENCHANTER)
+
+| Bag | Crafting Lvl | Equip Lvl | carryBonus | Weight | Base Ingredient |
+|-----|-------------|-----------|-----------|--------|-----------------|
+| Minor Bag of Holding | 30 | 25 | +40 lbs | 2 | Leather Backpack |
+| Bag of Holding | 45 | 40 | +80 lbs | 2 | Ranger's Pack |
+| Greater Bag of Holding | 60 | 55 | +120 lbs | 2 | Explorer's Pack |
+| Grand Bag of Holding | 75 | 70 | +175 lbs | 2 | Adventurer's Haversack |
+
+### Rules
+- Only the equipped bag's carryBonus applies (bags don't stack)
+- Bag weight counts against carry capacity (but net effect is always positive)
+- Carry capacity formula: `STR × 10 × (1 + racialMod) + bagBonus`
+- Magical bags always weigh 2 lbs regardless of contents (dimensional magic)
+
 ## Consumables
 | Type | Weight/Unit |
 |------|------------|

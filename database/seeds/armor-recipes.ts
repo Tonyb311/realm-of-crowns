@@ -38,6 +38,7 @@ interface ArmorTemplateDef {
   professionRequired: ProfessionType;
   levelRequired: number;
   baseValue: number;
+  weight?: number;
 }
 
 const ARMOR_TEMPLATES: ArmorTemplateDef[] = [
@@ -84,9 +85,10 @@ const ARMOR_TEMPLATES: ArmorTemplateDef[] = [
   { name: 'Adamantine Boots', type: 'ARMOR', rarity: 'LEGENDARY', description: 'Boots of pure adamantine. Each step is an act of defiance against harm.', stats: { armor: 32, magicResist: 8 }, durability: 500, professionRequired: 'ARMORER', levelRequired: 75, baseValue: 6000 },
 
   // --- LEATHERWORKER: Apprentice (Cured Leather) ---
+  { name: 'Leather Pouch', type: 'ACCESSORY', rarity: 'COMMON', description: 'A simple leather pouch worn at the hip. Holds up to 10 lbs without adding to your burden.', stats: { carryBonus: 10 }, durability: 40, professionRequired: 'LEATHERWORKER', levelRequired: 1, baseValue: 25, weight: 1 },
   { name: 'Leather Gloves', type: 'ARMOR', rarity: 'COMMON', description: 'Supple leather gloves, perfect for nimble fingers.', stats: { armor: 1, dexterity: 1 }, durability: 45, professionRequired: 'LEATHERWORKER', levelRequired: 1, baseValue: 58 },
   { name: 'Leather Boots', type: 'ARMOR', rarity: 'COMMON', description: 'Sturdy leather boots with soft soles for quiet movement.', stats: { armor: 2, dexterity: 1 }, durability: 50, professionRequired: 'LEATHERWORKER', levelRequired: 3, baseValue: 58 },
-  { name: 'Leather Backpack', type: 'ACCESSORY', rarity: 'COMMON', description: 'A roomy leather backpack supported by a wooden frame.', stats: {}, durability: 60, professionRequired: 'LEATHERWORKER', levelRequired: 5, baseValue: 78 },
+  { name: 'Leather Backpack', type: 'ACCESSORY', rarity: 'COMMON', description: 'A sturdy pack with reinforced straps. Holds up to 15 lbs without adding to your burden.', stats: { carryBonus: 15 }, durability: 60, professionRequired: 'LEATHERWORKER', levelRequired: 5, baseValue: 78, weight: 2 },
   { name: 'Leather Waterskin', type: 'CONSUMABLE', rarity: 'COMMON', description: 'A sealed leather waterskin for long journeys.', stats: {}, durability: 1, professionRequired: 'LEATHERWORKER', levelRequired: 8, baseValue: 35 },
 
   // --- LEATHERWORKER: Journeyman (Wolf Leather) ---
@@ -94,7 +96,7 @@ const ARMOR_TEMPLATES: ArmorTemplateDef[] = [
   { name: 'Wolf Leather Boots', type: 'ARMOR', rarity: 'FINE', description: 'Wolf leather boots with iron-studded soles for grip on any terrain.', stats: { armor: 4, dexterity: 2 }, durability: 90, professionRequired: 'LEATHERWORKER', levelRequired: 15, baseValue: 145 },
   { name: 'Toolbelt', type: 'ACCESSORY', rarity: 'FINE', description: 'A sturdy toolbelt with loops and pouches for crafting implements.', stats: {}, durability: 80, professionRequired: 'LEATHERWORKER', levelRequired: 18, baseValue: 140 },
   { name: 'Leather Repair Kit', type: 'TOOL', rarity: 'FINE', description: 'Leather patches, needles, and wax for repairing leather goods.', stats: { yieldBonus: 15 }, durability: 25, professionRequired: 'LEATHERWORKER', levelRequired: 20, baseValue: 80 },
-  { name: "Ranger's Pack", type: 'ACCESSORY', rarity: 'FINE', description: 'A wolf leather pack built for long wilderness expeditions.', stats: {}, durability: 100, professionRequired: 'LEATHERWORKER', levelRequired: 22, baseValue: 240 },
+  { name: "Ranger's Pack", type: 'ACCESSORY', rarity: 'FINE', description: "A woodsman's pack built for long journeys. Holds up to 30 lbs without adding to your burden.", stats: { carryBonus: 30 }, durability: 100, professionRequired: 'LEATHERWORKER', levelRequired: 22, baseValue: 240, weight: 2 },
 
   // --- LEATHERWORKER: Expert (Exotic Leather) ---
   { name: 'Exotic Leather Cap', type: 'ARMOR', rarity: 'MASTERWORK', description: 'A supple exotic leather cap that turns blades and arrows.', stats: { armor: 8, dexterity: 3 }, durability: 200, professionRequired: 'LEATHERWORKER', levelRequired: 50, baseValue: 600 },
@@ -103,6 +105,7 @@ const ARMOR_TEMPLATES: ArmorTemplateDef[] = [
   { name: 'Exotic Leather Boots', type: 'ARMOR', rarity: 'MASTERWORK', description: 'Exotic leather boots crafted for silence and speed.', stats: { armor: 10, dexterity: 3 }, durability: 220, professionRequired: 'LEATHERWORKER', levelRequired: 50, baseValue: 700 },
   { name: 'Exotic Leather Bracers', type: 'ARMOR', rarity: 'MASTERWORK', description: 'Exotic leather bracers reinforced with hidden bone plates.', stats: { armor: 8, dexterity: 3 }, durability: 200, professionRequired: 'LEATHERWORKER', levelRequired: 50, baseValue: 600 },
   { name: 'Exotic Leather Leggings', type: 'ARMOR', rarity: 'MASTERWORK', description: 'Exotic leather leggings that allow full range of movement.', stats: { armor: 12, dexterity: 3 }, durability: 240, professionRequired: 'LEATHERWORKER', levelRequired: 50, baseValue: 900 },
+  { name: "Adventurer's Haversack", type: 'ACCESSORY', rarity: 'MASTERWORK', description: 'An expertly crafted pack with exotic leather compartments. Holds up to 70 lbs without adding to your burden.', stats: { carryBonus: 70 }, durability: 200, professionRequired: 'LEATHERWORKER', levelRequired: 55, baseValue: 800, weight: 3 },
 
   // --- LEATHERWORKER: Master (Dragonscale) ---
   { name: 'Dragonscale Helm', type: 'ARMOR', rarity: 'LEGENDARY', description: 'A helm of interlocking dragon scales that resists steel and sorcery alike.', stats: { armor: 12, dexterity: 4, magicResist: 4 }, durability: 320, professionRequired: 'LEATHERWORKER', levelRequired: 70, baseValue: 2000 },
@@ -120,7 +123,7 @@ const ARMOR_TEMPLATES: ArmorTemplateDef[] = [
   { name: 'Bear Hide Vambraces', type: 'ARMOR', rarity: 'SUPERIOR', description: 'Thick bear hide forearm guards that shrug off blows.', stats: { armor: 5, dexterity: 3 }, durability: 120, professionRequired: 'LEATHERWORKER', levelRequired: 28, baseValue: 310 },
   { name: 'Bear Leather Boots', type: 'ARMOR', rarity: 'SUPERIOR', description: 'Heavy bear leather boots reinforced with layered hide.', stats: { armor: 6, dexterity: 3 }, durability: 130, professionRequired: 'LEATHERWORKER', levelRequired: 32, baseValue: 260 },
   { name: "Hunter's Kit", type: 'TOOL', rarity: 'SUPERIOR', description: 'A comprehensive kit of tracking tools, snares, and field supplies.', stats: { yieldBonus: 25 }, durability: 40, professionRequired: 'LEATHERWORKER', levelRequired: 36, baseValue: 280 },
-  { name: "Explorer's Pack", type: 'ACCESSORY', rarity: 'SUPERIOR', description: 'The finest leather backpack, reinforced with bear hide and a hardwood frame.', stats: {}, durability: 150, professionRequired: 'LEATHERWORKER', levelRequired: 40, baseValue: 480 },
+  { name: "Explorer's Pack", type: 'ACCESSORY', rarity: 'SUPERIOR', description: 'A rugged pack designed for deep wilderness expeditions. Holds up to 50 lbs without adding to your burden.', stats: { carryBonus: 50 }, durability: 150, professionRequired: 'LEATHERWORKER', levelRequired: 40, baseValue: 480, weight: 2 },
 
   // --- TAILOR: Cloth ---
   { name: 'Cloth Hood', type: 'ARMOR', rarity: 'COMMON', description: 'A simple cotton hood favored by apprentice mages.', stats: { magicResist: 2 }, durability: 35, professionRequired: 'TAILOR', levelRequired: 1, baseValue: 30 },
@@ -215,7 +218,7 @@ export async function seedArmorRecipes(db: any) {
       professionRequired: tmpl.professionRequired,
       levelRequired: tmpl.levelRequired,
       baseValue: tmpl.baseValue,
-      weight: ARMOR_WEIGHT_MAP.get(tmpl.name) ?? 0,
+      weight: tmpl.weight ?? ARMOR_WEIGHT_MAP.get(tmpl.name) ?? 0,
     };
     await db.insert(schema.itemTemplates).values({
       id: stableId,

@@ -5,7 +5,7 @@
  * the encumbrance state. Called by enforcement points across routes.
  */
 
-import { eq, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { db as defaultDb } from '../lib/db';
 import { inventories, items, itemTemplates, characterEquipment, characters } from '@database/tables';
 import {
@@ -21,6 +21,7 @@ export interface WeightState {
   equipmentWeight: number;
   carryCapacity: number;
   bagBonus: number;
+  bagName: string | null;
   encumbrance: EncumbrancePenalties;
 }
 
@@ -44,7 +45,7 @@ export async function calculateWeightState(
   if (!character) {
     return {
       currentWeight: 0, inventoryWeight: 0, equipmentWeight: 0,
-      carryCapacity: 100, bagBonus: 0,
+      carryCapacity: 100, bagBonus: 0, bagName: null,
       encumbrance: getEncumbrancePenalties(0, 100),
     };
   }
@@ -77,9 +78,21 @@ export async function calculateWeightState(
 
   const equipmentWeight = Number(eqResult.total) || 0;
 
-  // 4. Bag bonus — Phase 4 will scan inventory for items with carryBonus stat.
-  //    For now, always 0.
-  const bagBonus = 0;
+  // 4. Bag bonus — scan equipped BAG slot for carryBonus
+  let bagBonus = 0;
+  let bagName: string | null = null;
+  const bagSlotEquip = await tx.query.characterEquipment.findFirst({
+    where: and(
+      eq(characterEquipment.characterId, characterId),
+      eq(characterEquipment.slot, 'BAG'),
+    ),
+    with: { item: { with: { itemTemplate: true } } },
+  });
+  if (bagSlotEquip) {
+    const bagStats = bagSlotEquip.item.itemTemplate.stats as Record<string, any> | null;
+    bagBonus = Number(bagStats?.carryBonus) || 0;
+    bagName = bagSlotEquip.item.itemTemplate.name;
+  }
 
   // 5. Racial carry modifier
   const raceDef = getRace(raceId);
@@ -96,6 +109,7 @@ export async function calculateWeightState(
     equipmentWeight: Math.round(equipmentWeight * 10) / 10,
     carryCapacity: Math.round(carryCapacity * 10) / 10,
     bagBonus,
+    bagName,
     encumbrance,
   };
 }

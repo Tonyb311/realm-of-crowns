@@ -130,6 +130,11 @@ export function CoreStatsBlock({ sheet, isOwnProfile }: Props) {
               {equipStats.weightState.currentWeight.toFixed(1)} lbs ({equipStats.weightState.encumbrance.loadPercent.toFixed(0)}%)
             </div>
           )}
+          {equipStats?.weightState != null && equipStats.weightState.bagBonus > 0 && (
+            <span className="text-[10px] text-realm-purple-400">
+              (+{equipStats.weightState.bagBonus} from bag)
+            </span>
+          )}
         </div>
       </div>
 

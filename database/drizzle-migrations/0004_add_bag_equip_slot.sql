@@ -1,0 +1,1 @@
+ALTER TYPE "EquipSlot" ADD VALUE 'BAG';

@@ -64,7 +64,8 @@ export type EquipSlot =
   | 'RING_1'
   | 'RING_2'
   | 'NECK'
-  | 'BACK';
+  | 'BACK'
+  | 'BAG';
 
 export type OutputItemType =
   | 'WEAPON'

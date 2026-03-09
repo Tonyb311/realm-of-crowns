@@ -21,6 +21,7 @@ import {
   Minus,
   Plus,
   Sparkles,
+  PackageOpen,
 } from 'lucide-react';
 import api from '../services/api';
 import { getRarityStyle, TOAST_STYLE } from '../constants';
@@ -136,6 +137,7 @@ const PRIMARY_SLOTS: SlotDef[] = [
   { key: 'LEGS',      label: 'Legs',     icon: Shirt },
   { key: 'FEET',      label: 'Feet',     icon: Footprints },
   { key: 'TOOL',      label: 'Tool',     icon: Wrench },
+  { key: 'BAG',       label: 'Bag',      icon: PackageOpen },
 ];
 
 // ---------------------------------------------------------------------------
@@ -168,6 +170,7 @@ function detectSlot(item: InventoryItem): string | null {
     return 'CHEST'; // default armor -> body
   }
   if (type === 'ACCESSORY') {
+    if (equipSlot === 'BAG') return 'BAG';
     if (equipSlot) {
       const slotMap: Record<string, string> = {
         RING_1: 'RING_1', RING_2: 'RING_2', NECK: 'NECK',
@@ -175,6 +178,7 @@ function detectSlot(item: InventoryItem): string | null {
       return slotMap[equipSlot] ?? 'RING_1';
     }
     const name = item.template.name.toLowerCase();
+    if (name.includes('backpack') || name.includes('haversack') || name.includes('bag of holding') || name.includes('pouch') || name.includes("ranger's pack") || name.includes("explorer's pack")) return 'BAG';
     if (name.includes('necklace') || name.includes('amulet') || name.includes('pendant') || name.includes('choker')) return 'NECK';
     return 'RING_1'; // default accessory -> ring
   }
@@ -580,6 +584,28 @@ export default function InventoryPage() {
           {eqStats?.weightState && (
             <WeightBar weightState={eqStats.weightState} />
           )}
+
+          {/* Bag sub-bar */}
+          {(() => {
+            const ws = eqStats?.weightState;
+            if (!ws || !ws.bagName || ws.bagBonus <= 0) return null;
+            return (
+              <div className="ml-4 mt-1 mb-2">
+                <div className="flex items-center gap-2 text-xs text-realm-text-secondary">
+                  <PackageOpen className="w-3 h-3 text-realm-purple-400" />
+                  <span>
+                    {ws.bagName}: {Math.min(ws.bagBonus, ws.currentWeight).toFixed(1)} / {ws.bagBonus.toFixed(1)} lbs absorbed
+                  </span>
+                </div>
+                <div className="ml-5 mt-0.5 h-1.5 bg-realm-bg-700 rounded-full overflow-hidden w-48">
+                  <div
+                    className="h-full bg-realm-purple-400/60 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, (ws.currentWeight / ws.bagBonus) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
             {PRIMARY_SLOTS.map((slot) => {

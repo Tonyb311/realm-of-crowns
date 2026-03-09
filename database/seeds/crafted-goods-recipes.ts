@@ -12,6 +12,7 @@ import * as schema from '../schema';
 import type { ProfessionType, ProfessionTier, ItemRarity } from '@shared/enums';
 import { WOODWORKER_FINISHED_GOODS } from '@shared/data/recipes/woodworker';
 import { BLACKSMITH_RECIPES } from '@shared/data/recipes/blacksmith';
+import { ENCHANTER_BAG_RECIPES } from '@shared/data/recipes/bag-recipes';
 import { FinishedGoodsRecipe, WeaponStats, ArmorStats } from '@shared/data/recipes/types';
 
 // ============================================================
@@ -99,6 +100,13 @@ const BASE_VALUE_MAP: Record<string, number> = {
   'Silver Longsword': 120, 'Silver Dagger': 90, 'Silver Battleaxe': 125, 'War Pick': 100,
   'Silver-Studded Plate': 130, 'Silver Helm': 95, 'Hardwood Tower Shield': 108,
   'Reinforced Chain Leggings': 105,
+  // BAG items (leatherworker + enchanter)
+  'Leather Pouch': 25,
+  "Adventurer's Haversack": 800,
+  'Minor Bag of Holding': 1500,
+  'Bag of Holding': 4000,
+  'Greater Bag of Holding': 8000,
+  'Grand Bag of Holding': 15000,
 };
 
 // ============================================================
@@ -109,6 +117,7 @@ export async function seedCraftedGoodsRecipes(db: any) {
   const allRecipes: FinishedGoodsRecipe[] = [
     ...WOODWORKER_FINISHED_GOODS,
     ...BLACKSMITH_RECIPES,
+    ...ENCHANTER_BAG_RECIPES,
   ];
 
   console.log('--- Seeding Crafted Goods Item Templates ---');

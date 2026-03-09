@@ -39,7 +39,7 @@ const enchantSchema = z.object({
 const ITEM_TYPE_SLOT_MAP: Record<string, EquipSlot[]> = {
   WEAPON: ['MAIN_HAND', 'OFF_HAND'],
   ARMOR: ['HEAD', 'CHEST', 'HANDS', 'LEGS', 'FEET', 'BACK'],
-  ACCESSORY: ['RING_1', 'RING_2', 'NECK'],
+  ACCESSORY: ['RING_1', 'RING_2', 'NECK', 'BAG'],
   TOOL: ['TOOL'],
 };
 

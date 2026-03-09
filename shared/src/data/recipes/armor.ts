@@ -922,11 +922,36 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     xpReward: 14,
     tier: 1,
     outputItemType: 'ACCESSORY',
-    equipSlot: 'BACK',
+    equipSlot: 'BAG',
     outputStats: {
       durability: 60,
       levelToEquip: 3,
       weight: 2,
+      carryBonus: 15,
+    },
+  },
+
+  // Leather Pouch — entry-level bag accessory
+  {
+    recipeId: 'lw-leather-pouch',
+    name: 'Craft Leather Pouch',
+    professionRequired: 'LEATHERWORKER',
+    levelRequired: 1,
+    inputs: [
+      { itemName: ITEMS.LEATHER, quantity: 1 },
+      { itemName: ITEMS.ANIMAL_PELTS, quantity: 1 },
+    ],
+    outputs: [{ itemName: ITEMS.LEATHER_POUCH, quantity: 1 }],
+    craftTime: 10,
+    xpReward: 6,
+    tier: 1,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'BAG',
+    outputStats: {
+      durability: 40,
+      levelToEquip: 1,
+      weight: 1,
+      carryBonus: 10,
     },
   },
 
@@ -1068,11 +1093,12 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     xpReward: 30,
     tier: 2,
     outputItemType: 'ACCESSORY',
-    equipSlot: 'BACK',
+    equipSlot: 'BAG',
     outputStats: {
       durability: 100,
       levelToEquip: 15,
       weight: 2,
+      carryBonus: 30,
     },
   },
 
@@ -1169,13 +1195,41 @@ export const LEATHERWORKER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     xpReward: 50,
     tier: 3,
     outputItemType: 'ACCESSORY',
-    equipSlot: 'BACK',
+    equipSlot: 'BAG',
     outputStats: {
       durability: 150,
       levelToEquip: 30,
       weight: 2,
+      carryBonus: 50,
     },
   },
+
+  // Adventurer's Haversack — top-tier regular bag accessory
+  {
+    recipeId: 'lw-adventurers-haversack',
+    name: "Craft Adventurer's Haversack",
+    professionRequired: 'LEATHERWORKER',
+    levelRequired: 55,
+    inputs: [
+      { itemName: ITEMS.EXOTIC_LEATHER, quantity: 3 },
+      { itemName: ITEMS.BEAR_LEATHER, quantity: 2 },
+      { itemName: ITEMS.WOODEN_FRAME, quantity: 2 },
+      { itemName: ITEMS.IRON_FITTINGS, quantity: 2 },
+    ],
+    outputs: [{ itemName: ITEMS.ADVENTURERS_HAVERSACK, quantity: 1 }],
+    craftTime: 90,
+    xpReward: 70,
+    tier: 4,
+    outputItemType: 'ACCESSORY',
+    equipSlot: 'BAG',
+    outputStats: {
+      durability: 200,
+      levelToEquip: 45,
+      weight: 3,
+      carryBonus: 70,
+    },
+  },
+
   // ============================================================
   // EXPERT TIER (L50-L55) — 6 recipes (Exotic Leather)
   // ============================================================

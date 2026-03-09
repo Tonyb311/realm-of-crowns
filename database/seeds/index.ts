@@ -11,7 +11,7 @@ import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from '../schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { seedWorld } from './world';
@@ -64,6 +64,20 @@ async function seedAdmin(db: any) {
   console.log('  Admin account (admin@roc.com) created');
 }
 
+async function migrateBackpacksToBAGSlot(db: any) {
+  console.log('--- Migrating backpack equipment from BACK to BAG slot ---');
+  const result = await db.execute(sql`
+    UPDATE character_equipment SET slot = 'BAG'
+    WHERE slot = 'BACK' AND item_id IN (
+      SELECT i.id FROM items i
+      JOIN item_templates it ON i.template_id = it.id
+      WHERE it.name IN ('Leather Backpack', 'Ranger''s Pack', 'Explorer''s Pack', 'Leather Pouch', 'Adventurer''s Haversack',
+        'Minor Bag of Holding', 'Bag of Holding', 'Greater Bag of Holding', 'Grand Bag of Holding')
+    )
+  `);
+  console.log(`  Migrated ${result.rowCount ?? 0} equipped backpacks from BACK to BAG slot`);
+}
+
 async function runSeed(name: string, fn: () => Promise<void>): Promise<boolean> {
   try {
     await fn();
@@ -112,6 +126,9 @@ async function main() {
 
   // Armor recipes (metal, leather, cloth - 75 recipes)
   if (!await runSeed('armorRecipes', () => seedArmorRecipes(db))) failed++;
+
+  // Migrate backpacks from BACK slot to BAG slot (idempotent)
+  if (!await runSeed('backpackMigration', () => migrateBackpacksToBAGSlot(db))) failed++;
 
   // Racial relations (190 unique pairings, 20x20 matrix)
   if (!await runSeed('diplomacy', () => seedDiplomacy(db))) failed++;

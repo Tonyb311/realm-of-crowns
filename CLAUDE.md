@@ -39,6 +39,7 @@
 - Metal items use material multipliers: Copper x0.8, Iron x1.0, Steel x1.0, Mithril x0.6, Adamantine x1.3
 - Caster weapons, cloth, and leather use flat weights (no multiplier)
 - Furniture items = 5 lbs flat ("flat-pack" weight)
+- **BAG equip slot:** 13th equipment slot, dedicated for bags. Bags add `carryBonus` to carry capacity via the equipped BAG slot. Regular bags (LEATHERWORKER) and magical Bags of Holding (ENCHANTER). Weight calculator reads `carryBonus` from the BAG slot's item stats.
 
 ### Simulation Rules
 - **Never run a simulation unless explicitly told to.** Deploy and seed only unless instructed.
