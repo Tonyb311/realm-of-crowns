@@ -572,8 +572,9 @@ function buildAbilityQueue(className: string, level: number, options?: AbilityQu
   let priority = 0;
 
   // 1. OPENER: Best buff or CC ability (first round only)
+  // Skip tier -1 defensive abilities — those fire reactively when HP drops
   const openerCandidates = classified
-    .filter(c => c.role === 'buff' || c.role === 'cc')
+    .filter(c => (c.role === 'buff' || c.role === 'cc') && c.ability.tier >= 0)
     .sort((a, b) => b.ability.tier - a.ability.tier || a.ability.cooldown - b.ability.cooldown);
 
   if (openerCandidates.length > 0) {
@@ -585,6 +586,22 @@ function buildAbilityQueue(className: string, level: number, options?: AbilityQu
       useWhen: 'first_round',
     });
     usedIds.add(opener.ability.id);
+  }
+
+  // 1b. REACTIVE DEFENSE: Tier -1 buff/cc abilities fire when HP drops below 70%
+  const defensiveCandidates = classified
+    .filter(c => (c.role === 'buff' || c.role === 'cc') && c.ability.tier < 0 && c.ability.cooldown > 0)
+    .sort((a, b) => b.ability.tier - a.ability.tier || a.ability.cooldown - b.ability.cooldown);
+
+  for (const def of defensiveCandidates) {
+    queue.push({
+      abilityId: def.ability.id,
+      abilityName: def.ability.name,
+      priority: priority++,
+      useWhen: 'low_hp',
+      hpThreshold: 70,
+    });
+    usedIds.add(def.ability.id);
   }
 
   // 2. SUSTAIN: Damage abilities interleaved with echo abilities
