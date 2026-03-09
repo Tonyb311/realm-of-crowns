@@ -601,6 +601,8 @@ export interface Combatant {
   featIds?: string[];
   /** Whether Savage Attacker damage reroll has been used this combat */
   savageAttackerUsed?: boolean;
+  /** Whether Lucky d20 reroll has been used this combat */
+  luckyRerollUsed?: boolean;
   /** Whether Guardian's Vigil sentinel counter has triggered this combat */
   sentinelCounterUsed?: boolean;
   // Consumable system fields

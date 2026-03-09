@@ -251,7 +251,8 @@ export function calculateDamage(
   weapon: WeaponInfo,
   critical: boolean
 ): { rolls: number[]; total: number } {
-  const statMod = getModifier(attacker.stats[weapon.damageModifierStat]);
+  // Monsters: stat mod is already baked into damage dice bonus, skip to avoid double-count
+  const statMod = attacker.entityType === 'monster' ? 0 : getModifier(attacker.stats[weapon.damageModifierStat]);
   const modifier = statMod + weapon.bonusDamage;
 
   if (critical) {
@@ -577,7 +578,8 @@ export function resolveAttack(
   }
 
   // Calculate attack modifier (stat + proficiency + weapon bonus)
-  const statMod = getModifier(actor.stats[weapon.attackModifierStat]);
+  // Monsters: stat mod is already baked into bonusAttack (from stats.attack), skip to avoid double-count
+  const statMod = actor.entityType === 'monster' ? 0 : getModifier(actor.stats[weapon.attackModifierStat]);
   let atkMod = statMod + actor.proficiencyBonus + weapon.bonusAttack;
 
   // Track individual modifier sources for logging
@@ -770,6 +772,16 @@ export function resolveAttack(
     roll = roll1.total >= roll2.total ? roll1 : roll2;
   } else {
     roll = attackRoll(atkMod, targetAC);
+  }
+
+  // Feat: Lucky — once per combat, reroll a missed attack and take the better result
+  if (!roll.hit && roll.roll !== 1 && !actor.luckyRerollUsed && hasFeatEffect(actor.featIds, 'luckyReroll')) {
+    const luckyReroll = attackRoll(atkMod, targetAC);
+    if (luckyReroll.total > roll.total) {
+      roll = luckyReroll;
+    }
+    actor = { ...actor, luckyRerollUsed: true };
+    atkModBreakdown.push({ source: 'luckyReroll', value: 0 });
   }
 
   // Phase 5A: Expanded crit range from class abilities

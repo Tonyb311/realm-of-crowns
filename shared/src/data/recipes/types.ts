@@ -90,6 +90,8 @@ export interface WeaponStats {
   bonusAttack?: number;   // flat attack bonus
   bonusDamage?: number;   // flat damage bonus
   weight?: number;        // item weight in lbs
+  damageModifierStat?: string;  // stat key for damage modifier (str/dex/int/wis/cha)
+  attackModifierStat?: string;  // stat key for attack modifier (str/dex/int/wis/cha)
 }
 
 export interface QualityMultiplier {

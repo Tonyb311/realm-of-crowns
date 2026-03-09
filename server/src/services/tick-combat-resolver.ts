@@ -49,6 +49,7 @@ import { getModifier } from '@shared/types/combat';
 import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
 import { CLASS_SAVE_PROFICIENCIES, CLASS_ARMOR_TYPE, getAttacksPerAction } from '@shared/data/combat-constants';
 import { computeFinalAC } from '@shared/utils/armor-conversion';
+import { hasFeatEffect } from '@shared/data/feats';
 import {
   getCombatPresets,
   buildCombatParams,
@@ -1068,12 +1069,14 @@ export async function resolveNodePvE(
   (playerCombatant as any).race = character.race.toLowerCase();
   (playerCombatant as any).subRace = character.subRace;
   (playerCombatant as any).characterClass = character.class?.toLowerCase() ?? null;
+  const tickFeatIds = (character.feats as string[]) ?? [];
   (playerCombatant as any).saveProficiencies = [
     ...(CLASS_SAVE_PROFICIENCIES[character.class?.toLowerCase() ?? ''] ?? []),
     ...((character.bonusSaveProficiencies as string[]) ?? []),
+    ...(hasFeatEffect(tickFeatIds, 'bonusSaveProficiency') ? ['con'] : []),
   ];
   (playerCombatant as any).extraAttacks = getAttacksPerAction(character.class ?? '', character.level);
-  (playerCombatant as any).featIds = (character.feats as string[]) ?? [];
+  (playerCombatant as any).featIds = tickFeatIds;
 
   // Set proficiency flags based on equipped items
   if (character.class && character.characterEquipments) {
@@ -1243,12 +1246,14 @@ export async function resolveNodePvP(
   );
   (travelerCombatant as any).race = traveler.race.toLowerCase();
   (travelerCombatant as any).characterClass = traveler.class?.toLowerCase() ?? null;
+  const travFeatIds = (traveler.feats as string[]) ?? [];
   (travelerCombatant as any).saveProficiencies = [
     ...(CLASS_SAVE_PROFICIENCIES[traveler.class?.toLowerCase() ?? ''] ?? []),
     ...((traveler.bonusSaveProficiencies as string[]) ?? []),
+    ...(hasFeatEffect(travFeatIds, 'bonusSaveProficiency') ? ['con'] : []),
   ];
   (travelerCombatant as any).extraAttacks = getAttacksPerAction(traveler.class ?? '', traveler.level);
-  (travelerCombatant as any).featIds = (traveler.feats as string[]) ?? [];
+  (travelerCombatant as any).featIds = travFeatIds;
   await applyConsumableBuffs(travelerCombatant, traveler.id);
 
   const ambusherCombatant = createCharacterCombatant(
@@ -1262,12 +1267,14 @@ export async function resolveNodePvP(
   );
   (ambusherCombatant as any).race = ambusher.race.toLowerCase();
   (ambusherCombatant as any).characterClass = ambusher.class?.toLowerCase() ?? null;
+  const ambFeatIds = (ambusher.feats as string[]) ?? [];
   (ambusherCombatant as any).saveProficiencies = [
     ...(CLASS_SAVE_PROFICIENCIES[ambusher.class?.toLowerCase() ?? ''] ?? []),
     ...((ambusher.bonusSaveProficiencies as string[]) ?? []),
+    ...(hasFeatEffect(ambFeatIds, 'bonusSaveProficiency') ? ['con'] : []),
   ];
   (ambusherCombatant as any).extraAttacks = getAttacksPerAction(ambusher.class ?? '', ambusher.level);
-  (ambusherCombatant as any).featIds = (ambusher.feats as string[]) ?? [];
+  (ambusherCombatant as any).featIds = ambFeatIds;
   await applyConsumableBuffs(ambusherCombatant, ambusher.id);
 
   // Create combat state
@@ -1412,12 +1419,14 @@ export async function resolveGroupCombat(
     );
     (combatant as any).race = char.race.toLowerCase();
     (combatant as any).characterClass = char.class?.toLowerCase() ?? null;
+    const grpFeatIds = (char.feats as string[]) ?? [];
     (combatant as any).saveProficiencies = [
       ...(CLASS_SAVE_PROFICIENCIES[char.class?.toLowerCase() ?? ''] ?? []),
       ...((char.bonusSaveProficiencies as string[]) ?? []),
+      ...(hasFeatEffect(grpFeatIds, 'bonusSaveProficiency') ? ['con'] : []),
     ];
     (combatant as any).extraAttacks = getAttacksPerAction(char.class ?? '', char.level);
-    (combatant as any).featIds = (char.feats as string[]) ?? [];
+    (combatant as any).featIds = grpFeatIds;
     await applyConsumableBuffs(combatant, char.id);
     combatants.push(combatant);
 
@@ -1456,12 +1465,14 @@ export async function resolveGroupCombat(
     );
     (combatant as any).race = char.race.toLowerCase();
     (combatant as any).characterClass = char.class?.toLowerCase() ?? null;
+    const grpFeatIds = (char.feats as string[]) ?? [];
     (combatant as any).saveProficiencies = [
       ...(CLASS_SAVE_PROFICIENCIES[char.class?.toLowerCase() ?? ''] ?? []),
       ...((char.bonusSaveProficiencies as string[]) ?? []),
+      ...(hasFeatEffect(grpFeatIds, 'bonusSaveProficiency') ? ['con'] : []),
     ];
     (combatant as any).extraAttacks = getAttacksPerAction(char.class ?? '', char.level);
-    (combatant as any).featIds = (char.feats as string[]) ?? [];
+    (combatant as any).featIds = grpFeatIds;
     await applyConsumableBuffs(combatant, char.id);
     combatants.push(combatant);
 

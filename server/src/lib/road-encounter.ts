@@ -51,7 +51,7 @@ import { calculateWeightState } from '../services/weight-calculator';
 import type { CombatRound } from './simulation/types';
 import type { AttackResult, Combatant } from '@shared/types/combat';
 import { processItemDrops } from './loot-items';
-import { computeFeatBonus } from '@shared/data/feats';
+import { computeFeatBonus, hasFeatEffect } from '@shared/data/feats';
 import { ENCOUNTER_TEMPLATES, type EncounterTemplate } from '@shared/data/encounter-templates';
 
 // ---------------------------------------------------------------------------
@@ -195,7 +195,7 @@ function parseStats(stats: unknown): CharacterStats {
 }
 
 function parseDamageString(damage: string): { diceCount: number; diceSides: number; bonus: number } {
-  const match = damage.match(/^(\d+)d(\d+)(?:\+(\d+))?$/);
+  const match = damage.match(/^(\d+)d(\d+)(?:([+-]\d+))?$/);
   if (!match) return { diceCount: 1, diceSides: 6, bonus: 0 };
   return {
     diceCount: parseInt(match[1], 10),
@@ -607,6 +607,9 @@ export async function resolveRoadEncounter(
             displayName,
           });
         }
+      } else {
+        logger.warn({ monsterName: comp.monsterName, templateId: template.id },
+          'Encounter template references non-existent monster');
       }
     }
   }
@@ -719,12 +722,15 @@ export async function resolveRoadEncounter(
   (playerCombatant as any).race = character.race.toLowerCase();
   (playerCombatant as any).subRace = character.subRace ?? null;
   (playerCombatant as any).characterClass = character.class?.toLowerCase() ?? null;
+  const featIds = (character.feats as string[]) ?? [];
   (playerCombatant as any).saveProficiencies = [
     ...(CLASS_SAVE_PROFICIENCIES[character.class?.toLowerCase() ?? ''] ?? []),
     ...((character.bonusSaveProficiencies as string[]) ?? []),
+    // Resilient feat grants CON save proficiency
+    ...(hasFeatEffect(featIds, 'bonusSaveProficiency') ? ['con'] : []),
   ];
   (playerCombatant as any).extraAttacks = getAttacksPerAction(character.class ?? '', character.level);
-  (playerCombatant as any).featIds = (character.feats as string[]) ?? [];
+  (playerCombatant as any).featIds = featIds;
 
   // Encumbrance penalties (skip for simulation bots — they have no real inventory)
   if (!getSimulationRunId()) {
@@ -1158,12 +1164,15 @@ export async function resolveGroupRoadEncounter(
     (combatant as any).race = char.race.toLowerCase();
     (combatant as any).subRace = char.subRace ?? null;
     (combatant as any).characterClass = char.class?.toLowerCase() ?? null;
+    const charFeatIds = (char.feats as string[]) ?? [];
     (combatant as any).saveProficiencies = [
       ...(CLASS_SAVE_PROFICIENCIES[char.class?.toLowerCase() ?? ''] ?? []),
       ...((char.bonusSaveProficiencies as string[]) ?? []),
+      // Resilient feat grants CON save proficiency
+      ...(hasFeatEffect(charFeatIds, 'bonusSaveProficiency') ? ['con'] : []),
     ];
     (combatant as any).extraAttacks = getAttacksPerAction(char.class ?? '', char.level);
-    (combatant as any).featIds = (char.feats as string[]) ?? [];
+    (combatant as any).featIds = charFeatIds;
     // Apply pre-combat consumable buffs
     await applyConsumableBuffs(combatant, char.id);
     combatants.push(combatant);

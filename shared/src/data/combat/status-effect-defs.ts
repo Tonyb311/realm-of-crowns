@@ -111,6 +111,7 @@ export const STATUS_EFFECT_MECHANICS: Record<StatusEffectName, StatusEffectMecha
     description: 'Pinned in place. -3 AC, -2 DEX saves, cannot flee or use movement abilities.',
   },
 
+  // Reserved — no abilities currently apply this effect
   restrained: {
     preventsAction: false,
     attackMod: 0,

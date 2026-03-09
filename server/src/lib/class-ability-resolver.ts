@@ -406,6 +406,11 @@ const handleBuff: EffectHandler = (state, actor, _target, _enemies, abilityDef, 
     activeBuffs: [...filtered, buff],
   });
 
+  // extraAction buffs also apply the 'hasted' status for +2 ATK / +2 AC
+  if (buff.extraAction) {
+    state = applyStatusEffectToState(state, actor.id, 'hasted', duration, actor.id);
+  }
+
   const parts: string[] = [];
   if (buff.attackMod) parts.push(`ATK ${buff.attackMod > 0 ? '+' : ''}${buff.attackMod}`);
   if (buff.acMod) parts.push(`AC ${buff.acMod > 0 ? '+' : ''}${buff.acMod}`);

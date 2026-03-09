@@ -39,7 +39,7 @@ export async function ensureStarterWeaponTemplates(): Promise<void> {
       updatedAt: new Date().toISOString(),
     }).onConflictDoUpdate({
       target: itemTemplates.id,
-      set: { baseValue },
+      set: { baseValue, stats: def.stats, updatedAt: new Date().toISOString() },
     });
   }
 
@@ -57,7 +57,7 @@ export async function ensureStarterWeaponTemplates(): Promise<void> {
     updatedAt: new Date().toISOString(),
   }).onConflictDoUpdate({
     target: itemTemplates.id,
-    set: { baseValue: 8 },
+    set: { baseValue: 8, stats: STARTER_ARMOR.stats, updatedAt: new Date().toISOString() },
   });
 
   templatesEnsured = true;

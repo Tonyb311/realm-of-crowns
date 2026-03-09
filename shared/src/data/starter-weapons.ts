@@ -115,7 +115,7 @@ export interface StarterArmorDef {
   name: string;
   description: string;
   stats: {
-    ac: number;
+    armor: number;
     weight: number;
   };
 }
@@ -124,5 +124,5 @@ export const STARTER_ARMOR: StarterArmorDef = {
   templateId: 'starter-rustic-leather-vest',
   name: 'Rustic Leather Vest',
   description: 'A worn but sturdy leather vest. It won\'t stop a dragon\'s claw, but it might save your life against a goblin.',
-  stats: { ac: 2, weight: 5 },
+  stats: { armor: 2, weight: 5 },
 };
