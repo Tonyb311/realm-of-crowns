@@ -103,4 +103,5 @@ export const forgeborn: RaceDefinition = {
       reason: "Don't understand biological healing",
     },
   },
+  carryCapacityModifier: 0.2,
 };

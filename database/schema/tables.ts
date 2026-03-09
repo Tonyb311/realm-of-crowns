@@ -2203,6 +2203,29 @@ export const ownedAssets = pgTable("owned_assets", {
 ]);
 
 // ============================================================
+// DROPPED ITEMS
+// ============================================================
+
+export const droppedItems = pgTable("dropped_items", {
+	id: text().primaryKey().notNull(),
+	characterId: text("character_id").notNull(),
+	itemTemplateId: text("item_template_id").notNull(),
+	itemTemplateName: text("item_template_name").notNull(),
+	quantity: integer().default(1).notNull(),
+	weight: doublePrecision().default(0).notNull(),
+	droppedAt: timestamp("dropped_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	expiresAt: timestamp("expires_at", { precision: 3, mode: 'string' }).notNull(),
+}, (table) => [
+	index("dropped_items_character_id_idx").using("btree", table.characterId.asc().nullsLast().op("text_ops")),
+	index("dropped_items_expires_at_idx").using("btree", table.expiresAt.asc().nullsLast()),
+	foreignKey({
+		columns: [table.characterId],
+		foreignColumns: [characters.id],
+		name: "dropped_items_character_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+]);
+
+// ============================================================
 // SIMULATION
 // ============================================================
 

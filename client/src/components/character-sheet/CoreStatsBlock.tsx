@@ -1,7 +1,11 @@
 import {
-  Swords, Eye, Heart, Brain, Sparkles, User, Shield, Crosshair, Zap, AlertTriangle,
+  Swords, Eye, Heart, Brain, Sparkles, User, Shield, Crosshair, Zap, AlertTriangle, Weight,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { RealmPanel, RealmProgress, RealmTooltip } from '../ui/realm-index';
+import api from '../../services/api';
+import { calculateCarryCapacity } from '@shared/utils/bounded-accuracy';
+import type { WeightState } from '@shared/types/weight';
 
 const STAT_CONFIG = [
   { key: 'str', label: 'STR', fullLabel: 'Strength', icon: Swords, color: 'text-realm-danger' },
@@ -25,6 +29,17 @@ export function CoreStatsBlock({ sheet, isOwnProfile }: Props) {
   const effectiveStats = sheet.effectiveStats ?? {};
   const baseStats = sheet.baseStats ?? {};
   const bonuses = sheet.equipmentBonuses ?? {};
+
+  const strStat = effectiveStats.str ?? 10;
+  const baseCarryCap = calculateCarryCapacity(strStat);
+
+  const { data: equipStats } = useQuery<{ weightState: WeightState }>({
+    queryKey: ['equipment', 'stats'],
+    queryFn: async () => (await api.get('/equipment/stats')).data,
+    enabled: isOwnProfile,
+  });
+
+  const carryCapacity = equipStats?.weightState?.carryCapacity ?? baseCarryCap;
 
   return (
     <RealmPanel title="Attributes">
@@ -103,6 +118,18 @@ export function CoreStatsBlock({ sheet, isOwnProfile }: Props) {
           <Sparkles className="w-4 h-4 mx-auto text-realm-purple-300 mb-0.5" />
           <div className="text-lg font-display text-realm-text-primary">{sheet.spellSaveDC}</div>
           <div className="text-[10px] text-realm-text-muted uppercase">Save DC</div>
+        </div>
+
+        {/* Carry Capacity */}
+        <div className="bg-realm-bg-800/50 border border-realm-border/30 rounded-lg p-2 text-center">
+          <Weight className="w-4 h-4 mx-auto text-realm-bronze-400 mb-0.5" />
+          <div className="text-lg font-display text-realm-text-primary">{carryCapacity}</div>
+          <div className="text-[10px] text-realm-text-muted uppercase">Carry Cap</div>
+          {isOwnProfile && equipStats?.weightState && (
+            <div className="text-[10px] text-realm-text-muted mt-0.5">
+              {equipStats.weightState.currentWeight.toFixed(1)} lbs ({equipStats.weightState.encumbrance.loadPercent.toFixed(0)}%)
+            </div>
+          )}
         </div>
       </div>
 

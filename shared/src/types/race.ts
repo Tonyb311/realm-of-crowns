@@ -55,4 +55,6 @@ export interface RaceDefinition {
   startingTowns: string[];
   specialMechanics?: Record<string, any>;
   exclusiveZone?: string;
+  /** Carry capacity modifier: e.g. 0.2 = +20%, -0.15 = -15%. Omit for no modifier. */
+  carryCapacityModifier?: number;
 }

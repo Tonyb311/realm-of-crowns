@@ -37,6 +37,7 @@ import {
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { onCraftItem } from '../services/quest-triggers';
+import { calculateWeightState } from '../services/weight-calculator';
 // emitCraftingReady is in '../socket/events' — called by background autocomplete job
 
 type ProfessionTier = typeof professionTierEnum.enumValues[number];
@@ -210,7 +211,7 @@ router.get('/recipes', authGuard, characterGuard, requireTown, async (req: Authe
     const templateIdArray = [...allTemplateIds].filter(Boolean);
     const templates = templateIdArray.length > 0 ? await db.query.itemTemplates.findMany({
       where: inArray(itemTemplates.id, templateIdArray),
-      columns: { id: true, name: true, type: true, rarity: true },
+      columns: { id: true, name: true, type: true, rarity: true, weight: true },
     }) : [];
     const templateMap = new Map(templates.map(t => [t.id, t]));
 
@@ -262,6 +263,7 @@ router.get('/recipes', authGuard, characterGuard, requireTown, async (req: Authe
         result: {
           itemTemplateId: recipe.result,
           itemName: templateMap.get(recipe.result)?.name ?? 'Unknown',
+          resultWeight: templateMap.get(recipe.result)?.weight ?? 0,
         },
         craftTime: recipe.craftTime,
         xpReward: recipe.xpReward,
@@ -337,6 +339,12 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startCraf
       });
     }
 
+    // Check encumbrance — too overloaded to craft
+    const weightState = await calculateWeightState(character.id);
+    if (!weightState.encumbrance.canCraft) {
+      return res.status(400).json({ error: 'You are too overloaded to craft.' });
+    }
+
     // Check not already crafting
     const activeCraft = await db.query.craftingActions.findFirst({
       where: and(eq(craftingActions.characterId, character.id), eq(craftingActions.status, 'IN_PROGRESS')),
@@ -398,9 +406,12 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startCraf
     const subRaceData = character.subRace as { element?: string; chosenProfession?: string } | null;
     const racialSpeed = getRacialCraftSpeedBonus(character.race, subRaceData, recipe.professionType);
     const overclockMultiplier = await getForgebornOverclockMultiplier(character.id);
-    const adjustedCraftTime = Math.max(1, Math.round(
+    const baseCraftTime = Math.max(1, Math.round(
       recipe.craftTime * (1 - levelBonus - workshopSpeedBonus - racialSpeed.speedBonus) / overclockMultiplier,
     ));
+    const adjustedCraftTime = weightState.encumbrance.craftTimeMultiplier > 1
+      ? Math.max(1, Math.ceil(baseCraftTime * weightState.encumbrance.craftTimeMultiplier))
+      : baseCraftTime;
     const completesAt = new Date(now.getTime() + adjustedCraftTime * 60 * 1000);
 
     await db.transaction(async (tx) => {
@@ -431,6 +442,7 @@ router.post('/start', authGuard, characterGuard, requireTown, validate(startCraf
         } : null,
         ingredientQualityBonus: Math.round(ingredientQualityBonus * 100) / 100,
       },
+      weightState,
     });
   } catch (error) {
     if (handleDbError(error, res, 'start crafting', req)) return;
@@ -654,6 +666,8 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
     });
     const remainingInQueue = remainingActions.length;
 
+    const weightState = await calculateWeightState(character.id);
+
     return res.json({
       collected: true,
       item: {
@@ -676,6 +690,7 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
         leveledUp: xpResult?.leveledUp ?? false,
       },
       remainingInQueue,
+      weightState,
     });
   } catch (error: unknown) {
     if (handleDbError(error, res, 'collect crafting', req)) return;

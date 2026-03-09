@@ -9,7 +9,12 @@ import {
   X,
   Loader2,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../../services/api';
+import { TOAST_STYLE } from '../../constants';
+import type { WeightState } from '@shared/types/weight';
+import { ENCUMBRANCE_TIER_CONFIG } from '@shared/types/weight';
+import { getEncumbrancePenalties } from '@shared/utils/bounded-accuracy';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,6 +25,7 @@ interface StorageItem {
   itemType: string;
   itemRarity: string;
   quantity: number;
+  weight?: number;
 }
 
 interface HouseStorageResponse {
@@ -78,11 +84,19 @@ export default function HouseView({ houseId, isCurrentTown, onClose }: HouseView
     enabled: depositMode,
   });
 
+  // Fetch current weight state for withdraw preview
+  const { data: eqStatsData } = useQuery<{ weightState: WeightState }>({
+    queryKey: ['equipment', 'stats'],
+    queryFn: async () => (await api.get('/equipment/stats')).data,
+  });
+  const currentWeightState = eqStatsData?.weightState;
+
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ['houses', houseId, 'storage'] });
     queryClient.invalidateQueries({ queryKey: ['houses'] });
     queryClient.invalidateQueries({ queryKey: ['inventory'] });
     queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
+    queryClient.invalidateQueries({ queryKey: ['equipment', 'stats'] });
   };
 
   // Deposit mutation
@@ -101,8 +115,16 @@ export default function HouseView({ houseId, isCurrentTown, onClose }: HouseView
     mutationFn: async ({ itemTemplateId, quantity }: { itemTemplateId: string; quantity: number }) => {
       return (await api.post(`/houses/${houseId}/storage/withdraw`, { itemTemplateId, quantity })).data;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       invalidateAll();
+      // Check if encumbrance worsened
+      if (data?.weightState) {
+        const newTier = data.weightState.encumbrance?.tier;
+        if (newTier && newTier !== 'NORMAL' && newTier !== currentWeightState?.encumbrance?.tier) {
+          const config = ENCUMBRANCE_TIER_CONFIG[newTier];
+          toast(`Withdrew ${withdrawItem?.itemName}. You are now ${config?.label ?? newTier}.`, { style: TOAST_STYLE });
+        }
+      }
       setWithdrawItem(null);
       setWithdrawQty(1);
     },
@@ -297,6 +319,23 @@ export default function HouseView({ houseId, isCurrentTown, onClose }: HouseView
                     className="mt-1 w-full bg-realm-bg-700 border border-realm-border rounded-sm px-3 py-2 text-sm text-realm-text-primary"
                   />
                 </div>
+                {currentWeightState && (withdrawItem.weight ?? 0) > 0 && (() => {
+                  const projectedWeight = currentWeightState.currentWeight + (withdrawItem.weight ?? 0) * withdrawQty;
+                  const projectedPercent = currentWeightState.carryCapacity > 0
+                    ? (projectedWeight / currentWeightState.carryCapacity) * 100
+                    : 0;
+                  const projectedPenalties = getEncumbrancePenalties(projectedWeight, currentWeightState.carryCapacity);
+                  const projectedTier = projectedPenalties.tier;
+                  const tierConfig = ENCUMBRANCE_TIER_CONFIG[projectedTier];
+                  return (
+                    <div className="text-xs text-realm-text-muted">
+                      After withdrawing: {projectedWeight.toFixed(1)} / {currentWeightState.carryCapacity.toFixed(1)} lbs
+                      {' '}({projectedPercent.toFixed(0)}%{projectedTier !== 'NORMAL' && tierConfig
+                        ? <span className={tierConfig.color}> — {tierConfig.label}</span>
+                        : ''})
+                    </div>
+                  );
+                })()}
                 <div className="flex gap-2">
                   <button
                     onClick={() => withdrawMutation.mutate({ itemTemplateId: withdrawItem.itemTemplateId, quantity: withdrawQty })}

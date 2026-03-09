@@ -82,4 +82,5 @@ export const orc: RaceDefinition = {
   ],
   homelandRegion: 'The Ashenfang Wastes',
   startingTowns: ['Grakthar', 'Bonepile', 'Ironfist Hold', 'Thornback Camp', 'Ashen Market'],
+  carryCapacityModifier: 0.2,
 };

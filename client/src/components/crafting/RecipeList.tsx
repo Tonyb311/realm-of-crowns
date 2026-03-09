@@ -10,7 +10,11 @@ import {
   AlertCircle,
   Minus,
   Plus,
+  Weight,
 } from 'lucide-react';
+import type { WeightState } from '@shared/types/weight';
+import { ENCUMBRANCE_TIER_CONFIG } from '@shared/types/weight';
+import { getEncumbrancePenalties } from '@shared/utils/bounded-accuracy';
 
 export interface RecipeIngredient {
   itemTemplateId: string;
@@ -32,7 +36,7 @@ export interface Recipe {
   tier: string;
   levelRequired: number;
   ingredients: RecipeIngredient[];
-  result: { itemTemplateId: string; itemName: string };
+  result: { itemTemplateId: string; itemName: string; resultWeight?: number };
   craftTime: number;
   xpReward: number;
   hasRequiredProfession: boolean;
@@ -123,7 +127,12 @@ interface RecipeListProps {
   onBatchCraft: (recipeId: string, count: number) => void;
   isCraftStarting: boolean;
   craftError?: string;
+  weightState?: WeightState;
+  isCrushed?: boolean;
 }
+
+/** Ordered tier list for comparing severity. */
+const ENCUMBRANCE_TIER_ORDER = ['NORMAL', 'BURDENED', 'ENCUMBERED', 'HEAVILY_ENCUMBERED', 'SEVERELY_OVERLOADED', 'CRUSHED'];
 
 export default function RecipeList({
   recipes,
@@ -145,6 +154,8 @@ export default function RecipeList({
   onBatchCraft,
   isCraftStarting,
   craftError,
+  weightState,
+  isCrushed,
 }: RecipeListProps) {
   const [batchCounts, setBatchCounts] = useState<Record<string, number>>({});
 
@@ -229,6 +240,13 @@ export default function RecipeList({
         <div className="mb-4 p-3 bg-realm-danger/20 border border-realm-danger/50 rounded-sm text-realm-danger text-sm flex items-center gap-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {craftError}
+        </div>
+      )}
+
+      {isCrushed && (
+        <div className="mb-4 p-3 bg-red-900/30 border border-red-600/50 rounded-sm text-red-400 text-sm flex items-center gap-2">
+          <Weight className="w-4 h-4 flex-shrink-0" />
+          Too overloaded to craft. Drop items to reduce weight.
         </div>
       )}
 
@@ -338,7 +356,28 @@ export default function RecipeList({
                   <p className="text-sm text-realm-text-primary">
                     <Package className="w-3 h-3 inline mr-1" />
                     {recipe.result.itemName}{batchCount > 1 ? ` x${batchCount}` : ''}
+                    {recipe.result.resultWeight != null && recipe.result.resultWeight > 0 && (
+                      <span className="text-xs text-realm-text-muted ml-1">
+                        ({(recipe.result.resultWeight * batchCount).toFixed(1)} lbs)
+                      </span>
+                    )}
                   </p>
+                  {/* Tier-change warning */}
+                  {weightState && recipe.result.resultWeight != null && recipe.result.resultWeight > 0 && (() => {
+                    const projectedWeight = weightState.currentWeight + recipe.result.resultWeight * batchCount;
+                    const projectedTier = getEncumbrancePenalties(projectedWeight, weightState.carryCapacity).tier;
+                    const currentIdx = ENCUMBRANCE_TIER_ORDER.indexOf(weightState.encumbrance.tier);
+                    const projectedIdx = ENCUMBRANCE_TIER_ORDER.indexOf(projectedTier);
+                    if (projectedIdx > currentIdx) {
+                      const tierCfg = ENCUMBRANCE_TIER_CONFIG[projectedTier];
+                      return (
+                        <p className={`text-[10px] mt-0.5 ${tierCfg?.color ?? 'text-amber-400'}`}>
+                          Crafting this will make you {tierCfg?.label ?? projectedTier}
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
 
                 {/* Quality formula hint */}
@@ -378,21 +417,23 @@ export default function RecipeList({
                         onCraft(recipe.id);
                       }
                     }}
-                    disabled={!(batchCount > 1 ? canBatch : (canCraftSingle && meetsSpec)) || isCraftStarting}
+                    disabled={!(batchCount > 1 ? canBatch : (canCraftSingle && meetsSpec)) || isCraftStarting || !!isCrushed}
                     className="flex-1 py-2 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm
                       hover:bg-realm-gold-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {isCraftStarting
                       ? 'Starting...'
-                      : !meetsSpec
-                        ? `Requires ${specializationLabel(recipe.specialization!)}`
-                        : !recipe.hasRequiredProfession
-                          ? 'Level Too Low'
-                          : isCrafting
-                            ? 'Queue Full'
-                            : batchCount > 1
-                              ? `Craft ${batchCount}x ${recipe.result.itemName}`
-                              : 'Craft'}
+                      : isCrushed
+                        ? 'Overloaded'
+                        : !meetsSpec
+                          ? `Requires ${specializationLabel(recipe.specialization!)}`
+                          : !recipe.hasRequiredProfession
+                            ? 'Level Too Low'
+                            : isCrafting
+                              ? 'Queue Full'
+                              : batchCount > 1
+                                ? `Craft ${batchCount}x ${recipe.result.itemName}`
+                                : 'Craft'}
                   </button>
                 </div>
 

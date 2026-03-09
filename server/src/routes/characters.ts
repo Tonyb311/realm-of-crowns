@@ -19,6 +19,7 @@ import crypto from 'crypto';
 import { isRaceReleased } from '../lib/content-release';
 import { assignStartingTown } from '../lib/starting-town';
 import { transformInventory } from '../lib/inventory-transform';
+import { calculateWeightState } from '../services/weight-calculator';
 import { giveStartingInventory } from '../lib/starting-inventory';
 import { giveStarterWeapon, giveStarterArmor } from '../lib/starting-weapons';
 import { giveStarterHouse } from '../lib/starting-house';
@@ -239,6 +240,8 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
       return res.status(404).json({ error: 'Character not found' });
     }
 
+    const weightState = await calculateWeightState(character.id);
+
     const { town_currentTownId: currentTown, town_homeTownId: homeTown, playerProfessions: professions, inventories: inventory, characterEquipments: equipment, ...rest } = character;
 
     // Transform inventory into frontend-friendly shape
@@ -304,6 +307,7 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
       })),
       inventory: inventoryItems,
       equipment: equipmentSlots,
+      encumbranceTier: weightState.encumbrance.tier,
     });
   } catch (error) {
     logRouteError(req, 500, 'Get character error', error);

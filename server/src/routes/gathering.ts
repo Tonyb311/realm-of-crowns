@@ -9,6 +9,7 @@ import { getTodayTickDate, getNextTickTime } from '../lib/game-day';
 import { getGatheringSpot } from '@shared/data/gathering';
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
+import { calculateWeightState } from '../services/weight-calculator';
 
 const router = Router();
 
@@ -92,6 +93,12 @@ router.post('/gather', authGuard, characterGuard, async (req: AuthenticatedReque
       return res.status(400).json({ error: 'You must be in a town to gather.' });
     }
 
+    // Check encumbrance — too overloaded to gather
+    const weightState = await calculateWeightState(character.id);
+    if (!weightState.encumbrance.canGather) {
+      return res.status(400).json({ error: 'You are too overloaded to gather. Drop, sell, or store items first.' });
+    }
+
     // Check daily action availability
     const todayTick = getTodayTickDate();
     const existing = await db.query.dailyActions.findFirst({
@@ -150,6 +157,7 @@ router.post('/gather', authGuard, characterGuard, async (req: AuthenticatedReque
       itemName: spot.item.templateName,
       message: `You've committed to gathering ${spot.item.templateName}. Results will be available after the tick resolves.`,
       resetsAt: getNextTickTime().toISOString(),
+      weightState,
     });
   } catch (error) {
     if (handleDbError(error, res, 'gathering-gather', req)) return;

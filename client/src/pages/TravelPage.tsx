@@ -28,6 +28,8 @@ import {
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import { TOAST_STYLE } from '../constants';
+import type { WeightState } from '@shared/types/weight';
+import { ENCUMBRANCE_TIER_CONFIG } from '@shared/types/weight';
 import Tooltip from '../components/ui/Tooltip';
 import { RealmButton } from '../components/ui/realm-index';
 import { useTravelEvents } from '../hooks/useTravelEvents';
@@ -148,6 +150,27 @@ function getDifficultyStyle(difficulty: string): string {
     case 'deadly': return 'text-realm-danger bg-realm-danger/10 border-realm-danger/30';
     default: return 'text-realm-text-secondary bg-realm-text-secondary/10 border-realm-border';
   }
+}
+
+// ---------------------------------------------------------------------------
+// Encumbrance banner helpers
+// ---------------------------------------------------------------------------
+
+function getBannerStyle(tier: string): string {
+  switch (tier) {
+    case 'BURDENED': return 'bg-amber-500/10 border-amber-500/30 text-amber-400';
+    case 'ENCUMBERED': return 'bg-orange-500/10 border-orange-500/30 text-orange-400';
+    case 'HEAVILY_ENCUMBERED': return 'bg-red-500/10 border-red-500/30 text-red-400';
+    case 'SEVERELY_OVERLOADED': return 'bg-red-600/10 border-red-600/30 text-red-500';
+    case 'CRUSHED': return 'bg-red-700/10 border-red-700/30 text-red-600';
+    default: return '';
+  }
+}
+
+function formatMultiplier(multiplier: number): string {
+  if (multiplier <= 1) return '';
+  if (multiplier === 1.5) return '50%';
+  return `${multiplier}x`;
 }
 
 // ---------------------------------------------------------------------------
@@ -637,6 +660,13 @@ export default function TravelPage() {
     refetchInterval: 60000,
   });
 
+  // Equipment stats (for encumbrance banner)
+  const { data: eqStats } = useQuery<{ weightState: WeightState }>({
+    queryKey: ['equipment', 'stats'],
+    queryFn: () => api.get('/equipment/stats').then(r => r.data),
+    enabled: !!travelStatus?.traveling,
+  });
+
   // Mutations
   const cancelMutation = useMutation({
     mutationFn: () => api.post('/travel/cancel'),
@@ -762,6 +792,25 @@ export default function TravelPage() {
           <ArrowRight className="w-3 h-3" />
           <span>{destinationTownName}</span>
         </div>
+
+        {/* Encumbrance warning banner */}
+        {eqStats?.weightState?.encumbrance.tier && eqStats.weightState.encumbrance.tier !== 'NORMAL' && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`p-3 rounded-lg border flex items-center gap-3 ${getBannerStyle(eqStats.weightState.encumbrance.tier)}`}
+          >
+            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            <div>
+              <span className="font-display text-sm">
+                You are {ENCUMBRANCE_TIER_CONFIG[eqStats.weightState.encumbrance.tier]?.label}
+              </span>
+              <span className="text-xs ml-2 opacity-80">
+                — travel takes {formatMultiplier(eqStats.weightState.encumbrance.travelMultiplier)} longer
+              </span>
+            </div>
+          </motion.div>
+        )}
 
         {/* Road encounter warning */}
         {ticksRemaining <= 1 && (

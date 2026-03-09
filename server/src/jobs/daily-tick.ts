@@ -28,6 +28,7 @@ import { checkLevelUp } from '../services/progression';
 import { checkAchievements } from '../services/achievements';
 import { onResourceGather } from '../services/quest-triggers';
 import { processServiceNpcIncome } from './service-npc-income';
+import { cleanupExpiredDrops } from '../routes/inventory';
 import { processLoans } from './loan-processing';
 import { processReputationDecay } from './reputation-decay';
 import { getTodayTickDate, advanceGameDay, getGameDay } from '../lib/game-day';
@@ -1225,6 +1226,16 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   // -----------------------------------------------------------------------
   await runStep('Service Reputation Decay', 15, async () => {
     await processReputationDecay();
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 16: Expired Drop Cleanup
+  // -----------------------------------------------------------------------
+  await runStep('Expired Drop Cleanup', 16, async () => {
+    const cleaned = await cleanupExpiredDrops();
+    if (cleaned > 0) {
+      console.log(`[DailyTick]   Cleaned up ${cleaned} expired drop records`);
+    }
   });
 
   const durationMs = Date.now() - startTime;

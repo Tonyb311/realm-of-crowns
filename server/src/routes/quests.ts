@@ -10,6 +10,7 @@ import { characterGuard, requireTown } from '../middleware/character-guard';
 import { AuthenticatedRequest } from '../types/express';
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
+import { calculateWeightState } from '../services/weight-calculator';
 
 const router = Router();
 
@@ -485,6 +486,8 @@ router.post('/complete', authGuard, characterGuard, requireTown, validate(comple
         .where(eq(questProgress.id, qp.id));
     });
 
+    const weightState = await calculateWeightState(character.id);
+
     return res.json({
       completed: true,
       quest: {
@@ -496,6 +499,7 @@ router.post('/complete', authGuard, characterGuard, requireTown, validate(comple
         gold: rewards.gold,
         items: rewards.items ?? [],
       },
+      weightState,
     });
   } catch (error) {
     if (handleDbError(error, res, 'quest-complete', req)) return;

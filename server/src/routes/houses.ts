@@ -14,6 +14,7 @@ import { AuthenticatedRequest } from '../types/express';
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import crypto from 'crypto';
+import { calculateWeightState } from '../services/weight-calculator';
 import { LISTING_DURATION_DAYS } from '@shared/data/market';
 import { invalidateCache } from '../lib/redis';
 
@@ -138,7 +139,7 @@ router.get('/:houseId/storage', authGuard, characterGuard, async (req: Authentic
       with: {
         town: { columns: { id: true, name: true } },
         houseStorages: {
-          with: { itemTemplate: { columns: { id: true, name: true, type: true, rarity: true } } },
+          with: { itemTemplate: { columns: { id: true, name: true, type: true, rarity: true, weight: true } } },
         },
       },
     });
@@ -172,6 +173,7 @@ router.get('/:houseId/storage', authGuard, characterGuard, async (req: Authentic
           itemName: s.itemTemplate.name,
           itemType: s.itemTemplate.type,
           itemRarity: s.itemTemplate.rarity,
+          weight: s.itemTemplate.weight ?? 0,
           quantity: s.quantity,
         })),
       },
@@ -360,10 +362,13 @@ router.post('/:houseId/storage/withdraw', authGuard, characterGuard, validate(wi
     const [countResult] = await db.select({ value: count() }).from(houseStorage).where(eq(houseStorage.houseId, house.id));
     const updatedCount = countResult.value;
 
+    const weightState = await calculateWeightState(character.id);
+
     return res.json({
       withdrawn: { itemTemplateId, itemName: storageEntry.itemTemplate.name, quantity },
       storageUsed: updatedCount,
       storageCapacity: house.storageSlots,
+      weightState,
     });
   } catch (error) {
     if (handleDbError(error, res, 'houses-storage-withdraw', req)) return;

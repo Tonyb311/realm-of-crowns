@@ -60,3 +60,103 @@ export function getSaveModifier(
 }
 
 export const STAT_HARD_CAP = 20;
+
+// ============================================================
+// Carry Capacity & Encumbrance
+// ============================================================
+
+export type EncumbranceTier =
+  | 'NORMAL'
+  | 'BURDENED'
+  | 'ENCUMBERED'
+  | 'HEAVILY_ENCUMBERED'
+  | 'SEVERELY_OVERLOADED'
+  | 'CRUSHED';
+
+export interface EncumbrancePenalties {
+  tier: EncumbranceTier;
+  loadPercent: number;
+  travelMultiplier: number;
+  attackPenalty: number;
+  acPenalty: number;
+  saveDcPenalty: number;
+  gatheringYieldModifier: number;
+  canGather: boolean;
+  canCraft: boolean;
+  craftTimeMultiplier: number;
+  canInitiatePvp: boolean;
+  damageMultiplier: number;
+}
+
+/**
+ * Carry capacity in lbs.
+ * Base: STR × 10, modified by racial bonus and bag bonus.
+ */
+export function calculateCarryCapacity(
+  str: number,
+  racialCarryModifier: number = 0,
+  bagBonus: number = 0,
+): number {
+  const base = str * 10;
+  const withRacial = base * (1 + racialCarryModifier);
+  return withRacial + bagBonus;
+}
+
+/**
+ * Determine encumbrance tier and associated penalties from current load.
+ * Sliding scale: 0-60% Normal, 60-80% Burdened, 80-100% Encumbered,
+ * 100-130% Heavily Encumbered, 130-160% Severely Overloaded, 160%+ Crushed.
+ */
+export function getEncumbrancePenalties(currentWeight: number, carryCapacity: number): EncumbrancePenalties {
+  const loadPercent = carryCapacity > 0
+    ? (currentWeight / carryCapacity) * 100
+    : (currentWeight > 0 ? 999 : 0);
+
+  if (loadPercent <= 60) {
+    return {
+      tier: 'NORMAL', loadPercent, travelMultiplier: 1.0,
+      attackPenalty: 0, acPenalty: 0, saveDcPenalty: 0,
+      gatheringYieldModifier: 1.0, canGather: true, canCraft: true,
+      craftTimeMultiplier: 1.0, canInitiatePvp: true, damageMultiplier: 1.0,
+    };
+  }
+  if (loadPercent <= 80) {
+    return {
+      tier: 'BURDENED', loadPercent, travelMultiplier: 1.5,
+      attackPenalty: -1, acPenalty: 0, saveDcPenalty: 0,
+      gatheringYieldModifier: 0.75, canGather: true, canCraft: true,
+      craftTimeMultiplier: 1.0, canInitiatePvp: true, damageMultiplier: 1.0,
+    };
+  }
+  if (loadPercent <= 100) {
+    return {
+      tier: 'ENCUMBERED', loadPercent, travelMultiplier: 2.0,
+      attackPenalty: -2, acPenalty: -1, saveDcPenalty: 0,
+      gatheringYieldModifier: 0.5, canGather: true, canCraft: true,
+      craftTimeMultiplier: 1.0, canInitiatePvp: true, damageMultiplier: 1.0,
+    };
+  }
+  if (loadPercent <= 130) {
+    return {
+      tier: 'HEAVILY_ENCUMBERED', loadPercent, travelMultiplier: 3.0,
+      attackPenalty: -3, acPenalty: -2, saveDcPenalty: -1,
+      gatheringYieldModifier: 0.25, canGather: true, canCraft: true,
+      craftTimeMultiplier: 1.0, canInitiatePvp: false, damageMultiplier: 1.0,
+    };
+  }
+  if (loadPercent <= 160) {
+    return {
+      tier: 'SEVERELY_OVERLOADED', loadPercent, travelMultiplier: 4.0,
+      attackPenalty: -5, acPenalty: -3, saveDcPenalty: -2,
+      gatheringYieldModifier: 0, canGather: false, canCraft: true,
+      craftTimeMultiplier: 2.0, canInitiatePvp: false, damageMultiplier: 1.0,
+    };
+  }
+  // 160%+
+  return {
+    tier: 'CRUSHED', loadPercent, travelMultiplier: 6.0,
+    attackPenalty: -7, acPenalty: -5, saveDcPenalty: -3,
+    gatheringYieldModifier: 0, canGather: false, canCraft: false,
+    craftTimeMultiplier: Infinity, canInitiatePvp: false, damageMultiplier: 0.5,
+  };
+}

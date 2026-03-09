@@ -46,6 +46,7 @@ import { checkLevelUp } from '../services/progression';
 import { checkAchievements } from '../services/achievements';
 import { logPveCombat, COMBAT_LOGGING_ENABLED, buildRoundsData, buildEncounterContext } from './combat-logger';
 import { getSimulationTick, getSimulationRunId } from './simulation-context';
+import { calculateWeightState } from '../services/weight-calculator';
 import type { CombatRound } from './simulation/types';
 import type { AttackResult, Combatant } from '@shared/types/combat';
 import { processItemDrops } from './loot-items';
@@ -622,6 +623,24 @@ export async function resolveRoadEncounter(
   ];
   (playerCombatant as any).extraAttacks = getAttacksPerAction(character.class ?? '', character.level);
   (playerCombatant as any).featIds = (character.feats as string[]) ?? [];
+
+  // Encumbrance penalties (skip for simulation bots — they have no real inventory)
+  if (!getSimulationRunId()) {
+    const weightState = await calculateWeightState(character.id);
+    if (
+      weightState.encumbrance.attackPenalty !== 0 ||
+      weightState.encumbrance.acPenalty !== 0 ||
+      weightState.encumbrance.saveDcPenalty !== 0 ||
+      weightState.encumbrance.damageMultiplier !== 1
+    ) {
+      (playerCombatant as any).encumbrancePenalties = {
+        attackPenalty: weightState.encumbrance.attackPenalty,
+        acPenalty: weightState.encumbrance.acPenalty,
+        saveDcPenalty: weightState.encumbrance.saveDcPenalty,
+        damageMultiplier: weightState.encumbrance.damageMultiplier,
+      };
+    }
+  }
 
   // Apply pre-combat consumable buffs (stat potions, food buffs, scroll buffs)
   await applyConsumableBuffs(playerCombatant, character.id);

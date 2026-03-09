@@ -16,6 +16,7 @@ interface ListingItem {
   description?: string;
   stats?: Record<string, number>;
   quality?: string;
+  weight?: number;
 }
 
 interface ListingSeller {

@@ -47,6 +47,7 @@ import housesRouter from './houses';
 import relocateRouter from './relocate';
 import jobsRouter from './jobs';
 import codexRouter from './codex';
+import inventoryRouter from './inventory';
 
 const router = Router();
 
@@ -99,5 +100,6 @@ router.use('/houses', housesRouter);
 router.use('/relocate', relocateRouter);
 router.use('/jobs', jobsRouter);
 router.use('/codex', codexRouter);
+router.use('/inventory', inventoryRouter);
 
 export default router;

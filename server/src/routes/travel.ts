@@ -27,6 +27,7 @@ import { AuthenticatedRequest } from '../types/express';
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { getNextTickTime } from '../lib/game-day';
+import { calculateWeightState } from '../services/weight-calculator';
 
 const router = Router();
 
@@ -327,6 +328,7 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
       });
 
       const etaTicks = calculateEtaTicks(0, route.nodeCount, direction, gts.speedModifier);
+      // TODO: Apply worst-member encumbrance multiplier for group travel
 
       return res.status(201).json({
         type: 'party',
@@ -355,6 +357,8 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
     }
 
     // ---- SOLO TRAVEL (no party) ----
+    const weightState = await calculateWeightState(character.id);
+
     const travelState = await db.transaction(async (tx) => {
       const [state] = await tx.insert(characterTravelStates).values({
         id: crypto.randomUUID(),
@@ -375,7 +379,12 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
     });
 
     const firstNode = route.travelNodes[0] || null;
-    const etaTicks = calculateEtaTicks(0, route.nodeCount, direction, travelState.speedModifier);
+    const baseEtaTicks = calculateEtaTicks(0, route.nodeCount, direction, travelState.speedModifier);
+    const etaTicks = Math.ceil(baseEtaTicks * weightState.encumbrance.travelMultiplier);
+
+    const encumbranceWarning = weightState.encumbrance.tier !== 'NORMAL'
+      ? `You are ${weightState.encumbrance.tier.toLowerCase().replace('_', ' ')}. Travel time increased by ${Math.round((weightState.encumbrance.travelMultiplier - 1) * 100)}%.`
+      : undefined;
 
     return res.status(201).json({
       type: 'solo',
@@ -403,6 +412,8 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
       } : null,
       etaTicks,
       nextTickAt: getNextTickTime(),
+      weightState,
+      ...(encumbranceWarning ? { encumbranceWarning } : {}),
     });
   } catch (error) {
     if (handleDbError(error, res, 'travel-start', req)) return;

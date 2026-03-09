@@ -15,6 +15,7 @@ import { onEquipItem } from '../services/quest-triggers';
 import crypto from 'crypto';
 import { getEnchantmentEffect } from '@shared/data/enchantment-effects';
 import { checkEquipmentProficiency } from '@shared/utils/proficiency';
+import { calculateWeightState } from '../services/weight-calculator';
 
 type EquipSlot = typeof equipSlotEnum.enumValues[number];
 
@@ -168,6 +169,8 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
       proficiencyWarnings = profCheck.warnings;
     }
 
+    const weightState = await calculateWeightState(character.id);
+
     return res.json({
       equipped: {
         slot,
@@ -186,6 +189,7 @@ router.post('/equip', authGuard, characterGuard, validate(equipSchema), async (r
         } : null,
       },
       proficiencyWarnings,
+      weightState,
     });
   } catch (error) {
     if (handleDbError(error, res, 'equip-item', req)) return;
@@ -234,6 +238,8 @@ router.post('/unequip', authGuard, characterGuard, validate(unequipSchema), asyn
       }
     });
 
+    const weightState = await calculateWeightState(character.id);
+
     return res.json({
       unequipped: {
         slot,
@@ -241,6 +247,7 @@ router.post('/unequip', authGuard, characterGuard, validate(unequipSchema), asyn
         name: equip.item.itemTemplate.name,
         returnedToInventory: true,
       },
+      weightState,
     });
   } catch (error) {
     if (handleDbError(error, res, 'unequip-item', req)) return;
@@ -284,7 +291,9 @@ router.get('/equipped', authGuard, characterGuard, async (req: AuthenticatedRequ
       };
     });
 
-    return res.json({ equipped: itemsList });
+    const weightState = await calculateWeightState(character.id);
+
+    return res.json({ equipped: itemsList, weightState });
   } catch (error) {
     if (handleDbError(error, res, 'equipment-list', req)) return;
     logRouteError(req, 500, 'Get equipped items error', error);
@@ -301,12 +310,15 @@ router.get('/stats', authGuard, characterGuard, async (req: AuthenticatedRequest
 
     const totals = await calculateEquipmentTotals(character.id);
 
+    const weightState = await calculateWeightState(character.id);
+
     return res.json({
       totalAC: totals.totalAC,
       totalDamage: totals.totalDamage,
       totalStatBonuses: totals.totalStatBonuses,
       totalResistances: totals.totalResistances,
       equippedCount: totals.items.length,
+      weightState,
     });
   } catch (error) {
     if (handleDbError(error, res, 'equipment-stats', req)) return;

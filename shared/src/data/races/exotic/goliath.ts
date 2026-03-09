@@ -86,4 +86,5 @@ export const goliath: RaceDefinition = {
     doubleCarryCapacity: true,
     coldImmune: true,
   },
+  carryCapacityModifier: 0.3,
 };

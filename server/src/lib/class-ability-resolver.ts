@@ -1825,7 +1825,12 @@ function calculateSaveDC(actor: Combatant, saveStatOverride?: string): number {
     ?? (actor.characterClass ? CLASS_PRIMARY_STAT[actor.characterClass.toLowerCase()] : undefined)
     ?? 'int';
   const statMod = getModifier(actor.stats[castingStat as keyof typeof actor.stats] ?? 10);
-  return 8 + actor.proficiencyBonus + statMod;
+  let dc = 8 + actor.proficiencyBonus + statMod;
+  // Encumbrance save DC penalty
+  if (actor.encumbrancePenalties && actor.encumbrancePenalties.saveDcPenalty !== 0) {
+    dc += actor.encumbrancePenalties.saveDcPenalty;
+  }
+  return dc;
 }
 
 // ---- Ability Attack/Save Resolution Utilities ----

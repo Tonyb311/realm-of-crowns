@@ -232,6 +232,11 @@ export function calculateAC(combatant: Combatant, racialTracker?: RacialCombatTr
   // Feat AC bonus
   ac += getFeatBonus(combatant, 'acBonus');
 
+  // Encumbrance AC penalty (players only)
+  if (combatant.encumbrancePenalties && combatant.encumbrancePenalties.acPenalty !== 0) {
+    ac += combatant.encumbrancePenalties.acPenalty;
+  }
+
   return ac;
 }
 
@@ -623,6 +628,12 @@ export function resolveAttack(
   if (buffAtkMod !== 0) {
     atkModBreakdown.push({ source: 'classBuffs', value: buffAtkMod });
     atkMod += buffAtkMod;
+  }
+
+  // Encumbrance attack penalty (players only)
+  if (actor.encumbrancePenalties && actor.encumbrancePenalties.attackPenalty !== 0) {
+    atkModBreakdown.push({ source: 'encumbrance', value: actor.encumbrancePenalties.attackPenalty });
+    atkMod += actor.encumbrancePenalties.attackPenalty;
   }
 
   // Proficiency penalties
@@ -1141,6 +1152,13 @@ export function resolveAttack(
       }
     }
 
+    // Encumbrance damage reduction (CRUSHED tier only)
+    if (actor.encumbrancePenalties && actor.encumbrancePenalties.damageMultiplier < 1) {
+      const before = totalDamage;
+      totalDamage = Math.max(1, Math.floor(totalDamage * actor.encumbrancePenalties.damageMultiplier));
+      dmgModBreakdown.push({ source: 'encumbrance', value: totalDamage - before });
+    }
+
     // Phase 3: Companion interception check (Alpha Predator)
     if (target.activeBuffs && totalDamage > 0) {
       const companionBuff = target.activeBuffs.find(b => b.companionHp != null && b.companionHp > 0);
@@ -1426,7 +1444,11 @@ export function resolveCast(
 
   // Spell save DC: 8 + proficiencyBonus + casting stat mod
   const castMod = getModifier(actor.stats[spell.castingStat]);
-  const saveDC = 8 + actor.proficiencyBonus + castMod;
+  let saveDC = 8 + actor.proficiencyBonus + castMod;
+  // Encumbrance save DC penalty
+  if (actor.encumbrancePenalties && actor.encumbrancePenalties.saveDcPenalty !== 0) {
+    saveDC += actor.encumbrancePenalties.saveDcPenalty;
+  }
 
   let saveRoll: number | undefined;
   let saveTotal: number | undefined;
@@ -1768,7 +1790,11 @@ export function resolvePsionAbility(
   };
 
   const intMod = getModifier(updatedActor.stats.int);
-  const saveDC = 8 + updatedActor.proficiencyBonus + intMod;
+  let saveDC = 8 + updatedActor.proficiencyBonus + intMod;
+  // Encumbrance save DC penalty
+  if (updatedActor.encumbrancePenalties && updatedActor.encumbrancePenalties.saveDcPenalty !== 0) {
+    saveDC += updatedActor.encumbrancePenalties.saveDcPenalty;
+  }
 
   const effects = abilityDef.effects as Record<string, unknown>;
 

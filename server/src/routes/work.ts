@@ -43,6 +43,7 @@ import {
 } from '../services/racial-special-profession-mechanics';
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
+import { calculateWeightState } from '../services/weight-calculator';
 
 const router = Router();
 
@@ -598,6 +599,8 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
       }
     }
 
+    const weightState = await calculateWeightState(character.id);
+
     return res.json({
       collected: {
         resource: activeGathering.resource.name,
@@ -616,6 +619,7 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
       depletion: townResource
         ? { abundance: townResource.abundance, depleted: townResource.abundance < MIN_ABUNDANCE_TO_GATHER }
         : null,
+      weightState,
     });
   } catch (error) {
     if (handleDbError(error, res, 'collect-work', req)) return;

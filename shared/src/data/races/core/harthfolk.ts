@@ -81,4 +81,5 @@ export const harthfolk: RaceDefinition = {
   ],
   homelandRegion: 'The Crossroads',
   startingTowns: ['Hearthshire', 'Greenhollow', "Peddler's Rest", 'Bramblewood', 'Riverside'],
+  carryCapacityModifier: -0.15,
 };

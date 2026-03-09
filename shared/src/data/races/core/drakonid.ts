@@ -132,4 +132,5 @@ export const drakonid: RaceDefinition = {
   homelandRegion: 'The Frozen Reaches',
   startingTowns: ['Drakenspire', 'Frostfang', 'Emberpeak', 'Scalehaven', 'Wyrmrest'],
   exclusiveZone: 'Dragon Lairs',
+  carryCapacityModifier: 0.15,
 };

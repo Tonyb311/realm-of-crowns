@@ -494,6 +494,13 @@ export interface Combatant {
   cooldownReductionPercent?: number;
   /** Cooldown reduction from passives (flat rounds subtracted) */
   cooldownReductionFlat?: number;
+  /** Encumbrance penalties applied to this combatant (players only, never monsters/bots) */
+  encumbrancePenalties?: {
+    attackPenalty: number;
+    acPenalty: number;
+    saveDcPenalty: number;
+    damageMultiplier: number;
+  };
   /** Phase 5A: Temporary attack modifiers set by class ability handlers, consumed by resolveAttack */
   classAbilityAttackMods?: ClassAbilityAttackMods;
   // Phase 5B: Passive fields

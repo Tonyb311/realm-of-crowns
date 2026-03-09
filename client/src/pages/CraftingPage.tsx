@@ -21,6 +21,7 @@ import CraftingQueue, { type QueueItem } from '../components/crafting/CraftingQu
 import WorkTab, { type WorkStatus, type TownResource, type Profession } from '../components/crafting/WorkTab';
 import { getRarityStyle } from '../constants';
 import { RealmButton } from '../components/ui/realm-index';
+import type { WeightState } from '@shared/types/weight';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -116,6 +117,13 @@ export default function CraftingPage() {
   });
   const actionUsed = actionStatus?.actionUsed ?? false;
 
+  // Equipment stats (for encumbrance / weight preview)
+  const { data: eqStats } = useQuery<{ weightState: WeightState }>({
+    queryKey: ['equipment', 'stats'],
+    queryFn: async () => (await api.get('/equipment/stats')).data,
+  });
+  const isCrushed = eqStats?.weightState?.encumbrance.canCraft === false;
+
   // Fetch professions
   const { data: professions } = useQuery<Profession[]>({
     queryKey: ['professions'],
@@ -208,6 +216,7 @@ export default function CraftingPage() {
       queryClient.invalidateQueries({ queryKey: ['crafting', 'queue'] });
       queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
       queryClient.invalidateQueries({ queryKey: ['recipes'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment', 'stats'] });
       setActiveTab('progress');
     },
   });
@@ -226,6 +235,7 @@ export default function CraftingPage() {
       queryClient.invalidateQueries({ queryKey: ['crafting', 'queue'] });
       queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
       queryClient.invalidateQueries({ queryKey: ['recipes'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment', 'stats'] });
       setActiveTab('progress');
     },
   });
@@ -248,6 +258,7 @@ export default function CraftingPage() {
       queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
       queryClient.invalidateQueries({ queryKey: ['professions'] });
       queryClient.invalidateQueries({ queryKey: ['recipes'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment', 'stats'] });
     },
   });
 
@@ -508,6 +519,8 @@ export default function CraftingPage() {
                 onBatchCraft={(recipeId, count) => batchCraftMutation.mutate({ recipeId, count })}
                 isCraftStarting={startCraftMutation.isPending || batchCraftMutation.isPending}
                 craftError={startCraftMutation.error?.message || batchCraftMutation.error?.message}
+                weightState={eqStats?.weightState}
+                isCrushed={isCrushed}
               />
             )}
 

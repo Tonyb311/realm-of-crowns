@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -15,13 +15,21 @@ import {
   Footprints,
   Gem,
   CircleDot,
+  AlertTriangle,
+  Trash2,
+  RotateCcw,
+  Minus,
+  Plus,
+  Sparkles,
 } from 'lucide-react';
 import api from '../services/api';
 import { getRarityStyle, TOAST_STYLE } from '../constants';
 import toast from 'react-hot-toast';
 import { RealmButton } from '../components/ui/realm-index';
 import { EnchantModal } from '../components/enchanting/EnchantModal';
-import { Sparkles } from 'lucide-react';
+import Tooltip from '../components/ui/Tooltip';
+import type { WeightState } from '@shared/types/weight';
+import { ENCUMBRANCE_TIER_CONFIG } from '@shared/types/weight';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,6 +42,7 @@ interface ItemTemplate {
   description: string;
   stats: Record<string, unknown> | null;
   durability: number;
+  weight: number;
 }
 
 interface InventoryItem {
@@ -45,6 +54,7 @@ interface InventoryItem {
   quality: string;
   craftedById: string | null;
   craftedByName?: string;
+  weight?: number;
   enchantments: Array<{ scrollName: string; bonuses: Record<string, number> }>;
 }
 
@@ -69,6 +79,7 @@ interface EquipmentStats {
   totalStatBonuses: Record<string, number>;
   totalResistances: Record<string, number>;
   equippedCount: number;
+  weightState?: WeightState;
 }
 
 interface CharacterData {
@@ -76,6 +87,16 @@ interface CharacterData {
   name: string;
   gold: number;
   inventory: InventoryItem[];
+}
+
+interface DroppedItem {
+  id: string;
+  itemTemplateId: string;
+  itemTemplateName: string;
+  quantity: number;
+  weight: number;
+  droppedAt: string;
+  expiresAt: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -144,7 +165,7 @@ function detectSlot(item: InventoryItem): string | null {
     if (name.includes('boots') || name.includes('shoes')) return 'FEET';
     if (name.includes('gloves') || name.includes('gauntlet')) return 'HANDS';
     if (name.includes('cape') || name.includes('cloak')) return 'BACK';
-    return 'CHEST'; // default armor → body
+    return 'CHEST'; // default armor -> body
   }
   if (type === 'ACCESSORY') {
     if (equipSlot) {
@@ -155,13 +176,132 @@ function detectSlot(item: InventoryItem): string | null {
     }
     const name = item.template.name.toLowerCase();
     if (name.includes('necklace') || name.includes('amulet') || name.includes('pendant') || name.includes('choker')) return 'NECK';
-    return 'RING_1'; // default accessory → ring
+    return 'RING_1'; // default accessory -> ring
   }
   return null;
 }
 
 function isEquippable(item: InventoryItem): boolean {
   return detectSlot(item) !== null;
+}
+
+// ---------------------------------------------------------------------------
+// Weight bar color helper
+// ---------------------------------------------------------------------------
+function getWeightBarColor(loadPercent: number): string {
+  if (loadPercent <= 60) return 'bg-emerald-500';
+  if (loadPercent <= 80) return 'bg-amber-500';
+  if (loadPercent <= 100) return 'bg-orange-500';
+  return 'bg-red-500';
+}
+
+// ---------------------------------------------------------------------------
+// Format countdown MM:SS
+// ---------------------------------------------------------------------------
+function formatCountdown(msRemaining: number): string {
+  if (msRemaining <= 0) return '0:00';
+  const totalSec = Math.ceil(msRemaining / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${min}:${sec.toString().padStart(2, '0')}`;
+}
+
+// ---------------------------------------------------------------------------
+// WeightBar component
+// ---------------------------------------------------------------------------
+function WeightBar({ weightState }: { weightState: WeightState }) {
+  const { currentWeight, carryCapacity, encumbrance } = weightState;
+  const { tier, loadPercent } = encumbrance;
+  const tierConfig = ENCUMBRANCE_TIER_CONFIG[tier] ?? ENCUMBRANCE_TIER_CONFIG.NORMAL;
+  const barPct = Math.min(loadPercent, 120); // cap visual at 120%
+  const barColor = getWeightBarColor(loadPercent);
+  const isNormal = tier === 'NORMAL';
+
+  // Build penalty descriptions for tooltip
+  const penalties: string[] = [];
+  if (encumbrance.travelMultiplier > 1) {
+    penalties.push(`Travel: +${Math.round((encumbrance.travelMultiplier - 1) * 100)}% slower`);
+  }
+  if (encumbrance.attackPenalty !== 0) {
+    penalties.push(`Attack: ${encumbrance.attackPenalty}`);
+  }
+  if (encumbrance.acPenalty !== 0) {
+    penalties.push(`AC: ${encumbrance.acPenalty}`);
+  }
+  if (encumbrance.saveDcPenalty !== 0) {
+    penalties.push(`Save DC: ${encumbrance.saveDcPenalty}`);
+  }
+  if (encumbrance.gatheringYieldModifier !== 0 && encumbrance.gatheringYieldModifier !== 1) {
+    const pct = Math.round((1 - encumbrance.gatheringYieldModifier) * 100);
+    if (pct > 0) penalties.push(`Gathering: -${pct}%`);
+  }
+  if (!encumbrance.canGather) {
+    penalties.push('Cannot gather');
+  }
+  if (!encumbrance.canCraft) {
+    penalties.push('Cannot craft');
+  }
+  if (encumbrance.craftTimeMultiplier > 1) {
+    penalties.push(`Craft time: +${Math.round((encumbrance.craftTimeMultiplier - 1) * 100)}% slower`);
+  }
+  if (!encumbrance.canInitiatePvp) {
+    penalties.push('Cannot initiate PvP');
+  }
+  if (encumbrance.damageMultiplier < 1) {
+    penalties.push(`Damage: -${Math.round((1 - encumbrance.damageMultiplier) * 100)}%`);
+  }
+
+  const tierLabel = (
+    <span className={`text-xs font-semibold ${tierConfig.color} flex items-center gap-1`}>
+      {!isNormal && <AlertTriangle className="w-3 h-3" />}
+      {tierConfig.label} ({Math.round(loadPercent)}%)
+    </span>
+  );
+
+  return (
+    <div className="mb-4 bg-realm-bg-800/50 border border-realm-border rounded-lg px-4 py-3">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs text-realm-text-secondary">
+          Weight: {currentWeight.toFixed(1)} / {carryCapacity.toFixed(1)} lbs
+        </span>
+        {!isNormal && penalties.length > 0 ? (
+          <Tooltip
+            content={
+              <span className="block text-left whitespace-pre-line">
+                {penalties.join('\n')}
+              </span>
+            }
+            position="bottom"
+          >
+            {tierLabel}
+          </Tooltip>
+        ) : (
+          tierLabel
+        )}
+      </div>
+      <div className="w-full h-2 bg-realm-bg-900 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${barColor}`}
+          style={{ width: `${Math.min(barPct / 1.2 * 100 / 100, 100)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Countdown hook for recently dropped items
+// ---------------------------------------------------------------------------
+function useCountdown(drops: DroppedItem[]) {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (drops.length === 0) return;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [drops.length]);
+
+  return now;
 }
 
 // ---------------------------------------------------------------------------
@@ -175,6 +315,7 @@ export default function InventoryPage() {
   const [enchantTarget, setEnchantTarget] = useState<InventoryItem | null>(null);
   const [selectedEquipped, setSelectedEquipped] = useState<EquippedItemData | null>(null);
   const [slotChoice, setSlotChoice] = useState<{ item: InventoryItem; slots: { key: string; label: string; occupied: EquippedItemData | null }[] } | null>(null);
+  const [confirmDrop, setConfirmDrop] = useState<{ item: InventoryItem; quantity: number } | null>(null);
 
   // Fetch character data (inventory + gold)
   const {
@@ -209,9 +350,22 @@ export default function InventoryPage() {
     enabled: !!character,
   });
 
+  // Fetch recently dropped items
+  const { data: dropsData } = useQuery<{ drops: DroppedItem[] }>({
+    queryKey: ['inventory', 'drops'],
+    queryFn: async () => {
+      const res = await api.get('/inventory/drops');
+      return res.data;
+    },
+    enabled: !!character,
+    refetchInterval: 30000, // refresh every 30s to catch expirations
+  });
+
+  const recentDrops = dropsData?.drops ?? [];
+
   const equippedItems = equippedData?.equipped ?? [];
 
-  // Equip mutation — uses real equipment API
+  // Equip mutation -- uses real equipment API
   const equipMutation = useMutation({
     mutationFn: async ({ itemId, slot }: { itemId: string; slot: string }) => {
       await api.post('/equipment/equip', { itemId, slot });
@@ -229,7 +383,7 @@ export default function InventoryPage() {
     },
   });
 
-  // Unequip mutation — uses real equipment API
+  // Unequip mutation -- uses real equipment API
   const unequipMutation = useMutation({
     mutationFn: async (slot: string) => {
       await api.post('/equipment/unequip', { slot });
@@ -242,6 +396,46 @@ export default function InventoryPage() {
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.error ?? 'Failed to unequip item', { style: TOAST_STYLE });
+    },
+  });
+
+  // Drop mutation
+  const dropMutation = useMutation({
+    mutationFn: async ({ inventoryItemId, quantity }: { inventoryItemId: string; quantity: number }) => {
+      const res = await api.post('/inventory/drop', { inventoryItemId, quantity });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment', 'equipped'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory', 'drops'] });
+      const name = data?.dropped?.itemTemplateName ?? 'Item';
+      toast.success(`Dropped ${name}. Recover within 5 min.`, { style: TOAST_STYLE });
+      setConfirmDrop(null);
+      setSelectedItem(null);
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error ?? 'Failed to drop item', { style: TOAST_STYLE });
+    },
+  });
+
+  // Recover mutation
+  const recoverMutation = useMutation({
+    mutationFn: async (dropId: string) => {
+      const res = await api.post('/inventory/recover', { dropId });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment', 'equipped'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory', 'drops'] });
+      const name = data?.recovered?.itemTemplateName ?? 'Item';
+      toast.success(`Recovered ${name}.`, { style: TOAST_STYLE });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error ?? 'Failed to recover item', { style: TOAST_STYLE });
     },
   });
 
@@ -302,6 +496,18 @@ export default function InventoryPage() {
     }
     setSlotChoice(null);
   }
+
+  const handleDropClick = useCallback((item: InventoryItem) => {
+    setConfirmDrop({ item, quantity: item.quantity > 1 ? 1 : 1 });
+  }, []);
+
+  const handleDropConfirm = useCallback(() => {
+    if (!confirmDrop) return;
+    dropMutation.mutate({
+      inventoryItemId: confirmDrop.item.id,
+      quantity: confirmDrop.quantity,
+    });
+  }, [confirmDrop, dropMutation]);
 
   // -------------------------------------------------------------------------
   // Loading / Error
@@ -369,6 +575,12 @@ export default function InventoryPage() {
         {/* Equipment Slots (all 12) */}
         <section className="mb-8">
           <h2 className="text-xl font-display text-realm-text-primary mb-4">Equipment</h2>
+
+          {/* Weight Bar */}
+          {eqStats?.weightState && (
+            <WeightBar weightState={eqStats.weightState} />
+          )}
+
           <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
             {PRIMARY_SLOTS.map((slot) => {
               const equipped = getEquippedInSlot(slot.key);
@@ -427,9 +639,9 @@ export default function InventoryPage() {
             })}
           </div>
 
-          {/* Combat Stats Summary */}
-          {eqStats && (eqStats.totalDamage > 0 || eqStats.totalAC > 0) && (
-            <div className="flex gap-4 mt-3">
+          {/* Combat Stats Summary + Equipment Weight */}
+          {eqStats && (eqStats.totalDamage > 0 || eqStats.totalAC > 0 || eqStats.weightState) && (
+            <div className="flex flex-wrap gap-4 mt-3">
               {eqStats.totalDamage > 0 && (
                 <span className="text-xs text-realm-text-secondary">
                   <Swords className="w-3 h-3 inline mr-1 text-realm-danger" />
@@ -440,6 +652,11 @@ export default function InventoryPage() {
                 <span className="text-xs text-realm-text-secondary">
                   <Shield className="w-3 h-3 inline mr-1 text-realm-teal-300" />
                   Defense: <span className="text-realm-text-primary font-semibold">{eqStats.totalAC}</span>
+                </span>
+              )}
+              {eqStats.weightState && eqStats.weightState.equipmentWeight > 0 && (
+                <span className="text-xs text-realm-text-muted">
+                  Equipment: {eqStats.weightState.equipmentWeight.toFixed(1)} lbs
                 </span>
               )}
             </div>
@@ -469,6 +686,8 @@ export default function InventoryPage() {
                   const TypeIcon = getTypeIcon(item.template.type);
                   const isSelected = selectedItem?.id === item.id;
                   const equippedSlot = isItemEquippedSlot(item);
+                  const itemWeight = item.template?.weight ?? item.weight ?? 0;
+                  const totalWeight = itemWeight * item.quantity;
 
                   return (
                     <button
@@ -493,6 +712,14 @@ export default function InventoryPage() {
                           <p className="text-[10px] text-realm-text-muted capitalize">
                             {item.template.type.toLowerCase()}
                           </p>
+                          {/* Per-item weight display */}
+                          {itemWeight > 0 && (
+                            <p className="text-xs text-realm-text-muted">
+                              {item.quantity > 1
+                                ? `${itemWeight.toFixed(1)} lbs x ${item.quantity} = ${totalWeight.toFixed(1)} lbs`
+                                : `${itemWeight.toFixed(1)} lbs`}
+                            </p>
+                          )}
                         </div>
                       </div>
                       {item.quantity > 1 && (
@@ -504,6 +731,15 @@ export default function InventoryPage() {
                   );
                 })}
               </div>
+            )}
+
+            {/* Recently Dropped Section */}
+            {recentDrops.length > 0 && (
+              <RecentlyDroppedSection
+                drops={recentDrops}
+                onRecover={(dropId) => recoverMutation.mutate(dropId)}
+                isRecovering={recoverMutation.isPending}
+              />
             )}
           </section>
 
@@ -524,6 +760,7 @@ export default function InventoryPage() {
                 onEquip={() => handleEquipClick(selectedItem)}
                 onUnequip={(slot) => unequipMutation.mutate(slot)}
                 onEnchant={() => setEnchantTarget(selectedItem)}
+                onDrop={() => handleDropClick(selectedItem)}
                 isEquipping={equipMutation.isPending}
                 isUnequipping={unequipMutation.isPending}
               />
@@ -591,6 +828,70 @@ export default function InventoryPage() {
         </div>
       )}
 
+      {/* Drop Confirmation Modal */}
+      {confirmDrop && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-6 max-w-sm mx-4">
+            <h3 className="text-lg font-display text-realm-gold-400 mb-3">Drop Item?</h3>
+            <p className="text-sm text-realm-text-secondary mb-4">
+              Drop <span className="text-realm-text-primary font-semibold">{confirmDrop.item.template.name}</span>?
+              You can recover it within 5 minutes.
+            </p>
+
+            {/* Quantity picker for stacked items */}
+            {confirmDrop.item.quantity > 1 && (
+              <div className="mb-4">
+                <span className="text-xs text-realm-text-muted uppercase tracking-wider">Quantity</span>
+                <div className="flex items-center gap-2 mt-1">
+                  <button
+                    onClick={() => setConfirmDrop(prev => prev ? { ...prev, quantity: Math.max(1, prev.quantity - 1) } : null)}
+                    className="w-8 h-8 flex items-center justify-center rounded bg-realm-bg-800 border border-realm-border text-realm-text-secondary hover:text-realm-text-primary transition-colors"
+                    disabled={confirmDrop.quantity <= 1}
+                  >
+                    <Minus className="w-3 h-3" />
+                  </button>
+                  <input
+                    type="number"
+                    min={1}
+                    max={confirmDrop.item.quantity}
+                    value={confirmDrop.quantity}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val) && val >= 1 && val <= confirmDrop.item.quantity) {
+                        setConfirmDrop(prev => prev ? { ...prev, quantity: val } : null);
+                      }
+                    }}
+                    className="w-16 text-center bg-realm-bg-800 border border-realm-border rounded px-2 py-1 text-sm text-realm-text-primary"
+                  />
+                  <button
+                    onClick={() => setConfirmDrop(prev => prev ? { ...prev, quantity: Math.min(prev.item.quantity, prev.quantity + 1) } : null)}
+                    className="w-8 h-8 flex items-center justify-center rounded bg-realm-bg-800 border border-realm-border text-realm-text-secondary hover:text-realm-text-primary transition-colors"
+                    disabled={confirmDrop.quantity >= confirmDrop.item.quantity}
+                  >
+                    <Plus className="w-3 h-3" />
+                  </button>
+                  <span className="text-xs text-realm-text-muted">/ {confirmDrop.item.quantity}</span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <RealmButton
+                variant="danger"
+                className="flex-1"
+                onClick={handleDropConfirm}
+                disabled={dropMutation.isPending}
+              >
+                {dropMutation.isPending ? 'Dropping...' : 'Drop'}
+              </RealmButton>
+              <RealmButton variant="ghost" className="flex-1" onClick={() => setConfirmDrop(null)}>
+                Cancel
+              </RealmButton>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Enchant Modal */}
       {enchantTarget && character && (
         <EnchantModal
@@ -605,6 +906,60 @@ export default function InventoryPage() {
 }
 
 // ---------------------------------------------------------------------------
+// Recently Dropped Section
+// ---------------------------------------------------------------------------
+interface RecentlyDroppedSectionProps {
+  drops: DroppedItem[];
+  onRecover: (dropId: string) => void;
+  isRecovering: boolean;
+}
+
+function RecentlyDroppedSection({ drops, onRecover, isRecovering }: RecentlyDroppedSectionProps) {
+  const now = useCountdown(drops);
+
+  // Filter out expired drops client-side
+  const activeDrops = drops.filter(d => new Date(d.expiresAt).getTime() > now);
+
+  if (activeDrops.length === 0) return null;
+
+  return (
+    <div className="mt-6">
+      <h3 className="text-sm font-display text-realm-text-secondary mb-3">Recently Dropped</h3>
+      <div className="bg-realm-bg-700 border border-realm-border rounded-lg divide-y divide-realm-border">
+        {activeDrops.map((drop) => {
+          const msRemaining = new Date(drop.expiresAt).getTime() - now;
+          return (
+            <div key={drop.id} className="flex items-center justify-between px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-sm text-realm-text-primary truncate">{drop.itemTemplateName}</p>
+                <div className="flex items-center gap-2">
+                  {drop.quantity > 1 && (
+                    <span className="text-xs text-realm-text-muted">x{drop.quantity}</span>
+                  )}
+                  <span className="text-xs text-realm-text-muted">
+                    Expires in {formatCountdown(msRemaining)}
+                  </span>
+                </div>
+              </div>
+              <RealmButton
+                variant="ghost"
+                size="sm"
+                onClick={() => onRecover(drop.id)}
+                disabled={isRecovering}
+                className="flex items-center gap-1 flex-shrink-0"
+              >
+                <RotateCcw className="w-3 h-3" />
+                Recover
+              </RealmButton>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Item Detail Panel
 // ---------------------------------------------------------------------------
 interface ItemDetailPanelProps {
@@ -614,6 +969,7 @@ interface ItemDetailPanelProps {
   onEquip: () => void;
   onUnequip: (slot: string) => void;
   onEnchant: () => void;
+  onDrop: () => void;
   isEquipping: boolean;
   isUnequipping: boolean;
 }
@@ -625,6 +981,7 @@ function ItemDetailPanel({
   onEquip,
   onUnequip,
   onEnchant,
+  onDrop,
   isEquipping,
   isUnequipping,
 }: ItemDetailPanelProps) {
@@ -633,6 +990,8 @@ function ItemDetailPanel({
 
   const durPct = item.template.durability > 0 ? item.currentDurability / item.template.durability : 1;
   const durColor = durPct > 0.5 ? 'bg-realm-success' : durPct > 0.25 ? 'bg-realm-gold-400' : 'bg-realm-danger';
+
+  const itemWeight = item.template?.weight ?? item.weight ?? 0;
 
   // Filter out non-display stats from the stats block
   const displayStats = item.template.stats
@@ -690,6 +1049,14 @@ function ItemDetailPanel({
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Weight */}
+      {itemWeight > 0 && (
+        <div className="mb-4">
+          <span className="text-xs text-realm-text-muted uppercase tracking-wider">Weight</span>
+          <p className="text-realm-text-primary text-sm">{itemWeight.toFixed(1)} lbs</p>
         </div>
       )}
 
@@ -778,6 +1145,17 @@ function ItemDetailPanel({
             Enchant
           </RealmButton>
         )}
+        {/* Drop button -- only for non-equipped items */}
+        {!equippedSlot && (
+          <RealmButton
+            variant="ghost"
+            className="w-full flex items-center justify-center gap-1.5 text-red-400 hover:text-red-300"
+            onClick={onDrop}
+          >
+            <Trash2 className="w-4 h-4" />
+            Drop
+          </RealmButton>
+        )}
       </div>
     </div>
   );
@@ -803,10 +1181,16 @@ function EquippedDetailPanel({ equipped, onClose, onUnequip, isUnequipping }: Eq
     : 1;
   const durColor = durPct > 0.5 ? 'bg-realm-success' : durPct > 0.25 ? 'bg-realm-gold-400' : 'bg-realm-danger';
 
+  // Get weight from stats or baseStats if available
+  const equippedWeight = (
+    (typeof equipped.item.stats?.weight === 'number' ? equipped.item.stats.weight : 0) ||
+    (typeof equipped.item.baseStats?.weight === 'number' ? equipped.item.baseStats.weight : 0)
+  );
+
   // Filter out non-display stats
   const displayStats = equipped.item.stats
     ? Object.entries(equipped.item.stats).filter(
-        ([key]) => !['equipSlot', 'professionType', 'toolType', 'tier'].includes(key),
+        ([key]) => !['equipSlot', 'professionType', 'toolType', 'tier', 'weight'].includes(key),
       )
     : [];
 
@@ -857,6 +1241,14 @@ function EquippedDetailPanel({ equipped, onClose, onUnequip, isUnequipping }: Eq
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Weight */}
+      {equippedWeight > 0 && (
+        <div className="mb-4">
+          <span className="text-xs text-realm-text-muted uppercase tracking-wider">Weight</span>
+          <p className="text-realm-text-primary text-sm">{equippedWeight.toFixed(1)} lbs</p>
         </div>
       )}
 

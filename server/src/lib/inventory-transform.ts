@@ -19,6 +19,7 @@ interface InventoryRow {
       type: string;
       rarity: string;
       description: string | null;
+      weight: number | null;
       stats: unknown;
       durability: number | null;
     };
@@ -34,6 +35,7 @@ interface TransformedItem {
   type: string;
   rarity: string;
   description: string | null;
+  weight?: number;
   quantity: number;
   currentDurability: number | null;
   quality: string | null;
@@ -46,6 +48,7 @@ interface TransformedItem {
     type: string;
     rarity: string;
     description: string | null;
+    weight?: number;
     stats: unknown;
     durability: number | null;
   };
@@ -72,6 +75,7 @@ export function transformInventory(
       type: inv.item.itemTemplate.type,
       rarity: inv.item.itemTemplate.rarity,
       description: inv.item.itemTemplate.description,
+      weight: inv.item.itemTemplate.weight ?? 0,
       quantity: inv.quantity,
       currentDurability: inv.item.currentDurability,
       quality: inv.item.quality,
@@ -87,6 +91,7 @@ export function transformInventory(
         type: inv.item.itemTemplate.type,
         rarity: inv.item.itemTemplate.rarity,
         description: inv.item.itemTemplate.description,
+        weight: inv.item.itemTemplate.weight ?? undefined,
         stats: inv.item.itemTemplate.stats,
         durability: inv.item.itemTemplate.durability,
       };

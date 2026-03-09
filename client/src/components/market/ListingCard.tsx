@@ -55,7 +55,12 @@ export default function ListingCard({
         </h3>
         <RarityBadge rarity={listing.item.rarity} />
       </div>
-      <p className="text-realm-text-muted text-xs mb-3 capitalize">{listing.item.type}</p>
+      <div className="flex items-center gap-2 mb-3">
+        <p className="text-realm-text-muted text-xs capitalize">{listing.item.type}</p>
+        {listing.item.weight != null && listing.item.weight > 0 && (
+          <span className="text-xs text-realm-text-muted">{listing.item.weight.toFixed(1)} lbs</span>
+        )}
+      </div>
 
       <div className="flex items-center justify-between">
         <GoldAmount

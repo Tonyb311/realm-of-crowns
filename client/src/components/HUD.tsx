@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import {
   Heart,
 
@@ -9,6 +9,7 @@ import {
   Volume2,
   VolumeX,
   Compass,
+  Weight,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router';
@@ -31,6 +32,7 @@ interface CharacterHUD {
   currentTownId: string | null;
   currentTownName?: string;
   status?: string;
+  encumbranceTier?: string;
 }
 
 interface TravelStatusHUD {
@@ -40,6 +42,22 @@ interface TravelStatusHUD {
   estimatedDays: number;
   ticksRemaining: number;
 }
+
+const TIER_TOOLTIPS: Record<string, string> = {
+  BURDENED: 'Burdened — Travel +50% slower, Attack -1',
+  ENCUMBERED: 'Encumbered — Travel 2x slower, Attack -2',
+  HEAVILY_ENCUMBERED: 'Heavily Encumbered — Travel 3x slower, Attack -3, AC -1',
+  SEVERELY_OVERLOADED: 'Severely Overloaded — Travel 5x slower, Attack -5, AC -2',
+  CRUSHED: 'Crushed — Travel 10x slower, Attack -5, AC -3, Cannot craft or gather',
+};
+
+const TIER_ICON_STYLES: Record<string, string> = {
+  BURDENED: 'text-amber-400',
+  ENCUMBERED: 'text-orange-400',
+  HEAVILY_ENCUMBERED: 'text-red-400',
+  SEVERELY_OVERLOADED: 'text-red-500',
+  CRUSHED: 'text-red-600 animate-pulse',
+};
 
 function StatBar({
   current,
@@ -77,6 +95,7 @@ function StatBar({
 export default function HUD() {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [muted, setMutedState] = useState(getMuted());
   const [vol, setVol] = useState(getStoredVolume());
   // MAJ-15: Socket connection status indicator
@@ -186,6 +205,18 @@ export default function HUD() {
             </span>
           </div>
         </Tooltip>
+
+        {/* Encumbrance indicator (hidden when NORMAL or undefined) */}
+        {character.encumbranceTier && character.encumbranceTier !== 'NORMAL' && (
+          <Tooltip content={`${TIER_TOOLTIPS[character.encumbranceTier] ?? character.encumbranceTier}. Click to manage inventory.`}>
+            <button
+              onClick={() => navigate('/inventory')}
+              className={`flex-shrink-0 ${TIER_ICON_STYLES[character.encumbranceTier] ?? 'text-amber-400'} hover:brightness-125 transition-all`}
+            >
+              <Weight className="w-4 h-4" />
+            </button>
+          </Tooltip>
+        )}
 
         {/* Location (when in town) */}
         {!isTraveling && character.currentTownName && (

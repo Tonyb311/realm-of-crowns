@@ -81,4 +81,5 @@ export const dwarf: RaceDefinition = {
   homelandRegion: 'The Ironvault Mountains',
   startingTowns: ['Kazad-Vorn', 'Deepvein', 'Hammerfall', 'Gemhollow', 'Alehearth'],
   exclusiveZone: 'Deep Mines',
+  carryCapacityModifier: 0.15,
 };

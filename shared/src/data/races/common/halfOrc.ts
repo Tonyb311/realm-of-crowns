@@ -80,4 +80,5 @@ export const halfOrc: RaceDefinition = {
   ],
   homelandRegion: 'The Scarred Frontier',
   startingTowns: ['Scarwatch', 'Tuskbridge', 'Proving Grounds'],
+  carryCapacityModifier: 0.1,
 };

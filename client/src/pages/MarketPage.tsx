@@ -667,6 +667,9 @@ export default function MarketPage() {
                 <span className="text-realm-text-muted text-xs capitalize">
                   {selectedListing.item.type}
                 </span>
+                {selectedListing.item.weight != null && selectedListing.item.weight > 0 && (
+                  <span className="text-xs text-realm-text-muted">{selectedListing.item.weight.toFixed(1)} lbs</span>
+                )}
               </div>
               {selectedListing.item.description && (
                 <p className="text-realm-text-secondary text-sm leading-relaxed">
