@@ -3819,6 +3819,7 @@ export const MONSTERS: MonsterDef[] = [
     level: 47,
     biome: 'FEYWILD',
     regionName: 'Glimmerveil',
+    family: 'constructs',
     category: 'construct', encounterType: 'boss', sentient: true, size: 'gargantuan',
     damageType: 'FORCE',
     immunities: ['PSYCHIC', 'FORCE'],
