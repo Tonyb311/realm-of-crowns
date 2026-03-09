@@ -3,6 +3,7 @@
  */
 
 import type { ProfessionCategory } from './professions/types';
+import { computeFeatBonus } from './feats';
 
 /** Default maximum professions per character. */
 export const BASE_MAX_PROFESSIONS = 3;
@@ -17,8 +18,10 @@ export const CATEGORY_LIMITS: Record<ProfessionCategory, number> = {
   SERVICE: 1,
 };
 
-/** Returns the maximum profession count for a given race and level. */
-export function getMaxProfessions(race: string, level: number): number {
-  if (race === 'HUMAN' && level >= HUMAN_BONUS_PROFESSION_LEVEL) return 4;
-  return BASE_MAX_PROFESSIONS;
+/** Returns the maximum profession count for a given race, level, and feats. */
+export function getMaxProfessions(race: string, level: number, featIds?: string[]): number {
+  let max = BASE_MAX_PROFESSIONS;
+  if (race === 'HUMAN' && level >= HUMAN_BONUS_PROFESSION_LEVEL) max++;
+  max += computeFeatBonus(featIds, 'professionSlotBonus');
+  return max;
 }

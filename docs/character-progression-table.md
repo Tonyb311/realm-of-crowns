@@ -143,7 +143,7 @@
 
 **Levels 35-37** — No new ability unlocks.
 
-**Level 38** — **First feat choice** (pick 1 from 12 universal feats). See Section 9.
+**Level 38** — **First feat choice** (pick 1 from 30 universal feats). See Section 9.
 
 **Level 40** — Sixth and final spec ability auto-granted (Tier 5 or Tier 6). Capstone.
 - Racial abilities unlock: **Indomitable Will** (Human), **Spirit Walk** (Elf), **Ancestral Fury** (Dwarf), **Orcish Rampage** (Orc), **Feast Master** (Harthfolk), **Ancient Wrath** (Drakonid), **Soul Bargain** (Nethkin)
@@ -158,7 +158,7 @@
 
 **Levels 46-47** — No new ability unlocks.
 
-**Level 48** — **Second feat choice** (pick 1 from 12 universal feats). See Section 9.
+**Level 48** — **Second feat choice** (pick 1 from 30 universal feats). See Section 9.
 
 **Levels 49-50** — No new ability unlocks. Pure stat growth.
 
@@ -589,28 +589,62 @@ D&D-style saving throw system. Each class starts proficient in 2 of 6 saves. Non
 
 ## Section 9: Feats
 
-Universal feat system unlocking at levels 38 and 48 (2 feats maximum). Player chooses 1 feat per milestone from a pool of 12. Choice is permanent.
+Universal feat system unlocking at levels 38 and 48 (2 feats maximum). Player chooses 1 feat per milestone from a pool of 30. Choice is permanent.
 
 **Source:** `shared/src/data/feats.ts`
 **API:** `POST /api/characters/choose-feat`, `GET /api/characters/pending-feat`
 
-### Feat List
+### Combat (7)
+| Feat | Effect | Excluded Classes |
+|------|--------|-----------------|
+| Precise Strikes | +1 to all attack rolls | — |
+| Brutal Critical | +50% critical hit damage | — |
+| Combat Reflexes | +3 initiative | — |
+| Devastating Blow | -5 attack / +10 damage with 2H melee (smart heuristic) | Mage, Psion |
+| Deadeye | -5 attack / +10 damage with ranged (smart heuristic) | Warrior, Cleric |
+| Savage Attacker | Reroll damage once per combat, take higher | — |
+| Arcane Focus | +1 spell attack, +1 spell save DC | Warrior, Rogue, Ranger |
 
-| Feat | Category | Effect |
-|------|----------|--------|
-| Precise Strikes | Combat | +1 to all attack rolls |
-| Brutal Critical | Combat | Critical hits deal +50% bonus damage |
-| Combat Reflexes | Combat | +3 to initiative |
-| Tough | Defense | +2 HP per character level (retroactive) |
-| Resilient | Defense | Gain proficiency in one additional saving throw (chosen on selection) |
-| Iron Will | Defense | +1 to ALL saving throws |
-| Natural Armor | Defense | +1 AC permanently |
-| Lucky | Utility | Once per combat, reroll any d20 roll |
-| Undying | Defense | Death XP and gold penalties reduced by 50% |
-| Quick Learner | Utility | +10% XP from all sources |
-| Master Artisan | Crafting | +3 to all profession quality rolls |
-| Merchant Prince | Crafting | Buy 10% cheaper, sell 10% higher |
-| Fortune Favored | Crafting | +15% gold from all sources |
+### Defense (8)
+| Feat | Effect | Excluded Classes |
+|------|--------|-----------------|
+| Tough | +2 HP per level (retroactive) | — |
+| Resilient | +1 saving throw proficiency (chosen) | — |
+| Iron Will | +1 to all saving throws | — |
+| Natural Armor | +1 AC | — |
+| Heavy Armor Mastery | -3 damage per hit (min 1) | Mage, Psion, Bard, Rogue |
+| Durable | +25% healing received | — |
+| Spell Ward | +2 to saves vs ability effects | — |
+| Undying | -50% death penalties | — |
+
+### Utility (4)
+| Feat | Effect | Excluded Classes |
+|------|--------|-----------------|
+| Lucky | Reroll 1 d20 per combat | — |
+| Quick Learner | +10% XP | — |
+| Inspiring Leader | 10 HP absorption shield for party at combat start | — |
+| Guardian's Vigil | Free counterattack when ally is hit (1/combat) | Mage, Psion |
+
+### Exploration (2)
+| Feat | Effect | Excluded Classes |
+|------|--------|-----------------|
+| Swift Stride | -15% travel time | — |
+| Wary Traveler | -20% road encounter chance | — |
+
+### Crafting / Economy (5)
+| Feat | Effect | Excluded Classes |
+|------|--------|-----------------|
+| Master Artisan | +3 profession quality | — |
+| Merchant Prince | 10% buy discount, 10% sell bonus | — |
+| Fortune Favored | +15% gold | — |
+| Polymath | +1 profession slot | — |
+| Master Chef | +25% food buff potency | — |
+
+### Social (2)
+| Feat | Effect | Excluded Classes |
+|------|--------|-----------------|
+| Silver Tongue | +2 to social/political actions | — |
+| Field Medic | +25% healing output | Warrior, Rogue, Ranger |
 
 ### Feat Milestone Levels
 
@@ -620,8 +654,11 @@ Universal feat system unlocking at levels 38 and 48 (2 feats maximum). Player ch
 | 48 | Second feat choice |
 
 ### Design Notes
-- Combat feats (Precise Strikes, Brutal Critical, Combat Reflexes) are class-unrestricted
+- 30 feats across 6 categories: combat (7), defense (8), utility (4), exploration (2), crafting/economy (5), social (2)
+- Some feats have class exclusions (e.g., Heavy Armor Mastery excludes light/no armor classes)
 - Resilient's save choice cannot duplicate an existing proficiency
 - Tough grants retroactive HP: at level 38 = +76 HP, at level 48 = +96 HP
-- Lucky reroll is once per combat (not yet implemented in combat engine)
-- Economy feats (Master Artisan, Merchant Prince, Fortune Favored) won't affect combat but are strong for endgame players focused on crafting/trading
+- Lucky reroll is once per combat
+- Devastating Blow / Deadeye use an AC heuristic: only apply the -5/+10 tradeoff when attack modifier >= target AC - 5
+- Economy feats (Master Artisan, Merchant Prince, Fortune Favored, Polymath, Master Chef) won't affect combat but are strong for endgame economy players
+- Polymath's +1 profession slot is read dynamically by `getMaxProfessions()` — no immediate DB change on selection

@@ -599,6 +599,10 @@ export interface Combatant {
   extraAttacks?: number;
   /** Feat IDs this combatant has chosen */
   featIds?: string[];
+  /** Whether Savage Attacker damage reroll has been used this combat */
+  savageAttackerUsed?: boolean;
+  /** Whether Guardian's Vigil sentinel counter has triggered this combat */
+  sentinelCounterUsed?: boolean;
   // Consumable system fields
   /** Prepared damage/heal scroll for round 1 AI usage */
   preparedScroll?: { effectType: string; magnitude: number; itemName: string };

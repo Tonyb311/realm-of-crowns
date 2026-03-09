@@ -96,7 +96,7 @@ router.post('/learn', authGuard, characterGuard, requireTown, validate(professio
         where: and(eq(playerProfessions.characterId, character.id), eq(playerProfessions.isActive, true)),
       });
 
-      const maxProf = getMaxProfessions(character.race, character.level);
+      const maxProf = getMaxProfessions(character.race, character.level, (character.feats as string[]) ?? []);
       if (activeProfessions.length >= maxProf) {
         return res.status(400).json({
           error: `Cannot have more than ${maxProf} active professions. Abandon one first.`,
@@ -142,7 +142,7 @@ router.post('/learn', authGuard, characterGuard, requireTown, validate(professio
       where: and(eq(playerProfessions.characterId, character.id), eq(playerProfessions.isActive, true)),
     });
 
-    const maxProf = getMaxProfessions(character.race, character.level);
+    const maxProf = getMaxProfessions(character.race, character.level, (character.feats as string[]) ?? []);
     if (activeProfessions.length >= maxProf) {
       return res.status(400).json({
         error: `Cannot have more than ${maxProf} active professions. Abandon one first.`,
@@ -391,8 +391,8 @@ router.get('/available', authGuard, characterGuard, requireTown, async (req: Aut
       }
     }
 
-    // P1 #27: Race-aware profession cap
-    const maxProf = getMaxProfessions(character.race, character.level);
+    // P1 #27: Race-aware profession cap (feat-aware via Polymath)
+    const maxProf = getMaxProfessions(character.race, character.level, (character.feats as string[]) ?? []);
 
     const professions = ALL_PROFESSIONS.map((def) => {
       const existing = profMap.get(def.type as ProfessionType);

@@ -47,7 +47,7 @@ import type { StatusEffectName } from '@shared/types/combat';
 
 /** Compute total save modifier for a target including status effects, DEX/STR bonuses, and auto-fail. */
 function computeTargetSaveMod(target: Combatant, saveType: string): { totalMod: number; autoFail: boolean } {
-  const baseMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies) + computeFeatBonus(target.featIds, 'allSaveBonus');
+  const baseMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies) + computeFeatBonus(target.featIds, 'allSaveBonus') + computeFeatBonus(target.featIds, 'spellSaveBonus');
   let totalMod = baseMod;
   let autoFail = false;
 

@@ -50,6 +50,7 @@ import { calculateWeightState } from '../services/weight-calculator';
 import type { CombatRound } from './simulation/types';
 import type { AttackResult, Combatant } from '@shared/types/combat';
 import { processItemDrops } from './loot-items';
+import { computeFeatBonus } from '@shared/data/feats';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -503,6 +504,12 @@ export async function resolveRoadEncounter(
     encounterChance = Math.min(1.0, encounterChance * HIGH_LEVEL_ENCOUNTER_MULTIPLIER);
   }
 
+  // Apply feat-based encounter avoidance (reduces encounter chance multiplicatively)
+  const avoidanceBonus = computeFeatBonus((character.feats as string[]) ?? [], 'encounterAvoidance');
+  if (avoidanceBonus > 0) {
+    encounterChance *= (1 - avoidanceBonus);
+  }
+
   const roll = Math.random();
   if (roll > encounterChance) {
     return { encountered: false };
@@ -938,6 +945,12 @@ export async function resolveGroupRoadEncounter(
     encounterChance = Math.min(encounterChance, cap);
   } else if (highestLevel >= 6) {
     encounterChance = Math.min(1.0, encounterChance * HIGH_LEVEL_ENCOUNTER_MULTIPLIER);
+  }
+
+  // Apply feat-based encounter avoidance (use best bonus among group members)
+  const groupAvoidance = Math.max(...charRows.map(c => computeFeatBonus((c.feats as string[]) ?? [], 'encounterAvoidance')));
+  if (groupAvoidance > 0) {
+    encounterChance *= (1 - groupAvoidance);
   }
 
   const roll = Math.random();

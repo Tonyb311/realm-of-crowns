@@ -68,7 +68,7 @@ import {
 import { getBeastfolkNaturalWeapon } from '../services/racial-passive-tracker';
 import { psionAbilities } from '@shared/data/skills/psion';
 import { DEATH_PENALTY, getDeathXpPenalty, getDeathDurabilityPenalty } from '@shared/data/progression';
-import { getFeatById } from '@shared/data/feats';
+import { getFeatById, hasFeatEffect, computeFeatBonus } from '@shared/data/feats';
 import {
   resolveClassAbility,
   tickAbilityCooldowns as tickClassAbilityCooldowns,
@@ -105,7 +105,7 @@ function noOpDefend(actorId: string): DefendResult {
 }
 
 /** Aggregate a specific numeric feat effect for a combatant */
-function getFeatBonus(combatant: Combatant, key: 'attackBonus' | 'acBonus' | 'initiativeBonus' | 'critDamageBonus' | 'allSaveBonus'): number {
+function getFeatBonus(combatant: Combatant, key: 'attackBonus' | 'acBonus' | 'initiativeBonus' | 'critDamageBonus' | 'allSaveBonus' | 'damageReductionFlat' | 'spellAttackBonus' | 'spellDcBonus' | 'spellSaveBonus' | 'healingReceivedBonus' | 'partyTempHp'): number {
   if (!combatant.featIds) return 0;
   let total = 0;
   for (const fid of combatant.featIds) {
@@ -495,7 +495,7 @@ export function processStatusEffects(
       hp = Math.max(0, hp - damage);
     }
 
-    // Apply HoT (reduced by healing modifiers like diseased)
+    // Apply HoT (reduced by healing modifiers like diseased, boosted by feat)
     const hotHeal = def.hotHealing(effect);
     if (hotHeal > 0) {
       healing = hotHeal;
@@ -506,6 +506,11 @@ export function processStatusEffects(
         if (otherMech && otherMech.healingReceivedMult !== 1.0) {
           healing = Math.floor(healing * otherMech.healingReceivedMult);
         }
+      }
+      // Feat: healingReceivedBonus (Durable) — % bonus to all healing received
+      const healRcvBonus = getFeatBonus(combatant, 'healingReceivedBonus');
+      if (healRcvBonus > 0) {
+        healing = Math.floor(healing * (1 + healRcvBonus));
       }
       hp = Math.min(combatant.maxHp, hp + healing);
     }
@@ -651,6 +656,39 @@ export function resolveAttack(
   if (featAtkBonus !== 0) {
     atkModBreakdown.push({ source: 'feat', value: featAtkBonus });
     atkMod += featAtkBonus;
+  }
+
+  // Feat: spell attack bonus (only for spell-type attacks)
+  if (weapon.damageType === 'FORCE' || weapon.damageType === 'PSYCHIC' || weapon.damageType === 'RADIANT') {
+    const featSpellAtkBonus = getFeatBonus(actor, 'spellAttackBonus');
+    if (featSpellAtkBonus !== 0) {
+      atkModBreakdown.push({ source: 'featSpellAtk', value: featSpellAtkBonus });
+      atkMod += featSpellAtkBonus;
+    }
+  }
+
+  // Feat: GWM / Deadeye tradeoff (-5 attack / +10 damage)
+  // Applies when attacker's total atkMod >= targetAC - 5 (55%+ hit chance with penalty)
+  let gwmActive = false;
+  {
+    const isRangedWeapon = weapon.attackModifierStat === 'dex' &&
+      !(['FORCE', 'PSYCHIC', 'RADIANT'] as string[]).includes(weapon.damageType ?? '');
+    const is2HMelee = weapon.attackModifierStat === 'str';
+    if (is2HMelee && hasFeatEffect(actor.featIds, 'gwmTradeoff')) {
+      const preGwmAC = calculateAC(target, racialTracker);
+      if (atkMod >= preGwmAC - 5) {
+        atkModBreakdown.push({ source: 'gwmPenalty', value: -5 });
+        atkMod -= 5;
+        gwmActive = true;
+      }
+    } else if (isRangedWeapon && hasFeatEffect(actor.featIds, 'sharpshooterTradeoff')) {
+      const preGwmAC = calculateAC(target, racialTracker);
+      if (atkMod >= preGwmAC - 5) {
+        atkModBreakdown.push({ source: 'deadeyePenalty', value: -5 });
+        atkMod -= 5;
+        gwmActive = true;
+      }
+    }
   }
 
   // Phase 5A: Class ability attack modifiers (set by handleDamage)
@@ -925,10 +963,26 @@ export function resolveAttack(
 
   if (roll.hit && !dodged) {
     // Always calculate base damage (non-crit), d100 chart adds bonus dice
-    const dmg = calculateDamage(actor, weapon, false);
+    let dmg = calculateDamage(actor, weapon, false);
+
+    // Feat: Savage Attacker — reroll damage once per combat, take higher
+    if (!actor.savageAttackerUsed && hasFeatEffect(actor.featIds, 'savageAttackerReroll')) {
+      const reroll = calculateDamage(actor, weapon, false);
+      if (reroll.total > dmg.total) {
+        dmg = reroll;
+      }
+      actor = { ...actor, savageAttackerUsed: true };
+    }
+
     damageRollValue = dmg.total;
     damageRolls = dmg.rolls;
     totalDamage = Math.max(0, dmg.total);
+
+    // Feat: GWM / Deadeye +10 damage bonus
+    if (gwmActive) {
+      totalDamage += 10;
+      dmgModBreakdown.push({ source: 'gwmBonus', value: 10 });
+    }
 
     // Track damage modifier breakdown
     const dmgStatMod = getModifier(actor.stats[weapon.damageModifierStat]);
@@ -1157,6 +1211,16 @@ export function resolveAttack(
       const before = totalDamage;
       totalDamage = Math.max(1, Math.floor(totalDamage * actor.encumbrancePenalties.damageMultiplier));
       dmgModBreakdown.push({ source: 'encumbrance', value: totalDamage - before });
+    }
+
+    // Feat: damageReductionFlat (Heavy Armor Mastery) — flat DR per hit, minimum 1 damage
+    if (totalDamage > 0) {
+      const featDR = getFeatBonus(target, 'damageReductionFlat');
+      if (featDR > 0) {
+        const before = totalDamage;
+        totalDamage = Math.max(1, totalDamage - featDR);
+        dmgModBreakdown.push({ source: 'featDR', value: totalDamage - before });
+      }
     }
 
     // Phase 3: Companion interception check (Alpha Predator)
@@ -1457,6 +1521,8 @@ export function resolveCast(
   if (spell.requiresSave && spell.saveType) {
     const targetSaveMod = getSaveModifier(target.stats, spell.saveType, target.proficiencyBonus, target.saveProficiencies) + getFeatBonus(target, 'allSaveBonus');
     let totalSaveMod = targetSaveMod;
+    // Feat: spellSaveBonus (Spell Ward) — bonus to saves vs ability/spell effects
+    totalSaveMod += getFeatBonus(target, 'spellSaveBonus');
     // Apply status effect save modifiers
     for (const eff of target.statusEffects) {
       const def = STATUS_EFFECT_DEFS[eff.name];
@@ -1509,6 +1575,11 @@ export function resolveCast(
     if (spell.type === 'heal') {
       const heal = damageRoll(spell.diceCount, spell.diceSides, spell.modifier);
       healAmount = heal.total;
+      // Feat: healingReceivedBonus (Durable) — % bonus to healing received
+      const healRcvBonus = getFeatBonus(target, 'healingReceivedBonus');
+      if (healRcvBonus > 0) {
+        healAmount = Math.floor(healAmount * (1 + healRcvBonus));
+      }
       target = {
         ...target,
         currentHp: Math.min(target.maxHp, target.currentHp + healAmount),
@@ -1618,9 +1689,14 @@ export function resolveItem(
   let statusRemoved: StatusEffectName | undefined;
 
   if (item.type === 'heal') {
-    const amount = item.diceCount && item.diceSides
+    let amount = item.diceCount && item.diceSides
       ? damageRoll(item.diceCount, item.diceSides, 0).total + (item.flatAmount ?? 0)
       : item.flatAmount ?? 0;
+    // Feat: healingReceivedBonus (Durable) — % bonus to healing received
+    const healRcvBonus = getFeatBonus(target, 'healingReceivedBonus');
+    if (healRcvBonus > 0) {
+      amount = Math.floor(amount * (1 + healRcvBonus));
+    }
     healAmountVal = amount;
     target = {
       ...target,
@@ -3308,6 +3384,49 @@ export function resolveTurn(
     };
   }
 
+  // === FEAT: SENTINEL COUNTER (Guardian's Vigil) ===
+  // When an ally takes damage, a sentinel on the same team makes a free counterattack
+  {
+    const resultAny = result as any;
+    const damagedTargetId = resultAny?.targetId;
+    const damageDealt = resultAny?.totalDamage ?? resultAny?.damage ?? 0;
+    if (damagedTargetId && damageDealt > 0) {
+      const damagedTarget = current.combatants.find(c => c.id === damagedTargetId);
+      if (damagedTarget) {
+        // Find a sentinel ally on the damaged target's team (not the target itself)
+        const sentinel = current.combatants.find(c =>
+          c.id !== damagedTargetId &&
+          c.team === damagedTarget.team &&
+          c.isAlive &&
+          !c.hasFled &&
+          !c.sentinelCounterUsed &&
+          c.weapon &&
+          hasFeatEffect(c.featIds, 'sentinelCounter')
+        );
+        if (sentinel && sentinel.weapon) {
+          // Mark sentinel counter as used
+          current = {
+            ...current,
+            combatants: current.combatants.map(c =>
+              c.id === sentinel.id ? { ...c, sentinelCounterUsed: true } : c
+            ),
+          };
+          // Free counterattack against the attacker
+          const counterAtk = resolveAttack(current, sentinel.id, actorId, sentinel.weapon);
+          current = counterAtk.state;
+          const counterLog: TurnLogEntry = {
+            round: current.round,
+            actorId: sentinel.id,
+            action: 'attack',
+            result: counterAtk.result,
+            statusTicks: [],
+          };
+          current = { ...current, log: [...current.log, counterLog] };
+        }
+      }
+    }
+  }
+
   // === MONSTER ABILITY COOLDOWN TICK ===
   const turnActor = current.combatants.find(c => c.id === actorId);
   if (turnActor?.entityType === 'monster' && turnActor.monsterAbilities) {
@@ -3447,6 +3566,32 @@ export function createCombatState(
   type: CombatState['type'],
   combatants: Combatant[]
 ): CombatState {
+  // Feat: partyTempHp (Inspiring Leader) — apply absorption shields at combat start
+  // Aggregate the highest partyTempHp from each team, then apply to all teammates
+  const teamTempHp = new Map<number, { amount: number; sourceName: string }>();
+  for (const c of combatants) {
+    const tempHp = computeFeatBonus(c.featIds, 'partyTempHp');
+    if (tempHp > 0) {
+      const existing = teamTempHp.get(c.team);
+      if (!existing || tempHp > existing.amount) {
+        teamTempHp.set(c.team, { amount: tempHp, sourceName: c.name });
+      }
+    }
+  }
+  if (teamTempHp.size > 0) {
+    combatants = combatants.map(c => {
+      const teamBuff = teamTempHp.get(c.team);
+      if (!teamBuff) return c;
+      const buff = {
+        sourceAbilityId: 'feat-inspiring-leader',
+        name: 'Inspiring Leader',
+        roundsRemaining: 999, // Lasts until absorbed
+        absorbRemaining: teamBuff.amount,
+      };
+      return { ...c, activeBuffs: [...(c.activeBuffs ?? []), buff] };
+    });
+  }
+
   const state: CombatState = {
     sessionId,
     type,

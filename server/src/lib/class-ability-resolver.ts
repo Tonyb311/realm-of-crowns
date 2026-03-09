@@ -529,6 +529,11 @@ const handleHeal: EffectHandler = (state, actor, target, enemies, abilityDef, ef
     healAmount = rollDice(diceCount, diceSides, bonus);
   }
 
+  // Healing given bonus from feats (multiplicative with healingReceivedBonus applied in combat-engine)
+  // Stack: baseHeal * (1 + healingGivenBonus) * (1 + healingReceivedBonus)
+  const healGivenMult = 1 + computeFeatBonus(actor.featIds, 'healingGivenBonus');
+  healAmount = Math.round(healAmount * healGivenMult);
+
   // Diseased targets receive halved healing
   for (const eff of healTarget.statusEffects) {
     const mech = STATUS_EFFECT_MECHANICS[eff.name];
@@ -579,7 +584,7 @@ const handleStatus: EffectHandler = (state, actor, target, _enemies, abilityDef,
     const autoFailDex = target.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailDexSave);
     const autoFailStr = target.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailStrSave);
     if (!((saveType === 'dex' && autoFailDex) || (saveType === 'str' && autoFailStr))) {
-      let targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies) + computeFeatBonus(target.featIds, 'allSaveBonus');
+      let targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies) + computeFeatBonus(target.featIds, 'allSaveBonus') + computeFeatBonus(target.featIds, 'spellSaveBonus');
       for (const eff of target.statusEffects) {
         const seDef = STATUS_EFFECT_DEFS[eff.name];
         if (seDef) targetSaveMod += seDef.saveModifier;
@@ -880,7 +885,9 @@ const handleDrain: EffectHandler = (state, actor, target, enemies, abilityDef, e
 
   // Phase 5B MECH-8: Anti-heal aura blocks self-heal from drains
   const hasAntiHeal = enemies.some(e => e.antiHealAura);
-  const selfHeal = hasAntiHeal ? 0 : Math.floor(totalDamage * healPercent);
+  // Healing given bonus from feats (multiplicative with healingReceivedBonus applied in combat-engine)
+  const drainHealGivenMult = 1 + computeFeatBonus(actor.featIds, 'healingGivenBonus');
+  const selfHeal = hasAntiHeal ? 0 : Math.round(Math.floor(totalDamage * healPercent) * drainHealGivenMult);
 
   const targetNewHp = clampHp(target.currentHp - totalDamage, target.maxHp);
   const killed = targetNewHp <= 0;
@@ -1007,7 +1014,7 @@ const handleAoeDebuff: EffectHandler = (state, actor, _target, enemies, abilityD
       const afDex = enemy.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailDexSave);
       const afStr = enemy.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailStrSave);
       if (!((saveType === 'dex' && afDex) || (saveType === 'str' && afStr))) {
-        let targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies) + computeFeatBonus(enemy.featIds, 'allSaveBonus');
+        let targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies) + computeFeatBonus(enemy.featIds, 'allSaveBonus') + computeFeatBonus(enemy.featIds, 'spellSaveBonus');
         for (const eff of enemy.statusEffects) {
           const seDef = STATUS_EFFECT_DEFS[eff.name];
           if (seDef) targetSaveMod += seDef.saveModifier;
@@ -1115,7 +1122,7 @@ const handleAoeDamage: EffectHandler = (state, actor, _target, enemies, abilityD
         saveTotalVal = 0;
         saveSucceededVal = false;
       } else {
-        let targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies) + computeFeatBonus(enemy.featIds, 'allSaveBonus');
+        let targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies) + computeFeatBonus(enemy.featIds, 'allSaveBonus') + computeFeatBonus(enemy.featIds, 'spellSaveBonus');
         for (const eff of enemy.statusEffects) {
           const seDef = STATUS_EFFECT_DEFS[eff.name];
           if (seDef) targetSaveMod += seDef.saveModifier;
@@ -1226,7 +1233,7 @@ const handleMultiTarget: EffectHandler = (state, actor, _target, enemies, abilit
         saveTotalVal = 0;
         saveSucceededVal = false;
       } else {
-        let targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies) + computeFeatBonus(enemy.featIds, 'allSaveBonus');
+        let targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies) + computeFeatBonus(enemy.featIds, 'allSaveBonus') + computeFeatBonus(enemy.featIds, 'spellSaveBonus');
         for (const eff of enemy.statusEffects) {
           const seDef = STATUS_EFFECT_DEFS[eff.name];
           if (seDef) targetSaveMod += seDef.saveModifier;
@@ -1385,7 +1392,7 @@ const handleAoeDrain: EffectHandler = (state, actor, _target, enemies, abilityDe
       const afDex = enemy.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailDexSave);
       const afStr = enemy.statusEffects.some(e => STATUS_EFFECT_MECHANICS[e.name]?.autoFailStrSave);
       if (!((saveType === 'dex' && afDex) || (saveType === 'str' && afStr))) {
-        let targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies) + computeFeatBonus(enemy.featIds, 'allSaveBonus');
+        let targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies) + computeFeatBonus(enemy.featIds, 'allSaveBonus') + computeFeatBonus(enemy.featIds, 'spellSaveBonus');
         for (const eff of enemy.statusEffects) {
           const seDef = STATUS_EFFECT_DEFS[eff.name];
           if (seDef) targetSaveMod += seDef.saveModifier;
@@ -1423,8 +1430,9 @@ const handleAoeDrain: EffectHandler = (state, actor, _target, enemies, abilityDe
     });
   }
 
-  // Heal actor
-  const selfHeal = healableTargets * healPerTarget;
+  // Heal actor (healingGivenBonus from feats stacks multiplicatively with healingReceivedBonus)
+  const aoeDrainHealMult = 1 + computeFeatBonus(actor.featIds, 'healingGivenBonus');
+  const selfHeal = Math.round(healableTargets * healPerTarget * aoeDrainHealMult);
   const actorNow = state.combatants.find(c => c.id === actor.id)!;
   const newActorHp = clampHp(actorNow.currentHp + selfHeal, actorNow.maxHp);
   state = updateCombatant(state, actor.id, { currentHp: newActorHp });
@@ -1825,7 +1833,8 @@ function calculateSaveDC(actor: Combatant, saveStatOverride?: string): number {
     ?? (actor.characterClass ? CLASS_PRIMARY_STAT[actor.characterClass.toLowerCase()] : undefined)
     ?? 'int';
   const statMod = getModifier(actor.stats[castingStat as keyof typeof actor.stats] ?? 10);
-  let dc = 8 + actor.proficiencyBonus + statMod;
+  const spellDcMod = computeFeatBonus(actor.featIds, 'spellDcBonus');
+  let dc = 8 + actor.proficiencyBonus + statMod + spellDcMod;
   // Encumbrance save DC penalty
   if (actor.encumbrancePenalties && actor.encumbrancePenalties.saveDcPenalty !== 0) {
     dc += actor.encumbrancePenalties.saveDcPenalty;
@@ -1935,7 +1944,7 @@ function resolveAbilitySave(
     };
   }
 
-  let targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies) + computeFeatBonus(target.featIds, 'allSaveBonus');
+  let targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies) + computeFeatBonus(target.featIds, 'allSaveBonus') + computeFeatBonus(target.featIds, 'spellSaveBonus');
   // Apply status effect save modifiers (e.g., frightened -2)
   for (const eff of target.statusEffects) {
     const seDef = STATUS_EFFECT_DEFS[eff.name];
@@ -2057,7 +2066,7 @@ const handleControl: EffectHandler = (state, actor, target, _enemies, abilityDef
   const failDuration = (effects.failDuration as number) ?? 2;
 
   const dc = calculateSaveDC(actor) + Math.abs(savePenalty);
-  const targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies) + computeFeatBonus(target.featIds, 'allSaveBonus');
+  const targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies) + computeFeatBonus(target.featIds, 'allSaveBonus') + computeFeatBonus(target.featIds, 'spellSaveBonus');
   const save = savingThrow(targetSaveMod, dc);
   { const lr = checkLegendaryResistance(state, target.id, save, dc); if (lr.overridden) { save.success = true; state = lr.state; } }
 
@@ -2160,7 +2169,7 @@ const handleAoeDamageStatus: EffectHandler = (state, actor, _target, enemies, ab
 
   for (const enemy of enemies) {
     let dmg = rollDice(diceCount, diceSides, bonusMod);
-    const targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies) + computeFeatBonus(enemy.featIds, 'allSaveBonus');
+    const targetSaveMod = getSaveModifier(enemy.stats, saveType, enemy.proficiencyBonus, enemy.saveProficiencies) + computeFeatBonus(enemy.featIds, 'allSaveBonus') + computeFeatBonus(enemy.featIds, 'spellSaveBonus');
     const save = savingThrow(targetSaveMod, dc);
     { const lr = checkLegendaryResistance(state, enemy.id, save, dc); if (lr.overridden) { save.success = true; state = lr.state; } }
 
@@ -2286,7 +2295,7 @@ const handleSwap: EffectHandler = (state, actor, target, _enemies, abilityDef, e
   const enemyEffect = (effects.enemyEffect as string) ?? 'lose_action';
 
   const dc = calculateSaveDC(actor);
-  const targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies) + computeFeatBonus(target.featIds, 'allSaveBonus');
+  const targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies) + computeFeatBonus(target.featIds, 'allSaveBonus') + computeFeatBonus(target.featIds, 'spellSaveBonus');
   const save = savingThrow(targetSaveMod, dc);
   { const lr = checkLegendaryResistance(state, target.id, save, dc); if (lr.overridden) { save.success = true; state = lr.state; } }
 
@@ -2389,7 +2398,7 @@ const handleBanish: EffectHandler = (state, actor, target, _enemies, abilityDef,
   const failDuration = (effects.failDuration as number) ?? 1;
 
   const dc = calculateSaveDC(actor) + Math.abs(savePenalty);
-  const targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies) + computeFeatBonus(target.featIds, 'allSaveBonus');
+  const targetSaveMod = getSaveModifier(target.stats, saveType, target.proficiencyBonus, target.saveProficiencies) + computeFeatBonus(target.featIds, 'allSaveBonus') + computeFeatBonus(target.featIds, 'spellSaveBonus');
   const save = savingThrow(targetSaveMod, dc);
   { const lr = checkLegendaryResistance(state, target.id, save, dc); if (lr.overridden) { save.success = true; state = lr.state; } }
 

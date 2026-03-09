@@ -308,14 +308,23 @@ export function getSimSaveProficiencies(className: string, level: number): strin
 
 /** Pick sim-appropriate feats for a character at a given level.
  *  Martial classes: Precise Strikes first, then Tough.
- *  Caster classes: Iron Will first, then Tough. */
+ *  Caster classes: Arcane Focus first, then Tough.
+ *  Cleric (tanky/healer): Iron Will first, then Tough. */
 export function getSimFeatIds(className: string, level: number): string[] {
   const feats: string[] = [];
-  const martial = ['warrior', 'ranger', 'rogue', 'cleric'];
-  if (level >= FEAT_UNLOCK_LEVELS[0]) {
-    feats.push(martial.includes(className) ? 'feat-precise-strikes' : 'feat-iron-will');
+  const martial = ['warrior', 'ranger', 'rogue'];
+  const caster = ['mage', 'psion', 'bard'];
+
+  if (level >= FEAT_UNLOCK_LEVELS[0]) {  // Level 38
+    if (martial.includes(className)) {
+      feats.push('feat-precise-strikes');
+    } else if (caster.includes(className)) {
+      feats.push('feat-arcane-focus');
+    } else {
+      feats.push('feat-iron-will'); // Cleric — tanky/healer default
+    }
   }
-  if (level >= FEAT_UNLOCK_LEVELS[1]) {
+  if (level >= FEAT_UNLOCK_LEVELS[1]) {  // Level 48
     feats.push('feat-tough');
   }
   return feats;
