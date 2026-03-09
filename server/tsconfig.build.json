@@ -6,5 +6,11 @@
       "@database/*": ["../database/dist/schema/*"],
       "@/*": ["src/*"]
     }
-  }
+  },
+  "exclude": [
+    "src/scripts/verify-encounters.ts",
+    "src/scripts/verify-road-encounters.ts",
+    "src/scripts/cr-formula-test.ts",
+    "src/scripts/cr-verify.ts"
+  ]
 }
