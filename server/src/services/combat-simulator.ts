@@ -478,6 +478,7 @@ export function classifyAbility(ability: AbilityDefinition): CombatRole {
     'aoe_damage', 'aoe_damage_status', 'aoe_drain', 'aoe_dot',
     'drain', 'delayed_damage', 'dispel_damage',
     'companion_attack', 'teleport_attack', 'trap',
+    'cantrip',
   ].includes(type)) {
     return 'damage';
   }

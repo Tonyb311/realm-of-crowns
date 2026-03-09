@@ -267,6 +267,13 @@ export const ABILITY_TEMPLATES: Record<string, string[]> = {
     'erupts into an unstoppable rage, eyes blazing with fury.',
   ],
 
+  // ---- Mage (cantrip) ----
+  'Force Bolt': [
+    'fires a crackling bolt of raw arcane force at {target}.',
+    'thrusts a hand forward, launching a shimmering bolt of force at {target}.',
+    'gathers arcane energy and hurls it at {target} in a searing streak.',
+  ],
+
   // ---- Mage ----
   'Fireball': [
     'hurls a sphere of roaring flame at {target}.',
@@ -349,6 +356,13 @@ export const ABILITY_TEMPLATES: Record<string, string[]> = {
     'unleashes a whirlwind of rapid strikes.',
   ],
 
+  // ---- Cleric (cantrip) ----
+  'Sacred Flame': [
+    'calls down a column of divine radiance upon {target}.',
+    'invokes holy fire that descends from above onto {target}.',
+    'whispers a prayer as sacred light sears {target}.',
+  ],
+
   // ---- Cleric ----
   'Healing Light': [
     'channels warm golden light, mending wounds.',
@@ -428,6 +442,13 @@ export const ABILITY_TEMPLATES: Record<string, string[]> = {
     'plants an explosive device that erupts when triggered.',
   ],
 
+  // ---- Bard (cantrip) ----
+  'Dissonant Whisper': [
+    'hisses a discordant syllable that stabs into {target}\'s mind.',
+    'whispers a painfully off-key note that rattles {target}.',
+    'unleashes a jarring whisper of dissonance at {target}.',
+  ],
+
   // ---- Bard ----
   'Charming Words': [
     'speaks with honeyed words that cloud {target}\'s judgment.',
@@ -461,6 +482,13 @@ export const ABILITY_TEMPLATES: Record<string, string[]> = {
   ],
   'Enthrall': [
     'weaves an irresistible melody that locks {target} in a trance.',
+  ],
+
+  // ---- Psion (cantrip) ----
+  'Psychic Bolt': [
+    'drives a lance of psychic force into {target}\'s mind.',
+    'hurls a condensed pulse of thought-energy at {target}.',
+    'focuses raw mental power into a bolt that strikes {target}.',
   ],
 
   // ---- Psion ----

@@ -24,6 +24,7 @@ import { giveStartingInventory } from '../lib/starting-inventory';
 import { giveStarterWeapon, giveStarterArmor } from '../lib/starting-weapons';
 import { giveStarterHouse } from '../lib/starting-house';
 import { buildCharacterSheet } from '../services/character-sheet';
+import { autoGrantAbilities } from '../services/ability-grants';
 
 const router = Router();
 
@@ -193,6 +194,9 @@ router.post('/create', authGuard, validate(createCharacterSchema), async (req: A
 
     // Give free cottage in home town
     await giveStarterHouse(character.id, startingTown.id, name);
+
+    // Auto-grant cantrips (tier -1 abilities) for caster classes
+    await autoGrantAbilities(character.id);
 
     return res.status(201).json({
       character: {

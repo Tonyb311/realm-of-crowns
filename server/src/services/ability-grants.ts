@@ -17,19 +17,31 @@ export async function autoGrantAbilities(characterId: string): Promise<string[]>
     where: eq(characters.id, characterId),
   });
 
-  if (!character || !character.class || !character.specialization) return [];
+  if (!character || !character.class) return [];
 
   const classAbilities = ABILITIES_BY_CLASS[character.class];
   if (!classAbilities) return [];
 
-  // Get abilities for this spec where levelRequired <= character level
-  // Skip tier 0 abilities (requiresChoice) — those need explicit player choice
-  const qualifyingAbilities = classAbilities.filter(
+  // Pass 1: Cantrips (tier -1, spec 'none', always auto-granted at level 1+)
+  const cantrips = classAbilities.filter(
     (a) =>
-      a.specialization === character.specialization &&
-      a.levelRequired <= character.level &&
-      !a.requiresChoice,
+      a.tier === -1 &&
+      a.specialization === 'none' &&
+      !a.requiresChoice &&
+      a.levelRequired <= character.level,
   );
+
+  // Pass 2: Spec abilities (original logic, requires spec)
+  const specAbilities = character.specialization
+    ? classAbilities.filter(
+        (a) =>
+          a.specialization === character.specialization &&
+          a.levelRequired <= character.level &&
+          !a.requiresChoice,
+      )
+    : [];
+
+  const qualifyingAbilities = [...cantrips, ...specAbilities];
 
   if (qualifyingAbilities.length === 0) return [];
 

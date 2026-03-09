@@ -2491,6 +2491,41 @@ const handleBanish: EffectHandler = (state, actor, target, _enemies, abilityDef,
   };
 };
 
+// ---- Cantrip Handler (at-will scaling damage) ----
+
+const handleCantrip: EffectHandler = (state, actor, target, enemies, abilityDef, effects) => {
+  // Compute level-scaled dice count: base + 1 per scaling threshold reached
+  const baseDice = (effects.diceCount as number) ?? 1;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+  const bonusDice = scalingLevels.filter((lvl: number) => actor.level >= lvl).length;
+  const totalDice = baseDice + bonusDice;
+
+  // Delegate to handleDamage with adjusted dice count
+  const adjustedEffects = { ...effects, diceCount: totalDice };
+  const result = handleDamage(state, actor, target, enemies, abilityDef, adjustedEffects);
+
+  // Apply debuff rider if present and damage was dealt (Bard: -1 ATK for 1 round)
+  const debuff = effects.debuffOnHit as { attackMod: number; duration: number } | undefined;
+  if (debuff && result.result.hit && (result.result.damage ?? 0) > 0 && target) {
+    const currentTarget = result.state.combatants.find(c => c.id === target.id);
+    if (currentTarget && currentTarget.isAlive) {
+      result.state = updateCombatant(result.state, target.id, {
+        activeBuffs: [
+          ...(currentTarget.activeBuffs ?? []),
+          {
+            sourceAbilityId: abilityDef.id,
+            name: abilityDef.name,
+            roundsRemaining: debuff.duration,
+            attackMod: debuff.attackMod,
+          },
+        ],
+      });
+    }
+  }
+
+  return result;
+};
+
 // ---- Effect Handler Map ----
 
 const EFFECT_HANDLERS: Record<string, EffectHandler> = {
@@ -2532,6 +2567,8 @@ const EFFECT_HANDLERS: Record<string, EffectHandler> = {
   swap: handleSwap,
   echo: handleEcho,
   banish: handleBanish,
+  // Cantrip handler (at-will scaling damage)
+  cantrip: handleCantrip,
 };
 
 // ---- Status Name Mapping ----
