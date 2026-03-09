@@ -29,6 +29,7 @@ export interface SyntheticPlayerConfig {
 export interface PartyMemberConfig extends SyntheticPlayerConfig {
   specialization?: string;
   tier0Selections?: Record<number, string>;
+  featIds?: string[];  // Override default feat picks
 }
 
 export interface PartyConfig {
@@ -399,7 +400,7 @@ export function getAllClassNames(): string[] {
  * Build a synthetic player combatant from race/class/level.
  * Returns all parameters needed for createCharacterCombatant().
  */
-export function buildSyntheticPlayer(config: SyntheticPlayerConfig): SyntheticPlayerResult | null {
+export function buildSyntheticPlayer(config: SyntheticPlayerConfig, featIdsOverride?: string[]): SyntheticPlayerResult | null {
   const className = config.class.toLowerCase();
   const raceId = config.race.toLowerCase();
 
@@ -416,9 +417,9 @@ export function buildSyntheticPlayer(config: SyntheticPlayerConfig): SyntheticPl
   // 4. Proficiency bonus
   const proficiencyBonus = getProficiencyBonus(config.level);
 
-  // 5. HP (including Tough feat bonus at L48+)
+  // 5. HP (including Tough feat bonus)
   const conMod = getModifier(stats.con);
-  const feats = getSimFeatIds(className, config.level);
+  const feats = featIdsOverride ?? getSimFeatIds(className, config.level);
   let hp = computeHP(className, config.level, conMod);
   if (feats.includes('feat-tough')) {
     hp += config.level * 2;
@@ -760,7 +761,7 @@ export function buildSyntheticParty(config: PartyConfig): SyntheticPlayerResult[
 
   for (const member of config.members) {
     const level = config.partyLevel ?? member.level;
-    const player = buildSyntheticPlayer({ ...member, level });
+    const player = buildSyntheticPlayer({ ...member, level }, member.featIds);
     if (!player) continue;
 
     // Track class counts for unique naming

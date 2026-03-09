@@ -133,6 +133,7 @@ interface Matchup {
   iterations: number;
   tier0Selections?: Record<number, string>;
   specialization?: string;
+  featIds?: string[];  // Override default feat picks. If omitted, uses getSimFeatIds()
 }
 
 interface GridConfig {
@@ -449,7 +450,7 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
       race: matchup.race,
       class: matchup.class,
       level: matchup.level,
-    });
+    }, matchup.featIds);
     if (!player) {
       errors++;
       continue;
@@ -485,7 +486,7 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
         (playerCombatant as any).nonProficientWeapon = false;
         (playerCombatant as any).saveProficiencies = getSimSaveProficiencies(player.class, player.level);
         (playerCombatant as any).extraAttacks = getAttacksPerAction(player.class, player.level);
-        (playerCombatant as any).featIds = getSimFeatIds(player.class, player.level);
+        (playerCombatant as any).featIds = matchup.featIds ?? getSimFeatIds(player.class, player.level);
 
         const monsterCombatant = createMonsterCombatant(
           `sim-monster-${mIdx}-${i}`, monster.name, 1,
@@ -873,7 +874,7 @@ async function runGroupCommand(args: ReturnType<typeof parseArgs>): Promise<void
           (combatant as any).nonProficientWeapon = false;
           (combatant as any).saveProficiencies = getSimSaveProficiencies(player.class, player.level);
           (combatant as any).extraAttacks = getAttacksPerAction(player.class, player.level);
-          (combatant as any).featIds = getSimFeatIds(player.class, player.level);
+          (combatant as any).featIds = member?.featIds ?? getSimFeatIds(player.class, player.level);
           playerCombatants.push(combatant);
 
           const playerParams = buildPlayerCombatParams(player, {

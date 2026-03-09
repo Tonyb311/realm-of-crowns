@@ -1,0 +1,61 @@
+{
+  "groupGrid": {
+    "parties": [
+      {
+        "name": "Balanced + Sentinel",
+        "members": [
+          { "race": "human", "class": "warrior", "level": 38, "specialization": "guardian", "featIds": ["feat-guardians-vigil"] },
+          { "race": "human", "class": "rogue", "level": 38, "specialization": "assassin" },
+          { "race": "human", "class": "mage", "level": 38, "specialization": "elementalist" },
+          { "race": "human", "class": "cleric", "level": 38, "specialization": "healer" },
+          { "race": "human", "class": "ranger", "level": 38, "specialization": "sharpshooter" }
+        ]
+      },
+      {
+        "name": "Balanced + Inspire",
+        "members": [
+          { "race": "human", "class": "warrior", "level": 38, "specialization": "berserker" },
+          { "race": "human", "class": "bard", "level": 38, "specialization": "battlechanter", "featIds": ["feat-inspiring-leader"] },
+          { "race": "human", "class": "mage", "level": 38, "specialization": "elementalist" },
+          { "race": "human", "class": "cleric", "level": 38, "specialization": "healer" },
+          { "race": "human", "class": "rogue", "level": 38, "specialization": "assassin" }
+        ]
+      },
+      {
+        "name": "Default Feats",
+        "members": [
+          { "race": "human", "class": "warrior", "level": 38, "specialization": "guardian" },
+          { "race": "human", "class": "rogue", "level": 38, "specialization": "assassin" },
+          { "race": "human", "class": "mage", "level": 38, "specialization": "elementalist" },
+          { "race": "human", "class": "cleric", "level": 38, "specialization": "healer" },
+          { "race": "human", "class": "ranger", "level": 38, "specialization": "sharpshooter" }
+        ]
+      },
+      {
+        "name": "Caster Stack + Arcane Focus",
+        "members": [
+          { "race": "human", "class": "mage", "level": 38, "specialization": "elementalist", "featIds": ["feat-arcane-focus"] },
+          { "race": "human", "class": "mage", "level": 38, "specialization": "necromancer", "featIds": ["feat-arcane-focus"] },
+          { "race": "human", "class": "psion", "level": 38, "specialization": "seer", "featIds": ["feat-arcane-focus"] },
+          { "race": "human", "class": "cleric", "level": 38, "specialization": "healer" },
+          { "race": "human", "class": "bard", "level": 38, "specialization": "lorekeeper", "featIds": ["feat-arcane-focus"] }
+        ]
+      },
+      {
+        "name": "Melee Stack + GWM",
+        "members": [
+          { "race": "human", "class": "warrior", "level": 38, "specialization": "berserker", "featIds": ["feat-devastating-blow"] },
+          { "race": "human", "class": "warrior", "level": 38, "specialization": "guardian", "featIds": ["feat-heavy-armor-mastery"] },
+          { "race": "human", "class": "rogue", "level": 38, "specialization": "swashbuckler" },
+          { "race": "human", "class": "cleric", "level": 38, "specialization": "paladin" },
+          { "race": "human", "class": "ranger", "level": 38, "specialization": "beastmaster" }
+        ]
+      }
+    ],
+    "levels": [38, 48],
+    "difficulties": ["medium", "hard", "deadly"],
+    "method": "cr_match",
+    "iterationsPerMatchup": 50
+  },
+  "notes": "Post-feat-expansion: group feats (sentinel, inspire, arcane focus)"
+}
