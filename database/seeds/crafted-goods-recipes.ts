@@ -161,6 +161,7 @@ export async function seedCraftedGoodsRecipes(db: any) {
       description,
       stats: recipe.outputStats as Record<string, unknown>,
       durability,
+      weight: (stats.weight as number) ?? 0,
       professionRequired: recipe.professionRequired as ProfessionType,
       levelRequired: recipe.levelRequired,
       baseValue,

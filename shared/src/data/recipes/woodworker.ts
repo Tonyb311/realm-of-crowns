@@ -178,7 +178,7 @@ export const WOODWORKER_FINISHED_GOODS: FinishedGoodsRecipe[] = [
     xpReward: 10,
     tier: 1,
     outputItemType: 'TOOL',
-    outputStats: { durability: 10, yieldBonus: 5 },
+    outputStats: { durability: 10, yieldBonus: 5, weight: 3.2 },
     specialization: null,
   },
   {
@@ -196,7 +196,7 @@ export const WOODWORKER_FINISHED_GOODS: FinishedGoodsRecipe[] = [
     xpReward: 12,
     tier: 1,
     outputItemType: 'TOOL',
-    outputStats: { durability: 15, yieldBonus: 10 },
+    outputStats: { durability: 15, yieldBonus: 10, weight: 1.6 },
     specialization: null,
   },
   {
@@ -213,7 +213,7 @@ export const WOODWORKER_FINISHED_GOODS: FinishedGoodsRecipe[] = [
     xpReward: 10,
     tier: 1,
     outputItemType: 'TOOL',
-    outputStats: { durability: 15, yieldBonus: 10 },
+    outputStats: { durability: 15, yieldBonus: 10, weight: 0.8 },
     specialization: null,
   },
 
@@ -233,7 +233,7 @@ export const WOODWORKER_FINISHED_GOODS: FinishedGoodsRecipe[] = [
     xpReward: 12,
     tier: 1,
     outputItemType: 'HOUSING',
-    outputStats: {},
+    outputStats: { weight: 5 },
     specialization: null,
   },
 
@@ -255,7 +255,7 @@ export const WOODWORKER_FINISHED_GOODS: FinishedGoodsRecipe[] = [
     xpReward: 20,
     tier: 2,
     outputItemType: 'TOOL',
-    outputStats: { durability: 25, yieldBonus: 15 },
+    outputStats: { durability: 25, yieldBonus: 15, weight: 3 },
     specialization: null,
   },
   {
@@ -273,7 +273,7 @@ export const WOODWORKER_FINISHED_GOODS: FinishedGoodsRecipe[] = [
     xpReward: 20,
     tier: 2,
     outputItemType: 'TOOL',
-    outputStats: { durability: 25, yieldBonus: 20 },
+    outputStats: { durability: 25, yieldBonus: 20, weight: 2 },
     specialization: null,
   },
 
@@ -300,6 +300,7 @@ export const WOODWORKER_FINISHED_GOODS: FinishedGoodsRecipe[] = [
       levelToEquip: 5,
       movementPenalty: 0,
       stealthPenalty: 0,
+      weight: 4,
     },
     specialization: null,
   },
@@ -320,7 +321,7 @@ export const WOODWORKER_FINISHED_GOODS: FinishedGoodsRecipe[] = [
     xpReward: 20,
     tier: 2,
     outputItemType: 'HOUSING',
-    outputStats: {},
+    outputStats: { weight: 5 },
     specialization: null,
   },
   {
@@ -338,7 +339,7 @@ export const WOODWORKER_FINISHED_GOODS: FinishedGoodsRecipe[] = [
     xpReward: 22,
     tier: 2,
     outputItemType: 'HOUSING',
-    outputStats: {},
+    outputStats: { weight: 5 },
     specialization: null,
   },
   {
@@ -356,7 +357,7 @@ export const WOODWORKER_FINISHED_GOODS: FinishedGoodsRecipe[] = [
     xpReward: 25,
     tier: 2,
     outputItemType: 'HOUSING',
-    outputStats: {},
+    outputStats: { weight: 5 },
     specialization: null,
   },
 
@@ -378,7 +379,7 @@ export const WOODWORKER_FINISHED_GOODS: FinishedGoodsRecipe[] = [
     xpReward: 35,
     tier: 3,
     outputItemType: 'HOUSING',
-    outputStats: {},
+    outputStats: { weight: 5 },
     specialization: null,
   },
   {
@@ -396,7 +397,7 @@ export const WOODWORKER_FINISHED_GOODS: FinishedGoodsRecipe[] = [
     xpReward: 30,
     tier: 3,
     outputItemType: 'HOUSING',
-    outputStats: {},
+    outputStats: { weight: 5 },
     specialization: null,
   },
 
@@ -426,6 +427,7 @@ export const WOODWORKER_FINISHED_GOODS: FinishedGoodsRecipe[] = [
       levelToEquip: 10,
       twoHanded: true,
       range: 20,
+      weight: 1.5,
     },
     specialization: null,
   },
@@ -455,6 +457,7 @@ export const WOODWORKER_FINISHED_GOODS: FinishedGoodsRecipe[] = [
       requiredStr: 8,
       movementPenalty: 1,
       stealthPenalty: 1,
+      weight: 5,
     },
     specialization: null,
   },

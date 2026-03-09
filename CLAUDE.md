@@ -33,6 +33,13 @@
 - `docs/profession-economy-master.yaml` is the **single source of truth** for all professions, recipes, and economy data.
 - **Workflow:** (1) Audit the YAML, (2) Create prompt from findings, (3) Implement code, (4) Update YAML. Skipping causes naming mismatches between YAML and seed files.
 
+### Item Weight Rules
+- Every item MUST have a weight > 0 defined in its recipe or seed data
+- Reference `docs/weight-rules.md` for the complete weight table
+- Metal items use material multipliers: Copper x0.8, Iron x1.0, Steel x1.0, Mithril x0.6, Adamantine x1.3
+- Caster weapons, cloth, and leather use flat weights (no multiplier)
+- Furniture items = 5 lbs flat ("flat-pack" weight)
+
 ### Simulation Rules
 - **Never run a simulation unless explicitly told to.** Deploy and seed only unless instructed.
 - Prompts saved to `prompts/`. Exports go to Excel. Analysis to markdown files, keep chat minimal.
