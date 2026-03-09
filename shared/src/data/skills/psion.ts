@@ -30,6 +30,8 @@ export const psionAbilities: AbilityDefinition[] = [
 export const psionTier0Abilities: AbilityDefinition[] = [
   // Cantrip — at-will basic caster attack (replaces weapon swing)
   { id: 'psi-cantrip', name: 'Psychic Bolt', description: 'Drive a lance of psychic force into your target\'s mind. Intensifies as your mental discipline grows.', class: 'psion', specialization: 'none', tier: -1, effects: { type: 'cantrip', diceCount: 1, diceSides: 6, scalingLevels: [5, 11, 17] }, cooldown: 0, levelRequired: 1, attackType: 'spell', damageType: 'PSYCHIC' },
+  // L1 defensive — AC boost (weaker than L3 Mental Ward)
+  { id: 'psi-veil', name: 'Psychic Veil', description: 'Bend perception around yourself, making you harder to strike.', class: 'psion', specialization: 'none', tier: -1, effects: { type: 'buff', acBonus: 2, duration: 2 }, cooldown: 3, levelRequired: 1, attackType: 'auto' },
 
   // Level 3 — "First Taste"
   { id: 'psi-t0-3a', name: 'Psychic Jab', description: 'Drive a spike of raw thought into the enemy\'s consciousness.', class: 'psion', specialization: 'none', tier: 0, effects: { type: 'damage', bonusDamage: 3, element: 'psychic' }, cooldown: 1, levelRequired: 3, requiresChoice: true, choiceGroup: 'psion_tier0_level3', attackType: 'spell', damageType: 'PSYCHIC' },

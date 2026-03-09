@@ -30,6 +30,8 @@ export const bardAbilities: AbilityDefinition[] = [
 export const bardTier0Abilities: AbilityDefinition[] = [
   // Cantrip — at-will basic caster attack (replaces weapon swing, weaker damage + debuff)
   { id: 'brd-cantrip', name: 'Dissonant Whisper', description: 'Unleash a painfully discordant sound that rattles your foe. Sharpens as your voice finds its power.', class: 'bard', specialization: 'none', tier: -1, effects: { type: 'cantrip', diceCount: 1, diceSides: 4, scalingLevels: [5, 11, 17], debuffOnHit: { attackMod: -1, duration: 1 } }, cooldown: 0, levelRequired: 1, attackType: 'spell', damageType: 'PSYCHIC' },
+  // L1 defensive — save-or-suck debuff (Bard hybrid: debuff fits class identity)
+  { id: 'brd-flourish', name: 'Disorienting Flourish', description: 'Perform a dizzying gesture that throws your foe off balance. Quick-witted targets may shrug it off.', class: 'bard', specialization: 'none', tier: -1, effects: { type: 'debuff', attackReduction: -2, duration: 1, saveType: 'cha' }, cooldown: 3, levelRequired: 1, attackType: 'save' },
 
   // Level 3 — "First Taste"
   { id: 'bar-t0-3a', name: 'Cutting Words', description: 'Hurl an insult so cutting it wounds more than any blade.', class: 'bard', specialization: 'none', tier: 0, effects: { type: 'damage', bonusDamage: 3 }, cooldown: 2, levelRequired: 3, requiresChoice: true, choiceGroup: 'bard_tier0_level3', attackType: 'spell', damageType: 'PSYCHIC' },

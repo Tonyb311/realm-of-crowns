@@ -267,11 +267,16 @@ export const ABILITY_TEMPLATES: Record<string, string[]> = {
     'erupts into an unstoppable rage, eyes blazing with fury.',
   ],
 
-  // ---- Mage (cantrip) ----
+  // ---- Mage (cantrip + L1 defensive) ----
   'Force Bolt': [
     'fires a crackling bolt of raw arcane force at {target}.',
     'thrusts a hand forward, launching a shimmering bolt of force at {target}.',
     'gathers arcane energy and hurls it at {target} in a searing streak.',
+  ],
+  'Arcane Ward': [
+    'weaves a shimmering shell of force around themselves.',
+    'traces a quick sigil in the air, conjuring a translucent barrier.',
+    'raises a flickering ward of arcane energy.',
   ],
 
   // ---- Mage ----
@@ -356,11 +361,16 @@ export const ABILITY_TEMPLATES: Record<string, string[]> = {
     'unleashes a whirlwind of rapid strikes.',
   ],
 
-  // ---- Cleric (cantrip) ----
+  // ---- Cleric (cantrip + L1 defensive) ----
   'Sacred Flame': [
     'calls down a column of divine radiance upon {target}.',
     'invokes holy fire that descends from above onto {target}.',
     'whispers a prayer as sacred light sears {target}.',
+  ],
+  'Rebuke the Wicked': [
+    'speaks a word of divine censure that weighs upon {target}.',
+    'levels a stern rebuke at {target}, sapping their will to fight.',
+    'invokes righteous judgment, rattling {target}\'s resolve.',
   ],
 
   // ---- Cleric ----
@@ -442,11 +452,16 @@ export const ABILITY_TEMPLATES: Record<string, string[]> = {
     'plants an explosive device that erupts when triggered.',
   ],
 
-  // ---- Bard (cantrip) ----
+  // ---- Bard (cantrip + L1 defensive) ----
   'Dissonant Whisper': [
     'hisses a discordant syllable that stabs into {target}\'s mind.',
     'whispers a painfully off-key note that rattles {target}.',
     'unleashes a jarring whisper of dissonance at {target}.',
+  ],
+  'Disorienting Flourish': [
+    'performs a dizzying flourish that throws {target} off balance.',
+    'spins with a bewildering gesture, disorienting {target}.',
+    'sweeps a hand through the air, leaving {target} momentarily dazed.',
   ],
 
   // ---- Bard ----
@@ -484,11 +499,16 @@ export const ABILITY_TEMPLATES: Record<string, string[]> = {
     'weaves an irresistible melody that locks {target} in a trance.',
   ],
 
-  // ---- Psion (cantrip) ----
+  // ---- Psion (cantrip + L1 defensive) ----
   'Psychic Bolt': [
     'drives a lance of psychic force into {target}\'s mind.',
     'hurls a condensed pulse of thought-energy at {target}.',
     'focuses raw mental power into a bolt that strikes {target}.',
+  ],
+  'Psychic Veil': [
+    'bends perception around themselves, blurring their outline.',
+    'projects a subtle psychic haze that makes them harder to target.',
+    'wraps their mind in a veil of misdirection.',
   ],
 
   // ---- Psion ----

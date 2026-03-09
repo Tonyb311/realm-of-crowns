@@ -30,6 +30,8 @@ export const clericAbilities: AbilityDefinition[] = [
 export const clericTier0Abilities: AbilityDefinition[] = [
   // Cantrip — at-will basic caster attack (save-based, replaces weapon swing)
   { id: 'clr-cantrip', name: 'Sacred Flame', description: 'Call down a column of divine radiance upon your foe. Strengthens as your faith deepens.', class: 'cleric', specialization: 'none', tier: -1, effects: { type: 'cantrip', diceCount: 1, diceSides: 6, scalingLevels: [5, 11, 17], saveType: 'dex' }, cooldown: 0, levelRequired: 1, attackType: 'save', damageType: 'RADIANT' },
+  // L1 defensive — save-or-suck debuff (Cleric already has guaranteed damage via Sacred Flame)
+  { id: 'clr-rebuke', name: 'Rebuke the Wicked', description: 'Speak a word of divine censure that saps the enemy\'s aggression. Strong-willed foes may resist.', class: 'cleric', specialization: 'none', tier: -1, effects: { type: 'debuff', attackReduction: -2, duration: 2, saveType: 'wis' }, cooldown: 3, levelRequired: 1, attackType: 'save' },
 
   // Level 3 — "First Taste"
   { id: 'cle-t0-3a', name: 'Sacred Strike', description: 'Channel the faintest glimmer of divine wrath through your weapon.', class: 'cleric', specialization: 'none', tier: 0, effects: { type: 'damage', bonusDamage: 3, element: 'radiant' }, cooldown: 2, levelRequired: 3, requiresChoice: true, choiceGroup: 'cleric_tier0_level3', attackType: 'weapon', damageType: 'RADIANT' },

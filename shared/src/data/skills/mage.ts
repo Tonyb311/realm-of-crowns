@@ -30,6 +30,8 @@ export const mageAbilities: AbilityDefinition[] = [
 export const mageTier0Abilities: AbilityDefinition[] = [
   // Cantrip — at-will basic caster attack (replaces weapon swing)
   { id: 'mag-cantrip', name: 'Force Bolt', description: 'Hurl a bolt of raw arcane force at your target. Grows more powerful as your mastery increases.', class: 'mage', specialization: 'none', tier: -1, effects: { type: 'cantrip', diceCount: 1, diceSides: 6, scalingLevels: [5, 11, 17] }, cooldown: 0, levelRequired: 1, attackType: 'spell', damageType: 'FORCE' },
+  // L1 defensive — absorb shield (weaker than L3 Mana Shield)
+  { id: 'mag-ward', name: 'Arcane Ward', description: 'Conjure a thin shell of protective force around yourself.', class: 'mage', specialization: 'none', tier: -1, effects: { type: 'buff', absorbDamage: 5, duration: 2 }, cooldown: 3, levelRequired: 1, attackType: 'auto' },
 
   // Level 3 — "First Taste"
   { id: 'mag-t0-3a', name: 'Arcane Spark', description: 'Release a crackling mote of raw arcane energy at your foe.', class: 'mage', specialization: 'none', tier: 0, effects: { type: 'damage', diceCount: 1, diceSides: 4, bonusDamage: 1 }, cooldown: 1, levelRequired: 3, requiresChoice: true, choiceGroup: 'mage_tier0_level3', attackType: 'spell' },
