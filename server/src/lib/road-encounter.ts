@@ -32,7 +32,8 @@ import type {
 } from '@shared/types/combat';
 import { getModifier } from '@shared/types/combat';
 import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
-import { CLASS_SAVE_PROFICIENCIES, getAttacksPerAction } from '@shared/data/combat-constants';
+import { CLASS_SAVE_PROFICIENCIES, CLASS_ARMOR_TYPE, getAttacksPerAction } from '@shared/data/combat-constants';
+import { computeFinalAC } from '@shared/utils/armor-conversion';
 import {
   ACTION_XP,
   DEATH_PENALTY,
@@ -583,8 +584,9 @@ export async function resolveRoadEncounter(
     cha: charStats.cha + (equipTotals.totalStatBonuses.charisma ?? 0),
   };
 
-  // AC = 10 + effective DEX modifier + quality-scaled armor
-  const playerAC = 10 + getModifier(effectiveStats.dex) + equipTotals.totalAC;
+  // AC = converted armor bonus + DEX (type-dependent)
+  const charArmorType = CLASS_ARMOR_TYPE[character.class?.toLowerCase() ?? ''] ?? 'none';
+  const playerAC = computeFinalAC(equipTotals.totalAC, getModifier(effectiveStats.dex), charArmorType);
 
   // 5. Create combat state (no DB session needed — this is auto-resolved)
   //    Characters enter road encounters at full HP — road rest heals them.
@@ -1036,7 +1038,8 @@ export async function resolveGroupRoadEncounter(
       wis: charStats.wis + (equipTotals.totalStatBonuses.wisdom ?? 0),
       cha: charStats.cha + (equipTotals.totalStatBonuses.charisma ?? 0),
     };
-    const playerAC = 10 + getModifier(effectiveStats.dex) + equipTotals.totalAC;
+    const groupArmorType = CLASS_ARMOR_TYPE[char.class?.toLowerCase() ?? ''] ?? 'none';
+    const playerAC = computeFinalAC(equipTotals.totalAC, getModifier(effectiveStats.dex), groupArmorType);
 
     playerWeapons[char.id] = playerWeapon;
 

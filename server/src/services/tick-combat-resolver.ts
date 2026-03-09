@@ -47,7 +47,8 @@ import type {
 } from '@shared/types/combat';
 import { getModifier } from '@shared/types/combat';
 import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
-import { CLASS_SAVE_PROFICIENCIES, getAttacksPerAction } from '@shared/data/combat-constants';
+import { CLASS_SAVE_PROFICIENCIES, CLASS_ARMOR_TYPE, getAttacksPerAction } from '@shared/data/combat-constants';
+import { computeFinalAC } from '@shared/utils/armor-conversion';
 import {
   getCombatPresets,
   buildCombatParams,
@@ -1044,7 +1045,7 @@ export async function resolveNodePvE(
     wis: charStats.wis + (equipBonuses.wisdom ?? 0),
     cha: charStats.cha + (equipBonuses.charisma ?? 0),
   };
-  const playerAC = 10 + getModifier(effectiveStats.dex) + getEquipmentAC(character.characterEquipments);
+  const playerAC = getPlayerAC(character.characterEquipments, character.class, getModifier(effectiveStats.dex));
 
   // Build combatants
   const rawWeapon = getEquippedWeapon(character.characterEquipments);
@@ -1235,7 +1236,7 @@ export async function resolveNodePvP(
     traveler.id, traveler.name, 0,
     travelerEffective, traveler.level,
     traveler.health, traveler.maxHealth,
-    10 + getModifier(travelerEffective.dex) + getEquipmentAC(traveler.characterEquipments),
+    getPlayerAC(traveler.characterEquipments, traveler.class, getModifier(travelerEffective.dex)),
     (() => { const w = getEquippedWeapon(traveler.characterEquipments); return w ? applyClassWeaponStat(w, traveler.class) : null; })(),
     {},
     getProficiencyBonus(traveler.level),
@@ -1254,7 +1255,7 @@ export async function resolveNodePvP(
     ambusher.id, ambusher.name, 1,
     ambusherEffective, ambusher.level,
     ambusher.health, ambusher.maxHealth,
-    10 + getModifier(ambusherEffective.dex) + getEquipmentAC(ambusher.characterEquipments),
+    getPlayerAC(ambusher.characterEquipments, ambusher.class, getModifier(ambusherEffective.dex)),
     (() => { const w = getEquippedWeapon(ambusher.characterEquipments); return w ? applyClassWeaponStat(w, ambusher.class) : null; })(),
     {},
     getProficiencyBonus(ambusher.level),
@@ -1405,7 +1406,7 @@ export async function resolveGroupCombat(
     const combatant = createCharacterCombatant(
       char.id, char.name, 0, effective, char.level,
       char.health, char.maxHealth,
-      10 + getModifier(effective.dex) + getEquipmentAC(char.characterEquipments),
+      getPlayerAC(char.characterEquipments, char.class, getModifier(effective.dex)),
       (() => { const w = getEquippedWeapon(char.characterEquipments); return w ? applyClassWeaponStat(w, char.class) : null; })(), {},
       getProficiencyBonus(char.level),
     );
@@ -1449,7 +1450,7 @@ export async function resolveGroupCombat(
     const combatant = createCharacterCombatant(
       char.id, char.name, 1, effective, char.level,
       char.health, char.maxHealth,
-      10 + getModifier(effective.dex) + getEquipmentAC(char.characterEquipments),
+      getPlayerAC(char.characterEquipments, char.class, getModifier(effective.dex)),
       (() => { const w = getEquippedWeapon(char.characterEquipments); return w ? applyClassWeaponStat(w, char.class) : null; })(), {},
       getProficiencyBonus(char.level),
     );
@@ -1523,10 +1524,11 @@ function buildMonsterWeapon(monsterStats: Record<string, unknown>): WeaponInfo {
 }
 
 /**
- * Get quality-scaled AC from pre-loaded equipment using calculateItemStats().
+ * Get raw armor sum from pre-loaded equipment using calculateItemStats().
+ * Returns the raw armor total (recipe-scale 0-224), NOT D&D-scale AC.
  */
-function getEquipmentAC(equipment: any[]): number {
-  let ac = 0;
+function getRawArmorSum(equipment: any[]): number {
+  let armor = 0;
   for (const equip of equipment) {
     if (!equip.item?.itemTemplate) continue;
     const calculated = calculateItemStats({
@@ -1535,10 +1537,20 @@ function getEquipmentAC(equipment: any[]): number {
       template: { stats: equip.item.itemTemplate.stats },
     });
     if (typeof calculated.finalStats.armor === 'number') {
-      ac += calculated.finalStats.armor;
+      armor += calculated.finalStats.armor;
     }
   }
-  return ac;
+  return armor;
+}
+
+/**
+ * Compute final D&D-scale AC for a player character.
+ * Uses the armor-to-AC conversion pipeline with class-based armor type.
+ */
+function getPlayerAC(equipment: any[], characterClass: string | null, dexMod: number): number {
+  const rawArmor = getRawArmorSum(equipment);
+  const armorType = CLASS_ARMOR_TYPE[characterClass?.toLowerCase() ?? ''] ?? 'none';
+  return computeFinalAC(rawArmor, dexMod, armorType);
 }
 
 /**

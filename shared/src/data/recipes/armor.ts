@@ -2007,6 +2007,52 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     },
   },
 
+  // ---- WOVEN WOOL LEGGINGS & SASH (filling cloth slot gaps) ----
+  {
+    recipeId: 'tai-woven-wool-leggings',
+    name: 'Sew Woven Wool Leggings',
+    professionRequired: 'TAILOR',
+    levelRequired: 10,
+    inputs: [
+      { itemName: ITEMS.FINE_CLOTH, quantity: 3 },
+    ],
+    outputs: [{ itemName: ITEMS.WOVEN_WOOL_LEGGINGS, quantity: 1 }],
+    craftTime: 20,
+    xpReward: 18,
+    tier: 3,
+    outputItemType: 'ARMOR',
+    equipSlot: 'LEGS',
+    outputStats: {
+      armor: 3,
+      magicResist: 5,
+      durability: 60,
+      levelToEquip: 10,
+      weight: 1.5,
+    },
+  },
+  {
+    recipeId: 'tai-woven-wool-sash',
+    name: 'Sew Woven Wool Sash',
+    professionRequired: 'TAILOR',
+    levelRequired: 10,
+    inputs: [
+      { itemName: ITEMS.FINE_CLOTH, quantity: 2 },
+    ],
+    outputs: [{ itemName: ITEMS.WOVEN_WOOL_SASH, quantity: 1 }],
+    craftTime: 15,
+    xpReward: 14,
+    tier: 3,
+    outputItemType: 'ARMOR',
+    equipSlot: 'OFF_HAND',
+    outputStats: {
+      armor: 2,
+      magicResist: 4,
+      durability: 50,
+      levelToEquip: 10,
+      weight: 0.3,
+    },
+  },
+
   // ---- SILK ARMOR (Tier 4, Level 40) ----
   {
     recipeId: 'tai-silk-hood',
@@ -2116,6 +2162,52 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       durability: 90,
       levelToEquip: 40,
       weight: 2,
+    },
+  },
+
+  // ---- SILK LEGGINGS & SASH (filling cloth slot gaps) ----
+  {
+    recipeId: 'tai-silk-leggings',
+    name: 'Sew Silk Leggings',
+    professionRequired: 'TAILOR',
+    levelRequired: 40,
+    inputs: [
+      { itemName: ITEMS.SILK_FABRIC, quantity: 3 },
+    ],
+    outputs: [{ itemName: ITEMS.SILK_LEGGINGS, quantity: 1 }],
+    craftTime: 35,
+    xpReward: 30,
+    tier: 4,
+    outputItemType: 'ARMOR',
+    equipSlot: 'LEGS',
+    outputStats: {
+      armor: 8,
+      magicResist: 14,
+      durability: 100,
+      levelToEquip: 40,
+      weight: 1.5,
+    },
+  },
+  {
+    recipeId: 'tai-silk-sash',
+    name: 'Sew Silk Sash',
+    professionRequired: 'TAILOR',
+    levelRequired: 40,
+    inputs: [
+      { itemName: ITEMS.SILK_FABRIC, quantity: 2 },
+    ],
+    outputs: [{ itemName: ITEMS.SILK_SASH, quantity: 1 }],
+    craftTime: 25,
+    xpReward: 22,
+    tier: 4,
+    outputItemType: 'ARMOR',
+    equipSlot: 'OFF_HAND',
+    outputStats: {
+      armor: 4,
+      magicResist: 10,
+      durability: 80,
+      levelToEquip: 40,
+      weight: 0.3,
     },
   },
 
@@ -2233,6 +2325,31 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
       durability: 160,
       levelToEquip: 70,
       weight: 2,
+    },
+  },
+
+  // ---- ENCHANTED SILK LEGGINGS (filling cloth slot gap) ----
+  {
+    recipeId: 'tai-enchanted-silk-leggings',
+    name: 'Sew Enchanted Silk Leggings',
+    professionRequired: 'TAILOR',
+    levelRequired: 70,
+    inputs: [
+      { itemName: ITEMS.SILK_FABRIC, quantity: 4 },
+      { itemName: ITEMS.ARCANE_REAGENTS, quantity: 1 },
+    ],
+    outputs: [{ itemName: ITEMS.ENCHANTED_SILK_LEGGINGS, quantity: 1 }],
+    craftTime: 55,
+    xpReward: 50,
+    tier: 5,
+    outputItemType: 'ARMOR',
+    equipSlot: 'LEGS',
+    outputStats: {
+      armor: 14,
+      magicResist: 28,
+      durability: 180,
+      levelToEquip: 70,
+      weight: 1.5,
     },
   },
 

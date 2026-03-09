@@ -3,7 +3,8 @@ import { eq, and, isNull, sql, count } from 'drizzle-orm';
 import { characters, characterAbilities, combatEncounterLogs } from '@database/tables';
 import { calculateEquipmentTotals } from './item-stats';
 import { getProficiencyBonus, getModifier } from '@shared/utils/bounded-accuracy';
-import { CLASS_SAVE_PROFICIENCIES, CLASS_PRIMARY_STAT, CLASS_ARMOR_PROFICIENCY, CLASS_WEAPON_PROFICIENCY } from '@shared/data/combat-constants';
+import { CLASS_SAVE_PROFICIENCIES, CLASS_PRIMARY_STAT, CLASS_ARMOR_PROFICIENCY, CLASS_WEAPON_PROFICIENCY, CLASS_ARMOR_TYPE } from '@shared/data/combat-constants';
+import { computeFinalAC } from '@shared/utils/armor-conversion';
 import { checkEquipmentProficiency } from '@shared/utils/proficiency';
 import { TIER0_ABILITIES_BY_CLASS, ABILITIES_BY_CLASS, TIER0_CHOICE_LEVELS } from '@shared/data/skills';
 import { getRace } from '@shared/data/races';
@@ -132,11 +133,12 @@ export async function buildCharacterSheet(characterId: string, viewerId: string 
   const attackBonus = primaryMod + profBonus;
   const spellSaveDC = 8 + profBonus + primaryMod;
 
-  // AC breakdown
+  // AC breakdown — raw armor converted to D&D-scale via armor type
   const dexMod = getModifier(effectiveStats.dex);
-  const armorAC = equipTotals.totalAC;
-  const acBreakdown = { base: 10, dexMod, armor: armorAC };
-  const ac = 10 + dexMod + armorAC;
+  const rawArmor = equipTotals.totalAC;
+  const armorType = CLASS_ARMOR_TYPE[charClass] ?? 'none';
+  const ac = computeFinalAC(rawArmor, dexMod, armorType);
+  const acBreakdown = { base: 10, dexMod, armor: rawArmor, armorType, convertedAC: ac };
 
   // Resolve abilities
   const unlockedIds = new Set(charAbilities.map(a => a.abilityId));

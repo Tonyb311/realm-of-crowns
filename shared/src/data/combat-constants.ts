@@ -68,6 +68,24 @@ export const CLASS_PRIMARY_STAT: Record<string, string> = {
 };
 
 // ============================================================
+// ARMOR TYPE FOR AC COMPUTATION
+// ============================================================
+
+/** Armor type determines how DEX applies to AC */
+export type ArmorType = 'heavy' | 'medium' | 'light' | 'none';
+
+/** Each class maps to its best-proficient armor type for AC computation */
+export const CLASS_ARMOR_TYPE: Record<string, ArmorType> = {
+  warrior: 'heavy',
+  cleric:  'heavy',
+  ranger:  'medium',
+  rogue:   'light',
+  bard:    'none',
+  mage:    'none',
+  psion:   'none',
+};
+
+// ============================================================
 // EQUIPMENT PROFICIENCY SYSTEM
 // ============================================================
 

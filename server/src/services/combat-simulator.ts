@@ -12,7 +12,8 @@ import type { WeaponInfo } from '@shared/types/combat';
 import type { CombatPresets, AbilityQueueEntry } from '../services/combat-presets';
 import { createRacialCombatTracker, type RacialCombatTracker } from '../services/racial-combat-abilities';
 import { getProficiencyBonus, STAT_HARD_CAP } from '@shared/utils/bounded-accuracy';
-import { CLASS_SAVE_PROFICIENCIES, CLASS_MILESTONE_SAVE_ORDER, getAttacksPerAction } from '@shared/data/combat-constants';
+import { CLASS_SAVE_PROFICIENCIES, CLASS_MILESTONE_SAVE_ORDER, CLASS_ARMOR_TYPE, getAttacksPerAction } from '@shared/data/combat-constants';
+import { computeFinalAC } from '@shared/utils/armor-conversion';
 import { FEAT_UNLOCK_LEVELS } from '@shared/data/feats';
 
 // ---------------------------------------------------------------------------
@@ -260,31 +261,21 @@ const WEAPON_CATEGORY_DAMAGE: Record<string, string> = {
 };
 
 /**
- * Base armor AC per class per tier (before DEX mod for applicable armor types).
- * Derived from real recipe armor values summed across all slots.
+ * Raw armor totals by class × tier — derived from actual recipe armor values
+ * in shared/src/data/recipes/armor.ts. These feed into the shared
+ * computeFinalAC() formula which converts raw armor to D&D-scale AC.
  *
- * Plate (warrior): Copper set 26 → Iron set 50 → Steel set 88 → Mithril set 134
- *   AC = 10 + armor/5 (scaled to D&D range): T1=15, T2=18, T3=20, T4=22
- *   Quality multiplier applied: T3×1.15=23, T4×1.5=33 → capped at D&D bounds
- *
- * Medium (cleric/ranger): leather+some plate mix
- * Light (rogue/bard): leather only
- * None (mage/psion): cloth robes with magicResist but minimal AC
- *
- * Values represent final AC BEFORE quality (quality applied in computeEquipmentAC).
- * Heavy armor: flat AC, no DEX bonus.
- * Medium armor: base + min(DEX mod, 2).
- * Light armor: base + DEX mod.
- * None: 10 + DEX mod.
+ * Values represent the sum of all equipped armor slot raw values at each tier.
+ * Quality multiplier is applied via TIER_QUALITY before conversion.
  */
-const ARMOR_TIERS: Record<string, { type: 'heavy' | 'medium' | 'light' | 'none'; ac: number[] }> = {
-  warrior: { type: 'heavy',  ac: [14, 16, 18, 21] },
-  cleric:  { type: 'medium', ac: [13, 15, 17, 19] },
-  ranger:  { type: 'medium', ac: [12, 14, 16, 18] },
-  rogue:   { type: 'light',  ac: [11, 13, 14, 16] },
-  bard:    { type: 'light',  ac: [11, 13, 14, 16] },
-  mage:    { type: 'none',   ac: [10, 10, 10, 10] },
-  psion:   { type: 'none',   ac: [10, 10, 10, 10] },
+const RAW_ARMOR_BY_CLASS_TIER: Record<string, number[]> = {
+  warrior: [30, 60, 102, 156],   // Plate armor: T1→T4
+  cleric:  [30, 60, 102, 156],   // Cleric wears plate too
+  ranger:  [20, 40, 70, 110],    // Medium armor mix
+  rogue:   [12, 27, 52, 80],     // Leather armor
+  bard:    [8, 20, 37, 60],      // Cloth armor (none type)
+  mage:    [8, 20, 35, 57],      // Cloth armor
+  psion:   [8, 20, 35, 57],      // Cloth armor
 };
 
 // ---------------------------------------------------------------------------
@@ -343,20 +334,14 @@ function getTierIndex(level: number): number {
 }
 
 function computeEquipmentAC(className: string, level: number, dexMod: number): number {
-  const armor = ARMOR_TIERS[className] || ARMOR_TIERS.warrior;
+  const rawTiers = RAW_ARMOR_BY_CLASS_TIER[className] || RAW_ARMOR_BY_CLASS_TIER.warrior;
   const tier = getTierIndex(level);
-  const baseAC = armor.ac[tier];
-  // Apply quality multiplier to AC bonus above base 10
+  const rawArmor = rawTiers[tier];
+  // Apply quality multiplier to raw armor before conversion
   const qualityMult = TIER_QUALITY[tier];
-  const acBonus = baseAC - 10;
-  const scaledAC = 10 + Math.floor(acBonus * qualityMult);
-
-  switch (armor.type) {
-    case 'heavy':  return scaledAC;
-    case 'medium': return scaledAC + Math.min(dexMod, 2);
-    case 'light':  return scaledAC + dexMod;
-    case 'none':   return scaledAC + dexMod;
-  }
+  const scaledRaw = Math.floor(rawArmor * qualityMult);
+  const armorType = CLASS_ARMOR_TYPE[className] ?? 'none';
+  return computeFinalAC(scaledRaw, dexMod, armorType);
 }
 
 /**
