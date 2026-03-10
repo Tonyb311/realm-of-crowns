@@ -51,5 +51,5 @@
     "method": "cr_match",
     "iterationsPerMatchup": 50
   },
-  "notes": "Post-audit-fix group rebaseline: 5 parties x 6 levels x 3 difficulties x 50 iter = 4,500 fights. All fixes applied."
+  "notes": "Post-armor-fix group rebaseline: 5 parties x 6 levels x 3 difficulties x 50 iter = 4,500 fights. Cloth armor gaps fixed, leather T1 coverage, sim weapon/armor sync."
 }

@@ -160,5 +160,5 @@
     { "race": "human", "class": "bard", "level": 40, "opponent": "Ember Titan", "iterations": 100 },
     { "race": "human", "class": "psion", "level": 40, "opponent": "Ember Titan", "iterations": 100 }
   ],
-  "notes": "Post-audit-fix full rebaseline: 7 classes x 10 levels x 2 monsters x 100 iter = 14,000 fights. Weapon dice fix, starter armor +2 AC fix, monster STR double-count removal, cantrips, L1 defense, Lucky/Resilient feats wired."
+  "notes": "Post-armor-fix rebaseline: 7 classes x 10 levels x 2 monsters x 100 iter = 14,000 fights. Cloth armor gaps fixed, leather T1 coverage, sim weapon/armor sync, weapon dice fix, starter armor, monster STR fix, cantrips, L1 defense, Lucky/Resilient feats."
 }
