@@ -220,33 +220,33 @@ const WEAPON_TIERS: Record<string, WeaponTier[]> = {
     { name: 'Composite Bow',    diceCount: 1, diceSides: 10, bonusDamage: 3, bonusAttack: 2 },
     { name: 'Mithril Composite Bow', diceCount: 1, diceSides: 12, bonusDamage: 4, bonusAttack: 3 },
   ],
-  // Mage: staves — baseDamage 4/6/8/10 (caster weapons scale lower, abilities do the damage)
+  // Mage: staves — baseDamage 4/6/8/10 (2H, force) — synced from caster-weapons.ts recipes
   staff: [
-    { name: 'Ashwood Staff',    diceCount: 1, diceSides: 4,  bonusDamage: 0, bonusAttack: 0 },
-    { name: 'Ironwood Staff',   diceCount: 1, diceSides: 6,  bonusDamage: 1, bonusAttack: 1 },
-    { name: 'Ebonwood Staff',   diceCount: 1, diceSides: 6,  bonusDamage: 2, bonusAttack: 2 },
-    { name: 'Starwood Staff',   diceCount: 1, diceSides: 8,  bonusDamage: 3, bonusAttack: 3 },
+    { name: 'Ashwood Staff',    diceCount: 1, diceSides: 6,  bonusDamage: 0, bonusAttack: 0 },
+    { name: 'Ironwood Staff',   diceCount: 1, diceSides: 8,  bonusDamage: 1, bonusAttack: 1 },
+    { name: 'Ebonwood Staff',   diceCount: 1, diceSides: 8,  bonusDamage: 2, bonusAttack: 3 },
+    { name: 'Starwood Staff',   diceCount: 1, diceSides: 10, bonusDamage: 3, bonusAttack: 4 },
   ],
-  // Cleric: holy symbols — baseDamage 3/5/6/7 (1H, radiant)
+  // Cleric: holy symbols — baseDamage 3/5/6/7 (1H, radiant) — synced from caster-weapons.ts recipes
   holy_symbol: [
     { name: 'Wooden Holy Symbol',  diceCount: 1, diceSides: 4, bonusDamage: 0, bonusAttack: 0 },
-    { name: 'Iron Holy Symbol',    diceCount: 1, diceSides: 4, bonusDamage: 1, bonusAttack: 1 },
+    { name: 'Iron Holy Symbol',    diceCount: 1, diceSides: 6, bonusDamage: 1, bonusAttack: 1 },
     { name: 'Silver Holy Symbol',  diceCount: 1, diceSides: 6, bonusDamage: 2, bonusAttack: 2 },
-    { name: 'Gold Holy Symbol',    diceCount: 1, diceSides: 6, bonusDamage: 3, bonusAttack: 3 },
+    { name: 'Gold Holy Symbol',    diceCount: 1, diceSides: 8, bonusDamage: 3, bonusAttack: 3 },
   ],
-  // Bard: instruments — baseDamage 4/6/8/10 (2H, thunder)
+  // Bard: instruments — baseDamage 4/6/8/10 (2H, thunder) — synced from caster-weapons.ts recipes
   instrument: [
-    { name: "Traveler's Lute",  diceCount: 1, diceSides: 4,  bonusDamage: 0, bonusAttack: 0 },
-    { name: 'Fine Lute',        diceCount: 1, diceSides: 6,  bonusDamage: 1, bonusAttack: 1 },
-    { name: "Master's Lute",    diceCount: 1, diceSides: 6,  bonusDamage: 2, bonusAttack: 2 },
-    { name: 'Enchanted Harp',   diceCount: 1, diceSides: 8,  bonusDamage: 3, bonusAttack: 3 },
+    { name: "Traveler's Lute",  diceCount: 1, diceSides: 6,  bonusDamage: 0, bonusAttack: 0 },
+    { name: 'Fine Lute',        diceCount: 1, diceSides: 8,  bonusDamage: 1, bonusAttack: 1 },
+    { name: "Master's Lute",    diceCount: 1, diceSides: 8,  bonusDamage: 2, bonusAttack: 3 },
+    { name: 'Enchanted Harp',   diceCount: 1, diceSides: 10, bonusDamage: 3, bonusAttack: 4 },
   ],
-  // Psion: orbs — baseDamage 3/5/6/7 (1H, psychic)
+  // Psion: orbs — baseDamage 3/5/6/7 (1H, psychic) — synced from caster-weapons.ts recipes
   orb: [
     { name: 'Quartz Orb',      diceCount: 1, diceSides: 4,  bonusDamage: 0, bonusAttack: 0 },
-    { name: 'Amethyst Orb',    diceCount: 1, diceSides: 4,  bonusDamage: 1, bonusAttack: 1 },
+    { name: 'Amethyst Orb',    diceCount: 1, diceSides: 6,  bonusDamage: 1, bonusAttack: 1 },
     { name: 'Sapphire Orb',    diceCount: 1, diceSides: 6,  bonusDamage: 2, bonusAttack: 2 },
-    { name: 'Arcane Orb',      diceCount: 1, diceSides: 6,  bonusDamage: 3, bonusAttack: 3 },
+    { name: 'Arcane Orb',      diceCount: 1, diceSides: 8,  bonusDamage: 3, bonusAttack: 3 },
   ],
 };
 
@@ -270,13 +270,13 @@ const WEAPON_CATEGORY_DAMAGE: Record<string, string> = {
  * Quality multiplier is applied via TIER_QUALITY before conversion.
  */
 const RAW_ARMOR_BY_CLASS_TIER: Record<string, number[]> = {
-  warrior: [30, 60, 102, 156],   // Plate armor: T1→T4
+  warrior: [30, 60, 102, 156],   // Plate armor: T1→T4 (5 slots + shield)
   cleric:  [30, 60, 102, 156],   // Cleric wears plate too
-  ranger:  [20, 40, 70, 110],    // Medium armor mix
-  rogue:   [12, 27, 52, 80],     // Leather armor
-  bard:    [8, 20, 37, 60],      // Cloth armor (none type)
-  mage:    [8, 20, 35, 57],      // Cloth armor
-  psion:   [8, 20, 35, 57],      // Cloth armor
+  ranger:  [15, 18, 32, 50],     // Leather/medium armor (5 body slots) — synced from recipe sums
+  rogue:   [15, 18, 32, 50],     // Leather armor (5 body slots) — synced from recipe sums
+  bard:    [8, 17, 35, 57],      // Cloth armor (5 body slots, T2 no LEGS piece) — synced from recipe sums
+  mage:    [8, 17, 35, 57],      // Cloth armor — synced from recipe sums
+  psion:   [8, 17, 35, 57],      // Cloth armor — synced from recipe sums
 };
 
 // ---------------------------------------------------------------------------

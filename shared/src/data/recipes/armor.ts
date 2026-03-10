@@ -1568,7 +1568,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'CHEST',
     outputStats: {
-      armor: 0,
+      armor: 3,
       magicResist: 4,
       durability: 40,
       levelToEquip: 1,
@@ -1590,7 +1590,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'HANDS',
     outputStats: {
-      armor: 0,
+      armor: 1,
       magicResist: 1,
       durability: 30,
       levelToEquip: 1,
@@ -1612,7 +1612,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'FEET',
     outputStats: {
-      armor: 0,
+      armor: 1,
       magicResist: 2,
       durability: 35,
       levelToEquip: 1,
@@ -1681,7 +1681,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'CHEST',
     outputStats: {
-      armor: 2,
+      armor: 3,
       magicResist: 5,
       durability: 35,
       levelToEquip: 4,
@@ -1703,7 +1703,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'LEGS',
     outputStats: {
-      armor: 1,
+      armor: 2,
       magicResist: 3,
       durability: 30,
       levelToEquip: 4,
@@ -1727,7 +1727,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'HEAD',
     outputStats: {
-      armor: 0,
+      armor: 3,
       magicResist: 3,
       durability: 40,
       levelToEquip: 5,
@@ -1749,7 +1749,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'CHEST',
     outputStats: {
-      armor: 0,
+      armor: 7,
       magicResist: 6,
       durability: 50,
       levelToEquip: 5,
@@ -1771,7 +1771,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'HANDS',
     outputStats: {
-      armor: 0,
+      armor: 2,
       magicResist: 2,
       durability: 35,
       levelToEquip: 5,
@@ -1793,7 +1793,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'FEET',
     outputStats: {
-      armor: 0,
+      armor: 3,
       magicResist: 3,
       durability: 40,
       levelToEquip: 5,
@@ -1818,7 +1818,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'CHEST',
     outputStats: {
-      armor: 3,
+      armor: 7,
       magicResist: 8,
       durability: 45,
       levelToEquip: 5,
@@ -1841,7 +1841,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'CHEST',
     outputStats: {
-      armor: 4,
+      armor: 7,
       magicResist: 5,
       durability: 45,
       levelToEquip: 5,
@@ -1864,7 +1864,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'HEAD',
     outputStats: {
-      armor: 1,
+      armor: 3,
       magicResist: 5,
       durability: 35,
       levelToEquip: 6,
@@ -1887,7 +1887,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'CHEST',
     outputStats: {
-      armor: 2,
+      armor: 7,
       magicResist: 4,
       durability: 40,
       levelToEquip: 6,
@@ -1911,7 +1911,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'HEAD',
     outputStats: {
-      armor: 3,
+      armor: 6,
       magicResist: 5,
       durability: 60,
       levelToEquip: 10,
@@ -1933,7 +1933,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'CHEST',
     outputStats: {
-      armor: 5,
+      armor: 12,
       magicResist: 10,
       durability: 75,
       levelToEquip: 10,
@@ -1955,7 +1955,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'HANDS',
     outputStats: {
-      armor: 2,
+      armor: 4,
       magicResist: 4,
       durability: 50,
       levelToEquip: 10,
@@ -1977,7 +1977,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'FEET',
     outputStats: {
-      armor: 3,
+      armor: 5,
       magicResist: 5,
       durability: 60,
       levelToEquip: 10,
@@ -2023,7 +2023,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'LEGS',
     outputStats: {
-      armor: 3,
+      armor: 8,
       magicResist: 5,
       durability: 60,
       levelToEquip: 10,
@@ -2069,7 +2069,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'HEAD',
     outputStats: {
-      armor: 6,
+      armor: 10,
       magicResist: 12,
       durability: 100,
       levelToEquip: 40,
@@ -2091,7 +2091,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'CHEST',
     outputStats: {
-      armor: 10,
+      armor: 20,
       magicResist: 22,
       durability: 120,
       levelToEquip: 40,
@@ -2113,7 +2113,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'HANDS',
     outputStats: {
-      armor: 4,
+      armor: 6,
       magicResist: 8,
       durability: 80,
       levelToEquip: 40,
@@ -2135,7 +2135,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'FEET',
     outputStats: {
-      armor: 6,
+      armor: 8,
       magicResist: 12,
       durability: 100,
       levelToEquip: 40,
@@ -2181,7 +2181,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'LEGS',
     outputStats: {
-      armor: 8,
+      armor: 13,
       magicResist: 14,
       durability: 100,
       levelToEquip: 40,
@@ -2371,7 +2371,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'CHEST',
     outputStats: {
-      armor: 4,
+      armor: 12,
       magicResist: 14,
       durability: 60,
       levelToEquip: 7,
@@ -2395,7 +2395,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'CHEST',
     outputStats: {
-      armor: 3,
+      armor: 12,
       magicResist: 12,
       durability: 55,
       levelToEquip: 7,
@@ -2418,7 +2418,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'HEAD',
     outputStats: {
-      armor: 2,
+      armor: 6,
       magicResist: 10,
       durability: 50,
       levelToEquip: 7,
@@ -2441,7 +2441,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'LEGS',
     outputStats: {
-      armor: 4,
+      armor: 8,
       magicResist: 8,
       durability: 50,
       levelToEquip: 8,
@@ -2466,7 +2466,7 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
     outputItemType: 'ARMOR',
     equipSlot: 'CHEST',
     outputStats: {
-      armor: 5,
+      armor: 12,
       magicResist: 16,
       durability: 65,
       levelToEquip: 8,
@@ -2480,6 +2480,68 @@ export const TAILOR_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
 // ============================================================
 
 export const TANNER_ARMOR_RECIPES: FinishedGoodsRecipe[] = [
+  // ---- CURED LEATHER (Tier 1, Level 1) — gap-fill for L1-2 rogues/rangers ----
+  {
+    recipeId: 'tan-cured-leather-cap',
+    name: 'Craft Cured Leather Cap',
+    professionRequired: 'TANNER',
+    levelRequired: 1,
+    inputs: [{ itemName: ITEMS.LEATHER, quantity: 2 }],
+    outputs: [{ itemName: ITEMS.CURED_LEATHER_CAP, quantity: 1 }],
+    craftTime: 10,
+    xpReward: 7,
+    tier: 1,
+    outputItemType: 'ARMOR',
+    equipSlot: 'HEAD',
+    outputStats: {
+      armor: 3,
+      durability: 40,
+      levelToEquip: 1,
+      dexBonus: 1,
+      weight: 0.8,
+    },
+  },
+  {
+    recipeId: 'tan-cured-leather-tunic',
+    name: 'Craft Cured Leather Tunic',
+    professionRequired: 'TANNER',
+    levelRequired: 1,
+    inputs: [{ itemName: ITEMS.LEATHER, quantity: 3 }],
+    outputs: [{ itemName: ITEMS.CURED_LEATHER_TUNIC, quantity: 1 }],
+    craftTime: 15,
+    xpReward: 10,
+    tier: 1,
+    outputItemType: 'ARMOR',
+    equipSlot: 'CHEST',
+    outputStats: {
+      armor: 5,
+      durability: 45,
+      levelToEquip: 1,
+      dexBonus: 2,
+      weight: 3,
+    },
+  },
+  {
+    recipeId: 'tan-cured-leather-leggings',
+    name: 'Craft Cured Leather Leggings',
+    professionRequired: 'TANNER',
+    levelRequired: 1,
+    inputs: [{ itemName: ITEMS.LEATHER, quantity: 2 }],
+    outputs: [{ itemName: ITEMS.CURED_LEATHER_LEGGINGS, quantity: 1 }],
+    craftTime: 12,
+    xpReward: 8,
+    tier: 1,
+    outputItemType: 'ARMOR',
+    equipSlot: 'LEGS',
+    outputStats: {
+      armor: 4,
+      durability: 40,
+      levelToEquip: 1,
+      dexBonus: 1,
+      weight: 2,
+    },
+  },
+
   // ---- APPRENTICE (Tier 1, Level 3-4) ----
   {
     recipeId: 'tan-leather-cap',
