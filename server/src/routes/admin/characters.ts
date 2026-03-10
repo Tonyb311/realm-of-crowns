@@ -8,6 +8,8 @@ import { logRouteError } from '../../lib/error-logger';
 import { validate } from '../../middleware/validate';
 import { AuthenticatedRequest } from '../../types/express';
 import { deleteCharacters, wipeExcept, previewDeletion } from '../../services/character-deletion';
+import { transformInventory } from '../../lib/inventory-transform';
+import { calculateWeightState } from '../../services/weight-calculator';
 
 const router = Router();
 
@@ -215,6 +217,108 @@ router.post('/wipe', validate(wipeSchema), async (req: AuthenticatedRequest, res
     return res.json(log);
   } catch (error) {
     logRouteError(req, 500, '[Admin] Character wipe error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/admin/characters/:id/view-as
+ * Returns character data in the exact same shape as GET /characters/me,
+ * so the client can render the full game UI as if logged in as that character.
+ */
+router.get('/:id/view-as', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = await db.query.characters.findFirst({
+      where: eq(characters.id, req.params.id),
+      with: {
+        town_currentTownId: { columns: { name: true } },
+        town_homeTownId: { columns: { id: true, name: true } },
+        playerProfessions: { columns: { professionType: true, tier: true, level: true, isActive: true } },
+        inventories: {
+          with: {
+            item: {
+              with: {
+                itemTemplate: true,
+                character_craftedById: { columns: { id: true, name: true } },
+              },
+            },
+          },
+        },
+        characterEquipments: {
+          with: {
+            item: {
+              with: { itemTemplate: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    const weightState = await calculateWeightState(character.id);
+
+    const { town_currentTownId: currentTown, town_homeTownId: homeTown, playerProfessions: professions, inventories: inventory, characterEquipments: equipment, ...rest } = character;
+
+    const inventoryItems = transformInventory(inventory || [], true);
+
+    const SLOT_MAP: Record<string, string> = {
+      HEAD: 'head', CHEST: 'chest', HANDS: 'hands', LEGS: 'legs', FEET: 'feet',
+      MAIN_HAND: 'mainHand', OFF_HAND: 'offHand', ACCESSORY_1: 'accessory1', ACCESSORY_2: 'accessory2',
+    };
+
+    const equipmentSlots: Record<string, any> = {
+      head: null, chest: null, hands: null, legs: null, feet: null,
+      mainHand: null, offHand: null, accessory1: null, accessory2: null,
+    };
+
+    for (const equip of (equipment || [])) {
+      const slotKey = SLOT_MAP[equip.slot] || equip.slot.toLowerCase();
+      if (slotKey in equipmentSlots) {
+        equipmentSlots[slotKey] = {
+          id: equip.item.id,
+          templateId: equip.item.templateId,
+          template: {
+            id: equip.item.itemTemplate.id,
+            name: equip.item.itemTemplate.name,
+            type: equip.item.itemTemplate.type,
+            rarity: equip.item.itemTemplate.rarity,
+            description: equip.item.itemTemplate.description,
+            stats: equip.item.itemTemplate.stats,
+            durability: equip.item.itemTemplate.durability,
+          },
+          quantity: 1,
+          currentDurability: equip.item.currentDurability,
+          quality: equip.item.quality,
+          craftedById: equip.item.craftedById,
+          enchantments: equip.item.enchantments ?? [],
+        };
+      }
+    }
+
+    return res.json({
+      ...rest,
+      stats: typeof rest.stats === 'string' ? JSON.parse(rest.stats) : rest.stats,
+      hp: rest.health,
+      maxHp: rest.maxHealth,
+      status: rest.travelStatus === 'idle' || rest.travelStatus === 'arrived' ? 'idle' : 'traveling',
+      currentTownName: currentTown?.name ?? null,
+      homeTownName: homeTown?.name ?? null,
+      professions: (professions || []).map((p: any) => ({
+        type: p.professionType,
+        professionType: p.professionType,
+        tier: p.tier,
+        level: p.level,
+        isActive: p.isActive,
+      })),
+      inventory: inventoryItems,
+      equipment: equipmentSlots,
+      encumbranceTier: weightState.encumbrance.tier,
+    });
+  } catch (error) {
+    logRouteError(req, 500, '[Admin] View-as character error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

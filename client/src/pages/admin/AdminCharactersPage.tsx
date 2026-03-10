@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Search,
@@ -14,10 +15,12 @@ import {
   History,
   CheckSquare,
   Square,
+  Eye,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import ErrorMessage from '../../components/ui/ErrorMessage';
+import { useImpersonateStore } from '../../stores/impersonateStore';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -114,6 +117,8 @@ const ALL_CLASSES = [
 // ---------------------------------------------------------------------------
 export default function AdminCharactersPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const startImpersonating = useImpersonateStore((s) => s.startImpersonating);
 
   // Filters
   const [searchInput, setSearchInput] = useState('');
@@ -708,6 +713,20 @@ export default function AdminCharactersPage() {
                   </td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => {
+                          startImpersonating(char.id, char.name, {
+                            level: char.level,
+                            race: char.race,
+                            className: char.className,
+                          });
+                          navigate('/town');
+                        }}
+                        className="p-1.5 text-realm-text-secondary border border-realm-gold-500/30 rounded-sm hover:bg-realm-gold-500/10 hover:text-realm-gold-400 transition-colors"
+                        title="View as Player"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
                       <button
                         onClick={() => { setTeleportChar(char); setTeleportTownId(''); }}
                         className="p-1.5 text-realm-text-secondary border border-realm-border rounded-sm hover:bg-realm-bg-800 hover:text-realm-gold-400 transition-colors"

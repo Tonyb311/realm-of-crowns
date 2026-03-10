@@ -16,6 +16,7 @@ import NotificationDropdown from './components/NotificationDropdown';
 import SocialEventsProvider from './components/SocialEventsProvider';
 import ProgressionEventsProvider from './components/ProgressionEventsProvider';
 import GlobalEventsProvider from './components/GlobalEventsProvider';
+import ImpersonationBanner from './components/ImpersonationBanner';
 
 // Lazy-loaded page components
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
@@ -73,6 +74,7 @@ function App() {
       <GlobalEventsProvider />
       <NotificationDropdown />
       <ChatPanel />
+      <ImpersonationBanner />
       <div className="min-h-screen bg-realm-bg-900">
         <ErrorBoundary>
         <Suspense fallback={<LoadingScreen />}>
