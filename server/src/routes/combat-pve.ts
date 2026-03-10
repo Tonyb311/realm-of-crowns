@@ -135,15 +135,16 @@ function parseDamageString(damage: string): { diceCount: number; diceSides: numb
   };
 }
 
-function buildMonsterWeapon(monsterStats: Record<string, unknown>): WeaponInfo {
+function buildMonsterWeapon(monsterStats: Record<string, unknown>, attackStat?: string | null): WeaponInfo {
   const damage = parseDamageString(String(monsterStats.damage ?? '1d6'));
+  const stat = (attackStat ?? 'str') as 'str' | 'dex' | 'int' | 'wis' | 'cha';
   return {
     id: 'monster-attack',
     name: 'Natural Attack',
     diceCount: damage.diceCount,
     diceSides: damage.diceSides,
-    damageModifierStat: 'str',
-    attackModifierStat: 'str',
+    damageModifierStat: stat,
+    attackModifierStat: stat,
     bonusDamage: damage.bonus,
     bonusAttack: (monsterStats.attack as number) ?? 0,
     damageType: (monsterStats.damageType as string) ?? 'BLUDGEONING',

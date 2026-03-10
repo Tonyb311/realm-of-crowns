@@ -133,9 +133,10 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Crossroads',
     family: 'goblins',
     category: 'humanoid', encounterType: 'standard', sentient: true, size: 'small',
+    attackStat: 'dex',
     damageType: 'SLASHING',
     stats: {
-      hp: 24, ac: 10, attack: 3, damage: '1d4+1',
+      hp: 24, ac: 10, attack: 1, damage: '1d4-1',
       str: 8, dex: 14, con: 10, int: 8, wis: 8, cha: 6,
     },
     lootTable: [
@@ -150,6 +151,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Silverwood Forest',
     family: 'wolves',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     abilities: [{
       id: 'wolf_knockdown', name: 'Knockdown', type: 'on_hit',
@@ -157,7 +159,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The wolf lunges and tries to knock the target prone.',
     }],
     stats: {
-      hp: 15, ac: 10, attack: 4, damage: '1d6+1',
+      hp: 15, ac: 10, attack: 2, damage: '1d6-1',
       str: 12, dex: 14, con: 12, int: 3, wis: 12, cha: 6,
     },
     lootTable: [
@@ -171,9 +173,10 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Verdant Heartlands',
     family: 'bandits',
     category: 'humanoid', encounterType: 'standard', sentient: true, size: 'medium',
+    attackStat: 'str',
     damageType: 'SLASHING',
     stats: {
-      hp: 20, ac: 10, attack: 4, damage: '1d6+2',
+      hp: 20, ac: 10, attack: 3, damage: '1d6+1',
       str: 12, dex: 12, con: 12, int: 10, wis: 10, cha: 10,
     },
     lootTable: [
@@ -188,6 +191,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: "Vel'Naris Underdark",
     family: 'beasts',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     abilities: [{
       id: 'rat_disease', name: 'Filth Fever', type: 'on_hit',
@@ -195,7 +199,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The rat\'s filthy bite risks spreading disease.',
     }],
     stats: {
-      hp: 18, ac: 10, attack: 3, damage: '1d4+1',
+      hp: 18, ac: 10, attack: 1, damage: '1d4-1',
       str: 6, dex: 14, con: 8, int: 2, wis: 10, cha: 4,
     },
     lootTable: [
@@ -209,12 +213,13 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Shadowmere Marshes',
     family: 'oozes',
     category: 'ooze', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'ACID',
     resistances: ['SLASHING', 'PIERCING'],
     immunities: ['LIGHTNING'],
     critImmunity: true,
     stats: {
-      hp: 15, ac: 8, attack: 2, damage: '1d6',
+      hp: 15, ac: 8, attack: 1, damage: '1d6-1',
       str: 12, dex: 4, con: 16, int: 1, wis: 6, cha: 1,
     },
     lootTable: [
@@ -230,9 +235,10 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'beasts',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     stats: {
-      hp: 18, ac: 10, attack: 3, damage: '1d4+1',
+      hp: 18, ac: 10, attack: 2, damage: '1d4',
       str: 12, dex: 13, con: 10, int: 2, wis: 11, cha: 5,
     },
     lootTable: [
@@ -246,6 +252,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ashenfang Wastes',
     family: 'undead',
     category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'SLASHING',
     vulnerabilities: ['BLUDGEONING'],
     immunities: ['POISON'],
@@ -265,6 +272,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Thornwilds',
     family: 'plants',
     category: 'plant', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'PIERCING',
     abilities: [{
       id: 'thornvine_entangle', name: 'Entangle', type: 'on_hit',
@@ -272,7 +280,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'Thorned vines lash out and bind the target.',
     }],
     stats: {
-      hp: 20, ac: 10, attack: 3, damage: '1d6',
+      hp: 20, ac: 10, attack: 1, damage: '1d6-2',
       str: 14, dex: 6, con: 14, int: 1, wis: 8, cha: 1,
     },
     lootTable: [
@@ -286,9 +294,10 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'aquatic',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     stats: {
-      hp: 16, ac: 10, attack: 3, damage: '1d4+2',
+      hp: 16, ac: 10, attack: 2, damage: '1d4+1',
       str: 13, dex: 10, con: 12, int: 1, wis: 9, cha: 3,
     },
     lootTable: [
@@ -302,6 +311,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Confluence',
     family: 'insects',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
+    attackStat: 'dex',
     damageType: 'FIRE',
     abilities: [{
       id: 'ember_beetle_death', name: 'Ember Burst', type: 'death_throes',
@@ -309,7 +319,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The beetle explodes in a burst of embers upon death.',
     }],
     stats: {
-      hp: 15, ac: 10, attack: 3, damage: '1d4+1',
+      hp: 15, ac: 10, attack: 1, damage: '1d4-1',
       str: 8, dex: 14, con: 12, int: 1, wis: 7, cha: 3,
     },
     lootTable: [
@@ -324,6 +334,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Frozen Reaches',
     family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'tiny',
+    attackStat: 'dex',
     damageType: 'COLD',
     abilities: [{
       id: 'frost_mote_chill', name: 'Chill', type: 'on_hit',
@@ -331,7 +342,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'Icy tendrils slow the target\'s movements.',
     }],
     stats: {
-      hp: 14, ac: 10, attack: 4, damage: '1d6',
+      hp: 14, ac: 10, attack: 1, damage: '1d6-3',
       str: 3, dex: 16, con: 8, int: 4, wis: 10, cha: 6,
     },
     lootTable: [
@@ -345,12 +356,13 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ashenmoor',
     family: 'undead',
     category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     vulnerabilities: ['SLASHING'],
     immunities: ['POISON'],
     conditionImmunities: ['poisoned'],
     stats: {
-      hp: 25, ac: 8, attack: 2, damage: '1d6+1',
+      hp: 25, ac: 8, attack: 0, damage: '1d6-1',
       str: 14, dex: 4, con: 16, int: 1, wis: 6, cha: 3,
     },
     lootTable: [
@@ -364,6 +376,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Verdant Heartlands',
     family: 'beasts',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'SLASHING',
     abilities: [{
       id: 'prairie_stalker_pounce', name: 'Pounce', type: 'on_hit',
@@ -371,7 +384,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The prairie cat pounces and tries to knock its prey down.',
     }],
     stats: {
-      hp: 18, ac: 10, attack: 4, damage: '1d6+1',
+      hp: 18, ac: 10, attack: 2, damage: '1d6-1',
       str: 14, dex: 14, con: 10, int: 3, wis: 12, cha: 6,
     },
     lootTable: [
@@ -385,6 +398,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Glimmerveil',
     family: 'fey',
     category: 'fey', encounterType: 'standard', sentient: true, size: 'tiny',
+    attackStat: 'cha',
     damageType: 'RADIANT',
     abilities: [{
       id: 'glimmerfae_dazzle', name: 'Dazzle', type: 'status',
@@ -393,7 +407,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The glimmerfae pulses with brilliant light, blinding nearby foes.',
     }],
     stats: {
-      hp: 14, ac: 10, attack: 4, damage: '1d4+2',
+      hp: 14, ac: 10, attack: 1, damage: '1d4-1',
       str: 3, dex: 18, con: 8, int: 12, wis: 14, cha: 16,
     },
     lootTable: [
@@ -409,6 +423,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Crossroads',
     family: 'insects',
     category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'tiny',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     abilities: [{
       id: 'stirge_blood_drain', name: 'Blood Drain', type: 'on_hit',
@@ -416,7 +431,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The stirge latches on and drains blood, weakening the target.',
     }],
     stats: {
-      hp: 12, ac: 10, attack: 5, damage: '1d4+2',
+      hp: 12, ac: 10, attack: 2, damage: '1d4-1',
       str: 4, dex: 16, con: 10, int: 2, wis: 8, cha: 4,
     },
     lootTable: [
@@ -430,6 +445,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'reptiles',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     abilities: [{
       id: 'sand_viper_venom', name: 'Venom', type: 'on_hit',
@@ -437,7 +453,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The viper injects a debilitating venom into its prey.',
     }],
     stats: {
-      hp: 16, ac: 10, attack: 5, damage: '1d6+2',
+      hp: 16, ac: 10, attack: 2, damage: '1d6-1',
       str: 8, dex: 16, con: 12, int: 2, wis: 10, cha: 4,
     },
     lootTable: [
@@ -451,10 +467,11 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ironvault Mountains',
     family: 'constructs',
     category: 'construct', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     conditionImmunities: ['poisoned', 'frightened', 'charmed'],
     stats: {
-      hp: 20, ac: 11, attack: 5, damage: '1d6+1',
+      hp: 20, ac: 11, attack: 2, damage: '1d6-2',
       str: 16, dex: 8, con: 14, int: 3, wis: 8, cha: 1,
     },
     lootTable: [
@@ -468,6 +485,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Shadowmere Marshes',
     family: 'beasts',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     abilities: [
       {
@@ -485,7 +503,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 22, ac: 11, attack: 4, damage: '1d6+1',
+      hp: 22, ac: 11, attack: 1, damage: '1d6-2',
       str: 16, dex: 8, con: 14, int: 2, wis: 10, cha: 4,
     },
     lootTable: [
@@ -501,12 +519,13 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ashenmoor',
     family: 'undead',
     category: 'undead', encounterType: 'standard', sentient: true, size: 'medium',
+    attackStat: 'str',
     damageType: 'SLASHING',
     vulnerabilities: ['BLUDGEONING'],
     immunities: ['POISON'],
     conditionImmunities: ['poisoned'],
     stats: {
-      hp: 15, ac: 11, attack: 5, damage: '1d6+2',
+      hp: 15, ac: 11, attack: 3, damage: '1d6',
       str: 14, dex: 12, con: 12, int: 6, wis: 8, cha: 5,
     },
     lootTable: [
@@ -521,6 +540,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ashenfang Wastes',
     family: 'orcs',
     category: 'humanoid', encounterType: 'standard', sentient: true, size: 'medium',
+    attackStat: 'str',
     damageType: 'SLASHING',
     abilities: [{
       id: 'orc_multiattack', name: 'Multiattack', type: 'multiattack',
@@ -528,7 +548,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The orc warrior attacks twice with its greataxe.',
     }],
     stats: {
-      hp: 17, ac: 11, attack: 6, damage: '1d6+2',
+      hp: 17, ac: 11, attack: 3, damage: '1d6-1',
       str: 16, dex: 12, con: 14, int: 8, wis: 10, cha: 8,
     },
     lootTable: [
@@ -543,6 +563,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: "Vel'Naris Underdark",
     family: 'insects',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     abilities: [
       {
@@ -558,7 +579,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 23, ac: 12, attack: 6, damage: '1d8+2',
+      hp: 23, ac: 12, attack: 3, damage: '1d8-1',
       str: 14, dex: 16, con: 12, int: 2, wis: 12, cha: 4,
     },
     lootTable: [
@@ -574,6 +595,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Frozen Reaches',
     family: 'wolves',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     abilities: [{
       id: 'direwolf_knockdown', name: 'Pounce', type: 'on_hit',
@@ -581,7 +603,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The dire wolf pounces, trying to knock its prey to the ground.',
     }],
     stats: {
-      hp: 19, ac: 12, attack: 7, damage: '1d8+2',
+      hp: 19, ac: 12, attack: 5, damage: '1d8',
       str: 16, dex: 14, con: 14, int: 3, wis: 12, cha: 6,
     },
     lootTable: [
@@ -596,6 +618,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Shadowmere Marshes',
     family: 'giants',
     category: 'humanoid', encounterType: 'elite', sentient: true, size: 'large',
+    attackStat: 'str',
     damageType: 'SLASHING',
     vulnerabilities: ['FIRE', 'ACID'],
     abilities: [
@@ -611,7 +634,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 27, ac: 12, attack: 7, damage: '1d8+3',
+      hp: 27, ac: 12, attack: 3, damage: '1d8-1',
       str: 18, dex: 8, con: 18, int: 6, wis: 8, cha: 6,
     },
     lootTable: [
@@ -629,6 +652,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: "Vel'Naris Underdark",
     family: 'undead',
     category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'SLASHING',
     immunities: ['POISON'],
     conditionImmunities: ['poisoned'],
@@ -638,7 +662,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'Necrotic claws lock the target\'s muscles in place.',
     }],
     stats: {
-      hp: 15, ac: 11, attack: 5, damage: '1d6+1',
+      hp: 15, ac: 11, attack: 3, damage: '1d6-1',
       str: 14, dex: 14, con: 12, int: 7, wis: 10, cha: 6,
     },
     lootTable: [
@@ -652,6 +676,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'insects',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'PIERCING',
     abilities: [
       {
@@ -666,7 +691,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 21, ac: 11, attack: 6, damage: '1d6+2',
+      hp: 21, ac: 11, attack: 3, damage: '1d6-1',
       str: 16, dex: 12, con: 14, int: 1, wis: 10, cha: 3,
     },
     lootTable: [
@@ -681,6 +706,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     immunities: ['POISON'],
     conditionImmunities: ['poisoned'],
@@ -692,7 +718,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The elemental unleashes a surging wave that slams into everything nearby.',
     }],
     stats: {
-      hp: 17, ac: 11, attack: 6, damage: '1d6+1',
+      hp: 17, ac: 11, attack: 3, damage: '1d6-2',
       str: 16, dex: 10, con: 16, int: 4, wis: 10, cha: 6,
     },
     lootTable: [
@@ -706,11 +732,12 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Skypeak Plateaus',
     family: 'constructs',
     category: 'construct', encounterType: 'elite', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'SLASHING',
     resistances: ['PIERCING', 'SLASHING'],
     conditionImmunities: ['poisoned'],
     stats: {
-      hp: 18, ac: 12, attack: 6, damage: '1d8+2',
+      hp: 18, ac: 12, attack: 3, damage: '1d8-1',
       str: 16, dex: 10, con: 16, int: 6, wis: 10, cha: 6,
     },
     lootTable: [
@@ -724,6 +751,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Silverwood Forest',
     family: 'beasts',
     category: 'monstrosity', encounterType: 'elite', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'PIERCING',
     abilities: [{
       id: 'hooktusk_multiattack', name: 'Rend', type: 'multiattack',
@@ -731,7 +759,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The hooktusk attacks with its hooked beak and raking claws.',
     }],
     stats: {
-      hp: 18, ac: 12, attack: 7, damage: '1d8+2',
+      hp: 18, ac: 12, attack: 3, damage: '1d8-2',
       str: 18, dex: 12, con: 14, int: 3, wis: 12, cha: 5,
     },
     lootTable: [
@@ -746,6 +774,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ironvault Mountains',
     family: 'aberrations',
     category: 'monstrosity', encounterType: 'standard', sentient: true, size: 'medium',
+    attackStat: 'cha',
     damageType: 'SLASHING',
     abilities: [{
       id: 'harpy_lure', name: 'Luring Song', type: 'status',
@@ -754,7 +783,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The harpy sings an enchanting melody that lures victims closer.',
     }],
     stats: {
-      hp: 18, ac: 12, attack: 6, damage: '1d6+2',
+      hp: 18, ac: 12, attack: 3, damage: '1d6-1',
       str: 12, dex: 14, con: 12, int: 8, wis: 12, cha: 16,
     },
     lootTable: [
@@ -770,11 +799,12 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Confluence',
     family: 'elementals',
     category: 'elemental', encounterType: 'elite', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'FIRE',
     immunities: ['FIRE'],
     vulnerabilities: ['COLD'],
     stats: {
-      hp: 19, ac: 12, attack: 7, damage: '1d8+2',
+      hp: 19, ac: 12, attack: 3, damage: '1d8-2',
       str: 18, dex: 10, con: 16, int: 4, wis: 10, cha: 6,
     },
     lootTable: [
@@ -789,6 +819,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Frozen Reaches',
     family: 'wolves',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
+    attackStat: 'dex',
     damageType: 'COLD',
     abilities: [{
       id: 'frostfang_breath', name: 'Frost Breath', type: 'aoe',
@@ -797,7 +828,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The wolf exhales a cone of frigid air that freezes everything in its path.',
     }],
     stats: {
-      hp: 19, ac: 12, attack: 7, damage: '1d8+2',
+      hp: 19, ac: 12, attack: 5, damage: '1d8',
       str: 16, dex: 14, con: 14, int: 4, wis: 12, cha: 6,
     },
     lootTable: [
@@ -812,9 +843,10 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Cogsworth Warrens',
     family: 'giants',
     category: 'humanoid', encounterType: 'elite', sentient: true, size: 'large',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     stats: {
-      hp: 19, ac: 12, attack: 7, damage: '1d8+3',
+      hp: 19, ac: 12, attack: 2, damage: '1d8-2',
       str: 20, dex: 8, con: 18, int: 5, wis: 7, cha: 6,
     },
     lootTable: [
@@ -830,6 +862,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Thornwilds',
     family: 'insects',
     category: 'beast', encounterType: 'elite', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'PIERCING',
     abilities: [
       {
@@ -850,7 +883,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 32, ac: 12, attack: 7, damage: '1d8+2',
+      hp: 32, ac: 12, attack: 4, damage: '1d8-1',
       str: 16, dex: 14, con: 16, int: 3, wis: 12, cha: 4,
     },
     lootTable: [
@@ -867,6 +900,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: "Vel'Naris Underdark",
     family: 'aberrations',
     category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'ACID',
     abilities: [{
       id: 'rust_lurker_corrode', name: 'Corrosion', type: 'on_hit',
@@ -874,7 +908,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'Acidic secretions corrode armor and flesh alike.',
     }],
     stats: {
-      hp: 22, ac: 12, attack: 6, damage: '1d8+1',
+      hp: 22, ac: 12, attack: 4, damage: '1d8-1',
       str: 14, dex: 12, con: 14, int: 4, wis: 12, cha: 4,
     },
     lootTable: [
@@ -890,6 +924,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ironvault Mountains',
     family: 'constructs',
     category: 'construct', encounterType: 'elite', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     resistances: ['SLASHING', 'PIERCING'],
     conditionImmunities: ['poisoned', 'frightened', 'charmed'],
@@ -900,7 +935,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The golem slams with both massive fists.',
     }],
     stats: {
-      hp: 43, ac: 15, attack: 8, damage: '1d10+3',
+      hp: 43, ac: 15, attack: 2, damage: '1d10-3',
       str: 22, dex: 6, con: 20, int: 3, wis: 8, cha: 1,
     },
     lootTable: [
@@ -916,6 +951,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Frozen Reaches',
     family: 'dragons',
     category: 'dragon', encounterType: 'boss', sentient: true, size: 'large',
+    attackStat: 'str',
     damageType: 'PIERCING',
     immunities: ['COLD'],
     abilities: [
@@ -948,7 +984,7 @@ export const MONSTERS: MonsterDef[] = [
       ],
     }],
     stats: {
-      hp: 50, ac: 16, attack: 10, damage: '1d10+4',
+      hp: 50, ac: 16, attack: 5, damage: '1d10-1',
       str: 20, dex: 12, con: 18, int: 14, wis: 12, cha: 16,
     },
     lootTable: [
@@ -965,6 +1001,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'reptiles',
     category: 'monstrosity', encounterType: 'elite', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'PIERCING',
     abilities: [{
       id: 'hydra_multiattack', name: 'Multiple Heads', type: 'multiattack',
@@ -972,7 +1009,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The hydra attacks with all five of its heads.',
     }],
     stats: {
-      hp: 44, ac: 15, attack: 8, damage: '1d8+3',
+      hp: 44, ac: 15, attack: 3, damage: '1d8-2',
       str: 20, dex: 10, con: 20, int: 4, wis: 10, cha: 6,
     },
     lootTable: [
@@ -988,6 +1025,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Confluence',
     family: 'fiends',
     category: 'fiend', encounterType: 'boss', sentient: true, size: 'large',
+    attackStat: 'str',
     damageType: 'FIRE',
     resistances: ['COLD', 'LIGHTNING'],
     immunities: ['FIRE', 'POISON'],
@@ -1026,7 +1064,7 @@ export const MONSTERS: MonsterDef[] = [
       ],
     }],
     stats: {
-      hp: 54, ac: 16, attack: 10, damage: '1d8+4',
+      hp: 54, ac: 16, attack: 6, damage: '1d8',
       str: 18, dex: 14, con: 16, int: 14, wis: 12, cha: 18,
     },
     lootTable: [
@@ -1042,6 +1080,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ashenmoor',
     family: 'undead',
     category: 'undead', encounterType: 'boss', sentient: true, size: 'medium',
+    attackStat: 'int',
     damageType: 'NECROTIC',
     resistances: ['COLD', 'LIGHTNING', 'NECROTIC'],
     immunities: ['POISON'],
@@ -1092,7 +1131,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 59, ac: 17, attack: 9, damage: '1d10+3',
+      hp: 59, ac: 17, attack: 3, damage: '1d10-3',
       str: 10, dex: 14, con: 14, int: 22, wis: 16, cha: 16,
     },
     lootTable: [
@@ -1112,6 +1151,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'reptiles',
     category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'PIERCING',
     abilities: [{
       id: 'sandscale_petrify', name: 'Petrifying Gaze', type: 'on_hit',
@@ -1119,7 +1159,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The basilisk\'s gaze begins to petrify the target, slowing their movements.',
     }],
     stats: {
-      hp: 34, ac: 15, attack: 8, damage: '1d8+2',
+      hp: 34, ac: 15, attack: 5, damage: '1d8-1',
       str: 16, dex: 10, con: 16, int: 3, wis: 12, cha: 6,
     },
     lootTable: [
@@ -1135,6 +1175,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Thornwilds',
     family: 'plants',
     category: 'plant', encounterType: 'standard', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'PIERCING',
     vulnerabilities: ['FIRE'],
     abilities: [
@@ -1151,7 +1192,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 43, ac: 15, attack: 8, damage: '1d8+2',
+      hp: 43, ac: 15, attack: 5, damage: '1d8-1',
       str: 16, dex: 8, con: 18, int: 4, wis: 12, cha: 6,
     },
     lootTable: [
@@ -1166,6 +1207,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Crossroads',
     family: 'beasts',
     category: 'monstrosity', encounterType: 'elite', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'PIERCING',
     abilities: [
       {
@@ -1180,7 +1222,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 43, ac: 15, attack: 9, damage: '1d8+3',
+      hp: 43, ac: 15, attack: 6, damage: '1d8',
       str: 17, dex: 14, con: 16, int: 5, wis: 12, cha: 8,
     },
     lootTable: [
@@ -1195,6 +1237,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Vel\'Naris Underdark',
     family: 'undead',
     category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'NECROTIC',
     immunities: ['POISON', 'NECROTIC'],
     conditionImmunities: ['poisoned'],
@@ -1205,7 +1248,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The crypt warden unleashes a bone-chilling wail that strikes terror into the living.',
     }],
     stats: {
-      hp: 34, ac: 15, attack: 8, damage: '1d8+2',
+      hp: 34, ac: 15, attack: 6, damage: '1d8',
       str: 14, dex: 12, con: 16, int: 8, wis: 14, cha: 10,
     },
     lootTable: [
@@ -1219,6 +1262,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'undead',
     category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'SLASHING',
     immunities: ['POISON'],
     conditionImmunities: ['poisoned'],
@@ -1228,7 +1272,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The revenant\'s touch drains moisture from the target\'s body.',
     }],
     stats: {
-      hp: 34, ac: 15, attack: 8, damage: '1d8+2',
+      hp: 34, ac: 15, attack: 5, damage: '1d8-1',
       str: 16, dex: 12, con: 16, int: 6, wis: 10, cha: 6,
     },
     lootTable: [
@@ -1242,6 +1286,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Skypeak Plateaus',
     family: 'giants',
     category: 'humanoid', encounterType: 'standard', sentient: true, size: 'large',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     abilities: [{
       id: 'cyclops_hurl', name: 'Rock Hurl', type: 'damage',
@@ -1250,7 +1295,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The cyclops hurls a massive boulder at its target.',
     }],
     stats: {
-      hp: 34, ac: 14, attack: 9, damage: '1d8+3',
+      hp: 34, ac: 14, attack: 4, damage: '1d8-2',
       str: 20, dex: 8, con: 18, int: 6, wis: 10, cha: 8,
     },
     lootTable: [
@@ -1265,6 +1310,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'fey',
     category: 'fey', encounterType: 'standard', sentient: true, size: 'medium',
+    attackStat: 'cha',
     damageType: 'PSYCHIC',
     abilities: [
       {
@@ -1281,7 +1327,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 41, ac: 15, attack: 8, damage: '1d8+2',
+      hp: 41, ac: 15, attack: 4, damage: '1d8-2',
       str: 10, dex: 14, con: 14, int: 14, wis: 16, cha: 18,
     },
     lootTable: [
@@ -1296,12 +1342,13 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Confluence',
     family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'FIRE',
     immunities: ['FIRE'],
     vulnerabilities: ['COLD'],
     abilities: [],
     stats: {
-      hp: 33, ac: 16, attack: 8, damage: '1d8+3',
+      hp: 33, ac: 16, attack: 4, damage: '1d8-1',
       str: 18, dex: 8, con: 18, int: 3, wis: 8, cha: 4,
     },
     lootTable: [
@@ -1316,6 +1363,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Verdant Heartlands',
     family: 'beasts',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'SLASHING',
     abilities: [
       {
@@ -1330,7 +1378,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 42, ac: 15, attack: 9, damage: '1d8+3',
+      hp: 42, ac: 15, attack: 5, damage: '1d8-1',
       str: 18, dex: 16, con: 16, int: 4, wis: 14, cha: 8,
     },
     lootTable: [
@@ -1345,6 +1393,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ashenfang Wastes',
     family: 'undead',
     category: 'undead', encounterType: 'elite', sentient: false, size: 'medium',
+    attackStat: 'dex',
     damageType: 'NECROTIC',
     resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
     immunities: ['POISON', 'NECROTIC'],
@@ -1363,7 +1412,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 42, ac: 16, attack: 9, damage: '1d8+3',
+      hp: 42, ac: 16, attack: 6, damage: '1d8',
       str: 8, dex: 16, con: 16, int: 10, wis: 14, cha: 12,
     },
     lootTable: [
@@ -1377,6 +1426,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Shadowmere Marshes',
     family: 'plants',
     category: 'plant', encounterType: 'elite', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     immunities: ['LIGHTNING'],
     vulnerabilities: ['FIRE'],
@@ -1393,7 +1443,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 44, ac: 16, attack: 9, damage: '1d8+3',
+      hp: 44, ac: 16, attack: 4, damage: '1d8-2',
       str: 20, dex: 6, con: 20, int: 3, wis: 10, cha: 4,
     },
     lootTable: [
@@ -1407,6 +1457,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ironvault Mountains',
     family: 'beasts',
     category: 'monstrosity', encounterType: 'elite', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     resistances: ['SLASHING', 'PIERCING'],
     abilities: [{
@@ -1417,7 +1468,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The gorgon exhales a cone of petrifying gas.',
     }],
     stats: {
-      hp: 45, ac: 16, attack: 10, damage: '1d10+3',
+      hp: 45, ac: 16, attack: 5, damage: '1d10-2',
       str: 20, dex: 8, con: 18, int: 4, wis: 12, cha: 6,
     },
     lootTable: [
@@ -1432,11 +1483,12 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Frozen Reaches',
     family: 'beasts',
     category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'PIERCING',
     immunities: ['FIRE', 'COLD'],
     abilities: [],
     stats: {
-      hp: 36, ac: 16, attack: 10, damage: '1d8+3',
+      hp: 36, ac: 16, attack: 4, damage: '1d8-3',
       str: 22, dex: 10, con: 18, int: 3, wis: 10, cha: 4,
     },
     lootTable: [
@@ -1451,6 +1503,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Verdant Heartlands',
     family: 'beasts',
     category: 'humanoid', encounterType: 'standard', sentient: true, size: 'large',
+    attackStat: 'str',
     damageType: 'PIERCING',
     abilities: [
       {
@@ -1465,7 +1518,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 47, ac: 16, attack: 10, damage: '1d8+3',
+      hp: 47, ac: 16, attack: 6, damage: '1d8-1',
       str: 18, dex: 16, con: 16, int: 10, wis: 14, cha: 12,
     },
     lootTable: [
@@ -1480,6 +1533,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Glimmerveil',
     family: 'fey',
     category: 'fey', encounterType: 'boss', sentient: true, size: 'medium',
+    attackStat: 'cha',
     damageType: 'RADIANT',
     legendaryActions: 1,
     abilities: [
@@ -1512,7 +1566,7 @@ export const MONSTERS: MonsterDef[] = [
       ],
     }],
     stats: {
-      hp: 59, ac: 17, attack: 10, damage: '1d8+3',
+      hp: 59, ac: 17, attack: 4, damage: '1d8-3',
       str: 10, dex: 16, con: 16, int: 18, wis: 20, cha: 22,
     },
     lootTable: [
@@ -1528,6 +1582,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ashenmoor',
     family: 'aberrations',
     category: 'aberration', encounterType: 'standard', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     abilities: [
       {
@@ -1542,7 +1597,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 51, ac: 17, attack: 10, damage: '1d8+3',
+      hp: 51, ac: 17, attack: 5, damage: '1d8-2',
       str: 20, dex: 10, con: 18, int: 5, wis: 12, cha: 6,
     },
     lootTable: [
@@ -1561,11 +1616,12 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Shadowmere Marshes',
     family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'tiny',
+    attackStat: 'dex',
     damageType: 'FORCE',
     resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
     critImmunity: true,
     stats: {
-      hp: 16, ac: 10, attack: 3, damage: '1d6+1',
+      hp: 16, ac: 10, attack: 0, damage: '1d6-2',
       str: 3, dex: 16, con: 8, int: 14, wis: 12, cha: 10,
     },
     lootTable: [
@@ -1579,6 +1635,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ashenmoor',
     family: 'undead',
     category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'dex',
     damageType: 'NECROTIC',
     resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
     immunities: ['POISON', 'NECROTIC'],
@@ -1588,7 +1645,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The wraith drains life force with its touch.',
     }],
     stats: {
-      hp: 22, ac: 10, attack: 4, damage: '1d6+2',
+      hp: 22, ac: 10, attack: 2, damage: '1d6',
       str: 6, dex: 14, con: 12, int: 12, wis: 14, cha: 8,
     },
     lootTable: [
@@ -1604,6 +1661,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Confluence',
     family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'int',
     damageType: 'FORCE',
     resistances: ['SLASHING', 'PIERCING'],
     immunities: ['POISON'],
@@ -1615,7 +1673,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The elemental unleashes arcane fire that burns continuously.',
     }],
     stats: {
-      hp: 18, ac: 12, attack: 6, damage: '1d8+2',
+      hp: 18, ac: 12, attack: 2, damage: '1d8-2',
       str: 10, dex: 12, con: 14, int: 18, wis: 14, cha: 10,
     },
     lootTable: [
@@ -1630,6 +1688,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: "Vel'Naris Underdark",
     family: 'undead',
     category: 'undead', encounterType: 'elite', sentient: false, size: 'medium',
+    attackStat: 'dex',
     damageType: 'NECROTIC',
     resistances: ['COLD'],
     immunities: ['NECROTIC', 'POISON'],
@@ -1647,7 +1706,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 27, ac: 12, attack: 7, damage: '1d8+2',
+      hp: 27, ac: 12, attack: 4, damage: '1d8-1',
       str: 8, dex: 16, con: 12, int: 16, wis: 16, cha: 14,
     },
     lootTable: [
@@ -1664,6 +1723,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: "Vel'Naris Underdark",
     family: 'aberrations',
     category: 'aberration', encounterType: 'elite', sentient: false, size: 'large',
+    attackStat: 'int',
     damageType: 'PSYCHIC',
     resistances: ['COLD', 'NECROTIC'],
     abilities: [
@@ -1679,7 +1739,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 41, ac: 16, attack: 9, damage: '1d8+3',
+      hp: 41, ac: 16, attack: 6, damage: '1d8',
       str: 16, dex: 18, con: 16, int: 16, wis: 14, cha: 6,
     },
     lootTable: [
@@ -1694,6 +1754,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Silverwood Forest',
     family: 'fey',
     category: 'fey', encounterType: 'boss', sentient: true, size: 'large',
+    attackStat: 'cha',
     damageType: 'FORCE',
     resistances: ['SLASHING', 'PIERCING'],
     immunities: ['PSYCHIC'],
@@ -1720,7 +1781,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 54, ac: 16, attack: 10, damage: '1d10+3',
+      hp: 54, ac: 16, attack: 6, damage: '1d10-1',
       str: 14, dex: 16, con: 16, int: 20, wis: 18, cha: 18,
     },
     lootTable: [
@@ -1738,6 +1799,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Skypeak Plateaus',
     family: 'dragons',
     category: 'dragon', encounterType: 'standard', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'PIERCING',
     resistances: ['BLUDGEONING'],
     abilities: [
@@ -1754,7 +1816,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 49, ac: 15, attack: 9, damage: '1d8+3',
+      hp: 49, ac: 15, attack: 5, damage: '1d8-1',
       str: 19, dex: 12, con: 16, int: 5, wis: 12, cha: 6,
     },
     lootTable: [
@@ -1770,6 +1832,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Mistwood Glens',
     family: 'plants',
     category: 'plant', encounterType: 'elite', sentient: true, size: 'huge',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     resistances: ['BLUDGEONING', 'PIERCING'],
     vulnerabilities: ['FIRE'],
@@ -1788,7 +1851,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 51, ac: 16, attack: 10, damage: '1d10+3',
+      hp: 51, ac: 16, attack: 4, damage: '1d10-3',
       str: 22, dex: 8, con: 20, int: 10, wis: 16, cha: 10,
     },
     lootTable: [
@@ -1806,6 +1869,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Scarred Frontier',
     family: 'aberrations',
     category: 'monstrosity', encounterType: 'elite', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'SLASHING',
     resistances: ['FIRE'],
     abilities: [
@@ -1822,7 +1886,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 54, ac: 15, attack: 10, damage: '1d8+3',
+      hp: 54, ac: 15, attack: 6, damage: '1d8-1',
       str: 19, dex: 11, con: 18, int: 3, wis: 14, cha: 10,
     },
     lootTable: [
@@ -1836,6 +1900,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: "Vel'Naris Underdark",
     family: 'aberrations',
     category: 'aberration', encounterType: 'boss', sentient: true, size: 'medium',
+    attackStat: 'int',
     damageType: 'PSYCHIC',
     resistances: ['PSYCHIC'],
     immunities: [],
@@ -1861,7 +1926,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 70, ac: 16, attack: 10, damage: '1d8+3',
+      hp: 70, ac: 16, attack: 4, damage: '1d8-3',
       str: 11, dex: 12, con: 14, int: 22, wis: 18, cha: 17,
     },
     lootTable: [
@@ -1877,6 +1942,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Silverwood Forest',
     family: 'undead',
     category: 'undead', encounterType: 'boss', sentient: true, size: 'medium',
+    attackStat: 'dex',
     damageType: 'NECROTIC',
     resistances: ['NECROTIC', 'COLD'],
     immunities: ['POISON'],
@@ -1914,7 +1980,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 73, ac: 17, attack: 11, damage: '1d8+3',
+      hp: 73, ac: 17, attack: 7, damage: '1d8-1',
       str: 18, dex: 18, con: 16, int: 17, wis: 15, cha: 20,
     },
     lootTable: [
@@ -1930,6 +1996,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Frozen Reaches',
     family: 'giants',
     category: 'humanoid', encounterType: 'boss', sentient: true, size: 'huge',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     immunities: ['COLD'],
     legendaryActions: 0,
@@ -1949,7 +2016,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 76, ac: 16, attack: 11, damage: '2d8+4',
+      hp: 76, ac: 16, attack: 5, damage: '2d8-2',
       str: 23, dex: 9, con: 21, int: 9, wis: 10, cha: 12,
     },
     lootTable: [
@@ -1966,6 +2033,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'aquatic',
     category: 'beast', encounterType: 'elite', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     resistances: ['COLD', 'LIGHTNING'],
     abilities: [
@@ -1984,7 +2052,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 63, ac: 16, attack: 11, damage: '1d10+3',
+      hp: 63, ac: 16, attack: 5, damage: '1d10-3',
       str: 22, dex: 14, con: 20, int: 4, wis: 12, cha: 6,
     },
     lootTable: [
@@ -1998,6 +2066,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Foundry',
     family: 'constructs',
     category: 'construct', encounterType: 'boss', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
     immunities: ['FIRE', 'POISON', 'NECROTIC'],
@@ -2019,7 +2088,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 78, ac: 18, attack: 12, damage: '2d8+4',
+      hp: 78, ac: 18, attack: 5, damage: '2d8-3',
       str: 24, dex: 9, con: 20, int: 3, wis: 11, cha: 1,
     },
     lootTable: [
@@ -2036,6 +2105,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Confluence',
     family: 'giants',
     category: 'humanoid', encounterType: 'boss', sentient: true, size: 'huge',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     resistances: ['BLUDGEONING'],
     immunities: ['FIRE'],
@@ -2050,7 +2120,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 81, ac: 17, attack: 12, damage: '2d8+4',
+      hp: 81, ac: 17, attack: 5, damage: '2d8-3',
       str: 25, dex: 9, con: 23, int: 10, wis: 14, cha: 13,
     },
     lootTable: [
@@ -2066,6 +2136,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: "Vel'Naris Underdark",
     family: 'beasts',
     category: 'monstrosity', encounterType: 'boss', sentient: false, size: 'gargantuan',
+    attackStat: 'str',
     damageType: 'PIERCING',
     resistances: ['BLUDGEONING', 'PIERCING'],
     immunities: ['POISON'],
@@ -2103,7 +2174,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 76, ac: 18, attack: 13, damage: '2d8+4',
+      hp: 76, ac: 18, attack: 4, damage: '2d8-5',
       str: 28, dex: 7, con: 22, int: 1, wis: 8, cha: 4,
     },
     lootTable: [
@@ -2117,6 +2188,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: "Vel'Naris Underdark",
     family: 'aberrations',
     category: 'aberration', encounterType: 'boss', sentient: true, size: 'large',
+    attackStat: 'int',
     damageType: 'FORCE',
     resistances: ['PSYCHIC'],
     conditionImmunities: ['stunned', 'paralyzed'],
@@ -2144,7 +2216,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 78, ac: 18, attack: 12, damage: '1d10+3',
+      hp: 78, ac: 18, attack: 7, damage: '1d10-2',
       str: 10, dex: 14, con: 18, int: 20, wis: 15, cha: 17,
     },
     lootTable: [
@@ -2160,6 +2232,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Glimmerveil',
     family: 'dragons',
     category: 'dragon', encounterType: 'elite', sentient: true, size: 'large',
+    attackStat: 'str',
     damageType: 'FORCE',
     resistances: ['PSYCHIC', 'RADIANT'],
     abilities: [
@@ -2182,7 +2255,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 63, ac: 17, attack: 11, damage: '1d8+3',
+      hp: 63, ac: 17, attack: 8, damage: '1d8',
       str: 16, dex: 18, con: 16, int: 18, wis: 16, cha: 20,
     },
     lootTable: [
@@ -2197,6 +2270,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ashenmoor',
     family: 'undead',
     category: 'undead', encounterType: 'boss', sentient: true, size: 'medium',
+    attackStat: 'str',
     damageType: 'NECROTIC',
     resistances: ['COLD', 'NECROTIC'],
     immunities: ['POISON'],
@@ -2244,7 +2318,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 83, ac: 19, attack: 14, damage: '2d8+4',
+      hp: 83, ac: 19, attack: 8, damage: '2d8-2',
       str: 22, dex: 11, con: 20, int: 14, wis: 16, cha: 20,
     },
     lootTable: [
@@ -2260,6 +2334,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Skypeak Plateaus',
     family: 'giants',
     category: 'humanoid', encounterType: 'boss', sentient: true, size: 'huge',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     resistances: ['COLD', 'THUNDER'],
     immunities: ['LIGHTNING'],
@@ -2301,7 +2376,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 106, ac: 20, attack: 15, damage: '2d10+5',
+      hp: 106, ac: 20, attack: 6, damage: '2d10-4',
       str: 29, dex: 14, con: 22, int: 16, wis: 18, cha: 20,
     },
     lootTable: [
@@ -2321,6 +2396,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Silverwood Forest',
     family: 'dragons',
     category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'PIERCING',
     abilities: [
       {
@@ -2335,7 +2411,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 54, ac: 17, attack: 10, damage: '1d8+3',
+      hp: 54, ac: 17, attack: 6, damage: '1d8-1',
       str: 19, dex: 14, con: 18, int: 5, wis: 12, cha: 6,
     },
     lootTable: [
@@ -2350,6 +2426,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'elementals',
     category: 'elemental', encounterType: 'elite', sentient: true, size: 'large',
+    attackStat: 'str',
     damageType: 'LIGHTNING',
     immunities: ['LIGHTNING', 'THUNDER'],
     abilities: [{
@@ -2359,7 +2436,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The djinn conjures a violent sandstorm that batters everything nearby.',
     }],
     stats: {
-      hp: 61, ac: 18, attack: 12, damage: '1d10+3',
+      hp: 61, ac: 18, attack: 7, damage: '1d10-2',
       str: 20, dex: 16, con: 18, int: 14, wis: 16, cha: 18,
     },
     lootTable: [
@@ -2374,6 +2451,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Vel\'Naris Underdark',
     family: 'fiends',
     category: 'fiend', encounterType: 'standard', sentient: true, size: 'medium',
+    attackStat: 'str',
     damageType: 'NECROTIC',
     immunities: ['FIRE', 'POISON'],
     abilities: [
@@ -2391,7 +2469,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 61, ac: 18, attack: 12, damage: '1d10+3',
+      hp: 61, ac: 18, attack: 9, damage: '1d10',
       str: 16, dex: 14, con: 18, int: 14, wis: 14, cha: 16,
     },
     lootTable: [
@@ -2406,6 +2484,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Cogsworth Warrens',
     family: 'giants',
     category: 'humanoid', encounterType: 'standard', sentient: true, size: 'large',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     abilities: [{
       id: 'ettin_multi', name: 'Twin Clubs', type: 'multiattack',
@@ -2413,7 +2492,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The ettin swings both of its massive clubs simultaneously.',
     }],
     stats: {
-      hp: 49, ac: 17, attack: 12, damage: '1d10+3',
+      hp: 49, ac: 17, attack: 6, damage: '1d10-3',
       str: 22, dex: 8, con: 20, int: 6, wis: 10, cha: 8,
     },
     lootTable: [
@@ -2428,6 +2507,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'aquatic',
     category: 'beast', encounterType: 'elite', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     abilities: [
       {
@@ -2443,7 +2523,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 65, ac: 18, attack: 12, damage: '2d8+3',
+      hp: 65, ac: 18, attack: 5, damage: '2d8-4',
       str: 24, dex: 8, con: 22, int: 3, wis: 10, cha: 6,
     },
     lootTable: [
@@ -2458,6 +2538,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Confluence',
     family: 'constructs',
     category: 'construct', encounterType: 'elite', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     resistances: ['SLASHING', 'PIERCING'],
     immunities: ['FIRE'],
@@ -2469,7 +2550,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The golem slams its fist into the ground, erupting in molten rock.',
     }],
     stats: {
-      hp: 67, ac: 18, attack: 13, damage: '2d8+4',
+      hp: 67, ac: 18, attack: 6, damage: '2d8-3',
       str: 24, dex: 6, con: 22, int: 3, wis: 8, cha: 1,
     },
     lootTable: [
@@ -2483,6 +2564,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Scarred Frontier',
     family: 'dragons',
     category: 'dragon', encounterType: 'standard', sentient: true, size: 'huge',
+    attackStat: 'str',
     damageType: 'FIRE',
     abilities: [
       {
@@ -2498,7 +2580,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 63, ac: 18, attack: 13, damage: '2d8+3',
+      hp: 63, ac: 18, attack: 7, damage: '2d8-3',
       str: 22, dex: 12, con: 20, int: 12, wis: 14, cha: 16,
     },
     lootTable: [
@@ -2513,6 +2595,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Glimmerveil',
     family: 'fey',
     category: 'fey', encounterType: 'boss', sentient: true, size: 'large',
+    attackStat: 'cha',
     damageType: 'RADIANT',
     legendaryActions: 1,
     legendaryResistances: 1,
@@ -2547,7 +2630,7 @@ export const MONSTERS: MonsterDef[] = [
       ],
     }],
     stats: {
-      hp: 76, ac: 19, attack: 13, damage: '2d8+4',
+      hp: 76, ac: 19, attack: 7, damage: '2d8-2',
       str: 18, dex: 16, con: 20, int: 18, wis: 22, cha: 22,
     },
     lootTable: [
@@ -2562,6 +2645,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ashenfang Wastes',
     family: 'beasts',
     category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'LIGHTNING',
     abilities: [
       {
@@ -2577,7 +2661,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 65, ac: 18, attack: 13, damage: '2d8+3',
+      hp: 65, ac: 18, attack: 6, damage: '2d8-4',
       str: 24, dex: 12, con: 20, int: 5, wis: 12, cha: 8,
     },
     lootTable: [
@@ -2592,6 +2676,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'aberrations',
     category: 'aberration', encounterType: 'standard', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     abilities: [
       {
@@ -2607,7 +2692,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 67, ac: 18, attack: 13, damage: '2d8+3',
+      hp: 67, ac: 18, attack: 7, damage: '2d8-3',
       str: 22, dex: 10, con: 20, int: 6, wis: 12, cha: 6,
     },
     lootTable: [
@@ -2621,6 +2706,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Frozen Reaches',
     family: 'undead',
     category: 'undead', encounterType: 'elite', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'COLD',
     immunities: ['COLD', 'POISON'],
     conditionImmunities: ['poisoned', 'frightened'],
@@ -2630,7 +2716,7 @@ export const MONSTERS: MonsterDef[] = [
       description: 'The revenant\'s icy grip freezes the target\'s limbs.',
     }],
     stats: {
-      hp: 54, ac: 18, attack: 13, damage: '2d8+3',
+      hp: 54, ac: 18, attack: 8, damage: '2d8-2',
       str: 20, dex: 12, con: 20, int: 8, wis: 14, cha: 10,
     },
     lootTable: [
@@ -2644,6 +2730,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Confluence',
     family: 'fiends',
     category: 'fiend', encounterType: 'standard', sentient: true, size: 'large',
+    attackStat: 'str',
     damageType: 'FIRE',
     immunities: ['FIRE', 'POISON'],
     abilities: [
@@ -2654,7 +2741,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 69, ac: 19, attack: 14, damage: '2d8+3',
+      hp: 69, ac: 19, attack: 8, damage: '2d8-3',
       str: 22, dex: 14, con: 20, int: 12, wis: 14, cha: 18,
     },
     lootTable: [
@@ -2669,6 +2756,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ironvault Mountains',
     family: 'constructs',
     category: 'construct', encounterType: 'boss', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     resistances: ['SLASHING', 'PIERCING'],
     conditionImmunities: ['poisoned', 'frightened', 'charmed'],
@@ -2700,7 +2788,7 @@ export const MONSTERS: MonsterDef[] = [
       ],
     }],
     stats: {
-      hp: 86, ac: 20, attack: 14, damage: '2d10+4',
+      hp: 86, ac: 20, attack: 5, damage: '2d10-5',
       str: 28, dex: 6, con: 24, int: 3, wis: 8, cha: 1,
     },
     lootTable: [
@@ -2715,6 +2803,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Glimmerveil',
     family: 'fey',
     category: 'fey', encounterType: 'standard', sentient: true, size: 'medium',
+    attackStat: 'cha',
     damageType: 'RADIANT',
     abilities: [
       {
@@ -2729,7 +2818,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 67, ac: 19, attack: 13, damage: '2d8+3',
+      hp: 67, ac: 19, attack: 8, damage: '2d8-2',
       str: 14, dex: 20, con: 18, int: 16, wis: 18, cha: 20,
     },
     lootTable: [
@@ -2747,6 +2836,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'reptiles',
     category: 'monstrosity', encounterType: 'elite', sentient: false, size: 'gargantuan',
+    attackStat: 'str',
     damageType: 'PIERCING',
     resistances: ['FIRE'],
     abilities: [
@@ -2773,7 +2863,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 104, ac: 20, attack: 14, damage: '2d10+4',
+      hp: 104, ac: 20, attack: 6, damage: '2d10-4',
       str: 26, dex: 10, con: 22, int: 3, wis: 12, cha: 6,
     },
     lootTable: [
@@ -2788,6 +2878,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Pelagic Depths',
     family: 'aquatic',
     category: 'monstrosity', encounterType: 'elite', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     resistances: ['COLD', 'LIGHTNING'],
     immunities: ['ACID'],
@@ -2812,7 +2903,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 106, ac: 20, attack: 14, damage: '2d8+4',
+      hp: 106, ac: 20, attack: 7, damage: '2d8-3',
       str: 24, dex: 12, con: 22, int: 10, wis: 14, cha: 8,
     },
     lootTable: [
@@ -2827,6 +2918,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Verdant Heartlands',
     family: 'beasts',
     category: 'beast', encounterType: 'elite', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     resistances: ['COLD'],
     abilities: [
@@ -2848,7 +2940,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 109, ac: 20, attack: 15, damage: '2d10+4',
+      hp: 109, ac: 20, attack: 6, damage: '2d10-5',
       str: 28, dex: 8, con: 24, int: 3, wis: 12, cha: 6,
     },
     lootTable: [
@@ -2863,6 +2955,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Verdant Heartlands',
     family: 'aquatic',
     category: 'beast', encounterType: 'elite', sentient: false, size: 'gargantuan',
+    attackStat: 'str',
     damageType: 'PIERCING',
     resistances: ['COLD'],
     abilities: [
@@ -2885,7 +2978,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 115, ac: 19, attack: 15, damage: '2d10+4',
+      hp: 115, ac: 19, attack: 7, damage: '2d10-4',
       str: 26, dex: 14, con: 22, int: 4, wis: 12, cha: 6,
     },
     lootTable: [
@@ -2900,6 +2993,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Cogsworth Warrens',
     family: 'reptiles',
     category: 'monstrosity', encounterType: 'boss', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'PIERCING',
     immunities: ['POISON'],
     legendaryResistances: 1,
@@ -2934,7 +3028,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 175, ac: 21, attack: 15, damage: '2d8+5',
+      hp: 175, ac: 21, attack: 8, damage: '2d8-2',
       str: 24, dex: 10, con: 24, int: 3, wis: 14, cha: 8,
     },
     lootTable: [
@@ -2950,6 +3044,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Pelagic Depths',
     family: 'aberrations',
     category: 'aberration', encounterType: 'boss', sentient: true, size: 'large',
+    attackStat: 'int',
     damageType: 'PSYCHIC',
     resistances: ['PSYCHIC', 'COLD'],
     immunities: ['POISON'],
@@ -2982,7 +3077,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 179, ac: 21, attack: 16, damage: '2d10+5',
+      hp: 179, ac: 21, attack: 10, damage: '2d10-1',
       str: 22, dex: 10, con: 22, int: 22, wis: 20, cha: 18,
     },
     lootTable: [
@@ -2996,6 +3091,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'elementals',
     category: 'elemental', encounterType: 'boss', sentient: true, size: 'large',
+    attackStat: 'str',
     damageType: 'LIGHTNING',
     immunities: ['LIGHTNING', 'THUNDER'],
     resistances: ['FIRE'],
@@ -3028,7 +3124,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 182, ac: 22, attack: 17, damage: '2d8+5',
+      hp: 182, ac: 22, attack: 11, damage: '2d8-1',
       str: 22, dex: 18, con: 20, int: 16, wis: 18, cha: 22,
     },
     lootTable: [
@@ -3043,6 +3139,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ironvault Mountains',
     family: 'beasts',
     category: 'beast', encounterType: 'elite', sentient: false, size: 'gargantuan',
+    attackStat: 'str',
     damageType: 'PIERCING',
     abilities: [
       {
@@ -3064,7 +3161,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 154, ac: 21, attack: 17, damage: '2d10+5',
+      hp: 154, ac: 21, attack: 8, damage: '2d10-4',
       str: 28, dex: 14, con: 22, int: 4, wis: 14, cha: 10,
     },
     lootTable: [
@@ -3080,6 +3177,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ashenmoor',
     family: 'undead',
     category: 'undead', encounterType: 'boss', sentient: true, size: 'medium',
+    attackStat: 'int',
     damageType: 'NECROTIC',
     resistances: ['COLD', 'LIGHTNING', 'NECROTIC', 'PSYCHIC'],
     immunities: ['POISON'],
@@ -3120,7 +3218,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 186, ac: 22, attack: 18, damage: '2d8+5',
+      hp: 186, ac: 22, attack: 11, damage: '2d8-2',
       str: 14, dex: 14, con: 18, int: 24, wis: 22, cha: 20,
     },
     lootTable: [
@@ -3136,6 +3234,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Silverwood Forest',
     family: 'plants',
     category: 'plant', encounterType: 'standard', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     vulnerabilities: ['FIRE'],
     abilities: [
@@ -3152,7 +3251,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 83, ac: 19, attack: 14, damage: '2d8+4',
+      hp: 83, ac: 19, attack: 7, damage: '2d8-3',
       str: 24, dex: 6, con: 22, int: 6, wis: 14, cha: 6,
     },
     lootTable: [
@@ -3168,6 +3267,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Verdant Heartlands',
     family: 'beasts',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     abilities: [
       {
@@ -3182,7 +3282,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 85, ac: 19, attack: 14, damage: '2d8+4',
+      hp: 85, ac: 19, attack: 6, damage: '2d8-4',
       str: 26, dex: 8, con: 24, int: 3, wis: 12, cha: 6,
     },
     lootTable: [
@@ -3198,6 +3298,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'constructs',
     category: 'construct', encounterType: 'standard', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     conditionImmunities: ['poisoned', 'frightened', 'charmed'],
     abilities: [
@@ -3214,7 +3315,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 85, ac: 20, attack: 14, damage: '2d8+4',
+      hp: 85, ac: 20, attack: 6, damage: '2d8-4',
       str: 26, dex: 6, con: 24, int: 3, wis: 10, cha: 3,
     },
     lootTable: [
@@ -3229,6 +3330,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Vel\'Naris Underdark',
     family: 'undead',
     category: 'undead', encounterType: 'elite', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'NECROTIC',
     immunities: ['POISON', 'NECROTIC'],
     resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
@@ -3247,7 +3349,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 109, ac: 20, attack: 15, damage: '2d10+4',
+      hp: 109, ac: 20, attack: 9, damage: '2d10-2',
       str: 22, dex: 12, con: 22, int: 6, wis: 14, cha: 6,
     },
     lootTable: [
@@ -3263,6 +3365,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Confluence',
     family: 'dragons',
     category: 'dragon', encounterType: 'standard', sentient: true, size: 'large',
+    attackStat: 'str',
     damageType: 'FIRE',
     immunities: ['FIRE'],
     abilities: [
@@ -3279,7 +3382,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 92, ac: 20, attack: 15, damage: '2d8+4',
+      hp: 92, ac: 20, attack: 9, damage: '2d8-2',
       str: 22, dex: 14, con: 20, int: 8, wis: 12, cha: 14,
     },
     lootTable: [
@@ -3294,6 +3397,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Thornwilds',
     family: 'plants',
     category: 'plant', encounterType: 'elite', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'POISON',
     immunities: ['POISON'],
     vulnerabilities: ['FIRE'],
@@ -3316,7 +3420,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 115, ac: 19, attack: 15, damage: '2d8+4',
+      hp: 115, ac: 19, attack: 10, damage: '2d8-1',
       str: 20, dex: 8, con: 22, int: 4, wis: 14, cha: 4,
     },
     lootTable: [
@@ -3331,6 +3435,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'large',
+    attackStat: 'dex',
     damageType: 'BLUDGEONING',
     immunities: ['LIGHTNING', 'THUNDER'],
     resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
@@ -3343,7 +3448,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 117, ac: 19, attack: 14, damage: '2d8+4',
+      hp: 117, ac: 19, attack: 9, damage: '2d8-1',
       str: 18, dex: 20, con: 18, int: 6, wis: 12, cha: 8,
     },
     lootTable: [
@@ -3359,6 +3464,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Scarred Frontier',
     family: 'undead',
     category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'dex',
     damageType: 'NECROTIC',
     immunities: ['POISON', 'NECROTIC'],
     resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
@@ -3376,7 +3482,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 117, ac: 20, attack: 15, damage: '2d8+4',
+      hp: 117, ac: 20, attack: 13, damage: '2d8+2',
       str: 18, dex: 14, con: 18, int: 10, wis: 16, cha: 12,
     },
     lootTable: [
@@ -3391,6 +3497,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ashenfang Wastes',
     family: 'fiends',
     category: 'fiend', encounterType: 'elite', sentient: true, size: 'large',
+    attackStat: 'dex',
     damageType: 'SLASHING',
     immunities: ['FIRE', 'POISON'],
     resistances: ['COLD', 'LIGHTNING'],
@@ -3408,7 +3515,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 148, ac: 21, attack: 16, damage: '2d8+4',
+      hp: 148, ac: 21, attack: 11, damage: '2d8-1',
       str: 22, dex: 20, con: 20, int: 16, wis: 14, cha: 20,
     },
     lootTable: [
@@ -3423,6 +3530,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'dragons',
     category: 'dragon', encounterType: 'standard', sentient: true, size: 'large',
+    attackStat: 'str',
     damageType: 'ACID',
     resistances: ['ACID'],
     abilities: [
@@ -3439,7 +3547,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 119, ac: 20, attack: 16, damage: '2d10+4',
+      hp: 119, ac: 20, attack: 10, damage: '2d10-2',
       str: 22, dex: 14, con: 20, int: 10, wis: 12, cha: 14,
     },
     lootTable: [
@@ -3454,6 +3562,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Glimmerveil',
     family: 'fey',
     category: 'fey', encounterType: 'standard', sentient: true, size: 'large',
+    attackStat: 'cha',
     damageType: 'RADIANT',
     abilities: [
       {
@@ -3469,7 +3578,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 120, ac: 20, attack: 16, damage: '2d8+4',
+      hp: 120, ac: 20, attack: 12, damage: '2d8',
       str: 18, dex: 16, con: 18, int: 16, wis: 20, cha: 18,
     },
     lootTable: [
@@ -3484,6 +3593,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Frozen Reaches',
     family: 'dragons',
     category: 'dragon', encounterType: 'standard', sentient: true, size: 'large',
+    attackStat: 'str',
     damageType: 'COLD',
     immunities: ['COLD'],
     abilities: [
@@ -3500,7 +3610,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 120, ac: 20, attack: 16, damage: '2d10+4',
+      hp: 120, ac: 20, attack: 9, damage: '2d10-3',
       str: 24, dex: 12, con: 22, int: 10, wis: 12, cha: 14,
     },
     lootTable: [
@@ -3515,6 +3625,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Cogsworth Warrens',
     family: 'giants',
     category: 'humanoid', encounterType: 'elite', sentient: true, size: 'huge',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     legendaryActions: 1,
     abilities: [
@@ -3537,7 +3648,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 152, ac: 21, attack: 17, damage: '2d8+5',
+      hp: 152, ac: 21, attack: 9, damage: '2d8-3',
       str: 26, dex: 8, con: 24, int: 8, wis: 12, cha: 14,
     },
     lootTable: [
@@ -3552,6 +3663,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Shadowmere Marshes',
     family: 'dragons',
     category: 'undead', encounterType: 'boss', sentient: true, size: 'huge',
+    attackStat: 'int',
     damageType: 'NECROTIC',
     immunities: ['POISON', 'NECROTIC', 'COLD'],
     conditionImmunities: ['poisoned', 'frightened', 'charmed'],
@@ -3590,7 +3702,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 185, ac: 22, attack: 17, damage: '2d8+5',
+      hp: 185, ac: 22, attack: 13, damage: '2d8+1',
       str: 24, dex: 10, con: 22, int: 18, wis: 16, cha: 18,
     },
     lootTable: [
@@ -3609,6 +3721,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Confluence',
     family: 'elementals',
     category: 'elemental', encounterType: 'boss', sentient: true, size: 'huge',
+    attackStat: 'str',
     damageType: 'FIRE',
     immunities: ['FIRE', 'POISON'],
     vulnerabilities: ['COLD'],
@@ -3639,7 +3752,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 240, ac: 22, attack: 19, damage: '2d10+5',
+      hp: 240, ac: 22, attack: 13, damage: '2d10-1',
       str: 22, dex: 20, con: 20, int: 14, wis: 18, cha: 22,
     },
     lootTable: [
@@ -3655,6 +3768,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ashenfang Wastes',
     family: 'fiends',
     category: 'fiend', encounterType: 'boss', sentient: true, size: 'large',
+    attackStat: 'str',
     damageType: 'SLASHING',
     immunities: ['FIRE', 'POISON'],
     resistances: ['COLD'],
@@ -3698,7 +3812,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 248, ac: 23, attack: 19, damage: '2d10+5',
+      hp: 248, ac: 23, attack: 10, damage: '2d10-4',
       str: 28, dex: 16, con: 24, int: 20, wis: 18, cha: 24,
     },
     lootTable: [
@@ -3713,6 +3827,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Pelagic Depths',
     family: 'aquatic',
     category: 'monstrosity', encounterType: 'boss', sentient: true, size: 'gargantuan',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     immunities: ['LIGHTNING', 'COLD'],
     resistances: ['ACID', 'PIERCING'],
@@ -3745,7 +3860,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 255, ac: 22, attack: 20, damage: '2d10+5',
+      hp: 255, ac: 22, attack: 10, damage: '2d10-5',
       str: 30, dex: 12, con: 26, int: 18, wis: 16, cha: 14,
     },
     lootTable: [
@@ -3760,6 +3875,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Frozen Reaches',
     family: 'dragons',
     category: 'dragon', encounterType: 'boss', sentient: true, size: 'gargantuan',
+    attackStat: 'str',
     damageType: 'PIERCING',
     immunities: ['COLD'],
     resistances: ['FIRE', 'LIGHTNING'],
@@ -3805,7 +3921,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 270, ac: 23, attack: 21, damage: '2d8+6',
+      hp: 270, ac: 23, attack: 11, damage: '2d8-4',
       str: 30, dex: 12, con: 26, int: 18, wis: 16, cha: 22,
     },
     lootTable: [
@@ -3821,6 +3937,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Glimmerveil',
     family: 'constructs',
     category: 'construct', encounterType: 'boss', sentient: true, size: 'gargantuan',
+    attackStat: 'str',
     damageType: 'FORCE',
     immunities: ['PSYCHIC', 'FORCE'],
     resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
@@ -3867,7 +3984,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 270, ac: 23, attack: 21, damage: '2d8+6',
+      hp: 270, ac: 23, attack: 12, damage: '2d8-3',
       str: 28, dex: 12, con: 24, int: 24, wis: 20, cha: 18,
     },
     lootTable: [
@@ -3883,6 +4000,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Verdant Heartlands',
     family: 'beasts',
     category: 'monstrosity', encounterType: 'world_boss', sentient: false, size: 'gargantuan',
+    attackStat: 'str',
     damageType: 'PIERCING',
     immunities: ['FIRE', 'POISON'],
     resistances: ['COLD', 'LIGHTNING', 'SLASHING', 'PIERCING', 'BLUDGEONING'],
@@ -3931,7 +4049,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 270, ac: 24, attack: 22, damage: '3d10+7',
+      hp: 270, ac: 24, attack: 12, damage: '3d10-3',
       str: 30, dex: 12, con: 30, int: 4, wis: 14, cha: 14,
     },
     lootTable: [
@@ -3947,6 +4065,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Vel\'Naris Underdark',
     family: 'aberrations',
     category: 'aberration', encounterType: 'world_boss', sentient: true, size: 'large',
+    attackStat: 'int',
     damageType: 'PSYCHIC',
     immunities: ['NECROTIC', 'POISON'],
     resistances: ['COLD', 'FIRE', 'LIGHTNING'],
@@ -4005,7 +4124,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 270, ac: 24, attack: 22, damage: '3d10+7',
+      hp: 270, ac: 24, attack: 13, damage: '3d10-2',
       str: 24, dex: 16, con: 26, int: 28, wis: 24, cha: 26,
     },
     lootTable: [
@@ -4021,6 +4140,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Confluence',
     family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'FIRE',
     immunities: ['FIRE', 'POISON'],
     vulnerabilities: ['COLD'],
@@ -4038,7 +4158,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 155, ac: 22, attack: 19, damage: '2d8+5',
+      hp: 155, ac: 22, attack: 11, damage: '2d8-3',
       str: 26, dex: 10, con: 24, int: 6, wis: 12, cha: 8,
     },
     lootTable: [
@@ -4053,6 +4173,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Silverwood Forest',
     family: 'plants',
     category: 'plant', encounterType: 'elite', sentient: false, size: 'gargantuan',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     immunities: ['LIGHTNING'],
     resistances: ['SLASHING', 'PIERCING'],
@@ -4083,7 +4204,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 194, ac: 22, attack: 19, damage: '2d10+5',
+      hp: 194, ac: 22, attack: 10, damage: '2d10-4',
       str: 28, dex: 6, con: 26, int: 8, wis: 18, cha: 8,
     },
     lootTable: [
@@ -4098,6 +4219,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Shadowmere Marshes',
     family: 'reptiles',
     category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'ACID',
     abilities: [
       {
@@ -4113,7 +4235,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 165, ac: 22, attack: 19, damage: '2d8+5',
+      hp: 165, ac: 22, attack: 12, damage: '2d8-2',
       str: 24, dex: 12, con: 24, int: 4, wis: 12, cha: 6,
     },
     lootTable: [
@@ -4129,6 +4251,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Vel\'Naris Underdark',
     family: 'aberrations',
     category: 'aberration', encounterType: 'standard', sentient: true, size: 'large',
+    attackStat: 'int',
     damageType: 'PSYCHIC',
     immunities: ['PSYCHIC'],
     abilities: [
@@ -4150,7 +4273,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 170, ac: 22, attack: 19, damage: '2d8+5',
+      hp: 170, ac: 22, attack: 12, damage: '2d8-2',
       str: 16, dex: 16, con: 20, int: 24, wis: 20, cha: 18,
     },
     lootTable: [
@@ -4165,6 +4288,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Frozen Reaches',
     family: 'constructs',
     category: 'construct', encounterType: 'standard', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'COLD',
     immunities: ['COLD', 'POISON'],
     conditionImmunities: ['poisoned', 'frightened', 'charmed'],
@@ -4182,7 +4306,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 170, ac: 22, attack: 19, damage: '2d8+5',
+      hp: 170, ac: 22, attack: 13, damage: '2d8-1',
       str: 22, dex: 10, con: 24, int: 3, wis: 12, cha: 3,
     },
     lootTable: [
@@ -4197,6 +4321,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Verdant Heartlands',
     family: 'beasts',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     abilities: [
       {
@@ -4217,7 +4342,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 180, ac: 22, attack: 20, damage: '2d10+5',
+      hp: 180, ac: 22, attack: 11, damage: '2d10-4',
       str: 28, dex: 10, con: 26, int: 3, wis: 12, cha: 6,
     },
     lootTable: [
@@ -4233,6 +4358,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Cogsworth Warrens',
     family: 'dragons',
     category: 'dragon', encounterType: 'boss', sentient: true, size: 'huge',
+    attackStat: 'str',
     damageType: 'POISON',
     immunities: ['POISON'],
     resistances: ['ACID'],
@@ -4276,7 +4402,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 270, ac: 23, attack: 20, damage: '2d8+6',
+      hp: 270, ac: 23, attack: 12, damage: '2d8-2',
       str: 26, dex: 12, con: 24, int: 16, wis: 16, cha: 18,
     },
     lootTable: [
@@ -4291,6 +4417,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ironvault Mountains',
     family: 'constructs',
     category: 'construct', encounterType: 'standard', sentient: false, size: 'huge',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     resistances: ['SLASHING', 'PIERCING'],
     conditionImmunities: ['poisoned', 'frightened', 'charmed'],
@@ -4309,7 +4436,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 180, ac: 23, attack: 20, damage: '2d10+5',
+      hp: 180, ac: 23, attack: 12, damage: '2d10-3',
       str: 26, dex: 8, con: 26, int: 3, wis: 12, cha: 3,
     },
     lootTable: [
@@ -4324,6 +4451,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'beasts',
     category: 'monstrosity', encounterType: 'standard', sentient: false, size: 'gargantuan',
+    attackStat: 'str',
     damageType: 'PIERCING',
     abilities: [
       {
@@ -4344,7 +4472,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 180, ac: 23, attack: 21, damage: '2d8+6',
+      hp: 180, ac: 23, attack: 12, damage: '2d8-3',
       str: 28, dex: 10, con: 26, int: 3, wis: 12, cha: 6,
     },
     lootTable: [
@@ -4360,6 +4488,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'fiends',
     category: 'fiend', encounterType: 'elite', sentient: true, size: 'large',
+    attackStat: 'str',
     damageType: 'FIRE',
     immunities: ['FIRE', 'POISON'],
     resistances: ['COLD'],
@@ -4378,7 +4507,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 225, ac: 23, attack: 21, damage: '2d8+6',
+      hp: 225, ac: 23, attack: 14, damage: '2d8-1',
       str: 24, dex: 18, con: 24, int: 18, wis: 16, cha: 22,
     },
     lootTable: [
@@ -4398,9 +4527,10 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Silverwood Forest',
     family: 'wolves',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     stats: {
-      hp: 14, ac: 10, attack: 3, damage: '1d4+1',
+      hp: 14, ac: 10, attack: 1, damage: '1d4-1',
       str: 10, dex: 14, con: 10, int: 3, wis: 12, cha: 5,
     },
     lootTable: [
@@ -4414,6 +4544,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Silverwood Forest',
     family: 'wolves',
     category: 'beast', encounterType: 'elite', sentient: false, size: 'large',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     abilities: [
       {
@@ -4428,7 +4559,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 22, ac: 11, attack: 5, damage: '1d6+2',
+      hp: 22, ac: 11, attack: 3, damage: '1d6',
       str: 14, dex: 14, con: 12, int: 4, wis: 12, cha: 8,
     },
     lootTable: [
@@ -4445,9 +4576,10 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Crossroads',
     family: 'goblins',
     category: 'humanoid', encounterType: 'standard', sentient: true, size: 'small',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     stats: {
-      hp: 16, ac: 10, attack: 4, damage: '1d6',
+      hp: 16, ac: 10, attack: 2, damage: '1d6-2',
       str: 8, dex: 14, con: 10, int: 8, wis: 10, cha: 6,
     },
     lootTable: [
@@ -4462,6 +4594,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Crossroads',
     family: 'goblins',
     category: 'humanoid', encounterType: 'standard', sentient: true, size: 'small',
+    attackStat: 'int',
     damageType: 'FIRE',
     abilities: [
       {
@@ -4472,7 +4605,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 18, ac: 10, attack: 3, damage: '1d6+1',
+      hp: 18, ac: 10, attack: 2, damage: '1d6',
       str: 6, dex: 12, con: 10, int: 12, wis: 12, cha: 8,
     },
     lootTable: [
@@ -4487,6 +4620,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ashenfang Wastes',
     family: 'beasts',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'PIERCING',
     abilities: [
       {
@@ -4496,7 +4630,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 22, ac: 10, attack: 4, damage: '1d6+2',
+      hp: 22, ac: 10, attack: 2, damage: '1d6',
       str: 14, dex: 12, con: 12, int: 3, wis: 10, cha: 5,
     },
     lootTable: [
@@ -4513,6 +4647,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Verdant Heartlands',
     family: 'bandits',
     category: 'humanoid', encounterType: 'standard', sentient: true, size: 'medium',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     abilities: [
       {
@@ -4523,7 +4658,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 18, ac: 10, attack: 5, damage: '1d6+2',
+      hp: 18, ac: 10, attack: 3, damage: '1d6',
       str: 10, dex: 14, con: 10, int: 10, wis: 12, cha: 10,
     },
     lootTable: [
@@ -4537,6 +4672,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Verdant Heartlands',
     family: 'bandits',
     category: 'humanoid', encounterType: 'elite', sentient: true, size: 'medium',
+    attackStat: 'str',
     damageType: 'SLASHING',
     abilities: [
       {
@@ -4552,7 +4688,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 26, ac: 12, attack: 6, damage: '1d6+2',
+      hp: 26, ac: 12, attack: 4, damage: '1d6',
       str: 14, dex: 14, con: 12, int: 12, wis: 12, cha: 14,
     },
     lootTable: [
@@ -4569,12 +4705,13 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ashenmoor',
     family: 'undead',
     category: 'undead', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     immunities: ['POISON'],
     vulnerabilities: ['BLUDGEONING'],
     conditionImmunities: ['poisoned'],
     stats: {
-      hp: 16, ac: 10, attack: 5, damage: '1d6+2',
+      hp: 16, ac: 10, attack: 3, damage: '1d6',
       str: 10, dex: 14, con: 10, int: 3, wis: 6, cha: 3,
     },
     lootTable: [
@@ -4588,6 +4725,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: "Vel'Naris Underdark",
     family: 'undead',
     category: 'undead', encounterType: 'elite', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'NECROTIC',
     immunities: ['POISON'],
     conditionImmunities: ['poisoned'],
@@ -4605,7 +4743,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 24, ac: 11, attack: 5, damage: '1d6+2',
+      hp: 24, ac: 11, attack: 3, damage: '1d6',
       str: 14, dex: 14, con: 12, int: 6, wis: 10, cha: 8,
     },
     lootTable: [
@@ -4622,9 +4760,10 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Verdant Heartlands',
     family: 'beasts',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'PIERCING',
     stats: {
-      hp: 18, ac: 10, attack: 3, damage: '1d4+1',
+      hp: 18, ac: 10, attack: 2, damage: '1d4',
       str: 12, dex: 10, con: 12, int: 2, wis: 10, cha: 4,
     },
     lootTable: [
@@ -4639,9 +4778,10 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Shadowmere Marshes',
     family: 'beasts',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     stats: {
-      hp: 14, ac: 10, attack: 2, damage: '1d4+1',
+      hp: 14, ac: 10, attack: 0, damage: '1d4-1',
       str: 6, dex: 14, con: 8, int: 2, wis: 10, cha: 3,
     },
     lootTable: [
@@ -4657,9 +4797,10 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ironvault Mountains',
     family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'tiny',
+    attackStat: 'dex',
     damageType: 'BLUDGEONING',
     stats: {
-      hp: 12, ac: 10, attack: 3, damage: '1d4+1',
+      hp: 12, ac: 10, attack: 1, damage: '1d4-1',
       str: 4, dex: 14, con: 8, int: 3, wis: 10, cha: 6,
     },
     lootTable: [
@@ -4673,9 +4814,10 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Confluence',
     family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'tiny',
+    attackStat: 'dex',
     damageType: 'FIRE',
     stats: {
-      hp: 12, ac: 10, attack: 3, damage: '1d4+1',
+      hp: 12, ac: 10, attack: 1, damage: '1d4-1',
       str: 4, dex: 14, con: 8, int: 3, wis: 10, cha: 6,
     },
     lootTable: [
@@ -4690,9 +4832,10 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Frozen Reaches',
     family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'tiny',
+    attackStat: 'dex',
     damageType: 'COLD',
     stats: {
-      hp: 12, ac: 10, attack: 3, damage: '1d4+1',
+      hp: 12, ac: 10, attack: 1, damage: '1d4-1',
       str: 4, dex: 14, con: 8, int: 3, wis: 10, cha: 6,
     },
     lootTable: [
@@ -4707,9 +4850,10 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'elementals',
     category: 'elemental', encounterType: 'standard', sentient: false, size: 'tiny',
+    attackStat: 'dex',
     damageType: 'COLD',
     stats: {
-      hp: 12, ac: 10, attack: 3, damage: '1d4+1',
+      hp: 12, ac: 10, attack: 1, damage: '1d4-1',
       str: 4, dex: 14, con: 8, int: 3, wis: 10, cha: 6,
     },
     lootTable: [
@@ -4725,6 +4869,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Glimmerveil',
     family: 'fey',
     category: 'fey', encounterType: 'standard', sentient: true, size: 'tiny',
+    attackStat: 'cha',
     damageType: 'FORCE',
     abilities: [
       {
@@ -4734,7 +4879,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 10, ac: 10, attack: 4, damage: '1d6',
+      hp: 10, ac: 10, attack: 1, damage: '1d6-3',
       str: 3, dex: 16, con: 6, int: 12, wis: 12, cha: 16,
     },
     lootTable: [
@@ -4749,6 +4894,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Glimmerveil',
     family: 'fey',
     category: 'fey', encounterType: 'standard', sentient: true, size: 'medium',
+    attackStat: 'cha',
     damageType: 'BLUDGEONING',
     abilities: [
       {
@@ -4759,7 +4905,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 16, ac: 10, attack: 5, damage: '1d6+1',
+      hp: 16, ac: 10, attack: 2, damage: '1d6-2',
       str: 12, dex: 14, con: 10, int: 12, wis: 10, cha: 16,
     },
     lootTable: [
@@ -4777,9 +4923,10 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Ashenfang Wastes',
     family: 'insects',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     stats: {
-      hp: 16, ac: 10, attack: 3, damage: '1d4+1',
+      hp: 16, ac: 10, attack: 2, damage: '1d4',
       str: 10, dex: 12, con: 12, int: 1, wis: 8, cha: 2,
     },
     lootTable: [
@@ -4793,6 +4940,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'insects',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     abilities: [
       {
@@ -4802,7 +4950,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 18, ac: 10, attack: 3, damage: '1d6',
+      hp: 18, ac: 10, attack: 2, damage: '1d6-1',
       str: 6, dex: 12, con: 12, int: 1, wis: 6, cha: 1,
     },
     lootTable: [
@@ -4816,6 +4964,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'The Suncoast',
     family: 'reptiles',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     abilities: [
       {
@@ -4825,7 +4974,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 18, ac: 10, attack: 4, damage: '1d6+1',
+      hp: 18, ac: 10, attack: 2, damage: '1d6-1',
       str: 12, dex: 14, con: 10, int: 2, wis: 12, cha: 4,
     },
     lootTable: [
@@ -4842,9 +4991,10 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Verdant Heartlands',
     family: 'aquatic',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     stats: {
-      hp: 14, ac: 10, attack: 3, damage: '1d4+1',
+      hp: 14, ac: 10, attack: 2, damage: '1d4',
       str: 10, dex: 12, con: 10, int: 1, wis: 10, cha: 2,
     },
     lootTable: [
@@ -4858,9 +5008,10 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Verdant Heartlands',
     family: 'aquatic',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'PIERCING',
     stats: {
-      hp: 18, ac: 10, attack: 3, damage: '1d6',
+      hp: 18, ac: 10, attack: 1, damage: '1d6-2',
       str: 14, dex: 8, con: 14, int: 1, wis: 10, cha: 2,
     },
     lootTable: [
@@ -4875,6 +5026,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Verdant Heartlands',
     family: 'aquatic',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'medium',
+    attackStat: 'str',
     damageType: 'BLUDGEONING',
     abilities: [
       {
@@ -4884,7 +5036,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 20, ac: 10, attack: 4, damage: '1d6+1',
+      hp: 20, ac: 10, attack: 2, damage: '1d6-1',
       str: 14, dex: 8, con: 12, int: 1, wis: 10, cha: 2,
     },
     lootTable: [
@@ -4899,6 +5051,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Verdant Heartlands',
     family: 'aquatic',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'large',
+    attackStat: 'str',
     damageType: 'PIERCING',
     abilities: [
       {
@@ -4908,7 +5061,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 22, ac: 11, attack: 5, damage: '1d6+2',
+      hp: 22, ac: 11, attack: 2, damage: '1d6-1',
       str: 16, dex: 12, con: 12, int: 2, wis: 10, cha: 4,
     },
     lootTable: [
@@ -4925,9 +5078,10 @@ export const MONSTERS: MonsterDef[] = [
     regionName: "Vel'Naris Underdark",
     family: 'insects',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
+    attackStat: 'str',
     damageType: 'PIERCING',
     stats: {
-      hp: 16, ac: 10, attack: 3, damage: '1d6+1',
+      hp: 16, ac: 10, attack: 2, damage: '1d6',
       str: 12, dex: 10, con: 12, int: 1, wis: 8, cha: 2,
     },
     lootTable: [
@@ -4941,6 +5095,7 @@ export const MONSTERS: MonsterDef[] = [
     regionName: 'Thornwilds',
     family: 'insects',
     category: 'beast', encounterType: 'standard', sentient: false, size: 'small',
+    attackStat: 'dex',
     damageType: 'PIERCING',
     abilities: [
       {
@@ -4950,7 +5105,7 @@ export const MONSTERS: MonsterDef[] = [
       },
     ],
     stats: {
-      hp: 15, ac: 10, attack: 4, damage: '1d6+1',
+      hp: 15, ac: 10, attack: 2, damage: '1d6-1',
       str: 8, dex: 14, con: 10, int: 2, wis: 10, cha: 2,
     },
     lootTable: [

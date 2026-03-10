@@ -1076,7 +1076,7 @@ router.post('/batch-simulate', validate(batchSimulateSchema), async (req: Authen
     const maxTotalFights = 500_000;
 
     const dbMonsters = await db.query.monsters.findMany();
-    const monsterLookup = new Map(dbMonsters.map((m) => [m.name.toLowerCase(), { name: m.name, level: m.level, stats: m.stats as unknown as MonsterStats }]));
+    const monsterLookup = new Map(dbMonsters.map((m) => [m.name.toLowerCase(), { name: m.name, level: m.level, stats: { ...(m.stats as any), attackStat: m.attackStat ?? 'str' } as unknown as MonsterStats }]));
 
     const allRaces = getAllRaceIds();
     const allClasses = getAllClassNames();

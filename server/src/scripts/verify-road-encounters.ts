@@ -148,15 +148,16 @@ async function run() {
         };
       }
 
-      function buildMonsterWeapon(mStats: Record<string, unknown>): WeaponInfo {
+      function buildMonsterWeapon(mStats: Record<string, unknown>, attackStat?: string | null): WeaponInfo {
         const dmg = parseDamageString(String(mStats.damage ?? '1d6'));
+        const stat = (attackStat ?? 'str') as 'str' | 'dex' | 'int' | 'wis' | 'cha';
         return {
           id: 'monster-attack',
           name: 'Natural Attack',
           diceCount: dmg.diceCount,
           diceSides: dmg.diceSides,
-          damageModifierStat: 'str',
-          attackModifierStat: 'str',
+          damageModifierStat: stat,
+          attackModifierStat: stat,
           bonusDamage: dmg.bonus,
           bonusAttack: (mStats.attack as number) ?? 0,
           damageType: (mStats.damageType as string) ?? 'BLUDGEONING',
@@ -208,7 +209,7 @@ async function run() {
           sm.level,
           sm.stats.hp,
           sm.stats.ac ?? 10,
-          buildMonsterWeapon(sm.stats),
+          buildMonsterWeapon(sm.stats, sm.row?.attackStat),
           0, // proficiency already in attack stat
           {},
         );

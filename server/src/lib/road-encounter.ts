@@ -204,15 +204,16 @@ function parseDamageString(damage: string): { diceCount: number; diceSides: numb
   };
 }
 
-function buildMonsterWeapon(monsterStats: Record<string, unknown>): WeaponInfo {
+function buildMonsterWeapon(monsterStats: Record<string, unknown>, attackStat?: string | null): WeaponInfo {
   const damage = parseDamageString(String(monsterStats.damage ?? '1d6'));
+  const stat = (attackStat ?? 'str') as 'str' | 'dex' | 'int' | 'wis' | 'cha';
   return {
     id: 'monster-attack',
     name: 'Natural Attack',
     diceCount: damage.diceCount,
     diceSides: damage.diceSides,
-    damageModifierStat: 'str',
-    attackModifierStat: 'str',
+    damageModifierStat: stat,
+    attackModifierStat: stat,
     bonusDamage: damage.bonus,
     bonusAttack: (monsterStats.attack as number) ?? 0,
     damageType: (monsterStats.damageType as string) ?? 'BLUDGEONING',
@@ -711,7 +712,7 @@ export async function resolveRoadEncounter(
       sm.row.level,
       mStats.hp ?? 50,
       mStats.ac ?? 12,
-      buildMonsterWeapon(mStats),
+      buildMonsterWeapon(mStats, sm.row.attackStat),
       0,
       buildMonsterCombatOptions(sm.row),
     );
@@ -1115,7 +1116,7 @@ export async function resolveGroupRoadEncounter(
 
   // 5. Scale the monster: HP * partySize, bonusDamage + (partySize - 1)
   const scaledMonsterHp = (monsterStats.hp ?? 50) * memberCount;
-  const baseMonsterWeapon = buildMonsterWeapon(monsterStats);
+  const baseMonsterWeapon = buildMonsterWeapon(monsterStats, monster.attackStat);
   const scaledMonsterWeapon: WeaponInfo = {
     ...baseMonsterWeapon,
     bonusDamage: baseMonsterWeapon.bonusDamage + (memberCount - 1),

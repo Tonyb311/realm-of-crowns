@@ -913,6 +913,7 @@ export const monsters = pgTable("monsters", {
 	size: text().default('medium').notNull(),
 	tags: jsonb().default({}).notNull(),
 	family: text(),
+	attackStat: text('attack_stat'),
 }, (table) => [
 	index("monsters_level_idx").using("btree", table.level.asc().nullsLast().op("int4_ops")),
 	index("monsters_region_id_idx").using("btree", table.regionId.asc().nullsLast().op("text_ops")),

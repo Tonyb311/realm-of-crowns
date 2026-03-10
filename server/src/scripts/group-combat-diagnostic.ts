@@ -116,7 +116,7 @@ async function main() {
       name: m.name,
       level: m.level,
       classification: (m as any).classification as string | undefined,
-      stats: m.stats as unknown as MonsterStats,
+      stats: { ...(m.stats as any), attackStat: m.attackStat ?? 'str' } as unknown as MonsterStats,
       combatData: {
         damageType: m.damageType,
         abilities: m.abilities as any[] || [],

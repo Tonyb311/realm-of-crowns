@@ -64,6 +64,7 @@ export interface MonsterStats {
   int: number;
   wis: number;
   cha: number;
+  attackStat?: string;
 }
 
 export interface MonsterCombatData {
@@ -818,8 +819,8 @@ export function buildSyntheticMonster(
       diceSides: parsed.diceSides,
       bonusDamage: parsed.bonusDamage,
       bonusAttack: monsterStats.attack,
-      damageModifierStat: 'str',
-      attackModifierStat: 'str',
+      damageModifierStat: (monsterStats.attackStat ?? 'str') as 'str' | 'dex' | 'int' | 'wis' | 'cha',
+      attackModifierStat: (monsterStats.attackStat ?? 'str') as 'str' | 'dex' | 'int' | 'wis' | 'cha',
       damageType: combatData?.damageType,
     },
     combatData,

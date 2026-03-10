@@ -251,8 +251,7 @@ export function calculateDamage(
   weapon: WeaponInfo,
   critical: boolean
 ): { rolls: number[]; total: number } {
-  // Monsters: stat mod is already baked into damage dice bonus, skip to avoid double-count
-  const statMod = attacker.entityType === 'monster' ? 0 : getModifier(attacker.stats[weapon.damageModifierStat]);
+  const statMod = getModifier(attacker.stats[weapon.damageModifierStat]);
   const modifier = statMod + weapon.bonusDamage;
 
   if (critical) {
@@ -578,8 +577,7 @@ export function resolveAttack(
   }
 
   // Calculate attack modifier (stat + proficiency + weapon bonus)
-  // Monsters: stat mod is already baked into bonusAttack (from stats.attack), skip to avoid double-count
-  const statMod = actor.entityType === 'monster' ? 0 : getModifier(actor.stats[weapon.attackModifierStat]);
+  const statMod = getModifier(actor.stats[weapon.attackModifierStat]);
   let atkMod = statMod + actor.proficiencyBonus + weapon.bonusAttack;
 
   // Track individual modifier sources for logging

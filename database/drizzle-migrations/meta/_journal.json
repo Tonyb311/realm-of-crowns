@@ -43,6 +43,13 @@
       "when": 1773446400000,
       "tag": "0005_add_monster_family",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1773532800000,
+      "tag": "0006_add_monster_attack_stat",
+      "breakpoints": true
     }
   ]
 }

@@ -316,7 +316,7 @@ async function runCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
     {
       name: m.name,
       level: m.level,
-      stats: m.stats as unknown as MonsterStats,
+      stats: { ...(m.stats as any), attackStat: m.attackStat ?? 'str' } as unknown as MonsterStats,
       combatData: {
         damageType: m.damageType,
         abilities: m.abilities as any[] || [],
@@ -674,7 +674,7 @@ async function runGroupCommand(args: ReturnType<typeof parseArgs>): Promise<void
       name: m.name,
       level: m.level,
       classification: (m as any).classification as string | undefined,
-      stats: m.stats as unknown as MonsterStats,
+      stats: { ...(m.stats as any), attackStat: m.attackStat ?? 'str' } as unknown as MonsterStats,
       combatData: {
         damageType: m.damageType,
         abilities: m.abilities as any[] || [],
