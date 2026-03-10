@@ -17,6 +17,7 @@
 import {
   attackRoll,
   damageRoll,
+  criticalDamageRoll,
   savingThrow,
 } from '@shared/utils/dice';
 
@@ -27,11 +28,24 @@ import type {
   MonsterAbilityResult,
   AttackModifierBreakdown,
   CombatDamageType,
+  CritResult,
+  FumbleResult,
+  D100Modifier,
 } from '@shared/types/combat';
 
 import { getModifier } from '@shared/types/combat';
 import { getSaveModifier } from '@shared/utils/bounded-accuracy';
 import { computeFeatBonus } from '@shared/data/feats';
+
+import {
+  lookupCritChart,
+  getCritChartType,
+  getCritSeverity,
+  lookupFumbleChart,
+  getFumbleChartType,
+  getFumbleLevelCap,
+  getFumbleSeverity,
+} from '@shared/data/combat/crit-charts';
 
 import {
   applyStatusEffect,
@@ -71,13 +85,148 @@ function computeTargetSaveMod(target: Combatant, saveType: string): { totalMod: 
 }
 
 function parseDamageString(damage: string): { diceCount: number; diceSides: number; bonus: number } {
-  const match = damage.match(/^(\d+)d(\d+)(?:\+(\d+))?$/);
+  const match = damage.match(/^(\d+)d(\d+)(?:([+-]\d+))?$/);
   if (!match) return { diceCount: 1, diceSides: 6, bonus: 0 };
   return {
     diceCount: parseInt(match[1]),
     diceSides: parseInt(match[2]),
     bonus: match[3] ? parseInt(match[3]) : 0,
   };
+}
+
+// ---- Crit/Fumble Resolution Helpers ----
+
+/**
+ * Resolve a critical hit for a monster ability attack.
+ * Mirrors the crit resolution in combat-engine.ts resolveAttack() lines ~1004-1085.
+ * Returns bonus damage, updated target (with status effects), and CritResult for logging.
+ */
+function resolveMonsterCrit(
+  actor: Combatant,
+  target: Combatant,
+  weapon: { diceSides: number; damageType?: string; attackModifierStat: string },
+): { bonusDamage: number; bonusRolls: number[]; target: Combatant; critResult: CritResult } | null {
+  // Check crit immunity
+  if (target.critImmunity) return null;
+
+  const isRanged = weapon.attackModifierStat === 'dex' &&
+    !(weapon.damageType === 'FORCE' || weapon.damageType === 'PSYCHIC' || weapon.damageType === 'RADIANT');
+  const chartType = getCritChartType(weapon.damageType ?? 'BLUDGEONING', isRanged);
+
+  // Roll d100 with modifiers
+  const rawD100 = Math.floor(Math.random() * 100) + 1;
+  const critModifiers: D100Modifier[] = [];
+  if (target.critResistance && target.critResistance !== 0) {
+    critModifiers.push({ source: 'Target Crit Resistance', value: target.critResistance });
+  }
+  const totalCritMod = critModifiers.reduce((sum, m) => sum + m.value, 0);
+  const modifiedD100 = Math.max(1, Math.min(100, rawD100 + totalCritMod));
+
+  const critEntry = lookupCritChart(chartType, modifiedD100);
+  const critSeverity = getCritSeverity(modifiedD100);
+
+  // Roll bonus dice from chart entry
+  const bonusDmg = damageRoll(critEntry.bonusDice, weapon.diceSides);
+
+  // Apply status effect from chart if present
+  let updatedTarget = target;
+  if (critEntry.statusEffect) {
+    const effectName = critEntry.statusEffect.type as StatusEffectName;
+    if (STATUS_EFFECT_DEFS[effectName]) {
+      updatedTarget = applyStatusEffect(
+        updatedTarget, effectName, critEntry.statusEffect.duration,
+        actor.id, critEntry.statusEffect.value ?? 0,
+      );
+    }
+  }
+
+  return {
+    bonusDamage: bonusDmg.total,
+    bonusRolls: bonusDmg.rolls,
+    target: updatedTarget,
+    critResult: {
+      trigger: 'nat20',
+      chartType,
+      rawD100,
+      modifiers: critModifiers,
+      modifiedD100,
+      severity: critSeverity,
+      entry: critEntry,
+      bonusDamage: bonusDmg.total,
+      statusApplied: critEntry.statusEffect?.type,
+      statusDuration: critEntry.statusEffect?.duration,
+      totalCritDamage: 0, // Will be set by caller after adding base damage
+    },
+  };
+}
+
+/**
+ * Resolve a fumble for a monster ability attack.
+ * Mirrors the fumble resolution in combat-engine.ts resolveAttack() lines ~815-899.
+ * Returns the updated actor (with fumble effects) and FumbleResult for logging.
+ */
+function resolveMonsterFumble(
+  actor: Combatant,
+  atkMod: number,
+  targetAC: number,
+  weapon: { damageType?: string; attackModifierStat: string },
+): { actor: Combatant; fumbleResult: FumbleResult } {
+  const confirmRoll = attackRoll(atkMod, targetAC);
+  if (confirmRoll.hit) {
+    // Not confirmed — just a regular miss
+    return {
+      actor,
+      fumbleResult: {
+        confirmed: false,
+        confirmationRoll: confirmRoll.roll,
+        confirmationTotal: confirmRoll.total,
+        confirmationAC: targetAC,
+      },
+    };
+  }
+
+  // Confirmed fumble — d100 chart lookup
+  const isSpell = weapon.damageType === 'FORCE' || weapon.damageType === 'PSYCHIC' || weapon.damageType === 'RADIANT';
+  const isRanged = weapon.attackModifierStat === 'dex' && !isSpell;
+  const fumbleChartType = getFumbleChartType(isRanged, isSpell);
+  const rawD100 = Math.floor(Math.random() * 100) + 1;
+  const levelCap = getFumbleLevelCap(actor.level);
+  const modifiers: D100Modifier[] = [];
+  const totalMod = modifiers.reduce((sum, m) => sum + m.value, 0);
+  const modifiedD100 = Math.max(1, Math.min(levelCap, rawD100 + totalMod));
+  const entry = lookupFumbleChart(fumbleChartType, modifiedD100);
+  const severity = getFumbleSeverity(modifiedD100);
+
+  const fumbleResult: FumbleResult = {
+    confirmed: true,
+    confirmationRoll: confirmRoll.roll,
+    confirmationTotal: confirmRoll.total,
+    confirmationAC: targetAC,
+    rawD100,
+    modifiers,
+    modifiedD100,
+    levelCap,
+    cappedD100: modifiedD100,
+    severity,
+    chartType: fumbleChartType,
+    entry,
+    effectApplied: entry.effect.type !== 'none' ? entry.effect.type : undefined,
+    duration: entry.effect.duration || undefined,
+  };
+
+  // Apply fumble self-effects
+  let updatedActor = actor;
+  if (entry.effect.type === 'ac_penalty' && entry.effect.value) {
+    updatedActor = applyStatusEffect(updatedActor, 'weakened', entry.effect.duration, actor.id, 0);
+  }
+  if (entry.effect.type === 'attack_penalty' && entry.effect.value) {
+    updatedActor = applyStatusEffect(updatedActor, 'weakened', entry.effect.duration, actor.id, 0);
+  }
+  if (entry.effect.type === 'skip_attack') {
+    updatedActor = applyStatusEffect(updatedActor, 'stunned', entry.effect.duration, actor.id, 0);
+  }
+
+  return { actor: updatedActor, fumbleResult };
 }
 
 // ---- Effect Handlers ----
@@ -93,9 +242,33 @@ function handleDamage(
   }
 
   const parsed = parseDamageString(ability.damage);
-  const atkMod = actor.weapon ? (getModifier(actor.stats[actor.weapon.attackModifierStat]) + actor.proficiencyBonus + actor.weapon.bonusAttack) : (getModifier(actor.stats.str) + actor.proficiencyBonus);
+  const weaponInfo = actor.weapon;
+  const atkMod = weaponInfo ? (getModifier(actor.stats[weaponInfo.attackModifierStat]) + actor.proficiencyBonus + weaponInfo.bonusAttack) : (getModifier(actor.stats.str) + actor.proficiencyBonus);
   const targetAC = calculateAC(target);
   const roll = attackRoll(atkMod, targetAC);
+
+  // Fumble resolution (nat 1)
+  if (roll.roll === 1) {
+    const dtType = ability.damageType ?? weaponInfo?.damageType ?? 'BLUDGEONING';
+    const atkStat = weaponInfo?.attackModifierStat ?? 'str';
+    const fumble = resolveMonsterFumble(actor, atkMod, targetAC, { damageType: dtType, attackModifierStat: atkStat });
+    const combatants = state.combatants.map(c => c.id === actor.id ? fumble.actor : c);
+    return {
+      state: { ...state, combatants },
+      result: {
+        targetId: target.id,
+        hit: false,
+        attackRoll: roll.roll,
+        attackTotal: roll.total,
+        targetAC,
+        damage: 0,
+        targetHpAfter: target.currentHp,
+        targetKilled: false,
+        fumbleResult: fumble.fumbleResult,
+        description: `${actor.name} uses ${ability.name} but ${fumble.fumbleResult.confirmed ? 'fumbles!' : 'misses.'}`,
+      },
+    };
+  }
 
   if (!roll.hit) {
     return {
@@ -116,6 +289,24 @@ function handleDamage(
 
   const dmg = damageRoll(parsed.diceCount, parsed.diceSides, parsed.bonus);
   let totalDamage = dmg.total;
+  let damageRolls = dmg.rolls;
+  let critResult: CritResult | undefined;
+
+  // Crit resolution (nat 20)
+  if (roll.critical) {
+    const dtType = ability.damageType ?? weaponInfo?.damageType ?? 'BLUDGEONING';
+    const atkStat = weaponInfo?.attackModifierStat ?? 'str';
+    const crit = resolveMonsterCrit(actor, target, { diceSides: parsed.diceSides, damageType: dtType, attackModifierStat: atkStat });
+    if (crit) {
+      totalDamage += crit.bonusDamage;
+      damageRolls = [...damageRolls, ...crit.bonusRolls];
+      target = crit.target;
+      critResult = { ...crit.critResult, totalCritDamage: totalDamage };
+    } else {
+      // Crit immunity — downgrade to normal hit
+      roll.critical = false;
+    }
+  }
 
   // Apply damage type interaction
   const dtResult = ability.damageType
@@ -157,9 +348,10 @@ function handleDamage(
       targetKilled: !target.isAlive,
       damageTypeResult: dtResult ?? undefined,
       weaponDice: ability.damage,
-      damageRolls: dmg.rolls,
+      damageRolls,
       isCritical: roll.critical,
-      description: `${actor.name} uses ${ability.name} for ${totalDamage} ${ability.damageType ?? ''} damage.`,
+      critResult,
+      description: `${actor.name} uses ${ability.name} for ${totalDamage} ${ability.damageType ?? ''} damage.${roll.critical ? ' Critical hit!' : ''}`,
     },
   };
 }
@@ -312,21 +504,62 @@ function handleMultiattack(
   let totalDamage = 0;
   let strikesHit = 0;
   let current = state;
+  let currentActor = actor;
 
   for (let i = 0; i < attacks; i++) {
     let currentTarget = current.combatants.find(c => c.id === target.id)!;
     if (!currentTarget.isAlive) break;
 
-    const weapon = actor.weapon;
+    const weapon = currentActor.weapon;
     if (!weapon) break;
 
-    const atkMod = getModifier(actor.stats[weapon.attackModifierStat]) + actor.proficiencyBonus + weapon.bonusAttack;
+    const atkMod = getModifier(currentActor.stats[weapon.attackModifierStat]) + currentActor.proficiencyBonus + weapon.bonusAttack;
     const targetAC = calculateAC(currentTarget);
     const roll = attackRoll(atkMod, targetAC);
 
+    // Fumble resolution (nat 1) — fumble effect applies but remaining strikes continue
+    if (roll.roll === 1) {
+      const fumble = resolveMonsterFumble(currentActor, atkMod, targetAC, weapon);
+      currentActor = fumble.actor;
+      strikeResults!.push({
+        strikeNumber: i + 1,
+        hit: false,
+        crit: false,
+        damage: 0,
+        attackRoll: roll.roll,
+        attackTotal: roll.total,
+        targetAc: targetAC,
+        fumbleResult: fumble.fumbleResult,
+      });
+      // Update actor in state (fumble may apply self-effects)
+      current = {
+        ...current,
+        combatants: current.combatants.map(c => c.id === currentActor.id ? currentActor : c),
+      };
+      continue;
+    }
+
     if (roll.hit) {
-      const dmg = damageRoll(weapon.diceCount, weapon.diceSides, getModifier(actor.stats[weapon.damageModifierStat]) + weapon.bonusDamage);
+      // Base damage calculation
+      const dmgMod = getModifier(currentActor.stats[weapon.damageModifierStat]) + weapon.bonusDamage;
+      const dmg = damageRoll(weapon.diceCount, weapon.diceSides, dmgMod);
       let damage = dmg.total;
+      let damageRolls = dmg.rolls;
+      let strikeCritResult: CritResult | undefined;
+
+      // Crit resolution (nat 20)
+      if (roll.critical) {
+        const crit = resolveMonsterCrit(currentActor, currentTarget, weapon);
+        if (crit) {
+          damage += crit.bonusDamage;
+          damageRolls = [...damageRolls, ...crit.bonusRolls];
+          currentTarget = crit.target;
+          strikeCritResult = { ...crit.critResult, totalCritDamage: damage };
+        } else {
+          // Crit immunity — downgrade to normal hit
+          roll.critical = false;
+        }
+      }
 
       // Apply damage type interaction for weapon's damage type
       const dtType = (weapon.damageType ?? 'BLUDGEONING') as CombatDamageType;
@@ -355,6 +588,7 @@ function handleMultiattack(
         attackRoll: roll.roll,
         attackTotal: roll.total,
         targetAc: targetAC,
+        critResult: strikeCritResult,
       });
     } else {
       strikeResults!.push({
@@ -370,7 +604,11 @@ function handleMultiattack(
 
     current = {
       ...current,
-      combatants: current.combatants.map(c => c.id === target.id ? currentTarget : c),
+      combatants: current.combatants.map(c => {
+        if (c.id === target.id) return currentTarget;
+        if (c.id === currentActor.id) return currentActor;
+        return c;
+      }),
     };
   }
 

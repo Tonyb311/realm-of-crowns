@@ -359,7 +359,7 @@ function computeHP(className: string, level: number, conMod: number): number {
 }
 
 function parseDamageString(damage: string): { diceCount: number; diceSides: number; bonusDamage: number } {
-  const match = damage.match(/^(\d+)d(\d+)(?:\+(\d+))?$/);
+  const match = damage.match(/^(\d+)d(\d+)(?:([+-]\d+))?$/);
   if (!match) return { diceCount: 1, diceSides: 6, bonusDamage: 0 };
   return {
     diceCount: parseInt(match[1]),

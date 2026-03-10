@@ -272,6 +272,8 @@ export interface MonsterAbilityResult {
     attackRoll?: number;
     attackTotal?: number;
     targetAc?: number;
+    critResult?: CritResult;
+    fumbleResult?: FumbleResult;
   }>;
   totalStrikes?: number;
   strikesHit?: number;

@@ -1510,7 +1510,7 @@ function parseStats(stats: unknown): CharacterStats {
 }
 
 function parseDamageString(damage: string): { diceCount: number; diceSides: number; bonus: number } {
-  const match = damage.match(/^(\d+)d(\d+)(?:\+(\d+))?$/);
+  const match = damage.match(/^(\d+)d(\d+)(?:([+-]\d+))?$/);
   if (!match) return { diceCount: 1, diceSides: 6, bonus: 0 };
   return {
     diceCount: parseInt(match[1], 10),
