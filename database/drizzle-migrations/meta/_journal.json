@@ -50,6 +50,13 @@
       "when": 1773532800000,
       "tag": "0006_add_monster_attack_stat",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1773619200000,
+      "tag": "0007_add_deletion_logs",
+      "breakpoints": true
     }
   ]
 }

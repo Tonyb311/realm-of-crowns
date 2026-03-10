@@ -9,6 +9,11 @@ import {
   UserCog,
   MapPin,
   CircleDollarSign,
+  Trash2,
+  AlertTriangle,
+  History,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -57,6 +62,38 @@ interface TownsResponse {
   total: number;
 }
 
+interface DeletionSnapshot {
+  character: {
+    id: string;
+    name: string;
+    level: number;
+    class: string | null;
+    race: string;
+    gold: number;
+    xp: number;
+  };
+  itemCount: number;
+  equippedCount: number;
+  abilityCount: number;
+  professionCount: number;
+  combatFights: number;
+}
+
+interface DeletionLog {
+  id: string;
+  timestamp: string;
+  initiatedBy: string;
+  type: 'single' | 'multi' | 'wipe';
+  targetCharacterIds: string[];
+  targetCharacterNames: string[];
+  snapshot: Record<string, DeletionSnapshot>;
+  deletedCounts: Record<string, number>;
+  totalRowsDeleted: number;
+  durationMs: number;
+  status: 'success' | 'failed';
+  errors?: string[];
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -91,6 +128,18 @@ export default function AdminCharactersPage() {
   const [editChar, setEditChar] = useState<AdminCharacter | null>(null);
   const [editTab, setEditTab] = useState<'vitals' | 'economy' | 'location' | 'stats'>('vitals');
   const [editForm, setEditForm] = useState<Partial<AdminCharacter>>({});
+
+  // Selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Active view tab
+  const [activeView, setActiveView] = useState<'characters' | 'deletion-history'>('characters');
+
+  // Deletion modals
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showWipeConfirm, setShowWipeConfirm] = useState(false);
+  const [wipeConfirmText, setWipeConfirmText] = useState('');
+  const [deletionLogDetail, setDeletionLogDetail] = useState<DeletionLog | null>(null);
 
   // Quick action modals
   const [teleportChar, setTeleportChar] = useState<AdminCharacter | null>(null);
@@ -208,6 +257,84 @@ export default function AdminCharactersPage() {
     },
   });
 
+  // Delete characters mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (characterIds: string[]) => {
+      return (await api.post('/admin/characters/delete', { characterIds })).data;
+    },
+    onSuccess: (log: DeletionLog) => {
+      toast.success(`Deleted ${log.targetCharacterNames.length} character(s) — ${log.totalRowsDeleted} rows removed`);
+      queryClient.invalidateQueries({ queryKey: ['admin', 'characters'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'deletion-logs'] });
+      setSelectedIds(new Set());
+      setShowDeleteConfirm(false);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.error || 'Deletion failed');
+      setShowDeleteConfirm(false);
+    },
+  });
+
+  // Wipe mutation
+  const wipeMutation = useMutation({
+    mutationFn: async () => {
+      return (await api.post('/admin/characters/wipe', { keepCharacterIds: [], keepUserIds: [] })).data;
+    },
+    onSuccess: (log: DeletionLog) => {
+      toast.success(`Wipe complete — ${log.totalRowsDeleted} rows removed`);
+      queryClient.invalidateQueries({ queryKey: ['admin', 'characters'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'deletion-logs'] });
+      setSelectedIds(new Set());
+      setShowWipeConfirm(false);
+      setWipeConfirmText('');
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.error || 'Wipe failed');
+      setShowWipeConfirm(false);
+      setWipeConfirmText('');
+    },
+  });
+
+  // Deletion logs query
+  const [logsPage, setLogsPage] = useState(1);
+  const { data: logsData, isLoading: logsLoading } = useQuery({
+    queryKey: ['admin', 'deletion-logs', logsPage],
+    queryFn: async () => {
+      const raw = (await api.get('/admin/characters/deletion-logs', { params: { page: String(logsPage), pageSize: '20' } })).data;
+      return { logs: raw.data as DeletionLog[], total: raw.total as number, totalPages: raw.totalPages as number };
+    },
+    enabled: activeView === 'deletion-history',
+  });
+
+  // Selection handlers
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (!data?.characters) return;
+    const pageIds = data.characters.map(c => c.id);
+    const allSelected = pageIds.every(id => selectedIds.has(id));
+    if (allSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        pageIds.forEach(id => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        pageIds.forEach(id => next.add(id));
+        return next;
+      });
+    }
+  }, [data, selectedIds]);
+
   // Open edit modal
   const handleOpenEdit = useCallback((char: AdminCharacter) => {
     setEditChar(char);
@@ -270,7 +397,158 @@ export default function AdminCharactersPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-display text-realm-gold-400 mb-6">Character Management</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-display text-realm-gold-400">Character Management</h1>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveView('characters')}
+            className={`px-3 py-1.5 text-sm font-display rounded-sm border transition-colors ${
+              activeView === 'characters'
+                ? 'border-realm-gold-500 text-realm-gold-400 bg-realm-gold-500/10'
+                : 'border-realm-border text-realm-text-muted hover:text-realm-text-secondary'
+            }`}
+          >
+            Characters
+          </button>
+          <button
+            onClick={() => setActiveView('deletion-history')}
+            className={`px-3 py-1.5 text-sm font-display rounded-sm border transition-colors flex items-center gap-1.5 ${
+              activeView === 'deletion-history'
+                ? 'border-realm-gold-500 text-realm-gold-400 bg-realm-gold-500/10'
+                : 'border-realm-border text-realm-text-muted hover:text-realm-text-secondary'
+            }`}
+          >
+            <History className="w-3.5 h-3.5" />
+            Deletion History
+          </button>
+        </div>
+      </div>
+
+      {activeView === 'deletion-history' ? (
+        /* ===== Deletion History View ===== */
+        <div>
+          {logsLoading ? (
+            <div className="text-center py-12 text-realm-text-muted">Loading deletion logs...</div>
+          ) : !logsData?.logs?.length ? (
+            <div className="text-center py-20">
+              <History className="w-12 h-12 text-realm-text-muted/30 mx-auto mb-4" />
+              <p className="text-realm-text-muted">No deletion logs yet.</p>
+            </div>
+          ) : (
+            <>
+              <div className="bg-realm-bg-700 border border-realm-border rounded-lg overflow-x-auto">
+                <table className="w-full min-w-[700px]">
+                  <thead>
+                    <tr className="border-b border-realm-border text-left">
+                      <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Timestamp</th>
+                      <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Type</th>
+                      <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Characters</th>
+                      <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Rows Deleted</th>
+                      <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Duration</th>
+                      <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-realm-border/50">
+                    {logsData.logs.map((log) => (
+                      <tr
+                        key={log.id}
+                        className="hover:bg-realm-bg-800/30 transition-colors cursor-pointer"
+                        onClick={() => setDeletionLogDetail(log)}
+                      >
+                        <td className="px-4 py-3 text-sm text-realm-text-secondary">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs px-2 py-0.5 rounded-sm font-display ${
+                            log.type === 'wipe'
+                              ? 'bg-realm-danger/20 text-realm-danger border border-realm-danger/30'
+                              : 'bg-realm-gold-500/10 text-realm-gold-400 border border-realm-gold-500/30'
+                          }`}>
+                            {log.type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-realm-text-secondary">
+                          {log.targetCharacterNames?.length ?? 0} ({(log.targetCharacterNames ?? []).slice(0, 3).join(', ')}
+                          {(log.targetCharacterNames?.length ?? 0) > 3 ? '...' : ''})
+                        </td>
+                        <td className="px-4 py-3 text-sm text-realm-text-primary font-semibold">
+                          {log.totalRowsDeleted.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-realm-text-muted">
+                          {log.durationMs}ms
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs ${log.status === 'success' ? 'text-realm-success' : 'text-realm-danger'}`}>
+                            {log.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {(logsData.totalPages ?? 1) > 1 && (
+                <div className="flex items-center justify-center gap-3 mt-6">
+                  <button
+                    disabled={logsPage <= 1}
+                    onClick={() => setLogsPage(p => Math.max(1, p - 1))}
+                    className="p-2 rounded-sm border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-realm-text-secondary text-sm font-display">
+                    Page {logsPage} of {logsData.totalPages}
+                  </span>
+                  <button
+                    disabled={logsPage >= (logsData.totalPages ?? 1)}
+                    onClick={() => setLogsPage(p => p + 1)}
+                    className="p-2 rounded-sm border border-realm-border text-realm-text-secondary hover:bg-realm-bg-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      ) : (
+      /* ===== Characters View ===== */
+      <>
+
+      {/* Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="bg-realm-bg-700 border border-realm-danger/30 rounded-lg p-3 mb-4 flex items-center justify-between">
+          <span className="text-sm text-realm-text-secondary">
+            <span className="text-realm-text-primary font-semibold">{selectedIds.size}</span> character(s) selected
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="px-3 py-1.5 text-xs border border-realm-border text-realm-text-muted rounded-sm hover:bg-realm-bg-800 transition-colors"
+            >
+              Clear Selection
+            </button>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="px-3 py-1.5 text-xs bg-realm-danger/20 border border-realm-danger/30 text-realm-danger rounded-sm hover:bg-realm-danger/30 transition-colors flex items-center gap-1.5"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete Selected
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Wipe button (always visible) */}
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => setShowWipeConfirm(true)}
+          className="px-3 py-1.5 text-xs bg-realm-danger/10 border border-realm-danger/20 text-realm-danger rounded-sm hover:bg-realm-danger/20 transition-colors flex items-center gap-1.5"
+        >
+          <AlertTriangle className="w-3.5 h-3.5" />
+          Wipe All Characters
+        </button>
+      </div>
 
       {/* Filters */}
       <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-4 mb-6">
@@ -375,6 +653,14 @@ export default function AdminCharactersPage() {
           <table className="w-full min-w-[800px]">
             <thead>
               <tr className="border-b border-realm-border text-left">
+                <th className="px-3 py-3 w-10" onClick={(e) => e.stopPropagation()}>
+                  <button onClick={toggleSelectAll} className="text-realm-text-muted hover:text-realm-gold-400 transition-colors">
+                    {data?.characters?.length && data.characters.every(c => selectedIds.has(c.id))
+                      ? <CheckSquare className="w-4 h-4 text-realm-gold-400" />
+                      : <Square className="w-4 h-4" />
+                    }
+                  </button>
+                </th>
                 <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Name</th>
                 <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Race</th>
                 <th className="px-4 py-3 text-realm-text-muted text-xs font-display">Class</th>
@@ -389,9 +675,17 @@ export default function AdminCharactersPage() {
               {data.characters.map((char) => (
                 <tr
                   key={char.id}
-                  className="hover:bg-realm-bg-800/30 transition-colors cursor-pointer"
+                  className={`hover:bg-realm-bg-800/30 transition-colors cursor-pointer ${selectedIds.has(char.id) ? 'bg-realm-gold-500/5' : ''}`}
                   onClick={() => handleOpenEdit(char)}
                 >
+                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={() => toggleSelect(char.id)} className="text-realm-text-muted hover:text-realm-gold-400 transition-colors">
+                      {selectedIds.has(char.id)
+                        ? <CheckSquare className="w-4 h-4 text-realm-gold-400" />
+                        : <Square className="w-4 h-4" />
+                      }
+                    </button>
+                  </td>
                   <td className="px-4 py-3 text-sm text-realm-text-primary font-semibold">{char.name}</td>
                   <td className="px-4 py-3 text-sm text-realm-text-secondary">{char.race}</td>
                   <td className="px-4 py-3 text-sm text-realm-text-secondary">{char.className}</td>
@@ -705,6 +999,184 @@ export default function AdminCharactersPage() {
                 {teleportMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Teleport
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      </>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div
+            className="bg-realm-bg-800 border border-realm-danger/30 rounded-lg p-6 max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-realm-danger/20 rounded-full">
+                <AlertTriangle className="w-5 h-5 text-realm-danger" />
+              </div>
+              <h3 className="text-lg font-display text-realm-danger">Confirm Deletion</h3>
+            </div>
+            <p className="text-realm-text-secondary text-sm mb-2">
+              You are about to permanently delete <span className="text-realm-text-primary font-semibold">{selectedIds.size}</span> character(s).
+            </p>
+            <p className="text-realm-text-muted text-xs mb-6">
+              This will cascade-delete all related data (inventory, equipment, abilities, professions, combat logs, etc.). This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate([...selectedIds])}
+                disabled={deleteMutation.isPending}
+                className="flex-1 py-2 bg-realm-danger text-white font-display text-sm rounded-sm hover:bg-realm-danger/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {deleteMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Delete {selectedIds.size} Character(s)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Wipe Confirmation Modal */}
+      {showWipeConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => { setShowWipeConfirm(false); setWipeConfirmText(''); }}
+        >
+          <div
+            className="bg-realm-bg-800 border border-realm-danger/30 rounded-lg p-6 max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-realm-danger/20 rounded-full">
+                <AlertTriangle className="w-5 h-5 text-realm-danger" />
+              </div>
+              <h3 className="text-lg font-display text-realm-danger">WIPE ALL CHARACTERS</h3>
+            </div>
+            <p className="text-realm-text-secondary text-sm mb-2">
+              This will delete <span className="text-realm-text-primary font-semibold">ALL characters and their data</span> except your admin account and its characters.
+            </p>
+            <p className="text-realm-text-muted text-xs mb-4">
+              Orphaned users (with no remaining characters) will also be deleted.
+            </p>
+            <div className="mb-6">
+              <label className="text-realm-text-muted text-xs mb-1 block">
+                Type <span className="text-realm-danger font-semibold">WIPE ALL</span> to confirm:
+              </label>
+              <input
+                type="text"
+                value={wipeConfirmText}
+                onChange={(e) => setWipeConfirmText(e.target.value)}
+                placeholder="WIPE ALL"
+                className="w-full bg-realm-bg-800 border border-realm-danger/30 rounded-sm px-3 py-2 text-realm-text-secondary text-sm focus:border-realm-danger focus:outline-hidden"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowWipeConfirm(false); setWipeConfirmText(''); }}
+                className="flex-1 py-2 border border-realm-border/30 text-realm-text-secondary font-display text-sm rounded-sm hover:bg-realm-bg-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => wipeMutation.mutate()}
+                disabled={wipeMutation.isPending || wipeConfirmText !== 'WIPE ALL'}
+                className="flex-1 py-2 bg-realm-danger text-white font-display text-sm rounded-sm hover:bg-realm-danger/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {wipeMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Execute Wipe
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deletion Log Detail Modal */}
+      {deletionLogDetail && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => setDeletionLogDetail(null)}
+        >
+          <div
+            className="bg-realm-bg-800 border border-realm-border rounded-lg max-w-lg w-full mx-4 max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-realm-border flex-shrink-0">
+              <div>
+                <h3 className="text-lg font-display text-realm-gold-400">Deletion Log</h3>
+                <p className="text-realm-text-muted text-xs">{new Date(deletionLogDetail.timestamp).toLocaleString()}</p>
+              </div>
+              <button
+                onClick={() => setDeletionLogDetail(null)}
+                className="text-realm-text-muted hover:text-realm-text-primary"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-6 py-4 overflow-y-auto flex-1 space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-realm-text-muted text-xs block">Type</span>
+                  <span className={`font-display ${deletionLogDetail.type === 'wipe' ? 'text-realm-danger' : 'text-realm-text-primary'}`}>
+                    {deletionLogDetail.type}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-realm-text-muted text-xs block">Status</span>
+                  <span className={deletionLogDetail.status === 'success' ? 'text-realm-success' : 'text-realm-danger'}>
+                    {deletionLogDetail.status}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-realm-text-muted text-xs block">Total Rows Deleted</span>
+                  <span className="text-realm-text-primary font-semibold">{deletionLogDetail.totalRowsDeleted.toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-realm-text-muted text-xs block">Duration</span>
+                  <span className="text-realm-text-secondary">{deletionLogDetail.durationMs}ms</span>
+                </div>
+              </div>
+              <div>
+                <span className="text-realm-text-muted text-xs block mb-2">Characters Deleted ({deletionLogDetail.targetCharacterNames?.length ?? 0})</span>
+                <div className="space-y-1">
+                  {(deletionLogDetail.targetCharacterNames ?? []).map((name, i) => (
+                    <div key={i} className="text-sm text-realm-text-secondary">{name}</div>
+                  ))}
+                </div>
+              </div>
+              {deletionLogDetail.deletedCounts && Object.keys(deletionLogDetail.deletedCounts).length > 0 && (
+                <div>
+                  <span className="text-realm-text-muted text-xs block mb-2">Deleted Counts by Table</span>
+                  <div className="grid grid-cols-2 gap-1 text-xs">
+                    {Object.entries(deletionLogDetail.deletedCounts).map(([table, num]) => (
+                      <div key={table} className="flex justify-between text-realm-text-secondary">
+                        <span>{table}</span>
+                        <span className="text-realm-text-primary">{num}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {deletionLogDetail.errors && deletionLogDetail.errors.length > 0 && (
+                <div>
+                  <span className="text-realm-text-muted text-xs block mb-2">Errors</span>
+                  {deletionLogDetail.errors.map((err, i) => (
+                    <div key={i} className="text-sm text-realm-danger">{err}</div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

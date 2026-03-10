@@ -1,12 +1,13 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../../lib/db';
-import { eq, and, gte, lte, like, desc, count, sql } from 'drizzle-orm';
-import { characters, towns } from '@database/tables';
+import { eq, and, gte, lte, like, desc, count, sql, inArray } from 'drizzle-orm';
+import { characters, towns, deletionLogs } from '@database/tables';
 import { handleDbError } from '../../lib/db-errors';
 import { logRouteError } from '../../lib/error-logger';
 import { validate } from '../../middleware/validate';
 import { AuthenticatedRequest } from '../../types/express';
+import { deleteCharacters, wipeExcept, previewDeletion } from '../../services/character-deletion';
 
 const router = Router();
 
@@ -28,6 +29,15 @@ const teleportSchema = z.object({
 
 const giveGoldSchema = z.object({
   amount: z.number({ error: 'amount is required' }),
+});
+
+const deleteCharactersSchema = z.object({
+  characterIds: z.array(z.string()).min(1, 'At least one character ID is required'),
+});
+
+const wipeSchema = z.object({
+  keepCharacterIds: z.array(z.string()).default([]),
+  keepUserIds: z.array(z.string()).default([]),
 });
 
 /**
@@ -84,6 +94,127 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
   } catch (error) {
     if (handleDbError(error, res, 'admin-list-characters', req)) return;
     logRouteError(req, 500, '[Admin] Characters list error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/admin/characters/deletion-preview
+ * Preview what will be deleted for UI confirmation.
+ */
+router.get('/deletion-preview', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const ids = req.query.ids as string | undefined;
+    if (!ids) {
+      return res.status(400).json({ error: 'ids query param required (comma-separated)' });
+    }
+    const characterIds = ids.split(',').filter(Boolean);
+    if (characterIds.length === 0) {
+      return res.status(400).json({ error: 'No valid IDs provided' });
+    }
+
+    const preview = await previewDeletion(characterIds);
+    return res.json(preview);
+  } catch (error) {
+    logRouteError(req, 500, '[Admin] Deletion preview error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/admin/characters/deletion-logs
+ * List past deletion logs, sorted by timestamp DESC.
+ */
+router.get('/deletion-logs', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const pageSize = Math.max(1, Math.min(50, parseInt(req.query.pageSize as string, 10) || 20));
+    const offset = (page - 1) * pageSize;
+
+    const [logs, [{ total }]] = await Promise.all([
+      db.select().from(deletionLogs).orderBy(desc(deletionLogs.timestamp)).offset(offset).limit(pageSize),
+      db.select({ total: count() }).from(deletionLogs),
+    ]);
+
+    return res.json({
+      data: logs,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    });
+  } catch (error) {
+    logRouteError(req, 500, '[Admin] Deletion logs list error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/admin/characters/deletion-logs/:logId
+ * Full deletion log detail.
+ */
+router.get('/deletion-logs/:logId', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const log = await db.query.deletionLogs.findFirst({
+      where: eq(deletionLogs.id, req.params.logId),
+    });
+    if (!log) {
+      return res.status(404).json({ error: 'Deletion log not found' });
+    }
+    return res.json(log);
+  } catch (error) {
+    logRouteError(req, 500, '[Admin] Deletion log detail error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/admin/characters/delete
+ * Delete one or more characters with full audit logging.
+ */
+router.post('/delete', validate(deleteCharactersSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { characterIds } = req.body;
+    const type = characterIds.length === 1 ? 'single' : 'multi';
+    const log = await deleteCharacters(characterIds, req.user!.userId, type as 'single' | 'multi');
+
+    if (log.status === 'failed') {
+      return res.status(400).json({ error: 'Deletion failed', log });
+    }
+
+    return res.json(log);
+  } catch (error) {
+    logRouteError(req, 500, '[Admin] Character deletion error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/admin/characters/wipe
+ * Delete ALL characters except those in keepCharacterIds / keepUserIds.
+ */
+router.post('/wipe', validate(wipeSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { keepCharacterIds, keepUserIds } = req.body;
+    // Always keep the requesting admin's user
+    const allKeepUserIds = [...new Set([...keepUserIds, req.user!.userId])];
+
+    // Also keep all characters belonging to kept users
+    const keptUserChars = await db.query.characters.findMany({
+      where: inArray(characters.userId, allKeepUserIds),
+      columns: { id: true },
+    });
+    const allKeepCharIds = [...new Set([...keepCharacterIds, ...keptUserChars.map(c => c.id)])];
+
+    const log = await wipeExcept(allKeepCharIds, allKeepUserIds, req.user!.userId);
+
+    if (log.status === 'failed') {
+      return res.status(400).json({ error: 'Wipe failed', log });
+    }
+
+    return res.json(log);
+  } catch (error) {
+    logRouteError(req, 500, '[Admin] Character wipe error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

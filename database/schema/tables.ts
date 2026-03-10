@@ -2249,6 +2249,27 @@ export const simulationRuns = pgTable("simulation_runs", {
 ]);
 
 // ============================================================
+// DELETION LOGS
+// ============================================================
+
+export const deletionLogs = pgTable("deletion_logs", {
+	id: text().primaryKey().notNull(),
+	timestamp: timestamp({ precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	initiatedBy: text("initiated_by").notNull(),
+	type: text().notNull(),
+	targetCharacterIds: jsonb("target_character_ids").notNull(),
+	targetCharacterNames: jsonb("target_character_names").notNull(),
+	snapshot: jsonb().notNull(),
+	deletedCounts: jsonb("deleted_counts").notNull(),
+	totalRowsDeleted: integer("total_rows_deleted").notNull(),
+	durationMs: integer("duration_ms").notNull(),
+	status: text().notNull(),
+	errors: jsonb(),
+}, (table) => [
+	index("deletion_logs_timestamp_idx").using("btree", table.timestamp.desc()),
+]);
+
+// ============================================================
 // ERRORS
 // ============================================================
 
