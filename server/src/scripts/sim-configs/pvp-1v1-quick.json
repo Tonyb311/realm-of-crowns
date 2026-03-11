@@ -1,0 +1,9 @@
+{
+  "pvpGrid": {
+    "classes": ["warrior", "mage", "rogue"],
+    "races": ["human"],
+    "levels": [10],
+    "iterationsPerMatchup": 50
+  },
+  "notes": "Quick PvP check: 3 classes x L10 x 50 iterations"
+}

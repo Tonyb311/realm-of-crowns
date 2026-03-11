@@ -10,6 +10,8 @@
  * Usage:
  *   npm run sim:run -- --race human --class warrior --level 5 --monster Goblin --iterations 50
  *   npm run sim:run -- --grid --config sim-configs/quick-check.json
+ *   npm run sim:run -- --pvp --config=pvp-1v1-quick.json
+ *   npm run sim:run -- --pvp --group --config=pvp-party-battles.json
  *   npm run sim:list
  *   npm run sim:delete -- --run-id clxxxxxxxxxx
  */
@@ -33,6 +35,7 @@ import {
   type MonsterStats,
   type MonsterCombatData,
   type PartyConfig,
+  type PartyMemberConfig,
 } from '../services/combat-simulator';
 import {
   selectMonsterGroup,
@@ -151,6 +154,58 @@ interface RunConfig {
 }
 
 // ---------------------------------------------------------------------------
+// PvP Types
+// ---------------------------------------------------------------------------
+
+interface PvpPlayerConfig {
+  race: string;
+  class: string;
+  level: number;
+  specialization?: string;
+  tier0Selections?: Record<number, string>;
+  featIds?: string[];
+}
+
+interface PvpMatchup {
+  player1: PvpPlayerConfig;
+  player2: PvpPlayerConfig;
+  iterations: number;
+}
+
+interface PvpGridConfig {
+  classes: string[];
+  specializations?: boolean;
+  races: string[];
+  levels: number[];
+  iterationsPerMatchup: number;
+}
+
+interface PvpGroupConfig {
+  parties: PartyConfig[];
+  levels?: number[];
+  iterationsPerMatchup: number;
+  roundRobin?: boolean;
+}
+
+interface PvpRunConfig {
+  pvpMatchups?: PvpMatchup[];
+  pvpGrid?: PvpGridConfig;
+  pvpGroups?: PvpGroupConfig;
+  notes?: string;
+}
+
+/** Class → specializations mapping (verified against shared/src/data/skills/) */
+const CLASS_SPECIALIZATIONS: Record<string, string[]> = {
+  warrior: ['berserker', 'guardian', 'warlord'],
+  mage: ['elementalist', 'necromancer', 'enchanter'],
+  rogue: ['assassin', 'swashbuckler', 'thief'],
+  cleric: ['healer', 'paladin', 'inquisitor'],
+  ranger: ['beastmaster', 'sharpshooter', 'tracker'],
+  bard: ['diplomat', 'battlechanter', 'lorekeeper'],
+  psion: ['telepath', 'seer', 'nomad'],
+};
+
+// ---------------------------------------------------------------------------
 // Arg Parsing
 // ---------------------------------------------------------------------------
 
@@ -164,6 +219,7 @@ function parseArgs(): {
   config?: string;
   grid?: boolean;
   group?: boolean;
+  pvp?: boolean;
   notes?: string;
   runId?: string;
   confirm?: boolean;
@@ -182,6 +238,7 @@ function parseArgs(): {
     else if (arg.startsWith('--config=')) result.config = arg.split('=').slice(1).join('=');
     else if (arg === '--grid') result.grid = true;
     else if (arg === '--group') result.group = true;
+    else if (arg === '--pvp') result.pvp = true;
     else if (arg.startsWith('--notes=')) result.notes = arg.split('=').slice(1).join('=');
     else if (arg.startsWith('--run-id=')) result.runId = arg.split('=')[1];
     else if (arg === '--confirm') result.confirm = true;
@@ -213,6 +270,7 @@ Run Options:
   --config=PATH        JSON config file (relative to sim-configs/)
   --grid               Use grid expansion mode
   --group              Use group (5v5 party) mode with groupGrid/groupMatchups config
+  --pvp                PvP mode: player vs player (1v1 or party vs party)
   --notes="text"       Notes for this run
 
 Examples:
@@ -221,6 +279,8 @@ Examples:
   npm run sim:run -- --config=quick-check.json
   npm run sim:run -- --config=full-sweep.json --notes="Post-balance patch"
   npm run sim:run -- --group --config=group-baseline.json
+  npm run sim:run -- --pvp --config=pvp-1v1-quick.json
+  npm run sim:run -- --pvp --group --config=pvp-party-battles.json
 `);
 }
 
@@ -1067,7 +1127,8 @@ async function listCommand(): Promise<void> {
 
   const runs = allRuns.filter(r => {
     const config = r.config as any;
-    return config?.source === 'batch-cli' || config?.source === 'batch-cli-group';
+    return config?.source === 'batch-cli' || config?.source === 'batch-cli-group'
+      || config?.source === 'batch-cli-pvp' || config?.source === 'batch-cli-pvp-group';
   });
 
   if (runs.length === 0) {
@@ -1104,13 +1165,17 @@ async function deleteCommand(runId: string): Promise<void> {
   console.log(`Deleting run ${runId}...`);
 
   // 1. Delete test users (cascade → characters → encounter logs)
-  const userResult = await db.delete(schema.users).where(
-    and(
-      eq(schema.users.isTestAccount, true),
-      like(schema.users.id, `bsim-u-${runShort}%`),
-    ),
-  );
-  const userCount = userResult.rowCount ?? 0;
+  // Try all known prefixes: bsim-u (solo PvE), bsim-gu (group PvE), pvpsim-u (PvP 1v1), pvpsim-gu (PvP group)
+  let userCount = 0;
+  for (const prefix of [`bsim-u-${runShort}%`, `bsim-gu-${runShort}%`, `pvpsim-u-${runShort}%`, `pvpsim-gu-${runShort}%`]) {
+    const result = await db.delete(schema.users).where(
+      and(
+        eq(schema.users.isTestAccount, true),
+        like(schema.users.id, prefix),
+      ),
+    );
+    userCount += result.rowCount ?? 0;
+  }
   console.log(`  Deleted ${userCount} test users (+ cascaded characters & logs)`);
 
   // 2. Delete any remaining encounter logs for this run (safety net for non-batch logs)
@@ -1138,7 +1203,8 @@ async function deleteAllCommand(confirm: boolean): Promise<void> {
   const allRuns = await db.query.simulationRuns.findMany();
   const runs = allRuns.filter(r => {
     const config = r.config as any;
-    return config?.source === 'batch-cli';
+    return config?.source === 'batch-cli' || config?.source === 'batch-cli-group'
+      || config?.source === 'batch-cli-pvp' || config?.source === 'batch-cli-pvp-group';
   });
 
   if (runs.length === 0) {
@@ -1165,6 +1231,1010 @@ async function deleteAllCommand(confirm: boolean): Promise<void> {
   }
 
   console.log('All batch-cli runs deleted.');
+}
+
+// ---------------------------------------------------------------------------
+// PvP Grid Expansion
+// ---------------------------------------------------------------------------
+
+function expandPvpGrid(grid: PvpGridConfig): PvpMatchup[] {
+  const allClasses = getAllClassNames();
+  const classes = grid.classes[0]?.toUpperCase() === 'ALL' ? allClasses : grid.classes;
+
+  // Build list of combatant configs: class + optional spec
+  interface CombatantSpec { class: string; specialization?: string; label: string }
+  const specs: CombatantSpec[] = [];
+
+  if (grid.specializations) {
+    for (const cls of classes) {
+      const classSpecs = CLASS_SPECIALIZATIONS[cls.toLowerCase()];
+      if (classSpecs) {
+        for (const spec of classSpecs) {
+          specs.push({ class: cls, specialization: spec, label: `${cls}/${spec}` });
+        }
+      }
+    }
+  } else {
+    for (const cls of classes) {
+      specs.push({ class: cls, label: cls });
+    }
+  }
+
+  const matchups: PvpMatchup[] = [];
+  const race = grid.races[0] ?? 'human';
+
+  for (const level of grid.levels) {
+    // Full matrix including mirrors (i vs i) — each unordered pair once
+    for (let i = 0; i < specs.length; i++) {
+      for (let j = i; j < specs.length; j++) {
+        matchups.push({
+          player1: { race, class: specs[i].class, level, specialization: specs[i].specialization },
+          player2: { race, class: specs[j].class, level, specialization: specs[j].specialization },
+          iterations: grid.iterationsPerMatchup,
+        });
+      }
+    }
+  }
+
+  return matchups;
+}
+
+function expandPvpGroupMatchups(config: PvpGroupConfig): { party1: PartyConfig; party2: PartyConfig; level: number; iterations: number }[] {
+  const levels = config.levels ?? [10];
+  const matchups: { party1: PartyConfig; party2: PartyConfig; level: number; iterations: number }[] = [];
+
+  for (const level of levels) {
+    const partiesWithLevel = config.parties.map(p => ({
+      ...p,
+      partyLevel: level,
+    }));
+
+    // Round-robin: each unordered pair (including mirrors)
+    for (let i = 0; i < partiesWithLevel.length; i++) {
+      for (let j = i; j < partiesWithLevel.length; j++) {
+        matchups.push({
+          party1: partiesWithLevel[i],
+          party2: partiesWithLevel[j],
+          level,
+          iterations: config.iterationsPerMatchup,
+        });
+      }
+    }
+  }
+
+  return matchups;
+}
+
+// ---------------------------------------------------------------------------
+// PvP 1v1 Command
+// ---------------------------------------------------------------------------
+
+async function runPvpCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
+  if (!args.config) {
+    console.error('--config is required for --pvp mode');
+    process.exit(1);
+  }
+
+  const startTime = Date.now();
+  const config = loadConfig(args.config) as PvpRunConfig;
+
+  // Build matchup list
+  let matchups: PvpMatchup[];
+  if (config.pvpGrid) {
+    matchups = expandPvpGrid(config.pvpGrid);
+  } else if (config.pvpMatchups) {
+    matchups = config.pvpMatchups;
+  } else {
+    console.error('PvP config must have "pvpGrid" or "pvpMatchups" key');
+    process.exit(1);
+  }
+
+  const totalFights = matchups.reduce((sum, m) => sum + m.iterations, 0);
+  console.log(`PvP matchups: ${matchups.length} | Total fights: ${totalFights.toLocaleString()}`);
+
+  // Create SimulationRun
+  const [run] = await db.insert(schema.simulationRuns).values({
+    id: crypto.randomUUID(),
+    tickCount: 0,
+    botCount: 0,
+    config: { source: 'batch-cli-pvp', matchups: matchups.length, totalFights, configFile: args.config },
+    status: 'running',
+    notes: args.notes || config.notes || `PvP CLI: ${matchups.length} matchups, ${totalFights} fights`,
+  }).returning();
+  const runId = run.id;
+  currentRunId = runId;
+  const runShort = runId.slice(-8);
+  console.log(`SimulationRun created: ${runId}`);
+  setSimulationRunId(runId);
+
+  // Create test characters for each unique {race, class, level, spec}
+  const charKey = (race: string, cls: string, level: number, spec?: string) =>
+    `${race}-${cls}-${level}${spec ? `-${spec}` : ''}`;
+  const charMap = new Map<string, string>();
+  const uniqueCombos = new Set<string>();
+
+  for (const m of matchups) {
+    uniqueCombos.add(charKey(m.player1.race, m.player1.class, m.player1.level, m.player1.specialization));
+    uniqueCombos.add(charKey(m.player2.race, m.player2.class, m.player2.level, m.player2.specialization));
+  }
+
+  console.log(`Creating ${uniqueCombos.size} test characters...`);
+  for (const combo of uniqueCombos) {
+    const parts = combo.split('-');
+    const race = parts[0];
+    const cls = parts[1];
+    const level = parseInt(parts[2], 10);
+    const raceEnum = RACE_ID_TO_ENUM[race];
+    if (!raceEnum) {
+      console.error(`Unknown race: ${race} — skipping`);
+      continue;
+    }
+
+    const player = buildSyntheticPlayer({ race, class: cls, level });
+    if (!player) {
+      console.error(`Invalid player config: ${combo} — skipping`);
+      continue;
+    }
+
+    const charId = `pvpsim-c-${runShort}-${combo}`;
+    const userId = `pvpsim-u-${runShort}-${combo}`;
+
+    await db.insert(schema.users).values({
+      id: userId,
+      username: `PvpSim_${combo}_${runShort}`.slice(0, 50),
+      email: `pvp-${runShort}-${combo}@sim.local`.slice(0, 80),
+      passwordHash: 'batch-sim-no-login',
+      isTestAccount: true,
+    });
+
+    await db.insert(schema.characters).values({
+      id: charId,
+      userId,
+      name: player.name,
+      race: raceEnum,
+      class: cls,
+      level,
+      health: player.hp,
+      maxHealth: player.maxHp,
+      stats: player.stats,
+      gold: 0,
+      xp: 0,
+    });
+
+    charMap.set(combo, charId);
+  }
+
+  // Fight loop
+  let completedFights = 0;
+  let errors = 0;
+  let totalDraws = 0;
+
+  // Per-matchup result tracking for matrix output
+  // Key: "label1 vs label2", Value: { p1Wins, p2Wins, draws }
+  interface PvpMatchupResult {
+    p1Label: string;
+    p2Label: string;
+    level: number;
+    p1Wins: number;
+    p2Wins: number;
+    draws: number;
+    total: number;
+    roundsSum: number;
+  }
+  const matchupResults: PvpMatchupResult[] = [];
+
+  const BATCH_SIZE = 500;
+  let pendingRows: any[] = [];
+
+  async function flushRows(): Promise<void> {
+    if (pendingRows.length === 0) return;
+    await db.insert(schema.combatEncounterLogs).values(pendingRows);
+    pendingRows = [];
+  }
+
+  const progressInterval = Math.max(1, Math.floor(totalFights / 20));
+
+  for (let mIdx = 0; mIdx < matchups.length; mIdx++) {
+    const matchup = matchups[mIdx];
+    const p1Key = charKey(matchup.player1.race, matchup.player1.class, matchup.player1.level, matchup.player1.specialization);
+    const p2Key = charKey(matchup.player2.race, matchup.player2.class, matchup.player2.level, matchup.player2.specialization);
+    const p1CharId = charMap.get(p1Key);
+    const p2CharId = charMap.get(p2Key);
+
+    if (!p1CharId || !p2CharId) {
+      errors++;
+      continue;
+    }
+
+    const p1 = buildSyntheticPlayer(
+      { race: matchup.player1.race, class: matchup.player1.class, level: matchup.player1.level },
+      matchup.player1.featIds,
+    );
+    const p2 = buildSyntheticPlayer(
+      { race: matchup.player2.race, class: matchup.player2.class, level: matchup.player2.level },
+      matchup.player2.featIds,
+    );
+
+    if (!p1 || !p2) {
+      errors++;
+      continue;
+    }
+
+    const p1Label = matchup.player1.specialization
+      ? `${matchup.player1.class}/${matchup.player1.specialization}`
+      : matchup.player1.class;
+    const p2Label = matchup.player2.specialization
+      ? `${matchup.player2.class}/${matchup.player2.specialization}`
+      : matchup.player2.class;
+
+    const p1Params = buildPlayerCombatParams(p1, {
+      tier0Selections: matchup.player1.tier0Selections,
+      specialization: matchup.player1.specialization,
+    });
+    const p2Params = buildPlayerCombatParams(p2, {
+      tier0Selections: matchup.player2.tier0Selections,
+      specialization: matchup.player2.specialization,
+    });
+
+    const result: PvpMatchupResult = {
+      p1Label, p2Label,
+      level: matchup.player1.level,
+      p1Wins: 0, p2Wins: 0, draws: 0,
+      total: matchup.iterations,
+      roundsSum: 0,
+    };
+
+    for (let i = 0; i < matchup.iterations; i++) {
+      try {
+        const combatantId1 = `pvp-p1-${mIdx}-${i}`;
+        const combatantId2 = `pvp-p2-${mIdx}-${i}`;
+
+        const c1 = createCharacterCombatant(
+          combatantId1, p1.name, 0,
+          p1.stats, p1.level,
+          p1.hp, p1.maxHp,
+          p1.equipmentAC, p1.weapon,
+          p1.spellSlots, p1.proficiencyBonus,
+        );
+        (c1 as any).characterClass = p1.class;
+        (c1 as any).race = p1.race;
+        (c1 as any).nonProficientArmor = false;
+        (c1 as any).nonProficientWeapon = false;
+        (c1 as any).saveProficiencies = getSimSaveProficiencies(p1.class, p1.level);
+        (c1 as any).extraAttacks = getAttacksPerAction(p1.class, p1.level);
+        (c1 as any).featIds = matchup.player1.featIds ?? getSimFeatIds(p1.class, p1.level);
+
+        const c2 = createCharacterCombatant(
+          combatantId2, p2.name, 1,
+          p2.stats, p2.level,
+          p2.hp, p2.maxHp,
+          p2.equipmentAC, p2.weapon,
+          p2.spellSlots, p2.proficiencyBonus,
+        );
+        (c2 as any).characterClass = p2.class;
+        (c2 as any).race = p2.race;
+        (c2 as any).nonProficientArmor = false;
+        (c2 as any).nonProficientWeapon = false;
+        (c2 as any).saveProficiencies = getSimSaveProficiencies(p2.class, p2.level);
+        (c2 as any).extraAttacks = getAttacksPerAction(p2.class, p2.level);
+        (c2 as any).featIds = matchup.player2.featIds ?? getSimFeatIds(p2.class, p2.level);
+
+        const state = createCombatState(`pvp-${mIdx}-${i}`, 'PVP', [c1, c2]);
+
+        const paramsMap = new Map<string, CombatantParams>();
+        paramsMap.set(combatantId1, { ...p1Params, id: combatantId1 });
+        paramsMap.set(combatantId2, { ...p2Params, id: combatantId2 });
+
+        const outcome = resolveTickCombat(state, paramsMap);
+
+        if (outcome.winner === 'team0') result.p1Wins++;
+        else if (outcome.winner === 'team1') result.p2Wins++;
+        else { result.draws++; totalDraws++; }
+
+        result.roundsSum += outcome.rounds;
+
+        // Build encounter log
+        const fs = outcome.finalState;
+        const p1C = fs.combatants.find(c => c.id === combatantId1);
+        const p2C = fs.combatants.find(c => c.id === combatantId2);
+        const outcomeStr = outcome.winner === 'team0' ? 'win'
+          : outcome.winner === 'team1' ? 'loss' : 'draw';
+
+        const encounterContext = buildEncounterContext(fs);
+        const rounds = buildRoundsData(fs);
+        const summary = buildSummary(
+          outcomeStr, fs.round, p1.name, p2.name,
+          p1.hp, p1C?.currentHp ?? 0,
+          p2.hp, p2C?.currentHp ?? 0,
+        );
+
+        pendingRows.push({
+          id: crypto.randomUUID(),
+          type: 'pvp',
+          sessionId: `pvp-${mIdx}-${i}`,
+          characterId: p1CharId,
+          characterName: p1.name,
+          opponentId: p2CharId,
+          opponentName: p2.name,
+          townId: null,
+          outcome: outcomeStr,
+          totalRounds: fs.round,
+          characterStartHp: p1.hp,
+          characterEndHp: p1C?.currentHp ?? 0,
+          opponentStartHp: p2.hp,
+          opponentEndHp: p2C?.currentHp ?? 0,
+          characterWeapon: p1.weapon.name,
+          opponentWeapon: p2.weapon.name,
+          xpAwarded: 0,
+          goldAwarded: 0,
+          lootDropped: '',
+          rounds: [{ _encounterContext: encounterContext }, ...rounds] as any,
+          summary,
+          triggerSource: 'batch_sim_pvp',
+          simulationTick: mIdx,
+          simulationRunId: runId,
+        });
+
+        completedFights++;
+
+        if (pendingRows.length >= BATCH_SIZE) {
+          await flushRows();
+        }
+
+        if (completedFights % progressInterval === 0 || completedFights === totalFights) {
+          const pct = ((completedFights / totalFights) * 100).toFixed(1);
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          process.stdout.write(`\r[${completedFights.toLocaleString()}/${totalFights.toLocaleString()}] ${pct}% — ${elapsed}s`);
+        }
+      } catch (fightErr) {
+        errors++;
+      }
+    }
+
+    matchupResults.push(result);
+  }
+
+  await flushRows();
+  console.log('');
+
+  // Update SimulationRun
+  await db.update(schema.simulationRuns)
+    .set({
+      status: 'completed',
+      completedAt: new Date().toISOString(),
+      encounterCount: completedFights,
+    })
+    .where(eq(schema.simulationRuns.id, runId));
+  setSimulationRunId(null);
+
+  // Print results
+  const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+  printPvpMatrix(matchupResults, totalFights, completedFights, totalDraws, errors, duration, runId);
+
+  // Write markdown summary
+  writePvpSummaryFile(matchupResults, totalFights, completedFights, totalDraws, errors, duration, runId, args.config!);
+}
+
+// ---------------------------------------------------------------------------
+// PvP Group Command
+// ---------------------------------------------------------------------------
+
+async function runPvpGroupCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
+  if (!args.config) {
+    console.error('--config is required for --pvp --group mode');
+    process.exit(1);
+  }
+
+  const startTime = Date.now();
+  const config = loadConfig(args.config) as PvpRunConfig;
+
+  if (!config.pvpGroups) {
+    console.error('PvP group config must have "pvpGroups" key');
+    process.exit(1);
+  }
+
+  const groupMatchups = expandPvpGroupMatchups(config.pvpGroups);
+  const totalFights = groupMatchups.reduce((sum, m) => sum + m.iterations, 0);
+  console.log(`PvP group matchups: ${groupMatchups.length} | Total fights: ${totalFights.toLocaleString()}`);
+
+  // Create SimulationRun
+  const [run] = await db.insert(schema.simulationRuns).values({
+    id: crypto.randomUUID(),
+    tickCount: 0,
+    botCount: 0,
+    config: { source: 'batch-cli-pvp-group', matchups: groupMatchups.length, totalFights, configFile: args.config },
+    status: 'running',
+    notes: args.notes || config.notes || `PvP Group CLI: ${groupMatchups.length} matchups, ${totalFights} fights`,
+  }).returning();
+  const runId = run.id;
+  currentRunId = runId;
+  const runShort = runId.slice(-8);
+  console.log(`SimulationRun created: ${runId}`);
+  setSimulationRunId(runId);
+
+  // Create test characters
+  const charKey = (race: string, cls: string, level: number) => `${race}-${cls}-${level}`;
+  const charMap = new Map<string, string>();
+  const uniqueCombos = new Set<string>();
+
+  for (const m of groupMatchups) {
+    for (const member of m.party1.members) {
+      uniqueCombos.add(charKey(member.race, member.class, m.level));
+    }
+    for (const member of m.party2.members) {
+      uniqueCombos.add(charKey(member.race, member.class, m.level));
+    }
+  }
+
+  console.log(`Creating ${uniqueCombos.size} test characters...`);
+  for (const combo of uniqueCombos) {
+    const [race, cls, levelStr] = combo.split('-');
+    const level = parseInt(levelStr, 10);
+    const raceEnum = RACE_ID_TO_ENUM[race];
+    if (!raceEnum) continue;
+
+    const player = buildSyntheticPlayer({ race, class: cls, level });
+    if (!player) continue;
+
+    const charId = `pvpsim-g-${runShort}-${race}-${cls}-${level}`;
+    const userId = `pvpsim-gu-${runShort}-${race}-${cls}-${level}`;
+
+    await db.insert(schema.users).values({
+      id: userId,
+      username: `PvpGrp_${race}_${cls}_L${level}_${runShort}`.slice(0, 50),
+      email: `pvpg-${runShort}-${race}-${cls}-${level}@sim.local`.slice(0, 80),
+      passwordHash: 'batch-sim-no-login',
+      isTestAccount: true,
+    });
+
+    await db.insert(schema.characters).values({
+      id: charId,
+      userId,
+      name: player.name,
+      race: raceEnum,
+      class: cls,
+      level,
+      health: player.hp,
+      maxHealth: player.maxHp,
+      stats: player.stats,
+      gold: 0,
+      xp: 0,
+    });
+
+    charMap.set(combo, charId);
+  }
+
+  // Fight loop
+  let completedFights = 0;
+  let errors = 0;
+  let totalDraws = 0;
+
+  interface PvpGroupResult {
+    party1Name: string;
+    party2Name: string;
+    level: number;
+    p1Wins: number;
+    p2Wins: number;
+    draws: number;
+    total: number;
+    roundsSum: number;
+  }
+  const matchupResults: PvpGroupResult[] = [];
+
+  const BATCH_SIZE = 500;
+  let pendingRows: any[] = [];
+
+  async function flushRows(): Promise<void> {
+    if (pendingRows.length === 0) return;
+    await db.insert(schema.combatEncounterLogs).values(pendingRows);
+    pendingRows = [];
+  }
+
+  const progressInterval = Math.max(1, Math.floor(totalFights / 20));
+
+  for (let mIdx = 0; mIdx < groupMatchups.length; mIdx++) {
+    const gm = groupMatchups[mIdx];
+    const party1Members = buildSyntheticParty(gm.party1);
+    const party2Members = buildSyntheticParty(gm.party2);
+
+    if (party1Members.length === 0 || party2Members.length === 0) {
+      console.error(`Failed to build party for matchup ${mIdx}`);
+      errors++;
+      continue;
+    }
+
+    const result: PvpGroupResult = {
+      party1Name: gm.party1.name,
+      party2Name: gm.party2.name,
+      level: gm.level,
+      p1Wins: 0, p2Wins: 0, draws: 0,
+      total: gm.iterations,
+      roundsSum: 0,
+    };
+
+    for (let iter = 0; iter < gm.iterations; iter++) {
+      try {
+        const allCombatants: any[] = [];
+        const paramsMap = new Map<string, CombatantParams>();
+
+        // Build party 1 combatants (team 0)
+        for (let pi = 0; pi < party1Members.length; pi++) {
+          const player = party1Members[pi];
+          const member = gm.party1.members[pi];
+          const combatantId = `pvpg-t0-${pi}-${mIdx}-${iter}`;
+
+          const combatant = createCharacterCombatant(
+            combatantId, player.name, 0,
+            player.stats, player.level,
+            player.hp, player.maxHp,
+            player.equipmentAC, player.weapon,
+            player.spellSlots, player.proficiencyBonus,
+          );
+          (combatant as any).characterClass = player.class;
+          (combatant as any).race = player.race;
+          (combatant as any).nonProficientArmor = false;
+          (combatant as any).nonProficientWeapon = false;
+          (combatant as any).saveProficiencies = getSimSaveProficiencies(player.class, player.level);
+          (combatant as any).extraAttacks = getAttacksPerAction(player.class, player.level);
+          (combatant as any).featIds = (member as PartyMemberConfig)?.featIds ?? getSimFeatIds(player.class, player.level);
+          allCombatants.push(combatant);
+
+          const playerParams = buildPlayerCombatParams(player, {
+            tier0Selections: (member as PartyMemberConfig)?.tier0Selections,
+            specialization: (member as PartyMemberConfig)?.specialization,
+          });
+          paramsMap.set(combatantId, { ...playerParams, id: combatantId });
+        }
+
+        // Build party 2 combatants (team 1)
+        for (let pi = 0; pi < party2Members.length; pi++) {
+          const player = party2Members[pi];
+          const member = gm.party2.members[pi];
+          const combatantId = `pvpg-t1-${pi}-${mIdx}-${iter}`;
+
+          const combatant = createCharacterCombatant(
+            combatantId, player.name, 1,
+            player.stats, player.level,
+            player.hp, player.maxHp,
+            player.equipmentAC, player.weapon,
+            player.spellSlots, player.proficiencyBonus,
+          );
+          (combatant as any).characterClass = player.class;
+          (combatant as any).race = player.race;
+          (combatant as any).nonProficientArmor = false;
+          (combatant as any).nonProficientWeapon = false;
+          (combatant as any).saveProficiencies = getSimSaveProficiencies(player.class, player.level);
+          (combatant as any).extraAttacks = getAttacksPerAction(player.class, player.level);
+          (combatant as any).featIds = (member as PartyMemberConfig)?.featIds ?? getSimFeatIds(player.class, player.level);
+          allCombatants.push(combatant);
+
+          const playerParams = buildPlayerCombatParams(player, {
+            tier0Selections: (member as PartyMemberConfig)?.tier0Selections,
+            specialization: (member as PartyMemberConfig)?.specialization,
+          });
+          paramsMap.set(combatantId, { ...playerParams, id: combatantId });
+        }
+
+        const sessionId = `pvpg-${mIdx}-${iter}`;
+        const state = createCombatState(sessionId, 'PVP', allCombatants);
+        const outcome = resolveTickCombat(state, paramsMap);
+
+        if (outcome.winner === 'team0') result.p1Wins++;
+        else if (outcome.winner === 'team1') result.p2Wins++;
+        else { result.draws++; totalDraws++; }
+
+        result.roundsSum += outcome.rounds;
+
+        // Build encounter log
+        const fs = outcome.finalState;
+        const outcomeStr = outcome.winner === 'team0' ? 'win'
+          : outcome.winner === 'team1' ? 'loss' : 'draw';
+        const totalP1Hp = party1Members.reduce((s, p) => s + p.hp, 0);
+        const totalP1EndHp = fs.combatants.filter(c => c.team === 0).reduce((s, c) => s + Math.max(0, c.currentHp), 0);
+        const totalP2Hp = party2Members.reduce((s, p) => s + p.hp, 0);
+        const totalP2EndHp = fs.combatants.filter(c => c.team === 1).reduce((s, c) => s + Math.max(0, c.currentHp), 0);
+
+        const primaryP1CharKey = charKey(gm.party1.members[0].race, gm.party1.members[0].class, gm.level);
+        const primaryP1CharId = charMap.get(primaryP1CharKey) || `pvpsim-g-${runShort}-0`;
+
+        const encounterContext = buildEncounterContext(fs);
+        const rounds = buildRoundsData(fs);
+        const summary = buildSummary(
+          outcomeStr, fs.round,
+          gm.party1.name, gm.party2.name,
+          totalP1Hp, totalP1EndHp,
+          totalP2Hp, totalP2EndHp,
+        );
+
+        pendingRows.push({
+          id: crypto.randomUUID(),
+          type: 'pvp_group',
+          sessionId,
+          characterId: primaryP1CharId,
+          characterName: gm.party1.name,
+          opponentId: null,
+          opponentName: gm.party2.name,
+          townId: null,
+          outcome: outcomeStr,
+          totalRounds: fs.round,
+          characterStartHp: totalP1Hp,
+          characterEndHp: totalP1EndHp,
+          opponentStartHp: totalP2Hp,
+          opponentEndHp: totalP2EndHp,
+          characterWeapon: `Party of ${party1Members.length}`,
+          opponentWeapon: `Party of ${party2Members.length}`,
+          xpAwarded: 0,
+          goldAwarded: 0,
+          lootDropped: '',
+          rounds: [{ _encounterContext: encounterContext }, ...rounds] as any,
+          summary,
+          triggerSource: 'batch_sim_pvp',
+          simulationTick: mIdx,
+          simulationRunId: runId,
+        });
+
+        completedFights++;
+
+        if (pendingRows.length >= BATCH_SIZE) {
+          await flushRows();
+        }
+
+        if (completedFights % progressInterval === 0 || completedFights === totalFights) {
+          const pct = ((completedFights / totalFights) * 100).toFixed(1);
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          process.stdout.write(`\r[${completedFights.toLocaleString()}/${totalFights.toLocaleString()}] ${pct}% — ${elapsed}s`);
+        }
+      } catch (fightErr) {
+        errors++;
+      }
+    }
+
+    matchupResults.push(result);
+  }
+
+  await flushRows();
+  console.log('');
+
+  // Update SimulationRun
+  await db.update(schema.simulationRuns)
+    .set({
+      status: 'completed',
+      completedAt: new Date().toISOString(),
+      encounterCount: completedFights,
+    })
+    .where(eq(schema.simulationRuns.id, runId));
+  setSimulationRunId(null);
+
+  // Print group results
+  const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+  printPvpGroupResults(matchupResults, totalFights, completedFights, totalDraws, errors, duration, runId);
+  writePvpGroupSummaryFile(matchupResults, totalFights, completedFights, totalDraws, errors, duration, runId, args.config!);
+}
+
+// ---------------------------------------------------------------------------
+// PvP Output — Win-Rate Matrix
+// ---------------------------------------------------------------------------
+
+function printPvpMatrix(
+  results: { p1Label: string; p2Label: string; level: number; p1Wins: number; p2Wins: number; draws: number; total: number; roundsSum: number }[],
+  totalFights: number, completedFights: number, totalDraws: number, errors: number, duration: string, runId: string,
+): void {
+  // Group results by level
+  const byLevel = new Map<number, typeof results>();
+  for (const r of results) {
+    if (!byLevel.has(r.level)) byLevel.set(r.level, []);
+    byLevel.get(r.level)!.push(r);
+  }
+
+  const allAlerts: string[] = [];
+
+  for (const [level, levelResults] of byLevel) {
+    // Build unique labels
+    const labels = new Set<string>();
+    for (const r of levelResults) {
+      labels.add(r.p1Label);
+      labels.add(r.p2Label);
+    }
+    const sortedLabels = [...labels].sort();
+
+    // Build win-rate lookup: winRate[row][col] = row's win% against col
+    const winRateMap = new Map<string, Map<string, { rate: number; total: number; draws: number }>>();
+
+    for (const r of levelResults) {
+      // P1 win rate vs P2
+      if (!winRateMap.has(r.p1Label)) winRateMap.set(r.p1Label, new Map());
+      const p1Rate = r.total > 0 ? (r.p1Wins / r.total) * 100 : 50;
+      winRateMap.get(r.p1Label)!.set(r.p2Label, { rate: p1Rate, total: r.total, draws: r.draws });
+
+      // P2 win rate vs P1 (reverse)
+      if (r.p1Label !== r.p2Label) {
+        if (!winRateMap.has(r.p2Label)) winRateMap.set(r.p2Label, new Map());
+        const p2Rate = r.total > 0 ? (r.p2Wins / r.total) * 100 : 50;
+        winRateMap.get(r.p2Label)!.set(r.p1Label, { rate: p2Rate, total: r.total, draws: r.draws });
+      }
+    }
+
+    // Print matrix
+    const itr = levelResults[0]?.total ?? 0;
+    console.log(`\n=== PvP 1v1 Results (Level ${level}, ${itr} iterations each) ===\n`);
+
+    const colWidth = Math.max(10, ...sortedLabels.map(l => l.length + 2));
+    const headerRow = ''.padEnd(colWidth) + sortedLabels.map(l => l.padEnd(colWidth)).join('');
+    console.log(headerRow);
+
+    for (const rowLabel of sortedLabels) {
+      let line = rowLabel.padEnd(colWidth);
+      for (const colLabel of sortedLabels) {
+        if (rowLabel === colLabel) {
+          line += '—'.padEnd(colWidth);
+        } else {
+          const data = winRateMap.get(rowLabel)?.get(colLabel);
+          if (data) {
+            line += `${data.rate.toFixed(0)}%`.padEnd(colWidth);
+          } else {
+            line += '—'.padEnd(colWidth);
+          }
+        }
+      }
+      console.log(line);
+    }
+
+    // Balance alerts
+    for (const r of levelResults) {
+      if (r.p1Label === r.p2Label) {
+        // Mirror: check for draw dominance
+        const drawPct = r.total > 0 ? (r.draws / r.total) * 100 : 0;
+        if (drawPct > 10) {
+          allAlerts.push(`  ! ${r.p1Label} mirror L${level}: ${drawPct.toFixed(0)}% draws (>10% threshold)`);
+        }
+        continue;
+      }
+      const p1WinPct = r.total > 0 ? (r.p1Wins / r.total) * 100 : 50;
+      if (p1WinPct > 60) {
+        allAlerts.push(`  ! ${r.p1Label} vs ${r.p2Label} L${level}: ${p1WinPct.toFixed(0)}% (>60% — potential imbalance)`);
+      } else if (p1WinPct < 40) {
+        allAlerts.push(`  ! ${r.p1Label} vs ${r.p2Label} L${level}: ${p1WinPct.toFixed(0)}% (<40% — ${r.p1Label} disadvantaged)`);
+      }
+    }
+  }
+
+  console.log(`\nBalance Alerts:`);
+  if (allAlerts.length > 0) {
+    for (const alert of allAlerts) console.log(alert);
+  } else {
+    console.log('  None');
+  }
+
+  console.log(`\n=== PvP Simulation Complete ===`);
+  console.log(`Run ID: ${runId}`);
+  console.log(`Fights: ${completedFights.toLocaleString()} | Draws: ${totalDraws} | Duration: ${duration}s`);
+  if (errors > 0) console.log(`Errors: ${errors}`);
+  console.log(`To delete: npm run sim:delete -- --run-id=${runId}`);
+}
+
+function printPvpGroupResults(
+  results: { party1Name: string; party2Name: string; level: number; p1Wins: number; p2Wins: number; draws: number; total: number; roundsSum: number }[],
+  totalFights: number, completedFights: number, totalDraws: number, errors: number, duration: string, runId: string,
+): void {
+  const byLevel = new Map<number, typeof results>();
+  for (const r of results) {
+    if (!byLevel.has(r.level)) byLevel.set(r.level, []);
+    byLevel.get(r.level)!.push(r);
+  }
+
+  for (const [level, levelResults] of byLevel) {
+    const names = new Set<string>();
+    for (const r of levelResults) {
+      names.add(r.party1Name);
+      names.add(r.party2Name);
+    }
+    const sortedNames = [...names].sort();
+
+    // Build win-rate lookup
+    const winRateMap = new Map<string, Map<string, number>>();
+    for (const r of levelResults) {
+      if (!winRateMap.has(r.party1Name)) winRateMap.set(r.party1Name, new Map());
+      const p1Rate = r.total > 0 ? (r.p1Wins / r.total) * 100 : 50;
+      winRateMap.get(r.party1Name)!.set(r.party2Name, p1Rate);
+
+      if (r.party1Name !== r.party2Name) {
+        if (!winRateMap.has(r.party2Name)) winRateMap.set(r.party2Name, new Map());
+        const p2Rate = r.total > 0 ? (r.p2Wins / r.total) * 100 : 50;
+        winRateMap.get(r.party2Name)!.set(r.party1Name, p2Rate);
+      }
+    }
+
+    const itr = levelResults[0]?.total ?? 0;
+    console.log(`\n=== PvP Group Results (Level ${level}, ${itr} iterations each) ===\n`);
+
+    const colWidth = Math.max(16, ...sortedNames.map(n => n.length + 2));
+    const headerRow = ''.padEnd(colWidth) + sortedNames.map(n => n.padEnd(colWidth)).join('');
+    console.log(headerRow);
+
+    for (const rowName of sortedNames) {
+      let line = rowName.padEnd(colWidth);
+      for (const colName of sortedNames) {
+        if (rowName === colName) {
+          line += '—'.padEnd(colWidth);
+        } else {
+          const rate = winRateMap.get(rowName)?.get(colName);
+          if (rate !== undefined) {
+            line += `${rate.toFixed(0)}%`.padEnd(colWidth);
+          } else {
+            line += '—'.padEnd(colWidth);
+          }
+        }
+      }
+      console.log(line);
+    }
+  }
+
+  console.log(`\n=== PvP Group Simulation Complete ===`);
+  console.log(`Run ID: ${runId}`);
+  console.log(`Fights: ${completedFights.toLocaleString()} | Draws: ${totalDraws} | Duration: ${duration}s`);
+  if (errors > 0) console.log(`Errors: ${errors}`);
+  console.log(`To delete: npm run sim:delete -- --run-id=${runId}`);
+}
+
+// ---------------------------------------------------------------------------
+// PvP Summary Files
+// ---------------------------------------------------------------------------
+
+function writePvpSummaryFile(
+  results: { p1Label: string; p2Label: string; level: number; p1Wins: number; p2Wins: number; draws: number; total: number; roundsSum: number }[],
+  totalFights: number, completedFights: number, totalDraws: number, errors: number, duration: string, runId: string, configFile: string,
+): void {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const filePath = path.resolve(__dirname, '..', '..', '..', 'docs', `pvp-sim-results-${timestamp}.md`);
+
+  const lines: string[] = [];
+  lines.push(`# PvP Simulation Results`);
+  lines.push(`\n**Date:** ${new Date().toISOString()}`);
+  lines.push(`**Run ID:** ${runId}`);
+  lines.push(`**Config:** ${configFile}`);
+  lines.push(`**Total Fights:** ${completedFights.toLocaleString()} | **Draws:** ${totalDraws} | **Duration:** ${duration}s`);
+  if (errors > 0) lines.push(`**Errors:** ${errors}`);
+
+  // Group by level
+  const byLevel = new Map<number, typeof results>();
+  for (const r of results) {
+    if (!byLevel.has(r.level)) byLevel.set(r.level, []);
+    byLevel.get(r.level)!.push(r);
+  }
+
+  const allAlerts: string[] = [];
+  const allWinRates: { label: string; rate: number; opponent: string; level: number }[] = [];
+
+  for (const [level, levelResults] of byLevel) {
+    const labels = new Set<string>();
+    for (const r of levelResults) {
+      labels.add(r.p1Label);
+      labels.add(r.p2Label);
+    }
+    const sortedLabels = [...labels].sort();
+
+    const winRateMap = new Map<string, Map<string, number>>();
+    for (const r of levelResults) {
+      if (!winRateMap.has(r.p1Label)) winRateMap.set(r.p1Label, new Map());
+      const p1Rate = r.total > 0 ? (r.p1Wins / r.total) * 100 : 50;
+      winRateMap.get(r.p1Label)!.set(r.p2Label, p1Rate);
+      if (r.p1Label !== r.p2Label) {
+        allWinRates.push({ label: r.p1Label, rate: p1Rate, opponent: r.p2Label, level });
+        if (!winRateMap.has(r.p2Label)) winRateMap.set(r.p2Label, new Map());
+        const p2Rate = r.total > 0 ? (r.p2Wins / r.total) * 100 : 50;
+        winRateMap.get(r.p2Label)!.set(r.p1Label, p2Rate);
+        allWinRates.push({ label: r.p2Label, rate: p2Rate, opponent: r.p1Label, level });
+      }
+    }
+
+    lines.push(`\n## Level ${level}\n`);
+    // Markdown table
+    lines.push(`| | ${sortedLabels.join(' | ')} |`);
+    lines.push(`|${sortedLabels.map(() => '---').join('|')}|---|`);
+    for (const rowLabel of sortedLabels) {
+      const cells = sortedLabels.map(colLabel => {
+        if (rowLabel === colLabel) return '—';
+        const rate = winRateMap.get(rowLabel)?.get(colLabel);
+        return rate !== undefined ? `${rate.toFixed(0)}%` : '—';
+      });
+      lines.push(`| **${rowLabel}** | ${cells.join(' | ')} |`);
+    }
+
+    // Alerts for this level
+    for (const r of levelResults) {
+      if (r.p1Label === r.p2Label) continue;
+      const p1Rate = r.total > 0 ? (r.p1Wins / r.total) * 100 : 50;
+      if (p1Rate > 60) {
+        allAlerts.push(`- ${r.p1Label} vs ${r.p2Label} L${level}: **${p1Rate.toFixed(0)}%** (>60%)`);
+      } else if (p1Rate < 40) {
+        allAlerts.push(`- ${r.p1Label} vs ${r.p2Label} L${level}: **${p1Rate.toFixed(0)}%** (<40%)`);
+      }
+    }
+  }
+
+  // Balance alerts section
+  lines.push(`\n## Balance Alerts\n`);
+  if (allAlerts.length > 0) {
+    for (const alert of allAlerts) lines.push(alert);
+  } else {
+    lines.push('No matchups outside the 40-60% balance window.');
+  }
+
+  // Top 5 strongest / weakest
+  const sorted = [...allWinRates].sort((a, b) => b.rate - a.rate);
+  if (sorted.length >= 5) {
+    lines.push(`\n## Top 5 Strongest Matchups\n`);
+    for (let i = 0; i < 5; i++) {
+      const s = sorted[i];
+      lines.push(`${i + 1}. **${s.label}** vs ${s.opponent} L${s.level}: ${s.rate.toFixed(0)}%`);
+    }
+    lines.push(`\n## Top 5 Weakest Matchups\n`);
+    for (let i = sorted.length - 5; i < sorted.length; i++) {
+      const s = sorted[i];
+      lines.push(`${sorted.length - i}. **${s.label}** vs ${s.opponent} L${s.level}: ${s.rate.toFixed(0)}%`);
+    }
+  }
+
+  fs.writeFileSync(filePath, lines.join('\n'), 'utf-8');
+  console.log(`\nSummary written to: ${filePath}`);
+}
+
+function writePvpGroupSummaryFile(
+  results: { party1Name: string; party2Name: string; level: number; p1Wins: number; p2Wins: number; draws: number; total: number; roundsSum: number }[],
+  totalFights: number, completedFights: number, totalDraws: number, errors: number, duration: string, runId: string, configFile: string,
+): void {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const filePath = path.resolve(__dirname, '..', '..', '..', 'docs', `pvp-group-sim-results-${timestamp}.md`);
+
+  const lines: string[] = [];
+  lines.push(`# PvP Group Simulation Results`);
+  lines.push(`\n**Date:** ${new Date().toISOString()}`);
+  lines.push(`**Run ID:** ${runId}`);
+  lines.push(`**Config:** ${configFile}`);
+  lines.push(`**Total Fights:** ${completedFights.toLocaleString()} | **Draws:** ${totalDraws} | **Duration:** ${duration}s`);
+  if (errors > 0) lines.push(`**Errors:** ${errors}`);
+
+  const byLevel = new Map<number, typeof results>();
+  for (const r of results) {
+    if (!byLevel.has(r.level)) byLevel.set(r.level, []);
+    byLevel.get(r.level)!.push(r);
+  }
+
+  for (const [level, levelResults] of byLevel) {
+    const names = new Set<string>();
+    for (const r of levelResults) {
+      names.add(r.party1Name);
+      names.add(r.party2Name);
+    }
+    const sortedNames = [...names].sort();
+
+    const winRateMap = new Map<string, Map<string, number>>();
+    for (const r of levelResults) {
+      if (!winRateMap.has(r.party1Name)) winRateMap.set(r.party1Name, new Map());
+      const p1Rate = r.total > 0 ? (r.p1Wins / r.total) * 100 : 50;
+      winRateMap.get(r.party1Name)!.set(r.party2Name, p1Rate);
+      if (r.party1Name !== r.party2Name) {
+        if (!winRateMap.has(r.party2Name)) winRateMap.set(r.party2Name, new Map());
+        const p2Rate = r.total > 0 ? (r.p2Wins / r.total) * 100 : 50;
+        winRateMap.get(r.party2Name)!.set(r.party1Name, p2Rate);
+      }
+    }
+
+    lines.push(`\n## Level ${level}\n`);
+    lines.push(`| | ${sortedNames.join(' | ')} |`);
+    lines.push(`|${sortedNames.map(() => '---').join('|')}|---|`);
+    for (const rowName of sortedNames) {
+      const cells = sortedNames.map(colName => {
+        if (rowName === colName) return '—';
+        const rate = winRateMap.get(rowName)?.get(colName);
+        return rate !== undefined ? `${rate.toFixed(0)}%` : '—';
+      });
+      lines.push(`| **${rowName}** | ${cells.join(' | ')} |`);
+    }
+  }
+
+  fs.writeFileSync(filePath, lines.join('\n'), 'utf-8');
+  console.log(`\nSummary written to: ${filePath}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -1201,7 +2271,11 @@ async function main(): Promise<void> {
     switch (args.command) {
       case 'run':
         currentRunId = null; // will be set inside runCommand
-        if (args.group) {
+        if (args.pvp && args.group) {
+          await runPvpGroupCommand(args);
+        } else if (args.pvp) {
+          await runPvpCommand(args);
+        } else if (args.group) {
           await runGroupCommand(args);
         } else {
           await runCommand(args);

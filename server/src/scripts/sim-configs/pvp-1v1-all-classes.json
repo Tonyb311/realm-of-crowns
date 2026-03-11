@@ -1,0 +1,9 @@
+{
+  "pvpGrid": {
+    "classes": ["ALL"],
+    "races": ["human"],
+    "levels": [10, 20, 30],
+    "iterationsPerMatchup": 100
+  },
+  "notes": "Full class PvP matrix: 7x7 x 3 levels x 100 = 14,700 fights"
+}
