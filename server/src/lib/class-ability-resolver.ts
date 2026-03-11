@@ -72,11 +72,9 @@ function calcWeaponDamage(actor: Combatant, abilityDef: AbilityDefinition, isCri
     }
     return Math.max(0, total + statMod + actor.weapon.bonusDamage);
   } else if (isSpellAttack) {
-    const primaryStat = actor.characterClass
-      ? CLASS_PRIMARY_STAT[actor.characterClass.toLowerCase()] ?? 'int'
-      : 'int';
-    const statMod = getModifier(actor.stats[primaryStat as keyof typeof actor.stats] ?? 10);
-    return Math.max(0, statMod);
+    // Spell attacks: damage comes from ability dice only (D&D standard).
+    // Stat modifier affects attack roll and save DC, not damage.
+    return 0;
   }
   return 0;
 }
@@ -115,6 +113,39 @@ function getEnemies(state: CombatState, actor: Combatant): Combatant[] {
   return state.combatants.filter(c => c.team !== actor.team && c.isAlive && !c.hasFled);
 }
 
+// ---- Scaling Helpers ----
+
+/**
+ * Scale a dice count by level thresholds. Each threshold reached adds +1 die.
+ * Example: getScaledDice(3, [15, 20, 25, 30, 40], 22) => 3 + 2 = 5 dice (L15 and L20 reached).
+ */
+function getScaledDice(baseDice: number, scalingLevels: number[], actorLevel: number): number {
+  if (!scalingLevels.length || baseDice === 0) return baseDice;
+  const steps = scalingLevels.filter(lvl => actorLevel >= lvl).length;
+  return baseDice + steps;
+}
+
+/**
+ * Scale a flat numeric value by level thresholds.
+ * perStep: how much to add per threshold (default 1).
+ * Example: getScaledValue(5, [15, 20, 25, 30, 40], 22, 2) => 5 + 2*2 = 9.
+ */
+function getScaledValue(base: number, scalingLevels: number[], actorLevel: number, perStep: number = 1): number {
+  if (!scalingLevels.length || base === 0) return base;
+  const steps = scalingLevels.filter(lvl => actorLevel >= lvl).length;
+  return base + (steps * perStep);
+}
+
+/**
+ * Scale a buff/debuff value at half rate: +1 per 2 thresholds reached.
+ * Example: getScaledHalfRate(3, [8, 13, 18, 25, 35], 25) => 3 + floor(4/2) = 5.
+ */
+function getScaledHalfRate(base: number, scalingLevels: number[], actorLevel: number): number {
+  if (!scalingLevels.length || base === 0) return base;
+  const steps = scalingLevels.filter(lvl => actorLevel >= lvl).length;
+  return base + Math.floor(steps / 2);
+}
+
 // ---- Effect Handlers ----
 
 const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef, effects) => {
@@ -122,9 +153,15 @@ const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef,
     return { state, result: { description: `${abilityDef.name}: no valid target` } };
   }
 
-  const bonusDamage = (effects.bonusDamage as number) ?? 0;
-  const diceCount = (effects.diceCount as number) ?? 0;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+  const rawBonusDamage = (effects.bonusDamage as number) ?? 0;
+  const rawDiceCount = (effects.diceCount as number) ?? 0;
   const diceSides = (effects.diceSides as number) ?? 0;
+  // Scale dice (+1 per threshold) or flat bonus (+2 per threshold if no dice)
+  const diceCount = getScaledDice(rawDiceCount, scalingLevels, actor.level);
+  const bonusDamage = rawDiceCount === 0 && rawBonusDamage > 0
+    ? getScaledValue(rawBonusDamage, scalingLevels, actor.level, 2)
+    : rawBonusDamage;
 
   // Phase 5A: Read attack/damage modifier fields
   const critBonus = (effects.critBonus as number) ?? 0;
@@ -273,13 +310,9 @@ const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef,
     if (statMod !== 0) dmgModifiers.push({ source: actor.weapon.damageModifierStat.toUpperCase(), value: statMod });
     if (actor.weapon.bonusDamage !== 0) dmgModifiers.push({ source: 'weapon bonus', value: actor.weapon.bonusDamage });
   } else if (isSpellAttack) {
-    // Spell attacks: add class primary stat modifier to damage (no weapon dice)
-    const primaryStat = actor.characterClass
-      ? CLASS_PRIMARY_STAT[actor.characterClass.toLowerCase()] ?? 'int'
-      : 'int';
-    const statMod = getModifier(actor.stats[primaryStat as keyof typeof actor.stats] ?? 10);
-    if (statMod > 0) dmgModifiers.push({ source: primaryStat.toUpperCase(), value: statMod });
-    weaponDmg = Math.max(0, statMod);
+    // Spell attacks: damage comes from ability dice only (D&D standard).
+    // Stat modifier affects attack roll and save DC, not damage.
+    weaponDmg = 0;
   }
 
   let abilityDmg = 0;
@@ -366,23 +399,24 @@ const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef,
 
 const handleBuff: EffectHandler = (state, actor, _target, _enemies, abilityDef, effects) => {
   const duration = (effects.duration as number) ?? 3;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
 
   const buff: ActiveBuff = {
     sourceAbilityId: abilityDef.id,
     name: abilityDef.name,
     roundsRemaining: duration,
-    attackMod: (effects.attackBonus as number) ?? undefined,
-    acMod: (effects.acBonus as number) ?? undefined,
-    damageMod: (effects.bonusDamage as number) ?? (effects.bonusDamageNext as number) ?? undefined,
+    attackMod: (effects.attackBonus as number) ? getScaledHalfRate((effects.attackBonus as number), scalingLevels, actor.level) : undefined,
+    acMod: (effects.acBonus as number) ? getScaledHalfRate((effects.acBonus as number), scalingLevels, actor.level) : undefined,
+    damageMod: (effects.bonusDamage as number) ?? (effects.bonusDamageNext as number) ? getScaledValue((effects.bonusDamage as number) ?? (effects.bonusDamageNext as number) ?? 0, scalingLevels, actor.level, 3) || undefined : undefined,
     dodgeMod: (effects.dodgeBonus as number) ?? undefined,
     damageReduction: (effects.damageReduction as number) ?? undefined,
     damageReflect: (effects.damageReflect as number) ?? undefined,
-    absorbRemaining: (effects.absorbDamage as number) ?? undefined,
+    absorbRemaining: (effects.absorbDamage as number) ? getScaledValue((effects.absorbDamage as number), scalingLevels, actor.level, 3) : undefined,
     guaranteedHits: (effects.guaranteedHits as number) ?? undefined,
     extraAction: (effects.extraAction as boolean) ?? undefined,
     ccImmune: (effects.ccImmune as boolean) ?? undefined,
     stealthed: (effects.stealth as boolean) || (effects.untargetable as boolean) || undefined,
-    hotPerRound: (effects.hpRegenPerRound as number) ?? undefined,
+    hotPerRound: (effects.hpRegenPerRound as number) ? getScaledValue((effects.hpRegenPerRound as number), scalingLevels, actor.level, 2) : undefined,
     // Phase 5B MECH-1: Consume buff after one use (bonusDamageNext)
     consumeOnUse: effects.bonusDamageNext != null ? true : undefined,
     // Phase 5B MECH-2: Next ability cooldown halved
@@ -392,7 +426,7 @@ const handleBuff: EffectHandler = (state, actor, _target, _enemies, abilityDef, 
     scalingMax: (effects.scalingMax as number) ?? undefined,
     // Phase 5B MECH-9: Poison charges on hit
     poisonCharges: (effects.poisonCharges as number) ?? undefined,
-    poisonDotDamage: (effects.poisonDotDamage as number) ?? undefined,
+    poisonDotDamage: (effects.poisonDotDamage as number) ? getScaledValue((effects.poisonDotDamage as number), scalingLevels, actor.level, 2) : undefined,
     poisonDotDuration: (effects.poisonDotDuration as number) ?? undefined,
     // Phase 5B MECH-11: Stacking attack speed
     stackingAttackSpeedStacks: effects.stackingAttackSpeed ? 0 : undefined,
@@ -435,13 +469,14 @@ const handleDebuff: EffectHandler = (state, actor, target, _enemies, abilityDef,
   }
 
   const duration = (effects.duration as number) ?? 3;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
   // BUG-FIX 4: Data stores reductions as negative numbers (-4 = reduce by 4), use Math.abs
-  const attackReduction = Math.abs((effects.attackReduction as number) ?? 0);
-  const acReduction = Math.abs((effects.acReduction as number) ?? 0);
-  const allStatsReduction = Math.abs((effects.allStatsReduction as number) ?? 0);
+  const attackReduction = getScaledHalfRate(Math.abs((effects.attackReduction as number) ?? 0), scalingLevels, actor.level);
+  const acReduction = getScaledHalfRate(Math.abs((effects.acReduction as number) ?? 0), scalingLevels, actor.level);
+  const allStatsReduction = getScaledHalfRate(Math.abs((effects.allStatsReduction as number) ?? 0), scalingLevels, actor.level);
 
   // Phase 5B MECH-5: bonusDamageFromYou — target takes bonus damage from actor
-  const bonusDamageFromYou = (effects.bonusDamageFromYou as number) ?? 0;
+  const bonusDamageFromYou = (effects.bonusDamageFromYou as number) ? getScaledValue((effects.bonusDamageFromYou as number), scalingLevels, actor.level, 2) : 0;
 
   // --- Save-based path: target can resist the debuff ---
   const saveResult = resolveAbilitySave(state, actor, target, abilityDef, effects);
@@ -528,7 +563,8 @@ const handleHeal: EffectHandler = (state, actor, target, enemies, abilityDef, ef
   if (fullRestore) {
     healAmount = healTarget.maxHp - healTarget.currentHp;
   } else {
-    const diceCount = (effects.diceCount as number) ?? 1;
+    const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+    const diceCount = getScaledDice((effects.diceCount as number) ?? 1, scalingLevels, actor.level);
     const diceSides = (effects.diceSides as number) ?? 8;
     const bonus = (effects.bonusHealing as number) ?? 0;
     healAmount = rollDice(diceCount, diceSides, bonus);
@@ -657,8 +693,9 @@ const handleDamageStatus: EffectHandler = (state, actor, target, _enemies, abili
     return { state, result: { description: `${abilityDef.name}: no valid target` } };
   }
 
-  const damage = (effects.damage as number) ?? 0;
-  const diceCount = (effects.diceCount as number) ?? 0;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+  const damage = getScaledValue((effects.damage as number) ?? 0, scalingLevels, actor.level, 2);
+  const diceCount = getScaledDice((effects.diceCount as number) ?? 0, scalingLevels, actor.level);
   const diceSides = (effects.diceSides as number) ?? 0;
   const damageBonus = (effects.damageBonus as string);
   const statusEffect = mapStatusName((effects.statusEffect as string) ?? 'stunned');
@@ -723,6 +760,7 @@ const handleDamageStatus: EffectHandler = (state, actor, target, _enemies, abili
   const bonusMod = damageBonus ? Math.max(0, getModifier(actor.stats[damageBonus as keyof typeof actor.stats] ?? 10)) : 0;
 
   // Roll with detailed breakdown
+  // handleDamageStatus attack-roll path uses same scaled diceCount
   let diceRolls: number[] = [];
   let diceDmg = 0;
   if (diceCount > 0) {
@@ -774,7 +812,8 @@ const handleDamageDebuff: EffectHandler = (state, actor, target, _enemies, abili
     return { state, result: { description: `${abilityDef.name}: no valid target` } };
   }
 
-  const diceCount = (effects.diceCount as number) ?? 1;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+  const diceCount = getScaledDice((effects.diceCount as number) ?? 1, scalingLevels, actor.level);
   const diceSides = (effects.diceSides as number) ?? 6;
   const acReduction = (effects.acReduction as number) ?? 0;
   const duration = (effects.duration as number) ?? 2;
@@ -875,7 +914,8 @@ const handleDrain: EffectHandler = (state, actor, target, enemies, abilityDef, e
     };
   }
 
-  const diceCount = (effects.diceCount as number) ?? 2;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+  const diceCount = getScaledDice((effects.diceCount as number) ?? 2, scalingLevels, actor.level);
   const diceSides = (effects.diceSides as number) ?? 6;
   // BUG-FIX 1: healPercent is already a fraction (0.5 = 50%), don't divide by 100 again
   const healPercent = (effects.healPercent as number) ?? 0.5;
@@ -919,7 +959,8 @@ const handleDrain: EffectHandler = (state, actor, target, enemies, abilityDef, e
 
 const handleHot: EffectHandler = (state, actor, target, _enemies, abilityDef, effects) => {
   const hotTarget = target?.team === actor.team ? target : actor;
-  const healPerRound = (effects.healPerRound as number) ?? 5;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+  const healPerRound = getScaledValue((effects.healPerRound as number) ?? 5, scalingLevels, actor.level, 2);
   const duration = (effects.duration as number) ?? 5;
 
   // Apply as regenerating status with custom heal amount
@@ -998,7 +1039,8 @@ const handleFleeAbility: EffectHandler = (state, actor, _target, enemies, abilit
 };
 
 const handleAoeDebuff: EffectHandler = (state, actor, _target, enemies, abilityDef, effects) => {
-  const accuracyReduction = (effects.accuracyReduction as number) ?? 5;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+  const accuracyReduction = getScaledHalfRate((effects.accuracyReduction as number) ?? 5, scalingLevels, actor.level);
   const duration = (effects.duration as number) ?? 2;
   const isSaveBased = abilityDef.attackType === 'save';
   const saveType = (effects as Record<string, any>).saveType as string ?? 'dex';
@@ -1086,9 +1128,10 @@ const handleAoeDamage: EffectHandler = (state, actor, _target, enemies, abilityD
   let totalDamage = 0;
   const targetIds: string[] = [];
 
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
   for (const enemy of enemies) {
     let dmg = 0;
-    const diceCount = (effects.diceCount as number) ?? 0;
+    const diceCount = getScaledDice((effects.diceCount as number) ?? 0, scalingLevels, actor.level);
     const diceSides = (effects.diceSides as number) ?? 6;
 
     if (effects.damageMultiplier && actor.weapon) {
@@ -1194,7 +1237,8 @@ const handleMultiTarget: EffectHandler = (state, actor, _target, enemies, abilit
     return { state, result: { description: `${abilityDef.name}: no targets` } };
   }
 
-  const diceCount = (effects.diceCount as number) ?? 1;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+  const diceCount = getScaledDice((effects.diceCount as number) ?? 1, scalingLevels, actor.level);
   const diceSides = (effects.diceSides as number) ?? 6;
   const hasAttackRoll = abilityDef.attackType === 'weapon' || abilityDef.attackType === 'spell';
   const isSaveBased = abilityDef.attackType === 'save';
@@ -1375,9 +1419,10 @@ const handleAoeDrain: EffectHandler = (state, actor, _target, enemies, abilityDe
     return { state, result: { description: `${abilityDef.name}: no targets` } };
   }
 
-  const diceCount = (effects.diceCount as number) ?? 3;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+  const diceCount = getScaledDice((effects.diceCount as number) ?? 3, scalingLevels, actor.level);
   const diceSides = (effects.diceSides as number) ?? 8;
-  const healPerTarget = (effects.healPerTarget as number) ?? 8;
+  const healPerTarget = getScaledValue((effects.healPerTarget as number) ?? 8, scalingLevels, actor.level, 2);
 
   // Save-based AoE drain: each target saves individually
   const isSaveBased = abilityDef.attackType === 'save';
@@ -1463,7 +1508,8 @@ const handleDispelDamage: EffectHandler = (state, actor, target, _enemies, abili
     return { state, result: { description: `${abilityDef.name}: no valid target` } };
   }
 
-  const damagePerBuff = (effects.damagePerBuff as number) ?? 8;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+  const damagePerBuff = getScaledValue((effects.damagePerBuff as number) ?? 8, scalingLevels, actor.level, 2);
 
   // Count and remove activeBuffs
   const currentTarget = state.combatants.find(c => c.id === target.id)!;
@@ -1512,7 +1558,8 @@ const handleAoeDot: EffectHandler = (state, actor, _target, enemies, abilityDef,
     return { state, result: { description: `${abilityDef.name}: no targets` } };
   }
 
-  const damagePerRound = (effects.damagePerRound as number) ?? 6;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+  const damagePerRound = getScaledValue((effects.damagePerRound as number) ?? 6, scalingLevels, actor.level, 2);
   const duration = (effects.duration as number) ?? 3;
   // NOTE: bonusVsUndead not applied — no undead flag exists on combatants
   const targetIds: string[] = [];
@@ -1542,8 +1589,9 @@ const handleDelayedDamage: EffectHandler = (state, actor, target, enemies, abili
     }
   }
 
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
   const delay = (effects.delay as number) ?? 3;
-  const diceCount = (effects.diceCount as number) ?? 8;
+  const diceCount = getScaledDice((effects.diceCount as number) ?? 8, scalingLevels, actor.level);
   const diceSides = (effects.diceSides as number) ?? 6;
 
   const currentTarget = state.combatants.find(c => c.id === target!.id)!;
@@ -1597,7 +1645,8 @@ const handleDamageSteal: EffectHandler = (state, actor, target, _enemies, abilit
   if (!target || !target.isAlive) {
     return { state, result: { description: `${abilityDef.name}: no valid target` } };
   }
-  const diceCount = (effects.diceCount as number) ?? 3;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+  const diceCount = getScaledDice((effects.diceCount as number) ?? 3, scalingLevels, actor.level);
   const diceSides = (effects.diceSides as number) ?? 6;
   const damage = rollDice(diceCount, diceSides);
   const hpAfter = clampHp(target.currentHp - damage, target.maxHp);
@@ -1633,7 +1682,8 @@ const handleCompanionAttack: EffectHandler = (state, actor, target, enemies, abi
     return { state, result: { description: `${abilityDef.name}: no valid target` } };
   }
 
-  const diceCount = (effects.diceCount as number) ?? 4;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+  const diceCount = getScaledDice((effects.diceCount as number) ?? 4, scalingLevels, actor.level);
   const diceSides = (effects.diceSides as number) ?? 8;
   const damage = rollDice(diceCount, diceSides);
   const hpAfter = clampHp(actualTarget.currentHp - damage, actualTarget.maxHp);
@@ -1748,7 +1798,8 @@ const handleSpecial: EffectHandler = (state, actor, target, enemies, abilityDef,
 // ---- Phase 3B Handlers: Counter, Trap ----
 
 const handleCounter: EffectHandler = (state, actor, _target, _enemies, abilityDef, effects) => {
-  const counterDamage = (effects.counterDamage as number) ?? 8;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+  const counterDamage = getScaledValue((effects.counterDamage as number) ?? 8, scalingLevels, actor.level, 2);
   const triggerOn = (effects.triggerOn as 'melee_attack' | 'attacked') ?? 'melee_attack';
 
   const buffs = [...(actor.activeBuffs ?? [])];
@@ -1772,7 +1823,8 @@ const handleCounter: EffectHandler = (state, actor, _target, _enemies, abilityDe
 };
 
 const handleTrap: EffectHandler = (state, actor, _target, _enemies, abilityDef, effects) => {
-  const trapDamage = (effects.trapDamage as number) ?? 10;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+  const trapDamage = getScaledValue((effects.trapDamage as number) ?? 10, scalingLevels, actor.level, 2);
   const trapAoe = !!(effects.aoe);
   const triggerOn = (effects.triggerOn as 'melee_attack' | 'attacked') ?? 'attacked';
 
@@ -1800,7 +1852,8 @@ const handleTrap: EffectHandler = (state, actor, _target, _enemies, abilityDef, 
 // ---- Phase 3C Handler: Summon ----
 
 const handleSummon: EffectHandler = (state, actor, _target, _enemies, abilityDef, effects) => {
-  const companionDamage = (effects.companionDamage as number) ?? 5;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+  const companionDamage = getScaledValue((effects.companionDamage as number) ?? 5, scalingLevels, actor.level, 2);
   const duration = (effects.duration as number) ?? 5;
   const companionHp = effects.companionHp as number | undefined;
 
@@ -1982,6 +2035,7 @@ const handleTeleportAttack: EffectHandler = (state, actor, target, _enemies, abi
     return { state, result: { description: `${abilityDef.name}: no valid target` } };
   }
 
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
   const damageBonus = (effects.damageBonus as string);
 
   // Use resolveAbilityAttackRoll — Blink Strike has attackType: 'spell' on the definition
@@ -2032,6 +2086,13 @@ const handleTeleportAttack: EffectHandler = (state, actor, target, _enemies, abi
     const bonusVal = Math.max(0, bonusMod);
     totalDamage += bonusVal;
     if (bonusVal > 0) dmgModifiers.push({ source: `${damageBonus.toUpperCase()} bonus`, value: bonusVal });
+  }
+  // Flat bonusDamage from ability effects (e.g., Blink Strike rebase)
+  const rawBonusDmg = (effects.bonusDamage as number) ?? 0;
+  if (rawBonusDmg > 0) {
+    const scaledBonusDmg = getScaledValue(rawBonusDmg, scalingLevels, actor.level, 2);
+    totalDamage += scaledBonusDmg;
+    dmgModifiers.push({ source: 'ability bonus', value: scaledBonusDmg });
   }
   totalDamage = Math.max(0, totalDamage);
 
@@ -2157,7 +2218,8 @@ const handleAoeDamageStatus: EffectHandler = (state, actor, _target, enemies, ab
     return { state, result: { description: `${abilityDef.name}: no targets` } };
   }
 
-  const diceCount = (effects.diceCount as number) ?? 2;
+  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
+  const diceCount = getScaledDice((effects.diceCount as number) ?? 2, scalingLevels, actor.level);
   const diceSides = (effects.diceSides as number) ?? 6;
   const damageBonus = (effects.damageBonus as string);
   const statusEffect = mapStatusName((effects.statusEffect as string) ?? 'weakened');
@@ -2499,11 +2561,8 @@ const handleBanish: EffectHandler = (state, actor, target, _enemies, abilityDef,
 // ---- Cantrip Handler (at-will scaling damage) ----
 
 const handleCantrip: EffectHandler = (state, actor, target, enemies, abilityDef, effects) => {
-  // Compute level-scaled dice count: base + 1 per scaling threshold reached
-  const baseDice = (effects.diceCount as number) ?? 1;
-  const scalingLevels = (effects.scalingLevels as number[]) ?? [];
-  const bonusDice = scalingLevels.filter((lvl: number) => actor.level >= lvl).length;
-  const totalDice = baseDice + bonusDice;
+  // Compute level-scaled dice count using shared helper
+  const totalDice = getScaledDice((effects.diceCount as number) ?? 1, (effects.scalingLevels as number[]) ?? [], actor.level);
 
   // Delegate to handleDamage with adjusted dice count
   const adjustedEffects = { ...effects, diceCount: totalDice };
