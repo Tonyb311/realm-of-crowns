@@ -2,7 +2,7 @@ import { db } from '../lib/db';
 import { eq, and } from 'drizzle-orm';
 import { characters, dailyActions } from '@database/tables';
 import { z } from 'zod';
-import { COMBAT_STANCES } from '@shared/enums';
+import { COMBAT_STANCES, TRAVEL_ENGAGEMENT_MODES, TARGET_SELECTION_STRATEGIES } from '@shared/enums';
 import type { DailyActionType, DailyActionStatus } from '@shared/enums';
 import { getTodayTickDate } from '../lib/game-day';
 
@@ -19,6 +19,9 @@ export const combatParamsSchema = z.object({
   abilityPriorityQueue: z.array(z.string()).optional(),
   itemUsageRules: z.record(z.string(), z.unknown()).optional(),
   pvpLootBehavior: z.string().optional(),
+  travelEngagementMode: z.enum(TRAVEL_ENGAGEMENT_MODES).optional(),
+  travelFleeMaxMonsterLevel: z.number().int().min(1).max(99).nullable().optional(),
+  targetSelectionStrategy: z.enum(TARGET_SELECTION_STRATEGIES).optional(),
 });
 
 export type CombatParams = z.infer<typeof combatParamsSchema>;

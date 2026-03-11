@@ -1,6 +1,6 @@
 import { pgTable, varchar, timestamp, text, integer, uniqueIndex, index, foreignKey, doublePrecision, jsonb, date, boolean, type AnyPgColumn } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
-import { actionStatus, beastClan, biomeType, buildingType, combatSessionStatus, combatStance, combatType, consumableSourceType, dailyActionStatus, dailyActionType, diplomacyActionType, dragonBloodline, electionPhase, electionStatus, electionType, elementalType, equipSlot, foodPriority, friendStatus, hungerState, impeachmentStatus, itemRarity, itemType, lawStatus, loanStatus, logLevel, messageChannel, npcRole, petitionStatus, professionTier, professionType, questType, race, raceTier, relationStatus, resourceType, treatyStatus, treatyType, warStatus } from './enums'
+import { actionStatus, beastClan, biomeType, buildingType, combatSessionStatus, combatStance, combatType, consumableSourceType, dailyActionStatus, dailyActionType, diplomacyActionType, dragonBloodline, electionPhase, electionStatus, electionType, elementalType, equipSlot, foodPriority, friendStatus, hungerState, impeachmentStatus, itemRarity, itemType, lawStatus, loanStatus, logLevel, messageChannel, npcRole, petitionStatus, professionTier, professionType, questType, race, raceTier, relationStatus, resourceType, targetSelectionStrategy, travelEngagementMode, treatyStatus, treatyType, warStatus } from './enums'
 
 // ============================================================
 // AUTH
@@ -478,6 +478,9 @@ export const characters = pgTable("characters", {
 	scrollUsedToday: boolean("scroll_used_today").default(false).notNull(),
 	healingPotionThreshold: integer("healing_potion_threshold").default(50).notNull(),
 	maxHealingPotionsPerCombat: integer("max_healing_potions_per_combat").default(1).notNull(),
+	travelEngagementMode: travelEngagementMode("travel_engagement_mode").default('ALWAYS_FIGHT').notNull(),
+	travelFleeMaxMonsterLevel: integer("travel_flee_max_monster_level"),
+	targetSelectionStrategy: targetSelectionStrategy("target_selection_strategy").default('FIRST').notNull(),
 }, (table) => [
 	index("characters_current_town_id_idx").using("btree", table.currentTownId.asc().nullsLast().op("text_ops")),
 	index("characters_race_idx").using("btree", table.race.asc().nullsLast().op("enum_ops")),

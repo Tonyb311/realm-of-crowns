@@ -183,6 +183,49 @@ function extractDamageDealt(logEntry: TurnLogEntry | undefined, actorId: string)
   return 0;
 }
 
+// ---- Target Selection ----
+
+/**
+ * Select a target from a list of enemies based on the player's target selection strategy.
+ * CC abilities bypass this — they always target highest-level enemy.
+ */
+function selectTarget(
+  enemies: Combatant[],
+  strategy: string,
+): Combatant | null {
+  if (enemies.length === 0) return null;
+
+  switch (strategy) {
+    case 'WEAKEST':
+      return enemies.reduce((w, e) => e.currentHp < w.currentHp ? e : w);
+    case 'STRONGEST':
+      return enemies.reduce((s, e) => e.currentHp > s.currentHp ? e : s);
+    case 'LOWEST_AC':
+      return enemies.reduce((low, e) => calculateAC(e) < calculateAC(low) ? e : low);
+    case 'CASTER_FIRST': {
+      const casters = enemies.filter(e => {
+        if (e.entityType === 'monster' && e.monsterAbilities) {
+          return e.monsterAbilities.some(inst =>
+            inst.def.saveType != null || inst.def.type === 'aoe' || inst.def.type === 'status'
+          );
+        }
+        if (e.entityType === 'character') {
+          const cls = (e as any).characterClass?.toLowerCase();
+          return cls === 'mage' || cls === 'psion' || cls === 'cleric' || cls === 'bard';
+        }
+        return false;
+      });
+      if (casters.length > 0) {
+        return casters.reduce((w, e) => e.currentHp < w.currentHp ? e : w);
+      }
+      return enemies.reduce((w, e) => e.currentHp < w.currentHp ? e : w);
+    }
+    case 'FIRST':
+    default:
+      return enemies[0];
+  }
+}
+
 // ---- Autonomous Decision Engine ----
 
 /**
@@ -212,7 +255,7 @@ function decideAction(
     const scroll = actor.preparedScroll;
     if (scroll.effectType.startsWith('damage_') || scroll.effectType === 'heal_hp') {
       const isHeal = scroll.effectType === 'heal_hp';
-      const targetId = isHeal ? actorId : (enemies[0]?.id ?? actorId);
+      const targetId = isHeal ? actorId : (selectTarget(enemies, presets.targetSelectionStrategy)?.id ?? actorId);
       return {
         action: { type: 'item', actorId, targetId },
         context: {
@@ -291,7 +334,7 @@ function decideAction(
 
   // ---- 1a5. Non-proficient armor — no class abilities, basic attack only ----
   if (actor.nonProficientArmor && actor.entityType !== 'monster') {
-    const target = enemies.length > 0 ? enemies[0] : null;
+    const target = selectTarget(enemies, presets.targetSelectionStrategy);
     if (target) {
       return {
         action: { type: 'attack', actorId, targetId: target.id },
@@ -348,7 +391,7 @@ function decideAction(
 
   // ---- 1c. Setup→Payoff ability chaining ----
   const actorSetupTags = actor.setupTags ?? [];
-  const chainTarget = enemies.length > 0 ? enemies[0] : null;
+  const chainTarget = selectTarget(enemies, presets.targetSelectionStrategy);
 
   // If actor has a setup tag, prioritize the payoff ability
   if (actorSetupTags.length > 0 && chainTarget) {
@@ -498,10 +541,8 @@ function decideAction(
           ? enemies.reduce((h, e) => e.level > h.level ? e : h).id
           : undefined;
       } else {
-        // Damage / utility — target lowest HP enemy (focus fire)
-        targetId = enemies.length > 0
-          ? enemies.reduce((w, e) => e.currentHp < w.currentHp ? e : w).id
-          : undefined;
+        // Damage / utility — use player's target selection strategy
+        targetId = selectTarget(enemies, presets.targetSelectionStrategy)?.id;
       }
 
       // Determine if this is a class ability, psion spec ability, or racial ability
@@ -577,15 +618,12 @@ function decideAction(
     }
   }
 
-  // ---- 4. Default: attack the weakest enemy with stance modifiers ----
+  // ---- 4. Default: attack using player's target selection strategy ----
   if (enemies.length === 0) {
     return { action: { type: 'defend', actorId }, context: {} };
   }
 
-  // Target selection: attack the enemy with lowest HP
-  const target = enemies.reduce((weakest, e) =>
-    e.currentHp < weakest.currentHp ? e : weakest
-  );
+  const target = selectTarget(enemies, presets.targetSelectionStrategy)!;
 
   return {
     action: {
@@ -1652,6 +1690,9 @@ export function createDefaultMonsterParams(id: string, combatant: Combatant): Co
       pvpLootBehavior: 'TAKE_NOTHING',
       healingPotionThreshold: 50,
       maxHealingPotionsPerCombat: 0, // Monsters don't use healing potions
+      travelEngagementMode: 'ALWAYS_FIGHT',
+      travelFleeMaxMonsterLevel: null,
+      targetSelectionStrategy: 'FIRST',
     },
     weapon: combatant.weapon,
     racialTracker: createRacialCombatTracker(),

@@ -177,32 +177,61 @@ export async function processTravelTick(): Promise<TravelTickResult> {
               'Solo traveler won road encounter, arrived at destination',
             );
           } else if (encounter.fled) {
-            // Fled encounter: move back 2 nodes (detour penalty), continue traveling
-            // No death penalty, no rewards. Player escaped but lost time.
             result.soloEncounterWins++; // counts as survival for stats
-            const delayNodes = encounter.fleeDelayTicks ?? 2;
-            const movedBackIndex = traveler.direction === 'forward'
-              ? Math.max(1, traveler.currentNodeIndex - delayNodes)
-              : Math.min(route.nodeCount, traveler.currentNodeIndex + delayNodes);
 
-            await db.update(characterTravelStates)
-              .set({
-                currentNodeIndex: movedBackIndex,
-                status: 'flee_cooldown',
-                lastTickAt: now,
-              })
-              .where(eq(characterTravelStates.id, traveler.id));
+            if (!encounter.fleeDelayTicks || encounter.fleeDelayTicks === 0) {
+              // Pre-combat flee: free pass, arrive at destination immediately
+              const travelXp = ACTION_XP.TRAVEL_PER_NODE * route.nodeCount;
+              await db.transaction(async (tx) => {
+                await tx.update(characters)
+                  .set({
+                    currentTownId: destinationTownId,
+                    travelStatus: 'idle',
+                    xp: sql`${characters.xp} + ${travelXp}`,
+                  })
+                  .where(eq(characters.id, traveler.characterId));
+                await tx.delete(characterTravelStates)
+                  .where(eq(characterTravelStates.id, traveler.id));
+              });
 
-            result.soloMoved++;
-            logger.info(
-              {
-                characterId: traveler.characterId,
-                movedBackIndex,
-                delayNodes,
-                encounter: `Fled from ${encounter.monsterName} (L${encounter.monsterLevel})`,
-              },
-              'Solo traveler fled road encounter, moved back for detour (+2 ticks)',
-            );
+              try { await checkLevelUp(traveler.characterId); } catch { /* non-fatal */ }
+
+              result.soloArrived++;
+              logger.info(
+                {
+                  characterId: traveler.characterId,
+                  destinationTownId,
+                  travelXp,
+                  encounter: `Pre-combat flee from ${encounter.monsterName} (L${encounter.monsterLevel})`,
+                },
+                'Solo traveler fled before combat, arrived at destination',
+              );
+            } else {
+              // Mid-combat retreat: move back nodes, set flee_cooldown
+              const delayNodes = encounter.fleeDelayTicks;
+              const movedBackIndex = traveler.direction === 'forward'
+                ? Math.max(1, traveler.currentNodeIndex - delayNodes)
+                : Math.min(route.nodeCount, traveler.currentNodeIndex + delayNodes);
+
+              await db.update(characterTravelStates)
+                .set({
+                  currentNodeIndex: movedBackIndex,
+                  status: 'flee_cooldown',
+                  lastTickAt: now,
+                })
+                .where(eq(characterTravelStates.id, traveler.id));
+
+              result.soloMoved++;
+              logger.info(
+                {
+                  characterId: traveler.characterId,
+                  movedBackIndex,
+                  delayNodes,
+                  encounter: `Fled from ${encounter.monsterName} (L${encounter.monsterLevel})`,
+                },
+                'Solo traveler fled road encounter, moved back for detour (+2 ticks)',
+              );
+            }
           } else {
             // Lost encounter: return to origin town (penalties already applied, travel XP still granted)
             result.soloEncounterLosses++;

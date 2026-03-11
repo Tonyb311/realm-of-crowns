@@ -9,6 +9,8 @@ import {
   Loader2,
   Save,
   AlertCircle,
+  MapPin,
+  Crosshair,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -19,6 +21,8 @@ import { TOAST_STYLE } from '../../constants';
 // ---------------------------------------------------------------------------
 
 type CombatStance = 'AGGRESSIVE' | 'BALANCED' | 'DEFENSIVE' | 'EVASIVE';
+type TravelEngagementMode = 'ALWAYS_FIGHT' | 'FIGHT_IF_WINNABLE' | 'FLEE_IF_DANGEROUS' | 'ALWAYS_FLEE';
+type TargetSelectionStrategy = 'FIRST' | 'WEAKEST' | 'STRONGEST' | 'LOWEST_AC' | 'CASTER_FIRST';
 
 interface CombatParams {
   combatStance: CombatStance;
@@ -29,6 +33,9 @@ interface CombatParams {
   abilityPriorityQueue: string[];
   itemUsageRules: Record<string, unknown>;
   pvpLootBehavior: string;
+  travelEngagementMode: TravelEngagementMode;
+  travelFleeMaxMonsterLevel: number | null;
+  targetSelectionStrategy: TargetSelectionStrategy;
 }
 
 // ---------------------------------------------------------------------------
@@ -79,6 +86,21 @@ const PVP_LOOT_OPTIONS = [
   { value: 'TAKE_NOTHING', label: 'Take nothing' },
 ];
 
+const ENGAGEMENT_MODES: { value: TravelEngagementMode; label: string; description: string }[] = [
+  { value: 'ALWAYS_FIGHT', label: 'Always Fight', description: 'Engage every road encounter' },
+  { value: 'FIGHT_IF_WINNABLE', label: 'Fight if Winnable', description: 'Flee monsters 5+ levels above you or packs > 1.5× your level' },
+  { value: 'FLEE_IF_DANGEROUS', label: 'Flee if Dangerous', description: 'Flee monsters 3+ levels above you or above your level cap' },
+  { value: 'ALWAYS_FLEE', label: 'Always Flee', description: 'Attempt to flee every encounter before combat' },
+];
+
+const TARGET_STRATEGIES: { value: TargetSelectionStrategy; label: string; description: string }[] = [
+  { value: 'FIRST', label: 'First', description: 'Attack the first enemy in turn order' },
+  { value: 'WEAKEST', label: 'Weakest', description: 'Focus fire on the lowest HP enemy' },
+  { value: 'STRONGEST', label: 'Strongest', description: 'Attack the highest HP enemy' },
+  { value: 'LOWEST_AC', label: 'Lowest AC', description: 'Target the easiest enemy to hit' },
+  { value: 'CASTER_FIRST', label: 'Caster First', description: 'Prioritize spellcasters, then weakest' },
+];
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -100,6 +122,9 @@ export default function CombatParameterPanel() {
   const [roundLimit, setRoundLimit] = useState(10);
   const [neverRetreat, setNeverRetreat] = useState(false);
   const [pvpLoot, setPvpLoot] = useState('TAKE_GOLD');
+  const [engagementMode, setEngagementMode] = useState<TravelEngagementMode>('ALWAYS_FIGHT');
+  const [fleeMaxLevel, setFleeMaxLevel] = useState<number | null>(null);
+  const [targetStrategy, setTargetStrategy] = useState<TargetSelectionStrategy>('FIRST');
 
   // Sync from server
   useEffect(() => {
@@ -111,6 +136,9 @@ export default function CombatParameterPanel() {
       setRoundLimit(p.retreatRoundLimit ?? 10);
       setNeverRetreat(p.neverRetreat ?? false);
       setPvpLoot(p.pvpLootBehavior ?? 'TAKE_GOLD');
+      setEngagementMode(p.travelEngagementMode ?? 'ALWAYS_FIGHT');
+      setFleeMaxLevel(p.travelFleeMaxMonsterLevel ?? null);
+      setTargetStrategy(p.targetSelectionStrategy ?? 'FIRST');
     }
   }, [paramsData]);
 
@@ -123,6 +151,9 @@ export default function CombatParameterPanel() {
         retreatRoundLimit: roundLimit,
         neverRetreat,
         pvpLootBehavior: pvpLoot,
+        travelEngagementMode: engagementMode,
+        travelFleeMaxMonsterLevel: fleeMaxLevel,
+        targetSelectionStrategy: targetStrategy,
       });
       return res.data;
     },
@@ -269,6 +300,93 @@ export default function CombatParameterPanel() {
             </label>
           ))}
         </div>
+      </div>
+
+      {/* Travel Behavior */}
+      <div>
+        <p className="text-[10px] text-realm-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <MapPin className="w-3 h-3" />
+          Travel Behavior
+        </p>
+        <div className="space-y-1">
+          {ENGAGEMENT_MODES.map((opt) => (
+            <label
+              key={opt.value}
+              className={`flex items-start gap-2 p-2 rounded-sm cursor-pointer transition-colors
+                ${engagementMode === opt.value ? 'bg-realm-bg-800 border border-realm-gold-500/30' : 'hover:bg-realm-bg-800 border border-transparent'}`}
+            >
+              <input
+                type="radio"
+                name="engagementMode"
+                checked={engagementMode === opt.value}
+                onChange={() => setEngagementMode(opt.value)}
+                className="w-3.5 h-3.5 mt-0.5 border-realm-border bg-realm-bg-900 text-realm-gold-400 focus:ring-realm-gold-500 focus:ring-offset-0"
+              />
+              <div>
+                <span className="text-xs text-realm-text-secondary">{opt.label}</span>
+                <p className="text-[10px] text-realm-text-muted">{opt.description}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+
+        {engagementMode === 'FLEE_IF_DANGEROUS' && (
+          <div className="mt-3 p-3 bg-realm-bg-800 rounded-lg">
+            <div className="flex justify-between mb-1">
+              <span className="text-xs text-realm-text-secondary">Monster Level Cap</span>
+              <span className="text-xs text-realm-gold-400 font-display">
+                {fleeMaxLevel ?? 'None'}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={50}
+              step={1}
+              value={fleeMaxLevel ?? 50}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                setFleeMaxLevel(v >= 50 ? null : v);
+              }}
+              className="w-full h-1.5 bg-realm-bg-900 rounded-full appearance-none cursor-pointer accent-realm-gold-400"
+            />
+            <p className="text-[10px] text-realm-text-muted mt-1">
+              Flee from monsters above this level. Set to max to disable.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Combat Targeting */}
+      <div>
+        <p className="text-[10px] text-realm-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <Crosshair className="w-3 h-3" />
+          Target Selection
+        </p>
+        <div className="space-y-1">
+          {TARGET_STRATEGIES.map((opt) => (
+            <label
+              key={opt.value}
+              className={`flex items-start gap-2 p-2 rounded-sm cursor-pointer transition-colors
+                ${targetStrategy === opt.value ? 'bg-realm-bg-800 border border-realm-gold-500/30' : 'hover:bg-realm-bg-800 border border-transparent'}`}
+            >
+              <input
+                type="radio"
+                name="targetStrategy"
+                checked={targetStrategy === opt.value}
+                onChange={() => setTargetStrategy(opt.value)}
+                className="w-3.5 h-3.5 mt-0.5 border-realm-border bg-realm-bg-900 text-realm-gold-400 focus:ring-realm-gold-500 focus:ring-offset-0"
+              />
+              <div>
+                <span className="text-xs text-realm-text-secondary">{opt.label}</span>
+                <p className="text-[10px] text-realm-text-muted">{opt.description}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+        <p className="text-[10px] text-realm-text-muted mt-2 px-1">
+          CC abilities always target the highest-level enemy regardless of this setting.
+        </p>
       </div>
 
       {/* Save button */}

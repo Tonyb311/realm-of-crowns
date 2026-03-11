@@ -21,6 +21,7 @@ import {
   createMonsterCombatant,
   resolveTurn,
   calculateDeathPenalty,
+  calculateFleeDC,
 } from './combat-engine';
 import type {
   CharacterStats,
@@ -59,7 +60,7 @@ import {
   type CombatantParams,
   type TickCombatOutcome,
 } from '../services/tick-combat-resolver';
-import { buildCombatParams } from '../services/combat-presets';
+import { buildCombatParams, STANCE_MODIFIERS } from '../services/combat-presets';
 import { createRacialCombatTracker } from '../services/racial-combat-abilities';
 
 // ---------------------------------------------------------------------------
@@ -784,6 +785,77 @@ export async function resolveRoadEncounter(
   // Monster(s) get default aggressive presets (neverRetreat, no abilities queue)
   for (const mc of monsterCombatants) {
     allParams.set(mc.id, createDefaultMonsterParams(mc.id, mc));
+  }
+
+  // 6a. Pre-combat flee evaluation based on travel engagement mode
+  const engagementMode = combatParams.presets.travelEngagementMode;
+  if (engagementMode !== 'ALWAYS_FIGHT') {
+    let shouldFlee = false;
+
+    if (engagementMode === 'ALWAYS_FLEE') {
+      shouldFlee = true;
+    } else if (engagementMode === 'FLEE_IF_DANGEROUS') {
+      const maxMonsterLevel = Math.max(...selectedMonsters.map(sm => sm.row.level));
+      const levelCap = combatParams.presets.travelFleeMaxMonsterLevel;
+      shouldFlee = maxMonsterLevel > character.level + 3
+        || (levelCap != null && maxMonsterLevel > levelCap);
+    } else if (engagementMode === 'FIGHT_IF_WINNABLE') {
+      const maxMonsterLevel = Math.max(...selectedMonsters.map(sm => sm.row.level));
+      const totalPackLevel = selectedMonsters.reduce((sum, sm) => sum + sm.row.level, 0);
+      shouldFlee = maxMonsterLevel > character.level + 5
+        || totalPackLevel > character.level * 1.5;
+    }
+
+    if (shouldFlee) {
+      // Roll pre-combat flee save
+      const fleeDC = calculateFleeDC(
+        selectedMonsters.map(sm => ({ level: sm.row.level })),
+        character.level,
+        false, // not slowed pre-combat
+      );
+
+      // Gather flee bonus manually (no shared helper — duplicated sources acceptable per design)
+      let fleeBonus = 0;
+      const stanceMods = STANCE_MODIFIERS[combatParams.presets.stance];
+      if (stanceMods.fleeBonus) fleeBonus += stanceMods.fleeBonus;
+      const featFleeBonus = computeFeatBonus(featIds, 'fleeBonus');
+      if (featFleeBonus) fleeBonus += featFleeBonus;
+      const itemFleeBonus = (equipTotals.totalStatBonuses as Record<string, number>).fleeBonus ?? 0;
+      if (itemFleeBonus) fleeBonus += itemFleeBonus;
+
+      const fleeRoll = Math.floor(Math.random() * 20) + 1;
+      const totalFleeRoll = fleeRoll + fleeBonus;
+      const fleeSuccess = fleeRoll === 20 || (fleeRoll !== 1 && totalFleeRoll >= fleeDC);
+
+      logger.info({
+        characterId,
+        engagementMode,
+        monsterName: monster.name,
+        monsterLevel: monster.level,
+        monsterCount: selectedMonsters.length,
+        fleeDC,
+        fleeRoll,
+        fleeBonus,
+        totalFleeRoll,
+        fleeSuccess,
+      }, 'Pre-combat flee attempt');
+
+      if (fleeSuccess) {
+        return {
+          encountered: true,
+          won: false,
+          fled: true,
+          fleeDelayTicks: 0,
+          monsterName: monster.name,
+          monsterLevel: monster.level,
+          xpAwarded: 0,
+          goldAwarded: 0,
+          totalRounds: 0,
+          combatRounds: [],
+        };
+      }
+      // Failed pre-combat flee — proceed to normal combat
+    }
   }
 
   // 6b. Resolve combat using the unified tick combat resolver

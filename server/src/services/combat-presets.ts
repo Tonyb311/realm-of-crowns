@@ -14,6 +14,8 @@ import type { ItemRarity } from '@shared/enums';
 // ---- Types ----
 
 export type CombatStance = 'AGGRESSIVE' | 'BALANCED' | 'DEFENSIVE' | 'EVASIVE';
+export type TravelEngagementMode = 'ALWAYS_FIGHT' | 'FIGHT_IF_WINNABLE' | 'FLEE_IF_DANGEROUS' | 'ALWAYS_FLEE';
+export type TargetSelectionStrategy = 'FIRST' | 'WEAKEST' | 'STRONGEST' | 'LOWEST_AC' | 'CASTER_FIRST';
 
 export interface RetreatConditions {
   hpThreshold: number;         // Retreat when HP drops below this percentage (0-100)
@@ -48,6 +50,9 @@ export interface CombatPresets {
   pvpLootBehavior: PvPLootBehavior;
   healingPotionThreshold: number;
   maxHealingPotionsPerCombat: number;
+  travelEngagementMode: TravelEngagementMode;
+  travelFleeMaxMonsterLevel: number | null;
+  targetSelectionStrategy: TargetSelectionStrategy;
 }
 
 export interface StanceModifiers {
@@ -80,6 +85,9 @@ const DEFAULT_PRESETS: CombatPresets = {
   pvpLootBehavior: 'TAKE_GOLD',
   healingPotionThreshold: 50,
   maxHealingPotionsPerCombat: 1,
+  travelEngagementMode: 'ALWAYS_FIGHT',
+  travelFleeMaxMonsterLevel: null,
+  targetSelectionStrategy: 'FIRST',
 };
 
 // ---- Functions ----
@@ -100,6 +108,9 @@ export async function getCombatPresets(characterId: string): Promise<CombatPrese
     pvpLootBehavior: string | null;
     healingPotionThreshold: number | null;
     maxHealingPotionsPerCombat: number | null;
+    travelEngagementMode: string | null;
+    travelFleeMaxMonsterLevel: number | null;
+    targetSelectionStrategy: string | null;
   }>(sql`
     SELECT
       "combat_stance" as "combatStance",
@@ -111,7 +122,10 @@ export async function getCombatPresets(characterId: string): Promise<CombatPrese
       "item_usage_rules" as "itemUsageRules",
       "pvp_loot_behavior" as "pvpLootBehavior",
       "healing_potion_threshold" as "healingPotionThreshold",
-      "max_healing_potions_per_combat" as "maxHealingPotionsPerCombat"
+      "max_healing_potions_per_combat" as "maxHealingPotionsPerCombat",
+      "travel_engagement_mode" as "travelEngagementMode",
+      "travel_flee_max_monster_level" as "travelFleeMaxMonsterLevel",
+      "target_selection_strategy" as "targetSelectionStrategy"
     FROM "characters"
     WHERE id = ${characterId}
     LIMIT 1
@@ -141,6 +155,9 @@ export async function getCombatPresets(characterId: string): Promise<CombatPrese
     pvpLootBehavior: (c.pvpLootBehavior as PvPLootBehavior) ?? DEFAULT_PRESETS.pvpLootBehavior,
     healingPotionThreshold: c.healingPotionThreshold ?? DEFAULT_PRESETS.healingPotionThreshold,
     maxHealingPotionsPerCombat: c.maxHealingPotionsPerCombat ?? DEFAULT_PRESETS.maxHealingPotionsPerCombat,
+    travelEngagementMode: (c.travelEngagementMode as TravelEngagementMode) ?? DEFAULT_PRESETS.travelEngagementMode,
+    travelFleeMaxMonsterLevel: c.travelFleeMaxMonsterLevel ?? DEFAULT_PRESETS.travelFleeMaxMonsterLevel,
+    targetSelectionStrategy: (c.targetSelectionStrategy as TargetSelectionStrategy) ?? DEFAULT_PRESETS.targetSelectionStrategy,
   };
 }
 
@@ -179,6 +196,15 @@ export async function updateCombatPresets(
   if (presets.pvpLootBehavior !== undefined) {
     updates.pvp_loot_behavior = presets.pvpLootBehavior;
   }
+  if (presets.travelEngagementMode !== undefined) {
+    updates.travel_engagement_mode = presets.travelEngagementMode;
+  }
+  if (presets.travelFleeMaxMonsterLevel !== undefined) {
+    updates.travel_flee_max_monster_level = presets.travelFleeMaxMonsterLevel;
+  }
+  if (presets.targetSelectionStrategy !== undefined) {
+    updates.target_selection_strategy = presets.targetSelectionStrategy;
+  }
 
   if (Object.keys(updates).length === 0) return;
 
@@ -191,7 +217,10 @@ export async function updateCombatPresets(
         "never_retreat" = COALESCE(${presets.retreat?.neverRetreat ?? null}, "never_retreat"),
         "pvp_loot_behavior" = COALESCE(${presets.pvpLootBehavior ?? null}, "pvp_loot_behavior"),
         "healing_potion_threshold" = COALESCE(${presets.healingPotionThreshold ?? null}, "healing_potion_threshold"),
-        "max_healing_potions_per_combat" = COALESCE(${presets.maxHealingPotionsPerCombat ?? null}, "max_healing_potions_per_combat")
+        "max_healing_potions_per_combat" = COALESCE(${presets.maxHealingPotionsPerCombat ?? null}, "max_healing_potions_per_combat"),
+        "travel_engagement_mode" = COALESCE(${presets.travelEngagementMode ?? null}::"TravelEngagementMode", "travel_engagement_mode"),
+        "travel_flee_max_monster_level" = COALESCE(${presets.travelFleeMaxMonsterLevel ?? null}, "travel_flee_max_monster_level"),
+        "target_selection_strategy" = COALESCE(${presets.targetSelectionStrategy ?? null}::"TargetSelectionStrategy", "target_selection_strategy")
     WHERE id = ${characterId}
   `);
 

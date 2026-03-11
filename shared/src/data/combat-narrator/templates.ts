@@ -601,6 +601,24 @@ export const FLEE_FAILURE: string[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Pre-Combat Flee Templates
+// ---------------------------------------------------------------------------
+
+export const PRE_COMBAT_FLEE_SUCCESS: string[] = [
+  'spots {target} ahead on the road and slips away unnoticed.',
+  'catches the scent of {target} on the wind and takes a hidden detour.',
+  'notices {target} blocking the path and quietly backtracks around them.',
+  'hears {target} up ahead and finds an alternate route through the brush.',
+];
+
+export const PRE_COMBAT_FLEE_FAILURE: string[] = [
+  'tries to sneak past {target} but is spotted and drawn into combat.',
+  'attempts to detour around {target} but stumbles into their hunting grounds.',
+  'ducks behind cover to avoid {target}, but a snapping twig gives them away.',
+  'tries to slip past {target} unnoticed, but the road offers no escape.',
+];
+
+// ---------------------------------------------------------------------------
 // Status Effect Templates (apply / expire)
 // ---------------------------------------------------------------------------
 

@@ -299,6 +299,41 @@ function CombatContent() {
           ['Evasive', '-4', '+4', '+4', 'Fleeing, avoiding road encounters'],
         ]}
       />
+
+      <SectionSubheading>Travel Behavior</SectionSubheading>
+      <p className="text-realm-text-muted text-xs mb-2">
+        Control how your character responds to road encounters during travel. Your engagement mode
+        determines whether you fight or attempt to flee before combat begins.
+      </p>
+      <MechanicsTable
+        headers={['Mode', 'Behavior']}
+        rows={[
+          [<Highlight key="af">Always Fight</Highlight>, 'Engage every road encounter (default)'],
+          ['Fight if Winnable', 'Flee monsters 5+ levels above you or packs with total level > 1.5× yours'],
+          ['Flee if Dangerous', 'Flee monsters 3+ levels above you. Optional monster level cap.'],
+          ['Always Flee', 'Attempt pre-combat flee on every encounter'],
+        ]}
+      />
+      <p className="text-realm-text-muted text-xs mt-2">
+        Pre-combat flee uses the same flee save formula. On <Highlight>success</Highlight>, you arrive
+        at your destination immediately with no penalty. On <Warn>failure</Warn>, you enter normal combat.
+      </p>
+
+      <SectionSubheading>Target Selection</SectionSubheading>
+      <p className="text-realm-text-muted text-xs mb-2">
+        Choose how your character picks targets during combat. This affects basic attacks and
+        damage abilities — CC abilities always target the highest-level enemy.
+      </p>
+      <MechanicsTable
+        headers={['Strategy', 'Targets']}
+        rows={[
+          ['First', 'First enemy in turn order (default)'],
+          ['Weakest', 'Lowest HP enemy — focus fire to eliminate quickly'],
+          ['Strongest', 'Highest HP enemy — pick the toughest fight'],
+          ['Lowest AC', 'Enemy with the lowest armor — easiest to hit'],
+          ['Caster First', 'Prioritize spellcasters, then weakest remaining'],
+        ]}
+      />
     </Prose>
   );
 }
@@ -742,7 +777,8 @@ const SECTIONS: MechanicsSection[] = [
       'combat', 'fight', 'battle', 'attack', 'damage', 'initiative', 'dex',
       'armor', 'ac', 'pve', 'pvp', 'duel', 'death', 'flee', 'status',
       'poisoned', 'stunned', 'blessed', 'burning', 'frozen', 'xp', 'monster',
-      'wager', 'leaderboard', 'durability', 'd20',
+      'wager', 'leaderboard', 'durability', 'd20', 'engagement', 'target',
+      'strategy', 'caster', 'weakest', 'strongest', 'preset',
     ],
     content: <CombatContent />,
   },

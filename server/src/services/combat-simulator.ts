@@ -729,6 +729,9 @@ export function buildDefaultPresets(className: string, level: number, options?: 
     pvpLootBehavior: 'TAKE_NOTHING',
     healingPotionThreshold: 50,
     maxHealingPotionsPerCombat: 1,
+    travelEngagementMode: 'ALWAYS_FIGHT',
+    travelFleeMaxMonsterLevel: null,
+    targetSelectionStrategy: 'FIRST',
   };
 }
 

@@ -138,6 +138,9 @@ const updateCombatParamsSchema = z.object({
   abilityPriorityQueue: z.array(z.string()).optional(),
   itemUsageRules: z.record(z.string(), z.unknown()).optional(),
   pvpLootBehavior: z.string().optional(),
+  travelEngagementMode: z.enum(['ALWAYS_FIGHT', 'FIGHT_IF_WINNABLE', 'FLEE_IF_DANGEROUS', 'ALWAYS_FLEE']).optional(),
+  travelFleeMaxMonsterLevel: z.number().int().min(1).max(99).nullable().optional(),
+  targetSelectionStrategy: z.enum(['FIRST', 'WEAKEST', 'STRONGEST', 'LOWEST_AC', 'CASTER_FIRST']).optional(),
 });
 
 router.put('/combat-params', authGuard, characterGuard, validate(updateCombatParamsSchema), async (req: AuthenticatedRequest, res: Response) => {
@@ -155,6 +158,9 @@ router.put('/combat-params', authGuard, characterGuard, validate(updateCombatPar
       abilityPriorityQueue: params.abilityPriorityQueue,
       itemUsageRules: params.itemUsageRules,
       pvpLootBehavior: params.pvpLootBehavior,
+      travelEngagementMode: params.travelEngagementMode,
+      travelFleeMaxMonsterLevel: params.travelFleeMaxMonsterLevel,
+      targetSelectionStrategy: params.targetSelectionStrategy,
     }).where(eq(characters.id, character.id));
 
     return res.json({ combatParams: params });
@@ -184,6 +190,9 @@ router.get('/combat-params', authGuard, characterGuard, async (req: Authenticate
         abilityPriorityQueue: true,
         itemUsageRules: true,
         pvpLootBehavior: true,
+        travelEngagementMode: true,
+        travelFleeMaxMonsterLevel: true,
+        targetSelectionStrategy: true,
       },
     });
 

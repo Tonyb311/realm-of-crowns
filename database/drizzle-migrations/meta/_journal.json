@@ -57,6 +57,13 @@
       "when": 1773619200000,
       "tag": "0007_add_deletion_logs",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1773705600000,
+      "tag": "0008_add_travel_presets",
+      "breakpoints": true
     }
   ]
 }

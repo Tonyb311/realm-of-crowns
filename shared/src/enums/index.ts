@@ -150,6 +150,16 @@ export const COMBAT_STANCES = [
 ] as const;
 export type CombatStance = typeof COMBAT_STANCES[number];
 
+export const TRAVEL_ENGAGEMENT_MODES = [
+  'ALWAYS_FIGHT', 'FIGHT_IF_WINNABLE', 'FLEE_IF_DANGEROUS', 'ALWAYS_FLEE',
+] as const;
+export type TravelEngagementMode = typeof TRAVEL_ENGAGEMENT_MODES[number];
+
+export const TARGET_SELECTION_STRATEGIES = [
+  'FIRST', 'WEAKEST', 'STRONGEST', 'LOWEST_AC', 'CASTER_FIRST',
+] as const;
+export type TargetSelectionStrategy = typeof TARGET_SELECTION_STRATEGIES[number];
+
 export const COMBAT_SESSION_STATUSES = [
   'PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED',
 ] as const;
