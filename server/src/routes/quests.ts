@@ -11,6 +11,7 @@ import { AuthenticatedRequest } from '../types/express';
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { calculateWeightState } from '../services/weight-calculator';
+import { computeFeatBonus } from '@shared/data/feats';
 
 const router = Router();
 
@@ -441,12 +442,17 @@ router.post('/complete', authGuard, characterGuard, requireTown, validate(comple
     // Grant rewards in a transaction
     const rewards = qp.quest.rewards as { xp: number; gold: number; items?: string[] };
 
+    // Apply feat bonuses to XP and gold
+    const questFeats = (character.feats as string[]) ?? [];
+    const questXp = Math.round(rewards.xp * (1 + computeFeatBonus(questFeats, 'xpBonus')));
+    const questGold = Math.round(rewards.gold * (1 + computeFeatBonus(questFeats, 'goldBonus')));
+
     await db.transaction(async (tx) => {
       // Grant XP and gold
       await tx.update(characters)
         .set({
-          xp: sql`${characters.xp} + ${rewards.xp}`,
-          gold: sql`${characters.gold} + ${rewards.gold}`,
+          xp: sql`${characters.xp} + ${questXp}`,
+          gold: sql`${characters.gold} + ${questGold}`,
         })
         .where(eq(characters.id, character.id));
 

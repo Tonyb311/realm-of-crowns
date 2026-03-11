@@ -10,6 +10,7 @@ import { getGameDay, getTodayTickDate } from '../lib/game-day';
 import { isSameAccount } from '../lib/alt-guard';
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
+import { computeFeatBonus } from '@shared/data/feats';
 
 const router = Router();
 
@@ -90,7 +91,9 @@ router.post('/perform', authGuard, requireDailyAction('SERVICE'), async (req: Au
 
     // Award XP: base 8 + tier bonus
     const professionXp = 8 + (TIER_XP_BONUS[profession.tier] || 0);
-    const characterXp = Math.floor(professionXp / 2);
+    const baseCharXp = Math.floor(professionXp / 2);
+    const serviceFeats = (character.feats as string[]) ?? [];
+    const characterXp = Math.round(baseCharXp * (1 + computeFeatBonus(serviceFeats, 'xpBonus')));
 
     await db.update(playerProfessions)
       .set({ xp: sql`${playerProfessions.xp} + ${professionXp}` })

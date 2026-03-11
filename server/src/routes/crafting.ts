@@ -38,6 +38,7 @@ import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { onCraftItem } from '../services/quest-triggers';
 import { calculateWeightState } from '../services/weight-calculator';
+import { computeFeatBonus } from '@shared/data/feats';
 // emitCraftingReady is in '../socket/events' — called by background autocomplete job
 
 type ProfessionTier = typeof professionTierEnum.enumValues[number];
@@ -575,6 +576,7 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
     const primaryStatKey = profDef?.primaryStat?.toLowerCase() ?? 'int';
     const statModifier = getModifier(characterStats[primaryStatKey] ?? 10);
 
+    const craftFeats = (character.feats as string[]) ?? [];
     const { roll: diceRoll, total, quality: qualityName } = qualityRoll(
       getProficiencyBonus(character.level),
       statModifier,
@@ -583,6 +585,7 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
       racialQuality.qualityBonus,
       professionTierBonus,
       0, // ingredientQualityBonus — ingredients already consumed at collect time
+      computeFeatBonus(craftFeats, 'professionQualityBonus'),
     );
     const quality = QUALITY_MAP[qualityName] ?? 'COMMON';
 
@@ -641,8 +644,9 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
       );
     }
 
-    // Grant character XP
-    await db.update(characters).set({ xp: sql`${characters.xp} + ${xpGain}` }).where(eq(characters.id, character.id));
+    // Grant character XP (with feat bonus)
+    const finalCraftXp = Math.round(xpGain * (1 + computeFeatBonus(craftFeats, 'xpBonus')));
+    await db.update(characters).set({ xp: sql`${characters.xp} + ${finalCraftXp}` }).where(eq(characters.id, character.id));
 
     await checkLevelUp(character.id);
 

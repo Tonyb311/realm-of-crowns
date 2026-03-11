@@ -146,6 +146,7 @@ export function emitLevelUp(characterId: string, data: {
     abilitiesGranted: string[];
   };
   tier0Pending?: number;
+  featPending?: boolean;
 }) {
   getIO().to(`user:${characterId}`).emit('player:level-up', data);
 }
@@ -389,6 +390,27 @@ export function emitTickComplete(data: {
   timestamp: string;
 }) {
   getIO().emit('tick:complete', data);
+}
+
+// ---------------------------------------------------------------------------
+// PvP challenge events
+// ---------------------------------------------------------------------------
+
+export function emitChallengeExpired(characterId: string, data: {
+  sessionId: string;
+  type: string;
+}) {
+  if (!ioInstance) return;
+  ioInstance.to(`user:${characterId}`).emit('combat:challenge-expired', data);
+}
+
+export function emitChallengeDeclined(characterId: string, data: {
+  sessionId: string;
+  type: string;
+  declinedBy: string;
+}) {
+  if (!ioInstance) return;
+  ioInstance.to(`user:${characterId}`).emit('combat:challenge-declined', data);
 }
 
 // Governance events (moved from index.ts to break circular import)

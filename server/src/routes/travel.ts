@@ -28,6 +28,7 @@ import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { getNextTickTime } from '../lib/game-day';
 import { calculateWeightState } from '../services/weight-calculator';
+import { computeFeatBonus } from '@shared/data/feats';
 
 const router = Router();
 
@@ -306,6 +307,9 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
           });
         }
 
+        // Group speed: use leader's feat bonus (character is party leader)
+        const groupSpeedMod = 1 + computeFeatBonus((character.feats as string[]) ?? [], 'travelSpeedBonus');
+
         const [groupState] = await tx.insert(groupTravelStates).values({
           id: crypto.randomUUID(),
           groupId: travelGroup.id,
@@ -313,7 +317,7 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
           currentNodeIndex: 0,
           direction,
           status: 'traveling',
-          speedModifier: 1,
+          speedModifier: groupSpeedMod,
         }).returning();
 
         // Update all member characters
@@ -359,6 +363,8 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
     // ---- SOLO TRAVEL (no party) ----
     const weightState = await calculateWeightState(character.id);
 
+    const soloSpeedMod = 1 + computeFeatBonus((character.feats as string[]) ?? [], 'travelSpeedBonus');
+
     const travelState = await db.transaction(async (tx) => {
       const [state] = await tx.insert(characterTravelStates).values({
         id: crypto.randomUUID(),
@@ -367,7 +373,7 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
         currentNodeIndex: 0,
         direction,
         status: 'traveling',
-        speedModifier: 1,
+        speedModifier: soloSpeedMod,
       }).returning();
 
       await tx.update(characters).set({
@@ -1331,6 +1337,9 @@ router.post('/group/:groupId/start', authGuard, characterGuard, validate(startGr
 
     const memberCharacterIds = group.travelGroupMembers.map((m: any) => m.character.id);
 
+    // Leader's feat speed bonus for group travel
+    const groupStartSpeedMod = 1 + computeFeatBonus((character.feats as string[]) ?? [], 'travelSpeedBonus');
+
     const gts = await db.transaction(async (tx) => {
       // Create group travel state
       const [groupState] = await tx.insert(groupTravelStates).values({
@@ -1340,7 +1349,7 @@ router.post('/group/:groupId/start', authGuard, characterGuard, validate(startGr
         currentNodeIndex: 0,
         direction,
         status: 'traveling',
-        speedModifier: 1,
+        speedModifier: groupStartSpeedMod,
       }).returning();
 
       // Update group status

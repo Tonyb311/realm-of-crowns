@@ -49,7 +49,7 @@ import { getModifier } from '@shared/types/combat';
 import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
 import { CLASS_SAVE_PROFICIENCIES, CLASS_ARMOR_TYPE, getAttacksPerAction } from '@shared/data/combat-constants';
 import { computeFinalAC } from '@shared/utils/armor-conversion';
-import { hasFeatEffect } from '@shared/data/feats';
+import { hasFeatEffect, computeFeatBonus } from '@shared/data/feats';
 import {
   getCombatPresets,
   buildCombatParams,
@@ -1204,6 +1204,11 @@ export async function resolveNodePvE(
 
     // Process item drops (arcane reagents, etc.)
     await processItemDrops(db, characterId, lootTable);
+
+    // Apply feat bonuses to XP and gold
+    const tickFeats = (character.feats as string[]) ?? [];
+    xpReward = Math.round(xpReward * (1 + computeFeatBonus(tickFeats, 'xpBonus')));
+    goldReward = Math.round(goldReward * (1 + computeFeatBonus(tickFeats, 'goldBonus')));
 
     // Apply rewards
     await db.update(characters).set({

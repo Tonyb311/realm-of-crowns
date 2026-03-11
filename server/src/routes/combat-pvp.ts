@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { db } from '../lib/db';
-import { eq, and, gt, gte, inArray, count } from 'drizzle-orm';
+import { eq, and, gt, gte } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import { characters, characterEquipment, combatSessions, combatLogs, combatParticipants, craftingActions, towns } from '@database/tables';
 import { validate } from '../middleware/validate';
@@ -21,10 +21,16 @@ import type {
   ItemInfo,
   CharacterStats,
 } from '@shared/types/combat';
+import { getModifier } from '@shared/types/combat';
 import { getProficiencyBonus } from '@shared/utils/bounded-accuracy';
-import { emitCombatResult } from '../socket/events';
+import { computeFinalAC } from '@shared/utils/armor-conversion';
+import { CLASS_SAVE_PROFICIENCIES, CLASS_ARMOR_TYPE, getAttacksPerAction } from '@shared/data/combat-constants';
+import { hasFeatEffect, computeFeatBonus } from '@shared/data/feats';
+import { emitCombatResult, emitChallengeDeclined } from '../socket/events';
 import { checkLevelUp } from '../services/progression';
 import { checkAchievements } from '../services/achievements';
+import { calculateEquipmentTotals } from '../services/item-stats';
+import { calculateWeightState } from '../services/weight-calculator';
 import { redis } from '../lib/redis';
 import { ACTION_XP } from '@shared/data/progression';
 import { isSameAccount } from '../lib/alt-guard';
@@ -32,7 +38,7 @@ import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { logPvpCombat, COMBAT_LOGGING_ENABLED } from '../lib/combat-logger';
 import { formatCombatLog } from '../lib/combat-narrator-formatter';
-import { applyClassWeaponStat } from '../lib/road-encounter';
+import { applyClassWeaponStat, applyConsumableBuffs } from '../lib/road-encounter';
 
 const router = Router();
 
@@ -143,6 +149,104 @@ async function getEquippedWeapon(characterId: string): Promise<WeaponInfo> {
     bonusDamage: (typeof stats.bonusDamage === 'number') ? stats.bonusDamage : 0,
     bonusAttack: (typeof stats.bonusAttack === 'number') ? stats.bonusAttack : 0,
   };
+}
+
+// ---- Full combatant builder (mirrors road-encounter pipeline) ----
+// TODO: Extract to shared combatant-builder service when road-encounter pipeline gets ability support
+
+interface CharacterRecord {
+  id: string;
+  name: string;
+  level: number;
+  health: number;
+  maxHealth: number;
+  stats: unknown;
+  race: string;
+  subRace: unknown;
+  class: string | null;
+  specialization?: string | null;
+  feats: unknown;
+  bonusSaveProficiencies: unknown;
+}
+
+async function buildFullCombatant(
+  characterId: string,
+  char: CharacterRecord,
+  team: number,
+  useCurrentHp: boolean,
+): Promise<import('@shared/types/combat').Combatant> {
+  const stats = (char.stats as CharacterStats) ?? { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
+
+  // Equipment: weapon + armor + stat bonuses
+  const rawWeapon = await getEquippedWeapon(characterId);
+  const weapon = applyClassWeaponStat(rawWeapon, char.class);
+  const equipTotals = await calculateEquipmentTotals(characterId);
+
+  const effectiveStats: CharacterStats = {
+    str: stats.str + (equipTotals.totalStatBonuses.strength ?? 0),
+    dex: stats.dex + (equipTotals.totalStatBonuses.dexterity ?? 0),
+    con: stats.con + (equipTotals.totalStatBonuses.constitution ?? 0),
+    int: stats.int + (equipTotals.totalStatBonuses.intelligence ?? 0),
+    wis: stats.wis + (equipTotals.totalStatBonuses.wisdom ?? 0),
+    cha: stats.cha + (equipTotals.totalStatBonuses.charisma ?? 0),
+  };
+
+  const charArmorType = CLASS_ARMOR_TYPE[char.class?.toLowerCase() ?? ''] ?? 'none';
+  const playerAC = computeFinalAC(equipTotals.totalAC, getModifier(effectiveStats.dex), charArmorType);
+
+  const hp = useCurrentHp ? char.health : char.maxHealth;
+  const combatant = createCharacterCombatant(
+    characterId,
+    char.name,
+    team,
+    effectiveStats,
+    char.level,
+    hp,
+    char.maxHealth,
+    playerAC,
+    weapon,
+    {},
+    getProficiencyBonus(char.level),
+  );
+
+  // Race and class fields
+  combatant.race = char.race.toLowerCase();
+  combatant.subRace = (char.subRace as any) ?? null;
+  combatant.characterClass = char.class?.toLowerCase() ?? null;
+  combatant.specialization = (char.specialization as string | null) ?? null;
+
+  // Save proficiencies
+  const featIds = (char.feats as string[]) ?? [];
+  combatant.saveProficiencies = [
+    ...(CLASS_SAVE_PROFICIENCIES[char.class?.toLowerCase() ?? ''] ?? []),
+    ...((char.bonusSaveProficiencies as string[]) ?? []),
+    ...(hasFeatEffect(featIds, 'bonusSaveProficiency') ? ['con'] : []),
+  ];
+
+  // Extra attacks and feats
+  combatant.extraAttacks = getAttacksPerAction(char.class ?? '', char.level);
+  combatant.featIds = featIds;
+
+  // Encumbrance penalties
+  const weightState = await calculateWeightState(characterId);
+  if (
+    weightState.encumbrance.attackPenalty !== 0 ||
+    weightState.encumbrance.acPenalty !== 0 ||
+    weightState.encumbrance.saveDcPenalty !== 0 ||
+    weightState.encumbrance.damageMultiplier !== 1
+  ) {
+    combatant.encumbrancePenalties = {
+      attackPenalty: weightState.encumbrance.attackPenalty,
+      acPenalty: weightState.encumbrance.acPenalty,
+      saveDcPenalty: weightState.encumbrance.saveDcPenalty,
+      damageMultiplier: weightState.encumbrance.damageMultiplier,
+    };
+  }
+
+  // Consumable buffs (potions, food, scrolls)
+  await applyConsumableBuffs(combatant, characterId);
+
+  return combatant;
 }
 
 // ---- Helpers ----
@@ -353,31 +457,12 @@ router.post(
         }
       }
 
-      // Build combatants for the engine
-      const combatants = session.combatParticipants.map((p: any) => {
-        const stats = (p.character.stats as unknown as CharacterStats) ?? {
-          str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10,
-        };
-
-        const combatant = createCharacterCombatant(
-          p.characterId,
-          p.character.name,
-          p.team,
-          stats,
-          p.character.level,
-          p.character.health,
-          p.character.maxHealth,
-          0, // equipmentAC — would need equipment lookup; 0 means compute from stats
-          null, // weapon — provided per action
-          {}, // spellSlots
-          getProficiencyBonus(p.character.level),
-        );
-        // Set race and class for racial ability resolution and narrator
-        (combatant as any).race = p.character.race.toLowerCase();
-        (combatant as any).subRace = p.character.subRace ?? null;
-        (combatant as any).characterClass = p.character.class?.toLowerCase() ?? null;
-        return combatant;
-      });
+      // Build combatants with full equipment pipeline (same as road encounters)
+      const combatants = await Promise.all(
+        session.combatParticipants.map((p: any) =>
+          buildFullCombatant(p.characterId, p.character as CharacterRecord, p.team, true)
+        )
+      );
 
       // Create combat state and roll initiative
       const combatState = createCombatState(sessionId, 'DUEL', combatants);
@@ -444,12 +529,19 @@ router.post(
         return res.status(400).json({ error: 'Challenge is no longer pending' });
       }
 
-      const sessionLog = session.log as { targetId: string };
+      const sessionLog = session.log as { challengerId: string; targetId: string };
       if (sessionLog.targetId !== character.id) {
         return res.status(403).json({ error: 'Only the challenged player can decline' });
       }
 
       await db.update(combatSessions).set({ status: 'CANCELLED', endedAt: new Date().toISOString() }).where(eq(combatSessions.id, sessionId));
+
+      // Notify the challenger that their challenge was declined
+      emitChallengeDeclined(sessionLog.challengerId, {
+        sessionId,
+        type: session.type,
+        declinedBy: character.name,
+      });
 
       return res.json({ session: { id: sessionId, status: 'CANCELLED' } });
     } catch (error) {
@@ -780,61 +872,36 @@ router.get(
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
       const skip = (page - 1) * limit;
 
-      // P1 #21 FIX: Count wins per character
-      // Drizzle doesn't support groupBy with nested relation filters the same way,
-      // so we fetch completed PvP participants with HP > 0 and aggregate in app
-      const allWinners = await db.query.combatParticipants.findMany({
-        where: gt(combatParticipants.currentHp, 0),
-        with: { combatSession: true },
-      });
+      // SQL aggregation query — replaces multi-query in-memory approach
+      const rows = await db.execute(sql`
+        SELECT
+          cp.character_id AS "characterId",
+          c.name,
+          c.level,
+          COUNT(*) FILTER (WHERE cs.log->>'winnerId' = cp.character_id) AS wins,
+          COUNT(*) AS total
+        FROM combat_participants cp
+        JOIN combat_sessions cs ON cs.id = cp.session_id
+        JOIN characters c ON c.id = cp.character_id
+        WHERE cs.type IN ('DUEL', 'ARENA', 'PVP')
+          AND cs.status = 'COMPLETED'
+        GROUP BY cp.character_id, c.name, c.level
+        ORDER BY wins DESC, total DESC
+        LIMIT ${limit} OFFSET ${skip}
+      `) as any;
 
-      // Filter to completed DUEL/ARENA sessions
-      const pvpWinners = allWinners.filter((p: any) =>
-        p.session && ['DUEL', 'ARENA'].includes(p.session.type) && p.session.status === 'COMPLETED'
-      );
-
-      // Count wins per character
-      const winCountMap = new Map<string, number>();
-      for (const p of pvpWinners) {
-        winCountMap.set(p.characterId, (winCountMap.get(p.characterId) ?? 0) + 1);
-      }
-
-      // Count total matches per character
-      const allPvpParticipants = await db.query.combatParticipants.findMany({
-        where: inArray(combatParticipants.characterId, [...winCountMap.keys()]),
-        with: { combatSession: true },
-      });
-      const totalCountMap = new Map<string, number>();
-      for (const p of allPvpParticipants) {
-        if ((p as any).session && ['DUEL', 'ARENA'].includes((p as any).session.type) && (p as any).session.status === 'COMPLETED') {
-          totalCountMap.set(p.characterId, (totalCountMap.get(p.characterId) ?? 0) + 1);
-        }
-      }
-
-      // Sort by wins descending and paginate
-      const sorted = [...winCountMap.entries()].sort((a, b) => b[1] - a[1]);
-      const pageEntries = sorted.slice(skip, skip + limit);
-      const charIds = pageEntries.map(([id]) => id);
-
-      // Fetch character names for the leaderboard entries
-      const chars = charIds.length > 0 ? await db.query.characters.findMany({
-        where: inArray(characters.id, charIds),
-        columns: { id: true, name: true, level: true },
-      }) : [];
-      const charMap = new Map(chars.map((c) => [c.id, c]));
-
-      const leaderboard = pageEntries.map(([characterId, wins]) => {
-        const char = charMap.get(characterId);
-        const totalMatches = totalCountMap.get(characterId) ?? wins;
-        const losses = totalMatches - wins;
+      const leaderboard = (rows.rows ?? rows).map((r: any) => {
+        const wins = Number(r.wins);
+        const total = Number(r.total);
+        const losses = total - wins;
         return {
-          id: characterId,
-          name: char?.name ?? 'Unknown',
-          level: char?.level ?? 0,
+          id: r.characterId,
+          name: r.name ?? 'Unknown',
+          level: r.level ?? 0,
           wins,
           losses,
-          totalMatches,
-          winRate: totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0,
+          totalMatches: total,
+          winRate: total > 0 ? Math.round((wins / total) * 100) : 0,
         };
       });
 
@@ -870,12 +937,12 @@ async function finalizePvpMatch(
     targetId: string;
     wager: number;
     winnerId?: string;
+    partialWager?: boolean;
   };
   const wager = sessionLog.wager ?? 0;
 
   // Calculate rewards
   const xpReward = XP_PER_OPPONENT_LEVEL * loser.level;
-  const wagerWinnings = wager > 0 ? Math.floor(wager * 2 * (1 - WAGER_TAX_RATE)) : 0;
 
   // Update session log with winner
   sessionLog.winnerId = winner.id;
@@ -888,16 +955,52 @@ async function finalizePvpMatch(
       log: sessionLog as any,
     }).where(eq(combatSessions.id, sessionId));
 
-    // Winner: grant XP + wager winnings, heal to full
+    if (wager > 0) {
+      // Lock both rows to prevent concurrent modification (Bug 2 fix)
+      const loserResult = await tx.execute(
+        sql`SELECT gold FROM characters WHERE id = ${loser.id} FOR UPDATE`
+      );
+      const loserRow = (loserResult.rows ?? loserResult)[0] as any;
+      await tx.execute(
+        sql`SELECT gold FROM characters WHERE id = ${winner.id} FOR UPDATE`
+      );
+
+      // Cap transfer at loser's current gold — winner may get less than full wager
+      const loserGold: number = loserRow?.gold ?? 0;
+      const actualTransfer = Math.min(wager, loserGold);
+      const wagerWinnings = Math.floor(actualTransfer * 2 * (1 - WAGER_TAX_RATE));
+
+      if (actualTransfer < wager) {
+        sessionLog.partialWager = true;
+        // Re-write log with partial wager flag
+        await tx.update(combatSessions).set({
+          log: sessionLog as any,
+        }).where(eq(combatSessions.id, sessionId));
+      }
+
+      // Winner: grant wager winnings (their own stake back + winnings minus tax)
+      await tx.update(characters).set({
+        gold: sql`${characters.gold} + ${wagerWinnings - actualTransfer}`,
+      }).where(eq(characters.id, winner.id));
+
+      // Loser: deduct capped wager (never below 0)
+      await tx.update(characters).set({
+        gold: sql`${characters.gold} - ${actualTransfer}`,
+      }).where(eq(characters.id, loser.id));
+    }
+
+    // Apply feat bonus to XP
+    const winnerChar = await tx.query.characters.findFirst({ where: eq(characters.id, winner.id), columns: { feats: true } });
+    const pvpXp = Math.round(xpReward * (1 + computeFeatBonus((winnerChar?.feats as string[]) ?? [], 'xpBonus')));
+
+    // Winner: grant XP, heal to full
     await tx.update(characters).set({
-      xp: sql`${characters.xp} + ${xpReward}`,
-      gold: wager > 0 ? sql`${characters.gold} + ${wagerWinnings - wager}` : undefined,
+      xp: sql`${characters.xp} + ${pvpXp}`,
       health: winner.maxHp,
     }).where(eq(characters.id, winner.id));
 
-    // Loser: deduct wager, heal to full
+    // Loser: heal to full
     await tx.update(characters).set({
-      gold: wager > 0 ? sql`${characters.gold} - ${wager}` : undefined,
       health: loser.maxHp,
     }).where(eq(characters.id, loser.id));
   });
@@ -1152,31 +1255,12 @@ router.post(
         return res.status(403).json({ error: 'Only the challenged player can accept' });
       }
 
-      // Build combatants for the engine
-      const combatants = (session.combatParticipants || []).map((p: any) => {
-        const stats = (p.character.stats as unknown as CharacterStats) ?? {
-          str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10,
-        };
-
-        const combatant = createCharacterCombatant(
-          p.characterId,
-          p.character.name,
-          p.team,
-          stats,
-          p.character.level,
-          p.character.health,
-          p.character.maxHealth,
-          0,
-          null,
-          {},
-          getProficiencyBonus(p.character.level),
-        );
-        // Set race and class for racial ability resolution and narrator
-        (combatant as any).race = p.character.race.toLowerCase();
-        (combatant as any).subRace = p.character.subRace ?? null;
-        (combatant as any).characterClass = p.character.class?.toLowerCase() ?? null;
-        return combatant;
-      });
+      // Build combatants with full equipment pipeline — spars use max HP (restored after)
+      const combatants = await Promise.all(
+        (session.combatParticipants || []).map((p: any) =>
+          buildFullCombatant(p.characterId, p.character as CharacterRecord, p.team, false)
+        )
+      );
 
       // Create combat state and roll initiative (use 'DUEL' engine type — DB tracks SPAR separately)
       const combatState = createCombatState(sessionId, 'DUEL', combatants);

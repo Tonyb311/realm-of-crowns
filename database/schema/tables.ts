@@ -1,4 +1,4 @@
-import { pgTable, varchar, timestamp, text, integer, uniqueIndex, index, foreignKey, doublePrecision, jsonb, date, boolean, type AnyPgColumn } from "drizzle-orm/pg-core"
+import { pgTable, varchar, timestamp, text, integer, real, uniqueIndex, index, foreignKey, doublePrecision, jsonb, date, boolean, type AnyPgColumn } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 import { actionStatus, beastClan, biomeType, buildingType, combatSessionStatus, combatStance, combatType, consumableSourceType, dailyActionStatus, dailyActionType, diplomacyActionType, dragonBloodline, electionPhase, electionStatus, electionType, elementalType, equipSlot, foodPriority, friendStatus, hungerState, impeachmentStatus, itemRarity, itemType, lawStatus, loanStatus, logLevel, messageChannel, npcRole, petitionStatus, professionTier, professionType, questType, race, raceTier, relationStatus, resourceType, targetSelectionStrategy, travelEngagementMode, treatyStatus, treatyType, warStatus } from './enums'
 
@@ -530,7 +530,7 @@ export const characterTravelStates = pgTable("character_travel_states", {
 	routeId: text("route_id").notNull(),
 	currentNodeIndex: integer("current_node_index").notNull(),
 	direction: text().default('forward').notNull(),
-	speedModifier: integer("speed_modifier").default(1).notNull(),
+	speedModifier: real("speed_modifier").default(1).notNull(),
 	startedAt: timestamp("started_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	lastTickAt: timestamp("last_tick_at", { precision: 3, mode: 'string' }),
 	status: text().default('traveling').notNull(),
@@ -1746,7 +1746,7 @@ export const groupTravelStates = pgTable("group_travel_states", {
 	routeId: text("route_id").notNull(),
 	currentNodeIndex: integer("current_node_index").notNull(),
 	direction: text().default('forward').notNull(),
-	speedModifier: integer("speed_modifier").default(1).notNull(),
+	speedModifier: real("speed_modifier").default(1).notNull(),
 	startedAt: timestamp("started_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	lastTickAt: timestamp("last_tick_at", { precision: 3, mode: 'string' }),
 	status: text().default('traveling').notNull(),

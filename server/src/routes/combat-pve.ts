@@ -35,6 +35,7 @@ import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { logPveCombat, COMBAT_LOGGING_ENABLED } from '../lib/combat-logger';
 import { processItemDrops } from '../lib/loot-items';
+import { computeFeatBonus } from '@shared/data/feats';
 import { COMBAT_TTL } from '@shared/data/combat-config';
 import { formatCombatLog } from '../lib/combat-narrator-formatter';
 import { applyClassWeaponStat } from '../lib/road-encounter';
@@ -490,7 +491,7 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
         const monster = await tx.query.monsters.findFirst({ where: eq(monsters.id, monsterId) });
 
         if (monster) {
-          const xpReward = getMonsterKillXp(monster.level);
+          let xpReward = getMonsterKillXp(monster.level);
           const lootTable = monster.lootTable as { dropChance: number; minQty: number; maxQty: number; gold: number; itemTemplateName?: string }[];
 
           let totalGold = 0;
@@ -502,6 +503,12 @@ async function finishCombat(sessionId: string, state: CombatState, playerId: str
 
           // Process item drops (arcane reagents, etc.)
           const droppedItems = await processItemDrops(tx, playerId, lootTable);
+
+          // Apply feat bonuses to XP and gold
+          const playerChar = await tx.query.characters.findFirst({ where: eq(characters.id, playerId), columns: { feats: true } });
+          const pveFeats = (playerChar?.feats as string[]) ?? [];
+          xpReward = Math.round(xpReward * (1 + computeFeatBonus(pveFeats, 'xpBonus')));
+          totalGold = Math.round(totalGold * (1 + computeFeatBonus(pveFeats, 'goldBonus')));
 
           await tx.update(characters).set({
             xp: sql`${characters.xp} + ${xpReward}`,

@@ -37,6 +37,7 @@ import { getProficiencyBonus, getModifier as getStatModifier } from '@shared/uti
 import { getProfessionByType, getTierQualityBonus, getTierForLevel } from '@shared/data/professions';
 import { getGatheringBonus } from '@shared/data/professions/tier-unlocks';
 import { ACTION_XP } from '@shared/data/progression';
+import { computeFeatBonus } from '@shared/data/feats';
 import { GATHER_SPOT_PROFESSION_MAP, RESOURCE_MAP } from '@shared/data/gathering';
 import { ASSET_TIERS, LIVESTOCK_DEFINITIONS, HUNGER_CONSTANTS } from '@shared/data/assets';
 import {
@@ -245,7 +246,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
         character: {
           columns: {
             id: true, race: true, subRace: true, level: true,
-            currentTownId: true, hungerState: true, stats: true,
+            currentTownId: true, hungerState: true, stats: true, feats: true,
           },
         },
       },
@@ -276,7 +277,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
         character: {
           columns: {
             id: true, race: true, subRace: true, level: true,
-            currentTownId: true, hungerState: true, stats: true,
+            currentTownId: true, hungerState: true, stats: true, feats: true,
           },
         },
       },
@@ -1460,9 +1461,11 @@ async function processGatherAction(
   await addProfessionXP(char.id, professionType as any, xpGained, `gathered_${resource.name.toLowerCase().replace(/\s+/g, '_')}`);
 
   // Award character XP: base + professionBonus (always has matching profession here) + levelScaling
-  const characterXpGain = ACTION_XP.GATHER_BASE
+  const baseGatherXp = ACTION_XP.GATHER_BASE
     + ACTION_XP.GATHER_PROFESSION_BONUS
     + (ACTION_XP.GATHER_LEVEL_SCALING * char.level);
+  const gatherFeats = ((char as any).feats as string[]) ?? [];
+  const characterXpGain = Math.round(baseGatherXp * (1 + computeFeatBonus(gatherFeats, 'xpBonus')));
   await db.update(characters)
     .set({ xp: sql`${characters.xp} + ${characterXpGain}` })
     .where(eq(characters.id, char.id));
@@ -1726,9 +1729,11 @@ async function processGatherSpotAction(
     });
     hasProfessionBonus = !!charProf;
   }
-  const characterXpGain = ACTION_XP.GATHER_BASE
+  const baseSpotXp = ACTION_XP.GATHER_BASE
     + (hasProfessionBonus ? ACTION_XP.GATHER_PROFESSION_BONUS : 0)
     + (ACTION_XP.GATHER_LEVEL_SCALING * char.level);
+  const spotFeats = ((char as any).feats as string[]) ?? [];
+  const characterXpGain = Math.round(baseSpotXp * (1 + computeFeatBonus(spotFeats, 'xpBonus')));
   await db.update(characters)
     .set({ xp: sql`${characters.xp} + ${characterXpGain}` })
     .where(eq(characters.id, char.id));
@@ -2011,9 +2016,11 @@ async function processCraftAction(
   const primaryStatKey = profDef?.primaryStat?.toLowerCase() ?? 'int';
   const statModifier = getStatModifier(characterStats[primaryStatKey] ?? 10);
 
+  const tickCraftFeats = ((char as any).feats as string[]) ?? [];
   const { roll: diceRoll, total, quality: qualityName } = qualityRoll(
     getProficiencyBonus(char.level), statModifier, toolBonus, workshopLevel,
     racialQuality.qualityBonus, professionTierBonus, Math.round(ingredientQualityBonus),
+    computeFeatBonus(tickCraftFeats, 'professionQualityBonus'),
   );
   const quality = QUALITY_MAP[qualityName] ?? 'COMMON';
 
@@ -2061,7 +2068,8 @@ async function processCraftAction(
   const profXpGain = recipe.xpReward;
   await addProfessionXP(char.id, recipe.professionType as any, profXpGain, `Crafted ${resultTemplate.name}`);
 
-  const characterXpGain = ACTION_XP.CRAFT_BASE + ACTION_XP.CRAFT_PROFESSION_BONUS + (ACTION_XP.CRAFT_LEVEL_SCALING * char.level);
+  const baseCraftXp = ACTION_XP.CRAFT_BASE + ACTION_XP.CRAFT_PROFESSION_BONUS + (ACTION_XP.CRAFT_LEVEL_SCALING * char.level);
+  const characterXpGain = Math.round(baseCraftXp * (1 + computeFeatBonus(tickCraftFeats, 'xpBonus')));
   await db.update(characters)
     .set({ xp: sql`${characters.xp} + ${characterXpGain}` })
     .where(eq(characters.id, char.id));

@@ -10,6 +10,7 @@ import {
   Crown,
   Users,
   Sun,
+  Star,
 } from 'lucide-react';
 import { RealmPanel } from '../ui/RealmPanel';
 
@@ -755,6 +756,70 @@ function PoliticsContent() {
 }
 
 // ---------------------------------------------------------------------------
+// Feats Content
+// ---------------------------------------------------------------------------
+
+function FeatsContent() {
+  return (
+    <Prose>
+      <p>
+        <Highlight>Feats</Highlight> are powerful, permanent bonuses unlocked at high levels. You choose
+        one feat at <Highlight>level 38</Highlight> and a second at <Highlight>level 48</Highlight> — two
+        total. Each feat is a permanent character-defining choice that cannot be changed.
+      </p>
+
+      <SectionSubheading>Combat Feats</SectionSubheading>
+      <BulletList items={[
+        <><Highlight>Precise Strikes</Highlight> — +1 to all attack rolls.</>,
+        <><Highlight>Brutal Critical</Highlight> — Critical hits deal +50% bonus damage.</>,
+        <><Highlight>Combat Reflexes</Highlight> — +3 initiative bonus — act first in combat.</>,
+        <><Highlight>Devastating Blow</Highlight> — Great Weapon Master: -5 attack / +10 damage with two-handed melee. <Warn>Not available to Mage or Psion.</Warn></>,
+        <><Highlight>Deadeye</Highlight> — Sharpshooter: -5 attack / +10 damage with ranged. <Warn>Not available to Warrior or Cleric.</Warn></>,
+        <><Highlight>Savage Attacker</Highlight> — Reroll damage once per combat, keeping the higher result.</>,
+        <><Highlight>Arcane Focus</Highlight> — +1 spell attack and +1 spell save DC. <Warn>Not available to Warrior, Rogue, or Ranger.</Warn></>,
+      ]} />
+
+      <SectionSubheading>Defense Feats</SectionSubheading>
+      <BulletList items={[
+        <><Highlight>Tough</Highlight> — +2 HP per character level (applied retroactively).</>,
+        <><Highlight>Resilient</Highlight> — +1 save proficiency in a stat of your choice.</>,
+        <><Highlight>Iron Will</Highlight> — +1 bonus to all saving throws.</>,
+        <><Highlight>Natural Armor</Highlight> — +1 AC bonus.</>,
+        <><Highlight>Heavy Armor Mastery</Highlight> — Flat 3 damage reduction per hit. <Warn>Not available to Mage, Psion, Bard, or Rogue.</Warn></>,
+        <><Highlight>Durable</Highlight> — +25% healing received from all sources.</>,
+        <><Highlight>Spell Ward</Highlight> — +2 bonus to saves against abilities and spells.</>,
+        <><Highlight>Undying</Highlight> — 50% reduction to death penalties (XP and gold loss).</>,
+      ]} />
+
+      <SectionSubheading>Utility Feats</SectionSubheading>
+      <BulletList items={[
+        <><Highlight>Lucky</Highlight> — Reroll any d20 roll once per combat.</>,
+        <><Highlight>Quick Learner</Highlight> — +10% XP from all sources.</>,
+        <><Highlight>Inspiring Leader</Highlight> — Grant 10 temporary HP to all party members at combat start.</>,
+        <><Highlight>Guardian&apos;s Vigil</Highlight> — Free counterattack when an ally takes damage. <Warn>Not available to Mage or Psion.</Warn></>,
+        <><Highlight>Swift Stride</Highlight> — 15% faster travel — fewer ticks to reach your destination.</>,
+        <><Highlight>Wary Traveler</Highlight> — 20% reduced chance of road encounters.</>,
+      ]} />
+
+      <SectionSubheading>Crafting &amp; Economy Feats</SectionSubheading>
+      <BulletList items={[
+        <><Highlight>Master Artisan</Highlight> — +3 bonus to all crafting quality rolls.</>,
+        <><Highlight>Merchant Prince</Highlight> — 10% discount on purchases and 10% bonus on sales.</>,
+        <><Highlight>Fortune Favored</Highlight> — +15% gold from monster drops, quests, and other system sources.</>,
+        <><Highlight>Polymath</Highlight> — +1 additional profession slot.</>,
+        <><Highlight>Master Chef</Highlight> — +25% food buff potency (not yet active).</>,
+      ]} />
+
+      <SectionSubheading>Social Feats</SectionSubheading>
+      <BulletList items={[
+        <><Highlight>Silver Tongue</Highlight> — +2 to social and political actions (not yet active).</>,
+        <><Highlight>Field Medic</Highlight> — +25% healing given to allies. <Warn>Not available to Warrior, Rogue, or Ranger.</Warn></>,
+      ]} />
+    </Prose>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Section definitions
 // ---------------------------------------------------------------------------
 
@@ -826,6 +891,18 @@ const SECTIONS: MechanicsSection[] = [
       'bard', 'psion', 'ability', 'achievement', 'hp', 'mp', 'skill',
     ],
     content: <LevelingContent />,
+  },
+  {
+    id: 'feats',
+    title: 'Feats',
+    icon: Star,
+    keywords: [
+      'feat', 'bonus', 'permanent', 'choice', 'combat', 'defense', 'utility',
+      'crafting', 'social', 'level 38', 'level 48', 'quick learner', 'tough',
+      'lucky', 'fortune', 'artisan', 'precise', 'brutal', 'resilient',
+      'swift stride', 'wary traveler', 'inspiring leader', 'arcane focus',
+    ],
+    content: <FeatsContent />,
   },
   {
     id: 'races',

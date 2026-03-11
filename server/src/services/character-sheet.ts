@@ -8,6 +8,7 @@ import { computeFinalAC } from '@shared/utils/armor-conversion';
 import { checkEquipmentProficiency } from '@shared/utils/proficiency';
 import { TIER0_ABILITIES_BY_CLASS, ABILITIES_BY_CLASS, TIER0_CHOICE_LEVELS } from '@shared/data/skills';
 import { getRace } from '@shared/data/races';
+import { getFeatById } from '@shared/data/feats';
 
 const STAT_KEYS = ['str', 'dex', 'con', 'int', 'wis', 'cha'] as const;
 const STAT_LONG_TO_SHORT: Record<string, string> = {
@@ -246,6 +247,11 @@ export async function buildCharacterSheet(characterId: string, viewerId: string 
     tier0ChoiceLevels: TIER0_CHOICE_LEVELS,
     specAbilities,
     racial: racialInfo,
+    feats: ((character.feats as string[]) ?? []).map(fid => {
+      const f = getFeatById(fid);
+      return f ? { id: f.id, name: f.name, description: f.description, category: f.category } : null;
+    }).filter(Boolean),
+    pendingFeatChoice: character.pendingFeatChoice,
 
     equipment: equippedItems,
     professions,

@@ -11,6 +11,7 @@ export interface LevelUpPayload {
   maxHealthGain: number;
   abilitiesGranted: string[];
   tier0Pending?: number;
+  featPending?: boolean;
 }
 
 export interface AchievementUnlockedPayload {

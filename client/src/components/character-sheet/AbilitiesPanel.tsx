@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Lock, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Lock, Sparkles, Star } from 'lucide-react';
 import { RealmPanel } from '../ui/realm-index';
 
 interface Tier0Ability {
@@ -30,6 +30,13 @@ interface RacialInfo {
   abilities: { name: string; description: string; levelRequired: number; type: string }[];
 }
 
+interface FeatInfo {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+}
+
 interface Props {
   tier0Abilities: Tier0Ability[];
   tier0ChoiceLevels: readonly number[];
@@ -37,6 +44,9 @@ interface Props {
   racial: RacialInfo | null;
   characterLevel: number;
   specialization: string | null;
+  feats?: FeatInfo[];
+  pendingFeatChoice?: boolean;
+  onChooseFeat?: () => void;
 }
 
 function Section({ title, defaultOpen, children }: { title: string; defaultOpen: boolean; children: React.ReactNode }) {
@@ -62,6 +72,9 @@ export function AbilitiesPanel({
   racial,
   characterLevel,
   specialization,
+  feats,
+  pendingFeatChoice,
+  onChooseFeat,
 }: Props) {
   return (
     <RealmPanel title="Abilities">
@@ -168,6 +181,37 @@ export function AbilitiesPanel({
           )}
         </Section>
       )}
+
+      {/* Feats */}
+      <Section title="Feats" defaultOpen={true}>
+        {pendingFeatChoice && onChooseFeat && (
+          <button
+            onClick={onChooseFeat}
+            className="w-full mb-2 px-3 py-2 rounded-sm text-xs bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-300 hover:bg-realm-gold-500/20 transition-colors flex items-center gap-2"
+          >
+            <Star className="w-3.5 h-3.5" />
+            New feat available! Click to choose.
+          </button>
+        )}
+        {feats && feats.length > 0 ? (
+          <div className="space-y-1">
+            {feats.map((feat) => (
+              <div key={feat.id} className="rounded-sm px-2 py-1.5 text-xs bg-realm-bg-700 border border-realm-gold-400/20">
+                <div className="flex items-center gap-1.5">
+                  <Star className="w-3 h-3 text-realm-gold-400" />
+                  <span className="font-semibold text-realm-gold-400">{feat.name}</span>
+                  <span className="text-[10px] text-realm-text-muted bg-realm-bg-800/50 px-1 rounded-sm">{feat.category}</span>
+                </div>
+                <div className="text-realm-text-secondary mt-0.5">{feat.description}</div>
+              </div>
+            ))}
+          </div>
+        ) : !pendingFeatChoice ? (
+          <div className="text-[10px] text-realm-text-muted flex items-center gap-1">
+            <Lock className="w-3 h-3" /> Feats unlock at level 38
+          </div>
+        ) : null}
+      </Section>
     </RealmPanel>
   );
 }

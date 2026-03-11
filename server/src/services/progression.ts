@@ -121,6 +121,13 @@ export async function checkLevelUp(characterId: string): Promise<LevelUpResult |
     }
   }
 
+  // Check if character has a pending feat choice after milestone check
+  const charAfterFeat = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { pendingFeatChoice: true },
+  });
+  const featPending = charAfterFeat?.pendingFeatChoice ?? false;
+
   // Emit Socket.io event
   emitLevelUp(characterId, {
     characterId,
@@ -131,6 +138,7 @@ export async function checkLevelUp(characterId: string): Promise<LevelUpResult |
       abilitiesGranted,
     },
     tier0Pending: tier0Pending > 0 ? tier0Pending : undefined,
+    featPending: featPending || undefined,
   });
 
   return result;

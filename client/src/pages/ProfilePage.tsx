@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import api from '../services/api';
@@ -13,10 +14,12 @@ import {
   CombatRecordBlock,
   BiographyBlock,
 } from '../components/character-sheet';
+import { FeatSelectionModal } from '../components/feats/FeatSelectionPanel';
 
 export default function ProfilePage() {
   const { characterId: paramId } = useParams<{ characterId: string }>();
   const navigate = useNavigate();
+  const [showFeatModal, setShowFeatModal] = useState(false);
 
   const { data: myChar } = useQuery<{ id: string }>({
     queryKey: ['character', 'me'],
@@ -94,7 +97,11 @@ export default function ProfilePage() {
               racial={sheet.racial}
               characterLevel={sheet.level}
               specialization={sheet.specialization}
+              feats={sheet.feats}
+              pendingFeatChoice={isOwnProfile ? sheet.pendingFeatChoice : false}
+              onChooseFeat={isOwnProfile ? () => setShowFeatModal(true) : undefined}
             />
+            {showFeatModal && <FeatSelectionModal onClose={() => setShowFeatModal(false)} />}
           </div>
 
           {/* Right column — sidebar */}

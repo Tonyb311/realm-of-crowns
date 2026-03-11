@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Star } from 'lucide-react';
 import type { LevelUpPayload } from '../hooks/useProgressionEvents';
+import { FeatSelectionModal } from './feats/FeatSelectionPanel';
 
 interface LevelUpCelebrationProps {
   data: LevelUpPayload;
@@ -10,11 +11,16 @@ interface LevelUpCelebrationProps {
 
 export default function LevelUpCelebration({ data, onDismiss }: LevelUpCelebrationProps) {
   const navigate = useNavigate();
+  const [showFeatModal, setShowFeatModal] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(onDismiss, 8000);
     return () => clearTimeout(timer);
   }, [onDismiss]);
+
+  if (showFeatModal) {
+    return <FeatSelectionModal onClose={() => { setShowFeatModal(false); onDismiss(); }} />;
+  }
 
   return (
     <div
@@ -56,6 +62,12 @@ export default function LevelUpCelebration({ data, onDismiss }: LevelUpCelebrati
           </div>
         )}
 
+        {data.featPending && (
+          <div className="mb-4 px-4 py-2 bg-realm-gold-500/10 border border-realm-gold-500/30 rounded-sm text-sm text-realm-gold-300">
+            New feat available! A permanent power awaits.
+          </div>
+        )}
+
         <div className="flex gap-3">
           <button
             onClick={onDismiss}
@@ -63,7 +75,14 @@ export default function LevelUpCelebration({ data, onDismiss }: LevelUpCelebrati
           >
             Continue
           </button>
-          {data.tier0Pending && data.tier0Pending > 0 ? (
+          {data.featPending ? (
+            <button
+              onClick={() => setShowFeatModal(true)}
+              className="flex-1 py-2.5 bg-realm-gold-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-gold-400 transition-colors"
+            >
+              Choose Feat
+            </button>
+          ) : data.tier0Pending && data.tier0Pending > 0 ? (
             <button
               onClick={() => { onDismiss(); navigate('/skills'); }}
               className="flex-1 py-2.5 bg-realm-teal-500 text-realm-bg-900 font-display text-sm rounded-sm hover:bg-realm-teal-400 transition-colors"

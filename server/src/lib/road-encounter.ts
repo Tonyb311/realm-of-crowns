@@ -875,6 +875,11 @@ export async function resolveRoadEncounter(
   let goldAwarded = 0;
   let droppedItems: { name: string; quantity: number; templateId: string }[] = [];
 
+  // Feat bonuses for XP and gold (computed once, used in UPDATE)
+  const charFeats = (character.feats as string[]) ?? [];
+  const xpMultiplier = 1 + computeFeatBonus(charFeats, 'xpBonus');
+  const goldMultiplier = 1 + computeFeatBonus(charFeats, 'goldBonus');
+
   // 8. Apply outcomes within a transaction
   await db.transaction(async (tx) => {
     if (playerWon) {
@@ -898,6 +903,10 @@ export async function resolveRoadEncounter(
           '[LOOT] Items dropped from road encounter victory',
         );
       }
+
+      // Apply feat bonuses to XP and gold
+      xpAwarded = Math.round(xpAwarded * xpMultiplier);
+      goldAwarded = Math.round(goldAwarded * goldMultiplier);
 
       const playerHpRemaining = outcome.survivors.find(s => s.id === character.id)?.hpRemaining ?? character.health;
       await tx.update(characters).set({
