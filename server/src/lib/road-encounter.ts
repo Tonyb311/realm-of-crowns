@@ -399,6 +399,8 @@ export interface RoadEncounterResult {
   won?: boolean;
   /** If encountered, did the player flee? */
   fled?: boolean;
+  /** Number of extra travel ticks added as penalty for mid-combat flee (detour). */
+  fleeDelayTicks?: number;
   /** Monster name. */
   monsterName?: string;
   /** Monster level. */
@@ -960,6 +962,7 @@ export async function resolveRoadEncounter(
     encountered: true,
     won: playerWon,
     fled: playerFled,
+    fleeDelayTicks: playerFled ? 2 : undefined,
     monsterName: monster.name,
     monsterLevel: monster.level,
     xpAwarded,

@@ -52,6 +52,8 @@ export interface FeatEffects {
   foodBuffBonus?: number;
   /** Bonus to political/social actions. TODO: wire when political system adds roll-based outcomes. */
   socialBonus?: number;
+  /** Bonus to flee save rolls. Stacks with stance, item, and buff bonuses. */
+  fleeBonus?: number;
 }
 
 export interface FeatDefinition {

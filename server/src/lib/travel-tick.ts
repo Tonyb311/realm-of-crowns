@@ -54,7 +54,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
   // 1. Fetch all active solo travelers
   // -----------------------------------------------------------------------
   const soloTravelers = await db.query.characterTravelStates.findMany({
-    where: eq(characterTravelStates.status, 'traveling'),
+    where: inArray(characterTravelStates.status, ['traveling', 'flee_cooldown']),
     with: {
       travelRoute: {
         columns: { nodeCount: true, fromTownId: true, toTownId: true, dangerLevel: true, terrain: true },
@@ -110,6 +110,32 @@ export async function processTravelTick(): Promise<TravelTickResult> {
           ? route.fromTownId
           : route.toTownId;
 
+        // flee_cooldown: player just fled an encounter and was moved back.
+        // Skip encounter check on this arrival — the +2 tick delay is penalty enough.
+        if (traveler.status === 'flee_cooldown') {
+          const travelXp = ACTION_XP.TRAVEL_PER_NODE * route.nodeCount;
+          await db.transaction(async (tx) => {
+            await tx.update(characters)
+              .set({
+                currentTownId: destinationTownId,
+                travelStatus: 'idle',
+                xp: sql`${characters.xp} + ${travelXp}`,
+              })
+              .where(eq(characters.id, traveler.characterId));
+            await tx.delete(characterTravelStates)
+              .where(eq(characterTravelStates.id, traveler.id));
+          });
+
+          try { await checkLevelUp(traveler.characterId); } catch { /* non-fatal */ }
+
+          result.soloArrived++;
+          logger.info(
+            { characterId: traveler.characterId, destinationTownId, travelXp, routeNodeCount: route.nodeCount },
+            'Solo traveler arrived at destination after flee detour (safe)',
+          );
+          continue;
+        }
+
         // --- Road Encounter Check ---
         const encounter = await resolveRoadEncounter(
           traveler.characterId,
@@ -151,30 +177,31 @@ export async function processTravelTick(): Promise<TravelTickResult> {
               'Solo traveler won road encounter, arrived at destination',
             );
           } else if (encounter.fled) {
-            // Fled encounter: arrive at destination (escaped the fight, no penalties)
+            // Fled encounter: move back 2 nodes (detour penalty), continue traveling
+            // No death penalty, no rewards. Player escaped but lost time.
             result.soloEncounterWins++; // counts as survival for stats
-            const travelXp = ACTION_XP.TRAVEL_PER_NODE * route.nodeCount;
-            await db.transaction(async (tx) => {
-              await tx.update(characters)
-                .set({
-                  currentTownId: destinationTownId,
-                  travelStatus: 'idle',
-                  xp: sql`${characters.xp} + ${travelXp}`,
-                })
-                .where(eq(characters.id, traveler.characterId));
-              await tx.delete(characterTravelStates)
-                .where(eq(characterTravelStates.id, traveler.id));
-            });
+            const delayNodes = encounter.fleeDelayTicks ?? 2;
+            const movedBackIndex = traveler.direction === 'forward'
+              ? Math.max(1, traveler.currentNodeIndex - delayNodes)
+              : Math.min(route.nodeCount, traveler.currentNodeIndex + delayNodes);
 
-            result.soloArrived++;
+            await db.update(characterTravelStates)
+              .set({
+                currentNodeIndex: movedBackIndex,
+                status: 'flee_cooldown',
+                lastTickAt: now,
+              })
+              .where(eq(characterTravelStates.id, traveler.id));
+
+            result.soloMoved++;
             logger.info(
               {
                 characterId: traveler.characterId,
-                destinationTownId,
-                travelXp,
+                movedBackIndex,
+                delayNodes,
                 encounter: `Fled from ${encounter.monsterName} (L${encounter.monsterLevel})`,
               },
-              'Solo traveler fled road encounter, arrived at destination',
+              'Solo traveler fled road encounter, moved back for detour (+2 ticks)',
             );
           } else {
             // Lost encounter: return to origin town (penalties already applied, travel XP still granted)

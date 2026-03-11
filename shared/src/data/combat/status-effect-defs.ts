@@ -61,6 +61,8 @@ export interface StatusEffectMechanics {
   meleeAutoCrit?: boolean;
   /** All attacks get bonus attack against this target (stunned: +4) */
   attackBonusVsTarget?: number;
+  /** Bonus (or penalty) to flee save rolls while this effect is active */
+  fleeBonus?: number;
   /** Player-friendly description of the effect */
   description: string;
 }

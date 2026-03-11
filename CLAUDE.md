@@ -64,7 +64,7 @@
 - **Combat AI chaining:** Setup→payoff ability pairs use `grantsSetupTag`/`requiresSetupTag`/`consumesSetupTag` fields on AbilityDefinition. Current chains: Vanish→Ambush (Rogue), Analyze→Exploit Weakness (Bard). Tags stored as `setupTags[]` on Combatant.
 - **Psion routing:** Psion spec abilities dispatch as `psion_ability` action type and resolve through `resolvePsionAbility()` in combat-engine.ts. Psion tier 0 abilities dispatch as `class_ability` through the standard resolver.
 - **Full audit docs:** `docs/audit-ability-attack-mechanics.md`, `docs/audit-combat-stat-mechanics.md`, `docs/audit-save-dc-stats.md`
-- **Codex update rule:** ANY change to ability data, combat mechanics, or monster data MUST also update both codexes (player-facing `client/src/components/codex/CodexClasses.tsx` and admin `client/src/components/admin/combat/CodexTab.tsx`) if those fields are displayed. API routes: `/api/codex/classes` and `/admin/combat/codex/classes`.
+- **Codex update rule:** ANY change to ability data, combat mechanics, or monster data MUST also update both codexes (player-facing `client/src/components/codex/CodexClasses.tsx` and admin `client/src/components/admin/codex/RacesClassesTab.tsx`) if those fields are displayed. API routes: `/api/codex/classes` and `/admin/combat/codex/classes`.
 
 ### Monster & Combat Design
 - **PvE combat ONLY via road encounters during travel.** `/combat/pve/start` is disabled (400).

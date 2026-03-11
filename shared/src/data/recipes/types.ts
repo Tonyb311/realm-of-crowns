@@ -143,6 +143,7 @@ export interface ArmorStats {
   movementPenalty?: number;
   stealthPenalty?: number;
   weight?: number;        // item weight in lbs
+  fleeBonus?: number;     // bonus to flee save rolls (e.g., Boots of Escape +2)
 }
 
 // --- Consumable stats ---

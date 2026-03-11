@@ -51,7 +51,7 @@ export interface EquipmentTotals {
 const NUMERIC_STAT_KEYS = [
   'armor', 'damage', 'strength', 'dexterity', 'constitution',
   'intelligence', 'wisdom', 'charisma', 'speed', 'magicResist',
-  'bonusDamage', 'bonusAttack',
+  'bonusDamage', 'bonusAttack', 'fleeBonus',
 ];
 
 function multiplyStats(stats: ItemStats, multiplier: number): ItemStats {

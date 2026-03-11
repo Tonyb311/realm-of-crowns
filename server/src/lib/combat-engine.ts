@@ -9,7 +9,7 @@ import {
   criticalDamageRoll,
   initiativeRoll,
   savingThrow,
-  fleeCheck,
+  roll,
 } from '@shared/utils/dice';
 
 import type {
@@ -96,7 +96,6 @@ import { resolveOnHitAbilities } from './monster-ability-resolver';
 
 const DEFEND_AC_BONUS = 2;
 const BASE_AC = 10;
-const DEFAULT_FLEE_DC = 10;
 const DEATH_GOLD_LOSS_PERCENT = DEATH_PENALTY.GOLD_LOSS_PERCENT;
 
 /** Helper to create a no-op defend result (used as fallback in racial ability handlers). */
@@ -1780,7 +1779,67 @@ export function resolveItem(
   return { state: { ...state, combatants }, result };
 }
 
-/** Resolve a flee attempt. DC scales with number of enemies. */
+/**
+ * Calculate flee DC from enemy levels and character level.
+ * Exported for reuse in pre-combat flee (Prompt 2) where no CombatState exists.
+ *
+ * Formula: 8 + (enemies × 2) + max(0, highest_enemy_level - character_level) + slowed penalty
+ */
+export function calculateFleeDC(
+  enemies: { level: number }[],
+  characterLevel: number,
+  isSlowed: boolean
+): number {
+  const highestEnemyLevel = enemies.length > 0
+    ? Math.max(...enemies.map(e => e.level))
+    : 0;
+  return 8 + (enemies.length * 2) + Math.max(0, highestEnemyLevel - characterLevel) + (isSlowed ? 5 : 0);
+}
+
+/**
+ * Gather all flee bonuses from stance, feats, items, and status effects.
+ * Returns total + breakdown array for combat log display.
+ */
+export function calculateFleeBonus(combatant: Combatant): {
+  total: number;
+  breakdown: { source: string; value: number }[];
+} {
+  const breakdown: { source: string; value: number }[] = [];
+
+  // Stance bonus (set once at combat start from player presets)
+  if (combatant.stanceFleeBonus) {
+    breakdown.push({ source: 'stance', value: combatant.stanceFleeBonus });
+  }
+
+  // Feat bonus
+  const featBonus = computeFeatBonus(combatant.featIds, 'fleeBonus');
+  if (featBonus !== 0) {
+    breakdown.push({ source: 'feat', value: featBonus });
+  }
+
+  // Item bonus (set during combatant construction from equipped item fleeBonus sum)
+  if (combatant.itemFleeBonus) {
+    breakdown.push({ source: 'items', value: combatant.itemFleeBonus });
+  }
+
+  // Status effect bonus
+  let buffBonus = 0;
+  for (const e of combatant.statusEffects) {
+    const mech = STATUS_EFFECT_MECHANICS[e.name];
+    if (mech?.fleeBonus) buffBonus += mech.fleeBonus;
+  }
+  if (buffBonus !== 0) {
+    breakdown.push({ source: 'buffs', value: buffBonus });
+  }
+
+  return { total: breakdown.reduce((sum, b) => sum + b.value, 0), breakdown };
+}
+
+/**
+ * Resolve a flee attempt using the unified flee save formula.
+ * DC: 8 + (enemies × 2) + max(0, highest_enemy_level - character_level) + slowed
+ * Roll: d20 + DEX mod + flee bonuses (stance, feats, items, buffs)
+ */
 export function resolveFlee(
   state: CombatState,
   actorId: string
@@ -1803,26 +1862,38 @@ export function resolveFlee(
     (c) => c.team !== actor.team && c.isAlive
   );
 
-  // Slowed combatants have harder time fleeing (+5 DC)
-  const slowedPenalty = actor.statusEffects.some(e => e.name === 'slowed') ? 5 : 0;
+  const isSlowed = actor.statusEffects.some(e => e.name === 'slowed');
+  const fleeDC = calculateFleeDC(
+    enemies.map(e => ({ level: e.level })),
+    actor.level,
+    isSlowed,
+  );
 
-  // DC increases with more enemies (base 10, +2 per extra enemy)
-  const fleeDC = DEFAULT_FLEE_DC + Math.max(0, (enemies.length - 1) * 2) + slowedPenalty;
   const dexMod = getModifier(actor.stats.dex);
-  const stanceFleeBonus = actor.stanceFleeBonus ?? 0;
-  const check = fleeCheck(dexMod + stanceFleeBonus, fleeDC);
+  const { total: fleeBonus, breakdown } = calculateFleeBonus(actor);
+  const d20Result = roll(20);
+  const total = d20Result + dexMod + fleeBonus;
+  // Natural 20 always succeeds, natural 1 always fails
+  const success = d20Result === 20 || (d20Result !== 1 && total >= fleeDC);
+
+  // Build full breakdown for combat log (DEX mod is always present)
+  const fullBreakdown: { source: string; value: number }[] = [
+    { source: 'DEX', value: dexMod },
+    ...breakdown,
+  ];
 
   const result: FleeResult = {
     type: 'flee',
     actorId,
-    fleeRoll: check.roll,
+    fleeRoll: d20Result,
     fleeDC,
-    success: check.success,
+    success,
+    fleeModBreakdown: fullBreakdown,
   };
 
   // P2 #52 FIX: If flee succeeds, mark as fled instead of dead to avoid death penalties
   let combatants = state.combatants;
-  if (check.success) {
+  if (success) {
     combatants = combatants.map((c) =>
       c.id === actorId ? { ...c, isAlive: false, hasFled: true } : c
     );

@@ -19,7 +19,7 @@ import {
   STATUS_EFFECT_DEFS,
   STATUS_EFFECT_MECHANICS,
 } from './combat-engine';
-import { roll, rollMultiple, savingThrow, fleeCheck } from '@shared/utils/dice';
+import { roll, rollMultiple, savingThrow } from '@shared/utils/dice';
 import { getModifier } from '@shared/types/combat';
 import { getSaveModifier } from '@shared/utils/bounded-accuracy';
 import { computeFeatBonus } from '@shared/data/feats';

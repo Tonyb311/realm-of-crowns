@@ -235,27 +235,55 @@ function CombatContent() {
 
       <SectionSubheading>Death & Fleeing</SectionSubheading>
       <MechanicsTable
-        headers={['Outcome', 'Gold', 'XP Loss', 'Durability', 'HP']}
+        headers={['Outcome', 'Gold', 'XP Loss', 'Durability', 'Travel']}
         rows={[
           [
             <Warn key="d">Death</Warn>,
             <Warn key="dg">-5%</Warn>,
             <Warn key="dx">15 x level</Warn>,
             <Warn key="dd">-5 all equipped</Warn>,
-            '0%',
+            'Return to origin',
           ],
           [
             'Flee',
             'None',
-            <span key="fx" className="text-realm-warning">Half XP loss</span>,
             'None',
-            '50%',
+            'None',
+            <span key="ft" className="text-realm-warning">+2 tick detour</span>,
           ],
         ]}
       />
       <p className="text-realm-text-muted text-xs mt-1">
         Revenants suffer halved death penalties thanks to their racial passive.
       </p>
+
+      <SectionSubheading>Flee Save Formula</SectionSubheading>
+      <p className="text-realm-text-muted text-xs mb-2">
+        When your retreat conditions trigger mid-combat, you roll a flee save.
+        Success means you escape and continue traveling with a 2-tick detour.
+        Failure means you stay in the fight.
+      </p>
+      <MechanicsTable
+        headers={['Component', 'Formula']}
+        rows={[
+          ['Your Roll', 'd20 + DEX modifier + flee bonuses'],
+          ['Flee DC', '8 + (enemies x 2) + max(0, strongest enemy level - your level)'],
+          ['Slowed', '+5 to DC'],
+          ['Rooted / Restrained', 'Flee blocked entirely'],
+        ]}
+      />
+      <p className="text-realm-text-muted text-xs mt-2 mb-1">
+        <Highlight>Flee bonuses</Highlight> stack from multiple sources:
+      </p>
+      <MechanicsTable
+        headers={['Source', 'Example']}
+        rows={[
+          ['Stance', 'Evasive: +4'],
+          ['Feats', 'Fleet of Foot: +2 (future)'],
+          ['Equipment', 'Boots of Escape: +2 (future)'],
+          ['Buffs', 'Expeditious Retreat scroll: +3 (future)'],
+        ]}
+      />
 
       <SectionSubheading>Combat Stances</SectionSubheading>
       <p className="text-realm-text-muted text-xs mb-2">

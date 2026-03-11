@@ -624,6 +624,8 @@ export interface Combatant {
   stanceAcBonus?: number;
   /** Stance flee modifier (e.g., EVASIVE: +4) */
   stanceFleeBonus?: number;
+  /** Sum of equipped item fleeBonus values (set during combatant construction) */
+  itemFleeBonus?: number;
 }
 
 export interface ClassAbilityAttackMods {
@@ -794,6 +796,8 @@ export interface FleeResult {
   fleeRoll: number;
   fleeDC: number;
   success: boolean;
+  /** Breakdown of flee modifier sources for combat log display */
+  fleeModBreakdown?: { source: string; value: number }[];
 }
 
 export interface RacialAbilityActionResult {

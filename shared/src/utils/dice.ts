@@ -122,10 +122,3 @@ export function savingThrow(
   };
 }
 
-/** Flee check: d20 + DEX modifier vs DC (default 10). */
-export function fleeCheck(
-  dexModifier: number,
-  dc: number = 10
-): { roll: number; total: number; success: boolean } {
-  return savingThrow(dexModifier, dc);
-}
