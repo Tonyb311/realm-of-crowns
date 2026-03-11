@@ -1756,8 +1756,8 @@ export const MONSTERS: MonsterDef[] = [
     category: 'fey', encounterType: 'boss', sentient: true, size: 'large',
     attackStat: 'cha',
     damageType: 'FORCE',
-    resistances: ['SLASHING', 'PIERCING'],
-    immunities: ['PSYCHIC'],
+    resistances: ['SLASHING', 'PIERCING', 'PSYCHIC'],
+    immunities: [],
     legendaryActions: 1,
     abilities: [
       {
@@ -3939,8 +3939,8 @@ export const MONSTERS: MonsterDef[] = [
     category: 'construct', encounterType: 'boss', sentient: true, size: 'gargantuan',
     attackStat: 'str',
     damageType: 'FORCE',
-    immunities: ['PSYCHIC', 'FORCE'],
-    resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING'],
+    immunities: [],
+    resistances: ['SLASHING', 'PIERCING', 'BLUDGEONING', 'PSYCHIC', 'FORCE'],
     conditionImmunities: ['charmed', 'frightened'],
     legendaryActions: 1,
     legendaryResistances: 1,
@@ -4253,7 +4253,8 @@ export const MONSTERS: MonsterDef[] = [
     category: 'aberration', encounterType: 'standard', sentient: true, size: 'large',
     attackStat: 'int',
     damageType: 'PSYCHIC',
-    immunities: ['PSYCHIC'],
+    resistances: ['PSYCHIC'],
+    immunities: [],
     abilities: [
       {
         id: 'mindreaver_multiattack', name: 'Tentacle Lash', type: 'multiattack',
