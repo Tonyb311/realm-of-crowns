@@ -53,6 +53,14 @@ import type { AttackResult, Combatant } from '@shared/types/combat';
 import { processItemDrops } from './loot-items';
 import { computeFeatBonus, hasFeatEffect } from '@shared/data/feats';
 import { ENCOUNTER_TEMPLATES, type EncounterTemplate } from '@shared/data/encounter-templates';
+import {
+  resolveTickCombat,
+  createDefaultMonsterParams,
+  type CombatantParams,
+  type TickCombatOutcome,
+} from '../services/tick-combat-resolver';
+import { buildCombatParams } from '../services/combat-presets';
+import { createRacialCombatTracker } from '../services/racial-combat-abilities';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -756,41 +764,38 @@ export async function resolveRoadEncounter(
 
   let combatState = createCombatState(sessionId, 'PVE', [playerCombatant, ...monsterCombatants]);
 
-  // 6. Auto-resolve combat (turn-order based, max rounds scaled by combatant count)
-  const totalCombatants = combatState.combatants.length;
-  for (let round = 0; round < MAX_COMBAT_ROUNDS * totalCombatants; round++) {
-    if (combatState.status !== 'ACTIVE') break;
+  // 6. Load player combat presets and build params for the tick resolver
+  const combatParams = await buildCombatParams(character.id);
+  const allParams = new Map<string, CombatantParams>();
 
-    const currentActorId = combatState.turnOrder[combatState.turnIndex];
-    const currentActor = combatState.combatants.find(c => c.id === currentActorId);
+  allParams.set(character.id, {
+    id: character.id,
+    presets: combatParams.presets,
+    weapon: playerWeapon,
+    racialTracker: createRacialCombatTracker(),
+    race: character.race,
+    level: character.level,
+    subRace: character.subRace as { id: string; element?: string } | null,
+    availableItems: combatParams.availableItems,
+  });
 
-    if (!currentActor || !currentActor.isAlive) {
-      // Skip dead combatant
-      combatState = resolveTurn(combatState, { type: 'defend', actorId: currentActorId }, {});
-      continue;
-    }
-
-    // Both player and monster just attack
-    const enemies = combatState.combatants.filter(c => c.team !== currentActor.team && c.isAlive);
-    if (enemies.length === 0) break;
-
-    const target = enemies[0];
-    const weapon = currentActor.entityType === 'monster'
-      ? (currentActor.weapon ?? undefined)
-      : playerWeapon;
-
-    combatState = resolveTurn(
-      combatState,
-      { type: 'attack', actorId: currentActorId, targetId: target.id },
-      { weapon },
-    );
+  // Monster(s) get default aggressive presets (neverRetreat, no abilities queue)
+  for (const mc of monsterCombatants) {
+    allParams.set(mc.id, createDefaultMonsterParams(mc.id, mc));
   }
 
+  // 6b. Resolve combat using the unified tick combat resolver
+  //     This gives road encounters the full preset-aware decision engine:
+  //     ability queue, retreat conditions, healing potions, monster abilities, stance modifiers.
+  const outcome = resolveTickCombat(combatState, allParams);
+  combatState = outcome.finalState;
+
   // 7. Determine outcome
-  const playerResult = combatState.combatants.find(c => c.id === character.id);
+  const playerFled = outcome.fled.some(f => f.id === character.id);
+  const playerSurvived = outcome.survivors.some(s => s.id === character.id);
+  const playerWon = playerSurvived && !playerFled;
   const monsterResult = combatState.combatants.find(c => c.entityType === 'monster');
-  const playerWon = playerResult?.isAlive ?? false;
-  const totalRounds = combatState.round;
+  const totalRounds = outcome.rounds;
 
   let xpAwarded = 0;
   let goldAwarded = 0;
@@ -820,10 +825,20 @@ export async function resolveRoadEncounter(
         );
       }
 
+      const playerHpRemaining = outcome.survivors.find(s => s.id === character.id)?.hpRemaining ?? character.health;
       await tx.update(characters).set({
         xp: sql`${characters.xp} + ${xpAwarded}`,
         gold: sql`${characters.gold} + ${goldAwarded}`,
-        health: playerResult?.currentHp ?? character.health,
+        health: playerHpRemaining,
+      }).where(eq(characters.id, characterId));
+    } else if (playerFled) {
+      // Fled: no death penalty, no rewards, just continue
+      // Player's HP is preserved from combat (they escaped)
+      const playerHpAfterFlee = outcome.fled.find(f => f.id === character.id)
+        ? combatState.combatants.find(c => c.id === character.id)?.currentHp ?? character.maxHealth
+        : character.maxHealth;
+      await tx.update(characters).set({
+        health: playerHpAfterFlee,
       }).where(eq(characters.id, characterId));
     } else {
       // Loss: apply death penalty
@@ -944,7 +959,7 @@ export async function resolveRoadEncounter(
   return {
     encountered: true,
     won: playerWon,
-    fled: false,
+    fled: playerFled,
     monsterName: monster.name,
     monsterLevel: monster.level,
     xpAwarded,

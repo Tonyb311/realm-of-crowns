@@ -256,6 +256,21 @@ function CombatContent() {
       <p className="text-realm-text-muted text-xs mt-1">
         Revenants suffer halved death penalties thanks to their racial passive.
       </p>
+
+      <SectionSubheading>Combat Stances</SectionSubheading>
+      <p className="text-realm-text-muted text-xs mb-2">
+        Set your combat stance in Combat Parameters. Stance modifiers apply to every attack roll,
+        your effective AC, and flee checks for the entire fight.
+      </p>
+      <MechanicsTable
+        headers={['Stance', 'Attack', 'AC', 'Flee', 'Best For']}
+        rows={[
+          ['Aggressive', '+2', '-2', '—', 'Burst damage, quick fights'],
+          ['Balanced', '—', '—', '—', 'Default, no trade-offs'],
+          ['Defensive', '-2', '+2', '—', 'Tanking, survival'],
+          ['Evasive', '-4', '+4', '+4', 'Fleeing, avoiding road encounters'],
+        ]}
+      />
     </Prose>
   );
 }

@@ -237,6 +237,11 @@ export function calculateAC(combatant: Combatant, racialTracker?: RacialCombatTr
     ac += combatant.encumbrancePenalties.acPenalty;
   }
 
+  // Stance AC modifier (set once at combat start from player presets)
+  if (combatant.stanceAcBonus) {
+    ac += combatant.stanceAcBonus;
+  }
+
   return ac;
 }
 
@@ -665,6 +670,12 @@ export function resolveAttack(
       atkModBreakdown.push({ source: 'featSpellAtk', value: featSpellAtkBonus });
       atkMod += featSpellAtkBonus;
     }
+  }
+
+  // Stance attack modifier (set once at combat start from player presets)
+  if (actor.stanceAttackBonus) {
+    atkModBreakdown.push({ source: 'stance', value: actor.stanceAttackBonus });
+    atkMod += actor.stanceAttackBonus;
   }
 
   // Feat: GWM / Deadeye tradeoff (-5 attack / +10 damage)
@@ -1798,7 +1809,8 @@ export function resolveFlee(
   // DC increases with more enemies (base 10, +2 per extra enemy)
   const fleeDC = DEFAULT_FLEE_DC + Math.max(0, (enemies.length - 1) * 2) + slowedPenalty;
   const dexMod = getModifier(actor.stats.dex);
-  const check = fleeCheck(dexMod, fleeDC);
+  const stanceFleeBonus = actor.stanceFleeBonus ?? 0;
+  const check = fleeCheck(dexMod + stanceFleeBonus, fleeDC);
 
   const result: FleeResult = {
     type: 'flee',

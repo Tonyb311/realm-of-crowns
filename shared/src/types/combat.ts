@@ -616,6 +616,14 @@ export interface Combatant {
   healingPotionsUsedThisCombat?: number;
   /** Immune to poison status effects (from Poison Resistance Tonic / Universal Antidote) */
   poisonImmune?: boolean;
+
+  // Stance modifiers (set once at combat start from player presets)
+  /** Stance attack modifier (e.g., AGGRESSIVE: +2, DEFENSIVE: -2, EVASIVE: -4) */
+  stanceAttackBonus?: number;
+  /** Stance AC modifier (e.g., AGGRESSIVE: -2, DEFENSIVE: +2, EVASIVE: +4) */
+  stanceAcBonus?: number;
+  /** Stance flee modifier (e.g., EVASIVE: +4) */
+  stanceFleeBonus?: number;
 }
 
 export interface ClassAbilityAttackMods {

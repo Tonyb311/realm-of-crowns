@@ -150,6 +150,32 @@ export async function processTravelTick(): Promise<TravelTickResult> {
               },
               'Solo traveler won road encounter, arrived at destination',
             );
+          } else if (encounter.fled) {
+            // Fled encounter: arrive at destination (escaped the fight, no penalties)
+            result.soloEncounterWins++; // counts as survival for stats
+            const travelXp = ACTION_XP.TRAVEL_PER_NODE * route.nodeCount;
+            await db.transaction(async (tx) => {
+              await tx.update(characters)
+                .set({
+                  currentTownId: destinationTownId,
+                  travelStatus: 'idle',
+                  xp: sql`${characters.xp} + ${travelXp}`,
+                })
+                .where(eq(characters.id, traveler.characterId));
+              await tx.delete(characterTravelStates)
+                .where(eq(characterTravelStates.id, traveler.id));
+            });
+
+            result.soloArrived++;
+            logger.info(
+              {
+                characterId: traveler.characterId,
+                destinationTownId,
+                travelXp,
+                encounter: `Fled from ${encounter.monsterName} (L${encounter.monsterLevel})`,
+              },
+              'Solo traveler fled road encounter, arrived at destination',
+            );
           } else {
             // Lost encounter: return to origin town (penalties already applied, travel XP still granted)
             result.soloEncounterLosses++;

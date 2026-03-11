@@ -612,6 +612,24 @@ export function resolveTickCombat(
   let state = combatState;
   const fled: { id: string; name: string; team: number }[] = [];
 
+  // Apply stance modifiers to combatants ONCE at combat start (not per-turn)
+  for (const [id, params] of allParams.entries()) {
+    const mods = STANCE_MODIFIERS[params.presets.stance];
+    if (mods.attackBonus !== 0 || mods.acBonus !== 0 || mods.fleeBonus !== 0) {
+      state = {
+        ...state,
+        combatants: state.combatants.map(c =>
+          c.id === id ? {
+            ...c,
+            stanceAttackBonus: mods.attackBonus,
+            stanceAcBonus: mods.acBonus,
+            stanceFleeBonus: mods.fleeBonus,
+          } : c
+        ),
+      };
+    }
+  }
+
   // Combat loop
   while (state.status === 'ACTIVE' && state.round <= MAX_ROUNDS) {
     const actorId = state.turnOrder[state.turnIndex];
@@ -628,12 +646,6 @@ export function resolveTickCombat(
 
     // Decide action
     const { action, context } = decideAction(state, actorId, params);
-
-    // Apply stance modifiers to the combatant before resolving
-    if (params.presets.stance !== 'BALANCED') {
-      const mods = STANCE_MODIFIERS[params.presets.stance];
-      state = applyStanceToState(state, actorId, mods);
-    }
 
     // Resolve the turn using the existing combat engine
     const racialContext = params.race
@@ -1617,31 +1629,14 @@ function getEquipmentStatBonuses(equipment: any[]): Record<string, number> {
   return totals;
 }
 
-/**
- * Apply stance modifiers to a combatant's state temporarily.
- * Modifies AC and stores attack bonus for the attack resolver to use.
- */
-function applyStanceToState(
-  state: CombatState,
-  actorId: string,
-  mods: StanceModifiers,
-): CombatState {
-  return {
-    ...state,
-    combatants: state.combatants.map(c => {
-      if (c.id !== actorId) return c;
-      return {
-        ...c,
-        ac: c.ac + mods.acBonus,
-      };
-    }),
-  };
-}
+// applyStanceToState was removed — stance modifiers are now set once at combat
+// start as fields on Combatant (stanceAttackBonus, stanceAcBonus, stanceFleeBonus)
+// and consumed by calculateAC(), resolveAttack(), and resolveFlee() in combat-engine.
 
 /**
  * Create default monster combat params (aggressive, no retreat).
  */
-function createDefaultMonsterParams(id: string, combatant: Combatant): CombatantParams {
+export function createDefaultMonsterParams(id: string, combatant: Combatant): CombatantParams {
   return {
     id,
     presets: {
