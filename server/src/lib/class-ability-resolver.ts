@@ -72,9 +72,12 @@ function calcWeaponDamage(actor: Combatant, abilityDef: AbilityDefinition, isCri
     }
     return Math.max(0, total + statMod + actor.weapon.bonusDamage);
   } else if (isSpellAttack) {
-    // Spell attacks: damage comes from ability dice only (D&D standard).
-    // Stat modifier affects attack roll and save DC, not damage.
-    return 0;
+    // Spell attacks: add casting stat modifier to damage
+    const primaryStat = actor.characterClass
+      ? CLASS_PRIMARY_STAT[actor.characterClass.toLowerCase()] ?? 'int'
+      : 'int';
+    const statMod = getModifier(actor.stats[primaryStat as keyof typeof actor.stats] ?? 10);
+    return Math.max(0, statMod);
   }
   return 0;
 }
@@ -146,6 +149,21 @@ function getScaledHalfRate(base: number, scalingLevels: number[], actorLevel: nu
   return base + Math.floor(steps / 2);
 }
 
+// ---- Spell Damage Bonus ----
+
+/**
+ * Get the casting stat damage bonus for spell/save abilities.
+ * Design divergence from base D&D — compensates for lack of spell slot upcasting.
+ * Weapon-based abilities return 0 (they get weapon stat mod through the weapon path).
+ */
+function getSpellDamageBonus(actor: Combatant, abilityDef: AbilityDefinition): number {
+  if (abilityDef.attackType !== 'spell' && abilityDef.attackType !== 'save') return 0;
+  const primaryStat = actor.characterClass
+    ? CLASS_PRIMARY_STAT[actor.characterClass.toLowerCase()] ?? 'int'
+    : 'int';
+  return Math.max(0, getModifier(actor.stats[primaryStat as keyof typeof actor.stats] ?? 10));
+}
+
 // ---- Effect Handlers ----
 
 const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef, effects) => {
@@ -208,12 +226,13 @@ const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef,
     state = saveResult.state;
     const { dc, saveType, save } = saveResult.result;
 
-    // Roll ability dice damage (no weapon damage for save-based abilities)
+    // Roll ability dice damage + casting stat modifier for save-based spells
     let abilityDmg = 0;
     if (diceCount > 0) {
       abilityDmg = rollDice(diceCount, diceSides);
     }
-    let totalDamage = Math.max(0, abilityDmg + bonusDamage);
+    const saveSpellBonus = getSpellDamageBonus(actor, abilityDef);
+    let totalDamage = Math.max(0, abilityDmg + bonusDamage + saveSpellBonus);
 
     // On successful save: half damage
     if (save.success) {
@@ -310,9 +329,11 @@ const handleDamage: EffectHandler = (state, actor, target, _enemies, abilityDef,
     if (statMod !== 0) dmgModifiers.push({ source: actor.weapon.damageModifierStat.toUpperCase(), value: statMod });
     if (actor.weapon.bonusDamage !== 0) dmgModifiers.push({ source: 'weapon bonus', value: actor.weapon.bonusDamage });
   } else if (isSpellAttack) {
-    // Spell attacks: damage comes from ability dice only (D&D standard).
-    // Stat modifier affects attack roll and save DC, not damage.
-    weaponDmg = 0;
+    // Spell attacks: add casting stat modifier to damage
+    // Design divergence from base D&D — compensates for lack of spell slot upcasting
+    const spellBonus = getSpellDamageBonus(actor, abilityDef);
+    weaponDmg = spellBonus;
+    if (spellBonus > 0) dmgModifiers.push({ source: 'spell stat', value: spellBonus });
   }
 
   let abilityDmg = 0;
@@ -709,7 +730,8 @@ const handleDamageStatus: EffectHandler = (state, actor, target, _enemies, abili
     const bonusMod = damageBonus ? Math.max(0, getModifier(actor.stats[damageBonus as keyof typeof actor.stats] ?? 10)) : 0;
     let diceDmg = diceCount > 0 ? rollDice(diceCount, diceSides) : 0;
     const saveWeaponDmg = calcWeaponDamage(actor, abilityDef);
-    let totalDamage = Math.max(0, saveWeaponDmg + damage + diceDmg + bonusMod);
+    const dsSpellBonus = getSpellDamageBonus(actor, abilityDef);
+    let totalDamage = Math.max(0, saveWeaponDmg + damage + diceDmg + bonusMod + dsSpellBonus);
 
     if (save.success) {
       totalDamage = Math.floor(totalDamage / 2);
@@ -824,7 +846,8 @@ const handleDamageDebuff: EffectHandler = (state, actor, target, _enemies, abili
     state = saveResult.state;
     const { dc, saveType, save } = saveResult.result;
     const ddSaveWeapon = calcWeaponDamage(actor, abilityDef);
-    let totalDamage = ddSaveWeapon + rollDice(diceCount, diceSides);
+    const ddSpellBonus = getSpellDamageBonus(actor, abilityDef);
+    let totalDamage = ddSaveWeapon + rollDice(diceCount, diceSides) + ddSpellBonus;
     if (save.success) {
       totalDamage = Math.floor(totalDamage / 2);
     }
@@ -921,7 +944,8 @@ const handleDrain: EffectHandler = (state, actor, target, enemies, abilityDef, e
   const healPercent = (effects.healPercent as number) ?? 0.5;
 
   const drainWeaponDmg = calcWeaponDamage(actor, abilityDef, atkResult?.isCrit ?? false);
-  let totalDamage = drainWeaponDmg + rollDice(diceCount, diceSides);
+  const drainSpellBonus = getSpellDamageBonus(actor, abilityDef);
+  let totalDamage = drainWeaponDmg + rollDice(diceCount, diceSides) + drainSpellBonus;
 
   // On successful save: half damage, half heal
   if (saveResult?.result.save.success) {
@@ -1154,6 +1178,9 @@ const handleAoeDamage: EffectHandler = (state, actor, _target, enemies, abilityD
       dmg = rollDice(diceCount, diceSides);
     }
 
+    // Add casting stat modifier to AoE spell damage
+    dmg += getSpellDamageBonus(actor, abilityDef);
+
     // Per-target save for save-based AoE
     let saveDCVal: number | undefined;
     let saveRollVal: number | undefined;
@@ -1266,7 +1293,8 @@ const handleMultiTarget: EffectHandler = (state, actor, _target, enemies, abilit
     }
 
     const mtWeaponDmg = calcWeaponDamage(actor, abilityDef);
-    let dmg = mtWeaponDmg + rollDice(diceCount, diceSides);
+    const mtSpellBonus = getSpellDamageBonus(actor, abilityDef);
+    let dmg = mtWeaponDmg + rollDice(diceCount, diceSides) + mtSpellBonus;
 
     // Per-target save for save-based multi-target abilities
     let saveDCVal: number | undefined;
@@ -1435,7 +1463,7 @@ const handleAoeDrain: EffectHandler = (state, actor, _target, enemies, abilityDe
   const targetIds: string[] = [];
 
   for (const enemy of enemies) {
-    let dmg = rollDice(diceCount, diceSides);
+    let dmg = rollDice(diceCount, diceSides) + getSpellDamageBonus(actor, abilityDef);
 
     // Per-target save
     if (isSaveBased) {
@@ -1533,8 +1561,8 @@ const handleDispelDamage: EffectHandler = (state, actor, target, _enemies, abili
     statusEffects: currentTarget.statusEffects.filter(e => !positiveStatuses.includes(e.name)),
   });
 
-  // Apply damage
-  const totalDamage = totalRemoved * damagePerBuff;
+  // Apply damage (+ casting stat for spell-based dispels)
+  const totalDamage = totalRemoved * damagePerBuff + getSpellDamageBonus(actor, abilityDef);
   const updatedTarget = state.combatants.find(c => c.id === target.id)!;
   const newHp = clampHp(updatedTarget.currentHp - totalDamage, updatedTarget.maxHp);
   const killed = newHp <= 0;
@@ -1559,7 +1587,7 @@ const handleAoeDot: EffectHandler = (state, actor, _target, enemies, abilityDef,
   }
 
   const scalingLevels = (effects.scalingLevels as number[]) ?? [];
-  const damagePerRound = getScaledValue((effects.damagePerRound as number) ?? 6, scalingLevels, actor.level, 2);
+  const damagePerRound = getScaledValue((effects.damagePerRound as number) ?? 6, scalingLevels, actor.level, 2) + getSpellDamageBonus(actor, abilityDef);
   const duration = (effects.duration as number) ?? 3;
   // NOTE: bonusVsUndead not applied — no undead flag exists on combatants
   const targetIds: string[] = [];
