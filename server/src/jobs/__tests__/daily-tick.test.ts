@@ -42,7 +42,7 @@ jest.mock('../../lib/db', () => ({
       notifications: { findFirst: jest.fn() },
       ownedAssets: { findMany: jest.fn() },
       livestock: { findMany: jest.fn() },
-      jobListings: { findMany: jest.fn() },
+      jobs: { findMany: jest.fn() },
       laws: { findMany: jest.fn() },
       tradeTransactions: { findMany: jest.fn() },
       caravans: { findMany: jest.fn() },
@@ -188,7 +188,7 @@ describe('Daily Tick Processor', () => {
     (mockedDb.query.kingdoms.findMany as jest.Mock).mockResolvedValue([]);
     (mockedDb.query.ownedAssets.findMany as jest.Mock).mockResolvedValue([]);
     (mockedDb.query.livestock.findMany as jest.Mock).mockResolvedValue([]);
-    (mockedDb.query.jobListings.findMany as jest.Mock).mockResolvedValue([]);
+    (mockedDb.query.jobs.findMany as jest.Mock).mockResolvedValue([]);
     (mockedDb.query.laws.findMany as jest.Mock).mockResolvedValue([]);
     (mockedDb.query.tradeTransactions.findMany as jest.Mock).mockResolvedValue([]);
     (mockedDb.query.caravans.findMany as jest.Mock).mockResolvedValue([]);

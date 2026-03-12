@@ -250,15 +250,16 @@ export interface ApiAsset {
   capacity?: number;
   aliveCount?: number;
   tier?: number;
-  jobListings?: unknown[];
+  jobs?: unknown[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }
 
 export interface ApiJob {
   id: string;
+  category?: string;
   pay?: number;
-  ownerId?: string;
+  posterId?: string;
   title?: string;
   jobLabel?: string;
   jobType?: string;

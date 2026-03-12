@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { characters, characterActiveEffects, characterEquipment, items, inventories, professionXp, towns, townResources, regions, regionBorders, diplomacyEvents, kingdoms, buildings, buildingConstructions, itemTemplates, priceHistories, caravans, elections, electionVotes, guilds, guildMembers, questProgress, quests, combatSessions, combatLogs, combatParticipants, notifications, racialAbilityCooldowns, changelingDisguises, achievements, playerAchievements, forgebornMaintenance, playerProfessions, craftingActions, recipes, travelRoutes, auctionCycles, marketListings, friends, laws, messages, electionCandidates, impeachments, impeachmentVotes, townTreasuries, councilMembers, townPolicies, abilities, characterAbilities, npcs, characterAppearances, users, exclusiveZones, gatheringActions, resources, wars, treaties, petitions, petitionSignatures, dailyActions, serviceActions, loans, serviceReputations, lawVotes, dailyReports, travelGroups, parties, travelNodes, travelGroupMembers, characterTravelStates, combatEncounterLogs, simulationRuns, groupTravelStates, partyMembers, partyInvitations, marketBuyOrders, tradeTransactions, ownedAssets, livestock, houses, houseStorage, jobListings, monsters, droppedItems, deletionLogs, innMenu, noticeBoardPosts } from "./tables";
+import { characters, characterActiveEffects, characterEquipment, items, inventories, professionXp, towns, townResources, regions, regionBorders, diplomacyEvents, kingdoms, buildings, buildingConstructions, itemTemplates, priceHistories, caravans, elections, electionVotes, guilds, guildMembers, questProgress, quests, combatSessions, combatLogs, combatParticipants, notifications, racialAbilityCooldowns, changelingDisguises, achievements, playerAchievements, forgebornMaintenance, playerProfessions, craftingActions, recipes, travelRoutes, auctionCycles, marketListings, friends, laws, messages, electionCandidates, impeachments, impeachmentVotes, townTreasuries, councilMembers, townPolicies, abilities, characterAbilities, npcs, characterAppearances, users, exclusiveZones, gatheringActions, resources, wars, treaties, petitions, petitionSignatures, dailyActions, serviceActions, loans, serviceReputations, lawVotes, dailyReports, travelGroups, parties, travelNodes, travelGroupMembers, characterTravelStates, combatEncounterLogs, simulationRuns, groupTravelStates, partyMembers, partyInvitations, marketBuyOrders, tradeTransactions, ownedAssets, livestock, houses, houseStorage, jobs, monsters, droppedItems, deletionLogs, innMenu, noticeBoardPosts } from "./tables";
 
 export const characterEquipmentRelations = relations(characterEquipment, ({one}) => ({
 	character: one(characters, {
@@ -138,11 +138,11 @@ export const charactersRelations = relations(characters, ({one, many}) => ({
 	}),
 	livestocks: many(livestock),
 	houses: many(houses),
-	jobListings_ownerId: many(jobListings, {
-		relationName: "jobListings_ownerId_characters_id"
+	jobs_posterId: many(jobs, {
+		relationName: "jobs_posterId_characters_id"
 	}),
-	jobListings_workerId: many(jobListings, {
-		relationName: "jobListings_workerId_characters_id"
+	jobs_workerId: many(jobs, {
+		relationName: "jobs_workerId_characters_id"
 	}),
 	ownedAssets: many(ownedAssets),
 	characterActiveEffects: many(characterActiveEffects),
@@ -265,7 +265,7 @@ export const townsRelations = relations(towns, ({one, many}) => ({
 	tradeTransactions: many(tradeTransactions),
 	auctionCycles: many(auctionCycles),
 	houses: many(houses),
-	jobListings: many(jobListings),
+	jobs: many(jobs),
 	ownedAssets: many(ownedAssets),
 	noticeBoardPosts: many(noticeBoardPosts),
 }));
@@ -1098,7 +1098,7 @@ export const livestockRelations = relations(livestock, ({one}) => ({
 
 export const ownedAssetsRelations = relations(ownedAssets, ({one, many}) => ({
 	livestocks: many(livestock),
-	jobListings: many(jobListings),
+	jobs: many(jobs),
 	character: one(characters, {
 		fields: [ownedAssets.ownerId],
 		references: [characters.id]
@@ -1132,24 +1132,24 @@ export const houseStorageRelations = relations(houseStorage, ({one}) => ({
 	}),
 }));
 
-export const jobListingsRelations = relations(jobListings, ({one}) => ({
+export const jobsRelations = relations(jobs, ({one}) => ({
 	ownedAsset: one(ownedAssets, {
-		fields: [jobListings.assetId],
+		fields: [jobs.assetId],
 		references: [ownedAssets.id]
 	}),
-	character_ownerId: one(characters, {
-		fields: [jobListings.ownerId],
+	poster: one(characters, {
+		fields: [jobs.posterId],
 		references: [characters.id],
-		relationName: "jobListings_ownerId_characters_id"
+		relationName: "jobs_posterId_characters_id"
 	}),
 	town: one(towns, {
-		fields: [jobListings.townId],
+		fields: [jobs.townId],
 		references: [towns.id]
 	}),
-	character_workerId: one(characters, {
-		fields: [jobListings.workerId],
+	worker: one(characters, {
+		fields: [jobs.workerId],
 		references: [characters.id],
-		relationName: "jobListings_workerId_characters_id"
+		relationName: "jobs_workerId_characters_id"
 	}),
 }));
 

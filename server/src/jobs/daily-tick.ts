@@ -13,7 +13,7 @@ import {
   laws, townTreasuries, townPolicies, tradeTransactions, caravans,
   elections, electionVotes, electionCandidates, impeachments, towns, kingdoms,
   worldEvents, combatEncounterLogs, notifications, recipes,
-  ownedAssets, livestock, jobListings, houses, houseStorage, noticeBoardPosts,
+  ownedAssets, livestock, jobs, houses, houseStorage, noticeBoardPosts,
 } from '@database/tables';
 import { processSpoilage, processAutoConsumption, getHungerModifier, processRevenantSustenance, processForgebornMaintenance } from '../services/food-system';
 import { resolveNodePvE, resolveNodePvP } from '../services/tick-combat-resolver';
@@ -900,19 +900,34 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   // Step 4.8: Job Auto-Posting & Expiry
   // -----------------------------------------------------------------------
   await runStep('Job Auto-Posting & Expiry', 4.8, async () => {
-    const currentDay = getGameDay();
+    const now = new Date().toISOString();
 
-    // 1. Expire old jobs
-    const expired = await db.update(jobListings)
-      .set({ status: 'EXPIRED' })
-      .where(and(
-        eq(jobListings.status, 'OPEN'),
-        sql`${jobListings.expiresAt} IS NOT NULL`,
-        lte(jobListings.expiresAt, currentDay),
-      ));
-    const expiredCount = expired.rowCount ?? 0;
+    // 1. Find and expire old jobs, refunding escrowed gold
+    const expirableJobs = await db.query.jobs.findMany({
+      where: and(
+        eq(jobs.status, 'OPEN'),
+        sql`${jobs.expiresAt} IS NOT NULL`,
+        lte(jobs.expiresAt, now),
+      ),
+    });
+
+    let expiredCount = 0;
+    for (const job of expirableJobs) {
+      await db.transaction(async (tx) => {
+        // Refund escrowed gold to poster
+        await tx.update(characters)
+          .set({ gold: sql`${characters.gold} + ${job.wage}` })
+          .where(eq(characters.id, job.posterId));
+
+        await tx.update(jobs)
+          .set({ status: 'EXPIRED' })
+          .where(eq(jobs.id, job.id));
+      });
+      expiredCount++;
+    }
+
     if (expiredCount > 0) {
-      console.log(`[DailyTick]   Expired ${expiredCount} job listings`);
+      console.log(`[DailyTick]   Expired ${expiredCount} jobs (escrowed gold refunded)`);
     }
 
     // (Auto-posting removed — job posting is always a deliberate player/bot choice)
@@ -2014,10 +2029,18 @@ async function processHarvestAction(
       }
     }
 
-    // Cancel any open job for this asset
-    await tx.update(jobListings)
-      .set({ status: 'CANCELLED' })
-      .where(and(eq(jobListings.assetId, asset.id), eq(jobListings.status, 'OPEN')));
+    // Cancel any open job for this asset + refund escrowed gold
+    const openJobsForAsset = await tx.query.jobs.findMany({
+      where: and(eq(jobs.assetId, asset.id), eq(jobs.status, 'OPEN')),
+    });
+    for (const openJob of openJobsForAsset) {
+      await tx.update(characters)
+        .set({ gold: sql`${characters.gold} + ${openJob.wage}` })
+        .where(eq(characters.id, openJob.posterId));
+      await tx.update(jobs)
+        .set({ status: 'CANCELLED' })
+        .where(eq(jobs.id, openJob.id));
+    }
 
     // Reset asset to EMPTY
     await tx.update(ownedAssets)

@@ -6,7 +6,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../lib/db';
 import { eq, and, count, sql } from 'drizzle-orm';
-import { ownedAssets, characters, playerProfessions, dailyActions, jobListings, itemTemplates, houses, houseStorage } from '@database/tables';
+import { ownedAssets, characters, playerProfessions, dailyActions, jobs, itemTemplates, houses, houseStorage } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
@@ -51,15 +51,15 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
         : eq(ownedAssets.ownerId, character.id),
       with: {
         town: { columns: { id: true, name: true } },
-        jobListings: true,
+        jobs: true,
       },
       orderBy: (oa, { asc }) => [asc(oa.tier), asc(oa.slotNumber)],
     });
 
-    // Filter jobListings to only OPEN ones (application-level since Drizzle doesn't support nested where on with)
+    // Filter jobs to only OPEN ones (application-level since Drizzle doesn't support nested where on with)
     const assetsWithFilteredJobs = assets.map(a => ({
       ...a,
-      jobListings: (a.jobListings || []).filter((j: any) => j.status === 'OPEN').slice(0, 1),
+      jobs: (a.jobs || []).filter((j: any) => j.status === 'OPEN').slice(0, 1),
     }));
 
     return res.json({ assets: assetsWithFilteredJobs, currentGameDay: getGameDay() });
@@ -378,10 +378,20 @@ router.post('/:id/harvest', authGuard, characterGuard, requireTown, async (req: 
       });
     }
 
-    // 7. Cancel any open job for this asset (owner harvesting manually)
-    await db.update(jobListings).set({ status: 'CANCELLED' }).where(
-      and(eq(jobListings.assetId, asset.id), eq(jobListings.status, 'OPEN')),
-    );
+    // 7. Cancel any open job for this asset + refund escrowed gold (owner harvesting manually)
+    const openJobsForAsset = await db.query.jobs.findMany({
+      where: and(eq(jobs.assetId, asset.id), eq(jobs.status, 'OPEN')),
+    });
+    for (const openJob of openJobsForAsset) {
+      await db.transaction(async (tx) => {
+        await tx.update(characters)
+          .set({ gold: sql`${characters.gold} + ${openJob.wage}` })
+          .where(eq(characters.id, openJob.posterId));
+        await tx.update(jobs)
+          .set({ status: 'CANCELLED' })
+          .where(eq(jobs.id, openJob.id));
+      });
+    }
 
     // 8. Create daily action
     await db.insert(dailyActions).values({
@@ -510,10 +520,18 @@ router.post('/:id/collect', authGuard, characterGuard, requireTown, async (req: 
         pendingYieldSince: null,
       }).where(eq(ownedAssets.id, asset.id));
 
-      // Cancel any open job for this asset
-      await tx.update(jobListings).set({ status: 'CANCELLED' }).where(
-        and(eq(jobListings.assetId, asset.id), eq(jobListings.status, 'OPEN')),
-      );
+      // Cancel any open job for this asset + refund escrowed gold
+      const openJobsForAsset = await tx.query.jobs.findMany({
+        where: and(eq(jobs.assetId, asset.id), eq(jobs.status, 'OPEN')),
+      });
+      for (const openJob of openJobsForAsset) {
+        await tx.update(characters)
+          .set({ gold: sql`${characters.gold} + ${openJob.wage}` })
+          .where(eq(characters.id, openJob.posterId));
+        await tx.update(jobs)
+          .set({ status: 'CANCELLED' })
+          .where(eq(jobs.id, openJob.id));
+      }
 
       // Create daily action
       await tx.insert(dailyActions).values({

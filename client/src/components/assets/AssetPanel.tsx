@@ -38,7 +38,7 @@ interface OwnedAsset {
   witherAt: number | null;
   pendingYield: number;
   pendingYieldSince: number | null;
-  jobListings: {
+  jobs: {
     id: string;
     wage: number;
     jobType: string;
@@ -101,7 +101,7 @@ function getJobType(asset: OwnedAsset): string | null {
 }
 
 function canPostJob(asset: OwnedAsset): boolean {
-  if (asset.jobListings.length > 0) return false;
+  if (asset.jobs.length > 0) return false;
   if (asset.professionType === 'RANCHER') return asset.pendingYield > 0;
   return asset.cropState === 'READY' || asset.cropState === 'EMPTY';
 }
@@ -291,7 +291,7 @@ function JobSection({
   const [showPayInput, setShowPayInput] = useState(false);
   const [pay, setPay] = useState('5');
 
-  const openJob = asset.jobListings[0] ?? null;
+  const openJob = asset.jobs[0] ?? null;
   const jobType = getJobType(asset);
 
   // Show existing open job
@@ -324,30 +324,33 @@ function JobSection({
   // Pay input form
   if (showPayInput) {
     return (
-      <div className="flex items-center gap-2 mt-2">
-        <RealmInput
-          type="number"
-          min="1"
-          value={pay}
-          onChange={(e) => setPay(e.target.value)}
-          className="w-20 !py-1 !px-2 text-xs"
-          placeholder="Pay"
-        />
-        <span className="text-[11px] text-realm-text-muted">gold</span>
-        <RealmButton
-          variant="primary"
-          size="sm"
-          disabled={postPending || !pay || Number(pay) < 1}
-          onClick={() => {
-            onPostJob(jobType, Number(pay));
-            setShowPayInput(false);
-          }}
-        >
-          {postPending ? 'Posting...' : 'Post Job'}
-        </RealmButton>
-        <RealmButton variant="ghost" size="sm" onClick={() => setShowPayInput(false)}>
-          Cancel
-        </RealmButton>
+      <div className="mt-2 space-y-1">
+        <div className="flex items-center gap-2">
+          <RealmInput
+            type="number"
+            min="1"
+            value={pay}
+            onChange={(e) => setPay(e.target.value)}
+            className="w-20 !py-1 !px-2 text-xs"
+            placeholder="Pay"
+          />
+          <span className="text-[11px] text-realm-text-muted">gold</span>
+          <RealmButton
+            variant="primary"
+            size="sm"
+            disabled={postPending || !pay || Number(pay) < 1}
+            onClick={() => {
+              onPostJob(jobType, Number(pay));
+              setShowPayInput(false);
+            }}
+          >
+            {postPending ? 'Posting...' : 'Post Job'}
+          </RealmButton>
+          <RealmButton variant="ghost" size="sm" onClick={() => setShowPayInput(false)}>
+            Cancel
+          </RealmButton>
+        </div>
+        <p className="text-[10px] text-realm-text-muted">Gold will be held in escrow until the job is completed.</p>
       </div>
     );
   }

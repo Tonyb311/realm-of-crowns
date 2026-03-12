@@ -13,7 +13,7 @@ import {
   electionCandidates, electionVotes, impeachmentVotes, councilMembers,
   guildMembers, travelGroupMembers, travelGroups, partyMembers,
   partyInvitations, questProgress, dailyActions, dailyReports,
-  treaties, droppedItems, serviceReputations, deletionLogs, jobListings,
+  treaties, droppedItems, serviceReputations, deletionLogs, jobs,
   serviceActions, messages, parties,
 } from '@database/tables';
 import { abilities, itemTemplates } from '@database/tables';

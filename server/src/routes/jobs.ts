@@ -1,12 +1,12 @@
 // ---------------------------------------------------------------------------
-// Jobs Routes — One-shot task board for property owners and workers
+// Jobs Routes — Unified job board with gold escrow
 // ---------------------------------------------------------------------------
 
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../lib/db';
 import { eq, and, desc, sql } from 'drizzle-orm';
-import { ownedAssets, jobListings, dailyActions, playerProfessions, houses, houseStorage, itemTemplates, characters } from '@database/tables';
+import { ownedAssets, jobs, dailyActions, playerProfessions, houses, houseStorage, itemTemplates, characters } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
@@ -18,14 +18,11 @@ import { getTodayTickDate, getNextTickTime, getGameDay } from '../lib/game-day';
 import { ASSET_TIERS, PROFESSION_ASSET_TYPES } from '@shared/data/assets';
 import { RESOURCE_MAP, GATHER_SPOT_PROFESSION_MAP } from '@shared/data/gathering';
 import { addProfessionXP } from '../services/profession-xp';
+import { JOB_TYPE_LABELS, ASSET_JOB_TYPES } from '@shared/data/jobs-config';
 
 const router = Router();
 
-// --- Schemas ---
-
-const JOB_TYPES_FARMER = ['harvest_field', 'plant_field'] as const;
-const JOB_TYPES_RANCHER = ['gather_eggs', 'milk_cows', 'shear_sheep'] as const;
-const ALL_JOB_TYPES = [...JOB_TYPES_FARMER, ...JOB_TYPES_RANCHER] as const;
+// --- Local mappings ---
 
 const RANCHER_SPOT_TO_JOB: Record<string, string> = {
   chicken_coop: 'gather_eggs',
@@ -33,22 +30,15 @@ const RANCHER_SPOT_TO_JOB: Record<string, string> = {
   sheep_pen: 'shear_sheep',
 };
 
-const JOB_TYPE_LABELS: Record<string, string> = {
-  harvest_field: 'Harvest Field',
-  plant_field: 'Plant Field',
-  gather_eggs: 'Gather Eggs',
-  milk_cows: 'Milk Cows',
-  shear_sheep: 'Shear Sheep',
-};
-
 const postJobSchema = z.object({
   assetId: z.string().uuid(),
-  jobType: z.enum(ALL_JOB_TYPES),
+  jobType: z.enum(ASSET_JOB_TYPES),
   pay: z.number().int().min(1, 'Pay must be at least 1 gold'),
 });
 
 // ============================================================
 // POST /api/jobs/post — Post a job (FREE ACTION, works remotely)
+// Gold is escrowed from poster at posting time.
 // ============================================================
 
 router.post('/post', authGuard, characterGuard, validate(postJobSchema), async (req: AuthenticatedRequest, res: Response) => {
@@ -65,14 +55,14 @@ router.post('/post', authGuard, characterGuard, validate(postJobSchema), async (
       return res.status(403).json({ error: 'You do not own this asset' });
     }
 
-    // 2. Check owner can afford the pay
+    // 2. Check owner can afford the pay (gold will be escrowed)
     if (character.gold < pay) {
       return res.status(400).json({ error: `Insufficient gold. You have ${character.gold}g, job costs ${pay}g.` });
     }
 
     // 3. Check no existing OPEN job for this asset
-    const existingJob = await db.query.jobListings.findFirst({
-      where: and(eq(jobListings.assetId, assetId), eq(jobListings.status, 'OPEN')),
+    const existingJob = await db.query.jobs.findFirst({
+      where: and(eq(jobs.assetId, assetId), eq(jobs.status, 'OPEN')),
     });
     if (existingJob) {
       return res.status(400).json({ error: 'An open job already exists for this asset' });
@@ -84,12 +74,10 @@ router.post('/post', authGuard, characterGuard, validate(postJobSchema), async (
       if (jobType !== expectedJobType) {
         return res.status(400).json({ error: `Invalid job type for ${asset.spotType}. Expected: ${expectedJobType}` });
       }
-      // Must have pending yield
       if (asset.pendingYield <= 0) {
         return res.status(400).json({ error: 'No products ready for collection' });
       }
     } else {
-      // FARMER and other gathering professions
       if (jobType === 'harvest_field') {
         if (asset.cropState !== 'READY') {
           return res.status(400).json({ error: `Cannot post harvest job — crop state is ${asset.cropState}` });
@@ -103,23 +91,37 @@ router.post('/post', authGuard, characterGuard, validate(postJobSchema), async (
       }
     }
 
-    // 5. Create job listing
-    const [job] = await db.insert(jobListings).values({
-      id: crypto.randomUUID(),
-      assetId,
-      ownerId: character.id,
-      townId: asset.townId,
-      jobType,
-      wage: pay,
-      status: 'OPEN',
-    }).returning();
+    // 5. Escrow gold and create job in a transaction
+    const title = `${JOB_TYPE_LABELS[jobType] ?? jobType} — ${asset.name}`;
+
+    const [job] = await db.transaction(async (tx) => {
+      // Deduct gold from poster (escrow)
+      await tx.update(characters)
+        .set({ gold: sql`${characters.gold} - ${pay}` })
+        .where(eq(characters.id, character.id));
+
+      // Create job
+      return tx.insert(jobs).values({
+        id: crypto.randomUUID(),
+        category: 'ASSET',
+        assetId,
+        posterId: character.id,
+        townId: asset.townId,
+        jobType,
+        title,
+        wage: pay,
+        status: 'OPEN',
+      }).returning();
+    });
 
     return res.status(201).json({
       success: true,
       job: {
         id: job.id,
+        category: job.category,
         assetId: job.assetId,
         jobType: job.jobType,
+        title: job.title,
         pay: job.wage,
         status: job.status,
       },
@@ -133,6 +135,7 @@ router.post('/post', authGuard, characterGuard, validate(postJobSchema), async (
 
 // ============================================================
 // POST /api/jobs/:id/accept — Accept + execute job instantly (DAILY ACTION)
+// Escrowed gold is transferred to worker on completion.
 // ============================================================
 
 router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: AuthenticatedRequest, res: Response) => {
@@ -141,11 +144,11 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
     const { id } = req.params;
 
     // 1. Find the job
-    const job = await db.query.jobListings.findFirst({
-      where: eq(jobListings.id, id),
+    const job = await db.query.jobs.findFirst({
+      where: eq(jobs.id, id),
       with: {
         ownedAsset: true,
-        character_ownerId: { columns: { id: true, gold: true } },
+        poster: { columns: { id: true, gold: true } },
       },
     });
     if (!job) {
@@ -153,7 +156,9 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
     }
 
     const asset = job.ownedAsset;
-    const owner = job.character_ownerId;
+    if (!asset) {
+      return res.status(400).json({ error: 'Job asset no longer exists' });
+    }
 
     // 2. Validations
     if (job.status !== 'OPEN') {
@@ -162,7 +167,7 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
     if (character.currentTownId !== job.townId) {
       return res.status(400).json({ error: 'You must be in the same town as the job' });
     }
-    if (job.ownerId === character.id) {
+    if (job.posterId === character.id) {
       return res.status(400).json({ error: 'You cannot accept your own job' });
     }
 
@@ -192,11 +197,9 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
 
     // 5. Execute the job in a single transaction
     const result = await db.transaction(async (tx) => {
-      // 5a. Determine yield and items
       let itemsProduced: { itemName: string; quantity: number; templateId: string } | null = null;
 
       if (job.jobType === 'harvest_field') {
-        // Harvest: FARMER field -> products to house storage
         if (asset.cropState !== 'READY') {
           throw new Error('Asset is no longer ready for harvest');
         }
@@ -214,7 +217,6 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
         const itemName = gatherItem.templateName;
         const itemType = gatherItem.type === 'CONSUMABLE' ? 'CONSUMABLE' : 'MATERIAL';
 
-        // Find/create template
         let template = await tx.query.itemTemplates.findFirst({ where: eq(itemTemplates.name, itemName) });
         if (!template) {
           [template] = await tx.insert(itemTemplates).values({
@@ -233,9 +235,8 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
           }).returning();
         }
 
-        // Put items in owner's house storage
         const house = await tx.query.houses.findFirst({
-          where: and(eq(houses.characterId, job.ownerId), eq(houses.townId, job.townId)),
+          where: and(eq(houses.characterId, job.posterId), eq(houses.townId, job.townId)),
         });
         if (house) {
           const existingStorage = await tx.query.houseStorage.findFirst({
@@ -250,7 +251,6 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
           }
         }
 
-        // Reset asset to EMPTY
         await tx.update(ownedAssets)
           .set({ cropState: 'EMPTY', plantedAt: null, readyAt: null, witheringAt: null })
           .where(eq(ownedAssets.id, asset.id));
@@ -258,7 +258,6 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
         itemsProduced = { itemName, quantity: finalYield, templateId: template.id };
 
       } else if (job.jobType === 'plant_field') {
-        // Plant: set GROWING state
         if (asset.cropState !== 'EMPTY') {
           throw new Error('Asset is no longer empty for planting');
         }
@@ -268,13 +267,12 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
 
         const plantedAt = getGameDay();
         const readyAt = plantedAt + tierData.growthTicks;
-        const witheringAt = readyAt + 3; // WITHER_TICKS
+        const witheringAt = readyAt + 3;
 
         await tx.update(ownedAssets)
           .set({ cropState: 'GROWING', plantedAt, readyAt, witheringAt })
           .where(eq(ownedAssets.id, asset.id));
 
-        // No items produced for planting
       } else {
         // RANCHER collection: gather_eggs, milk_cows, shear_sheep
         const pendingYield = asset.pendingYield;
@@ -309,9 +307,8 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
           }).returning();
         }
 
-        // Put items in owner's house storage
         const house = await tx.query.houses.findFirst({
-          where: and(eq(houses.characterId, job.ownerId), eq(houses.townId, job.townId)),
+          where: and(eq(houses.characterId, job.posterId), eq(houses.townId, job.townId)),
         });
         if (house) {
           const existingStorage = await tx.query.houseStorage.findFirst({
@@ -326,7 +323,6 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
           }
         }
 
-        // Reset pending yield
         await tx.update(ownedAssets)
           .set({ pendingYield: 0, pendingYieldSince: null })
           .where(eq(ownedAssets.id, asset.id));
@@ -334,26 +330,24 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
         itemsProduced = { itemName, quantity: finalYield, templateId: template.id };
       }
 
-      // 5b. Transfer gold: owner -> worker
-      const actualPay = Math.min(job.wage, owner.gold);
-      if (actualPay > 0) {
-        await tx.update(characters).set({ gold: sql`${characters.gold} - ${actualPay}` }).where(eq(characters.id, job.ownerId));
-        await tx.update(characters).set({ gold: sql`${characters.gold} + ${actualPay}` }).where(eq(characters.id, character.id));
-      }
+      // Transfer escrowed gold to worker (no Math.min — escrow guarantees funds)
+      await tx.update(characters)
+        .set({ gold: sql`${characters.gold} + ${job.wage}` })
+        .where(eq(characters.id, character.id));
 
-      // 5c. Mark job completed
-      await tx.update(jobListings)
+      // Mark job completed
+      await tx.update(jobs)
         .set({
           status: 'COMPLETED',
           workerId: character.id,
           completedAt: new Date().toISOString(),
-          productYield: itemsProduced
+          result: itemsProduced
             ? { itemName: itemsProduced.itemName, quantity: itemsProduced.quantity }
             : null,
         })
-        .where(eq(jobListings.id, job.id));
+        .where(eq(jobs.id, job.id));
 
-      // 5d. Create daily action (consume slot)
+      // Create daily action (consume slot)
       await tx.insert(dailyActions).values({
         id: crypto.randomUUID(),
         characterId: character.id,
@@ -371,13 +365,13 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
           jobId: job.id,
           jobType: job.jobType,
           assetName: asset.name,
-          pay: actualPay,
+          pay: job.wage,
           items: itemsProduced,
           professionMatch,
         },
       });
 
-      return { actualPay, itemsProduced };
+      return { actualPay: job.wage, itemsProduced };
     });
 
     // 6. Award profession XP (outside transaction — non-critical)
@@ -423,28 +417,30 @@ router.get('/town/:townId', authGuard, characterGuard, async (req: Authenticated
   try {
     const { townId } = req.params;
 
-    const jobs = await db.query.jobListings.findMany({
-      where: and(eq(jobListings.townId, townId), eq(jobListings.status, 'OPEN')),
+    const openJobs = await db.query.jobs.findMany({
+      where: and(eq(jobs.townId, townId), eq(jobs.status, 'OPEN')),
       with: {
         ownedAsset: { columns: { id: true, name: true, spotType: true, tier: true, professionType: true, pendingYield: true } },
-        character_ownerId: { columns: { id: true, name: true } },
+        poster: { columns: { id: true, name: true } },
       },
-      orderBy: desc(jobListings.wage),
+      orderBy: desc(jobs.wage),
     });
 
     return res.json({
-      jobs: jobs.map((j) => ({
+      jobs: openJobs.map((j) => ({
         id: j.id,
+        category: j.category,
         jobType: j.jobType,
-        jobLabel: JOB_TYPE_LABELS[j.jobType] || j.jobType,
+        jobLabel: JOB_TYPE_LABELS[j.jobType ?? ''] || j.jobType,
+        title: j.title,
         pay: j.wage,
-        assetId: j.ownedAsset.id,
-        assetName: j.ownedAsset.name,
-        assetType: j.ownedAsset.spotType,
-        assetTier: j.ownedAsset.tier,
-        professionType: j.ownedAsset.professionType,
-        ownerName: j.character_ownerId.name,
-        ownerId: j.character_ownerId.id,
+        assetId: j.ownedAsset?.id,
+        assetName: j.ownedAsset?.name,
+        assetType: j.ownedAsset?.spotType,
+        assetTier: j.ownedAsset?.tier,
+        professionType: j.ownedAsset?.professionType,
+        ownerName: j.poster.name,
+        ownerId: j.poster.id,
         autoPosted: j.autoPosted,
         createdAt: j.createdAt,
       })),
@@ -457,7 +453,7 @@ router.get('/town/:townId', authGuard, characterGuard, async (req: Authenticated
 });
 
 // ============================================================
-// POST /api/jobs/:id/cancel — Cancel a job
+// POST /api/jobs/:id/cancel — Cancel a job (refund escrowed gold)
 // ============================================================
 
 router.post('/:id/cancel', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
@@ -465,22 +461,29 @@ router.post('/:id/cancel', authGuard, characterGuard, async (req: AuthenticatedR
     const character = req.character!;
     const { id } = req.params;
 
-    const job = await db.query.jobListings.findFirst({ where: eq(jobListings.id, id) });
+    const job = await db.query.jobs.findFirst({ where: eq(jobs.id, id) });
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });
     }
-    if (job.ownerId !== character.id) {
-      return res.status(403).json({ error: 'Only the job owner can cancel this job' });
+    if (job.posterId !== character.id) {
+      return res.status(403).json({ error: 'Only the job poster can cancel this job' });
     }
     if (job.status !== 'OPEN') {
       return res.status(400).json({ error: `Cannot cancel — job status is ${job.status}` });
     }
 
-    await db.update(jobListings)
-      .set({ status: 'CANCELLED' })
-      .where(eq(jobListings.id, id));
+    // Refund escrowed gold and cancel in a transaction
+    await db.transaction(async (tx) => {
+      await tx.update(characters)
+        .set({ gold: sql`${characters.gold} + ${job.wage}` })
+        .where(eq(characters.id, job.posterId));
 
-    return res.json({ success: true, message: 'Job cancelled.' });
+      await tx.update(jobs)
+        .set({ status: 'CANCELLED' })
+        .where(eq(jobs.id, id));
+    });
+
+    return res.json({ success: true, message: 'Job cancelled. Escrowed gold refunded.' });
   } catch (error) {
     if (handleDbError(error, res, 'jobs-cancel', req)) return;
     logRouteError(req, 500, 'Jobs cancel error', error);
@@ -496,22 +499,24 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
   try {
     const character = req.character!;
 
-    const jobs = await db.query.jobListings.findMany({
-      where: and(eq(jobListings.ownerId, character.id), eq(jobListings.status, 'OPEN')),
+    const myJobs = await db.query.jobs.findMany({
+      where: eq(jobs.posterId, character.id),
       with: {
         ownedAsset: { columns: { id: true, name: true, spotType: true, tier: true } },
       },
-      orderBy: desc(jobListings.createdAt),
+      orderBy: desc(jobs.createdAt),
     });
 
     return res.json({
-      jobs: jobs.map((j) => ({
+      jobs: myJobs.map((j) => ({
         id: j.id,
+        category: j.category,
         jobType: j.jobType,
-        jobLabel: JOB_TYPE_LABELS[j.jobType] || j.jobType,
+        jobLabel: JOB_TYPE_LABELS[j.jobType ?? ''] || j.jobType,
+        title: j.title,
         pay: j.wage,
-        assetId: j.ownedAsset.id,
-        assetName: j.ownedAsset.name,
+        assetId: j.ownedAsset?.id,
+        assetName: j.ownedAsset?.name,
         status: j.status,
         autoPosted: j.autoPosted,
         createdAt: j.createdAt,

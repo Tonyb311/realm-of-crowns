@@ -1966,7 +1966,7 @@ export async function postJob(bot: BotState): Promise<ActionResult> {
 
     for (const asset of assets) {
       // Skip if already has an open job
-      const openJobs = asset.jobListings || [];
+      const openJobs = asset.jobs || [];
       if (openJobs.length > 0) continue;
 
       let jobType: string | null = null;

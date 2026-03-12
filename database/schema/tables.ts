@@ -2159,47 +2159,60 @@ export const livestock = pgTable("livestock", {
 		}).onUpdate("cascade").onDelete("cascade"),
 ]);
 
-export const jobListings = pgTable("job_listings", {
+export const jobs = pgTable("jobs", {
 	id: text().primaryKey().notNull(),
-	assetId: text("asset_id").notNull(),
-	ownerId: text("owner_id").notNull(),
+	// Common fields (all job types)
+	category: text().notNull(), // 'ASSET', 'WORKSHOP', 'DELIVERY'
 	townId: text("town_id").notNull(),
-	wage: integer().notNull(),
+	posterId: text("poster_id").notNull(),
 	workerId: text("worker_id"),
+	title: text().notNull(),
+	description: text(),
+	wage: integer().notNull(), // gold escrowed from poster at creation
+	status: text().default('OPEN').notNull(), // OPEN, IN_PROGRESS, COMPLETED, CANCELLED, EXPIRED
+	expiresAt: timestamp("expires_at", { precision: 3, mode: 'string' }),
+	completedAt: timestamp("completed_at", { precision: 3, mode: 'string' }),
+	result: jsonb(), // outcome data (items produced, delivery confirmed, etc.)
+	// Asset job fields (category = 'ASSET')
+	assetId: text("asset_id"),
+	jobType: text("job_type"), // harvest_field, plant_field, gather_eggs, milk_cows, shear_sheep
+	autoPosted: boolean("auto_posted").default(false).notNull(),
+	// Workshop job fields (category = 'WORKSHOP') — Phase 2
+	recipeId: text("recipe_id"),
+	workshopBuildingId: text("workshop_building_id"),
+	materialsEscrow: jsonb("materials_escrow"),
+	// Delivery job fields (category = 'DELIVERY') — Phase 3
+	destinationTownId: text("destination_town_id"),
+	deliveryItems: jsonb("delivery_items"),
+	// Timestamps
 	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).notNull().$onUpdate(() => new Date().toISOString()),
-	jobType: varchar("job_type", { length: 50 }).default('harvest_field').notNull(),
-	status: varchar({ length: 20 }).default('OPEN').notNull(),
-	autoPosted: boolean("auto_posted").default(false).notNull(),
-	productYield: jsonb("product_yield"),
-	completedAt: timestamp("completed_at", { withTimezone: true, mode: 'string' }),
-	expiresAt: integer("expires_at"),
 }, (table) => [
-	index("job_listings_asset_id_idx").using("btree", table.assetId.asc().nullsLast().op("text_ops")),
-	uniqueIndex("job_listings_asset_id_key").using("btree", table.assetId.asc().nullsLast().op("text_ops")),
-	index("job_listings_owner_id_idx").using("btree", table.ownerId.asc().nullsLast().op("text_ops")),
-	index("job_listings_town_id_status_idx").using("btree", table.townId.asc().nullsLast().op("text_ops"), table.status.asc().nullsLast().op("text_ops")),
-	index("job_listings_worker_id_idx").using("btree", table.workerId.asc().nullsLast().op("text_ops")),
-	foreignKey({
-			columns: [table.assetId],
-			foreignColumns: [ownedAssets.id],
-			name: "job_listings_asset_id_fkey"
-		}).onUpdate("cascade").onDelete("cascade"),
-	foreignKey({
-			columns: [table.ownerId],
-			foreignColumns: [characters.id],
-			name: "job_listings_owner_id_fkey"
-		}).onUpdate("cascade").onDelete("cascade"),
+	index("jobs_town_id_status_idx").using("btree", table.townId.asc().nullsLast().op("text_ops"), table.status.asc().nullsLast().op("text_ops")),
+	index("jobs_poster_id_idx").using("btree", table.posterId.asc().nullsLast().op("text_ops")),
+	index("jobs_worker_id_idx").using("btree", table.workerId.asc().nullsLast().op("text_ops")),
+	index("jobs_asset_id_idx").using("btree", table.assetId.asc().nullsLast().op("text_ops")),
+	index("jobs_category_idx").using("btree", table.category.asc().nullsLast().op("text_ops")),
 	foreignKey({
 			columns: [table.townId],
 			foreignColumns: [towns.id],
-			name: "job_listings_town_id_fkey"
+			name: "jobs_town_id_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+			columns: [table.posterId],
+			foreignColumns: [characters.id],
+			name: "jobs_poster_id_fkey"
 		}).onUpdate("cascade").onDelete("cascade"),
 	foreignKey({
 			columns: [table.workerId],
 			foreignColumns: [characters.id],
-			name: "job_listings_worker_id_fkey"
+			name: "jobs_worker_id_fkey"
 		}).onUpdate("cascade").onDelete("set null"),
+	foreignKey({
+			columns: [table.assetId],
+			foreignColumns: [ownedAssets.id],
+			name: "jobs_asset_id_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
 ]);
 
 export const ownedAssets = pgTable("owned_assets", {

@@ -6,7 +6,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../lib/db';
 import { eq, and, inArray, sql } from 'drizzle-orm';
-import { characters, houses, houseStorage, livestock, ownedAssets, buildings, jobListings, towns, itemTemplates } from '@database/tables';
+import { characters, houses, houseStorage, livestock, ownedAssets, buildings, jobs, towns, itemTemplates } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
@@ -240,16 +240,27 @@ router.post('/confirm', authGuard, characterGuard, validate(relocateSchema), asy
 
       // 3. Delete owned assets (fields, rancher buildings)
       if (oldHomeTownId) {
-        // Delete job listings associated with assets first
+        // Refund escrowed wages for OPEN jobs before deleting assets
         const assetRows = await tx.select({ id: ownedAssets.id })
           .from(ownedAssets)
           .where(and(eq(ownedAssets.ownerId, character.id), eq(ownedAssets.townId, oldHomeTownId)));
         const assetIds = assetRows.map(a => a.id);
 
         if (assetIds.length > 0) {
-          await tx.delete(jobListings).where(inArray(jobListings.assetId, assetIds));
+          const openJobs = await tx.query.jobs.findMany({
+            where: and(inArray(jobs.assetId, assetIds), eq(jobs.status, 'OPEN')),
+          });
+          for (const openJob of openJobs) {
+            await tx.update(characters)
+              .set({ gold: sql`${characters.gold} + ${openJob.wage}` })
+              .where(eq(characters.id, openJob.posterId));
+            await tx.update(jobs)
+              .set({ status: 'CANCELLED' })
+              .where(eq(jobs.id, openJob.id));
+          }
         }
 
+        // CASCADE on assetId FK will delete remaining jobs when assets are deleted
         await tx.delete(ownedAssets).where(and(eq(ownedAssets.ownerId, character.id), eq(ownedAssets.townId, oldHomeTownId)));
       }
 
