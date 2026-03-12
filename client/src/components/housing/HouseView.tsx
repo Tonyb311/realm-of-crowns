@@ -5,9 +5,13 @@ import {
   Package,
   ArrowDown,
   ArrowUp,
+  ArrowUpCircle,
   BarChart3,
   X,
   Loader2,
+  Clock,
+  Star,
+  Check,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -15,6 +19,7 @@ import { TOAST_STYLE } from '../../constants';
 import type { WeightState } from '@shared/types/weight';
 import { ENCUMBRANCE_TIER_CONFIG } from '@shared/types/weight';
 import { getEncumbrancePenalties } from '@shared/utils/bounded-accuracy';
+import { MAX_COTTAGE_TIER } from '@shared/data/cottage-tiers';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -28,6 +33,30 @@ interface StorageItem {
   weight?: number;
 }
 
+interface UpgradeInfoResponse {
+  atMaxTier: boolean;
+  currentTier: number;
+  upgradingToTier?: number | null;
+  nextTier?: {
+    tier: number;
+    name: string;
+    storageSlots: number;
+  };
+  cost?: {
+    gold: number;
+    currentGold: number;
+    canAffordGold: boolean;
+    materials: {
+      itemName: string;
+      required: number;
+      available: number;
+      canAfford: boolean;
+    }[];
+    canAffordMaterials: boolean;
+  };
+  canUpgrade?: boolean;
+}
+
 interface HouseStorageResponse {
   house: {
     id: string;
@@ -36,6 +65,7 @@ interface HouseStorageResponse {
     townName: string;
     tier: number;
     storageSlots: number;
+    upgradingToTier?: number | null;
   };
   storage: {
     capacity: number;
@@ -97,7 +127,26 @@ export default function HouseView({ houseId, isCurrentTown, onClose }: HouseView
     queryClient.invalidateQueries({ queryKey: ['inventory'] });
     queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
     queryClient.invalidateQueries({ queryKey: ['equipment', 'stats'] });
+    queryClient.invalidateQueries({ queryKey: ['houses', houseId, 'upgrade-info'] });
   };
+
+  // Upgrade info query
+  const { data: upgradeInfo } = useQuery<UpgradeInfoResponse>({
+    queryKey: ['houses', houseId, 'upgrade-info'],
+    queryFn: async () => (await api.get(`/houses/${houseId}/upgrade-info`)).data,
+  });
+
+  // Upgrade mutation
+  const upgradeMutation = useMutation({
+    mutationFn: async () => (await api.post(`/houses/${houseId}/upgrade`)).data,
+    onSuccess: (data: any) => {
+      toast(data.message, { style: TOAST_STYLE });
+      invalidateAll();
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Upgrade failed.', { style: TOAST_STYLE });
+    },
+  });
 
   // Deposit mutation
   const depositMutation = useMutation({
@@ -206,6 +255,93 @@ export default function HouseView({ houseId, isCurrentTown, onClose }: HouseView
             />
           </div>
         </div>
+
+        {/* Cottage Upgrade Section */}
+        {upgradeInfo && (
+          <div className="px-6 py-3 border-b border-realm-border">
+            {house.upgradingToTier ? (
+              // Upgrade in progress
+              <div className="flex items-center gap-3 bg-realm-gold-500/5 border border-realm-gold-500/20 rounded-sm px-4 py-3">
+                <Clock className="w-5 h-5 text-realm-gold-400 animate-pulse flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-realm-gold-400 font-display">
+                    Upgrading to {upgradeInfo.nextTier?.name ?? `Tier ${house.upgradingToTier}`}...
+                  </p>
+                  <p className="text-[10px] text-realm-text-muted mt-0.5">
+                    Completes at the next daily tick
+                  </p>
+                </div>
+              </div>
+            ) : upgradeInfo.atMaxTier ? (
+              // Max tier reached
+              <div className="flex items-center gap-2 text-sm text-realm-text-muted">
+                <Star className="w-4 h-4 text-realm-gold-400" />
+                <span className="font-display text-realm-gold-400">Grand Cottage</span>
+                <span className="text-[10px]">— Maximum tier reached</span>
+              </div>
+            ) : upgradeInfo.nextTier && upgradeInfo.cost ? (
+              // Upgrade available
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <ArrowUpCircle className="w-4 h-4 text-realm-teal-400" />
+                    <span className="text-sm font-display text-realm-teal-400">
+                      Upgrade to {upgradeInfo.nextTier.name}
+                    </span>
+                    <span className="text-[10px] text-realm-text-muted">
+                      ({upgradeInfo.nextTier.storageSlots} slots)
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => upgradeMutation.mutate()}
+                    disabled={!upgradeInfo.canUpgrade || upgradeMutation.isPending}
+                    className="px-4 py-1.5 text-[11px] font-display rounded-sm transition-colors flex items-center gap-1.5
+                      disabled:opacity-40 disabled:cursor-not-allowed
+                      bg-realm-teal-500/20 border border-realm-teal-500/30 text-realm-teal-400 hover:bg-realm-teal-500/30"
+                  >
+                    {upgradeMutation.isPending ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <ArrowUpCircle className="w-3 h-3" />
+                    )}
+                    {upgradeMutation.isPending ? 'Upgrading...' : 'Upgrade'}
+                  </button>
+                </div>
+                <div className="space-y-1 text-[11px]">
+                  {/* Gold cost */}
+                  <div className="flex items-center gap-2">
+                    <span className={upgradeInfo.cost.canAffordGold ? 'text-realm-success' : 'text-realm-danger'}>
+                      {upgradeInfo.cost.canAffordGold ? <Check className="w-3 h-3 inline" /> : <X className="w-3 h-3 inline" />}
+                    </span>
+                    <span className="text-realm-text-secondary">
+                      {upgradeInfo.cost.gold}g
+                    </span>
+                    <span className="text-realm-text-muted">
+                      (have {upgradeInfo.cost.currentGold}g)
+                    </span>
+                  </div>
+                  {/* Material costs */}
+                  {upgradeInfo.cost.materials.map(mat => (
+                    <div key={mat.itemName} className="flex items-center gap-2">
+                      <span className={mat.canAfford ? 'text-realm-success' : 'text-realm-danger'}>
+                        {mat.canAfford ? <Check className="w-3 h-3 inline" /> : <X className="w-3 h-3 inline" />}
+                      </span>
+                      <span className="text-realm-text-secondary">
+                        {mat.itemName}: {mat.required}
+                      </span>
+                      <span className="text-realm-text-muted">
+                        ({mat.available} in storage)
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-realm-text-muted mt-2 italic">
+                  Materials consumed from cottage storage. Completes at next daily tick. Free action.
+                </p>
+              </div>
+            ) : null}
+          </div>
+        )}
 
         {/* Storage items */}
         <div className="px-6 py-4">

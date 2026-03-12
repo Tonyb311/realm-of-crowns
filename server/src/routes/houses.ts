@@ -6,7 +6,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../lib/db';
 import { eq, and, asc, sql, count } from 'drizzle-orm';
-import { houses, houseStorage, inventories, items, marketListings, itemTemplates } from '@database/tables';
+import { houses, houseStorage, inventories, items, marketListings, itemTemplates, characters } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard } from '../middleware/character-guard';
@@ -17,6 +17,7 @@ import crypto from 'crypto';
 import { calculateWeightState } from '../services/weight-calculator';
 import { LISTING_DURATION_DAYS } from '@shared/data/market';
 import { invalidateCache } from '../lib/redis';
+import { getNextCottageTier, MAX_COTTAGE_TIER } from '@shared/data/cottage-tiers';
 
 const router = Router();
 
@@ -64,6 +65,7 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
         name: h.name,
         storageSlots: h.storageSlots,
         storageUsed: h.houseStorages.length,
+        upgradingToTier: h.upgradingToTier,
         isCurrentTown: h.townId === character.currentTownId,
       })),
     });
@@ -164,6 +166,7 @@ router.get('/:houseId/storage', authGuard, characterGuard, async (req: Authentic
         townName: house.town.name,
         tier: house.tier,
         storageSlots: house.storageSlots,
+        upgradingToTier: house.upgradingToTier,
       },
       storage: {
         capacity: house.storageSlots,
@@ -470,6 +473,209 @@ router.post('/:houseId/storage/list', authGuard, characterGuard, validate(listOn
   } catch (error) {
     if (handleDbError(error, res, 'houses-storage-list', req)) return;
     logRouteError(req, 500, 'List from house storage error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// GET /api/houses/:houseId/upgrade-info — Get next tier cost breakdown
+// ============================================================
+
+router.get('/:houseId/upgrade-info', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { houseId } = req.params;
+
+    const house = await db.query.houses.findFirst({ where: eq(houses.id, houseId) });
+
+    if (!house) {
+      return res.status(404).json({ error: 'House not found' });
+    }
+    if (house.characterId !== character.id) {
+      return res.status(403).json({ error: 'You do not own this house' });
+    }
+
+    if (house.tier >= MAX_COTTAGE_TIER) {
+      return res.json({ atMaxTier: true, currentTier: house.tier });
+    }
+
+    const nextTier = getNextCottageTier(house.tier);
+    if (!nextTier || !nextTier.upgradeCost) {
+      return res.json({ atMaxTier: true, currentTier: house.tier });
+    }
+
+    const goldCost = nextTier.upgradeCost.gold;
+    const canAffordGold = character.gold >= goldCost;
+
+    // Check each material's availability in cottage storage
+    const materialBreakdown = await Promise.all(
+      nextTier.upgradeCost.materials.map(async (mat) => {
+        // Look up template by name
+        const template = await db.query.itemTemplates.findFirst({
+          where: eq(itemTemplates.name, mat.itemName),
+          columns: { id: true, name: true },
+        });
+
+        if (!template) {
+          return {
+            itemName: mat.itemName,
+            required: mat.quantity,
+            available: 0,
+            canAfford: false,
+          };
+        }
+
+        const storageEntry = await db.query.houseStorage.findFirst({
+          where: and(eq(houseStorage.houseId, house.id), eq(houseStorage.itemTemplateId, template.id)),
+        });
+
+        const available = storageEntry?.quantity ?? 0;
+        return {
+          itemName: mat.itemName,
+          required: mat.quantity,
+          available,
+          canAfford: available >= mat.quantity,
+        };
+      })
+    );
+
+    const canAffordMaterials = materialBreakdown.every(m => m.canAfford);
+
+    return res.json({
+      atMaxTier: false,
+      currentTier: house.tier,
+      upgradingToTier: house.upgradingToTier,
+      nextTier: {
+        tier: nextTier.tier,
+        name: nextTier.name,
+        storageSlots: nextTier.storageSlots,
+      },
+      cost: {
+        gold: goldCost,
+        currentGold: character.gold,
+        canAffordGold,
+        materials: materialBreakdown,
+        canAffordMaterials,
+      },
+      canUpgrade: canAffordGold && canAffordMaterials && !house.upgradingToTier,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'houses-upgrade-info', req)) return;
+    logRouteError(req, 500, 'Upgrade info error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// POST /api/houses/:houseId/upgrade — Start cottage upgrade to next tier
+// ============================================================
+
+router.post('/:houseId/upgrade', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { houseId } = req.params;
+
+    const house = await db.query.houses.findFirst({ where: eq(houses.id, houseId) });
+
+    if (!house) {
+      return res.status(404).json({ error: 'House not found' });
+    }
+    if (house.characterId !== character.id) {
+      return res.status(403).json({ error: 'You do not own this house' });
+    }
+    if (house.upgradingToTier) {
+      return res.status(400).json({ error: 'Your cottage is already being upgraded. Wait for the next daily tick.' });
+    }
+    if (house.tier >= MAX_COTTAGE_TIER) {
+      return res.status(400).json({ error: 'Your cottage is already at the maximum tier.' });
+    }
+
+    const nextTier = getNextCottageTier(house.tier);
+    if (!nextTier || !nextTier.upgradeCost) {
+      return res.status(400).json({ error: 'No upgrade available.' });
+    }
+
+    const { gold: goldCost, materials } = nextTier.upgradeCost;
+
+    // Check gold
+    if (character.gold < goldCost) {
+      return res.status(400).json({
+        error: `Not enough gold. Need ${goldCost}, have ${character.gold}.`,
+      });
+    }
+
+    // Look up templates and check material availability
+    const materialEntries: { templateId: string; storageId: string; required: number; available: number; itemName: string }[] = [];
+
+    for (const mat of materials) {
+      const template = await db.query.itemTemplates.findFirst({
+        where: eq(itemTemplates.name, mat.itemName),
+        columns: { id: true, name: true },
+      });
+
+      if (!template) {
+        return res.status(400).json({
+          error: `Material "${mat.itemName}" not found in item database.`,
+        });
+      }
+
+      const storageEntry = await db.query.houseStorage.findFirst({
+        where: and(eq(houseStorage.houseId, house.id), eq(houseStorage.itemTemplateId, template.id)),
+      });
+
+      const available = storageEntry?.quantity ?? 0;
+      if (available < mat.quantity) {
+        return res.status(400).json({
+          error: `Not enough ${mat.itemName} in cottage storage. Need ${mat.quantity}, have ${available}.`,
+        });
+      }
+
+      materialEntries.push({
+        templateId: template.id,
+        storageId: storageEntry!.id,
+        required: mat.quantity,
+        available,
+        itemName: mat.itemName,
+      });
+    }
+
+    // Transaction: deduct gold, consume materials, set upgradingToTier
+    await db.transaction(async (tx) => {
+      // Deduct gold
+      await tx.update(characters)
+        .set({ gold: sql`${characters.gold} - ${goldCost}` })
+        .where(eq(characters.id, character.id));
+
+      // Consume materials from cottage storage
+      for (const entry of materialEntries) {
+        if (entry.available <= entry.required) {
+          // Delete the storage row entirely
+          await tx.delete(houseStorage).where(eq(houseStorage.id, entry.storageId));
+        } else {
+          await tx.update(houseStorage)
+            .set({ quantity: sql`${houseStorage.quantity} - ${entry.required}` })
+            .where(eq(houseStorage.id, entry.storageId));
+        }
+      }
+
+      // Set upgrade in progress
+      await tx.update(houses)
+        .set({ upgradingToTier: nextTier.tier, updatedAt: new Date().toISOString() })
+        .where(eq(houses.id, house.id));
+    });
+
+    return res.json({
+      message: `Upgrade to ${nextTier.name} started! It will complete at the next daily tick.`,
+      house: {
+        id: house.id,
+        tier: house.tier,
+        upgradingToTier: nextTier.tier,
+        storageSlots: house.storageSlots,
+      },
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'houses-upgrade', req)) return;
+    logRouteError(req, 500, 'Cottage upgrade error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

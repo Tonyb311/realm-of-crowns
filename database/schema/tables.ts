@@ -1896,6 +1896,7 @@ export const houses = pgTable("houses", {
 	tier: integer().default(1).notNull(),
 	name: text(),
 	storageSlots: integer("storage_slots").default(20).notNull(),
+	upgradingToTier: integer("upgrading_to_tier"),
 	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).notNull().$onUpdate(() => new Date().toISOString()),
 }, (table) => [

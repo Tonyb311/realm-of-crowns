@@ -423,6 +423,15 @@ export function emitGovernanceEvent(
 }
 
 // Guild events (moved from inline io usage to break circular import)
+export function emitHouseUpgraded(characterId: string, data: {
+  houseId: string;
+  tierName: string;
+  newTier: number;
+  storageSlots: number;
+}) {
+  getIO().to(`user:${characterId}`).emit('house:upgraded', data);
+}
+
 export function emitGuildEvent(
   room: string,
   event: string,

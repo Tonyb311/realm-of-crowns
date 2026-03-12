@@ -40,6 +40,7 @@ import { ACTION_XP } from '@shared/data/progression';
 import { computeFeatBonus } from '@shared/data/feats';
 import { GATHER_SPOT_PROFESSION_MAP, RESOURCE_MAP } from '@shared/data/gathering';
 import { ASSET_TIERS, LIVESTOCK_DEFINITIONS, HUNGER_CONSTANTS } from '@shared/data/assets';
+import { getCottageTier } from '@shared/data/cottage-tiers';
 import {
   emitDailyReportReady,
   emitNotification,
@@ -51,6 +52,7 @@ import {
   emitGatheringDepleted,
   emitToolBroken,
   emitTickComplete,
+  emitHouseUpgraded,
 } from '../socket/events';
 
 // ---------------------------------------------------------------------------
@@ -324,6 +326,41 @@ export async function processDailyTick(): Promise<DailyTickResult> {
           getResults(action.characterId).notifications.push('Harvesting failed due to an error.');
         }
       }));
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 4a: Cottage Upgrades (BEFORE harvest so new slots are available)
+  // -----------------------------------------------------------------------
+  await runStep('Cottage Upgrades', 4.1, async () => {
+    const pendingUpgrades = await db.query.houses.findMany({
+      where: sql`${houses.upgradingToTier} IS NOT NULL`,
+    });
+
+    for (const house of pendingUpgrades) {
+      const tierConfig = getCottageTier(house.upgradingToTier!);
+      if (tierConfig) {
+        await db.update(houses)
+          .set({
+            tier: house.upgradingToTier!,
+            storageSlots: tierConfig.storageSlots,
+            upgradingToTier: null,
+            name: tierConfig.name,
+            updatedAt: new Date().toISOString(),
+          })
+          .where(eq(houses.id, house.id));
+
+        emitHouseUpgraded(house.characterId, {
+          houseId: house.id,
+          tierName: tierConfig.name,
+          newTier: tierConfig.tier,
+          storageSlots: tierConfig.storageSlots,
+        });
+      }
+    }
+
+    if (pendingUpgrades.length > 0) {
+      console.log(`[DailyTick] Completed ${pendingUpgrades.length} cottage upgrade(s)`);
     }
   });
 

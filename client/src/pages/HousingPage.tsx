@@ -44,6 +44,7 @@ interface MyHouse {
   name: string;
   storageSlots: number;
   storageUsed: number;
+  upgradingToTier?: number | null;
   isCurrentTown: boolean;
 }
 
@@ -383,6 +384,11 @@ function MyHomeTab({ house, isLoading, isHome, homeTownName, onViewHouse }: MyHo
               <span className="text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded-sm bg-realm-gold-500/20 text-realm-gold-400">
                 Tier {house.tier}
               </span>
+              {house.upgradingToTier && (
+                <span className="text-[9px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded-sm bg-realm-teal-500/20 border border-realm-teal-500/30 text-realm-teal-400 animate-pulse">
+                  Upgrading...
+                </span>
+              )}
             </div>
             <p className="text-xs text-realm-text-muted flex items-center gap-1 mt-1">
               <MapPin className="w-3 h-3" />

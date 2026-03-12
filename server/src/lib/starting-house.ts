@@ -3,6 +3,7 @@ import { db } from './db';
 import { and, eq } from 'drizzle-orm';
 import { houses } from '@database/tables';
 import { logger } from './logger';
+import { COTTAGE_TIERS } from '@shared/data/cottage-tiers';
 
 /**
  * Give a character a free Tier 1 cottage in the specified town.
@@ -24,8 +25,8 @@ export async function giveStarterHouse(
       characterId,
       townId,
       tier: 1,
-      name: `${characterName}'s Cottage`,
-      storageSlots: 20,
+      name: COTTAGE_TIERS[0].name,
+      storageSlots: COTTAGE_TIERS[0].storageSlots,
       updatedAt: new Date().toISOString(),
     });
   }
