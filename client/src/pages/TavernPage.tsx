@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Beer, Coins, ChevronRight, Store, Loader2, User, ShoppingCart, Star, Users, LogIn, LogOut } from 'lucide-react';
+import { Beer, Coins, ChevronRight, Store, Loader2, User, ShoppingCart, Star, Users, LogIn, LogOut, Sparkles } from 'lucide-react';
+import { getWellRestedBonus } from '@shared/data/inn-config';
 import api from '../services/api';
 import { RealmPanel, RealmButton, RealmBadge, PageHeader } from '../components/ui/realm-index';
 import GoldAmount from '../components/shared/GoldAmount';
@@ -436,6 +437,28 @@ function InnMenu({ data, isLoading, gold, checkedInInnId, onBack, onBuy, buyPend
             </RealmButton>
           )}
         </div>
+
+        {/* Well Rested buff preview — shown when checked in */}
+        {isCheckedInHere && (() => {
+          const bonus = getWellRestedBonus(inn.level);
+          if (!bonus) return null;
+          return (
+            <div className="bg-realm-purple/10 border border-realm-purple/20 rounded-lg px-3 py-2.5 mb-4">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-realm-purple" />
+                <span className="text-xs font-display text-realm-purple">Well Rested Preview</span>
+              </div>
+              <p className="text-[10px] text-realm-text-muted mb-1.5">
+                At the next daily tick you'll receive:
+              </p>
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-realm-text-secondary">
+                <span>+{Math.round(bonus.gatheringYieldPercent * 100)}% gathering yield</span>
+                <span>+{bonus.craftingQualityBonus} crafting quality</span>
+                <span>+{Math.round(bonus.combatHpRecoveryPercent * 100)}% HP recovery</span>
+              </div>
+            </div>
+          );
+        })()}
 
         {menu.length === 0 ? (
           <div className="text-center py-8">

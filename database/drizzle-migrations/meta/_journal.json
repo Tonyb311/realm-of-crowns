@@ -64,6 +64,48 @@
       "when": 1773705600000,
       "tag": "0008_add_travel_presets",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1773792000000,
+      "tag": "0009_travel_speed_real",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1773878400000,
+      "tag": "0010_remove_house_building_types",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1773964800000,
+      "tag": "0011_add_house_upgrading_to_tier",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1774051200000,
+      "tag": "0012_create_inn_menu",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1774137600000,
+      "tag": "0013_add_checked_in_inn_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1774224000000,
+      "tag": "0014_add_inn_rest_source_type",
+      "breakpoints": true
     }
   ]
 }

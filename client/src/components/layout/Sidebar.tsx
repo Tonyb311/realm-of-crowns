@@ -21,7 +21,9 @@ import {
   ShieldCheck,
   LogOut,
   Beer,
+  Moon,
 } from 'lucide-react';
+import { getWellRestedBonus } from '@shared/data/inn-config';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import Tooltip from '../ui/Tooltip';
@@ -78,7 +80,7 @@ export function Sidebar({ className }: { className?: string }) {
   const { isAuthenticated, isAdmin, logout } = useAuth();
   const location = useLocation();
 
-  const { data: character } = useQuery<{ status: string; checkedInInnId?: string | null; checkedInInnName?: string | null } | null>({
+  const { data: character } = useQuery<{ status: string; checkedInInnId?: string | null; checkedInInnName?: string | null; wellRested?: boolean; wellRestedEffect?: { magnitude: number; expiresAt: string } | null } | null>({
     queryKey: ['character', 'me'],
     queryFn: async () => {
       try {
@@ -178,6 +180,23 @@ export function Sidebar({ className }: { className?: string }) {
           </Link>
         </Tooltip>
       )}
+
+      {/* Well Rested buff indicator */}
+      {character?.wellRestedEffect && (() => {
+        const bonus = getWellRestedBonus(character.wellRestedEffect!.magnitude);
+        if (!bonus) return null;
+        return (
+          <Tooltip
+            content={`Well Rested — +${Math.round(bonus.gatheringYieldPercent * 100)}% gather, +${bonus.craftingQualityBonus} craft, +${Math.round(bonus.combatHpRecoveryPercent * 100)}% HP recovery`}
+            position="right"
+          >
+            <div className="w-12 h-10 rounded-lg flex flex-col items-center justify-center gap-0.5 text-realm-purple bg-realm-purple/10 border border-realm-purple/20">
+              <Moon className="w-4 h-4" />
+              <span className="text-[7px] font-display leading-tight">Rested</span>
+            </div>
+          </Tooltip>
+        );
+      })()}
 
       {/* Spacer */}
       <div className="flex-1" />

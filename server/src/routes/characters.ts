@@ -1,8 +1,8 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../lib/db';
-import { eq, asc } from 'drizzle-orm';
-import { users, characters } from '@database/tables';
+import { eq, asc, and, gt } from 'drizzle-orm';
+import { users, characters, characterActiveEffects } from '@database/tables';
 import { race as raceEnum, dragonBloodline as dragonBloodlineEnum, beastClan as beastClanEnum, elementalType as elementalTypeEnum } from '@database/enums';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
@@ -247,6 +247,16 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
 
     const weightState = await calculateWeightState(character.id);
 
+    // Check for active Well Rested buff
+    const wellRestedEffect = await db.query.characterActiveEffects.findFirst({
+      where: and(
+        eq(characterActiveEffects.characterId, character.id),
+        eq(characterActiveEffects.sourceType, 'INN_REST'),
+        gt(characterActiveEffects.expiresAt, new Date().toISOString()),
+      ),
+      columns: { magnitude: true, expiresAt: true },
+    });
+
     const { town_currentTownId: currentTown, town_homeTownId: homeTown, checkedInInn, playerProfessions: professions, inventories: inventory, characterEquipments: equipment, ...rest } = character;
 
     // Transform inventory into frontend-friendly shape
@@ -304,6 +314,7 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
       currentTownName: currentTown?.name ?? null,
       homeTownName: homeTown?.name ?? null,
       checkedInInnName: checkedInInn?.name ?? null,
+      wellRestedEffect: wellRestedEffect ? { magnitude: wellRestedEffect.magnitude, expiresAt: wellRestedEffect.expiresAt } : null,
       professions: (professions || []).map((p: any) => ({
         type: p.professionType,
         professionType: p.professionType,

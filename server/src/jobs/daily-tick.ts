@@ -33,6 +33,7 @@ import { processLoans } from './loan-processing';
 import { processReputationDecay } from './reputation-decay';
 import { getTodayTickDate, advanceGameDay, getGameDay } from '../lib/game-day';
 import { qualityRoll } from '@shared/utils/dice';
+import { getWellRestedBonus } from '@shared/data/inn-config';
 import { getProficiencyBonus, getModifier as getStatModifier } from '@shared/utils/bounded-accuracy';
 import { getProfessionByType, getTierQualityBonus, getTierForLevel } from '@shared/data/professions';
 import { getGatheringBonus } from '@shared/data/professions/tier-unlocks';
@@ -194,6 +195,9 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   // Per-character food buff cache
   const foodBuffs = new Map<string, Record<string, unknown> | null>();
 
+  // Per-character well-rested buff cache (characterId → innLevel)
+  const wellRestedBuffs = new Map<string, number>();
+
   // -----------------------------------------------------------------------
   // Step 0: Reset consumable flags and expire active effects
   // -----------------------------------------------------------------------
@@ -215,6 +219,53 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   await runStep('Food Spoilage', 1, async () => {
     const spoilageResult = await processSpoilage();
     console.log(`[DailyTick]   Spoiled ${spoilageResult.spoiledCount} perishable items`);
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 1.3: Well Rested Buff — grant buff to characters checked into an inn
+  // -----------------------------------------------------------------------
+  await runStep('Well Rested Buff', 1.3, async () => {
+    const checkedInChars = await db.query.characters.findMany({
+      where: isNotNull(characters.checkedInInnId),
+      columns: { id: true, checkedInInnId: true },
+    });
+
+    let granted = 0;
+    for (const char of checkedInChars) {
+      const inn = await db.query.buildings.findFirst({
+        where: eq(buildings.id, char.checkedInInnId!),
+        columns: { level: true },
+      });
+      if (!inn || inn.level < 1) continue;
+
+      // Remove any existing INN_REST effect (replace, don't stack)
+      await db.delete(characterActiveEffects)
+        .where(and(
+          eq(characterActiveEffects.characterId, char.id),
+          eq(characterActiveEffects.sourceType, 'INN_REST'),
+        ));
+
+      // Create new INN_REST effect (expires in 24h)
+      await db.insert(characterActiveEffects).values({
+        id: crypto.randomUUID(),
+        characterId: char.id,
+        sourceType: 'INN_REST',
+        effectType: 'well_rested',
+        magnitude: inn.level,
+        itemName: 'Well Rested',
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      });
+
+      // Set wellRested flag on character
+      await db.update(characters)
+        .set({ wellRested: true })
+        .where(eq(characters.id, char.id));
+
+      // Cache for downstream steps
+      wellRestedBuffs.set(char.id, inn.level);
+      granted++;
+    }
+    console.log(`[DailyTick]   Granted Well Rested buff to ${granted} inn patrons`);
   });
 
   // -----------------------------------------------------------------------
@@ -268,7 +319,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
       const batch = gatherActions.slice(i, i + BATCH_SIZE);
       await Promise.all(batch.map(async (action) => {
         try {
-          await processGatherAction(action as any, tickDateStr, hungerStates, foodBuffs, getResults);
+          await processGatherAction(action as any, tickDateStr, hungerStates, foodBuffs, wellRestedBuffs, getResults);
         } catch (err) {
           console.error(`[DailyTick] Step 4 gather error for ${action.characterId}:`, err);
           getResults(action.characterId).notifications.push('Gathering failed due to an error.');
@@ -299,7 +350,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
       const batch = craftActions.slice(i, i + BATCH_SIZE);
       await Promise.all(batch.map(async (action) => {
         try {
-          await processCraftAction(action as any, tickDateStr, hungerStates, foodBuffs, getResults);
+          await processCraftAction(action as any, tickDateStr, hungerStates, foodBuffs, wellRestedBuffs, getResults);
         } catch (err) {
           console.error(`[DailyTick] Step 4 craft error for ${action.characterId}:`, err);
           getResults(action.characterId).notifications.push('Crafting failed due to an error.');
@@ -1078,9 +1129,16 @@ export async function processDailyTick(): Promise<DailyTickResult> {
 
         const hungerState = hungerStates.get(char.id) ?? char.hungerState ?? 'HUNGRY';
 
+        const hasWellRestedBuff = wellRestedBuffs.has(char.id);
+
         if (hungerState === 'FED') {
-          // Heal 15% max HP, set wellRested
-          const healAmount = Math.floor(char.maxHealth * 0.15);
+          // Heal 15% max HP (+ well-rested bonus if checked in)
+          let healPercent = 0.15;
+          if (hasWellRestedBuff) {
+            const wrBonus = getWellRestedBonus(wellRestedBuffs.get(char.id)!);
+            if (wrBonus) healPercent += wrBonus.combatHpRecoveryPercent;
+          }
+          const healAmount = Math.floor(char.maxHealth * healPercent);
           const newHealth = Math.min(char.maxHealth, char.health + healAmount);
 
           await db.update(characters)
@@ -1091,9 +1149,9 @@ export async function processDailyTick(): Promise<DailyTickResult> {
           results.action = results.action ?? { type: 'REST' };
           results.notifications.push(`Rested well and recovered ${healAmount} HP.`);
         } else {
-          // No recovery when not fed
+          // No recovery when not fed — only clear wellRested if no INN_REST buff
           await db.update(characters)
-            .set({ wellRested: false })
+            .set({ wellRested: hasWellRestedBuff })
             .where(eq(characters.id, char.id));
 
           const results = getResults(char.id);
@@ -1338,6 +1396,7 @@ async function processGatherAction(
   tickDateStr: string,
   hungerStates: Map<string, string>,
   foodBuffs: Map<string, Record<string, unknown> | null>,
+  wellRestedBuffs: Map<string, number>,
   getResults: (id: string) => CharacterResults,
 ): Promise<void> {
   const target = action.actionTarget as Record<string, unknown>;
@@ -1442,6 +1501,15 @@ async function processGatherAction(
   const buff = foodBuffs.get(char.id);
   if (buff && typeof buff.gatheringBonus === 'number') {
     totalYield = Math.max(1, Math.round(totalYield * (1 + (buff.gatheringBonus as number))));
+  }
+
+  // Well Rested gathering bonus
+  const wrLevel = wellRestedBuffs.get(char.id);
+  if (wrLevel) {
+    const wrBonus = getWellRestedBonus(wrLevel);
+    if (wrBonus) {
+      totalYield = Math.max(1, Math.round(totalYield * (1 + wrBonus.gatheringYieldPercent)));
+    }
   }
 
   // XP calculation
@@ -1967,6 +2035,7 @@ async function processCraftAction(
   tickDateStr: string,
   hungerStates: Map<string, string>,
   foodBuffs: Map<string, Record<string, unknown> | null>,
+  wellRestedBuffs: Map<string, number>,
   getResults: (id: string) => CharacterResults,
 ): Promise<void> {
   const target = action.actionTarget as Record<string, unknown>;
@@ -2063,10 +2132,13 @@ async function processCraftAction(
   const statModifier = getStatModifier(characterStats[primaryStatKey] ?? 10);
 
   const tickCraftFeats = ((char as any).feats as string[]) ?? [];
+  const wrCraftLevel = wellRestedBuffs.get(char.id);
+  const wrCraftBonus = wrCraftLevel ? (getWellRestedBonus(wrCraftLevel)?.craftingQualityBonus ?? 0) : 0;
   const { roll: diceRoll, total, quality: qualityName } = qualityRoll(
     getProficiencyBonus(char.level), statModifier, toolBonus, workshopLevel,
     racialQuality.qualityBonus, professionTierBonus, Math.round(ingredientQualityBonus),
     computeFeatBonus(tickCraftFeats, 'professionQualityBonus'),
+    wrCraftBonus,
   );
   const quality = QUALITY_MAP[qualityName] ?? 'COMMON';
 
