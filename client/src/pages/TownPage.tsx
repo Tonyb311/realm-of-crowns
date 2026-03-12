@@ -42,7 +42,7 @@ interface Town {
   population: number;
   biome: string;
   description: string;
-  features: string[];
+  features: Record<string, any>;
   resources: TownResource[];
   buildings: { id: string; type: string; name: string; level: number }[];
   characters: TownCharacter[];
@@ -568,7 +568,7 @@ export default function TownPage() {
             {town.features && town.features.length > 0 && (
               <RealmPanel title="Features">
                 <ul className="space-y-1">
-                  {town.features.map((f) => (
+                  {town.features.map((f: any) => (
                     <li key={f} className="text-xs text-realm-text-secondary">
                       {f}
                     </li>

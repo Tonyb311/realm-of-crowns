@@ -63,6 +63,21 @@ export default function ConstructionFlow({ townId, onClose, existingBuildingId }
   const [buildingId, setBuildingId] = useState(existingBuildingId ?? '');
   const [error, setError] = useState('');
 
+  // Fetch town data to filter available building types
+  const { data: townData } = useQuery<{ features?: { availableBuildings?: string[] } }>({
+    queryKey: ['town', townId],
+    queryFn: async () => {
+      const res = await api.get(`/towns/${townId}`);
+      return res.data.town ?? res.data;
+    },
+    enabled: !!townId,
+  });
+
+  const allowedTypes = townData?.features?.availableBuildings ?? [];
+  const buildingTypes = allowedTypes.length > 0
+    ? ALL_BUILDING_TYPES.filter(t => allowedTypes.includes(t))
+    : ALL_BUILDING_TYPES;
+
   // Fetch inventory for checking materials
   const { data: character } = useQuery<{ inventory: { templateName: string; quantity: number }[] }>({
     queryKey: ['character', 'me'],
@@ -219,7 +234,7 @@ export default function ConstructionFlow({ townId, onClose, existingBuildingId }
           {step === 'select' && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
-                {ALL_BUILDING_TYPES.map(type => (
+                {buildingTypes.map(type => (
                   <button
                     key={type}
                     onClick={() => setSelectedType(type)}

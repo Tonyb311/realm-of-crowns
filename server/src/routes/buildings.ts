@@ -22,6 +22,7 @@ import {
   getConstructionTimeForLevel,
   MaterialRequirement,
 } from '@shared/data/buildings/requirements';
+import { buildingTypeLabel } from '@shared/data/building-labels';
 import { getEffectiveTaxRate } from '../services/law-effects';
 import { requireDailyAction } from '../middleware/daily-action';
 import { handleDbError } from '../lib/db-errors';
@@ -145,6 +146,14 @@ router.post('/request-permit', authGuard, characterGuard, requireTown, validate(
     if (town.buildings.length >= maxBuildings) {
       return res.status(400).json({
         error: `Town has reached its building capacity (${maxBuildings})`,
+      });
+    }
+
+    // Check building type is available in this town
+    const availableBuildings: string[] = (town.features as any)?.availableBuildings ?? [];
+    if (availableBuildings.length > 0 && !availableBuildings.includes(buildingType)) {
+      return res.status(400).json({
+        error: `${buildingTypeLabel(buildingType)} cannot be built in ${town.name}. Available: ${availableBuildings.map((b: string) => buildingTypeLabel(b)).join(', ')}`,
       });
     }
 
