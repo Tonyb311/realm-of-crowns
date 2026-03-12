@@ -107,11 +107,11 @@ export type EquipSlot = typeof EQUIP_SLOTS[number];
 // ============================================================
 
 export const BUILDING_TYPES = [
-  'HOUSE_SMALL', 'HOUSE_MEDIUM', 'HOUSE_LARGE', 'SMITHY', 'SMELTERY',
-  'TANNERY', 'TAILOR_SHOP', 'ALCHEMY_LAB', 'ENCHANTING_TOWER', 'KITCHEN',
-  'BREWERY', 'JEWELER_WORKSHOP', 'FLETCHER_BENCH', 'MASON_YARD',
-  'LUMBER_MILL', 'SCRIBE_STUDY', 'STABLE', 'WAREHOUSE', 'BANK', 'INN',
-  'MARKET_STALL', 'FARM', 'RANCH', 'MINE',
+  'SMITHY', 'SMELTERY', 'TANNERY', 'TAILOR_SHOP', 'ALCHEMY_LAB',
+  'ENCHANTING_TOWER', 'KITCHEN', 'BREWERY', 'JEWELER_WORKSHOP',
+  'FLETCHER_BENCH', 'MASON_YARD', 'LUMBER_MILL', 'SCRIBE_STUDY',
+  'STABLE', 'WAREHOUSE', 'BANK', 'INN', 'MARKET_STALL',
+  'FARM', 'RANCH', 'MINE',
 ] as const;
 export type BuildingType = typeof BUILDING_TYPES[number];
 

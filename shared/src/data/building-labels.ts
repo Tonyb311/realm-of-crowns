@@ -3,9 +3,6 @@
  * Shared between server (error messages) and client (UI).
  */
 export const BUILDING_TYPE_LABELS: Record<string, string> = {
-  HOUSE_SMALL: 'Small House',
-  HOUSE_MEDIUM: 'Medium House',
-  HOUSE_LARGE: 'Large House',
   SMITHY: 'Smithy',
   SMELTERY: 'Smeltery',
   TANNERY: 'Tannery',

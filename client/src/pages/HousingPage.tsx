@@ -56,7 +56,7 @@ const WORKSHOP_TYPES = [
   'FLETCHER_BENCH', 'MASON_YARD', 'LUMBER_MILL', 'SCRIBE_STUDY',
 ];
 
-const STORAGE_TYPES = ['HOUSE_SMALL', 'HOUSE_MEDIUM', 'HOUSE_LARGE', 'WAREHOUSE'];
+const STORAGE_TYPES = ['WAREHOUSE'];
 
 // ---------------------------------------------------------------------------
 // Main component

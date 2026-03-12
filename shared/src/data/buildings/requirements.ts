@@ -15,36 +15,6 @@ export interface BuildingRequirements {
  * Upgrades multiply materials by 1.5x per level and time by 1.5x per level.
  */
 export const BUILDING_REQUIREMENTS: Record<BuildingType, BuildingRequirements> = {
-  // ── Houses ──────────────────────────────────────────────────
-  HOUSE_SMALL: {
-    materials: [
-      { itemName: 'Softwood Planks', quantity: 20 },
-      { itemName: 'Nails', quantity: 50 },
-      { itemName: 'Cut Stone', quantity: 10 },
-    ],
-    constructionTimeHours: 24,
-  },
-  HOUSE_MEDIUM: {
-    materials: [
-      { itemName: 'Hardwood Planks', quantity: 30 },
-      { itemName: 'Nails', quantity: 100 },
-      { itemName: 'Cut Stone', quantity: 20 },
-      { itemName: 'Glass', quantity: 5 },
-    ],
-    constructionTimeHours: 72,
-  },
-  HOUSE_LARGE: {
-    materials: [
-      { itemName: 'Hardwood Planks', quantity: 50 },
-      { itemName: 'Beams', quantity: 20 },
-      { itemName: 'Nails', quantity: 200 },
-      { itemName: 'Cut Stone', quantity: 40 },
-      { itemName: 'Glass', quantity: 10 },
-      { itemName: 'Polished Marble', quantity: 5 },
-    ],
-    constructionTimeHours: 168,
-  },
-
   // ── Workshops ───────────────────────────────────────────────
   SMITHY: {
     materials: [
@@ -241,9 +211,6 @@ export const BUILDING_REQUIREMENTS: Record<BuildingType, BuildingRequirements> =
  * Storage capacity per building type (number of item slots).
  */
 export const STORAGE_CAPACITY: Partial<Record<BuildingType, number>> = {
-  HOUSE_SMALL: 20,
-  HOUSE_MEDIUM: 50,
-  HOUSE_LARGE: 100,
   WAREHOUSE: 200,
 };
 

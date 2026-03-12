@@ -42,7 +42,6 @@ interface ConstructionFlowProps {
 // Known building types
 // ---------------------------------------------------------------------------
 const ALL_BUILDING_TYPES = [
-  'HOUSE_SMALL', 'HOUSE_MEDIUM', 'HOUSE_LARGE',
   'SMITHY', 'SMELTERY', 'TANNERY', 'TAILOR_SHOP', 'ALCHEMY_LAB',
   'ENCHANTING_TOWER', 'KITCHEN', 'BREWERY', 'JEWELER_WORKSHOP',
   'FLETCHER_BENCH', 'MASON_YARD', 'LUMBER_MILL', 'SCRIBE_STUDY',

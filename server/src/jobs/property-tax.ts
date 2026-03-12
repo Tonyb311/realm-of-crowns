@@ -10,9 +10,6 @@ import { emitBuildingTaxDue, emitBuildingDelinquent, emitBuildingSeized } from '
  * Base daily property tax rates per building type (gold per day).
  */
 const BASE_TAX_RATES: Record<string, number> = {
-  HOUSE_SMALL: 5,
-  HOUSE_MEDIUM: 15,
-  HOUSE_LARGE: 30,
   SMITHY: 20,
   SMELTERY: 20,
   TANNERY: 20,

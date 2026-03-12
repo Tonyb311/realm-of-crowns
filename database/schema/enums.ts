@@ -3,7 +3,7 @@ import { pgEnum } from 'drizzle-orm/pg-core';
 export const actionStatus = pgEnum("ActionStatus", ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED', 'CANCELLED'])
 export const beastClan = pgEnum("BeastClan", ['WOLF', 'BEAR', 'FOX', 'HAWK', 'PANTHER', 'BOAR'])
 export const biomeType = pgEnum("BiomeType", ['PLAINS', 'FOREST', 'MOUNTAIN', 'HILLS', 'BADLANDS', 'SWAMP', 'TUNDRA', 'VOLCANIC', 'COASTAL', 'DESERT', 'RIVER', 'UNDERGROUND', 'UNDERWATER', 'FEYWILD'])
-export const buildingType = pgEnum("BuildingType", ['HOUSE_SMALL', 'HOUSE_MEDIUM', 'HOUSE_LARGE', 'SMITHY', 'SMELTERY', 'TANNERY', 'TAILOR_SHOP', 'ALCHEMY_LAB', 'ENCHANTING_TOWER', 'KITCHEN', 'BREWERY', 'JEWELER_WORKSHOP', 'FLETCHER_BENCH', 'MASON_YARD', 'LUMBER_MILL', 'SCRIBE_STUDY', 'STABLE', 'WAREHOUSE', 'BANK', 'INN', 'MARKET_STALL', 'FARM', 'RANCH', 'MINE'])
+export const buildingType = pgEnum("BuildingType", ['SMITHY', 'SMELTERY', 'TANNERY', 'TAILOR_SHOP', 'ALCHEMY_LAB', 'ENCHANTING_TOWER', 'KITCHEN', 'BREWERY', 'JEWELER_WORKSHOP', 'FLETCHER_BENCH', 'MASON_YARD', 'LUMBER_MILL', 'SCRIBE_STUDY', 'STABLE', 'WAREHOUSE', 'BANK', 'INN', 'MARKET_STALL', 'FARM', 'RANCH', 'MINE'])
 export const combatSessionStatus = pgEnum("CombatSessionStatus", ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED'])
 export const consumableSourceType = pgEnum("ConsumableSourceType", ['POTION', 'FOOD', 'SCROLL'])
 export const combatStance = pgEnum("CombatStance", ['AGGRESSIVE', 'BALANCED', 'DEFENSIVE', 'EVASIVE'])

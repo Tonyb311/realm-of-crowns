@@ -13,7 +13,7 @@ export const WORKSHOP_TYPES: BuildingType[] = [
 
 /** Building types that support item storage. */
 export const STORAGE_TYPES: BuildingType[] = [
-  'HOUSE_SMALL', 'HOUSE_MEDIUM', 'HOUSE_LARGE', 'WAREHOUSE',
+  'WAREHOUSE',
 ];
 
 /** Stone construction buildings (Dwarf racial bonus applies). */
@@ -23,8 +23,7 @@ export const STONE_BUILDINGS: string[] = [
 
 /** Wood construction buildings (Firbolg racial bonus applies). */
 export const WOOD_BUILDINGS: string[] = [
-  'HOUSE_SMALL', 'HOUSE_MEDIUM', 'HOUSE_LARGE', 'KITCHEN', 'BREWERY',
-  'FLETCHER_BENCH', 'LUMBER_MILL', 'STABLE', 'INN', 'FARM', 'RANCH',
+  'KITCHEN', 'BREWERY', 'FLETCHER_BENCH', 'LUMBER_MILL', 'STABLE', 'INN', 'FARM', 'RANCH',
 ];
 
 /** Building condition → effectiveness multiplier tiers. */
