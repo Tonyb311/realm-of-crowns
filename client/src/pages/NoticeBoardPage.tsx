@@ -370,9 +370,19 @@ function PostCard({
           )}
           {/* Author delete/cancel */}
           {isAuthor && post.bountyStatus !== 'COMPLETED' && (
-            <RealmButton size="sm" onClick={onDelete} disabled={isPending}>
+            <RealmButton
+              size="sm"
+              onClick={onDelete}
+              disabled={isPending}
+              title={isBounty && post.bountyStatus === 'CLAIMED'
+                ? `Cancelling will pay 50% (${Math.floor((post.bountyReward ?? 0) / 2)}g) to the claimant`
+                : undefined}
+            >
               <XCircle className="w-3.5 h-3.5 mr-1" /> Cancel
             </RealmButton>
+          )}
+          {isAuthor && isBounty && post.bountyStatus === 'CLAIMED' && (
+            <span className="text-xs text-realm-warning">50% goes to claimant</span>
           )}
         </div>
       </div>

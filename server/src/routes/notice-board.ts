@@ -384,8 +384,8 @@ router.delete('/:postId', authGuard, characterGuard, async (req: AuthenticatedRe
         return res.status(400).json({ error: 'Cannot delete a completed bounty.' });
       }
 
-      if (post.bountyStatus === 'OPEN' || post.bountyStatus === 'CLAIMED') {
-        // Refund escrow to author in a transaction
+      if (post.bountyStatus === 'OPEN') {
+        // OPEN: full refund to author (nobody did any work)
         await db.transaction(async (tx) => {
           await tx.update(characters)
             .set({ gold: sql`gold + ${post.bountyReward!}` })
@@ -397,6 +397,30 @@ router.delete('/:postId', authGuard, characterGuard, async (req: AuthenticatedRe
         });
 
         return res.json({ message: 'Post cancelled. Bounty escrow refunded. Posting fee was not refunded.' });
+      }
+
+      if (post.bountyStatus === 'CLAIMED') {
+        // CLAIMED: 50% to claimant (they started the work), 50% refund to author
+        const claimantShare = Math.floor(post.bountyReward! / 2);
+        const authorRefund = Math.ceil(post.bountyReward! / 2);
+
+        await db.transaction(async (tx) => {
+          await tx.update(characters)
+            .set({ gold: sql`gold + ${claimantShare}` })
+            .where(eq(characters.id, post.bountyClaimantId!));
+
+          await tx.update(characters)
+            .set({ gold: sql`gold + ${authorRefund}` })
+            .where(eq(characters.id, character.id));
+
+          await tx.update(noticeBoardPosts)
+            .set({ bountyStatus: 'REFUNDED', expiresAt: now })
+            .where(eq(noticeBoardPosts.id, postId));
+        });
+
+        return res.json({
+          message: `Post cancelled. ${claimantShare}g paid to claimant, ${authorRefund}g refunded to you. Posting fee was not refunded.`
+        });
       }
     }
 
