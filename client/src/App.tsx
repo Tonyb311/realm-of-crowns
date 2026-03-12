@@ -45,7 +45,6 @@ const TravelPage = React.lazy(() => import('./pages/TravelPage'));
 const CodexPage = React.lazy(() => import('./pages/CodexPage'));
 const JobsBoardPage = React.lazy(() => import('./pages/JobsBoardPage'));
 const TavernPage = React.lazy(() => import('./pages/TavernPage'));
-const ApothecaryPage = React.lazy(() => import('./pages/ApothecaryPage'));
 const ReportsPage = React.lazy(() => import('./pages/ReportsPage'));
 
 // Landing page
@@ -114,7 +113,6 @@ function App() {
             <Route path="/travel" element={<TravelPage />} />
             <Route path="/jobs" element={<JobsBoardPage />} />
             <Route path="/tavern" element={<TavernPage />} />
-            <Route path="/apothecary" element={<ApothecaryPage />} />
             <Route path="/codex" element={<CodexPage />} />
             <Route path="/codex/:section" element={<CodexPage />} />
             <Route path="/reports" element={<ReportsPage />} />
