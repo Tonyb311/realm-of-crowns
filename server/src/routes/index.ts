@@ -49,6 +49,7 @@ import relocateRouter from './relocate';
 import jobsRouter from './jobs';
 import codexRouter from './codex';
 import inventoryRouter from './inventory';
+import noticeBoardRouter from './notice-board';
 
 const router = Router();
 
@@ -103,5 +104,6 @@ router.use('/relocate', relocateRouter);
 router.use('/jobs', jobsRouter);
 router.use('/codex', codexRouter);
 router.use('/inventory', inventoryRouter);
+router.use('/notice-board', noticeBoardRouter);
 
 export default router;

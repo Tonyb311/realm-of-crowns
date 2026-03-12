@@ -13,7 +13,7 @@ import {
   laws, townTreasuries, townPolicies, tradeTransactions, caravans,
   elections, electionVotes, electionCandidates, impeachments, towns, kingdoms,
   worldEvents, combatEncounterLogs, notifications, recipes,
-  ownedAssets, livestock, jobListings, houses, houseStorage,
+  ownedAssets, livestock, jobListings, houses, houseStorage, noticeBoardPosts,
 } from '@database/tables';
 import { processSpoilage, processAutoConsumption, getHungerModifier, processRevenantSustenance, processForgebornMaintenance } from '../services/food-system';
 import { resolveNodePvE, resolveNodePvP } from '../services/tick-combat-resolver';
@@ -276,6 +276,34 @@ export async function processDailyTick(): Promise<DailyTickResult> {
       .set({ checkedInInnId: null })
       .where(isNotNull(characters.checkedInInnId));
     console.log(`[DailyTick]   Checked out ${result.rowCount ?? 0} inn patrons`);
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 1.7: Notice Board Expiration — refund expired bounty escrow
+  // -----------------------------------------------------------------------
+  await runStep('Notice Board Expiration', 1.7, async () => {
+    const now = new Date().toISOString();
+    const expiredBounties = await db.query.noticeBoardPosts.findMany({
+      where: and(
+        eq(noticeBoardPosts.type, 'BOUNTY'),
+        lte(noticeBoardPosts.expiresAt, now),
+        inArray(noticeBoardPosts.bountyStatus, ['OPEN', 'CLAIMED']),
+      ),
+    });
+
+    for (const post of expiredBounties) {
+      if (post.bountyReward && post.bountyReward > 0) {
+        await db.update(characters)
+          .set({ gold: sql`gold + ${post.bountyReward}` })
+          .where(eq(characters.id, post.authorId));
+      }
+
+      await db.update(noticeBoardPosts)
+        .set({ bountyStatus: 'EXPIRED' })
+        .where(eq(noticeBoardPosts.id, post.id));
+    }
+
+    console.log(`[DailyTick]   Expired ${expiredBounties.length} bounties, refunded escrow`);
   });
 
   // -----------------------------------------------------------------------

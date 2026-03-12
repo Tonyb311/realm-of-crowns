@@ -2337,6 +2337,55 @@ export const errorLogs = pgTable("error_logs", {
 // CONTENT
 // ============================================================
 
+// ============================================================
+// NOTICE BOARD
+// ============================================================
+
+export const noticeBoardPosts = pgTable("notice_board_posts", {
+	id: text().primaryKey().notNull(),
+	townId: text("town_id").notNull(),
+	authorId: text("author_id").notNull(),
+	type: text().notNull(), // 'TRADE_REQUEST' or 'BOUNTY'
+	title: text().notNull(),
+	body: text().notNull(),
+	// Trade request fields
+	itemName: text("item_name"),
+	quantity: integer(),
+	pricePerUnit: integer("price_per_unit"),
+	tradeDirection: text("trade_direction"), // 'BUYING' or 'SELLING'
+	// Bounty fields
+	bountyReward: integer("bounty_reward"),
+	bountyClaimantId: text("bounty_claimant_id"),
+	bountyStatus: text("bounty_status"), // 'OPEN', 'CLAIMED', 'COMPLETED', 'EXPIRED', 'REFUNDED'
+	claimedAt: timestamp("claimed_at", { precision: 3, mode: 'string' }),
+	completedAt: timestamp("completed_at", { precision: 3, mode: 'string' }),
+	// Common fields
+	postingFee: integer("posting_fee").default(0).notNull(),
+	isResident: boolean("is_resident").default(true).notNull(),
+	expiresAt: timestamp("expires_at", { precision: 3, mode: 'string' }).notNull(),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).notNull().$onUpdate(() => new Date().toISOString()),
+}, (table) => [
+	index("notice_board_posts_town_id_idx").using("btree", table.townId.asc().nullsLast().op("text_ops")),
+	index("notice_board_posts_author_id_idx").using("btree", table.authorId.asc().nullsLast().op("text_ops")),
+	index("notice_board_posts_expires_at_idx").using("btree", table.expiresAt.asc().nullsLast()),
+	foreignKey({
+			columns: [table.townId],
+			foreignColumns: [towns.id],
+			name: "notice_board_posts_town_id_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+			columns: [table.authorId],
+			foreignColumns: [characters.id],
+			name: "notice_board_posts_author_id_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+			columns: [table.bountyClaimantId],
+			foreignColumns: [characters.id],
+			name: "notice_board_posts_bounty_claimant_id_fkey"
+		}).onUpdate("cascade").onDelete("set null"),
+]);
+
 export const contentReleases = pgTable("content_releases", {
 	id: text().primaryKey().notNull(),
 	contentType: text("content_type").notNull(),

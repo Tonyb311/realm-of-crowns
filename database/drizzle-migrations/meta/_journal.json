@@ -106,6 +106,13 @@
       "when": 1774224000000,
       "tag": "0014_add_inn_rest_source_type",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1774310400000,
+      "tag": "0015_create_notice_board_posts",
+      "breakpoints": true
     }
   ]
 }

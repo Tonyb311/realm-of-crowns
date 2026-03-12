@@ -5,7 +5,7 @@ import {
   Store,
   Beer,
   Landmark,
-  Swords,
+  ClipboardList,
   Heart,
   ScrollText,
   Footprints,
@@ -130,7 +130,7 @@ const BUILDINGS: BuildingDef[] = [
   { key: 'market', name: 'Market', description: 'Buy and sell goods', route: '/market', icon: Store, freeAction: true },
   { key: 'tavern', name: 'Tavern', description: 'Rest, recruit, hear rumors', route: '/tavern', icon: Beer, freeAction: true },
   { key: 'town_hall', name: 'Town Hall', description: 'Governance and laws', route: '/town-hall', icon: Landmark, freeAction: true },
-  { key: 'notice_board', name: 'Notice Board', description: 'Travel advisories and road reports', route: '/travel', icon: Swords },
+  { key: 'notice_board', name: 'Notice Board', description: 'Trade requests and bounties', route: '/notice-board', icon: ClipboardList, freeAction: true },
   { key: 'temple', name: 'Temple', description: 'Healing and blessings', route: '/temple', icon: Heart, freeAction: true },
   { key: 'jobs_board', name: 'Jobs Board', description: 'Find work and quests', route: '/jobs', icon: ScrollText, freeAction: true },
 ];

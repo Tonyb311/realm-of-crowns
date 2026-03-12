@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { characters, characterActiveEffects, characterEquipment, items, inventories, professionXp, towns, townResources, regions, regionBorders, diplomacyEvents, kingdoms, buildings, buildingConstructions, itemTemplates, priceHistories, caravans, elections, electionVotes, guilds, guildMembers, questProgress, quests, combatSessions, combatLogs, combatParticipants, notifications, racialAbilityCooldowns, changelingDisguises, achievements, playerAchievements, forgebornMaintenance, playerProfessions, craftingActions, recipes, travelRoutes, auctionCycles, marketListings, friends, laws, messages, electionCandidates, impeachments, impeachmentVotes, townTreasuries, councilMembers, townPolicies, abilities, characterAbilities, npcs, characterAppearances, users, exclusiveZones, gatheringActions, resources, wars, treaties, petitions, petitionSignatures, dailyActions, serviceActions, loans, serviceReputations, lawVotes, dailyReports, travelGroups, parties, travelNodes, travelGroupMembers, characterTravelStates, combatEncounterLogs, simulationRuns, groupTravelStates, partyMembers, partyInvitations, marketBuyOrders, tradeTransactions, ownedAssets, livestock, houses, houseStorage, jobListings, monsters, droppedItems, deletionLogs, innMenu } from "./tables";
+import { characters, characterActiveEffects, characterEquipment, items, inventories, professionXp, towns, townResources, regions, regionBorders, diplomacyEvents, kingdoms, buildings, buildingConstructions, itemTemplates, priceHistories, caravans, elections, electionVotes, guilds, guildMembers, questProgress, quests, combatSessions, combatLogs, combatParticipants, notifications, racialAbilityCooldowns, changelingDisguises, achievements, playerAchievements, forgebornMaintenance, playerProfessions, craftingActions, recipes, travelRoutes, auctionCycles, marketListings, friends, laws, messages, electionCandidates, impeachments, impeachmentVotes, townTreasuries, councilMembers, townPolicies, abilities, characterAbilities, npcs, characterAppearances, users, exclusiveZones, gatheringActions, resources, wars, treaties, petitions, petitionSignatures, dailyActions, serviceActions, loans, serviceReputations, lawVotes, dailyReports, travelGroups, parties, travelNodes, travelGroupMembers, characterTravelStates, combatEncounterLogs, simulationRuns, groupTravelStates, partyMembers, partyInvitations, marketBuyOrders, tradeTransactions, ownedAssets, livestock, houses, houseStorage, jobListings, monsters, droppedItems, deletionLogs, innMenu, noticeBoardPosts } from "./tables";
 
 export const characterEquipmentRelations = relations(characterEquipment, ({one}) => ({
 	character: one(characters, {
@@ -147,6 +147,12 @@ export const charactersRelations = relations(characters, ({one, many}) => ({
 	ownedAssets: many(ownedAssets),
 	characterActiveEffects: many(characterActiveEffects),
 	droppedItems: many(droppedItems),
+	noticeBoardPosts_authorId: many(noticeBoardPosts, {
+		relationName: "noticeBoardPosts_authorId_characters_id"
+	}),
+	noticeBoardPosts_bountyClaimantId: many(noticeBoardPosts, {
+		relationName: "noticeBoardPosts_bountyClaimantId_characters_id"
+	}),
 }));
 
 export const characterActiveEffectsRelations = relations(characterActiveEffects, ({one}) => ({
@@ -261,6 +267,7 @@ export const townsRelations = relations(towns, ({one, many}) => ({
 	houses: many(houses),
 	jobListings: many(jobListings),
 	ownedAssets: many(ownedAssets),
+	noticeBoardPosts: many(noticeBoardPosts),
 }));
 
 export const regionBordersRelations = relations(regionBorders, ({one}) => ({
@@ -1162,3 +1169,20 @@ export const droppedItemsRelations = relations(droppedItems, ({one}) => ({
 
 // deletionLogs — standalone audit table (relations definition needed for db.query)
 export const deletionLogsRelations = relations(deletionLogs, () => ({}));
+
+export const noticeBoardPostsRelations = relations(noticeBoardPosts, ({one}) => ({
+	town: one(towns, {
+		fields: [noticeBoardPosts.townId],
+		references: [towns.id]
+	}),
+	author: one(characters, {
+		fields: [noticeBoardPosts.authorId],
+		references: [characters.id],
+		relationName: "noticeBoardPosts_authorId_characters_id"
+	}),
+	claimant: one(characters, {
+		fields: [noticeBoardPosts.bountyClaimantId],
+		references: [characters.id],
+		relationName: "noticeBoardPosts_bountyClaimantId_characters_id"
+	}),
+}));

@@ -46,6 +46,7 @@ const CodexPage = React.lazy(() => import('./pages/CodexPage'));
 const JobsBoardPage = React.lazy(() => import('./pages/JobsBoardPage'));
 const TavernPage = React.lazy(() => import('./pages/TavernPage'));
 const ReportsPage = React.lazy(() => import('./pages/ReportsPage'));
+const NoticeBoardPage = React.lazy(() => import('./pages/NoticeBoardPage'));
 
 // Landing page
 const LandingPage = React.lazy(() => import('./pages/LandingPage'));
@@ -116,6 +117,7 @@ function App() {
             <Route path="/codex" element={<CodexPage />} />
             <Route path="/codex/:section" element={<CodexPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/notice-board" element={<NoticeBoardPage />} />
           </Route>
 
           {/* Admin routes — own layout */}
