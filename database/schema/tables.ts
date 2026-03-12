@@ -1936,6 +1936,33 @@ export const houseStorage = pgTable("house_storage", {
 ]);
 
 // ============================================================
+// INN MENU
+// ============================================================
+
+export const innMenu = pgTable("inn_menu", {
+	id: text().primaryKey().notNull(),
+	buildingId: text("building_id").notNull(),
+	itemTemplateId: text("item_template_id").notNull(),
+	quantity: integer().default(0).notNull(),
+	price: integer().notNull(),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).notNull().$onUpdate(() => new Date().toISOString()),
+}, (table) => [
+	index("inn_menu_building_id_idx").using("btree", table.buildingId.asc().nullsLast().op("text_ops")),
+	uniqueIndex("inn_menu_building_id_item_template_id_unique").using("btree", table.buildingId.asc().nullsLast().op("text_ops"), table.itemTemplateId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.buildingId],
+			foreignColumns: [buildings.id],
+			name: "inn_menu_building_id_fkey"
+		}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+			columns: [table.itemTemplateId],
+			foreignColumns: [itemTemplates.id],
+			name: "inn_menu_item_template_id_fkey"
+		}).onUpdate("cascade").onDelete("restrict"),
+]);
+
+// ============================================================
 // QUESTS
 // ============================================================
 

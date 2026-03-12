@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../lib/db';
 import { eq, and, gte, inArray, asc, desc, count, sql } from 'drizzle-orm';
-import { buildings, buildingConstructions, towns, townTreasuries, townPolicies, characters, inventories, items, itemTemplates } from '@database/tables';
+import { buildings, buildingConstructions, towns, townTreasuries, townPolicies, characters, inventories, items, itemTemplates, playerProfessions } from '@database/tables';
 import { buildingType as buildingTypeEnum } from '@database/enums';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
@@ -170,6 +170,22 @@ router.post('/request-permit', authGuard, characterGuard, requireTown, validate(
       return res.status(400).json({
         error: `You already own a ${buildingType} in this town`,
       });
+    }
+
+    // INN requires active Innkeeper profession
+    if (buildingType === 'INN') {
+      const innkeeperProf = await db.query.playerProfessions.findFirst({
+        where: and(
+          eq(playerProfessions.characterId, character.id),
+          eq(playerProfessions.professionType, 'INNKEEPER'),
+          eq(playerProfessions.isActive, true),
+        ),
+      });
+      if (!innkeeperProf) {
+        return res.status(400).json({
+          error: 'Only Innkeepers can build and operate an Inn.',
+        });
+      }
     }
 
     // Get material requirements for display

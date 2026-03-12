@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Beer, Coins, User, ShoppingCart } from 'lucide-react';
+import { Beer, Coins, ChevronRight, Store, Loader2, User, ShoppingCart, Star } from 'lucide-react';
 import api from '../services/api';
 import { RealmPanel, RealmButton, RealmBadge, PageHeader } from '../components/ui/realm-index';
 import GoldAmount from '../components/shared/GoldAmount';
@@ -8,34 +8,55 @@ import GoldAmount from '../components/shared/GoldAmount';
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-interface ListingItem {
+interface InnOwner {
   id: string;
   name: string;
+}
+
+interface InnSummary {
+  id: string;
+  name: string;
+  level: number;
+  condition: number;
+  owner: InnOwner;
+  menuItemCount: number;
+}
+
+interface MenuItem {
+  itemTemplateId: string;
+  name: string;
+  description: string | null;
   type: string;
   rarity: string;
-  description?: string;
-}
-
-interface BeverageListing {
-  id: string;
+  isFood: boolean;
+  isBeverage: boolean;
+  foodBuff: unknown;
   price: number;
   quantity: number;
-  listedAt: string;
-  seller: { id: string; name: string };
-  item: ListingItem;
+  weight: number;
 }
 
-interface BrowseResponse {
-  listings: BeverageListing[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+interface InnMenuResponse {
+  inn: {
+    id: string;
+    name: string;
+    level: number;
+    owner: InnOwner;
+  };
+  menu: MenuItem[];
 }
 
-interface BidResult {
-  success: boolean;
-  message: string;
+interface BuyResult {
+  purchased: {
+    itemTemplateId: string;
+    itemName: string;
+    quantity: number;
+    totalPrice: number;
+    ownerShare: number;
+    townTaxCut: number;
+  };
+  gold: number;
+  weightState: unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -43,6 +64,7 @@ interface BidResult {
 // ---------------------------------------------------------------------------
 export default function TavernPage() {
   const queryClient = useQueryClient();
+  const [selectedInnId, setSelectedInnId] = useState<string | null>(null);
   const [lastBuy, setLastBuy] = useState<{ name: string; price: number } | null>(null);
 
   // Fetch character for current town + gold
@@ -57,6 +79,7 @@ export default function TavernPage() {
   });
 
   const townId = character?.currentTownId;
+  const gold = character?.gold ?? 0;
 
   // Fetch town name
   const { data: town } = useQuery<{ id: string; name: string }>({
@@ -68,35 +91,42 @@ export default function TavernPage() {
     enabled: !!townId,
   });
 
-  // Fetch beverages from market
+  // Fetch inns in town
   const {
-    data: browseData,
-    isLoading,
-    error,
-  } = useQuery<BrowseResponse>({
-    queryKey: ['market', 'browse', 'beverages', townId],
-    queryFn: async () =>
-      (await api.get('/market/browse', { params: { isBeverage: 'true', limit: 50 } })).data,
+    data: innsData,
+    isLoading: innsLoading,
+  } = useQuery<{ inns: InnSummary[] }>({
+    queryKey: ['inns', 'town', townId],
+    queryFn: async () => (await api.get(`/inn/town/${townId}`)).data,
     enabled: !!townId,
   });
 
-  // Place buy order mutation (same as MarketPage)
+  // Fetch selected inn menu
+  const {
+    data: menuData,
+    isLoading: menuLoading,
+  } = useQuery<InnMenuResponse>({
+    queryKey: ['inn', selectedInnId, 'menu'],
+    queryFn: async () => (await api.get(`/inn/${selectedInnId}/menu`)).data,
+    enabled: !!selectedInnId,
+  });
+
+  // Buy mutation
   const buyMutation = useMutation({
-    mutationFn: async ({ listingId, bidPrice }: { listingId: string; bidPrice: number }) => {
-      const res = await api.post('/market/buy', { listingId, bidPrice });
-      return res.data as BidResult;
+    mutationFn: async ({ buildingId, itemTemplateId, quantity }: { buildingId: string; itemTemplateId: string; quantity: number }) => {
+      const res = await api.post(`/inn/${buildingId}/menu/buy`, { itemTemplateId, quantity });
+      return res.data as BuyResult;
     },
-    onSuccess: (_data, variables) => {
-      const listing = listings.find((l) => l.id === variables.listingId);
-      if (listing) setLastBuy({ name: listing.item.name, price: variables.bidPrice });
-      queryClient.invalidateQueries({ queryKey: ['market'] });
+    onSuccess: (data) => {
+      setLastBuy({ name: data.purchased.itemName, price: data.purchased.totalPrice });
+      queryClient.invalidateQueries({ queryKey: ['inn', selectedInnId, 'menu'] });
       queryClient.invalidateQueries({ queryKey: ['character'] });
+      queryClient.invalidateQueries({ queryKey: ['inns', 'town', townId] });
     },
   });
 
-  const listings = browseData?.listings ?? [];
+  const inns = innsData?.inns ?? [];
   const townName = town?.name ?? 'this town';
-  const gold = character?.gold ?? 0;
 
   if (!townId) {
     return (
@@ -118,7 +148,7 @@ export default function TavernPage() {
         <div className="bg-realm-success/10 border border-realm-success/30 rounded-lg px-4 py-3">
           <div className="flex items-center gap-2 text-sm text-realm-success">
             <Beer className="w-4 h-4" />
-            <span>Ordered <strong>{lastBuy.name}</strong> for <GoldAmount amount={lastBuy.price} />!</span>
+            <span>Purchased <strong>{lastBuy.name}</strong> for <GoldAmount amount={lastBuy.price} />!</span>
           </div>
           <button
             onClick={() => setLastBuy(null)}
@@ -135,35 +165,170 @@ export default function TavernPage() {
         <span>Your gold: <GoldAmount amount={gold} /></span>
       </div>
 
-      <RealmPanel title="Drinks Menu" className="relative">
-        {listings.length > 0 && (
-          <div className="absolute top-3 right-5">
-            <RealmBadge variant="default">{listings.length}</RealmBadge>
-          </div>
-        )}
+      {/* Inn directory or selected inn menu */}
+      {selectedInnId ? (
+        <InnMenu
+          data={menuData}
+          isLoading={menuLoading}
+          gold={gold}
+          characterId={character?.id ?? ''}
+          onBack={() => setSelectedInnId(null)}
+          onBuy={(itemTemplateId) =>
+            buyMutation.mutate({ buildingId: selectedInnId, itemTemplateId, quantity: 1 })
+          }
+          buyPending={buyMutation.isPending}
+          buyError={buyMutation.isError ? ((buyMutation.error as any)?.response?.data?.error || 'Failed to purchase.') : null}
+        />
+      ) : (
+        <InnDirectory
+          inns={inns}
+          isLoading={innsLoading}
+          onSelectInn={(id) => setSelectedInnId(id)}
+        />
+      )}
+    </div>
+  );
+}
 
-        {isLoading ? (
-          <div className="space-y-3">
-            <div className="h-16 bg-realm-bg-800 rounded-sm animate-pulse" />
-            <div className="h-16 bg-realm-bg-800 rounded-sm animate-pulse" />
+// ---------------------------------------------------------------------------
+// Inn Directory — list of taverns in town
+// ---------------------------------------------------------------------------
+interface InnDirectoryProps {
+  inns: InnSummary[];
+  isLoading: boolean;
+  onSelectInn: (id: string) => void;
+}
+
+function InnDirectory({ inns, isLoading, onSelectInn }: InnDirectoryProps) {
+  if (isLoading) {
+    return (
+      <RealmPanel title="Taverns">
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
+        </div>
+      </RealmPanel>
+    );
+  }
+
+  if (inns.length === 0) {
+    return (
+      <RealmPanel title="Taverns">
+        <div className="text-center py-8">
+          <Store className="w-8 h-8 text-realm-text-muted mx-auto mb-3 opacity-50" />
+          <p className="text-sm text-realm-text-muted">No taverns have been established yet.</p>
+          <p className="text-xs text-realm-text-muted mt-1">An Innkeeper must build an INN in this town first.</p>
+        </div>
+      </RealmPanel>
+    );
+  }
+
+  return (
+    <RealmPanel title="Taverns" className="relative">
+      <div className="absolute top-3 right-5">
+        <RealmBadge variant="default">{inns.length}</RealmBadge>
+      </div>
+
+      <div className="space-y-2">
+        {inns.map((inn) => (
+          <button
+            key={inn.id}
+            onClick={() => onSelectInn(inn.id)}
+            className="w-full text-left bg-realm-bg-800 border border-realm-bg-600 hover:border-realm-gold-500/30 rounded-lg p-4 transition-colors"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <Beer className="w-4 h-4 text-realm-gold-400 flex-shrink-0" />
+                  <span className="text-sm font-display text-realm-text-primary">{inn.name}</span>
+                  <div className="flex items-center gap-0.5">
+                    {Array.from({ length: inn.level }).map((_, i) => (
+                      <Star key={i} className="w-3 h-3 text-realm-gold-400 fill-realm-gold-400" />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-[11px]">
+                  <User className="w-3 h-3 text-realm-text-muted" />
+                  <span className="text-realm-text-muted">{inn.owner.name}</span>
+                  <span className="text-realm-text-muted">&middot;</span>
+                  <span className="text-realm-text-muted">
+                    {inn.menuItemCount} {inn.menuItemCount === 1 ? 'item' : 'items'} on menu
+                  </span>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-realm-text-muted flex-shrink-0" />
+            </div>
+          </button>
+        ))}
+      </div>
+    </RealmPanel>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inn Menu — view + buy from a specific inn
+// ---------------------------------------------------------------------------
+interface InnMenuProps {
+  data: InnMenuResponse | undefined;
+  isLoading: boolean;
+  gold: number;
+  characterId: string;
+  onBack: () => void;
+  onBuy: (itemTemplateId: string) => void;
+  buyPending: boolean;
+  buyError: string | null;
+}
+
+function InnMenu({ data, isLoading, gold, onBack, onBuy, buyPending, buyError }: InnMenuProps) {
+  if (isLoading || !data) {
+    return (
+      <RealmPanel title="Menu">
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-6 h-6 text-realm-gold-400 animate-spin" />
+        </div>
+      </RealmPanel>
+    );
+  }
+
+  const { inn, menu } = data;
+
+  return (
+    <div className="space-y-3">
+      {/* Back + inn header */}
+      <button
+        onClick={onBack}
+        className="text-xs text-realm-text-muted hover:text-realm-gold-400 transition-colors flex items-center gap-1"
+      >
+        <ChevronRight className="w-3 h-3 rotate-180" />
+        Back to tavern list
+      </button>
+
+      <RealmPanel title={inn.name} className="relative">
+        <div className="absolute top-3 right-5 flex items-center gap-2">
+          <div className="flex items-center gap-0.5">
+            {Array.from({ length: inn.level }).map((_, i) => (
+              <Star key={i} className="w-3 h-3 text-realm-gold-400 fill-realm-gold-400" />
+            ))}
           </div>
-        ) : error ? (
-          <p className="text-xs text-realm-danger">Failed to load tavern menu.</p>
-        ) : listings.length === 0 ? (
+        </div>
+
+        <p className="text-[11px] text-realm-text-muted mb-4">
+          Proprietor: {inn.owner.name}
+        </p>
+
+        {menu.length === 0 ? (
           <div className="text-center py-8">
             <Beer className="w-8 h-8 text-realm-text-muted mx-auto mb-3 opacity-50" />
-            <p className="text-sm text-realm-text-muted">The tavern is dry!</p>
-            <p className="text-xs text-realm-text-muted mt-1">No drinks available. Check back later or brew some yourself.</p>
+            <p className="text-sm text-realm-text-muted">The menu is empty!</p>
+            <p className="text-xs text-realm-text-muted mt-1">Check back later — the innkeeper may restock.</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {listings.map((listing) => {
-              const isOwn = listing.seller.id === character?.id;
-              const cantAfford = gold < listing.price;
+            {menu.map((item) => {
+              const cantAfford = gold < item.price;
 
               return (
                 <div
-                  key={listing.id}
+                  key={item.itemTemplateId}
                   className="bg-realm-bg-800 border border-realm-bg-600 hover:border-realm-gold-500/30 rounded-lg p-4 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -171,55 +336,45 @@ export default function TavernPage() {
                       <div className="flex items-center gap-2 mb-1">
                         <Beer className="w-4 h-4 text-realm-gold-400 flex-shrink-0" />
                         <span className="text-sm font-display text-realm-text-primary">
-                          {listing.item.name}
+                          {item.name}
                         </span>
-                        {listing.quantity > 1 && (
-                          <span className="text-[10px] text-realm-text-muted">x{listing.quantity}</span>
+                        {item.quantity > 1 && (
+                          <span className="text-[10px] text-realm-text-muted">x{item.quantity}</span>
                         )}
+                        <RealmBadge variant={item.isBeverage ? 'uncommon' : 'default'}>
+                          {item.isBeverage ? 'Drink' : 'Food'}
+                        </RealmBadge>
                       </div>
 
-                      {listing.item.description && (
-                        <p className="text-[11px] text-realm-text-muted mb-1 line-clamp-1">
-                          {listing.item.description}
+                      {item.description && (
+                        <p className="text-[11px] text-realm-text-muted mb-1 line-clamp-2">
+                          {item.description}
                         </p>
                       )}
 
                       <div className="flex items-center gap-2 text-[11px]">
-                        <User className="w-3 h-3 text-realm-text-muted" />
-                        <span className="text-realm-text-muted">{listing.seller.name}</span>
-                        <span className="text-realm-text-muted">&middot;</span>
                         <Coins className="w-3 h-3 text-realm-gold-400" />
-                        <span className="text-realm-gold-400 font-display">{listing.price}g</span>
+                        <span className="text-realm-gold-400 font-display">{item.price}g</span>
                       </div>
                     </div>
 
                     <RealmButton
                       variant="primary"
                       size="sm"
-                      onClick={() =>
-                        buyMutation.mutate({ listingId: listing.id, bidPrice: listing.price })
-                      }
-                      disabled={buyMutation.isPending || isOwn || cantAfford}
-                      title={
-                        isOwn
-                          ? 'This is your listing'
-                          : cantAfford
-                            ? 'Not enough gold'
-                            : `Buy for ${listing.price}g`
-                      }
+                      onClick={() => onBuy(item.itemTemplateId)}
+                      disabled={buyPending || cantAfford}
+                      title={cantAfford ? 'Not enough gold' : `Buy for ${item.price}g`}
                     >
                       <ShoppingCart className="w-3.5 h-3.5 mr-1" />
-                      {buyMutation.isPending ? 'Buying...' : 'Buy'}
+                      {buyPending ? '...' : 'Buy'}
                     </RealmButton>
                   </div>
                 </div>
               );
             })}
 
-            {buyMutation.isError && (
-              <p className="text-xs text-realm-danger mt-2">
-                {(buyMutation.error as any)?.response?.data?.error || 'Failed to purchase drink.'}
-              </p>
+            {buyError && (
+              <p className="text-xs text-realm-danger mt-2">{buyError}</p>
             )}
           </div>
         )}

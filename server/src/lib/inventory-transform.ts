@@ -22,6 +22,8 @@ interface InventoryRow {
       weight: number | null;
       stats: unknown;
       durability: number | null;
+      isFood?: boolean;
+      isBeverage?: boolean;
     };
   };
 }
@@ -42,6 +44,8 @@ interface TransformedItem {
   craftedById: string | null;
   craftedByName: string | null;
   enchantments: unknown;
+  isFood?: boolean;
+  isBeverage?: boolean;
   template?: {
     id: string;
     name: string;
@@ -82,6 +86,8 @@ export function transformInventory(
       craftedById: inv.item.craftedById,
       craftedByName: inv.item.character_craftedById?.name ?? null,
       enchantments: inv.item.enchantments ?? [],
+      isFood: inv.item.itemTemplate.isFood ?? false,
+      isBeverage: inv.item.itemTemplate.isBeverage ?? false,
     };
 
     if (includeTemplate) {

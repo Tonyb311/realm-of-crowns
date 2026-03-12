@@ -20,6 +20,7 @@ import BuildingInterior from '../components/housing/BuildingInterior';
 import WorkshopView from '../components/housing/WorkshopView';
 import ShopView from '../components/housing/ShopView';
 import HouseView from '../components/housing/HouseView';
+import InnManagement from '../components/housing/InnManagement';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,6 +74,7 @@ export default function HousingPage() {
   const [workshopIsOwner, setWorkshopIsOwner] = useState(false);
   const [shopBuildingId, setShopBuildingId] = useState<string | null>(null);
   const [shopBuildingName, setShopBuildingName] = useState('');
+  const [innBuildingId, setInnBuildingId] = useState<string | null>(null);
   const [constructionBuildingId, setConstructionBuildingId] = useState<string | null>(null);
 
   // Building socket events wired globally via GlobalEventsProvider
@@ -148,6 +150,12 @@ export default function HousingPage() {
     if (WORKSHOP_TYPES.includes(building.type)) {
       setWorkshopBuildingId(building.id);
       setWorkshopIsOwner(isOwner);
+      return;
+    }
+
+    // INN -> inn management (owner) or generic interior
+    if (building.type === 'INN' && isOwner) {
+      setInnBuildingId(building.id);
       return;
     }
 
@@ -323,6 +331,13 @@ export default function HousingPage() {
           buildingId={shopBuildingId}
           buildingName={shopBuildingName}
           onClose={() => setShopBuildingId(null)}
+        />
+      )}
+
+      {innBuildingId && (
+        <InnManagement
+          buildingId={innBuildingId}
+          onClose={() => setInnBuildingId(null)}
         />
       )}
 
