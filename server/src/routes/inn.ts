@@ -5,7 +5,7 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../lib/db';
-import { eq, and, sql, count } from 'drizzle-orm';
+import { eq, and, sql, count, isNotNull } from 'drizzle-orm';
 import {
   buildings, innMenu, characters, inventories, items,
   itemTemplates, townTreasuries,
@@ -19,6 +19,7 @@ import { logRouteError } from '../lib/error-logger';
 import { getEffectiveTaxRate } from '../services/law-effects';
 import { getInnMenuCapacity, getInnTaxMultiplier } from '@shared/data/inn-config';
 import { calculateWeightState } from '../services/weight-calculator';
+import { emitInnCheckedIn, emitInnCheckedOut, emitInnPatronUpdate } from '../socket/events';
 import crypto from 'crypto';
 
 const router = Router();
@@ -65,6 +66,16 @@ router.get('/town/:townId', async (req: AuthenticatedRequest, res: Response) => 
       },
     });
 
+    // Get patron counts per inn via a single query
+    const patronCounts = await db.select({
+      buildingId: characters.checkedInInnId,
+      count: count(),
+    })
+      .from(characters)
+      .where(isNotNull(characters.checkedInInnId))
+      .groupBy(characters.checkedInInnId);
+    const patronMap = new Map(patronCounts.map(p => [p.buildingId, p.count]));
+
     // Only show operational inns (level >= 1)
     const operationalInns = inns
       .filter(inn => inn.level >= 1)
@@ -74,6 +85,7 @@ router.get('/town/:townId', async (req: AuthenticatedRequest, res: Response) => 
         level: inn.level,
         owner: inn.character,
         menuItemCount: inn.innMenuItems.length,
+        patronCount: patronMap.get(inn.id) ?? 0,
       }));
 
     return res.json({ inns: operationalInns });
@@ -509,6 +521,126 @@ router.post('/:buildingId/menu/buy', authGuard, characterGuard, validate(buySche
   } catch (error) {
     if (handleDbError(error, res, 'inn-buy', req)) return;
     logRouteError(req, 500, 'Inn buy error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// POST /api/inn/:buildingId/check-in — Check in to an inn
+// ============================================================
+
+router.post('/:buildingId/check-in', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { buildingId } = req.params;
+
+    const building = await db.query.buildings.findFirst({
+      where: and(eq(buildings.id, buildingId), eq(buildings.type, 'INN')),
+    });
+
+    if (!building) {
+      return res.status(404).json({ error: 'Inn not found' });
+    }
+    if (building.level < 1) {
+      return res.status(400).json({ error: 'This inn is still under construction.' });
+    }
+    if (character.currentTownId !== building.townId) {
+      return res.status(400).json({ error: 'You must be in the same town as the inn to check in.' });
+    }
+
+    // Already checked in here
+    if (character.checkedInInnId === buildingId) {
+      return res.json({ message: "You're already here.", inn: { id: building.id, name: building.name } });
+    }
+
+    const oldInnId = character.checkedInInnId;
+
+    // Set check-in (auto-clears previous)
+    await db.update(characters)
+      .set({ checkedInInnId: buildingId })
+      .where(eq(characters.id, character.id));
+
+    // Emit socket events
+    emitInnCheckedIn(character.id, { buildingId, innName: building.name });
+
+    // Update patron counts for new inn (and old if switching)
+    const [newCount] = await db.select({ value: count() })
+      .from(characters)
+      .where(eq(characters.checkedInInnId, buildingId));
+    emitInnPatronUpdate(building.townId, { buildingId, patronCount: newCount.value });
+
+    if (oldInnId && oldInnId !== buildingId) {
+      const [oldCount] = await db.select({ value: count() })
+        .from(characters)
+        .where(eq(characters.checkedInInnId, oldInnId));
+      emitInnPatronUpdate(building.townId, { buildingId: oldInnId, patronCount: oldCount.value });
+    }
+
+    return res.json({
+      message: `Checked in to ${building.name}`,
+      inn: { id: building.id, name: building.name },
+    });
+  } catch (error) {
+    logRouteError(req, 500, 'Inn check-in error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// POST /api/inn/check-out — Check out from current inn
+// ============================================================
+
+router.post('/check-out', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+
+    if (!character.checkedInInnId) {
+      return res.json({ message: "You're not checked in anywhere." });
+    }
+
+    const oldInnId = character.checkedInInnId;
+
+    // Look up the inn's town for the socket broadcast
+    const oldInn = await db.query.buildings.findFirst({
+      where: eq(buildings.id, oldInnId),
+      columns: { townId: true },
+    });
+
+    await db.update(characters)
+      .set({ checkedInInnId: null })
+      .where(eq(characters.id, character.id));
+
+    emitInnCheckedOut(character.id);
+
+    if (oldInn) {
+      const [cnt] = await db.select({ value: count() })
+        .from(characters)
+        .where(eq(characters.checkedInInnId, oldInnId));
+      emitInnPatronUpdate(oldInn.townId, { buildingId: oldInnId, patronCount: cnt.value });
+    }
+
+    return res.json({ message: 'Checked out.' });
+  } catch (error) {
+    logRouteError(req, 500, 'Inn check-out error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// GET /api/inn/:buildingId/presence — Patron count for an inn
+// ============================================================
+
+router.get('/:buildingId/presence', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { buildingId } = req.params;
+
+    const [result] = await db.select({ value: count() })
+      .from(characters)
+      .where(eq(characters.checkedInInnId, buildingId));
+
+    return res.json({ count: result.value });
+  } catch (error) {
+    logRouteError(req, 500, 'Inn presence error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

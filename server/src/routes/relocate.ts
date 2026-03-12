@@ -258,12 +258,13 @@ router.post('/confirm', authGuard, characterGuard, validate(relocateSchema), asy
         await tx.delete(buildings).where(and(eq(buildings.ownerId, character.id), eq(buildings.townId, oldHomeTownId)));
       }
 
-      // 5. Update character: new home town, deduct gold, set cooldown
+      // 5. Update character: new home town, deduct gold, set cooldown, clear inn check-in
       await tx.update(characters)
         .set({
           homeTownId: targetTownId,
           gold: sql`${characters.gold} - ${RELOCATION_COST}`,
           lastRelocationGameDay: currentDay,
+          checkedInInnId: null,
         })
         .where(eq(characters.id, character.id));
     });

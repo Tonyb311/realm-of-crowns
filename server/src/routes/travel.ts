@@ -325,6 +325,7 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
           await tx.update(characters).set({
             travelStatus: 'traveling_group',
             currentTownId: null,
+            checkedInInnId: null,
           }).where(eq(characters.id, charId));
         }
 
@@ -379,6 +380,7 @@ router.post('/start', authGuard, characterGuard, validate(startTravelSchema), as
       await tx.update(characters).set({
         travelStatus: 'traveling_solo',
         currentTownId: null,
+        checkedInInnId: null,
       }).where(eq(characters.id, character.id));
 
       return state;
@@ -1362,6 +1364,7 @@ router.post('/group/:groupId/start', authGuard, characterGuard, validate(startGr
         await tx.update(characters).set({
           travelStatus: 'traveling_group',
           currentTownId: null,
+          checkedInInnId: null,
         }).where(eq(characters.id, charId));
       }
 

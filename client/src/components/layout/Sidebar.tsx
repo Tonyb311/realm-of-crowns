@@ -20,6 +20,7 @@ import {
   Newspaper,
   ShieldCheck,
   LogOut,
+  Beer,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -77,7 +78,7 @@ export function Sidebar({ className }: { className?: string }) {
   const { isAuthenticated, isAdmin, logout } = useAuth();
   const location = useLocation();
 
-  const { data: character } = useQuery<{ status: string } | null>({
+  const { data: character } = useQuery<{ status: string; checkedInInnId?: string | null; checkedInInnName?: string | null } | null>({
     queryKey: ['character', 'me'],
     queryFn: async () => {
       try {
@@ -163,6 +164,20 @@ export function Sidebar({ className }: { className?: string }) {
           {section.items.map((item) => renderItem(item))}
         </div>
       ))}
+
+      {/* Inn check-in indicator */}
+      {character?.checkedInInnId && character.checkedInInnName && (
+        <Tooltip content={`At ${character.checkedInInnName}`} position="right">
+          <Link
+            to="/tavern"
+            className="w-12 h-10 rounded-lg flex flex-col items-center justify-center gap-0.5 text-realm-success bg-realm-success/10 border border-realm-success/20"
+            aria-label={`At ${character.checkedInInnName}`}
+          >
+            <Beer className="w-4 h-4" />
+            <span className="text-[7px] font-display leading-tight truncate max-w-[44px]">Inn</span>
+          </Link>
+        </Tooltip>
+      )}
 
       {/* Spacer */}
       <div className="flex-1" />

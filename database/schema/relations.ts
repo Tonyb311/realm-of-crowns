@@ -77,6 +77,11 @@ export const charactersRelations = relations(characters, ({one, many}) => ({
 		references: [towns.id],
 		relationName: "characters_homeTownId_towns_id"
 	}),
+	checkedInInn: one(buildings, {
+		fields: [characters.checkedInInnId],
+		references: [buildings.id],
+		relationName: "characters_checkedInInnId_buildings_id"
+	}),
 	item: one(items, {
 		fields: [characters.preferredFoodId],
 		references: [items.id],
@@ -336,6 +341,9 @@ export const buildingsRelations = relations(buildings, ({one, many}) => ({
 	}),
 	buildingConstructions: many(buildingConstructions),
 	innMenuItems: many(innMenu),
+	checkedInPatrons: many(characters, {
+		relationName: "characters_checkedInInnId_buildings_id"
+	}),
 }));
 
 export const innMenuRelations = relations(innMenu, ({one}) => ({

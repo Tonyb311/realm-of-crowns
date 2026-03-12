@@ -439,3 +439,25 @@ export function emitGuildEvent(
 ) {
   getIO().to(room).emit(event, data);
 }
+
+// ---------------------------------------------------------------------------
+// Inn presence events
+// ---------------------------------------------------------------------------
+
+export function emitInnCheckedIn(characterId: string, data: {
+  buildingId: string;
+  innName: string;
+}) {
+  getIO().to(`user:${characterId}`).emit('inn:checkedIn', data);
+}
+
+export function emitInnCheckedOut(characterId: string) {
+  getIO().to(`user:${characterId}`).emit('inn:checkedOut', {});
+}
+
+export function emitInnPatronUpdate(townId: string, data: {
+  buildingId: string;
+  patronCount: number;
+}) {
+  getIO().to(`town:${townId}`).emit('inn:patronUpdate', data);
+}

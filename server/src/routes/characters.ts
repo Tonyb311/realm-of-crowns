@@ -220,6 +220,7 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
       with: {
         town_currentTownId: { columns: { name: true } },
         town_homeTownId: { columns: { id: true, name: true } },
+        checkedInInn: { columns: { id: true, name: true } },
         playerProfessions: { columns: { professionType: true, tier: true, level: true, isActive: true } },
         inventories: {
           with: {
@@ -246,7 +247,7 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
 
     const weightState = await calculateWeightState(character.id);
 
-    const { town_currentTownId: currentTown, town_homeTownId: homeTown, playerProfessions: professions, inventories: inventory, characterEquipments: equipment, ...rest } = character;
+    const { town_currentTownId: currentTown, town_homeTownId: homeTown, checkedInInn, playerProfessions: professions, inventories: inventory, characterEquipments: equipment, ...rest } = character;
 
     // Transform inventory into frontend-friendly shape
     const inventoryItems = transformInventory(inventory || [], true);
@@ -302,6 +303,7 @@ router.get('/me', authGuard, characterGuard, async (req: AuthenticatedRequest, r
       status: rest.travelStatus === 'idle' || rest.travelStatus === 'arrived' ? 'idle' : 'traveling',
       currentTownName: currentTown?.name ?? null,
       homeTownName: homeTown?.name ?? null,
+      checkedInInnName: checkedInInn?.name ?? null,
       professions: (professions || []).map((p: any) => ({
         type: p.professionType,
         professionType: p.professionType,

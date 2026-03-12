@@ -6,7 +6,7 @@
  */
 
 import { db } from '../lib/db';
-import { eq, and, gte, lte, lt, gt, inArray, desc, asc, sql, count } from 'drizzle-orm';
+import { eq, and, gte, lte, lt, gt, inArray, desc, asc, sql, count, isNotNull } from 'drizzle-orm';
 import {
   dailyActions, characters, characterActiveEffects, townResources, resources, playerProfessions,
   inventories, items, itemTemplates, buildings, characterEquipment,
@@ -215,6 +215,16 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   await runStep('Food Spoilage', 1, async () => {
     const spoilageResult = await processSpoilage();
     console.log(`[DailyTick]   Spoiled ${spoilageResult.spoiledCount} perishable items`);
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 1.5: Inn Checkout — everyone checks out at the start of a new day
+  // -----------------------------------------------------------------------
+  await runStep('Inn Checkout', 1.5, async () => {
+    const result = await db.update(characters)
+      .set({ checkedInInnId: null })
+      .where(isNotNull(characters.checkedInInnId));
+    console.log(`[DailyTick]   Checked out ${result.rowCount ?? 0} inn patrons`);
   });
 
   // -----------------------------------------------------------------------

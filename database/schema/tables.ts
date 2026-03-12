@@ -481,7 +481,9 @@ export const characters = pgTable("characters", {
 	travelEngagementMode: travelEngagementMode("travel_engagement_mode").default('ALWAYS_FIGHT').notNull(),
 	travelFleeMaxMonsterLevel: integer("travel_flee_max_monster_level"),
 	targetSelectionStrategy: targetSelectionStrategy("target_selection_strategy").default('FIRST').notNull(),
+	checkedInInnId: text("checked_in_inn_id").references((): AnyPgColumn => buildings.id, { onUpdate: "cascade", onDelete: "set null" }),
 }, (table) => [
+	index("characters_checked_in_inn_id_idx").using("btree", table.checkedInInnId.asc().nullsLast().op("text_ops")),
 	index("characters_current_town_id_idx").using("btree", table.currentTownId.asc().nullsLast().op("text_ops")),
 	index("characters_race_idx").using("btree", table.race.asc().nullsLast().op("enum_ops")),
 	index("characters_travel_status_idx").using("btree", table.travelStatus.asc().nullsLast().op("text_ops")),
