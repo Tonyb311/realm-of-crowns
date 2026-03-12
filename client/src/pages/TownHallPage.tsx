@@ -13,12 +13,16 @@ import {
   MapPin,
   AlertTriangle,
   ArrowRight,
+  Gem,
+  Star,
+  ChevronDown,
 } from 'lucide-react';
 import api from '../services/api';
 import GoldAmount from '../components/shared/GoldAmount';
 import CountdownTimer from '../components/shared/CountdownTimer';
 import { RealmModal } from '../components/ui/RealmModal';
 import { PageHeader } from '../components/ui/realm-index';
+import { buildingTypeLabel } from '@shared/data/building-labels';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -72,6 +76,26 @@ interface TownInfo {
     character: { id: string; name: string; level: number };
     appointedAt: string;
   }[];
+  buildingPermits: boolean;
+  tradePolicy: Record<string, unknown>;
+  features: { availableBuildings?: string[]; specialty?: string; prosperityLevel?: number } | null;
+  resources: { resourceType: string; abundance: number }[];
+  buildingCapacity: { used: number; total: number };
+}
+
+interface Citizen {
+  id: string;
+  name: string;
+  level: number;
+  race: string;
+  professions: string[];
+}
+
+interface CitizensResponse {
+  totalCount: number;
+  page: number;
+  limit: number;
+  citizens: Citizen[];
 }
 
 interface Election {
@@ -133,6 +157,13 @@ export default function TownHallPage() {
   const { data: electionsData, isLoading: electionsLoading } = useQuery<{ elections: Election[] }>({
     queryKey: ['elections', 'current'],
     queryFn: async () => (await api.get('/elections/current')).data,
+    enabled: !!townId,
+  });
+
+  const [citizenPage, setCitizenPage] = useState(1);
+  const { data: citizensData, isLoading: citizensLoading } = useQuery<CitizensResponse>({
+    queryKey: ['towns', townId, 'citizens', citizenPage],
+    queryFn: async () => (await api.get(`/towns/${townId}/citizens?page=${citizenPage}&limit=20`)).data,
     enabled: !!townId,
   });
 
@@ -423,6 +454,194 @@ export default function TownHallPage() {
                       <dd className="text-realm-text-primary font-semibold">{(town.council ?? []).length + (town.mayor ? 1 : 0) + (town.policy?.sheriff ? 1 : 0)}</dd>
                     </div>
                   </dl>
+                </div>
+              </section>
+
+              {/* Town Policies */}
+              <section>
+                <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
+                  <Gavel className="w-5 h-5 text-realm-gold-400" />
+                  Town Policies
+                </h2>
+                <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 space-y-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <dt className="text-realm-text-muted text-xs mb-1">Building Permits</dt>
+                      <dd className={`font-semibold text-sm ${town.buildingPermits ? 'text-realm-success' : 'text-realm-danger'}`}>
+                        {town.buildingPermits ? 'Enabled' : 'Disabled'}
+                      </dd>
+                      <p className="text-[10px] text-realm-text-muted mt-0.5">
+                        {town.buildingPermits ? 'Permits required to construct' : 'Building freely without permits'}
+                      </p>
+                    </div>
+                    <div>
+                      <dt className="text-realm-text-muted text-xs mb-1">Trade Policy</dt>
+                      <dd className="text-realm-text-secondary text-sm">
+                        {town.tradePolicy && Object.keys(town.tradePolicy).length > 0
+                          ? Object.entries(town.tradePolicy).map(([k, v]) => `${k}: ${v}`).join(', ')
+                          : 'No special trade restrictions'}
+                      </dd>
+                    </div>
+                  </div>
+
+                  {/* Building Capacity */}
+                  {town.buildingCapacity && (
+                    <div>
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <span className="text-realm-text-muted">Building Capacity</span>
+                        <span className="text-realm-text-secondary font-semibold">
+                          {town.buildingCapacity.used} / {town.buildingCapacity.total} slots
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-realm-bg-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-realm-gold-500 rounded-full transition-all"
+                          style={{ width: `${Math.min(100, (town.buildingCapacity.used / town.buildingCapacity.total) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Available Buildings */}
+                  {town.features?.availableBuildings && town.features.availableBuildings.length > 0 && (
+                    <div>
+                      <p className="text-realm-text-muted text-xs mb-2">
+                        Available Building Types ({town.features.availableBuildings.length})
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {town.features.availableBuildings.map(bt => (
+                          <span key={bt} className="text-[10px] px-2 py-0.5 rounded-sm bg-realm-bg-800 border border-realm-border text-realm-text-secondary">
+                            {buildingTypeLabel(bt)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* Resources & Specialty */}
+              <section>
+                <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
+                  <Gem className="w-5 h-5 text-realm-gold-400" />
+                  Resources &amp; Specialty
+                </h2>
+                <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 space-y-4">
+                  {/* Specialty & Prosperity */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-realm-text-muted text-xs mb-1">Town Specialty</p>
+                      <p className="text-realm-text-primary font-display text-sm">
+                        {town.features?.specialty ?? 'General'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-realm-text-muted text-xs mb-1">Prosperity</p>
+                      <div className="flex items-center gap-0.5">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-4 h-4 ${i < (town.features?.prosperityLevel ?? 0) ? 'text-realm-gold-400 fill-realm-gold-400' : 'text-realm-bg-500'}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Resource List */}
+                  {town.resources && town.resources.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-realm-text-muted text-xs">Natural Resources</p>
+                      {town.resources.map(r => (
+                        <div key={r.resourceType} className="flex items-center gap-3">
+                          <span className="text-xs text-realm-text-secondary w-28 flex-shrink-0">
+                            {r.resourceType.charAt(0) + r.resourceType.slice(1).toLowerCase().replace(/_/g, ' ')}
+                          </span>
+                          <div className="flex-1 h-2 bg-realm-bg-800 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                r.abundance >= 70 ? 'bg-realm-success' :
+                                r.abundance >= 40 ? 'bg-realm-gold-500' :
+                                r.abundance >= 20 ? 'bg-realm-bronze' : 'bg-realm-danger'
+                              }`}
+                              style={{ width: `${r.abundance}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-realm-text-muted w-8 text-right">{r.abundance}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* Citizen Registry */}
+              <section>
+                <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-realm-gold-400" />
+                  Citizens
+                  {citizensData && (
+                    <span className="text-sm font-normal text-realm-text-muted ml-1">
+                      ({citizensData.totalCount} resident{citizensData.totalCount !== 1 ? 's' : ''})
+                    </span>
+                  )}
+                </h2>
+                <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5">
+                  {citizensLoading ? (
+                    <div className="flex items-center gap-2 text-realm-text-muted text-sm py-4 justify-center">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Loading citizens...
+                    </div>
+                  ) : !citizensData || citizensData.citizens.length === 0 ? (
+                    <p className="text-realm-text-muted text-sm text-center py-4">No registered residents.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {citizensData.citizens.map(c => {
+                        const isMe = c.id === character?.id;
+                        const isMayor = c.id === town.mayor?.id;
+                        const isSheriff = c.id === town.policy?.sheriffId;
+                        return (
+                          <div
+                            key={c.id}
+                            className={`flex items-center justify-between py-2 px-2 rounded-sm ${isMe ? 'bg-realm-gold-500/5 border border-realm-gold-500/20' : ''}`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`text-sm font-semibold truncate ${isMe ? 'text-realm-gold-400' : 'text-realm-text-primary'}`}>
+                                {c.name}
+                              </span>
+                              {isMayor && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400 flex-shrink-0">Mayor</span>
+                              )}
+                              {isSheriff && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-realm-teal-300/10 border border-realm-teal-300/30 text-realm-teal-300 flex-shrink-0">Sheriff</span>
+                              )}
+                              {isMe && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-realm-gold-500/10 border border-realm-gold-500/30 text-realm-gold-400 flex-shrink-0">You</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-realm-text-muted flex-shrink-0">
+                              {c.professions.length > 0 && (
+                                <span className="hidden sm:inline">{c.professions.map(p => p.charAt(0) + p.slice(1).toLowerCase().replace(/_/g, ' ')).join(', ')}</span>
+                              )}
+                              <span>{c.race.charAt(0) + c.race.slice(1).toLowerCase()}</span>
+                              <span className="font-semibold">Lv. {c.level}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Load More */}
+                      {citizensData.totalCount > citizenPage * citizensData.limit && (
+                        <button
+                          onClick={() => setCitizenPage(p => p + 1)}
+                          className="w-full mt-3 py-2 text-xs text-realm-gold-400 hover:text-realm-gold-300 flex items-center justify-center gap-1 transition-colors"
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                          Load More ({citizensData.totalCount - citizenPage * citizensData.limit} remaining)
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </section>
             </div>

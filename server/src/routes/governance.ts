@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../lib/db';
 import { eq, and, or, desc, sql, count } from 'drizzle-orm';
-import { kingdoms, towns, laws, lawVotes, councilMembers, townPolicies, townTreasuries, wars, characters } from '@database/tables';
+import { kingdoms, towns, laws, lawVotes, councilMembers, townPolicies, townTreasuries, wars, characters, townResources, buildings } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
@@ -312,6 +312,12 @@ router.get('/town-info/:townId', authGuard, characterGuard, requireTown, async (
             character_characterId: { columns: { id: true, name: true, level: true } },
           },
         },
+        townResources: {
+          columns: { resourceType: true, abundance: true },
+        },
+        buildings: {
+          columns: { id: true, level: true },
+        },
       },
     });
 
@@ -321,6 +327,10 @@ router.get('/town-info/:townId', authGuard, characterGuard, requireTown, async (
 
     const treasury = townRow.townTreasuries[0] ?? null;
     const policy = townRow.townPolicies[0] ?? null;
+    const features = (townRow.features && !Array.isArray(townRow.features))
+      ? townRow.features as { availableBuildings?: string[]; specialty?: string; prosperityLevel?: number }
+      : null;
+    const usedSlots = townRow.buildings.filter(b => b.level >= 1).length;
 
     return res.json({
       town: {
@@ -342,6 +352,17 @@ router.get('/town-info/:townId', authGuard, characterGuard, requireTown, async (
           character: cm.character_characterId,
           appointedAt: cm.appointedAt,
         })),
+        buildingPermits: policy?.buildingPermits ?? true,
+        tradePolicy: policy?.tradePolicy ?? {},
+        features,
+        resources: townRow.townResources.map(r => ({
+          resourceType: r.resourceType,
+          abundance: r.abundance,
+        })),
+        buildingCapacity: {
+          used: usedSlots,
+          total: Math.max(20, Math.floor(townRow.population / 100)),
+        },
       },
     });
   } catch (error) {

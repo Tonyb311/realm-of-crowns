@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../lib/db';
-import { eq } from 'drizzle-orm';
-import { towns, townResources, buildings, characters } from '@database/tables';
+import { eq, desc, sql } from 'drizzle-orm';
+import { towns, townResources, buildings, characters, playerProfessions } from '@database/tables';
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { cache } from '../middleware/cache';
@@ -196,6 +196,60 @@ router.get('/:id/characters', async (req, res) => {
   } catch (error) {
     if (handleDbError(error, res, 'get town characters', req)) return;
     logRouteError(req, 500, 'Get town characters error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/towns/:id/citizens — residents (homeTownId) with professions
+router.get('/:id/citizens', async (req, res) => {
+  try {
+    const townId = req.params.id;
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20));
+    const offset = (page - 1) * limit;
+
+    const town = await db.query.towns.findFirst({
+      where: eq(towns.id, townId),
+      columns: { id: true },
+    });
+    if (!town) {
+      return res.status(404).json({ error: 'Town not found' });
+    }
+
+    // Total count
+    const [{ value: totalCount }] = await db
+      .select({ value: sql<number>`count(*)::int` })
+      .from(characters)
+      .where(eq(characters.homeTownId, townId));
+
+    // Paginated citizen list sorted by level desc
+    const citizenRows = await db.query.characters.findMany({
+      where: eq(characters.homeTownId, townId),
+      columns: { id: true, name: true, level: true, race: true },
+      with: {
+        playerProfessions: {
+          columns: { professionType: true, isActive: true },
+        },
+      },
+      orderBy: desc(characters.level),
+      limit,
+      offset,
+    });
+
+    const citizens = citizenRows.map(c => ({
+      id: c.id,
+      name: c.name,
+      level: c.level,
+      race: c.race,
+      professions: c.playerProfessions
+        .filter((p: any) => p.isActive)
+        .map((p: any) => p.professionType),
+    }));
+
+    return res.json({ totalCount, page, limit, citizens });
+  } catch (error) {
+    if (handleDbError(error, res, 'get town citizens', req)) return;
+    logRouteError(req, 500, 'Get town citizens error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
