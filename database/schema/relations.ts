@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { characters, characterActiveEffects, characterEquipment, items, inventories, professionXp, towns, townResources, regions, regionBorders, diplomacyEvents, kingdoms, buildings, buildingConstructions, itemTemplates, priceHistories, caravans, elections, electionVotes, guilds, guildMembers, questProgress, quests, combatSessions, combatLogs, combatParticipants, notifications, racialAbilityCooldowns, changelingDisguises, achievements, playerAchievements, forgebornMaintenance, playerProfessions, craftingActions, recipes, travelRoutes, auctionCycles, marketListings, friends, laws, messages, electionCandidates, impeachments, impeachmentVotes, townTreasuries, councilMembers, townPolicies, abilities, characterAbilities, npcs, characterAppearances, users, exclusiveZones, gatheringActions, resources, wars, treaties, petitions, petitionSignatures, dailyActions, serviceActions, loans, serviceReputations, lawVotes, dailyReports, travelGroups, parties, travelNodes, travelGroupMembers, characterTravelStates, combatEncounterLogs, simulationRuns, groupTravelStates, partyMembers, partyInvitations, marketBuyOrders, tradeTransactions, ownedAssets, livestock, houses, houseStorage, jobs, monsters, droppedItems, deletionLogs, innMenu, noticeBoardPosts } from "./tables";
+import { characters, characterActiveEffects, characterEquipment, items, inventories, professionXp, towns, townResources, regions, regionBorders, diplomacyEvents, kingdoms, buildings, buildingConstructions, itemTemplates, priceHistories, caravans, elections, electionVotes, guilds, guildMembers, questProgress, quests, combatSessions, combatLogs, combatParticipants, notifications, racialAbilityCooldowns, changelingDisguises, achievements, playerAchievements, forgebornMaintenance, playerProfessions, craftingActions, recipes, travelRoutes, auctionCycles, marketListings, friends, laws, messages, electionCandidates, impeachments, impeachmentVotes, townTreasuries, councilMembers, townPolicies, abilities, characterAbilities, npcs, characterAppearances, users, exclusiveZones, gatheringActions, resources, wars, treaties, petitions, petitionSignatures, dailyActions, serviceActions, loans, serviceReputations, lawVotes, dailyReports, travelGroups, parties, travelNodes, travelGroupMembers, characterTravelStates, combatEncounterLogs, simulationRuns, groupTravelStates, partyMembers, partyInvitations, marketBuyOrders, tradeTransactions, ownedAssets, livestock, houses, houseStorage, jobs, monsters, droppedItems, deletionLogs, innMenu, noticeBoardPosts, gods, churchChapters } from "./tables";
 
 export const characterEquipmentRelations = relations(characterEquipment, ({one}) => ({
 	character: one(characters, {
@@ -153,6 +153,14 @@ export const charactersRelations = relations(characters, ({one, many}) => ({
 	noticeBoardPosts_bountyClaimantId: many(noticeBoardPosts, {
 		relationName: "noticeBoardPosts_bountyClaimantId_characters_id"
 	}),
+	patronGod: one(gods, {
+		fields: [characters.patronGodId],
+		references: [gods.id],
+		relationName: "characters_patronGodId_gods_id"
+	}),
+	churchChapters_highPriest: many(churchChapters, {
+		relationName: "churchChapters_highPriestId_characters_id"
+	}),
 }));
 
 export const characterActiveEffectsRelations = relations(characterActiveEffects, ({one}) => ({
@@ -273,6 +281,7 @@ export const townsRelations = relations(towns, ({one, many}) => ({
 	}),
 	ownedAssets: many(ownedAssets),
 	noticeBoardPosts: many(noticeBoardPosts),
+	churchChapters: many(churchChapters),
 }));
 
 export const regionBordersRelations = relations(regionBorders, ({one}) => ({
@@ -1195,5 +1204,32 @@ export const noticeBoardPostsRelations = relations(noticeBoardPosts, ({one}) => 
 		fields: [noticeBoardPosts.bountyClaimantId],
 		references: [characters.id],
 		relationName: "noticeBoardPosts_bountyClaimantId_characters_id"
+	}),
+}));
+
+// ============================================================
+// RELIGION
+// ============================================================
+
+export const godsRelations = relations(gods, ({many}) => ({
+	churchChapters: many(churchChapters),
+	characters: many(characters, {
+		relationName: "characters_patronGodId_gods_id"
+	}),
+}));
+
+export const churchChaptersRelations = relations(churchChapters, ({one}) => ({
+	god: one(gods, {
+		fields: [churchChapters.godId],
+		references: [gods.id],
+	}),
+	town: one(towns, {
+		fields: [churchChapters.townId],
+		references: [towns.id],
+	}),
+	highPriest: one(characters, {
+		fields: [churchChapters.highPriestId],
+		references: [characters.id],
+		relationName: "churchChapters_highPriestId_characters_id"
 	}),
 }));

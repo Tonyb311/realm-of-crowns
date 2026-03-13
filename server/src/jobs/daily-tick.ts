@@ -13,7 +13,7 @@ import {
   laws, townTreasuries, townPolicies, tradeTransactions, caravans,
   elections, electionVotes, electionCandidates, impeachments, towns, kingdoms,
   worldEvents, combatEncounterLogs, notifications, recipes,
-  ownedAssets, livestock, jobs, houses, houseStorage, noticeBoardPosts,
+  ownedAssets, livestock, jobs, houses, houseStorage, noticeBoardPosts, churchChapters, gods,
 } from '@database/tables';
 import { processSpoilage, processAutoConsumption, getHungerModifier, processRevenantSustenance, processForgebornMaintenance } from '../services/food-system';
 import { resolveNodePvE, resolveNodePvP } from '../services/tick-combat-resolver';
@@ -40,6 +40,7 @@ import { getGatheringBonus } from '@shared/data/professions/tier-unlocks';
 import { ACTION_XP } from '@shared/data/progression';
 import { computeFeatBonus } from '@shared/data/feats';
 import { GATHER_SPOT_PROFESSION_MAP, RESOURCE_MAP } from '@shared/data/gathering';
+import { calculateChurchTier } from '@shared/data/religion-config';
 import { ASSET_TIERS, LIVESTOCK_DEFINITIONS, HUNGER_CONSTANTS } from '@shared/data/assets';
 import { getCottageTier } from '@shared/data/cottage-tiers';
 import {
@@ -276,6 +277,85 @@ export async function processDailyTick(): Promise<DailyTickResult> {
       .set({ checkedInInnId: null })
       .where(isNotNull(characters.checkedInInnId));
     console.log(`[DailyTick]   Checked out ${result.rowCount ?? 0} inn patrons`);
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 1.6: Church Tier Recalculation — reconcile membership + update tiers
+  // -----------------------------------------------------------------------
+  await runStep('Church Tier Recalculation', 1.6, async () => {
+    // Get all towns that have at least one chapter
+    const allChapters = await db.query.churchChapters.findMany();
+    if (allChapters.length === 0) {
+      console.log('[DailyTick]   No church chapters to process');
+      return;
+    }
+
+    // Group chapters by town
+    const chaptersByTown = new Map<string, typeof allChapters>();
+    for (const ch of allChapters) {
+      const arr = chaptersByTown.get(ch.townId) ?? [];
+      arr.push(ch);
+      chaptersByTown.set(ch.townId, arr);
+    }
+
+    let updated = 0;
+    for (const [townId, townChapters] of chaptersByTown) {
+      // Count total residents in this town
+      const [{ value: totalResidents }] = await db
+        .select({ value: count() })
+        .from(characters)
+        .where(eq(characters.homeTownId, townId));
+
+      // Reconcile actual member counts from characters table
+      for (const ch of townChapters) {
+        const [{ value: actualCount }] = await db
+          .select({ value: count() })
+          .from(characters)
+          .where(and(
+            eq(characters.patronGodId, ch.godId),
+            eq(characters.homeTownId, townId),
+          ));
+
+        const newTier = calculateChurchTier(actualCount, totalResidents);
+
+        // Update memberCount + tier
+        if (actualCount !== ch.memberCount || newTier !== ch.tier) {
+          await db.update(churchChapters)
+            .set({ memberCount: actualCount, tier: newTier })
+            .where(eq(churchChapters.id, ch.id));
+          updated++;
+        }
+
+        // Store actual count for dominance check
+        (ch as any)._actualCount = actualCount;
+        (ch as any)._newTier = newTier;
+      }
+
+      // Determine dominance: highest memberCount chapter at DOMINANT tier
+      let dominantId: string | null = null;
+      let highestCount = 0;
+      for (const ch of townChapters) {
+        const actual = (ch as any)._actualCount as number;
+        const tier = (ch as any)._newTier as string;
+        if (tier === 'DOMINANT' && actual > highestCount) {
+          highestCount = actual;
+          dominantId = ch.id;
+        }
+      }
+
+      // Update isDominant flags
+      for (const ch of townChapters) {
+        const shouldBeDominant = ch.id === dominantId;
+        if (ch.isDominant !== shouldBeDominant) {
+          await db.update(churchChapters)
+            .set({ isDominant: shouldBeDominant })
+            .where(eq(churchChapters.id, ch.id));
+          updated++;
+        }
+      }
+    }
+
+    console.log(`[DailyTick]   Processed ${allChapters.length} chapters across ${chaptersByTown.size} towns, ${updated} updates`);
   });
 
   // -----------------------------------------------------------------------

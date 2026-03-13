@@ -120,6 +120,13 @@
       "when": 1774396800000,
       "tag": "0016_replace_job_listings_with_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1774483200000,
+      "tag": "0017_religion_a1",
+      "breakpoints": true
     }
   ]
 }

@@ -482,8 +482,12 @@ export const characters = pgTable("characters", {
 	travelFleeMaxMonsterLevel: integer("travel_flee_max_monster_level"),
 	targetSelectionStrategy: targetSelectionStrategy("target_selection_strategy").default('FIRST').notNull(),
 	checkedInInnId: text("checked_in_inn_id").references((): AnyPgColumn => buildings.id, { onUpdate: "cascade", onDelete: "set null" }),
+	patronGodId: text("patron_god_id").references((): AnyPgColumn => gods.id, { onUpdate: "cascade", onDelete: "set null" }),
+	conversionCooldownUntil: timestamp("conversion_cooldown_until", { precision: 3, mode: 'string' }),
+	titheRate: integer("tithe_rate").default(10).notNull(),
 }, (table) => [
 	index("characters_checked_in_inn_id_idx").using("btree", table.checkedInInnId.asc().nullsLast().op("text_ops")),
+	index("characters_patron_god_id_idx").using("btree", table.patronGodId.asc().nullsLast().op("text_ops")),
 	index("characters_current_town_id_idx").using("btree", table.currentTownId.asc().nullsLast().op("text_ops")),
 	index("characters_race_idx").using("btree", table.race.asc().nullsLast().op("enum_ops")),
 	index("characters_travel_status_idx").using("btree", table.travelStatus.asc().nullsLast().op("text_ops")),
@@ -2415,5 +2419,57 @@ export const contentReleases = pgTable("content_releases", {
 	uniqueIndex("content_releases_content_type_content_id_key").using("btree", table.contentType.asc().nullsLast().op("text_ops"), table.contentId.asc().nullsLast().op("text_ops")),
 	index("content_releases_content_type_idx").using("btree", table.contentType.asc().nullsLast().op("text_ops")),
 	index("content_releases_is_released_idx").using("btree", table.isReleased.asc().nullsLast().op("bool_ops")),
+]);
+
+// ============================================================
+// RELIGION
+// ============================================================
+
+export const gods = pgTable("gods", {
+	id: text().primaryKey().notNull(), // slug: 'aurvandos', 'veradine', etc.
+	name: text().notNull(),
+	title: text().notNull(),
+	domain: text().notNull(),
+	philosophy: text().notNull(),
+	churchName: text("church_name").notNull(),
+	churchDescription: text("church_description").notNull(),
+	racialLean: text("racial_lean").notNull(),
+	iconName: text("icon_name"),
+	colorHex: text("color_hex"),
+	sortOrder: integer("sort_order").default(0).notNull(),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const churchChapters = pgTable("church_chapters", {
+	id: text().primaryKey().notNull(),
+	godId: text("god_id").notNull(),
+	townId: text("town_id").notNull(),
+	memberCount: integer("member_count").default(0).notNull(),
+	tier: text().default('MINORITY').notNull(),
+	isDominant: boolean("is_dominant").default(false).notNull(),
+	isShrine: boolean("is_shrine").default(false).notNull(),
+	treasury: integer().default(0).notNull(),
+	highPriestId: text("high_priest_id"),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull().$onUpdate(() => new Date().toISOString()),
+}, (table) => [
+	uniqueIndex("church_chapters_god_id_town_id_key").using("btree", table.godId.asc().nullsLast().op("text_ops"), table.townId.asc().nullsLast().op("text_ops")),
+	index("church_chapters_town_id_idx").using("btree", table.townId.asc().nullsLast().op("text_ops")),
+	index("church_chapters_god_id_idx").using("btree", table.godId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+		columns: [table.godId],
+		foreignColumns: [gods.id],
+		name: "church_chapters_god_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.townId],
+		foreignColumns: [towns.id],
+		name: "church_chapters_town_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.highPriestId],
+		foreignColumns: [characters.id],
+		name: "church_chapters_high_priest_id_fkey"
+	}).onUpdate("cascade").onDelete("set null"),
 ]);
 

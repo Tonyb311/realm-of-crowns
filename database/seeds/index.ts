@@ -34,6 +34,7 @@ import { seedCraftedGoodsRecipes } from './crafted-goods-recipes';
 import { seedAccessoryRecipes } from './accessory-recipes';
 import { seedBaseValuePropagation } from './base-value-propagation';
 import { seedTannerRecipes } from './run-tanner';
+import { seedReligion } from './religion';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle(pool, { schema });
@@ -156,6 +157,9 @@ async function main() {
 
   // Achievements: combat, crafting, social, exploration, economy (P1 #17 / MAJOR-05)
   if (!await runSeed('achievements', () => seedAchievements(db))) failed++;
+
+  // Religion: 12 gods of Aethermere
+  if (!await runSeed('religion', () => seedReligion(db))) failed++;
 
   // Base value propagation: catch-all pass that prices ANY remaining zero-value items
   // Must run LAST — after all other seeds have created their templates
