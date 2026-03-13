@@ -299,3 +299,57 @@ All fixes deployed in revision `202603052223` unless noted otherwise.
 | **Total** | **0** | **0** | **0** | **1** | **72** |
 
 *P3-14 (dead API routes) deferred to future audit — only remaining open item.*
+
+
+---
+
+## PvP Balance Backlog (from 2026-03-11 PvP Sim Battery)
+
+**Source:** 34,950 fights across 4 sim runs. Data in `docs/pvp-sim-results-*.md`. Sim configs in `server/src/scripts/sim-configs/pvp-*.json`.
+
+**Existing PvP bugs (6) fixed same session:** equipment AC, wager race condition, challenge expiry, consumable buffs, leaderboard SQL, race/subRace fields. See `prompts/prompt-pvp-bug-fixes.md`.
+
+### PVP-BAL-01: Casters unviable in 1v1 PvP (DESIGN DECISION NEEDED)
+
+Mage 0-3%, Psion 0-25%, Bard 0-15% win rates vs martial classes at all levels. HP/AC/damage gap too large. Enchanter spec is the outlier (85-100% vs some specs) because CC neutralizes martial advantage.
+
+**Open design question:** Should casters be viable 1v1 (requires PvP-specific tuning), or is rock-paper-scissors asymmetry intended (casters shine in groups)?
+
+### PVP-BAL-02: Ranger dominant at all levels
+
+93-100% win rate vs nearly everything at L10. Still dominant at L20/L30. Only warrior threatens at higher levels.
+
+**Open design question:** Is this bow damage being too high, extra attacks too early, or both? Needs a ranger-specific diagnostic audit before changing anything.
+
+### PVP-BAL-03: Warrior scales too aggressively
+
+At L30, warrior beats every single class at 100%. Gets progressively stronger with level — the HP/AC/extra attack snowball compounds.
+
+### PVP-BAL-04: Double Healer party composition dominates group PvP
+
+84-100% vs most parties at L20-30. Sustain wins attrition fights in auto-resolved tick combat.
+
+**Open design question:** Is this a problem (nerf healing in PvP via diminishing returns) or intended (sustain comps should beat glass cannon)?
+
+### PVP-BAL-05: Caster Heavy party 0% win rate
+
+A party of 5 casters cannot win under any circumstances at any level. Downstream of PVP-BAL-01.
+
+### PVP-BAL-06: 3 monsters still had PSYCHIC/FORCE immunities (FIXED)
+
+Elder Fey Guardian, Arcane Titan, Mind Reaver — converted to resistances. Deployed 2026-03-11.
+
+### PVP-BAL-07: ARENA and WAR combat types unimplemented
+
+Enum values exist (CombatType: ARENA, WAR) but zero route/service code. ~45 design questions cataloged in `docs/audit-pvp-readiness.md` Section 3.
+
+### Relevant Files
+
+| File | Contents |
+|---|---|
+| `docs/audit-pvp-readiness.md` | Full PvP readiness audit (engine, infra, 50 design questions) |
+| `docs/pvp-sim-results-*.md` | All sim output (class matrix, spec matrix, party battles) |
+| `server/src/scripts/sim-configs/pvp-*.json` | 5 PvP sim configs (rerunnable) |
+| `prompts/prompt-pvp-bug-fixes.md` | The 6-bug fix prompt (executed) |
+| `prompts/prompt-pvp-batch-sim.md` | PvP sim tool prompt (executed) |
+| `prompts/prompt-pvp-audit.md` | Original audit prompt (executed) |

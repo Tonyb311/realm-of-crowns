@@ -12,6 +12,7 @@ import type { ProfessionType, ItemType } from '@shared/enums';
 import { calculateItemStats } from '../services/item-stats';
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
+import { getCharacterReligionContext, resolveReligionBuffs } from '../services/religion-buffs';
 
 const router = Router();
 
@@ -396,6 +397,17 @@ router.post('/use-consumable', authGuard, characterGuard, validate(useConsumable
       magnitude = normalized.magnitude;
       effectType2 = normalized.effectType2;
       magnitude2 = normalized.magnitude2;
+
+      // Religion buff: Kethara food effectiveness multiplier
+      const religionCtx = await getCharacterReligionContext(character.id);
+      const religionBuffs = resolveReligionBuffs(religionCtx);
+      const foodBonus = religionBuffs.combinedBuffs.foodEffectivenessPercent ?? 0;
+      if (foodBonus > 0) {
+        magnitude = Math.ceil(magnitude * (1 + foodBonus));
+        if (magnitude2 != null) {
+          magnitude2 = Math.ceil(magnitude2 * (1 + foodBonus));
+        }
+      }
     } else {
       // Potions and scrolls use template.stats
       effectType = stats?.effect;

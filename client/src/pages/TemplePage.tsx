@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Church, Shield, Scale, Flame, Eye, HeartHandshake, BrickWall, Gavel,
-  Smile, Handshake, Crown, EyeOff, BookOpen, Users, Star, AlertTriangle, X, Coins, Vote, Sparkles,
+  Smile, Handshake, Crown, EyeOff, BookOpen, Users, Star, AlertTriangle, X, Coins, Vote, Sparkles, Heart,
 } from 'lucide-react';
 import api from '../services/api';
 import { RealmPanel, RealmButton, RealmBadge, PageHeader } from '../components/ui/realm-index';
 import { SHRINE_CONSECRATION_COST, GOD_METRIC_PREVIEW } from '@shared/data/town-metrics-config';
+import { GOD_BUFFS, BUFF_LABELS, getPersonalReligionBuffs, getDominantChurchTownEffects } from '@shared/data/god-buffs';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -305,6 +306,17 @@ export default function TemplePage() {
     },
   });
 
+  // Healing House mutation (Kethara shrine)
+  const healingHouseMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/temple/healing-house');
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['character'] });
+    },
+  });
+
   const townName = town?.name ?? 'this town';
   const chapters = templeData?.chapters ?? [];
   const dominant = templeData?.dominant;
@@ -392,6 +404,79 @@ export default function TemplePage() {
               isPending={titheMutation.isPending}
               error={titheMutation.isError ? ((titheMutation.error as any)?.response?.data?.error || 'Failed to update tithe rate.') : null}
             />
+
+            {/* Active Religion Buffs */}
+            {patronGod && myFaith?.homeChapter && (() => {
+              const personalBuffs = getPersonalReligionBuffs(patronGod.id, myFaith.homeChapter.tier);
+              const townBuffs = dominant && GOD_BUFFS[dominant.godId]
+                ? getDominantChurchTownEffects(dominant.godId, dominant.tier)
+                : {};
+              const hasBuffs = Object.keys(personalBuffs).length > 0 || Object.keys(townBuffs).length > 0;
+
+              if (!hasBuffs) return null;
+
+              return (
+                <div className="rounded-lg border border-realm-bg-600 bg-realm-bg-800 p-3 space-y-2">
+                  <span className="text-xs font-display text-realm-text-primary flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-realm-gold-400" />
+                    Active Religion Buffs
+                  </span>
+                  {Object.entries(personalBuffs).length > 0 && (
+                    <div>
+                      <span className="text-[10px] uppercase tracking-wider text-realm-text-muted">Personal</span>
+                      {Object.entries(personalBuffs).map(([key, val]) => (
+                        <div key={key} className="flex items-center justify-between text-[11px]">
+                          <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
+                          <span className="text-realm-teal-300">+{Math.round(val * 100)}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {Object.entries(townBuffs).length > 0 && (
+                    <div>
+                      <span className="text-[10px] uppercase tracking-wider text-realm-text-muted">Town-wide ({dominant!.godName} dominance)</span>
+                      {Object.entries(townBuffs).map(([key, val]) => (
+                        <div key={key} className="flex items-center justify-between text-[11px]">
+                          <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
+                          <span className="text-realm-teal-300">+{Math.round(val * 100)}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Healing House (Kethara shrine) */}
+            {patronGod?.id === 'kethara' && chapters.some(ch => ch.godId === 'kethara' && ch.isShrine) && (
+              <div className="rounded-lg border border-realm-bg-600 bg-realm-bg-800 p-3 space-y-2">
+                <span className="text-xs font-display text-realm-text-primary flex items-center gap-1.5">
+                  <Heart className="w-3.5 h-3.5 text-red-400" />
+                  Healing House
+                </span>
+                <p className="text-[11px] text-realm-text-muted">
+                  Visit the shrine's Healing House to restore your health to full. Once per day.
+                </p>
+                <RealmButton
+                  variant="primary"
+                  size="sm"
+                  onClick={() => healingHouseMutation.mutate()}
+                  disabled={healingHouseMutation.isPending}
+                >
+                  {healingHouseMutation.isPending ? 'Healing...' : 'Visit Healing House'}
+                </RealmButton>
+                {healingHouseMutation.isSuccess && (
+                  <p className="text-[11px] text-realm-success">
+                    {healingHouseMutation.data.message}
+                  </p>
+                )}
+                {healingHouseMutation.isError && (
+                  <p className="text-[11px] text-realm-danger">
+                    {(healingHouseMutation.error as any)?.response?.data?.error || 'Failed to use Healing House'}
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center gap-3">
               <RealmButton

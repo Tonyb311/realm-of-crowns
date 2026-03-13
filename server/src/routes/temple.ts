@@ -1,7 +1,7 @@
 import { Router, type Response } from 'express';
-import { eq, and, ne, sql, asc, desc, count } from 'drizzle-orm';
+import { eq, and, ne, sql, asc, desc, count, gte } from 'drizzle-orm';
 import { db } from '../lib/db';
-import { gods, churchChapters, characters, towns, elections, electionCandidates } from '@database/tables';
+import { gods, churchChapters, characters, towns, elections, electionCandidates, characterActiveEffects } from '@database/tables';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
 import { characterGuard } from '../middleware/character-guard';
@@ -431,6 +431,94 @@ router.post('/deconsecrate', authGuard, characterGuard, async (req: Authenticate
   } catch (error) {
     if (handleDbError(error, res, 'temple-deconsecrate', req)) return;
     logRouteError(req, 500, 'Temple deconsecrate error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// POST /api/temple/healing-house — Kethara Shrine: Restore HP
+// ============================================================
+
+router.post('/healing-house', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+
+    // Must follow Kethara
+    if (character.patronGodId !== 'kethara') {
+      return res.status(400).json({ error: 'Only followers of Kethara may use the Healing House' });
+    }
+
+    // Must be in a town with a Kethara shrine
+    const currentTownId = character.currentTownId;
+    if (!currentTownId) {
+      return res.status(400).json({ error: 'You must be in a town to visit the Healing House' });
+    }
+
+    const ketharaShrine = await db.query.churchChapters.findFirst({
+      where: and(
+        eq(churchChapters.godId, 'kethara'),
+        eq(churchChapters.townId, currentTownId),
+        eq(churchChapters.isShrine, true),
+      ),
+    });
+
+    if (!ketharaShrine) {
+      return res.status(400).json({ error: 'There is no Kethara shrine in this town' });
+    }
+
+    // Check daily usage: look for a marker effect created today
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const existingMarker = await db.query.characterActiveEffects.findFirst({
+      where: and(
+        eq(characterActiveEffects.characterId, character.id),
+        eq(characterActiveEffects.effectType, 'healing_house_used'),
+        gte(characterActiveEffects.createdAt, todayStart.toISOString()),
+      ),
+    });
+
+    if (existingMarker) {
+      return res.status(400).json({ error: 'You have already visited the Healing House today' });
+    }
+
+    // Restore HP to full and create daily marker
+    const maxHealth = character.maxHealth ?? 100;
+    const currentHealth = character.health ?? maxHealth;
+    const healed = maxHealth - currentHealth;
+
+    await db.transaction(async (tx) => {
+      // Restore health
+      if (healed > 0) {
+        await tx.update(characters)
+          .set({ health: maxHealth })
+          .where(eq(characters.id, character.id));
+      }
+
+      // Insert daily usage marker (expires in 24h)
+      await tx.insert(characterActiveEffects).values({
+        id: crypto.randomUUID(),
+        characterId: character.id,
+        sourceType: 'SCROLL',
+        effectType: 'healing_house_used',
+        magnitude: 0,
+        itemName: 'Healing House',
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      });
+    });
+
+    return res.json({
+      success: true,
+      message: healed > 0
+        ? `The Healing House restored ${healed} HP`
+        : 'You are already at full health, but the visit has been blessed',
+      healed,
+      health: maxHealth,
+      maxHealth,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-healing-house', req)) return;
+    logRouteError(req, 500, 'Temple healing-house error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

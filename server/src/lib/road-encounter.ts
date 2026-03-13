@@ -62,6 +62,7 @@ import {
 } from '../services/tick-combat-resolver';
 import { buildCombatParams, STANCE_MODIFIERS } from '../services/combat-presets';
 import { createRacialCombatTracker } from '../services/racial-combat-abilities';
+import { getCharacterReligionContext, resolveReligionBuffs, getReligionEncounterReduction } from '../services/religion-buffs';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -577,6 +578,12 @@ export async function resolveRoadEncounter(
     encounterChance *= (1 - avoidanceBonus);
   }
 
+  // Apply religion-based road safety (Aurvandos: personal, town-wide, shrine)
+  const religionReduction = await getReligionEncounterReduction(characterId, originTownId, destinationTownId);
+  if (religionReduction > 0) {
+    encounterChance *= (1 - religionReduction);
+  }
+
   const roll = Math.random();
   if (roll > encounterChance) {
     return { encountered: false };
@@ -764,6 +771,20 @@ export async function resolveRoadEncounter(
 
   // Apply pre-combat consumable buffs (stat potions, food buffs, scroll buffs)
   await applyConsumableBuffs(playerCombatant, character.id);
+
+  // Apply religion combat defense buff (Aurvandos: damage reduction %)
+  const relCtx = await getCharacterReligionContext(character.id);
+  const relBuffs = resolveReligionBuffs(relCtx);
+  const combatDefenseDR = relBuffs.combinedBuffs.combatDefensePercent ?? 0;
+  if (combatDefenseDR > 0) {
+    if (!playerCombatant.activeBuffs) playerCombatant.activeBuffs = [];
+    playerCombatant.activeBuffs.push({
+      sourceAbilityId: 'religion',
+      name: 'Divine Protection',
+      roundsRemaining: 999,
+      damageReduction: combatDefenseDR,
+    });
+  }
 
   let combatState = createCombatState(sessionId, 'PVE', [playerCombatant, ...monsterCombatants]);
 
@@ -1159,6 +1180,16 @@ export async function resolveGroupRoadEncounter(
     encounterChance *= (1 - groupAvoidance);
   }
 
+  // Apply religion-based road safety (best reduction among group members)
+  let bestReligionReduction = 0;
+  for (const c of charRows) {
+    const rr = await getReligionEncounterReduction(c.id, originTownId, destinationTownId);
+    if (rr > bestReligionReduction) bestReligionReduction = rr;
+  }
+  if (bestReligionReduction > 0) {
+    encounterChance *= (1 - bestReligionReduction);
+  }
+
   const roll = Math.random();
   if (roll > encounterChance) {
     return { encountered: false };
@@ -1275,6 +1306,19 @@ export async function resolveGroupRoadEncounter(
     (combatant as any).featIds = charFeatIds;
     // Apply pre-combat consumable buffs
     await applyConsumableBuffs(combatant, char.id);
+    // Apply religion combat defense buff
+    const grpRelCtx = await getCharacterReligionContext(char.id);
+    const grpRelBuffs = resolveReligionBuffs(grpRelCtx);
+    const grpDefenseDR = grpRelBuffs.combinedBuffs.combatDefensePercent ?? 0;
+    if (grpDefenseDR > 0) {
+      if (!combatant.activeBuffs) combatant.activeBuffs = [];
+      combatant.activeBuffs.push({
+        sourceAbilityId: 'religion',
+        name: 'Divine Protection',
+        roundsRemaining: 999,
+        damageReduction: grpDefenseDR,
+      });
+    }
     combatants.push(combatant);
   }
 

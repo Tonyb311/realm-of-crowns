@@ -1,0 +1,216 @@
+/**
+ * Religion buff lookup service.
+ *
+ * Provides helpers to resolve a character's religion-based buffs
+ * (personal + town-wide) from their patron god and home town's
+ * dominant church.  Accepts pre-fetched chapter data so the daily
+ * tick can avoid N+1 queries.
+ */
+
+import { db } from '../lib/db';
+import { eq, and } from 'drizzle-orm';
+import { characters, churchChapters, travelRoutes } from '@database/tables';
+import {
+  getPersonalReligionBuffs,
+  getDominantChurchTownEffects,
+  GOD_BUFFS,
+} from '@shared/data/god-buffs';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export interface ReligionContext {
+  patronGodId: string | null;
+  homeTownId: string | null;
+  chapterTier: string | null;        // tier of the character's church chapter
+  dominantGodId: string | null;      // god of the dominant church in home town
+  dominantTier: string | null;       // tier of the dominant church
+  dominantIsShrine: boolean;         // whether the dominant church has a shrine
+}
+
+export interface ReligionBuffs {
+  personalBuffs: Record<string, number>;
+  townBuffs: Record<string, number>;
+  combinedBuffs: Record<string, number>;
+}
+
+// ---------------------------------------------------------------------------
+// Core lookup — from DB
+// ---------------------------------------------------------------------------
+
+/** Fetch full religion context for a character from the database. */
+export async function getCharacterReligionContext(characterId: string): Promise<ReligionContext> {
+  const char = await db.query.characters.findFirst({
+    where: eq(characters.id, characterId),
+    columns: { patronGodId: true, homeTownId: true },
+  });
+
+  if (!char || !char.homeTownId) {
+    return { patronGodId: null, homeTownId: null, chapterTier: null, dominantGodId: null, dominantTier: null, dominantIsShrine: false };
+  }
+
+  // Character's own chapter (if they follow a god)
+  let chapterTier: string | null = null;
+  if (char.patronGodId) {
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(
+        eq(churchChapters.godId, char.patronGodId),
+        eq(churchChapters.townId, char.homeTownId),
+      ),
+      columns: { tier: true },
+    });
+    chapterTier = chapter?.tier ?? null;
+  }
+
+  // Dominant church in home town
+  const dominant = await db.query.churchChapters.findFirst({
+    where: and(
+      eq(churchChapters.townId, char.homeTownId),
+      eq(churchChapters.isDominant, true),
+    ),
+    columns: { godId: true, tier: true, isShrine: true },
+  });
+
+  return {
+    patronGodId: char.patronGodId,
+    homeTownId: char.homeTownId,
+    chapterTier,
+    dominantGodId: dominant?.godId ?? null,
+    dominantTier: dominant?.tier ?? null,
+    dominantIsShrine: dominant?.isShrine ?? false,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Core lookup — from pre-fetched data (batch tick usage)
+// ---------------------------------------------------------------------------
+
+export interface ChapterRow {
+  id: string;
+  godId: string;
+  townId: string;
+  tier: string;
+  isDominant: boolean;
+  isShrine: boolean;
+}
+
+/** Build religion context from pre-fetched chapter data (avoids N+1 in tick). */
+export function buildReligionContext(
+  patronGodId: string | null,
+  homeTownId: string | null,
+  allChapters: ChapterRow[],
+): ReligionContext {
+  if (!homeTownId) {
+    return { patronGodId, homeTownId, chapterTier: null, dominantGodId: null, dominantTier: null, dominantIsShrine: false };
+  }
+
+  let chapterTier: string | null = null;
+  if (patronGodId) {
+    const ch = allChapters.find(c => c.godId === patronGodId && c.townId === homeTownId);
+    chapterTier = ch?.tier ?? null;
+  }
+
+  const dominant = allChapters.find(c => c.townId === homeTownId && c.isDominant);
+
+  return {
+    patronGodId,
+    homeTownId,
+    chapterTier,
+    dominantGodId: dominant?.godId ?? null,
+    dominantTier: dominant?.tier ?? null,
+    dominantIsShrine: dominant?.isShrine ?? false,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Buff resolution
+// ---------------------------------------------------------------------------
+
+/** Resolve personal + town-wide religion buffs from context. */
+export function resolveReligionBuffs(ctx: ReligionContext): ReligionBuffs {
+  const personalBuffs = getPersonalReligionBuffs(ctx.patronGodId, ctx.chapterTier ?? '');
+  const townBuffs = ctx.dominantGodId && ctx.dominantTier
+    ? getDominantChurchTownEffects(ctx.dominantGodId, ctx.dominantTier)
+    : {};
+
+  // Additive stacking
+  const combinedBuffs: Record<string, number> = { ...personalBuffs };
+  for (const [key, val] of Object.entries(townBuffs)) {
+    combinedBuffs[key] = (combinedBuffs[key] ?? 0) + val;
+  }
+
+  return { personalBuffs, townBuffs, combinedBuffs };
+}
+
+// ---------------------------------------------------------------------------
+// Road danger helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Calculate the total road encounter chance reduction for a route.
+ *
+ * Returns a value 0-1 representing the multiplicative reduction
+ * (e.g., 0.25 means encounterChance *= 0.75).
+ *
+ * Sources:
+ * 1. Town-wide effect from dominant church in origin town (Aurvandos)
+ * 2. Personal member buff (Aurvandos members at ESTABLISHED+)
+ * 3. Shrine effect: 25% reduction on routes adjacent to the shrine town
+ */
+export async function getReligionEncounterReduction(
+  characterId: string,
+  originTownId: string,
+  destinationTownId: string,
+): Promise<number> {
+  // 1. Character's personal road danger reduction
+  const ctx = await getCharacterReligionContext(characterId);
+  const buffs = resolveReligionBuffs(ctx);
+  let reduction = buffs.combinedBuffs.roadDangerReductionPercent ?? 0;
+
+  // 2. Check for Aurvandos shrine on origin OR destination town
+  //    (adjacent routes = routes connected to the shrine town)
+  const shrineChapters = await db.query.churchChapters.findMany({
+    where: and(
+      eq(churchChapters.isShrine, true),
+      eq(churchChapters.godId, 'aurvandos'),
+    ),
+    columns: { townId: true },
+  });
+
+  for (const sc of shrineChapters) {
+    if (sc.townId === originTownId || sc.townId === destinationTownId) {
+      const shrineEffect = GOD_BUFFS.aurvandos.shrineEffects.adjacentRouteDangerReductionPercent ?? 0;
+      reduction += shrineEffect;
+      break;
+    }
+  }
+
+  return Math.min(1, reduction);
+}
+
+/**
+ * Batch-friendly version: accepts pre-fetched chapter data.
+ * Used in group encounters and tick processing.
+ */
+export function getReligionEncounterReductionFromChapters(
+  patronGodId: string | null,
+  homeTownId: string | null,
+  originTownId: string,
+  destinationTownId: string,
+  allChapters: ChapterRow[],
+): number {
+  const ctx = buildReligionContext(patronGodId, homeTownId, allChapters);
+  const buffs = resolveReligionBuffs(ctx);
+  let reduction = buffs.combinedBuffs.roadDangerReductionPercent ?? 0;
+
+  // Shrine check
+  const aurvanShrine = allChapters.find(
+    c => c.godId === 'aurvandos' && c.isShrine && (c.townId === originTownId || c.townId === destinationTownId),
+  );
+  if (aurvanShrine) {
+    reduction += GOD_BUFFS.aurvandos.shrineEffects.adjacentRouteDangerReductionPercent ?? 0;
+  }
+
+  return Math.min(1, reduction);
+}

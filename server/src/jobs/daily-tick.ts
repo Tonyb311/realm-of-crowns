@@ -13,7 +13,7 @@ import {
   laws, townTreasuries, townPolicies, tradeTransactions, caravans,
   elections, electionVotes, electionCandidates, impeachments, towns, kingdoms,
   worldEvents, combatEncounterLogs, notifications, recipes,
-  ownedAssets, livestock, jobs, houses, houseStorage, noticeBoardPosts, churchChapters, gods,
+  ownedAssets, livestock, jobs, houses, houseStorage, noticeBoardPosts, churchChapters, gods, townMetrics,
 } from '@database/tables';
 import { processSpoilage, processAutoConsumption, getHungerModifier, processRevenantSustenance, processForgebornMaintenance } from '../services/food-system';
 import { resolveNodePvE, resolveNodePvP } from '../services/tick-combat-resolver';
@@ -41,6 +41,7 @@ import { ACTION_XP } from '@shared/data/progression';
 import { computeFeatBonus } from '@shared/data/feats';
 import { GATHER_SPOT_PROFESSION_MAP, RESOURCE_MAP } from '@shared/data/gathering';
 import { calculateChurchTier } from '@shared/data/religion-config';
+import { GOD_BUFFS } from '@shared/data/god-buffs';
 import { ASSET_TIERS, LIVESTOCK_DEFINITIONS, HUNGER_CONSTANTS } from '@shared/data/assets';
 import { getCottageTier } from '@shared/data/cottage-tiers';
 import {
@@ -386,10 +387,53 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     }
 
     // ── Recalculate town metric modifiers from religion ──────
-    // Phase B2 will add per-god modifier calculations here.
-    // For now this is a stub — no modifiers are applied.
+    let metricsUpdated = 0;
+    for (const [townId, townChapters] of chaptersByTown) {
+      // Reset all religion modifiers for this town
+      await db.update(townMetrics)
+        .set({ modifier: 0, effectiveValue: townMetrics.baseValue, lastUpdatedBy: null })
+        .where(eq(townMetrics.townId, townId));
 
-    console.log(`[DailyTick]   Processed ${allChapters.length} chapters across ${chaptersByTown.size} towns, ${updated} updates`);
+      // Find the dominant chapter (use refreshed data from above)
+      const dominantCh = townChapters.find(ch => ch.id === (townChapters.find(c => (c as any)._newTier === 'DOMINANT' && (c as any)._actualCount > 0)?.id ?? ''));
+      // Simpler: find the one we flagged as dominant
+      const domId = (() => {
+        let best: string | null = null;
+        let bestCount = 0;
+        for (const ch of townChapters) {
+          if ((ch as any)._newTier === 'DOMINANT' && ((ch as any)._actualCount as number) > bestCount) {
+            bestCount = (ch as any)._actualCount;
+            best = ch.id;
+          }
+        }
+        return best;
+      })();
+
+      if (domId) {
+        const domChapter = townChapters.find(ch => ch.id === domId)!;
+        const godBuff = GOD_BUFFS[domChapter.godId];
+        const tier = (domChapter as any)._newTier as string;
+        if (godBuff) {
+          const modifiers = godBuff.metricModifiers[tier as keyof typeof godBuff.metricModifiers] ?? {};
+          for (const [metricType, value] of Object.entries(modifiers)) {
+            if (value === 0) continue;
+            await db.update(townMetrics)
+              .set({
+                modifier: value,
+                effectiveValue: sql`LEAST(100, GREATEST(0, ${townMetrics.baseValue} + ${value}))`,
+                lastUpdatedBy: 'RELIGION',
+              })
+              .where(and(
+                eq(townMetrics.townId, townId),
+                eq(townMetrics.metricType, metricType),
+              ));
+            metricsUpdated++;
+          }
+        }
+      }
+    }
+
+    console.log(`[DailyTick]   Processed ${allChapters.length} chapters across ${chaptersByTown.size} towns, ${updated} updates, ${metricsUpdated} metric modifiers`);
   });
 
   // -----------------------------------------------------------------------

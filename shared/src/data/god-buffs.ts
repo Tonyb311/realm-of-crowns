@@ -1,0 +1,79 @@
+export interface GodBuff {
+  /** Personal buffs by tier (member-only) */
+  personalBuffs: {
+    MINORITY: Record<string, number>;
+    CHAPTER: Record<string, number>;
+    ESTABLISHED: Record<string, number>;
+    DOMINANT: Record<string, number>;
+  };
+  /** Town-wide effects by tier (apply to ALL residents when this god is dominant) */
+  townEffects: {
+    ESTABLISHED: Record<string, number>;
+    DOMINANT: Record<string, number>;
+  };
+  /** Town metric modifiers by tier */
+  metricModifiers: {
+    ESTABLISHED: Record<string, number>;
+    DOMINANT: Record<string, number>;
+  };
+  /** Shrine-specific effects */
+  shrineEffects: Record<string, number>;
+}
+
+export const GOD_BUFFS: Record<string, GodBuff> = {
+  aurvandos: {
+    personalBuffs: {
+      MINORITY: { combatDefensePercent: 0.02 },
+      CHAPTER: { combatDefensePercent: 0.04 },
+      ESTABLISHED: { combatDefensePercent: 0.06, roadDangerReductionPercent: 0.05 },
+      DOMINANT: { combatDefensePercent: 0.08, roadDangerReductionPercent: 0.10 },
+    },
+    townEffects: {
+      ESTABLISHED: { roadDangerReductionPercent: 0.05 },
+      DOMINANT: { roadDangerReductionPercent: 0.10 },
+    },
+    metricModifiers: {
+      ESTABLISHED: {},
+      DOMINANT: { DEFENSES: 5 },
+    },
+    shrineEffects: { adjacentRouteDangerReductionPercent: 0.25 },
+  },
+  kethara: {
+    personalBuffs: {
+      MINORITY: { foodEffectivenessPercent: 0.05 },
+      CHAPTER: { foodEffectivenessPercent: 0.10 },
+      ESTABLISHED: { foodEffectivenessPercent: 0.15 },
+      DOMINANT: { foodEffectivenessPercent: 0.20 },
+    },
+    townEffects: {
+      ESTABLISHED: { foodEffectivenessPercent: 0.05 },
+      DOMINANT: { foodEffectivenessPercent: 0.10 },
+    },
+    metricModifiers: {
+      ESTABLISHED: { PUBLIC_HEALTH: 5 },
+      DOMINANT: { PUBLIC_HEALTH: 10 },
+    },
+    shrineEffects: { healingHouse: 1 },
+  },
+};
+
+/** Get a character's personal religion buffs based on their god and chapter tier */
+export function getPersonalReligionBuffs(godId: string | null, chapterTier: string): Record<string, number> {
+  if (!godId || !GOD_BUFFS[godId]) return {};
+  const godBuff = GOD_BUFFS[godId];
+  return godBuff.personalBuffs[chapterTier as keyof typeof godBuff.personalBuffs] ?? {};
+}
+
+/** Get town-wide effects from the dominant church */
+export function getDominantChurchTownEffects(godId: string, tier: string): Record<string, number> {
+  if (!GOD_BUFFS[godId]) return {};
+  const godBuff = GOD_BUFFS[godId];
+  return godBuff.townEffects[tier as keyof typeof godBuff.townEffects] ?? {};
+}
+
+/** Human-readable buff labels for UI display */
+export const BUFF_LABELS: Record<string, string> = {
+  combatDefensePercent: 'Combat Defense',
+  roadDangerReductionPercent: 'Road Danger Reduction',
+  foodEffectivenessPercent: 'Food Effectiveness',
+};
