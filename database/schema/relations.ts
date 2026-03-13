@@ -265,7 +265,12 @@ export const townsRelations = relations(towns, ({one, many}) => ({
 	tradeTransactions: many(tradeTransactions),
 	auctionCycles: many(auctionCycles),
 	houses: many(houses),
-	jobs: many(jobs),
+	jobs_townId: many(jobs, {
+		relationName: "jobs_townId_towns_id"
+	}),
+	jobs_destinationTownId: many(jobs, {
+		relationName: "jobs_destinationTownId_towns_id"
+	}),
 	ownedAssets: many(ownedAssets),
 	noticeBoardPosts: many(noticeBoardPosts),
 }));
@@ -1144,7 +1149,13 @@ export const jobsRelations = relations(jobs, ({one}) => ({
 	}),
 	town: one(towns, {
 		fields: [jobs.townId],
-		references: [towns.id]
+		references: [towns.id],
+		relationName: "jobs_townId_towns_id"
+	}),
+	destinationTown: one(towns, {
+		fields: [jobs.destinationTownId],
+		references: [towns.id],
+		relationName: "jobs_destinationTownId_towns_id"
 	}),
 	worker: one(characters, {
 		fields: [jobs.workerId],

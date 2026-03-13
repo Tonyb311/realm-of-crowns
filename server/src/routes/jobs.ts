@@ -5,8 +5,8 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../lib/db';
-import { eq, and, desc, asc, sql, count, inArray } from 'drizzle-orm';
-import { ownedAssets, jobs, dailyActions, playerProfessions, houses, houseStorage, itemTemplates, characters, recipes, inventories, items, buildings, characterEquipment, characterActiveEffects, towns } from '@database/tables';
+import { eq, and, or, desc, asc, sql, count, inArray, lte } from 'drizzle-orm';
+import { ownedAssets, jobs, dailyActions, playerProfessions, houses, houseStorage, itemTemplates, characters, recipes, inventories, items, buildings, characterEquipment, characterActiveEffects, towns, travelRoutes } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
@@ -18,7 +18,7 @@ import { getTodayTickDate, getNextTickTime, getGameDay } from '../lib/game-day';
 import { ASSET_TIERS, PROFESSION_ASSET_TYPES } from '@shared/data/assets';
 import { RESOURCE_MAP, GATHER_SPOT_PROFESSION_MAP } from '@shared/data/gathering';
 import { addProfessionXP } from '../services/profession-xp';
-import { JOB_TYPE_LABELS, ASSET_JOB_TYPES, WORKSHOP_JOB_CONFIG } from '@shared/data/jobs-config';
+import { JOB_TYPE_LABELS, ASSET_JOB_TYPES, WORKSHOP_JOB_CONFIG, DELIVERY_JOB_CONFIG } from '@shared/data/jobs-config';
 import { qualityRoll } from '@shared/utils/dice';
 import { getProficiencyBonus, getModifier } from '@shared/utils/bounded-accuracy';
 import { TIER_ORDER, PROFESSION_WORKSHOP_MAP, QUALITY_MAP, PROFESSION_TIER_QUALITY_BONUS } from '@shared/data/crafting-config';
@@ -55,6 +55,17 @@ const postWorkshopJobSchema = z.object({
   recipeId: z.string(),
   wage: z.number().int().min(1, 'Wage must be at least 1 gold'),
   quantity: z.number().int().min(1).max(5).default(1),
+});
+
+const postDeliveryJobSchema = z.object({
+  townId: z.string().uuid(),
+  destinationTownId: z.string().uuid(),
+  wage: z.number().int().min(1, 'Wage must be at least 1 gold'),
+  deadlineDays: z.number().int().min(DELIVERY_JOB_CONFIG.minDeadlineDays).max(DELIVERY_JOB_CONFIG.maxDeadlineDays),
+  items: z.array(z.object({
+    itemName: z.string(),
+    quantity: z.number().int().min(1),
+  })).min(1).max(10),
 });
 
 // --- Helper: build inventory map (duplicated from crafting.ts to avoid refactoring) ---
@@ -373,7 +384,12 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
       return res.status(400).json({ error: 'You cannot accept your own job' });
     }
 
-    // 3. Check daily action not used
+    // Delivery accept is a FREE ACTION — branch before daily action check
+    if (job.category === 'DELIVERY') {
+      return await acceptDeliveryJob(req, res, job, character);
+    }
+
+    // 3. Check daily action not used (ASSET + WORKSHOP only)
     const todayTick = getTodayTickDate();
     const existingAction = await db.query.dailyActions.findFirst({
       where: and(eq(dailyActions.characterId, character.id), eq(dailyActions.tickDate, todayTick.toISOString())),
@@ -873,6 +889,54 @@ async function acceptWorkshopJob(
 }
 
 // ============================================================
+// Delivery Job Accept — extracted for clarity (FREE ACTION)
+// ============================================================
+
+async function acceptDeliveryJob(
+  req: AuthenticatedRequest,
+  res: Response,
+  job: any,
+  character: any,
+) {
+  // 1. Worker must not be traveling
+  if (character.travelStatus && character.travelStatus !== 'idle') {
+    return res.status(400).json({ error: 'You cannot accept a delivery while traveling' });
+  }
+
+  // 2. Check worker's active IN_PROGRESS delivery count
+  const [{ total: activeDeliveries }] = await db.select({ total: count() }).from(jobs).where(
+    and(eq(jobs.workerId, character.id), eq(jobs.category, 'DELIVERY'), eq(jobs.status, 'IN_PROGRESS')),
+  );
+  if (activeDeliveries >= DELIVERY_JOB_CONFIG.maxActivePerWorker) {
+    return res.status(400).json({ error: `You can carry at most ${DELIVERY_JOB_CONFIG.maxActivePerWorker} deliveries at once` });
+  }
+
+  // 3. Get destination town name for response
+  const destTown = job.destinationTownId
+    ? await db.query.towns.findFirst({ where: eq(towns.id, job.destinationTownId), columns: { id: true, name: true } })
+    : null;
+
+  // 4. Set IN_PROGRESS — NO daily action consumed
+  await db.update(jobs)
+    .set({ status: 'IN_PROGRESS', workerId: character.id })
+    .where(eq(jobs.id, job.id));
+
+  return res.json({
+    success: true,
+    job: {
+      id: job.id,
+      category: 'DELIVERY',
+      title: job.title,
+      destinationTownId: job.destinationTownId,
+      destinationTownName: destTown?.name,
+    },
+    message: `Delivery accepted! Travel to ${destTown?.name ?? 'the destination'} to complete.`,
+    deadline: job.expiresAt,
+    freeAction: true,
+  });
+}
+
+// ============================================================
 // GET /api/jobs/town/:townId — Browse open jobs in a town
 // ============================================================
 
@@ -930,6 +994,16 @@ router.get('/town/:townId', authGuard, characterGuard, async (req: Authenticated
         base.materialsSupplied = true;
         base.quantity = quantity;
         base.description = j.description;
+      } else if (j.category === 'DELIVERY') {
+        const destTown = j.destinationTownId
+          ? await db.query.towns.findFirst({ where: eq(towns.id, j.destinationTownId), columns: { id: true, name: true } })
+          : null;
+        base.destinationTownId = j.destinationTownId;
+        base.destinationTownName = destTown?.name;
+        base.deliveryItems = j.deliveryItems;
+        base.expiresAt = j.expiresAt;
+        base.description = j.description;
+        base.freeAction = true;
       }
 
       return base;
@@ -959,16 +1033,41 @@ router.post('/:id/cancel', authGuard, characterGuard, async (req: AuthenticatedR
     if (job.posterId !== character.id) {
       return res.status(403).json({ error: 'Only the job poster can cancel this job' });
     }
-    if (job.status !== 'OPEN') {
+
+    // DELIVERED delivery jobs cannot be cancelled — poster must pick up
+    if (job.status === 'DELIVERED') {
+      return res.status(400).json({ error: 'Cannot cancel a delivered job — pick up your items instead' });
+    }
+
+    // DELIVERY jobs can be cancelled while OPEN or IN_PROGRESS
+    if (job.category === 'DELIVERY') {
+      if (job.status !== 'OPEN' && job.status !== 'IN_PROGRESS') {
+        return res.status(400).json({ error: `Cannot cancel — job status is ${job.status}` });
+      }
+    } else if (job.status !== 'OPEN') {
       return res.status(400).json({ error: `Cannot cancel — job status is ${job.status}` });
     }
 
-    // Refund escrowed gold + materials and cancel in a transaction
+    // Refund escrowed gold + items and cancel in a transaction
     await db.transaction(async (tx) => {
-      // Refund gold
-      await tx.update(characters)
-        .set({ gold: sql`${characters.gold} + ${job.wage}` })
-        .where(eq(characters.id, job.posterId));
+      if (job.category === 'DELIVERY' && job.status === 'IN_PROGRESS') {
+        // 50/50 wage split: worker gets floor, poster gets ceil
+        const workerShare = Math.floor(job.wage / 2);
+        const posterShare = Math.ceil(job.wage / 2);
+        if (workerShare > 0 && job.workerId) {
+          await tx.update(characters)
+            .set({ gold: sql`${characters.gold} + ${workerShare}` })
+            .where(eq(characters.id, job.workerId));
+        }
+        await tx.update(characters)
+          .set({ gold: sql`${characters.gold} + ${posterShare}` })
+          .where(eq(characters.id, job.posterId));
+      } else {
+        // Full wage refund to poster (OPEN status for all categories)
+        await tx.update(characters)
+          .set({ gold: sql`${characters.gold} + ${job.wage}` })
+          .where(eq(characters.id, job.posterId));
+      }
 
       // Refund escrowed materials for WORKSHOP jobs
       if (job.category === 'WORKSHOP' && job.materialsEscrow) {
@@ -976,14 +1075,25 @@ router.post('/:id/cancel', authGuard, characterGuard, async (req: AuthenticatedR
         await refundMaterials(tx, job.posterId, escrow);
       }
 
+      // Refund escrowed delivery items
+      if (job.category === 'DELIVERY' && job.deliveryItems) {
+        const deliveryEscrow = job.deliveryItems as Array<{ itemTemplateId: string; itemName: string; quantity: number }>;
+        await refundMaterials(tx, job.posterId, deliveryEscrow);
+      }
+
       await tx.update(jobs)
         .set({ status: 'CANCELLED' })
         .where(eq(jobs.id, id));
     });
 
-    const message = job.category === 'WORKSHOP'
-      ? 'Job cancelled. Escrowed gold and materials refunded.'
-      : 'Job cancelled. Escrowed gold refunded.';
+    let message = 'Job cancelled. Escrowed gold refunded.';
+    if (job.category === 'WORKSHOP') {
+      message = 'Job cancelled. Escrowed gold and materials refunded.';
+    } else if (job.category === 'DELIVERY' && job.status === 'IN_PROGRESS') {
+      message = 'Job cancelled. Wage split 50/50 with worker. Items refunded.';
+    } else if (job.category === 'DELIVERY') {
+      message = 'Job cancelled. Escrowed gold and items refunded.';
+    }
 
     return res.json({ success: true, message });
   } catch (error) {
@@ -1005,6 +1115,8 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
       where: eq(jobs.posterId, character.id),
       with: {
         ownedAsset: { columns: { id: true, name: true, spotType: true, tier: true } },
+        destinationTown: { columns: { id: true, name: true } },
+        worker: { columns: { id: true, name: true } },
       },
       orderBy: desc(jobs.createdAt),
     });
@@ -1023,6 +1135,12 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
         autoPosted: j.autoPosted,
         createdAt: j.createdAt,
         materialsEscrow: j.category === 'WORKSHOP' ? j.materialsEscrow : undefined,
+        // Delivery fields
+        destinationTownId: j.category === 'DELIVERY' ? j.destinationTownId : undefined,
+        destinationTownName: j.category === 'DELIVERY' ? j.destinationTown?.name : undefined,
+        deliveryItems: j.category === 'DELIVERY' ? j.deliveryItems : undefined,
+        expiresAt: j.category === 'DELIVERY' ? j.expiresAt : undefined,
+        workerName: j.category === 'DELIVERY' && j.worker ? j.worker.name : undefined,
       })),
     });
   } catch (error) {
@@ -1081,6 +1199,248 @@ router.get('/recipes', authGuard, characterGuard, async (req: AuthenticatedReque
   } catch (error) {
     if (handleDbError(error, res, 'jobs-recipes', req)) return;
     logRouteError(req, 500, 'Jobs recipes error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// POST /api/jobs/post-delivery — Post a delivery job
+// Gold + items escrowed from poster at posting time.
+// ============================================================
+
+router.post('/post-delivery', authGuard, characterGuard, requireTown, validate(postDeliveryJobSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId, destinationTownId, wage, deadlineDays, items: requestedItems } = req.body;
+
+    // 1. Poster must be in origin town
+    if (character.currentTownId !== townId) {
+      return res.status(400).json({ error: 'You must be in the origin town to post a delivery job' });
+    }
+
+    // 2. Destination must differ from origin
+    if (destinationTownId === townId) {
+      return res.status(400).json({ error: 'Destination must be a different town' });
+    }
+
+    // 3. Verify destination town exists
+    const destTown = await db.query.towns.findFirst({
+      where: eq(towns.id, destinationTownId),
+      columns: { id: true, name: true },
+    });
+    if (!destTown) {
+      return res.status(404).json({ error: 'Destination town not found' });
+    }
+
+    // 4. Verify a released travel route exists between origin and destination
+    const route = await db.query.travelRoutes.findFirst({
+      where: and(
+        eq(travelRoutes.isReleased, true),
+        or(
+          and(eq(travelRoutes.fromTownId, townId), eq(travelRoutes.toTownId, destinationTownId)),
+          and(eq(travelRoutes.fromTownId, destinationTownId), eq(travelRoutes.toTownId, townId), eq(travelRoutes.bidirectional, true)),
+        ),
+      ),
+    });
+    if (!route) {
+      return res.status(400).json({ error: `No travel route exists between your town and ${destTown.name}` });
+    }
+
+    // 5. Resolve item names to templates and check inventory
+    const inventoryByTemplate = await buildInventoryMap(character.id);
+    const resolvedItems: Array<{ itemTemplateId: string; itemName: string; quantity: number }> = [];
+    const missingItems: string[] = [];
+
+    for (const reqItem of requestedItems) {
+      const template = await db.query.itemTemplates.findFirst({
+        where: eq(itemTemplates.name, reqItem.itemName),
+        columns: { id: true, name: true },
+      });
+      if (!template) {
+        missingItems.push(`${reqItem.itemName}: item not found`);
+        continue;
+      }
+      const available = inventoryByTemplate.get(template.id)?.total ?? 0;
+      if (available < reqItem.quantity) {
+        missingItems.push(`${reqItem.itemName}: need ${reqItem.quantity}, have ${available}`);
+      } else {
+        resolvedItems.push({ itemTemplateId: template.id, itemName: template.name, quantity: reqItem.quantity });
+      }
+    }
+    if (missingItems.length > 0) {
+      return res.status(400).json({ error: 'Insufficient items', missing: missingItems });
+    }
+
+    // 6. Check poster has gold for wage
+    if (character.gold < wage) {
+      return res.status(400).json({ error: `Insufficient gold. You have ${character.gold}g, wage costs ${wage}g.` });
+    }
+
+    // 7. Check active delivery job limit
+    const [{ total: activeCount }] = await db.select({ total: count() }).from(jobs).where(
+      and(eq(jobs.posterId, character.id), eq(jobs.category, 'DELIVERY'), eq(jobs.status, 'OPEN')),
+    );
+    if (activeCount >= DELIVERY_JOB_CONFIG.maxActivePerPoster) {
+      return res.status(400).json({ error: `You can have at most ${DELIVERY_JOB_CONFIG.maxActivePerPoster} open delivery jobs` });
+    }
+
+    // 8. Calculate expiration
+    const expiresAt = new Date(Date.now() + deadlineDays * 24 * 60 * 60 * 1000).toISOString();
+
+    // 9. Transaction: escrow gold + consume items + create job
+    const title = `Deliver to ${destTown.name}`;
+    const description = resolvedItems.map(i => `${i.quantity}x ${i.itemName}`).join(', ');
+
+    const [job] = await db.transaction(async (tx) => {
+      // Deduct wage
+      await tx.update(characters)
+        .set({ gold: sql`${characters.gold} - ${wage}` })
+        .where(eq(characters.id, character.id));
+
+      // Consume items from poster's inventory
+      await consumeIngredients(tx, resolvedItems, inventoryByTemplate as any);
+
+      // Create job
+      return tx.insert(jobs).values({
+        id: crypto.randomUUID(),
+        category: 'DELIVERY',
+        townId,
+        destinationTownId,
+        posterId: character.id,
+        deliveryItems: resolvedItems,
+        title,
+        description,
+        wage,
+        status: 'OPEN',
+        expiresAt,
+      }).returning();
+    });
+
+    return res.status(201).json({
+      success: true,
+      job: {
+        id: job.id,
+        category: job.category,
+        title: job.title,
+        destinationTownName: destTown.name,
+        pay: job.wage,
+        status: job.status,
+        deliveryItems: resolvedItems,
+        expiresAt: job.expiresAt,
+      },
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'jobs-post-delivery', req)) return;
+    logRouteError(req, 500, 'Jobs post-delivery error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// POST /api/jobs/:id/pickup — Poster collects delivered items (FREE ACTION)
+// ============================================================
+
+router.post('/:id/pickup', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { id } = req.params;
+
+    const job = await db.query.jobs.findFirst({ where: eq(jobs.id, id) });
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    if (job.category !== 'DELIVERY') {
+      return res.status(400).json({ error: 'This is not a delivery job' });
+    }
+    if (job.status !== 'DELIVERED') {
+      return res.status(400).json({ error: `Cannot pick up — job status is ${job.status}` });
+    }
+    if (job.posterId !== character.id) {
+      return res.status(403).json({ error: 'Only the job poster can pick up delivered items' });
+    }
+    if (character.currentTownId !== job.destinationTownId) {
+      const destTown = await db.query.towns.findFirst({
+        where: eq(towns.id, job.destinationTownId!),
+        columns: { name: true },
+      });
+      return res.status(400).json({
+        error: `You must be in ${destTown?.name ?? 'the destination town'} to pick up this delivery`,
+      });
+    }
+
+    // Create item instances in poster's personal inventory
+    const deliveryItems = job.deliveryItems as Array<{ itemTemplateId: string; itemName: string; quantity: number }>;
+
+    await db.transaction(async (tx) => {
+      for (const di of deliveryItems) {
+        const [item] = await tx.insert(items).values({
+          id: crypto.randomUUID(),
+          templateId: di.itemTemplateId,
+          ownerId: character.id,
+          quality: 'COMMON',
+          enchantments: [],
+        }).returning();
+        await tx.insert(inventories).values({
+          id: crypto.randomUUID(),
+          characterId: character.id,
+          itemId: item.id,
+          quantity: di.quantity,
+        });
+      }
+
+      await tx.update(jobs)
+        .set({ status: 'COMPLETED' })
+        .where(eq(jobs.id, id));
+    });
+
+    return res.json({
+      success: true,
+      message: 'Delivery collected!',
+      items: deliveryItems,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'jobs-pickup', req)) return;
+    logRouteError(req, 500, 'Jobs pickup error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// GET /api/jobs/pickups — List all DELIVERED jobs for the poster
+// ============================================================
+
+router.get('/pickups', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+
+    const deliveredJobs = await db.query.jobs.findMany({
+      where: and(
+        eq(jobs.posterId, character.id),
+        eq(jobs.category, 'DELIVERY'),
+        eq(jobs.status, 'DELIVERED'),
+      ),
+      with: {
+        destinationTown: { columns: { id: true, name: true } },
+        worker: { columns: { id: true, name: true } },
+      },
+      orderBy: desc(jobs.completedAt),
+    });
+
+    return res.json({
+      pickups: deliveredJobs.map(j => ({
+        id: j.id,
+        title: j.title,
+        destinationTownId: j.destinationTownId,
+        destinationTownName: j.destinationTown?.name,
+        deliveryItems: j.deliveryItems,
+        workerName: j.worker?.name,
+        deliveredAt: j.completedAt,
+        canPickUp: character.currentTownId === j.destinationTownId,
+      })),
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'jobs-pickups', req)) return;
+    logRouteError(req, 500, 'Jobs pickups error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Briefcase, User, Coins, Package, Award, ScrollText, Shield, XCircle, Hammer, ChevronDown, Search } from 'lucide-react';
+import { Briefcase, User, Coins, Package, Award, ScrollText, Shield, XCircle, Hammer, ChevronDown, Search, Truck, MapPin, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router';
 import api from '../services/api';
 import { RealmPanel, RealmButton, RealmBadge, RealmInput, PageHeader } from '../components/ui/realm-index';
@@ -32,6 +32,12 @@ interface JobListing {
   materialsSupplied?: boolean;
   quantity?: number;
   description?: string;
+  // Delivery fields
+  destinationTownId?: string;
+  destinationTownName?: string;
+  deliveryItems?: Array<{ itemTemplateId: string; itemName: string; quantity: number }>;
+  expiresAt?: string;
+  freeAction?: boolean;
 }
 
 interface MyJob {
@@ -47,6 +53,29 @@ interface MyJob {
   autoPosted: boolean;
   createdAt: string;
   materialsEscrow?: Array<{ itemTemplateId: string; itemName: string; quantity: number }>;
+  // Delivery fields
+  destinationTownId?: string;
+  destinationTownName?: string;
+  deliveryItems?: Array<{ itemTemplateId: string; itemName: string; quantity: number }>;
+  expiresAt?: string;
+  workerName?: string;
+}
+
+interface PickupJob {
+  id: string;
+  title: string;
+  destinationTownId: string;
+  destinationTownName?: string;
+  deliveryItems: Array<{ itemTemplateId: string; itemName: string; quantity: number }>;
+  workerName?: string;
+  deliveredAt: string;
+  canPickUp: boolean;
+}
+
+interface TravelRoute {
+  id: string;
+  name: string;
+  destination: { id: string; name: string };
 }
 
 interface JobsResponse {
@@ -143,6 +172,7 @@ function ProfessionTierBadge({ tier }: { tier: string }) {
 const CATEGORY_BADGE: Record<string, { label: string; color: string }> = {
   ASSET: { label: 'Asset', color: 'bg-realm-gold-500/15 text-realm-gold-400 border-realm-gold-500/30' },
   WORKSHOP: { label: 'Workshop', color: 'bg-realm-teal-300/15 text-realm-teal-300 border-realm-teal-300/30' },
+  DELIVERY: { label: 'Delivery', color: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
 };
 
 function CategoryBadge({ category }: { category: string }) {
@@ -156,6 +186,8 @@ function CategoryBadge({ category }: { category: string }) {
 
 const STATUS_COLORS: Record<string, string> = {
   OPEN: 'text-realm-success',
+  IN_PROGRESS: 'text-amber-400',
+  DELIVERED: 'text-realm-teal-300',
   COMPLETED: 'text-realm-text-muted',
   CANCELLED: 'text-realm-danger',
   EXPIRED: 'text-realm-warning',
@@ -167,7 +199,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function JobsBoardPage() {
   const queryClient = useQueryClient();
   const [lastResult, setLastResult] = useState<AcceptResult | null>(null);
-  const [activeTab, setActiveTab] = useState<'browse' | 'post' | 'mine'>('browse');
+  const [activeTab, setActiveTab] = useState<'browse' | 'post-workshop' | 'post-delivery' | 'mine'>('browse');
 
   // Workshop posting state
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeListing | null>(null);
@@ -175,6 +207,13 @@ export default function JobsBoardPage() {
   const [workshopQuantity, setWorkshopQuantity] = useState(1);
   const [recipeSearch, setRecipeSearch] = useState('');
   const [expandedProfession, setExpandedProfession] = useState<string | null>(null);
+
+  // Delivery posting state
+  const [deliveryDestination, setDeliveryDestination] = useState<string>('');
+  const [deliveryWage, setDeliveryWage] = useState(10);
+  const [deliveryDeadline, setDeliveryDeadline] = useState(3);
+  const [deliveryItems, setDeliveryItems] = useState<Array<{ itemName: string; quantity: number }>>([{ itemName: '', quantity: 1 }]);
+  const [cancelTarget, setCancelTarget] = useState<string | null>(null);
 
   // Fetch character for current town
   const { data: character } = useQuery<{
@@ -229,14 +268,28 @@ export default function JobsBoardPage() {
   const { data: recipesData } = useQuery<RecipesResponse>({
     queryKey: ['jobs', 'recipes'],
     queryFn: async () => (await api.get('/jobs/recipes')).data,
-    enabled: activeTab === 'post',
+    enabled: activeTab === 'post-workshop',
   });
 
   // Fetch inventory (for material check when posting)
   const { data: inventoryData } = useQuery<{ items: InventoryItem[] }>({
     queryKey: ['inventory', 'mine'],
     queryFn: async () => (await api.get('/inventory')).data,
-    enabled: activeTab === 'post' && !!selectedRecipe,
+    enabled: (activeTab === 'post-workshop' && !!selectedRecipe) || activeTab === 'post-delivery',
+  });
+
+  // Fetch travel routes (for delivery destination selector)
+  const { data: routesData } = useQuery<{ routes: TravelRoute[] }>({
+    queryKey: ['travel', 'routes'],
+    queryFn: async () => (await api.get('/travel/routes')).data,
+    enabled: activeTab === 'post-delivery',
+  });
+
+  // Fetch pickups (DELIVERED jobs waiting for collection)
+  const { data: pickupsData } = useQuery<{ pickups: PickupJob[] }>({
+    queryKey: ['jobs', 'pickups'],
+    queryFn: async () => (await api.get('/jobs/pickups')).data,
+    enabled: activeTab === 'mine',
   });
 
   // Accept job mutation
@@ -284,6 +337,36 @@ export default function JobsBoardPage() {
     },
   });
 
+  // Post delivery job mutation
+  const postDeliveryMutation = useMutation({
+    mutationFn: async (body: { townId: string; destinationTownId: string; wage: number; deadlineDays: number; items: Array<{ itemName: string; quantity: number }> }) => {
+      const res = await api.post('/jobs/post-delivery', body);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['character'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      setDeliveryDestination('');
+      setDeliveryWage(10);
+      setDeliveryDeadline(3);
+      setDeliveryItems([{ itemName: '', quantity: 1 }]);
+      setActiveTab('mine');
+    },
+  });
+
+  // Pickup mutation
+  const pickupMutation = useMutation({
+    mutationFn: async (jobId: string) => {
+      const res = await api.post(`/jobs/${jobId}/pickup`);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    },
+  });
+
   const jobs = jobsData?.jobs ?? [];
   const myJobs = myJobsData?.jobs ?? [];
   const actionUsed = actionStatus?.actionUsed ?? false;
@@ -325,6 +408,24 @@ export default function JobsBoardPage() {
 
   const allMaterialsSufficient = materialCheck?.every(m => m.sufficient) ?? false;
   const canPostWorkshop = selectedRecipe && townId && allMaterialsSufficient && workshopWage >= 1 && (character?.gold ?? 0) >= workshopWage;
+
+  const routes = routesData?.routes ?? [];
+  const pickups = pickupsData?.pickups ?? [];
+  const pendingPickups = pickups.length;
+
+  // Build unique item names from inventory for delivery item selector
+  const inventoryItemNames = useMemo(() => {
+    if (!inventoryData?.items) return [];
+    const names = new Map<string, number>();
+    for (const item of inventoryData.items) {
+      const name = item.templateName;
+      names.set(name, (names.get(name) ?? 0) + (item.quantity ?? 1));
+    }
+    return Array.from(names.entries()).map(([name, qty]) => ({ name, qty })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [inventoryData]);
+
+  const validDeliveryItems = deliveryItems.filter(i => i.itemName && i.quantity > 0);
+  const canPostDelivery = townId && deliveryDestination && validDeliveryItems.length > 0 && deliveryWage >= 1 && (character?.gold ?? 0) >= deliveryWage;
 
   // -------------------------------------------------------------------------
   // Loading / error
@@ -401,18 +502,23 @@ export default function JobsBoardPage() {
       )}
 
       {/* Tab switcher */}
-      <div className="flex gap-2">
-        {(['browse', 'post', 'mine'] as const).map((tab) => (
+      <div className="flex gap-2 flex-wrap">
+        {([
+          { key: 'browse' as const, label: 'Available Jobs' },
+          { key: 'post-workshop' as const, label: 'Post Workshop' },
+          { key: 'post-delivery' as const, label: 'Post Delivery' },
+          { key: 'mine' as const, label: pendingPickups > 0 ? `My Jobs (${pendingPickups})` : 'My Jobs' },
+        ]).map(({ key, label }) => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
+            key={key}
+            onClick={() => setActiveTab(key)}
             className={`px-3 py-1.5 rounded-md text-xs font-display transition-colors ${
-              activeTab === tab
+              activeTab === key
                 ? 'bg-realm-gold-500/20 text-realm-gold-400 border border-realm-gold-500/30'
                 : 'bg-realm-bg-800 text-realm-text-muted hover:text-realm-text-secondary border border-realm-bg-600'
             }`}
           >
-            {tab === 'browse' ? 'Available Jobs' : tab === 'post' ? 'Post Workshop Job' : 'My Jobs'}
+            {label}
           </button>
         ))}
       </div>
@@ -446,6 +552,9 @@ export default function JobsBoardPage() {
               {jobs.map((job) => {
                 const isOwnJob = job.ownerId === character?.id;
                 const isWorkshop = job.category === 'WORKSHOP';
+                const isDelivery = job.category === 'DELIVERY';
+                // Delivery jobs are free actions — don't block on daily action
+                const canAccept = isDelivery ? !isOwnJob : !isOwnJob && !actionUsed;
 
                 return (
                   <div
@@ -456,21 +565,45 @@ export default function JobsBoardPage() {
                       <div className="flex-1 min-w-0">
                         {/* Job title + category badge */}
                         <div className="flex items-center gap-2 mb-1">
-                          {isWorkshop
-                            ? <Hammer className="w-4 h-4 text-realm-teal-300 flex-shrink-0" />
-                            : <Briefcase className="w-4 h-4 text-realm-gold-400 flex-shrink-0" />
+                          {isDelivery
+                            ? <Truck className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                            : isWorkshop
+                              ? <Hammer className="w-4 h-4 text-realm-teal-300 flex-shrink-0" />
+                              : <Briefcase className="w-4 h-4 text-realm-gold-400 flex-shrink-0" />
                           }
                           <span className="text-sm font-display text-realm-text-primary">
-                            {isWorkshop ? job.title : (job.jobLabel ?? job.title)}
+                            {isWorkshop || isDelivery ? job.title : (job.jobLabel ?? job.title)}
                           </span>
                           <CategoryBadge category={job.category} />
-                          {!isWorkshop && job.assetTier && <TierBadge tier={job.assetTier} />}
+                          {!isWorkshop && !isDelivery && job.assetTier && <TierBadge tier={job.assetTier} />}
                           {isWorkshop && job.tierRequired && <ProfessionTierBadge tier={job.tierRequired} />}
+                          {isDelivery && (
+                            <span className="text-[10px] text-realm-success font-display">FREE ACTION</span>
+                          )}
                         </div>
 
                         {/* Details row */}
                         <div className="flex items-center gap-2 text-[11px] mb-1 flex-wrap">
-                          {isWorkshop ? (
+                          {isDelivery ? (
+                            <>
+                              <MapPin className="w-3 h-3 text-amber-400" />
+                              <span className="text-amber-400">{job.destinationTownName}</span>
+                              <span className="text-realm-text-muted">&middot;</span>
+                              <Package className="w-3 h-3 text-realm-text-secondary" />
+                              <span className="text-realm-text-secondary">
+                                {(job.deliveryItems ?? []).map(i => `${i.quantity}x ${i.itemName}`).join(', ')}
+                              </span>
+                              {job.expiresAt && (
+                                <>
+                                  <span className="text-realm-text-muted">&middot;</span>
+                                  <Clock className="w-3 h-3 text-realm-text-muted" />
+                                  <span className="text-realm-text-muted">
+                                    Expires {new Date(job.expiresAt).toLocaleDateString()}
+                                  </span>
+                                </>
+                              )}
+                            </>
+                          ) : isWorkshop ? (
                             <>
                               {job.outputItemName && (
                                 <span className="text-realm-text-secondary">
@@ -519,16 +652,18 @@ export default function JobsBoardPage() {
                         variant="primary"
                         size="sm"
                         onClick={() => acceptMutation.mutate(job.id)}
-                        disabled={acceptMutation.isPending || actionUsed || isOwnJob}
+                        disabled={acceptMutation.isPending || !canAccept}
                         title={
                           isOwnJob
                             ? 'Cannot accept your own job'
-                            : actionUsed
+                            : !isDelivery && actionUsed
                               ? 'Daily action already used'
-                              : 'Accept this job (uses daily action)'
+                              : isDelivery
+                                ? 'Accept delivery (travel to destination to complete)'
+                                : 'Accept this job (uses daily action)'
                         }
                       >
-                        {acceptMutation.isPending ? 'Working...' : 'Accept Job'}
+                        {acceptMutation.isPending ? 'Working...' : isDelivery ? 'Accept Delivery' : 'Accept Job'}
                       </RealmButton>
                     </div>
                   </div>
@@ -548,7 +683,7 @@ export default function JobsBoardPage() {
       {/* ================================================================= */}
       {/* Post Workshop Job tab */}
       {/* ================================================================= */}
-      {activeTab === 'post' && (
+      {activeTab === 'post-workshop' && (
         <RealmPanel title="Post Workshop Job">
           <div className="space-y-4">
             {/* Recipe search */}
@@ -734,97 +869,394 @@ export default function JobsBoardPage() {
       )}
 
       {/* ================================================================= */}
+      {/* Post Delivery Job tab */}
+      {/* ================================================================= */}
+      {activeTab === 'post-delivery' && (
+        <RealmPanel title="Post Delivery Job">
+          <div className="space-y-4">
+            <p className="text-xs text-realm-text-muted">
+              Hire a traveler to deliver items to another town. Items and wage are escrowed on posting.
+              The worker earns the wage upon arrival — no daily action cost for them.
+            </p>
+
+            {/* Destination selector */}
+            <div>
+              <label className="block text-xs text-realm-text-secondary mb-1">Destination Town</label>
+              {routes.length === 0 ? (
+                <p className="text-xs text-realm-text-muted">Loading routes...</p>
+              ) : (
+                <select
+                  value={deliveryDestination}
+                  onChange={(e) => setDeliveryDestination(e.target.value)}
+                  className="w-full px-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-xs text-realm-text-primary focus:border-realm-gold-500/50 focus:outline-hidden"
+                >
+                  <option value="">Select destination...</option>
+                  {routes.map(r => (
+                    <option key={r.destination.id} value={r.destination.id}>
+                      {r.destination.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Items to deliver */}
+            <div>
+              <label className="block text-xs text-realm-text-secondary mb-1">Items to Deliver</label>
+              <div className="space-y-2">
+                {deliveryItems.map((di, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <select
+                      value={di.itemName}
+                      onChange={(e) => {
+                        const updated = [...deliveryItems];
+                        updated[idx] = { ...updated[idx], itemName: e.target.value };
+                        setDeliveryItems(updated);
+                      }}
+                      className="flex-1 px-3 py-1.5 bg-realm-bg-900 border border-realm-border rounded-sm text-xs text-realm-text-primary focus:border-realm-gold-500/50 focus:outline-hidden"
+                    >
+                      <option value="">Select item...</option>
+                      {inventoryItemNames.map(i => (
+                        <option key={i.name} value={i.name}>
+                          {i.name} ({i.qty} available)
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min={1}
+                      value={di.quantity}
+                      onChange={(e) => {
+                        const updated = [...deliveryItems];
+                        updated[idx] = { ...updated[idx], quantity: Math.max(1, parseInt(e.target.value) || 1) };
+                        setDeliveryItems(updated);
+                      }}
+                      className="w-16 px-2 py-1.5 bg-realm-bg-900 border border-realm-border rounded-sm text-xs text-realm-text-primary text-center focus:border-realm-gold-500/50 focus:outline-hidden"
+                    />
+                    {deliveryItems.length > 1 && (
+                      <button
+                        onClick={() => setDeliveryItems(deliveryItems.filter((_, i) => i !== idx))}
+                        className="text-realm-text-muted hover:text-realm-danger"
+                      >
+                        <XCircle className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {deliveryItems.length < 10 && (
+                  <button
+                    onClick={() => setDeliveryItems([...deliveryItems, { itemName: '', quantity: 1 }])}
+                    className="text-[10px] text-realm-gold-400 hover:text-realm-gold-300"
+                  >
+                    + Add another item
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Deadline */}
+            <div>
+              <label className="block text-xs text-realm-text-secondary mb-1">Deadline: {deliveryDeadline} day{deliveryDeadline > 1 ? 's' : ''}</label>
+              <input
+                type="range"
+                min={1}
+                max={7}
+                value={deliveryDeadline}
+                onChange={(e) => setDeliveryDeadline(parseInt(e.target.value))}
+                className="w-full accent-amber-400"
+              />
+              <div className="flex justify-between text-[10px] text-realm-text-muted">
+                <span>1 day</span>
+                <span>7 days</span>
+              </div>
+            </div>
+
+            {/* Wage */}
+            <RealmInput
+              label="Worker wage (gold)"
+              type="number"
+              min={1}
+              value={deliveryWage}
+              onChange={(e) => setDeliveryWage(Math.max(1, parseInt(e.target.value) || 1))}
+              className="text-xs"
+            />
+
+            {/* Cost preview */}
+            <div className="bg-realm-bg-900 border border-realm-bg-600 rounded-sm p-3">
+              <p className="text-xs font-display text-realm-text-secondary mb-1">Cost Preview</p>
+              <div className="flex items-center gap-4 text-[11px]">
+                <span className="flex items-center gap-1">
+                  <Coins className="w-3 h-3 text-realm-gold-400" />
+                  <span className="text-realm-gold-400">{deliveryWage}g</span>
+                  <span className="text-realm-text-muted">wage (escrowed)</span>
+                </span>
+              </div>
+              <div className="text-[10px] text-realm-text-muted mt-1">
+                Items will be removed from your inventory and held in escrow until delivered.
+              </div>
+              {(character?.gold ?? 0) < deliveryWage && (
+                <p className="text-[10px] text-realm-danger mt-1">
+                  Insufficient gold ({character?.gold ?? 0}g available)
+                </p>
+              )}
+            </div>
+
+            {/* Post button */}
+            <RealmButton
+              variant="primary"
+              onClick={() => {
+                if (!canPostDelivery || !townId) return;
+                postDeliveryMutation.mutate({
+                  townId,
+                  destinationTownId: deliveryDestination,
+                  wage: deliveryWage,
+                  deadlineDays: deliveryDeadline,
+                  items: validDeliveryItems,
+                });
+              }}
+              disabled={!canPostDelivery || postDeliveryMutation.isPending}
+              className="w-full"
+            >
+              {postDeliveryMutation.isPending ? 'Posting...' : 'Post Delivery Job'}
+            </RealmButton>
+
+            {postDeliveryMutation.isError && (
+              <p className="text-xs text-realm-danger">
+                {(postDeliveryMutation.error as any)?.response?.data?.error || 'Failed to post delivery job.'}
+              </p>
+            )}
+          </div>
+        </RealmPanel>
+      )}
+
+      {/* ================================================================= */}
       {/* My Jobs tab */}
       {/* ================================================================= */}
       {activeTab === 'mine' && (
-        <RealmPanel title="My Jobs">
-          {myJobsLoading ? (
-            <div className="space-y-3">
-              <div className="h-16 bg-realm-bg-800 rounded-sm animate-pulse" />
-              <div className="h-16 bg-realm-bg-800 rounded-sm animate-pulse" />
-            </div>
-          ) : myJobs.length === 0 ? (
-            <div className="text-center py-8">
-              <Briefcase className="w-8 h-8 text-realm-text-muted mx-auto mb-3 opacity-50" />
-              <p className="text-sm text-realm-text-muted">You haven't posted any jobs.</p>
-              <p className="text-xs text-realm-text-muted mt-1">
-                Post asset jobs from your <Link to="/housing" className="text-realm-gold-400 hover:underline">Properties</Link> page
-                or use the <button onClick={() => setActiveTab('post')} className="text-realm-teal-300 hover:underline">Post Workshop Job</button> tab.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {myJobs.map((job) => {
-                const isWorkshop = job.category === 'WORKSHOP';
-
-                return (
+        <>
+          {/* Pending pickups banner */}
+          {pickups.length > 0 && (
+            <RealmPanel title="Deliveries Ready for Pickup">
+              <div className="space-y-3">
+                {pickups.map((p) => (
                   <div
-                    key={job.id}
-                    className="bg-realm-bg-800 border border-realm-bg-600 rounded-lg p-4"
+                    key={p.id}
+                    className="bg-realm-bg-800 border border-realm-teal-300/30 rounded-lg p-4"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          {isWorkshop
-                            ? <Hammer className="w-4 h-4 text-realm-teal-300 flex-shrink-0" />
-                            : <Briefcase className="w-4 h-4 text-realm-gold-400 flex-shrink-0" />
-                          }
-                          <span className="text-sm font-display text-realm-text-primary">
-                            {job.title}
-                          </span>
-                          <CategoryBadge category={job.category} />
+                          <CheckCircle2 className="w-4 h-4 text-realm-teal-300 flex-shrink-0" />
+                          <span className="text-sm font-display text-realm-text-primary">{p.title}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-[11px] flex-wrap">
-                          {!isWorkshop && job.assetName && (
+                        <div className="flex items-center gap-2 text-[11px] flex-wrap mb-1">
+                          <MapPin className="w-3 h-3 text-amber-400" />
+                          <span className="text-amber-400">{p.destinationTownName}</span>
+                          <span className="text-realm-text-muted">&middot;</span>
+                          <Package className="w-3 h-3 text-realm-text-secondary" />
+                          <span className="text-realm-text-secondary">
+                            {p.deliveryItems.map(i => `${i.quantity}x ${i.itemName}`).join(', ')}
+                          </span>
+                          {p.workerName && (
                             <>
-                              <span className="text-realm-text-secondary">{job.assetName}</span>
                               <span className="text-realm-text-muted">&middot;</span>
+                              <span className="text-realm-text-muted">Delivered by {p.workerName}</span>
                             </>
                           )}
-                          <Coins className="w-3 h-3 text-realm-gold-400" />
-                          <span className="text-realm-gold-400">{job.pay}g</span>
-                          <span className="text-realm-text-muted">&middot;</span>
-                          <span className={STATUS_COLORS[job.status] ?? 'text-realm-text-muted'}>
-                            {job.status}
-                          </span>
+                        </div>
+                      </div>
+                      <RealmButton
+                        variant="primary"
+                        size="sm"
+                        onClick={() => pickupMutation.mutate(p.id)}
+                        disabled={!p.canPickUp || pickupMutation.isPending}
+                        title={p.canPickUp ? 'Collect delivered items' : `Travel to ${p.destinationTownName} to pick up`}
+                      >
+                        {pickupMutation.isPending ? 'Collecting...' : p.canPickUp ? 'Pick Up' : 'Not in Town'}
+                      </RealmButton>
+                    </div>
+                  </div>
+                ))}
+                {pickupMutation.isError && (
+                  <p className="text-xs text-realm-danger">
+                    {(pickupMutation.error as any)?.response?.data?.error || 'Failed to pick up delivery.'}
+                  </p>
+                )}
+                {pickupMutation.isSuccess && (
+                  <p className="text-xs text-realm-success">Delivery collected! Items added to your inventory.</p>
+                )}
+              </div>
+            </RealmPanel>
+          )}
+
+          <RealmPanel title="My Jobs">
+            {myJobsLoading ? (
+              <div className="space-y-3">
+                <div className="h-16 bg-realm-bg-800 rounded-sm animate-pulse" />
+                <div className="h-16 bg-realm-bg-800 rounded-sm animate-pulse" />
+              </div>
+            ) : myJobs.length === 0 ? (
+              <div className="text-center py-8">
+                <Briefcase className="w-8 h-8 text-realm-text-muted mx-auto mb-3 opacity-50" />
+                <p className="text-sm text-realm-text-muted">You haven't posted any jobs.</p>
+                <p className="text-xs text-realm-text-muted mt-1">
+                  Post asset jobs from your <Link to="/housing" className="text-realm-gold-400 hover:underline">Properties</Link> page,
+                  or use the <button onClick={() => setActiveTab('post-workshop')} className="text-realm-teal-300 hover:underline">Post Workshop</button> or{' '}
+                  <button onClick={() => setActiveTab('post-delivery')} className="text-amber-400 hover:underline">Post Delivery</button> tabs.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {myJobs.map((job) => {
+                  const isWorkshop = job.category === 'WORKSHOP';
+                  const isDelivery = job.category === 'DELIVERY';
+                  const canCancel = job.status === 'OPEN' || (isDelivery && job.status === 'IN_PROGRESS');
+
+                  return (
+                    <div
+                      key={job.id}
+                      className="bg-realm-bg-800 border border-realm-bg-600 rounded-lg p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            {isDelivery
+                              ? <Truck className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                              : isWorkshop
+                                ? <Hammer className="w-4 h-4 text-realm-teal-300 flex-shrink-0" />
+                                : <Briefcase className="w-4 h-4 text-realm-gold-400 flex-shrink-0" />
+                            }
+                            <span className="text-sm font-display text-realm-text-primary">
+                              {job.title}
+                            </span>
+                            <CategoryBadge category={job.category} />
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px] flex-wrap">
+                            {!isWorkshop && !isDelivery && job.assetName && (
+                              <>
+                                <span className="text-realm-text-secondary">{job.assetName}</span>
+                                <span className="text-realm-text-muted">&middot;</span>
+                              </>
+                            )}
+                            <Coins className="w-3 h-3 text-realm-gold-400" />
+                            <span className="text-realm-gold-400">{job.pay}g</span>
+                            <span className="text-realm-text-muted">&middot;</span>
+                            <span className={STATUS_COLORS[job.status] ?? 'text-realm-text-muted'}>
+                              {job.status}
+                            </span>
+                            {isDelivery && job.workerName && job.status === 'IN_PROGRESS' && (
+                              <>
+                                <span className="text-realm-text-muted">&middot;</span>
+                                <span className="text-realm-text-muted">Worker: {job.workerName}</span>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Workshop escrow details */}
+                          {isWorkshop && job.materialsEscrow && job.status === 'OPEN' && (
+                            <div className="mt-1.5 text-[10px] text-realm-text-muted">
+                              <span className="text-realm-text-secondary">Materials in escrow:</span>{' '}
+                              {job.materialsEscrow.map((m, i) => (
+                                <span key={i}>
+                                  {i > 0 && ', '}{m.quantity}x {m.itemName}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Delivery details */}
+                          {isDelivery && (
+                            <div className="mt-1.5 text-[10px] text-realm-text-muted space-y-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <MapPin className="w-3 h-3 text-amber-400" />
+                                <span className="text-amber-400">{job.destinationTownName}</span>
+                                {job.expiresAt && (
+                                  <>
+                                    <span>&middot;</span>
+                                    <Clock className="w-3 h-3" />
+                                    <span>Expires {new Date(job.expiresAt).toLocaleDateString()}</span>
+                                  </>
+                                )}
+                              </div>
+                              {job.deliveryItems && (
+                                <div>
+                                  <span className="text-realm-text-secondary">Items:</span>{' '}
+                                  {(job.deliveryItems as Array<{ itemName: string; quantity: number }>).map((di, i) => (
+                                    <span key={i}>
+                                      {i > 0 && ', '}{di.quantity}x {di.itemName}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
 
-                        {/* Workshop escrow details */}
-                        {isWorkshop && job.materialsEscrow && job.status === 'OPEN' && (
-                          <div className="mt-1.5 text-[10px] text-realm-text-muted">
-                            <span className="text-realm-text-secondary">Materials in escrow:</span>{' '}
-                            {job.materialsEscrow.map((m, i) => (
-                              <span key={i}>
-                                {i > 0 && ', '}{m.quantity}x {m.itemName}
-                              </span>
-                            ))}
+                        {/* Cancel button */}
+                        {canCancel && (
+                          <div className="flex flex-col items-end gap-1">
+                            {cancelTarget === job.id && isDelivery && job.status === 'IN_PROGRESS' ? (
+                              <div className="text-right">
+                                <p className="text-[10px] text-realm-warning mb-1 flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3" />
+                                  Wage split 50/50 with worker
+                                </p>
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => { cancelMutation.mutate(job.id); setCancelTarget(null); }}
+                                    disabled={cancelMutation.isPending}
+                                    className="text-[10px] px-2 py-0.5 bg-realm-danger/20 text-realm-danger rounded-sm border border-realm-danger/30 hover:bg-realm-danger/30"
+                                  >
+                                    Confirm
+                                  </button>
+                                  <button
+                                    onClick={() => setCancelTarget(null)}
+                                    className="text-[10px] px-2 py-0.5 bg-realm-bg-700 text-realm-text-muted rounded-sm border border-realm-bg-600"
+                                  >
+                                    No
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  if (isDelivery && job.status === 'IN_PROGRESS') {
+                                    setCancelTarget(job.id);
+                                  } else {
+                                    cancelMutation.mutate(job.id);
+                                  }
+                                }}
+                                disabled={cancelMutation.isPending}
+                                className="text-realm-text-muted hover:text-realm-danger transition-colors"
+                                title={
+                                  isDelivery
+                                    ? job.status === 'IN_PROGRESS'
+                                      ? 'Cancel delivery (wage split 50/50)'
+                                      : 'Cancel delivery (full refund)'
+                                    : isWorkshop
+                                      ? 'Cancel job (gold & materials refunded)'
+                                      : 'Cancel job (gold refunded)'
+                                }
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
-
-                      {job.status === 'OPEN' && (
-                        <button
-                          onClick={() => cancelMutation.mutate(job.id)}
-                          disabled={cancelMutation.isPending}
-                          className="text-realm-text-muted hover:text-realm-danger transition-colors"
-                          title={isWorkshop ? 'Cancel job (gold & materials refunded)' : 'Cancel job (gold refunded)'}
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </button>
-                      )}
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
 
-              {cancelMutation.isError && (
-                <p className="text-xs text-realm-danger mt-2">
-                  {(cancelMutation.error as any)?.response?.data?.error || 'Failed to cancel job.'}
-                </p>
-              )}
-            </div>
-          )}
-        </RealmPanel>
+                {cancelMutation.isError && (
+                  <p className="text-xs text-realm-danger mt-2">
+                    {(cancelMutation.error as any)?.response?.data?.error || 'Failed to cancel job.'}
+                  </p>
+                )}
+              </div>
+            )}
+          </RealmPanel>
+        </>
       )}
     </div>
   );

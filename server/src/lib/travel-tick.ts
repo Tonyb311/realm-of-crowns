@@ -1,11 +1,73 @@
 import { db } from './db';
-import { eq, sql, inArray } from 'drizzle-orm';
-import { characters, characterTravelStates, groupTravelStates, travelGroups, parties } from '@database/tables';
+import { eq, and, sql, inArray } from 'drizzle-orm';
+import { characters, characterTravelStates, groupTravelStates, travelGroups, parties, jobs, towns } from '@database/tables';
 import { logger } from './logger';
 import { resolveRoadEncounter, resolveGroupRoadEncounter } from './road-encounter';
 import { ACTION_XP } from '@shared/data/progression';
 import { checkLevelUp } from '../services/progression';
+import { emitNotification } from '../socket/events';
 import type { CombatRound } from './simulation/types';
+
+// ---------------------------------------------------------------------------
+// Delivery auto-complete: when a worker arrives at a delivery destination
+// ---------------------------------------------------------------------------
+async function completeDeliveryJobsOnArrival(characterId: string, destinationTownId: string): Promise<number> {
+  const deliveryJobs = await db.query.jobs.findMany({
+    where: and(
+      eq(jobs.workerId, characterId),
+      eq(jobs.category, 'DELIVERY'),
+      eq(jobs.status, 'IN_PROGRESS'),
+      eq(jobs.destinationTownId, destinationTownId),
+    ),
+  });
+
+  if (deliveryJobs.length === 0) return 0;
+
+  let completed = 0;
+  for (const delivery of deliveryJobs) {
+    await db.transaction(async (tx) => {
+      // Transfer escrowed wage to worker
+      await tx.update(characters)
+        .set({ gold: sql`${characters.gold} + ${delivery.wage}` })
+        .where(eq(characters.id, characterId));
+
+      // Mark as DELIVERED (items held at destination for poster pickup)
+      await tx.update(jobs)
+        .set({
+          status: 'DELIVERED',
+          completedAt: new Date().toISOString(),
+          result: { deliveredAt: destinationTownId, deliveredOn: new Date().toISOString() },
+        })
+        .where(eq(jobs.id, delivery.id));
+    });
+
+    // Notify poster
+    try {
+      const destTown = await db.query.towns.findFirst({
+        where: eq(towns.id, destinationTownId),
+        columns: { name: true },
+      });
+      emitNotification(delivery.posterId, {
+        id: `job-delivered-${delivery.id}`,
+        type: 'job:delivered',
+        title: 'Delivery Arrived!',
+        message: `Your delivery to ${destTown?.name ?? 'destination'} has arrived. Visit the Jobs Board there to collect your items.`,
+        data: { jobId: delivery.id, destinationTownId },
+      });
+    } catch { /* notification is non-critical */ }
+
+    completed++;
+  }
+
+  if (completed > 0) {
+    logger.info(
+      { characterId, destinationTownId, deliveriesCompleted: completed },
+      'Delivery jobs auto-completed on arrival',
+    );
+  }
+
+  return completed;
+}
 
 export interface TravelTickResult {
   soloMoved: number;
@@ -127,6 +189,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
           });
 
           try { await checkLevelUp(traveler.characterId); } catch { /* non-fatal */ }
+          try { await completeDeliveryJobsOnArrival(traveler.characterId, destinationTownId); } catch { /* non-fatal */ }
 
           result.soloArrived++;
           logger.info(
@@ -165,6 +228,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
             });
 
             try { await checkLevelUp(traveler.characterId); } catch { /* non-fatal */ }
+            try { await completeDeliveryJobsOnArrival(traveler.characterId, destinationTownId); } catch { /* non-fatal */ }
 
             result.soloArrived++;
             logger.info(
@@ -195,6 +259,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
               });
 
               try { await checkLevelUp(traveler.characterId); } catch { /* non-fatal */ }
+              try { await completeDeliveryJobsOnArrival(traveler.characterId, destinationTownId); } catch { /* non-fatal */ }
 
               result.soloArrived++;
               logger.info(
@@ -276,6 +341,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
           });
 
           try { await checkLevelUp(traveler.characterId); } catch { /* non-fatal */ }
+          try { await completeDeliveryJobsOnArrival(traveler.characterId, destinationTownId); } catch { /* non-fatal */ }
 
           result.soloArrived++;
           logger.info(
@@ -371,6 +437,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
             // Level-up check for each member (non-fatal)
             for (const charId of memberCharacterIds) {
               try { await checkLevelUp(charId); } catch { /* non-fatal */ }
+              try { await completeDeliveryJobsOnArrival(charId, destinationTownId); } catch { /* non-fatal */ }
             }
 
             result.groupsArrived++;
@@ -446,6 +513,7 @@ export async function processTravelTick(): Promise<TravelTickResult> {
           // Level-up check for each member (non-fatal)
           for (const charId of memberCharacterIds) {
             try { await checkLevelUp(charId); } catch { /* non-fatal */ }
+            try { await completeDeliveryJobsOnArrival(charId, destinationTownId); } catch { /* non-fatal */ }
           }
 
           result.groupsArrived++;

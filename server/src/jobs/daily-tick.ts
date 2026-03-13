@@ -902,10 +902,11 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   await runStep('Job Auto-Posting & Expiry', 4.8, async () => {
     const now = new Date().toISOString();
 
-    // 1. Find and expire old jobs, refunding escrowed gold
+    // 1. Find and expire old jobs, refunding escrowed gold + items
+    // Query OPEN and IN_PROGRESS (for delivery deadlines). Exclude DELIVERED — those wait for pickup.
     const expirableJobs = await db.query.jobs.findMany({
       where: and(
-        eq(jobs.status, 'OPEN'),
+        inArray(jobs.status, ['OPEN', 'IN_PROGRESS']),
         sql`${jobs.expiresAt} IS NOT NULL`,
         lte(jobs.expiresAt, now),
       ),
@@ -913,12 +914,20 @@ export async function processDailyTick(): Promise<DailyTickResult> {
 
     let expiredCount = 0;
     let workshopExpiredCount = 0;
+    let deliveryExpiredCount = 0;
     for (const job of expirableJobs) {
       await db.transaction(async (tx) => {
-        // Refund escrowed gold to poster
-        await tx.update(characters)
-          .set({ gold: sql`${characters.gold} + ${job.wage}` })
-          .where(eq(characters.id, job.posterId));
+        if (job.category === 'DELIVERY' && job.status === 'IN_PROGRESS') {
+          // Delivery deadline missed: full wage refund to poster (worker penalty — gets nothing)
+          await tx.update(characters)
+            .set({ gold: sql`${characters.gold} + ${job.wage}` })
+            .where(eq(characters.id, job.posterId));
+        } else {
+          // Standard: refund escrowed gold to poster
+          await tx.update(characters)
+            .set({ gold: sql`${characters.gold} + ${job.wage}` })
+            .where(eq(characters.id, job.posterId));
+        }
 
         // Refund escrowed materials for WORKSHOP jobs
         if (job.category === 'WORKSHOP' && job.materialsEscrow) {
@@ -941,6 +950,27 @@ export async function processDailyTick(): Promise<DailyTickResult> {
           workshopExpiredCount++;
         }
 
+        // Refund escrowed delivery items
+        if (job.category === 'DELIVERY' && job.deliveryItems) {
+          const deliveryEscrow = job.deliveryItems as Array<{ itemTemplateId: string; itemName: string; quantity: number }>;
+          for (const di of deliveryEscrow) {
+            const [item] = await tx.insert(items).values({
+              id: crypto.randomUUID(),
+              templateId: di.itemTemplateId,
+              ownerId: job.posterId,
+              quality: 'COMMON',
+              enchantments: [],
+            }).returning();
+            await tx.insert(inventories).values({
+              id: crypto.randomUUID(),
+              characterId: job.posterId,
+              itemId: item.id,
+              quantity: di.quantity,
+            });
+          }
+          deliveryExpiredCount++;
+        }
+
         await tx.update(jobs)
           .set({ status: 'EXPIRED' })
           .where(eq(jobs.id, job.id));
@@ -949,7 +979,10 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     }
 
     if (expiredCount > 0) {
-      console.log(`[DailyTick]   Expired ${expiredCount} jobs (escrowed gold refunded${workshopExpiredCount > 0 ? `, ${workshopExpiredCount} workshop jobs had materials refunded` : ''})`);
+      const details: string[] = [];
+      if (workshopExpiredCount > 0) details.push(`${workshopExpiredCount} workshop (materials refunded)`);
+      if (deliveryExpiredCount > 0) details.push(`${deliveryExpiredCount} delivery (items refunded)`);
+      console.log(`[DailyTick]   Expired ${expiredCount} jobs (gold refunded${details.length > 0 ? `, ${details.join(', ')}` : ''})`);
     }
 
     // (Auto-posting removed — job posting is always a deliberate player/bot choice)

@@ -271,6 +271,13 @@ export interface ApiJob {
   materialsSupplied?: boolean;
   quantity?: number;
   description?: string;
+  // Delivery fields
+  destinationTownId?: string;
+  destinationTownName?: string;
+  deliveryItems?: Array<{ itemTemplateId: string; itemName: string; quantity: number }>;
+  expiresAt?: string;
+  workerName?: string;
+  freeAction?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }

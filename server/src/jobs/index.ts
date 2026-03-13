@@ -9,6 +9,7 @@ import cron from 'node-cron';
 import type { Server } from 'socket.io';
 import { processDailyTick } from './daily-tick';
 import { startForgebornMaintenanceJob } from './forgeborn-maintenance';
+import { startChallengeExpiryJob } from './challenge-expiry';
 import { logger } from '../lib/logger';
 import { redis } from '../lib/redis';
 import { cronJobExecutions, cronJobDuration } from '../lib/metrics';
@@ -60,6 +61,11 @@ export function registerJobs(_io: Server) {
   // Forgeborn Maintenance — race-specific, runs independently
   // -----------------------------------------------------------------------
   startForgebornMaintenanceJob();
+
+  // -----------------------------------------------------------------------
+  // PvP Challenge Expiry — cancel stale PENDING challenges every 5 minutes
+  // -----------------------------------------------------------------------
+  startChallengeExpiryJob();
 
   // -----------------------------------------------------------------------
   // Commented out — replaced by daily tick Steps 1-12
