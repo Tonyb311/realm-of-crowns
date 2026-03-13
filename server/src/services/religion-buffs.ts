@@ -144,6 +144,38 @@ export function resolveReligionBuffs(ctx: ReligionContext): ReligionBuffs {
 }
 
 // ---------------------------------------------------------------------------
+// Tax reduction helpers (Veradine)
+// ---------------------------------------------------------------------------
+
+/**
+ * Get the combined tax reduction percentage for a character in a given town.
+ * Combines personal buff (Veradine member) + town-wide buff (Veradine dominant).
+ * Returns 0-1 (e.g. 0.13 = 13% reduction).
+ */
+export async function getTaxReduction(characterId: string, townId: string): Promise<number> {
+  const ctx = await getCharacterReligionContext(characterId);
+  // Override homeTownId with the tax town for town-wide buff check
+  const buffs = resolveReligionBuffs({ ...ctx, homeTownId: townId });
+  return Math.min(1, buffs.combinedBuffs.taxReductionPercent ?? 0);
+}
+
+/**
+ * Batch-friendly version: get tax reduction from pre-fetched chapter data.
+ * Used in property tax loops to avoid N+1 queries.
+ */
+export function getTaxReductionFromChapters(
+  patronGodId: string | null,
+  homeTownId: string | null,
+  townId: string,
+  allChapters: ChapterRow[],
+): number {
+  const ctx = buildReligionContext(patronGodId, homeTownId, allChapters);
+  // Override homeTownId with tax town for town-wide buff lookup
+  const buffs = resolveReligionBuffs({ ...ctx, homeTownId: townId });
+  return Math.min(1, buffs.combinedBuffs.taxReductionPercent ?? 0);
+}
+
+// ---------------------------------------------------------------------------
 // Road danger helpers
 // ---------------------------------------------------------------------------
 

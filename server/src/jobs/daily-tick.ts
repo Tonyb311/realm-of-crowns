@@ -42,7 +42,7 @@ import { computeFeatBonus } from '@shared/data/feats';
 import { GATHER_SPOT_PROFESSION_MAP, RESOURCE_MAP } from '@shared/data/gathering';
 import { calculateChurchTier } from '@shared/data/religion-config';
 import { GOD_BUFFS } from '@shared/data/god-buffs';
-import { getCharacterReligionContext, resolveReligionBuffs } from '../services/religion-buffs';
+import { getCharacterReligionContext, resolveReligionBuffs, getTaxReductionFromChapters, type ChapterRow } from '../services/religion-buffs';
 import { ASSET_TIERS, LIVESTOCK_DEFINITIONS, HUNGER_CONSTANTS } from '@shared/data/assets';
 import { getCottageTier } from '@shared/data/cottage-tiers';
 import {
@@ -2617,7 +2617,7 @@ async function collectPropertyTaxes(): Promise<void> {
   const allBuildings = await db.query.buildings.findMany({
     where: gte(buildings.level, 1),
     with: {
-      character: { columns: { id: true, name: true, gold: true, userId: true } },
+      character: { columns: { id: true, name: true, gold: true, userId: true, patronGodId: true, homeTownId: true } },
       town: {
         columns: { id: true, name: true, mayorId: true },
         with: {
@@ -2628,6 +2628,11 @@ async function collectPropertyTaxes(): Promise<void> {
     },
   });
 
+  // Pre-fetch all church chapters for batch Veradine tax reduction
+  const allChapters = await db.query.churchChapters.findMany({
+    columns: { id: true, godId: true, townId: true, tier: true, isDominant: true, isShrine: true },
+  }) as ChapterRow[];
+
   let totalCollected = 0;
   let delinquentCount = 0;
   let seizedCount = 0;
@@ -2636,7 +2641,16 @@ async function collectPropertyTaxes(): Promise<void> {
     const baseTax = BASE_PROPERTY_TAX_RATES[building.type] ?? 10;
     const levelMultiplier = building.level;
     const policyTaxRate = building.town.townPolicies?.[0]?.taxRate ?? 0.10;
-    const dailyTax = Math.floor(baseTax * levelMultiplier * (1 + policyTaxRate));
+    let dailyTax = Math.floor(baseTax * levelMultiplier * (1 + policyTaxRate));
+
+    // Veradine tax reduction (personal + town-wide)
+    const taxReduction = getTaxReductionFromChapters(
+      building.character.patronGodId, building.character.homeTownId,
+      building.town.id, allChapters,
+    );
+    if (taxReduction > 0) {
+      dailyTax = Math.floor(dailyTax * (1 - taxReduction));
+    }
 
     const storageData = building.storage as Record<string, unknown>;
 

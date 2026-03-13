@@ -24,6 +24,7 @@ import {
 } from '@shared/data/buildings/requirements';
 import { buildingTypeLabel } from '@shared/data/building-labels';
 import { getEffectiveTaxRate } from '../services/law-effects';
+import { getTaxReduction } from '../services/religion-buffs';
 import { requireDailyAction } from '../middleware/daily-action';
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
@@ -1150,7 +1151,12 @@ router.post('/:buildingId/rent/use', authGuard, characterGuard, requireTown, asy
     if (price > 0) {
       // Calculate town tax cut on rental income
       const townTaxRate = await getEffectiveTaxRate(building.townId);
-      const townTaxCut = Math.floor(price * townTaxRate);
+      let townTaxCut = Math.floor(price * townTaxRate);
+      // Veradine tax reduction for building owner
+      const ownerTaxReduction = await getTaxReduction(building.ownerId, building.townId);
+      if (ownerTaxReduction > 0) {
+        townTaxCut = Math.floor(townTaxCut * (1 - ownerTaxReduction));
+      }
       const ownerShare = price - townTaxCut;
 
       // Transfer gold: renter pays, owner gets share, town gets tax cut

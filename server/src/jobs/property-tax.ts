@@ -1,10 +1,11 @@
 import cron from 'node-cron';
 import { db } from '../lib/db';
 import { eq, gte, sql } from 'drizzle-orm';
-import { buildings, characters, townTreasuries } from '@database/tables';
+import { buildings, characters, townTreasuries, churchChapters } from '@database/tables';
 import { logger } from '../lib/logger';
 import { cronJobExecutions } from '../lib/metrics';
 import { emitBuildingTaxDue, emitBuildingDelinquent, emitBuildingSeized } from '../socket/events';
+import { getTaxReductionFromChapters, type ChapterRow } from '../services/religion-buffs';
 
 /**
  * Base daily property tax rates per building type (gold per day).
@@ -59,7 +60,7 @@ async function collectPropertyTaxes() {
   const allBuildings = await db.query.buildings.findMany({
     where: gte(buildings.level, 1),
     with: {
-      character: { columns: { id: true, name: true, gold: true, userId: true } },
+      character: { columns: { id: true, name: true, gold: true, userId: true, patronGodId: true, homeTownId: true } },
       town: {
         columns: { id: true, name: true, mayorId: true },
         with: {
@@ -69,6 +70,11 @@ async function collectPropertyTaxes() {
       },
     },
   });
+
+  // Pre-fetch all church chapters for batch Veradine tax reduction
+  const allChapters = await db.query.churchChapters.findMany({
+    columns: { id: true, godId: true, townId: true, tier: true, isDominant: true, isShrine: true },
+  }) as ChapterRow[];
 
   let totalCollected = 0;
   let delinquentCount = 0;
@@ -80,7 +86,16 @@ async function collectPropertyTaxes() {
     const policyTaxRate = building.town.townPolicies?.[0]?.taxRate ?? 0.10;
     // Tax = baseTax * level * (1 + townPolicyRate)
     // The policy rate modifies the base tax (e.g. 0.10 = 10% surcharge)
-    const dailyTax = Math.floor(baseTax * levelMultiplier * (1 + policyTaxRate));
+    let dailyTax = Math.floor(baseTax * levelMultiplier * (1 + policyTaxRate));
+
+    // Veradine tax reduction (personal + town-wide)
+    const taxReduction = getTaxReductionFromChapters(
+      building.character.patronGodId, building.character.homeTownId,
+      building.town.id, allChapters,
+    );
+    if (taxReduction > 0) {
+      dailyTax = Math.floor(dailyTax * (1 - taxReduction));
+    }
 
     const storageData = building.storage as Record<string, unknown>;
     const owner = building.character;

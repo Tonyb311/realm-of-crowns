@@ -330,12 +330,41 @@ export default function TemplePage() {
     },
   });
 
+  // Veradine economic policy (HP shrine)
+  const [policyTaxRate, setPolicyTaxRate] = useState<number>(10);
+  const [confirmPolicy, setConfirmPolicy] = useState(false);
+
   const townName = town?.name ?? 'this town';
   const chapters = templeData?.chapters ?? [];
   const dominant = templeData?.dominant;
   const patronGod = myFaith?.patronGod;
   const cooldown = myFaith?.cooldownDaysRemaining ?? 0;
   const allGods = godsData?.gods ?? [];
+
+  const isVeradineHP = chapters.some(ch => ch.godId === 'veradine' && ch.isDominant && ch.isShrine && ch.highPriestId === character?.id);
+
+  const { data: policyStatus } = useQuery<{
+    available: boolean;
+    cooldownDaysLeft: number;
+    lastUsed: string | null;
+    recentLog: Array<{ type: string; description: string; by: string; at: string }>;
+  }>({
+    queryKey: ['temple', 'economic-policy-status', townId],
+    queryFn: async () => (await api.get(`/temple/economic-policy-status/${townId}`)).data,
+    enabled: !!townId && isVeradineHP,
+  });
+
+  const policyMutation = useMutation({
+    mutationFn: async ({ tId, policyType, policyValue }: { tId: string; policyType: string; policyValue: unknown }) => {
+      const res = await api.post('/temple/propose-economic-policy', { townId: tId, policyType, policyValue });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple'] });
+      queryClient.invalidateQueries({ queryKey: ['governance'] });
+      setConfirmPolicy(false);
+    },
+  });
 
   if (!townId) {
     return (
@@ -437,23 +466,29 @@ export default function TemplePage() {
                   {Object.entries(personalBuffs).length > 0 && (
                     <div>
                       <span className="text-[10px] uppercase tracking-wider text-realm-text-muted">Personal</span>
-                      {Object.entries(personalBuffs).map(([key, val]) => (
-                        <div key={key} className="flex items-center justify-between text-[11px]">
-                          <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
-                          <span className="text-realm-teal-300">+{Math.round(val * 100)}%</span>
-                        </div>
-                      ))}
+                      {Object.entries(personalBuffs).map(([key, val]) => {
+                        const isReduction = key.includes('Reduction');
+                        return (
+                          <div key={key} className="flex items-center justify-between text-[11px]">
+                            <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
+                            <span className="text-realm-teal-300">{isReduction ? '-' : '+'}{Math.round(val * 100)}%</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                   {Object.entries(townBuffs).length > 0 && (
                     <div>
                       <span className="text-[10px] uppercase tracking-wider text-realm-text-muted">Town-wide ({dominant!.godName} dominance)</span>
-                      {Object.entries(townBuffs).map(([key, val]) => (
-                        <div key={key} className="flex items-center justify-between text-[11px]">
-                          <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
-                          <span className="text-realm-teal-300">+{Math.round(val * 100)}%</span>
-                        </div>
-                      ))}
+                      {Object.entries(townBuffs).map(([key, val]) => {
+                        const isReduction = key.includes('Reduction');
+                        return (
+                          <div key={key} className="flex items-center justify-between text-[11px]">
+                            <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
+                            <span className="text-realm-teal-300">{isReduction ? '-' : '+'}{Math.round(val * 100)}%</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -533,6 +568,100 @@ export default function TemplePage() {
                   <p className="text-[11px] text-realm-danger">
                     {(tariffMutation.error as any)?.response?.data?.error || 'Failed to set tariff'}
                   </p>
+                )}
+              </div>
+            )}
+
+            {/* Veradine Economic Policy (HP of Veradine with dominant shrine) */}
+            {isVeradineHP && (
+              <div className="rounded-lg border border-realm-bg-600 bg-realm-bg-800 p-3 space-y-2">
+                <span className="text-xs font-display text-realm-text-primary flex items-center gap-1.5">
+                  <Scale className="w-3.5 h-3.5 text-realm-gold-400" />
+                  Economic Policy Bypass
+                </span>
+                <p className="text-[11px] text-realm-text-muted">
+                  As High Priest of the Conclave, you may enact economic policies that bypass the normal law process. Once per 30 days.
+                </p>
+
+                {policyStatus && !policyStatus.available && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-realm-warning">
+                    <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                    <span>Policy bypass on cooldown — {policyStatus.cooldownDaysLeft} day{policyStatus.cooldownDaysLeft !== 1 ? 's' : ''} remaining</span>
+                  </div>
+                )}
+
+                {policyStatus?.available && !confirmPolicy && (
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-[10px] text-realm-text-muted mb-1 block">Set Town Tax Rate</label>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[11px] text-realm-text-muted w-6 text-right">5%</span>
+                        <input
+                          type="range"
+                          min={5}
+                          max={25}
+                          step={1}
+                          value={policyTaxRate}
+                          onChange={(e) => setPolicyTaxRate(Number(e.target.value))}
+                          className="flex-1 h-1.5 bg-realm-bg-600 rounded-full appearance-none cursor-pointer accent-realm-gold-500"
+                        />
+                        <span className="text-[11px] text-realm-text-muted w-8">25%</span>
+                      </div>
+                      <span className="text-xs text-realm-text-secondary">{policyTaxRate}% tax rate</span>
+                    </div>
+                    <RealmButton
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setConfirmPolicy(true)}
+                    >
+                      Propose Tax Rate Change
+                    </RealmButton>
+                  </div>
+                )}
+
+                {confirmPolicy && (
+                  <div className="bg-realm-warning/10 border border-realm-warning/30 rounded-lg p-3 space-y-2">
+                    <p className="text-[11px] text-realm-warning">
+                      This will set the town tax rate to {policyTaxRate}%, bypassing the normal law process. This action is logged publicly and can only be used once per 30 days.
+                    </p>
+                    <div className="flex gap-2">
+                      <RealmButton
+                        variant="primary"
+                        size="sm"
+                        onClick={() => policyMutation.mutate({
+                          tId: templeData!.townId,
+                          policyType: 'tax_rate',
+                          policyValue: policyTaxRate / 100,
+                        })}
+                        disabled={policyMutation.isPending}
+                      >
+                        {policyMutation.isPending ? 'Enacting...' : 'Confirm Policy'}
+                      </RealmButton>
+                      <RealmButton variant="secondary" size="sm" onClick={() => setConfirmPolicy(false)}>
+                        Cancel
+                      </RealmButton>
+                    </div>
+                  </div>
+                )}
+
+                {policyMutation.isSuccess && (
+                  <p className="text-[11px] text-realm-success">{policyMutation.data.message}</p>
+                )}
+                {policyMutation.isError && (
+                  <p className="text-[11px] text-realm-danger">
+                    {(policyMutation.error as any)?.response?.data?.error || 'Failed to enact policy'}
+                  </p>
+                )}
+
+                {policyStatus?.recentLog && policyStatus.recentLog.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-realm-bg-600">
+                    <span className="text-[10px] uppercase tracking-wider text-realm-text-muted">Recent Policy Actions</span>
+                    {policyStatus.recentLog.map((entry, i) => (
+                      <div key={i} className="text-[10px] text-realm-text-muted mt-0.5">
+                        {entry.description} — {entry.by} ({new Date(entry.at).toLocaleDateString()})
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             )}

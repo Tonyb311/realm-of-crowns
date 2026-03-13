@@ -17,6 +17,7 @@ import { AuthenticatedRequest } from '../types/express';
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { getEffectiveTaxRate } from '../services/law-effects';
+import { getTaxReduction } from '../services/religion-buffs';
 import { getInnMenuCapacity, getInnTaxMultiplier } from '@shared/data/inn-config';
 import { calculateWeightState } from '../services/weight-calculator';
 import { emitInnCheckedIn, emitInnCheckedOut, emitInnPatronUpdate } from '../socket/events';
@@ -468,7 +469,12 @@ router.post('/:buildingId/menu/buy', authGuard, characterGuard, validate(buySche
     // Calculate tax split (on base price, surcharge is separate)
     const baseTaxRate = await getEffectiveTaxRate(building.townId);
     const effectiveRate = baseTaxRate * getInnTaxMultiplier(building.level);
-    const townTaxCut = Math.floor(basePrice * effectiveRate);
+    let townTaxCut = Math.floor(basePrice * effectiveRate);
+    // Veradine tax reduction for inn owner
+    const innOwnerTaxReduction = await getTaxReduction(building.ownerId, building.townId);
+    if (innOwnerTaxReduction > 0) {
+      townTaxCut = Math.floor(townTaxCut * (1 - innOwnerTaxReduction));
+    }
     const ownerShare = basePrice - townTaxCut;
 
     await db.transaction(async (tx) => {

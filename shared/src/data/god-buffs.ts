@@ -89,6 +89,23 @@ export const GOD_BUFFS: Record<string, GodBuff> = {
     },
     shrineEffects: { tariffControl: 1 },
   },
+  veradine: {
+    personalBuffs: {
+      MINORITY: { taxReductionPercent: 0.02 },
+      CHAPTER: { taxReductionPercent: 0.04 },
+      ESTABLISHED: { taxReductionPercent: 0.06 },
+      DOMINANT: { taxReductionPercent: 0.08 },
+    },
+    townEffects: {
+      ESTABLISHED: { taxReductionPercent: 0.03 },
+      DOMINANT: { taxReductionPercent: 0.05 },
+    },
+    metricModifiers: {
+      ESTABLISHED: { MARKET_EFFICIENCY: 3 },
+      DOMINANT: { MARKET_EFFICIENCY: 5 },
+    },
+    shrineEffects: { economicPolicyBypass: 1 },
+  },
 };
 
 /** Get a character's personal religion buffs based on their god and chapter tier */
@@ -113,4 +130,5 @@ export const BUFF_LABELS: Record<string, string> = {
   craftingQualityPercent: 'Crafting Quality',
   localCraftingYieldPercent: 'Local Crafting Yield',
   visitorMarketSurchargePercent: 'Visitor Market Surcharge',
+  taxReductionPercent: 'Tax Reduction',
 };

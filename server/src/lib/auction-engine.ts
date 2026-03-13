@@ -19,6 +19,7 @@ import {
 import { emitTradeCompleted } from '../socket/events';
 import { onMarketBuy, onMarketSell } from '../services/quest-triggers';
 import { getEffectiveTaxRate } from '../services/law-effects';
+import { getTaxReduction } from '../services/religion-buffs';
 import { getSimulationTick } from './simulation-context';
 
 // ---------------------------------------------------------------------------
@@ -325,9 +326,10 @@ export async function resolveAuctionCycle(townId: string): Promise<{
       const fee = Math.floor(bidPrice * feeRate);
       const sellerNet = bidPrice - fee;
 
-      // Get tax rate for town
+      // Get tax rate for town (reduced by Veradine for seller)
       const taxRate = await getEffectiveTaxRate(townId);
-      const townTax = Math.floor(bidPrice * taxRate);
+      const sellerTaxReduction = await getTaxReduction(listing.sellerId, townId);
+      const townTax = Math.floor(Math.floor(bidPrice * taxRate) * (1 - sellerTaxReduction));
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);

@@ -1,7 +1,7 @@
 import { Router, type Response } from 'express';
 import { eq, and, ne, sql, asc, desc, count, gte } from 'drizzle-orm';
 import { db } from '../lib/db';
-import { gods, churchChapters, characters, towns, elections, electionCandidates, characterActiveEffects, townPolicies } from '@database/tables';
+import { gods, churchChapters, characters, towns, elections, electionCandidates, characterActiveEffects, townPolicies, townTreasuries } from '@database/tables';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
 import { characterGuard } from '../middleware/character-guard';
@@ -9,7 +9,10 @@ import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { calculateChurchTier, CONVERSION_COOLDOWN_DAYS } from '@shared/data/religion-config';
 import { SHRINE_CONSECRATION_COST } from '@shared/data/town-metrics-config';
+import { emitGovernanceEvent } from '../socket/events';
 import crypto from 'crypto';
+
+const POLICY_BYPASS_COOLDOWN_DAYS = 30;
 
 const router = Router();
 
@@ -630,6 +633,188 @@ router.get('/tariff/:townId', async (req, res: Response) => {
     });
   } catch (error) {
     logRouteError(req, 500, 'Temple tariff error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// POST /api/temple/propose-economic-policy — Veradine Shrine: Bypass law process
+// ============================================================
+
+router.post('/propose-economic-policy', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId, policyType, policyValue } = req.body as {
+      townId: string;
+      policyType: 'tax_rate' | 'building_permits' | 'trade_policy';
+      policyValue: unknown;
+    };
+
+    if (!townId || !policyType) {
+      return res.status(400).json({ error: 'townId and policyType are required' });
+    }
+
+    // Must be HP of Veradine dominant chapter with shrine
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(
+        eq(churchChapters.godId, 'veradine'),
+        eq(churchChapters.townId, townId),
+      ),
+    });
+
+    if (!chapter) {
+      return res.status(400).json({ error: 'No Veradine chapter in this town' });
+    }
+    if (chapter.highPriestId !== character.id) {
+      return res.status(403).json({ error: 'Only the High Priest of Veradine can propose economic policies' });
+    }
+    if (!chapter.isDominant) {
+      return res.status(400).json({ error: 'Veradine must be the dominant church' });
+    }
+    if (!chapter.isShrine) {
+      return res.status(400).json({ error: 'The Veradine shrine must be consecrated' });
+    }
+
+    // Check 30-day cooldown
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+    });
+    const tradeP = (policy?.tradePolicy as Record<string, unknown>) ?? {};
+    const lastBypass = tradeP.veradinePolicyBypassAt as string | undefined;
+    if (lastBypass) {
+      const daysSince = Math.floor((Date.now() - new Date(lastBypass).getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSince < POLICY_BYPASS_COOLDOWN_DAYS) {
+        const daysLeft = POLICY_BYPASS_COOLDOWN_DAYS - daysSince;
+        return res.status(400).json({
+          error: `Economic policy bypass was used recently. ${daysLeft} day${daysLeft > 1 ? 's' : ''} remaining.`,
+          cooldownDaysLeft: daysLeft,
+        });
+      }
+    }
+
+    // Validate and apply based on policy type
+    let description = '';
+
+    if (policyType === 'tax_rate') {
+      const rate = Number(policyValue);
+      if (isNaN(rate) || rate < 0.05 || rate > 0.25) {
+        return res.status(400).json({ error: 'Tax rate must be between 0.05 (5%) and 0.25 (25%)' });
+      }
+
+      // Apply tax rate (mirrors governance.ts set-tax logic)
+      if (policy) {
+        await db.update(townPolicies).set({ taxRate: rate }).where(eq(townPolicies.townId, townId));
+      } else {
+        await db.insert(townPolicies).values({ id: crypto.randomUUID(), townId, taxRate: rate });
+      }
+
+      // Sync to town treasury
+      const existingTreasury = await db.query.townTreasuries.findFirst({
+        where: eq(townTreasuries.townId, townId),
+      });
+      if (existingTreasury) {
+        await db.update(townTreasuries).set({ taxRate: rate }).where(eq(townTreasuries.townId, townId));
+      } else {
+        await db.insert(townTreasuries).values({ id: crypto.randomUUID(), townId, taxRate: rate });
+      }
+
+      description = `Set tax rate to ${Math.round(rate * 100)}%`;
+      emitGovernanceEvent('governance:tax-changed', `town:${townId}`, {
+        townId,
+        taxRate: rate,
+        setBy: `${character.name} (Veradine High Priest)`,
+      });
+    } else if (policyType === 'trade_policy') {
+      const tradeChanges = policyValue as Record<string, unknown> | null;
+      if (!tradeChanges || typeof tradeChanges !== 'object') {
+        return res.status(400).json({ error: 'trade_policy requires an object value' });
+      }
+      // Merge into existing tradePolicy
+      const existingTp = (policy?.tradePolicy as Record<string, unknown>) ?? {};
+      const merged = { ...existingTp, ...tradeChanges };
+      if (policy) {
+        await db.update(townPolicies).set({ tradePolicy: merged }).where(eq(townPolicies.townId, townId));
+      } else {
+        await db.insert(townPolicies).values({ id: crypto.randomUUID(), townId, tradePolicy: merged });
+      }
+      description = 'Modified trade policy';
+    } else {
+      return res.status(400).json({ error: `Unknown policy type: ${policyType}` });
+    }
+
+    // Record the bypass in tradePolicy JSONB (cooldown + log)
+    const refreshedPolicy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+    });
+    const currentTp = (refreshedPolicy?.tradePolicy as Record<string, unknown>) ?? {};
+    const policyLog = (currentTp.veradinePolicyLog as Array<Record<string, unknown>>) ?? [];
+    policyLog.push({
+      type: policyType,
+      value: policyValue,
+      by: character.name,
+      characterId: character.id,
+      at: new Date().toISOString(),
+      description,
+    });
+    // Keep last 20 entries
+    const trimmedLog = policyLog.slice(-20);
+
+    await db.update(townPolicies)
+      .set({
+        tradePolicy: {
+          ...currentTp,
+          veradinePolicyBypassAt: new Date().toISOString(),
+          veradinePolicyLog: trimmedLog,
+        },
+      })
+      .where(eq(townPolicies.townId, townId));
+
+    return res.json({
+      success: true,
+      message: `Economic policy enacted: ${description}`,
+      description,
+      cooldownDays: POLICY_BYPASS_COOLDOWN_DAYS,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-economic-policy', req)) return;
+    logRouteError(req, 500, 'Temple economic policy error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// GET /api/temple/economic-policy-status/:townId — Check policy bypass cooldown
+// ============================================================
+
+router.get('/economic-policy-status/:townId', async (req, res: Response) => {
+  try {
+    const { townId } = req.params;
+
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+      columns: { tradePolicy: true },
+    });
+    const tp = policy?.tradePolicy as Record<string, unknown> | null;
+    const lastBypass = tp?.veradinePolicyBypassAt as string | undefined;
+
+    let available = true;
+    let cooldownDaysLeft = 0;
+    let lastUsed: string | null = null;
+
+    if (lastBypass) {
+      const daysSince = Math.floor((Date.now() - new Date(lastBypass).getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSince < POLICY_BYPASS_COOLDOWN_DAYS) {
+        available = false;
+        cooldownDaysLeft = POLICY_BYPASS_COOLDOWN_DAYS - daysSince;
+      }
+      lastUsed = lastBypass;
+    }
+
+    const recentLog = ((tp?.veradinePolicyLog as Array<Record<string, unknown>>) ?? []).slice(-5);
+
+    return res.json({ available, cooldownDaysLeft, lastUsed, recentLog });
+  } catch (error) {
+    logRouteError(req, 500, 'Temple economic policy status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
