@@ -70,6 +70,7 @@ router.get('/town/:townId', authGuard, characterGuard, async (req: Authenticated
       isDominant: ch.isDominant,
       isShrine: ch.isShrine,
       highPriestName: ch.highPriest?.name ?? null,
+      treasury: ch.treasury,
     }));
 
     // Find dominant church if any
@@ -210,6 +211,37 @@ router.post('/choose-patron', authGuard, characterGuard, async (req: Authenticat
 });
 
 // ============================================================
+// POST /api/temple/set-tithe — Set tithe rate (0-20%)
+// ============================================================
+
+router.post('/set-tithe', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { rate } = req.body as { rate: number };
+
+    // Validate rate
+    if (rate == null || !Number.isInteger(rate) || rate < 0 || rate > 20) {
+      return res.status(400).json({ error: 'Tithe rate must be an integer between 0 and 20' });
+    }
+
+    // Must have a patron god
+    if (!character.patronGodId) {
+      return res.status(400).json({ error: 'You must follow a god to set a tithe rate' });
+    }
+
+    await db.update(characters)
+      .set({ titheRate: rate })
+      .where(eq(characters.id, character.id));
+
+    return res.json({ success: true, titheRate: rate });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-set-tithe', req)) return;
+    logRouteError(req, 500, 'Temple set-tithe error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
 // GET /api/temple/my-faith — View current character's religion status
 // ============================================================
 
@@ -241,6 +273,7 @@ router.get('/my-faith', authGuard, characterGuard, async (req: AuthenticatedRequ
           tier: chapter.tier,
           isDominant: chapter.isDominant,
           percentage: totalResidents > 0 ? Math.round((chapter.memberCount / totalResidents) * 100) : 0,
+          treasury: chapter.treasury,
         };
       }
     }

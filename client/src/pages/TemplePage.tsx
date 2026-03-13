@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Church, Shield, Scale, Flame, Eye, HeartHandshake, BrickWall, Gavel,
-  Smile, Handshake, Crown, EyeOff, BookOpen, Users, Star, AlertTriangle, X,
+  Smile, Handshake, Crown, EyeOff, BookOpen, Users, Star, AlertTriangle, X, Coins,
 } from 'lucide-react';
 import api from '../services/api';
 import { RealmPanel, RealmButton, RealmBadge, PageHeader } from '../components/ui/realm-index';
@@ -40,6 +40,7 @@ interface ChapterInfo {
   isDominant: boolean;
   isShrine: boolean;
   highPriestName: string | null;
+  treasury: number;
 }
 
 interface TownTempleResponse {
@@ -57,6 +58,7 @@ interface MyFaithResponse {
     tier: string;
     isDominant: boolean;
     percentage: number;
+    treasury: number;
   } | null;
   cooldownDaysRemaining: number;
   titheRate: number;
@@ -105,6 +107,80 @@ function ChurchTierBadge({ tier }: { tier: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// Tithe rate label
+// ---------------------------------------------------------------------------
+function getTitheLabel(rate: number): string {
+  if (rate === 0) return 'No tithing';
+  if (rate <= 5) return 'Modest contribution';
+  if (rate <= 10) return 'Standard devotion';
+  if (rate <= 15) return 'Generous offering';
+  return 'Zealous devotion';
+}
+
+// ---------------------------------------------------------------------------
+// Tithe Controls
+// ---------------------------------------------------------------------------
+function TitheControls({
+  currentRate, localRate, onRateChange, onSave, isPending, error,
+}: {
+  currentRate: number;
+  localRate: number | null;
+  onRateChange: (rate: number | null) => void;
+  onSave: (rate: number) => void;
+  isPending: boolean;
+  error: string | null;
+}) {
+  const displayRate = localRate ?? currentRate;
+  const hasChanged = localRate !== null && localRate !== currentRate;
+
+  return (
+    <div className="rounded-lg border border-realm-bg-600 bg-realm-bg-800 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-display text-realm-text-primary flex items-center gap-1.5">
+          <Coins className="w-3.5 h-3.5 text-realm-gold-400" />
+          Tithing
+        </span>
+        <span className="text-[11px] text-realm-text-muted">{getTitheLabel(displayRate)}</span>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <span className="text-[11px] text-realm-text-muted w-6 text-right">0%</span>
+        <input
+          type="range"
+          min={0}
+          max={20}
+          step={1}
+          value={displayRate}
+          onChange={(e) => onRateChange(Number(e.target.value))}
+          className="flex-1 h-1.5 bg-realm-bg-600 rounded-full appearance-none cursor-pointer accent-realm-gold-500"
+        />
+        <span className="text-[11px] text-realm-text-muted w-8">20%</span>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-realm-text-secondary">
+          {displayRate}% of daily income
+        </span>
+        {hasChanged && (
+          <RealmButton
+            variant="primary"
+            size="sm"
+            onClick={() => onSave(displayRate)}
+            disabled={isPending}
+          >
+            {isPending ? 'Saving...' : 'Save'}
+          </RealmButton>
+        )}
+      </div>
+
+      {error && (
+        <p className="text-xs text-realm-danger">{error}</p>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 export default function TemplePage() {
@@ -112,6 +188,7 @@ export default function TemplePage() {
   const [showGodModal, setShowGodModal] = useState(false);
   const [confirmGod, setConfirmGod] = useState<God | null>(null);
   const [confirmAtheism, setConfirmAtheism] = useState(false);
+  const [titheRate, setTitheRate] = useState<number | null>(null); // local edit state
 
   // Fetch character for current town
   const { data: character } = useQuery<{
@@ -169,6 +246,18 @@ export default function TemplePage() {
       setShowGodModal(false);
       setConfirmGod(null);
       setConfirmAtheism(false);
+    },
+  });
+
+  // Tithe mutation
+  const titheMutation = useMutation({
+    mutationFn: async (rate: number) => {
+      const res = await api.post('/temple/set-tithe', { rate });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple', 'my-faith'] });
+      setTitheRate(null); // clear local edit state
     },
   });
 
@@ -232,15 +321,33 @@ export default function TemplePage() {
               <p className="text-[11px] text-realm-text-muted italic">{patronGod.churchDescription}</p>
 
               {myFaith?.homeChapter && (
-                <div className="mt-3 flex items-center gap-2 text-[11px]">
-                  <Users className="w-3 h-3 text-realm-text-muted" />
-                  <span className="text-realm-text-secondary">
-                    {myFaith.homeChapter.memberCount} followers in your home town ({myFaith.homeChapter.percentage}%)
-                  </span>
-                  <ChurchTierBadge tier={myFaith.homeChapter.tier} />
+                <div className="mt-3 space-y-1">
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <Users className="w-3 h-3 text-realm-text-muted" />
+                    <span className="text-realm-text-secondary">
+                      {myFaith.homeChapter.memberCount} followers in your home town ({myFaith.homeChapter.percentage}%)
+                    </span>
+                    <ChurchTierBadge tier={myFaith.homeChapter.tier} />
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <Coins className="w-3 h-3 text-realm-gold-400" />
+                    <span className="text-realm-text-secondary">
+                      Church treasury: {myFaith.homeChapter.treasury.toLocaleString()}g
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
+
+            {/* Tithe Controls */}
+            <TitheControls
+              currentRate={myFaith?.titheRate ?? 10}
+              localRate={titheRate}
+              onRateChange={setTitheRate}
+              onSave={(rate) => titheMutation.mutate(rate)}
+              isPending={titheMutation.isPending}
+              error={titheMutation.isError ? ((titheMutation.error as any)?.response?.data?.error || 'Failed to update tithe rate.') : null}
+            />
 
             <div className="flex items-center gap-3">
               <RealmButton
@@ -304,10 +411,14 @@ export default function TemplePage() {
                       )}
                     </div>
                     <p className="text-[11px] text-realm-text-secondary mb-1">{ch.churchName}</p>
-                    <div className="flex items-center gap-3 text-[11px] text-realm-text-muted">
+                    <div className="flex items-center gap-3 flex-wrap text-[11px] text-realm-text-muted">
                       <span className="flex items-center gap-1">
                         <Users className="w-3 h-3" />
                         {ch.memberCount} follower{ch.memberCount !== 1 ? 's' : ''} ({ch.percentage}%)
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Coins className="w-3 h-3 text-realm-gold-400" />
+                        {ch.treasury.toLocaleString()}g
                       </span>
                       {ch.highPriestName && (
                         <span>High Priest: {ch.highPriestName}</span>

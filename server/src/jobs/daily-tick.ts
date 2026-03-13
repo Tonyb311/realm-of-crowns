@@ -199,6 +199,9 @@ export async function processDailyTick(): Promise<DailyTickResult> {
   // Per-character well-rested buff cache (characterId → innLevel)
   const wellRestedBuffs = new Map<string, number>();
 
+  // Gold snapshot for tithe calculation (populated in Step 0.5)
+  const goldSnapshots = new Map<string, number>();
+
   // -----------------------------------------------------------------------
   // Step 0: Reset consumable flags and expire active effects
   // -----------------------------------------------------------------------
@@ -212,6 +215,19 @@ export async function processDailyTick(): Promise<DailyTickResult> {
       .where(lte(characterActiveEffects.expiresAt, new Date().toISOString()));
     const rowCount = (expired as any).rowCount ?? 0;
     console.log(`[DailyTick]   Reset daily consumable flags, expired ${rowCount} active effects`);
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 0.5: Gold Snapshot — capture gold before any income/expense processing
+  // -----------------------------------------------------------------------
+  await runStep('Gold Snapshot', 0.5, async () => {
+    const allChars = await db.query.characters.findMany({
+      columns: { id: true, gold: true },
+    });
+    for (const c of allChars) {
+      goldSnapshots.set(c.id, c.gold);
+    }
+    console.log(`[DailyTick]   Snapshotted gold for ${goldSnapshots.size} characters`);
   });
 
   // -----------------------------------------------------------------------
@@ -1406,6 +1422,75 @@ export async function processDailyTick(): Promise<DailyTickResult> {
           description: event.description,
         });
       }
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 11.5: Tithe Collection — deduct tithe from daily income, credit church treasuries
+  // -----------------------------------------------------------------------
+  await runStep('Tithe Collection', 11.5, async () => {
+    const now = new Date();
+
+    // Fetch all tithing characters (have a patron god and tithe rate > 0)
+    const tithingCharacters = await db.query.characters.findMany({
+      where: and(
+        isNotNull(characters.patronGodId),
+        gt(characters.titheRate, 0),
+      ),
+      columns: { id: true, gold: true, patronGodId: true, homeTownId: true, titheRate: true, conversionCooldownUntil: true },
+    });
+
+    // Build a god name lookup for notifications
+    const allGods = await db.query.gods.findMany({ columns: { id: true, churchName: true } });
+    const godChurchNames = new Map(allGods.map(g => [g.id, g.churchName]));
+
+    const chapterTitheAccumulator = new Map<string, number>(); // key: `${godId}:${townId}`
+    let totalTithed = 0;
+    let tithersCount = 0;
+
+    for (const char of tithingCharacters) {
+      // Skip if in conversion cooldown
+      if (char.conversionCooldownUntil && new Date(char.conversionCooldownUntil) > now) continue;
+
+      // Skip if no home town
+      if (!char.homeTownId) continue;
+
+      const startingGold = goldSnapshots.get(char.id) ?? char.gold;
+      const income = char.gold - startingGold;
+      if (income <= 0) continue; // No income today, no tithe
+
+      const titheAmount = Math.floor(income * (char.titheRate / 100));
+      if (titheAmount <= 0) continue;
+
+      // Deduct from character
+      await db.update(characters)
+        .set({ gold: sql`${characters.gold} - ${titheAmount}` })
+        .where(eq(characters.id, char.id));
+
+      // Accumulate for batch chapter update
+      const key = `${char.patronGodId}:${char.homeTownId}`;
+      chapterTitheAccumulator.set(key, (chapterTitheAccumulator.get(key) ?? 0) + titheAmount);
+
+      // Add to daily report
+      const results = getResults(char.id);
+      const churchName = godChurchNames.get(char.patronGodId!) ?? 'your church';
+      results.notifications.push(`Tithed ${titheAmount}g to the ${churchName}.`);
+      results.goldChange -= titheAmount;
+
+      totalTithed += titheAmount;
+      tithersCount++;
+    }
+
+    // Batch update church treasuries
+    for (const [key, amount] of chapterTitheAccumulator) {
+      const [godId, townId] = key.split(':');
+      await db.update(churchChapters)
+        .set({ treasury: sql`${churchChapters.treasury} + ${amount}` })
+        .where(and(eq(churchChapters.godId, godId), eq(churchChapters.townId, townId)));
+    }
+
+    if (totalTithed > 0) {
+      console.log(`[DailyTick]   Collected ${totalTithed}g in tithes from ${tithersCount} characters across ${chapterTitheAccumulator.size} chapters`);
     }
   });
 
