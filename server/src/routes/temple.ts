@@ -1,7 +1,7 @@
 import { Router, type Response } from 'express';
-import { eq, and, sql, asc, desc, count } from 'drizzle-orm';
+import { eq, and, ne, sql, asc, desc, count } from 'drizzle-orm';
 import { db } from '../lib/db';
-import { gods, churchChapters, characters, towns } from '@database/tables';
+import { gods, churchChapters, characters, towns, elections, electionCandidates } from '@database/tables';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
 import { characterGuard } from '../middleware/character-guard';
@@ -54,24 +54,46 @@ router.get('/town/:townId', authGuard, characterGuard, async (req: Authenticated
       orderBy: desc(churchChapters.memberCount),
     });
 
-    const enrichedChapters = chapters.map(ch => ({
-      id: ch.id,
-      godId: ch.godId,
-      godName: ch.god.name,
-      godTitle: ch.god.title,
-      godDomain: ch.god.domain,
-      godPhilosophy: ch.god.philosophy,
-      godIconName: ch.god.iconName,
-      godColorHex: ch.god.colorHex,
-      churchName: ch.god.churchName,
-      memberCount: ch.memberCount,
-      percentage: totalResidents > 0 ? Math.round((ch.memberCount / totalResidents) * 100) : 0,
-      tier: ch.tier,
-      isDominant: ch.isDominant,
-      isShrine: ch.isShrine,
-      highPriestName: ch.highPriest?.name ?? null,
-      treasury: ch.treasury,
-    }));
+    // Fetch active HIGH_PRIEST elections for this town
+    const activeHPElections = await db.query.elections.findMany({
+      where: and(
+        eq(elections.townId, townId),
+        eq(elections.type, 'HIGH_PRIEST'),
+        ne(elections.phase, 'COMPLETED'),
+      ),
+      with: {
+        electionCandidates: { columns: { id: true } },
+      },
+    });
+    const electionByGod = new Map(activeHPElections.map(e => [e.godId, e]));
+
+    const enrichedChapters = chapters.map(ch => {
+      const activeElection = electionByGod.get(ch.godId);
+      return {
+        id: ch.id,
+        godId: ch.godId,
+        godName: ch.god.name,
+        godTitle: ch.god.title,
+        godDomain: ch.god.domain,
+        godPhilosophy: ch.god.philosophy,
+        godIconName: ch.god.iconName,
+        godColorHex: ch.god.colorHex,
+        churchName: ch.god.churchName,
+        memberCount: ch.memberCount,
+        percentage: totalResidents > 0 ? Math.round((ch.memberCount / totalResidents) * 100) : 0,
+        tier: ch.tier,
+        isDominant: ch.isDominant,
+        isShrine: ch.isShrine,
+        highPriestName: ch.highPriest?.name ?? null,
+        treasury: ch.treasury,
+        election: activeElection ? {
+          id: activeElection.id,
+          phase: activeElection.phase,
+          candidateCount: activeElection.electionCandidates.length,
+          endDate: activeElection.endDate,
+        } : null,
+      };
+    });
 
     // Find dominant church if any
     const dominant = enrichedChapters.find(ch => ch.isDominant) ?? null;

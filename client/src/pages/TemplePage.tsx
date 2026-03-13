@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Church, Shield, Scale, Flame, Eye, HeartHandshake, BrickWall, Gavel,
-  Smile, Handshake, Crown, EyeOff, BookOpen, Users, Star, AlertTriangle, X, Coins,
+  Smile, Handshake, Crown, EyeOff, BookOpen, Users, Star, AlertTriangle, X, Coins, Vote,
 } from 'lucide-react';
 import api from '../services/api';
 import { RealmPanel, RealmButton, RealmBadge, PageHeader } from '../components/ui/realm-index';
@@ -41,6 +41,12 @@ interface ChapterInfo {
   isShrine: boolean;
   highPriestName: string | null;
   treasury: number;
+  election: {
+    id: string;
+    phase: string;
+    candidateCount: number;
+    endDate: string;
+  } | null;
 }
 
 interface TownTempleResponse {
@@ -261,6 +267,18 @@ export default function TemplePage() {
     },
   });
 
+  // Nominate for High Priest mutation
+  const nominateMutation = useMutation({
+    mutationFn: async (electionId: string) => {
+      const res = await api.post('/elections/nominate', { electionId });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple'] });
+      queryClient.invalidateQueries({ queryKey: ['elections'] });
+    },
+  });
+
   const townName = town?.name ?? 'this town';
   const chapters = templeData?.chapters ?? [];
   const dominant = templeData?.dominant;
@@ -423,10 +441,39 @@ export default function TemplePage() {
                       {ch.highPriestName && (
                         <span>High Priest: {ch.highPriestName}</span>
                       )}
-                      {!ch.highPriestName && (
+                      {!ch.highPriestName && ch.tier === 'MINORITY' && (
                         <span className="italic">No High Priest</span>
                       )}
                     </div>
+
+                    {/* Election info */}
+                    {ch.election && (
+                      <div className="mt-2 flex items-center gap-2 flex-wrap">
+                        <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-sm border ${
+                          ch.election.phase === 'NOMINATIONS'
+                            ? 'bg-realm-teal-300/10 text-realm-teal-300 border-realm-teal-300/30'
+                            : 'bg-realm-success/10 text-realm-success border-realm-success/30'
+                        }`}>
+                          <Vote className="w-3 h-3 inline mr-1" />
+                          {ch.election.phase === 'NOMINATIONS' ? 'Nominations Open' : 'Voting'}
+                        </span>
+                        <span className="text-[10px] text-realm-text-muted">
+                          {ch.election.candidateCount} candidate{ch.election.candidateCount !== 1 ? 's' : ''}
+                        </span>
+                        {ch.election.phase === 'NOMINATIONS' && character?.patronGodId === ch.godId && character?.homeTownId === templeData?.townId && (
+                          <button
+                            onClick={() => nominateMutation.mutate(ch.election!.id)}
+                            disabled={nominateMutation.isPending}
+                            className="text-[10px] text-realm-teal-300 hover:text-realm-teal-200 font-display uppercase"
+                          >
+                            {nominateMutation.isPending ? 'Nominating...' : 'Nominate Yourself'}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {!ch.highPriestName && !ch.election && ch.tier !== 'MINORITY' && (
+                      <p className="mt-1 text-[10px] text-realm-text-muted italic">Awaiting election</p>
+                    )}
                   </div>
                   {character?.patronGodId === ch.godId && (
                     <span className="text-[10px] text-realm-gold-400 font-display">YOUR FAITH</span>

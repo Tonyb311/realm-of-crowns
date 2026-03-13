@@ -127,6 +127,13 @@
       "when": 1774483200000,
       "tag": "0017_religion_a1",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1774569600000,
+      "tag": "0018_high_priest_elections",
+      "breakpoints": true
     }
   ]
 }

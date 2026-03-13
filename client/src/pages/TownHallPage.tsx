@@ -100,13 +100,15 @@ interface CitizensResponse {
 
 interface Election {
   id: string;
-  type: 'MAYOR' | 'RULER';
+  type: 'MAYOR' | 'RULER' | 'HIGH_PRIEST';
   phase: 'NOMINATIONS' | 'VOTING' | 'COMPLETED';
   termNumber: number;
   startDate: string;
   endDate: string;
   town: { id: string; name: string } | null;
   kingdom: { id: string; name: string } | null;
+  godId: string | null;
+  god: { id: string; name: string; iconName: string | null; colorHex: string | null; churchName: string } | null;
   candidateCount: number;
   voteCount: number;
   candidates: {
@@ -410,7 +412,7 @@ export default function TownHallPage() {
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <h4 className="font-display text-realm-text-primary text-sm">
-                              {election.type === 'MAYOR' ? 'Mayoral' : 'Ruler'} Election
+                              {election.type === 'MAYOR' ? 'Mayoral' : election.type === 'HIGH_PRIEST' ? `High Priest — ${election.god?.name ?? 'Unknown'}` : 'Ruler'} Election
                             </h4>
                             <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-sm border ${PHASE_COLORS[election.phase] ?? ''}`}>
                               {election.phase}

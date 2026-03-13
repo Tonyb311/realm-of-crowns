@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import { db } from '../lib/db';
-import { eq, lte, and, count, desc, sql } from 'drizzle-orm';
-import { elections, electionVotes, towns, characters, impeachments, kingdoms } from '@database/tables';
+import { eq, lte, and, ne, count, desc, sql, isNull, gte } from 'drizzle-orm';
+import { elections, electionVotes, towns, characters, impeachments, kingdoms, churchChapters, gods } from '@database/tables';
 import { logger } from '../lib/logger';
 import { cronJobExecutions } from '../lib/metrics';
 import type { Server } from 'socket.io';
@@ -15,6 +15,7 @@ export function startElectionLifecycle(io: Server) {
     logger.debug({ job: 'electionLifecycle' }, 'cron job started');
     try {
       await autoCreateElections(io);
+      await autoCreateHighPriestElections(io);
       await transitionNominationsToVoting(io);
       await transitionVotingToCompleted(io);
       await resolveExpiredImpeachments(io);
@@ -100,6 +101,87 @@ async function autoCreateElections(io: Server) {
       townId: town.id,
       townName: town.name,
       type: 'MAYOR',
+      phase: 'NOMINATIONS',
+      termNumber,
+      startDate: now.toISOString(),
+      endDate: endDate.toISOString(),
+    });
+  }
+}
+
+/**
+ * Auto-create HIGH_PRIEST elections for church chapters at CHAPTER tier+ with no High Priest.
+ */
+async function autoCreateHighPriestElections(io: Server) {
+  // Find chapters at CHAPTER tier or higher with no high priest
+  const eligibleChapters = await db.query.churchChapters.findMany({
+    where: and(
+      isNull(churchChapters.highPriestId),
+      gte(churchChapters.memberCount, MIN_ELECTION_POPULATION),
+    ),
+    with: {
+      god: { columns: { id: true, name: true, churchName: true } },
+      town: { columns: { id: true, name: true } },
+    },
+  });
+
+  // Filter to CHAPTER tier+ (CHAPTER, ESTABLISHED, DOMINANT)
+  const chapterTierPlus = eligibleChapters.filter(ch => ch.tier !== 'MINORITY');
+
+  if (chapterTierPlus.length === 0) return;
+
+  // Find existing active HIGH_PRIEST elections to avoid duplicates
+  const activeHPElections = await db.query.elections.findMany({
+    where: and(
+      eq(elections.type, 'HIGH_PRIEST'),
+      ne(elections.phase, 'COMPLETED'),
+    ),
+    columns: { godId: true, townId: true },
+  });
+  const activeKeys = new Set(activeHPElections.map(e => `${e.godId}:${e.townId}`));
+
+  for (const chapter of chapterTierPlus) {
+    const key = `${chapter.godId}:${chapter.townId}`;
+    if (activeKeys.has(key)) continue;
+
+    // Determine the next term number for this god+town
+    const lastElection = await db.query.elections.findFirst({
+      where: and(
+        eq(elections.townId, chapter.townId),
+        eq(elections.type, 'HIGH_PRIEST'),
+        eq(elections.godId, chapter.godId),
+      ),
+      orderBy: desc(elections.termNumber),
+      columns: { termNumber: true },
+    });
+
+    const termNumber = (lastElection?.termNumber ?? 0) + 1;
+
+    const now = new Date();
+    const endDate = new Date(now);
+    endDate.setHours(endDate.getHours() + NOMINATION_DURATION_HOURS + VOTING_DURATION_HOURS);
+
+    const [election] = await db.insert(elections).values({
+      id: crypto.randomUUID(),
+      townId: chapter.townId,
+      type: 'HIGH_PRIEST',
+      godId: chapter.godId,
+      status: 'ACTIVE',
+      phase: 'NOMINATIONS',
+      termNumber,
+      startDate: now.toISOString(),
+      endDate: endDate.toISOString(),
+    }).returning();
+
+    console.log(`[ElectionLifecycle] Created HIGH_PRIEST election for ${chapter.god.churchName} in "${chapter.town.name}" (term ${termNumber})`);
+
+    io.emit('election:new', {
+      electionId: election.id,
+      townId: chapter.townId,
+      townName: chapter.town.name,
+      type: 'HIGH_PRIEST',
+      godId: chapter.godId,
+      godName: chapter.god.name,
       phase: 'NOMINATIONS',
       termNumber,
       startDate: now.toISOString(),
@@ -244,6 +326,15 @@ async function transitionVotingToCompleted(io: Server) {
           .set({ rulerId: winnerId })
           .where(eq(kingdoms.id, election.kingdomId));
         console.log(`[ElectionLifecycle] ${winnerName} appointed as ruler of "${election.kingdom?.name}"`);
+      } else if (election.type === 'HIGH_PRIEST' && election.godId && election.townId) {
+        await db.update(churchChapters)
+          .set({ highPriestId: winnerId })
+          .where(and(
+            eq(churchChapters.godId, election.godId),
+            eq(churchChapters.townId, election.townId),
+          ));
+        const god = await db.query.gods.findFirst({ where: eq(gods.id, election.godId), columns: { churchName: true } });
+        console.log(`[ElectionLifecycle] ${winnerName} appointed as High Priest of ${god?.churchName ?? 'church'} in "${election.town?.name}"`);
       }
     }
 

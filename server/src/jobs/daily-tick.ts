@@ -342,6 +342,14 @@ export async function processDailyTick(): Promise<DailyTickResult> {
           updated++;
         }
 
+        // Remove High Priest if chapter drops to MINORITY
+        if (newTier === 'MINORITY' && ch.highPriestId) {
+          await db.update(churchChapters)
+            .set({ highPriestId: null })
+            .where(eq(churchChapters.id, ch.id));
+          console.log(`[DailyTick]   Removed High Priest from chapter ${ch.id} (dropped to MINORITY)`);
+        }
+
         // Store actual count for dominance check
         (ch as any)._actualCount = actualCount;
         (ch as any)._newTier = newTier;

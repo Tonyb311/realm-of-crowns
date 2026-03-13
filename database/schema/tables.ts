@@ -1232,12 +1232,14 @@ export const elections = pgTable("elections", {
 	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).notNull().$onUpdate(() => new Date().toISOString()),
 	kingdomId: text("kingdom_id"),
+	godId: text("god_id").references((): AnyPgColumn => gods.id, { onUpdate: "cascade", onDelete: "cascade" }),
 	phase: electionPhase().default('NOMINATIONS').notNull(),
 	termNumber: integer("term_number").default(1).notNull(),
 }, (table) => [
 	index("elections_kingdom_id_idx").using("btree", table.kingdomId.asc().nullsLast().op("text_ops")),
 	index("elections_status_idx").using("btree", table.status.asc().nullsLast().op("enum_ops")),
 	index("elections_town_id_idx").using("btree", table.townId.asc().nullsLast().op("text_ops")),
+	index("elections_god_id_idx").using("btree", table.godId.asc().nullsLast().op("text_ops")),
 	foreignKey({
 			columns: [table.kingdomId],
 			foreignColumns: [kingdoms.id],

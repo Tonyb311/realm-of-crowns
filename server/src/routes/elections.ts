@@ -75,6 +75,13 @@ router.post('/nominate', authGuard, characterGuard, validate(nominateSchema), as
       if (character.currentTownId !== election.townId) {
         return res.status(403).json({ error: 'You must be a resident of this town to run for mayor' });
       }
+    } else if (election.type === 'HIGH_PRIEST') {
+      if (character.patronGodId !== election.godId) {
+        return res.status(403).json({ error: 'You must follow this god to run for High Priest' });
+      }
+      if (character.homeTownId !== election.townId) {
+        return res.status(403).json({ error: 'You must be a resident of this town to run for High Priest' });
+      }
     }
 
     // Queries 2-4 are independent — run in parallel
@@ -164,6 +171,13 @@ router.post('/vote', authGuard, characterGuard, validate(voteSchema), async (req
     // Must be a resident of the town to vote in mayor elections
     if (election.type === 'MAYOR' && character.currentTownId !== election.townId) {
       return res.status(403).json({ error: 'You must be a resident of this town to vote' });
+    } else if (election.type === 'HIGH_PRIEST') {
+      if (character.patronGodId !== election.godId) {
+        return res.status(403).json({ error: 'Only followers of this god can vote in this election' });
+      }
+      if (character.homeTownId !== election.townId) {
+        return res.status(403).json({ error: 'You must be a resident of this town to vote' });
+      }
     }
 
     // Verify candidate is actually running
@@ -242,6 +256,7 @@ router.get('/current', authGuard, characterGuard, async (req: AuthenticatedReque
           with: {
             town: { columns: { id: true, name: true } },
             kingdom: { columns: { id: true, name: true } },
+            god: { columns: { id: true, name: true, iconName: true, colorHex: true, churchName: true } },
             electionCandidates: {
               with: {
                 character: { columns: { id: true, name: true, level: true, race: true } },
@@ -273,6 +288,7 @@ router.get('/current', authGuard, characterGuard, async (req: AuthenticatedReque
         with: {
           town: { columns: { id: true, name: true } },
           kingdom: { columns: { id: true, name: true } },
+          god: { columns: { id: true, name: true, iconName: true, colorHex: true, churchName: true } },
           electionCandidates: {
             with: {
               character: { columns: { id: true, name: true, level: true, race: true } },
@@ -303,6 +319,8 @@ router.get('/current', authGuard, characterGuard, async (req: AuthenticatedReque
       endDate: e.endDate,
       town: e.town,
       kingdom: e.kingdom,
+      godId: e.godId ?? null,
+      god: e.god ?? null,
       candidateCount: e.electionCandidates.length,
       voteCount: e.electionVotes.length,
       candidates: e.electionCandidates.map((c: any) => ({

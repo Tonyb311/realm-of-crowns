@@ -444,6 +444,10 @@ export const electionsRelations = relations(elections, ({one, many}) => ({
 		fields: [elections.winnerId],
 		references: [characters.id]
 	}),
+	god: one(gods, {
+		fields: [elections.godId],
+		references: [gods.id]
+	}),
 	electionCandidates: many(electionCandidates),
 }));
 
@@ -1216,6 +1220,7 @@ export const godsRelations = relations(gods, ({many}) => ({
 	characters: many(characters, {
 		relationName: "characters_patronGodId_gods_id"
 	}),
+	elections: many(elections),
 }));
 
 export const churchChaptersRelations = relations(churchChapters, ({one}) => ({
