@@ -42,6 +42,7 @@ import { computeFeatBonus } from '@shared/data/feats';
 import { GATHER_SPOT_PROFESSION_MAP, RESOURCE_MAP } from '@shared/data/gathering';
 import { calculateChurchTier } from '@shared/data/religion-config';
 import { GOD_BUFFS } from '@shared/data/god-buffs';
+import { getCharacterReligionContext, resolveReligionBuffs } from '../services/religion-buffs';
 import { ASSET_TIERS, LIVESTOCK_DEFINITIONS, HUNGER_CONSTANTS } from '@shared/data/assets';
 import { getCottageTier } from '@shared/data/cottage-tiers';
 import {
@@ -494,7 +495,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
         character: {
           columns: {
             id: true, race: true, subRace: true, level: true,
-            currentTownId: true, hungerState: true, stats: true, feats: true,
+            currentTownId: true, homeTownId: true, patronGodId: true, hungerState: true, stats: true, feats: true,
           },
         },
       },
@@ -525,7 +526,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
         character: {
           columns: {
             id: true, race: true, subRace: true, level: true,
-            currentTownId: true, hungerState: true, stats: true, feats: true,
+            currentTownId: true, homeTownId: true, patronGodId: true, hungerState: true, stats: true, feats: true,
           },
         },
       },
@@ -1715,6 +1716,8 @@ async function processGatherAction(
       subRace: unknown;
       level: number;
       currentTownId: string | null;
+      homeTownId: string | null;
+      patronGodId: string | null;
       hungerState: string;
     };
   },
@@ -1834,6 +1837,16 @@ async function processGatherAction(
     const wrBonus = getWellRestedBonus(wrLevel);
     if (wrBonus) {
       totalYield = Math.max(1, Math.round(totalYield * (1 + wrBonus.gatheringYieldPercent)));
+    }
+  }
+
+  // Vareth local crafting yield bonus (home town only)
+  if (char.currentTownId && char.currentTownId === char.homeTownId) {
+    const gatherRelCtx = await getCharacterReligionContext(char.id);
+    const gatherRelBuffs = resolveReligionBuffs(gatherRelCtx);
+    const localYieldBonus = gatherRelBuffs.combinedBuffs.localCraftingYieldPercent ?? 0;
+    if (localYieldBonus > 0) {
+      totalYield = Math.max(1, Math.round(totalYield * (1 + localYieldBonus)));
     }
   }
 
@@ -2363,7 +2376,7 @@ async function processCraftAction(
     id: string;
     characterId: string;
     actionTarget: unknown;
-    character: { id: string; race: string; subRace: unknown; level: number; currentTownId: string | null; hungerState: string };
+    character: { id: string; race: string; subRace: unknown; level: number; currentTownId: string | null; homeTownId: string | null; patronGodId: string | null; hungerState: string };
   },
   tickDateStr: string,
   hungerStates: Map<string, string>,
@@ -2467,11 +2480,17 @@ async function processCraftAction(
   const tickCraftFeats = ((char as any).feats as string[]) ?? [];
   const wrCraftLevel = wellRestedBuffs.get(char.id);
   const wrCraftBonus = wrCraftLevel ? (getWellRestedBonus(wrCraftLevel)?.craftingQualityBonus ?? 0) : 0;
+
+  // Religion crafting quality bonus (Tyrvex)
+  const craftRelCtx = await getCharacterReligionContext(char.id);
+  const craftRelBuffs = resolveReligionBuffs(craftRelCtx);
+  const religionCraftBonus = Math.floor((craftRelBuffs.combinedBuffs.craftingQualityPercent ?? 0) * 25);
+
   const { roll: diceRoll, total, quality: qualityName } = qualityRoll(
     getProficiencyBonus(char.level), statModifier, toolBonus, workshopLevel,
     racialQuality.qualityBonus, professionTierBonus, Math.round(ingredientQualityBonus),
     computeFeatBonus(tickCraftFeats, 'professionQualityBonus'),
-    wrCraftBonus,
+    wrCraftBonus, religionCraftBonus,
   );
   const quality = QUALITY_MAP[qualityName] ?? 'COMMON';
 

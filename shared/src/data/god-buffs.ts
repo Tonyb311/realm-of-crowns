@@ -55,6 +55,40 @@ export const GOD_BUFFS: Record<string, GodBuff> = {
     },
     shrineEffects: { healingHouse: 1 },
   },
+  tyrvex: {
+    personalBuffs: {
+      MINORITY: { craftingQualityPercent: 0.02 },
+      CHAPTER: { craftingQualityPercent: 0.04 },
+      ESTABLISHED: { craftingQualityPercent: 0.06 },
+      DOMINANT: { craftingQualityPercent: 0.08 },
+    },
+    townEffects: {
+      ESTABLISHED: { craftingQualityPercent: 0.02 },
+      DOMINANT: { craftingQualityPercent: 0.04 },
+    },
+    metricModifiers: {
+      ESTABLISHED: {},
+      DOMINANT: {},
+    },
+    shrineEffects: { worldEventPrediction: 1 },
+  },
+  vareth: {
+    personalBuffs: {
+      MINORITY: { localCraftingYieldPercent: 0.03 },
+      CHAPTER: { localCraftingYieldPercent: 0.05 },
+      ESTABLISHED: { localCraftingYieldPercent: 0.08 },
+      DOMINANT: { localCraftingYieldPercent: 0.10 },
+    },
+    townEffects: {
+      ESTABLISHED: { localCraftingYieldPercent: 0.03 },
+      DOMINANT: { localCraftingYieldPercent: 0.05, visitorMarketSurchargePercent: 0.10 },
+    },
+    metricModifiers: {
+      ESTABLISHED: {},
+      DOMINANT: {},
+    },
+    shrineEffects: { tariffControl: 1 },
+  },
 };
 
 /** Get a character's personal religion buffs based on their god and chapter tier */
@@ -76,4 +110,7 @@ export const BUFF_LABELS: Record<string, string> = {
   combatDefensePercent: 'Combat Defense',
   roadDangerReductionPercent: 'Road Danger Reduction',
   foodEffectivenessPercent: 'Food Effectiveness',
+  craftingQualityPercent: 'Crafting Quality',
+  localCraftingYieldPercent: 'Local Crafting Yield',
+  visitorMarketSurchargePercent: 'Visitor Market Surcharge',
 };

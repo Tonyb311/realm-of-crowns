@@ -38,7 +38,7 @@ export function rollAbilityScore(): number {
   return rolls[1] + rolls[2] + rolls[3];
 }
 
-/** Quality roll for crafting: d20 + proficiencyBonus + statModifier + toolBonus + workshopBonus + racialBonus + professionTierBonus + ingredientQualityBonus + featBonus + wellRestedBonus */
+/** Quality roll for crafting: d20 + proficiencyBonus + statModifier + toolBonus + workshopBonus + racialBonus + professionTierBonus + ingredientQualityBonus + featBonus + wellRestedBonus + religionBonus */
 export function qualityRoll(
   proficiencyBonus: number,
   statModifier: number = 0,
@@ -49,9 +49,10 @@ export function qualityRoll(
   ingredientQualityBonus: number = 0,
   featBonus: number = 0,
   wellRestedBonus: number = 0,
+  religionBonus: number = 0,
 ): { roll: number; total: number; quality: string } {
   const d20 = roll(20);
-  const total = d20 + proficiencyBonus + statModifier + toolBonus + workshopBonus + racialBonus + professionTierBonus + ingredientQualityBonus + featBonus + wellRestedBonus;
+  const total = d20 + proficiencyBonus + statModifier + toolBonus + workshopBonus + racialBonus + professionTierBonus + ingredientQualityBonus + featBonus + wellRestedBonus + religionBonus;
 
   let quality: string;
   if (total >= 56) quality = 'Legendary';

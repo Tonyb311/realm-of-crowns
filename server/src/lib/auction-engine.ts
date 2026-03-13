@@ -5,7 +5,7 @@
 import crypto from 'crypto';
 import { db } from './db';
 import { eq, and, sql, desc, inArray, lte } from 'drizzle-orm';
-import { auctionCycles, marketListings, marketBuyOrders, characters, playerProfessions, inventories, tradeTransactions, priceHistories, townTreasuries, items } from '@database/tables';
+import { auctionCycles, marketListings, marketBuyOrders, characters, playerProfessions, inventories, tradeTransactions, priceHistories, townTreasuries, items, churchChapters } from '@database/tables';
 import { logger } from './logger';
 import {
   STANDARD_FEE_RATE,
@@ -134,6 +134,15 @@ export async function resolveAuctionCycle(townId: string): Promise<{
       const pendingOrders = listing.marketBuyOrders;
       if (pendingOrders.length === 0) continue;
 
+      // Extract surcharge amounts from rollBreakdown before it gets overwritten
+      const surchargeMap = new Map<string, number>();
+      for (const order of pendingOrders) {
+        const rb = order.rollBreakdown as Record<string, unknown> | null;
+        if (rb && typeof rb.surcharge === 'number' && rb.surcharge > 0) {
+          surchargeMap.set(order.id, rb.surcharge);
+        }
+      }
+
       // Load buyer professions for all buyers
       const buyerIds = pendingOrders.map(o => o.buyerId);
       const buyerProfessionRows = await db.query.playerProfessions.findMany({
@@ -181,7 +190,7 @@ export async function resolveAuctionCycle(townId: string): Promise<{
         await db.update(marketBuyOrders)
           .set({
             priorityScore: winner.priorityScore,
-            rollBreakdown: { autoWin: true, priorityScore: winner.priorityScore },
+            rollBreakdown: { autoWin: true, priorityScore: winner.priorityScore, ...(surchargeMap.has(winner.order.id) ? { surcharge: surchargeMap.get(winner.order.id) } : {}) },
           })
           .where(eq(marketBuyOrders.id, winner.order.id));
       } else {
@@ -231,6 +240,7 @@ export async function resolveAuctionCycle(townId: string): Promise<{
                   raw: ro.d20,
                   modifiers,
                   total: ro.rollResult,
+                  ...(surchargeMap.has(ro.order.id) ? { surcharge: surchargeMap.get(ro.order.id) } : {}),
                 },
               })
               .where(eq(marketBuyOrders.id, ro.order.id));
@@ -244,7 +254,7 @@ export async function resolveAuctionCycle(townId: string): Promise<{
             await db.update(marketBuyOrders)
               .set({
                 priorityScore: nt.priorityScore,
-                rollBreakdown: { priorityScore: nt.priorityScore, tieBreaker: false },
+                rollBreakdown: { priorityScore: nt.priorityScore, tieBreaker: false, ...(surchargeMap.has(nt.order.id) ? { surcharge: surchargeMap.get(nt.order.id) } : {}) },
               })
               .where(eq(marketBuyOrders.id, nt.order.id));
           }
@@ -264,7 +274,7 @@ export async function resolveAuctionCycle(townId: string): Promise<{
             await db.update(marketBuyOrders)
               .set({
                 priorityScore: so.priorityScore,
-                rollBreakdown: { priorityScore: so.priorityScore, tieBreaker: false },
+                rollBreakdown: { priorityScore: so.priorityScore, tieBreaker: false, ...(surchargeMap.has(so.order.id) ? { surcharge: surchargeMap.get(so.order.id) } : {}) },
               })
               .where(eq(marketBuyOrders.id, so.order.id));
           }
@@ -311,6 +321,7 @@ export async function resolveAuctionCycle(townId: string): Promise<{
       const sellerIsMerchant = sellerProfs.some(p => p.professionType === 'MERCHANT');
       const feeRate = sellerIsMerchant ? MERCHANT_FEE_RATE : STANDARD_FEE_RATE;
       const bidPrice = winner.order.bidPrice;
+      const winnerSurcharge = surchargeMap.get(winner.order.id) ?? 0;
       const fee = Math.floor(bidPrice * feeRate);
       const sellerNet = bidPrice - fee;
 
@@ -332,19 +343,31 @@ export async function resolveAuctionCycle(townId: string): Promise<{
           })
           .where(eq(marketBuyOrders.id, winner.order.id));
 
-        // Deduct escrow from winner
+        // Deduct escrow from winner (bid + surcharge)
         await tx.update(characters)
           .set({
-            escrowedGold: sql`${characters.escrowedGold} - ${bidPrice}`,
+            escrowedGold: sql`${characters.escrowedGold} - ${bidPrice + winnerSurcharge}`,
           })
           .where(eq(characters.id, winner.order.buyerId));
 
-        // Credit seller (net after fee)
+        // Credit seller (net after fee — surcharge does NOT go to seller)
         await tx.update(characters)
           .set({
             gold: sql`${characters.gold} + ${sellerNet}`,
           })
           .where(eq(characters.id, listing.sellerId));
+
+        // Credit Vareth church treasury with surcharge
+        if (winnerSurcharge > 0) {
+          const varethChapter = await tx.query.churchChapters.findFirst({
+            where: and(eq(churchChapters.townId, townId), eq(churchChapters.godId, 'vareth'), eq(churchChapters.isDominant, true)),
+          });
+          if (varethChapter) {
+            await tx.update(churchChapters)
+              .set({ treasury: sql`${churchChapters.treasury} + ${winnerSurcharge}` })
+              .where(eq(churchChapters.id, varethChapter.id));
+          }
+        }
 
         // Transfer item: create or update inventory entry for buyer
         const existingInv = await tx.query.inventories.findFirst({
@@ -442,6 +465,9 @@ export async function resolveAuctionCycle(townId: string): Promise<{
 
         // 6. Loser processing
         for (const loser of losers) {
+          const loserSurcharge = surchargeMap.get(loser.order.id) ?? 0;
+          const loserRefund = loser.order.bidPrice + loserSurcharge;
+
           await tx.update(marketBuyOrders)
             .set({
               status: 'lost',
@@ -450,11 +476,11 @@ export async function resolveAuctionCycle(townId: string): Promise<{
             })
             .where(eq(marketBuyOrders.id, loser.order.id));
 
-          // Refund escrow
+          // Refund escrow (bid + surcharge)
           await tx.update(characters)
             .set({
-              gold: sql`${characters.gold} + ${loser.order.bidPrice}`,
-              escrowedGold: sql`${characters.escrowedGold} - ${loser.order.bidPrice}`,
+              gold: sql`${characters.gold} + ${loserRefund}`,
+              escrowedGold: sql`${characters.escrowedGold} - ${loserRefund}`,
             })
             .where(eq(characters.id, loser.order.buyerId));
         }

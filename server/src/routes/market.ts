@@ -20,6 +20,8 @@ import {
   priceHistories,
   townTreasuries,
   auctionCycles,
+  churchChapters,
+  townPolicies,
 } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
@@ -427,6 +429,28 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
       return res.status(403).json({ error: restrictions.reason });
     }
 
+    // Vareth visitor surcharge (non-residents pay extra in Vareth-dominant towns)
+    let surchargeAmount = 0;
+    if (character.homeTownId !== listing.townId) {
+      const dominantChapter = await db.query.churchChapters.findFirst({
+        where: and(eq(churchChapters.townId, listing.townId), eq(churchChapters.isDominant, true)),
+      });
+      if (dominantChapter?.godId === 'vareth') {
+        let surchargeRate = 0.10; // default 10% at dominant
+        if (dominantChapter.isShrine) {
+          const policy = await db.query.townPolicies.findFirst({
+            where: eq(townPolicies.townId, listing.townId),
+            columns: { tradePolicy: true },
+          });
+          const tp = policy?.tradePolicy as Record<string, unknown> | null;
+          const tariffRate = typeof tp?.varethTariffRate === 'number' ? tp.varethTariffRate : 0.10;
+          surchargeRate = Math.max(0.10, Math.min(0.25, tariffRate));
+        }
+        surchargeAmount = Math.floor(bidPrice * surchargeRate);
+      }
+    }
+    const totalEscrowCost = bidPrice + surchargeAmount;
+
     // Check available gold (gold minus already escrowed)
     // Re-fetch to get the most current gold values
     const freshChar = await db.query.characters.findFirst({
@@ -438,23 +462,23 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
     }
 
     const availableGold = freshChar.gold - freshChar.escrowedGold;
-    if (availableGold < bidPrice) {
+    if (availableGold < totalEscrowCost) {
       return res.status(400).json({
-        error: `Insufficient available gold. Need ${bidPrice}, have ${availableGold} available (${freshChar.gold} total, ${freshChar.escrowedGold} escrowed)`,
+        error: `Insufficient available gold. Need ${totalEscrowCost}${surchargeAmount > 0 ? ` (${bidPrice} + ${surchargeAmount} tariff)` : ''}, have ${availableGold} available (${freshChar.gold} total, ${freshChar.escrowedGold} escrowed)`,
       });
     }
 
     // Get or create auction cycle for this town
     const cycle = await getOrCreateOpenCycle(listing.townId);
 
-    // Create buy order in transaction (escrow gold)
+    // Create buy order in transaction (escrow gold including surcharge)
     const order = await db.transaction(async (tx) => {
-      // Escrow gold
+      // Escrow gold (bid + surcharge)
       await tx.update(characters).set({
-        escrowedGold: sql`${characters.escrowedGold} + ${bidPrice}`,
+        escrowedGold: sql`${characters.escrowedGold} + ${totalEscrowCost}`,
       }).where(eq(characters.id, character.id));
 
-      // Create buy order
+      // Create buy order (store surcharge in rollBreakdown for auction resolution)
       const [newOrder] = await tx.insert(marketBuyOrders).values({
         id: crypto.randomUUID(),
         buyerId: character.id,
@@ -462,6 +486,7 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
         bidPrice,
         status: 'pending',
         auctionCycleId: cycle.id,
+        rollBreakdown: surchargeAmount > 0 ? { surcharge: surchargeAmount } : null,
       }).returning();
 
       return newOrder;
@@ -487,6 +512,8 @@ router.post('/buy', authGuard, characterGuard, validate(buySchema), async (req: 
         id: order.id,
         listingId: order.listingId,
         bidPrice: order.bidPrice,
+        surcharge: surchargeAmount > 0 ? surchargeAmount : undefined,
+        totalCost: surchargeAmount > 0 ? totalEscrowCost : undefined,
         status: order.status,
         placedAt: order.placedAt,
         listing: orderWithRelations ? {

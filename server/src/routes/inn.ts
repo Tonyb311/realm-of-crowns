@@ -8,7 +8,7 @@ import { db } from '../lib/db';
 import { eq, and, sql, count, isNotNull } from 'drizzle-orm';
 import {
   buildings, innMenu, characters, inventories, items,
-  itemTemplates, townTreasuries,
+  itemTemplates, townTreasuries, churchChapters, townPolicies,
 } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
@@ -435,24 +435,59 @@ router.post('/:buildingId/menu/buy', authGuard, characterGuard, validate(buySche
       });
     }
 
-    const totalPrice = menuItem.price * quantity;
+    const basePrice = menuItem.price * quantity;
+
+    // Vareth visitor surcharge (non-residents pay extra in Vareth-dominant towns)
+    let innSurcharge = 0;
+    if (character.homeTownId !== building.townId) {
+      const dominantChapter = await db.query.churchChapters.findFirst({
+        where: and(eq(churchChapters.townId, building.townId), eq(churchChapters.isDominant, true)),
+      });
+      if (dominantChapter?.godId === 'vareth') {
+        let surchargeRate = 0.10;
+        if (dominantChapter.isShrine) {
+          const policy = await db.query.townPolicies.findFirst({
+            where: eq(townPolicies.townId, building.townId),
+            columns: { tradePolicy: true },
+          });
+          const tp = policy?.tradePolicy as Record<string, unknown> | null;
+          const tariffRate = typeof tp?.varethTariffRate === 'number' ? tp.varethTariffRate : 0.10;
+          surchargeRate = Math.max(0.10, Math.min(0.25, tariffRate));
+        }
+        innSurcharge = Math.floor(basePrice * surchargeRate);
+      }
+    }
+    const totalPrice = basePrice + innSurcharge;
+
     if (character.gold < totalPrice) {
       return res.status(400).json({
-        error: `Not enough gold. Need ${totalPrice}, have ${character.gold}.`,
+        error: `Not enough gold. Need ${totalPrice}${innSurcharge > 0 ? ` (${basePrice} + ${innSurcharge} tariff)` : ''}, have ${character.gold}.`,
       });
     }
 
-    // Calculate tax split
+    // Calculate tax split (on base price, surcharge is separate)
     const baseTaxRate = await getEffectiveTaxRate(building.townId);
     const effectiveRate = baseTaxRate * getInnTaxMultiplier(building.level);
-    const townTaxCut = Math.floor(totalPrice * effectiveRate);
-    const ownerShare = totalPrice - townTaxCut;
+    const townTaxCut = Math.floor(basePrice * effectiveRate);
+    const ownerShare = basePrice - townTaxCut;
 
     await db.transaction(async (tx) => {
-      // 1. Deduct gold from buyer
+      // 1. Deduct gold from buyer (base + surcharge)
       await tx.update(characters).set({
         gold: sql`${characters.gold} - ${totalPrice}`,
       }).where(eq(characters.id, character.id));
+
+      // 1b. Credit Vareth church treasury with surcharge
+      if (innSurcharge > 0) {
+        const varethChapter = await tx.query.churchChapters.findFirst({
+          where: and(eq(churchChapters.townId, building.townId), eq(churchChapters.godId, 'vareth'), eq(churchChapters.isDominant, true)),
+        });
+        if (varethChapter) {
+          await tx.update(churchChapters)
+            .set({ treasury: sql`${churchChapters.treasury} + ${innSurcharge}` })
+            .where(eq(churchChapters.id, varethChapter.id));
+        }
+      }
 
       // 2. Credit owner
       await tx.update(characters).set({

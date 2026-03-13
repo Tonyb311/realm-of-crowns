@@ -1,7 +1,7 @@
 import { Router, type Response } from 'express';
 import { eq, and, ne, sql, asc, desc, count, gte } from 'drizzle-orm';
 import { db } from '../lib/db';
-import { gods, churchChapters, characters, towns, elections, electionCandidates, characterActiveEffects } from '@database/tables';
+import { gods, churchChapters, characters, towns, elections, electionCandidates, characterActiveEffects, townPolicies } from '@database/tables';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
 import { characterGuard } from '../middleware/character-guard';
@@ -519,6 +519,117 @@ router.post('/healing-house', authGuard, characterGuard, async (req: Authenticat
   } catch (error) {
     if (handleDbError(error, res, 'temple-healing-house', req)) return;
     logRouteError(req, 500, 'Temple healing-house error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// POST /api/temple/set-tariff — Set tariff rate (Vareth HP only)
+// ============================================================
+
+router.post('/set-tariff', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId, rate } = req.body as { townId: string; rate: number };
+
+    if (!townId || rate == null) {
+      return res.status(400).json({ error: 'townId and rate are required' });
+    }
+    if (typeof rate !== 'number' || rate < 0.10 || rate > 0.25) {
+      return res.status(400).json({ error: 'Tariff rate must be between 0.10 (10%) and 0.25 (25%)' });
+    }
+
+    // Must be HP of Vareth in this town with dominant + shrine
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(
+        eq(churchChapters.godId, 'vareth'),
+        eq(churchChapters.townId, townId),
+      ),
+    });
+
+    if (!chapter) {
+      return res.status(400).json({ error: 'No Vareth chapter in this town' });
+    }
+    if (chapter.highPriestId !== character.id) {
+      return res.status(403).json({ error: 'Only the High Priest of Vareth can set tariffs' });
+    }
+    if (!chapter.isDominant) {
+      return res.status(400).json({ error: 'Vareth must be the dominant church to set tariffs' });
+    }
+    if (!chapter.isShrine) {
+      return res.status(400).json({ error: 'The Vareth shrine must be consecrated to set tariffs' });
+    }
+
+    // Store in townPolicies.tradePolicy JSONB
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+    });
+
+    if (policy) {
+      const existingTp = (policy.tradePolicy as Record<string, unknown>) ?? {};
+      await db.update(townPolicies)
+        .set({ tradePolicy: { ...existingTp, varethTariffRate: rate } })
+        .where(eq(townPolicies.id, policy.id));
+    } else {
+      await db.insert(townPolicies).values({
+        id: crypto.randomUUID(),
+        townId,
+        tradePolicy: { varethTariffRate: rate },
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: `Tariff rate set to ${Math.round(rate * 100)}%`,
+      tariffRate: rate,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-set-tariff', req)) return;
+    logRouteError(req, 500, 'Temple set-tariff error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// GET /api/temple/tariff/:townId — View current tariff rate
+// ============================================================
+
+router.get('/tariff/:townId', async (req, res: Response) => {
+  try {
+    const { townId } = req.params;
+
+    // Check if Vareth is dominant + shrine in this town
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(
+        eq(churchChapters.godId, 'vareth'),
+        eq(churchChapters.townId, townId),
+        eq(churchChapters.isDominant, true),
+      ),
+    });
+
+    if (!chapter) {
+      return res.json({ tariffRate: 0, active: false });
+    }
+
+    let tariffRate = 0.10; // default when dominant
+    if (chapter.isShrine) {
+      const policy = await db.query.townPolicies.findFirst({
+        where: eq(townPolicies.townId, townId),
+        columns: { tradePolicy: true },
+      });
+      const tp = policy?.tradePolicy as Record<string, unknown> | null;
+      if (typeof tp?.varethTariffRate === 'number') {
+        tariffRate = Math.max(0.10, Math.min(0.25, tp.varethTariffRate));
+      }
+    }
+
+    return res.json({
+      tariffRate,
+      active: true,
+      hasShrine: chapter.isShrine,
+    });
+  } catch (error) {
+    logRouteError(req, 500, 'Temple tariff error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

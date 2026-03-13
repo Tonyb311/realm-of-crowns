@@ -31,6 +31,7 @@ export interface AuctionListing {
   listedAt: string;
   expiresAt: string;
   status: string;
+  townId?: string;
   seller: ListingSeller;
   item: ListingItem;
   buyOrderCount: number | null;
@@ -42,6 +43,7 @@ interface CharacterData {
   name: string;
   gold: number;
   escrowedGold?: number;
+  homeTownId: string | null;
   currentTownId: string | null;
   currentTownName?: string;
   professions?: Array<{ name: string }>;
@@ -66,6 +68,18 @@ export default function BidModal({ listing, onClose, onSuccess }: BidModalProps)
   const escrowedGold = character?.escrowedGold ?? 0;
   const availableGold = gold;
 
+  // Query tariff for this town (Vareth visitor surcharge)
+  const listingTownId = listing.townId ?? character?.currentTownId;
+  const isVisitor = character && character.homeTownId !== listingTownId;
+  const { data: tariffData } = useQuery<{ tariffRate: number; active: boolean }>({
+    queryKey: ['temple', 'tariff', listingTownId],
+    queryFn: async () => (await api.get(`/temple/tariff/${listingTownId}`)).data,
+    enabled: !!listingTownId && !!isVisitor,
+  });
+  const surchargeRate = (isVisitor && tariffData?.active) ? tariffData.tariffRate : 0;
+  const surchargeAmount = surchargeRate > 0 ? Math.floor(bidPrice * surchargeRate) : 0;
+  const totalCost = bidPrice + surchargeAmount;
+
   const isMerchant = character?.professions?.some(
     (p) => p.name.toLowerCase() === 'merchant'
   ) ?? false;
@@ -81,7 +95,7 @@ export default function BidModal({ listing, onClose, onSuccess }: BidModalProps)
     },
   });
 
-  const canAfford = bidPrice <= availableGold;
+  const canAfford = totalCost <= availableGold;
   const validBid = bidPrice >= listing.price;
 
   // Bid count display
@@ -148,9 +162,25 @@ export default function BidModal({ listing, onClose, onSuccess }: BidModalProps)
           )}
         </div>
 
-        {/* Gold available */}
+        {/* Gold available + surcharge */}
         <div className="bg-realm-bg-900 border border-realm-border rounded-sm p-3">
           <div className="flex items-center justify-between text-xs">
+            <span className="text-realm-text-muted">Your Bid</span>
+            <GoldAmount amount={bidPrice} className="text-realm-text-primary" />
+          </div>
+          {surchargeAmount > 0 && (
+            <div className="flex items-center justify-between text-xs mt-1">
+              <span className="text-realm-warning">Vareth Tariff ({Math.round(surchargeRate * 100)}%)</span>
+              <GoldAmount amount={surchargeAmount} className="text-realm-warning" />
+            </div>
+          )}
+          {surchargeAmount > 0 && (
+            <div className="flex items-center justify-between text-xs mt-1 pt-1 border-t border-realm-border">
+              <span className="text-realm-text-secondary font-display">Total Cost</span>
+              <GoldAmount amount={totalCost} className="text-realm-text-primary font-display" />
+            </div>
+          )}
+          <div className="flex items-center justify-between text-xs mt-1">
             <span className="text-realm-text-muted">Available Gold</span>
             <GoldAmount amount={availableGold} className="text-realm-text-primary" />
           </div>
@@ -163,7 +193,7 @@ export default function BidModal({ listing, onClose, onSuccess }: BidModalProps)
           {!canAfford && (
             <div className="flex items-center gap-1.5 mt-2 text-realm-danger text-xs">
               <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>You do not have enough gold for this bid.</span>
+              <span>You do not have enough gold for this bid{surchargeAmount > 0 ? ' (including tariff)' : ''}.</span>
             </div>
           )}
         </div>

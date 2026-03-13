@@ -39,6 +39,7 @@ import { logRouteError } from '../lib/error-logger';
 import { onCraftItem } from '../services/quest-triggers';
 import { calculateWeightState } from '../services/weight-calculator';
 import { computeFeatBonus } from '@shared/data/feats';
+import { getCharacterReligionContext, resolveReligionBuffs } from '../services/religion-buffs';
 // emitCraftingReady is in '../socket/events' — called by background autocomplete job
 
 type ProfessionTier = typeof professionTierEnum.enumValues[number];
@@ -577,6 +578,12 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
     const statModifier = getModifier(characterStats[primaryStatKey] ?? 10);
 
     const craftFeats = (character.feats as string[]) ?? [];
+
+    // Religion crafting quality bonus (Tyrvex)
+    const craftRelCtx = await getCharacterReligionContext(character.id);
+    const craftRelBuffs = resolveReligionBuffs(craftRelCtx);
+    const religionCraftBonus = Math.floor((craftRelBuffs.combinedBuffs.craftingQualityPercent ?? 0) * 25);
+
     const { roll: diceRoll, total, quality: qualityName } = qualityRoll(
       getProficiencyBonus(character.level),
       statModifier,
@@ -586,6 +593,8 @@ router.post('/collect', authGuard, characterGuard, requireTown, async (req: Auth
       professionTierBonus,
       0, // ingredientQualityBonus — ingredients already consumed at collect time
       computeFeatBonus(craftFeats, 'professionQualityBonus'),
+      0, // wellRestedBonus — not queried in collect endpoint
+      religionCraftBonus,
     );
     const quality = QUALITY_MAP[qualityName] ?? 'COMMON';
 

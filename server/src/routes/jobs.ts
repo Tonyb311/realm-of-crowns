@@ -26,6 +26,7 @@ import { getProfessionByType } from '@shared/data/professions';
 import { getRacialCraftQualityBonus } from '../services/racial-profession-bonuses';
 import { computeFeatBonus } from '@shared/data/feats';
 import { getWellRestedBonus } from '@shared/data/inn-config';
+import { getCharacterReligionContext, resolveReligionBuffs } from '../services/religion-buffs';
 import type { ProfessionType, ProfessionTier } from '@shared/enums';
 
 const router = Router();
@@ -755,6 +756,11 @@ async function acceptWorkshopJob(
 
   const result = await db.transaction(async (tx) => {
     // Quality roll + item creation for each unit
+    // Religion crafting quality bonus (Tyrvex)
+    const jobRelCtx = await getCharacterReligionContext(character.id);
+    const jobRelBuffs = resolveReligionBuffs(jobRelCtx);
+    const religionCraftBonus = Math.floor((jobRelBuffs.combinedBuffs.craftingQualityPercent ?? 0) * 25);
+
     for (let i = 0; i < craftQuantity; i++) {
       const { roll: diceRoll, total, quality: qualityName } = qualityRoll(
         getProficiencyBonus(character.level),
@@ -765,7 +771,7 @@ async function acceptWorkshopJob(
         professionTierBonus,
         0, // ingredientQualityBonus — template-level escrow
         featBonus,
-        wellRestedBonus,
+        wellRestedBonus, religionCraftBonus,
       );
       const quality = QUALITY_MAP[qualityName] ?? 'COMMON';
       craftedItems.push({ quality, roll: diceRoll, total });

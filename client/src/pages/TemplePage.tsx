@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Church, Shield, Scale, Flame, Eye, HeartHandshake, BrickWall, Gavel,
-  Smile, Handshake, Crown, EyeOff, BookOpen, Users, Star, AlertTriangle, X, Coins, Vote, Sparkles, Heart,
+  Smile, Handshake, Crown, EyeOff, BookOpen, Users, Star, AlertTriangle, X, Coins, Vote, Sparkles, Heart, Scroll, Landmark,
 } from 'lucide-react';
 import api from '../services/api';
 import { RealmPanel, RealmButton, RealmBadge, PageHeader } from '../components/ui/realm-index';
@@ -317,6 +317,19 @@ export default function TemplePage() {
     },
   });
 
+  // Tariff mutation (Vareth HP shrine)
+  const [localTariff, setLocalTariff] = useState<number | null>(null);
+  const tariffMutation = useMutation({
+    mutationFn: async ({ tId, rate }: { tId: string; rate: number }) => {
+      const res = await api.post('/temple/set-tariff', { townId: tId, rate });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple'] });
+      setLocalTariff(null);
+    },
+  });
+
   const townName = town?.name ?? 'this town';
   const chapters = templeData?.chapters ?? [];
   const dominant = templeData?.dominant;
@@ -475,6 +488,65 @@ export default function TemplePage() {
                     {(healingHouseMutation.error as any)?.response?.data?.error || 'Failed to use Healing House'}
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Vareth Tariff Controls (HP of Vareth with dominant shrine) */}
+            {patronGod?.id === 'vareth' && chapters.some(ch => ch.godId === 'vareth' && ch.isDominant && ch.isShrine && ch.highPriestId === character?.id) && (
+              <div className="rounded-lg border border-realm-bg-600 bg-realm-bg-800 p-3 space-y-2">
+                <span className="text-xs font-display text-realm-text-primary flex items-center gap-1.5">
+                  <Landmark className="w-3.5 h-3.5 text-realm-gold-400" />
+                  Tariff Control
+                </span>
+                <p className="text-[11px] text-realm-text-muted">
+                  Set the visitor market surcharge rate for non-residents.
+                </p>
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] text-realm-text-muted w-8 text-right">10%</span>
+                  <input
+                    type="range"
+                    min={10}
+                    max={25}
+                    step={1}
+                    value={localTariff ?? 10}
+                    onChange={(e) => setLocalTariff(Number(e.target.value))}
+                    className="flex-1 h-1.5 bg-realm-bg-600 rounded-full appearance-none cursor-pointer accent-realm-gold-500"
+                  />
+                  <span className="text-[11px] text-realm-text-muted w-8">25%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-realm-text-secondary">
+                    {localTariff ?? 10}% surcharge on visitor purchases
+                  </span>
+                  {localTariff !== null && (
+                    <RealmButton
+                      variant="primary"
+                      size="sm"
+                      onClick={() => tariffMutation.mutate({ tId: templeData!.townId, rate: localTariff / 100 })}
+                      disabled={tariffMutation.isPending}
+                    >
+                      {tariffMutation.isPending ? 'Setting...' : 'Set Tariff'}
+                    </RealmButton>
+                  )}
+                </div>
+                {tariffMutation.isError && (
+                  <p className="text-[11px] text-realm-danger">
+                    {(tariffMutation.error as any)?.response?.data?.error || 'Failed to set tariff'}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Tyrvex Prophecy (HP of Tyrvex with shrine) */}
+            {patronGod?.id === 'tyrvex' && chapters.some(ch => ch.godId === 'tyrvex' && ch.isShrine && ch.highPriestId === character?.id) && (
+              <div className="rounded-lg border border-realm-bg-600 bg-realm-bg-800 p-3 space-y-2">
+                <span className="text-xs font-display text-realm-text-primary flex items-center gap-1.5">
+                  <Scroll className="w-3.5 h-3.5 text-realm-purple-300" />
+                  Prophecy
+                </span>
+                <p className="text-[11px] text-realm-text-muted italic">
+                  The Crucible's scholars sense no disturbances in the barrier... for now.
+                </p>
               </div>
             )}
 
