@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Church, Shield, Scale, Flame, Eye, HeartHandshake, BrickWall, Gavel,
-  Smile, Handshake, Crown, EyeOff, BookOpen, Users, Star, AlertTriangle, X, Coins, Vote,
+  Smile, Handshake, Crown, EyeOff, BookOpen, Users, Star, AlertTriangle, X, Coins, Vote, Sparkles,
 } from 'lucide-react';
 import api from '../services/api';
 import { RealmPanel, RealmButton, RealmBadge, PageHeader } from '../components/ui/realm-index';
+import { SHRINE_CONSECRATION_COST, GOD_METRIC_PREVIEW } from '@shared/data/town-metrics-config';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,6 +40,7 @@ interface ChapterInfo {
   tier: string;
   isDominant: boolean;
   isShrine: boolean;
+  highPriestId: string | null;
   highPriestName: string | null;
   treasury: number;
   election: {
@@ -279,6 +281,30 @@ export default function TemplePage() {
     },
   });
 
+  // Consecrate shrine mutation
+  const consecrateMutation = useMutation({
+    mutationFn: async (tId: string) => {
+      const res = await api.post('/temple/consecrate', { townId: tId });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple'] });
+    },
+  });
+
+  // Deconsecrate shrine mutation
+  const [confirmDeconsecrate, setConfirmDeconsecrate] = useState(false);
+  const deconsecrateMutation = useMutation({
+    mutationFn: async (tId: string) => {
+      const res = await api.post('/temple/deconsecrate', { townId: tId });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple'] });
+      setConfirmDeconsecrate(false);
+    },
+  });
+
   const townName = town?.name ?? 'this town';
   const chapters = templeData?.chapters ?? [];
   const dominant = templeData?.dominant;
@@ -427,6 +453,11 @@ export default function TemplePage() {
                       {ch.isDominant && (
                         <RealmBadge variant="legendary">DOMINANT</RealmBadge>
                       )}
+                      {ch.isShrine && (
+                        <span className="text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded-sm border text-amber-300 border-amber-300/30 bg-amber-300/10 flex items-center gap-0.5">
+                          <Sparkles className="w-3 h-3" /> Shrine
+                        </span>
+                      )}
                     </div>
                     <p className="text-[11px] text-realm-text-secondary mb-1">{ch.churchName}</p>
                     <div className="flex items-center gap-3 flex-wrap text-[11px] text-realm-text-muted">
@@ -473,6 +504,73 @@ export default function TemplePage() {
                     )}
                     {!ch.highPriestName && !ch.election && ch.tier !== 'MINORITY' && (
                       <p className="mt-1 text-[10px] text-realm-text-muted italic">Awaiting election</p>
+                    )}
+
+                    {/* Shrine controls (dominant chapters only) */}
+                    {ch.isDominant && character?.id === ch.highPriestId && (
+                      <div className="mt-2 pt-2 border-t border-realm-bg-600">
+                        {!ch.isShrine ? (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <RealmButton
+                              variant="primary"
+                              size="sm"
+                              onClick={() => consecrateMutation.mutate(templeData!.townId)}
+                              disabled={consecrateMutation.isPending || ch.treasury < SHRINE_CONSECRATION_COST}
+                            >
+                              {consecrateMutation.isPending ? 'Consecrating...' : 'Consecrate Shrine'}
+                            </RealmButton>
+                            <span className="text-[10px] text-realm-text-muted">
+                              Cost: {SHRINE_CONSECRATION_COST}g from treasury (have: {ch.treasury.toLocaleString()}g)
+                            </span>
+                            {consecrateMutation.isError && (
+                              <span className="text-[10px] text-realm-danger">
+                                {(consecrateMutation.error as any)?.response?.data?.error || 'Failed'}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {!confirmDeconsecrate ? (
+                              <button
+                                onClick={() => setConfirmDeconsecrate(true)}
+                                className="text-[10px] text-realm-text-muted hover:text-realm-danger font-display uppercase"
+                              >
+                                Deconsecrate Shrine
+                              </button>
+                            ) : (
+                              <>
+                                <span className="text-[10px] text-realm-warning">Are you sure? No refund.</span>
+                                <RealmButton
+                                  variant="danger"
+                                  size="sm"
+                                  onClick={() => deconsecrateMutation.mutate(templeData!.townId)}
+                                  disabled={deconsecrateMutation.isPending}
+                                >
+                                  {deconsecrateMutation.isPending ? 'Removing...' : 'Confirm'}
+                                </RealmButton>
+                                <button
+                                  onClick={() => setConfirmDeconsecrate(false)}
+                                  className="text-[10px] text-realm-text-muted hover:text-realm-text-secondary"
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Dominant god metric preview */}
+                    {ch.isDominant && GOD_METRIC_PREVIEW[ch.godId] && (
+                      <div className="mt-2 pt-2 border-t border-realm-bg-600">
+                        <p className="text-[10px] text-realm-text-muted flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-realm-gold-400" />
+                          <span>
+                            Dominance effect: <span className="text-realm-text-secondary">{GOD_METRIC_PREVIEW[ch.godId]}</span>
+                          </span>
+                        </p>
+                      </div>
                     )}
                   </div>
                   {character?.patronGodId === ch.godId && (

@@ -16,6 +16,9 @@ import {
   Gem,
   Star,
   ChevronDown,
+  Heart,
+  TrendingUp,
+  Activity,
 } from 'lucide-react';
 import api from '../services/api';
 import GoldAmount from '../components/shared/GoldAmount';
@@ -23,6 +26,7 @@ import CountdownTimer from '../components/shared/CountdownTimer';
 import { RealmModal } from '../components/ui/RealmModal';
 import { PageHeader } from '../components/ui/realm-index';
 import { buildingTypeLabel } from '@shared/data/building-labels';
+import { METRIC_LABELS, type TownMetricType } from '@shared/data/town-metrics-config';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -121,9 +125,41 @@ interface Election {
   }[];
 }
 
+interface TownMetric {
+  metricType: TownMetricType;
+  label: string;
+  description: string;
+  baseValue: number;
+  modifier: number;
+  effectiveValue: number;
+  lastUpdatedBy: string | null;
+  isActive: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+const METRIC_ICONS: Record<string, typeof Shield> = {
+  DEFENSES: Shield,
+  PUBLIC_HEALTH: Heart,
+  LAW_ENFORCEMENT: Gavel,
+  MARKET_EFFICIENCY: TrendingUp,
+  ELECTION_INTEGRITY: Vote,
+};
+
+function getMetricColor(value: number): string {
+  if (value > 60) return 'bg-realm-success';
+  if (value >= 30) return 'bg-amber-400';
+  return 'bg-realm-danger';
+}
+
+function getMetricTextColor(value: number): string {
+  if (value > 60) return 'text-realm-success';
+  if (value >= 30) return 'text-amber-400';
+  return 'text-realm-danger';
+}
+
 const PHASE_COLORS: Record<string, string> = {
   NOMINATIONS: 'bg-realm-teal-300/10 text-realm-teal-300 border-realm-teal-300/30',
   VOTING: 'bg-realm-success/10 text-realm-success border-realm-success/30',
@@ -166,6 +202,13 @@ export default function TownHallPage() {
   const { data: citizensData, isLoading: citizensLoading } = useQuery<CitizensResponse>({
     queryKey: ['towns', townId, 'citizens', citizenPage],
     queryFn: async () => (await api.get(`/towns/${townId}/citizens?page=${citizenPage}&limit=20`)).data,
+    enabled: !!townId,
+  });
+
+  // Town metrics
+  const { data: metricsData } = useQuery<{ metrics: TownMetric[] }>({
+    queryKey: ['town-metrics', townId],
+    queryFn: async () => (await api.get(`/town-metrics/${townId}`)).data,
     enabled: !!townId,
   });
 
@@ -458,6 +501,49 @@ export default function TownHallPage() {
                   </dl>
                 </div>
               </section>
+
+              {/* Town Health (Metrics) */}
+              {metricsData?.metrics && metricsData.metrics.length > 0 && (
+                <section>
+                  <h2 className="text-xl font-display text-realm-text-primary mb-4 flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-realm-gold-400" />
+                    Town Health
+                  </h2>
+                  <div className="bg-realm-bg-700 border border-realm-border rounded-lg p-5 space-y-3">
+                    {metricsData.metrics.map(m => {
+                      const MetricIcon = METRIC_ICONS[m.metricType] ?? Shield;
+                      const isComingSoon = !m.isActive;
+                      return (
+                        <div key={m.metricType} className={isComingSoon ? 'opacity-40' : ''}>
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-realm-text-secondary flex items-center gap-1.5">
+                              <MetricIcon className="w-3.5 h-3.5" />
+                              {m.label}
+                              {isComingSoon && (
+                                <span className="text-[9px] text-realm-text-muted italic ml-1">Coming soon</span>
+                              )}
+                            </span>
+                            <span className={`font-semibold ${isComingSoon ? 'text-realm-text-muted' : getMetricTextColor(m.effectiveValue)}`}>
+                              {m.effectiveValue}/100
+                            </span>
+                          </div>
+                          <div className="w-full h-2 bg-realm-bg-800 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${isComingSoon ? 'bg-realm-text-muted/30' : getMetricColor(m.effectiveValue)}`}
+                              style={{ width: `${m.effectiveValue}%` }}
+                            />
+                          </div>
+                          {!isComingSoon && m.modifier !== 0 && (
+                            <p className="text-[10px] text-realm-text-muted mt-0.5">
+                              Base: {m.baseValue} {m.modifier > 0 ? '+' : ''}{m.modifier} ({m.lastUpdatedBy ?? 'Unknown'})
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
 
               {/* Town Policies */}
               <section>

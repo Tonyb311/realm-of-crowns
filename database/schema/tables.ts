@@ -2475,3 +2475,27 @@ export const churchChapters = pgTable("church_chapters", {
 	}).onUpdate("cascade").onDelete("set null"),
 ]);
 
+// ============================================================
+// TOWN METRICS
+// ============================================================
+
+export const townMetrics = pgTable("town_metrics", {
+	id: text().primaryKey().notNull(),
+	townId: text("town_id").notNull(),
+	metricType: text("metric_type").notNull(), // 'DEFENSES', 'PUBLIC_HEALTH', 'LAW_ENFORCEMENT', 'MARKET_EFFICIENCY', 'ELECTION_INTEGRITY'
+	baseValue: integer("base_value").default(50).notNull(),
+	modifier: integer("modifier").default(0).notNull(),
+	effectiveValue: integer("effective_value").default(50).notNull(),
+	lastUpdatedBy: text("last_updated_by"), // 'RELIGION', 'EVENT', 'BUILDING', etc.
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull().$onUpdate(() => new Date().toISOString()),
+}, (table) => [
+	uniqueIndex("town_metrics_town_id_metric_type_key").using("btree", table.townId.asc().nullsLast().op("text_ops"), table.metricType.asc().nullsLast().op("text_ops")),
+	index("town_metrics_town_id_idx").using("btree", table.townId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+		columns: [table.townId],
+		foreignColumns: [towns.id],
+		name: "town_metrics_town_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+]);
+

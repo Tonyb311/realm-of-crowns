@@ -48,6 +48,7 @@ import innRouter from './inn';
 import relocateRouter from './relocate';
 import jobsRouter from './jobs';
 import templeRouter from './temple';
+import townMetricsRouter from './town-metrics';
 import codexRouter from './codex';
 import inventoryRouter from './inventory';
 import noticeBoardRouter from './notice-board';
@@ -107,5 +108,6 @@ router.use('/codex', codexRouter);
 router.use('/inventory', inventoryRouter);
 router.use('/notice-board', noticeBoardRouter);
 router.use('/temple', templeRouter);
+router.use('/town-metrics', townMetricsRouter);
 
 export default router;

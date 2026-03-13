@@ -8,6 +8,7 @@ import { characterGuard } from '../middleware/character-guard';
 import { handleDbError } from '../lib/db-errors';
 import { logRouteError } from '../lib/error-logger';
 import { calculateChurchTier, CONVERSION_COOLDOWN_DAYS } from '@shared/data/religion-config';
+import { SHRINE_CONSECRATION_COST } from '@shared/data/town-metrics-config';
 import crypto from 'crypto';
 
 const router = Router();
@@ -84,6 +85,7 @@ router.get('/town/:townId', authGuard, characterGuard, async (req: Authenticated
         tier: ch.tier,
         isDominant: ch.isDominant,
         isShrine: ch.isShrine,
+        highPriestId: ch.highPriestId ?? null,
         highPriestName: ch.highPriest?.name ?? null,
         treasury: ch.treasury,
         election: activeElection ? {
@@ -318,6 +320,117 @@ router.get('/my-faith', authGuard, characterGuard, async (req: AuthenticatedRequ
   } catch (error) {
     if (handleDbError(error, res, 'temple-my-faith', req)) return;
     logRouteError(req, 500, 'Temple my-faith error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// POST /api/temple/consecrate — Consecrate the Shrine (High Priest only)
+// ============================================================
+
+router.post('/consecrate', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId } = req.body as { townId: string };
+
+    if (!townId) {
+      return res.status(400).json({ error: 'townId is required' });
+    }
+    if (!character.patronGodId) {
+      return res.status(400).json({ error: 'You must follow a god to consecrate a shrine' });
+    }
+
+    // Find the chapter for this god in this town
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(
+        eq(churchChapters.godId, character.patronGodId),
+        eq(churchChapters.townId, townId),
+      ),
+    });
+
+    if (!chapter) {
+      return res.status(400).json({ error: 'No church chapter found for your god in this town' });
+    }
+    if (chapter.highPriestId !== character.id) {
+      return res.status(403).json({ error: 'Only the High Priest can consecrate the shrine' });
+    }
+    if (!chapter.isDominant) {
+      return res.status(400).json({ error: 'Only a dominant church can consecrate a shrine' });
+    }
+    if (chapter.isShrine) {
+      return res.status(400).json({ error: 'The shrine is already consecrated' });
+    }
+    if (chapter.treasury < SHRINE_CONSECRATION_COST) {
+      return res.status(400).json({
+        error: `Insufficient treasury (need ${SHRINE_CONSECRATION_COST}g, have ${chapter.treasury}g)`,
+      });
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.update(churchChapters)
+        .set({
+          treasury: sql`${churchChapters.treasury} - ${SHRINE_CONSECRATION_COST}`,
+          isShrine: true,
+        })
+        .where(eq(churchChapters.id, chapter.id));
+    });
+
+    return res.json({
+      success: true,
+      message: 'The shrine has been consecrated',
+      treasuryRemaining: chapter.treasury - SHRINE_CONSECRATION_COST,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-consecrate', req)) return;
+    logRouteError(req, 500, 'Temple consecrate error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// POST /api/temple/deconsecrate — Remove the Shrine (High Priest only)
+// ============================================================
+
+router.post('/deconsecrate', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId } = req.body as { townId: string };
+
+    if (!townId) {
+      return res.status(400).json({ error: 'townId is required' });
+    }
+    if (!character.patronGodId) {
+      return res.status(400).json({ error: 'You must follow a god to manage a shrine' });
+    }
+
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(
+        eq(churchChapters.godId, character.patronGodId),
+        eq(churchChapters.townId, townId),
+      ),
+    });
+
+    if (!chapter) {
+      return res.status(400).json({ error: 'No church chapter found for your god in this town' });
+    }
+    if (chapter.highPriestId !== character.id) {
+      return res.status(403).json({ error: 'Only the High Priest can deconsecrate the shrine' });
+    }
+    if (!chapter.isShrine) {
+      return res.status(400).json({ error: 'The shrine is not consecrated' });
+    }
+
+    await db.update(churchChapters)
+      .set({ isShrine: false })
+      .where(eq(churchChapters.id, chapter.id));
+
+    return res.json({
+      success: true,
+      message: 'The shrine has been deconsecrated',
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-deconsecrate', req)) return;
+    logRouteError(req, 500, 'Temple deconsecrate error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -367,17 +367,27 @@ export async function processDailyTick(): Promise<DailyTickResult> {
         }
       }
 
-      // Update isDominant flags
+      // Update isDominant flags + auto-deconsecrate shrines that lost dominance
       for (const ch of townChapters) {
         const shouldBeDominant = ch.id === dominantId;
         if (ch.isDominant !== shouldBeDominant) {
+          const updates: Record<string, unknown> = { isDominant: shouldBeDominant };
+          // Auto-deconsecrate shrine if chapter lost dominance
+          if (!shouldBeDominant && ch.isShrine) {
+            updates.isShrine = false;
+            console.log(`[DailyTick]   Auto-deconsecrated shrine for chapter ${ch.id} (lost dominance)`);
+          }
           await db.update(churchChapters)
-            .set({ isDominant: shouldBeDominant })
+            .set(updates)
             .where(eq(churchChapters.id, ch.id));
           updated++;
         }
       }
     }
+
+    // ── Recalculate town metric modifiers from religion ──────
+    // Phase B2 will add per-god modifier calculations here.
+    // For now this is a stub — no modifiers are applied.
 
     console.log(`[DailyTick]   Processed ${allChapters.length} chapters across ${chaptersByTown.size} towns, ${updated} updates`);
   });
