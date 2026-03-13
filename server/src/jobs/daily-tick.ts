@@ -912,12 +912,34 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     });
 
     let expiredCount = 0;
+    let workshopExpiredCount = 0;
     for (const job of expirableJobs) {
       await db.transaction(async (tx) => {
         // Refund escrowed gold to poster
         await tx.update(characters)
           .set({ gold: sql`${characters.gold} + ${job.wage}` })
           .where(eq(characters.id, job.posterId));
+
+        // Refund escrowed materials for WORKSHOP jobs
+        if (job.category === 'WORKSHOP' && job.materialsEscrow) {
+          const escrow = job.materialsEscrow as Array<{ itemTemplateId: string; itemName: string; quantity: number }>;
+          for (const mat of escrow) {
+            const [item] = await tx.insert(items).values({
+              id: crypto.randomUUID(),
+              templateId: mat.itemTemplateId,
+              ownerId: job.posterId,
+              quality: 'COMMON',
+              enchantments: [],
+            }).returning();
+            await tx.insert(inventories).values({
+              id: crypto.randomUUID(),
+              characterId: job.posterId,
+              itemId: item.id,
+              quantity: mat.quantity,
+            });
+          }
+          workshopExpiredCount++;
+        }
 
         await tx.update(jobs)
           .set({ status: 'EXPIRED' })
@@ -927,7 +949,7 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     }
 
     if (expiredCount > 0) {
-      console.log(`[DailyTick]   Expired ${expiredCount} jobs (escrowed gold refunded)`);
+      console.log(`[DailyTick]   Expired ${expiredCount} jobs (escrowed gold refunded${workshopExpiredCount > 0 ? `, ${workshopExpiredCount} workshop jobs had materials refunded` : ''})`);
     }
 
     // (Auto-posting removed — job posting is always a deliberate player/bot choice)

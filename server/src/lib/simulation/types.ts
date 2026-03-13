@@ -264,6 +264,13 @@ export interface ApiJob {
   jobLabel?: string;
   jobType?: string;
   assetName?: string;
+  recipeName?: string;
+  professionRequired?: string;
+  tierRequired?: string;
+  outputItemName?: string;
+  materialsSupplied?: boolean;
+  quantity?: number;
+  description?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }

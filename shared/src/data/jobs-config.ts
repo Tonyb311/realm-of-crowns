@@ -18,3 +18,7 @@ export const JOB_TYPE_LABELS: Record<string, string> = {
   milk_cows: 'Milk Cows',
   shear_sheep: 'Shear Sheep',
 };
+
+export const WORKSHOP_JOB_CONFIG = {
+  maxActivePerPoster: 3,
+};

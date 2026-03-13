@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Briefcase, User, Coins, Package, Award, ScrollText, Shield, XCircle } from 'lucide-react';
+import { Briefcase, User, Coins, Package, Award, ScrollText, Shield, XCircle, Hammer, ChevronDown, Search } from 'lucide-react';
 import { Link } from 'react-router';
 import api from '../services/api';
-import { RealmPanel, RealmButton, RealmBadge, PageHeader } from '../components/ui/realm-index';
+import { RealmPanel, RealmButton, RealmBadge, RealmInput, PageHeader } from '../components/ui/realm-index';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -11,33 +11,42 @@ import { RealmPanel, RealmButton, RealmBadge, PageHeader } from '../components/u
 interface JobListing {
   id: string;
   category: string;
-  jobType: string;
-  jobLabel: string;
+  jobType?: string;
+  jobLabel?: string;
   title: string;
   pay: number;
-  assetId: string;
-  assetName: string;
-  assetType: string;
-  assetTier: number;
-  professionType: string;
+  assetId?: string;
+  assetName?: string;
+  assetType?: string;
+  assetTier?: number;
+  professionType?: string;
   ownerName: string;
   ownerId: string;
   autoPosted: boolean;
   createdAt: string;
+  // Workshop fields
+  recipeName?: string;
+  professionRequired?: string;
+  tierRequired?: string;
+  outputItemName?: string;
+  materialsSupplied?: boolean;
+  quantity?: number;
+  description?: string;
 }
 
 interface MyJob {
   id: string;
   category: string;
-  jobType: string;
-  jobLabel: string;
+  jobType?: string;
+  jobLabel?: string;
   title: string;
   pay: number;
-  assetId: string;
-  assetName: string;
+  assetId?: string;
+  assetName?: string;
   status: string;
   autoPosted: boolean;
   createdAt: string;
+  materialsEscrow?: Array<{ itemTemplateId: string; itemName: string; quantity: number }>;
 }
 
 interface JobsResponse {
@@ -50,12 +59,14 @@ interface MyJobsResponse {
 
 interface AcceptResult {
   success: boolean;
-  job: { id: string; jobType: string; assetName: string };
+  job: { id: string; jobType?: string; assetName?: string; category?: string; recipeName?: string };
   reward: {
     gold: number;
     items: { name: string; quantity: number } | null;
     xp: number;
-    professionMatch: boolean;
+    professionMatch?: boolean;
+    qualities?: string[];
+    depositMessage?: string;
   };
 }
 
@@ -63,6 +74,35 @@ interface ActionStatusResponse {
   gameDay: number;
   actionUsed: boolean;
   actionType: string | null;
+}
+
+interface RecipeInput {
+  itemTemplateId: string;
+  itemName: string;
+  quantity: number;
+}
+
+interface RecipeListing {
+  id: string;
+  name: string;
+  professionType: string;
+  tier: string;
+  inputs: RecipeInput[];
+  outputItemTemplateId: string;
+  outputItemName: string;
+  craftTime: number;
+  xpReward: number;
+}
+
+interface RecipesResponse {
+  recipes: RecipeListing[];
+}
+
+interface InventoryItem {
+  id: string;
+  templateId: string;
+  templateName: string;
+  quantity: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -74,11 +114,42 @@ const TIER_COLORS: Record<number, string> = {
   3: 'text-realm-teal-300 border-realm-teal-300/50 bg-realm-teal-300/10',
 };
 
+const PROFESSION_TIER_COLORS: Record<string, string> = {
+  APPRENTICE: 'text-realm-bronze-400 border-realm-bronze-400/50 bg-realm-bronze-400/10',
+  JOURNEYMAN: 'text-realm-gold-400 border-realm-gold-500/50 bg-realm-gold-500/10',
+  EXPERT: 'text-realm-teal-300 border-realm-teal-300/50 bg-realm-teal-300/10',
+  MASTER: 'text-realm-purple-300 border-realm-purple-300/50 bg-realm-purple-300/10',
+  GRANDMASTER: 'text-red-400 border-red-400/50 bg-red-400/10',
+};
+
 function TierBadge({ tier }: { tier: number }) {
   const colorClass = TIER_COLORS[tier] ?? 'text-realm-text-muted border-realm-border';
   return (
     <span className={`text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded-sm border ${colorClass}`}>
       T{tier}
+    </span>
+  );
+}
+
+function ProfessionTierBadge({ tier }: { tier: string }) {
+  const colorClass = PROFESSION_TIER_COLORS[tier] ?? 'text-realm-text-muted border-realm-border';
+  return (
+    <span className={`text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded-sm border ${colorClass}`}>
+      {tier}
+    </span>
+  );
+}
+
+const CATEGORY_BADGE: Record<string, { label: string; color: string }> = {
+  ASSET: { label: 'Asset', color: 'bg-realm-gold-500/15 text-realm-gold-400 border-realm-gold-500/30' },
+  WORKSHOP: { label: 'Workshop', color: 'bg-realm-teal-300/15 text-realm-teal-300 border-realm-teal-300/30' },
+};
+
+function CategoryBadge({ category }: { category: string }) {
+  const cfg = CATEGORY_BADGE[category] ?? { label: category, color: 'bg-realm-bg-600 text-realm-text-muted border-realm-bg-500' };
+  return (
+    <span className={`text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded-sm border ${cfg.color}`}>
+      {cfg.label}
     </span>
   );
 }
@@ -96,12 +167,20 @@ const STATUS_COLORS: Record<string, string> = {
 export default function JobsBoardPage() {
   const queryClient = useQueryClient();
   const [lastResult, setLastResult] = useState<AcceptResult | null>(null);
-  const [activeTab, setActiveTab] = useState<'browse' | 'mine'>('browse');
+  const [activeTab, setActiveTab] = useState<'browse' | 'post' | 'mine'>('browse');
+
+  // Workshop posting state
+  const [selectedRecipe, setSelectedRecipe] = useState<RecipeListing | null>(null);
+  const [workshopWage, setWorkshopWage] = useState(10);
+  const [workshopQuantity, setWorkshopQuantity] = useState(1);
+  const [recipeSearch, setRecipeSearch] = useState('');
+  const [expandedProfession, setExpandedProfession] = useState<string | null>(null);
 
   // Fetch character for current town
   const { data: character } = useQuery<{
     id: string;
     name: string;
+    gold: number;
     currentTownId: string | null;
   }>({
     queryKey: ['character', 'me'],
@@ -146,6 +225,20 @@ export default function JobsBoardPage() {
     refetchInterval: 60_000,
   });
 
+  // Fetch recipe catalog (for workshop posting)
+  const { data: recipesData } = useQuery<RecipesResponse>({
+    queryKey: ['jobs', 'recipes'],
+    queryFn: async () => (await api.get('/jobs/recipes')).data,
+    enabled: activeTab === 'post',
+  });
+
+  // Fetch inventory (for material check when posting)
+  const { data: inventoryData } = useQuery<{ items: InventoryItem[] }>({
+    queryKey: ['inventory', 'mine'],
+    queryFn: async () => (await api.get('/inventory')).data,
+    enabled: activeTab === 'post' && !!selectedRecipe,
+  });
+
   // Accept job mutation
   const acceptMutation = useMutation({
     mutationFn: async (jobId: string) => {
@@ -170,6 +263,24 @@ export default function JobsBoardPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['character'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    },
+  });
+
+  // Post workshop job mutation
+  const postWorkshopMutation = useMutation({
+    mutationFn: async (body: { townId: string; recipeId: string; wage: number; quantity: number }) => {
+      const res = await api.post('/jobs/post-workshop', body);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['character'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      setSelectedRecipe(null);
+      setWorkshopWage(10);
+      setWorkshopQuantity(1);
+      setActiveTab('mine');
     },
   });
 
@@ -177,6 +288,43 @@ export default function JobsBoardPage() {
   const myJobs = myJobsData?.jobs ?? [];
   const actionUsed = actionStatus?.actionUsed ?? false;
   const townName = town?.name ?? 'this town';
+  const allRecipes = recipesData?.recipes ?? [];
+
+  // Group recipes by profession
+  const recipesByProfession = useMemo(() => {
+    const grouped: Record<string, RecipeListing[]> = {};
+    const searchLower = recipeSearch.toLowerCase();
+    for (const r of allRecipes) {
+      if (searchLower && !r.name.toLowerCase().includes(searchLower) && !r.professionType.toLowerCase().includes(searchLower)) continue;
+      if (!grouped[r.professionType]) grouped[r.professionType] = [];
+      grouped[r.professionType].push(r);
+    }
+    return grouped;
+  }, [allRecipes, recipeSearch]);
+
+  // Build inventory availability map for selected recipe
+  const inventoryByTemplate = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!inventoryData?.items) return map;
+    for (const item of inventoryData.items) {
+      const tid = item.templateId;
+      map.set(tid, (map.get(tid) ?? 0) + (item.quantity ?? 1));
+    }
+    return map;
+  }, [inventoryData]);
+
+  // Check material availability for selected recipe
+  const materialCheck = useMemo(() => {
+    if (!selectedRecipe) return null;
+    return selectedRecipe.inputs.map(input => {
+      const needed = input.quantity * workshopQuantity;
+      const available = inventoryByTemplate.get(input.itemTemplateId) ?? 0;
+      return { ...input, needed, available, sufficient: available >= needed };
+    });
+  }, [selectedRecipe, workshopQuantity, inventoryByTemplate]);
+
+  const allMaterialsSufficient = materialCheck?.every(m => m.sufficient) ?? false;
+  const canPostWorkshop = selectedRecipe && townId && allMaterialsSufficient && workshopWage >= 1 && (character?.gold ?? 0) >= workshopWage;
 
   // -------------------------------------------------------------------------
   // Loading / error
@@ -202,7 +350,7 @@ export default function JobsBoardPage() {
           <div className="flex items-center gap-2 mb-2">
             <Award className="w-4 h-4 text-realm-success" />
             <span className="text-sm font-display text-realm-success">Job Completed!</span>
-            {!lastResult.reward.professionMatch && (
+            {lastResult.reward.professionMatch === false && (
               <RealmBadge variant="uncommon">Non-matching (50%)</RealmBadge>
             )}
           </div>
@@ -219,6 +367,11 @@ export default function JobsBoardPage() {
                 {lastResult.reward.items.quantity}x {lastResult.reward.items.name}
               </span>
             )}
+            {lastResult.reward.qualities && lastResult.reward.qualities.length > 0 && (
+              <span className="text-realm-text-muted">
+                Quality: {lastResult.reward.qualities.join(', ')}
+              </span>
+            )}
             {lastResult.reward.xp > 0 && (
               <span className="flex items-center gap-1">
                 <Award className="w-3.5 h-3.5 text-realm-purple-300" />
@@ -226,6 +379,9 @@ export default function JobsBoardPage() {
               </span>
             )}
           </div>
+          {lastResult.reward.depositMessage && (
+            <p className="text-[10px] text-realm-text-muted mt-1">{lastResult.reward.depositMessage}</p>
+          )}
           <button
             onClick={() => setLastResult(null)}
             className="text-[10px] text-realm-text-muted hover:text-realm-text-secondary mt-2"
@@ -246,29 +402,24 @@ export default function JobsBoardPage() {
 
       {/* Tab switcher */}
       <div className="flex gap-2">
-        <button
-          onClick={() => setActiveTab('browse')}
-          className={`px-3 py-1.5 rounded-md text-xs font-display transition-colors ${
-            activeTab === 'browse'
-              ? 'bg-realm-gold-500/20 text-realm-gold-400 border border-realm-gold-500/30'
-              : 'bg-realm-bg-800 text-realm-text-muted hover:text-realm-text-secondary border border-realm-bg-600'
-          }`}
-        >
-          Available Jobs
-        </button>
-        <button
-          onClick={() => setActiveTab('mine')}
-          className={`px-3 py-1.5 rounded-md text-xs font-display transition-colors ${
-            activeTab === 'mine'
-              ? 'bg-realm-gold-500/20 text-realm-gold-400 border border-realm-gold-500/30'
-              : 'bg-realm-bg-800 text-realm-text-muted hover:text-realm-text-secondary border border-realm-bg-600'
-          }`}
-        >
-          My Jobs
-        </button>
+        {(['browse', 'post', 'mine'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-3 py-1.5 rounded-md text-xs font-display transition-colors ${
+              activeTab === tab
+                ? 'bg-realm-gold-500/20 text-realm-gold-400 border border-realm-gold-500/30'
+                : 'bg-realm-bg-800 text-realm-text-muted hover:text-realm-text-secondary border border-realm-bg-600'
+            }`}
+          >
+            {tab === 'browse' ? 'Available Jobs' : tab === 'post' ? 'Post Workshop Job' : 'My Jobs'}
+          </button>
+        ))}
       </div>
 
+      {/* ================================================================= */}
       {/* Browse tab */}
+      {/* ================================================================= */}
       {activeTab === 'browse' && (
         <RealmPanel title="Available Jobs" className="relative">
           {jobs.length > 0 && (
@@ -294,6 +445,7 @@ export default function JobsBoardPage() {
             <div className="space-y-3">
               {jobs.map((job) => {
                 const isOwnJob = job.ownerId === character?.id;
+                const isWorkshop = job.category === 'WORKSHOP';
 
                 return (
                   <div
@@ -302,18 +454,50 @@ export default function JobsBoardPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        {/* Job title + tier */}
+                        {/* Job title + category badge */}
                         <div className="flex items-center gap-2 mb-1">
-                          <Briefcase className="w-4 h-4 text-realm-gold-400 flex-shrink-0" />
+                          {isWorkshop
+                            ? <Hammer className="w-4 h-4 text-realm-teal-300 flex-shrink-0" />
+                            : <Briefcase className="w-4 h-4 text-realm-gold-400 flex-shrink-0" />
+                          }
                           <span className="text-sm font-display text-realm-text-primary">
-                            {job.jobLabel}
+                            {isWorkshop ? job.title : (job.jobLabel ?? job.title)}
                           </span>
-                          <TierBadge tier={job.assetTier} />
+                          <CategoryBadge category={job.category} />
+                          {!isWorkshop && job.assetTier && <TierBadge tier={job.assetTier} />}
+                          {isWorkshop && job.tierRequired && <ProfessionTierBadge tier={job.tierRequired} />}
                         </div>
 
-                        {/* Asset name + owner */}
-                        <div className="flex items-center gap-2 text-[11px] mb-1">
-                          <span className="text-realm-text-secondary">{job.assetName}</span>
+                        {/* Details row */}
+                        <div className="flex items-center gap-2 text-[11px] mb-1 flex-wrap">
+                          {isWorkshop ? (
+                            <>
+                              {job.outputItemName && (
+                                <span className="text-realm-text-secondary">
+                                  {job.quantity && job.quantity > 1 ? `${job.quantity}x ` : ''}{job.outputItemName}
+                                </span>
+                              )}
+                              {job.professionRequired && (
+                                <>
+                                  <span className="text-realm-text-muted">&middot;</span>
+                                  <span className="text-realm-text-muted capitalize">
+                                    Requires {job.professionRequired.toLowerCase()}
+                                  </span>
+                                </>
+                              )}
+                              <span className="text-realm-text-muted">&middot;</span>
+                              <Package className="w-3 h-3 text-realm-success" />
+                              <span className="text-realm-success text-[10px]">Materials supplied</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-realm-text-secondary">{job.assetName}</span>
+                              <span className="text-realm-text-muted">&middot;</span>
+                              <span className="text-realm-text-muted capitalize">
+                                {job.professionType?.toLowerCase()}
+                              </span>
+                            </>
+                          )}
                           <span className="text-realm-text-muted">&middot;</span>
                           <User className="w-3 h-3 text-realm-text-muted" />
                           <span className="text-realm-text-muted">{job.ownerName}</span>
@@ -326,9 +510,6 @@ export default function JobsBoardPage() {
                           <span className="text-[11px] text-realm-text-muted flex items-center gap-1">
                             <Shield className="w-3 h-3 text-realm-success" />
                             guaranteed
-                          </span>
-                          <span className="text-[11px] text-realm-text-muted ml-2 capitalize">
-                            {job.professionType?.toLowerCase()}
                           </span>
                         </div>
                       </div>
@@ -364,7 +545,197 @@ export default function JobsBoardPage() {
         </RealmPanel>
       )}
 
+      {/* ================================================================= */}
+      {/* Post Workshop Job tab */}
+      {/* ================================================================= */}
+      {activeTab === 'post' && (
+        <RealmPanel title="Post Workshop Job">
+          <div className="space-y-4">
+            {/* Recipe search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-realm-text-muted" />
+              <input
+                type="text"
+                value={recipeSearch}
+                onChange={(e) => setRecipeSearch(e.target.value)}
+                placeholder="Search recipes..."
+                className="w-full pl-9 pr-3 py-2 bg-realm-bg-900 border border-realm-border rounded-sm text-xs text-realm-text-primary placeholder-realm-text-muted focus:border-realm-gold-500/50 focus:outline-hidden"
+              />
+            </div>
+
+            {/* Recipe browser — grouped by profession */}
+            {!selectedRecipe && (
+              <div className="space-y-1 max-h-80 overflow-y-auto">
+                {Object.keys(recipesByProfession).length === 0 ? (
+                  <p className="text-xs text-realm-text-muted text-center py-4">
+                    {allRecipes.length === 0 ? 'Loading recipes...' : 'No recipes match your search.'}
+                  </p>
+                ) : (
+                  Object.entries(recipesByProfession).map(([prof, profRecipes]) => (
+                    <div key={prof}>
+                      <button
+                        onClick={() => setExpandedProfession(expandedProfession === prof ? null : prof)}
+                        className="w-full flex items-center justify-between px-3 py-2 bg-realm-bg-800 rounded-sm hover:bg-realm-bg-700 transition-colors"
+                      >
+                        <span className="text-xs font-display text-realm-text-primary capitalize">
+                          {prof.toLowerCase()} ({profRecipes.length})
+                        </span>
+                        <ChevronDown className={`w-3.5 h-3.5 text-realm-text-muted transition-transform ${expandedProfession === prof ? 'rotate-180' : ''}`} />
+                      </button>
+                      {expandedProfession === prof && (
+                        <div className="ml-2 border-l border-realm-bg-600 pl-2 mt-1 space-y-1">
+                          {profRecipes.map(recipe => (
+                            <button
+                              key={recipe.id}
+                              onClick={() => { setSelectedRecipe(recipe); setWorkshopQuantity(1); }}
+                              className="w-full text-left px-3 py-2 bg-realm-bg-900 rounded-sm hover:bg-realm-bg-800 transition-colors"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-realm-text-primary">{recipe.name}</span>
+                                <ProfessionTierBadge tier={recipe.tier} />
+                              </div>
+                              <p className="text-[10px] text-realm-text-muted mt-0.5">
+                                {recipe.inputs.map(i => `${i.quantity}x ${i.itemName}`).join(', ')} &rarr; {recipe.outputItemName}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Selected recipe details */}
+            {selectedRecipe && (
+              <div className="space-y-3">
+                <div className="bg-realm-bg-800 border border-realm-teal-300/30 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Hammer className="w-4 h-4 text-realm-teal-300" />
+                      <span className="text-sm font-display text-realm-text-primary">{selectedRecipe.name}</span>
+                      <ProfessionTierBadge tier={selectedRecipe.tier} />
+                    </div>
+                    <button
+                      onClick={() => setSelectedRecipe(null)}
+                      className="text-realm-text-muted hover:text-realm-text-secondary"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <p className="text-[11px] text-realm-text-muted mb-2 capitalize">
+                    Requires {selectedRecipe.professionType.toLowerCase()} ({selectedRecipe.tier.toLowerCase()}+)
+                  </p>
+
+                  <div className="text-[11px] text-realm-text-secondary mb-1">
+                    Output: <span className="text-realm-text-primary">{selectedRecipe.outputItemName}</span>
+                  </div>
+
+                  {/* Materials needed */}
+                  <div className="text-[11px] text-realm-text-secondary">
+                    Materials per unit:
+                    <ul className="mt-1 space-y-0.5">
+                      {materialCheck ? materialCheck.map((mat, i) => (
+                        <li key={i} className="flex items-center gap-2">
+                          <span className={mat.sufficient ? 'text-realm-success' : 'text-realm-danger'}>
+                            {mat.available}/{mat.needed}
+                          </span>
+                          <span>{mat.itemName}</span>
+                          {!mat.sufficient && (
+                            <span className="text-realm-danger text-[10px]">(need {mat.needed - mat.available} more)</span>
+                          )}
+                        </li>
+                      )) : selectedRecipe.inputs.map((input, i) => (
+                        <li key={i}>{input.quantity}x {input.itemName}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Quantity selector */}
+                <div className="flex items-center gap-3">
+                  <label className="text-xs text-realm-text-secondary">Quantity:</label>
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map(q => (
+                      <button
+                        key={q}
+                        onClick={() => setWorkshopQuantity(q)}
+                        className={`w-7 h-7 rounded-sm text-xs font-display transition-colors ${
+                          workshopQuantity === q
+                            ? 'bg-realm-teal-300/20 text-realm-teal-300 border border-realm-teal-300/30'
+                            : 'bg-realm-bg-800 text-realm-text-muted border border-realm-bg-600 hover:text-realm-text-secondary'
+                        }`}
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Wage input */}
+                <RealmInput
+                  label="Worker wage (gold)"
+                  type="number"
+                  min={1}
+                  value={workshopWage}
+                  onChange={(e) => setWorkshopWage(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="text-xs"
+                />
+
+                {/* Cost preview */}
+                <div className="bg-realm-bg-900 border border-realm-bg-600 rounded-sm p-3">
+                  <p className="text-xs font-display text-realm-text-secondary mb-1">Cost Preview</p>
+                  <div className="flex items-center gap-4 text-[11px]">
+                    <span className="flex items-center gap-1">
+                      <Coins className="w-3 h-3 text-realm-gold-400" />
+                      <span className="text-realm-gold-400">{workshopWage}g</span>
+                      <span className="text-realm-text-muted">wage (escrowed)</span>
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-realm-text-muted mt-1">
+                    Materials from your inventory will be consumed on posting.
+                  </div>
+                  {(character?.gold ?? 0) < workshopWage && (
+                    <p className="text-[10px] text-realm-danger mt-1">
+                      Insufficient gold ({character?.gold ?? 0}g available)
+                    </p>
+                  )}
+                </div>
+
+                {/* Post button */}
+                <RealmButton
+                  variant="primary"
+                  onClick={() => {
+                    if (!canPostWorkshop || !townId || !selectedRecipe) return;
+                    postWorkshopMutation.mutate({
+                      townId,
+                      recipeId: selectedRecipe.id,
+                      wage: workshopWage,
+                      quantity: workshopQuantity,
+                    });
+                  }}
+                  disabled={!canPostWorkshop || postWorkshopMutation.isPending}
+                  className="w-full"
+                >
+                  {postWorkshopMutation.isPending ? 'Posting...' : `Post Workshop Job — ${workshopQuantity}x ${selectedRecipe.name}`}
+                </RealmButton>
+
+                {postWorkshopMutation.isError && (
+                  <p className="text-xs text-realm-danger">
+                    {(postWorkshopMutation.error as any)?.response?.data?.error || 'Failed to post workshop job.'}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </RealmPanel>
+      )}
+
+      {/* ================================================================= */}
       {/* My Jobs tab */}
+      {/* ================================================================= */}
       {activeTab === 'mine' && (
         <RealmPanel title="My Jobs">
           {myJobsLoading ? (
@@ -377,49 +748,74 @@ export default function JobsBoardPage() {
               <Briefcase className="w-8 h-8 text-realm-text-muted mx-auto mb-3 opacity-50" />
               <p className="text-sm text-realm-text-muted">You haven't posted any jobs.</p>
               <p className="text-xs text-realm-text-muted mt-1">
-                Post jobs from your <Link to="/housing" className="text-realm-gold-400 hover:underline">Properties</Link> page.
+                Post asset jobs from your <Link to="/housing" className="text-realm-gold-400 hover:underline">Properties</Link> page
+                or use the <button onClick={() => setActiveTab('post')} className="text-realm-teal-300 hover:underline">Post Workshop Job</button> tab.
               </p>
             </div>
           ) : (
             <div className="space-y-3">
-              {myJobs.map((job) => (
-                <div
-                  key={job.id}
-                  className="bg-realm-bg-800 border border-realm-bg-600 rounded-lg p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Briefcase className="w-4 h-4 text-realm-gold-400 flex-shrink-0" />
-                        <span className="text-sm font-display text-realm-text-primary">
-                          {job.title}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-[11px]">
-                        <span className="text-realm-text-secondary">{job.assetName}</span>
-                        <span className="text-realm-text-muted">&middot;</span>
-                        <Coins className="w-3 h-3 text-realm-gold-400" />
-                        <span className="text-realm-gold-400">{job.pay}g</span>
-                        <span className="text-realm-text-muted">&middot;</span>
-                        <span className={STATUS_COLORS[job.status] ?? 'text-realm-text-muted'}>
-                          {job.status}
-                        </span>
-                      </div>
-                    </div>
+              {myJobs.map((job) => {
+                const isWorkshop = job.category === 'WORKSHOP';
 
-                    {job.status === 'OPEN' && (
-                      <button
-                        onClick={() => cancelMutation.mutate(job.id)}
-                        disabled={cancelMutation.isPending}
-                        className="text-realm-text-muted hover:text-realm-danger transition-colors"
-                        title="Cancel job (gold refunded)"
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </button>
-                    )}
+                return (
+                  <div
+                    key={job.id}
+                    className="bg-realm-bg-800 border border-realm-bg-600 rounded-lg p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          {isWorkshop
+                            ? <Hammer className="w-4 h-4 text-realm-teal-300 flex-shrink-0" />
+                            : <Briefcase className="w-4 h-4 text-realm-gold-400 flex-shrink-0" />
+                          }
+                          <span className="text-sm font-display text-realm-text-primary">
+                            {job.title}
+                          </span>
+                          <CategoryBadge category={job.category} />
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] flex-wrap">
+                          {!isWorkshop && job.assetName && (
+                            <>
+                              <span className="text-realm-text-secondary">{job.assetName}</span>
+                              <span className="text-realm-text-muted">&middot;</span>
+                            </>
+                          )}
+                          <Coins className="w-3 h-3 text-realm-gold-400" />
+                          <span className="text-realm-gold-400">{job.pay}g</span>
+                          <span className="text-realm-text-muted">&middot;</span>
+                          <span className={STATUS_COLORS[job.status] ?? 'text-realm-text-muted'}>
+                            {job.status}
+                          </span>
+                        </div>
+
+                        {/* Workshop escrow details */}
+                        {isWorkshop && job.materialsEscrow && job.status === 'OPEN' && (
+                          <div className="mt-1.5 text-[10px] text-realm-text-muted">
+                            <span className="text-realm-text-secondary">Materials in escrow:</span>{' '}
+                            {job.materialsEscrow.map((m, i) => (
+                              <span key={i}>
+                                {i > 0 && ', '}{m.quantity}x {m.itemName}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {job.status === 'OPEN' && (
+                        <button
+                          onClick={() => cancelMutation.mutate(job.id)}
+                          disabled={cancelMutation.isPending}
+                          className="text-realm-text-muted hover:text-realm-danger transition-colors"
+                          title={isWorkshop ? 'Cancel job (gold & materials refunded)' : 'Cancel job (gold refunded)'}
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {cancelMutation.isError && (
                 <p className="text-xs text-realm-danger mt-2">

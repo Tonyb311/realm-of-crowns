@@ -5,8 +5,8 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../lib/db';
-import { eq, and, desc, sql } from 'drizzle-orm';
-import { ownedAssets, jobs, dailyActions, playerProfessions, houses, houseStorage, itemTemplates, characters } from '@database/tables';
+import { eq, and, desc, asc, sql, count, inArray } from 'drizzle-orm';
+import { ownedAssets, jobs, dailyActions, playerProfessions, houses, houseStorage, itemTemplates, characters, recipes, inventories, items, buildings, characterEquipment, characterActiveEffects, towns } from '@database/tables';
 import { validate } from '../middleware/validate';
 import { authGuard } from '../middleware/auth';
 import { characterGuard, requireTown } from '../middleware/character-guard';
@@ -18,7 +18,15 @@ import { getTodayTickDate, getNextTickTime, getGameDay } from '../lib/game-day';
 import { ASSET_TIERS, PROFESSION_ASSET_TYPES } from '@shared/data/assets';
 import { RESOURCE_MAP, GATHER_SPOT_PROFESSION_MAP } from '@shared/data/gathering';
 import { addProfessionXP } from '../services/profession-xp';
-import { JOB_TYPE_LABELS, ASSET_JOB_TYPES } from '@shared/data/jobs-config';
+import { JOB_TYPE_LABELS, ASSET_JOB_TYPES, WORKSHOP_JOB_CONFIG } from '@shared/data/jobs-config';
+import { qualityRoll } from '@shared/utils/dice';
+import { getProficiencyBonus, getModifier } from '@shared/utils/bounded-accuracy';
+import { TIER_ORDER, PROFESSION_WORKSHOP_MAP, QUALITY_MAP, PROFESSION_TIER_QUALITY_BONUS } from '@shared/data/crafting-config';
+import { getProfessionByType } from '@shared/data/professions';
+import { getRacialCraftQualityBonus } from '../services/racial-profession-bonuses';
+import { computeFeatBonus } from '@shared/data/feats';
+import { getWellRestedBonus } from '@shared/data/inn-config';
+import type { ProfessionType, ProfessionTier } from '@shared/enums';
 
 const router = Router();
 
@@ -30,14 +38,104 @@ const RANCHER_SPOT_TO_JOB: Record<string, string> = {
   sheep_pen: 'shear_sheep',
 };
 
+function tierIndex(tier: ProfessionTier): number {
+  return TIER_ORDER.indexOf(tier);
+}
+
+// --- Schemas ---
+
 const postJobSchema = z.object({
   assetId: z.string().uuid(),
   jobType: z.enum(ASSET_JOB_TYPES),
   pay: z.number().int().min(1, 'Pay must be at least 1 gold'),
 });
 
+const postWorkshopJobSchema = z.object({
+  townId: z.string().uuid(),
+  recipeId: z.string(),
+  wage: z.number().int().min(1, 'Wage must be at least 1 gold'),
+  quantity: z.number().int().min(1).max(5).default(1),
+});
+
+// --- Helper: build inventory map (duplicated from crafting.ts to avoid refactoring) ---
+
+async function buildInventoryMap(characterId: string) {
+  const inventory = await db.query.inventories.findMany({
+    where: eq(inventories.characterId, characterId),
+    with: { item: { with: { itemTemplate: true } } },
+  });
+
+  const inventoryByTemplate = new Map<string, {
+    total: number;
+    entries: typeof inventory;
+  }>();
+
+  for (const inv of inventory) {
+    const tid = inv.item.templateId;
+    const existing = inventoryByTemplate.get(tid);
+    if (existing) {
+      existing.total += inv.quantity;
+      existing.entries.push(inv);
+    } else {
+      inventoryByTemplate.set(tid, { total: inv.quantity, entries: [inv] });
+    }
+  }
+
+  return inventoryByTemplate;
+}
+
+// --- Helper: consume ingredients from inventory (duplicated from crafting.ts) ---
+
+async function consumeIngredients(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  ingredients: Array<{ itemTemplateId: string; quantity: number }>,
+  inventoryByTemplate: Map<string, { total: number; entries: Array<{ id: string; itemId: string; quantity: number; item: { quality: string } }> }>,
+) {
+  for (const ing of ingredients) {
+    let remaining = ing.quantity;
+    const entries = inventoryByTemplate.get(ing.itemTemplateId)!.entries;
+
+    for (const inv of entries) {
+      if (remaining <= 0) break;
+
+      if (inv.quantity <= remaining) {
+        remaining -= inv.quantity;
+        await tx.delete(inventories).where(eq(inventories.id, inv.id));
+        await tx.delete(items).where(eq(items.id, inv.itemId));
+      } else {
+        await tx.update(inventories).set({ quantity: inv.quantity - remaining }).where(eq(inventories.id, inv.id));
+        remaining = 0;
+      }
+    }
+  }
+}
+
+// --- Helper: refund escrowed materials to poster's inventory ---
+
+async function refundMaterials(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  posterId: string,
+  materialsEscrow: Array<{ itemTemplateId: string; itemName: string; quantity: number }>,
+) {
+  for (const mat of materialsEscrow) {
+    const [item] = await tx.insert(items).values({
+      id: crypto.randomUUID(),
+      templateId: mat.itemTemplateId,
+      ownerId: posterId,
+      quality: 'COMMON',
+      enchantments: [],
+    }).returning();
+    await tx.insert(inventories).values({
+      id: crypto.randomUUID(),
+      characterId: posterId,
+      itemId: item.id,
+      quantity: mat.quantity,
+    });
+  }
+}
+
 // ============================================================
-// POST /api/jobs/post — Post a job (FREE ACTION, works remotely)
+// POST /api/jobs/post — Post an asset job (FREE ACTION, works remotely)
 // Gold is escrowed from poster at posting time.
 // ============================================================
 
@@ -95,12 +193,10 @@ router.post('/post', authGuard, characterGuard, validate(postJobSchema), async (
     const title = `${JOB_TYPE_LABELS[jobType] ?? jobType} — ${asset.name}`;
 
     const [job] = await db.transaction(async (tx) => {
-      // Deduct gold from poster (escrow)
       await tx.update(characters)
         .set({ gold: sql`${characters.gold} - ${pay}` })
         .where(eq(characters.id, character.id));
 
-      // Create job
       return tx.insert(jobs).values({
         id: crypto.randomUUID(),
         category: 'ASSET',
@@ -134,6 +230,117 @@ router.post('/post', authGuard, characterGuard, validate(postJobSchema), async (
 });
 
 // ============================================================
+// POST /api/jobs/post-workshop — Post a workshop crafting job
+// Gold + materials escrowed from poster at posting time.
+// ============================================================
+
+router.post('/post-workshop', authGuard, characterGuard, validate(postWorkshopJobSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId, recipeId, wage, quantity } = req.body;
+
+    // 1. Look up recipe
+    const recipe = await db.query.recipes.findFirst({ where: eq(recipes.id, recipeId) });
+    if (!recipe) {
+      return res.status(404).json({ error: 'Recipe not found' });
+    }
+
+    const ingredients = recipe.ingredients as Array<{ itemTemplateId: string; quantity: number }>;
+
+    // 2. Calculate total materials needed (scaled by quantity)
+    const totalIngredients = ingredients.map(ing => ({
+      itemTemplateId: ing.itemTemplateId,
+      quantity: ing.quantity * quantity,
+    }));
+
+    // 3. Check poster has all materials
+    const inventoryByTemplate = await buildInventoryMap(character.id);
+    const missingMaterials: string[] = [];
+    for (const ing of totalIngredients) {
+      const available = inventoryByTemplate.get(ing.itemTemplateId)?.total ?? 0;
+      if (available < ing.quantity) {
+        // Look up template name for the error message
+        const template = await db.query.itemTemplates.findFirst({ where: eq(itemTemplates.id, ing.itemTemplateId) });
+        missingMaterials.push(`${template?.name ?? ing.itemTemplateId}: need ${ing.quantity}, have ${available}`);
+      }
+    }
+    if (missingMaterials.length > 0) {
+      return res.status(400).json({ error: 'Insufficient materials', missing: missingMaterials });
+    }
+
+    // 4. Check poster has gold for wage
+    if (character.gold < wage) {
+      return res.status(400).json({ error: `Insufficient gold. You have ${character.gold}g, wage costs ${wage}g.` });
+    }
+
+    // 5. Check active workshop job limit
+    const [{ total: activeCount }] = await db.select({ total: count() }).from(jobs).where(
+      and(eq(jobs.posterId, character.id), eq(jobs.category, 'WORKSHOP'), eq(jobs.status, 'OPEN')),
+    );
+    if (activeCount >= WORKSHOP_JOB_CONFIG.maxActivePerPoster) {
+      return res.status(400).json({ error: `You can have at most ${WORKSHOP_JOB_CONFIG.maxActivePerPoster} open workshop jobs` });
+    }
+
+    // 6. Build materialsEscrow data (with template names for display)
+    const escrowData: Array<{ itemTemplateId: string; itemName: string; quantity: number }> = [];
+    for (const ing of totalIngredients) {
+      const template = await db.query.itemTemplates.findFirst({ where: eq(itemTemplates.id, ing.itemTemplateId) });
+      escrowData.push({
+        itemTemplateId: ing.itemTemplateId,
+        itemName: template?.name ?? ing.itemTemplateId,
+        quantity: ing.quantity,
+      });
+    }
+
+    // 7. Generate title
+    const title = quantity > 1 ? `Craft ${quantity}x ${recipe.name}` : `Craft ${recipe.name}`;
+    const description = `Requires ${recipe.professionType} (${recipe.tier}+)`;
+
+    // 8. Transaction: escrow gold + consume materials + create job
+    const [job] = await db.transaction(async (tx) => {
+      // Deduct wage
+      await tx.update(characters)
+        .set({ gold: sql`${characters.gold} - ${wage}` })
+        .where(eq(characters.id, character.id));
+
+      // Consume materials from poster's inventory
+      await consumeIngredients(tx, totalIngredients, inventoryByTemplate as any);
+
+      // Create job
+      return tx.insert(jobs).values({
+        id: crypto.randomUUID(),
+        category: 'WORKSHOP',
+        townId,
+        posterId: character.id,
+        recipeId,
+        materialsEscrow: escrowData,
+        title,
+        description,
+        wage,
+        status: 'OPEN',
+      }).returning();
+    });
+
+    return res.status(201).json({
+      success: true,
+      job: {
+        id: job.id,
+        category: job.category,
+        title: job.title,
+        recipeName: recipe.name,
+        pay: job.wage,
+        status: job.status,
+        materials: escrowData,
+      },
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'jobs-post-workshop', req)) return;
+    logRouteError(req, 500, 'Jobs post-workshop error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
 // POST /api/jobs/:id/accept — Accept + execute job instantly (DAILY ACTION)
 // Escrowed gold is transferred to worker on completion.
 // ============================================================
@@ -155,12 +362,7 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
       return res.status(404).json({ error: 'Job not found' });
     }
 
-    const asset = job.ownedAsset;
-    if (!asset) {
-      return res.status(400).json({ error: 'Job asset no longer exists' });
-    }
-
-    // 2. Validations
+    // 2. Common validations
     if (job.status !== 'OPEN') {
       return res.status(400).json({ error: 'This job is no longer available' });
     }
@@ -182,6 +384,18 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
         actionType: existingAction.actionType,
         resetsAt: getNextTickTime().toISOString(),
       });
+    }
+
+    // Branch by job category
+    if (job.category === 'WORKSHOP') {
+      return await acceptWorkshopJob(req, res, job, character, todayTick);
+    }
+
+    // ---------- ASSET JOB EXECUTION ----------
+
+    const asset = job.ownedAsset;
+    if (!asset) {
+      return res.status(400).json({ error: 'Job asset no longer exists' });
     }
 
     // 4. Determine profession match for yield/XP bonus
@@ -410,6 +624,255 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
 });
 
 // ============================================================
+// Workshop Job Accept — extracted for clarity
+// ============================================================
+
+async function acceptWorkshopJob(
+  req: AuthenticatedRequest,
+  res: Response,
+  job: any,
+  character: any,
+  todayTick: Date,
+) {
+  // 1. Load recipe
+  const recipe = await db.query.recipes.findFirst({ where: eq(recipes.id, job.recipeId!) });
+  if (!recipe) {
+    return res.status(400).json({ error: 'Recipe no longer exists' });
+  }
+
+  // 2. Check worker has matching profession
+  const profession = await db.query.playerProfessions.findFirst({
+    where: and(eq(playerProfessions.characterId, character.id), eq(playerProfessions.professionType, recipe.professionType)),
+  });
+  if (!profession) {
+    return res.status(400).json({ error: `You do not have the ${recipe.professionType} profession` });
+  }
+
+  // 3. Check worker's profession tier
+  if (tierIndex(profession.tier as ProfessionTier) < tierIndex(recipe.tier as ProfessionTier)) {
+    return res.status(400).json({ error: `Requires ${recipe.tier} tier in ${recipe.professionType}, you are ${profession.tier}` });
+  }
+
+  // 4. Check specialization
+  const recipeSpecialization = (recipe as any).specialization as string | null;
+  if (recipeSpecialization && profession.specialization !== recipeSpecialization) {
+    return res.status(400).json({ error: `Requires ${recipeSpecialization} specialization in ${recipe.professionType}` });
+  }
+
+  // 5. Workshop check (required for tier > APPRENTICE)
+  const requiredBuildingType = PROFESSION_WORKSHOP_MAP[recipe.professionType as ProfessionType];
+  let workshopBonus = 0;
+  if (recipe.tier !== 'APPRENTICE') {
+    if (!requiredBuildingType) {
+      return res.status(400).json({ error: 'No workshop type defined for this profession' });
+    }
+    const workshop = await db.query.buildings.findFirst({
+      where: and(eq(buildings.townId, character.currentTownId!), eq(buildings.type, requiredBuildingType as any)),
+    });
+    if (!workshop) {
+      return res.status(400).json({ error: `${recipe.tier} tier recipes require a ${requiredBuildingType} in your current town` });
+    }
+    workshopBonus = (workshop as any).level ?? 0;
+  }
+
+  // 6. Get worker's tool bonus
+  const equippedTool = await db.query.characterEquipment.findFirst({
+    where: and(eq(characterEquipment.characterId, character.id), eq(characterEquipment.slot, 'TOOL')),
+    with: { item: { with: { itemTemplate: true } } },
+  });
+  let toolBonus = 0;
+  if (equippedTool && equippedTool.item.itemTemplate.type === 'TOOL') {
+    const toolStats = equippedTool.item.itemTemplate.stats as Record<string, unknown>;
+    if (toolStats.professionType === recipe.professionType) {
+      toolBonus = (typeof toolStats.qualityBonus === 'number') ? toolStats.qualityBonus : 0;
+    }
+  }
+
+  // 7. Racial quality bonus
+  const subRaceData = character.subRace as { element?: string; chosenProfession?: string } | null;
+  const racialQuality = getRacialCraftQualityBonus(character.race, subRaceData, recipe.professionType);
+
+  // 8. Profession tier bonus
+  const professionTierBonus = PROFESSION_TIER_QUALITY_BONUS[profession.tier as ProfessionTier] ?? 0;
+
+  // 9. Stat modifier from profession's primary stat
+  const profDef = getProfessionByType(recipe.professionType);
+  const characterStats = character.stats as Record<string, number>;
+  const primaryStatKey = profDef?.primaryStat?.toLowerCase() ?? 'int';
+  const statModifier = getModifier(characterStats[primaryStatKey] ?? 10);
+
+  // 10. Feat bonus
+  const craftFeats = (character.feats as string[]) ?? [];
+  const featBonus = computeFeatBonus(craftFeats, 'professionQualityBonus');
+
+  // 11. Well-rested bonus
+  const wellRestedEffect = await db.query.characterActiveEffects.findFirst({
+    where: and(eq(characterActiveEffects.characterId, character.id), eq(characterActiveEffects.sourceType, 'INN_REST')),
+  });
+  const wellRestedBonus = wellRestedEffect
+    ? (getWellRestedBonus(wellRestedEffect.magnitude ?? 0)?.craftingQualityBonus ?? 0)
+    : 0;
+
+  // 12. Determine quantity from escrowed materials
+  const escrow = job.materialsEscrow as Array<{ itemTemplateId: string; itemName: string; quantity: number }>;
+  const recipeIngredients = recipe.ingredients as Array<{ itemTemplateId: string; quantity: number }>;
+  const craftQuantity = recipeIngredients.length > 0
+    ? Math.floor(escrow[0].quantity / recipeIngredients[0].quantity)
+    : 1;
+
+  // 13. Get result template
+  const resultTemplate = await db.query.itemTemplates.findFirst({ where: eq(itemTemplates.id, recipe.result) });
+  if (!resultTemplate) {
+    return res.status(500).json({ error: 'Result item template not found' });
+  }
+
+  // 14. Find poster's house for item deposit
+  const posterHouse = await db.query.houses.findFirst({
+    where: and(eq(houses.characterId, job.posterId), eq(houses.townId, job.townId)),
+  });
+
+  // Get town name for fallback message
+  const town = await db.query.towns.findFirst({ where: eq(towns.id, job.townId), columns: { name: true } });
+
+  // 15. Execute in transaction
+  const craftedItems: Array<{ quality: string; roll: number; total: number }> = [];
+
+  const result = await db.transaction(async (tx) => {
+    // Quality roll + item creation for each unit
+    for (let i = 0; i < craftQuantity; i++) {
+      const { roll: diceRoll, total, quality: qualityName } = qualityRoll(
+        getProficiencyBonus(character.level),
+        statModifier,
+        toolBonus,
+        workshopBonus,
+        racialQuality.qualityBonus,
+        professionTierBonus,
+        0, // ingredientQualityBonus — template-level escrow
+        featBonus,
+        wellRestedBonus,
+      );
+      const quality = QUALITY_MAP[qualityName] ?? 'COMMON';
+      craftedItems.push({ quality, roll: diceRoll, total });
+
+      if (posterHouse) {
+        // Deposit to poster's cottage storage
+        const existingStorage = await tx.query.houseStorage.findFirst({
+          where: and(eq(houseStorage.houseId, posterHouse.id), eq(houseStorage.itemTemplateId, resultTemplate.id)),
+        });
+        if (existingStorage) {
+          await tx.update(houseStorage)
+            .set({ quantity: sql`${houseStorage.quantity} + 1` })
+            .where(eq(houseStorage.id, existingStorage.id));
+        } else {
+          await tx.insert(houseStorage).values({
+            id: crypto.randomUUID(),
+            houseId: posterHouse.id,
+            itemTemplateId: resultTemplate.id,
+            quantity: 1,
+          });
+        }
+      } else {
+        // Fallback: create item in poster's personal inventory
+        const [item] = await tx.insert(items).values({
+          id: crypto.randomUUID(),
+          templateId: resultTemplate.id,
+          ownerId: job.posterId,
+          currentDurability: resultTemplate.durability,
+          quality,
+          craftedById: character.id,
+          enchantments: [],
+        }).returning();
+        await tx.insert(inventories).values({
+          id: crypto.randomUUID(),
+          characterId: job.posterId,
+          itemId: item.id,
+          quantity: 1,
+        });
+      }
+    }
+
+    // Transfer escrowed wage to worker
+    await tx.update(characters)
+      .set({ gold: sql`${characters.gold} + ${job.wage}` })
+      .where(eq(characters.id, character.id));
+
+    // Mark job completed
+    await tx.update(jobs)
+      .set({
+        status: 'COMPLETED',
+        workerId: character.id,
+        completedAt: new Date().toISOString(),
+        result: {
+          recipeName: recipe.name,
+          outputItem: resultTemplate.name,
+          quantity: craftQuantity,
+          qualities: craftedItems.map(c => c.quality),
+        },
+      })
+      .where(eq(jobs.id, job.id));
+
+    // Create daily action
+    await tx.insert(dailyActions).values({
+      id: crypto.randomUUID(),
+      characterId: character.id,
+      tickDate: todayTick.toISOString(),
+      actionType: 'JOB',
+      status: 'COMPLETED',
+      actionTarget: {
+        type: 'workshop_job_accepted',
+        jobId: job.id,
+        townId: job.townId,
+        recipeId: recipe.id,
+      },
+      result: {
+        type: 'workshop_job_completed',
+        jobId: job.id,
+        recipeName: recipe.name,
+        outputItem: resultTemplate.name,
+        quantity: craftQuantity,
+        qualities: craftedItems.map(c => c.quality),
+        pay: job.wage,
+        depositedTo: posterHouse ? 'cottage' : 'inventory',
+      },
+    });
+
+    return { depositedTo: posterHouse ? 'cottage' : 'inventory' };
+  });
+
+  // Award profession XP (outside transaction — non-critical)
+  let xpAwarded = 0;
+  try {
+    const baseXp = recipe.xpReward * craftQuantity;
+    if (baseXp > 0) {
+      xpAwarded = baseXp;
+      await addProfessionXP(character.id, recipe.professionType as any, xpAwarded, 'job');
+    }
+  } catch {
+    // XP failure shouldn't break the job
+  }
+
+  const depositMessage = result.depositedTo === 'cottage'
+    ? `Crafted item deposited to poster's cottage storage`
+    : `Crafted item added to poster's inventory (no cottage found in ${town?.name ?? 'this town'})`;
+
+  return res.json({
+    success: true,
+    job: {
+      id: job.id,
+      category: 'WORKSHOP',
+      recipeName: recipe.name,
+    },
+    reward: {
+      gold: job.wage,
+      items: { name: resultTemplate.name, quantity: craftQuantity },
+      qualities: craftedItems.map(c => c.quality),
+      xp: xpAwarded,
+      depositMessage,
+    },
+  });
+}
+
+// ============================================================
 // GET /api/jobs/town/:townId — Browse open jobs in a town
 // ============================================================
 
@@ -426,25 +889,53 @@ router.get('/town/:townId', authGuard, characterGuard, async (req: Authenticated
       orderBy: desc(jobs.wage),
     });
 
-    return res.json({
-      jobs: openJobs.map((j) => ({
+    // Enrich workshop jobs with recipe details
+    const enrichedJobs = await Promise.all(openJobs.map(async (j) => {
+      const base: any = {
         id: j.id,
         category: j.category,
-        jobType: j.jobType,
-        jobLabel: JOB_TYPE_LABELS[j.jobType ?? ''] || j.jobType,
         title: j.title,
         pay: j.wage,
-        assetId: j.ownedAsset?.id,
-        assetName: j.ownedAsset?.name,
-        assetType: j.ownedAsset?.spotType,
-        assetTier: j.ownedAsset?.tier,
-        professionType: j.ownedAsset?.professionType,
         ownerName: j.poster.name,
         ownerId: j.poster.id,
         autoPosted: j.autoPosted,
         createdAt: j.createdAt,
-      })),
-    });
+      };
+
+      if (j.category === 'ASSET') {
+        base.jobType = j.jobType;
+        base.jobLabel = JOB_TYPE_LABELS[j.jobType ?? ''] || j.jobType;
+        base.assetId = j.ownedAsset?.id;
+        base.assetName = j.ownedAsset?.name;
+        base.assetType = j.ownedAsset?.spotType;
+        base.assetTier = j.ownedAsset?.tier;
+        base.professionType = j.ownedAsset?.professionType;
+      } else if (j.category === 'WORKSHOP') {
+        const recipe = j.recipeId
+          ? await db.query.recipes.findFirst({ where: eq(recipes.id, j.recipeId), columns: { id: true, name: true, professionType: true, tier: true, result: true } })
+          : null;
+        const resultTemplate = recipe?.result
+          ? await db.query.itemTemplates.findFirst({ where: eq(itemTemplates.id, recipe.result), columns: { name: true } })
+          : null;
+        const escrow = j.materialsEscrow as Array<{ itemTemplateId: string; itemName: string; quantity: number }> | null;
+        const recipeIngredients = recipe ? (await db.query.recipes.findFirst({ where: eq(recipes.id, recipe.id) }))?.ingredients as Array<{ quantity: number }> : null;
+        const quantity = escrow && recipeIngredients && recipeIngredients.length > 0
+          ? Math.floor(escrow[0].quantity / recipeIngredients[0].quantity)
+          : 1;
+
+        base.recipeName = recipe?.name;
+        base.professionRequired = recipe?.professionType;
+        base.tierRequired = recipe?.tier;
+        base.outputItemName = resultTemplate?.name;
+        base.materialsSupplied = true;
+        base.quantity = quantity;
+        base.description = j.description;
+      }
+
+      return base;
+    }));
+
+    return res.json({ jobs: enrichedJobs });
   } catch (error) {
     if (handleDbError(error, res, 'jobs-browse', req)) return;
     logRouteError(req, 500, 'Jobs browse error', error);
@@ -453,7 +944,7 @@ router.get('/town/:townId', authGuard, characterGuard, async (req: Authenticated
 });
 
 // ============================================================
-// POST /api/jobs/:id/cancel — Cancel a job (refund escrowed gold)
+// POST /api/jobs/:id/cancel — Cancel a job (refund escrowed gold + materials)
 // ============================================================
 
 router.post('/:id/cancel', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
@@ -472,18 +963,29 @@ router.post('/:id/cancel', authGuard, characterGuard, async (req: AuthenticatedR
       return res.status(400).json({ error: `Cannot cancel — job status is ${job.status}` });
     }
 
-    // Refund escrowed gold and cancel in a transaction
+    // Refund escrowed gold + materials and cancel in a transaction
     await db.transaction(async (tx) => {
+      // Refund gold
       await tx.update(characters)
         .set({ gold: sql`${characters.gold} + ${job.wage}` })
         .where(eq(characters.id, job.posterId));
+
+      // Refund escrowed materials for WORKSHOP jobs
+      if (job.category === 'WORKSHOP' && job.materialsEscrow) {
+        const escrow = job.materialsEscrow as Array<{ itemTemplateId: string; itemName: string; quantity: number }>;
+        await refundMaterials(tx, job.posterId, escrow);
+      }
 
       await tx.update(jobs)
         .set({ status: 'CANCELLED' })
         .where(eq(jobs.id, id));
     });
 
-    return res.json({ success: true, message: 'Job cancelled. Escrowed gold refunded.' });
+    const message = job.category === 'WORKSHOP'
+      ? 'Job cancelled. Escrowed gold and materials refunded.'
+      : 'Job cancelled. Escrowed gold refunded.';
+
+    return res.json({ success: true, message });
   } catch (error) {
     if (handleDbError(error, res, 'jobs-cancel', req)) return;
     logRouteError(req, 500, 'Jobs cancel error', error);
@@ -520,11 +1022,65 @@ router.get('/mine', authGuard, characterGuard, async (req: AuthenticatedRequest,
         status: j.status,
         autoPosted: j.autoPosted,
         createdAt: j.createdAt,
+        materialsEscrow: j.category === 'WORKSHOP' ? j.materialsEscrow : undefined,
       })),
     });
   } catch (error) {
     if (handleDbError(error, res, 'jobs-mine', req)) return;
     logRouteError(req, 500, 'Jobs mine error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// GET /api/jobs/recipes — Browse recipe catalog for workshop job posting
+// ============================================================
+
+router.get('/recipes', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const allRecipes = await db.query.recipes.findMany({
+      orderBy: [asc(recipes.professionType), asc(recipes.tier), asc(recipes.name)],
+    });
+
+    // Look up template names for ingredients and results
+    const templateIds = new Set<string>();
+    for (const r of allRecipes) {
+      const ings = r.ingredients as Array<{ itemTemplateId: string; quantity: number }>;
+      for (const ing of ings) templateIds.add(ing.itemTemplateId);
+      templateIds.add(r.result);
+    }
+
+    const templates = templateIds.size > 0
+      ? await db.query.itemTemplates.findMany({
+          where: inArray(itemTemplates.id, [...templateIds]),
+          columns: { id: true, name: true },
+        })
+      : [];
+    const templateMap = new Map(templates.map(t => [t.id, t.name]));
+
+    return res.json({
+      recipes: allRecipes.map(r => {
+        const ings = r.ingredients as Array<{ itemTemplateId: string; quantity: number }>;
+        return {
+          id: r.id,
+          name: r.name,
+          professionType: r.professionType,
+          tier: r.tier,
+          inputs: ings.map(ing => ({
+            itemTemplateId: ing.itemTemplateId,
+            itemName: templateMap.get(ing.itemTemplateId) ?? ing.itemTemplateId,
+            quantity: ing.quantity,
+          })),
+          outputItemTemplateId: r.result,
+          outputItemName: templateMap.get(r.result) ?? r.result,
+          craftTime: r.craftTime,
+          xpReward: r.xpReward,
+        };
+      }),
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'jobs-recipes', req)) return;
+    logRouteError(req, 500, 'Jobs recipes error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
