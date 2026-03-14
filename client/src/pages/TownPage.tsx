@@ -238,6 +238,17 @@ export default function TownPage() {
     staleTime: 60000,
   });
 
+  // Fetch crisis of faith status for banner
+  const { data: crisisOfFaithStatus } = useQuery<{
+    active: boolean; targetGodId?: string; targetGodName?: string;
+    targetChurchName?: string; until?: string; triggeredBy?: string;
+  }>({
+    queryKey: ['temple', 'crisis-of-faith-status', townId],
+    queryFn: async () => (await api.get(`/temple/crisis-of-faith-status/${townId}`)).data,
+    enabled: !!townId,
+    staleTime: 60000,
+  });
+
   // Fetch active referendums for banner
   const { data: activeReferendums } = useQuery<Array<{
     id: string; question: string; status: string; endsAt: string;
@@ -563,6 +574,21 @@ export default function TownPage() {
           </div>
         </div>
       ))}
+
+      {/* Crisis of Faith Banner — grey/ashen */}
+      {crisisOfFaithStatus?.active && (
+        <div className="bg-gray-700/20 border-b border-gray-500/30">
+          <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-2 text-sm">
+              <Shield className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <span className="text-gray-400 font-display">A Crisis of Faith afflicts the {crisisOfFaithStatus.targetChurchName}</span>
+              <span className="text-realm-text-muted text-xs">
+                — their blessings are weakened until {new Date(crisisOfFaithStatus.until!).toLocaleDateString()}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">

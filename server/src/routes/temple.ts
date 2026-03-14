@@ -1,7 +1,7 @@
 import { Router, type Response } from 'express';
 import { eq, and, ne, sql, asc, desc, count, gte, gt, lte, inArray } from 'drizzle-orm';
 import { db } from '../lib/db';
-import { gods, churchChapters, characters, towns, elections, electionCandidates, characterActiveEffects, townPolicies, townTreasuries, priceHistories, itemTemplates, travelRoutes, racialReputations, disputes, referendums, referendumVotes, townHistoryLog } from '@database/tables';
+import { gods, churchChapters, characters, towns, elections, electionCandidates, electionVotes, characterActiveEffects, townPolicies, townTreasuries, priceHistories, itemTemplates, travelRoutes, racialReputations, disputes, referendums, referendumVotes, townHistoryLog } from '@database/tables';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
 import { characterGuard } from '../middleware/character-guard';
@@ -2136,6 +2136,702 @@ router.get('/reckoning-status/:townId', async (req, res: Response) => {
   } catch (error) {
     if (handleDbError(error, res, 'temple-reckoning-status', req)) return;
     logRouteError(req, 500, 'Temple reckoning status error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// Xol'Thira: Meditation Constants & Effect Pools
+// ============================================================
+
+const MEDITATION_POSITIVE_EFFECTS = [
+  { effectType: 'buff_strength', magnitude: 1, label: '+1 Strength' },
+  { effectType: 'buff_dexterity', magnitude: 1, label: '+1 Dexterity' },
+  { effectType: 'buff_constitution', magnitude: 1, label: '+1 Constitution' },
+  { effectType: 'buff_intelligence', magnitude: 1, label: '+1 Intelligence' },
+  { effectType: 'buff_wisdom', magnitude: 1, label: '+1 Wisdom' },
+  { effectType: 'buff_charisma', magnitude: 1, label: '+1 Charisma' },
+  { effectType: 'gathering_yield', magnitude: 5, label: '+5% Gathering Yield' },
+  { effectType: 'crafting_quality', magnitude: 5, label: '+5% Crafting Quality' },
+  { effectType: 'buff_attack', magnitude: 2, label: '+2 Combat Attack' },
+  { effectType: 'buff_armor', magnitude: 2, label: '+2 Combat Defense' },
+];
+
+const MEDITATION_NEGATIVE_EFFECTS = [
+  { effectType: 'buff_strength', magnitude: -1, label: '-1 Strength' },
+  { effectType: 'buff_dexterity', magnitude: -1, label: '-1 Dexterity' },
+  { effectType: 'buff_constitution', magnitude: -1, label: '-1 Constitution' },
+  { effectType: 'buff_intelligence', magnitude: -1, label: '-1 Intelligence' },
+  { effectType: 'buff_wisdom', magnitude: -1, label: '-1 Wisdom' },
+  { effectType: 'buff_charisma', magnitude: -1, label: '-1 Charisma' },
+];
+
+const POSITIVE_MESSAGES = [
+  'The void whispers of strength...',
+  'A crystalline clarity fills your mind...',
+  'The threshold reveals a hidden truth...',
+  'You feel the cosmos align in your favor...',
+  'A warm light pulses at the edge of dissolution...',
+];
+
+const NEGATIVE_MESSAGES = [
+  'The threshold exacts its toll...',
+  'Reality blurs at the edges...',
+  'The void takes more than it gives...',
+  'Something slips away as the dissolution deepens...',
+  'The Dissolved One reminds you: all things have a cost...',
+];
+
+const VISION_TEMPLATES = [
+  'You see a shimmer of rare metal in the hills near {townName}...',
+  'Shadows gather in {townName}... something approaches...',
+  'A crown changes hands in {townName}...',
+  'The market stirs... {itemName} will be sought after...',
+  'The barrier thins near {townName}... ancient power stirs.',
+  'Whispers of fortune rise from the earth near {townName}...',
+  'A fleeting image: gold flows freely in {townName}...',
+  'The void shows you a crossroads. Choose wisely when next you travel.',
+];
+
+const COMMUNAL_MEDITATION_COST = 150;
+const COMMUNAL_MEDITATION_COOLDOWN_DAYS = 7;
+const CRISIS_OF_FAITH_COST = 200;
+const CRISIS_OF_FAITH_COOLDOWN_DAYS = 30;
+const CRISIS_OF_FAITH_DURATION_DAYS = 7;
+
+// ============================================================
+// POST /api/temple/meditate — Xol'Thira: Daily Meditation
+// ============================================================
+
+router.post('/meditate', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+
+    // Must follow Xol'Thira
+    if (character.patronGodId !== 'xolthira') {
+      return res.status(400).json({ error: 'Only followers of Xol\'Thira may meditate at the threshold' });
+    }
+
+    // Must be in a town
+    const currentTownId = character.currentTownId;
+    if (!currentTownId) {
+      return res.status(400).json({ error: 'You must be in a town to meditate' });
+    }
+
+    // Check daily usage marker
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const existingMarker = await db.query.characterActiveEffects.findFirst({
+      where: and(
+        eq(characterActiveEffects.characterId, character.id),
+        eq(characterActiveEffects.effectType, 'meditation_used'),
+        gte(characterActiveEffects.createdAt, todayStart.toISOString()),
+      ),
+    });
+
+    if (existingMarker) {
+      return res.status(400).json({ error: 'The threshold is quiet... return tomorrow' });
+    }
+
+    // Get chapter tier for positive chance
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(
+        eq(churchChapters.godId, 'xolthira'),
+        eq(churchChapters.townId, character.homeTownId ?? currentTownId),
+      ),
+      columns: { tier: true },
+    });
+    const tier = chapter?.tier ?? 'MINORITY';
+
+    // Look up positive chance from GOD_BUFFS
+    const { GOD_BUFFS } = await import('@shared/data/god-buffs');
+    const personalBuffs = GOD_BUFFS.xolthira.personalBuffs[tier as keyof typeof GOD_BUFFS.xolthira.personalBuffs] ?? {};
+    const positiveChance = personalBuffs.meditationPositiveChance ?? 0.50;
+
+    // Roll
+    const isPositive = Math.random() < positiveChance;
+    const pool = isPositive ? MEDITATION_POSITIVE_EFFECTS : MEDITATION_NEGATIVE_EFFECTS;
+    const effect = pool[Math.floor(Math.random() * pool.length)];
+    const messages = isPositive ? POSITIVE_MESSAGES : NEGATIVE_MESSAGES;
+    const message = messages[Math.floor(Math.random() * messages.length)];
+
+    // Check for vision (ESTABLISHED+ only, 25% chance on positive)
+    let vision: string | null = null;
+    const hasVisions = tier === 'ESTABLISHED' || tier === 'DOMINANT';
+    if (isPositive && hasVisions && Math.random() < 0.25) {
+      // Fill a random vision template with actual game data
+      const template = VISION_TEMPLATES[Math.floor(Math.random() * VISION_TEMPLATES.length)];
+      const randomTown = await db.query.towns.findFirst({
+        where: eq(towns.isReleased, true),
+        orderBy: sql`RANDOM()`,
+        columns: { name: true },
+      });
+      const randomItem = await db.query.itemTemplates.findFirst({
+        orderBy: sql`RANDOM()`,
+        columns: { name: true },
+      });
+      vision = template
+        .replace('{townName}', randomTown?.name ?? 'a distant settlement')
+        .replace('{itemName}', randomItem?.name ?? 'a rare commodity');
+    }
+
+    // Insert marker + buff effect in transaction
+    await db.transaction(async (tx) => {
+      // Daily usage marker (24h expiry)
+      await tx.insert(characterActiveEffects).values({
+        id: crypto.randomUUID(),
+        characterId: character.id,
+        sourceType: 'SCROLL',
+        effectType: 'meditation_used',
+        magnitude: 0,
+        itemName: 'Meditation',
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      });
+
+      // Actual buff/debuff effect (24h)
+      await tx.insert(characterActiveEffects).values({
+        id: crypto.randomUUID(),
+        characterId: character.id,
+        sourceType: 'SCROLL',
+        effectType: effect.effectType,
+        magnitude: effect.magnitude,
+        itemName: `Meditation: ${effect.label}`,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      });
+    });
+
+    return res.json({
+      success: true,
+      positive: isPositive,
+      effect: { stat: effect.effectType, magnitude: effect.magnitude, label: effect.label, duration: '24h' },
+      message,
+      vision,
+      positiveChance,
+      tier,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-meditate', req)) return;
+    logRouteError(req, 500, 'Temple meditate error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// POST /api/temple/communal-meditation — Xol'Thira Shrine
+// ============================================================
+
+router.post('/communal-meditation', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId } = req.body as { townId: string };
+
+    if (!townId) {
+      return res.status(400).json({ error: 'townId is required' });
+    }
+
+    // Must be HP of dominant Xol'Thira chapter with shrine
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(
+        eq(churchChapters.godId, 'xolthira'),
+        eq(churchChapters.townId, townId),
+      ),
+    });
+
+    if (!chapter) {
+      return res.status(400).json({ error: 'No Xol\'Thira chapter in this town' });
+    }
+    if (chapter.highPriestId !== character.id) {
+      return res.status(403).json({ error: 'Only the High Priest may lead communal meditation' });
+    }
+    if (!chapter.isDominant) {
+      return res.status(400).json({ error: 'Xol\'Thira must be dominant to use shrine abilities' });
+    }
+    if (!chapter.isShrine) {
+      return res.status(400).json({ error: 'No active shrine — consecrate one first' });
+    }
+    if (chapter.treasury < COMMUNAL_MEDITATION_COST) {
+      return res.status(400).json({ error: `Insufficient treasury (need ${COMMUNAL_MEDITATION_COST}g)` });
+    }
+
+    // Check cooldown via tradePolicy JSONB
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+      columns: { tradePolicy: true },
+    });
+    const tp = (policy?.tradePolicy as Record<string, any>) ?? {};
+    if (tp.communalMeditationAt) {
+      const lastUsed = new Date(tp.communalMeditationAt);
+      const cooldownEnd = new Date(lastUsed.getTime() + COMMUNAL_MEDITATION_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
+      if (cooldownEnd > new Date()) {
+        const daysLeft = Math.ceil((cooldownEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        return res.status(400).json({ error: `Communal meditation on cooldown (${daysLeft} days remaining)` });
+      }
+    }
+
+    // Deduct treasury
+    await db.update(churchChapters).set({
+      treasury: chapter.treasury - COMMUNAL_MEDITATION_COST,
+    }).where(eq(churchChapters.id, chapter.id));
+
+    // Find all Xol'Thira members physically in this town
+    const members = await db.query.characters.findMany({
+      where: and(
+        eq(characters.patronGodId, 'xolthira'),
+        eq(characters.currentTownId, townId),
+      ),
+      columns: { id: true, name: true },
+    });
+
+    // For each member, get their existing meditation buffs to avoid stacking same stat
+    const positivePool = MEDITATION_POSITIVE_EFFECTS;
+    const effectRows: Array<{
+      id: string; characterId: string; sourceType: 'SCROLL'; effectType: string;
+      magnitude: number; itemName: string; expiresAt: string;
+    }> = [];
+
+    for (const member of members) {
+      // Check existing active meditation buffs
+      const existingEffects = await db.query.characterActiveEffects.findMany({
+        where: and(
+          eq(characterActiveEffects.characterId, member.id),
+          gt(characterActiveEffects.expiresAt, new Date().toISOString()),
+        ),
+        columns: { effectType: true, itemName: true },
+      });
+
+      const activeMeditationStats = new Set(
+        existingEffects
+          .filter(e => (e.itemName ?? '').startsWith('Meditation:'))
+          .map(e => e.effectType),
+      );
+
+      // Pick a random positive effect not already active
+      const available = positivePool.filter(e => !activeMeditationStats.has(e.effectType));
+      if (available.length === 0) continue; // all stats covered
+
+      const picked = available[Math.floor(Math.random() * available.length)];
+      effectRows.push({
+        id: crypto.randomUUID(),
+        characterId: member.id,
+        sourceType: 'SCROLL',
+        effectType: picked.effectType,
+        magnitude: picked.magnitude,
+        itemName: `Meditation: ${picked.label}`,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      });
+    }
+
+    // Bulk insert effects
+    if (effectRows.length > 0) {
+      await db.insert(characterActiveEffects).values(effectRows);
+    }
+
+    // Set cooldown
+    const newTp = { ...tp, communalMeditationAt: new Date().toISOString() };
+    if (policy) {
+      await db.update(townPolicies).set({ tradePolicy: newTp }).where(eq(townPolicies.townId, townId));
+    } else {
+      await db.insert(townPolicies).values({ id: crypto.randomUUID(), townId, tradePolicy: newTp });
+    }
+
+    // Socket notification
+    getIO().emit('communal-meditation', {
+      townId,
+      affectedCount: effectRows.length,
+      totalMembers: members.length,
+    });
+
+    return res.json({
+      success: true,
+      message: `Communal meditation complete! ${effectRows.length} followers received blessings.`,
+      affectedCount: effectRows.length,
+      totalMembers: members.length,
+      cost: COMMUNAL_MEDITATION_COST,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-communal-meditation', req)) return;
+    logRouteError(req, 500, 'Temple communal meditation error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// GET /api/temple/transparency/:townId — Morvaine: View hidden political info
+// ============================================================
+
+router.get('/transparency/:townId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId } = req.params;
+
+    // Must follow Morvaine at CHAPTER+
+    if (character.patronGodId !== 'morvaine') {
+      return res.status(403).json({ error: 'Only followers of Morvaine may view political transparency data' });
+    }
+
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(
+        eq(churchChapters.godId, 'morvaine'),
+        eq(churchChapters.townId, character.homeTownId ?? townId),
+      ),
+      columns: { tier: true },
+    });
+
+    if (!chapter || chapter.tier === 'MINORITY') {
+      return res.status(403).json({ error: 'Morvaine chapter must be at CHAPTER tier or higher' });
+    }
+
+    // Gather transparency data from tradePolicy JSONB
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+      columns: { tradePolicy: true, taxRate: true },
+    });
+    const tp = (policy?.tradePolicy as Record<string, any>) ?? {};
+
+    // Veradine policy bypass log
+    const policyBypasses = tp.policyBypassLog ?? [];
+
+    // Martial law history
+    const martialLawHistory: Record<string, any>[] = [];
+    if (tp.martialLawUntil) {
+      martialLawHistory.push({
+        declaredBy: tp.martialLawDeclaredBy ?? null,
+        declaredAt: tp.martialLawDeclaredAt ?? null,
+        until: tp.martialLawUntil,
+        active: new Date(tp.martialLawUntil) > new Date(),
+      });
+    }
+
+    // Blood memory invocations
+    const bloodMemoryKeys = Object.keys(tp).filter(k => k.startsWith('bloodMemory_'));
+    const bloodMemoryInvocations = bloodMemoryKeys.map(k => ({
+      key: k,
+      ...tp[k],
+    }));
+
+    // Referendum vote breakdowns by race
+    const recentRefs = await db.query.referendums.findMany({
+      where: eq(referendums.townId, townId),
+      orderBy: desc(referendums.startedAt),
+      columns: { id: true, question: true, policyType: true, status: true, votesFor: true, votesAgainst: true, startedAt: true },
+      limit: 10,
+    });
+
+    const refBreakdowns = [];
+    for (const ref of recentRefs) {
+      const votes = await db
+        .select({
+          race: characters.race,
+          voteCount: count(),
+        })
+        .from(referendumVotes)
+        .innerJoin(characters, eq(referendumVotes.characterId, characters.id))
+        .where(eq(referendumVotes.referendumId, ref.id))
+        .groupBy(characters.race);
+
+      refBreakdowns.push({ ...ref, votesByRace: votes });
+    }
+
+    // Election vote breakdowns by race
+    const recentElections = await db.query.elections.findMany({
+      where: and(eq(elections.townId, townId), eq(elections.phase, 'COMPLETED')),
+      orderBy: desc(elections.endDate),
+      columns: { id: true, type: true, godId: true, winnerId: true, endDate: true },
+      limit: 10,
+    });
+
+    const electionBreakdowns = [];
+    for (const el of recentElections) {
+      const votes = await db
+        .select({
+          race: characters.race,
+          candidateId: electionVotes.candidateId,
+          voteCount: count(),
+        })
+        .from(electionVotes)
+        .innerJoin(characters, eq(electionVotes.voterId, characters.id))
+        .where(eq(electionVotes.electionId, el.id))
+        .groupBy(characters.race, electionVotes.candidateId);
+
+      electionBreakdowns.push({ ...el, votesByRace: votes });
+    }
+
+    // Crisis of Faith info
+    const crisisOfFaith = tp.crisisOfFaith ?? null;
+
+    return res.json({
+      townId,
+      tier: chapter.tier,
+      policyBypasses,
+      martialLawHistory,
+      bloodMemoryInvocations,
+      referendumBreakdowns: refBreakdowns,
+      electionBreakdowns,
+      crisisOfFaith: crisisOfFaith ? {
+        ...crisisOfFaith,
+        active: new Date(crisisOfFaith.until) > new Date(),
+      } : null,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-transparency', req)) return;
+    logRouteError(req, 500, 'Temple transparency error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// GET /api/temple/expose/:townId — Morvaine: Deep transparency (ESTABLISHED+)
+// ============================================================
+
+router.get('/expose/:townId', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId } = req.params;
+
+    // Must follow Morvaine at ESTABLISHED+
+    if (character.patronGodId !== 'morvaine') {
+      return res.status(403).json({ error: 'Only followers of Morvaine may access deep transparency' });
+    }
+
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(
+        eq(churchChapters.godId, 'morvaine'),
+        eq(churchChapters.townId, character.homeTownId ?? townId),
+      ),
+      columns: { tier: true },
+    });
+
+    if (!chapter || (chapter.tier !== 'ESTABLISHED' && chapter.tier !== 'DOMINANT')) {
+      return res.status(403).json({ error: 'Morvaine chapter must be at ESTABLISHED tier or higher' });
+    }
+
+    // Election vote records — who voted for whom (secret ballot exposed)
+    const recentElections = await db.query.elections.findMany({
+      where: and(eq(elections.townId, townId), eq(elections.phase, 'COMPLETED')),
+      orderBy: desc(elections.endDate),
+      columns: { id: true, type: true, godId: true, winnerId: true, endDate: true },
+      limit: 5,
+    });
+
+    const detailedElectionVotes = [];
+    for (const el of recentElections) {
+      const votes = await db
+        .select({
+          voterName: characters.name,
+          voterRace: characters.race,
+          candidateId: electionVotes.candidateId,
+        })
+        .from(electionVotes)
+        .innerJoin(characters, eq(electionVotes.voterId, characters.id))
+        .where(eq(electionVotes.electionId, el.id));
+
+      detailedElectionVotes.push({ ...el, votes });
+    }
+
+    // Character tithe rates in town
+    const townCharacters = await db.query.characters.findMany({
+      where: eq(characters.homeTownId, townId),
+      columns: { id: true, name: true, race: true, titheRate: true, patronGodId: true },
+    });
+
+    const titheData = townCharacters.map(c => ({
+      name: c.name,
+      race: c.race,
+      titheRate: c.titheRate ?? 0,
+      patronGodId: c.patronGodId,
+    }));
+
+    return res.json({
+      townId,
+      tier: chapter.tier,
+      detailedElectionVotes,
+      titheData,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-expose', req)) return;
+    logRouteError(req, 500, 'Temple expose error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// POST /api/temple/crisis-of-faith — Morvaine Shrine: Target another church
+// ============================================================
+
+router.post('/crisis-of-faith', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId, targetGodId } = req.body as { townId: string; targetGodId: string };
+
+    if (!townId || !targetGodId) {
+      return res.status(400).json({ error: 'townId and targetGodId are required' });
+    }
+
+    // Cannot target Morvaine
+    if (targetGodId === 'morvaine') {
+      return res.status(400).json({ error: 'Morvaine cannot target itself with a Crisis of Faith' });
+    }
+
+    // Must be HP of dominant Morvaine chapter with shrine
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(
+        eq(churchChapters.godId, 'morvaine'),
+        eq(churchChapters.townId, townId),
+      ),
+    });
+
+    if (!chapter) {
+      return res.status(400).json({ error: 'No Morvaine chapter in this town' });
+    }
+    if (chapter.highPriestId !== character.id) {
+      return res.status(403).json({ error: 'Only the High Priest may declare a Crisis of Faith' });
+    }
+    if (!chapter.isDominant) {
+      return res.status(400).json({ error: 'Morvaine must be dominant to use shrine abilities' });
+    }
+    if (!chapter.isShrine) {
+      return res.status(400).json({ error: 'No active shrine — consecrate one first' });
+    }
+    if (chapter.treasury < CRISIS_OF_FAITH_COST) {
+      return res.status(400).json({ error: `Insufficient treasury (need ${CRISIS_OF_FAITH_COST}g)` });
+    }
+
+    // Verify target church exists at CHAPTER+
+    const targetChapter = await db.query.churchChapters.findFirst({
+      where: and(
+        eq(churchChapters.godId, targetGodId),
+        eq(churchChapters.townId, townId),
+      ),
+      with: {
+        god: { columns: { name: true, churchName: true } },
+      },
+    });
+
+    if (!targetChapter) {
+      return res.status(400).json({ error: 'Target church does not exist in this town' });
+    }
+    if (targetChapter.tier === 'MINORITY') {
+      return res.status(400).json({ error: 'Cannot target a church at MINORITY tier — too small to affect' });
+    }
+
+    // Check cooldown
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+      columns: { tradePolicy: true },
+    });
+    const tp = (policy?.tradePolicy as Record<string, any>) ?? {};
+
+    if (tp.crisisOfFaithCooldownAt) {
+      const lastUsed = new Date(tp.crisisOfFaithCooldownAt);
+      const cooldownEnd = new Date(lastUsed.getTime() + CRISIS_OF_FAITH_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
+      if (cooldownEnd > new Date()) {
+        const daysLeft = Math.ceil((cooldownEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        return res.status(400).json({ error: `Crisis of Faith on cooldown (${daysLeft} days remaining)` });
+      }
+    }
+
+    // Check if a crisis is already active
+    if (tp.crisisOfFaith && new Date(tp.crisisOfFaith.until) > new Date()) {
+      return res.status(400).json({ error: 'A Crisis of Faith is already active in this town' });
+    }
+
+    // Deduct treasury
+    await db.update(churchChapters).set({
+      treasury: chapter.treasury - CRISIS_OF_FAITH_COST,
+    }).where(eq(churchChapters.id, chapter.id));
+
+    // Store crisis in tradePolicy JSONB
+    const now = new Date();
+    const until = new Date(now.getTime() + CRISIS_OF_FAITH_DURATION_DAYS * 24 * 60 * 60 * 1000);
+    const newTp = {
+      ...tp,
+      crisisOfFaith: {
+        targetGodId,
+        until: until.toISOString(),
+        triggeredBy: character.id,
+        triggeredByName: character.name,
+      },
+      crisisOfFaithCooldownAt: now.toISOString(),
+    };
+
+    if (policy) {
+      await db.update(townPolicies).set({ tradePolicy: newTp }).where(eq(townPolicies.townId, townId));
+    } else {
+      await db.insert(townPolicies).values({ id: crypto.randomUUID(), townId, tradePolicy: newTp });
+    }
+
+    // Socket event
+    getIO().emit('crisis-of-faith', {
+      townId,
+      targetGodId,
+      targetChurchName: targetChapter.god.churchName,
+      targetGodName: targetChapter.god.name,
+      until: until.toISOString(),
+      triggeredBy: character.name,
+    });
+
+    // Fire-and-forget historical logging
+    logTownEvent(
+      townId,
+      'CRISIS_OF_FAITH',
+      `Crisis of Faith Against ${targetChapter.god.churchName}`,
+      `${character.name} of the Ashen Witness declared a Crisis of Faith against ${targetChapter.god.churchName}. Their blessings are weakened for ${CRISIS_OF_FAITH_DURATION_DAYS} days.`,
+      character.id,
+      undefined,
+      { targetGodId, targetChurchName: targetChapter.god.churchName, until: until.toISOString() },
+    ).catch(() => {});
+
+    return res.json({
+      success: true,
+      message: `Crisis of Faith declared against ${targetChapter.god.churchName}! Their blessings are weakened for ${CRISIS_OF_FAITH_DURATION_DAYS} days.`,
+      targetGodId,
+      targetChurchName: targetChapter.god.churchName,
+      until: until.toISOString(),
+      cost: CRISIS_OF_FAITH_COST,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-crisis-of-faith', req)) return;
+    logRouteError(req, 500, 'Temple crisis-of-faith error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// GET /api/temple/crisis-of-faith-status/:townId — Check Crisis of Faith
+// ============================================================
+
+router.get('/crisis-of-faith-status/:townId', async (req, res: Response) => {
+  try {
+    const { townId } = req.params;
+
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+      columns: { tradePolicy: true },
+    });
+    const tp = (policy?.tradePolicy as Record<string, any>) ?? {};
+
+    if (!tp.crisisOfFaith || new Date(tp.crisisOfFaith.until) <= new Date()) {
+      return res.json({ active: false });
+    }
+
+    const crisis = tp.crisisOfFaith;
+    const targetGod = await db.query.gods.findFirst({
+      where: eq(gods.id, crisis.targetGodId),
+      columns: { name: true, churchName: true },
+    });
+
+    return res.json({
+      active: true,
+      targetGodId: crisis.targetGodId,
+      targetGodName: targetGod?.name ?? crisis.targetGodId,
+      targetChurchName: targetGod?.churchName ?? 'Unknown Church',
+      until: crisis.until,
+      triggeredBy: crisis.triggeredByName ?? null,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-crisis-status', req)) return;
+    logRouteError(req, 500, 'Temple crisis-of-faith status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

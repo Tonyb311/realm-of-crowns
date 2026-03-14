@@ -3,13 +3,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Church, Shield, Scale, Flame, Eye, HeartHandshake, BrickWall, Gavel,
   Smile, Handshake, Crown, EyeOff, BookOpen, Users, Star, AlertTriangle, X, Coins, Vote, Sparkles, Heart, Scroll, Landmark,
-  TrendingUp, TrendingDown, Minus, Skull,
+  TrendingUp, TrendingDown, Minus, Skull, Zap, Search,
 } from 'lucide-react';
 import api from '../services/api';
 import { RealmPanel, RealmButton, RealmBadge, PageHeader } from '../components/ui/realm-index';
 import { SHRINE_CONSECRATION_COST, GOD_METRIC_PREVIEW } from '@shared/data/town-metrics-config';
 import { GOD_BUFFS, BUFF_LABELS, getPersonalReligionBuffs, getDominantChurchTownEffects } from '@shared/data/god-buffs';
 import { REPUTATION_TIERS } from '@shared/data/reputation-config';
+
+const COMMUNAL_MEDITATION_COST = 150;
+const CRISIS_OF_FAITH_COST = 200;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -592,6 +595,86 @@ export default function TemplePage() {
     enabled: !!townId,
   });
 
+  // Xol'Thira: meditation
+  const isXolthira = patronGod?.id === 'xolthira';
+  const xolthiraChapter = chapters.find(ch => ch.godId === 'xolthira');
+  const xolthiraTier = xolthiraChapter?.tier ?? 'MINORITY';
+  const hasVisions = isXolthira && (xolthiraTier === 'ESTABLISHED' || xolthiraTier === 'DOMINANT');
+  const isXolthiraHP = chapters.some(ch => ch.godId === 'xolthira' && ch.highPriestId === character?.id);
+  const hasXolthiraShrine = chapters.some(ch => ch.godId === 'xolthira' && ch.isDominant && ch.isShrine);
+
+  const [meditationResult, setMeditationResult] = useState<{
+    positive: boolean; effect: { stat: string; magnitude: number; label: string }; message: string; vision: string | null;
+  } | null>(null);
+
+  const meditateMutation = useMutation({
+    mutationFn: async () => {
+      return (await api.post('/temple/meditate')).data;
+    },
+    onSuccess: (data: any) => {
+      setMeditationResult({ positive: data.positive, effect: data.effect, message: data.message, vision: data.vision });
+      queryClient.invalidateQueries({ queryKey: ['temple'] });
+    },
+  });
+
+  const communalMeditationMutation = useMutation({
+    mutationFn: async (tId: string) => {
+      return (await api.post('/temple/communal-meditation', { townId: tId })).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple'] });
+    },
+  });
+
+  // Morvaine: transparency + crisis of faith
+  const isMorvaine = patronGod?.id === 'morvaine';
+  const morvaineChapter = chapters.find(ch => ch.godId === 'morvaine');
+  const morvaineTier = morvaineChapter?.tier ?? 'MINORITY';
+  const canViewTransparency = isMorvaine && morvaineTier !== 'MINORITY'; // CHAPTER+
+  const canExpose = isMorvaine && (morvaineTier === 'ESTABLISHED' || morvaineTier === 'DOMINANT');
+  const isMorvaineHP = chapters.some(ch => ch.godId === 'morvaine' && ch.highPriestId === character?.id);
+  const hasMorvaineShrine = chapters.some(ch => ch.godId === 'morvaine' && ch.isDominant && ch.isShrine);
+
+  const [showTransparency, setShowTransparency] = useState(false);
+  const [showExpose, setShowExpose] = useState(false);
+  const [crisisTargetGod, setCrisisTargetGod] = useState('');
+
+  const { data: transparencyData } = useQuery<{
+    policyBypasses: any[]; martialLawHistory: any[]; bloodMemoryInvocations: any[];
+    referendumBreakdowns: any[]; electionBreakdowns: any[]; crisisOfFaith: any;
+  }>({
+    queryKey: ['temple', 'transparency', townId],
+    queryFn: async () => (await api.get(`/temple/transparency/${townId}`)).data,
+    enabled: showTransparency && canViewTransparency && !!townId,
+  });
+
+  const { data: exposeData } = useQuery<{
+    detailedElectionVotes: any[]; titheData: any[];
+  }>({
+    queryKey: ['temple', 'expose', townId],
+    queryFn: async () => (await api.get(`/temple/expose/${townId}`)).data,
+    enabled: showExpose && canExpose && !!townId,
+  });
+
+  const { data: crisisStatus } = useQuery<{
+    active: boolean; targetGodId?: string; targetGodName?: string;
+    targetChurchName?: string; until?: string; triggeredBy?: string;
+  }>({
+    queryKey: ['temple', 'crisis-of-faith-status', townId],
+    queryFn: async () => (await api.get(`/temple/crisis-of-faith-status/${townId}`)).data,
+    enabled: !!townId,
+  });
+
+  const crisisOfFaithMutation = useMutation({
+    mutationFn: async (data: { townId: string; targetGodId: string }) => {
+      return (await api.post('/temple/crisis-of-faith', data)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple'] });
+      setCrisisTargetGod('');
+    },
+  });
+
   // Tessivane: price trends + cross-town prices
   const [showPriceTrends, setShowPriceTrends] = useState(false);
   const [showCrossTownPrices, setShowCrossTownPrices] = useState(false);
@@ -726,7 +809,7 @@ export default function TemplePage() {
                       <span className="text-[10px] uppercase tracking-wider text-realm-text-muted">Personal</span>
                       {Object.entries(personalBuffs).map(([key, val]) => {
                         const isReduction = key.includes('Reduction');
-                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown' || key === 'disputeResolution' || key === 'fileFormalDispute' || key === 'townGuardBonus' || key === 'historicalRecordsAccess' || key === 'bloodMemory' || key === 'invokeBloodMemory' || key === 'grudgeTracking';
+                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown' || key === 'disputeResolution' || key === 'fileFormalDispute' || key === 'townGuardBonus' || key === 'historicalRecordsAccess' || key === 'bloodMemory' || key === 'invokeBloodMemory' || key === 'grudgeTracking' || key === 'meditation' || key === 'visions' || key === 'prophecy' || key === 'communalMeditation' || key === 'identifyAnonymous' || key === 'exposeHidden' || key === 'crisisOfFaith';
                         return (
                           <div key={key} className="flex items-center justify-between text-[11px]">
                             <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
@@ -743,7 +826,7 @@ export default function TemplePage() {
                       <span className="text-[10px] uppercase tracking-wider text-realm-text-muted">Town-wide ({dominant!.godName} dominance)</span>
                       {Object.entries(townBuffs).map(([key, val]) => {
                         const isReduction = key.includes('Reduction');
-                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown' || key === 'disputeResolution' || key === 'fileFormalDispute' || key === 'townGuardBonus' || key === 'historicalRecordsAccess' || key === 'bloodMemory' || key === 'invokeBloodMemory' || key === 'grudgeTracking';
+                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown' || key === 'disputeResolution' || key === 'fileFormalDispute' || key === 'townGuardBonus' || key === 'historicalRecordsAccess' || key === 'bloodMemory' || key === 'invokeBloodMemory' || key === 'grudgeTracking' || key === 'meditation' || key === 'visions' || key === 'prophecy' || key === 'communalMeditation' || key === 'identifyAnonymous' || key === 'exposeHidden' || key === 'crisisOfFaith';
                         return (
                           <div key={key} className="flex items-center justify-between text-[11px]">
                             <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
@@ -1643,6 +1726,280 @@ export default function TemplePage() {
                 </p>
                 <p className="text-[10px] text-realm-text-muted">
                   Against {reckoningStatus.targetRace}: &ldquo;{reckoningStatus.grievance}&rdquo; — Vote at the Town Hall
+                </p>
+              </div>
+            )}
+
+            {/* ======== Xol'Thira: Meditation ======== */}
+            {isXolthira && (
+              <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-display text-indigo-300 flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-indigo-300" />
+                    Meditation
+                  </span>
+                  <span className="text-[10px] text-realm-text-muted">
+                    The void favors you {Math.round((GOD_BUFFS.xolthira?.personalBuffs?.[xolthiraTier as keyof typeof GOD_BUFFS.xolthira.personalBuffs]?.meditationPositiveChance ?? 0.5) * 100)}% of the time
+                  </span>
+                </div>
+
+                {meditationResult ? (
+                  <div className={`rounded-lg px-3 py-2 border ${meditationResult.positive ? 'bg-amber-500/10 border-amber-500/30' : 'bg-purple-900/20 border-purple-600/30'}`}>
+                    <p className={`text-[11px] font-semibold ${meditationResult.positive ? 'text-amber-300' : 'text-purple-300'}`}>
+                      {meditationResult.positive ? 'Positive' : 'Negative'}: {meditationResult.effect.label}
+                    </p>
+                    <p className="text-[10px] text-realm-text-muted italic">{meditationResult.message}</p>
+                    {meditationResult.vision && (
+                      <p className="text-[10px] text-indigo-300 italic mt-1 border-t border-indigo-500/20 pt-1">
+                        Vision: {meditationResult.vision}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <RealmButton
+                    variant="primary"
+                    size="sm"
+                    onClick={() => meditateMutation.mutate()}
+                    disabled={meditateMutation.isPending}
+                    className="!bg-indigo-700 hover:!bg-indigo-800 !border-indigo-600"
+                  >
+                    {meditateMutation.isPending ? 'Meditating...' : 'Meditate'}
+                  </RealmButton>
+                )}
+                {meditateMutation.isError && (
+                  <p className="text-[11px] text-realm-danger">
+                    {(meditateMutation.error as any)?.response?.data?.error || 'Meditation failed'}
+                  </p>
+                )}
+                {hasVisions && !meditationResult?.vision && (
+                  <p className="text-[9px] text-indigo-400/60">Visions may come during meditation (ESTABLISHED+)</p>
+                )}
+              </div>
+            )}
+
+            {/* Xol'Thira: Communal Meditation (HP + Shrine) */}
+            {isXolthiraHP && hasXolthiraShrine && (
+              <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-3 space-y-2">
+                <span className="text-xs font-display text-indigo-300 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-indigo-300" />
+                  Communal Meditation
+                </span>
+                <p className="text-[10px] text-realm-text-muted">
+                  All followers of Xol&apos;Thira in this town receive a guaranteed positive buff (24h).
+                </p>
+                <RealmButton
+                  variant="primary"
+                  size="sm"
+                  onClick={() => communalMeditationMutation.mutate(templeData!.townId)}
+                  disabled={communalMeditationMutation.isPending}
+                  className="!bg-indigo-700 hover:!bg-indigo-800 !border-indigo-600"
+                >
+                  {communalMeditationMutation.isPending ? 'Leading...' : `Lead Communal Meditation (${COMMUNAL_MEDITATION_COST}g)`}
+                </RealmButton>
+                {communalMeditationMutation.isSuccess && (
+                  <p className="text-[11px] text-indigo-300">{communalMeditationMutation.data.message}</p>
+                )}
+                {communalMeditationMutation.isError && (
+                  <p className="text-[11px] text-realm-danger">
+                    {(communalMeditationMutation.error as any)?.response?.data?.error || 'Communal meditation failed'}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* ======== Morvaine: Transparency ======== */}
+            {canViewTransparency && (
+              <div className="rounded-lg border border-gray-500/30 bg-gray-500/5 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-display text-gray-300 flex items-center gap-1.5">
+                    <Eye className="w-3.5 h-3.5 text-gray-300" />
+                    Political Transparency
+                  </span>
+                  <button onClick={() => setShowTransparency(!showTransparency)} className="text-[10px] text-gray-300 hover:text-gray-200 font-display uppercase">
+                    {showTransparency ? 'Hide' : 'View Activity'}
+                  </button>
+                </div>
+                {showTransparency && transparencyData && (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {transparencyData.martialLawHistory.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-semibold uppercase">Martial Law History</p>
+                        {transparencyData.martialLawHistory.map((ml: any, i: number) => (
+                          <p key={i} className="text-[10px] text-realm-text-muted">
+                            Declared by {ml.declaredBy ?? 'unknown'} — {ml.active ? 'ACTIVE' : 'Expired'} until {ml.until ? new Date(ml.until).toLocaleDateString() : '?'}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    {transparencyData.policyBypasses.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-semibold uppercase">Policy Bypasses</p>
+                        {transparencyData.policyBypasses.map((pb: any, i: number) => (
+                          <p key={i} className="text-[10px] text-realm-text-muted">{JSON.stringify(pb)}</p>
+                        ))}
+                      </div>
+                    )}
+                    {transparencyData.referendumBreakdowns.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-semibold uppercase">Referendum Votes by Race</p>
+                        {transparencyData.referendumBreakdowns.map((ref: any) => (
+                          <div key={ref.id} className="border-l-2 border-gray-500/30 pl-2 py-0.5">
+                            <p className="text-[10px] text-realm-text-secondary">{ref.question} ({ref.status})</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {ref.votesByRace?.map((v: any) => (
+                                <span key={v.race} className="text-[9px] text-realm-text-muted">{v.race}: {v.voteCount}</span>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {transparencyData.electionBreakdowns.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-semibold uppercase">Election Votes by Race</p>
+                        {transparencyData.electionBreakdowns.map((el: any) => (
+                          <div key={el.id} className="border-l-2 border-gray-500/30 pl-2 py-0.5">
+                            <p className="text-[10px] text-realm-text-secondary">{el.type} ({new Date(el.endDate).toLocaleDateString()})</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {el.votesByRace?.map((v: any, i: number) => (
+                                <span key={i} className="text-[9px] text-realm-text-muted">{v.race}: {v.voteCount}</span>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {transparencyData.crisisOfFaith?.active && (
+                      <div className="bg-gray-500/10 border border-gray-500/20 rounded px-2 py-1">
+                        <p className="text-[10px] text-gray-300 font-semibold">Active Crisis of Faith</p>
+                        <p className="text-[9px] text-realm-text-muted">
+                          Target: {transparencyData.crisisOfFaith.targetGodId} — until {new Date(transparencyData.crisisOfFaith.until).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
+                    {transparencyData.martialLawHistory.length === 0 && transparencyData.policyBypasses.length === 0 && transparencyData.referendumBreakdowns.length === 0 && transparencyData.electionBreakdowns.length === 0 && (
+                      <p className="text-[10px] text-realm-text-muted">No political activity recorded.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Morvaine: Deep Transparency / Expose (ESTABLISHED+) */}
+            {canExpose && (
+              <div className="rounded-lg border border-gray-500/30 bg-gray-500/5 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-display text-gray-300 flex items-center gap-1.5">
+                    <Search className="w-3.5 h-3.5 text-gray-300" />
+                    Deep Scan
+                  </span>
+                  <button onClick={() => setShowExpose(!showExpose)} className="text-[10px] text-gray-300 hover:text-gray-200 font-display uppercase">
+                    {showExpose ? 'Hide' : 'Expose'}
+                  </button>
+                </div>
+                {!showExpose && (
+                  <p className="text-[9px] text-gray-400/60">This information may reveal secrets others wish to keep hidden.</p>
+                )}
+                {showExpose && exposeData && (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {exposeData.detailedElectionVotes.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-semibold uppercase">Election Vote Records</p>
+                        {exposeData.detailedElectionVotes.map((el: any) => (
+                          <div key={el.id} className="border-l-2 border-gray-500/30 pl-2 py-0.5">
+                            <p className="text-[10px] text-realm-text-secondary">{el.type} ({new Date(el.endDate).toLocaleDateString()})</p>
+                            {el.votes?.map((v: any, i: number) => (
+                              <p key={i} className="text-[9px] text-realm-text-muted">{v.voterName} ({v.voterRace}) voted for candidate {v.candidateId?.slice(0, 8)}</p>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {exposeData.titheData.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-semibold uppercase">Tithe Rates</p>
+                        {exposeData.titheData.map((c: any, i: number) => (
+                          <div key={i} className="flex items-center justify-between text-[10px]">
+                            <span className="text-realm-text-secondary">{c.name} ({c.race})</span>
+                            <span className="text-realm-text-muted">{c.titheRate}%{c.patronGodId ? ` — ${c.patronGodId}` : ''}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {exposeData.detailedElectionVotes.length === 0 && exposeData.titheData.length === 0 && (
+                      <p className="text-[10px] text-realm-text-muted">No hidden data to expose.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Morvaine: Crisis of Faith (HP + Shrine) */}
+            {isMorvaineHP && hasMorvaineShrine && (
+              <div className="rounded-lg border border-gray-500/30 bg-gray-500/5 p-3 space-y-2">
+                <span className="text-xs font-display text-gray-300 flex items-center gap-1.5">
+                  <EyeOff className="w-3.5 h-3.5 text-gray-300" />
+                  Crisis of Faith
+                </span>
+                {crisisStatus?.active ? (
+                  <div className="bg-gray-500/10 border border-gray-500/20 rounded px-2 py-1.5">
+                    <p className="text-[10px] text-gray-300 font-semibold">Crisis Active</p>
+                    <p className="text-[9px] text-realm-text-muted">
+                      Against {crisisStatus.targetChurchName} — until {new Date(crisisStatus.until!).toLocaleDateString()}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] text-realm-text-muted">
+                      Target another church to reduce their effectiveness by 25% for 7 days.
+                    </p>
+                    <select
+                      value={crisisTargetGod}
+                      onChange={e => setCrisisTargetGod(e.target.value)}
+                      className="w-full text-[11px] bg-realm-bg-800 border border-realm-bg-600 rounded px-2 py-1 text-realm-text-primary"
+                    >
+                      <option value="">Select target church...</option>
+                      {chapters
+                        .filter(ch => ch.godId !== 'morvaine' && ch.tier !== 'MINORITY')
+                        .map(ch => (
+                          <option key={ch.godId} value={ch.godId}>{ch.churchName} ({ch.godName}) — {ch.tier}</option>
+                        ))
+                      }
+                    </select>
+                    <p className="text-[9px] text-gray-400/60">
+                      WARNING: This will reduce the target church&apos;s effectiveness by 25% for 7 days.
+                    </p>
+                    <RealmButton
+                      variant="primary"
+                      size="sm"
+                      onClick={() => crisisOfFaithMutation.mutate({ townId: templeData!.townId, targetGodId: crisisTargetGod })}
+                      disabled={crisisOfFaithMutation.isPending || !crisisTargetGod}
+                      className="!bg-gray-600 hover:!bg-gray-700 !border-gray-500"
+                    >
+                      {crisisOfFaithMutation.isPending ? 'Declaring...' : `Declare Crisis of Faith (${CRISIS_OF_FAITH_COST}g)`}
+                    </RealmButton>
+                  </div>
+                )}
+                {crisisOfFaithMutation.isSuccess && (
+                  <p className="text-[11px] text-gray-300">{crisisOfFaithMutation.data.message}</p>
+                )}
+                {crisisOfFaithMutation.isError && (
+                  <p className="text-[11px] text-realm-danger">
+                    {(crisisOfFaithMutation.error as any)?.response?.data?.error || 'Failed to declare Crisis of Faith'}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Crisis of Faith Active Banner (all users) */}
+            {crisisStatus?.active && !isMorvaineHP && (
+              <div className="bg-gray-700/20 border border-gray-500/30 rounded-lg px-3 py-2">
+                <p className="text-[11px] text-gray-300 font-semibold uppercase flex items-center gap-1.5">
+                  <EyeOff className="w-3 h-3" />
+                  Crisis of Faith
+                </p>
+                <p className="text-[10px] text-realm-text-muted">
+                  The {crisisStatus.targetChurchName} is afflicted — their blessings are weakened until {new Date(crisisStatus.until!).toLocaleDateString()}
                 </p>
               </div>
             )}

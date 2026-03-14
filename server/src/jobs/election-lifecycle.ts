@@ -45,6 +45,7 @@ export function startElectionLifecycle(io: Server) {
       await resolveExpiredImpeachments(io, martialLawTowns);
       await resolveExpiredReferendums(io, martialLawTowns);
       await expireMartialLaw(io);
+      await expireCrisesOfFaith(io);
       cronJobExecutions.inc({ job: 'electionLifecycle', result: 'success' });
     } catch (error: unknown) {
       cronJobExecutions.inc({ job: 'electionLifecycle', result: 'failure' });
@@ -852,6 +853,59 @@ async function expireMartialLaw(io: Server) {
       'MARTIAL_LAW',
       'Martial Law Ended',
       `Martial law has expired in ${town?.name ?? 'the town'}.`,
+    ).catch(() => {});
+  }
+}
+
+/**
+ * Expire Crises of Faith where the 7-day duration has passed.
+ * Clears the crisisOfFaith field from tradePolicy JSONB.
+ */
+async function expireCrisesOfFaith(io: Server) {
+  const now = new Date();
+  const allPolicies = await db.query.townPolicies.findMany({
+    columns: { townId: true, tradePolicy: true },
+  });
+
+  for (const p of allPolicies) {
+    const tp = p.tradePolicy as Record<string, any> | null;
+    if (!tp?.crisisOfFaith) continue;
+    const crisis = tp.crisisOfFaith as { targetGodId: string; until: string; triggeredBy?: string };
+    if (new Date(crisis.until) > now) continue; // still active
+
+    // Crisis has expired — clear the field
+    const { crisisOfFaith, ...rest } = tp;
+    await db.update(townPolicies).set({
+      tradePolicy: rest,
+    }).where(eq(townPolicies.townId, p.townId));
+
+    const town = await db.query.towns.findFirst({
+      where: eq(towns.id, p.townId),
+      columns: { name: true },
+    });
+    const targetGod = await db.query.gods.findFirst({
+      where: eq(gods.id, crisis.targetGodId),
+      columns: { name: true, churchName: true },
+    });
+
+    console.log(`[ElectionLifecycle] Crisis of Faith against ${targetGod?.churchName ?? crisis.targetGodId} has ended in "${town?.name ?? p.townId}"`);
+
+    io.emit('crisis-of-faith:expired', {
+      townId: p.townId,
+      townName: town?.name,
+      targetGodId: crisis.targetGodId,
+      targetChurchName: targetGod?.churchName,
+    });
+
+    // Fire-and-forget historical logging
+    logTownEvent(
+      p.townId,
+      'CRISIS_OF_FAITH',
+      `Crisis of Faith Against ${targetGod?.churchName ?? 'Unknown'} Has Ended`,
+      `The Crisis of Faith declared against ${targetGod?.churchName ?? crisis.targetGodId} has expired in ${town?.name ?? 'the town'}.`,
+      undefined,
+      undefined,
+      { targetGodId: crisis.targetGodId, targetChurchName: targetGod?.churchName },
     ).catch(() => {});
   }
 }

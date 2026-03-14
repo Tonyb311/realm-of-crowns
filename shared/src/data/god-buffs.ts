@@ -191,20 +191,66 @@ export const GOD_BUFFS: Record<string, GodBuff> = {
     },
     shrineEffects: { reckoning: 1 },
   },
+  xolthira: {
+    personalBuffs: {
+      MINORITY: { meditation: 1, meditationPositiveChance: 0.50 },
+      CHAPTER: { meditation: 1, meditationPositiveChance: 0.70 },
+      ESTABLISHED: { meditation: 1, meditationPositiveChance: 0.80, visions: 1 },
+      DOMINANT: { meditation: 1, meditationPositiveChance: 0.85, visions: 1, prophecy: 1 },
+    },
+    townEffects: {
+      ESTABLISHED: { rareDropPercent: 0.02 },
+      DOMINANT: { rareDropPercent: 0.03 },
+    },
+    metricModifiers: {
+      ESTABLISHED: {},
+      DOMINANT: {},
+    },
+    shrineEffects: { communalMeditation: 1 },
+  },
+  morvaine: {
+    personalBuffs: {
+      MINORITY: { corruptionDetectionPercent: 0.05 },
+      CHAPTER: { corruptionDetectionPercent: 0.10, identifyAnonymous: 1 },
+      ESTABLISHED: { corruptionDetectionPercent: 0.15, identifyAnonymous: 1, exposeHidden: 1 },
+      DOMINANT: { corruptionDetectionPercent: 0.20, identifyAnonymous: 1, exposeHidden: 1 },
+    },
+    townEffects: {
+      ESTABLISHED: { politicalManipulationReduction: 0.10 },
+      DOMINANT: { politicalManipulationReduction: 0.20 },
+    },
+    metricModifiers: {
+      ESTABLISHED: {},
+      DOMINANT: {},
+    },
+    shrineEffects: { crisisOfFaith: 1 },
+  },
 };
 
 /** Get a character's personal religion buffs based on their god and chapter tier */
-export function getPersonalReligionBuffs(godId: string | null, chapterTier: string): Record<string, number> {
+export function getPersonalReligionBuffs(godId: string | null, chapterTier: string, crisisMultiplier = 1.0): Record<string, number> {
   if (!godId || !GOD_BUFFS[godId]) return {};
   const godBuff = GOD_BUFFS[godId];
-  return godBuff.personalBuffs[chapterTier as keyof typeof godBuff.personalBuffs] ?? {};
+  const raw = godBuff.personalBuffs[chapterTier as keyof typeof godBuff.personalBuffs] ?? {};
+  if (crisisMultiplier >= 1.0) return raw;
+  const result: Record<string, number> = {};
+  for (const [key, val] of Object.entries(raw)) {
+    result[key] = val * crisisMultiplier;
+  }
+  return result;
 }
 
 /** Get town-wide effects from the dominant church */
-export function getDominantChurchTownEffects(godId: string, tier: string): Record<string, number> {
+export function getDominantChurchTownEffects(godId: string, tier: string, crisisMultiplier = 1.0): Record<string, number> {
   if (!GOD_BUFFS[godId]) return {};
   const godBuff = GOD_BUFFS[godId];
-  return godBuff.townEffects[tier as keyof typeof godBuff.townEffects] ?? {};
+  const raw = godBuff.townEffects[tier as keyof typeof godBuff.townEffects] ?? {};
+  if (crisisMultiplier >= 1.0) return raw;
+  const result: Record<string, number> = {};
+  for (const [key, val] of Object.entries(raw)) {
+    result[key] = val * crisisMultiplier;
+  }
+  return result;
 }
 
 /** Human-readable buff labels for UI display */
@@ -233,4 +279,15 @@ export const BUFF_LABELS: Record<string, string> = {
   invokeBloodMemory: 'Invoke Blood Memory',
   grudgeTracking: 'Grudge Tracking',
   diplomaticReputationPercent: 'Diplomatic Reputation',
+  meditation: 'Meditation',
+  meditationPositiveChance: 'Positive Chance',
+  visions: 'Visions',
+  prophecy: 'Prophecy',
+  rareDropPercent: 'Rare Drop Chance',
+  communalMeditation: 'Communal Meditation',
+  corruptionDetectionPercent: 'Corruption Detection',
+  identifyAnonymous: 'Identify Anonymous',
+  exposeHidden: 'Expose Hidden',
+  politicalManipulationReduction: 'Anti-Corruption',
+  crisisOfFaith: 'Crisis of Faith',
 };

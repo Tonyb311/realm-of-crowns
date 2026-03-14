@@ -1924,6 +1924,16 @@ async function processGatherAction(
     }
   }
 
+  // Xol'Thira rare drop bonus — town effect applies to all gatherers in a Xol'Thira-dominant town
+  if (char.currentTownId) {
+    const gatherRelCtx = await getCharacterReligionContext(char.id);
+    const gatherRelBuffs = resolveReligionBuffs({ ...gatherRelCtx, homeTownId: char.currentTownId });
+    const rareDropBonus = gatherRelBuffs.combinedBuffs.rareDropPercent ?? 0;
+    if (rareDropBonus > 0 && Math.random() < rareDropBonus) {
+      totalYield += 1;
+    }
+  }
+
   // XP calculation
   const baseXp = 10 + (resource.tier - 1) * 5;
   const xpGained = Math.round(baseXp * (1 + (gatherBonus.yieldMultiplier * 0.5)));

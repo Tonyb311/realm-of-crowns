@@ -128,10 +128,10 @@ export function buildReligionContext(
 // ---------------------------------------------------------------------------
 
 /** Resolve personal + town-wide religion buffs from context. */
-export function resolveReligionBuffs(ctx: ReligionContext): ReligionBuffs {
-  const personalBuffs = getPersonalReligionBuffs(ctx.patronGodId, ctx.chapterTier ?? '');
+export function resolveReligionBuffs(ctx: ReligionContext, crisisMultiplier = 1.0): ReligionBuffs {
+  const personalBuffs = getPersonalReligionBuffs(ctx.patronGodId, ctx.chapterTier ?? '', crisisMultiplier);
   const townBuffs = ctx.dominantGodId && ctx.dominantTier
-    ? getDominantChurchTownEffects(ctx.dominantGodId, ctx.dominantTier)
+    ? getDominantChurchTownEffects(ctx.dominantGodId, ctx.dominantTier, crisisMultiplier)
     : {};
 
   // Additive stacking
@@ -141,6 +141,24 @@ export function resolveReligionBuffs(ctx: ReligionContext): ReligionBuffs {
   }
 
   return { personalBuffs, townBuffs, combinedBuffs };
+}
+
+/**
+ * Get Crisis of Faith multiplier for a god in a specific town.
+ * Returns 0.75 if a Crisis of Faith is active against that god, otherwise 1.0.
+ */
+export async function getCrisisMultiplier(godId: string | null, townId: string | null): Promise<number> {
+  if (!godId || !townId) return 1.0;
+  const policy = await db.query.townPolicies.findFirst({
+    where: eq(townPolicies.townId, townId),
+    columns: { tradePolicy: true },
+  });
+  const tp = policy?.tradePolicy as Record<string, any> | null;
+  if (!tp?.crisisOfFaith) return 1.0;
+  const crisis = tp.crisisOfFaith as { targetGodId: string; until: string };
+  if (crisis.targetGodId !== godId) return 1.0;
+  if (new Date(crisis.until) <= new Date()) return 1.0;
+  return 0.75;
 }
 
 // ---------------------------------------------------------------------------
