@@ -204,6 +204,16 @@ export default function TownPage() {
     enabled: !!townId,
   });
 
+  // Fetch diplomatic summit status for banner
+  const { data: summitStatus } = useQuery<{
+    active: boolean; endsAt: string | null; startedBy: string | null;
+  }>({
+    queryKey: ['temple', 'summit-status', townId],
+    queryFn: async () => (await api.get(`/temple/summit-status/${townId}`)).data,
+    enabled: !!townId,
+    staleTime: 60000, // check once per minute
+  });
+
   // Subscribe to player enter/leave town events for live updates
   useEffect(() => {
     if (!townId) return;
@@ -447,6 +457,21 @@ export default function TownPage() {
           </div>
         </div>
       </header>
+
+      {/* Diplomatic Summit Banner */}
+      {summitStatus?.active && (
+        <div className="bg-realm-gold-500/10 border-b border-realm-gold-500/30">
+          <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-2 text-sm">
+              <Landmark className="w-4 h-4 text-realm-gold-400 flex-shrink-0" />
+              <span className="text-realm-gold-400 font-display">Diplomatic Summit in Progress</span>
+              <span className="text-realm-text-secondary text-xs">
+                — Reputation gains boosted until {new Date(summitStatus.endsAt!).toLocaleDateString()}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">

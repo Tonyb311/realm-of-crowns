@@ -27,6 +27,8 @@ import { getRacialCraftQualityBonus } from '../services/racial-profession-bonuse
 import { computeFeatBonus } from '@shared/data/feats';
 import { getWellRestedBonus } from '@shared/data/inn-config';
 import { getCharacterReligionContext, resolveReligionBuffs } from '../services/religion-buffs';
+import { addRacialReputation } from '../services/reputation';
+import { REPUTATION_GAINS } from '@shared/data/reputation-config';
 import type { ProfessionType, ProfessionTier } from '@shared/enums';
 
 const router = Router();
@@ -367,7 +369,7 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
       where: eq(jobs.id, id),
       with: {
         ownedAsset: true,
-        poster: { columns: { id: true, gold: true } },
+        poster: { columns: { id: true, gold: true, race: true } },
       },
     });
     if (!job) {
@@ -617,6 +619,12 @@ router.post('/:id/accept', authGuard, characterGuard, requireTown, async (req: A
       } catch {
         // XP failure shouldn't break the job
       }
+    }
+
+    // Cross-race reputation gain (fire-and-forget)
+    if (job.poster?.race && character.race && job.poster.race !== character.race) {
+      addRacialReputation(character.id, job.poster.race, REPUTATION_GAINS.JOB_COMPLETION, job.townId).catch(() => {});
+      addRacialReputation(job.posterId, character.race, REPUTATION_GAINS.JOB_COMPLETION, job.townId).catch(() => {});
     }
 
     return res.json({

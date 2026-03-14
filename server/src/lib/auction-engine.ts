@@ -19,7 +19,9 @@ import {
 import { emitTradeCompleted } from '../socket/events';
 import { onMarketBuy, onMarketSell } from '../services/quest-triggers';
 import { getEffectiveTaxRate } from '../services/law-effects';
-import { getTaxReduction, getMarketBonus } from '../services/religion-buffs';
+import { getTaxReduction, getMarketBonus, getForeignTradeBonus } from '../services/religion-buffs';
+import { addRacialReputation } from '../services/reputation';
+import { REPUTATION_GAINS } from '@shared/data/reputation-config';
 import { getSimulationTick } from './simulation-context';
 
 // ---------------------------------------------------------------------------
@@ -335,6 +337,16 @@ export async function resolveAuctionCycle(townId: string): Promise<{
       today.setHours(0, 0, 0, 0);
       const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
 
+      // Pre-fetch seller + buyer info for Valtheris foreign trade + reputation
+      const sellerChar = await db.query.characters.findFirst({
+        where: eq(characters.id, listing.sellerId),
+        columns: { homeTownId: true, race: true },
+      });
+      const buyerChar = await db.query.characters.findFirst({
+        where: eq(characters.id, winner.order.buyerId),
+        columns: { homeTownId: true, race: true },
+      });
+
       await db.transaction(async (tx) => {
         // Mark winning order
         await tx.update(marketBuyOrders)
@@ -388,6 +400,32 @@ export async function resolveAuctionCycle(townId: string): Promise<{
             await tx.update(characters)
               .set({ gold: sql`${characters.gold} + ${buyerRebateGold}` })
               .where(eq(characters.id, winner.order.buyerId));
+          }
+        }
+
+        // Valtheris foreign trade bonus — seller bonus when trading outside home town
+        if (sellerChar && sellerChar.homeTownId !== townId) {
+          const sellerForeignBonus = await getForeignTradeBonus(listing.sellerId, townId);
+          if (sellerForeignBonus > 0) {
+            const foreignBonusGold = Math.floor(sellerNet * sellerForeignBonus);
+            if (foreignBonusGold > 0) {
+              await tx.update(characters)
+                .set({ gold: sql`${characters.gold} + ${foreignBonusGold}` })
+                .where(eq(characters.id, listing.sellerId));
+            }
+          }
+        }
+
+        // Valtheris foreign trade bonus — buyer rebate when buying outside home town
+        if (buyerChar && buyerChar.homeTownId !== townId) {
+          const buyerForeignBonus = await getForeignTradeBonus(winner.order.buyerId, townId);
+          if (buyerForeignBonus > 0) {
+            const foreignRebateGold = Math.floor(bidPrice * buyerForeignBonus);
+            if (foreignRebateGold > 0) {
+              await tx.update(characters)
+                .set({ gold: sql`${characters.gold} + ${foreignRebateGold}` })
+                .where(eq(characters.id, winner.order.buyerId));
+            }
           }
         }
 
@@ -511,6 +549,12 @@ export async function resolveAuctionCycle(townId: string): Promise<{
       // Fire-and-forget quest triggers and socket events
       onMarketBuy(winner.order.buyerId).catch(() => {});
       onMarketSell(listing.sellerId).catch(() => {});
+
+      // Cross-race reputation gains (Valtheris system)
+      if (sellerChar && buyerChar && sellerChar.race !== buyerChar.race) {
+        addRacialReputation(listing.sellerId, buyerChar.race, REPUTATION_GAINS.MARKET_TRADE, townId).catch(() => {});
+        addRacialReputation(winner.order.buyerId, sellerChar.race, REPUTATION_GAINS.MARKET_TRADE, townId).catch(() => {});
+      }
 
       emitTradeCompleted({
         townId,

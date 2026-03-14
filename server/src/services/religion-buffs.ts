@@ -261,3 +261,45 @@ export function getReligionEncounterReductionFromChapters(
 
   return Math.min(1, reduction);
 }
+
+// ---------------------------------------------------------------------------
+// Reputation gain helpers (Valtheris)
+// ---------------------------------------------------------------------------
+
+/**
+ * Get the combined reputation gain bonus for a character in a given town.
+ * Combines personal buff (Valtheris member) + town-wide buff (Valtheris dominant).
+ * Returns 0-1 (e.g. 0.15 = 15% bonus).
+ */
+export async function getReputationGainBonus(characterId: string, townId: string): Promise<number> {
+  const ctx = await getCharacterReligionContext(characterId);
+  const buffs = resolveReligionBuffs({ ...ctx, homeTownId: townId });
+  return Math.min(1, buffs.combinedBuffs.reputationGainPercent ?? 0);
+}
+
+/** Batch-friendly: get reputation gain bonus from pre-fetched chapters. */
+export function getReputationGainBonusFromChapters(
+  patronGodId: string | null,
+  homeTownId: string | null,
+  townId: string,
+  allChapters: ChapterRow[],
+): number {
+  const ctx = buildReligionContext(patronGodId, homeTownId, allChapters);
+  const buffs = resolveReligionBuffs({ ...ctx, homeTownId: townId });
+  return Math.min(1, buffs.combinedBuffs.reputationGainPercent ?? 0);
+}
+
+// ---------------------------------------------------------------------------
+// Foreign trade helpers (Valtheris)
+// ---------------------------------------------------------------------------
+
+/**
+ * Get the combined foreign trade bonus for a character in a given town.
+ * Applies when trading in a town that is NOT the character's home town.
+ * Returns 0-1 (e.g. 0.10 = 10% bonus).
+ */
+export async function getForeignTradeBonus(characterId: string, townId: string): Promise<number> {
+  const ctx = await getCharacterReligionContext(characterId);
+  const buffs = resolveReligionBuffs({ ...ctx, homeTownId: townId });
+  return Math.min(1, buffs.combinedBuffs.foreignTradePercent ?? 0);
+}

@@ -123,6 +123,23 @@ export const GOD_BUFFS: Record<string, GodBuff> = {
     },
     shrineEffects: { blackMarket: 1 },
   },
+  valtheris: {
+    personalBuffs: {
+      MINORITY: { reputationGainPercent: 0.05 },
+      CHAPTER: { reputationGainPercent: 0.10, reducedConversionCooldown: 1 },
+      ESTABLISHED: { reputationGainPercent: 0.15, foreignTradePercent: 0.05, reducedConversionCooldown: 1 },
+      DOMINANT: { reputationGainPercent: 0.20, foreignTradePercent: 0.10, reducedConversionCooldown: 1 },
+    },
+    townEffects: {
+      ESTABLISHED: { reputationGainPercent: 0.05 },
+      DOMINANT: { reputationGainPercent: 0.10, foreignTradePercent: 0.05 },
+    },
+    metricModifiers: {
+      ESTABLISHED: {},
+      DOMINANT: {},
+    },
+    shrineEffects: { diplomaticSummit: 1 },
+  },
 };
 
 /** Get a character's personal religion buffs based on their god and chapter tier */
@@ -151,4 +168,7 @@ export const BUFF_LABELS: Record<string, string> = {
   marketBonusPercent: 'Market Bonus',
   priceTrendAccess: 'Price Trends',
   crossTownPriceVisibility: 'Cross-Town Prices',
+  reputationGainPercent: 'Reputation Gains',
+  foreignTradePercent: 'Foreign Trade Bonus',
+  reducedConversionCooldown: 'Reduced Conversion Cooldown',
 };

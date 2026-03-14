@@ -2538,3 +2538,24 @@ export const blackMarketListings = pgTable("black_market_listings", {
 	}).onUpdate("cascade").onDelete("restrict"),
 ]);
 
+// ============================================================
+// Racial Reputations (Valtheris — per-character standing with each race)
+// ============================================================
+
+export const racialReputations = pgTable("racial_reputations", {
+	id: text().primaryKey().notNull(),
+	characterId: text("character_id").notNull(),
+	race: text().notNull(),
+	score: real().default(0).notNull(),
+	createdAt: timestamp("created_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at", { precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	uniqueIndex("racial_reputations_character_id_race_key").on(table.characterId, table.race),
+	index("racial_reputations_character_id_idx").using("btree", table.characterId.asc().nullsLast().op("text_ops")),
+	foreignKey({
+		columns: [table.characterId],
+		foreignColumns: [characters.id],
+		name: "racial_reputations_character_id_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+]);
+

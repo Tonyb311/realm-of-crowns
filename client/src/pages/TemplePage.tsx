@@ -9,6 +9,7 @@ import api from '../services/api';
 import { RealmPanel, RealmButton, RealmBadge, PageHeader } from '../components/ui/realm-index';
 import { SHRINE_CONSECRATION_COST, GOD_METRIC_PREVIEW } from '@shared/data/town-metrics-config';
 import { GOD_BUFFS, BUFF_LABELS, getPersonalReligionBuffs, getDominantChurchTownEffects } from '@shared/data/god-buffs';
+import { REPUTATION_TIERS } from '@shared/data/reputation-config';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -367,6 +368,39 @@ export default function TemplePage() {
     },
   });
 
+  // Valtheris: reputation + diplomatic summit
+  const isValtheris = patronGod?.id === 'valtheris';
+  const isValtherisHP = chapters.some(ch => ch.godId === 'valtheris' && ch.isDominant && ch.isShrine && ch.highPriestId === character?.id);
+  const [showReputation, setShowReputation] = useState(false);
+
+  const { data: reputationData } = useQuery<{
+    reputations: Array<{
+      race: string; score: number; tier: string; tierLabel: string; tierColor: string;
+    }>;
+  }>({
+    queryKey: ['temple', 'reputation'],
+    queryFn: async () => (await api.get('/temple/reputation')).data,
+    enabled: showReputation && isValtheris,
+  });
+
+  const { data: summitStatus } = useQuery<{
+    active: boolean; endsAt: string | null; startedBy: string | null;
+  }>({
+    queryKey: ['temple', 'summit-status', townId],
+    queryFn: async () => (await api.get(`/temple/summit-status/${townId}`)).data,
+    enabled: !!townId,
+  });
+
+  const summitMutation = useMutation({
+    mutationFn: async (tId: string) => {
+      const res = await api.post('/temple/diplomatic-summit', { townId: tId });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temple'] });
+    },
+  });
+
   // Tessivane: price trends + cross-town prices
   const [showPriceTrends, setShowPriceTrends] = useState(false);
   const [showCrossTownPrices, setShowCrossTownPrices] = useState(false);
@@ -501,12 +535,12 @@ export default function TemplePage() {
                       <span className="text-[10px] uppercase tracking-wider text-realm-text-muted">Personal</span>
                       {Object.entries(personalBuffs).map(([key, val]) => {
                         const isReduction = key.includes('Reduction');
-                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility';
+                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown';
                         return (
                           <div key={key} className="flex items-center justify-between text-[11px]">
                             <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
                             <span className="text-realm-teal-300">
-                              {isBoolean ? 'Unlocked' : `${isReduction ? '-' : '+'}${Math.round(val * 100)}%`}
+                              {isBoolean ? (key === 'reducedConversionCooldown' ? '5 days' : 'Unlocked') : `${isReduction ? '-' : '+'}${Math.round(val * 100)}%`}
                             </span>
                           </div>
                         );
@@ -518,7 +552,7 @@ export default function TemplePage() {
                       <span className="text-[10px] uppercase tracking-wider text-realm-text-muted">Town-wide ({dominant!.godName} dominance)</span>
                       {Object.entries(townBuffs).map(([key, val]) => {
                         const isReduction = key.includes('Reduction');
-                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility';
+                        const isBoolean = key === 'priceTrendAccess' || key === 'crossTownPriceVisibility' || key === 'reducedConversionCooldown';
                         return (
                           <div key={key} className="flex items-center justify-between text-[11px]">
                             <span className="text-realm-text-secondary">{BUFF_LABELS[key] ?? key}</span>
@@ -817,6 +851,95 @@ export default function TemplePage() {
                 >
                   Enter Black Market
                 </RealmButton>
+              </div>
+            )}
+
+            {/* Valtheris: Racial Reputation */}
+            {isValtheris && (
+              <div className="rounded-lg border border-realm-bg-600 bg-realm-bg-800 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-display text-realm-text-primary flex items-center gap-1.5">
+                    <Handshake className="w-3.5 h-3.5 text-realm-gold-400" />
+                    Racial Reputation
+                  </span>
+                  <RealmButton variant="secondary" size="sm" onClick={() => setShowReputation(!showReputation)}>
+                    {showReputation ? 'Hide' : 'View'}
+                  </RealmButton>
+                </div>
+                {showReputation && reputationData && (
+                  <div className="space-y-1 mt-2">
+                    {reputationData.reputations.length === 0 ? (
+                      <p className="text-[11px] text-realm-text-muted">You are Neutral with all races. Trade and interact with other races to build standing.</p>
+                    ) : (
+                      reputationData.reputations.map(rep => {
+                        const tier = REPUTATION_TIERS.find(t => t.id === rep.tier) ?? REPUTATION_TIERS[2];
+                        const nextTier = REPUTATION_TIERS.find(t => t.min > rep.score);
+                        const prevTier = [...REPUTATION_TIERS].reverse().find(t => t.max < rep.score);
+                        const rangeMin = prevTier ? prevTier.max : tier.min;
+                        const rangeMax = nextTier ? nextTier.min : tier.max;
+                        const progress = rangeMax > rangeMin ? Math.max(0, Math.min(100, ((rep.score - rangeMin) / (rangeMax - rangeMin)) * 100)) : 100;
+                        return (
+                          <div key={rep.race} className="flex items-center gap-2 py-0.5">
+                            <span className="text-[11px] text-realm-text-secondary capitalize w-20 truncate">{rep.race}</span>
+                            <div className="flex-1 h-1.5 bg-realm-bg-600 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{ width: `${progress}%`, backgroundColor: rep.tierColor }}
+                              />
+                            </div>
+                            <span
+                              className="text-[10px] font-display uppercase tracking-wider px-1.5 py-0.5 rounded-sm border w-20 text-center"
+                              style={{ color: rep.tierColor, borderColor: `${rep.tierColor}40`, backgroundColor: `${rep.tierColor}10` }}
+                            >
+                              {rep.tierLabel}
+                            </span>
+                            <span className="text-[10px] text-realm-text-muted w-10 text-right">{rep.score}</span>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Valtheris: Diplomatic Summit (HP with shrine) */}
+            {isValtherisHP && (
+              <div className="rounded-lg border border-realm-bg-600 bg-realm-bg-800 p-3 space-y-2">
+                <span className="text-xs font-display text-realm-text-primary flex items-center gap-1.5">
+                  <Crown className="w-3.5 h-3.5 text-realm-gold-400" />
+                  Diplomatic Summit
+                </span>
+                <p className="text-[11px] text-realm-text-muted">
+                  Host a diplomatic summit to boost reputation gains for all characters in this town and adjacent towns for 7 days. Cost: 200g from church treasury.
+                </p>
+                {summitStatus?.active ? (
+                  <div className="bg-realm-gold-500/10 border border-realm-gold-500/30 rounded-lg px-3 py-2">
+                    <p className="text-[11px] text-realm-gold-400">
+                      Summit active — ends {new Date(summitStatus.endsAt!).toLocaleDateString()}
+                    </p>
+                    {summitStatus.startedBy && (
+                      <p className="text-[10px] text-realm-text-muted">Hosted by {summitStatus.startedBy}</p>
+                    )}
+                  </div>
+                ) : (
+                  <RealmButton
+                    variant="primary"
+                    size="sm"
+                    onClick={() => summitMutation.mutate(templeData!.townId)}
+                    disabled={summitMutation.isPending}
+                  >
+                    {summitMutation.isPending ? 'Hosting...' : 'Host Diplomatic Summit (200g)'}
+                  </RealmButton>
+                )}
+                {summitMutation.isSuccess && (
+                  <p className="text-[11px] text-realm-success">{summitMutation.data.message}</p>
+                )}
+                {summitMutation.isError && (
+                  <p className="text-[11px] text-realm-danger">
+                    {(summitMutation.error as any)?.response?.data?.error || 'Failed to host summit'}
+                  </p>
+                )}
               </div>
             )}
 

@@ -1,7 +1,7 @@
 import { Router, type Response } from 'express';
 import { eq, and, ne, sql, asc, desc, count, gte, gt, inArray } from 'drizzle-orm';
 import { db } from '../lib/db';
-import { gods, churchChapters, characters, towns, elections, electionCandidates, characterActiveEffects, townPolicies, townTreasuries, priceHistories, itemTemplates } from '@database/tables';
+import { gods, churchChapters, characters, towns, elections, electionCandidates, characterActiveEffects, townPolicies, townTreasuries, priceHistories, itemTemplates, travelRoutes, racialReputations } from '@database/tables';
 import { authGuard } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/express';
 import { characterGuard } from '../middleware/character-guard';
@@ -10,9 +10,13 @@ import { logRouteError } from '../lib/error-logger';
 import { calculateChurchTier, CONVERSION_COOLDOWN_DAYS } from '@shared/data/religion-config';
 import { SHRINE_CONSECRATION_COST } from '@shared/data/town-metrics-config';
 import { emitGovernanceEvent } from '../socket/events';
+import { getReputationTier } from '@shared/data/reputation-config';
 import crypto from 'crypto';
 
 const POLICY_BYPASS_COOLDOWN_DAYS = 30;
+const SUMMIT_COOLDOWN_DAYS = 30;
+const SUMMIT_DURATION_DAYS = 7;
+const SUMMIT_COST = 200;
 
 const router = Router();
 
@@ -208,8 +212,22 @@ router.post('/choose-patron', authGuard, characterGuard, async (req: Authenticat
 
       // Set cooldown only for god-to-god switches
       if (oldGodId && newGodId) {
+        // Valtheris CHAPTER+ members get reduced cooldown (5 days vs 7)
+        let cooldownDays = CONVERSION_COOLDOWN_DAYS;
+        if (oldGodId === 'valtheris') {
+          const valChapter = await tx.query.churchChapters.findFirst({
+            where: and(
+              eq(churchChapters.godId, 'valtheris'),
+              eq(churchChapters.townId, homeTownId),
+            ),
+            columns: { tier: true },
+          });
+          if (valChapter && valChapter.tier !== 'MINORITY') {
+            cooldownDays = 5;
+          }
+        }
         const cooldownDate = new Date();
-        cooldownDate.setDate(cooldownDate.getDate() + CONVERSION_COOLDOWN_DAYS);
+        cooldownDate.setDate(cooldownDate.getDate() + cooldownDays);
         updateData.conversionCooldownUntil = cooldownDate.toISOString();
       }
 
@@ -1009,6 +1027,211 @@ router.get('/cross-town-prices', authGuard, characterGuard, async (req: Authenti
   } catch (error) {
     if (handleDbError(error, res, 'temple-cross-town-prices', req)) return;
     logRouteError(req, 500, 'Temple cross-town prices error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// GET /api/temple/reputation — View character's racial reputations
+// ============================================================
+
+router.get('/reputation', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+
+    const reps = await db.query.racialReputations.findMany({
+      where: eq(racialReputations.characterId, character.id),
+    });
+
+    const reputations = reps
+      .filter(r => r.score !== 0)
+      .map(r => {
+        const tier = getReputationTier(r.score);
+        return {
+          race: r.race,
+          score: Math.round(r.score * 10) / 10,
+          tier: tier.id,
+          tierLabel: tier.label,
+          tierColor: tier.color,
+          updatedAt: r.updatedAt,
+        };
+      })
+      .sort((a, b) => b.score - a.score);
+
+    return res.json({ reputations });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-reputation', req)) return;
+    logRouteError(req, 500, 'Temple reputation error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// POST /api/temple/diplomatic-summit — Host Diplomatic Summit (Valtheris HP only)
+// ============================================================
+
+router.post('/diplomatic-summit', authGuard, characterGuard, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const character = req.character!;
+    const { townId } = req.body as { townId: string };
+
+    if (!townId) {
+      return res.status(400).json({ error: 'townId is required' });
+    }
+
+    // Must be HP of dominant Valtheris chapter with shrine
+    const chapter = await db.query.churchChapters.findFirst({
+      where: and(
+        eq(churchChapters.godId, 'valtheris'),
+        eq(churchChapters.townId, townId),
+      ),
+    });
+
+    if (!chapter) {
+      return res.status(400).json({ error: 'No Valtheris chapter in this town' });
+    }
+    if (chapter.highPriestId !== character.id) {
+      return res.status(403).json({ error: 'Only the High Priest of Valtheris can host diplomatic summits' });
+    }
+    if (!chapter.isDominant) {
+      return res.status(400).json({ error: 'Valtheris must be the dominant church' });
+    }
+    if (!chapter.isShrine) {
+      return res.status(400).json({ error: 'The Valtheris shrine must be consecrated' });
+    }
+
+    // Check treasury
+    if ((chapter.treasury ?? 0) < SUMMIT_COST) {
+      return res.status(400).json({
+        error: `Insufficient church treasury. Need ${SUMMIT_COST}g, have ${chapter.treasury ?? 0}g.`,
+      });
+    }
+
+    // Check 30-day cooldown
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+    });
+    const tradeP = (policy?.tradePolicy as Record<string, unknown>) ?? {};
+    const lastSummit = tradeP.valtherisSummitAt as string | undefined;
+    if (lastSummit) {
+      const daysSince = Math.floor((Date.now() - new Date(lastSummit).getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSince < SUMMIT_COOLDOWN_DAYS) {
+        const daysLeft = SUMMIT_COOLDOWN_DAYS - daysSince;
+        return res.status(400).json({
+          error: `A diplomatic summit was held recently. ${daysLeft} day${daysLeft > 1 ? 's' : ''} remaining.`,
+          cooldownDaysLeft: daysLeft,
+        });
+      }
+    }
+
+    // Get adjacent towns (1 hop via travel routes)
+    const routes = await db.query.travelRoutes.findMany({
+      where: eq(travelRoutes.fromTownId, townId),
+      columns: { toTownId: true },
+    });
+    const reverseRoutes = await db.query.travelRoutes.findMany({
+      where: eq(travelRoutes.toTownId, townId),
+      columns: { fromTownId: true },
+    });
+    const adjacentTownIds = [...new Set([
+      ...routes.map(r => r.toTownId),
+      ...reverseRoutes.map(r => r.fromTownId),
+    ])];
+
+    const summitUntil = new Date();
+    summitUntil.setDate(summitUntil.getDate() + SUMMIT_DURATION_DAYS);
+    const summitUntilStr = summitUntil.toISOString();
+    const summitData = {
+      valtherisSummitAt: new Date().toISOString(),
+      valtherisSummitUntil: summitUntilStr,
+      valtherisSummitStartedBy: character.id,
+    };
+
+    await db.transaction(async (tx) => {
+      // Deduct from treasury
+      await tx.update(churchChapters)
+        .set({ treasury: sql`${churchChapters.treasury} - ${SUMMIT_COST}` })
+        .where(eq(churchChapters.id, chapter.id));
+
+      // Update host town's tradePolicy
+      const allAffectedTowns = [townId, ...adjacentTownIds];
+      for (const tid of allAffectedTowns) {
+        const existingPolicy = await tx.query.townPolicies.findFirst({
+          where: eq(townPolicies.townId, tid),
+        });
+
+        if (existingPolicy) {
+          const existing = (existingPolicy.tradePolicy as Record<string, unknown>) ?? {};
+          await tx.update(townPolicies)
+            .set({ tradePolicy: { ...existing, ...summitData } })
+            .where(eq(townPolicies.townId, tid));
+        } else {
+          await tx.insert(townPolicies).values({
+            id: crypto.randomUUID(),
+            townId: tid,
+            tradePolicy: summitData,
+          });
+        }
+      }
+    });
+
+    // Get town names for response
+    const affectedTowns = await db.query.towns.findMany({
+      where: inArray(towns.id, [townId, ...adjacentTownIds]),
+      columns: { id: true, name: true },
+    });
+
+    return res.json({
+      success: true,
+      message: `Diplomatic Summit hosted! Reputation gains boosted for ${SUMMIT_DURATION_DAYS} days.`,
+      summitEndsAt: summitUntilStr,
+      cost: SUMMIT_COST,
+      affectedTowns: affectedTowns.map(t => ({ id: t.id, name: t.name })),
+      cooldownDays: SUMMIT_COOLDOWN_DAYS,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-diplomatic-summit', req)) return;
+    logRouteError(req, 500, 'Temple diplomatic summit error', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// GET /api/temple/summit-status/:townId — Check if summit is active
+// ============================================================
+
+router.get('/summit-status/:townId', async (req, res: Response) => {
+  try {
+    const { townId } = req.params;
+
+    const policy = await db.query.townPolicies.findFirst({
+      where: eq(townPolicies.townId, townId),
+      columns: { tradePolicy: true },
+    });
+
+    const tp = (policy?.tradePolicy as Record<string, unknown>) ?? {};
+    const summitUntil = tp.valtherisSummitUntil as string | undefined;
+    const startedBy = tp.valtherisSummitStartedBy as string | undefined;
+
+    const active = !!summitUntil && new Date(summitUntil).getTime() > Date.now();
+
+    let startedByName: string | null = null;
+    if (active && startedBy) {
+      const starter = await db.query.characters.findFirst({
+        where: eq(characters.id, startedBy),
+        columns: { name: true },
+      });
+      startedByName = starter?.name ?? null;
+    }
+
+    return res.json({
+      active,
+      endsAt: active ? summitUntil : null,
+      startedBy: active ? startedByName : null,
+    });
+  } catch (error) {
+    if (handleDbError(error, res, 'temple-summit-status', req)) return;
+    logRouteError(req, 500, 'Temple summit status error', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

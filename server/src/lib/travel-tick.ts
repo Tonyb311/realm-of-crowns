@@ -6,6 +6,8 @@ import { resolveRoadEncounter, resolveGroupRoadEncounter } from './road-encounte
 import { ACTION_XP } from '@shared/data/progression';
 import { checkLevelUp } from '../services/progression';
 import { emitNotification } from '../socket/events';
+import { addRacialReputation } from '../services/reputation';
+import { REPUTATION_GAINS } from '@shared/data/reputation-config';
 import type { CombatRound } from './simulation/types';
 
 // ---------------------------------------------------------------------------
@@ -55,6 +57,18 @@ async function completeDeliveryJobsOnArrival(characterId: string, destinationTow
         data: { jobId: delivery.id, destinationTownId },
       });
     } catch { /* notification is non-critical */ }
+
+    // Cross-race reputation gain on delivery (fire-and-forget)
+    try {
+      const [worker, poster] = await Promise.all([
+        db.query.characters.findFirst({ where: eq(characters.id, characterId), columns: { race: true } }),
+        db.query.characters.findFirst({ where: eq(characters.id, delivery.posterId), columns: { race: true } }),
+      ]);
+      if (worker?.race && poster?.race && worker.race !== poster.race) {
+        addRacialReputation(characterId, poster.race, REPUTATION_GAINS.JOB_COMPLETION, destinationTownId).catch(() => {});
+        addRacialReputation(delivery.posterId, worker.race, REPUTATION_GAINS.JOB_COMPLETION, destinationTownId).catch(() => {});
+      }
+    } catch { /* reputation is non-critical */ }
 
     completed++;
   }

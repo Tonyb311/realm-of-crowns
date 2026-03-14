@@ -42,7 +42,9 @@ import { computeFeatBonus } from '@shared/data/feats';
 import { GATHER_SPOT_PROFESSION_MAP, RESOURCE_MAP } from '@shared/data/gathering';
 import { calculateChurchTier } from '@shared/data/religion-config';
 import { GOD_BUFFS } from '@shared/data/god-buffs';
-import { getCharacterReligionContext, resolveReligionBuffs, getTaxReductionFromChapters, type ChapterRow } from '../services/religion-buffs';
+import { getCharacterReligionContext, resolveReligionBuffs, getTaxReductionFromChapters, getReputationGainBonusFromChapters, type ChapterRow } from '../services/religion-buffs';
+import { addRacialReputationWithBonus } from '../services/reputation';
+import { REPUTATION_GAINS } from '@shared/data/reputation-config';
 import { ASSET_TIERS, LIVESTOCK_DEFINITIONS, HUNGER_CONSTANTS } from '@shared/data/assets';
 import { getCottageTier } from '@shared/data/cottage-tiers';
 import {
@@ -1666,6 +1668,78 @@ export async function processDailyTick(): Promise<DailyTickResult> {
     const cleaned = await cleanupExpiredDrops();
     if (cleaned > 0) {
       console.log(`[DailyTick]   Cleaned up ${cleaned} expired drop records`);
+    }
+  });
+
+  // -----------------------------------------------------------------------
+  // Step 17: Racial Reputation — Proximity + Diplomatic Summit
+  // -----------------------------------------------------------------------
+  await runStep('Racial Reputation Proximity', 17, async () => {
+    // Pre-fetch all chapters for batch religion context
+    const allChaptersForRep = await db.query.churchChapters.findMany({
+      columns: { id: true, godId: true, townId: true, tier: true, isDominant: true, isShrine: true },
+    }) as ChapterRow[];
+
+    // Get all characters with their current town and race
+    const allCharsForRep = await db.query.characters.findMany({
+      columns: { id: true, currentTownId: true, homeTownId: true, race: true, patronGodId: true },
+    });
+
+    // Group characters by current town
+    const charsByTown = new Map<string, typeof allCharsForRep>();
+    for (const c of allCharsForRep) {
+      if (!c.currentTownId || !c.race) continue;
+      let list = charsByTown.get(c.currentTownId);
+      if (!list) {
+        list = [];
+        charsByTown.set(c.currentTownId, list);
+      }
+      list.push(c);
+    }
+
+    // Check for active diplomatic summits (stored in townPolicies.tradePolicy JSONB)
+    const allPolicies = await db.query.townPolicies.findMany({
+      columns: { townId: true, tradePolicy: true },
+    });
+    const summitTowns = new Set<string>();
+    const now = Date.now();
+    for (const p of allPolicies) {
+      const tp = (p.tradePolicy as Record<string, unknown>) ?? {};
+      const summitUntil = tp.valtherisSummitUntil as string | undefined;
+      if (summitUntil && new Date(summitUntil).getTime() > now) {
+        summitTowns.add(p.townId);
+      }
+    }
+
+    let repUpdates = 0;
+    for (const [townId, chars] of charsByTown) {
+      // Get distinct races in this town
+      const racesInTown = new Set(chars.map(c => c.race).filter(Boolean));
+      if (racesInTown.size <= 1) continue; // only one race, no cross-race proximity
+
+      const isSummitActive = summitTowns.has(townId);
+      const gainAmount = isSummitActive ? REPUTATION_GAINS.DIPLOMATIC_SUMMIT : REPUTATION_GAINS.PROXIMITY_TICK;
+
+      for (const char of chars) {
+        if (!char.race) continue;
+        const repBonus = getReputationGainBonusFromChapters(
+          char.patronGodId, char.homeTownId, char.currentTownId!, allChaptersForRep,
+        );
+
+        for (const otherRace of racesInTown) {
+          if (otherRace === char.race) continue;
+          try {
+            await addRacialReputationWithBonus(char.id, otherRace, gainAmount, repBonus);
+            repUpdates++;
+          } catch (err) {
+            console.error(`[DailyTick] Rep update error for ${char.id}/${otherRace}:`, err);
+          }
+        }
+      }
+    }
+
+    if (repUpdates > 0) {
+      console.log(`[DailyTick]   Proximity reputation: ${repUpdates} updates (${summitTowns.size} summit towns)`);
     }
   });
 
